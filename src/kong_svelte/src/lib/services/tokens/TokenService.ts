@@ -388,6 +388,7 @@ export class TokenService {
 
       const tokens = await kongDB.tokens.toArray();
       const tokenId = tokens.length + 1000;
+      console.log("supportedStandards", supportedStandards);
       return {
         canister_id: canisterId,
         name: name.toString(),
@@ -397,7 +398,7 @@ export class TokenService {
         fee: fee.toString(),
         fee_fixed: fee.toString(),
         token: canisterId,
-        icrc1: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-2") ? true : false,
+        icrc1: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-1") ? true : false,
         icrc2: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-2") ? true : false,
         icrc3: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-3") ? true : false,
         pool_symbol: "",

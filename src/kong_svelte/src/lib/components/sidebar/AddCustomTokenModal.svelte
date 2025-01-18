@@ -133,7 +133,7 @@
           {/if}
         </div>
 
-        <div class="button-group">
+        <div class="button-group pb-4">
           <button 
             type="button" 
             class="cancel-button" 
@@ -240,7 +240,7 @@
           </div>
 
           <div class="confirmation-section">
-            <div class="button-group">
+            <div class="button-group pb-4">
               <button 
                 type="button" 
                 class="cancel-button" 
