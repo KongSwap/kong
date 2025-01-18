@@ -5,6 +5,7 @@ import { liveTokens } from "$lib/services/tokens/tokenStore";
 import { loadBalances } from "$lib/services/tokens/tokenStore";
 import { auth } from "$lib/services/auth";
 import { SwapService } from "./SwapService";
+import { swapState } from "./SwapStateService";
 
 interface SwapStatus {
   status: string;
@@ -66,6 +67,7 @@ export class SwapMonitor {
                 if (status.toLowerCase() === "swap success") {
                   toastStore.dismiss(toastId);
                   toastStore.success(`Swap completed successfully`);
+                  swapState.setShowSuccessModal(true);
                 } else if (status === "Success") {
                   toastStore.success(`Balances updated!`);
                 } else if (status.toLowerCase().includes("failed")) {

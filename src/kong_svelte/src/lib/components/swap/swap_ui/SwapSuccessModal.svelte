@@ -1,7 +1,6 @@
 <script lang="ts">
   import { formatBalance } from '$lib/utils/numberFormatUtils';
-  import { fade, scale } from "svelte/transition";
-  import { backOut } from "svelte/easing";
+  import { fade } from "svelte/transition";
   import coinReceivedSound from "$lib/assets/sounds/coin_received.mp3";
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";

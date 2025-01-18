@@ -30,6 +30,7 @@
   import { livePools } from "$lib/services/pools/poolStore";
   import Settings from "$lib/components/settings/Settings.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
+    import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
 
   // Types
   type PanelType = "pay" | "receive";
@@ -62,26 +63,7 @@
   let isRotating = false;
   let rotationCount = 0;
   let isQuoteLoading = false;
-  let showSuccessModal = false;
-  let successDetails = null;
   let showSettings = false;
-
-  // Subscribe to swap status changes
-  $: {
-    if (currentSwapId && $swapStatusStore[currentSwapId]) {
-      const status = $swapStatusStore[currentSwapId];
-      if (status.status === "Swap success" && status.details) {
-        showSuccessModal = true;
-        successDetails = {
-          payAmount: status.details.payAmount,
-          payToken: status.details.payToken,
-          receiveAmount: status.details.receiveAmount,
-          receiveToken: status.details.receiveToken,
-          principalId: selectedWalletId,
-        };
-      }
-    }
-  }
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -117,7 +99,6 @@
   $: buttonText = (() => {
     if (!$swapState.payToken || !$swapState.receiveToken)
       return "Select Tokens";
-    if (showSuccessModal) return "Swap";
     if ($swapState.isProcessing) return "Processing...";
     if (isQuoteLoading) return "Fetching Quote...";
     if ($swapState.error) return $swapState.error;
@@ -246,8 +227,23 @@
         return false;
       }
 
-      // Reset the state after a successful swap
-      resetSwapState();
+      // Store the successful swap details and clear input amounts
+      swapState.update((state) => ({
+        ...state,
+        successDetails: {
+          payAmount: state.payAmount,
+          payToken: state.payToken,
+          receiveAmount: state.receiveAmount,
+          receiveToken: state.receiveToken,
+          principalId: $auth.account?.owner?.toString() || "",
+        },
+        // Clear input amounts but keep tokens selected
+        payAmount: "",
+        receiveAmount: "",
+        isProcessing: false,
+        showConfirmation: false,
+      }));
+
       return true;
     } catch (error) {
       console.error("Swap execution failed:", error);
@@ -678,6 +674,21 @@
       }}
     />
   </Portal>
+{/if}
+
+{#if $swapState.showSuccessModal}
+<SwapSuccessModal
+  show={$swapState.showSuccessModal}
+  payAmount={$swapState.successDetails?.payAmount || $swapState.payAmount}
+  payToken={$swapState.successDetails?.payToken || $swapState.payToken}
+  receiveAmount={$swapState.successDetails?.receiveAmount || $swapState.receiveAmount}
+  receiveToken={$swapState.successDetails?.receiveToken || $swapState.receiveToken}
+  onClose={() => {
+    console.log("Closing success modal");
+    swapState.setShowSuccessModal(false);
+    resetSwapState();
+  }}
+  />
 {/if}
 
 {#if showSettings}
