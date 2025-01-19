@@ -517,22 +517,27 @@ fn return_tokens(
 }
 
 fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
-    if kong_settings_map::get().archive_to_kong_data {
-        let request =
-            request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
-        request_map::archive_to_kong_data(&request)?;
-        match request.reply {
-            Reply::RemoveLiquidity(ref reply) => {
-                for claim_id in reply.claim_ids.iter() {
-                    claim_map::archive_to_kong_data(*claim_id)?;
-                }
-                for transfer_id_reply in reply.transfer_ids.iter() {
-                    transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id)?;
-                }
-                tx_map::archive_to_kong_data(reply.tx_id)?;
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
+    let request = request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
+    request_map::archive_to_kong_data(&request)?;
+
+    match request.reply {
+        Reply::RemoveLiquidity(ref reply) => {
+            // archive claims
+            for claim_id in reply.claim_ids.iter() {
+                claim_map::archive_to_kong_data(*claim_id)?;
             }
-            _ => Err("Invalid reply type".to_string())?,
+            // archive transfers
+            for transfer_id_reply in reply.transfer_ids.iter() {
+                transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id)?;
+            }
+            // archive txs
+            tx_map::archive_to_kong_data(reply.tx_id)?;
         }
+        _ => return Err("Invalid reply type".to_string()),
     }
 
     Ok(())
