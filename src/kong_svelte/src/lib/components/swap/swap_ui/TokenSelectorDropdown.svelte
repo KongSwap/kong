@@ -27,7 +27,7 @@
     tokens = $formattedTokens,
   } = props;
 
-  const BLOCKED_TOKEN_IDS = ['ktra4-taaaa-aaaag-atveq-cai'];
+  const BLOCKED_TOKEN_IDS = [];
   const DEFAULT_ICP_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"; // ICP canister ID
 
   let searchQuery = $state("");

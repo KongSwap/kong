@@ -61,7 +61,7 @@ BigNumber.config({
   EXPONENTIAL_AT: [-50, 50],
 });
 
-const BLOCKED_TOKEN_IDS = ['ktra4-taaaa-aaaag-atveq-cai'];
+const BLOCKED_TOKEN_IDS = [];
 
 export class SwapService {
   private static isValidNumber(value: string | number): boolean {
