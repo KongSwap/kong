@@ -61,6 +61,8 @@ BigNumber.config({
   EXPONENTIAL_AT: [-50, 50],
 });
 
+const BLOCKED_TOKEN_IDS = ['ktra4-taaaa-aaaag-atveq-cai'];
+
 export class SwapService {
   private static isValidNumber(value: string | number): boolean {
     if (typeof value === "number") {
@@ -285,6 +287,24 @@ export class SwapService {
   ): Promise<bigint | false> {
     const swapId = params.swapId;
     try {
+      // Add check for blocked tokens at the start
+      if (BLOCKED_TOKEN_IDS.includes(params.payToken.canister_id) || 
+          BLOCKED_TOKEN_IDS.includes(params.receiveToken.canister_id)) {
+        toastStore.warning(
+          "BIL token is currently in read-only mode. Trading will resume when the ledger is stable.",
+          {
+            title: "Token Temporarily Unavailable",
+            duration: 8000
+          }
+        );
+        swapStatusStore.updateSwap(swapId, {
+          status: "Failed",
+          isProcessing: false,
+          error: "Token temporarily unavailable"
+        });
+        return false;
+      }
+
       requireWalletConnection();
       const tokens = get(liveTokens);
       const payToken = tokens.find(
@@ -394,6 +414,12 @@ export class SwapService {
     payAmount: string,
   ): Promise<{ receiveAmount: string; slippage: number }> {
     try {
+      // Add check for blocked tokens at the start
+      if (BLOCKED_TOKEN_IDS.includes(payToken.canister_id) || 
+          BLOCKED_TOKEN_IDS.includes(receiveToken.canister_id)) {
+        throw new Error("Token temporarily unavailable - BIL is in read-only mode");
+      }
+
       // Validate input amount
       if (!payAmount || isNaN(Number(payAmount))) {
         console.warn("Invalid pay amount:", payAmount);
