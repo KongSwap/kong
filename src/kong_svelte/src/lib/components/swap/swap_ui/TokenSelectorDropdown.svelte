@@ -10,8 +10,9 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatUsdValue, formatTokenBalance } from "$lib/utils/tokenFormatters";
   import { swapState } from "$lib/services/swap/SwapStateService";
-    import { FavoriteService } from "$lib/services/tokens/favoriteService";
+  import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import AddCustomTokenModal from "$lib/components/sidebar/AddCustomTokenModal.svelte";
+  import { toastStore } from "$lib/stores/toastStore";
 
   const props = $props();
   const {
@@ -25,6 +26,9 @@
     restrictToSecondaryTokens = false,
     tokens = $formattedTokens,
   } = props;
+
+  const BLOCKED_TOKEN_IDS = ['ktra4-taaaa-aaaag-atveq-cai'];
+  const DEFAULT_ICP_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"; // ICP canister ID
 
   let searchQuery = $state("");
   let searchInput: HTMLInputElement;
@@ -252,6 +256,17 @@
   }
 
   function handleSelect(token: FE.Token) {
+    if (BLOCKED_TOKEN_IDS.includes(token.canister_id)) {
+      toastStore.warning(
+        "BIL token is currently in read-only mode. Trading will resume when the ledger is stable.",
+        {
+          title: "Token Temporarily Unavailable",
+          duration: 8000
+        }
+      );
+      return;
+    }
+
     const balance = getTokenBalance(token);
     onSelect({
       ...token,
@@ -449,10 +464,9 @@
                       easing: cubicOut,
                     }}
                     class="token-item"
-                    class:selected={currentToken?.canister_id ===
-                      token.canister_id}
-                    class:disabled={otherPanelToken?.canister_id ===
-                      token.canister_id}
+                    class:selected={currentToken?.canister_id === token.canister_id}
+                    class:disabled={otherPanelToken?.canister_id === token.canister_id}
+                    class:blocked={BLOCKED_TOKEN_IDS.includes(token.canister_id)}
                     on:click={(e) => handleTokenClick(e, token)}
                   >
                     <div class="token-info">
@@ -494,10 +508,10 @@
                         {/if}
                       </div>
                     </div>
-                    <div class="token-right text-kong-text-primary text-sm">
-                      <span class="token-balance flex flex-col text-right">
+                    <div class="text-sm token-right text-kong-text-primary">
+                      <span class="flex flex-col text-right token-balance">
                         {formatTokenBalance(balance?.in_tokens?.toString() || "0", token.decimals)}
-                        <span class="token-balance-label text-xs">
+                        <span class="text-xs token-balance-label">
                           {formatUsdValue(balance?.in_usd || "0")}
                         </span>
                       </span>
