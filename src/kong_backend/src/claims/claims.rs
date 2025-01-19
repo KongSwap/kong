@@ -191,10 +191,11 @@ pub fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
         return Ok(());
     }
 
-    if let Some(requst) = request_map::get_by_request_id(request_id) {
-        if let Reply::Claim(ref reply) = requst.reply {
-            // archive request
-            request_map::archive_to_kong_data(&requst)?;
+    let request = request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
+    request_map::archive_to_kong_data(&request)?;
+
+    match request.reply {
+        Reply::Claim(ref reply) => {
             // archive claim
             claim_map::archive_to_kong_data(reply.claim_id)?;
             // archive transfers
@@ -202,11 +203,8 @@ pub fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
                 .transfer_ids
                 .iter()
                 .try_for_each(|transfer_id_reply| transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id))?;
-        } else {
-            return Err("Invalid reply type".to_string());
         }
-    } else {
-        return Err(format!("Failed to archive. request_id #{} not found", request_id));
+        _ => return Err("Invalid reply type".to_string()),
     }
 
     Ok(())
