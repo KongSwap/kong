@@ -13,6 +13,7 @@
   import { tooltip } from "$lib/actions/tooltip";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { onDestroy } from "svelte";
+  import { updateStoredBalances } from "$lib/services/tokens/tokenStore";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "history";
@@ -33,7 +34,13 @@
     if (!isRefreshing) {
       isRefreshing = isPolling === true ? false : true;
       try {
-        await loadBalances($auth?.account?.owner, { forceRefresh: true });
+        const currentWalletId = $auth?.account?.owner?.toString();
+        if (currentWalletId) {
+          // Load balances and update stores
+          await loadBalances(currentWalletId, { forceRefresh: true });
+          // Update stored balances
+          await updateStoredBalances(currentWalletId);
+        }
       } finally {
         isRefreshing = false;
       }
@@ -53,8 +60,11 @@
     // Don't start a new poll if one is already running
     if (pollInterval) return;
     
+    // Initial load
+    handleReload(true);
+    
     // Set up new interval
-    pollInterval = setInterval( () => handleReload(true), 20000);
+    pollInterval = setInterval(() => handleReload(true), 20000);
   }
 
   function stopPolling() {

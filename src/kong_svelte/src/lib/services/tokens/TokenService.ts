@@ -96,7 +96,7 @@ export class TokenService {
     }
 
     // Process tokens in batches of 5 with delays
-    const batchSize = 20;
+    const batchSize = 25;
     const results = new Map<string, bigint>();
     
     for (let i = 0; i < tokens.length; i += batchSize) {

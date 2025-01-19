@@ -27,13 +27,7 @@
 
     initializationPromise = (async () => {
       try {
-        // First initialize the database and wait for it to complete
-        console.log('[App] Initializing database...');
         await kongDB.initialize();
-        console.log('[App] Database initialization complete');
-
-        // Then initialize auth and app loader
-        console.log('[App] Initializing auth and app loader...');
         await auth.initialize();
         await appLoader.initialize();
         console.log('[App] App initialization complete');
