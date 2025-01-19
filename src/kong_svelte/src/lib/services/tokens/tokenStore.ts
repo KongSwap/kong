@@ -190,8 +190,11 @@ export const loadBalances = async (
     // Use bulkPut for better performance
     await kongDB.token_balances.bulkPut(entries);
     
-    // Update the store
-    storedBalancesStore.set(balances);
+    // Update the store by merging with existing balances
+    storedBalancesStore.update(existingBalances => ({
+      ...existingBalances,
+      ...balances
+    }));
 
     return balances;
   } catch (error) {

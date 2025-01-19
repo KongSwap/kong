@@ -30,7 +30,6 @@ const CONFIG = {
 // Create stores with initial states
 export const selectedWalletId = writable<string | null>(null);
 export const isConnected = writable<boolean>(false);
-export const principalId = writable<string | null>(null);
 export const connectionError = writable<string | null>(null);
 
 // Type definitions
@@ -53,24 +52,16 @@ function createAuthStore(pnp: PNP) {
     isInitialized: false,
   });
 
-  const { subscribe, set, update } = store;
+  const { subscribe, set } = store;
 
-  // Memoized storage access functions with error handling
+  // Simplified storage access with error handling
   const storage = {
     save: (key: keyof typeof STORAGE_KEYS, value: string): void => {
       if (!browser) return;
       try {
         localStorage.setItem(STORAGE_KEYS[key], value);
       } catch (e) {
-        console.warn(`Failed to write ${key} to localStorage:`, e);
-      }
-    },
-    remove: (key: keyof typeof STORAGE_KEYS): void => {
-      if (!browser) return;
-      try {
-        localStorage.removeItem(STORAGE_KEYS[key]);
-      } catch (e) {
-        console.warn(`Failed to remove ${key} from localStorage:`, e);
+        console.warn(`Storage operation failed for ${key}:`, e);
       }
     },
     get: (key: keyof typeof STORAGE_KEYS): string | null => {
@@ -78,28 +69,21 @@ function createAuthStore(pnp: PNP) {
       try {
         return localStorage.getItem(STORAGE_KEYS[key]);
       } catch (e) {
-        console.warn(`Failed to read ${key} from localStorage:`, e);
+        console.warn(`Storage operation failed for ${key}:`, e);
         return null;
       }
     },
-    increment: (key: keyof typeof STORAGE_KEYS): number => {
-      if (!browser) return 0;
-      try {
-        const value = Number(localStorage.getItem(STORAGE_KEYS[key])) || 0;
-        localStorage.setItem(STORAGE_KEYS[key], String(value + 1));
-        return value + 1;
-      } catch (e) {
-        console.warn(`Failed to increment ${key} in localStorage:`, e);
-        return 0;
-      }
+    clear: () => {
+      if (!browser) return;
+      Object.keys(STORAGE_KEYS).forEach(key => {
+        try {
+          localStorage.removeItem(STORAGE_KEYS[key as keyof typeof STORAGE_KEYS]);
+        } catch (e) {
+          console.warn(`Failed to clear ${key}:`, e);
+        }
+      });
+      sessionStorage.removeItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED);
     }
-  };
-
-  const clearConnectionState = () => {
-    Object.keys(STORAGE_KEYS).forEach(key => {
-      storage.remove(key as keyof typeof STORAGE_KEYS);
-    });
-    sessionStorage.removeItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED);
   };
 
   const storeObj = {
@@ -110,25 +94,21 @@ function createAuthStore(pnp: PNP) {
       if (!browser) return;
       console.log("Initializing auth");
       
+      const lastWallet = storage.get("LAST_WALLET");
+      if (!lastWallet || lastWallet === "plug") return;
+
+      const hasAttempted = sessionStorage.getItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED);
+      const wasConnected = storage.get("WAS_CONNECTED");
+      
+      if (hasAttempted && !wasConnected) {
+        return;
+      }
+
       try {
-        const lastWallet = storage.get("LAST_WALLET");
-        if (!lastWallet || lastWallet === "plug") return;
-
-        const hasAttempted = sessionStorage.getItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED);
-        const wasConnected = storage.get("WAS_CONNECTED");
-        const retryCount = Number(storage.get("CONNECTION_RETRY_COUNT")) || 0;
-        
-        if ((hasAttempted && !wasConnected) || retryCount >= CONFIG.MAX_RETRIES) {
-          return;
-        }
-
         await this.connect(lastWallet, true);
-        storage.remove("CONNECTION_RETRY_COUNT");
-        
       } catch (error) {
         console.warn("Auto-connect failed:", error);
-        storage.increment("CONNECTION_RETRY_COUNT");
-        clearConnectionState();
+        storage.clear();
         connectionError.set(error.message);
       } finally {
         sessionStorage.setItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED, "true");
@@ -140,82 +120,73 @@ function createAuthStore(pnp: PNP) {
         connectionError.set(null);
         const result = await pnp.connect(walletId);
 
-        if (result && "owner" in result) {
-          const owner = result.owner.toString();
-          const newState = {
-            isConnected: true,
-            account: result,
-            isInitialized: true,
-          };
-          
-          // Update all states atomically
-          set(newState);
-          selectedWalletId.set(walletId);
-          isConnected.set(true);
-          principalId.set(owner);
-          
-          // Update storage
-          storage.save("LAST_WALLET", walletId);
-          storage.save("WAS_CONNECTED", "true");
-          storage.remove("CONNECTION_RETRY_COUNT");
-          sessionStorage.setItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED, "false");
-          
-          // Make sure we have no balances from other wallets
-          await kongDB.token_balances.clear();
-          await kongDB.user_pools.clear();
-          storedBalancesStore.set({});
-
-          // Load balances in parallel with timeout
-          await Promise.all([
-            loadBalances(owner, { forceRefresh: true }),
-            PoolService.fetchUserPoolBalances(true),
-          ]).catch(error => {
-            console.warn("Failed to load initial balances:", error);
-          });
-
-          return result;
+        if (!result?.owner) {
+          throw new Error("Invalid connection result format");
         }
+
+        const owner = result.owner.toString();
         
-        throw new Error("Invalid connection result format");
+        // Update state
+        const newState = { isConnected: true, account: result, isInitialized: true };
+        set(newState);
+        selectedWalletId.set(walletId);
+        isConnected.set(true);
+        
+        // Update storage
+        storage.save("LAST_WALLET", walletId);
+        storage.save("WAS_CONNECTED", "true");
+        sessionStorage.setItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED, "false");
+        
+        // Clear existing data
+        await Promise.all([
+          kongDB.token_balances.clear(),
+          kongDB.user_pools.clear()
+        ]);
+        storedBalancesStore.set({});
+
+        // Load new data
+        await Promise.all([
+          loadBalances(owner, { forceRefresh: true }),
+          PoolService.fetchUserPoolBalances(true)
+        ]).catch(error => console.warn("Failed to load initial data:", error));
+
+        return result;
       } catch (error) {
-        console.error("Connection error:", error);
-        set({ isConnected: false, account: null, isInitialized: true });
-        clearConnectionState();
-        connectionError.set(error.message);
+        this.handleConnectionError(error);
         throw error;
       }
     },
 
     async disconnect() {
       try {
-        const result = await pnp.disconnect();
+        await pnp.disconnect();
         
-        // Clear state
+        // Clear all state
         set({ isConnected: false, account: null, isInitialized: true });
         selectedWalletId.set(null);
         isConnected.set(false);
-        principalId.set(null);
         connectionError.set(null);
         
-        // Clear DB in parallel
+        // Clear data
         await Promise.all([
           kongDB.token_balances.clear(),
           kongDB.user_pools.clear()
-        ]).catch(error => {
-          console.warn("Failed to clear databases:", error);
-        });
+        ]);
 
-        // Clear storage
-        if (browser) {
-          clearConnectionState();
-        }
-
-        return result;
+        storage.clear();
+        return true;
       } catch (error) {
         console.error("Disconnect error:", error);
         connectionError.set(error.message);
         throw error;
       }
+    },
+
+    handleConnectionError(error: any) {
+      console.error("Connection error:", error);
+      set({ isConnected: false, account: null, isInitialized: true });
+      storage.clear();
+      connectionError.set(error.message);
     },
 
     getActor(
@@ -231,10 +202,7 @@ function createAuthStore(pnp: PNP) {
         throw new Error('Anonymous user');
       }
 
-      return pnp.getActor(canisterId, idl, {
-        anon: options.anon,
-        requiresSigning: options.requiresSigning,
-      });
+      return pnp.getActor(canisterId, idl, options);
     },
   };
 

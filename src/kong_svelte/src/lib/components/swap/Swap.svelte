@@ -344,6 +344,14 @@
       error: null,
     }));
 
+    // Load both balances at once after reversing
+    if ($swapState.payToken && $swapState.receiveToken) {
+      await loadBalances(auth?.pnp?.account?.owner?.toString(), { 
+        tokens: [$swapState.payToken, $swapState.receiveToken], 
+        forceRefresh: true 
+      });
+    }
+
     // Set the new pay amount
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
       swapState.setPayAmount(tempReceiveAmount);
@@ -362,9 +370,6 @@
       updateTokenInURL("from", $swapState.payToken.canister_id);
       updateTokenInURL("to", $swapState.receiveToken.canister_id);
     }
-
-    // Remove the timeout - we don't need to reset isRotating anymore
-    // The rotation will be handled by CSS based on rotationCount
   }
 
   function updateTokenInURL(param: "from" | "to", tokenId: string) {

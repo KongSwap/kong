@@ -8,7 +8,6 @@
     loadBalance,
     liveTokens,
     storedBalancesStore,
-    loadBalances,
   } from "$lib/services/tokens/tokenStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
@@ -155,11 +154,9 @@
     return regex.test(value);
   }
 
-  // Watch for token and balance changes
+  // Watch for token changes
   onMount(() => {
-    if (tokenInfo) {
-      loadBalance(tokenInfo.canister_id, true);
-    }
+    // Initial balance load is now handled by parent
   });
 
   let lastLoadedToken = $state<string | undefined>(undefined);
@@ -167,7 +164,6 @@
     const canisterId = tokenInfo?.canister_id;
     if (canisterId && canisterId !== lastLoadedToken) {
       lastLoadedToken = canisterId;
-        loadBalances(auth?.pnp?.account?.owner?.toString(), { tokens: [tokenInfo], forceRefresh: true });
     }
   });
 
