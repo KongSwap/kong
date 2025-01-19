@@ -2,7 +2,7 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import { Chart, DoughnutController, ArcElement, Tooltip, Legend } from 'chart.js';
   import { onMount, onDestroy } from "svelte";
-  import { portfolioValue, getStoredBalances } from "$lib/services/tokens/tokenStore";
+  import { portfolioValue, storedBalancesStore } from "$lib/services/tokens/tokenStore";
   import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { liveUserPools } from "$lib/services/pools/poolStore";
   import { getChartColors, getChartOptions } from './chartConfig';
@@ -16,31 +16,6 @@
   let abortController = new AbortController();
   let updateTimer: ReturnType<typeof setTimeout>;
   let unsubscribers: (() => void)[] = [];
-
-  // Create a derived store for balances with cleanup
-  const storedBalances:  Readable<FE.TokenBalance[]> = derived(auth, ($auth, set) => {
-    const walletId = $auth?.account?.owner?.toString() || "anonymous";
-    
-    const fetchBalances = async () => {
-      try {
-        const balances = await getStoredBalances(walletId);
-        if (!abortController.signal.aborted) {
-          set(balances);
-        }
-      } catch (error) {
-        if (!abortController.signal.aborted) {
-          console.error('Failed to fetch balances:', error);
-          set({});
-        }
-      }
-    };
-
-    fetchBalances();
-    
-    return () => {
-      // Cleanup if needed
-    };
-  }, {});  // Initial empty object
 
   export let isOpen = false;
   export let onClose = () => {};
@@ -66,13 +41,23 @@
     });
   }
 
+  // Watch for modal open/close
+  $: if (!isOpen && chart) {
+    chart.destroy();
+    chart = null;
+    currentData = null;
+  }
+
+  // Watch for modal open and canvas ready
+  $: if (isOpen && canvas) {
+    currentData = null; // Force data refresh
+    updateChart(true);
+  }
+
   // Optimized refresh handler
   function handleRefresh() {
-    if (chart) {
-      chart.destroy();
-      chart = null;
-    }
-    updateChart();
+    currentData = null; // Force data refresh
+    updateChart(true);
   }
 
   // Helper function to safely serialize data with memoization
@@ -97,7 +82,7 @@
     if (abortController.signal.aborted) return null;
 
     const tokens = $liveTokens;
-    const balances = await $storedBalances;
+    const balances = $storedBalancesStore;
     const userPools = $liveUserPools;
     
     const dataKey = memoizedSerialize({ 
@@ -124,30 +109,6 @@
     return chartData;
   })();
 
-  // Optimized chart update with cleanup
-  function updateChart() {
-    if (!canvas || !isOpen || abortController.signal.aborted) return;
-
-    clearTimeout(updateTimer);
-    updateTimer = setTimeout(async () => {
-      try {
-        const data = await portfolioData;
-        if (!abortController.signal.aborted && data) {
-          chart = createChart(data);
-        }
-      } catch (error) {
-        if (!abortController.signal.aborted) {
-          console.error('Failed to update chart:', error);
-        }
-      }
-    }, 0);
-  }
-
-  // Reactive chart update with cleanup
-  $: if (isOpen && canvas) {
-    updateChart();
-  }
-
   // Optimized metrics calculation with cleanup
   async function calculateMetrics() {
     if (abortController.signal.aborted) return;
@@ -155,13 +116,13 @@
     try {
       const [portfolioVal, balances] = await Promise.all([
         $portfolioValue,
-        $storedBalances
+        $storedBalancesStore
       ]);
 
       if (abortController.signal.aborted) return;
 
       // Calculate token value with proper typing
-      const tokenValue = Object.values(balances as Record<string, FE.TokenBalance>).reduce((acc: number, balance: FE.TokenBalance) => {
+      const tokenValue = Object.values(balances).reduce((acc: number, balance: FE.TokenBalance) => {
         const usdValue = balance?.in_usd ? Number(balance.in_usd) : 0;
         return acc + usdValue;
       }, 0);
@@ -172,19 +133,26 @@
         return acc + poolValue;
       }, 0);
       
-      const calculatedTotal = tokenValue + lpValue;
+      const calculatedTotal = Number(tokenValue) + Number(lpValue);
       
       // Update percentages only if we have a total
       if (calculatedTotal > 0) {
-        tokenPercentage = Math.round((tokenValue / calculatedTotal) * 100);
-        lpPercentage = Math.round((lpValue / calculatedTotal) * 100);
+        tokenPercentage = Math.round((Number(tokenValue) / calculatedTotal) * 100);
+        lpPercentage = Math.round((Number(lpValue) / calculatedTotal) * 100);
       } else {
         tokenPercentage = 0;
         lpPercentage = 0;
       }
 
       // Calculate diversity score based on portfolio composition
-      const positions = [...Object.entries(balances as Record<string, FE.TokenBalance>), ...$liveUserPools.map(p => ['lp', { in_usd: p.usd_balance }])];
+      const positions = [
+        ...Object.entries(balances).map(([id, balance]) => ['token', balance]),
+        ...$liveUserPools.map(p => ['lp', {
+          in_tokens: BigInt(0),
+          in_usd: p.usd_balance?.toString() || "0"
+        }])
+      ] as [string, FE.TokenBalance][];
+      
       const totalValue = positions.reduce((acc, [_, balance]) => acc + Number(balance.in_usd || 0), 0);
       
       if (totalValue > 0) {
@@ -202,28 +170,78 @@
     }
   }
 
+  let lastUpdateTime = 0;
+  const UPDATE_THROTTLE = 2000; // Only update every 2 seconds at most
+
+  // Optimized chart update with cleanup and throttling
+  function updateChart(forceUpdate = false) {
+    if (!canvas || !isOpen || abortController.signal.aborted) return;
+
+    const now = Date.now();
+    if (!forceUpdate && now - lastUpdateTime < UPDATE_THROTTLE) {
+      clearTimeout(updateTimer);
+      updateTimer = setTimeout(() => updateChart(), UPDATE_THROTTLE - (now - lastUpdateTime));
+      return;
+    }
+
+    clearTimeout(updateTimer);
+    updateTimer = setTimeout(async () => {
+      try {
+        const data = await portfolioData;
+        if (!abortController.signal.aborted && data && (!chart || !isEqual(chart.data, data))) {
+          chart = createChart(data);
+          lastUpdateTime = Date.now();
+        }
+      } catch (error) {
+        if (!abortController.signal.aborted) {
+          console.error('Failed to update chart:', error);
+        }
+      }
+    }, 0);
+  }
+
+  // Deep equality check for chart data
+  function isEqual(data1: any, data2: any): boolean {
+    if (!data1 || !data2) return false;
+    return JSON.stringify(data1) === JSON.stringify(data2);
+  }
+
   // Setup cleanup
   onMount(() => {
+    let lastPortfolioValue = '';
+    let lastBalancesKey = '';
+
     // Subscribe to all relevant stores for updates
     unsubscribers.push(
       portfolioValue.subscribe(async (value) => {
-        if (!abortController.signal.aborted) {
+        if (!abortController.signal.aborted && value !== lastPortfolioValue) {
+          lastPortfolioValue = value;
           displayValue = value;
+          await calculateMetrics();
+          updateChart();
         }
       }),
 
       // Subscribe to balances and tokens for metrics
-      derived([storedBalances, liveTokens, liveUserPools], ([$balances, $tokens, $pools]) => {
-        return { balances: $balances, tokens: $tokens, pools: $pools };
-      }).subscribe(async () => {
-        if (!abortController.signal.aborted) {
+      derived([storedBalancesStore, liveTokens, liveUserPools], ([$balances, $tokens, $pools]) => {
+        const key = memoizedSerialize({
+          balances: Object.keys($balances),
+          tokens: $tokens.map(t => t.canister_id),
+          pools: $pools.map(p => p.id)
+        });
+        return { key, balances: $balances, tokens: $tokens, pools: $pools };
+      }).subscribe(async ({ key, balances, tokens, pools }) => {
+        if (!abortController.signal.aborted && key !== lastBalancesKey) {
+          lastBalancesKey = key;
           await calculateMetrics();
+          updateChart();
         }
       })
     );
 
-    // Initial calculation
+    // Initial calculation and chart
     calculateMetrics();
+    updateChart(true);
   });
 
   onDestroy(() => {

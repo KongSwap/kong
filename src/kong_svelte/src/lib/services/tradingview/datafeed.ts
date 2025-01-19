@@ -175,8 +175,8 @@ export class KongDatafeed {
             const data = await fetchChartData(
                 this.fromTokenId,
                 this.toTokenId,
-                startTime,
                 now,
+                startTime,
                 resolution
             );
 

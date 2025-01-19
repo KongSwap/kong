@@ -16,6 +16,7 @@
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
   import { onMount } from "svelte";
   import Modal from "$lib/components/common/Modal.svelte";
+    import { auth } from "$lib/services/auth";
 
   // Props with proper TypeScript types
   let {
@@ -153,25 +154,16 @@
     return regex.test(value);
   }
 
-  // Watch for token and balance changes using $effect
-  $effect.pre(() => {
-    if (!tokenInfo || panelType !== "pay") return;
+  // Watch for token changes
+  onMount(() => {
+    // Initial balance load is now handled by parent
+  });
 
-    const canisterId = tokenInfo.canister_id;
-    const isPending = $tokenStore.pendingBalanceRequests.has(canisterId);
-    const now = Date.now();
-    const lastCheck = lastBalanceCheck[canisterId] || 0;
-
-    if (!isPending && now - lastCheck > DEBOUNCE_DELAY) {
-      // Update last check time
-      lastBalanceCheck[canisterId] = now;
-
-      // Load balance
-      queueMicrotask(() => {
-        if (!$tokenStore.pendingBalanceRequests.has(canisterId)) {
-          loadBalance(canisterId, true);
-        }
-      });
+  let lastLoadedToken = $state<string | undefined>(undefined);
+  $effect(() => {
+    const canisterId = tokenInfo?.canister_id;
+    if (canisterId && canisterId !== lastLoadedToken) {
+      lastLoadedToken = canisterId;
     }
   });
 

@@ -60,7 +60,6 @@
   let isInitialized = false;
   let currentSwapId: string | null = null;
   let previousMode = currentMode;
-  let isRotating = false;
   let rotationCount = 0;
   let isQuoteLoading = false;
   let showSettings = false;
@@ -331,9 +330,8 @@
   async function handleReverseTokens() {
     if ($swapState.isProcessing) return;
 
-    isRotating = true;
     rotationCount++;
-
+    
     const tempPayToken = $swapState.payToken;
     const tempPayAmount = $swapState.payAmount;
     const tempReceiveAmount = $swapState.receiveAmount;
@@ -343,8 +341,16 @@
       ...s,
       payToken: s.receiveToken,
       receiveToken: tempPayToken,
-      error: null, // Reset error state when reversing tokens
+      error: null,
     }));
+
+    // Load both balances at once after reversing
+    if ($swapState.payToken && $swapState.receiveToken) {
+      await loadBalances(auth?.pnp?.account?.owner?.toString(), { 
+        tokens: [$swapState.payToken, $swapState.receiveToken], 
+        forceRefresh: true 
+      });
+    }
 
     // Set the new pay amount
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
@@ -364,10 +370,6 @@
       updateTokenInURL("from", $swapState.payToken.canister_id);
       updateTokenInURL("to", $swapState.receiveToken.canister_id);
     }
-
-    setTimeout(() => {
-      isRotating = false;
-    }, 300);
   }
 
   function updateTokenInURL(param: "from" | "to", tokenId: string) {
@@ -550,7 +552,7 @@
       <button
         class="switch-button"
         class:disabled={isProcessing}
-        class:rotating={isRotating}
+        style="--rotation-count: {rotationCount}"
         on:click={handleReverseTokens}
         disabled={isProcessing}
         aria-label="Switch tokens position"
@@ -927,18 +929,14 @@
     cursor: not-allowed;
     background: #1c2333;
   }
-
   .switch-button-inner {
     width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .switch-button.rotating .switch-button-inner {
-    transform: rotate(180deg);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: rotate(calc(-180deg * var(--rotation-count)));
   }
 
   .switch-icon {

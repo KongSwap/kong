@@ -128,6 +128,30 @@ export class IcrcService {
     tokens: FE.Token[],
     principal: Principal,
   ): Promise<Map<string, bigint>> {
+    // Add request deduplication
+    const requestKey = `${principal.toString()}-${Date.now() - (Date.now() % 15000)}`;
+    if (this.pendingRequests?.has(requestKey)) {
+      return this.pendingRequests.get(requestKey);
+    }
+
+    const promise = this._batchGetBalances(tokens, principal);
+    this.pendingRequests.set(requestKey, promise);
+    
+    try {
+      const result = await promise;
+      return result;
+    } finally {
+      this.pendingRequests.delete(requestKey);
+    }
+  }
+
+  // Add this as a static class property
+  private static pendingRequests = new Map<string, Promise<Map<string, bigint>>>();
+
+  private static async _batchGetBalances(
+    tokens: FE.Token[],
+    principal: Principal,
+  ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
     const subaccount = auth.pnp?.account?.subaccount 
       ? Array.from(auth.pnp.account.subaccount) as number[]
@@ -155,7 +179,7 @@ export class IcrcService {
       });
 
       // Increase concurrency limit for token balance fetching
-      const balances = await this.withConcurrencyLimit(operations, 10);
+      const balances = await this.withConcurrencyLimit(operations, 25);
       
       balances.forEach(result => {
         if (result) {
@@ -169,7 +193,7 @@ export class IcrcService {
     });
 
     // Process all subnets with higher concurrency
-    await this.withConcurrencyLimit(subnetOperations, 5);
+    await this.withConcurrencyLimit(subnetOperations, 25);
 
     return results;
   }

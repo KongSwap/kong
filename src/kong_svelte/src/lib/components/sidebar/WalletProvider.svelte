@@ -163,8 +163,18 @@
   .wallet-option {
     @apply flex items-center justify-between w-full px-4 py-4;
     @apply bg-kong-bg-dark/10 rounded-xl border border-kong-text-primary/10;
-    @apply transition-all duration-200;
+    position: relative;
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+
+  .wallet-option::before {
+    content: '';
+    position: absolute;
+    inset: 0;
     backdrop-filter: blur(2px);
+    border-radius: inherit;
+    z-index: -1;
   }
 
   .wallet-content {
@@ -173,9 +183,9 @@
 
   .wallet-option:hover:not(:disabled) {
     @apply border-kong-primary bg-kong-primary/25;
-    box-shadow:
-      0 4px 24px -2px rgb(0 0 0 / 0.12),
-      0 2px 8px -2px rgb(0 0 0 / 0.06);
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    box-shadow: 0 4px 24px -2px rgb(0 0 0 / 0.12),
+                0 2px 8px -2px rgb(0 0 0 / 0.06);
   }
 
   .wallet-option:disabled {
@@ -197,6 +207,7 @@
     @apply w-12 h-12 rounded-xl;
     @apply transition-transform duration-200;
     @apply dark:brightness-100 brightness-[0.85];
+    transform: translateZ(0);
   }
 
   .wallet-option:hover .wallet-icon {
