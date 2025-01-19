@@ -50,14 +50,13 @@ pub async fn process_claims() {
                 _ = claim_map::archive_to_kong_data(claim.claim_id);
                 continue;
             } else if claim.attempt_request_id.len() > 20 {
-                let last_attempt_request_id = claim.attempt_request_id.last().unwrap();
-                if let Some(request) = request_map::get_by_request_id(*last_attempt_request_id) {
-                    if request.ts + 3_600_000_000_000 > ts {
-                        // if last attempt was less than 1 hour ago, skip this claim
-                        continue;
+                if let Some(last_attempt_request_id) = claim.attempt_request_id.last() {
+                    if let Some(request) = request_map::get_by_request_id(*last_attempt_request_id) {
+                        if request.ts + 3_600_000_000_000 > ts {
+                            // if last attempt was less than 1 hour ago, skip this claim
+                            continue;
+                        }
                     }
-                } else {
-                    continue;
                 }
             }
 
