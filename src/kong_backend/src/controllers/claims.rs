@@ -46,12 +46,6 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
     Ok("Claims updated".to_string())
 }
 
-#[update(hidden = true, guard = "caller_is_kingkong")]
-async fn process_claims() -> Result<String, String> {
-    claims::process_claims().await;
-    Ok("Claims processed".to_string())
-}
-
 // "unclaimed"
 // "claiming"
 // "claimed"
