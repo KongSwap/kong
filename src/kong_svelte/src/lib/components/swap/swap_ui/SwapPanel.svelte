@@ -8,6 +8,7 @@
     loadBalance,
     liveTokens,
     storedBalancesStore,
+    loadBalances,
   } from "$lib/services/tokens/tokenStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
@@ -16,6 +17,7 @@
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
   import { onMount } from "svelte";
   import Modal from "$lib/components/common/Modal.svelte";
+    import { auth } from "$lib/services/auth";
 
   // Props with proper TypeScript types
   let {
@@ -153,25 +155,19 @@
     return regex.test(value);
   }
 
-  // Watch for token and balance changes using $effect
-  $effect.pre(() => {
-    if (!tokenInfo || panelType !== "pay") return;
+  // Watch for token and balance changes
+  onMount(() => {
+    if (tokenInfo) {
+      loadBalance(tokenInfo.canister_id, true);
+    }
+  });
 
-    const canisterId = tokenInfo.canister_id;
-    const isPending = $tokenStore.pendingBalanceRequests.has(canisterId);
-    const now = Date.now();
-    const lastCheck = lastBalanceCheck[canisterId] || 0;
-
-    if (!isPending && now - lastCheck > DEBOUNCE_DELAY) {
-      // Update last check time
-      lastBalanceCheck[canisterId] = now;
-
-      // Load balance
-      queueMicrotask(() => {
-        if (!$tokenStore.pendingBalanceRequests.has(canisterId)) {
-          loadBalance(canisterId, true);
-        }
-      });
+  let lastLoadedToken = $state<string | undefined>(undefined);
+  $effect(() => {
+    const canisterId = tokenInfo?.canister_id;
+    if (canisterId && canisterId !== lastLoadedToken) {
+      lastLoadedToken = canisterId;
+        loadBalances(auth?.pnp?.account?.owner?.toString(), { tokens: [tokenInfo], forceRefresh: true });
     }
   });
 

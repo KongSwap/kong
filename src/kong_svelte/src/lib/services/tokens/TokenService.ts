@@ -95,15 +95,31 @@ export class TokenService {
       principal = Principal.fromText(principal);
     }
 
-    // Pre-fetch all prices in parallel while getting balances
-    const [balances, prices] = await Promise.all([
-      IcrcService.batchGetBalances(tokens, principal),
-      Promise.all(tokens.map(token => this.getCachedPrice(token)))
-    ]);
+    // Process tokens in batches of 5 with delays
+    const batchSize = 20;
+    const results = new Map<string, bigint>();
+    
+    for (let i = 0; i < tokens.length; i += batchSize) {
+      const batch = tokens.slice(i, i + batchSize);
+      const batchBalances = await IcrcService.batchGetBalances(batch, principal);
+      
+      // Merge batch results
+      for (const [canisterId, balance] of batchBalances.entries()) {
+        results.set(canisterId, balance);
+      }
+      
+      // Add delay if not the last batch
+      if (i + batchSize < tokens.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // Pre-fetch all prices in parallel
+    const prices = await Promise.all(tokens.map(token => this.getCachedPrice(token)));
 
     // Process results in a single pass
     return tokens.reduce((acc, token, index) => {
-      const balance = balances.get(token.canister_id) || BigInt(0);
+      const balance = results.get(token.canister_id) || BigInt(0);
       const price = prices[index] || 0;
       const tokenAmount = formatBalance(balance.toString(), token.decimals).replace(/,/g, '');
       const usdValue = parseFloat(tokenAmount) * price;

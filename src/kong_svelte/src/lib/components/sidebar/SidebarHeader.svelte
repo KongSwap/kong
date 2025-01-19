@@ -11,7 +11,8 @@
   import { auth } from "$lib/services/auth";
   import PortfolioModal from "$lib/components/portfolio/PortfolioModal.svelte";
   import { tooltip } from "$lib/actions/tooltip";
-    import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { onDestroy } from "svelte";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "history";
@@ -20,6 +21,7 @@
   let windowWidth: number;
   let isRefreshing = false;
   let showPortfolioModal = false;
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
 
   const tabs: { id: "tokens" | "pools" | "history"; icon: any }[] = [
     { id: "tokens", icon: Coins },
@@ -27,9 +29,9 @@
     { id: "history", icon: History },
   ];
 
-  async function handleReload() {
+  async function handleReload(isPolling = false) {
     if (!isRefreshing) {
-      isRefreshing = true;
+      isRefreshing = isPolling === true ? false : true;
       try {
         await loadBalances($auth?.account?.owner, { forceRefresh: true });
       } finally {
@@ -47,15 +49,32 @@
     showPortfolioModal = true;
   }
 
-  async function pollBalances() {
-    console.log("Polling balances");
-    // poll every 15 seconds
-    setInterval(async () => {
-      await loadBalances($auth?.account?.owner, { forceRefresh: true });
-    }, 15000);
+  function startPolling() {
+    // Don't start a new poll if one is already running
+    if (pollInterval) return;
+    
+    // Set up new interval
+    pollInterval = setInterval( () => handleReload(true), 20000);
   }
 
-  $: $sidebarStore.isOpen == true ? pollBalances() : null;
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+
+  // Modify the reactive statement to prevent unnecessary polling restarts
+  $: if ($sidebarStore.isOpen && !pollInterval) {
+    startPolling();
+  } else if (!$sidebarStore.isOpen && pollInterval) {
+    stopPolling();
+  }
+
+  // Cleanup on component destruction
+  onDestroy(() => {
+    stopPolling();
+  });
 </script>
 
 <svelte:window bind:innerWidth={windowWidth} />
@@ -87,7 +106,7 @@
 
       <button
         class="refresh-button text-gray-400 hover:text-white transition-colors !px-2 !py-2"
-        on:click={handleReload}
+        on:click={() => handleReload(false)}
         disabled={isRefreshing}
         use:tooltip={{ text: "Refresh Portfolio", direction: "bottom" }}
       >

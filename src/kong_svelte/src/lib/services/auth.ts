@@ -162,6 +162,7 @@ function createAuthStore(pnp: PNP) {
           
           // Make sure we have no balances from other wallets
           await kongDB.token_balances.clear();
+          await kongDB.user_pools.clear();
           storedBalancesStore.set({});
 
           // Load balances in parallel with timeout
