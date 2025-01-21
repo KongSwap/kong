@@ -1,5 +1,5 @@
 use crate::settings::read_settings;
-use agent::{create_agent, create_identity_from_pem_file};
+use agent::{create_agent_from_identity, create_identity_from_pem_file};
 use std::env;
 use tokio_postgres::NoTls;
 
@@ -74,15 +74,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         (LOCAL_REPLICA, false)
     };
-    let identity = create_identity_from_pem_file(dfx_pem_file);
-    let agent = create_agent(replica_url, identity, is_mainnet).await?;
 
     if args.contains(&"--db_updates".to_string()) {
+        let identity = create_identity_from_pem_file(dfx_pem_file);
+        let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_data = KongData::new(&agent, is_mainnet).await;
         get_db_updates(None, &kong_data, &db_client, tokens_map, pools_map).await?;
     }
 
     if args.contains(&"--kong_backend".to_string()) {
+        let identity = create_identity_from_pem_file(dfx_pem_file);
+        let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_backend = KongBackend::new(&agent).await;
         // Dump to kong_backend
         users::update_users(&kong_backend).await?;
@@ -96,6 +98,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.contains(&"--kong_data".to_string()) {
+        let identity = create_identity_from_pem_file(dfx_pem_file);
+        let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_data = KongData::new(&agent, is_mainnet).await;
         // Dump to kong_data
         users::update_users(&kong_data).await?;
