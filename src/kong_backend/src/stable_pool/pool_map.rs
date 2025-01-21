@@ -165,14 +165,14 @@ pub fn insert(pool: &StablePool) -> Result<u32, String> {
         let pool_id = kong_settings_map::inc_pool_map_idx();
         let insert_pool = StablePool { pool_id, ..pool.clone() };
         map.insert(StablePoolId(pool_id), insert_pool.clone());
-        _ = archive_to_kong_data(&insert_pool);
+        let _ = archive_to_kong_data(&insert_pool);
         Ok(pool_id)
     })
 }
 
 pub fn update(pool: &StablePool) {
     POOL_MAP.with(|m| m.borrow_mut().insert(StablePoolId(pool.pool_id), pool.clone()));
-    _ = archive_to_kong_data(pool);
+    let _ = archive_to_kong_data(pool);
 }
 
 pub fn remove(pool_id: u32) -> Result<(), String> {
