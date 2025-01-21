@@ -160,14 +160,16 @@ pub fn insert(pool: &StablePool) -> Result<u32, String> {
         Err(format!("Pool {} already exists", pool.symbol()))?
     }
 
-    POOL_MAP.with(|m| {
+    let insert_pool = POOL_MAP.with(|m| {
         let mut map = m.borrow_mut();
         let pool_id = kong_settings_map::inc_pool_map_idx();
         let insert_pool = StablePool { pool_id, ..pool.clone() };
         map.insert(StablePoolId(pool_id), insert_pool.clone());
-        let _ = archive_to_kong_data(&insert_pool);
-        Ok(pool_id)
-    })
+        insert_pool
+    });
+
+    let _ = archive_to_kong_data(&insert_pool);
+    Ok(insert_pool.pool_id)
 }
 
 pub fn update(pool: &StablePool) {

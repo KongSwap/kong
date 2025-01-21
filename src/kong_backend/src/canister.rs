@@ -39,35 +39,35 @@ async fn init() {
     create_principal_id_map();
 
     // start the background timer to process claims
-    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
+    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
             process_claims().await;
         });
     });
 
     // start the background timer to process stats
-    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
+    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
             _ = update_pool_stats();
         });
     });
 
     // start the background timer to archive tx map
-    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
+    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_tx_map(); // archive transaction map
         });
     });
 
     // start the background timer to archive request map
-    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
+    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_request_map();
         });
     });
 
     // start the background timer to archive transfer map
-    _ = set_timer_interval(
+    let _ = set_timer_interval(
         Duration::from_secs(kong_settings_map::get().transfers_archive_interval_secs),
         || {
             ic_cdk::spawn(async {
@@ -87,35 +87,35 @@ async fn post_upgrade() {
     create_principal_id_map();
 
     // start the background timer to process claims
-    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
+    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
             process_claims().await;
         });
     });
 
     // start the background timer to process stats
-    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
+    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
             _ = update_pool_stats();
         });
     });
 
     // start the background timer to archive tx map
-    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
+    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_tx_map();
         });
     });
 
     // start the background timer to archive request map
-    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
+    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_request_map();
         });
     });
 
     // start the background timer to archive transfer map
-    _ = set_timer_interval(
+    let _ = set_timer_interval(
         Duration::from_secs(kong_settings_map::get().transfers_archive_interval_secs),
         || {
             ic_cdk::spawn(async {
