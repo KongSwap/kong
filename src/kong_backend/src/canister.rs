@@ -31,6 +31,7 @@ use crate::stable_transfer::transfer_archive::archive_transfer_map;
 use crate::stable_tx::tx_archive::archive_tx_map;
 use crate::stable_user::principal_id_map::create_principal_id_map;
 use crate::swap::swap_args::SwapArgs;
+
 #[init]
 async fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
