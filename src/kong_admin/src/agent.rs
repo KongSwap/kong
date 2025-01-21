@@ -3,7 +3,7 @@ use ed25519_consensus::SigningKey;
 use ic_agent::{Agent, Identity};
 use rand::thread_rng;
 
-pub async fn create_agent(url: &str, identity: impl 'static + Identity, is_mainnet: bool) -> Result<Agent> {
+pub async fn create_agent_from_identity(url: &str, identity: impl 'static + Identity, is_mainnet: bool) -> Result<Agent> {
     let agent = Agent::builder().with_url(url).with_identity(identity).build()?;
     if !is_mainnet {
         agent.fetch_root_key().await?;
