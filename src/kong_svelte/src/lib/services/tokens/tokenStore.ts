@@ -7,7 +7,8 @@ import { TokenService } from "./TokenService";
 import BigNumber from "bignumber.js";
 import { get } from "svelte/store";
 import { auth } from "$lib/services/auth";
-import type { TokenState, TokenBalance } from "./types";
+import type { TokenState } from "./types";
+import { userTokens } from "$lib/stores/userTokens";
 
 function createTokenStore() {
   const initialState: TokenState = {
@@ -160,23 +161,28 @@ export const loadBalances = async (
   owner: string,
   opts?: { tokens?: FE.Token[]; forceRefresh?: boolean },
 ) => {
+  const userTokensStore = get(userTokens);
   let { tokens, forceRefresh } = opts || {
-    tokens: await kongDB.tokens.toArray(),
+    tokens: Object.values(userTokensStore.enabledTokens),
     forceRefresh: false,
   };
   const currentWalletId = getCurrentWalletId();
+  console.log('Loading balances for wallet:', currentWalletId);
 
   if (!currentWalletId || currentWalletId === "anonymous") {
+    console.log('No wallet ID or anonymous user');
     return {};
   }
 
   try {
     // Get fresh balances
+    console.log('Fetching fresh balances for tokens:', tokens?.length);
     const balances = await TokenService.fetchBalances(
       tokens,
       owner,
       forceRefresh,
     );
+    console.log('Received balances:', balances);
 
     // Batch update the database
     const entries = Object.entries(balances).map(([canisterId, balance]) => ({
@@ -186,15 +192,21 @@ export const loadBalances = async (
       in_usd: balance.in_usd,
       timestamp: Date.now(),
     }));
+    console.log('Updating database with entries:', entries);
 
     // Use bulkPut for better performance
     await kongDB.token_balances.bulkPut(entries);
     
     // Update the store by merging with existing balances
-    storedBalancesStore.update(existingBalances => ({
-      ...existingBalances,
-      ...balances
-    }));
+    console.log('Updating store with balances:', balances);
+    storedBalancesStore.update(existingBalances => {
+      const newBalances = {
+        ...existingBalances,
+        ...balances
+      };
+      console.log('New store value:', newBalances);
+      return newBalances;
+    });
 
     return balances;
   } catch (error) {
@@ -226,10 +238,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
 
     // Check database first if not forcing refresh
     if (!forceRefresh) {
-      const existingBalance = await kongDB.token_balances
-        .where(["wallet_id", "canister_id"])
-        .equals([owner, canisterId])
-        .first();
+      const existingBalance = get(storedBalancesStore)[canisterId];
 
       if (existingBalance) {
         const balance = {

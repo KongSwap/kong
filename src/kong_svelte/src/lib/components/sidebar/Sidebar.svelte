@@ -11,12 +11,14 @@
   import { Import } from "lucide-svelte";
   import { fly } from 'svelte/transition';
   import { Loader2 } from "lucide-svelte";
+  import { Coins } from "lucide-svelte";
 
   let WalletProviderComponent: any;
   let AddCustomTokenModalComponent: any;
   let TokenListComponent: any;
   let PoolListComponent: any;
   let TransactionHistoryComponent: any;
+  let ManageTokensModalComponent: any;
 
   // Keep track of component loading promises
   let loadingPromises: Promise<any>[] = [];
@@ -62,6 +64,12 @@
     );
   }
 
+  async function loadManageTokensModal() {
+    ManageTokensModalComponent = await loadComponent(() => 
+      import("./ManageTokensModal.svelte")
+    );
+  }
+
   // Cleanup function
   onDestroy(() => {
     // Clear component references
@@ -70,6 +78,7 @@
     TokenListComponent = null;
     PoolListComponent = null;
     TransactionHistoryComponent = null;
+    ManageTokensModalComponent = null;
     
     // Cancel any pending loads
     loadingPromises = [];
@@ -80,6 +89,7 @@
   let activeTab: "tokens" | "pools" | "history" = "tokens";
   let isExpanded = false;
   let showAddTokenModal = false;
+  let showManageTokensModal = false;
 
   sidebarStore.subscribe((state) => {
     isExpanded = state.isExpanded;
@@ -205,7 +215,18 @@
               <footer
                 class="px-4 pt-1 border-t border-kong-border/30 z-10 bg-kong-bg-dark"
               >
-                <div class="flex justify-end">
+                <div class="flex justify-end gap-x-2">
+                  <ButtonV2
+                    variant="transparent"
+                    theme="primary"
+                    className="add-token-button mb-1 !text-kong-text-primary/50"
+                    on:click={() => (showManageTokensModal = true)}
+                  >
+                    <div class="flex items-center gap-x-2">
+                      <Coins size={16} />
+                      Manage Tokens
+                    </div>
+                  </ButtonV2>
                   <ButtonV2
                     variant="transparent"
                     theme="primary"
@@ -217,17 +238,6 @@
                       Import Token
                     </div>
                   </ButtonV2>
-                  <!-- <ButtonV2
-                  variant="transparent"
-                  theme="primary"
-                  className="add-token-button mb-1 !text-kong-text-primary/50"
-                  on:click={() => (showAddTokenModal = true)}
-                >
-                <div class="flex items-center gap-x-2">
-                  <Coins size={16} />
-                  Manage Tokens
-                </div>
-                </ButtonV2> -->
                 </div>
               </footer>
             </div>
@@ -241,6 +251,19 @@
                 <svelte:component
                   this={AddCustomTokenModalComponent}
                   on:close={() => (showAddTokenModal = false)}
+                />
+              {/if}
+            {/await}
+          {/if}
+
+          {#if showManageTokensModal}
+            {#await loadManageTokensModal()}
+              <!-- Optional loading state -->
+            {:then}
+              {#if ManageTokensModalComponent}
+                <svelte:component
+                  this={ManageTokensModalComponent}
+                  bind:isOpen={showManageTokensModal}
                 />
               {/if}
             {/await}

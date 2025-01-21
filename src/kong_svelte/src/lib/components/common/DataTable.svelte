@@ -20,14 +20,13 @@
   export let onRowClick: ((row: any) => void) | null = null;
   export let rowKey = 'id';
   export let isKongRow: ((row: any) => boolean) | null = null;
+  export let totalItems = 0;
+  export let currentPage = 1;
+  export let onPageChange: ((page: number) => void) | null = null;
 
-  const currentPage = writable(1);
   const sortColumn = writable(defaultSort.column || '');
   const sortDirection = writable<'asc' | 'desc'>(defaultSort.direction || 'desc');
-  const totalPages = writable(1);
-
-
-
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   // Optimize getValue by using a Map for column lookups
   const columnMap = new Map();
@@ -97,13 +96,8 @@
     });
   })();
 
-  // Make memoizedPaginatedData reactive to memoizedSortedData and currentPage
-  $: memoizedPaginatedData = (() => {
-    const start = ($currentPage - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    totalPages.set(Math.ceil(memoizedSortedData.length / itemsPerPage));
-    return memoizedSortedData.slice(start, end);
-  })();
+  // Since pagination is handled by the parent component, we don't need to paginate here
+  $: memoizedPaginatedData = memoizedSortedData;
 
   // Optimize price flash animations
   const flashDuration = 2000;
@@ -183,20 +177,20 @@
   }
 
   function nextPage() {
-    if ($currentPage < $totalPages) {
-      currentPage.update(n => n + 1);
+    if (currentPage < totalPages) {
+      onPageChange?.(currentPage + 1);
     }
   }
 
   function previousPage() {
-    if ($currentPage > 1) {
-      currentPage.update(n => n - 1);
+    if (currentPage > 1) {
+      onPageChange?.(currentPage - 1);
     }
   }
 
   function goToPage(page: number) {
-    if (page >= 1 && page <= $totalPages) {
-      currentPage.set(page);
+    if (page >= 1 && page <= totalPages) {
+      onPageChange?.(page);
     }
   }
 
@@ -259,7 +253,7 @@
         </tr>
       </thead>
       <tbody>
-        {#each memoizedPaginatedData as row, i (i)}
+        {#each memoizedPaginatedData as row, i (row[rowKey])}
           {@const isKong = isKongRow ? isKongRow(row) : false}
           {@const flashState = rowFlashStates.get(row[rowKey])}
           <tr
@@ -293,21 +287,21 @@
   <!-- Pagination -->
   <div class="sticky bottom-0 left-0 right-0 flex items-center justify-between px-4 py-1 border-t border-kong-border backdrop-blur-md">
     <div class="flex items-center text-sm text-kong-text-secondary">
-      Showing {($currentPage - 1) * itemsPerPage + 1} to {Math.min($currentPage * itemsPerPage, memoizedSortedData.length)} of {memoizedSortedData.length} items
+      Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
     </div>
     <div class="flex items-center gap-2">
       <button
-        class="pagination-button {$currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+        class="pagination-button {currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
         on:click={previousPage}
-        disabled={$currentPage === 1}
+        disabled={currentPage === 1}
       >
         Previous
       </button>
       
-      {#each Array(Math.min(5, $totalPages)) as _, i (i)}
-        {#if i + 1 <= $totalPages}
+      {#each Array(Math.min(5, totalPages)) as _, i (i)}
+        {#if i + 1 <= totalPages}
           <button
-            class="pagination-button {$currentPage === i + 1 ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
+            class="pagination-button {currentPage === i + 1 ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
             on:click={() => goToPage(i + 1)}
           >
             {i + 1}
@@ -316,9 +310,9 @@
       {/each}
       
       <button
-        class="pagination-button {$currentPage === $totalPages ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+        class="pagination-button {currentPage === totalPages ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
         on:click={nextPage}
-        disabled={$currentPage === $totalPages}
+        disabled={currentPage === totalPages}
       >
         Next
       </button>

@@ -18,6 +18,7 @@ import { kongDB } from "../db";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
 import { toastStore } from "$lib/stores/toastStore";
+import { tokenStore, tokenData } from "$lib/stores/tokenData";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -25,7 +26,7 @@ export class TokenService {
   public static async fetchTokens(): Promise<FE.Token[]> {
     try {
       const freshTokens = await this.fetchFromNetwork();
-      const existingTokens = await kongDB.tokens.toArray();
+      const existingTokens = get(tokenData);
       
       // Add timestamps and preserve previous prices
       const tokensWithTimestamp = freshTokens.map(token => {
@@ -48,7 +49,7 @@ export class TokenService {
       });
 
       // Store in DB with timestamp, using bulkPut with replace to trigger updates
-      await kongDB.tokens.bulkPut(tokensWithTimestamp, { allKeys: true });
+      tokenStore.set(tokensWithTimestamp);
       
       return tokensWithTimestamp;
     } catch (error) {
@@ -84,8 +85,8 @@ export class TokenService {
     principalId?: string,
     forceRefresh: boolean = false,
   ): Promise<Record<string, TokenBalance>> {
-    if (!tokens) tokens = await kongDB.tokens.toArray();
     if (!principalId && !get(auth).isConnected) return {};
+    if (!tokens || tokens.length === 0) return {};
 
     const authStore = get(auth);
     if (!authStore.isConnected) return {};
@@ -99,7 +100,8 @@ export class TokenService {
     const batchSize = 25;
     const results = new Map<string, bigint>();
     
-    for (let i = 0; i < tokens.length; i += batchSize) {
+    console.log('Processing tokens in batches of', batchSize);
+    for (let i = 0; i < tokens?.length || 0; i += batchSize) {
       const batch = tokens.slice(i, i + batchSize);
       const batchBalances = await IcrcService.batchGetBalances(batch, principal);
       
@@ -114,15 +116,12 @@ export class TokenService {
       }
     }
 
-    // Pre-fetch all prices in parallel
-    const prices = await Promise.all(tokens.map(token => this.getCachedPrice(token)));
-
     // Process results in a single pass
     return tokens.reduce((acc, token, index) => {
       const balance = results.get(token.canister_id) || BigInt(0);
-      const price = prices[index] || 0;
+      const price = token?.metrics?.price || 0;
       const tokenAmount = formatBalance(balance.toString(), token.decimals).replace(/,/g, '');
-      const usdValue = parseFloat(tokenAmount) * price;
+      const usdValue = parseFloat(tokenAmount) * Number(price);
 
       acc[token.canister_id] = {
         in_tokens: balance,

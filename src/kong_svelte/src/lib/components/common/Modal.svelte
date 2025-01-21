@@ -28,6 +28,8 @@
   export let closeOnEscape = true;
   export let closeOnClickOutside = true;
   export let className: string = "";
+  export let isPadded = false;
+  
   let isMobile = false;
   let modalWidth = width;
   let modalHeight = height;
@@ -119,6 +121,7 @@
       const { [modalKey]: _, ...rest } = stack;
       return rest;
     });
+    isOpen = false;
     onClose();
     dispatch("close");
   }

@@ -3,7 +3,6 @@
   import { onDestroy } from "svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import { livePools } from "$lib/services/pools/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
@@ -17,13 +16,13 @@
   import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { Droplets, ArrowLeftRight, Copy } from "lucide-svelte";
-  import { kongDB } from "$lib/services/db";
   import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
   import { GOVERNANCE_CANISTER_IDS } from "$lib/services/sns/snsService";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { toastStore } from "$lib/stores/toastStore";
+    import { tokenData } from "$lib/stores/tokenData";
 
-  if (!formattedTokens || !livePools) {
+  if (!tokenData || !livePools) {
     throw new Error("Stores are not initialized");
   }
 
@@ -34,7 +33,7 @@
   // Derived values
   let ckusdtToken = $state<FE.Token | undefined>(undefined);
   $effect(() => {
-    const found = $formattedTokens?.find((t) => t.symbol === "ckUSDT");
+    const found = $tokenData?.find((t) => t.symbol === "ckUSDT");
     if (found) {
       ckusdtToken = found;
     }
@@ -42,7 +41,7 @@
 
   let icpToken = $state<FE.Token | undefined>(undefined);
   $effect(() => {
-    const found = $formattedTokens?.find(
+    const found = $tokenData?.find(
       (t) => t.canister_id === ICP_CANISTER_ID,
     );
     if (found) {
@@ -54,19 +53,7 @@
   $effect(() => {
     const pageId = $page.params.id;
     // Use .then() instead of async/await
-    kongDB.tokens.get(pageId).then((foundToken) => {
-      if (foundToken) {
-        const converted = foundToken;
-        token = converted;
-        hasManualSelection = false;
-        initialPoolSet = false;
-      } else {
-        console.warn("Token not found:", pageId);
-        token = undefined;
-        hasManualSelection = false;
-        initialPoolSet = false;
-      }
-    });
+    token = $tokenData.find((t) => t.canister_id === pageId);
   });
 
   // First try to find CKUSDT pool with non-zero TVL, then fallback to largest pool
@@ -142,15 +129,15 @@
   // Add derived store for market cap rank
   let marketCapRank = $state<number | null>(null);
   $effect(() => {
-    if (!$formattedTokens) return;
-    const foundToken = $formattedTokens.find(
+    if (!$tokenData) return;
+    const foundToken = $tokenData.find(
       (t) => t.address === $page.params.id || t.canister_id === $page.params.id,
     );
     if (!foundToken) {
       marketCapRank = null;
       return;
     }
-    const sortedTokens = [...$formattedTokens].sort(
+    const sortedTokens = [...$tokenData].sort(
       (a, b) =>
         (Number(b.metrics.market_cap) || 0) -
         (Number(a.metrics.market_cap) || 0),
@@ -193,7 +180,7 @@
 </script>
 
 <div class="p-4 pt-0">
-  {#if !$formattedTokens || !$livePools}
+  {#if !$tokenData || !$livePools}
     <!-- Improved loading state -->
     <div class="flex flex-col items-center justify-center min-h-[300px]">
       <div class="loader mb-4"></div>
@@ -325,7 +312,6 @@
               <PoolSelector
                 {selectedPool}
                 {token}
-                formattedTokens={$formattedTokens}
                 {relevantPools}
                 onPoolSelect={(pool) => {
                   hasManualSelection = true;
@@ -386,7 +372,7 @@
               </div>
 
               <!-- Token Statistics -->
-              <TokenStatistics {token} {marketCapRank} />
+              <TokenStatistics {token} marketCapRank={token?.metrics?.market_cap_rank} />
 
               <!-- Chart Panel -->
               <Panel
@@ -401,21 +387,21 @@
                       symbol={token && selectedPool
                         ? `${token.symbol}/${
                             selectedPool.address_0 === token.canister_id
-                              ? $formattedTokens?.find(
+                              ? $tokenData?.find(
                                   (t) =>
                                     t.canister_id === selectedPool.address_1,
                                 )?.symbol
-                              : $formattedTokens?.find(
+                              : $tokenData?.find(
                                   (t) =>
                                     t.canister_id === selectedPool.address_0,
                                 )?.symbol
                           }`
                         : ""}
                       quoteToken={selectedPool?.address_0 === token?.canister_id
-                        ? $formattedTokens?.find(
+                        ? $tokenData?.find(
                             (t) => t.canister_id === selectedPool?.address_1,
                           )
-                        : $formattedTokens?.find(
+                        : $tokenData?.find(
                             (t) => t.canister_id === selectedPool?.address_0,
                           )}
                       baseToken={token}
@@ -451,11 +437,11 @@
                         symbol={token && selectedPool
                           ? `${token.symbol}/${
                               selectedPool.address_0 === token.canister_id
-                                ? $formattedTokens?.find(
+                                ? $tokenData?.find(
                                     (t) =>
                                       t.canister_id === selectedPool.address_1,
                                   )?.symbol
-                                : $formattedTokens?.find(
+                                : $tokenData?.find(
                                     (t) =>
                                       t.canister_id === selectedPool.address_0,
                                   )?.symbol
@@ -463,10 +449,10 @@
                           : ""}
                         quoteToken={selectedPool?.address_0 ===
                         token?.canister_id
-                          ? $formattedTokens?.find(
+                          ? $tokenData?.find(
                               (t) => t.canister_id === selectedPool?.address_1,
                             )
-                          : $formattedTokens?.find(
+                          : $tokenData?.find(
                               (t) => t.canister_id === selectedPool?.address_0,
                             )}
                         baseToken={token}
@@ -490,7 +476,7 @@
                 <PoolSelector
                   {selectedPool}
                   {token}
-                  formattedTokens={$formattedTokens}
+                  tokenData={$tokenData}
                   {relevantPools}
                   onPoolSelect={(pool) => {
                     hasManualSelection = true;
