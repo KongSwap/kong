@@ -6,7 +6,7 @@ use super::add_token_reply::AddTokenReply;
 use super::add_token_reply_helpers::to_add_token_reply;
 
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_token::ic_token::ICToken;
 use crate::stable_token::lp_token::LPToken;
 use crate::stable_token::stable_token::StableToken;
@@ -28,7 +28,7 @@ use crate::stable_token::token_map;
 /// This function returns an error if:
 /// - The caller is not a controller.
 /// - The token already exists.
-#[update(guard = "caller_is_kingkong")]
+#[update(guard = "not_in_maintenance_mode")]
 async fn add_token(args: AddTokenArgs) -> Result<AddTokenReply, String> {
     if token_map::get_by_address(&args.token).is_ok() {
         Err(format!("Token {} already exists", args.token))?

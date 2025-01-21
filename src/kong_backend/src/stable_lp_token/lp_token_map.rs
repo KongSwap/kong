@@ -36,7 +36,7 @@ pub fn get_total_supply(token_id: u32) -> Nat {
 }
 
 pub fn insert(lp_token: &StableLPToken) -> Result<u64, String> {
-    LP_TOKEN_MAP.with(|m| {
+    let insert_lp_token = LP_TOKEN_MAP.with(|m| {
         let mut map = m.borrow_mut();
         let lp_token_id = kong_settings_map::inc_lp_token_map_idx();
         let insert_lp_token = StableLPToken {
@@ -44,9 +44,11 @@ pub fn insert(lp_token: &StableLPToken) -> Result<u64, String> {
             ..lp_token.clone()
         };
         map.insert(StableLPTokenId(lp_token_id), insert_lp_token.clone());
-        _ = archive_to_kong_data(&insert_lp_token);
-        Ok(lp_token_id)
-    })
+        insert_lp_token
+    });
+
+    let _ = archive_to_kong_data(&insert_lp_token);
+    Ok(insert_lp_token.lp_token_id)
 }
 
 pub fn update(lp_token: &StableLPToken) {

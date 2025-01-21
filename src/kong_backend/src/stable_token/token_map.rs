@@ -186,7 +186,7 @@ pub fn insert(token: &StableToken) -> Result<u32, String> {
         Err(format!("Token {} already exists", token.symbol_with_chain()))?
     }
 
-    TOKEN_MAP.with(|m| {
+    let insert_token = TOKEN_MAP.with(|m| {
         let mut map = m.borrow_mut();
         let token_id = kong_settings_map::inc_token_map_idx();
         let insert_token = match token {
@@ -194,9 +194,11 @@ pub fn insert(token: &StableToken) -> Result<u32, String> {
             StableToken::IC(token) => StableToken::IC(ICToken { token_id, ..token.clone() }),
         };
         map.insert(StableTokenId(token_id), insert_token.clone());
-        _ = archive_to_kong_data(&insert_token);
-        Ok(token_id)
-    })
+        insert_token
+    });
+
+    let _ = archive_to_kong_data(&insert_token);
+    Ok(insert_token.token_id())
 }
 
 #[allow(dead_code)]
