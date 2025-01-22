@@ -134,7 +134,6 @@
   onMount(async () => {
     await FavoriteService.loadFavorites();
     const authStore = get(auth);
-    console.log('On mount auth state:', authStore);
     if (authStore.isConnected && authStore.account?.owner) {
       await fetchUserTokenList();
       await loadBalances(authStore.account.owner.toString(), {
