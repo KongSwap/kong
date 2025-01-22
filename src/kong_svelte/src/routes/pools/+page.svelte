@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { writable, derived } from "svelte/store";
   import {
@@ -413,7 +413,7 @@
                         width: '17.5%',
                         sortable: true,
                         sortValue: (row) => Number(getPoolPriceUsd(row)),
-                        formatter: (row) => getPoolPriceUsd(row)
+                        formatter: (row) => formatToNonZeroDecimal(getPoolPriceUsd(row))
                       },
                       {
                         key: 'tvl',

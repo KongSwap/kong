@@ -12,6 +12,7 @@
   import { get } from "svelte/store";
   import { formatTokenBalance } from "$lib/utils/tokenFormatters";
   import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
+    import { loadBalance } from "$lib/services/tokens";
 
   export let isOpen;
 
@@ -147,9 +148,10 @@
       token.canister_id.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  function toggleToken(token: FE.Token) {
+  async function toggleToken(token: FE.Token) {
     const isEnabled = $userTokens.enabledTokens[token.canister_id];
     if (isEnabled) {
+      await loadBalance(token.canister_id);
       userTokens.disableToken(token.canister_id);
     } else {
       userTokens.enableToken(token);

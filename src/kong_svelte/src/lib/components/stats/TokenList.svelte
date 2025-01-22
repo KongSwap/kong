@@ -3,8 +3,18 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { flip } from "svelte/animate";
+  import { storedBalancesStore } from "$lib/services/tokens/tokenStore";
 
   export let tokens: FE.Token[] = [];
+
+  // Calculate formatted values reactively based on stored balances
+  $: formattedTokens = tokens.map(token => {
+    const balance = $storedBalancesStore[token.canister_id];
+    return {
+      ...token,
+      formattedUsdValue: balance?.in_usd || "0"
+    };
+  });
 </script>
 
 <div class="token-list">
@@ -14,7 +24,7 @@
       <div class="value-col">Value</div>
     </div>
     <div class="token-body">
-      {#each tokens as token (token.address)}
+      {#each formattedTokens as token (token.address)}
         <div class="token-row" animate:flip={{ duration: 300 }}>
           <div class="token-col">
             <div class="token-info">
@@ -26,7 +36,7 @@
             </div>
           </div>
           <div class="value-col">
-            ${formatToNonZeroDecimal(token.formattedUsdValue)} fds
+            ${formatToNonZeroDecimal(token.formattedUsdValue)}
           </div>
         </div>
       {/each}

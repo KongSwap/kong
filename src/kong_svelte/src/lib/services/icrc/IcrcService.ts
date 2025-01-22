@@ -171,7 +171,6 @@ export class IcrcService {
     tokens: FE.Token[],
     principal: Principal,
   ): Promise<Map<string, bigint>> {
-    console.log('Fetching balances for tokens:', tokens.map(t => t.symbol));
     const results = new Map<string, bigint>();
     const subaccount = auth.pnp?.account?.subaccount 
       ? Array.from(auth.pnp.account.subaccount) as number[]
@@ -190,7 +189,6 @@ export class IcrcService {
     const subnetOperations = subnetEntries.map(([subnet, subnetTokens]) => async () => {
       const operations = subnetTokens.map(token => async () => {
         try {
-          console.log(`Fetching balance for ${token.symbol}`);
           const balance = await this.getIcrc1Balance(token, principal, subaccount);
           return { token, balance };
         } catch (error) {
@@ -215,8 +213,6 @@ export class IcrcService {
 
     // Process all subnets with higher concurrency
     await this.withConcurrencyLimit(subnetOperations, 25);
-    
-    console.log('Final results:', Object.fromEntries([...results.entries()]));
     return results;
   }
 
