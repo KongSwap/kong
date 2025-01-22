@@ -13,6 +13,7 @@
     width?: string;
     formatter?: (value: any) => string | number;
     component?: any;
+    componentProps?: any;
     sortValue?: (row: any) => string | number;
   }[] = [];
   export let itemsPerPage = 100;
@@ -254,14 +255,12 @@
         </tr>
       </thead>
       <tbody>
-        {#each memoizedPaginatedData as row, i (row[rowKey])}
-          {@const isKong = isKongRow ? isKongRow(row) : false}
-          {@const flashState = rowFlashStates.get(row[rowKey])}
+        {#each memoizedPaginatedData as row (row[rowKey])}
           <tr
             class="h-[44px] border-b border-kong-border/50 hover:bg-kong-bg-light/30 transition-colors duration-200 
               {onRowClick ? 'cursor-pointer' : ''} 
               {rowFlashStates.get(row[rowKey])?.class || ''} 
-              {isKong ? 'bg-kong-primary/5 hover:bg-kong-primary/10 border-kong-primary/20' : ''}"
+              {isKongRow?.(row) ? 'bg-kong-primary/5 hover:bg-kong-primary/10 border-kong-primary/20' : ''}"
             on:click={() => onRowClick?.(row)}
           >
             {#each columns as column (column.key)}
@@ -271,7 +270,7 @@
                 class="py-2 px-4 {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'}"
               >
                 {#if column.component}
-                  <svelte:component this={column.component} {row} />
+                  <svelte:component this={column.component} row={row} {...(column.componentProps || {})} />
                 {:else}
                   <div class="inline-block w-full {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
                     {formattedValue}

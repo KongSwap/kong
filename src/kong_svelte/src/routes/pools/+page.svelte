@@ -8,7 +8,7 @@
     filteredLivePools,
     poolSearchTerm,
   } from "$lib/services/pools/poolStore";
-  import { formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { fetchTokens } from "$lib/api/tokens";
   import Panel from "$lib/components/common/Panel.svelte";
   import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
   import { onMount, onDestroy } from "svelte";
@@ -45,7 +45,9 @@
   const mobileSortColumn = writable("rolling_24h_volume");
   const mobileSortDirection = writable<"asc" | "desc">("desc");
 
-  const tokenMap = derived(formattedTokens, ($tokens) => {
+  // Token management
+  const allTokens = writable<FE.Token[]>([]);
+  const tokenMap = derived(allTokens, ($tokens) => {
     const map = new Map();
     if ($tokens) {
       $tokens.forEach((token) => {
@@ -54,6 +56,27 @@
     }
     return map;
   });
+
+  let cleanup: () => void;
+
+  onMount(() => {
+    loadTokens();
+    window.addEventListener("resize", checkMobile);
+    checkMobile();
+    cleanup = () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+    return cleanup;
+  });
+
+  async function loadTokens() {
+    try {
+      const { tokens } = await fetchTokens();
+      allTokens.set(tokens);
+    } catch (error) {
+      console.error("Error loading tokens:", error);
+    }
+  }
 
   function handlePoolClick(event) {
     const pool = event.detail;
@@ -77,15 +100,6 @@
     }, 300);
   }
 
-  onMount(() => {
-    window.addEventListener("resize", checkMobile);
-    checkMobile();
-
-    return () => {
-      window.removeEventListener("resize", checkMobile);
-    };
-  });
-
   const checkMobile = () => {
     $isMobile = window.innerWidth < 768;
   };
@@ -95,6 +109,7 @@
   }
 
   onDestroy(() => {
+    cleanup?.();
     clearTimeout(searchDebounceTimer);
     // reset search properties
     searchTerm = "";
@@ -388,6 +403,7 @@
                         width: '30%',
                         sortable: true,
                         component: PoolRow,
+                        componentProps: { tokenMap: $tokenMap },
                         sortValue: (row) => `${row.symbol_0}/${row.symbol_1}`
                       },
                       {

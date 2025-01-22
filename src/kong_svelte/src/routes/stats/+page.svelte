@@ -34,11 +34,23 @@
 
   const ITEMS_PER_PAGE = 50;
   const REFRESH_INTERVAL = 5000; // 5 seconds
+  const SEARCH_DEBOUNCE = 300; // 300ms debounce for search
   
   // Initialize stores
   const tokenData = writable<FE.Token[]>([]);
   const totalCount = writable<number>(0);
   const currentPage = writable<number>(1);
+  const searchTerm = writable<string>("");
+  const debouncedSearchTerm = writable<string>("");
+
+  // Debounce the search term
+  let searchTimeout: ReturnType<typeof setTimeout>;
+  $: {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      debouncedSearchTerm.set($searchTerm);
+    }, SEARCH_DEBOUNCE);
+  }
 
   // Refresh data periodically
   let refreshInterval: ReturnType<typeof setInterval>;
@@ -60,6 +72,7 @@
 
   // Cleanup interval on component destroy
   onDestroy(() => {
+    if (searchTimeout) clearTimeout(searchTimeout);
     if (refreshInterval) {
       clearInterval(refreshInterval);
     }
@@ -71,7 +84,7 @@
       const {tokens, total_count} = await fetchTokens({ 
         page: $currentPage, 
         limit: ITEMS_PER_PAGE,
-        skipCache: true // Add this to ensure we get fresh data
+        search: $debouncedSearchTerm
       });
       tokenData.set(tokens);
       totalCount.set(total_count);
@@ -80,20 +93,31 @@
     }
   }
 
-  // Update data when page changes
-  $: if (browser && $currentPage) {
+  // Update data when page changes or debounced search term changes
+  $: if (browser && ($currentPage || $debouncedSearchTerm !== undefined)) {
     refreshData();
     const url = new URL(window.location.href);
     url.searchParams.set('page', $currentPage.toString());
+    if ($debouncedSearchTerm) {
+      url.searchParams.set('search', $debouncedSearchTerm);
+    } else {
+      url.searchParams.delete('search');
+    }
+    // Add timestamp to force fresh data
+    url.searchParams.set('t', Date.now().toString());
     goto(url.toString(), { replaceState: true, keepFocus: true });
   }
 
   // Local state
   let isMobile = false;
-  const searchTerm = writable<string>("");
   const showFavoritesOnly = writable<boolean>(false);
   const sortBy = writable<string>("market_cap");
   const sortDirection = writable<"asc" | "desc">("desc");
+
+  // Reset to page 1 when search term changes
+  $: if ($debouncedSearchTerm !== undefined) {
+    currentPage.set(1);
+  }
 
   // Favorites state - needs to be a store since it's shared with other components
   const favoriteTokenIds = writable<string[]>([]);
@@ -112,30 +136,19 @@
     favoriteCount.set(0);
   }
 
-  // Filtered tokens store - only apply favorites and search filter here
+  // Filtered tokens store - only apply favorites filter here
   const filteredTokens = derived<[
     typeof tokenData,
     typeof favoriteTokenIds,
-    typeof searchTerm,
     typeof showFavoritesOnly
   ], FE.Token[]>(
-    [tokenData, favoriteTokenIds, searchTerm, showFavoritesOnly],
-    ([$tokenData, $favoriteTokenIds, $searchTerm, $showFavoritesOnly]) => {
+    [tokenData, favoriteTokenIds, showFavoritesOnly],
+    ([$tokenData, $favoriteTokenIds, $showFavoritesOnly]) => {
       let filtered = [...$tokenData];
 
       // Apply favorites filter
       if ($showFavoritesOnly) {
         filtered = filtered.filter(token => $favoriteTokenIds.includes(token.canister_id));
-      }
-
-      // Apply search filter
-      if ($searchTerm) {
-        const searchLower = $searchTerm.toLowerCase();
-        filtered = filtered.filter(token => 
-          token.name.toLowerCase().includes(searchLower) ||
-          token.symbol.toLowerCase().includes(searchLower) ||
-          token.canister_id.toLowerCase().includes(searchLower)
-        );
       }
 
       return filtered;
@@ -360,7 +373,7 @@
                 defaultSort={{ column: 'market_cap', direction: 'desc' }}
                 onRowClick={(row) => goto(`/stats/${row.canister_id}`)}
                 isKongRow={(row) => row.canister_id === KONG_CANISTER_ID}
-                totalItems={$totalCount}
+                totalItems={$showFavoritesOnly ? $filteredTokens.length : $totalCount}
                 currentPage={$currentPage}
                 onPageChange={(page) => currentPage.set(page)}
               />
