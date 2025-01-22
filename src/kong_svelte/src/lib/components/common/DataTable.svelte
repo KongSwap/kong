@@ -13,6 +13,7 @@
     width?: string;
     formatter?: (value: any) => string | number;
     component?: any;
+    componentProps?: any;
     sortValue?: (row: any) => string | number;
   }[] = [];
   export let itemsPerPage = 100;
@@ -20,14 +21,14 @@
   export let onRowClick: ((row: any) => void) | null = null;
   export let rowKey = 'id';
   export let isKongRow: ((row: any) => boolean) | null = null;
+  export let totalItems = 0;
+  export let currentPage = 1;
+  export let onPageChange: ((page: number) => void) | null = null;
+  export let isLoading = false;
 
-  const currentPage = writable(1);
   const sortColumn = writable(defaultSort.column || '');
   const sortDirection = writable<'asc' | 'desc'>(defaultSort.direction || 'desc');
-  const totalPages = writable(1);
-
-
-
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   // Optimize getValue by using a Map for column lookups
   const columnMap = new Map();
@@ -97,13 +98,8 @@
     });
   })();
 
-  // Make memoizedPaginatedData reactive to memoizedSortedData and currentPage
-  $: memoizedPaginatedData = (() => {
-    const start = ($currentPage - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    totalPages.set(Math.ceil(memoizedSortedData.length / itemsPerPage));
-    return memoizedSortedData.slice(start, end);
-  })();
+  // Since pagination is handled by the parent component, we don't need to paginate here
+  $: memoizedPaginatedData = memoizedSortedData;
 
   // Optimize price flash animations
   const flashDuration = 2000;
@@ -183,20 +179,20 @@
   }
 
   function nextPage() {
-    if ($currentPage < $totalPages) {
-      currentPage.update(n => n + 1);
+    if (currentPage < totalPages) {
+      onPageChange?.(currentPage + 1);
     }
   }
 
   function previousPage() {
-    if ($currentPage > 1) {
-      currentPage.update(n => n - 1);
+    if (currentPage > 1) {
+      onPageChange?.(currentPage - 1);
     }
   }
 
   function goToPage(page: number) {
-    if (page >= 1 && page <= $totalPages) {
-      currentPage.set(page);
+    if (page >= 1 && page <= totalPages) {
+      onPageChange?.(page);
     }
   }
 
@@ -259,14 +255,12 @@
         </tr>
       </thead>
       <tbody>
-        {#each memoizedPaginatedData as row, i (i)}
-          {@const isKong = isKongRow ? isKongRow(row) : false}
-          {@const flashState = rowFlashStates.get(row[rowKey])}
+        {#each memoizedPaginatedData as row (row[rowKey])}
           <tr
             class="h-[44px] border-b border-kong-border/50 hover:bg-kong-bg-light/30 transition-colors duration-200 
               {onRowClick ? 'cursor-pointer' : ''} 
               {rowFlashStates.get(row[rowKey])?.class || ''} 
-              {isKong ? 'bg-kong-primary/5 hover:bg-kong-primary/10 border-kong-primary/20' : ''}"
+              {isKongRow?.(row) ? 'bg-kong-primary/5 hover:bg-kong-primary/10 border-kong-primary/20' : ''}"
             on:click={() => onRowClick?.(row)}
           >
             {#each columns as column (column.key)}
@@ -276,7 +270,7 @@
                 class="py-2 px-4 {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'}"
               >
                 {#if column.component}
-                  <svelte:component this={column.component} {row} />
+                  <svelte:component this={column.component} row={row} {...(column.componentProps || {})} />
                 {:else}
                   <div class="inline-block w-full {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
                     {formattedValue}
@@ -290,24 +284,31 @@
     </table>
   </div>
 
+  <!-- Loading Overlay -->
+  {#if isLoading}
+    <div class="absolute inset-0 bg-kong-bg-dark/50 backdrop-blur-[2px] flex items-center justify-center z-30">
+      <div class="loading-spinner"></div>
+    </div>
+  {/if}
+
   <!-- Pagination -->
   <div class="sticky bottom-0 left-0 right-0 flex items-center justify-between px-4 py-1 border-t border-kong-border backdrop-blur-md">
     <div class="flex items-center text-sm text-kong-text-secondary">
-      Showing {($currentPage - 1) * itemsPerPage + 1} to {Math.min($currentPage * itemsPerPage, memoizedSortedData.length)} of {memoizedSortedData.length} items
+      Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
     </div>
     <div class="flex items-center gap-2">
       <button
-        class="pagination-button {$currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+        class="pagination-button {currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
         on:click={previousPage}
-        disabled={$currentPage === 1}
+        disabled={currentPage === 1}
       >
         Previous
       </button>
       
-      {#each Array(Math.min(5, $totalPages)) as _, i (i)}
-        {#if i + 1 <= $totalPages}
+      {#each Array(Math.min(5, totalPages)) as _, i (i)}
+        {#if i + 1 <= totalPages}
           <button
-            class="pagination-button {$currentPage === i + 1 ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
+            class="pagination-button {currentPage === i + 1 ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
             on:click={() => goToPage(i + 1)}
           >
             {i + 1}
@@ -316,9 +317,9 @@
       {/each}
       
       <button
-        class="pagination-button {$currentPage === $totalPages ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+        class="pagination-button {currentPage === totalPages ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
         on:click={nextPage}
-        disabled={$currentPage === $totalPages}
+        disabled={currentPage === totalPages}
       >
         Next
       </button>
@@ -380,6 +381,21 @@
     }
     100% {
       background-color: transparent;
+    }
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--kong-primary);
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
     }
   }
 </style> 

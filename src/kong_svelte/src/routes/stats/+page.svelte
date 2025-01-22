@@ -1,13 +1,13 @@
 <script lang="ts">
   import { tooltip } from "$lib/actions/tooltip";
   import { writable, derived } from "svelte/store";
+  import type { Readable } from "svelte/store";
   import {
     CKUSDT_CANISTER_ID,
     ICP_CANISTER_ID,
     KONG_CANISTER_ID,
   } from "$lib/constants/canisterConstants";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { livePoolTotals } from "$lib/services/pools/poolStore";
   import {
     TrendingUp,
@@ -15,10 +15,11 @@
     PiggyBank,
     HandCoins,
   } from "lucide-svelte";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import { auth } from "$lib/services/auth";
   import { browser } from "$app/environment";
+  import { page } from "$app/stores";
   import TokenCardMobile from "$lib/components/stats/TokenCardMobile.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
@@ -29,21 +30,98 @@
   import TokenCell from "$lib/components/stats/TokenCell.svelte";
   import PriceCell from "$lib/components/stats/PriceCell.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-    import { TokenService } from "$lib/services/tokens";
+  import { fetchTokens } from "$lib/api/tokens";
 
-  const ITEMS_PER_PAGE = 100;
-  const currentPage = writable(1);
+  const ITEMS_PER_PAGE = 50;
+  const REFRESH_INTERVAL = 5000; // 5 seconds
+  const SEARCH_DEBOUNCE = 300; // 300ms debounce for search
+  
+  // Initialize stores
+  const tokenData = writable<FE.Token[]>([]);
+  const totalCount = writable<number>(0);
+  const currentPage = writable<number>(1);
+  const searchTerm = writable<string>("");
+  const debouncedSearchTerm = writable<string>("");
+
+  // Debounce the search term
+  let searchTimeout: ReturnType<typeof setTimeout>;
+  $: {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      debouncedSearchTerm.set($searchTerm);
+    }, SEARCH_DEBOUNCE);
+  }
+
+  // Refresh data periodically
+  let refreshInterval: ReturnType<typeof setInterval>;
+
+  // Initial data load
+  onMount(() => {
+    if (!browser) return;
+
+    // Get initial page from URL if it exists
+    const pageParam = parseInt($page.url.searchParams.get('page') || '1');
+    currentPage.set(pageParam);
+
+    // Initial data fetch
+    refreshData();
+
+    // Set up periodic refresh
+    refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
+  });
+
+  // Cleanup interval on component destroy
+  onDestroy(() => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+  });
+
+  async function refreshData() {
+    if (!browser) return;
+    try {
+      const {tokens, total_count} = await fetchTokens({ 
+        page: $currentPage, 
+        limit: ITEMS_PER_PAGE,
+        search: $debouncedSearchTerm
+      });
+      tokenData.set(tokens);
+      totalCount.set(total_count);
+    } catch (error) {
+      console.error('Error refreshing token data:', error);
+    }
+  }
+
+  // Update data when page changes or debounced search term changes
+  $: if (browser && ($currentPage || $debouncedSearchTerm !== undefined)) {
+    refreshData();
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', $currentPage.toString());
+    if ($debouncedSearchTerm) {
+      url.searchParams.set('search', $debouncedSearchTerm);
+    } else {
+      url.searchParams.delete('search');
+    }
+    // Add timestamp to force fresh data
+    url.searchParams.set('t', Date.now().toString());
+    goto(url.toString(), { replaceState: true, keepFocus: true });
+  }
 
   // Local state
   let isMobile = false;
-  let searchTerm = "";
-  let showFavoritesOnly = false;
-  let sortBy = "market_cap";
-  let sortDirection: "asc" | "desc" = "desc";
+  const showFavoritesOnly = writable<boolean>(false);
+  const sortBy = writable<string>("market_cap");
+  const sortDirection = writable<"asc" | "desc">("desc");
+
+  // Reset to page 1 when search term changes
+  $: if ($debouncedSearchTerm !== undefined) {
+    currentPage.set(1);
+  }
 
   // Favorites state - needs to be a store since it's shared with other components
   const favoriteTokenIds = writable<string[]>([]);
-  const favoriteCount = writable(0);
+  const favoriteCount = writable<number>(0);
 
   // Update favorite tokens when auth changes
   $: if ($auth.isConnected) {
@@ -58,151 +136,23 @@
     favoriteCount.set(0);
   }
 
-  // Filter tokens
-  $: filteredTokens = derived(
-    [liveTokens, favoriteTokenIds],
-    ([$liveTokens, $favoriteTokenIds]) => {
-      const s = searchTerm.trim().toLowerCase();
-      let filtered = [...$liveTokens];
+  // Filtered tokens store - only apply favorites filter here
+  const filteredTokens = derived<[
+    typeof tokenData,
+    typeof favoriteTokenIds,
+    typeof showFavoritesOnly
+  ], FE.Token[]>(
+    [tokenData, favoriteTokenIds, showFavoritesOnly],
+    ([$tokenData, $favoriteTokenIds, $showFavoritesOnly]) => {
+      let filtered = [...$tokenData];
 
-      // Add volume ranks
-      filtered = filtered
-        .sort((a, b) => {
-          const aVolume = Number(a.metrics?.volume_24h || 0);
-          const bVolume = Number(b.metrics?.volume_24h || 0);
-          return bVolume - aVolume;
-        })
-        .map((token, index) => ({
-          ...token,
-          volumeRank: index + 1,
-        }));
-
-      // Add TVL ranks
-      filtered = filtered
-        .sort((a, b) => {
-          const aTvl = Number(a.metrics?.tvl || 0);
-          const bTvl = Number(b.metrics?.tvl || 0);
-          return bTvl - aTvl;
-        })
-        .map((token, index) => ({
-          ...token,
-          tvlRank: index + 1,
-        }));
-
-      // Add price change ranks (for gainers and losers)
-      const gainers = filtered
-        .filter(token => Number(token.metrics?.price_change_24h || 0) > 0)
-        .sort((a, b) => Number(b.metrics?.price_change_24h || 0) - Number(a.metrics?.price_change_24h || 0))
-        .map((token, index) => ({
-          ...token,
-          priceChangeRank: index + 1,
-        }));
-
-      const losers = filtered
-        .filter(token => Number(token.metrics?.price_change_24h || 0) < 0)
-        .sort((a, b) => Number(a.metrics?.price_change_24h || 0) - Number(b.metrics?.price_change_24h || 0))
-        .map((token, index) => ({
-          ...token,
-          priceChangeRank: index + 1,
-        }));
-
-      const unchanged = filtered
-        .filter(token => Number(token.metrics?.price_change_24h || 0) === 0)
-        .map(token => ({
-          ...token,
-          priceChangeRank: null,
-        }));
-
-      filtered = [...gainers, ...unchanged, ...losers].map(token => ({
-        ...token,
-        totalTokens: gainers.length + losers.length + unchanged.length
-      }));
-
-      // Filter by favorites if enabled
-      if (showFavoritesOnly) {
-        filtered = filtered.filter((token) =>
-          $favoriteTokenIds.includes(token.canister_id),
-        );
+      // Apply favorites filter
+      if ($showFavoritesOnly) {
+        filtered = filtered.filter(token => $favoriteTokenIds.includes(token.canister_id));
       }
-
-      // Filter by search term
-      if (s) {
-        filtered = filtered.filter((token) => {
-          const symbol = token.symbol?.toLowerCase() || "";
-          const name = token.name?.toLowerCase() || "";
-          const canisterID = token.canister_id.toLowerCase();
-          return (
-            symbol.includes(s) || name.includes(s) || canisterID.includes(s)
-          );
-        });
-      }
-
-      // Add market cap ranks
-      filtered = filtered
-        .sort((a, b) => {
-          const aMarketCap = Number(a.metrics?.market_cap || 0);
-          const bMarketCap = Number(b.metrics?.market_cap || 0);
-          return bMarketCap - aMarketCap;
-        })
-        .map((token, index) => ({
-          ...token,
-          marketCapRank: index + 1,
-        }));
 
       return filtered;
     }
-  );
-
-  $: sortedTokens = derived(
-    [filteredTokens],
-    ([$filteredTokens]) => {
-      let sorted = [...$filteredTokens];
-      
-      // First separate KONG from other tokens
-      const kongToken = sorted.find(t => t.canister_id === KONG_CANISTER_ID);
-      const otherTokens = sorted.filter(t => t.canister_id !== KONG_CANISTER_ID);
-      
-      // Sort the other tokens
-      switch (sortBy) {
-        case "market_cap":
-          otherTokens.sort((a, b) => {
-            const aValue = Number(a.metrics?.market_cap || 0);
-            const bValue = Number(b.metrics?.market_cap || 0);
-            return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
-          });
-          break;
-        case "volume":
-          otherTokens.sort((a, b) => {
-            const aValue = Number(a.metrics?.volume_24h || 0);
-            const bValue = Number(b.metrics?.volume_24h || 0);
-            return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
-          });
-          break;
-        case "price_change":
-          otherTokens.sort((a, b) => {
-            const aValue = Number(a.metrics?.price_change_24h || 0);
-            const bValue = Number(b.metrics?.price_change_24h || 0);
-            return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
-          });
-          break;
-      }
-
-      // Return KONG at the top followed by sorted tokens
-      return kongToken ? [kongToken, ...otherTokens] : otherTokens;
-    }
-  );
-
-  $: paginatedTokens = derived(
-    [sortedTokens, currentPage],
-    ([$sortedTokens, $currentPage]) => {
-      const start = ($currentPage - 1) * ITEMS_PER_PAGE;
-      const end = start + ITEMS_PER_PAGE;
-      return $sortedTokens.slice(start, end);
-    }
-  );
-
-  $: totalPages = derived(filteredTokens, ($filteredTokens) => 
-    Math.ceil($filteredTokens.length / ITEMS_PER_PAGE)
   );
 
   function getTrendClass(token: FE.Token): string {
@@ -228,51 +178,24 @@
     );
   }
 
-  function nextPage() {
-    if ($currentPage < $totalPages) {
-      currentPage.update(n => n + 1);
-    }
-  }
-
-  function previousPage() {
-    if ($currentPage > 1) {
-      currentPage.update(n => n - 1);
-    }
-  }
-
-  function goToPage(page: number) {
-    if (page >= 1 && page <= $totalPages) {
-      currentPage.set(page);
-    }
-  }
-
   function toggleSort(newSortBy: string) {
-    if (sortBy === newSortBy) {
-      sortDirection = sortDirection === "desc" ? "asc" : "desc";
+    if ($sortBy === newSortBy) {
+      sortDirection.update(direction => direction === "desc" ? "asc" : "desc");
     } else {
-      sortBy = newSortBy;
-      sortDirection = "desc";
+      sortBy.set(newSortBy);
+      sortDirection.set("desc");
     }
   }
 
-  onMount(async () => {
-    await TokenService.fetchTokens().then(() => {
-      console.log("Tokens fetched successfully");
-    }).catch(error => {
-      console.error("Error loading tokens:", error);
-    });
+  onMount(() => {
     if (browser) {
       isMobile = window.innerWidth < 768;
       const handleResize = () => (isMobile = window.innerWidth < 768);
       window.addEventListener("resize", handleResize, { passive: true });
-    }
-
-    return () => {
-      if (browser) {
-        const handleResize = () => (isMobile = window.innerWidth < 768);
+      return () => {
         window.removeEventListener("resize", handleResize);
-      }
-    };
+      };
+    }
   });
 </script>
 
@@ -318,18 +241,18 @@
           >
             <div class="flex bg-transparent">
               <button
-                class="px-4 py-1 transition-colors duration-200 {!showFavoritesOnly
+                class="px-4 py-1 transition-colors duration-200 {!$showFavoritesOnly
                   ? 'text-kong-text-primary'
                   : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                on:click={() => (showFavoritesOnly = false)}
+                on:click={() => showFavoritesOnly.set(false)}
               >
                 All Tokens
               </button>
               <button
-                class="px-4 py-2 transition-colors duration-200 {showFavoritesOnly
+                class="px-4 py-2 transition-colors duration-200 {$showFavoritesOnly
                   ? 'text-kong-text-primary'
                   : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                on:click={() => (showFavoritesOnly = true)}
+                on:click={() => showFavoritesOnly.set(true)}
               >
                 My Favorites
                 {#if $auth.isConnected}
@@ -349,8 +272,8 @@
                   ? "Search tokens..."
                   : "Search tokens by name, symbol, or canister ID"}
                 class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
-                on:input={(e) => (searchTerm = e.currentTarget.value)}
-                disabled={showFavoritesOnly}
+                on:input={(e) => searchTerm.set(e.currentTarget.value)}
+                disabled={$showFavoritesOnly}
               />
             </div>
           </div>
@@ -361,7 +284,7 @@
           <div
             class="flex flex-col items-center justify-center h-64 text-center"
           >
-            {#if showFavoritesOnly && !$auth.isConnected}
+            {#if $showFavoritesOnly && !$auth.isConnected}
               <p class="text-gray-400 mb-4">
                 Connect your wallet to view and manage your favorite tokens
               </p>
@@ -389,17 +312,17 @@
                 data={$filteredTokens}
                 rowKey="canister_id"
                 columns={[
-                  {
-                    key: 'marketCapRank',
-                    title: '#',
-                    align: 'center',
-                    sortable: true,
-                    width: '60px',
-                    formatter: (row) => {
-                      const rank = row.marketCapRank || '-';
-                      return rank === '-' ? rank : `#${rank}`;
-                    }
-                  },
+                  // {
+                  //   key: 'marketCapRank',
+                  //   title: '#',
+                  //   align: 'center',
+                  //   sortable: true,
+                  //   width: '60px',
+                  //   formatter: (row) => {
+                  //     const rank = row.marketCapRank || '-';
+                  //     return rank === '-' ? rank : `#${rank}`;
+                  //   }
+                  // },
                   {
                     key: 'token',
                     title: 'Token',
@@ -446,10 +369,13 @@
                     formatter: (row) => formatUsdValue(row.metrics?.tvl || 0)
                   }
                 ]}
-                itemsPerPage={100}
+                itemsPerPage={ITEMS_PER_PAGE}
                 defaultSort={{ column: 'market_cap', direction: 'desc' }}
                 onRowClick={(row) => goto(`/stats/${row.canister_id}`)}
                 isKongRow={(row) => row.canister_id === KONG_CANISTER_ID}
+                totalItems={$showFavoritesOnly ? $filteredTokens.length : $totalCount}
+                currentPage={$currentPage}
+                onPageChange={(page) => currentPage.set(page)}
               />
             {:else}
               <div class="flex flex-col h-full overflow-hidden">
@@ -457,33 +383,33 @@
                 <div class="sticky top-0 z-30 bg-kong-bg-dark border-b border-kong-border">
                   <div class="flex gap-2 px-3 py-2 justify-between">
                     <button
-                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {sortBy === 'market_cap' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {$sortBy === 'market_cap' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
                       on:click={() => toggleSort("market_cap")}
                     >
                       MCap
                       <ChevronDown
                         size={16}
-                        class="transition-transform {sortDirection === 'asc' && sortBy === 'market_cap' ? 'rotate-180' : ''}"
+                        class="transition-transform {$sortDirection === 'asc' && $sortBy === 'market_cap' ? 'rotate-180' : ''}"
                       />
                     </button>
                     <button
-                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {sortBy === 'volume' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {$sortBy === 'volume' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
                       on:click={() => toggleSort("volume")}
                     >
                       Volume
                       <ChevronDown
                         size={16}
-                        class="transition-transform {sortDirection === 'asc' && sortBy === 'volume' ? 'rotate-180' : ''}"
+                        class="transition-transform {$sortDirection === 'asc' && $sortBy === 'volume' ? 'rotate-180' : ''}"
                       />
                     </button>
                     <button
-                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {sortBy === 'price_change' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {$sortBy === 'price_change' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
                       on:click={() => toggleSort("price_change")}
                     >
                       24h %
                       <ChevronDown
                         size={16}
-                        class="transition-transform {sortDirection === 'asc' && sortBy === 'price_change' ? 'rotate-180' : ''}"
+                        class="transition-transform {$sortDirection === 'asc' && $sortBy === 'price_change' ? 'rotate-180' : ''}"
                       />
                     </button>
                   </div>
@@ -492,7 +418,7 @@
                 <!-- Scrollable content -->
                 <div class="flex-1 overflow-auto">
                   <div class="space-y-2.5 px-2 py-2">
-                    {#each $paginatedTokens as token, index (token.canister_id)}
+                    {#each $filteredTokens as token, index (token.canister_id)}
                       <button
                         class="w-full"
                         on:click={() => goto(`/stats/${token.canister_id}`)}
@@ -508,6 +434,27 @@
                       </button>
                     {/each}
                   </div>
+                </div>
+
+                <!-- Mobile Pagination -->
+                <div class="sticky bottom-0 left-0 right-0 flex items-center justify-between px-4 py-2 border-t border-kong-border backdrop-blur-md">
+                  <button
+                    class="px-3 py-1 rounded text-sm {$currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+                    on:click={() => currentPage.set($currentPage - 1)}
+                    disabled={$currentPage === 1}
+                  >
+                    Previous
+                  </button>
+                  <span class="text-sm text-kong-text-secondary">
+                    Page {$currentPage} of {Math.ceil($totalCount / ITEMS_PER_PAGE)}
+                  </span>
+                  <button
+                    class="px-3 py-1 rounded text-sm {$currentPage === Math.ceil($totalCount / ITEMS_PER_PAGE) ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+                    on:click={() => currentPage.set($currentPage + 1)}
+                    disabled={$currentPage === Math.ceil($totalCount / ITEMS_PER_PAGE)}
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
             {/if}

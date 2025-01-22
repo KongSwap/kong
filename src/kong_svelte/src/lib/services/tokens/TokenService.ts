@@ -16,19 +16,22 @@ import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { kongDB } from "../db";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
-import { fetchTokens } from "../indexer/api";
+import { fetchTokens } from "$lib/api/tokens";
 import { toastStore } from "$lib/stores/toastStore";
+import { tokenStore, tokenData } from "$lib/stores/tokenData";
+import { userTokens } from "$lib/stores/userTokens";
+
 
 export class TokenService {
   protected static instance: TokenService;
 
   public static async fetchTokens(): Promise<FE.Token[]> {
     try {
-      const freshTokens = await this.fetchFromNetwork();
-      const existingTokens = await kongDB.tokens.toArray();
+      const freshTokensResponse = await this.fetchFromNetwork();
+      const existingTokens = get(tokenData);
       
       // Add timestamps and preserve previous prices
-      const tokensWithTimestamp = freshTokens.map(token => {
+      const tokensWithTimestamp = freshTokensResponse.tokens.map(token => {
         const existingToken = existingTokens.find(et => et.canister_id === token.canister_id);
         return {
           ...token,
@@ -48,7 +51,7 @@ export class TokenService {
       });
 
       // Store in DB with timestamp, using bulkPut with replace to trigger updates
-      await kongDB.tokens.bulkPut(tokensWithTimestamp, { allKeys: true });
+      tokenStore.set(tokensWithTimestamp);
       
       return tokensWithTimestamp;
     } catch (error) {
@@ -57,7 +60,7 @@ export class TokenService {
     }
   }
 
-  private static async fetchFromNetwork(): Promise<FE.Token[]> {
+  private static async fetchFromNetwork(): Promise<{ tokens: FE.Token[], total_count: number }> {
     let retries = 3;
 
     while (retries > 0) {
@@ -75,61 +78,97 @@ export class TokenService {
     }
   }
 
-  private static async getCachedPrice(token: FE.Token): Promise<number> {
-    return Number((await kongDB.tokens.where("canister_id").equals(token.canister_id).first())?.metrics?.price || 0);
-  }
-
   public static async fetchBalances(
     tokens?: FE.Token[],
     principalId?: string,
     forceRefresh: boolean = false,
   ): Promise<Record<string, TokenBalance>> {
-    if (!tokens) tokens = await kongDB.tokens.toArray();
-    if (!principalId && !get(auth).isConnected) return {};
+    // Early validation
+    if (!principalId && !get(auth).isConnected) {
+      console.log('No principal ID and not connected');
+      return {};
+    }
+    if (!tokens || tokens.length === 0) {
+      console.log('No tokens provided');
+      return {};
+    }
 
     const authStore = get(auth);
-    if (!authStore.isConnected) return {};
-
-    let principal = principalId ? principalId : authStore.account.owner;
-    if (typeof principal === "string") {
-      principal = Principal.fromText(principal);
+    if (!authStore.isConnected) {
+      console.log('Auth store not connected');
+      return {};
     }
 
-    // Process tokens in batches of 5 with delays
-    const batchSize = 25;
-    const results = new Map<string, bigint>();
-    
-    for (let i = 0; i < tokens.length; i += batchSize) {
-      const batch = tokens.slice(i, i + batchSize);
-      const batchBalances = await IcrcService.batchGetBalances(batch, principal);
-      
-      // Merge batch results
-      for (const [canisterId, balance] of batchBalances.entries()) {
-        results.set(canisterId, balance);
+    try {
+      let principal = principalId ? principalId : authStore.account.owner;
+      if (typeof principal === "string") {
+        principal = Principal.fromText(principal);
       }
+
+      // Process tokens in batches of 25 with delays
+      const batchSize = 25;
+      const results = new Map<string, bigint>();
       
-      // Add delay if not the last batch
-      if (i + batchSize < tokens.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+      console.log(`Processing ${tokens.length} tokens in batches of ${batchSize}`);
+      
+      // If forcing refresh, bypass the deduplication in IcrcService
+      const batchPromises = [];
+      for (let i = 0; i < tokens?.length || 0; i += batchSize) {
+        const batch = tokens.slice(i, i + batchSize);
+        const promise = (async () => {
+          try {
+            // Force a new request by adding a timestamp to make each request unique
+            const batchBalances = await IcrcService.batchGetBalances(
+              batch.map(t => ({ ...t, timestamp: Date.now() })), 
+              principal
+            );
+            
+            // Only add valid balances
+            for (const [canisterId, balance] of batchBalances.entries()) {
+              if (balance !== undefined && balance !== null) {
+                results.set(canisterId, balance);
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching batch ${i}-${i + batchSize}:`, error);
+          }
+        })();
+        
+        batchPromises.push(promise);
+        
+        // Add delay between batches
+        if (i + batchSize < tokens.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
+
+      // Wait for all batches to complete
+      await Promise.all(batchPromises);
+
+      // Only process tokens that have valid balances
+      const validBalances = tokens.reduce((acc, token) => {
+        const balance = results.get(token.canister_id);
+        if (balance !== undefined) {
+          const price = token?.metrics?.price || 0;
+          const tokenAmount = formatBalance(balance.toString(), token.decimals).replace(/,/g, '');
+          const usdValue = parseFloat(tokenAmount) * Number(price);
+
+          if (!isNaN(usdValue)) {
+            acc[token.canister_id] = {
+              in_tokens: balance,
+              in_usd: usdValue.toString(),
+            };
+          }
+        }
+        return acc;
+      }, {} as Record<string, TokenBalance>);
+
+      console.log('Processed balances:', validBalances);
+      return validBalances;
+    } catch (error) {
+      console.error('Error in fetchBalances:', error);
+      return {};
     }
-
-    // Pre-fetch all prices in parallel
-    const prices = await Promise.all(tokens.map(token => this.getCachedPrice(token)));
-
-    // Process results in a single pass
-    return tokens.reduce((acc, token, index) => {
-      const balance = results.get(token.canister_id) || BigInt(0);
-      const price = prices[index] || 0;
-      const tokenAmount = formatBalance(balance.toString(), token.decimals).replace(/,/g, '');
-      const usdValue = parseFloat(tokenAmount) * price;
-
-      acc[token.canister_id] = {
-        in_tokens: balance,
-        in_usd: usdValue.toString(),
-      };
-      return acc;
-    }, {} as Record<string, TokenBalance>);
   }
 
   public static async fetchBalance(
@@ -402,9 +441,9 @@ export class TokenService {
         return '';
       };
 
-      const tokens = await kongDB.tokens.toArray();
+      const tokens = get(userTokens).tokens;
       const tokenId = tokens.length + 1000;
-      console.log("supportedStandards", supportedStandards);
+
       return {
         canister_id: canisterId,
         name: name.toString(),

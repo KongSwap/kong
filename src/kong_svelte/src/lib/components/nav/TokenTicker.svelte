@@ -1,14 +1,13 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import { liveQuery } from "dexie";
-  import { kongDB } from "$lib/services/db";
+  import { tokenStore } from "$lib/stores/tokenData";
   import { ArrowUp, ArrowDown } from "lucide-svelte";
-  import { writable } from "svelte/store";
   import SimpleChart from "$lib/components/common/SimpleChart.svelte";
   import { fade } from "svelte/transition";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { onDestroy, onMount } from "svelte";
+  import { writable } from "svelte/store";
 
   let hoveredToken: FE.Token | null = null;
   let hoverTimeout: NodeJS.Timeout;
@@ -19,11 +18,10 @@
     string,
     { class: string; timeout: NodeJS.Timeout }
   >();
-  let querySubscription: { unsubscribe: () => void } | null = null;
   let isVisible = true;
 
-  // Create a writable store to hold the liveQuery results
-  const tokenStore = writable<FE.Token[]>([]);
+  // Create a local store for ticker tokens
+  const tickerTokens = writable<FE.Token[]>([]);
 
   // Track previous prices to detect changes using a more efficient structure
   let previousPrices = new Map<string, number>();
@@ -108,55 +106,12 @@
     if (tickerElement) {
       observer.observe(tickerElement);
     }
-
-    // Set up liveQuery subscription with price tracking
-    const query = liveQuery(async () => {
-      const tokens = await kongDB.tokens
-        .where("metrics.volume_24h")
-        .above(100)
-        .toArray();
-
-      // Sort tokens by volume
-      const sorted = tokens
-        .sort((a, b) => {
-          const volumeA = Number(a.metrics?.volume_24h || 0);
-          const volumeB = Number(b.metrics?.volume_24h || 0);
-          return volumeB - volumeA;
-        })
-        .slice(0, 10); // Keep top 10 by volume
-
-      // Track price changes
-      sorted.forEach(token => {
-        const currentPrice = Number(token.metrics?.price || 0);
-        const prevPrice = previousPrices.get(token.canister_id);
-        
-        if (prevPrice !== undefined && prevPrice !== currentPrice) {
-          pendingUpdates.add(token);
-          scheduleUpdate();
-        }
-        
-        previousPrices.set(token.canister_id, currentPrice);
-      });
-
-      return sorted;
-    });
-
-    querySubscription = query?.subscribe((tokens) => {
-      if (tokens) {
-        tokenStore.set(tokens);
-      }
-    });
   });
 
   onDestroy(() => {
     // Clean up Intersection Observer
     if (observer) {
       observer.disconnect();
-    }
-
-    // Clean up query subscription
-    if (querySubscription) {
-      querySubscription.unsubscribe();
     }
 
     // Clear all timeouts
@@ -210,14 +165,33 @@
     return `${Math.abs(change).toFixed(2)}%`;
   }
 
-  // Add back a modified version of the reactive statement to handle initial price tracking
+  // Add reactive statement to handle token updates
   $: if ($tokenStore && isVisible) {
-    $tokenStore.forEach(token => {
+    // Sort tokens by volume and take top 10
+    const sortedTokens = [...$tokenStore]
+      .filter(token => Number(token.metrics?.volume_24h || 0) > 100)
+      .sort((a, b) => {
+        const volumeA = Number(a.metrics?.volume_24h || 0);
+        const volumeB = Number(b.metrics?.volume_24h || 0);
+        return volumeB - volumeA;
+      })
+      .slice(0, 10);
+
+    // Track price changes for sorted tokens
+    sortedTokens.forEach(token => {
       const currentPrice = Number(token.metrics?.price || 0);
-      if (!previousPrices.has(token.canister_id)) {
-        previousPrices.set(token.canister_id, currentPrice);
+      const prevPrice = previousPrices.get(token.canister_id);
+      
+      if (prevPrice !== undefined && prevPrice !== currentPrice) {
+        pendingUpdates.add(token);
+        scheduleUpdate();
       }
+      
+      previousPrices.set(token.canister_id, currentPrice);
     });
+
+    // Update the local ticker store instead of the main store
+    tickerTokens.set(sortedTokens);
   }
 
   $: if (hoveredToken) {
@@ -241,7 +215,7 @@
       on:mouseenter={() => (isTickerHovered = true)}
       on:mouseleave={() => (isTickerHovered = false)}
     >
-      {#each $tokenStore as token, index (token.canister_id)}
+      {#each $tickerTokens as token, index (token.canister_id)}
         {#if token.metrics}
           <button
             class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(
@@ -272,7 +246,7 @@
           </button>
         {/if}
       {/each}
-      {#each $tokenStore as token, index (token.canister_id + "_dup")}
+      {#each $tickerTokens as token, index (token.canister_id + "_dup")}
         {#if token.metrics}
           <button
             class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(

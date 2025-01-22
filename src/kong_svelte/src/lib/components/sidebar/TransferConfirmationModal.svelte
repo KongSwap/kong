@@ -62,6 +62,7 @@
   title="Confirm Your Transfer"
   width="min(420px, 92vw)"
   height="auto"
+  target="body"
 >
   <div class="confirm-box pb-6">
     <section class="transfer-summary" aria-label="Transfer Amount Summary">

@@ -1,14 +1,28 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { onDestroy } from "svelte";
-  import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import { fetchTransactions } from "$lib/services/transactions";
   import TransactionRow from "./TransactionRow.svelte";
+  import { fetchTokens } from '$lib/api/tokens';
+  import { writable } from 'svelte/store';
 
-  // Ensure formattedTokens is initialized
-  if (!formattedTokens) {
-    throw new Error("Stores are not initialized");
+  // Create a store for tokens
+  const tokensStore = writable<FE.Token[]>([]);
+  
+  // Function to load tokens
+  async function loadTokens() {
+    try {
+      console.log('Fetching tokens...');
+      const response = await fetchTokens({
+        limit: 500,
+        page: 1
+      });
+      console.log('Tokens fetched:', response.tokens.length);
+      tokensStore.set(response.tokens);
+    } catch (error) {
+      console.error('Error loading tokens:', error);
+    }
   }
 
   // Declare our state variables
@@ -22,6 +36,13 @@
   const tokenAddress = $page.params.id;
   let refreshInterval: number;
   let newTransactionIds = $state<Set<string>>(new Set());
+
+  // Set up token refresh on mount
+  $effect(() => {
+    loadTokens();
+    const tokenInterval = setInterval(loadTokens, 30000);
+    return () => clearInterval(tokenInterval);
+  });
 
   // Function to clear transaction highlight after animation
   const clearTransactionHighlight = (txId: string) => {
@@ -164,14 +185,14 @@
   // Derived values
   let ckusdtToken = $state<FE.Token | undefined>(undefined);
   $effect(() => {
-    const found = $formattedTokens?.find((t) => t.symbol === "ckUSDT");
+    const found = $tokensStore?.find((t) => t.symbol === "ckUSDT");
     if (found) {
       ckusdtToken = found;
     }
   });
 
   $effect(() => {
-    const found = $formattedTokens?.find(
+    const found = $tokensStore?.find(
       (t) => t.address === tokenAddress || t.canister_id === tokenAddress,
     );
     if (found) {
@@ -252,7 +273,7 @@
                 <TransactionRow
                   {tx}
                   {token}
-                  formattedTokens={$formattedTokens}
+                  formattedTokens={$tokensStore}
                   isNew={newTransactionIds.has(tx.tx_id || "")}
                 />
               {/each}

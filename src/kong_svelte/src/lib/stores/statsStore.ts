@@ -2,7 +2,7 @@ import { writable, derived } from "svelte/store";
 import type { Writable } from "svelte/store";
 import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { liveTokens } from "$lib/services/tokens/tokenStore";
-import type { FE } from "$lib/types";
+import { get } from "svelte/store";
 
 // UI State
 export const searchTerm: Writable<string> = writable("");

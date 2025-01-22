@@ -33,6 +33,7 @@ declare global {
         updated_at: string;
         price_change_24h?: string;
         previous_price?: number;
+        market_cap_rank?: number;
       };
       logo_url: string;
       total_24h_volume: string;
@@ -41,7 +42,6 @@ declare global {
       isFavorite?: boolean;
       formattedBalance?: string;
       formattedUsdValue?: string;
-      marketCapRank?: number;
       volumeRank?: number;
     }
 

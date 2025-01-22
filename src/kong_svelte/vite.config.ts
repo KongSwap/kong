@@ -2,22 +2,53 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, loadEnv, type ConfigEnv } from 'vite';
 import environment from 'vite-plugin-environment';
-import dotenv from 'dotenv';
-import path from "path";
+import * as dotenv from 'dotenv';
+import * as path from "path";
 import { VitePWA } from 'vite-plugin-pwa';
 import viteCompression from 'vite-plugin-compression';
-import type { UserConfig, UserConfigExport } from 'vite';
+import type { UserConfig } from 'vite';
+import { sentrySvelteKit } from '@sentry/sveltekit';
+import { execSync } from 'child_process';
 
-dotenv.config({ 
+// Load base env first
+const baseEnv = dotenv.config({ 
   path: path.resolve(__dirname, "../../.env"),
   override: true 
-});
+}).parsed || {};
 
-export default defineConfig(({ mode }: ConfigEnv) => {
-  const env = loadEnv(mode, process.cwd(), '');
+// Load and merge Doppler env
+const dopplerEnv = dotenv.config({ 
+  path: path.resolve(__dirname, ".secrets"),
+  override: true 
+}).parsed || {};
+
+// Combine environments with Doppler taking precedence
+const combinedEnv = { ...baseEnv, ...dopplerEnv };
+
+// Get git commit hash
+const getGitHash = () => {
+  try {
+    return execSync('git rev-parse HEAD').toString().trim();
+  } catch (error) {
+    return 'development';
+  }
+};
+
+export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
+  const env = loadEnv(mode, process.cwd());
+  const gitHash = getGitHash();
+  
+  // Merge our combined env with Vite's env
+  const fullEnv = { ...env, ...combinedEnv };
 
   // Create base plugins array
   const basePlugins = [
+    sentrySvelteKit({
+      sourceMapsUploadOptions: {
+        org: 'kongswap',
+        project: 'kong_svelte',
+      }
+    }),
     sveltekit(),
     environment("all", { prefix: "CANISTER_" }),
     environment("all", { prefix: "DFX_" }),
@@ -157,10 +188,14 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       format: "es" as const,
     },
     define: {
-      'process.env': JSON.stringify(env),
+      'process.env': JSON.stringify({
+        ...fullEnv,
+        VITE_RELEASE: gitHash
+      }),
       'import.meta.env': JSON.stringify({
-        ...env,
+        ...fullEnv,
         MODE: mode,
+        VITE_RELEASE: gitHash
       })
     },
     test: {
@@ -168,5 +203,5 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       globals: true,
       setupFiles: ['./test/setup.ts'],
     }
-  } as UserConfigExport;
+  } as UserConfig;
 });

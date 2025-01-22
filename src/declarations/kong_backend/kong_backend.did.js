@@ -101,6 +101,25 @@ export const idlFactory = ({ IDL }) => {
     'lp_fee_bps' : IDL.Nat8,
   });
   const AddPoolResult = IDL.Variant({ 'Ok' : AddPoolReply, 'Err' : IDL.Text });
+  const AddTokenArgs = IDL.Record({ 'token' : IDL.Text });
+  const ICTokenReply = IDL.Record({
+    'fee' : IDL.Nat,
+    'decimals' : IDL.Nat8,
+    'token_id' : IDL.Nat32,
+    'chain' : IDL.Text,
+    'name' : IDL.Text,
+    'canister_id' : IDL.Text,
+    'icrc1' : IDL.Bool,
+    'icrc2' : IDL.Bool,
+    'icrc3' : IDL.Bool,
+    'is_removed' : IDL.Bool,
+    'symbol' : IDL.Text,
+  });
+  const AddTokenReply = IDL.Variant({ 'IC' : ICTokenReply });
+  const AddTokenResult = IDL.Variant({
+    'Ok' : AddTokenReply,
+    'Err' : IDL.Text,
+  });
   const PoolExpectedBalance = IDL.Record({
     'balance' : IDL.Nat,
     'kong_fee' : IDL.Nat,
@@ -387,19 +406,6 @@ export const idlFactory = ({ IDL }) => {
     'Err' : IDL.Text,
   });
   const SwapAsyncResult = IDL.Variant({ 'Ok' : IDL.Nat64, 'Err' : IDL.Text });
-  const ICTokenReply = IDL.Record({
-    'fee' : IDL.Nat,
-    'decimals' : IDL.Nat8,
-    'token_id' : IDL.Nat32,
-    'chain' : IDL.Text,
-    'name' : IDL.Text,
-    'canister_id' : IDL.Text,
-    'icrc1' : IDL.Bool,
-    'icrc2' : IDL.Bool,
-    'icrc3' : IDL.Bool,
-    'is_removed' : IDL.Bool,
-    'symbol' : IDL.Text,
-  });
   const LPTokenReply = IDL.Record({
     'fee' : IDL.Nat,
     'decimals' : IDL.Nat8,
@@ -467,6 +473,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'add_pool' : IDL.Func([AddPoolArgs], [AddPoolResult], []),
+    'add_token' : IDL.Func([AddTokenArgs], [AddTokenResult], []),
     'check_pools' : IDL.Func([], [CheckPoolsResult], []),
     'get_user' : IDL.Func([], [UserResult], ['query']),
     'icrc10_supported_standards' : IDL.Func(

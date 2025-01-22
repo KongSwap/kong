@@ -2,12 +2,11 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { TokenService } from "$lib/services/tokens";
   import { onMount } from "svelte";
   import { InfoIcon } from "lucide-svelte";
   import { tooltip } from "$lib/actions/tooltip";
-  import { kongDB } from "$lib/services/db";
-  import { liveQuery } from "dexie";
+  import { writable } from "svelte/store";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
   export let token: FE.Token;
   export let marketCapRank: number | null;
@@ -16,10 +15,23 @@
   let priceFlash: 'up' | 'down' | null = null;
   let priceFlashTimeout: NodeJS.Timeout;
 
-  // Subscribe to live token updates
-  $: liveToken = liveQuery(async () => {
-    return await kongDB.tokens.get(token.canister_id);
-  });
+  // Create a writable store for live token data
+  const liveToken = writable<FE.Token | null>(null);
+
+  // Function to update token data
+  async function updateTokenData() {
+    try {
+      const result = await fetchTokensByCanisterId([token.canister_id]);
+      if (result && result[0]) {
+        liveToken.set(result[0]);
+      }
+    } catch (error) {
+      console.error("Error fetching token data:", error);
+    }
+  }
+
+  // Initial fetch
+  updateTokenData();
 
   // Use the live token data with fallback to prop token
   $: activeToken = $liveToken || token;
@@ -42,14 +54,14 @@
     return ((volume / marketCap) * 100).toFixed(2) + "%";
   }
 
-  onMount(async () => {
+  onMount(() => {
     const pollInterval = setInterval(async () => {
       try {
-        await TokenService.fetchTokens();
+        await updateTokenData();
       } catch (error) {
         console.error("Error polling token data:", error);
       }
-    }, 1000 * 15);
+    }, 1000 * 10);
 
     return () => {
       clearInterval(pollInterval);

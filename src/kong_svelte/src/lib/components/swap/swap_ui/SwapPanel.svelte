@@ -4,9 +4,6 @@
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import {
-    tokenStore,
-    loadBalance,
-    liveTokens,
     storedBalancesStore,
   } from "$lib/services/tokens/tokenStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
@@ -16,8 +13,7 @@
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
   import { onMount } from "svelte";
   import Modal from "$lib/components/common/Modal.svelte";
-    import { auth } from "$lib/services/auth";
-
+  import { userTokens } from "$lib/stores/userTokens";
   // Props with proper TypeScript types
   let {
     title,
@@ -66,7 +62,7 @@
 
   // Derived state using runes
   let tokenInfo = $derived(
-    $liveTokens.find((t) => t.canister_id === token?.canister_id),
+    $userTokens.tokens.find((t) => t.canister_id === token?.canister_id),
   );
 
   let decimals = $derived(tokenInfo?.decimals || DEFAULT_DECIMALS);
@@ -329,7 +325,7 @@
   let formattedDisplayAmount = $derived(formatWithCommas(displayAmount));
   let parsedAmount = $derived(parseFloat(displayAmount || "0"));
   let tokenPrice = $derived(
-    tokenInfo ? Number(tokenInfo.metrics.price || 0) : 0,
+    tokenInfo ? Number(tokenInfo?.metrics?.price || 0) : 0,
   );
   let tradeUsdValue = $derived(tokenPrice * parsedAmount);
 

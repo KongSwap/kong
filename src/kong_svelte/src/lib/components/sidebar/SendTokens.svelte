@@ -13,7 +13,6 @@
   import { SubAccount } from "@dfinity/ledger-icp";
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
-  import TransferConfirmationModal from "./TransferConfirmationModal.svelte";
 
   export let token: FE.Token;
 
@@ -186,7 +185,12 @@
   }
 
   async function handleSubmit() {
-    showConfirmation = true;
+    dispatch('confirmTransfer', {
+      amount,
+      token,
+      tokenFee,
+      isValidating
+    });
   }
 
   function getAccountIds(
@@ -403,6 +407,10 @@
 
   onMount(() => {
     checkCameraAvailability();
+    document.addEventListener('confirmTransfer', confirmTransfer);
+    return () => {
+      document.removeEventListener('confirmTransfer', confirmTransfer);
+    };
   });
 
   async function loadBalances() {
@@ -601,18 +609,6 @@
       {isValidating ? "Processing..." : "Send Tokens"}
     </button>
   </form>
-
-  {#if showConfirmation}
-    <TransferConfirmationModal
-      isOpen={showConfirmation}
-      onClose={() => (showConfirmation = false)}
-      onConfirm={confirmTransfer}
-      {amount}
-      {token}
-      {tokenFee}
-      {isValidating}
-    />
-  {/if}
 
   {#if showScanner}
     <QrScanner

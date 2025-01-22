@@ -3,23 +3,13 @@
   import { onMount } from "svelte";
   import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
-  import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import { derived, get } from "svelte/store";
   import { Flame, TrendingUp, Wallet, PiggyBank } from "lucide-svelte";
   import { livePools } from "$lib/services/pools/poolStore";
   import { tooltip } from "$lib/actions/tooltip";
 
   export let row: any;
-
-  const tokenMap = derived(formattedTokens, ($tokens) => {
-    const map = new Map();
-    if ($tokens) {
-      $tokens.forEach((token) => {
-        map.set(token.canister_id, token);
-      });
-    }
-    return map;
-  });
+  export let tokenMap: Map<string, any>;
 
   $: pool = {
     ...row,
@@ -73,8 +63,8 @@
   <div class="pool-info">
     <TokenImages
       tokens={[
-        get(tokenMap).get(pool.address_0),
-        get(tokenMap).get(pool.address_1)
+        tokenMap.get(pool.address_0),
+        tokenMap.get(pool.address_1)
       ]}
       overlap={true}
       size={28}
@@ -113,8 +103,8 @@
       <div class="token-info">
         <TokenImages
           tokens={[
-            get(tokenMap).get(pool.address_0),
-            get(tokenMap).get(pool.address_1)
+            tokenMap.get(pool.address_0),
+            tokenMap.get(pool.address_1)
           ]}
           size={32}
           overlap={true}

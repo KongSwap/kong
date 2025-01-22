@@ -2,6 +2,9 @@ import { writable } from 'svelte/store';
 import hyperid from 'hyperid';
 import type { ComponentType, SvelteComponent } from 'svelte';
 
+// Add shared modalStack store
+export const modalStack = writable<{ [key: string]: { active: boolean; timestamp: number } }>({});
+
 export interface ModalConfig {
     id: string;
     component: ComponentType<SvelteComponent>;

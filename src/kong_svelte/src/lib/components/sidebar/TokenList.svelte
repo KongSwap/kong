@@ -1,11 +1,7 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import {
-    formattedTokens,
-    tokenStore,
-    storedBalancesStore,
-  } from "$lib/services/tokens/tokenStore";
+  import { storedBalancesStore } from "$lib/services/tokens/tokenStore";
   import { onMount } from "svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { Search, Loader2 } from "lucide-svelte";
@@ -13,7 +9,11 @@
   import { sortTokens, filterByBalance } from "$lib/utils/sortUtils";
   import { handleSearchKeyboard } from "$lib/utils/keyboardUtils";
   import { browser } from "$app/environment";
-  import { writable, derived } from "svelte/store";
+  import { writable, derived, get } from "svelte/store";
+  import { userTokens } from "$lib/stores/userTokens";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { loadBalances } from "$lib/services/tokens/tokenStore";
+  import { auth } from "$lib/services/auth";
 
   type SearchMatch = {
     type: "name" | "symbol" | "canister" | null;
@@ -27,6 +27,9 @@
       ? localStorage.getItem("kong_hide_zero_balances") === "true"
       : false,
   );
+
+  // Store for user's tokens
+  const userTokenList = writable<FE.Token[]>([]);
 
   // Persist hideZero changes
   $: if (browser) {
@@ -46,10 +49,17 @@
   // Create a writable store for sort direction
   const sortDirectionStore = writable<"asc" | "desc">("desc");
 
+  // Watch for changes in enabled tokens
+  $: {
+    if ($userTokens.enabledTokens) {
+      fetchUserTokenList();
+    }
+  }
+
   // Create derived store for filtered and sorted tokens
   const filteredTokens = derived(
     [
-      formattedTokens,
+      userTokenList,
       debouncedSearch,
       hideZeroStore,
       storedBalancesStore,
@@ -59,7 +69,7 @@
       const matches: Record<string, SearchMatch> = {};
 
       const filtered = $tokens.filter((token) => {
-        // Check zero balance first
+        // Check zero balance
         if (!filterByBalance(token, $balances, $hideZero)) {
           return false;
         }
@@ -88,16 +98,51 @@
     { tokens: [], matches: {} },
   );
 
-  // Derived store for refresh state
-  const refreshState = derived(tokenStore, ($store) => ({
-    isRefreshing: $store.pendingBalanceRequests.size > 0,
-    refreshingTokens: $store.pendingBalanceRequests,
-  }));
-
   let isInitialLoad = true;
+
+  // Function to fetch user tokens
+  async function fetchUserTokenList() {
+    const enabledTokens = Object.entries($userTokens.enabledTokens)
+      .filter(([_, enabled]) => enabled)
+      .map(([canisterId]) => canisterId);
+
+    if (enabledTokens.length > 0) {
+      try {
+        const response = await fetchTokensByCanisterId(enabledTokens);
+        if (response) {
+          userTokenList.set(response.filter(token => enabledTokens.includes(token.canister_id)));
+        }
+      } catch (error) {
+        console.error('Error fetching user tokens:', error);
+      }
+    } else {
+      userTokenList.set([]);
+    }
+  }
+
+  // Watch for auth changes to reload balances
+  $: if ($auth.isConnected && $auth.account?.owner) {
+    console.log('Auth changed, loading balances for:', $auth.account.owner.toString());
+    fetchUserTokenList().then(() => {
+      loadBalances($auth.account.owner.toString(), {
+        tokens: get(userTokenList),
+        forceRefresh: true
+      });
+    });
+  }
 
   onMount(async () => {
     await FavoriteService.loadFavorites();
+    const authStore = get(auth);
+    console.log('On mount auth state:', authStore);
+    if (authStore.isConnected && authStore.account?.owner) {
+      console.log('Loading balances for:', authStore.account.owner.toString());
+      await fetchUserTokenList();
+      await loadBalances(authStore.account.owner.toString(), {
+        tokens: get(userTokenList),
+        forceRefresh: true
+      });
+    }
     isInitialLoad = false;
   });
 
@@ -233,7 +278,7 @@
 
       {#if $filteredTokens.tokens.length === 0}
         <div class="empty-state" transition:fade>
-          {#if isInitialLoad || $formattedTokens.length === 0}
+          {#if isInitialLoad || $userTokenList.length === 0}
             <Loader2 class="animate-spin" size={20} />
             <p>Loading tokens...</p>
           {:else if $searchQuery}

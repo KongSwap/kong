@@ -8,7 +8,6 @@
   import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
   import {
     loadBalances,
-    liveTokens,
     storedBalancesStore,
   } from "$lib/services/tokens/tokenStore";
   import {
@@ -31,6 +30,8 @@
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";
   import PositionDisplay from "$lib/components/liquidity/create_pool/PositionDisplay.svelte";
   import { BigNumber } from "bignumber.js";
+  import { userTokens } from "$lib/stores/userTokens";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens"
 
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
   const DEFAULT_TOKEN = "ICP";
@@ -46,31 +47,31 @@
 
   // Initial token loading from URL or defaults
   onMount(() => {
-    if ($liveTokens.length > 0) {
+    if ($userTokens.tokens.length > 0) {
       loadInitialTokens();
+      loadBalances(auth?.pnp?.account?.owner?.toString(), { 
+        forceRefresh: true 
+      });
     }
   });
 
-  // Watch for liveTokens to be available
-  $: if ($liveTokens.length > 0 && !initialLoadComplete) {
+  // Watch for userTokens.tokens to be available
+  $: if ($userTokens.tokens.length > 0 && !initialLoadComplete) {
     loadInitialTokens();
   }
 
-  function loadInitialTokens() {
+  async function loadInitialTokens() {
     const urlToken0 = $page.url.searchParams.get("token0");
     const urlToken1 = $page.url.searchParams.get("token1");
 
-    const token0FromUrl = urlToken0
-      ? $liveTokens.find((token) => token.canister_id === urlToken0)
-      : null;
-    const token1FromUrl = urlToken1
-      ? $liveTokens.find((token) => token.canister_id === urlToken1)
-      : null;
+    const tokensFromUrl = await fetchTokensByCanisterId([urlToken0, urlToken1]);
+    const token0FromUrl = tokensFromUrl.find((token) => token.canister_id === urlToken0);
+    const token1FromUrl = tokensFromUrl.find((token) => token.canister_id === urlToken1);
 
-    const defaultToken0 = $liveTokens.find(
+    const defaultToken0 = $userTokens.tokens.find(
       (token) => token.canister_id === ICP_CANISTER_ID,
     );
-    const defaultToken1 = $liveTokens.find(
+    const defaultToken1 = $userTokens.tokens.find(
       (token) => token.canister_id === CKUSDT_CANISTER_ID,
     );
 
@@ -113,7 +114,7 @@
       otherToken,
       ALLOWED_TOKEN_SYMBOLS,
       DEFAULT_TOKEN,
-      $liveTokens,
+      $userTokens.tokens,
     );
 
     if (!result.isValid) {

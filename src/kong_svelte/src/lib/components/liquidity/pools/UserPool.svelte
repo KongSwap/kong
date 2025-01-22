@@ -3,7 +3,7 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { liveTokens, loadBalance } from "$lib/services/tokens/tokenStore";
+  import { loadBalance } from "$lib/services/tokens/tokenStore";
   import { PoolService } from "$lib/services/pools";
   import { livePools } from "$lib/services/pools/poolStore";
   import { toastStore } from "$lib/stores/toastStore";
@@ -11,6 +11,7 @@
   import { goto } from "$app/navigation";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { BigNumber } from 'bignumber.js';
+  import { userTokens } from '$lib/stores/userTokens';
 
   const dispatch = createEventDispatcher();
 
@@ -20,14 +21,13 @@
   // Calculate USD value for tokens using proper price lookup
   function calculateTokenUsdValue(amount: string, tokenSymbol: string): string {
     // Find token to get its canister_id
-    const token = $liveTokens.find((t) => t.symbol === tokenSymbol);
+    const token = $userTokens.tokens.find((t) => t.symbol === tokenSymbol);
 
     if (!token?.canister_id || !amount) {
       console.log("Missing token data:", { token, amount });
       return "0";
     }
 
-    // Get price from prices object using canister_id
     const price = token.metrics.price;
 
     if (!price) {
@@ -47,8 +47,8 @@
   let isCalculating = false;
 
   // Get token objects for images
-  $: token0 = $liveTokens.find((t) => t.symbol === pool.symbol_0);
-  $: token1 = $liveTokens.find((t) => t.symbol === pool.symbol_1);
+  $: token0 = $userTokens.tokens.find((t) => t.symbol === pool.symbol_0);
+  $: token1 = $userTokens.tokens.find((t) => t.symbol === pool.symbol_1);
   $: actualPool = $livePools.find(
     (p) => p.symbol_0 === pool.symbol_0 && p.symbol_1 === pool.symbol_1,
   );
@@ -109,9 +109,9 @@
 
       // Get token decimals from tokenStore
       const token0Decimals =
-        $liveTokens.find((t) => t.symbol === pool.symbol_0)?.decimals || 8;
+        $userTokens.tokens.find((t) => t.symbol === pool.symbol_0)?.decimals || 8;
       const token1Decimals =
-        $liveTokens.find((t) => t.symbol === pool.symbol_1)?.decimals || 8;
+        $userTokens.tokens.find((t) => t.symbol === pool.symbol_1)?.decimals || 8;
 
       // First adjust for decimals, then store as string
       estimatedAmounts = {

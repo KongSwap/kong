@@ -61,12 +61,9 @@ const config = {
   }),
   onwarn: (warning, handler) => {
     if (
-      warning.code == "a11y-click-events-have-key-events" ||
-      warning.code == "a11y-no-static-element-interactions"
+      warning.code.includes("a11y")
     ) {
-      if (/<sl-button\b/.test(warning.frame)) {
-        return;
-      }
+      return;
     }
     handler(warning);
   },

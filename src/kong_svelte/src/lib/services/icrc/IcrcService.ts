@@ -128,20 +128,39 @@ export class IcrcService {
     tokens: FE.Token[],
     principal: Principal,
   ): Promise<Map<string, bigint>> {
-    // Add request deduplication
-    const requestKey = `${principal.toString()}-${Date.now() - (Date.now() % 15000)}`;
-    if (this.pendingRequests?.has(requestKey)) {
-      return this.pendingRequests.get(requestKey);
+    // Add request deduplication with a shorter window and token-specific keys
+    const requestKeys = tokens.map(token => 
+      `${token.canister_id}-${principal.toString()}-${Date.now() - (Date.now() % 5000)}`
+    );
+    
+    // Check if any of these exact tokens are already being fetched
+    const pendingPromises = requestKeys
+      .map(key => this.pendingRequests.get(key))
+      .filter(Boolean);
+    
+    if (pendingPromises.length === tokens.length) {
+      // All tokens are already being fetched, wait for them
+      const results = await Promise.all(pendingPromises);
+      return new Map([...results.flatMap(m => [...m.entries()])]);
     }
 
+    // Some or none of the tokens are being fetched, do a fresh fetch
     const promise = this._batchGetBalances(tokens, principal);
-    this.pendingRequests.set(requestKey, promise);
+    
+    // Store the promise for each token
+    requestKeys.forEach(key => {
+      this.pendingRequests.set(key, promise);
+      // Clean up after 5 seconds
+      setTimeout(() => this.pendingRequests.delete(key), 5000);
+    });
     
     try {
       const result = await promise;
       return result;
-    } finally {
-      this.pendingRequests.delete(requestKey);
+    } catch (error) {
+      console.error('Error in batchGetBalances:', error);
+      requestKeys.forEach(key => this.pendingRequests.delete(key));
+      return new Map();
     }
   }
 
@@ -152,6 +171,7 @@ export class IcrcService {
     tokens: FE.Token[],
     principal: Principal,
   ): Promise<Map<string, bigint>> {
+    console.log('Fetching balances for tokens:', tokens.map(t => t.symbol));
     const results = new Map<string, bigint>();
     const subaccount = auth.pnp?.account?.subaccount 
       ? Array.from(auth.pnp.account.subaccount) as number[]
@@ -170,6 +190,7 @@ export class IcrcService {
     const subnetOperations = subnetEntries.map(([subnet, subnetTokens]) => async () => {
       const operations = subnetTokens.map(token => async () => {
         try {
+          console.log(`Fetching balance for ${token.symbol}`);
           const balance = await this.getIcrc1Balance(token, principal, subaccount);
           return { token, balance };
         } catch (error) {
@@ -194,7 +215,8 @@ export class IcrcService {
 
     // Process all subnets with higher concurrency
     await this.withConcurrencyLimit(subnetOperations, 25);
-
+    
+    console.log('Final results:', Object.fromEntries([...results.entries()]));
     return results;
   }
 

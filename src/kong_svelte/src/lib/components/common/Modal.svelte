@@ -10,11 +10,9 @@
   import { tick } from "svelte";
   import { X } from "lucide-svelte";
   import { writable } from "svelte/store";
+  import { modalStack } from "$lib/stores/modalStore";
 
   const dispatch = createEventDispatcher();
-
-  // Create a store for managing modal stack
-  const modalStack = writable<{ [key: string]: boolean }>({});
 
   export let isOpen = false;
   export let modalKey = Math.random().toString(36).substr(2, 9);
@@ -28,6 +26,8 @@
   export let closeOnEscape = true;
   export let closeOnClickOutside = true;
   export let className: string = "";
+  export let isPadded = false;
+  export let target: string = "#portal-target";
   let isMobile = false;
   let modalWidth = width;
   let modalHeight = height;
@@ -42,16 +42,31 @@
   // Watch isOpen changes to handle transitions
   $: {
     if (isOpen) {
-      modalStack.update((stack) => ({ ...stack, [modalKey]: true }));
+      modalStack.update((stack) => ({
+        ...stack,
+        [modalKey]: { active: true, timestamp: Date.now() }
+      }));
+    } else {
+      modalStack.update((stack) => {
+        const { [modalKey]: _, ...rest } = stack;
+        return rest;
+      });
     }
   }
 
   // Subscribe to modalStack to update zIndex
   const unsubscribe = modalStack.subscribe((stack) => {
-    const modalKeys = Object.keys(stack);
-    const index = modalKeys.indexOf(modalKey);
-    if (index !== -1) {
-      zIndex = 99999 + index + 1;
+    const modalEntries = Object.entries(stack);
+    if (modalEntries.length === 0) return;
+
+    // Sort modals by timestamp in descending order (newest first)
+    modalEntries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+    
+    // Find position of current modal
+    const currentIndex = modalEntries.findIndex(([key]) => key === modalKey);
+    if (currentIndex !== -1) {
+      // Base z-index is 99999, each modal adds 10 to ensure proper stacking
+      zIndex = 99999 + (currentIndex * 10);
     }
   });
 
@@ -114,16 +129,21 @@
     }
   }
 
-  function handleClose() {
+  function handleClose(event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
     modalStack.update((stack) => {
       const { [modalKey]: _, ...rest } = stack;
       return rest;
     });
+    isOpen = false;
     onClose();
     dispatch("close");
   }
 
   function handleBackdropClick(event: MouseEvent) {
+    event.stopPropagation();
     if (event.target === event.currentTarget && closeOnClickOutside) {
       handleClose();
     }
@@ -131,7 +151,17 @@
 
   function handleEscape(event: KeyboardEvent) {
     if (event.key === "Escape" && closeOnEscape) {
-      handleClose();
+      // Get all modals and sort by timestamp
+      const modalEntries = Object.entries($modalStack);
+      if (modalEntries.length === 0) return;
+      
+      // Sort modals by timestamp in descending order (newest first)
+      modalEntries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+      
+      // Only close if this is the topmost modal
+      if (modalEntries[0][0] === modalKey) {
+        handleClose();
+      }
     }
   }
 
@@ -161,7 +191,7 @@
 </script>
 
 <svelte:window on:keydown={handleEscape} />
-<Portal target="#portal-target">
+<Portal target={target}>
   <Toast />
   {#if isOpen}
     <div
@@ -188,6 +218,7 @@
         on:touchstart={handleDragStart}
         on:touchmove={handleDragMove}
         on:touchend={handleDragEnd}
+        on:click|stopPropagation
       >
         <Panel
           {variant}
@@ -222,7 +253,7 @@
               </slot>
               <button
                 class="pt-2 pb-1 !flex !items-center !justify-end hover:text-kong-accent-red !border-0 !shadow-none group relative"
-                on:click={handleClose}
+                on:click={(e) => handleClose(e)}
                 aria-label="Close modal"
               >
                 <X size={18} />

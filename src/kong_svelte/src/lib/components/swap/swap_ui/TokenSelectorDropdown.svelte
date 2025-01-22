@@ -1,18 +1,20 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { formattedTokens, storedBalancesStore, tokenStore } from "$lib/services/tokens/tokenStore";
+  import { loadBalances, storedBalancesStore } from "$lib/services/tokens/tokenStore";
   import { scale, fade } from "svelte/transition";
   import { flip } from "svelte/animate";
   import { cubicOut } from "svelte/easing";
   import { browser } from "$app/environment";
-  import Portal from "svelte-portal";
   import { Star } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatUsdValue, formatTokenBalance } from "$lib/utils/tokenFormatters";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
-  import AddCustomTokenModal from "$lib/components/sidebar/AddCustomTokenModal.svelte";
   import { toastStore } from "$lib/stores/toastStore";
+  import { userTokens } from "$lib/stores/userTokens";
+  import ManageTokensModal from "$lib/components/sidebar/ManageTokensModal.svelte";
+  import { auth } from "$lib/services/auth";
+  import { get } from "svelte/store";
 
   const props = $props();
   const {
@@ -24,8 +26,10 @@
     expandDirection = "down",
     allowedCanisterIds = [],
     restrictToSecondaryTokens = false,
-    tokens = $formattedTokens,
   } = props;
+
+  // Make tokens reactive to userTokens store changes
+  let tokens = $derived(Object.values($userTokens.enabledTokens));
 
   const BLOCKED_TOKEN_IDS = [];
   const DEFAULT_ICP_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"; // ICP canister ID
@@ -38,7 +42,7 @@
   let sortDirection = $state("desc");
   let sortColumn = $state("value");
   let standardFilter = $state("all");
-  let showImportModal = $state(false);
+  let showManageTokensModal = $state(false);
 
   function setStandardFilter(filter: "all" | "ck" | "favorites") {
     standardFilter = filter;
@@ -131,45 +135,28 @@
           case "all":
           default:
             if (hideZeroBalances) {
-              const balance = getTokenBalance(match.token);
-              return balance > BigInt(0);
+              const balance = $storedBalancesStore[match.token.canister_id]?.in_tokens;
+              return balance ? balance > BigInt(0) : false;
             }
             return true;
         }
       })
       .sort((a, b) => {
-        // Sort by favorites
+        // Sort by favorites first
         const aFavorite = favoriteTokens.get(a.token.canister_id) || false;
         const bFavorite = favoriteTokens.get(b.token.canister_id) || false;
         if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
 
-                // Secondary token sorting
-                const isASecondary = SECONDARY_TOKEN_IDS.includes(a.token.canister_id);
-        const isBSecondary = SECONDARY_TOKEN_IDS.includes(b.token.canister_id);
-        
-        if (isASecondary || isBSecondary) {
-          if (isASecondary && !isBSecondary) return -1;
-          if (!isASecondary && isBSecondary) return 1;
-          return SECONDARY_TOKEN_IDS.indexOf(a.token.canister_id) - SECONDARY_TOKEN_IDS.indexOf(b.token.canister_id);
-        }
-
-        // Get USD values from tokenStore balances
-        const aBalance = $storedBalancesStore[a.token.canister_id]?.in_usd || 0n;
-        const bBalance = $storedBalancesStore[b.token.canister_id]?.in_usd || 0n;
-        
-        // Convert BigInts to numbers for comparison
-        const aValue = Number(aBalance);
-        const bValue = Number(bBalance);
-
-        // Sort based on direction
+        // Then sort by value if that's selected
         if (sortColumn === 'value') {
+          const aBalance = $storedBalancesStore[a.token.canister_id]?.in_usd || "0";
+          const bBalance = $storedBalancesStore[b.token.canister_id]?.in_usd || "0";
+          const aValue = Number(aBalance);
+          const bValue = Number(bBalance);
           return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
         }
 
-        // Sort by volume if that's selected
-        const volumeA = Number(a.token.metrics?.volume_24h || 0);
-        const volumeB = Number(b.token.metrics?.volume_24h || 0);
-        return sortDirection === 'desc' ? volumeB - volumeA : volumeA - volumeB;
+        return 0;
       })
   );
 
@@ -300,6 +287,20 @@
   // Focus search input when dropdown opens
   $effect(() => {
     if (show && browser) {
+      const authStore = get(auth);
+      if (authStore?.isConnected && authStore?.account?.owner && tokens.length > 0) {
+        console.log('Loading initial balances for tokens:', tokens.length);
+        console.log('Current store value:', get(storedBalancesStore));
+        
+        // Load balances and update UI when they change
+        void loadBalances(authStore.account.owner.toString(), { 
+          tokens,
+          forceRefresh: true 
+        }).then(() => {
+          console.log('Balances loaded, new store value:', get(storedBalancesStore));
+        });
+      }
+      
       setTimeout(() => {
         searchInput?.focus();
         window.addEventListener("click", handleClickOutside);
@@ -307,6 +308,43 @@
       }, 0);
     }
   });
+
+  // Subscribe to balance changes
+  $effect(() => {
+    const balances = $storedBalancesStore;
+  });
+
+  // Helper function to safely get token balance
+  function getFormattedBalance(token: FE.Token) {
+    const balance = $storedBalancesStore[token.canister_id];
+    if (!balance) return { tokens: "0", usd: "0" };
+    
+    const formattedTokens = formatTokenBalance(balance.in_tokens?.toString() || "0", token.decimals);
+    const formattedUsd = formatUsdValue(balance.in_usd || "0");
+    
+    console.log(`Formatted balance for ${token.symbol}:`, { formattedTokens, formattedUsd });
+    
+    return {
+      tokens: formattedTokens,
+      usd: formattedUsd
+    };
+  }
+
+  // Update the token display section
+  const tokenBalances = $derived(
+    new Map<string, { tokens: string; usd: string }>(
+      filteredTokens.map(({ token }) => [
+        token.canister_id,
+        getFormattedBalance(token)
+      ])
+    )
+  );
+
+  // Helper function to get balance with fallback
+  function getTokenDisplayBalance(canisterId: string): { tokens: string; usd: string } {
+    const balance = tokenBalances.get(canisterId);
+    return balance || { tokens: "0", usd: "$0.00" };
+  }
 
   // Cleanup event listeners
   function cleanup() {
@@ -331,7 +369,6 @@
 </script>
 
 {#if show}
-  <Portal target="body">
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
@@ -510,9 +547,9 @@
                     </div>
                     <div class="text-sm token-right text-kong-text-primary">
                       <span class="flex flex-col text-right token-balance">
-                        {formatTokenBalance(balance?.in_tokens?.toString() || "0", token.decimals)}
+                        {getTokenDisplayBalance(token.canister_id).tokens}
                         <span class="text-xs token-balance-label">
-                          {formatUsdValue(balance?.in_usd || "0")}
+                          {getTokenDisplayBalance(token.canister_id).usd}
                         </span>
                       </span>
                       {#if currentToken?.canister_id === token.canister_id}
@@ -541,7 +578,7 @@
             <div class="fixed-bottom-section">
               <button
                 class="import-token-button"
-                on:click|stopPropagation={() => showImportModal = true}
+                on:click|stopPropagation={() => showManageTokensModal = true}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -557,20 +594,19 @@
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                <span>Import Custom Token</span>
+                <span>Manage Tokens</span>
               </button>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </Portal>
 {/if}
 
-{#if showImportModal}
-  <AddCustomTokenModal
-    isOpen={showImportModal}
-    on:close={() => showImportModal = false}
+{#if showManageTokensModal}
+  <ManageTokensModal
+    isOpen={showManageTokensModal}
+    on:close={() => showManageTokensModal = false}
   />
 {/if}
 

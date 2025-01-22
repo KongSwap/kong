@@ -1,7 +1,4 @@
 // src/lib/services/swap/SwapService.ts
-import {
-  liveTokens,
-} from "$lib/services/tokens/tokenStore";
 import { toastStore } from "$lib/stores/toastStore";
 import { get } from "svelte/store";
 import { Principal } from "@dfinity/principal";
@@ -12,6 +9,7 @@ import { auth, canisterIDLs } from "$lib/services/auth";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { requireWalletConnection } from "$lib/services/auth";
 import { SwapMonitor } from "./SwapMonitor";
+import { userTokens } from "$lib/stores/userTokens";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -197,7 +195,7 @@ export class SwapService {
       throw new Error(quote.Err);
     }
 
-    const tokens = get(liveTokens);
+    const tokens = get(userTokens).tokens;
     const receiveToken = tokens.find(
       (t) => t.address === params.receiveToken.address,
     );
@@ -306,7 +304,7 @@ export class SwapService {
       }
 
       requireWalletConnection();
-      const tokens = get(liveTokens);
+      const tokens = get(userTokens).tokens;
       const payToken = tokens.find(
         (t) => t.canister_id === params.payToken.canister_id,
       );

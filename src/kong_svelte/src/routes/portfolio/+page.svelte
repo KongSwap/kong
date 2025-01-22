@@ -18,10 +18,9 @@
   );
 
   import { onMount, onDestroy } from "svelte";
-  import { portfolioValue, storedBalancesStore, tokenStore } from "$lib/services/tokens/tokenStore";
-  import { liveTokens } from "$lib/services/tokens/tokenStore";
+  import { loadBalances, portfolioValue, storedBalancesStore } from "$lib/services/tokens/tokenStore";
   import { liveUserPools } from "$lib/services/pools/poolStore";
-  import { getChartColors, getChartOptions } from '$lib/components/portfolio/chartConfig';
+  import { getChartColors } from '$lib/components/portfolio/chartConfig';
   import { processPortfolioData, createChartData } from '$lib/components/portfolio/portfolioDataProcessor';
   import { calculateRiskMetrics } from '$lib/components/portfolio/riskAnalyzer';
   import PageHeader from "$lib/components/common/PageHeader.svelte";
@@ -32,6 +31,7 @@
   import { TIME_RANGES } from '$lib/services/portfolio/types';
   import { auth } from "$lib/services/auth";
   import Panel from "$lib/components/common/Panel.svelte";
+    import { userTokens } from '$lib/stores/userTokens';
 
   let tokenPercentage = 0;
   let lpPercentage = 0;
@@ -82,7 +82,7 @@
   }
 
   $: portfolioData = (() => {
-    const tokens = $liveTokens;
+    const tokens = $userTokens.tokens;
     const balances = $storedBalancesStore;
     const userPools = $liveUserPools;
     
@@ -144,7 +144,7 @@
 
   $: riskMetrics = (() => {
     const { topPositions, otherPositions } = processPortfolioData(
-      $liveTokens,
+      $userTokens.tokens,
       $storedBalancesStore,
       $liveUserPools
     );
@@ -153,7 +153,7 @@
 
   $: {
     const totalValue = Number($portfolioValue.replace(/[^0-9.-]+/g, ""));
-    const tokenValue = $liveTokens.reduce((acc, token) => {
+    const tokenValue = $userTokens.tokens.reduce((acc, token) => {
       const balance = $storedBalancesStore[token.canister_id]?.in_usd;
       return acc + (balance ? Number(balance) : 0);
     }, 0);
@@ -165,8 +165,8 @@
   }
 
   $: {
-    if (portfolioHistory.length > 0 && $liveTokens.length > 0) {
-      performanceMetrics = calculatePerformanceMetrics(portfolioHistory, $liveTokens);
+    if (portfolioHistory.length > 0 && $userTokens.tokens.length > 0) {
+      performanceMetrics = calculatePerformanceMetrics(portfolioHistory, $userTokens.tokens);
       dailyChange = performanceMetrics.dailyChange;
       bestPerformer = performanceMetrics.bestPerformer;
       
@@ -249,13 +249,10 @@
       if (principal === "anonymous") {
         throw new Error("No wallet connected");
       }
-      
+
+      await loadBalances(principal, { forceRefresh: true });
       portfolioHistory = await getPortfolioHistory(principal);
-      
-      // Initialize charts
       updateChart();
-      
-      // Calculate initial stats
       portfolioStats = calculatePortfolioStats();
     } catch (error) {
       console.error("Failed to load portfolio data:", error);
