@@ -2,12 +2,12 @@
   import { fade, slide } from "svelte/transition";
   import { liveUserPools } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { ChevronDown, Plus, Minus } from "lucide-svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { livePools } from "$lib/services/pools/poolStore";
   import BigNumber from "bignumber.js";
+    import { userTokens } from "$lib/stores/userTokens";
 
   export let searchQuery = "";
 
@@ -43,10 +43,10 @@
       processedPools = $liveUserPools
         .filter((poolBalance) => Number(poolBalance.balance) > 0)
         .map((poolBalance) => {
-          const token0 = $liveTokens.find(
+          const token0 = $userTokens.tokens.find(
             (t) => t.symbol === poolBalance.symbol_0,
           );
-          const token1 = $liveTokens.find(
+          const token1 = $userTokens.tokens.find(
             (t) => t.symbol === poolBalance.symbol_1,
           );
           const matchingPool = $livePools.find(
@@ -135,8 +135,8 @@
                   <div class="relative">
                     <TokenImages
                       tokens={[
-                        $liveTokens.find((t) => t.symbol === pool.symbol_0),
-                        $liveTokens.find((t) => t.symbol === pool.symbol_1),
+                        $userTokens.tokens.find((t) => t.symbol === pool.symbol_0),
+                        $userTokens.tokens.find((t) => t.symbol === pool.symbol_1),
                       ]}
                       size={36}
                     />
@@ -190,7 +190,7 @@
                         <div class="flex items-center gap-2.5">
                           <TokenImages
                             tokens={[
-                              $liveTokens.find(
+                              $userTokens.tokens.find(
                                 (t) => t.symbol === token.symbol,
                               ),
                             ]}

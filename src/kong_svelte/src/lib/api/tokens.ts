@@ -1,10 +1,13 @@
 import { INDEXER_URL } from "./index";
 import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
+import { get } from "svelte/store";
+import { userTokens } from "$lib/stores/userTokens";
 
 
 interface TokensParams {
   page?: number;
   limit?: number;
+  search?: string;
   canisterIds?: string[];
 }
 
@@ -45,7 +48,8 @@ export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.To
     // Build query string for pagination
     const queryString = new URLSearchParams({
       page: page.toString(),
-      limit: limit.toString()
+      limit: limit.toString(),
+      search: params?.search || ''
     }).toString();
 
     // Determine if we need to make a GET or POST request
@@ -74,6 +78,8 @@ export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.To
     const data = await response.json();
     const tokens = data?.tokens || data;    
     const updatedTokens = tokens.map(parseTokenData);
+
+    const userTokensStore = get(userTokens)
 
     return {
       tokens: updatedTokens,

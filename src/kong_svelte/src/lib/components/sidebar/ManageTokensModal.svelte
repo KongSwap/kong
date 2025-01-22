@@ -1,16 +1,17 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
-  import { Coins, Trash2, Search, Download } from "lucide-svelte";
+  import { Coins, Search, Download } from "lucide-svelte";
+  import { debounce } from "$lib/utils/debounce";
   import { fetchTokens } from "$lib/api/tokens";
   import { onMount } from "svelte";
   import { userTokens } from "$lib/stores/userTokens";
-  import { TokenService } from '$lib/services/tokens/TokenService';
-  import { kongDB } from '$lib/services/db';
-  import { toastStore } from '$lib/stores/toastStore';
-  import { IcrcService } from '$lib/services/icrc/IcrcService';
-  import { auth } from '$lib/services/auth';
-  import { get } from 'svelte/store';
-  import { formatTokenBalance } from '$lib/utils/tokenFormatters';
+  import { TokenService } from "$lib/services/tokens/TokenService";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { IcrcService } from "$lib/services/icrc/IcrcService";
+  import { auth, canisterIDLs } from "$lib/services/auth";
+  import { get } from "svelte/store";
+  import { formatTokenBalance } from "$lib/utils/tokenFormatters";
+  import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 
   export let isOpen;
 
@@ -21,30 +22,130 @@
   let tokens: FE.Token[] = [];
   let isLoading = true;
   let searchQuery = "";
-  let error = '';
+  let error = "";
   let tokenPreview: FE.Token | null = null;
-  let step: 'list' | 'preview' = 'list';
-  
-  $: filteredTokens = tokens.filter(token => 
-    token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    token.canister_id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  let step: "list" | "preview" = "list";
+  let searchedToken: FE.Token | null = null;
+  let isSearching = false;
+  let currentPage = 1;
+  let totalCount = 0;
+  let isLoadingMore = false;
+  let hasMore = true;
+  let tokenListContainer: HTMLElement;
 
-  onMount(async () => {
+  const params = {
+    limit: 50,
+    page: 1,
+  };
+
+  // Create debounced search function
+  const debouncedSearch = debounce(handleSearch, 300);
+
+  // Create intersection observer for infinite scroll
+  let observer: IntersectionObserver;
+
+  onMount(() => {
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoading && !isLoadingMore && hasMore) {
+          console.log('Loading more tokens...');
+          loadMoreTokens();
+        }
+      },
+      { 
+        threshold: 0.1,
+        rootMargin: '100px'
+      }
+    );
+
+    loadInitialTokens();
+
+    return () => {
+      if (observer) {
+        observer.disconnect();
+      }
+    };
+  });
+
+  // Watch for container changes and update observer
+  $: if (tokenListContainer && observer) {
+    // Disconnect any existing observations
+    observer.disconnect();
+    
+    // Create and observe new sentinel
+    const sentinel = document.createElement('div');
+    sentinel.className = 'sentinel h-4';
+    tokenListContainer.appendChild(sentinel);
+    observer.observe(sentinel);
+  }
+
+  async function loadInitialTokens() {
     try {
-      const params = {
-        limit: 50,
-        page: 1
-      };
       const response = await fetchTokens(params);
       tokens = response.tokens;
+      totalCount = response.total_count;
+      hasMore = tokens.length < totalCount;
+      currentPage = 1;
     } catch (error) {
-      console.error('Error fetching tokens:', error);
+      console.error("Error fetching tokens:", error);
     } finally {
       isLoading = false;
     }
-  });
+  }
+
+  async function loadMoreTokens() {
+    if (!hasMore || isLoadingMore) return;
+
+    isLoadingMore = true;
+    const nextPage = currentPage + 1;
+    console.log('Loading page:', nextPage);
+
+    try {
+      const response = await fetchTokens({
+        ...params,
+        page: nextPage,
+        limit: 50
+      });
+
+      if (response.tokens.length > 0) {
+        // Filter out duplicates before appending
+        const newTokens = response.tokens.filter(
+          newToken => !tokens.some(
+            existingToken => existingToken.canister_id === newToken.canister_id
+          )
+        );
+        tokens = [...tokens, ...newTokens];
+        currentPage = nextPage;
+        hasMore = tokens.length < response.total_count;
+        console.log('Loaded tokens:', tokens.length, 'of', response.total_count);
+      } else {
+        hasMore = false;
+      }
+    } catch (error) {
+      console.error("Error loading more tokens:", error);
+    } finally {
+      isLoadingMore = false;
+    }
+  }
+
+  // Reset pagination when search query changes
+  $: {
+    if (searchQuery && searchQuery.length > 0) {
+      debouncedSearch();
+    } else {
+      error = "";
+      tokenPreview = null;
+      step = "list";
+      loadInitialTokens();
+    }
+  }
+
+  $: filteredTokens = tokens.filter(
+    (token) =>
+      token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      token.canister_id.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   function toggleToken(token: FE.Token) {
     const isEnabled = $userTokens.enabledTokens[token.canister_id];
@@ -57,57 +158,93 @@
 
   async function handleSearch() {
     if (!searchQuery) {
-      error = 'Please enter a canister ID';
+      error = "Please enter a canister ID";
       return;
     }
 
-    isLoading = true;
-    error = '';
-    tokenPreview = null;
+    isSearching = true;
+    error = "";
+    searchedToken = null;
 
     try {
       // First check if it's in our existing tokens
-      const existingToken = tokens.find(t => t.canister_id === searchQuery);
+      const existingToken = tokens.find((t) => 
+        t.canister_id.toLowerCase() === searchQuery.toLowerCase()
+      );
       if (existingToken) {
-        tokenPreview = existingToken;
-        step = 'preview';
-        isLoading = false;
+        isSearching = false;
         return;
       }
 
-      // Fetch token metadata
-      const token = await TokenService.fetchTokenMetadata(searchQuery);
-      if (token) {
-        // Fetch user's balance if connected
-        if (get(auth).isConnected) {
-          const balance = await IcrcService.getIcrc1Balance(token, get(auth).account.owner);
-          token.balance = balance.toString();
+      // If it looks like a canister ID, try to import it
+      if (searchQuery.length >= 26) {
+        let importToken = await TokenService.fetchTokenMetadata(searchQuery);
+        if (importToken) {
+          // Fetch user's balance if connected
+          if (get(auth).isConnected) {
+            const balance = await IcrcService.getIcrc1Balance(
+              importToken,
+              get(auth).account.owner,
+            );
+            importToken.balance = balance.toString();
+          }
+          searchedToken = importToken;
         }
-        tokenPreview = token;
-        step = 'preview';
       } else {
-        error = 'Invalid token canister';
+        // Otherwise, search through all tokens
+        const response = await fetchTokens({ ...params, search: searchQuery });
+        if (response.tokens && response.tokens.length > 0) {
+          tokens = [...tokens, ...response.tokens.filter(newToken => 
+            !tokens.some(existingToken => existingToken.canister_id === newToken.canister_id)
+          )];
+        }
       }
     } catch (e) {
-      error = 'Failed to find token. Please check the canister ID.';
-      console.error('Error searching token:', e);
+      error = "Failed to find token. Please check the canister ID.";
+      console.error("Error searching token:", e);
     } finally {
-      isLoading = false;
+      isSearching = false;
     }
+  }
+
+  async function handleImport(token: FE.Token) {
+    tokenPreview = token;
+    step = "preview";
   }
 
   async function handleConfirm() {
     if (!tokenPreview) return;
-    
+
     isLoading = true;
     try {
-      userTokens.enableToken(tokenPreview);
-      toastStore.success('Token added successfully');
-      step = 'list';
-      searchQuery = '';
+      const actor = auth?.pnp?.getActor(
+        KONG_BACKEND_CANISTER_ID,
+        canisterIDLs.kong_backend,
+        {
+          anon: false,
+          requiresSigning: false,
+        },
+      );
+      const result = await actor.add_token({
+        token: "IC." + tokenPreview.canister_id,
+      });
+      console.log(result);
+      if (result.Ok) {
+        userTokens.enableToken(tokenPreview);
+        toastStore.success("Token added successfully");
+        searchedToken = null;
+        tokenPreview = null;
+        step = "list";
+        searchQuery = "";
+        await fetchTokens(params);
+        isOpen = false;
+      } else {
+        error = "Failed to add token";
+        console.error("Error adding token:", result.Err);
+      }
     } catch (e) {
-      error = 'Failed to add token';
-      console.error('Error adding token:', e);
+      error = "Failed to add token";
+      console.error("Error adding token:", e);
     } finally {
       isLoading = false;
     }
@@ -122,105 +259,168 @@
   onClose={handleClose}
 >
   <div class="manage-tokens-container">
-    {#if step === 'list'}
-      <p class="description">View and manage your custom tokens. You can remove tokens that you no longer want to track.</p>
-      
-      <div class="search-container">
-        <div class="search-input-wrapper">
-          <Search size={16} class="search-icon ml-4" />
-          <input
-            type="text"
-            bind:value={searchQuery}
-            placeholder="Search tokens or enter canister ID..."
-            class="search-input ml-1"
-            on:keydown={(e) => e.key === 'Enter' && handleSearch()}
-          />
-        </div>
-      </div>
+    {#if step === "list"}
+      <div class="list-container">
+        <div class="list-header">
+          <p class="description">
+            View and manage your custom tokens. You can remove tokens that you no
+            longer want to track. To import a token, enter the canister ID and then
+            click the "Import Token" button.
+          </p>
 
-      {#if error}
-        <div class="error-message">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span>{error}</span>
-        </div>
-      {/if}
-
-      {#if isLoading}
-        <div class="loading-state">
-          <div class="loading-spinner" />
-          <p>Loading tokens...</p>
-        </div>
-      {:else if tokens.length === 0}
-        <div class="empty-state">
-          <Coins size={32} />
-          <p>No custom tokens added yet</p>
-        </div>
-      {:else if filteredTokens.length === 0}
-        <div class="empty-state">
-          <Search size={32} />
-          <p>No tokens found matching "{searchQuery}"</p>
-          <button 
-            class="search-token-button"
-            on:click={handleSearch}
-            disabled={!searchQuery}
-          >
-            <Download size={16} />
-            Import Token
-          </button>
-        </div>
-      {:else}
-        <div class="token-list px-4">
-          {#each filteredTokens as token (token.canister_id)}
-            <div class="token-item">
-              <div class="token-info">
-                {#if token.logo_url}
-                  <img 
-                    src={token.logo_url} 
-                    alt={token.symbol}
-                    class="token-logo"
-                  />
-                {:else}
-                  <div class="token-logo-placeholder">
-                    {token.symbol?.[0] || '?'}
-                  </div>
-                {/if}
-                <div class="token-details">
-                  <h3>{token.name}</h3>
-                  <p class="token-symbol">{token.symbol}</p>
-                </div>
-              </div>
-              <button 
-                class="toggle-button {$userTokens.enabledTokens[token.canister_id] ? 'enabled' : ''}"
-                on:click={() => toggleToken(token)}
-                title={$userTokens.enabledTokens[token.canister_id] ? "Disable token" : "Enable token"}
-              >
-                {#if $userTokens.enabledTokens[token.canister_id]}
-                  <div class="enabled-text">Enabled</div>
-                {:else}
-                  <div class="enable-text">Enable</div>
-                {/if}
-              </button>
+          <div class="search-container">
+            <div class="search-input-wrapper">
+              <Search size={16} class="search-icon ml-4" />
+              <input
+                type="text"
+                bind:value={searchQuery}
+                placeholder="Search tokens or enter canister ID..."
+                class="search-input ml-1"
+              />
             </div>
-          {/each}
+          </div>
+
+          {#if error}
+            <div class="error-message">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>{error}</span>
+            </div>
+          {/if}
         </div>
-      {/if}
-    {:else if step === 'preview' && tokenPreview}
+
+        {#if isLoading || isSearching}
+          <div class="loading-state">
+            <div class="loading-spinner" />
+            <p>Loading tokens...</p>
+          </div>
+        {:else if tokens.length === 0 && !searchedToken}
+          <div class="empty-state">
+            <Coins size={32} />
+            <p>No custom tokens added yet</p>
+          </div>
+        {:else if filteredTokens.length === 0 && !searchedToken}
+          <div class="empty-state">
+            <Search size={32} />
+            <p>No tokens found matching "{searchQuery}"</p>
+          </div>
+        {:else}
+          <div class="token-list" bind:this={tokenListContainer}>
+            <div class="token-list-content">
+              {#if searchedToken}
+                <div class="token-item searched">
+                  <div class="token-info">
+                    {#if searchedToken.logo_url}
+                      <img
+                        src={searchedToken.logo_url}
+                        alt={searchedToken.symbol}
+                        class="token-logo"
+                      />
+                    {:else}
+                      <div class="token-logo-placeholder">
+                        {searchedToken.symbol?.[0] || "?"}
+                      </div>
+                    {/if}
+                    <div class="token-details">
+                      <h3>{searchedToken.name}</h3>
+                      <p class="token-symbol">{searchedToken.symbol}</p>
+                      {#if !searchedToken.icrc1 && !searchedToken.icrc2}
+                        <div class="warning-text">
+                          Token does not support required standards
+                        </div>
+                      {/if}
+                    </div>
+                  </div>
+                  <button
+                    class="import-button"
+                    on:click={() => handleImport(searchedToken)}
+                    disabled={!searchedToken.icrc1}
+                  >
+                    {#if !searchedToken.icrc1 && !searchedToken.icrc2}
+                      <span>Not Supported</span>
+                    {:else}
+                      <Download size={16} />
+                      <span>Import</span>
+                    {/if}
+                  </button>
+                </div>
+              {/if}
+
+              {#each filteredTokens as token (token.canister_id)}
+                <div class="token-item">
+                  <div class="token-info">
+                    {#if token.logo_url}
+                      <img
+                        src={token.logo_url}
+                        alt={token.symbol}
+                        class="token-logo"
+                      />
+                    {:else}
+                      <div class="token-logo-placeholder">
+                        {token.symbol?.[0] || "?"}
+                      </div>
+                    {/if}
+                    <div class="token-details">
+                      <h3>{token.name}</h3>
+                      <p class="token-symbol">{token.symbol}</p>
+                    </div>
+                  </div>
+                  <button
+                    class="toggle-button {$userTokens.enabledTokens[
+                      token.canister_id
+                    ]
+                      ? 'enabled'
+                      : ''}"
+                    on:click={() => toggleToken(token)}
+                    title={$userTokens.enabledTokens[token.canister_id]
+                      ? "Disable token"
+                      : "Enable token"}
+                  >
+                    {#if $userTokens.enabledTokens[token.canister_id]}
+                      <div class="enabled-text">Enabled</div>
+                    {:else}
+                      <div class="enable-text">Enable</div>
+                    {/if}
+                  </button>
+                </div>
+              {/each}
+
+              {#if isLoadingMore}
+                <div class="loading-more">
+                  <div class="loading-spinner" />
+                  <p>Loading more tokens...</p>
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+      </div>
+    {:else if step === "preview" && tokenPreview}
       <div class="preview-content">
         <div class="token-preview">
           <div class="token-header">
             {#if tokenPreview.logo_url}
-              <img 
-                src={tokenPreview.logo_url} 
+              <img
+                src={tokenPreview.logo_url}
                 alt={tokenPreview.symbol}
                 class="token-logo"
               />
             {:else}
               <div class="token-logo-placeholder">
-                {tokenPreview.symbol?.[0] || '?'}
+                {tokenPreview.symbol?.[0] || "?"}
               </div>
             {/if}
             <div class="token-info">
@@ -238,7 +438,11 @@
               <div class="detail-row">
                 <span class="detail-label">Your Balance</span>
                 <span class="detail-value highlight">
-                  {formatTokenBalance(tokenPreview.balance, tokenPreview.decimals)} {tokenPreview.symbol}
+                  {formatTokenBalance(
+                    tokenPreview.balance,
+                    tokenPreview.decimals,
+                  )}
+                  {tokenPreview.symbol}
                 </span>
               </div>
             {/if}
@@ -249,40 +453,51 @@
             <div class="detail-row">
               <span class="detail-label">Total Supply</span>
               <span class="detail-value">
-                {formatTokenBalance(tokenPreview.metrics?.total_supply.toString(), tokenPreview.decimals)} {tokenPreview.symbol}
+                {formatTokenBalance(
+                  tokenPreview.metrics?.total_supply.toString(),
+                  tokenPreview.decimals,
+                )}
+                {tokenPreview.symbol}
               </span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Fee</span>
               <span class="detail-value">
-                {formatTokenBalance(tokenPreview.fee.toString(), tokenPreview.decimals)} {tokenPreview.symbol}
+                {formatTokenBalance(
+                  tokenPreview.fee.toString(),
+                  tokenPreview.decimals,
+                )}
+                {tokenPreview.symbol}
               </span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Standards</span>
               <div class="standards-list">
-                {#if tokenPreview.icrc1}<span class="standard-tag">ICRC-1</span>{/if}
-                {#if tokenPreview.icrc2}<span class="standard-tag">ICRC-2</span>{/if}
-                {#if tokenPreview.icrc3}<span class="standard-tag">ICRC-3</span>{/if}
+                {#if tokenPreview.icrc1}<span class="standard-tag">ICRC-1</span
+                  >{/if}
+                {#if tokenPreview.icrc2}<span class="standard-tag">ICRC-2</span
+                  >{/if}
+                {#if tokenPreview.icrc3}<span class="standard-tag">ICRC-3</span
+                  >{/if}
               </div>
             </div>
           </div>
 
           <div class="button-group pb-4">
-            <button 
-              type="button" 
-              class="cancel-button" 
+            <button
+              type="button"
+              class="cancel-button"
               on:click={() => {
-                step = 'list';
-                searchQuery = '';
-                error = '';
+                step = "list";
+                tokenPreview = null;
+                error = "";
               }}
               disabled={isLoading}
             >
               Back
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               class="submit-button"
               class:error={!tokenPreview.icrc1 && !tokenPreview.icrc2}
               on:click={handleConfirm}
@@ -292,10 +507,20 @@
                 <span class="loading-spinner"></span>
                 <span>Adding Token...</span>
               {:else if !tokenPreview.icrc1 && !tokenPreview.icrc2}
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
                 <span>Not Supported</span>
               {:else}
@@ -311,7 +536,15 @@
 
 <style scoped lang="postcss">
   .manage-tokens-container {
-    @apply h-[500px] flex flex-col;
+    @apply h-[500px] flex flex-col overflow-hidden;
+  }
+
+  .list-container {
+    @apply flex flex-col h-full overflow-hidden;
+  }
+
+  .list-header {
+    @apply flex-none;
   }
 
   .description {
@@ -354,7 +587,11 @@
   }
 
   .token-list {
-    @apply space-y-1.5 flex-1 overflow-y-auto;
+    @apply flex-1 overflow-y-auto min-h-0;
+  }
+
+  .token-list-content {
+    @apply space-y-1.5 px-4 pb-4;
   }
 
   .token-item {
@@ -395,7 +632,8 @@
     @apply bg-kong-primary/10 text-kong-primary hover:bg-kong-primary/20;
   }
 
-  .enabled-text, .enable-text {
+  .enabled-text,
+  .enable-text {
     @apply flex items-center gap-2;
   }
 
@@ -539,4 +777,43 @@
   .detail-value.highlight {
     @apply text-kong-primary font-medium;
   }
-</style> 
+
+  .token-item.searched {
+    @apply bg-white/[0.07] border-white/20;
+  }
+
+  .warning-text {
+    @apply text-xs text-kong-accent-red mt-0.5;
+  }
+
+  .import-button {
+    @apply px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200;
+    @apply bg-kong-primary text-white hover:bg-kong-primary-hover;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply flex items-center gap-2;
+  }
+
+  .import-button:disabled {
+    @apply bg-kong-accent-red text-white hover:bg-kong-accent-red;
+  }
+
+  .import-button .loading-spinner {
+    @apply w-4 h-4;
+  }
+
+  .loading-more {
+    @apply flex flex-col items-center justify-center gap-2 py-4;
+  }
+
+  .loading-more .loading-spinner {
+    @apply w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin text-kong-text-primary/50;
+  }
+
+  .loading-more p {
+    @apply text-sm text-kong-text-primary/50;
+  }
+
+  .sentinel {
+    @apply w-full;
+  }
+</style>

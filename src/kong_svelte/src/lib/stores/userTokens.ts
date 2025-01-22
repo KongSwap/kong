@@ -1,8 +1,9 @@
+import { DEFAULT_TOKENS } from '$lib/constants/tokenConstants';
 import { writable } from 'svelte/store';
-import { browser } from '$app/environment';
 
 interface UserTokensState {
   enabledTokens: { [canisterId: string]: FE.Token };
+  tokens: FE.Token[];
 }
 
 const STORAGE_KEY = 'kong_user_tokens';
@@ -13,7 +14,8 @@ function createUserTokensStore() {
     ? JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"enabledTokens": {}}')
     : { enabledTokens: {} };
 
-  const { subscribe, set, update } = writable<UserTokensState>(initialState);
+  const state = writable<UserTokensState>(initialState);
+  const { subscribe, set, update } = state;
 
   return {
     subscribe,
@@ -67,8 +69,15 @@ function createUserTokensStore() {
       const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"enabledTokens": {}}');
       // If the token has never been seen before, consider it enabled
       return !!state.enabledTokens[canisterId];
+    },
+    isDefaultToken: (canisterId: string) => {
+      return Object.values(DEFAULT_TOKENS).includes(canisterId);
     }
   };
 }
 
 export const userTokens = createUserTokensStore(); 
+
+userTokens.subscribe(state => {
+  state.tokens = Object.values(state.enabledTokens);
+});

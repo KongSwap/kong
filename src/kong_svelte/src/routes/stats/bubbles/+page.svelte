@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { goto } from "$app/navigation";
-
+  import { fetchTokens } from '$lib/api/tokens';
+  
   let tokens = [];
   let bubblePositions: Array<{ x: number; y: number; vx: number; vy: number }> =
     [];
@@ -14,6 +14,8 @@
   let isMobile = false;
   let maxTokens = 100;
   let cleanup: () => void;
+  let loading = true;
+  let error: string | null = null;
 
   // Watch for both container and tokens being ready
   $: if (containerElement && tokens.length > 0 && !isInitialized) {
@@ -21,37 +23,46 @@
     updatePositions();
   }
 
-  // Subscribe to liveTokens store
-  $: {
-    const filteredTokens = $liveTokens
-      .filter(
-        (token) =>
-          Number(token.metrics?.volume_24h) > 0 &&
-          Number(token.metrics?.tvl) > 100,
-      )
-      .slice(0, maxTokens);
+  async function loadTokens() {
+    try {
+      loading = true;
+      error = null;
+      const response = await fetchTokens();
+      const filteredTokens = response.tokens
+        .filter(
+          (token) =>
+            Number(token.metrics?.volume_24h) > 0 &&
+            Number(token.metrics?.tvl) > 100,
+        )
+        .slice(0, maxTokens);
 
-    // Initialize on first load or when navigating to the page
-    if (!tokens.length || bubblePositions.length === 0) {
-      tokens = filteredTokens;
-      if (containerElement) {
-        initializePositions();
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
+      // Initialize on first load or when navigating to the page
+      if (!tokens.length || bubblePositions.length === 0) {
+        tokens = filteredTokens;
+        if (containerElement) {
+          initializePositions();
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+          }
+          updatePositions();
         }
-        updatePositions();
+      } else {
+        // Update token data without resetting positions
+        tokens = filteredTokens.map((newToken) => {
+          const existingToken = tokens.find(t => t.address === newToken.address);
+          return existingToken ? { ...existingToken, ...newToken } : newToken;
+        });
+        
+        // Ensure animation is running
+        if (!animationFrameId && isInitialized) {
+          updatePositions();
+        }
       }
-    } else {
-      // Update token data without resetting positions
-      tokens = filteredTokens.map((newToken) => {
-        const existingToken = tokens.find(t => t.address === newToken.address);
-        return existingToken ? { ...existingToken, ...newToken } : newToken;
-      });
-      
-      // Ensure animation is running
-      if (!animationFrameId && isInitialized) {
-        updatePositions();
-      }
+    } catch (e) {
+      console.error('Error loading tokens:', e);
+      error = 'Failed to load token data';
+    } finally {
+      loading = false;
     }
   }
 
@@ -286,7 +297,14 @@
         bubblePositions = [];
       };
 
-      return cleanup;
+      loadTokens();
+      // Refresh data every 30 seconds
+      const interval = setInterval(loadTokens, 30000);
+
+      return () => {
+        clearInterval(interval);
+        cleanup();
+      };
     }
   });
 
@@ -297,61 +315,67 @@
 </script>
 
 <div class="bubbles-container" bind:this={containerElement}>
-  {#each tokens as token, i}
-    {@const bubbleSize = calcBubbleSize(token?.metrics?.price_change_24h)}
-    {@const logoSize = calcLogoSize(bubbleSize)}
-    {@const fontSize = calcFontSize(bubbleSize)}
-    <div
-      class="bubble-hitbox"
-      on:click={() => {
-        goto(`/stats/${token.address}`);
-      }}
-      style="
-        width: {bubbleSize}px;
-        height: {bubbleSize}px;
-        transform: translate(
-          {(bubblePositions[i]?.x || 0) - bubbleSize / 2}px,
-          {(bubblePositions[i]?.y || 0) - bubbleSize / 2}px
-        );
-      "
-    >
+  {#if loading && !tokens.length}
+    <div class="loading">Loading tokens...</div>
+  {:else if error}
+    <div class="error">{error}</div>
+  {:else}
+    {#each tokens as token, i}
+      {@const bubbleSize = calcBubbleSize(token?.metrics?.price_change_24h)}
+      {@const logoSize = calcLogoSize(bubbleSize)}
+      {@const fontSize = calcFontSize(bubbleSize)}
       <div
-        class="bubble"
+        class="bubble-hitbox"
+        on:click={() => {
+          goto(`/stats/${token.address}`);
+        }}
         style="
-          width: 100%;
-          height: 100%;
-          background-color: {getBubbleColor(token?.metrics?.price_change_24h)};
+          width: {bubbleSize}px;
+          height: {bubbleSize}px;
+          transform: translate(
+            {(bubblePositions[i]?.x || 0) - bubbleSize / 2}px,
+            {(bubblePositions[i]?.y || 0) - bubbleSize / 2}px
+          );
         "
       >
-        <div class="token-label">
-          {#if token?.logo_url}
-            <img
-              src={token.logo_url}
-              alt={token.symbol}
-              class="token-logo"
-              loading="lazy"
-              style="width: {logoSize}px; height: {logoSize}px;"
-            />
-          {/if}
-          <span
-            class="token-symbol"
-            style={getSymbolStyle(token?.symbol, fontSize.symbolSize)}
-            >{token?.symbol}</span
-          >
-          {#if token?.metrics?.price_change_24h != null}
+        <div
+          class="bubble"
+          style="
+            width: 100%;
+            height: 100%;
+            background-color: {getBubbleColor(token?.metrics?.price_change_24h)};
+          "
+        >
+          <div class="token-label">
+            {#if token?.logo_url}
+              <img
+                src={token.logo_url}
+                alt={token.symbol}
+                class="token-logo"
+                loading="lazy"
+                style="width: {logoSize}px; height: {logoSize}px;"
+              />
+            {/if}
             <span
-              class="price-change"
-              style="font-size: {fontSize.priceSize}rem;"
+              class="token-symbol"
+              style={getSymbolStyle(token?.symbol, fontSize.symbolSize)}
+              >{token?.symbol}</span
             >
-              {typeof token.metrics.price_change_24h === "number"
-                ? token.metrics.price_change_24h.toFixed(2)
-                : parseFloat(token.metrics.price_change_24h).toFixed(2)}%
-            </span>
-          {/if}
+            {#if token?.metrics?.price_change_24h != null}
+              <span
+                class="price-change"
+                style="font-size: {fontSize.priceSize}rem;"
+              >
+                {typeof token.metrics.price_change_24h === "number"
+                  ? token.metrics.price_change_24h.toFixed(2)
+                  : parseFloat(token.metrics.price_change_24h).toFixed(2)}%
+              </span>
+            {/if}
+          </div>
         </div>
       </div>
-    </div>
-  {/each}
+    {/each}
+  {/if}
 </div>
 
 <style scoped>
@@ -444,5 +468,18 @@
     .bubble:active {
       transform: scale(1.05); /* Use active state instead of hover */
     }
+  }
+
+  .loading, .error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.2rem;
+    color: var(--text-color);
+  }
+
+  .error {
+    color: var(--error-color);
   }
 </style>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { auth } from "$lib/services/auth";
-  import { liveTokens, TokenService } from "$lib/services/tokens";
+  import { TokenService } from "$lib/services/tokens";
   import { ArrowRightLeft, Plus, Minus, Loader2 } from "lucide-svelte";
   import { onMount, onDestroy } from "svelte";
   import { tick } from "svelte";
@@ -8,6 +8,39 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { writable, derived } from "svelte/store";
+  import { fetchTokens } from '$lib/api/tokens';
+
+  // Create a store for tokens
+  const tokensStore = writable<FE.Token[]>([]);
+  
+  // Function to load tokens
+  async function loadTokens() {
+    try {
+      const response = await fetchTokens({
+        limit: 500,
+        page: 1
+      });
+      tokensStore.set(response.tokens);
+      
+      // Subscribe to store changes
+      const unsubscribe = tokensStore.subscribe(value => {
+        console.log('TokensStore updated:', value.length);
+      });
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error loading tokens:', error);
+    }
+  }
+
+  onMount(async () => {
+    const unsubscribe = await loadTokens();
+    const interval = setInterval(loadTokens, 30000); // Refresh every 30 seconds
+    
+    return () => {
+      clearInterval(interval);
+      if (unsubscribe) unsubscribe();
+    };
+  });
 
   let isLoading = false;
   let error: string | null = null;
@@ -324,7 +357,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <TokenImages 
-                    tokens={[$liveTokens.find(token => token.address === selectedTransaction.details.pay_token_canister)]} 
+                    tokens={[$tokensStore.find(token => token.canister_id === selectedTransaction.details.pay_token_canister)]} 
                     size={22}
                   />
                   <span class="text-sm font-medium">{selectedTransaction.details.pay_amount} {selectedTransaction.details.pay_token_symbol}</span>
@@ -347,7 +380,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <TokenImages 
-                    tokens={[$liveTokens.find(token => token.address === selectedTransaction.details.receive_token_canister)]} 
+                    tokens={[$tokensStore.find(token => token.canister_id === selectedTransaction.details.receive_token_canister)]} 
                     size={22}
                   />
                   <span class="text-sm font-medium">{selectedTransaction.details.receive_amount} {selectedTransaction.details.receive_token_symbol}</span>
@@ -383,7 +416,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <TokenImages 
-                    tokens={[$liveTokens.find(token => token.address === selectedTransaction.details.token_0_canister)]} 
+                    tokens={[$tokensStore.find(token => token.canister_id === selectedTransaction.details.token_0_canister)]} 
                     size={22}
                   />
                   <span class="text-sm font-medium">{selectedTransaction.details.amount_0} {selectedTransaction.details.token_0_symbol}</span>
@@ -406,7 +439,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <TokenImages 
-                    tokens={[$liveTokens.find(token => token.address === selectedTransaction.details.token_1_canister)]} 
+                    tokens={[$tokensStore.find(token => token.canister_id === selectedTransaction.details.token_1_canister)]} 
                     size={22}
                   />
                   <span class="text-sm font-medium">{selectedTransaction.details.amount_1} {selectedTransaction.details.token_1_symbol}</span>

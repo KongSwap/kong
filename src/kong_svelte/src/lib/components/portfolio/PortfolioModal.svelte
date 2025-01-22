@@ -3,13 +3,11 @@
   import { Chart, DoughnutController, ArcElement, Tooltip, Legend } from 'chart.js';
   import { onMount, onDestroy } from "svelte";
   import { portfolioValue, storedBalancesStore } from "$lib/services/tokens/tokenStore";
-  import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { liveUserPools } from "$lib/services/pools/poolStore";
   import { getChartColors, getChartOptions } from './chartConfig';
   import { processPortfolioData, createChartData } from './portfolioDataProcessor';
-  import { auth } from "$lib/services/auth";
   import { derived, type Readable } from "svelte/store";
-
+  import { userTokens } from "$lib/stores/userTokens";
   Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 
   // Create an AbortController for cleanup
@@ -81,7 +79,7 @@
   $: portfolioData = (async () => {
     if (abortController.signal.aborted) return null;
 
-    const tokens = $liveTokens;
+    const tokens = $userTokens.tokens;
     const balances = $storedBalancesStore;
     const userPools = $liveUserPools;
     
@@ -223,10 +221,10 @@
       }),
 
       // Subscribe to balances and tokens for metrics
-      derived([storedBalancesStore, liveTokens, liveUserPools], ([$balances, $tokens, $pools]) => {
+      derived([storedBalancesStore, userTokens, liveUserPools], ([$balances, $tokens, $pools]) => {
         const key = memoizedSerialize({
           balances: Object.keys($balances),
-          tokens: $tokens.map(t => t.canister_id),
+          tokens: $tokens.tokens.map(t => t.canister_id),
           pools: $pools.map(p => p.id)
         });
         return { key, balances: $balances, tokens: $tokens, pools: $pools };

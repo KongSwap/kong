@@ -1,12 +1,12 @@
 import { writable, derived, type Readable } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 import { fromTokenDecimals, storedBalancesStore } from '$lib/services/tokens/tokenStore';
-import { liveTokens } from "$lib/services/tokens/tokenStore";
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
 import { KONG_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { BigNumber } from 'bignumber.js';
 import { livePools } from '../pools/poolStore';
+import { userTokens } from '$lib/stores/userTokens';
 
 export interface SwapState {
   payToken: FE.Token | null;
@@ -111,7 +111,7 @@ function createSwapStore(): SwapStore {
     isInputExceedingBalance,
 
     initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null) {
-      const tokens = get(liveTokens);
+      const tokens = get(userTokens).tokens;
       
       // If we have initial tokens, use them directly
       if (initialFromToken && initialToToken) {

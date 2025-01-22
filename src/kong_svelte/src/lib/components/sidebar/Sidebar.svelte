@@ -8,7 +8,6 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
   import ButtonV2 from "../common/ButtonV2.svelte";
-  import { Import } from "lucide-svelte";
   import { fly } from 'svelte/transition';
   import { Loader2 } from "lucide-svelte";
   import { Coins } from "lucide-svelte";
@@ -37,12 +36,6 @@
   async function loadWalletProvider() {
     WalletProviderComponent = await loadComponent(() => 
       import("$lib/components/sidebar/WalletProvider.svelte")
-    );
-  }
-
-  async function loadAddCustomTokenModal() {
-    AddCustomTokenModalComponent = await loadComponent(() => 
-      import("./AddCustomTokenModal.svelte")
     );
   }
 
@@ -227,34 +220,10 @@
                       Manage Tokens
                     </div>
                   </ButtonV2>
-                  <ButtonV2
-                    variant="transparent"
-                    theme="primary"
-                    className="add-token-button mb-1 !text-kong-text-primary/50"
-                    on:click={() => (showAddTokenModal = true)}
-                  >
-                    <div class="flex items-center gap-x-2">
-                      <Import size={16} />
-                      Import Token
-                    </div>
-                  </ButtonV2>
                 </div>
               </footer>
             </div>
           </Panel>
-
-          {#if showAddTokenModal}
-            {#await loadAddCustomTokenModal()}
-              <!-- Optional loading state -->
-            {:then}
-              {#if AddCustomTokenModalComponent}
-                <svelte:component
-                  this={AddCustomTokenModalComponent}
-                  on:close={() => (showAddTokenModal = false)}
-                />
-              {/if}
-            {/await}
-          {/if}
 
           {#if showManageTokensModal}
             {#await loadManageTokensModal()}

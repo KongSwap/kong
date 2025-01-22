@@ -1,11 +1,11 @@
 import { toastStore } from "$lib/stores/toastStore";
 import { swapStatusStore } from "./swapStore";
 import { get } from "svelte/store";
-import { liveTokens } from "$lib/services/tokens/tokenStore";
 import { loadBalances } from "$lib/services/tokens/tokenStore";
 import { auth } from "$lib/services/auth";
 import { SwapService } from "./SwapService";
 import { swapState } from "./SwapStateService";
+import { userTokens } from "$lib/stores/userTokens";
 
 interface SwapStatus {
   status: string;
@@ -100,10 +100,10 @@ export class SwapMonitor {
 
             if (swapStatus.status === "Success") {
               this.stopPolling();
-              const token0 = get(liveTokens).find(
+              const token0 = get(userTokens).tokens.find(
                 (t) => t.symbol === swapStatus.pay_symbol,
               );
-              const token1 = get(liveTokens).find(
+              const token1 = get(userTokens).tokens.find(
                 (t) => t.symbol === swapStatus.receive_symbol,
               );
 
@@ -130,7 +130,7 @@ export class SwapMonitor {
               });
 
               // Load updated balances
-              const tokens = get(liveTokens);
+              const tokens = get(userTokens).tokens;
               const payToken = tokens.find(
                 (t) => t.symbol === swapStatus.pay_symbol,
               );

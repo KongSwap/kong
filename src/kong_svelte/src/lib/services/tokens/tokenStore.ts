@@ -131,10 +131,10 @@ export const updateStoredBalances = async (walletId: string) => {
 
 // Update the portfolioValue derived store to use the new userPoolsStore
 export const portfolioValue = derived(
-  [tokenStore, liveTokens, userPoolsStore, storedBalancesStore],
-  ([$tokenStore, $liveTokens, $userPools, $storedBalances]) => {
+  [tokenStore, userTokens, userPoolsStore, storedBalancesStore],
+  ([$tokenStore, $userTokens, $userPools, $storedBalances]) => {
     // Calculate token values
-    const tokenValue = ($liveTokens || []).reduce((acc, token) => {
+    const tokenValue = ($userTokens.tokens || []).reduce((acc, token) => {
       const balance = $storedBalances[token.canister_id]?.in_usd;
       if (balance && balance !== "0") {
         return acc + Number(balance);
@@ -163,14 +163,20 @@ export const loadBalances = async (
 ) => {
   const userTokensStore = get(userTokens);
   let { tokens, forceRefresh } = opts || {
-    tokens: Object.values(userTokensStore.enabledTokens),
+    tokens: userTokensStore.tokens,
     forceRefresh: false,
   };
   const currentWalletId = getCurrentWalletId();
   console.log('Loading balances for wallet:', currentWalletId);
+  console.log('Current store value before loading:', get(storedBalancesStore));
 
   if (!currentWalletId || currentWalletId === "anonymous") {
     console.log('No wallet ID or anonymous user');
+    return {};
+  }
+
+  if (!tokens || tokens.length === 0) {
+    console.log('No tokens provided for balance loading');
     return {};
   }
 
@@ -182,31 +188,43 @@ export const loadBalances = async (
       owner,
       forceRefresh,
     );
+    
+    // Validate that we received actual balances
+    if (!balances || Object.keys(balances).length === 0) {
+      console.log('No balances received from TokenService');
+      return {};
+    }
+
     console.log('Received balances:', balances);
 
     // Batch update the database
-    const entries = Object.entries(balances).map(([canisterId, balance]) => ({
-      wallet_id: currentWalletId,
-      canister_id: canisterId,
-      in_tokens: balance.in_tokens,
-      in_usd: balance.in_usd,
-      timestamp: Date.now(),
-    }));
-    console.log('Updating database with entries:', entries);
+    const entries = Object.entries(balances)
+      .filter(([_, balance]) => balance.in_tokens !== undefined && balance.in_usd !== undefined)
+      .map(([canisterId, balance]) => ({
+        wallet_id: currentWalletId,
+        canister_id: canisterId,
+        in_tokens: balance.in_tokens,
+        in_usd: balance.in_usd,
+        timestamp: Date.now(),
+      }));
 
-    // Use bulkPut for better performance
-    await kongDB.token_balances.bulkPut(entries);
-    
-    // Update the store by merging with existing balances
-    console.log('Updating store with balances:', balances);
-    storedBalancesStore.update(existingBalances => {
-      const newBalances = {
-        ...existingBalances,
-        ...balances
-      };
-      console.log('New store value:', newBalances);
-      return newBalances;
-    });
+    if (entries.length > 0) {
+      console.log('Updating database with entries:', entries);
+      await kongDB.token_balances.bulkPut(entries);
+      
+      // Update the store only if we have valid balances
+      const newBalances = { ...get(storedBalancesStore) };
+      entries.forEach(entry => {
+        newBalances[entry.canister_id] = {
+          in_tokens: entry.in_tokens,
+          in_usd: entry.in_usd,
+        };
+      });
+      
+      console.log('Setting new store value:', newBalances);
+      storedBalancesStore.set(newBalances);
+      console.log('Store value after update:', get(storedBalancesStore));
+    }
 
     return balances;
   } catch (error) {
@@ -227,9 +245,10 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
     }
 
     const owner = getCurrentWalletId();
+    const userTokensStore = get(userTokens);
     tokenStore.addPendingRequest(canisterId);
 
-    const token = await kongDB.tokens.get(canisterId);
+    const token = userTokensStore.tokens.find(t => t.canister_id === canisterId);
     if (!token) {
       console.warn(`Token not found for canister ID: ${canisterId}`);
       tokenStore.removePendingRequest(canisterId);
@@ -285,7 +304,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
 };
 
 export const getTokenDecimals = async (canisterId: string) => {
-  const token = await kongDB.tokens.get(canisterId);
+  const token = get(userTokens).tokens.find(t => t.canister_id === canisterId);
   return token?.decimals || 0;
 };
 

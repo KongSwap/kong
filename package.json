@@ -10,7 +10,7 @@
     "kong:deploy:local": "cd scripts/local && ./deploy_kong.sh ",
     "prebuild": "npm run prebuild --workspaces",
     "pretest": "npm run prebuild --workspaces",
-    "start": "npm --workspace=src/kong_svelte start",
+    "start": "doppler run -- npm --workspace=src/kong_svelte start",
     "test": "npm run test --workspaces"
   },
   "dependencies": {

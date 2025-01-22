@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import { type PNP } from "@windoge98/plug-n-play";
 import { idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
 import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
@@ -11,6 +11,9 @@ import { kongDB } from "./db";
 import { PoolService } from "./pools/PoolService";
 import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
 import { loadBalances, storedBalancesStore } from "./tokens/tokenStore";
+import { userTokens } from "$lib/stores/userTokens";
+import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
+import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
 // Constants
 const STORAGE_KEYS = {
@@ -140,9 +143,15 @@ function createAuthStore(pnp: PNP) {
         // Clear existing data
         await Promise.all([
           kongDB.token_balances.clear(),
-          kongDB.user_pools.clear()
+          kongDB.user_pools.clear(),
+          loadBalances(owner, { forceRefresh: true }),
         ]);
-        storedBalancesStore.set({});
+
+        const userTokensStore = get(userTokens)
+        if(Object.keys(userTokensStore.enabledTokens).length === 0) {
+          const defaultTokens = await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS))
+          userTokens.enableTokens(defaultTokens)
+        }
 
         // Load new data
         await Promise.all([
@@ -172,6 +181,8 @@ function createAuthStore(pnp: PNP) {
           kongDB.token_balances.clear(),
           kongDB.user_pools.clear()
         ]);
+
+        storedBalancesStore.set({});
 
         storage.clear();
         return true;

@@ -54,7 +54,7 @@
 
     <!-- Token Selectors -->
     {#if showToken0Selector}
-      <Portal target="body">
+      <Portal target="main">
         <TokenSelectorDropdown
           show={true}
           currentToken={token0}
@@ -66,7 +66,7 @@
     {/if}
 
     {#if showToken1Selector}
-      <Portal target="body">
+      <Portal target="main">
         <TokenSelectorDropdown
           show={true}
           currentToken={token1}

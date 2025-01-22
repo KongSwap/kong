@@ -2,13 +2,12 @@
   import { fade, slide } from "svelte/transition";
   import { liveUserPools } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { goto } from "$app/navigation";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { ChevronRight, Search, X, ArrowUpDown, Loader2 } from "lucide-svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { PoolService } from "$lib/services/pools";
-  import { get } from "svelte/store";
+  import { userTokens } from "$lib/stores/userTokens";
 
   // Add TypeScript interfaces
   interface Pool {
@@ -43,7 +42,7 @@
   let searchResultsReady = false;
   let initialFilterApplied = false;
   let UserPoolComponent: any;
-  let sortDirection: 'asc' | 'desc' = 'desc';
+  let sortDirection: "asc" | "desc" = "desc";
 
   // Memoized search state
   const SEARCH_DEBOUNCE = 150;
@@ -51,11 +50,14 @@
   $: debouncedSearchQuery = createDebouncedSearch(searchQuery);
 
   function createDebouncedSearch(query: string): string {
-    if (!initialFilterApplied || searchQuery !== `${pool?.symbol_0}/${pool?.symbol_1}`) {
+    if (
+      !initialFilterApplied ||
+      searchQuery !== `${pool?.symbol_0}/${pool?.symbol_1}`
+    ) {
       isSearching = true;
       searchResultsReady = false;
       clearTimeout(searchDebounceTimer);
-      
+
       searchDebounceTimer = setTimeout(() => {
         searchResultsReady = true;
         isSearching = false;
@@ -66,44 +68,50 @@
 
   // Optimize pool processing with memoization
   function processPool(poolBalance: UserPoolBalance) {
-    const token0 = $liveTokens.find(t => t.symbol === poolBalance.symbol_0);
-    const token1 = $liveTokens.find(t => t.symbol === poolBalance.symbol_1);
+    const token0 = $userTokens.tokens.find(
+      (t) => t.symbol === poolBalance.symbol_0,
+    );
+    const token1 = $userTokens.tokens.find(
+      (t) => t.symbol === poolBalance.symbol_1,
+    );
 
     const searchTerms = [
       poolBalance.symbol_0,
       poolBalance.symbol_1,
       `${poolBalance.symbol_0}/${poolBalance.symbol_1}`,
-      poolBalance.name || '',
-      token0?.name || '',
-      token1?.name || '',
-      token0?.canister_id || '',
-      token1?.canister_id || '',
+      poolBalance.name || "",
+      token0?.name || "",
+      token1?.name || "",
+      token0?.canister_id || "",
+      token1?.canister_id || "",
       getTokenAliases(poolBalance.symbol_0),
       getTokenAliases(poolBalance.symbol_1),
     ];
 
     return {
       ...poolBalance,
-      searchableText: searchTerms.filter(Boolean).join(' ').toLowerCase()
+      searchableText: searchTerms.filter(Boolean).join(" ").toLowerCase(),
     };
   }
 
   function getTokenAliases(symbol: string): string {
     const aliases: Record<string, string> = {
-      'ICP': 'internet computer protocol dfinity',
-      'USDT': 'tether usdt',
-      'BTC': 'bitcoin btc',
-      'ETH': 'ethereum eth'
+      ICP: "internet computer protocol dfinity",
+      USDT: "tether usdt",
+      BTC: "bitcoin btc",
+      ETH: "ethereum eth",
     };
-    return aliases[symbol] || '';
+    return aliases[symbol] || "";
   }
 
   // Optimize pool filtering
   function filterPools(pools: Pool[]): Pool[] {
-    const filtered = pools.filter(poolItem => {
+    const filtered = pools.filter((poolItem) => {
       if (pool) {
-        return poolItem.symbol_0 === pool.symbol_0 && 
-               poolItem.symbol_1 === pool.symbol_1;
+        return (
+          poolItem.symbol_0 === pool.symbol_0 &&
+          poolItem.symbol_1 === pool.symbol_1
+        );
       }
 
       if (debouncedSearchQuery) {
@@ -111,12 +119,18 @@
       }
 
       if (filterPair.token0 && filterPair.token1) {
-        return (poolItem.symbol_0 === filterPair.token0 && poolItem.symbol_1 === filterPair.token1) ||
-               (poolItem.symbol_0 === filterPair.token1 && poolItem.symbol_1 === filterPair.token0);
+        return (
+          (poolItem.symbol_0 === filterPair.token0 &&
+            poolItem.symbol_1 === filterPair.token1) ||
+          (poolItem.symbol_0 === filterPair.token1 &&
+            poolItem.symbol_1 === filterPair.token0)
+        );
       }
 
       if (filterToken) {
-        return poolItem.symbol_0 === filterToken || poolItem.symbol_1 === filterToken;
+        return (
+          poolItem.symbol_0 === filterToken || poolItem.symbol_1 === filterToken
+        );
       }
 
       return true;
@@ -130,7 +144,7 @@
     return [...pools].sort((a, b) => {
       const aValue = Number(a.usd_balance) || 0;
       const bValue = Number(b.usd_balance) || 0;
-      return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
+      return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
     });
   }
 
@@ -139,10 +153,10 @@
     if (Array.isArray($liveUserPools)) {
       loading = false;
       const processed = $liveUserPools
-        .filter(poolBalance => Number(poolBalance.balance) > 0)
-        .map(poolBalance => processPool(poolBalance));
-      
-      processedPools = sortPools(processed as Pool[]);  // Apply initial sort
+        .filter((poolBalance) => Number(poolBalance.balance) > 0)
+        .map((poolBalance) => processPool(poolBalance));
+
+      processedPools = sortPools(processed as Pool[]); // Apply initial sort
 
       if (pool && !initialFilterApplied) {
         searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;
@@ -174,7 +188,9 @@
 
   const handlePoolItemClick = async (poolItem: Pool) => {
     if (!UserPoolComponent) {
-      UserPoolComponent = (await import("$lib/components/liquidity/pools/UserPool.svelte")).default;
+      UserPoolComponent = (
+        await import("$lib/components/liquidity/pools/UserPool.svelte")
+      ).default;
     }
     selectedPool = poolItem;
     showUserPoolModal = true;
@@ -193,7 +209,7 @@
 
   // Update the sort toggle handler
   function toggleSort() {
-    sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+    sortDirection = sortDirection === "desc" ? "asc" : "desc";
     // Force a re-sort when direction changes
     filteredPools = sortPools([...filteredPools]);
   }
@@ -322,10 +338,10 @@
                 <div class="token-images-wrapper">
                   <TokenImages
                     tokens={[
-                      $liveTokens.find(
+                      $userTokens.tokens.find(
                         (token) => token.symbol === poolItem.symbol_0,
                       ),
-                      $liveTokens.find(
+                      $userTokens.tokens.find(
                         (token) => token.symbol === poolItem.symbol_1,
                       ),
                     ]}

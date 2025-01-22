@@ -13,7 +13,7 @@
     ICP_CANISTER_ID,
   } from "$lib/constants/canisterConstants";
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
-  import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
+  import * as TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { Droplets, ArrowLeftRight, Copy } from "lucide-svelte";
   import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
@@ -312,6 +312,7 @@
               <PoolSelector
                 {selectedPool}
                 {token}
+                formattedTokens={$tokenData}
                 {relevantPools}
                 onPoolSelect={(pool) => {
                   hasManualSelection = true;
@@ -372,7 +373,7 @@
               </div>
 
               <!-- Token Statistics -->
-              <TokenStatistics {token} marketCapRank={token?.metrics?.market_cap_rank} />
+              <TokenStatistics.default {token} marketCapRank={token?.metrics?.market_cap_rank} />
 
               <!-- Chart Panel -->
               <Panel
@@ -445,7 +446,7 @@
                                     (t) =>
                                       t.canister_id === selectedPool.address_0,
                                   )?.symbol
-                            }`
+                          }`
                           : ""}
                         quoteToken={selectedPool?.address_0 ===
                         token?.canister_id
@@ -476,7 +477,7 @@
                 <PoolSelector
                   {selectedPool}
                   {token}
-                  tokenData={$tokenData}
+                  formattedTokens={$tokenData}
                   {relevantPools}
                   onPoolSelect={(pool) => {
                     hasManualSelection = true;
@@ -534,7 +535,7 @@
                     </div>
                   </ButtonV2>
                 </div>
-                <TokenStatistics {token} {marketCapRank} />
+                <TokenStatistics.default {token} {marketCapRank} />
               </div>
             </div>
           </div>
@@ -585,7 +586,7 @@
                   </a>
                 </div>
               </Panel>
-              <TokenStatistics {token} {marketCapRank} />
+              <TokenStatistics.default {token} {marketCapRank} />
             </div>
           </div>
         </div>

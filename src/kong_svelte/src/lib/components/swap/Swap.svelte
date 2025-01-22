@@ -12,10 +12,9 @@
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
-  import { auth, selectedWalletId } from "$lib/services/auth";
+  import { auth } from "$lib/services/auth";
   import {
     getTokenDecimals,
-    liveTokens,
     loadBalances,
   } from "$lib/services/tokens/tokenStore";
   import { settingsStore } from "$lib/services/settings/settingsStore";
@@ -31,6 +30,7 @@
   import Settings from "$lib/components/settings/Settings.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
     import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
+    import { userTokens } from "$lib/stores/userTokens";
 
   // Types
   type PanelType = "pay" | "receive";
@@ -110,17 +110,17 @@
   })();
 
   // Initialize tokens when they become available
-  $: if ($liveTokens.length > 0 && !isInitialized) {
+  $: if ($userTokens.tokens.length > 0 && !isInitialized) {
     isInitialized = true;
 
-    // If initial tokens are provided, verify they exist in liveTokens
+    // If initial tokens are provided, verify they exist in userTokens
     const fromToken = initialFromToken
-      ? $liveTokens.find((t) => t.canister_id === initialFromToken.canister_id)
-      : $liveTokens.find((t) => t.canister_id === ICP_CANISTER_ID); // ICP
+      ? $userTokens.tokens.find((t) => t.canister_id === initialFromToken.canister_id)
+      : $userTokens.tokens.find((t) => t.canister_id === ICP_CANISTER_ID); // ICP
 
     const toToken = initialToToken
-      ? $liveTokens.find((t) => t.canister_id === initialToToken.canister_id)
-      : $liveTokens.find((t) => t.canister_id === KONG_CANISTER_ID); // ckUSDT
+      ? $userTokens.tokens.find((t) => t.canister_id === initialToToken.canister_id)
+      : $userTokens.tokens.find((t) => t.canister_id === KONG_CANISTER_ID); // ckUSDT
 
     // Update swap state with verified tokens
     swapState.update((state) => ({
@@ -135,7 +135,12 @@
   // Initialize on mount
   onMount(() => {
     initializeComponent();
-    resetSwapState();
+    if ($auth.isConnected && $swapState.payToken && $swapState.receiveToken) {
+      loadBalances($auth.account?.owner?.toString(), { 
+        tokens: [$swapState.payToken, $swapState.receiveToken], 
+        forceRefresh: true 
+      });
+    }
   });
 
   // Modify the poolExists function to add more debugging
@@ -291,7 +296,7 @@
       const token0Id = get(page).url.searchParams.get("token0");
       const token1Id = get(page).url.searchParams.get("token1");
 
-      if (!token0Id && !token1Id && !isInitialized && $liveTokens.length > 0) {
+      if (!token0Id && !token1Id && !isInitialized && $userTokens.tokens.length > 0) {
         isInitialized = true;
         swapState.initializeTokens(initialFromToken, initialToToken);
       }
@@ -499,6 +504,10 @@
   // Add a reactive statement to update button state when tokens change
   $: {
     if ($swapState.payToken || $swapState.receiveToken) {
+      loadBalances(auth?.pnp?.account?.owner?.toString(), { 
+        tokens: [$swapState.payToken, $swapState.receiveToken], 
+        forceRefresh: true 
+      });
       swapState.update((s) => ({
         ...s,
         error: null, // Reset error state when tokens change
@@ -506,16 +515,24 @@
     }
   }
 
+  // Add reactive statement to load balances when auth becomes available
+  $: if ($auth.isConnected && $swapState.payToken && $swapState.receiveToken) {
+    loadBalances($auth.account?.owner?.toString(), {
+      tokens: [$swapState.payToken, $swapState.receiveToken],
+      forceRefresh: true
+    });
+  }
+
   // Add this to the reactive statements section
   $: {
     // When URL params or tokens change, update the swap state
-    if ($page && $liveTokens.length > 0) {
+    if ($page && $userTokens.tokens.length > 0) {
       const token0Id = $page.url.searchParams.get("token0");
       const token1Id = $page.url.searchParams.get("token1");
 
       if (token0Id && token1Id) {
-        const token0 = $liveTokens.find((t) => t.canister_id === token0Id);
-        const token1 = $liveTokens.find((t) => t.canister_id === token1Id);
+        const token0 = $userTokens.tokens.find((t) => t.canister_id === token0Id);
+        const token1 = $userTokens.tokens.find((t) => t.canister_id === token1Id);
 
         if (token0 && token1) {
           swapState.update((state) => ({
@@ -626,7 +643,7 @@
 </div>
 
 {#if $swapState.tokenSelectorOpen}
-  <Portal target="body">
+  <Portal target="main">
     {#if $swapState.tokenSelectorPosition}
       {@const position = getDropdownPosition($swapState.tokenSelectorPosition)}
       <div

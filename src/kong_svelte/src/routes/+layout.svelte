@@ -7,7 +7,6 @@
   import Toast from "$lib/components/common/Toast.svelte";
   import { appLoader } from "$lib/services/appLoader";
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
-  import { updateWorkerService } from "$lib/services/updateWorkerService";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
   import QRModal from '$lib/components/common/QRModal.svelte';
   import { themeStore } from '$lib/stores/themeStore';
@@ -15,11 +14,14 @@
   import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
   import { auth } from "$lib/services/auth";
   import { kongDB } from "$lib/services/db";
+    import { userTokens } from "$lib/stores/userTokens";
+    import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
+    import { fetchTokensByCanisterId } from "$lib/api/tokens";
   
   let pageTitle = $state(process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]");
   let initializationPromise: Promise<void> | null = null;
   let initializationError: Error | null = null;
-
+  let defaultTokens: FE.Token[] = []
   async function init() {
     if (initializationPromise) {
       return initializationPromise;
@@ -42,24 +44,33 @@
     return initializationPromise;
   }
 
-  onMount(() => {
+  onMount(async () => {
     init().catch(error => {
       console.error("[App] Failed to initialize app:", error);
       initializationError = error;
     });
+
+    defaultTokens = await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS))
+    if(defaultTokens.length > 0 && !$auth.isConnected) {
+      userTokens.enableTokens(defaultTokens)
+    }
     
     if (browser) {
       themeStore.initTheme();
-      updateWorkerService.initialize().catch(console.error);
     }
   });
 
   onDestroy(() => {
     if (browser) {
       appLoader.destroy();
-      updateWorkerService.destroy();
     }
   });
+
+  $effect(() => {
+    if(defaultTokens.length > 0 && !$auth.isConnected) {
+      userTokens.enableTokens(defaultTokens)
+    }
+  })
 </script>
 
 {#if initializationError}

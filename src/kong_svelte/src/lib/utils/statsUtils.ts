@@ -1,5 +1,6 @@
 import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
-import { kongDB } from '$lib/services/db';
+import { userTokens } from '$lib/stores/userTokens';
+import { get } from 'svelte/store';
 
 export type EnhancedToken = FE.Token & {
   marketCapRank?: number;
@@ -19,7 +20,8 @@ export async function formatPoolData(pools: BE.Pool[]): Promise<BE.Pool[]> {
   if (pools.length === 0) return pools;
   const poolsMap = await Promise.all(pools.map(async (pool, index) => {
     const apy = formatToNonZeroDecimal(pool.rolling_24h_apy);
-    const baseToken = await kongDB.tokens.where('canister_id').equals(pool.address_1).first();
+    const userTokensStore = get(userTokens);
+    const baseToken = userTokensStore.tokens.find(t => t.canister_id === pool.address_1);
     return {
       ...pool,
       price_usd: (Number(pool.price) * Number(baseToken?.metrics.price)).toString(),

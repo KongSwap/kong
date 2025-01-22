@@ -13,8 +13,9 @@ import {
   DOLR_CANISTER_ID,
   ICS_CANISTER_ID,
 } from "$lib/constants/canisterConstants";
+import { userTokens } from "$lib/stores/userTokens";
 import { kongDB } from '../db';
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 
 // The static assets URL.
 export const DEFAULT_LOGOS = {
@@ -53,10 +54,7 @@ export async function getTokenLogo(canister_id: string): Promise<string> {
       return DEFAULT_LOGOS[canister_id as keyof typeof DEFAULT_LOGOS];
     }
 
-    const token = await kongDB.tokens
-      .where('canister_id')
-      .equals(canister_id)
-      .first();
+    const token = get(userTokens).tokens.find(t => t.canister_id === canister_id);
 
     return token?.logo_url || DEFAULT_LOGOS.DEFAULT;
   } catch (error) {

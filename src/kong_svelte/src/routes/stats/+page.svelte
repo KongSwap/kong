@@ -299,17 +299,17 @@
                 data={$filteredTokens}
                 rowKey="canister_id"
                 columns={[
-                  {
-                    key: 'marketCapRank',
-                    title: '#',
-                    align: 'center',
-                    sortable: true,
-                    width: '60px',
-                    formatter: (row) => {
-                      const rank = row.marketCapRank || '-';
-                      return rank === '-' ? rank : `#${rank}`;
-                    }
-                  },
+                  // {
+                  //   key: 'marketCapRank',
+                  //   title: '#',
+                  //   align: 'center',
+                  //   sortable: true,
+                  //   width: '60px',
+                  //   formatter: (row) => {
+                  //     const rank = row.marketCapRank || '-';
+                  //     return rank === '-' ? rank : `#${rank}`;
+                  //   }
+                  // },
                   {
                     key: 'token',
                     title: 'Token',

@@ -1,24 +1,28 @@
 <script lang="ts">
-  import { liveTokens } from '$lib/services/tokens/tokenStore';
-  import { onDestroy } from 'svelte';
+  import { onDestroy } from "svelte";
   import { SwapMonitor } from "$lib/services/swap/SwapMonitor";
-  import Swap from '$lib/components/swap/Swap.svelte';
-  import SwapPro from '$lib/components/swap/SwapPro.svelte';
-  import { page } from '$app/stores';
-  
+  import Swap from "$lib/components/swap/Swap.svelte";
+  import SwapPro from "$lib/components/swap/SwapPro.svelte";
+  import { page } from "$app/stores";
+  import { userTokens } from "$lib/stores/userTokens";
+
   let fromToken: FE.Token | null = null;
   let toToken: FE.Token | null = null;
-  let currentMode: 'normal' | 'pro' = 'normal';
+  let currentMode: "normal" | "pro" = "normal";
 
-  $: if ($liveTokens && $liveTokens.length > 0) {
-    const fromCanisterId = $page.url.searchParams.get('from');
-    const toCanisterId = $page.url.searchParams.get('to');
-    
-    fromToken = fromCanisterId ? $liveTokens.find(t => t.canister_id === fromCanisterId) || null : null;
-    toToken = toCanisterId ? $liveTokens.find(t => t.canister_id === toCanisterId) || null : null;
+  $: if ($userTokens.tokens && $userTokens.tokens.length > 0) {
+    const fromCanisterId = $page.url.searchParams.get("from");
+    const toCanisterId = $page.url.searchParams.get("to");
+
+    fromToken = fromCanisterId
+      ? $userTokens.tokens.find((t) => t.canister_id === fromCanisterId) || null
+      : null;
+    toToken = toCanisterId
+      ? $userTokens.tokens.find((t) => t.canister_id === toCanisterId) || null
+      : null;
   }
 
-  const handleModeChange = (event: CustomEvent<{ mode: 'normal' | 'pro' }>) => {
+  const handleModeChange = (event: CustomEvent<{ mode: "normal" | "pro" }>) => {
     currentMode = event.detail.mode;
   };
 
@@ -28,18 +32,18 @@
 </script>
 
 <section class="w-full overflow-x-hidden">
-  {#if $liveTokens}
+  {#if $userTokens.tokens}
     <div class="p-2 md:p-0 w-full flex justify-center">
-      {#if currentMode === 'normal'}
-        <Swap 
-          initialFromToken={fromToken} 
-          initialToToken={toToken} 
+      {#if currentMode === "normal"}
+        <Swap
+          initialFromToken={fromToken}
+          initialToToken={toToken}
           {currentMode}
           on:modeChange={handleModeChange}
         />
       {:else}
-        <SwapPro 
-          initialFromToken={fromToken} 
+        <SwapPro
+          initialFromToken={fromToken}
           initialToToken={toToken}
           {currentMode}
           on:modeChange={handleModeChange}

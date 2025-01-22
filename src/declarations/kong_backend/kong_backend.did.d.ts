@@ -82,6 +82,10 @@ export interface AddPoolReply {
 }
 export type AddPoolResult = { 'Ok' : AddPoolReply } |
   { 'Err' : string };
+export interface AddTokenArgs { 'token' : string }
+export type AddTokenReply = { 'IC' : ICTokenReply };
+export type AddTokenResult = { 'Ok' : AddTokenReply } |
+  { 'Err' : string };
 export interface CheckPoolsReply {
   'expected_balance' : ExpectedBalance,
   'diff_balance' : bigint,
@@ -444,6 +448,7 @@ export interface _SERVICE {
     AddLiquidityAsyncResult
   >,
   'add_pool' : ActorMethod<[AddPoolArgs], AddPoolResult>,
+  'add_token' : ActorMethod<[AddTokenArgs], AddTokenResult>,
   'check_pools' : ActorMethod<[], CheckPoolsResult>,
   'get_user' : ActorMethod<[], UserResult>,
   'icrc10_supported_standards' : ActorMethod<

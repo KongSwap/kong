@@ -23,6 +23,7 @@
   export let totalItems = 0;
   export let currentPage = 1;
   export let onPageChange: ((page: number) => void) | null = null;
+  export let isLoading = false;
 
   const sortColumn = writable(defaultSort.column || '');
   const sortDirection = writable<'asc' | 'desc'>(defaultSort.direction || 'desc');
@@ -284,6 +285,13 @@
     </table>
   </div>
 
+  <!-- Loading Overlay -->
+  {#if isLoading}
+    <div class="absolute inset-0 bg-kong-bg-dark/50 backdrop-blur-[2px] flex items-center justify-center z-30">
+      <div class="loading-spinner"></div>
+    </div>
+  {/if}
+
   <!-- Pagination -->
   <div class="sticky bottom-0 left-0 right-0 flex items-center justify-between px-4 py-1 border-t border-kong-border backdrop-blur-md">
     <div class="flex items-center text-sm text-kong-text-secondary">
@@ -374,6 +382,21 @@
     }
     100% {
       background-color: transparent;
+    }
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--kong-primary);
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
     }
   }
 </style> 
