@@ -31,6 +31,7 @@
   import PositionDisplay from "$lib/components/liquidity/create_pool/PositionDisplay.svelte";
   import { BigNumber } from "bignumber.js";
   import { userTokens } from "$lib/stores/userTokens";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens"
 
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
   const DEFAULT_TOKEN = "ICP";
@@ -59,16 +60,13 @@
     loadInitialTokens();
   }
 
-  function loadInitialTokens() {
+  async function loadInitialTokens() {
     const urlToken0 = $page.url.searchParams.get("token0");
     const urlToken1 = $page.url.searchParams.get("token1");
 
-    const token0FromUrl = urlToken0
-      ? $userTokens.tokens.find((token) => token.canister_id === urlToken0)
-      : null;
-    const token1FromUrl = urlToken1
-      ? $userTokens.tokens.find((token) => token.canister_id === urlToken1)
-      : null;
+    const tokensFromUrl = await fetchTokensByCanisterId([urlToken0, urlToken1]);
+    const token0FromUrl = tokensFromUrl.find((token) => token.canister_id === urlToken0);
+    const token1FromUrl = tokensFromUrl.find((token) => token.canister_id === urlToken1);
 
     const defaultToken0 = $userTokens.tokens.find(
       (token) => token.canister_id === ICP_CANISTER_ID,
