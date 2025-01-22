@@ -321,9 +321,7 @@
     
     const formattedTokens = formatTokenBalance(balance.in_tokens?.toString() || "0", token.decimals);
     const formattedUsd = formatUsdValue(balance.in_usd || "0");
-    
-    console.log(`Formatted balance for ${token.symbol}:`, { formattedTokens, formattedUsd });
-    
+        
     return {
       tokens: formattedTokens,
       usd: formattedUsd

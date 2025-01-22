@@ -27,6 +27,7 @@
 
   let gasFees: Fee[] = [];
   let lpFees: Fee[] = [];
+  let currentRoutingPath: string[] = [];
 
   let isLoading = false;
   let error = "";
@@ -39,8 +40,13 @@
     receiveToken?.decimals,
   );
 
+  $: {
+    if (payToken && receiveToken) {
+      currentRoutingPath = [payToken.canister_id, receiveToken.canister_id];
+    }
+  }
+
   $: quoteData = {
-    routingPath,
     gasFees,
     lpFees,
     payToken,
@@ -126,9 +132,9 @@
         dispatch("quoteUpdate", { receiveAmount });
 
         if (quote.Ok.txs.length > 0) {
-          routingPath = [
-            payToken.symbol,
-            ...quote.Ok.txs.map((tx) => tx.receive_symbol),
+          currentRoutingPath = [
+            payToken.canister_id,
+            ...quote.Ok.txs.map((tx) => tx.receive_address),
           ];
 
           // Update fees for each step in the path
@@ -187,7 +193,7 @@
             {payUsdValue}
             {receiveUsdValue}
           />
-          <RouteSection routingPath={quoteData.routingPath} />
+          <RouteSection routingPath={currentRoutingPath} />
           <FeesSection
             {gasFees}
             {lpFees}

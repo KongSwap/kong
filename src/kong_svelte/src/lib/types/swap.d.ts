@@ -7,6 +7,7 @@ declare global {
       receive_amount: bigint;
       pay_symbol: string;
       receive_symbol: string;
+      receive_address: string;
       pool_symbol: string;
       price: number;
       pay_chain: string;

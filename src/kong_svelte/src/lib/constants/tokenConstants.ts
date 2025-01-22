@@ -17,6 +17,7 @@ export const DEFAULT_TOKENS = {
   nicp: "buwm7-7yaaa-aaaar-qagva-cai",
   wtn: "jcmow-hyaaa-aaaaq-aadlq-cai",
   bob: "7pail-xaaaa-aaaas-aabmq-cai",
+  alice: "oj6if-riaaa-aaaaq-aaeha-cai",
   sneed: "hvgxa-wqaaa-aaaaq-aacia-cai",
   party: "7xkvf-zyaaa-aaaal-ajvra-cai",
   ntn: "f54if-eqaaa-aaaaq-aacea-cai",
