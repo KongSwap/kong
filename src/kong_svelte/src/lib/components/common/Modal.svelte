@@ -27,7 +27,7 @@
   export let closeOnClickOutside = true;
   export let className: string = "";
   export let isPadded = false;
-  
+  export let target: string = "#portal-target";
   let isMobile = false;
   let modalWidth = width;
   let modalHeight = height;
@@ -191,7 +191,7 @@
 </script>
 
 <svelte:window on:keydown={handleEscape} />
-<Portal target="#portal-target">
+<Portal target={target}>
   <Toast />
   {#if isOpen}
     <div
