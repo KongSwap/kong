@@ -38,8 +38,6 @@
         if (currentWalletId) {
           // Load balances and update stores
           await loadBalances(currentWalletId, { forceRefresh: true });
-          // Update stored balances
-          await updateStoredBalances(currentWalletId);
         }
       } finally {
         isRefreshing = false;

@@ -167,8 +167,6 @@ export const loadBalances = async (
     forceRefresh: false,
   };
   const currentWalletId = getCurrentWalletId();
-  console.log('Loading balances for wallet:', currentWalletId);
-  console.log('Current store value before loading:', get(storedBalancesStore));
 
   if (!currentWalletId || currentWalletId === "anonymous") {
     console.log('No wallet ID or anonymous user');
@@ -176,13 +174,11 @@ export const loadBalances = async (
   }
 
   if (!tokens || tokens.length === 0) {
-    console.log('No tokens provided for balance loading');
-    return {};
+    tokens = userTokensStore.tokens;
   }
 
   try {
     // Get fresh balances
-    console.log('Fetching fresh balances for tokens:', tokens?.length);
     const balances = await TokenService.fetchBalances(
       tokens,
       owner,
@@ -194,8 +190,6 @@ export const loadBalances = async (
       console.log('No balances received from TokenService');
       return {};
     }
-
-    console.log('Received balances:', balances);
 
     // Batch update the database
     const entries = Object.entries(balances)
@@ -209,7 +203,6 @@ export const loadBalances = async (
       }));
 
     if (entries.length > 0) {
-      console.log('Updating database with entries:', entries);
       await kongDB.token_balances.bulkPut(entries);
       
       // Update the store only if we have valid balances
@@ -221,9 +214,7 @@ export const loadBalances = async (
         };
       });
       
-      console.log('Setting new store value:', newBalances);
       storedBalancesStore.set(newBalances);
-      console.log('Store value after update:', get(storedBalancesStore));
     }
 
     return balances;

@@ -108,9 +108,7 @@ export class TokenService {
       // Process tokens in batches of 25 with delays
       const batchSize = 25;
       const results = new Map<string, bigint>();
-      
-      console.log(`Processing ${tokens.length} tokens in batches of ${batchSize}`);
-      
+            
       // If forcing refresh, bypass the deduplication in IcrcService
       const batchPromises = [];
       for (let i = 0; i < tokens?.length || 0; i += batchSize) {
@@ -163,7 +161,6 @@ export class TokenService {
         return acc;
       }, {} as Record<string, TokenBalance>);
 
-      console.log('Processed balances:', validBalances);
       return validBalances;
     } catch (error) {
       console.error('Error in fetchBalances:', error);
