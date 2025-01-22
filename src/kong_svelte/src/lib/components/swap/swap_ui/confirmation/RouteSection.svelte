@@ -2,14 +2,44 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenDetails from "$lib/components/common/TokenDetails.svelte";
   import { userTokens } from "$lib/stores/userTokens";
+  import { onMount, beforeUpdate } from "svelte";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
   export let routingPath: string[] = [];
 
-  $: tokens = routingPath
-    ? routingPath
-      .map(symbol => $userTokens.tokens.find(t => t.symbol === symbol))
-      .filter((t): t is FE.Token => t !== undefined)
-    : [];
+  let tokens: FE.Token[] = [];
+  let prevRoutingPath: string[] = [];
+
+  async function updateTokens() {
+    // Skip if path hasn't changed
+    if (JSON.stringify(prevRoutingPath) === JSON.stringify(routingPath)) {
+      return;
+    }
+
+    if (!routingPath || !$userTokens?.tokens?.length) return;
+    
+    try {
+      const tokenPromises = routingPath.map(canisterId => 
+        fetchTokensByCanisterId([canisterId]).then(tokens => tokens[0])
+      );
+      
+      const fetchedTokens = await Promise.all(tokenPromises);
+      tokens = fetchedTokens.filter((t): t is FE.Token => t !== undefined);
+      prevRoutingPath = [...routingPath];
+    } catch (error) {
+      console.error("Error fetching tokens:", error);
+    }
+  }
+
+  beforeUpdate(() => {
+    if (JSON.stringify(prevRoutingPath) !== JSON.stringify(routingPath)) {
+      updateTokens();
+    }
+  });
+
+  onMount(() => {
+    updateTokens();
+  });
 
   let selectedToken: FE.Token | null = null;
 </script>
