@@ -10,6 +10,7 @@ use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_token::ic_token::ICToken;
 use crate::stable_token::lp_token::LPToken;
 use crate::stable_token::stable_token::StableToken;
+use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 
 /// Adds a token to Kong
@@ -73,6 +74,21 @@ pub async fn add_ic_token(token: &str) -> Result<StableToken, String> {
 
     // Retrieves the inserted token by its token_id
     token_map::get_by_token_id(token_id).ok_or_else(|| format!("Failed to add token {}", token))
+}
+
+pub async fn update_ic_token(token: &str) -> Result<StableToken, String> {
+    let stable_token = token_map::get_by_token(token)?;
+    let address = stable_token.address();
+    let token_id = stable_token.token_id();
+
+    let canister_id = Principal::from_text(address).map_err(|e| format!("Invalid canister id {}: {}", token, e))?;
+
+    let mut ic_token = ICToken::new(&canister_id).await?;
+    ic_token.token_id = token_id;
+
+    token_map::update(&StableToken::IC(ic_token));
+
+    token_map::get_by_token_id(token_id).ok_or_else(|| format!("Failed to update token {}", token))
 }
 
 pub fn add_lp_token(token_0: &StableToken, token_1: &StableToken) -> Result<StableToken, String> {

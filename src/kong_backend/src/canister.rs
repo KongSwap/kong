@@ -17,6 +17,8 @@ use crate::add_pool::add_pool_args::AddPoolArgs;
 use crate::add_pool::add_pool_reply::AddPoolReply;
 use crate::add_token::add_token_args::AddTokenArgs;
 use crate::add_token::add_token_reply::AddTokenReply;
+use crate::add_token::update_token_args::UpdateTokenArgs;
+use crate::add_token::update_token_reply::UpdateTokenReply;
 use crate::claims::claims::process_claims;
 use crate::helpers::nat_helpers::{nat_to_decimals_f64, nat_to_f64};
 use crate::ic::canister_address::KONG_BACKEND;
