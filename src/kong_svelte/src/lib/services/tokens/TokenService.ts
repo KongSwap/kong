@@ -188,8 +188,8 @@ export class TokenService {
       );
 
       const actualBalance = formatBalance(balance.toString(), token.decimals)?.replace(/,/g, '');
-      const price = await this.fetchPrice(token);
-      const usdValue = parseFloat(actualBalance) * price;
+      const price = token?.metrics?.price || 0;
+      const usdValue = parseFloat(actualBalance) * Number(price);
 
       let finalBalance;
       if (typeof balance === "object") {
@@ -214,133 +214,6 @@ export class TokenService {
     }
   }
 
-  private static async calculateTokenPrice(
-    token: FE.Token,
-    pools: BE.Pool[],
-  ): Promise<number> {
-    // Special case for USDT
-    if (token.canister_id === CKUSDT_CANISTER_ID) {
-      return 1;
-    }
-
-    // Find all pools containing the token
-    const relevantPools = pools.filter((pool) => {
-      return (
-        pool.address_0 === token.canister_id ||
-        pool.address_1 === token.canister_id
-      );
-    });
-
-    if (relevantPools.length === 0) {
-      return 0;
-    }
-
-    // Calculate prices through different paths
-    const [directUsdtPrice, icpPathPrice] = await Promise.all([
-      // Direct USDT path
-      this.calculateDirectUsdtPrice(token, relevantPools),
-      // ICP intermediary path
-      this.calculateIcpPath(token, pools),
-    ]);
-
-    // Filter out invalid prices and calculate weighted average
-    const validPrices = [directUsdtPrice, icpPathPrice].filter(
-      (p) => p.price > 0,
-    );
-
-    if (validPrices.length === 0) {
-      return 0;
-    }
-
-    // Calculate weighted average based on liquidity
-    const totalWeight = validPrices.reduce((sum, p) => sum + p.weight, 0);
-    const weightedPrice = validPrices.reduce(
-      (sum, p) => sum + (p.price * p.weight) / totalWeight,
-      0,
-    );
-
-    return weightedPrice;
-  }
-
-  private static async calculateDirectUsdtPrice(
-    token: FE.Token,
-    pools: BE.Pool[],
-  ): Promise<{ price: number; weight: number }> {
-    const usdtPool = pools.find(
-      (pool) =>
-        (pool.address_0 === token.canister_id &&
-          pool.address_1 === CKUSDT_CANISTER_ID) ||
-        (pool.address_1 === token.canister_id &&
-          pool.address_0 === CKUSDT_CANISTER_ID),
-    );
-
-    if (!usdtPool) {
-      return { price: 0, weight: 0 };
-    }
-
-    // Calculate price based on pool balances and decimals
-    const price =
-      usdtPool.address_0 === token.canister_id
-        ? usdtPool.price
-        : 1 / usdtPool.price;
-
-    // Calculate weight based on total liquidity
-    const weight = Number(usdtPool.balance_0) + Number(usdtPool.balance_1);
-
-    return { price, weight };
-  }
-
-  private static async calculateIcpPath(
-    token: FE.Token,
-    pools: BE.Pool[],
-  ): Promise<{ price: number; weight: number }> {
-    // If this is ICP itself, return the API price directly
-    if (token.canister_id === ICP_CANISTER_ID) {
-      const price = await this.getIcpPrice();
-      return { price, weight: 1 };
-    }
-
-    // For other tokens using ICP path
-    const icpPool = pools.find(
-      (pool) =>
-        (pool.address_0 === token.canister_id && pool.symbol_1 === "ICP") ||
-        (pool.address_1 === token.canister_id && pool.symbol_0 === "ICP"),
-    );
-
-    if (!icpPool) {
-      return { price: 0, weight: 0 };
-    }
-
-    const icpPrice = await this.getIcpPrice();
-    const tokenIcpPrice =
-      icpPool.address_0 === token.canister_id
-        ? icpPool.price
-        : 1 / icpPool.price;
-
-    const weight = Number(icpPool.balance_0) + Number(icpPool.balance_1);
-    return {
-      price: tokenIcpPrice * icpPrice,
-      weight,
-    };
-  }
-
-  public static async fetchPrice(token: FE.Token): Promise<number> {
-    try {
-      // Get current pools
-      const pools = await kongDB.pools.toArray();
-      if (!pools?.length) {
-        await loadPools();
-      }
-      // Calculate price using pools - use the static class method
-      return await this.calculateTokenPrice(token, pools);
-    } catch (error) {
-      console.error(
-        `[TokenService] Error fetching price for ${token.symbol}:`,
-        error,
-      );
-      return 0;
-    }
-  }
 
   public static async fetchUserTransactions(
     principalId: string, 
@@ -373,21 +246,6 @@ export class TokenService {
     } catch (error) {
       console.error("Error fetching user transactions:", error);
       return { transactions: [], total_count: 0 };
-    }
-  }
-
-  public static async getIcpPrice(): Promise<number> {
-    try {
-      const pool = await kongDB.pools
-        .where("address_0")
-        .equals(ICP_CANISTER_ID)
-        .and((p) => p.address_1 === CKUSDT_CANISTER_ID)
-        .first();
-
-      return Number(pool?.price);
-    } catch (error) {
-      console.error("Error fetching ICP price from CoinCap:", error);
-      return 0;
     }
   }
 
