@@ -1,7 +1,8 @@
 use crate::settings::read_settings;
 use agent::{create_agent_from_identity, create_identity_from_pem_file};
+use openssl::ssl::{SslMethod, SslConnector};
 use std::env;
-use tokio_postgres::NoTls;
+use postgres_openssl::MakeTlsConnector;
 
 use db_updates::get_db_updates;
 use kong_backend::KongBackend;
@@ -37,6 +38,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_port = &config.database.port;
     let db_user = &config.database.user;
     let db_password = &config.database.password;
+    let mut builder = SslConnector::builder(SslMethod::tls()).map_err(|e| format!("SSL error: {}", e))?;
+    if config.database.ca_cert.is_some() {
+        builder.set_ca_file(&config.database.ca_cert.as_ref().unwrap()).map_err(|e| format!("CA file error: {}", e))?;
+    }
+    let tls = MakeTlsConnector::new(builder.build());
     let db_name = &config.database.db_name;
     let mut db_config = tokio_postgres::Config::new();
     db_config.host(db_host);
@@ -44,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     db_config.user(db_user);
     db_config.password(db_password);
     db_config.dbname(db_name);
-    let (db_client, connection) = db_config.connect(NoTls).await?;
+    let (db_client, connection) = db_config.connect(tls).await?;
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
