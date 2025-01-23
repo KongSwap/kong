@@ -7,6 +7,7 @@ pub struct Database {
     pub port: u16,
     pub user: String,
     pub password: String,
+    pub ca_cert: Option<String>,
     pub db_name: String,
 }
 
