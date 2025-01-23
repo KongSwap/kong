@@ -203,7 +203,7 @@ pub fn insert(token: &StableToken) -> Result<u32, String> {
 
 pub fn update(token: &StableToken) {
     TOKEN_MAP.with(|m| m.borrow_mut().insert(StableTokenId(token.token_id()), token.clone()));
-    _ = archive_to_kong_data(token);
+    let _ = archive_to_kong_data(token);
 }
 
 pub fn remove(token_id: u32) -> Result<(), String> {
