@@ -201,7 +201,6 @@ pub fn insert(token: &StableToken) -> Result<u32, String> {
     Ok(insert_token.token_id())
 }
 
-#[allow(dead_code)]
 pub fn update(token: &StableToken) {
     TOKEN_MAP.with(|m| m.borrow_mut().insert(StableTokenId(token.token_id()), token.clone()));
     _ = archive_to_kong_data(token);
