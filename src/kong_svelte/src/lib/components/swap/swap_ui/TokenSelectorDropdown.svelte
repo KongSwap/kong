@@ -289,16 +289,11 @@
     if (show && browser) {
       const authStore = get(auth);
       if (authStore?.isConnected && authStore?.account?.owner && tokens.length > 0) {
-        console.log('Loading initial balances for tokens:', tokens.length);
-        console.log('Current store value:', get(storedBalancesStore));
-        
         // Load balances and update UI when they change
-        void loadBalances(authStore.account.owner.toString(), { 
+        loadBalances(authStore.account.owner.toString(), { 
           tokens,
           forceRefresh: true 
-        }).then(() => {
-          console.log('Balances loaded, new store value:', get(storedBalancesStore));
-        });
+        })
       }
       
       setTimeout(() => {

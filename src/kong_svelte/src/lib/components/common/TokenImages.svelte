@@ -9,7 +9,7 @@
 
   // Filter out invalid tokens and memoize result
   $: validTokens = tokens.filter((token): token is FE.Token => {
-    return token && typeof token === 'object' && !!(token.symbol || token.name);
+    return token && typeof token === 'object';
   });
 
   // Handle image error with proper typing

@@ -33,7 +33,7 @@
   import { fetchTokens } from "$lib/api/tokens";
 
   const ITEMS_PER_PAGE = 50;
-  const REFRESH_INTERVAL = 5000; // 5 seconds
+  const REFRESH_INTERVAL = 2000; // 2 seconds for more frequent updates
   const SEARCH_DEBOUNCE = 300; // 300ms debounce for search
   
   // Initialize stores
@@ -42,6 +42,57 @@
   const currentPage = writable<number>(1);
   const searchTerm = writable<string>("");
   const debouncedSearchTerm = writable<string>("");
+  const previousPrices = new Map<string, number>();
+  const priceFlashStates = writable(new Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>());
+
+  // Track price changes for flash animations
+  function updatePriceFlash(token: FE.Token) {
+    const currentPrice = Number(token.metrics?.price || 0);
+    const prevPrice = previousPrices.get(token.canister_id);
+
+    if (prevPrice !== undefined && prevPrice !== currentPrice) {
+      const flashClass = currentPrice > prevPrice ? "flash-green" : "flash-red";
+      if ($priceFlashStates.has(token.canister_id)) {
+        clearTimeout($priceFlashStates.get(token.canister_id)!.timeout);
+      }
+
+      const timeout = setTimeout(() => {
+        $priceFlashStates.delete(token.canister_id);
+        priceFlashStates.set($priceFlashStates);
+      }, 2000);
+
+      $priceFlashStates.set(token.canister_id, { class: flashClass, timeout });
+      priceFlashStates.set($priceFlashStates);
+    }
+
+    previousPrices.set(token.canister_id, currentPrice);
+  }
+
+  // Refresh data with optimized price tracking
+  async function refreshData() {
+    try {
+      const {tokens, total_count} = await fetchTokens({ 
+        page: $currentPage, 
+        limit: ITEMS_PER_PAGE,
+        search: $debouncedSearchTerm
+      });
+
+      // Track price changes before updating store
+      tokens.forEach(token => {
+        updatePriceFlash(token);
+      });
+
+      tokenData.set(tokens);
+      totalCount.set(total_count);
+    } catch (error) {
+      console.error('Error refreshing token data:', error);
+      // Reset the interval if there was an error
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
+      }
+    }
+  }
 
   // Debounce the search term
   let searchTimeout: ReturnType<typeof setTimeout>;
@@ -57,8 +108,6 @@
 
   // Initial data load
   onMount(() => {
-    if (!browser) return;
-
     // Get initial page from URL if it exists
     const pageParam = parseInt($page.url.searchParams.get('page') || '1');
     currentPage.set(pageParam);
@@ -77,21 +126,6 @@
       clearInterval(refreshInterval);
     }
   });
-
-  async function refreshData() {
-    if (!browser) return;
-    try {
-      const {tokens, total_count} = await fetchTokens({ 
-        page: $currentPage, 
-        limit: ITEMS_PER_PAGE,
-        search: $debouncedSearchTerm
-      });
-      tokenData.set(tokens);
-      totalCount.set(total_count);
-    } catch (error) {
-      console.error('Error refreshing token data:', error);
-    }
-  }
 
   // Update data when page changes or debounced search term changes
   $: if (browser && ($currentPage || $debouncedSearchTerm !== undefined)) {
@@ -335,7 +369,10 @@
                     title: 'Price',
                     align: 'right',
                     sortable: true,
-                    component: PriceCell
+                    component: PriceCell,
+                    componentProps: {
+                      priceFlashStates: $priceFlashStates
+                    }
                   },
                   {
                     key: 'price_change_24h',

@@ -1,12 +1,11 @@
 export const ALLOWED_TOKEN_SYMBOLS = ['ICP', 'ckUSDT'];
 export const DEFAULT_TOKEN = 'ICP';
-export const DEFAULT_DECIMALS = 8;
-export const ANIMATION_BASE_DURATION = 200; 
 
 export const DEFAULT_TOKENS = {
   icp: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   ckusdt: "cngnf-vqaaa-aaaar-qag4q-cai",
   kong: "o7oak-iyaaa-aaaaq-aadzq-cai",
+  tcycles: "um5iw-rqaaa-aaaaq-qaaba-cai",
   ckusdc: "xevnm-gaaaa-aaaar-qafnq-cai",
   ckbtc: "mxzaz-hqaaa-aaaar-qaada-cai",
   cketh: "ss2fx-dyaaa-aaaar-qacoq-cai",
@@ -30,12 +29,18 @@ export const DEFAULT_TOKENS = {
   ghost: "4c4fd-caaaa-aaaaq-aaa3a-cai",
   ctz: "uf2wh-taaaa-aaaaq-aabna-cai",
   elna: "gemj7-oyaaa-aaaaq-aacnq-cai",
+  conf: "lrtnw-paaaa-aaaaq-aadfa-cai",
+  boom: "vtrom-gqaaa-aaaaq-aabia-cai",
   dogmi: "np5km-uyaaa-aaaaq-aadrq-cai",
   est: "bliq2-niaaa-aaaaq-aac4q-cai",
   panda: "druyg-tyaaa-aaaaq-aactq-cai",
   kinic: "73mez-iiaaa-aaaaq-aaasq-cai",
   dolr: "6rdgd-kyaaa-aaaaq-aaavq-cai",
   trax: "emww2-4yaaa-aaaaq-aacbq-cai",
+  well: "o4zzi-qaaaa-aaaaq-aaeeq-cai",
+  nua: "rxdbk-dyaaa-aaaaq-aabtq-cai",
+  yuku: "atbfz-diaaa-aaaaq-aacyq-cai",
+  seer: "rffwt-piaaa-aaaaq-aabqq-cai",
   motoko: "k45jy-aiaaa-aaaaq-aadcq-cai",
   ckpepe: "etik7-oiaaa-aaaar-qagia-cai",
   ckshib: "fxffn-xiaaa-aaaar-qagoa-cai",

@@ -110,23 +110,12 @@
   })();
 
   // Initialize tokens when they become available
-  $: if ($userTokens.tokens.length > 0 && !isInitialized) {
+  $: if (!isInitialized && initialFromToken !== undefined && initialToToken !== undefined) {
     isInitialized = true;
-
-    // If initial tokens are provided, verify they exist in userTokens
-    const fromToken = initialFromToken
-      ? $userTokens.tokens.find((t) => t.canister_id === initialFromToken.canister_id)
-      : $userTokens.tokens.find((t) => t.canister_id === ICP_CANISTER_ID); // ICP
-
-    const toToken = initialToToken
-      ? $userTokens.tokens.find((t) => t.canister_id === initialToToken.canister_id)
-      : $userTokens.tokens.find((t) => t.canister_id === KONG_CANISTER_ID); // ckUSDT
-
-    // Update swap state with verified tokens
     swapState.update((state) => ({
       ...state,
-      payToken: fromToken || null,
-      receiveToken: toToken || null,
+      payToken: initialFromToken,
+      receiveToken: initialToToken,
       payAmount: "",
       receiveAmount: "",
     }));

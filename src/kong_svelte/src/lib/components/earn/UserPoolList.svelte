@@ -7,7 +7,8 @@
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { livePools } from "$lib/services/pools/poolStore";
   import BigNumber from "bignumber.js";
-    import { userTokens } from "$lib/stores/userTokens";
+  import { onMount } from "svelte";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
   export let searchQuery = "";
 
@@ -17,6 +18,8 @@
   let expandedPoolId: string | null = null;
   let selectedPool: any = null;
   let showUserPoolModal = false;
+  let tokens: Record<string, FE.Token> = {};
+  let tokensLoading = true;
 
   function createSearchableText(
     poolBalance: any,
@@ -37,20 +40,33 @@
       .toLowerCase();
   }
 
-  // Process pool balances when they update
+  async function fetchTokensForPools(pools: any[]) {
+    try {
+      tokensLoading = true;
+      const tokenIds = [...new Set(pools.flatMap(pool => [pool.address_0, pool.address_1]))];
+      const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
+      tokens = fetchedTokens.reduce((acc, token) => {
+        acc[token.canister_id] = token;
+        return acc;
+      }, {} as Record<string, FE.Token>);
+    } catch (e) {
+      error = "Failed to load token information";
+      console.error("Error fetching tokens:", e);
+    } finally {
+      tokensLoading = false;
+    }
+  }
+
+  // Process pool balances when they update and tokens are loaded
   $: {
-    if (Array.isArray($liveUserPools)) {
+    if (Array.isArray($liveUserPools) && !tokensLoading) {
       processedPools = $liveUserPools
         .filter((poolBalance) => Number(poolBalance.balance) > 0)
         .map((poolBalance) => {
-          const token0 = $userTokens.tokens.find(
-            (t) => t.symbol === poolBalance.symbol_0,
-          );
-          const token1 = $userTokens.tokens.find(
-            (t) => t.symbol === poolBalance.symbol_1,
-          );
+          const token0 = tokens[poolBalance.address_0];
+          const token1 = tokens[poolBalance.address_1];
           const matchingPool = $livePools.find(
-            (p) => p.symbol_0 === poolBalance.symbol_0 && p.symbol_1 === poolBalance.symbol_1
+            (p) => p.address_0 === poolBalance.address_0 && p.address_1 === poolBalance.address_1
           );
 
           return {
@@ -63,15 +79,15 @@
             amount_0: poolBalance.amount_0,
             amount_1: poolBalance.amount_1,
             usd_balance: poolBalance.usd_balance,
-            address_0: poolBalance.symbol_0,
-            address_1: poolBalance.symbol_1,
+            address_0: poolBalance.address_0,
+            address_1: poolBalance.address_1,
+            token0,
+            token1,
             searchableText: createSearchableText(poolBalance, token0, token1)
           };
         });
-    } else {
-      processedPools = [];
+      loading = false;
     }
-    loading = false;
   }
 
   // Filter pools based on search
@@ -95,10 +111,21 @@
     showUserPoolModal = false;
     selectedPool = null;
   }
+  
+  onMount(async () => {
+    if ($liveUserPools && Array.isArray($liveUserPools)) {
+      await fetchTokensForPools($liveUserPools);
+    }
+  });
+
+  // Watch for changes in liveUserPools to update tokens
+  $: if ($liveUserPools && Array.isArray($liveUserPools)) {
+    fetchTokensForPools($liveUserPools);
+  }
 </script>
 
 <div class="mt-2">
-  {#if loading && processedPools.length === 0}
+  {#if loading || tokensLoading}
     <div class="loading-state" in:fade>
       <p class="text-center text-lg font-medium">Loading positions...</p>
     </div>
@@ -134,10 +161,7 @@
                 <div class="flex items-center gap-3">
                   <div class="relative">
                     <TokenImages
-                      tokens={[
-                        $userTokens.tokens.find((t) => t.symbol === pool.symbol_0),
-                        $userTokens.tokens.find((t) => t.symbol === pool.symbol_1),
-                      ]}
+                      tokens={[pool.token0, pool.token1]}
                       size={36}
                     />
                   </div>
@@ -183,36 +207,35 @@
 
                   <!-- Token Details -->
                   <div class="space-y-2">
-                    {#each [{ symbol: pool.symbol_0, amount: pool.amount_0 }, { symbol: pool.symbol_1, amount: pool.amount_1 }] as token}
+                    {#each [
+                      { symbol: pool.symbol_0, amount: pool.amount_0, token: pool.token0 },
+                      { symbol: pool.symbol_1, amount: pool.amount_1, token: pool.token1 }
+                    ] as tokenInfo}
                       <div
                         class="flex items-center justify-between p-2.5 rounded-md border border-kong-border dark:border-slate-700/50 bg-slate-50/50 dark:bg-kong-bg-light"
                       >
                         <div class="flex items-center gap-2.5">
                           <TokenImages
-                            tokens={[
-                              $userTokens.tokens.find(
-                                (t) => t.symbol === token.symbol,
-                              ),
-                            ]}
+                            tokens={[tokenInfo.token]}
                             size={24}
                           />
                           <div>
                             <p
                               class="text-sm font-medium text-kong-text-primary/20 text-kong-text-primary"
                             >
-                              {token.symbol}
+                              {tokenInfo.symbol}
                             </p>
                             <p
                               class="text-xs text-slate-500 dark:text-slate-400"
                             >
-                              {Number(token.amount).toLocaleString()}
+                              {Number(tokenInfo.amount).toLocaleString()}
                             </p>
                           </div>
                         </div>
                         <p
                           class="text-sm font-medium text-blue-600 dark:text-blue-400"
                         >
-                          ${formatToNonZeroDecimal(Number(token.amount) * 1.5)}
+                          ${formatToNonZeroDecimal(Number(tokenInfo.amount) * 1.5)}
                         </p>
                       </div>
                     {/each}
