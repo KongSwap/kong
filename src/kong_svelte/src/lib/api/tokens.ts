@@ -49,14 +49,18 @@ export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.To
     const queryString = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
-      search: params?.search || ''
+      search: params?.search || '',
+      t: Date.now().toString() // Use valid parameter name
     }).toString();
 
     // Determine if we need to make a GET or POST request
     const options: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
-      }
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
+      cache: 'no-store'
     };
 
     if (canisterIds && canisterIds.length > 0) {

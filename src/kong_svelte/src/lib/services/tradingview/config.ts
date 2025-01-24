@@ -130,10 +130,6 @@ export function getChartConfig(params: {
       "chartProperties.background": theme === 'dark' ? '#000000' : '#FFFFFF',
       "chartProperties.backgroundType": "solid",
       
-      // Price scale formatting
-      "mainSeriesProperties.priceFormat.precision": precision,
-      "mainSeriesProperties.priceFormat.minMove": minMove,
-      
       // Price axis
       "scalesProperties.backgroundColor": theme === 'dark' ? '#000000' : '#FFFFFF',
       "scalesProperties.lineColor": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
