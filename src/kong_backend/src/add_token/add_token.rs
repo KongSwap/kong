@@ -10,7 +10,6 @@ use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_token::ic_token::ICToken;
 use crate::stable_token::lp_token::LPToken;
 use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 
 /// Adds a token to Kong
