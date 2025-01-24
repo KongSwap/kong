@@ -281,20 +281,8 @@
       debouncedFetchData();
     }
 
-    // Setup resize handling
-    const resizeObserver = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect;
-      if (chart && chart._ready && width && height) {
-        chart.applyOptions({ width, height });
-      }
-    });
-
-    if (chartWrapper) {
-      resizeObserver.observe(chartWrapper);
-    }
 
     return () => {
-      resizeObserver.disconnect();
       if (chart) {
         try {
           chart.remove();

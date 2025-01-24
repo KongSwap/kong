@@ -104,6 +104,28 @@
   // Refresh data periodically
   let refreshInterval: ReturnType<typeof setInterval>;
 
+  // Add effect for page/search changes to trigger data refresh
+  $: if (browser && ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
+    refreshData();
+  }
+
+  // Keep URL updates separate
+  $: if (browser && ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', $currentPage.toString());
+    if ($debouncedSearchTerm) {
+      url.searchParams.set('search', $debouncedSearchTerm);
+    } else {
+      url.searchParams.delete('search');
+    }
+    goto(url.toString(), { replaceState: true, keepFocus: true });
+  }
+
+  // Keep the navigation refresh
+  $: if ($page.url.pathname === '/stats') {
+    refreshData();
+  }
+
   // Optimize initial load and URL handling
   onMount(async () => {
     if (browser) {
@@ -119,10 +141,8 @@
         debouncedSearchTerm.set(searchParam);
       }
 
-      // Initial data fetch
-      await refreshData();
-
-      // Set up periodic refresh only after initial load
+      // Initial data fetch is now handled by the page store subscription
+      // Set up periodic refresh
       refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
     }
   });
@@ -134,21 +154,6 @@
       clearInterval(refreshInterval);
     }
   });
-
-  // Update data when page changes or debounced search term changes
-  $: if (browser && ($currentPage || $debouncedSearchTerm !== undefined)) {
-    refreshData();
-    const url = new URL(window.location.href);
-    url.searchParams.set('page', $currentPage.toString());
-    if ($debouncedSearchTerm) {
-      url.searchParams.set('search', $debouncedSearchTerm);
-    } else {
-      url.searchParams.delete('search');
-    }
-    // Add timestamp to force fresh data
-    url.searchParams.set('t', Date.now().toString());
-    goto(url.toString(), { replaceState: true, keepFocus: true });
-  }
 
   // Local state
   let isMobile = false;
