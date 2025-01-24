@@ -7,34 +7,36 @@
   import { ChevronRight, Search, X, ArrowUpDown, Loader2 } from "lucide-svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { PoolService } from "$lib/services/pools";
-  import { userTokens } from "$lib/stores/userTokens";
-
-  // Add TypeScript interfaces
-  interface Pool {
-    symbol_0?: string;
-    symbol_1?: string;
-    balance: string;
-    usd_balance: string | number;
-    name?: string;
-    searchableText?: string;
-  }
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
   interface FilterPair {
     token0?: string;
     token1?: string;
   }
 
+   // Add TypeScript interfaces
+   interface UserPool {
+    symbol_0?: string;
+    symbol_1?: string;
+    balance: string;
+    usd_balance: string | number;
+    name?: string;
+    searchableText?: string;
+    token0?: FE.Token;
+    token1?: FE.Token;
+  }
+
   // Typed props
   export let filterPair: FilterPair = {};
   export let filterToken = "";
   export let initialSearch = "";
-  export let pool: Pool | null = null;
+  export let pool: UserPool | null = null;
 
   // State variables
   let loading = true;
   let error: string | null = null;
-  let processedPools: Pool[] = [];
-  let selectedPool: Pool | null = null;
+  let processedPools: UserPool[] = [];
+  let selectedPool: UserPool | null = null;
   let showUserPoolModal = false;
   let searchQuery = initialSearch;
   let searchInput: HTMLInputElement;
@@ -43,6 +45,8 @@
   let initialFilterApplied = false;
   let UserPoolComponent: any;
   let sortDirection: "asc" | "desc" = "desc";
+  let tokens: Record<string, FE.Token> = {};
+  let tokensLoading = false;
 
   // Memoized search state
   const SEARCH_DEBOUNCE = 150;
@@ -66,14 +70,29 @@
     return query.toLowerCase();
   }
 
+  async function fetchTokensForPools(pools: any[]) {
+    if (pools.length === 0) return;
+    
+    try {
+      tokensLoading = true;
+      const tokenIds = [...new Set(pools.flatMap(pool => [pool.address_0, pool.address_1]))];
+      const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
+      tokens = fetchedTokens.reduce((acc, token) => {
+        acc[token.canister_id] = token;
+        return acc;
+      }, {} as Record<string, FE.Token>);
+    } catch (e) {
+      error = "Failed to load token information";
+      console.error("Error fetching tokens:", e);
+    } finally {
+      tokensLoading = false;
+    }
+  }
+
   // Optimize pool processing with memoization
   function processPool(poolBalance: UserPoolBalance) {
-    const token0 = $userTokens.tokens.find(
-      (t) => t.symbol === poolBalance.symbol_0,
-    );
-    const token1 = $userTokens.tokens.find(
-      (t) => t.symbol === poolBalance.symbol_1,
-    );
+    const token0 = tokens[poolBalance.address_0];
+    const token1 = tokens[poolBalance.address_1];
 
     const searchTerms = [
       poolBalance.symbol_0,
@@ -90,6 +109,8 @@
 
     return {
       ...poolBalance,
+      token0,
+      token1,
       searchableText: searchTerms.filter(Boolean).join(" ").toLowerCase(),
     };
   }
@@ -105,7 +126,7 @@
   }
 
   // Optimize pool filtering
-  function filterPools(pools: Pool[]): Pool[] {
+  function filterPools(pools: UserPool[]): UserPool[] {
     const filtered = pools.filter((poolItem) => {
       if (pool) {
         return (
@@ -140,7 +161,7 @@
   }
 
   // Add separate sort function
-  function sortPools(pools: Pool[]): Pool[] {
+  function sortPools(pools: UserPool[]): UserPool[] {
     return [...pools].sort((a, b) => {
       const aValue = Number(a.usd_balance) || 0;
       const bValue = Number(b.usd_balance) || 0;
@@ -151,19 +172,25 @@
   // Combined reactive statement for pool processing
   $: {
     if (Array.isArray($liveUserPools)) {
-      loading = false;
-      const processed = $liveUserPools
-        .filter((poolBalance) => Number(poolBalance.balance) > 0)
-        .map((poolBalance) => processPool(poolBalance));
+      const validPools = $liveUserPools.filter((poolBalance) => Number(poolBalance.balance) > 0);
+      
+      if (!tokensLoading) {
+        loading = false;
+        const processed = validPools.map((poolBalance) => processPool(poolBalance));
+        processedPools = sortPools(processed as UserPool[]); // Apply initial sort
 
-      processedPools = sortPools(processed as Pool[]); // Apply initial sort
+        if (pool && !initialFilterApplied) {
+          searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;
+          debouncedSearchQuery = searchQuery.toLowerCase();
+          initialFilterApplied = true;
+          searchResultsReady = true;
+          isSearching = false;
+        }
+      }
 
-      if (pool && !initialFilterApplied) {
-        searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;
-        debouncedSearchQuery = searchQuery.toLowerCase();
-        initialFilterApplied = true;
-        searchResultsReady = true;
-        isSearching = false;
+      // Fetch tokens when pools update
+      if (validPools.length > 0) {
+        fetchTokensForPools(validPools);
       }
     } else {
       processedPools = [];
@@ -186,7 +213,7 @@
     sidebarStore.collapse();
   };
 
-  const handlePoolItemClick = async (poolItem: Pool) => {
+  const handlePoolItemClick = async (poolItem: UserPool) => {
     if (!UserPoolComponent) {
       UserPoolComponent = (
         await import("$lib/components/liquidity/pools/UserPool.svelte")
@@ -338,12 +365,8 @@
                 <div class="token-images-wrapper">
                   <TokenImages
                     tokens={[
-                      $userTokens.tokens.find(
-                        (token) => token.symbol === poolItem.symbol_0,
-                      ),
-                      $userTokens.tokens.find(
-                        (token) => token.symbol === poolItem.symbol_1,
-                      ),
+                      poolItem.token0,
+                      poolItem.token1
                     ]}
                     size={32}
                     overlap={true}
