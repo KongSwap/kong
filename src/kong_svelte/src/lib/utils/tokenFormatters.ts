@@ -3,12 +3,12 @@
  * @param value The USD value to format
  * @returns Formatted USD string
  */
-export function formatUsdValue(value: number | string): string {
+export function formatUsdValue(value: number | string, showLessThanCent: boolean = false): string {
     if (!value) return "$0.00";
     const valueNumber = typeof value === 'string' ? Number(value.replace(/,/g, '')) : value;
 
     // For extremely small values (< 0.00001), show scientific notation
-    if (valueNumber < 0.01 && valueNumber > 0) {
+    if (valueNumber < 0.01 && valueNumber > 0 && !showLessThanCent) {
         return `< $0.01`;
     }
     

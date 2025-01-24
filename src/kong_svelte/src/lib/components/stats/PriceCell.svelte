@@ -6,7 +6,7 @@
   export let priceFlashStates: Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>;
   
   $: price = Number(row.metrics?.price || 0);
-  $: formattedPrice = formatUsdValue(price);
+  $: formattedPrice = formatUsdValue(price, true);
   $: tooltipContent = `$${price}`;
   $: flashClass = priceFlashStates?.get(row.canister_id)?.class || '';
 </script>
