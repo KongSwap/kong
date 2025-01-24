@@ -608,7 +608,7 @@
                 {#if apiSearchResults.length > 0}
                   <div class="token-section">
                     <div class="token-section-header">
-                      <span>Other Available Tokens</span>
+                      <span>Available Tokens</span>
                     </div>
                     {#each filteredTokens.filter(token => apiSearchResults.includes(token)) as token, i (token.canister_id)}
                       <div
