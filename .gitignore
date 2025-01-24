@@ -128,7 +128,7 @@ dist/
 
 # environment variables
 .env
-secrets*
+.secrets
 ca-certificate.crt
 package-lock.json
 *.lock
