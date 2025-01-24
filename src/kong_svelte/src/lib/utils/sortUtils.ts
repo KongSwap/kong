@@ -65,7 +65,7 @@ export function filterByBalance(
     const balanceRecord = tokenBalances[token.canister_id];
     const balance = parseFloat(balanceRecord?.in_usd || '0');
 
-    return balance > 0.01;
+    return balance > 0;
   } catch (e) {
     console.warn(`Error checking balance for token ${token.canister_id}:`, e);
     return true; // Show tokens with invalid balance format

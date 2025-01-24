@@ -8,7 +8,7 @@ export function formatUsdValue(value: number | string): string {
     const valueNumber = typeof value === 'string' ? Number(value.replace(/,/g, '')) : value;
 
     // For extremely small values (< 0.00001), show scientific notation
-    if (valueNumber < 0.00001 && valueNumber > 0) {
+    if (valueNumber < 0.01 && valueNumber > 0) {
         return `< $0.01`;
     }
     

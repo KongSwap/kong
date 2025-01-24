@@ -12,7 +12,6 @@
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { toastStore } from "$lib/stores/toastStore";
   import { userTokens } from "$lib/stores/userTokens";
-  import ManageTokensModal from "$lib/components/sidebar/ManageTokensModal.svelte";
   import { auth } from "$lib/services/auth";
   import { get } from "svelte/store";
   import { fetchTokens } from "$lib/api/tokens";
@@ -44,7 +43,6 @@
   let sortDirection = $state("desc");
   let sortColumn = $state("value");
   let standardFilter = $state("all");
-  let showManageTokensModal = $state(false);
   let isSearching = $state(false);
   let apiSearchResults = $state<FE.Token[]>([]);
 
@@ -97,14 +95,6 @@
         return allowedCanisterIds.includes(token.canister_id);
       }
 
-      // Apply hide zero balances filter
-      if (hideZeroBalances) {
-        const balance = $storedBalancesStore[token.canister_id]?.in_tokens || BigInt(0);
-        if (balance <= 0n) {
-          return false;
-        }
-      }
-
       return true;
     })
   );
@@ -150,9 +140,12 @@
     }
   });
 
-  // Then apply UI filters for display
+  // Update the filteredTokens derivation to deduplicate tokens
   let filteredTokens = $derived(
-    [...baseFilteredTokens, ...apiSearchResults]
+    Array.from(new Map(
+      // Combine both sources and map by canister_id to deduplicate
+      [...baseFilteredTokens, ...apiSearchResults].map(token => [token.canister_id, token])
+    ).values())
       .filter((token) => {
         if (!token?.canister_id || !token?.symbol || !token?.name) {
           console.warn("Incomplete token data:", token);
@@ -424,7 +417,7 @@
       >
         <div class="modal-content">
           <header class="modal-header">
-            <h2 class="modal-title">Select Token</h2>
+            <h2 class="modal-title">Tokens</h2>
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <button
               class="close-button"
@@ -466,7 +459,7 @@
                 </div>
               </div>
 
-              <div class="filter-bar">
+              <div class="pb-2 shadow-md z-20">
                 <div class="filter-buttons">
                   {#each [{ id: "all", label: "All", count: allTokensCount }, { id: "ck", label: "CK", count: ckTokensCount }, { id: "favorites", label: "Favorites", count: favoritesCount }] as tab}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -483,48 +476,12 @@
                     </button>
                   {/each}
                 </div>
-
-                <div class="filter-options">
-                  <label class="filter-toggle">
-                    <input
-                      type="checkbox"
-                      bind:checked={hideZeroBalances}
-                    />
-                    <span class="toggle-label">Hide zero balances</span>
-                  </label>
-
-                  <div
-                    class="sort-toggle"
-                    on:click={toggleSort}
-                  >
-                    <span class="toggle-label">Sort by value</span>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      class="sort-arrow"
-                      class:ascending={sortDirection === "asc"}
-                    >
-                      <path d="M12 20V4M5 13l7 7 7-7" />
-                    </svg>
-                  </div>
-                </div>
+                  
               </div>
             </div>
 
             <div class="scrollable-section">
               <div class="tokens-container">
-                {#if isSearching}
-                  <div class="loading-indicator">
-                    <span class="loading-spinner"></span>
-                    <span>Searching...</span>
-                  </div>
-                {/if}
-                
                 <!-- Local tokens -->
                 {#if filteredTokens.some(token => !apiSearchResults.includes(token))}
                   <div class="token-section">
@@ -585,12 +542,12 @@
                             <div class="selected-indicator">
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
-                                width="20"
-                                height="20"
+                                width="18"
+                                height="18"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                stroke-width="2"
+                                stroke-width="3"
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                               >
@@ -605,97 +562,105 @@
                 {/if}
                 
                 <!-- API search results -->
-                {#if apiSearchResults.length > 0}
+                {#if apiSearchResults.length > 0 || isSearching}
                   <div class="token-section">
                     <div class="token-section-header">
                       <span>Available Tokens</span>
                     </div>
-                    {#each filteredTokens.filter(token => apiSearchResults.includes(token)) as token, i (token.canister_id)}
-                      <div
-                        animate:flip={{ duration: 200 }}
-                        in:fade={{
-                          delay: getStaggerDelay(i),
-                          duration: 150,
-                          easing: cubicOut,
-                        }}
-                        class="token-item"
-                        class:selected={currentToken?.canister_id === token.canister_id}
-                        class:disabled={otherPanelToken?.canister_id === token.canister_id}
-                        class:blocked={BLOCKED_TOKEN_IDS.includes(token.canister_id)}
-                        class:not-enabled={!$userTokens.enabledTokens[token.canister_id]}
-                        on:click={(e) => handleTokenClick(e, token)}
-                      >
-                        <div class="token-info">
-                          <TokenImages
-                            tokens={[token]}
-                            size={40}
-                            containerClass="token-logo-container"
-                          />
-                          <div class="token-details">
-                            <div class="token-symbol-row">
-                              <!-- svelte-ignore a11y-click-events-have-key-events -->
-                              <!-- svelte-ignore a11y-no-static-element-interactions -->
-                              <button
-                                class="favorite-button"
-                                class:active={favoriteTokens.get(token.canister_id)}
-                                on:click={(e) => handleFavoriteClick(e, token)}
-                                title={favoriteTokens.get(token.canister_id)
-                                  ? "Remove from favorites"
-                                  : "Add to favorites"}
-                              >
-                                <Star
-                                  size={14}
-                                  fill={favoriteTokens.get(token.canister_id)
-                                    ? "#ffd700"
-                                    : "none"}
-                                />
-                              </button>
-                              <span class="token-symbol">{token.symbol}</span>
+                    
+                    {#if isSearching}
+                      <div class="loading-indicator">
+                        <span class="loading-spinner"></span>
+                        <span>Searching...</span>
+                      </div>
+                    {:else}
+                      {#each filteredTokens.filter(token => apiSearchResults.includes(token)) as token, i (token.canister_id)}
+                        <div
+                          animate:flip={{ duration: 200 }}
+                          in:fade={{
+                            delay: getStaggerDelay(i),
+                            duration: 150,
+                            easing: cubicOut,
+                          }}
+                          class="token-item"
+                          class:selected={currentToken?.canister_id === token.canister_id}
+                          class:disabled={otherPanelToken?.canister_id === token.canister_id}
+                          class:blocked={BLOCKED_TOKEN_IDS.includes(token.canister_id)}
+                          class:not-enabled={!$userTokens.enabledTokens[token.canister_id]}
+                          on:click={(e) => handleTokenClick(e, token)}
+                        >
+                          <div class="token-info">
+                            <TokenImages
+                              tokens={[token]}
+                              size={40}
+                              containerClass="token-logo-container"
+                            />
+                            <div class="token-details">
+                              <div class="token-symbol-row">
+                                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                                <button
+                                  class="favorite-button"
+                                  class:active={favoriteTokens.get(token.canister_id)}
+                                  on:click={(e) => handleFavoriteClick(e, token)}
+                                  title={favoriteTokens.get(token.canister_id)
+                                    ? "Remove from favorites"
+                                    : "Add to favorites"}
+                                >
+                                  <Star
+                                    size={14}
+                                    fill={favoriteTokens.get(token.canister_id)
+                                      ? "#ffd700"
+                                      : "none"}
+                                  />
+                                </button>
+                                <span class="token-symbol">{token.symbol}</span>
+                              </div>
+                              <span class="token-name">{token.name}</span>
                             </div>
-                            <span class="token-name">{token.name}</span>
+                          </div>
+                          <div class="text-sm token-right text-kong-text-primary">
+                            {#if !$userTokens.enabledTokens[token.canister_id]}
+                              <button
+                                class="enable-token-button"
+                                on:click={(e) => handleEnableToken(e, token)}
+                                disabled={enablingTokenId === token.canister_id}
+                              >
+                                {#if enablingTokenId === token.canister_id}
+                                  <div class="button-spinner" />
+                                {:else}
+                                  Enable
+                                {/if}
+                              </button>
+                            {:else}
+                              <span class="flex flex-col text-right token-balance">
+                                {getTokenDisplayBalance(token.canister_id).tokens}
+                                <span class="text-xs token-balance-label">
+                                  {getTokenDisplayBalance(token.canister_id).usd}
+                                </span>
+                              </span>
+                              {#if currentToken?.canister_id === token.canister_id}
+                                <div class="selected-indicator">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="3"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  >
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                  </svg>
+                                </div>
+                              {/if}
+                            {/if}
                           </div>
                         </div>
-                        <div class="text-sm token-right text-kong-text-primary">
-                          {#if !$userTokens.enabledTokens[token.canister_id]}
-                            <button
-                              class="enable-token-button"
-                              on:click={(e) => handleEnableToken(e, token)}
-                              disabled={enablingTokenId === token.canister_id}
-                            >
-                              {#if enablingTokenId === token.canister_id}
-                                <div class="button-spinner" />
-                              {:else}
-                                Enable
-                              {/if}
-                            </button>
-                          {:else}
-                            <span class="flex flex-col text-right token-balance">
-                              {getTokenDisplayBalance(token.canister_id).tokens}
-                              <span class="text-xs token-balance-label">
-                                {getTokenDisplayBalance(token.canister_id).usd}
-                              </span>
-                            </span>
-                            {#if currentToken?.canister_id === token.canister_id}
-                              <div class="selected-indicator">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="20"
-                                  height="20"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  stroke-width="2"
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                >
-                                  <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                              </div>
-                            {/if}
-                          {/if}
-                        </div>
-                      </div>
-                    {/each}
+                      {/each}
+                    {/if}
                   </div>
                 {/if}
                 
@@ -706,74 +671,23 @@
                 {/if}
               </div>
             </div>
-
-            <div class="fixed-bottom-section">
-              <button
-                class="import-token-button"
-                on:click|stopPropagation={() => showManageTokensModal = true}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>Manage Tokens</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>
     </div>
 {/if}
-
-{#if showManageTokensModal}
-  <ManageTokensModal
-    isOpen={showManageTokensModal}
-    on:close={() => showManageTokensModal = false}
-  />
-{/if}
-
 <style scoped lang="postcss">
   .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.75);
-    z-index: 9999;
-    display: grid;
-    place-items: center;
-    padding: 1.5rem;
-    overflow-y: auto;
+    @apply fixed inset-0 bg-black/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto;
   }
 
   .dropdown-container {
-    position: relative;
-    background: rgba(26, 29, 46, 0.4);
-    backdrop-filter: blur(11px);
-    border: 1px solid rgba(255, 255, 255, 0.03);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden;
-    width: 480px;
-    height: min(600px, 85vh);
-    border-radius: 16px;
+    @apply relative bg-kong-bg-dark border border-kong-border rounded-xl shadow-lg transition-all duration-200 overflow-hidden;
+    @apply w-[420px] h-[min(600px,85vh)];
   }
 
   .dropdown-container.mobile {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100vh;
-    border-radius: 0;
-    border: none;
+    @apply fixed inset-0 w-full h-screen rounded-none border-0;
   }
 
   .modal-content {
@@ -784,30 +698,15 @@
   }
 
   .modal-header {
-    @apply px-3 py-2 border-b border-white/10;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    @apply px-4 py-3 bg-kong-bg-dark flex justify-between items-center;
   }
 
   .modal-title {
-    @apply text-base font-semibold text-kong-text-primary;
+    @apply text-kong-text-primary text-xl font-semibold;
   }
 
   .close-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.0rem;
-    height: 2.0rem;
-    border-radius: 0.5rem;
-    color: white;
-    transition: all 0.2s;
-  }
-
-  .close-button:hover {
-    transform: translateY(-2px);
+    @apply text-kong-text-secondary hover:bg-kong-border/10;
   }
 
   .modal-body {
@@ -819,6 +718,8 @@
   }
 
   .fixed-section {
+    @apply relative;
+    z-index: 20;
     flex-shrink: 0;
   }
 
@@ -828,10 +729,12 @@
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     overscroll-behavior-y: contain;
+    position: relative;
+    z-index: 10;
   }
 
   .scrollable-section::-webkit-scrollbar {
-    width: 0.375rem;
+    width: 4px;
   }
 
   .scrollable-section::-webkit-scrollbar-track {
@@ -840,65 +743,54 @@
   }
 
   .scrollable-section::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.06);
+    background: #e9e9f0;
     border-radius: 0.25rem;
   }
 
   .search-section {
     z-index: 10;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    @apply pb-3;
   }
 
   .search-input-wrapper {
     position: relative;
     display: flex;
     align-items: center;
-    padding: 0.75rem 0.75rem;
+    @apply px-4;
   }
 
   .search-input {
-    flex: 1;
-    background-color: transparent;
-    border: none;
-    color: white;
-    font-size: 1rem;
+    @apply flex-1 bg-kong-bg-light border-none text-kong-text-primary text-base rounded-md px-4 py-3;
   }
 
   .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.5);
+    @apply text-kong-text-secondary;
   }
 
   .search-input:focus {
     outline: none;
   }
 
-  .filter-bar {
-    @apply pb-0.5 border-b border-white/10;
-  }
-
   .filter-buttons {
+    @apply px-4;
     display: flex;
     width: 100%;
     margin-bottom: 0.25rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    border-bottom: none;
+    gap: 8px;
   }
 
   .filter-btn {
-    flex: 1;
-    padding: 0.5rem 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.875rem;
-    position: relative;
-    transition: all 0.2s;
-    font-weight: 500;
+    @apply flex-1 px-3 py-2 flex items-center justify-center gap-2 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium;
+    @apply bg-kong-bg-light/30 rounded-2xl;
   }
 
   .filter-btn:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    @apply bg-kong-bg-light/60;
+  }
+
+  .filter-btn.active {
+    @apply text-kong-primary bg-kong-primary/20;
   }
 
   .tab-label {
@@ -907,149 +799,43 @@
   }
 
   .tab-count {
-    font-size: 0.75rem;
-    padding: 0.125rem 0.5rem;
-    border-radius: 9999px;
-    background-color: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.5);
-    min-width: 1.5rem;
-    text-align: center;
+    @apply text-kong-text-secondary text-xs;
+    @apply px-2 py-1;
+    @apply rounded-full;
+    @apply bg-kong-border/10;
+    @apply min-w-[1.5rem];
+    @apply text-center;
     transition: all 0.2s;
   }
 
   .tab-count.has-items {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
-  }
-
-  .filter-btn.active {
-    @apply text-kong-primary bg-kong-primary/10;
-  }
-
-  .filter-btn::after {
-    @apply absolute bottom-0 left-0 w-full h-px;
-    @apply bg-kong-primary;
-    content: "";
-    width: 100%;
-    transform: scaleX(0);
-    transition: transform 0.2s;
-    transform-origin: center;
-  }
-
-  .filter-btn.active::after {
-    transform: scaleX(1);
-  }
-
-  .filter-options {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 0.75rem 0.25rem;
-  }
-
-  .sort-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .sort-toggle:hover {
-    color: white;
-  }
-
-  .sort-arrow {
-    transition: transform 0.2s;
-  }
-
-  .sort-arrow.ascending {
-    transform: rotate(180deg);
-  }
-
-  .filter-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
-    cursor: pointer;
-  }
-
-  .filter-toggle:hover {
-    color: white;
-  }
-
-  .filter-toggle input[type="checkbox"] {
-    width: 1rem;
-    height: 1rem;
-    border-radius: 0.25rem;
-    border: 1px solid #2a2d3d;
-    background-color: transparent;
-    appearance: none;
-    -webkit-appearance: none;
-    cursor: pointer;
-    position: relative;
-    margin: 0;
-  }
-
-  .filter-toggle input[type="checkbox"]:checked {
-    background-color: #3b82f6;
-    border-color: #3b82f6;
-  }
-
-  .filter-toggle input[type="checkbox"]:checked::after {
-    content: "";
-    position: absolute;
-    left: 4px;
-    top: 1px;
-    width: 4px;
-    height: 8px;
-    border: solid white;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-  }
-
-  .filter-toggle input[type="checkbox"]:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    @apply bg-kong-primary/10 text-kong-text-primary;
   }
 
   .tokens-container {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    padding: 0.25rem;
-    padding-bottom: calc(3rem + 8px);
     min-height: 100%;
     touch-action: pan-y;
   }
 
   .token-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem;
-    border-radius: 0.5rem;
-    background-color: var(--color-background-secondary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    touch-action: pan-y;
-    user-select: none;
+    @apply flex items-center justify-between py-3 rounded-xl bg-kong-bg-dark cursor-pointer transition-all duration-200 touch-pan-y select-none mx-4 border border-transparent;
   }
 
   .token-item:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    @apply bg-kong-border/10 transform-none border-transparent;
   }
 
   .token-item.selected {
-    background-color: rgba(255, 255, 255, 0.1);
+    @apply bg-kong-primary/5 px-2 border-l-4 border-l-kong-accent-green rounded-lg;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
   }
 
   .token-item.selected:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    @apply bg-kong-primary/10;
   }
 
   .token-item.disabled {
@@ -1104,9 +890,9 @@
   }
 
   .favorite-button {
+    @apply text-kong-text-secondary;
     padding: 0.25rem;
     border-radius: 0.375rem;
-    color: rgba(255, 255, 255, 0.5);
     background-color: rgba(255, 255, 255, 0.05);
     transition: all 0.2s;
   }
@@ -1122,14 +908,11 @@
   }
 
   .token-symbol {
-    font-size: 1rem;
-    font-weight: 600;
-    color: white;
+    @apply text-base font-semibold text-kong-text-primary tracking-wide;
   }
 
   .token-name {
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.5);
+    @apply text-sm text-kong-text-secondary;
   }
 
   .token-right {
@@ -1139,53 +922,32 @@
   }
 
   .selected-indicator {
+    @apply text-kong-accent-green;
     color: #4ade80;
-  }
-
-  .match-indicators {
+    background: #4ade8010;
+    border-radius: 50%;
+    padding: 4px;
     display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-    margin-top: 0.25rem;
   }
 
-  .match-indicator {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.5);
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 0.25rem;
-    padding: 0.125rem 0.375rem;
+  .token-balance {
+    margin-right: 8px;
   }
 
   .fixed-bottom-section {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    @apply px-3 py-1.5;
-    background: rgb(26, 29, 46);
-    border-top: 1px solid rgba(255, 255, 255, 0.03);
-    z-index: 10;
+    @apply absolute bottom-0 left-0 right-0 px-6 py-4;
+    @apply bg-kong-bg-dark border-t border-kong-border/10;
+    @apply z-10;
   }
 
   .import-token-button {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    padding: 0.5rem;
-    border-radius: 0.5rem;
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 0.2s;
+    @apply w-full flex items-center justify-center gap-3 p-2 rounded-lg;
+    @apply bg-kong-border/10 text-kong-text-secondary;
+    @apply text-sm font-medium transition-all duration-200;
   }
 
   .import-token-button:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
+    @apply bg-kong-border/20 text-kong-text-primary;
   }
 
   @media (max-width: 768px) {
@@ -1207,7 +969,7 @@
     left: 0;
     right: 0;
     height: 32px;
-    background: linear-gradient(to bottom, transparent, rgb(26, 29, 46));
+    @apply px-2;
     pointer-events: none;
     z-index: 5;
   }
@@ -1241,12 +1003,8 @@
   }
 
   .empty-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.875rem;
+    @apply flex items-center justify-center p-8 text-kong-text-secondary text-sm;
+    @apply flex-col gap-4;
   }
 
   .token-section {
@@ -1258,18 +1016,18 @@
   }
 
   .token-section-header {
-    @apply px-2 py-1.5 text-xs font-medium text-kong-text-primary/50 bg-white/[0.02] rounded-lg;
-    @apply border border-white/5;
+    @apply p-2 text-sm font-medium text-kong-text-secondary;
+    @apply bg-kong-bg-light/50 rounded-lg border border-kong-border/10;
+    @apply backdrop-blur-sm mx-2 my-2;
   }
 
   .enable-token-button {
-    @apply px-3 py-1.5 rounded-lg text-sm font-medium;
+    @apply px-4 py-2 rounded-lg text-sm font-medium;
     @apply bg-kong-primary text-white;
     @apply hover:bg-kong-primary-hover;
     @apply transition-all duration-200;
     @apply flex items-center justify-center;
-    @apply min-w-[80px]; /* Ensure button doesn't change size */
-    @apply h-[32px]; /* Fixed height to prevent shifting */
+    @apply min-w-[80px] h-[32px];
     @apply disabled:opacity-50 disabled:cursor-wait;
   }
 
@@ -1278,6 +1036,7 @@
     @apply border-2 border-white/20 border-t-white;
     @apply rounded-full;
     animation: spin 0.6s linear infinite;
+    margin: 0 auto;
   }
 
   .token-item.not-enabled {
@@ -1286,5 +1045,9 @@
 
   .token-item.not-enabled:hover {
     @apply opacity-100;
+  }
+
+  .pb-2.shadow-md {
+    @apply relative z-20;
   }
 </style>

@@ -1,12 +1,12 @@
 <script lang="ts">
   import { tooltip } from "$lib/actions/tooltip";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
 
   export let row: any;
   export let priceFlashStates: Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>;
   
   $: price = Number(row.metrics?.price || 0);
-  $: formattedPrice = "$" + formatToNonZeroDecimal(price);
+  $: formattedPrice = formatUsdValue(price);
   $: tooltipContent = `$${price}`;
   $: flashClass = priceFlashStates?.get(row.canister_id)?.class || '';
 </script>
@@ -18,7 +18,7 @@
   {formattedPrice}
 </span>
 
-<style>
+<style scoped>
   .flash-green {
     color: var(--kong-accent-green);
   }
