@@ -42,53 +42,63 @@
   const currentPage = writable<number>(1);
   const searchTerm = writable<string>("");
   const debouncedSearchTerm = writable<string>("");
-  const isLoading = writable<boolean>(true); // Add loading state
-  const previousPrices = new Map<string, number>();
+  const isLoading = writable<boolean>(true);
+  const previousPrices = writable(new Map<string, number>());
   const priceFlashStates = writable(new Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>());
 
   // Track price changes for flash animations
   function updatePriceFlash(token: FE.Token) {
     const currentPrice = Number(token.metrics?.price || 0);
-    const prevPrice = previousPrices.get(token.canister_id);
+    const prevPrice = $previousPrices.get(token.canister_id);
 
+    // Always update the previous price, even if it's the first time seeing this token
+    previousPrices.update(prices => {
+      prices.set(token.canister_id, currentPrice);
+      return prices;
+    });
+
+    // Only show flash animation if we have a previous price to compare against
     if (prevPrice !== undefined && prevPrice !== currentPrice) {
       const flashClass = currentPrice > prevPrice ? "flash-green" : "flash-red";
+      
+      // Clear existing timeout if any
       if ($priceFlashStates.has(token.canister_id)) {
         clearTimeout($priceFlashStates.get(token.canister_id)!.timeout);
       }
 
       const timeout = setTimeout(() => {
-        $priceFlashStates.delete(token.canister_id);
-        priceFlashStates.set($priceFlashStates);
+        priceFlashStates.update(states => {
+          states.delete(token.canister_id);
+          return states;
+        });
       }, 2000);
 
-      $priceFlashStates.set(token.canister_id, { class: flashClass, timeout });
-      priceFlashStates.set($priceFlashStates);
+      priceFlashStates.update(states => {
+        states.set(token.canister_id, { class: flashClass, timeout });
+        return states;
+      });
     }
-
-    previousPrices.set(token.canister_id, currentPrice);
   }
 
   // Optimize refresh data function
   async function refreshData() {
     try {
-      isLoading.set(true);
       const {tokens, total_count} = await fetchTokens({ 
         page: $currentPage, 
         limit: ITEMS_PER_PAGE,
-        search: $debouncedSearchTerm
+        search: $debouncedSearchTerm,
       });
 
+      // Update the data first
+      tokenData.set(tokens);
+      totalCount.set(total_count);
+
+      // Then update flash states
       tokens.forEach(token => {
         updatePriceFlash(token);
       });
-
-      tokenData.set(tokens);
-      totalCount.set(total_count);
     } catch (error) {
       console.error('Error refreshing token data:', error);
-    } finally {
-      isLoading.set(false);
     }
   }
 
@@ -104,7 +114,50 @@
   // Refresh data periodically
   let refreshInterval: ReturnType<typeof setInterval>;
 
-  // Optimize initial load and URL handling
+  // Single reactive statement to handle all refresh triggers
+  $: if (browser) {
+    // Clear any existing interval
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+      refreshInterval = undefined;
+    }
+
+    // Initial load or navigation to /stats
+    if ($page.url.pathname === '/stats') {
+      refreshData();
+      refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
+    }
+  }
+
+  // Handle page/search changes
+  $: if (browser && ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
+    refreshData();
+  }
+
+  // Keep URL updates in a separate reactive statement
+  $: if (browser && ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', $currentPage.toString());
+    if ($debouncedSearchTerm) {
+      url.searchParams.set('search', $debouncedSearchTerm);
+    } else {
+      url.searchParams.delete('search');
+    }
+    goto(url.toString(), { replaceState: true, keepFocus: true });
+  }
+
+  // Cleanup interval on component destroy
+  onDestroy(() => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+      refreshInterval = undefined;
+    }
+  });
+
+  // Initialize on mount
   onMount(async () => {
     if (browser) {
       // Get initial parameters from URL
@@ -118,37 +171,8 @@
         searchTerm.set(searchParam);
         debouncedSearchTerm.set(searchParam);
       }
-
-      // Initial data fetch
-      await refreshData();
-
-      // Set up periodic refresh only after initial load
-      refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
     }
   });
-
-  // Cleanup interval on component destroy
-  onDestroy(() => {
-    if (searchTimeout) clearTimeout(searchTimeout);
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
-    }
-  });
-
-  // Update data when page changes or debounced search term changes
-  $: if (browser && ($currentPage || $debouncedSearchTerm !== undefined)) {
-    refreshData();
-    const url = new URL(window.location.href);
-    url.searchParams.set('page', $currentPage.toString());
-    if ($debouncedSearchTerm) {
-      url.searchParams.set('search', $debouncedSearchTerm);
-    } else {
-      url.searchParams.delete('search');
-    }
-    // Add timestamp to force fresh data
-    url.searchParams.set('t', Date.now().toString());
-    goto(url.toString(), { replaceState: true, keepFocus: true });
-  }
 
   // Local state
   let isMobile = false;

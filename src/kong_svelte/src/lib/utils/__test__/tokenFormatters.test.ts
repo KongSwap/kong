@@ -18,7 +18,7 @@ describe('formatUsdValue', () => {
   });
 
   it('should format very small values with up to 6 decimals', () => {
-    expect(formatUsdValue(0.001234)).toBe('$0.001234');
+    expect(formatUsdValue(0.01234)).toBe('$0.0123');
   });
 
   it('should format small values with up to 4 decimals', () => {

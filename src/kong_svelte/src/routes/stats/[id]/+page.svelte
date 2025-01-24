@@ -13,18 +13,17 @@
     ICP_CANISTER_ID,
   } from "$lib/constants/canisterConstants";
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
-  import * as TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { Droplets, ArrowLeftRight, Copy } from "lucide-svelte";
   import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
+  import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import { GOVERNANCE_CANISTER_IDS } from "$lib/services/sns/snsService";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { toastStore } from "$lib/stores/toastStore";
     import { tokenData } from "$lib/stores/tokenData";
 
-  if (!tokenData || !livePools) {
-    throw new Error("Stores are not initialized");
-  }
+  // Add loading state for token lookup
+  let isTokenLoading = $state(true);
 
   // Add back the necessary state variables at the top
   let token = $state<FE.Token | undefined>(undefined);
@@ -49,11 +48,18 @@
     }
   });
 
-  // Replace the async effect with a regular effect
+  // Update the token lookup effect
   $effect(() => {
+    // React to both tokenData and page params changes
+    const data = $tokenData;
     const pageId = $page.params.id;
-    // Use .then() instead of async/await
-    token = $tokenData.find((t) => t.canister_id === pageId);
+    
+    if (data?.length > 0) {
+      token = data.find((t) => t.canister_id === pageId);
+      isTokenLoading = false;
+    } else {
+      isTokenLoading = true;
+    }
   });
 
   // First try to find CKUSDT pool with non-zero TVL, then fallback to largest pool
@@ -180,7 +186,7 @@
 </script>
 
 <div class="p-4 pt-0">
-  {#if !$tokenData || !$livePools}
+  {#if isTokenLoading}
     <!-- Improved loading state -->
     <div class="flex flex-col items-center justify-center min-h-[300px]">
       <div class="loader mb-4"></div>
@@ -373,7 +379,7 @@
               </div>
 
               <!-- Token Statistics -->
-              <TokenStatistics.default {token} marketCapRank={token?.metrics?.market_cap_rank} />
+              <TokenStatistics {token} marketCapRank={token?.metrics?.market_cap_rank} />
 
               <!-- Chart Panel -->
               <Panel
@@ -535,7 +541,7 @@
                     </div>
                   </ButtonV2>
                 </div>
-                <TokenStatistics.default {token} {marketCapRank} />
+                <TokenStatistics {token} {marketCapRank} />
               </div>
             </div>
           </div>
@@ -586,7 +592,7 @@
                   </a>
                 </div>
               </Panel>
-              <TokenStatistics.default {token} {marketCapRank} />
+              <TokenStatistics {token} {marketCapRank} />
             </div>
           </div>
         </div>

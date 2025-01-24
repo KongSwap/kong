@@ -72,7 +72,7 @@
   });
 
   // Use activeToken instead of directly using $liveToken
-  $: formattedPrice = formatUsdValue(activeToken?.metrics?.price || 0);
+  $: formattedPrice = formatUsdValue(activeToken?.metrics?.price || 0, true);
   $: formattedPriceChange24h = Number(activeToken?.metrics?.price_change_24h) || 0;
 </script>
 

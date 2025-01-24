@@ -20,5 +20,12 @@ Sentry.init({
   integrations: [replayIntegration()],
 });
 
-// If you have a custom error handler, pass it to `handleErrorWithSentry`
-export const handleError = handleErrorWithSentry();
+// Combine both error handlers into one
+export const handleError = handleErrorWithSentry(async (error) => {
+	const errorId = crypto.randomUUID();
+	console.error(error);
+	return {
+		message: 'An unexpected error occurred.',
+		errorId
+	};
+});

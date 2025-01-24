@@ -124,7 +124,7 @@
   $: if ($auth.isConnected && $auth.account?.owner) {
     console.log('Auth changed, loading balances for:', $auth.account.owner.toString());
     fetchUserTokenList().then(() => {
-      loadBalances($auth.account.owner.toString(), {
+      loadBalances($auth?.account?.owner?.toString(), {
         tokens: get(userTokenList),
         forceRefresh: true
       });
@@ -133,10 +133,9 @@
 
   onMount(async () => {
     await FavoriteService.loadFavorites();
-    const authStore = get(auth);
-    if (authStore.isConnected && authStore.account?.owner) {
+    if ($auth.isConnected && $auth.account?.owner) {
       await fetchUserTokenList();
-      await loadBalances(authStore.account.owner.toString(), {
+      await loadBalances($auth.account.owner.toString(), {
         tokens: get(userTokenList),
         forceRefresh: true
       });
@@ -223,23 +222,6 @@
           />
           <div class="toggle-switch"></div>
         </label>
-
-        <button class="sort-toggle" on:click={toggleSort}>
-          <span class="toggle-label text-xs">Value</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            class="sort-arrow"
-            class:ascending={$sortDirectionStore === "asc"}
-          >
-            <path d="M12 20V4M5 13l7 7 7-7" />
-          </svg>
-        </button>
       </div>
     </div>
   </div>
@@ -327,20 +309,6 @@
 
   .clear-button {
     @apply absolute right-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors p-1;
-  }
-
-  .sort-toggle {
-    @apply flex items-center gap-1.5 text-kong-text-secondary cursor-pointer 
-           hover:text-kong-text-primary transition-colors whitespace-nowrap bg-kong-bg-dark/40
-           px-2 py-1.5 rounded-md border border-gray-700/50 h-[34px];
-  }
-
-  .sort-arrow {
-    @apply transition-transform duration-200;
-  }
-
-  .sort-arrow.ascending {
-    @apply rotate-180;
   }
 
   .filter-toggle {

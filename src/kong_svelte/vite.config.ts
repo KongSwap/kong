@@ -160,7 +160,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         },
       },
       include: ['dexie', 'comlink', '@dfinity/agent'],
-      exclude: ['@sveltejs/kit', '$lib/utils/browser']
+      exclude: ['@sveltejs/kit', '$lib/utils/browser', '@dfinity/candid', '@dfinity/principal']
     },
     server: {
       proxy: {
@@ -169,6 +169,13 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
           changeOrigin: true,
         },
       },
+      fs: {
+        // Allow serving files from one level up to the project root
+        allow: ['..']
+      },
+      watch: {
+        usePolling: true
+      }
     },
     plugins: basePlugins as any[],
     resolve: {

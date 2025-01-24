@@ -292,7 +292,7 @@ export class PoolService {
           const failureMessage = status.statuses.find(s => s.includes("Failed"));
           toastStore.dismiss(toastId);
           toastStore.error(failureMessage || "Operation failed");
-          throw new Error(failureMessage || "Operation failed");
+          return status;
         }
 
         attempts++;

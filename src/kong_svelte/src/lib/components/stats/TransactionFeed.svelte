@@ -93,21 +93,23 @@
         );
 
         if (isRefresh) {
-          // Compare new transactions with existing ones and highlight differences
-          const existingIds = new Set(transactions.map((t) => t.tx_id));
-          const updatedTransactions = newTransactions.map((tx) => {
-            if (!existingIds.has(tx.tx_id)) {
-              newTransactionIds.add(tx.tx_id);
-              clearTransactionHighlight(tx.tx_id);
-            }
-            return tx;
+          // Properly merge transactions maintaining newest-first order
+          const existingTxMap = new Map(transactions.map(t => [t.tx_id, t]));
+          const updatedTransactions = newTransactions.filter(tx => !existingTxMap.has(tx.tx_id));
+          
+          // Prepend new transactions and keep existing ones
+          transactions = [...updatedTransactions, ...transactions];
+          
+          // Highlight new transactions
+          updatedTransactions.forEach(tx => {
+            newTransactionIds.add(tx.tx_id);
+            clearTransactionHighlight(tx.tx_id);
           });
-          transactions = updatedTransactions;
-          newTransactionIds = newTransactionIds; // Trigger reactivity
         } else if (append) {
           transactions = [...transactions, ...newTransactions];
         } else {
-          transactions = newTransactions;
+          // Initial load should reverse if API returns ascending order
+          transactions = newTransactions; // Ensure API is returning descending order
         }
 
         hasMore = newTransactions.length === pageSize;
