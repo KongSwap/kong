@@ -401,6 +401,8 @@ export class PoolService {
               symbol: pool.symbol,
               symbol_0: pool.symbol_0,
               symbol_1: pool.symbol_1,
+              address_0: pool.address_0,
+              address_1: pool.address_1,
               ts: pool.ts.toString(),
               usd_amount_0: typeof pool.usd_amount_0 === 'number' ? pool.usd_amount_0 : Number(pool.usd_amount_0),
               usd_amount_1: typeof pool.usd_amount_1 === 'number' ? pool.usd_amount_1 : Number(pool.usd_amount_1),

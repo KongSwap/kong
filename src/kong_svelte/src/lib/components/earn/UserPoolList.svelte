@@ -19,7 +19,11 @@
   let selectedPool: any = null;
   let showUserPoolModal = false;
   let tokens: Record<string, FE.Token> = {};
-  let tokensLoading = true;
+  let poolsLoading = true;  // Track pools loading state
+  let tokensLoading = false;  // Track tokens loading state
+
+  // Helper computed value to determine overall loading state
+  $: loading = poolsLoading || tokensLoading;
 
   function createSearchableText(
     poolBalance: any,
@@ -40,26 +44,9 @@
       .toLowerCase();
   }
 
-  async function fetchTokensForPools(pools: any[]) {
-    try {
-      tokensLoading = true;
-      const tokenIds = [...new Set(pools.flatMap(pool => [pool.address_0, pool.address_1]))];
-      const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
-      tokens = fetchedTokens.reduce((acc, token) => {
-        acc[token.canister_id] = token;
-        return acc;
-      }, {} as Record<string, FE.Token>);
-    } catch (e) {
-      error = "Failed to load token information";
-      console.error("Error fetching tokens:", e);
-    } finally {
-      tokensLoading = false;
-    }
-  }
-
-  // Process pool balances when they update and tokens are loaded
+  // Process pool balances when they update
   $: {
-    if (Array.isArray($liveUserPools) && !tokensLoading) {
+    if (Array.isArray($liveUserPools)) {
       processedPools = $liveUserPools
         .filter((poolBalance) => Number(poolBalance.balance) > 0)
         .map((poolBalance) => {
@@ -86,7 +73,31 @@
             searchableText: createSearchableText(poolBalance, token0, token1)
           };
         });
-      loading = false;
+      poolsLoading = false;  // Mark pools as loaded once we process them
+    }
+  }
+
+  // Watch for changes in liveUserPools to update tokens
+  $: if ($liveUserPools && Array.isArray($liveUserPools) && !tokensLoading) {
+    fetchTokensForPools($liveUserPools);
+  }
+
+  async function fetchTokensForPools(pools: any[]) {
+    if (pools.length === 0) return;  // Don't fetch if no pools
+    
+    try {
+      tokensLoading = true;
+      const tokenIds = [...new Set(pools.flatMap(pool => [pool.address_0, pool.address_1]))];
+      const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
+      tokens = fetchedTokens.reduce((acc, token) => {
+        acc[token.canister_id] = token;
+        return acc;
+      }, {} as Record<string, FE.Token>);
+    } catch (e) {
+      error = "Failed to load token information";
+      console.error("Error fetching tokens:", e);
+    } finally {
+      tokensLoading = false;
     }
   }
 
@@ -111,21 +122,10 @@
     showUserPoolModal = false;
     selectedPool = null;
   }
-  
-  onMount(async () => {
-    if ($liveUserPools && Array.isArray($liveUserPools)) {
-      await fetchTokensForPools($liveUserPools);
-    }
-  });
-
-  // Watch for changes in liveUserPools to update tokens
-  $: if ($liveUserPools && Array.isArray($liveUserPools)) {
-    fetchTokensForPools($liveUserPools);
-  }
 </script>
 
 <div class="mt-2">
-  {#if loading || tokensLoading}
+  {#if loading}
     <div class="loading-state" in:fade>
       <p class="text-center text-lg font-medium">Loading positions...</p>
     </div>
@@ -133,7 +133,7 @@
     <div class="error-state" in:fade>
       <p class="text-center text-lg font-medium">{error}</p>
     </div>
-  {:else if filteredPools.length === 0}
+  {:else if filteredPools.length === 0 && !loading}
     <div class="empty-state" in:fade>
       {#if searchQuery}
         <p class="text-center text-lg font-medium">
@@ -298,8 +298,7 @@
     @apply flex items-center justify-center
            h-40
            rounded-lg
-           bg-white/90 dark:bg-kong-bg-dark/40 backdrop-blur-lg
-           text-kong-text-primary/20 dark:text-slate-50
+           text-kong-text-primary/80 dark:text-slate-50
            border border-kong-border dark:border-kong-border
            shadow-sm;
   }

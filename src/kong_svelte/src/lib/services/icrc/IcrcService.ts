@@ -280,7 +280,11 @@ export class IcrcService {
       });
 
       if ("Err" in result) {
-        throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);
+        // Convert BigInt values to strings in the error object
+        const stringifiedError = JSON.stringify(result.Err, (_, value) =>
+          typeof value === 'bigint' ? value.toString() : value
+        );
+        throw new Error(`ICRC2 approve error: ${stringifiedError}`);
       }
 
       return result.Ok;
