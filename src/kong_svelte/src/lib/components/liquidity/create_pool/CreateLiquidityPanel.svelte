@@ -262,7 +262,7 @@
       // If it's 100% (MAX), subtract both the token fee and transaction fee
       const adjustedBalance =
         percentage === 100
-          ? balance.minus(new BigNumber(token0.fee))
+          ? balance.minus(new BigNumber(token0.fee * 2))
           : balance.times(percentage).div(100);
 
       // Format to avoid excessive decimals (use token's decimal places)

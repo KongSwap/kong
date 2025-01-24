@@ -1,41 +1,55 @@
 <script lang="ts">
-  import { writable, derived } from "svelte/store";
   import { ArrowUp, ArrowDown, ArrowUpDown, Flame, TrendingUp, Wallet } from "lucide-svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
-  import { onMount, tick } from "svelte";
+  import { onMount } from "svelte";
 
-  export let data: any[] = [];
-  export let columns: {
-    key: string;
-    title: string;
-    sortable?: boolean;
-    align?: 'left' | 'center' | 'right';
-    width?: string;
-    formatter?: (value: any) => string | number;
-    component?: any;
-    componentProps?: any;
-    sortValue?: (row: any) => string | number;
-  }[] = [];
-  export let itemsPerPage = 100;
-  export let defaultSort = { column: '', direction: 'desc' as 'asc' | 'desc' };
-  export let onRowClick: ((row: any) => void) | null = null;
-  export let rowKey = 'id';
-  export let isKongRow: ((row: any) => boolean) | null = null;
-  export let totalItems = 0;
-  export let currentPage = 1;
-  export let onPageChange: ((page: number) => void) | null = null;
-  export let isLoading = false;
+  const {
+    data = [],
+    columns = [],
+    itemsPerPage = 100,
+    defaultSort = { column: '', direction: 'desc' as 'asc' | 'desc' },
+    onRowClick = null,
+    rowKey = 'id',
+    isKongRow = null,
+    totalItems = 0,
+    currentPage = 1,
+    onPageChange = null,
+    isLoading = false
+  } = $props<{
+    data: any[];
+    columns: {
+      key: string;
+      title: string;
+      sortable?: boolean;
+      align?: 'left' | 'center' | 'right';
+      width?: string;
+      formatter?: (value: any) => string | number;
+      component?: any;
+      componentProps?: any;
+      sortValue?: (row: any) => string | number;
+    }[];
+    itemsPerPage?: number;
+    defaultSort?: { column: string; direction: 'asc' | 'desc' };
+    onRowClick?: ((row: any) => void) | null;
+    rowKey?: string;
+    isKongRow?: ((row: any) => boolean) | null;
+    totalItems?: number;
+    currentPage?: number;
+    onPageChange?: ((page: number) => void) | null;
+    isLoading?: boolean;
+  }>();
 
-  const sortColumn = writable(defaultSort.column || '');
-  const sortDirection = writable<'asc' | 'desc'>(defaultSort.direction || 'desc');
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  let sortColumn = $state(defaultSort.column || '');
+  let sortDirection = $state<'asc' | 'desc'>(defaultSort.direction || 'desc');
+  let totalPages = $derived(Math.ceil(totalItems / itemsPerPage));
 
-  // Optimize getValue by using a Map for column lookups
-  const columnMap = new Map();
-  $: {
+  // Column map for optimized lookups
+  let columnMap = $state(new Map());
+  
+  $effect(() => {
     columnMap.clear();
     columns.forEach(col => columnMap.set(col.key, col));
-  }
+  });
 
   function getValue(obj: any, path: string): any {
     const column = columnMap.get(path);
@@ -56,19 +70,15 @@
     }
   }
 
-  // Add a helper function to check if a row is a KONG row
   function isKongToken(row: any): boolean {
-    // Check for both token and pool cases
     return row.canister_id === KONG_CANISTER_ID || 
            row.address_0 === KONG_CANISTER_ID || 
            row.address_1 === KONG_CANISTER_ID;
   }
 
-  // Make memoizedSortedData reactive to data, sortColumn, and sortDirection changes
-  $: memoizedSortedData = (() => {
-    if (!$sortColumn) {
+  let sortedData = $derived(() => {
+    if (!sortColumn) {
       return [...data].sort((a, b) => {
-        // Always ensure KONG is at the top even when no sorting is applied
         if (isKongToken(a)) return -1;
         if (isKongToken(b)) return 1;
         return 0;
@@ -76,15 +86,14 @@
     }
 
     return [...data].sort((a, b) => {
-      // Always ensure KONG is at the top regardless of sort
       if (isKongToken(a)) return -1;
       if (isKongToken(b)) return 1;
 
-      let aValue = getValue(a, $sortColumn);
-      let bValue = getValue(b, $sortColumn);
+      let aValue = getValue(a, sortColumn);
+      let bValue = getValue(b, sortColumn);
 
       if (typeof aValue === 'string') {
-        return $sortDirection === 'asc' 
+        return sortDirection === 'asc' 
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
@@ -92,51 +101,37 @@
       aValue = Number(aValue || 0);
       bValue = Number(bValue || 0);
 
-      return $sortDirection === 'asc' 
+      return sortDirection === 'asc' 
         ? aValue - bValue 
         : bValue - aValue;
     });
-  })();
+  });
 
-  // Since pagination is handled by the parent component, we don't need to paginate here
-  $: memoizedPaginatedData = memoizedSortedData;
+  let displayData = $state([]);
 
-  // Optimize price flash animations
+  $effect(() => {
+    displayData = sortedData();
+  });
+
   const flashDuration = 2000;
-  let flashTimeouts = new Map();
+  let flashTimeouts = $state(new Map());
+  let rowFlashStates = $state(new Map<string, { class: string, timeout: any }>());
+  let previousPrices = $state(new Map<string, number>());
 
-  // Make the price cache more granular
-  const priceCache = new Map<string, {
-    price: number;
-    timestamp: number;
-    previousPrice: number;
-  }>();
-
-  // Update price tracking logic
-  function trackPriceChanges(rows: any[]) {
-    rows.forEach(row => {
+  $effect(() => {
+    data.forEach(row => {
       const key = row[rowKey];
       const currentPrice = Number(row.metrics?.price || 0);
-      const cached = priceCache.get(key);
+      const lastPrice = previousPrices.get(key);
 
-      if (cached && currentPrice !== cached.price) {
-        updatePriceFlash(row, cached.price);
-        priceCache.set(key, {
-          price: currentPrice,
-          timestamp: Date.now(),
-          previousPrice: cached.price
-        });
-      } else if (!cached) {
-        priceCache.set(key, {
-          price: currentPrice,
-          timestamp: Date.now(),
-          previousPrice: currentPrice
-        });
+      if (lastPrice !== undefined && currentPrice !== lastPrice) {
+        updatePriceFlash(row, lastPrice);
       }
+      
+      previousPrices.set(key, currentPrice);
     });
-  }
+  });
 
-  // Update flash animation logic
   function updatePriceFlash(row: any, previousPrice: number) {
     const key = row[rowKey];
     const currentPrice = Number(row.metrics?.price || 0);
@@ -149,33 +144,25 @@
     
     const timeout = setTimeout(() => {
       rowFlashStates.delete(key);
-      rowFlashStates = new Map(rowFlashStates);
       flashTimeouts.delete(key);
     }, flashDuration);
 
     flashTimeouts.set(key, timeout);
     rowFlashStates.set(key, { class: flashClass, timeout });
-    rowFlashStates = new Map(rowFlashStates);
   }
 
-  // Store previous prices for flash animations
-  let previousPrices = new Map<string, number>();
-
-  // Track row flash states
-  let rowFlashStates = new Map<string, { class: string, timeout: any }>();
-
   function toggleSort(column: string) {
-    if ($sortColumn === column) {
-      sortDirection.update(d => d === 'asc' ? 'desc' : 'asc');
+    if (sortColumn === column) {
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
-      sortColumn.set(column);
-      sortDirection.set('desc');
+      sortColumn = column;
+      sortDirection = 'desc';
     }
   }
 
   function getSortIcon(column: string) {
-    if ($sortColumn !== column) return ArrowUpDown;
-    return $sortDirection === 'asc' ? ArrowUp : ArrowDown;
+    if (sortColumn !== column) return ArrowUpDown;
+    return sortDirection === 'asc' ? ArrowUp : ArrowDown;
   }
 
   function nextPage() {
@@ -196,35 +183,18 @@
     }
   }
 
-  // Watch data changes more effectively
-  $: {
-    if (data?.length) {
-      trackPriceChanges(data);
-    }
-  }
-
-  // Add helper function to get trend class
   function getTrendClass(value: number): string {
     if (!value) return '';
     return value > 0 ? 'text-kong-accent-green' : value < 0 ? 'text-kong-accent-red' : '';
   }
 
-  // Initialize sorting on mount
   onMount(() => {
     if (defaultSort.column) {
-      sortColumn.set(defaultSort.column);
-      sortDirection.set(defaultSort.direction);
+      sortColumn = defaultSort.column;
+      sortDirection = defaultSort.direction;
     }
-  });
-
-  onMount(() => {
-    // Initialize previous prices
-    data.forEach(row => {
-      previousPrices.set(row[rowKey], row.metrics?.price);
-    });
 
     return () => {
-      // Clear any remaining timeouts
       rowFlashStates.forEach(state => {
         if (state.timeout) clearTimeout(state.timeout);
       });
@@ -255,7 +225,7 @@
         </tr>
       </thead>
       <tbody>
-        {#each memoizedPaginatedData as row (row[rowKey])}
+        {#each displayData as row (row[rowKey])}
           <tr
             class="h-[44px] border-b border-kong-border/50 hover:bg-kong-bg-light/30 transition-colors duration-200 
               {onRowClick ? 'cursor-pointer' : ''} 
@@ -357,7 +327,6 @@
     background-color: var(--kong-bg-dark);
   }
 
-  /* Add these flash animation styles */
   .flash-green {
     animation: flashGreen 2s ease-out;
   }

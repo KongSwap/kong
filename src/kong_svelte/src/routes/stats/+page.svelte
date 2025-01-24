@@ -33,15 +33,16 @@
   import { fetchTokens } from "$lib/api/tokens";
 
   const ITEMS_PER_PAGE = 50;
-  const REFRESH_INTERVAL = 2000; // 2 seconds for more frequent updates
+  const REFRESH_INTERVAL = 3000; // 2 seconds for more frequent updates
   const SEARCH_DEBOUNCE = 300; // 300ms debounce for search
   
-  // Initialize stores
+  // Initialize stores with loading state
   const tokenData = writable<FE.Token[]>([]);
   const totalCount = writable<number>(0);
   const currentPage = writable<number>(1);
   const searchTerm = writable<string>("");
   const debouncedSearchTerm = writable<string>("");
+  const isLoading = writable<boolean>(true); // Add loading state
   const previousPrices = new Map<string, number>();
   const priceFlashStates = writable(new Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>());
 
@@ -68,16 +69,16 @@
     previousPrices.set(token.canister_id, currentPrice);
   }
 
-  // Refresh data with optimized price tracking
+  // Optimize refresh data function
   async function refreshData() {
     try {
+      isLoading.set(true);
       const {tokens, total_count} = await fetchTokens({ 
         page: $currentPage, 
         limit: ITEMS_PER_PAGE,
         search: $debouncedSearchTerm
       });
 
-      // Track price changes before updating store
       tokens.forEach(token => {
         updatePriceFlash(token);
       });
@@ -86,11 +87,8 @@
       totalCount.set(total_count);
     } catch (error) {
       console.error('Error refreshing token data:', error);
-      // Reset the interval if there was an error
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
-      }
+    } finally {
+      isLoading.set(false);
     }
   }
 
@@ -106,17 +104,27 @@
   // Refresh data periodically
   let refreshInterval: ReturnType<typeof setInterval>;
 
-  // Initial data load
-  onMount(() => {
-    // Get initial page from URL if it exists
-    const pageParam = parseInt($page.url.searchParams.get('page') || '1');
-    currentPage.set(pageParam);
+  // Optimize initial load and URL handling
+  onMount(async () => {
+    if (browser) {
+      // Get initial parameters from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const pageParam = parseInt(urlParams.get('page') || '1');
+      const searchParam = urlParams.get('search') || '';
+      
+      // Set initial values
+      currentPage.set(pageParam);
+      if (searchParam) {
+        searchTerm.set(searchParam);
+        debouncedSearchTerm.set(searchParam);
+      }
 
-    // Initial data fetch
-    refreshData();
+      // Initial data fetch
+      await refreshData();
 
-    // Set up periodic refresh
-    refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
+      // Set up periodic refresh only after initial load
+      refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
+    }
   });
 
   // Cleanup interval on component destroy
@@ -314,10 +322,15 @@
         </div>
 
         <!-- Content -->
-        {#if $filteredTokens.length === 0}
-          <div
-            class="flex flex-col items-center justify-center h-64 text-center"
-          >
+        {#if $isLoading && $filteredTokens.length === 0}
+          <div class="flex flex-col items-center justify-center h-64 text-center">
+            <div class="animate-pulse">
+              <div class="h-4 w-32 bg-kong-background-secondary rounded mb-4"></div>
+              <div class="h-4 w-48 bg-kong-background-secondary rounded"></div>
+            </div>
+          </div>
+        {:else if $filteredTokens.length === 0}
+          <div class="flex flex-col items-center justify-center h-64 text-center">
             {#if $showFavoritesOnly && !$auth.isConnected}
               <p class="text-gray-400 mb-4">
                 Connect your wallet to view and manage your favorite tokens
@@ -521,5 +534,24 @@
 
   button:disabled {
     @apply opacity-50 cursor-not-allowed;
+  }
+
+  .animate-pulse {
+    @apply transition-opacity duration-300;
+  }
+
+  .loading-skeleton {
+    @apply bg-gradient-to-r from-kong-bg-dark via-kong-bg-dark/50 to-kong-bg-dark;
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+  }
+
+  @keyframes loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 </style>
