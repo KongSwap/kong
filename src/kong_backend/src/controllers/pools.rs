@@ -127,6 +127,23 @@ fn remove_pool(symbol: String) -> Result<String, String> {
     Ok(format!("Pool {} removed", symbol))
 }
 
+/// suspend pool, set is_removed to true
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn suspend_pool(symbol: String) -> Result<String, String> {
+    let pool = pool_map::get_by_token(&symbol)?;
+    pool_map::remove(pool.pool_id)?;
+
+    Ok(format!("Pool {} suspended", symbol))
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn unsuspend_pool(symbol: String) -> Result<String, String> {
+    let pool = pool_map::get_by_token(&symbol)?;
+    pool_map::unremove(pool.pool_id)?;
+
+    Ok(format!("Pool {} unsuspended", symbol))
+}
+
 /// used to force a pool stats update
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn update_pool_stats() -> Result<String, String> {

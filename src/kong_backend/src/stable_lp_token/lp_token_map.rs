@@ -78,14 +78,3 @@ pub fn archive_to_kong_data(lp_token: &StableLPToken) -> Result<(), String> {
 
     Ok(())
 }
-
-pub fn remove(lp_token_id: u32) -> Result<(), String> {
-    let lp_token = get_by_token_id(lp_token_id).ok_or(format!("LP token_id #{} not found", lp_token_id))?;
-    // set amount=0 to remove lp_token
-    update(&StableLPToken {
-        amount: nat_zero(),
-        ..lp_token
-    });
-
-    Ok(())
-}

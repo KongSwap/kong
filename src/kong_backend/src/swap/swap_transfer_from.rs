@@ -124,8 +124,16 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
 
 async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, StableToken, f64, Address), String> {
     let pay_token = token_map::get_by_token(&args.pay_token)?;
+    if pay_token.is_removed() {
+        Err("Pay token is suspended or removed".to_string())?;
+    };
     let pay_amount = args.pay_amount.clone();
+
     let receive_token = token_map::get_by_token(&args.receive_token)?;
+    if receive_token.is_removed() {
+        Err("Receive token is suspended or removed".to_string())?;
+    };
+
     // use specified max slippage or use default
     let max_slippage = args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
     // use specified address or default to caller's principal id

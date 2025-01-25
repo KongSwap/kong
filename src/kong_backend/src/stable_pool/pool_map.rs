@@ -2,7 +2,6 @@ use wildmatch::WildMatch;
 
 use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_lp_token::lp_token_map;
 use crate::stable_memory::POOL_MAP;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_token::stable_token::StableToken;
@@ -179,14 +178,30 @@ pub fn update(pool: &StablePool) {
 
 pub fn remove(pool_id: u32) -> Result<(), String> {
     let pool = get_by_pool_id(pool_id).ok_or_else(|| format!("Pool #{} not found", pool_id))?;
+
     // set is_removed to true to remove pool
     update(&StablePool { is_removed: true, ..pool });
+
+    // remove token_0
+    token_map::remove(pool.token_id_0)?;
 
     // remove LP token
     token_map::remove(pool.lp_token_id)?;
 
-    // remove LP token
-    lp_token_map::remove(pool.lp_token_id)?;
+    Ok(())
+}
+
+pub fn unremove(pool_id: u32) -> Result<(), String> {
+    let pool = get_by_pool_id(pool_id).ok_or_else(|| format!("Pool #{} not found", pool_id))?;
+
+    // set is_removed to false to unremove pool
+    update(&StablePool { is_removed: false, ..pool });
+
+    // unremove token_0
+    token_map::unremove(pool.token_id_0)?;
+
+    // unremove LP token
+    token_map::unremove(pool.lp_token_id)?;
 
     Ok(())
 }

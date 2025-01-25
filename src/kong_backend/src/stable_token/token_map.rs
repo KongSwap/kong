@@ -208,12 +208,32 @@ pub fn update(token: &StableToken) {
 
 pub fn remove(token_id: u32) -> Result<(), String> {
     let token = get_by_token_id(token_id).ok_or(format!("Token_id #{} not found", token_id))?;
+
     // set is_removed to true to remove token
     let remove_token = match token {
         StableToken::IC(token) => &StableToken::IC(ICToken { is_removed: true, ..token }),
         StableToken::LP(token) => &StableToken::LP(LPToken { is_removed: true, ..token }),
     };
     update(remove_token);
+
+    Ok(())
+}
+
+pub fn unremove(token_id: u32) -> Result<(), String> {
+    let token = get_by_token_id(token_id).ok_or(format!("Token_id #{} not found", token_id))?;
+
+    // set is_removed to false to unremove token
+    let unremove_token = match token {
+        StableToken::IC(token) => &StableToken::IC(ICToken {
+            is_removed: false,
+            ..token
+        }),
+        StableToken::LP(token) => &StableToken::LP(LPToken {
+            is_removed: false,
+            ..token
+        }),
+    };
+    update(unremove_token);
 
     Ok(())
 }

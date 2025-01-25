@@ -134,13 +134,9 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
     request_map::update_status(request_id, StatusCode::Start, None);
 
     // check pay_token is a valid token. We need to know the canister id so return here if token is not valid
-    let pay_token = match token_map::get_by_token(&args.pay_token) {
-        Ok(token) => token,
-        Err(e) => {
-            request_map::update_status(request_id, StatusCode::PayTokenNotFound, Some(&e));
-            Err(e)?
-        }
-    };
+    let pay_token = token_map::get_by_token(&args.pay_token).inspect_err(|e| {
+        request_map::update_status(request_id, StatusCode::PayTokenNotFound, Some(e));
+    })?;
 
     let pay_amount = args.pay_amount.clone();
 
@@ -177,15 +173,41 @@ async fn process_swap(
 
     transfer_ids.push(pay_transfer_id);
 
-    let receive_token = match token_map::get_by_token(&args.receive_token) {
-        Ok(token) => token,
-        Err(e) => {
-            request_map::update_status(request_id, StatusCode::ReceiveTokenNotFound, None);
-            return_pay_token(request_id, user_id, &caller_id, pay_token, pay_amount, None, transfer_ids, ts).await;
-            Err(format!("Req #{} failed. {}", request_id, e))?
-        }
-    };
+    let receive_token = token_map::get_by_token(&args.receive_token).inspect_err(|e| {
+        request_map::update_status(request_id, StatusCode::ReceiveTokenNotFound, Some(e));
+    })?;
+    if receive_token.is_removed() {
+        request_map::update_status(request_id, StatusCode::ReceiveTokenNotFound, None);
+        return_pay_token(
+            request_id,
+            user_id,
+            &caller_id,
+            pay_token,
+            pay_amount,
+            Some(&receive_token),
+            transfer_ids,
+            ts,
+        )
+        .await;
+        Err(format!("Req #{} failed. Receive token is suspended or removed", request_id))?
+    }
     let receive_amount = args.receive_amount.as_ref();
+
+    if pay_token.is_removed() {
+        request_map::update_status(request_id, StatusCode::PayTokenNotFound, None);
+        return_pay_token(
+            request_id,
+            user_id,
+            &caller_id,
+            pay_token,
+            pay_amount,
+            Some(&receive_token),
+            transfer_ids,
+            ts,
+        )
+        .await;
+        Err(format!("Req #{} failed. Pay token is suspended or removed", request_id))?
+    }
     if nat_is_zero(pay_amount) {
         request_map::update_status(request_id, StatusCode::PayTokenAmountIsZero, None);
         return_pay_token(
@@ -201,6 +223,7 @@ async fn process_swap(
         .await;
         Err(format!("Req #{} failed. Pay amount is zero", request_id))?
     }
+
     // use specified max slippage or use default
     let max_slippage = args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
     // use specified address or default to caller's principal id
