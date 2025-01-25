@@ -1,6 +1,7 @@
 use super::stable_tx::StableTx;
 
 pub trait Tx {
+    #[allow(dead_code)]
     fn tx_id(&self) -> u64;
     fn user_id(&self) -> u32;
     fn ts(&self) -> u64;

@@ -1,7 +1,6 @@
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::claims::claims;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_claim::claim_map;
 use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};

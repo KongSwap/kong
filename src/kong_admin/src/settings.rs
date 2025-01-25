@@ -13,7 +13,7 @@ pub struct Database {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Settings {
-    pub dfx_pem_file: String,
+    pub dfx_pem_file: Option<String>,
     pub database: Database,
 }
 

@@ -76,11 +76,20 @@ async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Na
     // these are the amounts that will be transferred to the pool
     let (pool, add_amount_0, add_amount_1, _) = calculate_amounts(&args.token_0, &args.amount_0, &args.token_1, &args.amount_1)?;
 
-    // make sure tokens support ICRC2
     let token_0 = pool.token_0();
+    if token_0.is_removed() {
+        Err("Token_0 is suspended or removed".to_string())?
+    }
+    if !token_0.is_icrc2() {
+        Err("Token_0 must support ICRC2".to_string())?
+    }
+
     let token_1 = pool.token_1();
-    if !token_0.is_icrc2() || !token_1.is_icrc2() {
-        Err("Tokens must support ICRC2".to_string())?
+    if token_1.is_removed() {
+        Err("Token_1 is suspended or removed".to_string())?
+    }
+    if !token_1.is_icrc2() {
+        Err("Token_1 must support ICRC2".to_string())?
     }
 
     // make sure user is registered, if not create a new user

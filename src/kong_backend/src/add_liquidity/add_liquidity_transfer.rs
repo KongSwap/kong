@@ -158,6 +158,9 @@ async fn check_arguments(
     let transfer_id_0 = match &tx_id_0 {
         Some(tx_id) if token_0.is_some() => {
             let token = token_0.as_ref().unwrap();
+            if token.is_removed() {
+                Err("Token_0 is suspended or removed".to_string())?
+            }
             let amount = &args.amount_0;
             let transfer_id = verify_transfer_token(request_id, &TokenIndex::Token0, token, tx_id, amount, ts).await?;
             Ok(transfer_id)
@@ -168,6 +171,9 @@ async fn check_arguments(
     let transfer_id_1 = match &tx_id_1 {
         Some(tx_id) if token_1.is_some() => {
             let token = token_1.as_ref().unwrap();
+            if token.is_removed() {
+                Err("Token_1 is suspended or removed".to_string())?
+            }
             let amount = &args.amount_1;
             let transfer_id = verify_transfer_token(request_id, &TokenIndex::Token1, token, tx_id, amount, ts).await?;
             Ok(transfer_id)

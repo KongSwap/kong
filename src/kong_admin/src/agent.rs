@@ -1,5 +1,6 @@
 use anyhow::Result;
 use ed25519_consensus::SigningKey;
+use ic_agent::identity::{AnonymousIdentity, BasicIdentity};
 use ic_agent::{Agent, Identity};
 use rand::thread_rng;
 
@@ -12,9 +13,14 @@ pub async fn create_agent_from_identity(url: &str, identity: impl 'static + Iden
 }
 
 #[allow(dead_code)]
+pub fn create_anonymous_identity() -> impl Identity {
+    AnonymousIdentity
+}
+
+#[allow(dead_code)]
 pub fn create_random_identity() -> impl Identity {
     let signing_key = SigningKey::new(thread_rng());
-    ic_agent::identity::BasicIdentity::from_signing_key(signing_key)
+    BasicIdentity::from_signing_key(signing_key)
 }
 
 /// Secp256k1Identity is the format output by the `dfx identity export user` command.
