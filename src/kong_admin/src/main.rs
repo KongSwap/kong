@@ -3,6 +3,8 @@ use agent::{create_agent_from_identity, create_anonymous_identity, create_identi
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::MakeTlsConnector;
 use std::env;
+use std::thread;
+use std::time::Duration;
 
 use db_updates::get_db_updates;
 use kong_backend::KongBackend;
@@ -100,8 +102,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // txs::update_txs(&kong_backend).await?;
     }
 
-    let tokens_map;
-    let pools_map;
+    let mut tokens_map;
+    let mut pools_map;
     // read from flat files (./backups) and update database
     if args.contains(&"--database".to_string()) {
         // Dump to database
@@ -120,10 +122,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // read from kong_data and update database
     if args.contains(&"--db_updates".to_string()) {
-        let identity = create_anonymous_identity();
-        let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
-        let kong_data = KongData::new(&agent, is_mainnet).await;
-        get_db_updates(None, &kong_data, &db_client, tokens_map, pools_map).await?;
+        loop {
+            let identity = create_anonymous_identity();
+            let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
+            let kong_data = KongData::new(&agent, is_mainnet).await;
+            get_db_updates(None, &kong_data, &db_client, &mut tokens_map, &mut pools_map).await?;
+
+            let delay_secs = config.db_updates_delay_secs.unwrap_or(60);
+            thread::sleep(Duration::from_secs(delay_secs));
+        }
     }
 
     Ok(())

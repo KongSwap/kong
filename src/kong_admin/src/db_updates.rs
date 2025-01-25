@@ -18,8 +18,8 @@ pub async fn get_db_updates(
     db_update_id: Option<u64>,
     kong_data: &KongData,
     db_client: &Client,
-    mut tokens_map: BTreeMap<u32, u8>,
-    mut pools_map: BTreeMap<u32, (u32, u32)>,
+    tokens_map: &mut BTreeMap<u32, u8>,
+    pools_map: &mut BTreeMap<u32, (u32, u32)>,
 ) -> Result<u64, Box<dyn std::error::Error>> {
     let current_time = Local::now();
     let formatted_time = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
@@ -35,13 +35,13 @@ pub async fn get_db_updates(
         match stable_memory {
             StableMemory::KongSettings(_) => (),
             StableMemory::UserMap(user) => insert_user_on_database(user, db_client).await?,
-            StableMemory::TokenMap(token) => tokens_map = insert_token_on_database(token, db_client).await?,
-            StableMemory::PoolMap(pool) => pools_map = insert_pool_on_database(pool, db_client, &tokens_map).await?,
-            StableMemory::TxMap(tx) => insert_tx_on_database(tx, db_client, &tokens_map, &pools_map).await?,
+            StableMemory::TokenMap(token) => *tokens_map = insert_token_on_database(token, db_client).await?,
+            StableMemory::PoolMap(pool) => *pools_map = insert_pool_on_database(pool, db_client, tokens_map).await?,
+            StableMemory::TxMap(tx) => insert_tx_on_database(tx, db_client, tokens_map, pools_map).await?,
             StableMemory::RequestMap(request) => insert_request_on_database(request, db_client).await?,
-            StableMemory::TransferMap(transfer) => insert_transfer_on_database(transfer, db_client, &tokens_map).await?,
-            StableMemory::ClaimMap(claim) => insert_claim_on_database(claim, db_client, &tokens_map).await?,
-            StableMemory::LPTokenMap(lptoken) => insert_lp_token_on_database(lptoken, db_client, &tokens_map).await?,
+            StableMemory::TransferMap(transfer) => insert_transfer_on_database(transfer, db_client, tokens_map).await?,
+            StableMemory::ClaimMap(claim) => insert_claim_on_database(claim, db_client, tokens_map).await?,
+            StableMemory::LPTokenMap(lptoken) => insert_lp_token_on_database(lptoken, db_client, tokens_map).await?,
         }
     }
 
