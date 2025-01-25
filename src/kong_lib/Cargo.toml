@@ -1,6 +1,6 @@
 [package]
 name = "kong_lib"
-version = "0.0.16"
+version = "0.0.17"
 edition = "2021"
 
 [lib]
@@ -27,4 +27,3 @@ serde = "1.0.210"
 serde_bytes = "0.11.15"
 serde_cbor = "0.11.2"
 serde_json = "1.0.128"
-
