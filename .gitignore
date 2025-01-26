@@ -132,6 +132,7 @@ dist/
 ca-certificate*.crt
 package-lock.json
 backups/
+*.dump
 **/public/.ic-assets.json5
 settings.json
 settings.*.json
