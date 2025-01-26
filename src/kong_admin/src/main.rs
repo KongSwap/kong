@@ -1,5 +1,5 @@
 use crate::settings::read_settings;
-use agent::{create_agent_from_identity, create_anonymous_identity, create_identity_from_pem_file};
+use agent::{create_agent_from_identity, create_identity_from_pem_file};
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::MakeTlsConnector;
 use std::env;
@@ -122,14 +122,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // read from kong_data and update database
     if args.contains(&"--db_updates".to_string()) {
+        let dfx_pem_file = dfx_pem_file.as_ref().ok_or("dfx identity required for Kong Data")?;
+        let identity = create_identity_from_pem_file(dfx_pem_file);
+        let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
+        let kong_data = KongData::new(&agent, is_mainnet).await;
+        let delay_secs = config.db_updates_delay_secs.unwrap_or(60);
+        // loop forever and update database
         loop {
-            let dfx_pem_file = dfx_pem_file.as_ref().ok_or("dfx identity required for Kong Data")?;
-            let identity = create_identity_from_pem_file(dfx_pem_file);
-            let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
-            let kong_data = KongData::new(&agent, is_mainnet).await;
-            get_db_updates(None, &kong_data, &db_client, &mut tokens_map, &mut pools_map).await?;
-
-            let delay_secs = config.db_updates_delay_secs.unwrap_or(60);
+            if let Err(err) = get_db_updates(None, &kong_data, &db_client, &mut tokens_map, &mut pools_map).await {
+                eprintln!("DB error: {}", err);
+            }
             thread::sleep(Duration::from_secs(delay_secs));
         }
     }

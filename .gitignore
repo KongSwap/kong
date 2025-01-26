@@ -129,7 +129,7 @@ dist/
 # environment variables
 .env
 .secrets
-ca-certificate.crt
+ca-certificate*.crt
 package-lock.json
 backups/
 **/public/.ic-assets.json5
