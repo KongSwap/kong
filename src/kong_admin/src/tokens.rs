@@ -2,8 +2,10 @@ use kong_lib::stable_token::stable_token::{StableToken, StableTokenId};
 use kong_lib::stable_token::token::Token;
 use num_traits::ToPrimitive;
 use postgres_types::{FromSql, ToSql};
+use regex::Regex;
 use serde_json::json;
 use std::collections::BTreeMap;
+use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
@@ -49,7 +51,30 @@ pub fn serialize_token(token: &StableToken) -> serde_json::Value {
 }
 
 pub async fn update_tokens_on_database(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dyn std::error::Error>> {
-    if let Ok(file) = File::open("./backups/tokens.json") {
+    let dir_path = "./backups";
+    let re_pattern = Regex::new(r"tokens.*.json").unwrap();
+    let mut files = fs::read_dir(dir_path)?
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| {
+            if re_pattern.is_match(entry.file_name().to_str().unwrap()) {
+                Some(entry)
+            } else {
+                None
+            }
+        })
+        .map(|entry| {
+            // sort by the number in the filename
+            let file = entry.path();
+            let filename = Path::new(&file).file_name().unwrap().to_str().unwrap();
+            let number_str = filename.split('.').nth(1).unwrap();
+            let number = number_str.parse::<u32>().unwrap();
+            (number, file)
+        })
+        .collect::<Vec<_>>();
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+
+    for file in files {
+        let file = File::open(file.1)?;
         let reader = BufReader::new(file);
         let tokens_map: BTreeMap<StableTokenId, StableToken> = serde_json::from_reader(reader)?;
 
