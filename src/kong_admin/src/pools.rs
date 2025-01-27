@@ -163,14 +163,36 @@ pub async fn load_pools_from_database(db_client: &Client) -> Result<BTreeMap<u32
 }
 
 pub async fn update_pools<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
-    let path = Path::new("./backups/pools.json");
-    if let Ok(file) = File::open(path) {
-        println!("processing: {:?}", path.file_name().unwrap());
+    let dir_path = "./backups";
+    let re_pattern = Regex::new(r"pools.*.json").unwrap();
+    let mut files = fs::read_dir(dir_path)?
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| {
+            if re_pattern.is_match(entry.file_name().to_str().unwrap()) {
+                Some(entry)
+            } else {
+                None
+            }
+        })
+        .map(|entry| {
+            // sort by the number in the filename
+            let file = entry.path();
+            let filename = Path::new(&file).file_name().unwrap().to_str().unwrap();
+            let number_str = filename.split('.').nth(1).unwrap();
+            let number = number_str.parse::<u32>().unwrap();
+            (number, file)
+        })
+        .collect::<Vec<_>>();
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+
+    for file in files {
+        println!("processing: {:?}", file.1.file_name().unwrap());
+        let file = File::open(file.1)?;
         let mut reader = BufReader::new(file);
         let mut contents = String::new();
         reader.read_to_string(&mut contents)?;
         kong_update.update_pools(&contents).await?;
-    };
+    }
 
     Ok(())
 }
