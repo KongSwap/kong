@@ -34,14 +34,32 @@ pub async fn get_db_updates(
         let stable_memory = &db_update.stable_memory;
         match stable_memory {
             StableMemory::KongSettings(_) => (),
-            StableMemory::UserMap(user) => insert_user_on_database(user, db_client).await?,
-            StableMemory::TokenMap(token) => *tokens_map = insert_token_on_database(token, db_client).await?,
-            StableMemory::PoolMap(pool) => *pools_map = insert_pool_on_database(pool, db_client, tokens_map).await?,
-            StableMemory::TxMap(tx) => insert_tx_on_database(tx, db_client, tokens_map, pools_map).await?,
-            StableMemory::RequestMap(request) => insert_request_on_database(request, db_client).await?,
-            StableMemory::TransferMap(transfer) => insert_transfer_on_database(transfer, db_client, tokens_map).await?,
-            StableMemory::ClaimMap(claim) => insert_claim_on_database(claim, db_client, tokens_map).await?,
-            StableMemory::LPTokenMap(lptoken) => insert_lp_token_on_database(lptoken, db_client, tokens_map).await?,
+            StableMemory::UserMap(user) => insert_user_on_database(user, db_client)
+                .await
+                .unwrap_or_else(|e| eprintln!("{}", e)),
+            StableMemory::TokenMap(token) => match insert_token_on_database(token, db_client).await {
+                Ok(map) => *tokens_map = map,
+                Err(e) => eprintln!("{}", e),
+            },
+            StableMemory::PoolMap(pool) => match insert_pool_on_database(pool, db_client, tokens_map).await {
+                Ok(map) => *pools_map = map,
+                Err(e) => eprintln!("{}", e),
+            },
+            StableMemory::TxMap(tx) => insert_tx_on_database(tx, db_client, tokens_map, pools_map)
+                .await
+                .unwrap_or_else(|e| eprintln!("{}", e)),
+            StableMemory::RequestMap(request) => insert_request_on_database(request, db_client)
+                .await
+                .unwrap_or_else(|e| eprintln!("{}", e)),
+            StableMemory::TransferMap(transfer) => insert_transfer_on_database(transfer, db_client, tokens_map)
+                .await
+                .unwrap_or_else(|e| eprintln!("{}", e)),
+            StableMemory::ClaimMap(claim) => insert_claim_on_database(claim, db_client, tokens_map)
+                .await
+                .unwrap_or_else(|e| eprintln!("{}", e)),
+            StableMemory::LPTokenMap(lptoken) => insert_lp_token_on_database(lptoken, db_client, tokens_map)
+                .await
+                .unwrap_or_else(|e| eprintln!("{}", e)),
         }
     }
 
