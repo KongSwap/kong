@@ -80,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         pools::update_pools(&kong_data).await?;
         lp_tokens::update_lp_tokens(&kong_data).await?;
         requests::update_requests(&kong_data).await?;
-        claims::update_claims_on_kong_data(&kong_data).await?;
+        claims::update_claims(&kong_data).await?;
         transfers::update_transfers(&kong_data).await?;
         txs::update_txs(&kong_data).await?;
     }
