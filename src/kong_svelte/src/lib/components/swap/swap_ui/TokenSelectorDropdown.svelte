@@ -32,7 +32,7 @@
   // Make tokens reactive to userTokens store changes
   let tokens = $derived(Object.values($userTokens.enabledTokens));
 
-  const BLOCKED_TOKEN_IDS = [];
+  const BLOCKED_TOKEN_IDS = ["ggi4a-wyaaa-aaaai-actqq-cai"];
   const DEFAULT_ICP_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"; // ICP canister ID
 
   let searchQuery = $state("");
@@ -459,7 +459,7 @@
                 </div>
               </div>
 
-              <div class="pb-2 shadow-md z-20">
+              <div class="z-20 pb-2 shadow-md">
                 <div class="filter-buttons">
                   {#each [{ id: "all", label: "All", count: allTokensCount }, { id: "ck", label: "CK", count: ckTokensCount }, { id: "favorites", label: "Favorites", count: favoritesCount }] as tab}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
