@@ -129,7 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let delay_secs = config.db_updates_delay_secs.unwrap_or(60);
         // loop forever and update database
         loop {
-            if let Err(err) = get_db_updates(None, &kong_data, &db_client, &mut tokens_map, &mut pools_map).await {
+            if let Err(err) = get_db_updates(&kong_data, &db_client, &mut tokens_map, &mut pools_map).await {
                 eprintln!("{}", err);
             }
             thread::sleep(Duration::from_secs(delay_secs));

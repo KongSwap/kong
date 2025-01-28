@@ -15,7 +15,6 @@ use crate::users::insert_user_on_database;
 use super::kong_data::KongData;
 
 pub async fn get_db_updates(
-    db_update_id: Option<u64>,
     kong_data: &KongData,
     db_client: &Client,
     tokens_map: &mut BTreeMap<u32, u8>,
@@ -25,7 +24,7 @@ pub async fn get_db_updates(
     let formatted_time = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
     println!("\n--- DB updates @ {} ---", formatted_time);
 
-    let json = kong_data.backup_db_updates(db_update_id).await?;
+    let json = kong_data.backup_db_updates().await?;
     let db_updates: Vec<StableDBUpdate> = serde_json::from_str(&json)?;
 
     let mut last_update_id = 0;
