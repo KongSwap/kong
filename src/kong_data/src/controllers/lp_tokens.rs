@@ -3,10 +3,10 @@ use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
+use crate::stable_db_update::db_update_map;
+use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
 use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
 use crate::stable_memory::LP_TOKEN_MAP;
-use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
-use crate::stable_db_update::db_update_map;
 
 const MAX_LP_TOKENS: usize = 1_000;
 
@@ -37,8 +37,8 @@ fn update_lp_tokens(stable_lp_tokens: String) -> Result<String, String> {
         Err(e) => return Err(format!("Invalid LP tokens: {}", e)),
     };
 
-    LP_TOKEN_MAP.with(|user_map| {
-        let mut map = user_map.borrow_mut();
+    LP_TOKEN_MAP.with(|lp_token_map| {
+        let mut map = lp_token_map.borrow_mut();
         for (k, v) in lp_tokens {
             map.insert(k, v);
         }

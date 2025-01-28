@@ -42,7 +42,7 @@ pub async fn update_pools_on_database(
     tokens_map: &BTreeMap<u32, u8>,
 ) -> Result<BTreeMap<u32, (u32, u32)>, Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"pools.*.json").unwrap();
+    let re_pattern = Regex::new(r"^pools.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {
@@ -164,7 +164,7 @@ pub async fn load_pools_from_database(db_client: &Client) -> Result<BTreeMap<u32
 
 pub async fn update_pools<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"pools.*.json").unwrap();
+    let re_pattern = Regex::new(r"^pools.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {
