@@ -162,7 +162,7 @@ pub async fn insert_claim_on_database(
 
 pub async fn update_claims<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"claims.*.json").unwrap();
+    let re_pattern = Regex::new(r"^claims.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {

@@ -136,7 +136,7 @@ pub async fn update_txs_on_database(
     pools_map: &BTreeMap<u32, (u32, u32)>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"txs.*.json").unwrap();
+    let re_pattern = Regex::new(r"^txs.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {
@@ -583,7 +583,7 @@ pub async fn insert_tx_on_database(
 
 pub async fn update_txs<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"txs.*.json").unwrap();
+    let re_pattern = Regex::new(r"^txs.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {

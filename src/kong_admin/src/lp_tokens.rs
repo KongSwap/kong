@@ -26,7 +26,7 @@ pub fn serialize_lp_tokens(lp_token: &StableLPToken) -> serde_json::Value {
 
 pub async fn update_lp_tokens_on_database(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"lp_tokens.*.json").unwrap();
+    let re_pattern = Regex::new(r"^lp_tokens.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {
@@ -95,7 +95,7 @@ pub async fn insert_lp_token_on_database(
 
 pub async fn update_lp_tokens<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"lp_tokens.*.json").unwrap();
+    let re_pattern = Regex::new(r"^lp_tokens.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {

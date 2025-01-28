@@ -282,7 +282,7 @@ pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
 
 pub async fn update_requests_on_database(db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"requests.*.json").unwrap();
+    let re_pattern = Regex::new(r"^requests.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {
@@ -480,7 +480,7 @@ pub async fn insert_request_on_database(v: &StableRequest, db_client: &Client) -
 
 pub async fn update_requests<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"requests.*.json").unwrap();
+    let re_pattern = Regex::new(r"^requests.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {

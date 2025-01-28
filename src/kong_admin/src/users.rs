@@ -12,7 +12,7 @@ use super::kong_update::KongUpdate;
 
 pub async fn update_users_on_database(db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"users.*.json").unwrap();
+    let re_pattern = Regex::new(r"^users.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {
@@ -87,7 +87,7 @@ pub async fn insert_user_on_database(v: &StableUser, db_client: &Client) -> Resu
 
 pub async fn update_users<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"users.*.json").unwrap();
+    let re_pattern = Regex::new(r"^users.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {

@@ -38,8 +38,8 @@ fn update_tokens(stable_tokens: String) -> Result<String, String> {
         Err(e) => return Err(format!("Invalid tokens: {}", e)),
     };
 
-    TOKEN_MAP.with(|user_map| {
-        let mut map = user_map.borrow_mut();
+    TOKEN_MAP.with(|token_map| {
+        let mut map = token_map.borrow_mut();
         for (k, v) in tokens {
             map.insert(k, v);
         }
