@@ -32,7 +32,7 @@
   // Make tokens reactive to userTokens store changes
   let tokens = $derived(Object.values($userTokens.enabledTokens));
 
-  const BLOCKED_TOKEN_IDS = ["ggi4a-wyaaa-aaaai-actqq-cai"];
+  const BLOCKED_TOKEN_IDS = [];
   const DEFAULT_ICP_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"; // ICP canister ID
 
   let searchQuery = $state("");

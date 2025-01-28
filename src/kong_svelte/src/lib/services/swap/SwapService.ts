@@ -59,7 +59,7 @@ BigNumber.config({
   EXPONENTIAL_AT: [-50, 50],
 });
 
-const BLOCKED_TOKEN_IDS = ["ggi4a-wyaaa-aaaai-actqq-cai"];
+const BLOCKED_TOKEN_IDS = [];
 
 export class SwapService {
   private static isValidNumber(value: string | number): boolean {
