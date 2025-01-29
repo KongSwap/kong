@@ -59,3 +59,17 @@ fn remove_archive_transfers(ts: u64) -> Result<String, String> {
 
     Ok("Archive transfers removed".to_string())
 }
+
+/// remove archive transfers where transfer_id <= transfer_ids
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_archive_transfers_ids(transfer_ids: u64) -> Result<String, String> {
+    TRANSFER_ARCHIVE_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map.iter().filter(|(k, _)| k.0 <= transfer_ids).map(|(k, _)| k).collect();
+        keys_to_remove.iter().for_each(|k| {
+            map.remove(k);
+        });
+    });
+
+    Ok("Archive transfers removed".to_string())
+}

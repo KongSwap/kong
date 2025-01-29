@@ -163,7 +163,9 @@ pub async fn update_txs_on_database(
         let txs_map: BTreeMap<StableTxId, StableTx> = serde_json::from_reader(reader)?;
 
         for (_, v) in txs_map.iter() {
-            insert_tx_on_database(v, db_client, tokens_map, pools_map).await?;
+            insert_tx_on_database(v, db_client, tokens_map, pools_map)
+                .await
+                .unwrap_or_else(|e| eprintln!("{}", e));
         }
     }
 
