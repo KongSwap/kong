@@ -1,5 +1,6 @@
 use candid::Nat;
 use icrc_ledger_types::icrc1::account::Account;
+use std::time::Duration;
 
 use super::archive_to_kong_data::archive_to_kong_data;
 use super::calculate_amounts::calculate_amounts;
@@ -20,6 +21,7 @@ use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
+use crate::stable_user::banned_user_map::{increase_consecutive_error, is_banned_user, reset_consecutive_error};
 use crate::stable_user::user_map;
 
 pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
@@ -43,6 +45,7 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     .await
     .inspect_err(|_| {
         request_map::update_status(request_id, StatusCode::Failed, None);
+        increase_consecutive_error(user_id);
         let _ = archive_to_kong_data(request_id);
     })?;
 
@@ -64,6 +67,7 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     .await;
 
     request_map::update_status(request_id, StatusCode::Success, None);
+    reset_consecutive_error(user_id);
     let _ = archive_to_kong_data(request_id);
 
     Ok(result)
@@ -92,6 +96,7 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
         .await
         else {
             request_map::update_status(request_id, StatusCode::Failed, None);
+            increase_consecutive_error(user_id);
             let _ = archive_to_kong_data(request_id);
             return;
         };
@@ -115,6 +120,7 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
             .await;
 
             request_map::update_status(request_id, StatusCode::Success, None);
+            reset_consecutive_error(user_id);
             let _ = archive_to_kong_data(request_id);
         });
     });
@@ -156,6 +162,12 @@ async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, Stab
 
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(args.referred_by.as_deref())?;
+    // check if user is banned
+    if let Some(banned_until) = is_banned_user(user_id) {
+        let duration_ns = Duration::from_nanos(get_time() - banned_until);
+        let duration_min = duration_ns.as_secs() / 60;
+        Err(format!("Too many consecutive errors. User is banned for {} minutes", duration_min))?;
+    }
 
     // calculate receive_amount and swaps. do after user_id is created as it will be needed to calculate the receive_amount (user fee level)
     // no needs to store the return values as it'll be called again in process_swap
