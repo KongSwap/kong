@@ -12,10 +12,6 @@ pub fn get_by_claim_id(claim_id: u64) -> Option<StableClaim> {
     CLAIM_MAP.with(|m| m.borrow().get(&StableClaimId(claim_id)))
 }
 
-pub fn get_num_unclaimed_claims() -> u64 {
-    CLAIM_MAP.with(|m| m.borrow().iter().filter(|(_, v)| v.status == ClaimStatus::Unclaimed).count() as u64)
-}
-
 pub fn get_token(claim: &StableClaim) -> StableToken {
     token_map::get_by_token_id(claim.token_id).unwrap()
 }
