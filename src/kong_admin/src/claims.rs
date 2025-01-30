@@ -26,6 +26,8 @@ enum ClaimStatus {
     Claimed,
     #[postgres(name = "TooManyAttempts")]
     TooManyAttempts,
+    #[postgres(name = "UnclaimedOverride")]
+    UnclaimedOverride,
 }
 
 pub fn serialize_claim_status(claim_status: &stable_claim::ClaimStatus) -> serde_json::Value {
@@ -34,6 +36,7 @@ pub fn serialize_claim_status(claim_status: &stable_claim::ClaimStatus) -> serde
         stable_claim::ClaimStatus::Claiming => json!("Claiming"),
         stable_claim::ClaimStatus::Claimed => json!("Claimed"),
         stable_claim::ClaimStatus::TooManyAttempts => json!("TooManyAttempts"),
+        stable_claim::ClaimStatus::UnclaimedOverride => json!("UnclaimedOverride"),
     }
 }
 
@@ -113,6 +116,7 @@ pub async fn insert_claim_on_database(
         stable_claim::ClaimStatus::Claiming => ClaimStatus::Claiming,
         stable_claim::ClaimStatus::Claimed => ClaimStatus::Claimed,
         stable_claim::ClaimStatus::TooManyAttempts => ClaimStatus::TooManyAttempts,
+        stable_claim::ClaimStatus::UnclaimedOverride => ClaimStatus::UnclaimedOverride,
     };
     let decimals = tokens_map.get(&v.token_id).ok_or(format!("token_id={} not found", v.token_id))?;
     let amount = round_f64(v.amount.0.to_f64().unwrap() / 10_u64.pow(*decimals as u32) as f64, *decimals);
