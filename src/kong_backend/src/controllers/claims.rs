@@ -63,6 +63,8 @@ fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> 
         let mut claim = map.get(&StableClaimId(claim_id)).ok_or("Claim not found")?;
         claim.status = status;
         map.insert(StableClaimId(claim_id), claim);
+
+        let _ = claim_map::archive_to_kong_data(claim_id);
         Ok("Claim status changed".to_string())
     })
 }
