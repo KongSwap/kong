@@ -52,7 +52,21 @@ fn update_txs(stable_txs_json: String) -> Result<String, String> {
 fn remove_archive_txs(ts: u64) -> Result<String, String> {
     TX_ARCHIVE_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let keys_to_remove: Vec<_> = map.iter().filter(|(_, tx)| tx.ts() < ts).map(|(tx_id, _)| tx_id).collect();
+        let keys_to_remove: Vec<_> = map.iter().filter(|(_, v)| v.ts() < ts).map(|(k, _)| k).collect();
+        keys_to_remove.iter().for_each(|k| {
+            map.remove(k);
+        });
+    });
+
+    Ok("Archive txs removed".to_string())
+}
+
+/// remove archive txs where tx_id <= tx_ids
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_archive_txs_ids(tx_ids: u64) -> Result<String, String> {
+    TX_ARCHIVE_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map.iter().filter(|(k, _)| k.0 <= tx_ids).map(|(k, _)| k).collect();
         keys_to_remove.iter().for_each(|k| {
             map.remove(k);
         });
