@@ -80,7 +80,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.To
     }
 
     const data = await response.json();
-    const tokens = data?.tokens || data;    
+    const tokens = data?.items || data;    
     const updatedTokens = tokens.map(parseTokenData);
 
     const userTokensStore = get(userTokens)
@@ -104,5 +104,5 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE
     body: JSON.stringify({ canister_ids: canisterIds })
   });
   const data = await response.json();
-  return data.tokens.map(parseTokenData);
+  return data.items.map(parseTokenData);
 };

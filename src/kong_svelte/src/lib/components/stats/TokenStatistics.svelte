@@ -7,6 +7,8 @@
   import { tooltip } from "$lib/actions/tooltip";
   import { writable } from "svelte/store";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { tweened } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
 
   export let token: FE.Token;
   export let marketCapRank: number | null;
@@ -18,12 +20,19 @@
   // Create a writable store for live token data
   const liveToken = writable<FE.Token | null>(null);
 
+  // Add these after liveToken store
+  const marketCap = tweened(0, { duration: 500, easing: cubicOut });
+  const volume24h = tweened(0, { duration: 500, easing: cubicOut });
+  const totalSupplyTweened = tweened(0, { duration: 500, easing: cubicOut });
+  const circulatingSupplyTweened = tweened(0, { duration: 500, easing: cubicOut });
+
   // Function to update token data
   async function updateTokenData() {
     try {
       const result = await fetchTokensByCanisterId([token.canister_id]);
       if (result && result[0]) {
-        liveToken.set(result[0]);
+        // Create a new object to force reactivity
+        liveToken.set({ ...result[0] });
       }
     } catch (error) {
       console.error("Error fetching token data:", error);
@@ -49,6 +58,16 @@
     previousPrice = currentPrice;
   }
 
+  // Update these reactive statements
+  $: {
+    if (activeToken?.metrics) {
+      marketCap.set(Number(activeToken.metrics.market_cap || 0));
+      volume24h.set(Number(activeToken.metrics.volume_24h || 0));
+      totalSupplyTweened.set(Number(activeToken.metrics.total_supply || 0) / 10 ** activeToken.decimals);
+      circulatingSupplyTweened.set(Number(activeToken.metrics.total_supply || 0) / 10 ** activeToken.decimals);
+    }
+  }
+
   function calculateVolumePercentage(volume: number, marketCap: number): string {
     if (!marketCap) return "0.00%";
     return ((volume / marketCap) * 100).toFixed(2) + "%";
@@ -68,6 +87,10 @@
       if (priceFlashTimeout) {
         clearTimeout(priceFlashTimeout);
       }
+      marketCap.set(0);
+      volume24h.set(0);
+      totalSupplyTweened.set(0);
+      circulatingSupplyTweened.set(0);
     };
   });
 
@@ -116,7 +139,7 @@
       <div>
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Market Cap</div>
         <div class="text-xl font-medium text-kong-text-primary">
-          {formatUsdValue(token?.metrics?.market_cap)}
+          {formatUsdValue($marketCap)}
         </div>
         <div class="text-sm text-kong-text-primary/40 mt-1">
           Rank #{marketCapRank !== null ? marketCapRank : "N/A"}
@@ -127,11 +150,11 @@
       <div>
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">24h Volume</div>
         <div class="text-xl font-medium text-kong-text-primary">
-          {formatUsdValue(Number(token.metrics.volume_24h))}
+          {formatUsdValue($volume24h)}
         </div>
         <div class="text-sm text-kong-text-primary/40 mt-1">
-          {token.metrics.volume_24h
-            ? `${calculateVolumePercentage(Number(token.metrics.volume_24h), Number(token.metrics.market_cap))} of mcap`
+          {activeToken.metrics.volume_24h
+            ? `${calculateVolumePercentage(Number(activeToken.metrics.volume_24h), Number(activeToken.metrics.market_cap))} of mcap`
             : "No volume data"}
         </div>
       </div>
@@ -140,14 +163,10 @@
       <div>
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Total Supply</div>
         <div class="text-xl font-medium text-kong-text-primary">
-          {token?.metrics?.total_supply
-            ? formatToNonZeroDecimal(
-                Number(token.metrics?.total_supply) / 10 ** token.decimals,
-              )
-            : "0"}
+          {formatToNonZeroDecimal($totalSupplyTweened)}
         </div>
         <div class="text-sm text-kong-text-primary/40 mt-1">
-          {token?.symbol || ""} tokens
+          {activeToken?.symbol || ""} tokens
         </div>
       </div>
 
@@ -155,14 +174,10 @@
       <div>
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Circulating Supply</div>
         <div class="text-xl font-medium text-kong-text-primary">
-          {token?.metrics?.total_supply
-            ? formatToNonZeroDecimal(
-                Number(token.metrics?.total_supply) / 10 ** token.decimals,
-              )
-            : "0"}
+          {formatToNonZeroDecimal($circulatingSupplyTweened)}
         </div>
         <div class="text-sm text-kong-text-primary/40 mt-1">
-          {token?.symbol || ""} tokens
+          {activeToken?.symbol || ""} tokens
         </div>
       </div>
     </div>
