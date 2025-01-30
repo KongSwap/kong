@@ -51,20 +51,16 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
 // "too_many_attempts"
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> {
-    CLAIM_MAP.with(|m| {
-        let status = match status.as_str() {
-            "unclaimed" => ClaimStatus::Unclaimed,
-            "claiming" => ClaimStatus::Claiming,
-            "claimed" => ClaimStatus::Claimed,
-            "too_many_attempts" => ClaimStatus::TooManyAttempts,
-            _ => return Err("Invalid status".to_string()),
-        };
-        let mut map = m.borrow_mut();
-        let mut claim = map.get(&StableClaimId(claim_id)).ok_or("Claim not found")?;
-        claim.status = status;
-        map.insert(StableClaimId(claim_id), claim);
+    let status = match status.as_str() {
+        "unclaimed" => ClaimStatus::Unclaimed,
+        "claiming" => ClaimStatus::Claiming,
+        "claimed" => ClaimStatus::Claimed,
+        "too_many_attempts" => ClaimStatus::TooManyAttempts,
+        _ => return Err("Invalid status".to_string()),
+    };
 
-        let _ = claim_map::archive_to_kong_data(claim_id);
-        Ok("Claim status changed".to_string())
-    })
+    claim_map::update_status(claim_id, status).ok_or("Claim not found")?;
+
+    let _ = claim_map::archive_to_kong_data(claim_id);
+    Ok("Claim status changed".to_string())
 }

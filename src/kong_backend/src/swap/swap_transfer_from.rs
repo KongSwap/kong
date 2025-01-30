@@ -164,9 +164,12 @@ async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, Stab
     let user_id = user_map::insert(args.referred_by.as_deref())?;
     // check if user is banned
     if let Some(banned_until) = is_banned_user(user_id) {
-        let duration_ns = Duration::from_nanos(get_time() - banned_until);
-        let duration_min = duration_ns.as_secs() / 60;
-        Err(format!("Too many consecutive errors. User is banned for {} minutes", duration_min))?;
+        let now = get_time();
+        if banned_until > now {
+            let duration_ns = Duration::from_nanos(banned_until - now);
+            let duration_min = duration_ns.as_secs() / 60;
+            Err(format!("Too many consecutive errors. User is banned for {} minutes", duration_min))?;
+        }
     }
 
     // calculate receive_amount and swaps. do after user_id is created as it will be needed to calculate the receive_amount (user fee level)

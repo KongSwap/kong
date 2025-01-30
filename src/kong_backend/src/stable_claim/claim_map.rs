@@ -49,7 +49,7 @@ pub fn add_attempt_request_id(claim_id: u64, request_id: u64) -> Option<StableCl
     })
 }
 
-fn update_status(claim_id: u64, status: ClaimStatus) -> Option<StableClaim> {
+pub fn update_status(claim_id: u64, status: ClaimStatus) -> Option<StableClaim> {
     CLAIM_MAP.with(|m| {
         let mut map = m.borrow_mut();
         match map.get(&StableClaimId(claim_id)) {
