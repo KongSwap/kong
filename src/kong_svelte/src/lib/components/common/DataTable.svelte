@@ -256,7 +256,7 @@
 
   <!-- Loading Overlay -->
   {#if isLoading}
-    <div class="absolute inset-0 bg-kong-bg-dark/50 backdrop-blur-[2px] flex items-center justify-center z-30">
+    <div class="absolute inset-0 bg-kong-bg-dark/30 backdrop-blur-[2px] flex items-center justify-center z-30 transition-opacity duration-200">
       <div class="loading-spinner"></div>
     </div>
   {/if}
