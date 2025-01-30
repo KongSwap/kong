@@ -287,7 +287,7 @@
       on:mouseenter={() => (isTickerHovered = true)}
       on:mouseleave={() => (isTickerHovered = false)}
     >
-      {#each tickerTokens as token, index (token.canister_id)}
+      {#each tickerTokens as token, index (token.address || `token-${index}`)}
         {#if token.metrics}
           <button
             class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(
@@ -318,7 +318,7 @@
           </button>
         {/if}
       {/each}
-      {#each tickerTokens as token, index (token.canister_id)}
+      {#each tickerTokens as token, index (`${token.address || `token-${index}`}-duplicate`)}
         {#if token.metrics}
           <button
             class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(

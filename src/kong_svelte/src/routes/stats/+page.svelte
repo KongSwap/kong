@@ -32,7 +32,7 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { fetchTokens } from "$lib/api/tokens";
 
-  const ITEMS_PER_PAGE = 50;
+  const ITEMS_PER_PAGE = 100;
   const REFRESH_INTERVAL = 3000; // 2 seconds for more frequent updates
   const SEARCH_DEBOUNCE = 300; // 300ms debounce for search
   

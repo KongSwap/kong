@@ -18,7 +18,6 @@
         limit: 500,
         page: 1
       });
-      console.log('Tokens fetched:', response.tokens.length);
       tokensStore.set(response.tokens);
     } catch (error) {
       console.error('Error loading tokens:', error);
@@ -87,10 +86,12 @@
         }
 
         const newTransactions = await fetchTransactions(
-          token.token_id,
+          token.canister_id,
           page,
           pageSize,
         );
+
+        console.log('New transactions fetched:', newTransactions);
 
         // Ensure transactions are sorted descending by timestamp before processing
         const sortedTransactions = newTransactions.sort((a, b) => 

@@ -275,14 +275,22 @@
         Previous
       </button>
       
-      {#each Array(Math.min(5, totalPages)) as _, i (i)}
-        {#if i + 1 <= totalPages}
+      {#each Array(totalPages) as _, i}
+        {@const pageNum = i + 1}
+        {@const showPage = 
+          pageNum === 1 || 
+          pageNum === totalPages || 
+          (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)}
+        
+        {#if showPage}
           <button
-            class="pagination-button {currentPage === i + 1 ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
-            on:click={() => goToPage(i + 1)}
+            class="pagination-button {currentPage === pageNum ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
+            on:click={() => goToPage(pageNum)}
           >
-            {i + 1}
+            {pageNum}
           </button>
+        {:else if pageNum === currentPage - 2 || pageNum === currentPage + 2}
+          <span class="px-1 text-kong-text-secondary">...</span>
         {/if}
       {/each}
       
