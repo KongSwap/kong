@@ -49,6 +49,7 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
 // "claiming"
 // "claimed"
 // "too_many_attempts"
+// "unclaimed_override"
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> {
     let status = match status.as_str() {
@@ -56,6 +57,7 @@ fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> 
         "claiming" => ClaimStatus::Claiming,
         "claimed" => ClaimStatus::Claimed,
         "too_many_attempts" => ClaimStatus::TooManyAttempts,
+        "unclaimed_override" => ClaimStatus::UnclaimedOverride,
         _ => return Err("Invalid status".to_string()),
     };
 

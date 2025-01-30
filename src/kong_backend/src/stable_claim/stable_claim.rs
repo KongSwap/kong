@@ -25,6 +25,7 @@ pub enum ClaimStatus {
     Claiming, // used as a caller guard to prevent reentrancy
     Claimed,
     TooManyAttempts,
+    UnclaimedOverride,
 }
 
 impl std::fmt::Display for ClaimStatus {
@@ -34,6 +35,7 @@ impl std::fmt::Display for ClaimStatus {
             ClaimStatus::Claiming => write!(f, "Claiming"),
             ClaimStatus::Claimed => write!(f, "Success"),
             ClaimStatus::TooManyAttempts => write!(f, "TooManyAttempts"),
+            ClaimStatus::UnclaimedOverride => write!(f, "UnclaimedOverride"),
         }
     }
 }

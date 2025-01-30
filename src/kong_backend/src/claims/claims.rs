@@ -44,10 +44,10 @@ pub async fn process_claims() {
     let mut consecutive_errors = 0_u8;
     for claim in &claims {
         if let Some(to_address) = &claim.to_address {
-            if claim.attempt_request_id.len() > 50 {
+            if claim.attempt_request_id.len() > 50 && claim.status != ClaimStatus::UnclaimedOverride {
                 // if claim has more than 50 attempts, update status to too_many_attempts and investigate manually
                 claim_map::update_too_many_attempts_status(claim.claim_id);
-                _ = claim_map::archive_to_kong_data(claim.claim_id);
+                let _ = claim_map::archive_to_kong_data(claim.claim_id);
                 continue;
             } else if claim.attempt_request_id.len() > 20 {
                 if let Some(last_attempt_request_id) = claim.attempt_request_id.last() {
