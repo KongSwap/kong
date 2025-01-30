@@ -26,10 +26,6 @@ pub async fn process_claims() {
         return;
     }
 
-    if claim_map::get_num_unclaimed_claims() == 0 {
-        return;
-    }
-
     let ts = get_time();
 
     // get all unclaimed claims
@@ -37,7 +33,13 @@ pub async fn process_claims() {
         m.borrow()
             .iter()
             .rev()
-            .filter_map(|(_, v)| if v.status == ClaimStatus::Unclaimed { Some(v) } else { None })
+            .filter_map(|(_, v)| {
+                if v.status == ClaimStatus::Unclaimed || v.status == ClaimStatus::UnclaimedOverride {
+                    Some(v)
+                } else {
+                    None
+                }
+            })
             .collect()
     });
 
