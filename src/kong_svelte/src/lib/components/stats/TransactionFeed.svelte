@@ -18,7 +18,6 @@
         limit: 500,
         page: 1
       });
-      console.log('Tokens fetched:', response.tokens.length);
       tokensStore.set(response.tokens);
     } catch (error) {
       console.error('Error loading tokens:', error);
@@ -49,7 +48,7 @@
     setTimeout(() => {
       newTransactionIds.delete(txId);
       newTransactionIds = newTransactionIds; // Trigger reactivity
-    }, 1000); // Match this with CSS animation duration
+    }, 2000); // Match this with CSS animation duration
   };
 
   // Update fetch function to handle new transactions
@@ -87,29 +86,41 @@
         }
 
         const newTransactions = await fetchTransactions(
-          token.token_id,
+          token.canister_id,
           page,
           pageSize,
         );
 
+        console.log('New transactions fetched:', newTransactions);
+
+        // Ensure transactions are sorted descending by timestamp before processing
+        const sortedTransactions = newTransactions.sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+
         if (isRefresh) {
-          // Properly merge transactions maintaining newest-first order
-          const existingTxMap = new Map(transactions.map(t => [t.tx_id, t]));
-          const updatedTransactions = newTransactions.filter(tx => !existingTxMap.has(tx.tx_id));
+          // Create a Set of existing transaction IDs for faster lookup
+          const existingIds = new Set(transactions.map(t => t.tx_id));
           
-          // Prepend new transactions and keep existing ones
-          transactions = [...updatedTransactions, ...transactions];
+          // Filter out any transactions that already exist
+          const uniqueNewTransactions = sortedTransactions.filter(
+            tx => !existingIds.has(tx.tx_id)
+          );
+
+          // Prepend new transactions while maintaining sort order
+          transactions = [...uniqueNewTransactions, ...transactions];
           
           // Highlight new transactions
-          updatedTransactions.forEach(tx => {
+          uniqueNewTransactions.forEach(tx => {
             newTransactionIds.add(tx.tx_id);
             clearTransactionHighlight(tx.tx_id);
           });
         } else if (append) {
-          transactions = [...transactions, ...newTransactions];
+          // For pagination, ensure new transactions are older than existing
+          transactions = [...transactions, ...sortedTransactions];
         } else {
-          // Initial load should reverse if API returns ascending order
-          transactions = newTransactions; // Ensure API is returning descending order
+          // Initial load should be sorted descending
+          transactions = sortedTransactions;
         }
 
         hasMore = newTransactions.length === pageSize;

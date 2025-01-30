@@ -32,7 +32,7 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { fetchTokens } from "$lib/api/tokens";
 
-  const ITEMS_PER_PAGE = 50;
+  const ITEMS_PER_PAGE = 100;
   const REFRESH_INTERVAL = 3000; // 2 seconds for more frequent updates
   const SEARCH_DEBOUNCE = 300; // 300ms debounce for search
   
@@ -43,6 +43,7 @@
   const searchTerm = writable<string>("");
   const debouncedSearchTerm = writable<string>("");
   const isLoading = writable<boolean>(true);
+  const isPageChange = writable<boolean>(false);
   const previousPrices = writable(new Map<string, number>());
   const priceFlashStates = writable(new Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>());
 
@@ -81,7 +82,10 @@
   }
 
   // Optimize refresh data function
-  async function refreshData() {
+  async function refreshData(isPageChangeRefresh = false) {
+    if (isPageChangeRefresh) {
+      isLoading.set(true);
+    }
     try {
       const {tokens, total_count} = await fetchTokens({ 
         page: $currentPage, 
@@ -99,6 +103,10 @@
       });
     } catch (error) {
       console.error('Error refreshing token data:', error);
+    } finally {
+      if (isPageChangeRefresh) {
+        isLoading.set(false);
+      }
     }
   }
 
@@ -124,14 +132,18 @@
 
     // Initial load or navigation to /stats
     if ($page.url.pathname === '/stats') {
-      refreshData();
-      refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
+      refreshData(true); // Initial load should show loading
+      refreshInterval = setInterval(() => refreshData(false), REFRESH_INTERVAL);
     }
   }
 
   // Handle page/search changes
   $: if (browser && ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
-    refreshData();
+    const isPageChangeEvent = $isPageChange;
+    refreshData(isPageChangeEvent);
+    if (isPageChangeEvent) {
+      isPageChange.set(false);
+    }
   }
 
   // Keep URL updates in a separate reactive statement
@@ -263,6 +275,27 @@
       };
     }
   });
+
+  function goToPage(page: number) {
+    if (page >= 1 && page <= totalPages) {
+      isPageChange.set(true);
+      onPageChange?.(page);
+    }
+  }
+
+  function nextPage() {
+    if (currentPage < totalPages) {
+      isPageChange.set(true);
+      onPageChange?.(currentPage + 1);
+    }
+  }
+
+  function previousPage() {
+    if (currentPage > 1) {
+      isPageChange.set(true);
+      onPageChange?.(currentPage - 1);
+    }
+  }
 </script>
 
 <PageHeader
@@ -382,6 +415,7 @@
               <DataTable
                 data={$filteredTokens}
                 rowKey="canister_id"
+                isLoading={$isLoading}
                 columns={[
                   // {
                   //   key: 'marketCapRank',

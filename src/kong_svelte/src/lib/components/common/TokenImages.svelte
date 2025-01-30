@@ -14,6 +14,7 @@
 
   // Handle image error with proper typing
   function handleImageError(e: Event & { currentTarget: EventTarget & HTMLImageElement }) {
+    console.error(`Failed to load image: ${e.currentTarget.src}`);
     e.currentTarget.src = DEFAULT_IMAGE;
   }
 
