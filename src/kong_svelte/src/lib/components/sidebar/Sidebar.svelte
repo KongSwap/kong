@@ -43,25 +43,25 @@
 
   async function loadTokenList() {
     TokenListComponent = await loadComponent(() => 
-      import("./TokenList.svelte")
+      import("$lib/components/sidebar/TokenList.svelte")
     );
   }
 
   async function loadPoolList() {
     PoolListComponent = await loadComponent(() => 
-      import("./PoolList.svelte")
+      import("$lib/components/sidebar/PoolList.svelte")
     );
   }
 
   async function loadTransactionHistory() {
     TransactionHistoryComponent = await loadComponent(() => 
-      import("./TransactionHistory.svelte")
+      import("$lib/components/sidebar/TransactionHistory.svelte")
     );
   }
 
   async function loadManageTokensModal() {
     ManageTokensModalComponent = await loadComponent(() => 
-      import("./ManageTokensModal.svelte")
+      import("$lib/components/sidebar/ManageTokensModal.svelte")
     );
   }
 
