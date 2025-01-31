@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from "$app/stores";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import { fetchTransactions } from "$lib/services/transactions";
   import TransactionRow from "./TransactionRow.svelte";
@@ -15,7 +15,7 @@
     try {
       console.log('Fetching tokens...');
       const response = await fetchTokens({
-        limit: 500,
+        limit: 200,
         page: 1
       });
       tokensStore.set(response.tokens);
@@ -23,6 +23,10 @@
       console.error('Error loading tokens:', error);
     }
   }
+
+  onMount(() => {
+    loadTokens();
+  });
 
   // Declare our state variables
   let { token, className = "" } = $props<{
@@ -36,160 +40,242 @@
   let refreshInterval: number;
   let newTransactionIds = $state<Set<string>>(new Set());
 
-  // Set up token refresh on mount
+  // Add separate locks for different types of requests
+  let isRefreshActive = $state(false);
+  let isInitialLoadActive = $state(false);
+  let isPaginationActive = $state(false);
+
+  // Add an AbortController to cancel pending requests
+  let currentAbortController: AbortController | null = $state(null);
+
+  // Add debounce timer
+  let debounceTimer: ReturnType<typeof setTimeout> | null = $state(null);
+
+  // Remove the separate token tracking effects and consolidate them
+  let previousTokenId = $state<string | null>(null);
+
+  // Single effect to handle token changes and refresh
   $effect(() => {
-    loadTokens();
-    const tokenInterval = setInterval(loadTokens, 30000);
-    return () => clearInterval(tokenInterval);
+    const currentTokenId = token?.token_id;
+    
+    // Clear any existing intervals
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = undefined;
+    }
+
+    if (currentTokenId) {
+        // Handle token change
+        if (currentTokenId !== previousTokenId) {
+            previousTokenId = currentTokenId;
+            // Reset states
+            transactions = [];
+            currentPage = 1;
+            hasMore = true;
+            error = null;
+            // Initial load
+            loadTransactionData(1, false, false);
+        }
+
+        // Set up refresh interval regardless of token change
+        refreshInterval = setInterval(() => {
+            if (!isRefreshActive) {  // Only refresh if not already refreshing
+                loadTransactionData(1, false, true).catch((err) => {
+                    console.error("Error in refresh interval:", err);
+                });
+            }
+        }, 5000) as unknown as number;
+    }
+
+    // Cleanup
+    return () => {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = undefined;
+        }
+    };
   });
 
   // Function to clear transaction highlight after animation
-  const clearTransactionHighlight = (txId: string) => {
+  const clearTransactionHighlight = (tx: FE.Transaction, index: number) => {
     setTimeout(() => {
-      newTransactionIds.delete(txId);
-      newTransactionIds = newTransactionIds; // Trigger reactivity
-    }, 2000); // Match this with CSS animation duration
+      const key = tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : null;
+      if (key) {
+        newTransactionIds.delete(key);
+        newTransactionIds = new Set(newTransactionIds);
+      }
+    }, 2000);
   };
 
-  // Update fetch function to handle new transactions
+  // Update fetch function with debouncing and better lock handling
   const loadTransactionData = async (
     page: number = 1,
     append: boolean = false,
     isRefresh: boolean = false,
   ) => {
-    if (!token?.token_id) {
-      console.log("No token ID available, skipping transaction load");
-      isLoadingTxns = false;
+    // Don't start a new request if token has changed
+    if (token?.token_id !== previousTokenId) {
       return;
     }
 
-    if ((!append && !isRefresh && isLoadingTxns) || (append && isLoadingMore)) {
-      console.log("Already loading transactions, skipping");
-      return;
+    // Clear any pending debounce timer
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
     }
 
-    if (!hasMore && append) {
-      console.log("No more transactions to load");
-      return;
-    }
+    // Debounce the request
+    return new Promise<void>((resolve) => {
+        debounceTimer = setTimeout(async () => {
+            try {
+                // Check appropriate lock based on request type
+                if (isRefresh && isRefreshActive) {
+                    console.log("Refresh already in progress, skipping");
+                    return;
+                }
+                if (!isRefresh && !append && isInitialLoadActive) {
+                    console.log("Initial load already in progress, skipping");
+                    return;
+                }
+                if (append && isPaginationActive) {
+                    console.log("Pagination already in progress, skipping");
+                    return;
+                }
 
-    const maxRetries = 3;
-    let retryCount = 0;
-    let lastError;
+                // Set appropriate lock
+                if (isRefresh) {
+                    isRefreshActive = true;
+                } else if (append) {
+                    isPaginationActive = true;
+                } else {
+                    isInitialLoadActive = true;
+                }
 
-    while (retryCount < maxRetries) {
-      try {
-        if (append) {
-          isLoadingMore = true;
-        } else if (!isRefresh) {
-          isLoadingTxns = true;
-        }
+                // Cancel any pending request
+                if (currentAbortController) {
+                    currentAbortController.abort();
+                }
+                currentAbortController = new AbortController();
 
-        const newTransactions = await fetchTransactions(
-          token.canister_id,
-          page,
-          pageSize,
-        );
+                try {
+                    if (!token?.token_id) {
+                        console.log("No token ID available, skipping transaction load");
+                        return;
+                    }
 
-        console.log('New transactions fetched:', newTransactions);
+                    if (!hasMore && append) {
+                        console.log("No more transactions to load");
+                        return;
+                    }
 
-        // Ensure transactions are sorted descending by timestamp before processing
-        const sortedTransactions = newTransactions.sort((a, b) => 
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
+                    // Set UI loading state
+                    if (append) {
+                        isLoadingMore = true;
+                    } else if (!isRefresh) {
+                        isLoadingTxns = true;
+                    }
 
-        if (isRefresh) {
-          // Create a Set of existing transaction IDs for faster lookup
-          const existingIds = new Set(transactions.map(t => t.tx_id));
-          
-          // Filter out any transactions that already exist
-          const uniqueNewTransactions = sortedTransactions.filter(
-            tx => !existingIds.has(tx.tx_id)
-          );
+                    const newTransactions = await fetchTransactions(
+                        token.canister_id,
+                        page,
+                        pageSize,
+                        { signal: currentAbortController.signal }
+                    );
 
-          // Prepend new transactions while maintaining sort order
-          transactions = [...uniqueNewTransactions, ...transactions];
-          
-          // Highlight new transactions
-          uniqueNewTransactions.forEach(tx => {
-            newTransactionIds.add(tx.tx_id);
-            clearTransactionHighlight(tx.tx_id);
-          });
-        } else if (append) {
-          // For pagination, ensure new transactions are older than existing
-          transactions = [...transactions, ...sortedTransactions];
-        } else {
-          // Initial load should be sorted descending
-          transactions = sortedTransactions;
-        }
+                    // If request was aborted, exit early
+                    if (currentAbortController?.signal.aborted) {
+                        return;
+                    }
 
-        hasMore = newTransactions.length === pageSize;
-        currentPage = page;
-        error = null;
-        break; // Success, exit retry loop
-      } catch (err) {
-        lastError = err;
-        console.warn(`Attempt ${retryCount + 1} failed:`, err);
-        retryCount++;
+                    // Ensure transactions are sorted descending by timestamp before processing
+                    const sortedTransactions = newTransactions.sort((a, b) => 
+                        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                    );
 
-        if (retryCount < maxRetries) {
-          // Wait before retrying, with exponential backoff
-          await new Promise((resolve) =>
-            setTimeout(resolve, Math.pow(2, retryCount) * 1000),
-          );
-        }
-      }
-    }
+                    if (isRefresh) {
+                        // Create a map of existing transactions for better duplicate detection
+                        const existingTransactions = new Map(
+                            transactions.map(t => [
+                                t.tx_id ? `${t.tx_id}-${t.timestamp}` : null,
+                                t
+                            ])
+                        );
+                        
+                        // Filter out any transactions that already exist
+                        const uniqueNewTransactions = sortedTransactions.filter(tx => {
+                            const key = tx.tx_id ? `${tx.tx_id}-${tx.timestamp}` : null;
+                            if (!key) return false;
+                            
+                            const existing = existingTransactions.get(key);
+                            if (!existing) return true;
+                            
+                            // If timestamps match exactly, it's definitely a duplicate
+                            return tx.timestamp !== existing.timestamp;
+                        });
+                        
+                        console.log('New unique transactions:', uniqueNewTransactions.length);
 
-    if (retryCount === maxRetries) {
-      console.error(
-        "Failed to fetch transactions after",
-        maxRetries,
-        "attempts:",
-        lastError,
-      );
-      error =
-        lastError instanceof Error
-          ? lastError.message
-          : "Failed to load transactions";
-      hasMore = false;
-    }
+                        if (uniqueNewTransactions.length > 0) {
+                            // Prepend new transactions while maintaining sort order
+                            transactions = [...uniqueNewTransactions, ...transactions];
+                            
+                            // Highlight new transactions
+                            uniqueNewTransactions.forEach((tx, index) => {
+                                if (tx.tx_id) {
+                                    const key = `${tx.tx_id}-${tx.timestamp}-${index}`;
+                                    console.log('Adding highlight for tx:', key);
+                                    newTransactionIds.add(key);
+                                    // Force reactivity by reassigning the Set
+                                    newTransactionIds = new Set(newTransactionIds);
+                                    
+                                    // Clear highlight after animation
+                                    clearTransactionHighlight(tx, index);
+                                }
+                            });
+                        }
+                    } else if (append) {
+                        // For pagination, ensure new transactions are older than existing
+                        transactions = [...transactions, ...sortedTransactions];
+                    } else {
+                        // Initial load should be sorted descending
+                        transactions = sortedTransactions;
+                    }
 
-    isLoadingMore = false;
-    isLoadingTxns = false;
+                    hasMore = newTransactions.length === pageSize;
+                    currentPage = page;
+                    error = null;
+                } catch (err) {
+                    if (err.name === 'AbortError') {
+                        return;
+                    }
+                    console.error('Transaction fetch error:', err);
+                    error = err instanceof Error ? err.message : "Failed to load transactions";
+                } finally {
+                    clearLocks(isRefresh, append);
+                }
+            } finally {
+                debounceTimer = null;
+                resolve();
+            }
+        }, 100); // 100ms debounce
+    });
   };
 
-  // Set up auto-refresh interval with error handling
-  $effect(() => {
-    if (token?.token_id) {
-      // Clear existing interval if any
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
-
-      // Set up new interval with error handling
-      refreshInterval = setInterval(() => {
-        loadTransactionData(1, false, true).catch((err) => {
-          console.error("Error in refresh interval:", err);
-          // Don't show error UI for background refresh failures
-        });
-      }, 10000) as unknown as number;
-
-      // Clean up on token change
-      return () => {
-        if (refreshInterval) {
-          clearInterval(refreshInterval);
+  // Helper function to clear locks
+  const clearLocks = (isRefresh: boolean, append: boolean) => {
+    if (!currentAbortController?.signal.aborted) {
+        // Clear appropriate lock
+        if (isRefresh) {
+            isRefreshActive = false;
+        } else if (append) {
+            isPaginationActive = false;
+            isLoadingMore = false;
+        } else {
+            isInitialLoadActive = false;
+            isLoadingTxns = false;
         }
-      };
+        currentAbortController = null;
     }
-  });
-
-  // Clean up interval on component destroy
-  onDestroy(() => {
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
-    }
-  });
+  };
 
   // Add pagination state
   let currentPage = $state(1);
@@ -208,7 +294,9 @@
     const found = $tokensStore?.find(
       (t) => t.address === tokenAddress || t.canister_id === tokenAddress,
     );
-    if (found) {
+    
+    // Only update token if we find a different token ID
+    if (found && found.token_id !== token?.token_id) {
       token = found;
     }
   });
@@ -218,20 +306,24 @@
   let observer: IntersectionObserver;
   let loadMoreTrigger: HTMLElement = $state<HTMLElement | null>(null);
   let currentTokenId = $state<number | null>(null);
+  let currentTokenCanister = $state<string | null>(null);
 
   // Watch for token changes
   $effect(() => {
     const newTokenId = token?.token_id ?? null;
-    if (newTokenId !== currentTokenId) {
+    // Add additional check for token canister_id to prevent false changes
+    if (newTokenId !== currentTokenId || token?.canister_id !== currentTokenCanister) {
       currentTokenId = newTokenId;
+      currentTokenCanister = token?.canister_id;
+      
       if (newTokenId !== null) {
-        transactions = []; // Clear existing transactions
+        transactions = [];
         currentPage = 1;
         hasMore = true;
         error = null;
-        loadTransactionData(1, false);
-      } else {
-        isLoadingTxns = false; // Clear loading state if no token
+        // Add debounce to token change loader
+        const timeout = setTimeout(() => loadTransactionData(1, false), 100);
+        return () => clearTimeout(timeout);
       }
     }
   });
@@ -261,54 +353,81 @@
 </script>
 
 <Panel variant="transparent" type="main" {className}>
-  <div class="flex flex-col max-h-[300px]">
-    <div class="p-4 pb-0">
-      <h2 class="text-xl font-semibold text-kong-text-primary/80">
-        Recent Transactions
-      </h2>
-    </div>
-    <div class="flex-1 overflow-y-auto p-4">
-      {#if isLoadingTxns && transactions.length === 0}
-        <div class="flex items-center justify-center h-full">
-          <div class="loader"></div>
-        </div>
-      {:else if error}
-        <div class="text-red-400 text-center py-4">{error}</div>
-      {:else if transactions.length === 0}
-        <div class="text-kong-text-primary text-center py-4">
-          No transactions found
-        </div>
-      {:else}
-        <div class="-mx-4">
-          <table class="w-full text-left text-kong-text-primary/80">
+  <div class="flex flex-col h-[300px]">
+    {#if isLoadingTxns && !transactions.length}
+      <div class="flex justify-center items-center p-4">
+        <span class="loading loading-spinner loading-md" />
+      </div>
+    {:else if error}
+      <div class="text-red-500 p-4">{error}</div>
+    {:else if transactions.length === 0}
+      <div class="text-kong-text-primary/70 text-center p-4">
+        No transactions found
+      </div>
+    {:else}
+      <div class="relative flex flex-col h-full">
+        <table class="w-full">
+          <thead>
+            <tr class="text-left text-kong-text-primary/70 bg-kong-bg-light/50 rounded-t-lg !font-normal">
+              <th class="px-4 py-2 w-[110px] sticky top-0 z-10 !font-normal">Wallet</th>
+              <th class="px-4 py-2 w-[120px] sticky top-0 z-10 !font-normal">Paid</th>
+              <th class="px-4 py-2 w-[140px] sticky top-0 z-10 !font-normal">Received</th>
+              <th class="px-4 py-2 w-[100px] sticky top-0 z-10 !font-normal">Value</th>
+              <th class="px-4 py-2 w-[120px] sticky top-0 z-10 !font-normal">Date</th>
+              <th class="w-[50px] py-2 sticky top-0 z-10 !font-normal">Link</th>
+            </tr>
+          </thead>
+        </table>
+        
+        <div class="flex-1 overflow-y-auto overflow-x-hidden">
+          <table class="w-full">
             <tbody>
-              {#each transactions as tx}
+              {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
                 <TransactionRow
                   {tx}
                   {token}
                   formattedTokens={$tokensStore}
-                  isNew={newTransactionIds.has(tx.tx_id || "")}
+                  isNew={newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : '')}
                 />
               {/each}
-
-              <!-- Loading more indicator -->
-              <tr bind:this={loadMoreTrigger} use:setupIntersectionObserver>
-                <td colspan="2" class="p-4 text-center">
-                  {#if isLoadingMore}
-                    <div class="flex justify-center">
-                      <div class="loader"></div>
-                    </div>
-                  {:else if !hasMore}
-                    <div class="text-slate-400 text-sm">
-                      No more transactions
-                    </div>
-                  {/if}
-                </td>
-              </tr>
             </tbody>
           </table>
+
+          {#if hasMore}
+            <div
+              bind:this={loadMoreTrigger}
+              use:setupIntersectionObserver
+              class="flex justify-center p-4"
+            >
+              {#if isLoadingMore}
+                <span class="loading loading-spinner loading-md" />
+              {:else}
+                <span class="text-kong-text-primary/70">Loading more...</span>
+              {/if}
+            </div>
+          {/if}
         </div>
-      {/if}
-    </div>
+      </div>
+    {/if}
   </div>
 </Panel>
+
+<style>
+  /* Add custom scrollbar styling */
+  :global(.overflow-y-auto::-webkit-scrollbar) {
+    width: 8px;
+  }
+
+  :global(.overflow-y-auto::-webkit-scrollbar-track) {
+    background: transparent;
+  }
+
+  :global(.overflow-y-auto::-webkit-scrollbar-thumb) {
+    background-color: rgba(156, 163, 175, 0.3);
+    border-radius: 4px;
+  }
+
+  :global(.overflow-y-auto::-webkit-scrollbar-thumb:hover) {
+    background-color: rgba(156, 163, 175, 0.5);
+  }
+</style>

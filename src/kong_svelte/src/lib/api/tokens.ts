@@ -95,6 +95,5 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE
     body: JSON.stringify({ canister_ids: canisterIds })
   });
   const data = await response.json();
-  console.log(data);
   return data.items.map(parseTokenData);
 };

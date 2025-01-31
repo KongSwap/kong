@@ -22,9 +22,7 @@
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import {
-    ICP_CANISTER_ID,
     KONG_BACKEND_CANISTER_ID,
-    KONG_CANISTER_ID,
   } from "$lib/constants/canisterConstants";
   import { livePools } from "$lib/services/pools/poolStore";
   import Settings from "$lib/components/settings/Settings.svelte";
@@ -519,19 +517,43 @@
       const token0Id = $page.url.searchParams.get("token0");
       const token1Id = $page.url.searchParams.get("token1");
 
-      if (token0Id && token1Id) {
-        const token0 = $userTokens.tokens.find((t) => t.canister_id === token0Id);
-        const token1 = $userTokens.tokens.find((t) => t.canister_id === token1Id);
+      // Get current tokens from state
+      const currentPayToken = $swapState.payToken;
+      const currentReceiveToken = $swapState.receiveToken;
 
-        if (token0 && token1) {
-          swapState.update((state) => ({
-            ...state,
-            payToken: token0,
-            receiveToken: token1,
-            payAmount: "",
-            receiveAmount: "",
-          }));
+      // Find tokens from IDs
+      const token0 = token0Id ? $userTokens.tokens.find((t) => t.canister_id === token0Id) : null;
+      const token1 = token1Id ? $userTokens.tokens.find((t) => t.canister_id === token1Id) : null;
+
+      // Only update if there's actually a change
+      if (
+        (token0Id && token0 && (!currentPayToken || currentPayToken.canister_id !== token0Id)) ||
+        (token1Id && token1 && (!currentReceiveToken || currentReceiveToken.canister_id !== token1Id))
+      ) {
+        swapState.update((state) => ({
+          ...state,
+          // Only update tokens that are valid and different from current
+          payToken: token0 || state.payToken,
+          receiveToken: token1 || state.receiveToken,
+          // Reset amounts when tokens change
+          payAmount: "",
+          receiveAmount: "",
+          error: null,
+        }));
+
+        // Update URL to reflect valid tokens only
+        const url = new URL(window.location.href);
+        if (token0) {
+          url.searchParams.set("token0", token0.canister_id);
+        } else if (!currentPayToken) {
+          url.searchParams.delete("token0");
         }
+        if (token1) {
+          url.searchParams.set("token1", token1.canister_id);
+        } else if (!currentReceiveToken) {
+          url.searchParams.delete("token1");
+        }
+        replaceState(url.toString(), {});
       }
     }
   }

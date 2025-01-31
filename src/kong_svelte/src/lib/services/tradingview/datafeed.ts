@@ -175,8 +175,8 @@ export class KongDatafeed {
             const data = await fetchChartData(
                 this.fromTokenId,
                 this.toTokenId,
-                now,
                 startTime,
+                now,
                 resolution
             );
 
@@ -225,7 +225,7 @@ export class KongDatafeed {
     };
 
     console.log('Setting up polling interval');
-    const interval = setInterval(poll, 4000);
+    const interval = setInterval(poll, 10000);
     (this as any)[subscriberUID] = interval;
   }
 
