@@ -1,6 +1,7 @@
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
+use crate::helpers::nat_helpers::nat_zero;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
@@ -41,4 +42,20 @@ fn update_lp_tokens(stable_lp_tokens: String) -> Result<String, String> {
     }
 
     Ok("LP tokens updated".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_zero_lp_tokens() -> Result<String, String> {
+    LP_TOKEN_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map
+            .iter()
+            .filter_map(|(k, v)| if v.amount == nat_zero() { Some(k) } else { None })
+            .collect();
+        keys_to_remove.iter().for_each(|k| {
+            map.remove(k);
+        });
+    });
+
+    Ok("Zero LP tokens removed".to_string())
 }
