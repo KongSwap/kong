@@ -8,6 +8,7 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { PoolService } from "$lib/services/pools";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { onMount } from "svelte";
 
   interface FilterPair {
     token0?: string;
@@ -54,6 +55,10 @@
   const SEARCH_DEBOUNCE = 150;
   let searchDebounceTimer: ReturnType<typeof setTimeout>;
   $: debouncedSearchQuery = createDebouncedSearch(searchQuery);
+
+  onMount(() => {
+    PoolService.fetchUserPoolBalances(true);
+  });
 
   function createDebouncedSearch(query: string): string {
     if (

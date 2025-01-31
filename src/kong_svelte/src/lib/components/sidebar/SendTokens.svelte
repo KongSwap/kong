@@ -457,10 +457,6 @@
     }
   }
 
-  $: if (token && auth.pnp?.account?.owner) {
-    loadBalances();
-  }
-
   $: if (selectedAccount) {
     loadBalances();
   }

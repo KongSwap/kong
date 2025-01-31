@@ -8,12 +8,12 @@ import { pnp } from "./pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
 import { kongDB } from "./db";
-import { PoolService } from "./pools/PoolService";
 import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
-import { loadBalances, storedBalancesStore } from "./tokens/tokenStore";
+import { storedBalancesStore } from "./tokens/tokenStore";
 import { userTokens } from "$lib/stores/userTokens";
 import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
+import { PoolService } from "./pools/PoolService";
 
 // Constants
 const STORAGE_KEYS = {
@@ -144,7 +144,6 @@ function createAuthStore(pnp: PNP) {
         await Promise.all([
           kongDB.token_balances.clear(),
           kongDB.user_pools.clear(),
-          loadBalances(owner, { forceRefresh: true }),
         ]);
 
         const userTokensStore = get(userTokens)
@@ -152,12 +151,6 @@ function createAuthStore(pnp: PNP) {
           const defaultTokens = await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS))
           userTokens.enableTokens(defaultTokens)
         }
-
-        // Load new data
-        await Promise.all([
-          loadBalances(owner, { forceRefresh: true }),
-          PoolService.fetchUserPoolBalances(true)
-        ]).catch(error => console.warn("Failed to load initial data:", error));
 
         return result;
       } catch (error) {

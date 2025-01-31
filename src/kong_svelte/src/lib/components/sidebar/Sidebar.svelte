@@ -11,7 +11,8 @@
   import { fly } from 'svelte/transition';
   import { Loader2 } from "lucide-svelte";
   import { Coins } from "lucide-svelte";
-    import { loadBalances } from "$lib/services/tokens";
+  import { loadBalances } from "$lib/services/tokens";
+  import { userTokens } from "$lib/stores/userTokens";
 
   let WalletProviderComponent: any;
   let AddCustomTokenModalComponent: any;
@@ -109,10 +110,6 @@
       localStorage.setItem("sidebarActiveTab", tab);
     }
   }
-
-$: if (showManageTokensModal === false) {
-  loadBalances(auth.pnp?.account?.principal?.toText(), { forceRefresh: true });
-}
 </script>
 
 {#key $sidebarStore.isOpen}
@@ -180,7 +177,7 @@ $: if (showManageTokensModal === false) {
                       </div>
                     {:then}
                       {#if TokenListComponent}
-                        <svelte:component this={TokenListComponent} />
+                        <svelte:component this={TokenListComponent} tokens={$userTokens.tokens} />
                       {/if}
                     {/await}
                   {:else if activeTab === "pools"}
