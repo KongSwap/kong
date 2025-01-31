@@ -9,7 +9,7 @@ import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
 import { kongDB } from "./db";
 import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
-import { storedBalancesStore } from "./tokens/tokenStore";
+import { loadBalances, storedBalancesStore } from "./tokens/tokenStore";
 import { userTokens } from "$lib/stores/userTokens";
 import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
@@ -152,6 +152,14 @@ function createAuthStore(pnp: PNP) {
           userTokens.enableTokens(defaultTokens)
         }
 
+
+        // Load new data
+        await Promise.all([
+          loadBalances(owner, { forceRefresh: true }),
+          PoolService.fetchUserPoolBalances(true)
+        ]).catch(error => console.warn("Failed to load initial data:", error));
+
+        
         return result;
       } catch (error) {
         this.handleConnectionError(error);

@@ -3,7 +3,6 @@
   import { TokenService } from "$lib/services/tokens";
   import { ArrowRightLeft, Plus, Minus, Loader2 } from "lucide-svelte";
   import { onMount, onDestroy } from "svelte";
-  import { tick } from "svelte";
   import { formatDate } from "$lib/utils/dateUtils";
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
