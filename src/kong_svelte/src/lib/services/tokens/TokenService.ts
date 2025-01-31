@@ -6,10 +6,7 @@ import {
 } from "$lib/utils/numberFormatUtils";
 import { get } from "svelte/store";
 import {
-  CKUSDT_CANISTER_ID,
-  ICP_CANISTER_ID,
   INDEXER_URL,
-  KONG_DATA_PRINCIPAL,
 } from "$lib/constants/canisterConstants";
 import { loadPools } from "$lib/services/pools/poolStore";
 import { Principal } from "@dfinity/principal";
@@ -217,35 +214,212 @@ export class TokenService {
 
   public static async fetchUserTransactions(
     principalId: string, 
-    page: number = 1, 
-    limit: number = 50, 
-    tx_type: 'swap' | 'send' | 'pool' | null = null
-  ): Promise<{ transactions: any[], total_count: number }> {
+    cursor?: number,
+    limit: number = 40, 
+    tx_type: 'swap' | 'pool' = 'swap'
+  ): Promise<{ transactions: any[], has_more: boolean, next_cursor?: number }> {
     try {
       const queryParams = new URLSearchParams({
-        page: page.toString(),
         limit: limit.toString(),
       });
-      
-      if (tx_type) {
-        queryParams.append('tx_type', tx_type);
-      }
 
-      const url = `${INDEXER_URL}/api/users/${principalId}/transactions?${queryParams.toString()}`;
+      if (cursor) {
+        queryParams.append('cursor', cursor.toString());
+      }
+      
+      // Use different endpoints based on transaction type
+      const url = tx_type === 'pool'
+        ? `${INDEXER_URL}/api/users/${principalId}/transactions/liquidity?${queryParams.toString()}`
+        : `${INDEXER_URL}/api/users/${principalId}/transactions/swap?${queryParams.toString()}`;
+      
       const response = await fetch(url);
+      const responseText = await response.text();
+      
+      // If response is empty, return empty result
+      if (!responseText.trim()) {
+        console.log('Empty response received');
+        return {
+          transactions: [],
+          has_more: false
+        };
+      }
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('Parsed response data:', data);
+      } catch (parseError) {
+        console.error('Failed to parse response as JSON:', {
+          error: parseError,
+          responseText: responseText,
+          status: response.status,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+        
+        return {
+          transactions: [],
+          has_more: false
+        };
+      }
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        console.error('HTTP error:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data,
+          url: url
+        });
+        return {
+          transactions: [],
+          has_more: false
+        };
       }
-      
-      const data = await response.json();
+
+      if (!data) {
+        console.log('No data received from API');
+        return {
+          transactions: [],
+          has_more: false
+        };
+      }
+
+      const items = Array.isArray(data.items) ? data.items : 
+                   Array.isArray(data) ? data :
+                   data.transaction ? [data] : [];
+
+      const transformedTransactions = items.map((item: any) => {
+        console.log('Processing transaction item:', item);
+        
+        const tx = item.transaction || item;
+        const tokens = item.tokens || [];
+        
+        if (!tx) {
+          console.log('No transaction data in item:', item);
+          return null;
+        }
+        
+        // Handle different transaction types
+        if (tx.tx_type === 'RemoveLiquidity' || tx.tx_type === 'AddLiquidity') {
+          const rawTx = tx.raw_json?.[`${tx.tx_type}Tx`];
+          if (!rawTx) {
+            console.error('Invalid transaction data:', tx);
+            return null;
+          }
+
+          // Find the tokens in the response
+          const token0 = tokens.find((t: any) => t.token_id === tokens[0]?.token_id);
+          const token1 = tokens.find((t: any) => t.token_id === tokens[1]?.token_id);
+          const lpToken = tokens.find((t: any) => t.token_type === 'Lp');
+
+          // Format amounts by removing underscores and adjusting for decimals
+          const amount0 = rawTx.amount_0?.replace(/_/g, '') || '0';
+          const amount1 = rawTx.amount_1?.replace(/_/g, '') || '0';
+          const lpAmount = (tx.tx_type === 'AddLiquidity' 
+            ? rawTx.add_lp_token_amount 
+            : rawTx.remove_lp_token_amount)?.replace(/_/g, '') || '0';
+
+          // Format amounts based on token decimals
+          const formattedAmount0 = token0 
+            ? (Number(amount0) / Math.pow(10, token0.decimals)).toString() 
+            : amount0;
+          const formattedAmount1 = token1 
+            ? (Number(amount1) / Math.pow(10, token1.decimals)).toString() 
+            : amount1;
+          const formattedLpAmount = lpToken 
+            ? (Number(lpAmount) / Math.pow(10, lpToken.decimals || 8)).toString() 
+            : lpAmount;
+
+          return {
+            tx_id: rawTx.tx_id,
+            tx_type: tx.tx_type === 'RemoveLiquidity' ? 'remove_liquidity' : 'add_liquidity',
+            status: rawTx.status || 'Success',
+            timestamp: rawTx.ts.toString(),
+            details: {
+              token_0_id: token0?.token_id,
+              token_1_id: token1?.token_id,
+              token_0_symbol: token0?.symbol || `Token ${token0?.token_id}`,
+              token_1_symbol: token1?.symbol || `Token ${token1?.token_id}`,
+              token_0_canister: token0?.canister_id || '',
+              token_1_canister: token1?.canister_id || '',
+              amount_0: formattedAmount0,
+              amount_1: formattedAmount1,
+              lp_token_symbol: lpToken?.symbol || '',
+              lp_token_amount: formattedLpAmount,
+              pool_id: rawTx.pool_id,
+              lp_fee_0: rawTx.lp_fee_0?.replace(/_/g, '') || '0',
+              lp_fee_1: rawTx.lp_fee_1?.replace(/_/g, '') || '0'
+            }
+          };
+        } else if (tx.tx_type === 'Swap') {
+          const rawTx = tx.raw_json?.SwapTx;
+          if (!rawTx) {
+            console.error('Invalid swap transaction data:', tx);
+            return null;
+          }
+
+          // Find the tokens in the response
+          const payToken = tokens.find((t: any) => t.token_id === rawTx.pay_token_id);
+          const receiveToken = tokens.find((t: any) => t.token_id === rawTx.receive_token_id);
+
+          // Format amounts by removing underscores and adjusting for decimals
+          const payAmount = rawTx.pay_amount?.replace(/_/g, '') || '0';
+          const receiveAmount = rawTx.receive_amount?.replace(/_/g, '') || '0';
+
+          // Format amounts based on token decimals
+          const formattedPayAmount = payToken 
+            ? (Number(payAmount) / Math.pow(10, payToken.decimals)).toString() 
+            : payAmount;
+          const formattedReceiveAmount = receiveToken 
+            ? (Number(receiveAmount) / Math.pow(10, receiveToken.decimals)).toString() 
+            : receiveAmount;
+
+          return {
+            tx_id: rawTx.tx_id,
+            tx_type: 'swap',
+            status: rawTx.status || 'Success',
+            timestamp: rawTx.ts.toString(),
+            details: {
+              pay_amount: formattedPayAmount,
+              receive_amount: formattedReceiveAmount,
+              pay_token_id: rawTx.pay_token_id,
+              receive_token_id: rawTx.receive_token_id,
+              pool_id: rawTx.pool_id,
+              price: rawTx.price?.toString() || "0",
+              slippage: rawTx.slippage?.toString() || "0",
+              pay_token_symbol: payToken?.symbol || `Token ${rawTx.pay_token_id}`,
+              receive_token_symbol: receiveToken?.symbol || `Token ${rawTx.receive_token_id}`,
+              pay_token_canister: payToken?.canister_id || '',
+              receive_token_canister: receiveToken?.canister_id || '',
+              gas_fee: (rawTx.gas_fee || '0').replace(/_/g, ''),
+              lp_fee: (rawTx.lp_fee || '0').replace(/_/g, '')
+            }
+          };
+        }
+        
+        return null;
+      }).filter(Boolean);
+
+      console.log('Transformed transactions:', transformedTransactions);
+
       return {
-        transactions: data.transactions || [],
-        total_count: data.total_count || 0
+        transactions: transformedTransactions,
+        has_more: data.has_more || false,
+        next_cursor: data.next_cursor
       };
     } catch (error) {
-      console.error("Error fetching user transactions:", error);
-      return { transactions: [], total_count: 0 };
+      console.error("Error fetching user transactions:", {
+        error,
+        url: `${INDEXER_URL}/api/users/${principalId}/transactions/${tx_type}`,
+        principalId,
+        cursor,
+        limit,
+        tx_type
+      });
+      
+      return {
+        transactions: [],
+        has_more: false
+      };
     }
   }
 

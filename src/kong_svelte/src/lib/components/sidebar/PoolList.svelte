@@ -47,6 +47,8 @@
   let sortDirection: "asc" | "desc" = "desc";
   let tokens: Record<string, FE.Token> = {};
   let tokensLoading = false;
+  let poolsProcessed = false;
+  let lastFetchedTokenIds: string[] = [];
 
   // Memoized search state
   const SEARCH_DEBOUNCE = 150;
@@ -70,22 +72,69 @@
     return query.toLowerCase();
   }
 
-  async function fetchTokensForPools(pools: any[]) {
+  let currentTokenFetch: Promise<void> | null = null;
+
+  function areTokenIdsEqual(ids1: string[], ids2: string[]): boolean {
+    if (ids1.length !== ids2.length) return false;
+    const set1 = new Set(ids1);
+    return ids2.every(id => set1.has(id));
+  }
+
+  async function fetchTokensForPools(pools: any[]): Promise<void> {
     if (pools.length === 0) return;
     
+    const tokenIds = [...new Set(pools.flatMap(pool => [pool.address_0, pool.address_1]))];
+
+    // Skip if we're already loading these exact tokens
+    if (tokensLoading && areTokenIdsEqual(tokenIds, lastFetchedTokenIds)) {
+      return;
+    }
+
+    // Skip if we already have all these tokens cached
+    if (tokenIds.every(id => tokens[id])) {
+      processPoolsWithTokens();
+      return;
+    }
+    
+    tokensLoading = true;
+    lastFetchedTokenIds = tokenIds;
+    
     try {
-      tokensLoading = true;
-      const tokenIds = [...new Set(pools.flatMap(pool => [pool.address_0, pool.address_1]))];
-      const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
-      tokens = fetchedTokens.reduce((acc, token) => {
-        acc[token.canister_id] = token;
-        return acc;
-      }, {} as Record<string, FE.Token>);
+      // Create a new fetch promise
+      const fetchPromise = (async () => {
+        try {
+          const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
+          tokens = {
+            ...tokens,
+            ...fetchedTokens.reduce((acc, token) => {
+              acc[token.canister_id] = token;
+              return acc;
+            }, {} as Record<string, FE.Token>)
+          };
+        } catch (e) {
+          error = "Failed to load token information";
+          console.error("Error fetching tokens:", e);
+        } finally {
+          tokensLoading = false;
+          poolsProcessed = true;
+        }
+      })();
+
+      // Store the current fetch promise
+      currentTokenFetch = fetchPromise;
+      
+      // Wait for the fetch to complete
+      await fetchPromise;
+      
+      // Only process if this was the last fetch initiated
+      if (currentTokenFetch === fetchPromise) {
+        processPoolsWithTokens();
+      }
     } catch (e) {
       error = "Failed to load token information";
       console.error("Error fetching tokens:", e);
-    } finally {
       tokensLoading = false;
+      poolsProcessed = true;
     }
   }
 
@@ -123,6 +172,24 @@
       ETH: "ethereum eth",
     };
     return aliases[symbol] || "";
+  }
+
+  function processPoolsWithTokens(): void {
+    if (!Array.isArray($liveUserPools)) return;
+    
+    const validPools = $liveUserPools.filter((poolBalance) => Number(poolBalance.balance) > 0);
+    const processed = validPools.map((poolBalance) => processPool(poolBalance));
+    processedPools = sortPools(processed as UserPool[]); // Apply initial sort
+
+    if (pool && !initialFilterApplied) {
+      searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;
+      debouncedSearchQuery = searchQuery.toLowerCase();
+      initialFilterApplied = true;
+      searchResultsReady = true;
+      isSearching = false;
+    }
+
+    loading = false;
   }
 
   // Optimize pool filtering
@@ -174,26 +241,16 @@
     if (Array.isArray($liveUserPools)) {
       const validPools = $liveUserPools.filter((poolBalance) => Number(poolBalance.balance) > 0);
       
-      if (!tokensLoading) {
-        loading = false;
-        const processed = validPools.map((poolBalance) => processPool(poolBalance));
-        processedPools = sortPools(processed as UserPool[]); // Apply initial sort
-
-        if (pool && !initialFilterApplied) {
-          searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;
-          debouncedSearchQuery = searchQuery.toLowerCase();
-          initialFilterApplied = true;
-          searchResultsReady = true;
-          isSearching = false;
-        }
-      }
-
-      // Fetch tokens when pools update
       if (validPools.length > 0) {
         fetchTokensForPools(validPools);
+      } else {
+        loading = false;
+        processedPools = [];
+        poolsProcessed = true;
       }
     } else {
       processedPools = [];
+      poolsProcessed = true;
     }
   }
 

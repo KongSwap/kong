@@ -4,6 +4,7 @@
   import { formatTimestamp } from "$lib/utils/dateFormatters";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { getPrincipalColor } from "$lib/utils/principalColorUtils";
+  import { toastStore } from "$lib/stores/toastStore";
 
   export let tx: FE.Transaction;
   export let token: FE.Token;
@@ -40,7 +41,7 @@
     return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
   };
 
-  // Add copy function
+  // Update copy function to show toast
   async function copyToClipboard(text: string, event: MouseEvent) {
     event.stopPropagation();
     try {
@@ -50,8 +51,18 @@
       setTimeout(() => {
         target.classList.remove('copied');
       }, 1000);
+      
+      // Show success toast
+      toastStore.success('Wallet ID copied to clipboard', {
+        duration: 2000,
+        title: 'Copied!'
+      });
     } catch (err) {
       console.error('Failed to copy:', err);
+      // Show error toast
+      toastStore.error('Failed to copy wallet ID', {
+        title: 'Error'
+      });
     }
   }
 </script>
