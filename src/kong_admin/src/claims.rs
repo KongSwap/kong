@@ -69,7 +69,7 @@ pub fn serialize_claim(claim: &StableClaim) -> serde_json::Value {
 
 pub async fn update_claims_on_database(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
-    let re_pattern = Regex::new(r"claims.*.json").unwrap();
+    let re_pattern = Regex::new(r"^claims.*.json$").unwrap();
     let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {
