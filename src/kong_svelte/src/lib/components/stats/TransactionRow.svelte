@@ -10,6 +10,9 @@
   export let formattedTokens: FE.Token[];
   export let isNew: boolean;
 
+  // Add a computed property to determine if this is a buy transaction
+  $: isBuyTransaction = tx.receive_token_id === token.token_id;
+
   const calculateTotalUsdValue = (
     tx: FE.Transaction
   ): string => {
@@ -36,67 +39,86 @@
     // Use the higher value
     return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
   };
+
+  // Add copy function
+  async function copyToClipboard(text: string, event: MouseEvent) {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+      const target = event.currentTarget as HTMLElement;
+      target.classList.add('copied');
+      setTimeout(() => {
+        target.classList.remove('copied');
+      }, 1000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }
 </script>
 
 <tr
-  class="border-b border-kong-border/70 transition-all duration-300"
-  class:new-transaction={isNew}
+  class="border-b border-kong-border/70 transition-all duration-300 overflow-x-hidden hover:bg-kong-bg-light"
+  class:highlight-buy={isNew && isBuyTransaction}
+  class:highlight-sell={isNew && !isBuyTransaction}
 >
-  <td class="px-4 py-3">
-    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-      <span
-        class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary"
-        style="background-color: {getPrincipalColor(tx.user?.principal_id || '')};"
-      >
-        {tx.user?.principal_id?.slice(0, 8)}
-      </span>
-      {#if tx.pay_token_id === token.token_id}
-        <!-- Sell Transaction -->
-        <span class="text-kong-text-primary/80 flex flex-wrap items-center gap-1 text-sm">
-          <span class="text-red-500">Sold</span>
-          {formatToNonZeroDecimal(tx.pay_amount)}
-          <TokenImages tokens={[token]} size={16} />
-          for
-          {formatToNonZeroDecimal(tx.receive_amount)}
-          <TokenImages
-            tokens={[
-              formattedTokens?.find((t) => t.token_id === tx.receive_token_id),
-            ].filter(Boolean)}
-            size={16}
-          />
-          <span class="whitespace-nowrap"
-            >worth {calculateTotalUsdValue(tx)}</span
-          >
-          <span class="text-slate-400 text-xs"
-            >{formatTimestamp(tx.timestamp.toString())}</span
-          >
-        </span>
-      {:else}
-        <!-- Buy Transaction -->
-        <span class="text-kong-text-primary/80 flex flex-wrap items-center gap-1 text-sm">
-          <span class="text-green-500">Bought</span>
-          {formatToNonZeroDecimal(tx.receive_amount)}
-          <TokenImages tokens={[token]} size={16} />
-          for
-          {formatToNonZeroDecimal(tx.pay_amount)}
-          <TokenImages
-            tokens={[
-              formattedTokens?.find((t) => t.token_id === tx.pay_token_id),
-            ].filter(Boolean)}
-            size={16}
-          />
-          <span class="whitespace-nowrap"
-            >worth {calculateTotalUsdValue(tx)}</span
-          >
-          <span class="text-slate-400 text-xs"
-            >{formatTimestamp(tx.timestamp.toString())}</span
-          >
-        </span>
-      {/if}
-    </div>
+  <!-- Wallet -->
+  <td class="px-4 py-2 w-[120px]">
+    <span
+      class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary cursor-pointer hover:opacity-80 relative group"
+      style="background-color: {getPrincipalColor(tx.user?.principal_id || '')};"
+      on:click={(e) => copyToClipboard(tx.user?.principal_id || '', e)}
+    >
+      {tx.user?.principal_id?.slice(0, 8)}
+      <span class="copy-tooltip">Copy ID</span>
+    </span>
   </td>
-  <td class="px-4 py-3 text-right">
+
+  <!-- Paid -->
+  <td class="px-4 py-2 w-[140px]">
+    <span class="flex items-center gap-1">
+      {formatToNonZeroDecimal(tx.pay_amount)}
+      <TokenImages
+        tooltip={{
+          text: formattedTokens?.find((t) => t.token_id === tx.pay_token_id)?.symbol,
+          direction: "top"
+        }}
+        tokens={[formattedTokens?.find((t) => t.token_id === tx.pay_token_id)].filter(Boolean)}
+        size={18}
+      />
+    </span>
+  </td>
+
+  <!-- Received -->
+  <td class="px-4 py-2 w-[140px]">
+    <span class="flex items-center gap-1">
+      {formatToNonZeroDecimal(tx.receive_amount)}
+      <TokenImages
+        tooltip={{
+          text: formattedTokens?.find((t) => t.token_id === tx.receive_token_id)?.symbol,
+          direction: "top"
+        }}
+        tokens={[formattedTokens?.find((t) => t.token_id === tx.receive_token_id)].filter(Boolean)}
+        size={18}
+      />
+    </span>
+  </td>
+
+  <!-- Value -->
+  <td class="px-4 py-2 w-[100px]">
+    <span class="whitespace-nowrap">{calculateTotalUsdValue(tx)}</span>
+  </td>
+
+  <!-- Date -->
+  <td class="px-4 py-2 w-[120px]">
+    <span class="text-slate-400 text-sm whitespace-nowrap">
+      {formatTimestamp(tx.timestamp.toString())}
+    </span>
+  </td>
+
+  <!-- Link -->
+  <td class="w-[50px] py-2 ">
     {#if tx.tx_id}
+      <div class="flex justify-center w-full pr-3">
       <a
         href={`https://www.icexplorer.io/address/detail/${tx.user.principal_id}`}
         target="_blank"
@@ -116,15 +138,113 @@
           stroke-linecap="round"
           stroke-linejoin="round"
           class="lucide lucide-link"
-          ><path
-            d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-          /><path
-            d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-          /></svg
         >
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
       </a>
+    </div>
     {:else}
       N/A
     {/if}
   </td>
 </tr>
+
+<style>
+  .highlight-buy {
+    animation: highlight-buy 2s ease-out forwards;
+  }
+
+  .highlight-sell {
+    animation: highlight-sell 2s ease-out forwards;
+  }
+
+  @keyframes highlight-buy {
+    0% {
+      background-color: rgba(34, 197, 94, 0.4); /* kong-accent-green with opacity */
+      transform: translateX(-8px);
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+    }
+    15% {
+      transform: translateX(4px);
+      background-color: rgba(34, 197, 94, 0.35);
+    }
+    30% {
+      transform: translateX(0);
+      background-color: rgba(34, 197, 94, 0.3);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: none;
+    }
+  }
+
+  @keyframes highlight-sell {
+    0% {
+      background-color: rgba(239, 68, 68, 0.4); /* kong-accent-red with opacity */
+      transform: translateX(-8px);
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    }
+    15% {
+      transform: translateX(4px);
+      background-color: rgba(239, 68, 68, 0.35);
+    }
+    30% {
+      transform: translateX(0);
+      background-color: rgba(239, 68, 68, 0.3);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: none;
+    }
+  }
+
+  .copy-tooltip {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .group:hover .copy-tooltip {
+    opacity: 1;
+  }
+
+  .copied::after {
+    content: 'Copied!';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(34, 197, 94, 0.9);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    white-space: nowrap;
+    animation: fadeOut 1s forwards;
+  }
+
+  @keyframes fadeOut {
+    0% {
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+</style>

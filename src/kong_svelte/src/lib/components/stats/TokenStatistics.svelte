@@ -80,7 +80,7 @@
       } catch (error) {
         console.error("Error polling token data:", error);
       }
-    }, 1000 * 10);
+    }, 1000 * 10); // 10 seconds
 
     return () => {
       clearInterval(pollInterval);

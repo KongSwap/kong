@@ -1,7 +1,5 @@
 // src/kong_svelte/src/lib/actions/tooltip.ts
 
-import { onDestroy } from 'svelte';
-
 export interface TooltipOptions {
   text?: string;
   html?: HTMLElement;

@@ -1,9 +1,14 @@
 <script lang="ts">
+  import { tooltip as tooltipAction } from "$lib/actions/tooltip";
+
   export let tokens: FE.Token[] = [];
   export let size: number = 48;
   export let containerClass: string = "";
   export let imageWrapperClass: string = "";
   export let overlap: boolean = false;
+  export let tooltip: { text: string, direction: "top" | "bottom" | "left" | "right" } = { text: "", direction: "top" };
+
+  
 
   const DEFAULT_IMAGE = '/tokens/not_verified.webp';
 
@@ -24,7 +29,7 @@
   }
 </script>
 
-<div class="flex items-center {containerClass} p-0 m-0" style="margin-right: {overlap ? '10px' : '0'}">
+<div use:tooltipAction={tooltip} class="flex items-center {containerClass} p-0 m-0" style="margin-right: {overlap ? '10px' : '0'}">
   {#each validTokens as token, index}
     <div 
       style="height: {size}px; width: {size}px; z-index: {validTokens.length - index};"
@@ -32,7 +37,7 @@
     >
       <img
         class="w-full h-full rounded-full bg-transparent"
-        src={token.logo_url || DEFAULT_IMAGE}
+        src={token?.logo_url || DEFAULT_IMAGE}
         alt={getTokenAlt(token)}
         loading="eager"
         on:error={handleImageError}

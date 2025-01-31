@@ -1,12 +1,19 @@
 import { INDEXER_URL } from "../../constants/canisterConstants";
 
-export async function fetchTransactions(canisterId: string | number, page: number, limit: number): Promise<FE.Transaction[]> {
+export async function fetchTransactions(
+  canisterId: string | number, 
+  page: number, 
+  limit: number,
+  options: { signal?: AbortSignal } = {}
+): Promise<FE.Transaction[]> {
   // Handle both string and number IDs
   const idParam = typeof canisterId === 'string' ? canisterId : canisterId.toString();
   const url = `${INDEXER_URL}/api/tokens/${idParam}/transactions?page=${page}&limit=${limit}`;
   
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      signal: options.signal
+    });
     
     // Get the response text first
     const responseText = await response.text();
@@ -42,15 +49,21 @@ export async function fetchTransactions(canisterId: string | number, page: numbe
       return [];
     }
 
-    // Ensure all required fields are present
-    return data.items.map(tx => ({
-      tx_id: tx.tx_id || '',
-      timestamp: tx.timestamp || new Date().toISOString(),
-      // Add other required fields with defaults
-      ...tx
-    }));
+    // Filter out any transactions without required fields
+    const transactions = data.items
+      .filter(tx => tx.tx_id && (tx.ts || tx.timestamp))  // Check for either timestamp field
+      .map(tx => ({
+        ...tx,
+        tx_id: tx.tx_id,
+        timestamp: tx.ts || tx.timestamp // Use ts if available, fallback to timestamp
+      }));
 
+    return transactions;
   } catch (error) {
+    // If the request was aborted, rethrow the error
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw error;
+    }
     console.error('Transaction fetch error:', error);
     return []; // Return empty array for any other errors
   }
