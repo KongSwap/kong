@@ -5,9 +5,9 @@
   import Portal from "svelte-portal";
   import { Principal } from "@dfinity/principal";
   import { fade } from "svelte/transition";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { get } from "svelte/store";
-  import { replaceState } from "$app/navigation";
+  import { replaceState, afterNavigate } from "$app/navigation";
   import { page } from "$app/stores";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
@@ -61,6 +61,10 @@
   let rotationCount = 0;
   let isQuoteLoading = false;
   let showSettings = false;
+
+  // Add these variables to track URL params
+  let currentToken0Id: string | null = null;
+  let currentToken1Id: string | null = null;
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -119,6 +123,69 @@
     }));
   }
 
+  // Replace the current reactive statement
+  $: if ($page || $userTokens.tokens.length > 0) {
+    handleUrlParamChange();
+  }
+
+  // Update the reactive statements to watch both parameter naming conventions
+  $: token0Id = $page.url.searchParams.get("from") || $page.url.searchParams.get("token0");
+  $: token1Id = $page.url.searchParams.get("to") || $page.url.searchParams.get("token1");
+
+  // Modify the handleUrlParamChange function
+  function handleUrlParamChange() {
+    if (!$userTokens.tokens.length) {
+      return;
+    }
+    
+    // Check both parameter naming conventions
+    const token0Id = $page.url.searchParams.get("from") || $page.url.searchParams.get("token0");
+    const token1Id = $page.url.searchParams.get("to") || $page.url.searchParams.get("token1");
+        
+    // Only process if params have actually changed
+    if (token0Id === currentToken0Id && token1Id === currentToken1Id) {
+      return;
+    }
+    
+    currentToken0Id = token0Id;
+    currentToken1Id = token1Id;
+
+    // Find tokens from IDs
+    const token0 = token0Id ? $userTokens.tokens.find((t) => t.canister_id === token0Id) : null;
+    const token1 = token1Id ? $userTokens.tokens.find((t) => t.canister_id === token1Id) : null;
+
+    // Get current tokens from state
+    const currentPayToken = $swapState.payToken;
+    const currentReceiveToken = $swapState.receiveToken;
+
+    // Check if we need to update
+    const shouldUpdateToken0 = token0Id && (!currentPayToken || currentPayToken.canister_id !== token0Id);
+    const shouldUpdateToken1 = token1Id && (!currentReceiveToken || currentReceiveToken.canister_id !== token1Id);
+
+    if (shouldUpdateToken0 || shouldUpdateToken1) {
+      swapState.update((state) => {
+        const newState = {
+          ...state,
+          payToken: shouldUpdateToken0 ? token0 : state.payToken,
+          receiveToken: shouldUpdateToken1 ? token1 : state.receiveToken,
+          payAmount: "",
+          receiveAmount: "",
+          error: null,
+        };
+        return newState;
+      });
+    }
+  }
+
+  // Add this near the other reactive statements
+  $: {
+    const newToken0Id = $page.url.searchParams.get("from") || $page.url.searchParams.get("token0");
+    const newToken1Id = $page.url.searchParams.get("to") || $page.url.searchParams.get("token1");
+    if (newToken0Id !== currentToken0Id || newToken1Id !== currentToken1Id) {
+      handleUrlParamChange();
+    }
+  }
+
   // Initialize on mount
   onMount(() => {
     initializeComponent();
@@ -128,6 +195,11 @@
         forceRefresh: true 
       });
     }
+    handleUrlParamChange();
+  });
+
+  afterNavigate(() => {
+    handleUrlParamChange();
   });
 
   // Modify the poolExists function to add more debugging
@@ -364,6 +436,7 @@
     }
   }
 
+  // Update the updateTokenInURL function to use the correct parameter names
   function updateTokenInURL(param: "from" | "to", tokenId: string) {
     const url = new URL(window.location.href);
     url.searchParams.set(param, tokenId);
@@ -510,53 +583,10 @@
     });
   }
 
-  // Add this to the reactive statements section
-  $: {
-    // When URL params or tokens change, update the swap state
-    if ($page && $userTokens.tokens.length > 0) {
-      const token0Id = $page.url.searchParams.get("token0");
-      const token1Id = $page.url.searchParams.get("token1");
-
-      // Get current tokens from state
-      const currentPayToken = $swapState.payToken;
-      const currentReceiveToken = $swapState.receiveToken;
-
-      // Find tokens from IDs
-      const token0 = token0Id ? $userTokens.tokens.find((t) => t.canister_id === token0Id) : null;
-      const token1 = token1Id ? $userTokens.tokens.find((t) => t.canister_id === token1Id) : null;
-
-      // Only update if there's actually a change
-      if (
-        (token0Id && token0 && (!currentPayToken || currentPayToken.canister_id !== token0Id)) ||
-        (token1Id && token1 && (!currentReceiveToken || currentReceiveToken.canister_id !== token1Id))
-      ) {
-        swapState.update((state) => ({
-          ...state,
-          // Only update tokens that are valid and different from current
-          payToken: token0 || state.payToken,
-          receiveToken: token1 || state.receiveToken,
-          // Reset amounts when tokens change
-          payAmount: "",
-          receiveAmount: "",
-          error: null,
-        }));
-
-        // Update URL to reflect valid tokens only
-        const url = new URL(window.location.href);
-        if (token0) {
-          url.searchParams.set("token0", token0.canister_id);
-        } else if (!currentPayToken) {
-          url.searchParams.delete("token0");
-        }
-        if (token1) {
-          url.searchParams.set("token1", token1.canister_id);
-        } else if (!currentReceiveToken) {
-          url.searchParams.delete("token1");
-        }
-        replaceState(url.toString(), {});
-      }
-    }
-  }
+  // Add this near your other lifecycle hooks
+  onDestroy(() => {
+    resetSwapState();
+  });
 </script>
 
 <div class="swap-container" in:fade={{ duration: 420 }}>
@@ -714,7 +744,6 @@
   receiveAmount={$swapState.successDetails?.receiveAmount || $swapState.receiveAmount}
   receiveToken={$swapState.successDetails?.receiveToken || $swapState.receiveToken}
   onClose={() => {
-    console.log("Closing success modal");
     swapState.setShowSuccessModal(false);
     resetSwapState();
   }}

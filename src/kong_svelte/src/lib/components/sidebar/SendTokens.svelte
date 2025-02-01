@@ -434,7 +434,6 @@
         token = {
           ...token,
           balance: balances.default.toString(),
-          subaccountBalance: balances.subaccount.toString(),
         };
       } else {
         // For non-ICP tokens, just get the main balance

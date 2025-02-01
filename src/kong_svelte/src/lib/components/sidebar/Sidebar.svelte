@@ -11,7 +11,6 @@
   import { fly } from 'svelte/transition';
   import { Loader2 } from "lucide-svelte";
   import { Coins } from "lucide-svelte";
-  import { loadBalances } from "$lib/services/tokens";
   import { userTokens } from "$lib/stores/userTokens";
 
   let WalletProviderComponent: any;
