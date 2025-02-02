@@ -34,7 +34,7 @@
   onMount(async () => {
     // Add debug logging for tokens
     const unsubscribe = tokensStore.subscribe(tokens => {
-        console.log('Current tokens in store:', tokens);
+        console.log('TokensStore updated:', tokens.length);
     });
 
     const resizeObserver = new ResizeObserver(
@@ -171,15 +171,12 @@
         return processedTransactionsCache.get(cacheKey);
     }
 
-    console.log('Processing transaction in component:', tx);
-
     if (!tx?.tx_type) {
         console.log('Missing tx_type:', tx);
         return null;
     }
 
     const { tx_type, status, timestamp, details } = tx;
-    console.log('Transaction details:', { tx_type, status, timestamp, details });
     
     // Convert nanosecond timestamp to milliseconds for Date
     const dateInMs = Math.floor(Number(timestamp) / 1_000_000);
@@ -220,7 +217,6 @@
         return null;
     }
 
-    console.log('Processed result:', result);
     processedTransactionsCache.set(cacheKey, result);
     return result;
   }
@@ -256,8 +252,6 @@
         if (!principal) {
             throw new Error('No principal ID available');
         }
-
-        console.log('Fetching transactions for principal:', principal, 'cursor:', $cursorStore);
         
         const response = await TokenService.fetchUserTransactions(
             principal,
@@ -266,14 +260,11 @@
             txType
         );
 
-        console.log('Received transactions:', response);
-
         if (response.transactions) {
             const newTransactions = response.transactions
                 .map(processTransaction)
                 .filter(Boolean);
 
-            console.log('Processed transactions:', newTransactions);
 
             if (loadMore) {
                 transactionStore.update(txs => [...txs, ...newTransactions]);
@@ -284,7 +275,6 @@
             hasMoreStore.set(response.has_more);
             if (response.next_cursor) {
                 cursorStore.set(response.next_cursor);
-                console.log('Updated cursor to:', response.next_cursor);
             } else {
                 hasMoreStore.set(false);
                 console.log('No next cursor, setting hasMore to false');

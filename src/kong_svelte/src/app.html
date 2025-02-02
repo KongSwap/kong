@@ -32,6 +32,16 @@
 		document.documentElement.classList.toggle('dark', theme === 'dark');
 	</script>
 
+	<!-- Google tag (gtag.js) -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-JW23W2WSPE"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag() { dataLayer.push(arguments); }
+		gtag('js', new Date());
+
+		gtag('config', 'G-JW23W2WSPE');
+	</script>
+
 	%sveltekit.head%
 </head>
 

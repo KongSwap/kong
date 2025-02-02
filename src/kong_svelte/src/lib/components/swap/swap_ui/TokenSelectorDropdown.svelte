@@ -78,7 +78,7 @@
 
   // Get filtered tokens before any UI filters (search, favorites, etc)
   let baseFilteredTokens = $derived(
-    tokens.filter((token) => {
+    browser ? tokens.filter((token) => {
       // First validate the token
       if (!token?.canister_id) {
         console.warn("Invalid token found:", token);
@@ -96,7 +96,7 @@
       }
 
       return true;
-    })
+    }) : []
   );
 
   // Get counts based on the base filtered tokens
@@ -108,7 +108,7 @@
 
   // Create a debounced search function
   const debouncedApiSearch = debounce(async (query: string) => {
-    if (!query || query.length < 2) {
+    if (!browser || !query || query.length < 2) {
       apiSearchResults = [];
       return;
     }
@@ -133,6 +133,7 @@
 
   // Update search effect
   $effect(() => {
+    if (!browser) return;
     if (searchQuery) {
       void debouncedApiSearch(searchQuery);
     } else {
@@ -142,7 +143,7 @@
 
   // Update the filteredTokens derivation to deduplicate tokens
   let filteredTokens = $derived(
-    Array.from(new Map(
+    browser ? Array.from(new Map(
       // Combine both sources and map by canister_id to deduplicate
       [...baseFilteredTokens, ...apiSearchResults].map(token => [token.canister_id, token])
     ).values())
@@ -189,7 +190,7 @@
         }
 
         return 0;
-      })
+      }) : []
   );
 
   const SECONDARY_TOKEN_IDS = [

@@ -52,6 +52,8 @@
   });
 
   function getValue(obj: any, path: string): any {
+    if (!obj) return null;
+    
     const column = columnMap.get(path);
     if (column?.sortValue) {
       return column.sortValue(obj);
@@ -59,14 +61,14 @@
     
     // Use switch for common paths for better performance
     switch (path) {
-      case 'marketCapRank': return obj.marketCapRank;
-      case 'token': return obj.name?.toLowerCase() || '';
-      case 'price': return Number(obj.metrics?.price || 0);
-      case 'price_change_24h': return Number(obj.metrics?.price_change_24h || 0);
-      case 'volume_24h': return Number(obj.metrics?.volume_24h || 0);
-      case 'market_cap': return Number(obj.metrics?.market_cap || 0);
-      case 'tvl': return Number(obj.metrics?.tvl || 0);
-      default: return obj[path];
+      case 'marketCapRank': return obj.marketCapRank ?? 0;
+      case 'token': return obj.name?.toLowerCase() ?? '';
+      case 'price': return Number(obj.metrics?.price ?? 0);
+      case 'price_change_24h': return Number(obj.metrics?.price_change_24h ?? 0);
+      case 'volume_24h': return Number(obj.metrics?.volume_24h ?? 0);
+      case 'market_cap': return Number(obj.metrics?.market_cap ?? 0);
+      case 'tvl': return Number(obj.metrics?.tvl ?? 0);
+      default: return obj[path] ?? null;
     }
   }
 
@@ -77,6 +79,8 @@
   }
 
   let sortedData = $derived(() => {
+    if (!data || !Array.isArray(data)) return [];
+    
     if (!sortColumn) {
       return [...data].sort((a, b) => {
         if (isKongToken(a)) return -1;
@@ -89,10 +93,10 @@
       if (isKongToken(a)) return -1;
       if (isKongToken(b)) return 1;
 
-      let aValue = getValue(a, sortColumn);
-      let bValue = getValue(b, sortColumn);
+      let aValue = getValue(a, sortColumn) ?? 0;
+      let bValue = getValue(b, sortColumn) ?? 0;
 
-      if (typeof aValue === 'string') {
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
         return sortDirection === 'asc' 
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
@@ -100,6 +104,9 @@
 
       aValue = Number(aValue || 0);
       bValue = Number(bValue || 0);
+
+      if (isNaN(aValue)) aValue = 0;
+      if (isNaN(bValue)) bValue = 0;
 
       return sortDirection === 'asc' 
         ? aValue - bValue 

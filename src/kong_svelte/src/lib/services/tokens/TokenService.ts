@@ -247,7 +247,6 @@ export class TokenService {
       let data;
       try {
         data = JSON.parse(responseText);
-        console.log('Parsed response data:', data);
       } catch (parseError) {
         console.error('Failed to parse response as JSON:', {
           error: parseError,
@@ -287,9 +286,7 @@ export class TokenService {
                    Array.isArray(data) ? data :
                    data.transaction ? [data] : [];
 
-      const transformedTransactions = items.map((item: any) => {
-        console.log('Processing transaction item:', item);
-        
+      const transformedTransactions = items.map((item: any) => {        
         const tx = item.transaction || item;
         const tokens = item.tokens || [];
         
@@ -398,8 +395,6 @@ export class TokenService {
         
         return null;
       }).filter(Boolean);
-
-      console.log('Transformed transactions:', transformedTransactions);
 
       return {
         transactions: transformedTransactions,

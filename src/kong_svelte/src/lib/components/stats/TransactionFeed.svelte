@@ -6,7 +6,8 @@
   import TransactionRow from "./TransactionRow.svelte";
   import { fetchTokens } from '$lib/api/tokens';
   import { writable } from 'svelte/store';
-
+  import { browser } from "$app/environment";
+  
   // Create a store for tokens
   const tokensStore = writable<FE.Token[]>([]);
   
@@ -27,6 +28,8 @@
   onMount(() => {
     loadTokens();
   });
+
+  let mobile = $derived(browser ? window.innerWidth < 768 : false);
 
   // Declare our state variables
   let { token, className = "" } = $props<{
@@ -84,7 +87,7 @@
                     console.error("Error in refresh interval:", err);
                 });
             }
-        }, 5000) as unknown as number;
+        }, 10000) as unknown as number;
     }
 
     // Cleanup
@@ -366,29 +369,41 @@
       </div>
     {:else}
       <div class="relative flex flex-col h-full">
-        <table class="w-full">
-          <thead>
-            <tr class="text-left text-kong-text-primary/70 bg-kong-bg-light/50 rounded-t-lg !font-normal">
-              <th class="px-4 py-2 w-[110px] sticky top-0 z-10 !font-normal">Wallet</th>
-              <th class="px-4 py-2 w-[120px] sticky top-0 z-10 !font-normal">Paid</th>
-              <th class="px-4 py-2 w-[140px] sticky top-0 z-10 !font-normal">Received</th>
-              <th class="px-4 py-2 w-[100px] sticky top-0 z-10 !font-normal">Value</th>
-              <th class="px-4 py-2 w-[120px] sticky top-0 z-10 !font-normal">Date</th>
-              <th class="w-[50px] py-2 sticky top-0 z-10 !font-normal">Link</th>
-            </tr>
-          </thead>
-        </table>
-        
         <div class="flex-1 overflow-y-auto overflow-x-hidden">
           <table class="w-full">
-            <tbody>
+            <tbody class="hidden md:table-row-group">
+              <tr class="text-left text-kong-text-primary/70 bg-kong-bg-light/50 rounded-t-lg !font-normal">
+                <th class="px-4 py-2 w-[110px] sticky top-0 z-10 !font-normal">Wallet</th>
+                <th class="px-4 py-2 w-[120px] sticky top-0 z-10 !font-normal">Paid</th>
+                <th class="px-4 py-2 w-[140px] sticky top-0 z-10 !font-normal">Received</th>
+                <th class="px-4 py-2 w-[100px] sticky top-0 z-10 !font-normal">Value</th>
+                <th class="px-4 py-2 w-[120px] sticky top-0 z-10 !font-normal">Date</th>
+                <th class="w-[50px] py-2 sticky top-0 z-10 !font-normal">Link</th>
+              </tr>
               {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
                 <TransactionRow
                   {tx}
                   {token}
                   formattedTokens={$tokensStore}
                   isNew={newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : '')}
+                  mobile={mobile}
                 />
+              {/each}
+            </tbody>
+            
+            <tbody class="md:hidden">
+              {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
+                <tr class="block border-b border-kong-border/70 p-2 hover:bg-kong-bg-light">
+                  <td class="block p-2">
+                    <TransactionRow
+                      {tx}
+                      {token}
+                      formattedTokens={$tokensStore}
+                      isNew={newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : '')}
+                      mobile={mobile}
+                    />
+                  </td>
+                </tr>
               {/each}
             </tbody>
           </table>
@@ -429,5 +444,25 @@
 
   :global(.overflow-y-auto::-webkit-scrollbar-thumb:hover) {
     background-color: rgba(156, 163, 175, 0.5);
+  }
+
+  /* Mobile responsive styles */
+  @media (max-width: 767px) {
+    :global(table) {
+      display: block;
+    }
+
+    :global(thead) {
+      display: none;
+    }
+
+    :global(tbody) {
+      display: block;
+      width: 100%;
+    }
+
+    :global(.overflow-y-auto) {
+      height: calc(300px - 48px); /* Adjust height for mobile */
+    }
   }
 </style>

@@ -83,6 +83,7 @@
         console.error("Failed to connect wallet:", error);
         selectedWalletId.set("");
         localStorage.removeItem("kongSelectedWallet");
+        connecting = false;
       }
     } finally {
       connecting = false;

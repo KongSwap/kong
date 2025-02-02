@@ -57,36 +57,11 @@ function createAuthStore(pnp: PNP) {
 
   const { subscribe, set } = store;
 
-  // Simplified storage access with error handling
+  // Simplified storage operations
   const storage = {
-    save: (key: keyof typeof STORAGE_KEYS, value: string): void => {
-      if (!browser) return;
-      try {
-        localStorage.setItem(STORAGE_KEYS[key], value);
-      } catch (e) {
-        console.warn(`Storage operation failed for ${key}:`, e);
-      }
-    },
-    get: (key: keyof typeof STORAGE_KEYS): string | null => {
-      if (!browser) return null;
-      try {
-        return localStorage.getItem(STORAGE_KEYS[key]);
-      } catch (e) {
-        console.warn(`Storage operation failed for ${key}:`, e);
-        return null;
-      }
-    },
-    clear: () => {
-      if (!browser) return;
-      Object.keys(STORAGE_KEYS).forEach(key => {
-        try {
-          localStorage.removeItem(STORAGE_KEYS[key as keyof typeof STORAGE_KEYS]);
-        } catch (e) {
-          console.warn(`Failed to clear ${key}:`, e);
-        }
-      });
-      sessionStorage.removeItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED);
-    }
+    get: (key: keyof typeof STORAGE_KEYS) => browser ? localStorage.getItem(STORAGE_KEYS[key]) : null,
+    set: (key: keyof typeof STORAGE_KEYS, value: string) => browser && localStorage.setItem(STORAGE_KEYS[key], value),
+    clear: () => browser && Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k))
   };
 
   const storeObj = {
@@ -122,44 +97,30 @@ function createAuthStore(pnp: PNP) {
       try {
         connectionError.set(null);
         const result = await pnp.connect(walletId);
-
-        if (!result?.owner) {
-          throw new Error("Invalid connection result format");
-        }
-
+        
+        if (!result?.owner) throw new Error("Invalid connection result");
+        
         const owner = result.owner.toString();
+        set({ isConnected: true, account: result, isInitialized: true });
         
-        // Update state
-        const newState = { isConnected: true, account: result, isInitialized: true };
-        set(newState);
-        selectedWalletId.set(walletId);
-        isConnected.set(true);
-        
-        // Update storage
-        storage.save("LAST_WALLET", walletId);
-        storage.save("WAS_CONNECTED", "true");
-        sessionStorage.setItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED, "false");
-        
-        // Clear existing data
+        // Update state and storage
+        [selectedWalletId, isConnected].forEach(s => s.set(true));
+        storage.set("LAST_WALLET", walletId);
+        storage.set("WAS_CONNECTED", "true");
+
+        // Reset data and load fresh
         await Promise.all([
           kongDB.token_balances.clear(),
           kongDB.user_pools.clear(),
-        ]);
-
-        const userTokensStore = get(userTokens)
-        if(Object.keys(userTokensStore.enabledTokens).length === 0) {
-          const defaultTokens = await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS))
-          userTokens.enableTokens(defaultTokens)
-        }
-
-
-        // Load new data
-        await Promise.all([
           loadBalances(owner, { forceRefresh: true }),
           PoolService.fetchUserPoolBalances(true)
-        ]).catch(error => console.warn("Failed to load initial data:", error));
+        ]);
 
-        
+        // Initialize default tokens if needed
+        if (Object.keys(get(userTokens).enabledTokens).length === 0) {
+          userTokens.enableTokens(await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS)));
+        }
+
         return result;
       } catch (error) {
         this.handleConnectionError(error);
@@ -168,37 +129,20 @@ function createAuthStore(pnp: PNP) {
     },
 
     async disconnect() {
-      try {
-        await pnp.disconnect();
-        
-        // Clear all state
-        set({ isConnected: false, account: null, isInitialized: true });
-        selectedWalletId.set(null);
-        isConnected.set(false);
-        connectionError.set(null);
-        
-        // Clear data
-        await Promise.all([
-          kongDB.token_balances.clear(),
-          kongDB.user_pools.clear()
-        ]);
-
-        storedBalancesStore.set({});
-
-        storage.clear();
-        return true;
-      } catch (error) {
-        console.error("Disconnect error:", error);
-        connectionError.set(error.message);
-        throw error;
-      }
+      await pnp.disconnect();
+      set({ isConnected: false, account: null, isInitialized: true });
+      [selectedWalletId, isConnected, connectionError].forEach(s => s.set(null));
+      await Promise.all([kongDB.token_balances.clear(), kongDB.user_pools.clear()]);
+      storedBalancesStore.set({});
+      storage.clear();
     },
 
     handleConnectionError(error: any) {
       console.error("Connection error:", error);
       set({ isConnected: false, account: null, isInitialized: true });
-      storage.clear();
       connectionError.set(error.message);
+      selectedWalletId.set(null);
+      isConnected.set(false);
     },
 
     getActor(

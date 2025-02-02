@@ -32,8 +32,8 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { fetchTokens } from "$lib/api/tokens";
 
-  const ITEMS_PER_PAGE = 100;
-  const REFRESH_INTERVAL = 3000; // 2 seconds for more frequent updates
+  const ITEMS_PER_PAGE = 50;
+  const REFRESH_INTERVAL = 10000;
   const SEARCH_DEBOUNCE = 300; // 300ms debounce for search
   
   // Initialize stores with loading state
@@ -275,27 +275,6 @@
       };
     }
   });
-
-  function goToPage(page: number) {
-    if (page >= 1 && page <= totalPages) {
-      isPageChange.set(true);
-      onPageChange?.(page);
-    }
-  }
-
-  function nextPage() {
-    if (currentPage < totalPages) {
-      isPageChange.set(true);
-      onPageChange?.(currentPage + 1);
-    }
-  }
-
-  function previousPage() {
-    if (currentPage > 1) {
-      isPageChange.set(true);
-      onPageChange?.(currentPage - 1);
-    }
-  }
 </script>
 
 <PageHeader

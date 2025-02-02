@@ -10,6 +10,7 @@
   export let token: FE.Token;
   export let formattedTokens: FE.Token[];
   export let isNew: boolean;
+  export let mobile = false;
 
   // Add a computed property to determine if this is a buy transaction
   $: isBuyTransaction = tx.receive_token_id === token.token_id;
@@ -68,97 +69,160 @@
 </script>
 
 <tr
-  class="border-b border-kong-border/70 transition-all duration-300 overflow-x-hidden hover:bg-kong-bg-light"
+  class="md:border-b border-kong-border/70 transition-all duration-300 overflow-x-hidden hover:bg-kong-bg-light"
+  class:block={mobile}
   class:highlight-buy={isNew && isBuyTransaction}
   class:highlight-sell={isNew && !isBuyTransaction}
 >
-  <!-- Wallet -->
-  <td class="px-4 py-2 w-[120px]">
-    <span
-      class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary cursor-pointer hover:opacity-80 relative group"
-      style="background-color: {getPrincipalColor(tx.user?.principal_id || '')};"
-      on:click={(e) => copyToClipboard(tx.user?.principal_id || '', e)}
-    >
-      {tx.user?.principal_id?.slice(0, 8)}
-      <span class="copy-tooltip">Copy ID</span>
-    </span>
-  </td>
-
-  <!-- Paid -->
-  <td class="px-4 py-2 w-[140px]">
-    <span class="flex items-center gap-1">
-      {formatToNonZeroDecimal(tx.pay_amount)}
-      <TokenImages
-        tooltip={{
-          text: formattedTokens?.find((t) => t.token_id === tx.pay_token_id)?.symbol,
-          direction: "top"
-        }}
-        tokens={[formattedTokens?.find((t) => t.token_id === tx.pay_token_id)].filter(Boolean)}
-        size={18}
-      />
-    </span>
-  </td>
-
-  <!-- Received -->
-  <td class="px-4 py-2 w-[140px]">
-    <span class="flex items-center gap-1">
-      {formatToNonZeroDecimal(tx.receive_amount)}
-      <TokenImages
-        tooltip={{
-          text: formattedTokens?.find((t) => t.token_id === tx.receive_token_id)?.symbol,
-          direction: "top"
-        }}
-        tokens={[formattedTokens?.find((t) => t.token_id === tx.receive_token_id)].filter(Boolean)}
-        size={18}
-      />
-    </span>
-  </td>
-
-  <!-- Value -->
-  <td class="px-4 py-2 w-[100px]">
-    <span class="whitespace-nowrap">{calculateTotalUsdValue(tx)}</span>
-  </td>
-
-  <!-- Date -->
-  <td class="px-4 py-2 w-[120px]">
-    <span class="text-slate-400 text-sm whitespace-nowrap">
-      {formatTimestamp(tx.timestamp.toString())}
-    </span>
-  </td>
-
-  <!-- Link -->
-  <td class="w-[50px] py-2 ">
-    {#if tx.tx_id}
-      <div class="flex justify-center w-full pr-3">
-      <a
-        href={`https://www.icexplorer.io/address/detail/${tx.user.principal_id}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="text-blue-400/70 hover:text-blue-300"
-        title="View transaction"
-        aria-label="View transaction details"
+  {#if !mobile}
+    <!-- Wallet -->
+    <td class="px-4 py-2 w-[120px]">
+      <span
+        class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary cursor-pointer hover:opacity-80 relative group"
+        style="background-color: {getPrincipalColor(tx.user?.principal_id || '')};"
+        on:click={(e) => copyToClipboard(tx.user?.principal_id || '', e)}
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="lucide lucide-link"
+        {tx.user?.principal_id?.slice(0, 8)}
+        <span class="copy-tooltip">Copy ID</span>
+      </span>
+    </td>
+
+    <!-- Paid -->
+    <td class="px-4 py-2 w-[140px]">
+      <span class="flex items-center gap-1">
+        {formatToNonZeroDecimal(tx.pay_amount)}
+        <TokenImages
+          tooltip={{
+            text: formattedTokens?.find((t) => t.token_id === tx.pay_token_id)?.symbol,
+            direction: "top"
+          }}
+          tokens={[formattedTokens?.find((t) => t.token_id === tx.pay_token_id)].filter(Boolean)}
+          size={18}
+        />
+      </span>
+    </td>
+
+    <!-- Received -->
+    <td class="px-4 py-2 w-[140px]">
+      <span class="flex items-center gap-1">
+        {formatToNonZeroDecimal(tx.receive_amount)}
+        <TokenImages
+          tooltip={{
+            text: formattedTokens?.find((t) => t.token_id === tx.receive_token_id)?.symbol,
+            direction: "top"
+          }}
+          tokens={[formattedTokens?.find((t) => t.token_id === tx.receive_token_id)].filter(Boolean)}
+          size={18}
+        />
+      </span>
+    </td>
+
+    <!-- Value -->
+    <td class="px-4 py-2 w-[100px]">
+      <span class="whitespace-nowrap">{calculateTotalUsdValue(tx)}</span>
+    </td>
+
+    <!-- Date -->
+    <td class="px-4 py-2 w-[120px]">
+      <span class="text-slate-400 text-sm whitespace-nowrap">
+        {formatTimestamp(tx.timestamp.toString())}
+      </span>
+    </td>
+
+    <!-- Link -->
+    <td class="w-[50px] py-2 ">
+      {#if tx.tx_id}
+        <div class="flex justify-center w-full pr-3">
+        <a
+          href={`https://www.icexplorer.io/address/detail/${tx.user.principal_id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-blue-400/70 hover:text-blue-300"
+          title="View transaction"
+          aria-label="View transaction details"
         >
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-        </svg>
-      </a>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="lucide lucide-link"
+          >
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>
+        </a>
+      </div>
+      {:else}
+        N/A
+      {/if}
+    </td>
+  {:else}
+    <div class="grid grid-cols-2 gap-2 p-2 text-sm">
+      <div class="col-span-2 flex justify-between items-center">
+        <span
+          class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary cursor-pointer hover:opacity-80 relative group"
+          style="background-color: {getPrincipalColor(tx.user?.principal_id || '')};"
+          on:click={(e) => copyToClipboard(tx.user?.principal_id || '', e)}
+        >
+          {tx.user?.principal_id?.slice(0, 8)}
+          <span class="copy-tooltip">Copy ID</span>
+        </span>
+        <span class="text-slate-400 text-xs">
+          {formatTimestamp(tx.timestamp.toString())}
+        </span>
+      </div>
+
+      <div class="flex items-center gap-1">
+        <span class="text-kong-text-primary/70">Paid:</span>
+        {formatToNonZeroDecimal(tx.pay_amount)}
+        <TokenImages
+          tokens={[formattedTokens?.find((t) => t.token_id === tx.pay_token_id)].filter(Boolean)}
+          size={14}
+        />
+      </div>
+
+      <div class="flex items-center gap-1">
+        <span class="text-kong-text-primary/70">Received:</span>
+        {formatToNonZeroDecimal(tx.receive_amount)}
+        <TokenImages
+          tokens={[formattedTokens?.find((t) => t.token_id === tx.receive_token_id)].filter(Boolean)}
+          size={14}
+        />
+      </div>
+
+      <div class="col-span-2 flex justify-between items-center">
+        <div class="flex items-center gap-1">
+          <span class="text-kong-text-primary/70">Value:</span>
+          {calculateTotalUsdValue(tx)}
+        </div>
+        {#if tx.tx_id}
+          <a
+            href={`https://www.icexplorer.io/address/detail/${tx.user.principal_id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-blue-400/70 hover:text-blue-300"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="lucide lucide-link"
+            />
+          </a>
+        {/if}
+      </div>
     </div>
-    {:else}
-      N/A
-    {/if}
-  </td>
+  {/if}
 </tr>
 
 <style>
@@ -256,6 +320,20 @@
     }
     100% {
       opacity: 0;
+    }
+  }
+
+  @media (max-width: 767px) {
+    tr.highlight-buy, tr.highlight-sell {
+      animation: none;
+    }
+
+    tr.highlight-buy div {
+      animation: highlight-buy 2s ease-out forwards;
+    }
+
+    tr.highlight-sell div {
+      animation: highlight-sell 2s ease-out forwards;
     }
   }
 </style>
