@@ -216,7 +216,7 @@
           }
         });
       }
-    }, 15000); // Increased to 15s interval
+    }, 20000);
 
     // Cleanup function
     return () => {
