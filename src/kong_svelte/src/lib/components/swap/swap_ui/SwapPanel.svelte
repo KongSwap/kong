@@ -58,7 +58,6 @@
   let isMobile = $state(false);
   let lastBalanceCheck = $state<Record<string, number>>({});
   const DEBOUNCE_DELAY = 1000; // 1 second between balance checks
-  let showOnramperModal = $state(false);
 
   // Derived state using runes
   let tokenInfo = $derived(
@@ -358,10 +357,6 @@
         $swapState.tokenSelectorPosition?.y > windowHeight / 2 ? "up" : "down";
     }
   });
-
-  function toggleOnramperModal() {
-    showOnramperModal = !showOnramperModal;
-  }
 </script>
 
 <Panel
@@ -548,23 +543,6 @@
     </footer>
   </div>
 </Panel>
-
-<Modal
-  isOpen={showOnramperModal}
-  onClose={toggleOnramperModal}
-  title="Buy ICP with Fiat"
-  width="420px"
-  height="630px"
->
-  <iframe
-    src="https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy"
-    title="Onramper Widget"
-    height="630px"
-    width="420px"
-    allow="accelerometer; autoplay; camera; gyroscope; payment; microphone"
-    class="w-full h-full"
-  />
-</Modal>
 
 <style lang="postcss">
   .clickable:hover {
