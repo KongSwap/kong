@@ -5,10 +5,12 @@ use postgres_openssl::MakeTlsConnector;
 use std::env;
 use std::thread;
 use std::time::Duration;
+use tokio_postgres::Client;
 
 use db_updates::get_db_updates;
 use kong_backend::KongBackend;
 use kong_data::KongData;
+use settings::Settings;
 
 mod agent;
 mod claims;
@@ -34,33 +36,9 @@ const MAINNET_REPLICA: &str = "https://ic0.app";
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = env::args().collect::<Vec<String>>();
-    let config = read_settings()?;
-    let dfx_pem_file = &config.dfx_pem_file;
-    let db_host = &config.database.host;
-    let db_port = &config.database.port;
-    let db_user = &config.database.user;
-    let db_password = &config.database.password;
-    let mut builder = SslConnector::builder(SslMethod::tls()).map_err(|e| format!("SSL error: {}", e))?;
-    if config.database.ca_cert.is_some() {
-        builder
-            .set_ca_file(config.database.ca_cert.as_ref().unwrap())
-            .map_err(|e| format!("CA file error: {}", e))?;
-    }
-    let tls = MakeTlsConnector::new(builder.build());
-    let db_name = &config.database.db_name;
-    let mut db_config = tokio_postgres::Config::new();
-    db_config.host(db_host);
-    db_config.port(*db_port);
-    db_config.user(db_user);
-    db_config.password(db_password);
-    db_config.dbname(db_name);
-    let (db_client, connection) = db_config.connect(tls).await?;
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("DB connection error: {}", e);
-        }
-    });
+    let settings = read_settings()?;
+    let dfx_pem_file = &settings.dfx_pem_file;
+    let mut db_client = connect_db(&settings).await?;
 
     let (replica_url, is_mainnet) = if args.contains(&"--mainnet".to_string()) {
         (MAINNET_REPLICA, true)
@@ -126,15 +104,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let identity = create_identity_from_pem_file(dfx_pem_file);
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_data = KongData::new(&agent, is_mainnet).await;
-        let delay_secs = config.db_updates_delay_secs.unwrap_or(60);
+        let delay_secs = settings.db_updates_delay_secs.unwrap_or(60);
         // loop forever and update database
         loop {
             if let Err(err) = get_db_updates(&kong_data, &db_client, &mut tokens_map, &mut pools_map).await {
                 eprintln!("{}", err);
+                if db_client.is_closed() {
+                    db_client = connect_db(&settings).await?;
+                }
             }
             thread::sleep(Duration::from_secs(delay_secs));
         }
     }
 
     Ok(())
+}
+
+async fn connect_db(settings: &Settings) -> Result<Client, Box<dyn std::error::Error>> {
+    let db_host = &settings.database.host;
+    let db_port = &settings.database.port;
+    let db_user = &settings.database.user;
+    let db_password = &settings.database.password;
+    let mut builder = SslConnector::builder(SslMethod::tls()).map_err(|e| format!("SSL error: {}", e))?;
+    if settings.database.ca_cert.is_some() {
+        builder
+            .set_ca_file(settings.database.ca_cert.as_ref().unwrap())
+            .map_err(|e| format!("CA file error: {}", e))?;
+    }
+    let tls = MakeTlsConnector::new(builder.build());
+    let db_name = &settings.database.db_name;
+    let mut db_config = tokio_postgres::Config::new();
+    db_config.host(db_host);
+    db_config.port(*db_port);
+    db_config.user(db_user);
+    db_config.password(db_password);
+    db_config.dbname(db_name);
+    let (db_client, connection) = db_config.connect(tls).await?;
+
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("{}", e);
+        }
+    });
+
+    Ok(db_client)
 }
