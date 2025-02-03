@@ -86,7 +86,7 @@ pub async fn update_tokens_on_database(db_client: &Client) -> Result<BTreeMap<u3
     load_tokens_from_database(db_client).await
 }
 
-pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dyn std::error::Error>> {
+pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let (token_id, type_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, is_removed, raw_json) = match v {
         StableToken::IC(token) => {
             let decimals = 10_u64.pow(token.decimals as u32) as f64;
@@ -162,7 +162,7 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
 
     println!("token_id={} saved", v.token_id());
 
-    load_tokens_from_database(db_client).await
+    Ok(())
 }
 
 pub async fn load_tokens_from_database(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dyn std::error::Error>> {

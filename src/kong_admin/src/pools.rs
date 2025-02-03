@@ -80,7 +80,7 @@ pub async fn insert_pool_on_database(
     v: &StablePool,
     db_client: &Client,
     tokens_map: &BTreeMap<u32, u8>,
-) -> Result<BTreeMap<u32, (u32, u32)>, Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>> {
     let pool_id = v.pool_id as i32;
     // token 0
     let token_id_0 = v.token_id_0 as i32;
@@ -146,7 +146,7 @@ pub async fn insert_pool_on_database(
 
     println!("pool_id={} saved", v.pool_id);
 
-    load_pools_from_database(db_client).await
+    Ok(())
 }
 
 pub async fn load_pools_from_database(db_client: &Client) -> Result<BTreeMap<u32, (u32, u32)>, Box<dyn std::error::Error>> {

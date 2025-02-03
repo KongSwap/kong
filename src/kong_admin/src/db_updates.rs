@@ -1,13 +1,14 @@
 use chrono::Local;
 use kong_lib::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
+use kong_lib::stable_token::token::Token;
 use std::collections::BTreeMap;
 use tokio_postgres::Client;
 
 use crate::claims::insert_claim_on_database;
 use crate::lp_tokens::insert_lp_token_on_database;
-use crate::pools::insert_pool_on_database;
+use crate::pools::{insert_pool_on_database, load_pools_from_database};
 use crate::requests::insert_request_on_database;
-use crate::tokens::insert_token_on_database;
+use crate::tokens::{insert_token_on_database, load_tokens_from_database};
 use crate::transfers::insert_transfer_on_database;
 use crate::txs::insert_tx_on_database;
 use crate::users::insert_user_on_database;
@@ -37,11 +38,19 @@ pub async fn get_db_updates(
                 .await
                 .unwrap_or_else(|e| eprintln!("{}", e)),
             StableMemory::TokenMap(token) => match insert_token_on_database(token, db_client).await {
-                Ok(map) => *tokens_map = map,
+                Ok(()) => {
+                    if !tokens_map.contains_key(&token.token_id()) {
+                        *tokens_map = load_tokens_from_database(db_client).await?;
+                    }
+                }
                 Err(e) => eprintln!("{}", e),
             },
             StableMemory::PoolMap(pool) => match insert_pool_on_database(pool, db_client, tokens_map).await {
-                Ok(map) => *pools_map = map,
+                Ok(()) => {
+                    if !pools_map.contains_key(&pool.pool_id) {
+                        *pools_map = load_pools_from_database(db_client).await?;
+                    }
+                }
                 Err(e) => eprintln!("{}", e),
             },
             StableMemory::TxMap(tx) => insert_tx_on_database(tx, db_client, tokens_map, pools_map)
