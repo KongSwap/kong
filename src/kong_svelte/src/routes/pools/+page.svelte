@@ -364,7 +364,7 @@
                 </div>
 
                 <button
-                  class="flex items-center gap-2 rounded-none !rounded-tr-lg px-4 py-2 text-kong-text-primary/80 hover:text-kong-primary"
+                  class="-mt-2 -mb-1 flex items-center gap-2 rounded-none !rounded-tr-lg px-6 py-2 text-white bg-kong-primary/20 hover:bg-kong-primary hover:text-white hover:border-[#60A5FA]/30 hover:drop-shadow-[0_0_8px_rgba(96,165,250,0.3)] transition-all duration-200"
                   on:click={() => goto("/pools/add")}
                 >
                   <svg
@@ -377,10 +377,11 @@
                     stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
+                    class="text-white"
                   >
                     <path d="M12 5v14M5 12h14" />
                   </svg>
-                  <span>Add Position</span>
+                  <span class="font-medium">Add Liquidity</span>
                 </button>
               </div>
             </div>

@@ -14,7 +14,6 @@ pub struct CanisterWithdrawArgs {
     amount: Nat,
 }
 
-/*
 /// For emergency use only.
 #[update(hidden = true, guard = "caller_is_kingkong")]
 async fn canister_withdraw(args: CanisterWithdrawArgs) -> Result<String, String> {
@@ -30,4 +29,3 @@ async fn canister_withdraw(args: CanisterWithdrawArgs) -> Result<String, String>
 
     serde_json::to_string(&response).map_err(|e| format!("Failed to serialize: {}", e))
 }
-*/

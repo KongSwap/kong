@@ -52,6 +52,8 @@
   });
 
   function getValue(obj: any, path: string): any {
+    if (!obj) return null;
+    
     const column = columnMap.get(path);
     if (column?.sortValue) {
       return column.sortValue(obj);
@@ -59,14 +61,14 @@
     
     // Use switch for common paths for better performance
     switch (path) {
-      case 'marketCapRank': return obj.marketCapRank;
-      case 'token': return obj.name?.toLowerCase() || '';
-      case 'price': return Number(obj.metrics?.price || 0);
-      case 'price_change_24h': return Number(obj.metrics?.price_change_24h || 0);
-      case 'volume_24h': return Number(obj.metrics?.volume_24h || 0);
-      case 'market_cap': return Number(obj.metrics?.market_cap || 0);
-      case 'tvl': return Number(obj.metrics?.tvl || 0);
-      default: return obj[path];
+      case 'marketCapRank': return obj.marketCapRank ?? 0;
+      case 'token': return obj.name?.toLowerCase() ?? '';
+      case 'price': return Number(obj.metrics?.price ?? 0);
+      case 'price_change_24h': return Number(obj.metrics?.price_change_24h ?? 0);
+      case 'volume_24h': return Number(obj.metrics?.volume_24h ?? 0);
+      case 'market_cap': return Number(obj.metrics?.market_cap ?? 0);
+      case 'tvl': return Number(obj.metrics?.tvl ?? 0);
+      default: return obj[path] ?? null;
     }
   }
 
@@ -77,6 +79,8 @@
   }
 
   let sortedData = $derived(() => {
+    if (!data || !Array.isArray(data)) return [];
+    
     if (!sortColumn) {
       return [...data].sort((a, b) => {
         if (isKongToken(a)) return -1;
@@ -89,10 +93,10 @@
       if (isKongToken(a)) return -1;
       if (isKongToken(b)) return 1;
 
-      let aValue = getValue(a, sortColumn);
-      let bValue = getValue(b, sortColumn);
+      let aValue = getValue(a, sortColumn) ?? 0;
+      let bValue = getValue(b, sortColumn) ?? 0;
 
-      if (typeof aValue === 'string') {
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
         return sortDirection === 'asc' 
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
@@ -100,6 +104,9 @@
 
       aValue = Number(aValue || 0);
       bValue = Number(bValue || 0);
+
+      if (isNaN(aValue)) aValue = 0;
+      if (isNaN(bValue)) bValue = 0;
 
       return sortDirection === 'asc' 
         ? aValue - bValue 
@@ -256,7 +263,7 @@
 
   <!-- Loading Overlay -->
   {#if isLoading}
-    <div class="absolute inset-0 bg-kong-bg-dark/50 backdrop-blur-[2px] flex items-center justify-center z-30">
+    <div class="absolute inset-0 bg-kong-bg-dark/30 backdrop-blur-[2px] flex items-center justify-center z-30 transition-opacity duration-200">
       <div class="loading-spinner"></div>
     </div>
   {/if}
@@ -275,14 +282,22 @@
         Previous
       </button>
       
-      {#each Array(Math.min(5, totalPages)) as _, i (i)}
-        {#if i + 1 <= totalPages}
+      {#each Array(totalPages) as _, i}
+        {@const pageNum = i + 1}
+        {@const showPage = 
+          pageNum === 1 || 
+          pageNum === totalPages || 
+          (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)}
+        
+        {#if showPage}
           <button
-            class="pagination-button {currentPage === i + 1 ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
-            on:click={() => goToPage(i + 1)}
+            class="pagination-button {currentPage === pageNum ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
+            on:click={() => goToPage(pageNum)}
           >
-            {i + 1}
+            {pageNum}
           </button>
+        {:else if pageNum === currentPage - 2 || pageNum === currentPage + 2}
+          <span class="px-1 text-kong-text-secondary">...</span>
         {/if}
       {/each}
       

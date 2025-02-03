@@ -11,7 +11,7 @@
   import { fly } from 'svelte/transition';
   import { Loader2 } from "lucide-svelte";
   import { Coins } from "lucide-svelte";
-    import { loadBalances } from "$lib/services/tokens";
+  import { userTokens } from "$lib/stores/userTokens";
 
   let WalletProviderComponent: any;
   let AddCustomTokenModalComponent: any;
@@ -42,25 +42,25 @@
 
   async function loadTokenList() {
     TokenListComponent = await loadComponent(() => 
-      import("./TokenList.svelte")
+      import("$lib/components/sidebar/TokenList.svelte")
     );
   }
 
   async function loadPoolList() {
     PoolListComponent = await loadComponent(() => 
-      import("./PoolList.svelte")
+      import("$lib/components/sidebar/PoolList.svelte")
     );
   }
 
   async function loadTransactionHistory() {
     TransactionHistoryComponent = await loadComponent(() => 
-      import("./TransactionHistory.svelte")
+      import("$lib/components/sidebar/TransactionHistory.svelte")
     );
   }
 
   async function loadManageTokensModal() {
     ManageTokensModalComponent = await loadComponent(() => 
-      import("./ManageTokensModal.svelte")
+      import("$lib/components/sidebar/ManageTokensModal.svelte")
     );
   }
 
@@ -109,10 +109,6 @@
       localStorage.setItem("sidebarActiveTab", tab);
     }
   }
-
-$: if (showManageTokensModal === false) {
-  loadBalances(auth.pnp?.account?.principal?.toText(), { forceRefresh: true });
-}
 </script>
 
 {#key $sidebarStore.isOpen}
@@ -180,7 +176,7 @@ $: if (showManageTokensModal === false) {
                       </div>
                     {:then}
                       {#if TokenListComponent}
-                        <svelte:component this={TokenListComponent} />
+                        <svelte:component this={TokenListComponent} tokens={$userTokens.tokens} />
                       {/if}
                     {/await}
                   {:else if activeTab === "pools"}

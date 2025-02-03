@@ -235,7 +235,7 @@
 
       selectedPoolId = bestPool.pool_id;
       const now = Math.floor(Date.now() / 1000);
-      const startTime = now - 2 * 365 * 24 * 60 * 60;
+      const startTime = now - 90 * 24 * 60 * 60;
 
       const payTokenId = props.quoteToken?.token_id || 1;
       const receiveTokenId = props.baseToken?.token_id || 10;

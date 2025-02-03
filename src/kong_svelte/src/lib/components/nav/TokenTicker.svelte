@@ -82,7 +82,9 @@
       });
 
       // Update ticker tokens without resetting animation
-      tickerTokens = sortedTokens;
+      if (tickerTokens.length === 0 || JSON.stringify(sortedTokens.map(t => t.canister_id)) !== JSON.stringify(tickerTokens.map(t => t.canister_id))) {
+        tickerTokens = sortedTokens;
+      }
     } catch (error) {
       console.error('Error fetching ticker data:', error);
     }
@@ -169,24 +171,28 @@
     }
 
     const resizeObserver = new ResizeObserver(entries => {
-      requestAnimationFrame(() => {
-        for (const entry of entries) {
-          if (entry.target.classList.contains('ticker-container')) {
-            tickerWidth = entry.contentRect.width;
-          } else if (entry.target.classList.contains('ticker-content')) {
-            contentWidth = entry.contentRect.width / 2;
+      let raf;
+      clearTimeout(raf);
+      raf = setTimeout(() => {
+        requestAnimationFrame(() => {
+          for (const entry of entries) {
+            if (entry.target.classList.contains('ticker-container')) {
+              tickerWidth = entry.contentRect.width;
+            } else if (entry.target.classList.contains('ticker-content')) {
+              contentWidth = entry.contentRect.width / 2;
+            }
           }
-        }
-        
-        if (tickerWidth && contentWidth) {
-          const scrollElement = tickerElement?.querySelector(".ticker-content") as HTMLElement;
-          if (scrollElement) {
-            // Slower scroll for smoother animation
-            const duration = (contentWidth / 25) * 1000;
-            scrollElement.style.setProperty('--ticker-duration', `${duration}ms`);
+          
+          if (tickerWidth && contentWidth) {
+            const scrollElement = tickerElement?.querySelector(".ticker-content") as HTMLElement;
+            if (scrollElement) {
+              // Slower scroll for smoother animation
+              const duration = (contentWidth / 25) * 1000;
+              scrollElement.style.setProperty('--ticker-duration', `${duration}ms`);
+            }
           }
-        }
-      });
+        });
+      }, 100); // 100ms debounce
     });
 
     // Observe both container and content
@@ -201,9 +207,16 @@
     // Set up polling with a longer interval to prevent frequent jerks
     pollInterval = setInterval(() => {
       if (isVisible && !isChartHovered && !isTickerHovered) {
-        fetchTickerData();
+        const prevTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
+        fetchTickerData().then(() => {
+          const newTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
+          if (prevTokens === newTokens) {
+            // If tokens didn't change, only update prices
+            tickerTokens = tickerTokens.map(t => ({...t})); // Shallow clone to trigger update
+          }
+        });
       }
-    }, 10000);
+    }, 20000);
 
     // Cleanup function
     return () => {
@@ -318,7 +331,7 @@
           </button>
         {/if}
       {/each}
-      {#each tickerTokens as token, index (token.canister_id)}
+      {#each tickerTokens as token, index (`${token.canister_id}-duplicate`)}
         {#if token.metrics}
           <button
             class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(

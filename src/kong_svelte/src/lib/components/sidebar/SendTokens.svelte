@@ -434,7 +434,6 @@
         token = {
           ...token,
           balance: balances.default.toString(),
-          subaccountBalance: balances.subaccount.toString(),
         };
       } else {
         // For non-ICP tokens, just get the main balance
@@ -455,10 +454,6 @@
           ? { default: BigInt(0), subaccount: BigInt(0) }
           : { default: BigInt(0) };
     }
-  }
-
-  $: if (token && auth.pnp?.account?.owner) {
-    loadBalances();
   }
 
   $: if (selectedAccount) {

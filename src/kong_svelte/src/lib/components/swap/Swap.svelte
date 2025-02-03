@@ -5,9 +5,9 @@
   import Portal from "svelte-portal";
   import { Principal } from "@dfinity/principal";
   import { fade } from "svelte/transition";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { get } from "svelte/store";
-  import { replaceState } from "$app/navigation";
+  import { replaceState, afterNavigate } from "$app/navigation";
   import { page } from "$app/stores";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
@@ -22,15 +22,14 @@
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import {
-    ICP_CANISTER_ID,
     KONG_BACKEND_CANISTER_ID,
-    KONG_CANISTER_ID,
   } from "$lib/constants/canisterConstants";
   import { livePools } from "$lib/services/pools/poolStore";
   import Settings from "$lib/components/settings/Settings.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
     import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
     import { userTokens } from "$lib/stores/userTokens";
+  import { browser } from '$app/environment';
 
   // Types
   type PanelType = "pay" | "receive";
@@ -63,6 +62,14 @@
   let rotationCount = 0;
   let isQuoteLoading = false;
   let showSettings = false;
+
+  // Add these variables to track URL params
+  let currentToken0Id: string | null = null;
+  let currentToken1Id: string | null = null;
+
+  // Add these near the other state variables at the top
+  let token0Id: string | null = null;
+  let token1Id: string | null = null;
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -121,14 +128,45 @@
     }));
   }
 
-  // Initialize on mount
+  // Add this function to handle initial URL params
+  function initializeFromUrl() {
+    if (!browser || !$userTokens.tokens.length) return;
+
+    const token0Id = $page.url.searchParams.get("from") || $page.url.searchParams.get("token0");
+    const token1Id = $page.url.searchParams.get("to") || $page.url.searchParams.get("token1");
+
+    if (!token0Id && !token1Id) return;
+
+    const token0 = token0Id ? $userTokens.tokens.find((t) => t.canister_id === token0Id) : null;
+    const token1 = token1Id ? $userTokens.tokens.find((t) => t.canister_id === token1Id) : null;
+
+    if (token0 || token1) {
+      swapState.update((state) => ({
+        ...state,
+        payToken: token0 || state.payToken,
+        receiveToken: token1 || state.receiveToken,
+        payAmount: "",
+        receiveAmount: "",
+        error: null,
+      }));
+    }
+  }
+
+  // Update onMount to handle URL parameters
   onMount(() => {
-    initializeComponent();
-    if ($auth.isConnected && $swapState.payToken && $swapState.receiveToken) {
-      loadBalances($auth.account?.owner?.toString(), { 
-        tokens: [$swapState.payToken, $swapState.receiveToken], 
-        forceRefresh: true 
+    if (browser) {
+      initializeFromUrl();
+      
+      // Set up page store subscription for URL changes
+      const unsubscribe = page.subscribe(() => {
+        if (browser) {
+          initializeFromUrl();
+        }
       });
+
+      return () => {
+        unsubscribe();
+      };
     }
   });
 
@@ -305,18 +343,19 @@
     }
   }
 
+  // Update the handleTokenSelect function to be simpler
   function handleTokenSelect(panelType: PanelType) {
     if (panelType === "pay") {
       swapState.update((s) => ({
         ...s,
         showPayTokenSelector: true,
-        error: null, // Reset error state when selecting new token
+        error: null,
       }));
     } else {
       swapState.update((s) => ({
         ...s,
         showReceiveTokenSelector: true,
-        error: null, // Reset error state when selecting new token
+        error: null,
       }));
     }
   }
@@ -366,7 +405,10 @@
     }
   }
 
+  // Update the updateTokenInURL function to use the correct parameter names
   function updateTokenInURL(param: "from" | "to", tokenId: string) {
+    if (!browser) return;
+    
     const url = new URL(window.location.href);
     url.searchParams.set(param, tokenId);
     replaceState(url.toString(), {});
@@ -512,29 +554,10 @@
     });
   }
 
-  // Add this to the reactive statements section
-  $: {
-    // When URL params or tokens change, update the swap state
-    if ($page && $userTokens.tokens.length > 0) {
-      const token0Id = $page.url.searchParams.get("token0");
-      const token1Id = $page.url.searchParams.get("token1");
-
-      if (token0Id && token1Id) {
-        const token0 = $userTokens.tokens.find((t) => t.canister_id === token0Id);
-        const token1 = $userTokens.tokens.find((t) => t.canister_id === token1Id);
-
-        if (token0 && token1) {
-          swapState.update((state) => ({
-            ...state,
-            payToken: token0,
-            receiveToken: token1,
-            payAmount: "",
-            receiveAmount: "",
-          }));
-        }
-      }
-    }
-  }
+  // Add this near your other lifecycle hooks
+  onDestroy(() => {
+    resetSwapState();
+  });
 </script>
 
 <div class="swap-container" in:fade={{ duration: 420 }}>
@@ -645,16 +668,30 @@
         <TokenSelectorDropdown
           show={true}
           onSelect={(selectedToken) => {
+            // First handle the token selection
             SwapLogicService.handleSelectToken(
               $swapState.tokenSelectorOpen,
               selectedToken,
             );
+            
+            // Then update the URL parameter based on which panel was selected
+            if (browser) {
+              if ($swapState.tokenSelectorOpen === "pay") {
+                updateTokenInURL("from", selectedToken.canister_id);
+              } else {
+                updateTokenInURL("to", selectedToken.canister_id);
+              }
+            }
+            
             swapState.closeTokenSelector();
           }}
           onClose={() => swapState.closeTokenSelector()}
           currentToken={$swapState.tokenSelectorOpen === "pay"
             ? $swapState.payToken
             : $swapState.receiveToken}
+          otherPanelToken={$swapState.tokenSelectorOpen === "pay"
+            ? $swapState.receiveToken
+            : $swapState.payToken}
         />
       </div>
     {/if}
@@ -692,7 +729,6 @@
   receiveAmount={$swapState.successDetails?.receiveAmount || $swapState.receiveAmount}
   receiveToken={$swapState.successDetails?.receiveToken || $swapState.receiveToken}
   onClose={() => {
-    console.log("Closing success modal");
     swapState.setShowSuccessModal(false);
     resetSwapState();
   }}

@@ -13,7 +13,6 @@
   import { tooltip } from "$lib/actions/tooltip";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { onDestroy } from "svelte";
-  import { updateStoredBalances } from "$lib/services/tokens/tokenStore";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "history";
@@ -57,9 +56,7 @@
   function startPolling() {
     // Don't start a new poll if one is already running
     if (pollInterval) return;
-    
-    // Initial load
-    handleReload(true);
+  
     
     // Set up new interval
     pollInterval = setInterval(() => handleReload(true), 20000);

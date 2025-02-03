@@ -60,12 +60,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<FE.Token[]> =>
           updated_at: token.metrics.updated_at,
           price_change_24h: token.metrics.price_change_24h
         },
-        logo_url: DEFAULT_LOGOS[token.canister_id] || 
-          (token?.logo_url
-            ? token.logo_url.startsWith('http')
-              ? token.logo_url
-              : `${INDEXER_URL}${token.logo_url.startsWith('/') ? '' : '/'}${token.logo_url}`
-            : DEFAULT_LOGOS.DEFAULT),
+        logo_url: token?.logo_url || DEFAULT_LOGOS[token.canister_id],
         address: token.address || token.canister_id,
         fee: Number(token.fee),
         fee_fixed: BigInt(token?.fee_fixed?.replaceAll("_", "") || "0").toString(),

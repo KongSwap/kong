@@ -1,7 +1,5 @@
 import { INDEXER_URL } from "./index";
 import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
-import { get } from "svelte/store";
-import { userTokens } from "$lib/stores/userTokens";
 
 
 interface TokensParams {
@@ -24,12 +22,7 @@ const parseTokenData = (token: any): FE.Token => {
       updated_at: token?.metrics?.updated_at,
       price_change_24h: token?.metrics?.price_change_24h
     },
-    logo_url: DEFAULT_LOGOS[token.canister_id] || 
-      (token?.logo_url
-        ? token.logo_url.startsWith('http')
-          ? token.logo_url
-          : `${INDEXER_URL}${token.logo_url.startsWith('/') ? '' : '/'}${token.logo_url}`
-        : DEFAULT_LOGOS.DEFAULT),
+    logo_url: token?.logo_url || DEFAULT_LOGOS[token.canister_id],
     address: token.address || token.canister_id,
     fee: Number(token.fee || 0),
     fee_fixed: BigInt(token?.fee_fixed?.replaceAll("_", "") || "0").toString(),
@@ -80,10 +73,8 @@ export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.To
     }
 
     const data = await response.json();
-    const tokens = data?.tokens || data;    
+    const tokens = data?.items || data;    
     const updatedTokens = tokens.map(parseTokenData);
-
-    const userTokensStore = get(userTokens)
 
     return {
       tokens: updatedTokens,
@@ -104,5 +95,5 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE
     body: JSON.stringify({ canister_ids: canisterIds })
   });
   const data = await response.json();
-  return data.tokens.map(parseTokenData);
+  return data.items.map(parseTokenData);
 };

@@ -10,10 +10,8 @@
   import { handleSearchKeyboard } from "$lib/utils/keyboardUtils";
   import { browser } from "$app/environment";
   import { writable, derived, get } from "svelte/store";
-  import { userTokens } from "$lib/stores/userTokens";
-  import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  import { loadBalances } from "$lib/services/tokens/tokenStore";
-  import { auth } from "$lib/services/auth";
+
+  export let tokens: FE.Token[];
 
   type SearchMatch = {
     type: "name" | "symbol" | "canister" | null;
@@ -30,6 +28,9 @@
 
   // Store for user's tokens
   const userTokenList = writable<FE.Token[]>([]);
+
+  // Initialize userTokenList with tokens prop
+  $: userTokenList.set(tokens);
 
   // Persist hideZero changes
   $: if (browser) {
@@ -49,13 +50,6 @@
   // Create a writable store for sort direction
   const sortDirectionStore = writable<"asc" | "desc">("desc");
 
-  // Watch for changes in enabled tokens
-  $: {
-    if ($userTokens.enabledTokens) {
-      fetchUserTokenList();
-    }
-  }
-
   // Create derived store for filtered and sorted tokens
   const filteredTokens = derived(
     [
@@ -67,6 +61,12 @@
     ],
     ([$tokens, $search, $hideZero, $balances, $sortDirection], set) => {
       const matches: Record<string, SearchMatch> = {};
+
+      // Guard against undefined or null tokens
+      if (!Array.isArray($tokens)) {
+        set({ tokens: [], matches: {} });
+        return;
+      }
 
       const filtered = $tokens.filter((token) => {
         // Check zero balance
@@ -100,46 +100,8 @@
 
   let isInitialLoad = true;
 
-  // Function to fetch user tokens
-  async function fetchUserTokenList() {
-    const enabledTokens = Object.entries($userTokens.enabledTokens)
-      .filter(([_, enabled]) => enabled)
-      .map(([canisterId]) => canisterId);
-
-    if (enabledTokens.length > 0) {
-      try {
-        const response = await fetchTokensByCanisterId(enabledTokens);
-        if (response) {
-          userTokenList.set(response.filter(token => enabledTokens.includes(token.canister_id)));
-        }
-      } catch (error) {
-        console.error('Error fetching user tokens:', error);
-      }
-    } else {
-      userTokenList.set([]);
-    }
-  }
-
-  // Watch for auth changes to reload balances
-  $: if ($auth.isConnected && $auth.account?.owner) {
-    console.log('Auth changed, loading balances for:', $auth.account.owner.toString());
-    fetchUserTokenList().then(() => {
-      loadBalances($auth?.account?.owner?.toString(), {
-        tokens: get(userTokenList),
-        forceRefresh: true
-      });
-    });
-  }
-
   onMount(async () => {
     await FavoriteService.loadFavorites();
-    if ($auth.isConnected && $auth.account?.owner) {
-      await fetchUserTokenList();
-      await loadBalances($auth.account.owner.toString(), {
-        tokens: get(userTokenList),
-        forceRefresh: true
-      });
-    }
     isInitialLoad = false;
   });
 
@@ -156,13 +118,6 @@
   function clearSearch() {
     searchQuery.set("");
     searchInput.focus();
-  }
-
-  // Function to toggle sort direction
-  function toggleSort() {
-    sortDirectionStore.update((current) =>
-      current === "desc" ? "asc" : "desc",
-    );
   }
 </script>
 

@@ -3,7 +3,6 @@
   import { TokenService } from "$lib/services/tokens";
   import { ArrowRightLeft, Plus, Minus, Loader2 } from "lucide-svelte";
   import { onMount, onDestroy } from "svelte";
-  import { tick } from "svelte";
   import { formatDate } from "$lib/utils/dateUtils";
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
@@ -33,12 +32,31 @@
   }
 
   onMount(async () => {
-    const unsubscribe = await loadTokens();
-    const interval = setInterval(loadTokens, 30000); // Refresh every 30 seconds
-    
+    // Add debug logging for tokens
+    const unsubscribe = tokensStore.subscribe(tokens => {
+        console.log('TokensStore updated:', tokens.length);
+    });
+
+    const resizeObserver = new ResizeObserver(
+        debounce((entries: ResizeObserverEntry[]) => {
+            const entry = entries[0];
+            if (entry) {
+                containerHeightStore.set(entry.contentRect.height);
+            }
+        }, 100)
+    );
+
+    if (listContainer) {
+        resizeObserver.observe(listContainer);
+        await loadTokens(); // Make sure tokens are loaded
+        loadTransactions(false);
+    }
+
     return () => {
-      clearInterval(interval);
-      if (unsubscribe) unsubscribe();
+        unsubscribe();
+        resizeObserver.disconnect();
+        observer?.disconnect();
+        processedTransactionsCache.clear();
     };
   });
 
@@ -46,7 +64,7 @@
   let error: string | null = null;
   let transactions: any[] = [];
   let hasMore = true;
-  let currentPage = 1;
+  let currentCursor: number | undefined;
   let loadingMore = false;
   let observer: IntersectionObserver;
   let loadMoreTrigger: HTMLDivElement;
@@ -57,19 +75,19 @@
   // Constants for virtual scrolling
   const ITEM_HEIGHT = 56; // 48px height + 8px margin bottom
   const BUFFER_SIZE = 5; // Number of items to render above/below viewport
+  const PAGE_SIZE = 25;
 
-  type FilterType = 'all' | 'swap' | 'pool';
-  let selectedFilter: FilterType = "all";
+  type FilterType = 'swap' | 'pool';
+  let selectedFilter: FilterType = "swap";
   const filterOptions = [
-    { id: "all" as const, label: "All" },
     { id: "swap" as const, label: "Swap" },
     { id: "pool" as const, label: "Pool" },
   ];
 
   // Create stores for better state management
   const transactionStore = writable<any[]>([]);
-  const filterStore = writable<FilterType>("all");
-  const pageStore = writable(1);
+  const filterStore = writable<FilterType>("swap");
+  const cursorStore = writable<number | undefined>(undefined);
   const loadingStore = writable(false);
   const loadingMoreStore = writable(false);
   const hasMoreStore = writable(true);
@@ -103,6 +121,7 @@
   $: error = $errorStore;
   $: transactions = $transactionStore;
   $: selectedFilter = $filterStore;
+  $: currentCursor = $cursorStore;
 
   // Debounced scroll handler
   let scrollTimeout: ReturnType<typeof setTimeout>;
@@ -117,7 +136,6 @@
       const bottom = target.scrollHeight - target.scrollTop - target.clientHeight < threshold;
       
       if (bottom && $hasMoreStore && !$loadingMoreStore && !$loadingStore) {
-        pageStore.update(p => p + 1);
         loadTransactions(true);
       }
     }, 16); // ~60fps
@@ -150,46 +168,53 @@
   function processTransaction(tx: any) {
     const cacheKey = `${tx.tx_id}-${tx.tx_type}-${tx.status}`;
     if (processedTransactionsCache.has(cacheKey)) {
-      return processedTransactionsCache.get(cacheKey);
+        return processedTransactionsCache.get(cacheKey);
     }
 
-    if (!tx?.tx_type) return null;
+    if (!tx?.tx_type) {
+        console.log('Missing tx_type:', tx);
+        return null;
+    }
 
     const { tx_type, status, timestamp, details } = tx;
-    const formattedDate = formatDate(new Date(timestamp));
+    
+    // Convert nanosecond timestamp to milliseconds for Date
+    const dateInMs = Math.floor(Number(timestamp) / 1_000_000);
+    const formattedDate = formatDate(new Date(dateInMs));
     
     let result;
     if (tx_type === 'swap') {
-      result = {
-        type: "Swap",
-        status,
-        formattedDate,
-        details: {
-          ...details,
-          pay_amount: formatAmount(details.pay_amount),
-          receive_amount: formatAmount(details.receive_amount),
-          price: formatAmount(details.price)
-        },
-        tx_id: tx.tx_id
-      };
+        result = {
+            type: "Swap",
+            status,
+            formattedDate,
+            details: {
+                ...details,
+                pay_amount: formatAmount(details.pay_amount),
+                receive_amount: formatAmount(details.receive_amount),
+                price: formatAmount(details.price)
+            },
+            tx_id: tx.tx_id
+        };
     } else if (tx_type === 'add_liquidity' || tx_type === 'remove_liquidity' || tx_type === 'pool') {
-      const type = tx_type === 'add_liquidity' ? "Add Liquidity" : 
-                  tx_type === 'remove_liquidity' ? "Remove Liquidity" : 
-                  details?.type === 'add' ? "Add Liquidity" : "Remove Liquidity";
-      result = {
-        type,
-        status,
-        formattedDate,
-        details: {
-          ...details,
-          amount_0: formatAmount(details.amount_0),
-          amount_1: formatAmount(details.amount_1),
-          lp_token_amount: formatAmount(details.lp_token_amount)
-        },
-        tx_id: tx.tx_id
-      };
+        const type = tx_type === 'add_liquidity' ? "Add Liquidity" : 
+                    tx_type === 'remove_liquidity' ? "Remove Liquidity" : 
+                    details?.type === 'add' ? "Add Liquidity" : "Remove Liquidity";
+        result = {
+            type,
+            status,
+            formattedDate,
+            details: {
+                ...details,
+                amount_0: formatAmount(details.amount_0),
+                amount_1: formatAmount(details.amount_1),
+                lp_token_amount: formatAmount(details.lp_token_amount)
+            },
+            tx_id: tx.tx_id
+        };
     } else {
-      return null;
+        console.log('Unknown transaction type:', tx_type);
+        return null;
     }
 
     processedTransactionsCache.set(cacheKey, result);
@@ -199,88 +224,75 @@
   // Clear cache when filter changes
   function handleFilterChange(newFilter: FilterType) {
     filterStore.set(newFilter);
-    pageStore.set(1);
+    cursorStore.set(undefined);
     processedTransactionsCache.clear();
     loadTransactions(false);
   }
 
   async function loadTransactions(loadMore = false) {
     if (!$auth.isConnected) {
-      transactionStore.set([]);
-      return;
+        transactionStore.set([]);
+        return;
     }
 
     if (!loadMore) {
-      loadingStore.set(true);
-      pageStore.set(1);
-      transactionStore.set([]);
-      hasMoreStore.set(true);
+        loadingStore.set(true);
+        cursorStore.set(undefined);
+        transactionStore.set([]);
+        hasMoreStore.set(true);
     } else {
-      if ($loadingMoreStore || !$hasMoreStore) return;
-      loadingMoreStore.set(true);
+        if ($loadingMoreStore || !$hasMoreStore) return;
+        loadingMoreStore.set(true);
     }
 
     try {
-      const pageSize = 25;
-      let txType: 'swap' | 'send' | 'pool' | null = null;
-      
-      if ($filterStore !== 'all') {
-        txType = $filterStore;
-      }
+        const txType = $filterStore;
 
-      const response = await TokenService.fetchUserTransactions(
-        $auth.account?.owner?.toString(),
-        $pageStore,
-        pageSize,
-        txType
-      );
-
-      if (response.transactions) {
-        const newTransactions = response.transactions
-          .map(processTransaction)
-          .filter(Boolean);
-
-        if (loadMore) {
-          transactionStore.update(txs => [...txs, ...newTransactions]);
-        } else {
-          transactionStore.set(newTransactions);
+        const principal = $auth.account?.owner?.toString();
+        if (!principal) {
+            throw new Error('No principal ID available');
         }
+        
+        const response = await TokenService.fetchUserTransactions(
+            principal,
+            $cursorStore,
+            PAGE_SIZE,
+            txType
+        );
 
-        hasMoreStore.set(newTransactions.length < response.total_count);
-      } else {
-        errorStore.set("Failed to load transactions");
-      }
+        if (response.transactions) {
+            const newTransactions = response.transactions
+                .map(processTransaction)
+                .filter(Boolean);
+
+
+            if (loadMore) {
+                transactionStore.update(txs => [...txs, ...newTransactions]);
+            } else {
+                transactionStore.set(newTransactions);
+            }
+
+            hasMoreStore.set(response.has_more);
+            if (response.next_cursor) {
+                cursorStore.set(response.next_cursor);
+            } else {
+                hasMoreStore.set(false);
+                console.log('No next cursor, setting hasMore to false');
+            }
+        } else {
+            errorStore.set("No transactions data received");
+            hasMoreStore.set(false);
+        }
     } catch (err) {
-      console.error("Error fetching transactions:", err);
-      errorStore.set(err.message || "Failed to load transactions");
+        console.error("Error fetching transactions:", err);
+        errorStore.set(err.message || "Failed to load transactions");
+        transactionStore.set([]);
+        hasMoreStore.set(false);
     } finally {
-      loadingStore.set(false);
-      loadingMoreStore.set(false);
+        loadingStore.set(false);
+        loadingMoreStore.set(false);
     }
   }
-
-  // Use ResizeObserver more efficiently
-  onMount(() => {
-    const resizeObserver = new ResizeObserver(
-      debounce((entries: ResizeObserverEntry[]) => {
-        const entry = entries[0];
-        if (entry) {
-          containerHeightStore.set(entry.contentRect.height);
-        }
-      }, 100)
-    );
-
-    if (listContainer) {
-      resizeObserver.observe(listContainer);
-      loadTransactions(false);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-      observer?.disconnect();
-      processedTransactionsCache.clear();
-    };
-  });
 
   // Debounce helper
   function debounce<T extends (...args: any[]) => any>(

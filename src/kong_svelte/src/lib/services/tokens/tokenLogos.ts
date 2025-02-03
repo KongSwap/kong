@@ -27,7 +27,8 @@ export const DEFAULT_LOGOS = {
   [DOLR_CANISTER_ID]: '/tokens/yral_logo.png', // The yral token with DOLR as ticker
   [ICS_CANISTER_ID]: '/tokens/ics_logo.png',
   [BIL_CANISTER_ID]: '/tokens/bil_logo.webp',
-  DEFAULT: '/tokens/not_verified.webp'
+  DEFAULT: '/tokens/not_verified.webp',
+  null: '/tokens/not_verified.webp'
 } as const;
 
 // Initialize the tokenLogoStore with the default logos.

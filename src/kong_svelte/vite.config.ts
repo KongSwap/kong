@@ -112,7 +112,9 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         'sveltekit/environment'
       ]
     },
-    modulePreload: false,
+    modulePreload: {
+      polyfill: true
+    },
     commonjsOptions: {
       include: [/node_modules/],
       requireReturnsDefault: "namespace" as const,
