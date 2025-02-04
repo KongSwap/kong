@@ -57,8 +57,3 @@ dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json
     token_1 = \"${ICP_CHAIN}.${ICP_LEDGER}\";
     amount_1 = ${ICP_AMOUNT};
 })" | jq
-
-# Add new pool to Kong
-# user must be controller
-# dfx identity use kong
-dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool_on_kong --output json '("'${TOKEN_SYMBOL}_${ICP_SYMBOL}'", true)' | jq

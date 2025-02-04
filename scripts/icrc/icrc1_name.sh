@@ -7,6 +7,6 @@ if [ -z "$1" ]
 		NETWORK="--network $1"
 fi
 
-PRINCIPAL_ID=$(dfx canister id ckusdt_ledger)
+PRINCIPAL_ID=$(dfx canister id ksusdt_ledger)
 
 dfx canister call ${NETWORK} ${PRINCIPAL_ID} icrc1_name "()"
