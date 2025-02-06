@@ -9,6 +9,7 @@
   export let uppercase: boolean = false;
   export let disabled: boolean = false;
   export let className: string = "";
+  export let element: HTMLButtonElement;
 
   // Theme-based styles
   const baseThemeClasses = {
@@ -97,6 +98,7 @@
 </script>
 
 <button
+  bind:this={element}
   type={type}
   class="rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed 
     {baseThemeClasses[theme]} {variantClasses[variant]} {sizeClasses[size]} 
