@@ -371,8 +371,8 @@
       <div class="relative flex flex-col h-full">
         <div class="flex-1 overflow-y-auto overflow-x-hidden">
           <table class="w-full">
-            <tbody class="hidden md:table-row-group">
-              <tr class="text-left text-kong-text-primary/70 bg-kong-bg-light/50 rounded-t-lg !font-normal">
+            <thead class="hidden md:table-header-group top-0 sticky z-10">
+              <tr class="text-left text-kong-text-primary/70 bg-kong-bg-light rounded-t-lg !font-normal">
                 <th class="px-4 py-2 w-[110px] sticky top-0 z-10 !font-normal">Wallet</th>
                 <th class="px-4 py-2 w-[120px] sticky top-0 z-10 !font-normal">Paid</th>
                 <th class="px-4 py-2 w-[140px] sticky top-0 z-10 !font-normal">Received</th>
@@ -380,6 +380,8 @@
                 <th class="px-4 py-2 w-[120px] sticky top-0 z-10 !font-normal">Date</th>
                 <th class="w-[50px] py-2 sticky top-0 z-10 !font-normal">Link</th>
               </tr>
+            </thead>
+            <tbody class="hidden md:table-row-group">
               {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
                 <TransactionRow
                   {tx}
