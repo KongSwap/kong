@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition";
-  import { Star, Send, HandCoins, ArrowUpDown, Droplets } from "lucide-svelte";
+  import { Star, Send, HandCoins, ArrowUpDown, Droplets, PlusCircle } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import {
     formatUsdValue,
@@ -268,6 +268,21 @@
               >
                 <Droplets size={16} />
                 Add Liquidity
+              </button>
+
+              <button
+                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-kong-text-primary hover:translate-x-0.5 flex items-center gap-2"
+                on:click|stopPropagation={() => {
+                  activeDropdownId.set(null);
+                  sidebarStore.collapse();
+                  window.open(
+                    `https://nns.ic0.app/tokens/?import-ledger-id=${token?.canister_id}`,
+                    "_blank",
+                  );
+                }}
+              >
+                <PlusCircle size={16} />
+                Import to NNS
               </button>
             </div>
           {/if}
