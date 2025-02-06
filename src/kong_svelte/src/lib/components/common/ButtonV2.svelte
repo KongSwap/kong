@@ -9,7 +9,7 @@
   export let uppercase: boolean = false;
   export let disabled: boolean = false;
   export let className: string = "";
-  export let element: HTMLButtonElement;
+  export let element: HTMLButtonElement | null = null;
 
   // Theme-based styles
   const baseThemeClasses = {

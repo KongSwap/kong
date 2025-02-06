@@ -1,10 +1,6 @@
 <script lang="ts">
   import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { writable, derived } from "svelte/store";
-  import {
-    liveUserPools,
-  } from "$lib/services/pools/poolStore";
-  import { fetchTokens } from "$lib/api/tokens";
   import Panel from "$lib/components/common/Panel.svelte";
   import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
   import { onMount, onDestroy } from "svelte";
@@ -25,8 +21,10 @@
   import DataTable from "$lib/components/common/DataTable.svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchPools } from "$lib/api/pools";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { page } from '$app/stores';
+  import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { PoolService } from "$lib/services/pools/PoolService";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -41,6 +39,7 @@
   let livePools = writable<BE.Pool[]>([]);
   let pagination = { totalItems: 0, totalPages: 0, currentPage: 1, limit: 50 };
   let isLoading = writable<boolean>(false);
+  let liveUserPools = writable<BE.Pool[]>([]);
   const mobileSortColumn = writable("rolling_24h_volume");
   const mobileSortDirection = writable<"asc" | "desc">("desc");
 
@@ -71,6 +70,8 @@
     .finally(() => {
       isLoading.set(false);
     });
+
+    fetchUserPools();
 
     window.addEventListener("resize", checkMobile);
     checkMobile();
@@ -171,6 +172,22 @@
     poolSearchTerm.set("");
   });
 
+  // Added function to fetch user pools
+  async function fetchUserPools() {
+    isLoading.set(true);
+    try {
+      const result = await PoolService.fetchUserPoolBalances(true);
+
+      // Casting liveUserPools to any to call set
+      (liveUserPools as any).set(result || []);
+    } catch (error) {
+      console.error('Error fetching user pools:', error);
+      (liveUserPools as any).set([]);
+    } finally {
+      isLoading.set(false);
+    }
+  }
+
   const sortedMobilePools = derived(
     [livePools, mobileSortColumn, mobileSortDirection],
     ([$livePools, $mobileSortColumn, $mobileSortDirection]) => {
@@ -233,6 +250,10 @@
       isLoading.set(false);
     }
   }
+
+  function handlePoolClick(event: CustomEvent) {
+    console.log('Pool clicked', event.detail);
+  }
 </script>
 
 <PageHeader
@@ -245,7 +266,7 @@
       value: `${formatUsdValue(
         formatBalance(
           ($livePools || []).reduce((acc, pool) => acc + Number(pool.rolling_24h_volume), 0),
-          6,
+          0,
           2
         )
       )}`,
@@ -256,7 +277,7 @@
       value: `${formatUsdValue(
         formatBalance(
           ($livePools || []).reduce((acc, pool) => acc + Number(pool.tvl), 0),
-          6,
+          0,
           2
         )
       )}`,
@@ -300,7 +321,7 @@
                       class="px-3 py-2 text-sm {$activePoolView === 'user'
                         ? 'text-kong-text-primary bg-[#60A5FA]/10'
                         : 'text-kong-text-secondary'}"
-                      on:click={() => ($activePoolView = "user")}
+                      on:click={() => { $activePoolView = "user"; fetchUserPools(); }}
                     >
                       My ({$liveUserPools.length})
                     </button>
@@ -405,7 +426,7 @@
                           'user'
                             ? 'text-kong-text-primary'
                             : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                          on:click={() => ($activePoolView = "user")}
+                          on:click={() => { $activePoolView = "user"; fetchUserPools(); }}
                         >
                           My Pools <span
                             class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary/80 px-1.5 rounded"
@@ -521,6 +542,28 @@
                   ></DataTable>
                 </div>
               </div>
+            {:else if $activePoolView === "user"}
+              <!-- User Pools View -->
+              {#if $auth.isConnected}
+                <div class="h-full custom-scrollbar">
+                  <UserPoolList
+                    on:poolClick={handlePoolClick}
+                    searchQuery={searchTerm}
+                  />
+                </div>
+              {:else}
+                <div class="flex flex-col items-center justify-center h-64 text-center">
+                  <p class="text-gray-400 mb-4">
+                    Connect your wallet to view your liquidity positions
+                  </p>
+                  <button
+                    class="px-6 py-2 bg-kong-primary text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
+                    on:click={() => { sidebarStore.open(); }}
+                  >
+                    Connect Wallet
+                  </button>
+                </div>
+              {/if}
             {/if}
           </div>
         </div>
