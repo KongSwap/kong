@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from "$app/stores";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { livePools } from "$lib/services/pools/poolStore";
@@ -14,7 +14,7 @@
   } from "$lib/constants/canisterConstants";
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { Droplets, ArrowLeftRight, Copy } from "lucide-svelte";
+  import { Droplets, ArrowLeftRight, Copy, PlusCircle, ChevronDown } from "lucide-svelte";
   import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
   import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import { GOVERNANCE_CANISTER_IDS } from "$lib/services/sns/snsService";
@@ -182,6 +182,30 @@
         return hasToken && hasTVL;
       })
       .sort((a, b) => Number(b.volume_24h || 0) - Number(a.volume_24h || 0));
+  });
+
+  let showDropdown = $state(false);
+  let dropdownRef = $state<HTMLElement | null>(null);
+  let buttonRef = $state<HTMLElement | null>(null);
+
+  // Handle click outside
+  onMount(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!showDropdown) return;
+      
+      const target = event.target as Node;
+      const dropdown = dropdownRef;
+      const button = buttonRef;
+
+      if (dropdown && button && 
+          !dropdown.contains(target) && 
+          !button.contains(target)) {
+        showDropdown = false;
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   });
 </script>
 
@@ -362,20 +386,50 @@
               </div>
 
               <div class="flex items-center gap-2">
-                <ButtonV2
-                  variant="outline"
-                  size="md"
-                  className="w-full text-nowrap flex justify-center"
-                  on:click={() => {
-                    copyToClipboard(token?.address);
-                    toastStore.info("Token address copied to clipboard");
-                  }}
-                >
-                  <div class="flex items-center gap-2">
-                    <Copy class="w-4 h-4" />
-                    {token?.address}
-                  </div>
-                </ButtonV2>
+                <div class="relative w-full">
+                  <ButtonV2
+                    bind:this={buttonRef}
+                    variant="outline"
+                    size="md"
+                    className="w-full text-nowrap"
+                    on:click={() => (showDropdown = !showDropdown)}
+                  >
+                    <div class="flex items-center gap-2 justify-between w-full">
+                      {token?.address}
+                      <ChevronDown class="w-4 h-4" />
+                    </div>
+                  </ButtonV2>
+                  
+                  <!-- Dropdown menu -->
+                  {#if showDropdown}
+                    <div
+                      bind:this={dropdownRef}
+                      class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-light rounded-lg shadow-lg z-50"
+                    >
+                      <button
+                        class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-t-lg"
+                        on:click={() => {
+                          copyToClipboard(token?.address);
+                          toastStore.info("Token address copied to clipboard");
+                          showDropdown = false;
+                        }}
+                      >
+                        <Copy class="w-4 h-4" />
+                        Copy
+                      </button>
+                      <button
+                        class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-b-lg"
+                        on:click={() => {
+                          window.open(`https://nns.ic0.app/tokens/?import-ledger-id=${token?.canister_id}`, '_blank');
+                          showDropdown = false;
+                        }}
+                      >
+                        <PlusCircle class="w-4 h-4" />
+                        Import to NNS
+                      </button>
+                    </div>
+                  {/if}
+                </div>
               </div>
 
               <!-- Token Statistics -->
@@ -526,20 +580,50 @@
                   </ButtonV2>
                 </div>
                 <div class="flex items-center gap-2">
-                  <ButtonV2
-                    variant="outline"
-                    size="md"
-                    className="w-full text-nowrap flex justify-center"
-                    on:click={() => {
-                      copyToClipboard(token?.address);
-                      toastStore.info("Token address copied to clipboard");
-                    }}
-                  >
-                    <div class="flex items-center gap-2">
-                      <Copy class="w-4 h-4" />
-                      {token?.address}
-                    </div>
-                  </ButtonV2>
+                  <div class="relative w-full">
+                    <ButtonV2
+                      bind:this={buttonRef}
+                      variant="outline"
+                      size="md"
+                      className="w-full text-nowrap"
+                      on:click={() => (showDropdown = !showDropdown)}
+                    >
+                      <div class="flex items-center gap-2 justify-between w-full">
+                        {token?.address}
+                        <ChevronDown class="w-4 h-4" />
+                      </div>
+                    </ButtonV2>
+                    
+                    <!-- Dropdown menu -->
+                    {#if showDropdown}
+                      <div
+                        bind:this={dropdownRef}
+                        class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-light rounded-lg shadow-lg z-50"
+                      >
+                        <button
+                          class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-t-lg"
+                          on:click={() => {
+                            copyToClipboard(token?.address);
+                            toastStore.info("Token address copied to clipboard");
+                            showDropdown = false;
+                          }}
+                        >
+                          <Copy class="w-4 h-4" />
+                          Copy
+                        </button>
+                        <button
+                          class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-b-lg"
+                          on:click={() => {
+                            window.open(`https://nns.ic0.app/tokens/?import-ledger-id=${token?.canister_id}`, '_blank');
+                            showDropdown = false;
+                          }}
+                        >
+                          <PlusCircle class="w-4 h-4" />
+                          Import to NNS
+                        </button>
+                      </div>
+                    {/if}
+                  </div>
                 </div>
                 <TokenStatistics {token} {marketCapRank} />
               </div>

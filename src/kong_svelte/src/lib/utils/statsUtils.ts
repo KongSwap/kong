@@ -1,6 +1,7 @@
 import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
 import { userTokens } from '$lib/stores/userTokens';
 import { get } from 'svelte/store';
+import BigNumber from 'bignumber.js';
 
 export type EnhancedToken = FE.Token & {
   marketCapRank?: number;
@@ -50,6 +51,11 @@ export function filterTokens(tokens: FE.Token[], searchQuery: string): FE.Token[
 }
 
 export function getPoolPriceUsd(pool: BE.Pool): number {
-  if (!pool?.price) return 0;
-  return Number(pool.price);
+  if (!pool) return 0;
+  let balance0 = new BigNumber(pool.balance_0.toString());
+  let balance1 = new BigNumber(pool.balance_1.toString());
+  let lpFee0 = new BigNumber(pool.lp_fee_0.toString());
+  let lpFee1 = new BigNumber(pool.lp_fee_1.toString());
+  let poolPrice = new BigNumber((balance1.plus(lpFee1)).div(balance0.plus(lpFee0)));
+  return poolPrice.toNumber();
 }

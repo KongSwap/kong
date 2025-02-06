@@ -12,17 +12,38 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { BigNumber } from 'bignumber.js';
   import { userTokens } from '$lib/stores/userTokens';
+  import { fetchTokensByCanisterId } from '$lib/api/tokens';
 
   const dispatch = createEventDispatcher();
 
   export let pool: any;
   export let showModal = false;
 
-  // Calculate USD value for tokens using proper price lookup
-  function calculateTokenUsdValue(amount: string, tokenSymbol: string): string {
-    // Find token to get its canister_id
-    const token = $userTokens.tokens.find((t) => t.symbol === tokenSymbol);
+  let token0: any = null;
+  let token1: any = null;
+  let lastPoolSymbols = { address_0: '', address_1: '' };
 
+  $: if (pool && (pool.address_0 !== lastPoolSymbols.address_0 || pool.address_1 !== lastPoolSymbols.address_1)) {
+    lastPoolSymbols = { address_0: pool.address_0, address_1: pool.address_1 };
+    fetchTokenData();
+  }
+
+  async function fetchTokenData() {
+    try {
+      const tokensData = await fetchTokensByCanisterId([pool.address_0, pool.address_1]);
+      console.log(tokensData);
+      token0 = tokensData.find((t: any) => t.canister_id === pool.address_0) || null;
+      token1 = tokensData.find((t: any) => t.canister_id === pool.address_1) || null;      
+    } catch (e) {
+      console.error('Error fetching token data by canister id:', e);
+      token0 = null;
+      token1 = null;
+    }
+  }
+
+  // Calculate USD value for tokens using proper price lookup
+  function calculateTokenUsdValue(amount: string, token: any): string {
+    // Find token to get its canister_id
     if (!token?.canister_id || !amount) {
       console.log("Missing token data:", { token, amount });
       return "0";
@@ -47,10 +68,8 @@
   let isCalculating = false;
 
   // Get token objects for images
-  $: token0 = $userTokens.tokens.find((t) => t.symbol === pool.symbol_0);
-  $: token1 = $userTokens.tokens.find((t) => t.symbol === pool.symbol_1);
   $: actualPool = $livePools.find(
-    (p) => p.symbol_0 === pool.symbol_0 && p.symbol_1 === pool.symbol_1,
+    (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1,
   );
 
   // Reset state when modal opens/closes
@@ -236,10 +255,10 @@
   // Calculate total USD value of tokens to receive
   function calculateTotalUsdValue(): string {
     const amount0Usd = Number(
-      calculateTokenUsdValue(estimatedAmounts.amount0, pool.symbol_0),
+      calculateTokenUsdValue(estimatedAmounts.amount0, token0),
     );
     const amount1Usd = Number(
-      calculateTokenUsdValue(estimatedAmounts.amount1, pool.symbol_1),
+      calculateTokenUsdValue(estimatedAmounts.amount1, token1),
     );
     if (isNaN(amount0Usd) || isNaN(amount1Usd)) {
       return "0";
@@ -312,7 +331,7 @@
               </span>
             </div>
             <span class="usd-value">
-              ${calculateTokenUsdValue(pool.amount_0, pool.symbol_0)}
+              ${calculateTokenUsdValue(pool.amount_0, token0)}
             </span>
           </div>
         </div>
@@ -329,7 +348,7 @@
               </span>
             </div>
             <span class="usd-value">
-              ${calculateTokenUsdValue(pool.amount_1, pool.symbol_1)}
+              ${calculateTokenUsdValue(pool.amount_1, token1)}
             </span>
           </div>
         </div>
@@ -370,7 +389,7 @@
                   <span class="amount">{Number(estimatedAmounts.amount0).toLocaleString()}</span>
                   <span class="symbol">{pool.symbol_0}</span>
                 </div>
-                <span class="usd-value">${calculateTokenUsdValue(estimatedAmounts.amount0, pool.symbol_0)}</span>
+                <span class="usd-value">${calculateTokenUsdValue(estimatedAmounts.amount0, token0)}</span>
               </div>
               <div class="token-preview-item">
                 <TokenImages tokens={[token1]} size={20} />
@@ -378,7 +397,7 @@
                   <span class="amount">{Number(estimatedAmounts.amount1).toLocaleString()}</span>
                   <span class="symbol">{pool.symbol_1}</span>
                 </div>
-                <span class="usd-value">${calculateTokenUsdValue(estimatedAmounts.amount1, pool.symbol_1)}</span>
+                <span class="usd-value">${calculateTokenUsdValue(estimatedAmounts.amount1, token1)}</span>
               </div>
             </div>
             <div class="total-value">Total Value: ${calculateTotalUsdValue()}</div>

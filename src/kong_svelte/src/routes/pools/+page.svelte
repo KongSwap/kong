@@ -1,14 +1,6 @@
 <script lang="ts">
   import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
   import { writable, derived } from "svelte/store";
-  import {
-    livePools,
-    liveUserPools,
-    filteredLivePools,
-    poolSearchTerm,
-  } from "$lib/services/pools/poolStore";
-  import { fetchTokens } from "$lib/api/tokens";
   import Panel from "$lib/components/common/Panel.svelte";
   import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
   import { onMount, onDestroy } from "svelte";
@@ -16,51 +8,74 @@
   import {
     ArrowUp,
     ArrowDown,
-    ArrowUpDown,
     Droplets,
     Flame,
     TrendingUp,
     PiggyBank,
   } from "lucide-svelte";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
-  import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
   import { auth } from "$lib/services/auth";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { browser } from "$app/environment";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import DataTable from "$lib/components/common/DataTable.svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { fetchPools } from "$lib/api/pools";
+  import { page } from '$app/stores';
+  import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { PoolService } from "$lib/services/pools/PoolService";
 
   // Navigation state
   const activeSection = writable("pools");
   const activePoolView = writable("all");
-  let showPoolDetails = false;
-  let selectedPool = null;
-  let selectedUserPool = null;
   let isMobile = writable(false);
-  let searchTerm = "";
+  let searchQuery = $page.url.searchParams.get('search') || '';
+  let pageQuery = parseInt($page.url.searchParams.get('page') || '1');
+  let searchTerm = searchQuery;
+  let searchInput = searchQuery;
+  let poolSearchTerm = writable("");
   let searchDebounceTimer: NodeJS.Timeout;
+  let livePools = writable<BE.Pool[]>([]);
+  let pagination = { totalItems: 0, totalPages: 0, currentPage: 1, limit: 50 };
+  let isLoading = writable<boolean>(false);
+  let liveUserPools = writable<BE.Pool[]>([]);
   const mobileSortColumn = writable("rolling_24h_volume");
   const mobileSortDirection = writable<"asc" | "desc">("desc");
 
-  // Token management
-  const allTokens = writable<FE.Token[]>([]);
-  const tokenMap = derived(allTokens, ($tokens) => {
-    const map = new Map();
-    if ($tokens) {
-      $tokens.forEach((token) => {
-        map.set(token.canister_id, token);
-      });
-    }
-    return map;
-  });
-
   let cleanup: () => void;
 
+  // Add a debounce timer for URL changes
+  let urlChangeDebounceTimer: NodeJS.Timeout;
+
+  // Subscribe to auth changes and fetch user pools when authenticated
+  $: if ($auth.isConnected && browser) {
+    fetchUserPools();
+  }
+
   onMount(() => {
-    loadTokens();
+    isLoading.set(true);
+    fetchPools({
+      page: pageQuery,
+      limit: pagination.limit,
+      search: searchQuery
+    })
+    .then((result) => {
+      const poolsArray = result.pools ? result.pools : [];
+      livePools.set(poolsArray);
+      pagination.totalItems = result.total_count;
+      pagination.totalPages = result.total_pages;
+      pagination.currentPage = result.page;
+      pagination.limit = result.limit;
+    })
+    .catch((error) => {
+      console.error('Error fetching pools:', error);
+      livePools.set([]);
+    })
+    .finally(() => {
+      isLoading.set(false);
+    });
+
     window.addEventListener("resize", checkMobile);
     checkMobile();
     cleanup = () => {
@@ -69,34 +84,77 @@
     return cleanup;
   });
 
-  async function loadTokens() {
-    try {
-      const { tokens } = await fetchTokens();
-      allTokens.set(tokens);
-    } catch (error) {
-      console.error("Error loading tokens:", error);
-    }
-  }
-
-  function handlePoolClick(event) {
-    const pool = event.detail;
-    const fullPool = $livePools.find(
-      (p) =>
-        p.symbol_0 === pool.symbol_0 &&
-        p.symbol_1 === pool.symbol_1 &&
-        p.pool_id,
-    );
-    if (fullPool && typeof fullPool.pool_id === "number") {
-      selectedUserPool = fullPool;
-    } else {
-      console.error("[Earn] Could not find matching pool with valid ID");
-    }
+  // Update the reactive statement with debounce
+  $: {
+    clearTimeout(urlChangeDebounceTimer);
+    urlChangeDebounceTimer = setTimeout(() => {
+      const newSearch = $page.url.searchParams.get('search') || '';
+      const newPage = parseInt($page.url.searchParams.get('page') || '1');
+      
+      // Only update if the values have actually changed
+      if (newSearch !== searchTerm || newPage !== pagination.currentPage) {
+        searchTerm = newSearch;
+        searchInput = newSearch;
+        pagination.currentPage = newPage;
+        
+        // Fetch pools with new parameters
+        isLoading.set(true);
+        fetchPools({
+          page: newPage,
+          limit: pagination.limit,
+          search: newSearch
+        })
+        .then((result) => {
+          const poolsArray = result.pools ? result.pools : [];
+          livePools.set(poolsArray);
+          pagination.totalItems = result.total_count;
+          pagination.totalPages = result.total_pages;
+          pagination.currentPage = result.page;
+          pagination.limit = result.limit;
+        })
+        .catch((error) => {
+          console.error('Error fetching pools:', error);
+          livePools.set([]);
+        })
+        .finally(() => {
+          isLoading.set(false);
+        });
+      }
+    }, 100); // 100ms debounce
   }
 
   function handleSearch() {
     clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      poolSearchTerm.set(searchTerm.trim().toLowerCase());
+    searchDebounceTimer = setTimeout(async () => {
+      const searchValue = searchInput.trim().toLowerCase();
+      if (searchValue !== searchTerm) {
+        searchTerm = searchValue;
+        poolSearchTerm.set(searchValue);
+        
+        goto(`/pools?search=${encodeURIComponent(searchValue)}&page=1`, {
+          keepFocus: true,
+          noScroll: true,
+          replaceState: true
+        });
+
+        isLoading.set(true);
+        try {
+          const result = await fetchPools({ 
+            page: 1, 
+            limit: pagination.limit,
+            search: searchValue
+          });
+          livePools.set(result.pools || []);
+          pagination.totalItems = result.total_count;
+          pagination.totalPages = result.total_pages;
+          pagination.currentPage = result.page;
+          pagination.limit = result.limit;
+        } catch (error) {
+          console.error('Error searching pools:', error);
+        } finally {
+          isLoading.set(false);
+        }
+      }
     }, 300);
   }
 
@@ -111,59 +169,57 @@
   onDestroy(() => {
     cleanup?.();
     clearTimeout(searchDebounceTimer);
+    clearTimeout(urlChangeDebounceTimer);
     // reset search properties
     searchTerm = "";
     poolSearchTerm.set("");
   });
 
-  function handleMobileSort(column: string) {
-    mobileSortColumn.update(currentColumn => {
-      if (currentColumn === column) {
-        mobileSortDirection.update(d => d === "asc" ? "desc" : "asc");
-      } else {
-        mobileSortColumn.set(column);
-        mobileSortDirection.set("desc");
-      }
-      return column;
-    });
+  // Added function to fetch user pools
+  async function fetchUserPools() {
+    isLoading.set(true);
+    try {
+      const result = await PoolService.fetchUserPoolBalances(true);
+
+      // Casting liveUserPools to any to call set
+      $liveUserPools = result as unknown as BE.Pool[];
+    } catch (error) {
+      console.error('Error fetching user pools:', error);
+      $liveUserPools = [];
+    } finally {
+      isLoading.set(false);
+    }
   }
 
-  const sortedMobilePools = derived(
-    [filteredLivePools, mobileSortColumn, mobileSortDirection],
-    ([$filteredLivePools, $mobileSortColumn, $mobileSortDirection]) => {
-      let sorted = [...$filteredLivePools];
-      sorted.sort((a, b) => {
-        // Always ensure KONG is at the top regardless of sort
-        if (a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID) return -1;
-        if (b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID) return 1;
-
-        let aValue, bValue;
-        switch ($mobileSortColumn) {
-          case 'price':
-            aValue = Number(getPoolPriceUsd(a));
-            bValue = Number(getPoolPriceUsd(b));
-            break;
-          case 'tvl':
-            aValue = Number(a.tvl);
-            bValue = Number(b.tvl);
-            break;
-          case 'rolling_24h_volume':
-            aValue = Number(a.rolling_24h_volume);
-            bValue = Number(b.rolling_24h_volume);
-            break;
-          case 'rolling_24h_apy':
-            aValue = Number(a.rolling_24h_apy);
-            bValue = Number(b.rolling_24h_apy);
-            break;
-          default:
-            aValue = Number(a.rolling_24h_volume);
-            bValue = Number(b.rolling_24h_volume);
-        }
-        return $mobileSortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+  async function handlePageChange(page: number) {
+    isLoading.set(true);
+    try {
+      goto(`/pools?search=${encodeURIComponent(searchTerm)}&page=${page}`, {
+        keepFocus: true,
+        noScroll: true,
+        replaceState: true
       });
-      return sorted;
+
+      const result = await fetchPools({ 
+        page, 
+        limit: pagination.limit,
+        search: searchTerm
+      });
+      livePools.set(result.pools || []);
+      pagination.totalItems = result.total_count;
+      pagination.totalPages = result.total_pages;
+      pagination.currentPage = result.page;
+      pagination.limit = result.limit;
+    } catch (error) {
+      console.error('Error fetching pools:', error);
+    } finally {
+      isLoading.set(false);
     }
-  );
+  }
+
+  function handlePoolClick(event: CustomEvent) {
+    console.log('Pool clicked', event.detail);
+  }
 </script>
 
 <PageHeader
@@ -175,13 +231,10 @@
       label: "Vol 24H",
       value: `${formatUsdValue(
         formatBalance(
-          $filteredLivePools.reduce(
-            (acc, pool) => acc + Number(pool.rolling_24h_volume),
-            0,
-          ),
-          6,
-          2,
-        ),
+          ($livePools || []).reduce((acc, pool) => acc + Number(pool.rolling_24h_volume), 0),
+          0,
+          2
+        )
       )}`,
       icon: TrendingUp,
     },
@@ -189,16 +242,16 @@
       label: "TVL",
       value: `${formatUsdValue(
         formatBalance(
-          $filteredLivePools.reduce((acc, pool) => acc + Number(pool.tvl), 0),
-          6,
-          2,
-        ),
+          ($livePools || []).reduce((acc, pool) => acc + Number(pool.tvl), 0),
+          0,
+          2
+        )
       )}`,
       icon: PiggyBank,
     },
     {
       label: "Highest APY",
-      value: `${Math.max(...$filteredLivePools.map(pool => Number(pool.rolling_24h_apy))).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
+      value: `${Math.max(...($livePools || []).map(pool => Number(pool.rolling_24h_apy))).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
       icon: Flame,
       hideOnMobile: true,
     },
@@ -234,7 +287,7 @@
                       class="px-3 py-2 text-sm {$activePoolView === 'user'
                         ? 'text-kong-text-primary bg-[#60A5FA]/10'
                         : 'text-kong-text-secondary'}"
-                      on:click={() => ($activePoolView = "user")}
+                      on:click={() => { $activePoolView = "user"; fetchUserPools(); }}
                     >
                       My ({$liveUserPools.length})
                     </button>
@@ -246,7 +299,7 @@
                       type="text"
                       placeholder="Search pools..."
                       class="w-full bg-kong-bg-dark border border-kong-border rounded-lg pl-8 pr-2 py-2 text-sm text-kong-text-primary placeholder-kong-text-secondary focus:outline-none"
-                      bind:value={searchTerm}
+                      bind:value={searchInput}
                       on:input={handleSearch}
                     />
                     <svg
@@ -339,7 +392,7 @@
                           'user'
                             ? 'text-kong-text-primary'
                             : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                          on:click={() => ($activePoolView = "user")}
+                          on:click={() => { $activePoolView = "user"; fetchUserPools(); }}
                         >
                           My Pools <span
                             class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary/80 px-1.5 rounded"
@@ -356,7 +409,7 @@
                           ? "Search pools..."
                           : "Search pools by name, symbol, or canister ID"}
                         class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
-                        bind:value={searchTerm}
+                        bind:value={searchInput}
                         on:input={handleSearch}
                       />
                     </div>
@@ -394,7 +447,7 @@
                 <!-- Desktop Table View -->
                 <div class="hidden lg:flex lg:flex-col h-full">
                   <DataTable
-                    data={$filteredLivePools}
+                    data={$livePools}
                     rowKey="pool_id"
                     columns={[
                       {
@@ -404,8 +457,8 @@
                         width: '30%',
                         sortable: true,
                         component: PoolRow,
-                        componentProps: { tokenMap: $tokenMap },
-                        sortValue: (row) => `${row.symbol_0}/${row.symbol_1}`
+                        componentProps: {},
+                        sortValue: (row) => `${row.symbol_0}/${row.symbol_1}`,
                       },
                       {
                         key: 'price',
@@ -423,7 +476,7 @@
                         width: '17.5%',
                         sortable: true,
                         sortValue: (row) => Number(row.tvl),
-                        formatter: (row) => formatUsdValue(formatBalance(Number(row.tvl), 6, 2))
+                        formatter: (row) => formatUsdValue(Number(row.tvl))
                       },
                       {
                         key: 'rolling_24h_volume',
@@ -432,7 +485,7 @@
                         width: '17.5%',
                         sortable: true,
                         sortValue: (row) => Number(row.rolling_24h_volume),
-                        formatter: (row) => formatUsdValue(formatBalance(Number(row.rolling_24h_volume), 6, 2))
+                        formatter: (row) => formatUsdValue(Number(row.rolling_24h_volume))
                       },
                       {
                         key: 'rolling_24h_apy',
@@ -444,86 +497,15 @@
                         formatter: (row) => `${Number(row.rolling_24h_apy).toFixed(2)}%`
                       }
                     ]}
-                    itemsPerPage={100}
+                    itemsPerPage={pagination.limit}
+                    totalItems={pagination.totalItems}
+                    currentPage={pagination.currentPage}
                     defaultSort={{ column: 'rolling_24h_volume', direction: 'desc' }}
+                    onPageChange={handlePageChange}
                     onRowClick={(row) => goto(`/pools/add?token0=${row.address_0}&token1=${row.address_1}`)}
                     isKongRow={(row) => row.address_0 === KONG_CANISTER_ID || row.address_1 === KONG_CANISTER_ID}
-                  />
-                </div>
-
-                <!-- Mobile/Tablet Card View -->
-                <div class="lg:hidden space-y-3 pb-3 h-full overflow-auto py-2">
-                  {#each $sortedMobilePools || [] as pool, i (pool.address_0 + pool.address_1)}
-                    <button
-                      on:click={() =>
-                        goto(
-                          `/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`,
-                        )}
-                      class="w-full text-left bg-kong-bg-dark rounded-xl border border-kong-border/50 hover:border-[#60A5FA]/30 hover:bg-kong-bg-dark/80 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-lg backdrop-blur-sm
-                            {pool.address_0 === KONG_CANISTER_ID ||
-                      pool.address_1 === KONG_CANISTER_ID
-                        ? 'bg-gradient-to-br from-[rgba(0,255,128,0.05)] to-[rgba(0,255,128,0.02)] active:bg-[rgba(0,255,128,0.04)] shadow-[inset_0_1px_1px_rgba(0,255,128,0.1)]'
-                        : 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'}"
-                    >
-                      <div class="p-4">
-                        <!-- Pool Header -->
-                        <div class="flex items-center justify-between mb-4">
-                          <div class="flex items-center gap-2.5">
-                            <TokenImages
-                              tokens={[
-                                $tokenMap.get(pool.address_0),
-                                $tokenMap.get(pool.address_1),
-                              ]}
-                              size={28}
-                            />
-                            <div class="text-base font-medium text-kong-text-primary">
-                              {pool.symbol_0}/{pool.symbol_1}
-                            </div>
-                          </div>
-                          <div class="text-[#60A5FA] text-base font-medium flex items-center gap-1.5 bg-[#60A5FA]/5 px-2.5 py-1 rounded-lg">
-                            <Flame class="w-4 h-4" />
-                            {Number(pool.rolling_24h_apy).toFixed(2)}%
-                          </div>
-                        </div>
-
-                        <!-- Pool Stats -->
-                        <div class="grid grid-cols-3 gap-4">
-                          <div class="bg-black/20 rounded-lg p-2.5">
-                            <div class="text-xs text-kong-text-secondary mb-1">
-                              Price
-                            </div>
-                            <div class="text-sm font-medium text-kong-text-primary">
-                              {getPoolPriceUsd(pool)}
-                            </div>
-                          </div>
-                          <div class="bg-black/20 rounded-lg p-2.5">
-                            <div class="text-xs text-kong-text-secondary mb-1">
-                              TVL
-                            </div>
-                            <div class="text-sm font-medium text-kong-text-primary">
-                              {formatUsdValue(
-                                formatBalance(Number(pool.tvl), 6, 2),
-                              )}
-                            </div>
-                          </div>
-                          <div class="bg-black/20 rounded-lg p-2.5">
-                            <div class="text-xs text-kong-text-secondary mb-1">
-                              Volume 24h
-                            </div>
-                            <div class="text-sm font-medium text-kong-text-primary">
-                              {formatUsdValue(
-                                formatBalance(
-                                  Number(pool.rolling_24h_volume),
-                                  6,
-                                  2,
-                                ),
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  {/each}
+                    isLoading={$isLoading}
+                  ></DataTable>
                 </div>
               </div>
             {:else if $activePoolView === "user"}
@@ -536,17 +518,13 @@
                   />
                 </div>
               {:else}
-                <div
-                  class="flex flex-col items-center justify-center h-64 text-center"
-                >
+                <div class="flex flex-col items-center justify-center h-64 text-center">
                   <p class="text-gray-400 mb-4">
                     Connect your wallet to view your liquidity positions
                   </p>
                   <button
                     class="px-6 py-2 bg-kong-primary text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
-                    on:click={() => {
-                      sidebarStore.open();
-                    }}
+                    on:click={() => { sidebarStore.open(); }}
                   >
                     Connect Wallet
                   </button>
@@ -559,25 +537,3 @@
     {/if}
   </div>
 </section>
-
-{#if showPoolDetails && selectedPool}
-  <PoolDetails
-    pool={selectedPool}
-    tokenMap={$tokenMap}
-    showModal={showPoolDetails}
-    positions={[]}
-    onClose={() => {
-      showPoolDetails = false;
-      selectedPool = null;
-    }}
-  />
-{/if}
-
-<style scoped lang="postcss">
-  /* Only keep Firefox-specific select styling if needed */
-  select {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-  }
-</style>

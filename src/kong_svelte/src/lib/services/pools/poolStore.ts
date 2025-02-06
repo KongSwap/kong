@@ -114,7 +114,7 @@ export const livePoolTotals = readable<FE.PoolTotal[]>([], (set) => {
   };
 });
 
-export { userPoolsStore as liveUserPools };
+export const liveUserPools = writable([]);
 
 export const loadPools = async () => {
   try {
@@ -125,6 +125,8 @@ export const loadPools = async () => {
 
     // Process pools data with price validation
     const pools = await formatPoolData(poolsData.pools);
+    const userPools = await PoolService.fetchUserPoolBalances(true);
+    liveUserPools.set(userPools);
 
     // Store in DB instead of cache
     await kongDB.transaction("rw", [kongDB.pools, kongDB.pool_totals], async () => {
