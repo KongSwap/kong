@@ -48,6 +48,11 @@
   // Add a debounce timer for URL changes
   let urlChangeDebounceTimer: NodeJS.Timeout;
 
+  // Subscribe to auth changes and fetch user pools when authenticated
+  $: if ($auth.isConnected && browser) {
+    fetchUserPools();
+  }
+
   onMount(() => {
     isLoading.set(true);
     fetchPools({
@@ -70,8 +75,6 @@
     .finally(() => {
       isLoading.set(false);
     });
-
-    fetchUserPools();
 
     window.addEventListener("resize", checkMobile);
     checkMobile();
@@ -179,51 +182,14 @@
       const result = await PoolService.fetchUserPoolBalances(true);
 
       // Casting liveUserPools to any to call set
-      (liveUserPools as any).set(result || []);
+      $liveUserPools = result as unknown as BE.Pool[];
     } catch (error) {
       console.error('Error fetching user pools:', error);
-      (liveUserPools as any).set([]);
+      $liveUserPools = [];
     } finally {
       isLoading.set(false);
     }
   }
-
-  const sortedMobilePools = derived(
-    [livePools, mobileSortColumn, mobileSortDirection],
-    ([$livePools, $mobileSortColumn, $mobileSortDirection]) => {
-      let sorted = [...($livePools || [])];
-      sorted.sort((a, b) => {
-        // Always ensure KONG is at the top regardless of sort
-        if (a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID) return -1;
-        if (b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID) return 1;
-
-        let aValue, bValue;
-        switch ($mobileSortColumn) {
-          case 'price':
-            aValue = Number(getPoolPriceUsd(a));
-            bValue = Number(getPoolPriceUsd(b));
-            break;
-          case 'tvl':
-            aValue = Number(a.tvl);
-            bValue = Number(b.tvl);
-            break;
-          case 'rolling_24h_volume':
-            aValue = Number(a.rolling_24h_volume);
-            bValue = Number(b.rolling_24h_volume);
-            break;
-          case 'rolling_24h_apy':
-            aValue = Number(a.rolling_24h_apy);
-            bValue = Number(b.rolling_24h_apy);
-            break;
-          default:
-            aValue = Number(a.rolling_24h_volume);
-            bValue = Number(b.rolling_24h_volume);
-        }
-        return $mobileSortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-      });
-      return sorted;
-    }
-  );
 
   async function handlePageChange(page: number) {
     isLoading.set(true);
