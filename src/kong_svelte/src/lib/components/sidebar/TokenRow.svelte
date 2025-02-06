@@ -130,10 +130,9 @@
   {/if}
 
   <div
-    class="flex-1 cursor-pointer origin-center px-2 transition-all duration-200 border border-transparent relative z-[95] group"
+    class="flex-1 cursor-pointer origin-center transition-all duration-200 relative z-[95] group {dropdownVisible ? '' : 'border-transparent'}"
     class:pressed={isPressed}
     class:bg-kong-bg-light={dropdownVisible}
-    class:border-kong-border={dropdownVisible}
     class:rounded-lg={dropdownVisible}
     class:shadow-lg={dropdownVisible}
     class:bg-gradient-to-b={dropdownVisible}
@@ -153,7 +152,7 @@
     <div
       class="flex items-center justify-between h-14 relative z-[95]
              group-hover:bg-kong-bg-light/40 group-hover:border-kong-border/10
-             transition-all duration-200 rounded-lg"
+             transition-all duration-200 rounded-lg px-2"
     >
       <div class="flex items-center gap-3">
         <div class="transform scale-100">
@@ -204,7 +203,7 @@
               bind:this={dropdownEl}
               class="absolute {showAbove
                 ? 'bottom-[calc(100%+1px)]'
-                : 'top-[calc(100%+1px)]'} -right-1 z-[100] min-w-[250px] p-1.5 bg-kong-bg-light border border-kong-border {showAbove
+                : 'top-[calc(100%+2px)]'} -right-1 z-[100] min-w-[250px] p-1.5 bg-kong-bg-light border border-kong-border {showAbove
                 ? 'rounded-t-lg'
                 : 'rounded-b-lg'} shadow-lg origin-{showAbove
                 ? 'bottom'
@@ -295,3 +294,9 @@
 {#if showTokenDetails}
   <TokenDetails {token} on:close={() => (showTokenDetails = false)} />
 {/if}
+
+<style lang="postcss" scoped>
+  .pressed {
+    @apply scale-95 transition-all duration-100;
+  }
+</style>
