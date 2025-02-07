@@ -353,7 +353,7 @@
                     tvl: String(pool.tvl),
                     lp_token_supply: String(pool.lp_token_supply),
                     volume_24h: String(pool.daily_volume || "0"),
-                  } as BE.Pool;
+                  } as unknown as BE.Pool;
                 }}
               />
               <!-- Add Action Buttons for mobile -->
@@ -548,7 +548,7 @@
                       tvl: String(pool.tvl),
                       lp_token_supply: String(pool.lp_token_supply),
                       volume_24h: String(pool.daily_volume || "0"),
-                    } as BE.Pool;
+                    } as unknown as BE.Pool;
                   }}
                 />
                 <!-- Action Buttons - Shown on all layouts -->

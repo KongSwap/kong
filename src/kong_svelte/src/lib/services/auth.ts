@@ -112,6 +112,9 @@ function createAuthStore(pnp: PNP) {
         await Promise.all([
           kongDB.token_balances.clear(),
           kongDB.user_pools.clear(),
+        ]);
+
+        await Promise.all([
           loadBalances(owner, { forceRefresh: true }),
           PoolService.fetchUserPoolBalances(true)
         ]);
