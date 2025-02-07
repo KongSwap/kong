@@ -4,18 +4,18 @@
   import { onMount } from 'svelte';
 
   const { selectedPool, token, formattedTokens, relevantPools, onPoolSelect } = $props<{
-    selectedPool: Pool | undefined;
+    selectedPool: BE.Pool | undefined;
     token: FE.Token;
     formattedTokens: FE.Token[];
-    relevantPools: Pool[];
-    onPoolSelect: (pool: Pool) => void;
+    relevantPools: BE.Pool[];
+    onPoolSelect: (pool: BE.Pool) => void;
   }>();
 
   let isPoolSelectorOpen = $state(false);
   let dropdownRef = $state<HTMLElement | null>(null);
 
   // Pre-compute token lookups
-  function getMatchingToken(pool: Pool) {
+  function getMatchingToken(pool: BE.Pool) {
     const tokenId = pool.address_0 === token.canister_id ? pool.address_1 : pool.address_0;
     return formattedTokens?.find(t => t.canister_id === tokenId);
   }
