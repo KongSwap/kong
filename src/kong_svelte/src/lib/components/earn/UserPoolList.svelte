@@ -6,8 +6,7 @@
   import { ChevronDown, Plus, Minus } from "lucide-svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { livePools } from "$lib/services/pools/poolStore";
-  import BigNumber from "bignumber.js";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
   export let searchQuery = "";
@@ -77,10 +76,13 @@
     }
   }
 
-  // Watch for changes in liveUserPools to update tokens
-  $: if ($liveUserPools && Array.isArray($liveUserPools) && !tokensLoading) {
-    fetchTokensForPools($liveUserPools);
-  }
+  // Add an onMount block to fetch tokens after component hydration
+  onMount(async () => {
+    await tick();
+    if ($liveUserPools && Array.isArray($liveUserPools) && $liveUserPools.length > 0) {
+      fetchTokensForPools($liveUserPools);
+    }
+  });
 
   async function fetchTokensForPools(pools: any[]) {
     if (pools.length === 0) return;  // Don't fetch if no pools
