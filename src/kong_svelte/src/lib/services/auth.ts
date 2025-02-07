@@ -104,15 +104,14 @@ function createAuthStore(pnp: PNP) {
         set({ isConnected: true, account: result, isInitialized: true });
         
         // Update state and storage
-        [selectedWalletId, isConnected].forEach(s => s.set(true));
+        selectedWalletId.set(walletId);
+        isConnected.set(true);
         storage.set("LAST_WALLET", walletId);
         storage.set("WAS_CONNECTED", "true");
 
         // Reset data and load fresh
-        await Promise.all([
-          kongDB.token_balances.clear(),
-          kongDB.user_pools.clear(),
-        ]);
+        await kongDB.token_balances.clear();
+        await kongDB.user_pools.clear();
 
         await Promise.all([
           loadBalances(owner, { forceRefresh: true }),
@@ -134,8 +133,11 @@ function createAuthStore(pnp: PNP) {
     async disconnect() {
       await pnp.disconnect();
       set({ isConnected: false, account: null, isInitialized: true });
-      [selectedWalletId, isConnected, connectionError].forEach(s => s.set(null));
-      await Promise.all([kongDB.token_balances.clear(), kongDB.user_pools.clear()]);
+      await kongDB.token_balances.clear();
+      await kongDB.user_pools.clear();
+      selectedWalletId.set(null);
+      isConnected.set(false);
+      connectionError.set(null);
       storedBalancesStore.set({});
       storage.clear();
     },
