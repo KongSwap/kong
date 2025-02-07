@@ -32,6 +32,19 @@
   export let filterToken = "";
   export let initialSearch = "";
   export let pool: UserPool | null = null;
+  // New exported prop to control component visibility
+  export let open: boolean = true;
+
+  // Reactive block to run fetch each time the component is opened
+  let wasOpen = false;
+  $: {
+    if (open && !wasOpen) {
+      PoolService.fetchUserPoolBalances(true);
+      wasOpen = true;
+    } else if (!open) {
+      wasOpen = false;
+    }
+  }
 
   // State variables
   let loading = true;
@@ -55,10 +68,6 @@
   const SEARCH_DEBOUNCE = 150;
   let searchDebounceTimer: ReturnType<typeof setTimeout>;
   $: debouncedSearchQuery = createDebouncedSearch(searchQuery);
-
-  onMount(() => {
-    PoolService.fetchUserPoolBalances(true);
-  });
 
   function createDebouncedSearch(query: string): string {
     if (
