@@ -186,7 +186,7 @@
 
   let showDropdown = $state(false);
   let dropdownRef = $state<HTMLElement | null>(null);
-  let buttonRef = $state<HTMLElement | null>(null);
+  let buttonElement = $state<HTMLElement | null>(null);
 
   // Handle click outside
   onMount(() => {
@@ -195,11 +195,9 @@
       
       const target = event.target as Node;
       const dropdown = dropdownRef;
-      const button = buttonRef;
 
-      if (dropdown && button && 
-          !dropdown.contains(target) && 
-          !button.contains(target)) {
+      // Check if click is outside both dropdown and button
+      if (!dropdown?.contains(target) && !buttonElement?.contains(target)) {
         showDropdown = false;
       }
     };
@@ -388,7 +386,7 @@
               <div class="flex items-center gap-2">
                 <div class="relative w-full">
                   <ButtonV2
-                    bind:this={buttonRef}
+                    bind:element={buttonElement}
                     variant="outline"
                     size="md"
                     className="w-full text-nowrap"
@@ -582,7 +580,7 @@
                 <div class="flex items-center gap-2">
                   <div class="relative w-full">
                     <ButtonV2
-                      bind:this={buttonRef}
+                      bind:element={buttonElement}
                       variant="outline"
                       size="md"
                       className="w-full text-nowrap"
