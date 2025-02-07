@@ -185,25 +185,28 @@
   });
 
   let showDropdown = $state(false);
-  let dropdownRef = $state<HTMLElement | null>(null);
-  let buttonElement = $state<HTMLElement | null>(null);
+  let mobileButtonRef = $state<HTMLButtonElement | null>(null);
+  let desktopButtonRef = $state<HTMLButtonElement | null>(null);
+  let mobileDropdownRef = $state<HTMLElement | null>(null);
+  let desktopDropdownRef = $state<HTMLElement | null>(null);
 
   // Handle click outside
   onMount(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (!showDropdown) return;
-      
       const target = event.target as Node;
-      const dropdown = dropdownRef;
-
-      // Check if click is outside both dropdown and button
-      if (!dropdown?.contains(target) && !buttonElement?.contains(target)) {
-        showDropdown = false;
+      if (!(mobileButtonRef?.contains(target) || mobileDropdownRef?.contains(target) || desktopButtonRef?.contains(target) || desktopDropdownRef?.contains(target))) {
+          showDropdown = false;
       }
     };
 
     document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener('touchend', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('touchend', handleClickOutside);
+    };
   });
 </script>
 
@@ -386,7 +389,7 @@
               <div class="flex items-center gap-2">
                 <div class="relative w-full">
                   <ButtonV2
-                    bind:element={buttonElement}
+                    bind:element={mobileButtonRef}
                     variant="outline"
                     size="md"
                     className="w-full text-nowrap"
@@ -401,7 +404,7 @@
                   <!-- Dropdown menu -->
                   {#if showDropdown}
                     <div
-                      bind:this={dropdownRef}
+                      bind:this={mobileDropdownRef}
                       class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-light rounded-lg shadow-lg z-50"
                     >
                       <button
@@ -580,7 +583,7 @@
                 <div class="flex items-center gap-2">
                   <div class="relative w-full">
                     <ButtonV2
-                      bind:element={buttonElement}
+                      bind:element={desktopButtonRef}
                       variant="outline"
                       size="md"
                       className="w-full text-nowrap"
@@ -595,7 +598,7 @@
                     <!-- Dropdown menu -->
                     {#if showDropdown}
                       <div
-                        bind:this={dropdownRef}
+                        bind:this={desktopDropdownRef}
                         class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-light rounded-lg shadow-lg z-50"
                       >
                         <button

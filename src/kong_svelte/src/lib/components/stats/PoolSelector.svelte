@@ -1,6 +1,7 @@
 <script lang="ts">
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { onMount } from 'svelte';
 
   const { selectedPool, token, formattedTokens, relevantPools, onPoolSelect } = $props<{
     selectedPool: Pool | undefined;
@@ -11,7 +12,7 @@
   }>();
 
   let isPoolSelectorOpen = $state(false);
-  let containerRef = $state<HTMLElement | null>(null);
+  let dropdownRef = $state<HTMLElement | null>(null);
 
   // Pre-compute token lookups
   function getMatchingToken(pool: Pool) {
@@ -26,24 +27,29 @@
     tvl: Number(pool.tvl)
   })).sort((a, b) => b.tvl - a.tvl));
 
-  function handleClick(event: MouseEvent) {
-    if (!isPoolSelectorOpen) return;
-    if (!containerRef?.contains(event.target as Node)) {
+  function handleButtonClick(event: MouseEvent) {
+    event.stopPropagation();
+    isPoolSelectorOpen = !isPoolSelectorOpen;
+  }
+
+  function handleDocumentClick(event: MouseEvent) {
+    const target = event.target as Node;
+    if (isPoolSelectorOpen && dropdownRef && !dropdownRef.contains(target)) {
       isPoolSelectorOpen = false;
     }
   }
+
+  onMount(() => {
+    document.body.addEventListener('click', handleDocumentClick);
+    return () => document.body.removeEventListener('click', handleDocumentClick);
+  });
 </script>
 
-<svelte:window on:click={handleClick} />
-
-<div bind:this={containerRef} class="flex flex-col gap-3">
-  <!-- Pool Selection Dropdown -->
-  <div class="relative w-full flex items-center gap-2">
+<div class="flex flex-col gap-3">
+  <div class="relative w-full flex items-center gap-2" bind:this={dropdownRef}>
     <button
       type="button"
-      on:click|stopPropagation={() => {
-        isPoolSelectorOpen = !isPoolSelectorOpen;
-      }}
+      on:click={handleButtonClick}
       class="w-full flex items-center justify-between p-3 bg-kong-bg-dark/60 hover:bg-kong-bg-dark rounded-lg transition-colors duration-200"
     >
       {#if selectedPool && formattedTokens}
@@ -91,6 +97,7 @@
     {#if isPoolSelectorOpen}
       <div 
         class="absolute top-full left-0 right-0 mt-1 z-[999] bg-kong-bg-dark rounded-lg shadow-xl max-h-[400px] overflow-y-auto border border-white/10"
+        on:click|stopPropagation
       >
         {#if poolsWithTokens.length}
           {#each poolsWithTokens as { pool, matchingToken }}
