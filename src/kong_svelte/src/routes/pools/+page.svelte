@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { writable, derived } from "svelte/store";
+  import { writable, derived, get } from "svelte/store";
   import Panel from "$lib/components/common/Panel.svelte";
   import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
   import { onMount, onDestroy } from "svelte";
@@ -182,6 +182,45 @@
 
   function handlePoolClick(event: CustomEvent) {
     console.log('Pool clicked', event.detail);
+  }
+
+  function infiniteScroll(node: HTMLElement) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          loadMorePools();
+        }
+      });
+    }, { threshold: 0.1 });
+    observer.observe(node);
+    return {
+      destroy() {
+        observer.unobserve(node);
+      }
+    };
+  }
+
+  async function loadMorePools() {
+    if (get(isLoading)) return;
+    if (pagination.currentPage >= pagination.totalPages) return;
+    isLoading.set(true);
+    const nextPage = pagination.currentPage + 1;
+    try {
+      const result = await fetchPools({ 
+        page: nextPage, 
+        limit: pagination.limit,
+        search: searchTerm
+      });
+      livePools.update(existingPools => [...existingPools, ...(result.pools || [])]);
+      pagination.totalItems = result.total_count;
+      pagination.totalPages = result.total_pages;
+      pagination.currentPage = result.page;
+      pagination.limit = result.limit;
+    } catch (error) {
+      console.error('Error loading more pools:', error);
+    } finally {
+      isLoading.set(false);
+    }
   }
 </script>
 
@@ -415,7 +454,10 @@
                         <div class="flex justify-between items-center">
                           <div class="flex items-center gap-2">
                             <div class="flex items-center gap-2 mb-2">
-                              <TokenImages tokens={[pool.token0, pool.token1]} size={20} containerClass="items-center mt-1" />
+                              <TokenImages tokens={[
+                                pool.token0,
+                                pool.token1
+                              ]} size={20} containerClass="items-center mt-1" />
                             </div>
                             
                             <h3 class="text-lg font-bold text-kong-text-primary">{pool.symbol_0}/{pool.symbol_1}</h3>
@@ -428,6 +470,10 @@
                         </div>
                       </div>
                     {/each}
+                    <div use:infiniteScroll class="h-10"></div>
+                    {#if $isLoading}
+                      <div class="text-center py-2">Loading more...</div>
+                    {/if}
                   </div>
                 {:else}
                   <div class="hidden lg:flex lg:flex-col h-full">
