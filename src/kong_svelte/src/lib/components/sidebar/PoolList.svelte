@@ -1,281 +1,63 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
-  import { liveUserPools } from "$lib/services/pools/poolStore";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { goto } from "$app/navigation";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { ChevronRight, Search, X, ArrowUpDown, Loader2 } from "lucide-svelte";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { PoolService } from "$lib/services/pools";
-  import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { ChevronRight, Search, X, ArrowUpDown, Loader2 } from "lucide-svelte";
+  import { PoolService } from "$lib/services/pools";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { auth } from "$lib/services/auth";
 
+  // --- Type Definitions ---
   interface FilterPair {
     token0?: string;
     token1?: string;
   }
 
-   // Add TypeScript interfaces
-   interface UserPool {
-    symbol_0?: string;
-    symbol_1?: string;
+  interface UserPoolBalance {
+    symbol_0: string;
+    symbol_1: string;
     balance: string;
-    usd_balance: string | number;
+    usd_balance: string;
     name?: string;
-    searchableText?: string;
+    address_0: string;
+    address_1: string;
+  }
+
+  interface ProcessedPool extends UserPoolBalance {
+    searchableText: string;
     token0?: FE.Token;
     token1?: FE.Token;
   }
 
-  // Typed props
+  // --- Props ---
   export let filterPair: FilterPair = {};
   export let filterToken = "";
   export let initialSearch = "";
-  export let pool: UserPool | null = null;
+  export let pool: ProcessedPool | null = null;
 
-  // State variables
-  let loading = true;
-  let error: string | null = null;
-  let processedPools: UserPool[] = [];
-  let selectedPool: UserPool | null = null;
-  let showUserPoolModal = false;
-  let searchQuery = initialSearch;
+  // --- Store ---
   let searchInput: HTMLInputElement;
-  let isSearching = false;
-  let searchResultsReady = false;
-  let initialFilterApplied = false;
+  let selectedPool: ProcessedPool | null = null;
+  let showUserPoolModal = false;
   let UserPoolComponent: any;
-  let sortDirection: "asc" | "desc" = "desc";
-  let tokens: Record<string, FE.Token> = {};
-  let tokensLoading = false;
-  let poolsProcessed = false;
-  let lastFetchedTokenIds: string[] = [];
 
-  // Memoized search state
-  const SEARCH_DEBOUNCE = 150;
-  let searchDebounceTimer: ReturnType<typeof setTimeout>;
-  $: debouncedSearchQuery = createDebouncedSearch(searchQuery);
-
+  // Initialize store
   onMount(() => {
-    PoolService.fetchUserPoolBalances(true);
+    if ($auth.isConnected) {
+      userPoolListStore.initialize();
+    }
   });
 
-  function createDebouncedSearch(query: string): string {
-    if (
-      !initialFilterApplied ||
-      searchQuery !== `${pool?.symbol_0}/${pool?.symbol_1}`
-    ) {
-      isSearching = true;
-      searchResultsReady = false;
-      clearTimeout(searchDebounceTimer);
-
-      searchDebounceTimer = setTimeout(() => {
-        searchResultsReady = true;
-        isSearching = false;
-      }, SEARCH_DEBOUNCE);
-    }
-    return query.toLowerCase();
-  }
-
-  let currentTokenFetch: Promise<void> | null = null;
-
-  function areTokenIdsEqual(ids1: string[], ids2: string[]): boolean {
-    if (ids1.length !== ids2.length) return false;
-    const set1 = new Set(ids1);
-    return ids2.every(id => set1.has(id));
-  }
-
-  async function fetchTokensForPools(pools: any[]): Promise<void> {
-    if (pools.length === 0) return;
-    
-    const tokenIds = [...new Set(pools.flatMap(pool => [pool.address_0, pool.address_1]))];
-
-    // Skip if we're already loading these exact tokens
-    if (tokensLoading && areTokenIdsEqual(tokenIds, lastFetchedTokenIds)) {
-      return;
-    }
-
-    // Skip if we already have all these tokens cached
-    if (tokenIds.every(id => tokens[id])) {
-      processPoolsWithTokens();
-      return;
-    }
-    
-    tokensLoading = true;
-    lastFetchedTokenIds = tokenIds;
-    
-    try {
-      // Create a new fetch promise
-      const fetchPromise = (async () => {
-        try {
-          const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
-          tokens = {
-            ...tokens,
-            ...fetchedTokens.reduce((acc, token) => {
-              acc[token.canister_id] = token;
-              return acc;
-            }, {} as Record<string, FE.Token>)
-          };
-        } catch (e) {
-          error = "Failed to load token information";
-          console.error("Error fetching tokens:", e);
-        } finally {
-          tokensLoading = false;
-          poolsProcessed = true;
-        }
-      })();
-
-      // Store the current fetch promise
-      currentTokenFetch = fetchPromise;
-      
-      // Wait for the fetch to complete
-      await fetchPromise;
-      
-      // Only process if this was the last fetch initiated
-      if (currentTokenFetch === fetchPromise) {
-        processPoolsWithTokens();
-      }
-    } catch (e) {
-      error = "Failed to load token information";
-      console.error("Error fetching tokens:", e);
-      tokensLoading = false;
-      poolsProcessed = true;
-    }
-  }
-
-  // Optimize pool processing with memoization
-  function processPool(poolBalance: UserPoolBalance) {
-    const token0 = tokens[poolBalance.address_0];
-    const token1 = tokens[poolBalance.address_1];
-
-    const searchTerms = [
-      poolBalance.symbol_0,
-      poolBalance.symbol_1,
-      `${poolBalance.symbol_0}/${poolBalance.symbol_1}`,
-      poolBalance.name || "",
-      token0?.name || "",
-      token1?.name || "",
-      token0?.canister_id || "",
-      token1?.canister_id || "",
-      getTokenAliases(poolBalance.symbol_0),
-      getTokenAliases(poolBalance.symbol_1),
-    ];
-
-    return {
-      ...poolBalance,
-      token0,
-      token1,
-      searchableText: searchTerms.filter(Boolean).join(" ").toLowerCase(),
-    };
-  }
-
-  function getTokenAliases(symbol: string): string {
-    const aliases: Record<string, string> = {
-      ICP: "internet computer protocol dfinity",
-      USDT: "tether usdt",
-      BTC: "bitcoin btc",
-      ETH: "ethereum eth",
-    };
-    return aliases[symbol] || "";
-  }
-
-  function processPoolsWithTokens(): void {
-    if (!Array.isArray($liveUserPools)) return;
-    
-    const validPools = $liveUserPools.filter((poolBalance) => Number(poolBalance.balance) > 0);
-    const processed = validPools.map((poolBalance) => processPool(poolBalance));
-    processedPools = sortPools(processed as UserPool[]); // Apply initial sort
-
-    if (pool && !initialFilterApplied) {
-      searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;
-      debouncedSearchQuery = searchQuery.toLowerCase();
-      initialFilterApplied = true;
-      searchResultsReady = true;
-      isSearching = false;
-    }
-
-    loading = false;
-  }
-
-  // Optimize pool filtering
-  function filterPools(pools: UserPool[]): UserPool[] {
-    const filtered = pools.filter((poolItem) => {
-      if (pool) {
-        return (
-          poolItem.symbol_0 === pool.symbol_0 &&
-          poolItem.symbol_1 === pool.symbol_1
-        );
-      }
-
-      if (debouncedSearchQuery) {
-        return poolItem.searchableText?.includes(debouncedSearchQuery);
-      }
-
-      if (filterPair.token0 && filterPair.token1) {
-        return (
-          (poolItem.symbol_0 === filterPair.token0 &&
-            poolItem.symbol_1 === filterPair.token1) ||
-          (poolItem.symbol_0 === filterPair.token1 &&
-            poolItem.symbol_1 === filterPair.token0)
-        );
-      }
-
-      if (filterToken) {
-        return (
-          poolItem.symbol_0 === filterToken || poolItem.symbol_1 === filterToken
-        );
-      }
-
-      return true;
-    });
-
-    return filtered;
-  }
-
-  // Add separate sort function
-  function sortPools(pools: UserPool[]): UserPool[] {
-    return [...pools].sort((a, b) => {
-      const aValue = Number(a.usd_balance) || 0;
-      const bValue = Number(b.usd_balance) || 0;
-      return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
-    });
-  }
-
-  // Combined reactive statement for pool processing
-  $: {
-    if (Array.isArray($liveUserPools)) {
-      const validPools = $liveUserPools.filter((poolBalance) => Number(poolBalance.balance) > 0);
-      
-      if (validPools.length > 0) {
-        fetchTokensForPools(validPools);
-      } else {
-        loading = false;
-        processedPools = [];
-        poolsProcessed = true;
-      }
-    } else {
-      processedPools = [];
-      poolsProcessed = true;
-    }
-  }
-
-  // Update the reactive statement for filtered pools to only sort once
-  $: filteredPools = filterPools(processedPools);
-
-  // Add a new reactive statement to handle sorting
-  $: {
-    if (filteredPools.length > 0) {
-      filteredPools = sortPools(filteredPools);
-    }
-  }
-
-  // Event handlers
+  // --- Event Handlers ---
   const handleAddLiquidity = () => {
     goto("/pools/add");
     sidebarStore.collapse();
   };
 
-  const handlePoolItemClick = async (poolItem: UserPool) => {
+  const handlePoolItemClick = async (poolItem: ProcessedPool) => {
     if (!UserPoolComponent) {
       UserPoolComponent = (
         await import("$lib/components/liquidity/pools/UserPool.svelte")
@@ -286,29 +68,15 @@
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && searchQuery) {
+    if (event.key === "Escape" && $userPoolListStore.searchQuery) {
       event.preventDefault();
-      searchQuery = "";
+      userPoolListStore.setSearchQuery("");
       searchInput.focus();
     } else if (event.key === "/" && document.activeElement !== searchInput) {
       event.preventDefault();
       searchInput.focus();
     }
   };
-
-  // Update the sort toggle handler
-  function toggleSort() {
-    sortDirection = sortDirection === "desc" ? "asc" : "desc";
-    // Force a re-sort when direction changes
-    filteredPools = sortPools([...filteredPools]);
-  }
-
-  // Add a reactive statement to trigger resort when direction changes
-  $: {
-    if (processedPools.length > 0) {
-      filteredPools = filterPools(processedPools);
-    }
-  }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -323,16 +91,16 @@
             </div>
             <input
               bind:this={searchInput}
-              bind:value={searchQuery}
+              bind:value={$userPoolListStore.searchQuery}
               type="text"
               placeholder="Search pools by name or token..."
               class="search-input"
             />
-            {#if searchQuery}
+            {#if $userPoolListStore.searchQuery}
               <button
                 class="clear-button"
                 on:click={() => {
-                  searchQuery = "";
+                  userPoolListStore.setSearchQuery("");
                   searchInput.focus();
                 }}
                 aria-label="Clear search"
@@ -344,13 +112,13 @@
 
           <button
             class="sort-toggle"
-            on:click={toggleSort}
-            aria-label={`Sort by value ${sortDirection === "desc" ? "ascending" : "descending"}`}
+            on:click={userPoolListStore.toggleSort}
+            aria-label={`Sort by value ${$userPoolListStore.sortDirection === "desc" ? "ascending" : "descending"}`}
           >
             <span class="toggle-label">Value</span>
             <div
               class="sort-icon-wrapper"
-              class:ascending={sortDirection === "asc"}
+              class:ascending={$userPoolListStore.sortDirection === "asc"}
             >
               <ArrowUpDown size={14} />
             </div>
@@ -370,19 +138,14 @@
 
   <div class="pool-list-content">
     <div class="pool-list">
-      {#if loading && processedPools.length === 0}
+      {#if $userPoolListStore.loading}
         <div class="empty-state" in:fade>
           <Loader2 class="animate-spin" size={20} />
           <p>Loading positions...</p>
         </div>
-      {:else if !pool && (isSearching || !searchResultsReady)}
-        <div class="empty-state" in:fade>
-          <Loader2 class="animate-spin" size={20} />
-          <p>Finding pools...</p>
-        </div>
-      {:else if error}
+      {:else if $userPoolListStore.error}
         <div class="state-message error" in:fade>
-          <p>{error}</p>
+          <p>{$userPoolListStore.error}</p>
           <button
             class="retry-button"
             on:click={() => PoolService.fetchUserPoolBalances(true)}
@@ -390,14 +153,14 @@
             Retry
           </button>
         </div>
-      {:else if filteredPools.length === 0}
+      {:else if $userPoolListStore.filteredPools.length === 0}
         <div class="state-message" in:fade>
-          {#if searchQuery && !pool}
-            <p>No pools found matching "{searchQuery}"</p>
+          {#if $userPoolListStore.searchQuery && !pool}
+            <p>No pools found matching "{$userPoolListStore.searchQuery}"</p>
             <button
               class="clear-search-button"
               on:click={() => {
-                searchQuery = "";
+                userPoolListStore.setSearchQuery("");
                 searchInput.focus();
               }}
             >
@@ -413,7 +176,7 @@
           {/if}
         </div>
       {:else}
-        {#each filteredPools as poolItem}
+        {#each $userPoolListStore.filteredPools as poolItem}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div
             class="pool-item"
@@ -627,3 +390,4 @@
            min-h-[120px] text-kong-text-secondary text-xs;
   }
 </style>
+

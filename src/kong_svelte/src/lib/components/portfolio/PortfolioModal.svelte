@@ -3,7 +3,7 @@
   import { Chart, DoughnutController, ArcElement, Tooltip, Legend } from 'chart.js';
   import { onMount, onDestroy } from "svelte";
   import { portfolioValue, storedBalancesStore } from "$lib/services/tokens/tokenStore";
-  import { liveUserPools } from "$lib/services/pools/poolStore";
+  import { userPoolListStore } from "$lib/stores/userPoolListStore";
   import { getChartColors, getChartOptions } from './chartConfig';
   import { processPortfolioData, createChartData } from './portfolioDataProcessor';
   import { derived, type Readable } from "svelte/store";
@@ -81,7 +81,7 @@
 
     const tokens = $userTokens.tokens;
     const balances = $storedBalancesStore;
-    const userPools = $liveUserPools;
+    const userPools = $userPoolListStore.processedPools;
     
     const dataKey = memoizedSerialize({ 
       tokens: tokens.map(t => t.canister_id),
@@ -126,7 +126,7 @@
       }, 0);
       
       // Calculate LP value with proper typing
-      const lpValue = $liveUserPools.reduce((acc: number, pool: any) => {
+      const lpValue = $userPoolListStore.processedPools.reduce((acc: number, pool: any) => {
         const poolValue = Number(pool.usd_balance || 0);
         return acc + poolValue;
       }, 0);
@@ -145,7 +145,7 @@
       // Calculate diversity score based on portfolio composition
       const positions = [
         ...Object.entries(balances).map(([id, balance]) => ['token', balance]),
-        ...$liveUserPools.map(p => ['lp', {
+        ...$userPoolListStore.processedPools.map(p => ['lp', {
           in_tokens: BigInt(0),
           in_usd: p.usd_balance?.toString() || "0"
         }])
@@ -221,14 +221,22 @@
       }),
 
       // Subscribe to balances and tokens for metrics
-      derived([storedBalancesStore, userTokens, liveUserPools], ([$balances, $tokens, $pools]) => {
-        const key = memoizedSerialize({
-          balances: Object.keys($balances),
-          tokens: $tokens.tokens.map(t => t.canister_id),
-          pools: $pools.map(p => p.id)
-        });
-        return { key, balances: $balances, tokens: $tokens, pools: $pools };
-      }).subscribe(async ({ key, balances, tokens, pools }) => {
+      derived(
+        [storedBalancesStore, userTokens, userPoolListStore], 
+        ([$balances, $tokens, $pools]) => {
+          const key = memoizedSerialize({
+            balances: Object.keys($balances),
+            tokens: $tokens.tokens.map(t => t.canister_id),
+            pools: $pools.processedPools.map(p => p.id)
+          });
+          return { 
+            key, 
+            balances: $balances, 
+            tokens: $tokens, 
+            pools: $pools.processedPools
+          };
+        }
+      ).subscribe(async ({ key, balances, tokens, pools }) => {
         if (!abortController.signal.aborted && key !== lastBalancesKey) {
           lastBalancesKey = key;
           await calculateMetrics();

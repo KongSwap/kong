@@ -69,7 +69,11 @@
 
   // Get token objects for images
   $: actualPool = $livePools.find(
-    (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1,
+    (p) => {
+      console.log("pool", p);
+      return p.address_0 === pool.address_0 && p.address_1 === pool.address_1
+    
+    }
   );
 
   // Reset state when modal opens/closes
@@ -277,6 +281,10 @@
     await sidebarStore.collapse();
     await goto(getAddLiquidityUrl());
   }
+
+  // Add null checks before accessing pool properties
+  $: token0Address = pool?.address_0 || '';
+  $: token1Address = pool?.address_1 || '';
 </script>
 
 <Modal

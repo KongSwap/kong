@@ -1,15 +1,16 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
-  import { liveUserPools } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { ChevronDown, Plus, Minus } from "lucide-svelte";
+  import { Plus, Minus } from "lucide-svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { livePools } from "$lib/services/pools/poolStore";
-  import BigNumber from "bignumber.js";
   import { onMount } from "svelte";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
-
+  import { writable } from "svelte/store";
+  import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
+  import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { auth, canisterIDLs } from "$lib/services/auth";
   export let searchQuery = "";
 
   let loading = true;
@@ -18,12 +19,44 @@
   let expandedPoolId: string | null = null;
   let selectedPool: any = null;
   let showUserPoolModal = false;
+  let liveUserPools = writable([]);
   let tokens: Record<string, FE.Token> = {};
   let poolsLoading = true;  // Track pools loading state
   let tokensLoading = false;  // Track tokens loading state
+  let isMounted = false;  // Add mounted state flag
 
   // Helper computed value to determine overall loading state
   $: loading = poolsLoading || tokensLoading;
+
+  onMount(async () => {
+    isMounted = true;
+    try {
+      poolsLoading = true;
+      const actor = createAnonymousActorHelper(
+        KONG_BACKEND_CANISTER_ID, 
+        canisterIDLs.kong_backend
+      );
+      const res = await actor.user_balances($auth.account?.owner.toString());
+      
+      if (isMounted && res.Ok) {  // Check if component is still mounted
+        const mappedPools = res.Ok.map(pool => ({
+          ...pool.LP,
+        }));
+        
+        liveUserPools.set(mappedPools);
+        await fetchTokensForPools(mappedPools);  // Fetch tokens sequentially
+      }
+    } catch (error) {
+      if (isMounted) {
+        console.error("Error fetching user pools:", error);
+        this.error = "Failed to load user pools";
+      }
+    } finally {
+      if (isMounted) {
+        poolsLoading = false;
+      }
+    }
+  });
 
   function createSearchableText(
     poolBalance: any,
@@ -77,27 +110,29 @@
     }
   }
 
-  // Watch for changes in liveUserPools to update tokens
-  $: if ($liveUserPools && Array.isArray($liveUserPools) && !tokensLoading) {
-    fetchTokensForPools($liveUserPools);
-  }
-
   async function fetchTokensForPools(pools: any[]) {
-    if (pools.length === 0) return;  // Don't fetch if no pools
+    if (!isMounted || pools.length === 0) return;
     
     try {
       tokensLoading = true;
       const tokenIds = [...new Set(pools.flatMap(pool => [pool.address_0, pool.address_1]))];
       const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
-      tokens = fetchedTokens.reduce((acc, token) => {
-        acc[token.canister_id] = token;
-        return acc;
-      }, {} as Record<string, FE.Token>);
+      
+      if (isMounted) {
+        tokens = fetchedTokens.reduce((acc, token) => {
+          acc[token.canister_id] = token;
+          return acc;
+        }, {} as Record<string, FE.Token>);
+      }
     } catch (e) {
-      error = "Failed to load token information";
-      console.error("Error fetching tokens:", e);
+      if (isMounted) {
+        error = "Failed to load token information";
+        console.error("Error fetching tokens:", e);
+      }
     } finally {
-      tokensLoading = false;
+      if (isMounted) {
+        tokensLoading = false;
+      }
     }
   }
 
@@ -295,17 +330,11 @@
   .loading-state,
   .error-state,
   .empty-state {
-    @apply flex items-center justify-center
-           h-40
-           rounded-lg
-           text-kong-text-primary/80 dark:text-slate-50
-           border border-kong-border dark:border-kong-border
-           shadow-sm;
+    @apply flex items-center justify-center h-40
+           rounded-lg text-kong-text-primary/70 shadow-sm;
   }
 
   .error-state {
-    @apply text-red-600
-           border-red-200 dark:border-red-900/50
-           bg-red-50/90 dark:bg-red-950/20;
+    @apply text-red-600 border-red-200 bg-red-50/90;
   }
 </style>

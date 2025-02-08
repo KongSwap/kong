@@ -445,7 +445,7 @@
               <!-- All Pools View -->
               <div class="h-full overflow-auto">
                 <!-- Desktop Table View -->
-                <div class="hidden lg:flex lg:flex-col h-full">
+                <div class="hidden sm:flex sm:flex-col h-full">
                   <DataTable
                     data={$livePools}
                     rowKey="pool_id"

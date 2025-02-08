@@ -19,7 +19,6 @@
 
   import { onMount, onDestroy } from "svelte";
   import { loadBalances, portfolioValue, storedBalancesStore } from "$lib/services/tokens/tokenStore";
-  import { liveUserPools } from "$lib/services/pools/poolStore";
   import { getChartColors } from '$lib/components/portfolio/chartConfig';
   import { processPortfolioData, createChartData } from '$lib/components/portfolio/portfolioDataProcessor';
   import { calculateRiskMetrics } from '$lib/components/portfolio/riskAnalyzer';
@@ -29,9 +28,12 @@
   import type { PortfolioHistory } from "$lib/services/portfolio/portfolioHistory";
   import type { PortfolioStats, TokenPosition, TimeRange } from '$lib/services/portfolio/types';
   import { TIME_RANGES } from '$lib/services/portfolio/types';
-  import { auth } from "$lib/services/auth";
   import Panel from "$lib/components/common/Panel.svelte";
-    import { userTokens } from '$lib/stores/userTokens';
+  import { userTokens } from '$lib/stores/userTokens';
+  import { writable } from 'svelte/store';
+  import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
+  import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { canisterIDLs, auth } from "$lib/services/auth";
 
   let tokenPercentage = 0;
   let lpPercentage = 0;
@@ -45,7 +47,10 @@
   let chart: Chart;
   let currentData: any = null;
   let historyChart: Chart;
-  let historyCanvas: HTMLCanvasElement;
+  let liveUserPools = writable<UserPoolBalance[]>([]);
+  let tokens = writable<Record<string, FE.Token>>({});
+  let isMounted = false;
+  let loading = false;
   let portfolioHistory: PortfolioHistory[] = [];
   let performanceMetrics = {
     dailyChange: 0,
@@ -89,7 +94,7 @@
     const dataKey = safeSerialize({ 
       tokens: tokens.map(t => t.canister_id),
       balances: Object.keys(balances),
-      userPools: userPools.map(p => p.pool_id)
+      userPools: userPools.map(p => `${p.address_0}-${p.address_1}`)
     });
     
     if (currentData?.key === dataKey) {
@@ -250,6 +255,7 @@
         throw new Error("No wallet connected");
       }
 
+      await fetchUserPools();
       await loadBalances(principal, { forceRefresh: true });
       portfolioHistory = await getPortfolioHistory(principal);
       updateChart();
@@ -261,6 +267,48 @@
       isLoading = false;
     }
   });
+
+  async function fetchUserPools(): Promise<void> {
+    try {
+      const actor = createAnonymousActorHelper(
+        KONG_BACKEND_CANISTER_ID, 
+        canisterIDLs.kong_backend
+      );
+      const response = await actor.user_balances($auth.account?.owner.toString());
+      
+      if (response.Ok) {
+        const mappedPools = response.Ok.map(pool => pool.LP);
+        liveUserPools.set(mappedPools);
+        await fetchTokensForPools(mappedPools);
+      }
+    } catch (error) {
+      handleError("Failed to load user pools", error);
+    } finally {
+      if (isMounted) loading = false;
+    }
+  }
+
+    // --- Token Management ---
+    async function fetchTokensForPools(pools: UserPoolBalance[]): Promise<void> {
+    if (pools.length === 0) return;
+    
+    const tokenIds = [...new Set(pools.flatMap(pool => 
+      [pool.address_0, pool.address_1]
+    ))];
+    
+    try {
+      const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
+      const tokenMap = fetchedTokens.reduce((acc, token) => {
+        acc[token.canister_id] = token;
+        return acc;
+      }, {} as Record<string, FE.Token>);
+      
+      tokens.set({ ...$tokens, ...tokenMap });
+      processPoolsWithTokens(pools);
+    } catch (error) {
+      handleError("Failed to load token information", error);
+    }
+  }
 
 
   // Clean up on component destruction
