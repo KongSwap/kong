@@ -24,8 +24,9 @@
   import { page } from '$app/stores';
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { PoolService } from "$lib/services/pools/PoolService";
     import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { fetchTokens } from "$lib/api/tokens";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -49,6 +50,56 @@
   // Add a debounce timer for URL changes
   let urlChangeDebounceTimer: NodeJS.Timeout;
 
+  // After declaration of liveUserPools, add token support
+  let allTokens = writable([]);
+  const tokenMap = derived(allTokens, ($tokens) => {
+    const map = new Map();
+    if ($tokens) {
+      $tokens.forEach((token) => {
+        map.set(token.canister_id, token);
+      });
+    }
+    return map;
+  });
+
+  // Add sortedMobilePools derived from livePools
+  const sortedMobilePools = derived(
+    [livePools, mobileSortColumn, mobileSortDirection],
+    ([$livePools, $mobileSortColumn, $mobileSortDirection]) => {
+      let sorted = [...$livePools];
+      sorted.sort((a, b) => {
+        // Always put KONG at the top
+        if (a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID) return -1;
+        if (b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID) return 1;
+
+        let aValue, bValue;
+        switch ($mobileSortColumn) {
+          case 'price':
+            aValue = Number(getPoolPriceUsd(a));
+            bValue = Number(getPoolPriceUsd(b));
+            break;
+          case 'tvl':
+            aValue = Number(a.tvl);
+            bValue = Number(b.tvl);
+            break;
+          case 'rolling_24h_volume':
+            aValue = Number(a.rolling_24h_volume);
+            bValue = Number(b.rolling_24h_volume);
+            break;
+          case 'rolling_24h_apy':
+            aValue = Number(a.rolling_24h_apy);
+            bValue = Number(b.rolling_24h_apy);
+            break;
+          default:
+            aValue = Number(a.rolling_24h_volume);
+            bValue = Number(b.rolling_24h_volume);
+        }
+        return $mobileSortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      });
+      return sorted;
+    }
+  );
+
   // Subscribe to auth changes and fetch user pools when authenticated
   $: if ($auth.isConnected && browser) {
     fetchUserPools();
@@ -56,6 +107,7 @@
 
   onMount(() => {
     isLoading.set(true);
+    loadTokens();
     fetchPools({
       page: pageQuery,
       limit: pagination.limit,
@@ -220,6 +272,16 @@
 
   function handlePoolClick(event: CustomEvent) {
     console.log('Pool clicked', event.detail);
+  }
+
+  // Add loadTokens function to load token data for mobile cards
+  async function loadTokens() {
+    try {
+      const { tokens } = await fetchTokens();
+      allTokens.set(tokens);
+    } catch (error) {
+      console.error("Error loading tokens:", error);
+    }
   }
 </script>
 
@@ -445,69 +507,125 @@
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
               <div class="h-full overflow-auto">
-                <!-- Desktop Table View -->
-                <div class="hidden sm:flex sm:flex-col h-full">
-                  <DataTable
-                    data={$livePools}
-                    rowKey="pool_id"
-                    columns={[
-                      {
-                        key: 'pool_name',
-                        title: 'Pool',
-                        align: 'left',
-                        width: '30%',
-                        sortable: true,
-                        component: PoolRow,
-                        componentProps: {},
-                        sortValue: (row) => `${row.symbol_0}/${row.symbol_1}`,
-                      },
-                      {
-                        key: 'price',
-                        title: 'Price',
-                        align: 'right',
-                        width: '17.5%',
-                        sortable: true,
-                        sortValue: (row) => Number(getPoolPriceUsd(row)),
-                        formatter: (row) => formatToNonZeroDecimal(getPoolPriceUsd(row))
-                      },
-                      {
-                        key: 'tvl',
-                        title: 'TVL',
-                        align: 'right',
-                        width: '17.5%',
-                        sortable: true,
-                        sortValue: (row) => Number(row.tvl),
-                        formatter: (row) => formatUsdValue(Number(row.tvl))
-                      },
-                      {
-                        key: 'rolling_24h_volume',
-                        title: 'Vol 24H',
-                        align: 'right',
-                        width: '17.5%',
-                        sortable: true,
-                        sortValue: (row) => Number(row.rolling_24h_volume),
-                        formatter: (row) => formatUsdValue(Number(row.rolling_24h_volume))
-                      },
-                      {
-                        key: 'rolling_24h_apy',
-                        title: 'APY',
-                        align: 'right',
-                        width: '17.5%',
-                        sortable: true,
-                        sortValue: (row) => Number(row.rolling_24h_apy),
-                        formatter: (row) => `${Number(row.rolling_24h_apy).toFixed(2)}%`
-                      }
-                    ]}
-                    itemsPerPage={pagination.limit}
-                    totalItems={pagination.totalItems}
-                    currentPage={pagination.currentPage}
-                    defaultSort={{ column: 'rolling_24h_volume', direction: 'desc' }}
-                    onPageChange={handlePageChange}
-                    onRowClick={(row) => goto(`/pools/add?token0=${row.address_0}&token1=${row.address_1}`)}
-                    isKongRow={(row) => row.address_0 === KONG_CANISTER_ID || row.address_1 === KONG_CANISTER_ID}
-                    isLoading={$isLoading}
-                  ></DataTable>
-                </div>
+                {#if $isMobile}
+                  <!-- Mobile/Tablet Card View -->
+                  <div class="lg:hidden space-y-3 pb-3 h-full overflow-auto py-2">
+                    {#each $sortedMobilePools as pool, i (pool.address_0 + pool.address_1)}
+                      <button
+                        on:click={() => goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`)}
+                        class="w-full text-left bg-kong-bg-dark rounded-xl border border-kong-border/50 hover:border-[#60A5FA]/30 hover:bg-kong-bg-dark/80 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-lg backdrop-blur-sm {pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID ? 'bg-gradient-to-br from-[rgba(0,255,128,0.05)] to-[rgba(0,255,128,0.02)] active:bg-[rgba(0,255,128,0.04)] shadow-[inset_0_1px_1px_rgba(0,255,128,0.1)]' : 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'}"
+                      >
+                        <div class="p-4">
+                          <!-- Pool Header -->
+                          <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-2.5">
+                              <TokenImages tokens={[$tokenMap.get(pool.address_0), $tokenMap.get(pool.address_1)]} size={28} />
+                              <div class="text-base font-medium text-kong-text-primary">
+                                {pool.symbol_0}/{pool.symbol_1}
+                              </div>
+                            </div>
+                            <div class="text-[#60A5FA] text-base font-medium flex items-center gap-1.5 bg-[#60A5FA]/5 px-2.5 py-1 rounded-lg">
+                              <Flame class="w-4 h-4" />
+                              {Number(pool.rolling_24h_apy).toFixed(2)}%
+                            </div>
+                          </div>
+
+                          <!-- Pool Stats -->
+                          <div class="grid grid-cols-3 gap-4">
+                            <div class="bg-black/20 rounded-lg p-2.5">
+                              <div class="text-xs text-kong-text-secondary mb-1">
+                                Price
+                              </div>
+                              <div class="text-sm font-medium text-kong-text-primary">
+                                {formatToNonZeroDecimal(getPoolPriceUsd(pool))}
+                              </div>
+                            </div>
+                            <div class="bg-black/20 rounded-lg p-2.5">
+                              <div class="text-xs text-kong-text-secondary mb-1">
+                                TVL
+                              </div>
+                              <div class="text-sm font-medium text-kong-text-primary">
+                                {formatUsdValue(Number(pool.tvl))}
+                              </div>
+                            </div>
+                            <div class="bg-black/20 rounded-lg p-2.5">
+                              <div class="text-xs text-kong-text-secondary mb-1">
+                                Volume 24h
+                              </div>
+                              <div class="text-sm font-medium text-kong-text-primary">
+                                {formatUsdValue(Number(pool.rolling_24h_volume))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    {/each}
+                  </div>
+                {:else}
+                  <!-- Desktop Table View -->
+                  <div class="hidden sm:flex sm:flex-col h-full">
+                    <DataTable
+                      data={$livePools}
+                      rowKey="pool_id"
+                      columns={[
+                        {
+                          key: 'pool_name',
+                          title: 'Pool',
+                          align: 'left',
+                          width: '30%',
+                          sortable: true,
+                          component: PoolRow,
+                          componentProps: {},
+                          sortValue: (row) => `${row.symbol_0}/${row.symbol_1}`
+                        },
+                        {
+                          key: 'price',
+                          title: 'Price',
+                          align: 'right',
+                          width: '17.5%',
+                          sortable: true,
+                          sortValue: (row) => Number(getPoolPriceUsd(row)),
+                          formatter: (row) => formatToNonZeroDecimal(getPoolPriceUsd(row))
+                        },
+                        {
+                          key: 'tvl',
+                          title: 'TVL',
+                          align: 'right',
+                          width: '17.5%',
+                          sortable: true,
+                          sortValue: (row) => Number(row.tvl),
+                          formatter: (row) => formatUsdValue(Number(row.tvl))
+                        },
+                        {
+                          key: 'rolling_24h_volume',
+                          title: 'Vol 24H',
+                          align: 'right',
+                          width: '17.5%',
+                          sortable: true,
+                          sortValue: (row) => Number(row.rolling_24h_volume),
+                          formatter: (row) => formatUsdValue(Number(row.rolling_24h_volume))
+                        },
+                        {
+                          key: 'rolling_24h_apy',
+                          title: 'APY',
+                          align: 'right',
+                          width: '17.5%',
+                          sortable: true,
+                          sortValue: (row) => Number(row.rolling_24h_apy),
+                          formatter: (row) => `${Number(row.rolling_24h_apy).toFixed(2)}%`
+                        }
+                      ]}
+                      itemsPerPage={pagination.limit}
+                      totalItems={pagination.totalItems}
+                      currentPage={pagination.currentPage}
+                      defaultSort={{ column: 'rolling_24h_volume', direction: 'desc' }}
+                      onPageChange={handlePageChange}
+                      onRowClick={(row) => goto(`/pools/add?token0=${row.address_0}&token1=${row.address_1}`)}
+                      isKongRow={(row) => row.address_0 === KONG_CANISTER_ID || row.address_1 === KONG_CANISTER_ID}
+                      isLoading={$isLoading}
+                    ></DataTable>
+                  </div>
+                {/if}
               </div>
             {:else if $activePoolView === "user"}
               <!-- User Pools View -->
