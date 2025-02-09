@@ -206,6 +206,7 @@
 
   // Setup cleanup
   onMount(() => {
+    userPoolListStore.initialize();
     let lastPortfolioValue = '';
     let lastBalancesKey = '';
 

@@ -17,6 +17,7 @@ interface PoolListState {
 }
 
 interface ProcessedPool {
+  id: string;
   symbol_0: string;
   symbol_1: string;
   balance: string;
@@ -43,15 +44,11 @@ const initialState: PoolListState = {
   initialFilterApplied: false
 };
 
-function createuserPoolListStore() {
+function createUserPoolListStore() {
   const { subscribe, update, set } = writable<PoolListState>(initialState);
   let searchDebounceTimer: ReturnType<typeof setTimeout>;
   const SEARCH_DEBOUNCE = 150;
-
-  auth.subscribe(() => {
-    set(initialState);
-  });
-
+  
   return {
     subscribe,
     
@@ -217,4 +214,4 @@ function sortPools(pools: ProcessedPool[], direction: 'asc' | 'desc'): Processed
   );
 }
 
-export const userPoolListStore = createuserPoolListStore(); 
+export const userPoolListStore = createUserPoolListStore(); 

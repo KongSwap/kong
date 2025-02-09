@@ -32,6 +32,7 @@
   import { BigNumber } from "bignumber.js";
   import { userTokens } from "$lib/stores/userTokens";
   import { fetchTokensByCanisterId } from "$lib/api/tokens"
+  import { userPoolListStore } from "$lib/stores/userPoolListStore";
 
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
   const DEFAULT_TOKEN = "ICP";
@@ -167,9 +168,9 @@
         if (!amount0) return;
 
         const result = await PoolService.calculateLiquidityAmounts(
-          token0.symbol,
+          token0.canister_id,
           amount0,
-          token1.symbol,
+          token1.canister_id,
         );
 
         if (result.Ok) {
@@ -388,6 +389,7 @@
     onClose={() => {
       liquidityStore.resetAmounts();
       showConfirmModal = false;
+      userPoolListStore.initialize();
     }}
   />
 {/if}

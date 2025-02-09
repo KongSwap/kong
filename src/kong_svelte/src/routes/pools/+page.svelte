@@ -25,6 +25,7 @@
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { PoolService } from "$lib/services/pools/PoolService";
+    import { userPoolListStore } from "$lib/stores/userPoolListStore";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -179,10 +180,10 @@
   async function fetchUserPools() {
     isLoading.set(true);
     try {
-      const result = await PoolService.fetchUserPoolBalances(true);
+      await userPoolListStore.initialize();
 
       // Casting liveUserPools to any to call set
-      $liveUserPools = result as unknown as BE.Pool[];
+      $liveUserPools = $userPoolListStore.filteredPools as unknown as BE.Pool[];
     } catch (error) {
       console.error('Error fetching user pools:', error);
       $liveUserPools = [];

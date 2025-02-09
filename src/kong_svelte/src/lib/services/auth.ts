@@ -13,7 +13,6 @@ import { loadBalances, storedBalancesStore } from "./tokens/tokenStore";
 import { userTokens } from "$lib/stores/userTokens";
 import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
-import { PoolService } from "./pools/PoolService";
 
 // Constants
 const STORAGE_KEYS = {
@@ -104,16 +103,15 @@ function createAuthStore(pnp: PNP) {
         set({ isConnected: true, account: result, isInitialized: true });
         
         // Update state and storage
-        [selectedWalletId, isConnected].forEach(s => s.set(true));
+        selectedWalletId.set(walletId);
+        isConnected.set(true);
         storage.set("LAST_WALLET", walletId);
         storage.set("WAS_CONNECTED", "true");
 
         // Reset data and load fresh
         await Promise.all([
           kongDB.token_balances.clear(),
-          kongDB.user_pools.clear(),
           loadBalances(owner, { forceRefresh: true }),
-          PoolService.fetchUserPoolBalances(true)
         ]);
 
         // Initialize default tokens if needed
@@ -131,8 +129,10 @@ function createAuthStore(pnp: PNP) {
     async disconnect() {
       await pnp.disconnect();
       set({ isConnected: false, account: null, isInitialized: true });
-      [selectedWalletId, isConnected, connectionError].forEach(s => s.set(null));
-      await Promise.all([kongDB.token_balances.clear(), kongDB.user_pools.clear()]);
+      selectedWalletId.set(null);
+      isConnected.set(false);
+      connectionError.set(null);
+      await Promise.all([kongDB.token_balances.clear()]);
       storedBalancesStore.set({});
       storage.clear();
     },

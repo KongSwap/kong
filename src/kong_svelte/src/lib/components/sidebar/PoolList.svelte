@@ -148,7 +148,7 @@
           <p>{$userPoolListStore.error}</p>
           <button
             class="retry-button"
-            on:click={() => PoolService.fetchUserPoolBalances(true)}
+            on:click={() => userPoolListStore.initialize()}
           >
             Retry
           </button>

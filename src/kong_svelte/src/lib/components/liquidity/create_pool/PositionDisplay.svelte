@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
 	import { BigNumber } from 'bignumber.js';
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
@@ -22,7 +21,6 @@
   // Calculate percentage of total pool
   $: pool = $livePools.find(p => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol)
   $: userPool = $userPoolListStore.filteredPools.find(p => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol)
-  $: poolShare = new BigNumber(userPool?.balance).div(new BigNumber((pool?.balance_0 + pool?.balance_1).toString()))
   $: hasPosition = userPool?.balance && userPool?.amount_0 && userPool?.amount_1;
   $: hasTokens = token0 && token1;
 </script>
@@ -43,9 +41,7 @@
           <!-- Status -->
           <div class="flex items-center">
             {#if hasPosition}
-              <span class="text-sm text-kong-text-primary/40 font-normal">
-                {formatToNonZeroDecimal(poolShare.toString())}% of pool
-              </span>
+
             {:else}
               <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-500 whitespace-nowrap">
                 New Position
