@@ -20,7 +20,7 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import DataTable from "$lib/components/common/DataTable.svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
-  import { fetchPools } from "$lib/api/pools";
+  import { fetchPools, fetchPoolTotals } from "$lib/api/pools";
   import { page } from '$app/stores';
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
@@ -141,24 +141,40 @@
     fetchUserPools();
   }
 
+  // Add new state variable with other state variables
+  let poolTotals = writable({
+    total_volume_24h: 0,
+    total_tvl: 0,
+    total_fees_24h: 0
+  });
+
+  // Update onMount to fetch totals
   onMount(() => {
     if (!browser) return;
     isLoading.set(true);
     loadTokens();
-    fetchPools({
-      page: pageQuery,
-      limit: pagination.limit,
-      search: searchQuery
-    })
-    .then((result) => {
-      const poolsArray = result.pools ? result.pools : [];
+
+    // Fetch both pools and totals
+    Promise.all([
+      fetchPools({
+        page: pageQuery,
+        limit: pagination.limit,
+        search: searchQuery
+      }),
+      fetchPoolTotals()
+    ])
+    .then(([poolsResult, totalsResult]) => {
+      const poolsArray = poolsResult.pools ? poolsResult.pools : [];
       livePools.set(poolsArray);
-      pagination.totalItems = result.total_count;
-      pagination.totalPages = result.total_pages;
-      pagination.currentPage = result.page;
-      pagination.limit = result.limit;
+      pagination.totalItems = poolsResult.total_count;
+      pagination.totalPages = poolsResult.total_pages;
+      pagination.currentPage = poolsResult.page;
+      pagination.limit = poolsResult.limit;
       mobilePage = 1;
-      mobileTotalPages = result.total_pages;
+      mobileTotalPages = poolsResult.total_pages;
+      
+      // Set the totals from API
+      poolTotals.set(totalsResult);
     })
     .catch((error) => {
       console.error('Error fetching pools:', error);
@@ -167,6 +183,7 @@
     .finally(() => {
       isLoading.set(false);
     });
+
     if (browser) {
       window.addEventListener("resize", checkMobile);
       checkMobile();
@@ -339,24 +356,12 @@
   stats={[
     {
       label: "Vol 24H",
-      value: `${formatUsdValue(
-        formatBalance(
-          ($livePools || []).reduce((acc, pool) => acc + Number(pool.rolling_24h_volume), 0),
-          0,
-          2
-        )
-      )}`,
+      value: `${formatUsdValue($poolTotals.total_volume_24h)}`,
       icon: TrendingUp,
     },
     {
       label: "TVL",
-      value: `${formatUsdValue(
-        formatBalance(
-          ($livePools || []).reduce((acc, pool) => acc + Number(pool.tvl), 0),
-          0,
-          2
-        )
-      )}`,
+      value: `${formatUsdValue($poolTotals.total_tvl)}`,
       icon: PiggyBank,
     },
     {

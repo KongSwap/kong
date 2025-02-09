@@ -109,3 +109,14 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
     throw error;
   }
 };
+
+export const fetchPoolTotals = async (): Promise<{total_volume_24h: number, total_tvl: number, total_fees_24h: number}> => {
+  try {
+    const response = await fetch(`${INDEXER_URL}/api/pools/totals`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching pool totals:', error);
+    throw error;
+  }
+}
