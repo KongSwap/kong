@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
+  
   export let value: number;
   export let min: number = 0;
   export let max: number = 100;
@@ -7,26 +9,30 @@
   export let showInput: boolean = false;
   export let inputClass: string = "";
 
+  const dispatch = createEventDispatcher();
+
   const colorMap = {
     yellow: "rgb(250, 204, 21)",
     green: "rgb(34, 197, 94)",
     blue: "rgb(59, 130, 246)",
     red: "rgb(239, 68, 68)",
-    purple: "rgb(168, 85, 247)",
+    purple: "rgb(168, 85, 247)"
   };
 
-  $: activeColor = colorMap[color] || colorMap.yellow;
-  $: style = `--value-percent: ${((value - min) / (max - min)) * 100}%; --active-color: ${activeColor};`;
+  $: activeColor = colorMap[color] ? colorMap[color] : ((color.startsWith('#') || color.startsWith('rgb') || color.startsWith('var(')) ? color : `var(--${color})`);
+
+  $: style = `--value-percent: ${((value - min) / (max - min)) * 100}%; --active-color: ${colorMap.yellow}; --thumb-color: ${activeColor};`;
 
   function handleInput(e: Event) {
     const newValue = parseFloat((e.target as HTMLInputElement).value);
     if (!isNaN(newValue)) {
       value = Math.min(Math.max(newValue, min), max);
+      dispatch('input', newValue);
     }
   }
 </script>
 
-<div class="slider-container" {style}>
+<div class="slider-container">
   <div class="slider-wrapper">
     <input
       type="range"
@@ -35,8 +41,8 @@
       {min}
       {max}
       {step}
-      on:input
-      on:change
+      style={style}
+      on:input={handleInput}
     />
     {#if showInput}
       <input
@@ -68,7 +74,8 @@
 
   .slider::-webkit-slider-thumb {
     @apply appearance-none w-5 h-5 rounded-full cursor-pointer;
-    background: var(--active-color);
+    background: var(--thumb-color, rgb(250, 204, 21)) !important;
+    background-color: var(--thumb-color, rgb(250, 204, 21)) !important;
     border: none;
     transition: all 0.2s ease;
     margin-top: -4px;
@@ -77,7 +84,8 @@
 
   .slider::-moz-range-thumb {
     @apply w-5 h-5 rounded-full cursor-pointer;
-    background: var(--active-color);
+    background: var(--thumb-color, rgb(250, 204, 21)) !important;
+    background-color: var(--thumb-color, rgb(250, 204, 21)) !important;
     border: none;
     transition: all 0.2s ease;
     box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
@@ -99,8 +107,9 @@
       to right,
       var(--active-color) 0%,
       var(--active-color) var(--value-percent),
-      rgba(255, 255, 255, 0.1) var(--value-percent)
-    );
+      rgba(255, 255, 255, 0.1) var(--value-percent),
+      rgba(255, 255, 255, 0.1) 100%
+    ) !important;
   }
 
   .slider::-moz-range-track {
@@ -109,8 +118,9 @@
       to right,
       var(--active-color) 0%,
       var(--active-color) var(--value-percent),
-      rgba(255, 255, 255, 0.1) var(--value-percent)
-    );
+      rgba(255, 255, 255, 0.1) var(--value-percent),
+      rgba(255, 255, 255, 0.1) 100%
+    ) !important;
   }
 
   .slider-input {
