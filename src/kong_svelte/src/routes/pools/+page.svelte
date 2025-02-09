@@ -100,6 +100,41 @@
     }
   );
 
+  // Add new state variables for mobile pagination
+  let mobilePage = 1;
+  let mobileTotalPages = 0;
+  let isMobileFetching = false;
+
+  // Add scroll handler for mobile
+  async function handleMobileScroll() {
+    if (!$isMobile || $activePoolView !== 'all' || isMobileFetching || mobilePage >= mobileTotalPages) return;
+
+    const container = document.querySelector('.mobile-pools-container');
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom = scrollHeight - (scrollTop + clientHeight) < 100;
+
+    if (isNearBottom) {
+      isMobileFetching = true;
+      try {
+        const nextPage = mobilePage + 1;
+        const result = await fetchPools({
+          page: nextPage,
+          limit: pagination.limit,
+          search: searchTerm
+        });
+        $livePools = [...$livePools, ...(result.pools || [])];
+        mobilePage = nextPage;
+        mobileTotalPages = result.total_pages;
+      } catch (error) {
+        console.error('Error fetching more pools:', error);
+      } finally {
+        isMobileFetching = false;
+      }
+    }
+  }
+
   // Subscribe to auth changes and fetch user pools when authenticated
   $: if ($auth.isConnected && browser) {
     fetchUserPools();
@@ -120,6 +155,8 @@
       pagination.totalPages = result.total_pages;
       pagination.currentPage = result.page;
       pagination.limit = result.limit;
+      mobilePage = 1;
+      mobileTotalPages = result.total_pages;
     })
     .catch((error) => {
       console.error('Error fetching pools:', error);
@@ -164,6 +201,8 @@
           pagination.totalPages = result.total_pages;
           pagination.currentPage = result.page;
           pagination.limit = result.limit;
+          mobilePage = 1;
+          mobileTotalPages = result.total_pages;
         })
         .catch((error) => {
           console.error('Error fetching pools:', error);
@@ -202,6 +241,8 @@
           pagination.totalPages = result.total_pages;
           pagination.currentPage = result.page;
           pagination.limit = result.limit;
+          mobilePage = 1;
+          mobileTotalPages = result.total_pages;
         } catch (error) {
           console.error('Error searching pools:', error);
         } finally {
@@ -509,7 +550,10 @@
               <div class="h-full overflow-auto">
                 {#if $isMobile}
                   <!-- Mobile/Tablet Card View -->
-                  <div class="lg:hidden space-y-3 pb-3 h-full overflow-auto py-2">
+                  <div 
+                    class="lg:hidden space-y-3 pb-3 h-full overflow-auto py-2 mobile-pools-container" 
+                    on:scroll={handleMobileScroll}
+                  >
                     {#each $sortedMobilePools as pool, i (pool.address_0 + pool.address_1)}
                       <button
                         on:click={() => goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`)}
@@ -560,6 +604,11 @@
                         </div>
                       </button>
                     {/each}
+                    {#if isMobileFetching}
+                      <div class="text-center text-kong-text-secondary py-4">
+                        Loading more pools...
+                      </div>
+                    {/if}
                   </div>
                 {:else}
                   <!-- Desktop Table View -->
