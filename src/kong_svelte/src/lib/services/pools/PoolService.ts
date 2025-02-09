@@ -86,9 +86,9 @@ export class PoolService {
         canisterIDLs.kong_backend,
       );
       const result = await actor.add_liquidity_amounts(
-        token0Symbol,
+        "IC." + token0Symbol,
         amount0,
-        token1Symbol,
+        "IC." + token1Symbol,
       );
 
       if (!result.Ok) {
@@ -106,8 +106,8 @@ export class PoolService {
    * Calculate amounts that would be received when removing liquidity
    */
   public static async calculateRemoveLiquidityAmounts(
-    token0Symbol: string,
-    token1Symbol: string,
+    token0CanisterId: string,
+    token1CanisterId: string,
     lpTokenAmount: number | bigint,
   ): Promise<[bigint, bigint]> {
     try {
@@ -123,8 +123,8 @@ export class PoolService {
       );
 
       const result = await actor.remove_liquidity_amounts(
-        token0Symbol,
-        token1Symbol,
+        "IC." + token0CanisterId,
+        "IC." + token1CanisterId,
         lpTokenBigInt,
       );
 
@@ -217,9 +217,9 @@ export class PoolService {
       }
 
       const addLiquidityArgs = {
-        token_0: params.token_0.symbol,
+        token_0: "IC." + params.token_0.canister_id,
         amount_0: params.amount_0,
-        token_1: params.token_1.symbol,
+        token_1: "IC." + params.token_1.canister_id,
         amount_1: params.amount_1,
         tx_id_0,
         tx_id_1,
@@ -273,10 +273,8 @@ export class PoolService {
             lastStatus = currentStatus;
             if(currentStatus.includes("Success")) {
               toastStore.success(currentStatus);
-              await this.fetchUserPoolBalances(true);
             } else {
               toastStore.info(currentStatus);
-              await this.fetchUserPoolBalances(true);
             }
           }
         }
@@ -330,12 +328,11 @@ export class PoolService {
         { anon: false, requiresSigning: false },
       );
       const result = await actor.remove_liquidity_async({
-        token_0: params.token0,
-        token_1: params.token1,
+        token_0: "IC." + params.token0,
+        token_1: "IC." + params.token1,
         remove_lp_token_amount: lpTokenBigInt,
       });
 
-      await this.fetchUserPoolBalances(true);
       if (!result.Ok) {
         throw new Error(result.Err || "Failed to remove liquidity");
       }
@@ -343,110 +340,6 @@ export class PoolService {
     } catch (error) {
       console.error("Error removing liquidity:", error);
       throw new Error(error.message || "Failed to remove liquidity");
-    }
-  }
-
-  /**
-   * Fetch the user's pool balances.
-   */
-  public static async fetchUserPoolBalances(forceRefresh: boolean = true): Promise<UserPoolBalance[]> {
-    // If there's an ongoing fetch and it's within debounce time, return its promise
-    const now = Date.now();
-    if (!forceRefresh && this.fetchPromise && now - this.lastFetchTime < this.DEBOUNCE_TIME) {
-      return this.fetchPromise;
-    }
-
-    // Reset the fetch promise if forcing refresh
-    if (forceRefresh) {
-      this.fetchPromise = null;
-    }
-
-    try {
-      this.fetchPromise = (async () => {
-        const wallet = get(auth);
-
-        if (!wallet.isConnected || !wallet.account?.owner) {
-          return [];
-        }
-
-        const actor = createAnonymousActorHelper(
-          KONG_BACKEND_CANISTER_ID, 
-          canisterIDLs.kong_backend
-        );
-        const res = await actor.user_balances(wallet.account?.owner.toString());
-        
-        if (!res.Ok) {
-          if (res.Err === "User not found") {
-            return [];
-          }
-          console.warn("[PoolService] Error from user_balances:", res.Err);
-          return [];
-        }
-
-        // Create a Map to ensure unique pools by symbol pair
-        const uniquePools = new Map();
-
-        // Process pools and ensure uniqueness
-        res.Ok.forEach((item) => {
-          const pool = item.LP;
-          const poolId = `${pool.symbol_0}-${pool.symbol_1}`;
-          
-          if (!uniquePools.has(poolId) && pool.balance > 0) {
-            const poolData = {
-              id: poolId,
-              amount_0: pool.amount_0.toString(),
-              amount_1: pool.amount_1.toString(),
-              balance: pool.balance.toString(),
-              name: pool.name,
-              symbol: pool.symbol,
-              symbol_0: pool.symbol_0,
-              symbol_1: pool.symbol_1,
-              address_0: pool.address_0,
-              address_1: pool.address_1,
-              ts: pool.ts.toString(),
-              usd_amount_0: typeof pool.usd_amount_0 === 'number' ? pool.usd_amount_0 : Number(pool.usd_amount_0),
-              usd_amount_1: typeof pool.usd_amount_1 === 'number' ? pool.usd_amount_1 : Number(pool.usd_amount_1),
-              usd_balance: typeof pool.usd_balance === 'number' ? pool.usd_balance : Number(pool.usd_balance)
-            };
-            uniquePools.set(poolId, poolData);
-          }
-        });
-
-        const poolsArray = Array.from(uniquePools.values());
-
-        // Update database in a transaction and wait for it to complete
-        await kongDB.transaction('rw', kongDB.user_pools, async () => {
-          // Get existing pool IDs
-          const existingPoolIds = await kongDB.user_pools.toCollection().primaryKeys();
-          const newPoolIds = new Set(poolsArray.map(p => p.id));
-          
-          // Delete pools that no longer exist
-          for (const existingId of existingPoolIds) {
-            if (!newPoolIds.has(existingId)) {
-              await kongDB.user_pools.delete(existingId);
-            }
-          }
-          
-          // Update or add new pools
-          for (const pool of poolsArray) {
-            await kongDB.user_pools.put(pool);
-          }
-        });
-
-        this.lastFetchTime = Date.now();
-        return poolsArray;
-      })();
-
-      const result = await this.fetchPromise;
-      this.fetchPromise = null;
-      return result;
-    } catch (error) {
-      this.fetchPromise = null;
-      if (error.message?.includes("Anonymous user")) {
-        return [];
-      }
-      console.error("[PoolService] Error fetching user pool balances:", error);
-      throw error;
     }
   }
 

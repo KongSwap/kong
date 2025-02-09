@@ -6,7 +6,6 @@ export {
   tokenStore,
   liveTokens,
   formattedTokens,
-  userPoolsStore,
   portfolioValue,
   storedBalancesStore,
   loadBalances,

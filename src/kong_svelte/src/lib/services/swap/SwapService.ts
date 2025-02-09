@@ -150,7 +150,7 @@ export class SwapService {
     receiveToken: FE.Token,
   ): Promise<BE.SwapQuoteResponse> {
     try {
-      if (!payToken?.symbol || !receiveToken?.symbol) {
+      if (!payToken?.canister_id || !receiveToken?.canister_id) {
         throw new Error("Invalid tokens provided for swap quote");
       }
       const actor = await auth.getActor(
@@ -159,9 +159,9 @@ export class SwapService {
         { anon: true },
       );
       return await actor.swap_amounts(
-        payToken.symbol,
+        "IC." + payToken.canister_id,
         payAmount,
-        receiveToken.symbol,
+        "IC." + receiveToken.canister_id,
       );
     } catch (error) {
       console.error("Error getting swap amounts:", error);

@@ -1,20 +1,26 @@
 <script lang="ts">
-	import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
 	import { BigNumber } from 'bignumber.js';
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { livePools, liveUserPools } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/services/pools/poolStore";
+  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+    import { onMount } from 'svelte';
+    import { auth } from '$lib/services/auth';
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
   export let decimals: number = 8;
   export let layout: "vertical" | "horizontal" = "vertical";
-  
 
+  onMount(async () => {
+    if ($auth.isConnected) {
+      await userPoolListStore.initialize();
+    }
+  });
+  
   // Calculate percentage of total pool
   $: pool = $livePools.find(p => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol)
-  $: userPool = $liveUserPools.find(p => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol)
-  $: poolShare = new BigNumber(userPool?.balance).div(new BigNumber((pool?.balance_0 + pool?.balance_1).toString()))
+  $: userPool = $userPoolListStore.filteredPools.find(p => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol)
   $: hasPosition = userPool?.balance && userPool?.amount_0 && userPool?.amount_1;
   $: hasTokens = token0 && token1;
 </script>
@@ -35,9 +41,7 @@
           <!-- Status -->
           <div class="flex items-center">
             {#if hasPosition}
-              <span class="text-sm text-kong-text-primary/40 font-normal">
-                {formatToNonZeroDecimal(poolShare.toString())}% of pool
-              </span>
+
             {:else}
               <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-500 whitespace-nowrap">
                 New Position

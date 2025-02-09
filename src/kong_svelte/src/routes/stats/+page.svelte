@@ -31,6 +31,7 @@
   import PriceCell from "$lib/components/stats/PriceCell.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { fetchTokens } from "$lib/api/tokens";
+  import { fetchPoolTotals } from "$lib/api/pools";
 
   const ITEMS_PER_PAGE = 50;
   const REFRESH_INTERVAL = 10000;
@@ -46,6 +47,11 @@
   const isPageChange = writable<boolean>(false);
   const previousPrices = writable(new Map<string, number>());
   const priceFlashStates = writable(new Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>());
+  const poolTotals = writable({
+    total_volume_24h: 0,
+    total_tvl: 0,
+    total_fees_24h: 0
+  });
 
   // Track price changes for flash animations
   function updatePriceFlash(token: FE.Token) {
@@ -87,22 +93,26 @@
       isLoading.set(true);
     }
     try {
-      const {tokens, total_count} = await fetchTokens({ 
-        page: $currentPage, 
-        limit: ITEMS_PER_PAGE,
-        search: $debouncedSearchTerm,
-      });
+      const [{tokens, total_count}, totalsResult] = await Promise.all([
+        fetchTokens({ 
+          page: $currentPage, 
+          limit: ITEMS_PER_PAGE,
+          search: $debouncedSearchTerm,
+        }),
+        fetchPoolTotals()
+      ]);
 
-      // Update the data first
+      // Update the data
       tokenData.set(tokens);
       totalCount.set(total_count);
+      poolTotals.set(totalsResult);
 
-      // Then update flash states
+      // Update flash states
       tokens.forEach(token => {
         updatePriceFlash(token);
       });
     } catch (error) {
-      console.error('Error refreshing token data:', error);
+      console.error('Error refreshing data:', error);
     } finally {
       if (isPageChangeRefresh) {
         isLoading.set(false);
@@ -284,17 +294,17 @@
   stats={[
     {
       label: "Vol 24H",
-      value: `${formatUsdValue(Number($livePoolTotals[0]?.total_24h_volume ?? 0) / 1e6)}`,
+      value: `${formatUsdValue($poolTotals.total_volume_24h)}`,
       icon: TrendingUp,
     },
     {
       label: "TVL",
-      value: `${formatUsdValue(Number($livePoolTotals[0]?.total_tvl ?? 0) / 1e6)}`,
+      value: `${formatUsdValue($poolTotals.total_tvl)}`,
       icon: PiggyBank,
     },
     {
       label: "Fees 24H",
-      value: `${formatUsdValue(Number($livePoolTotals[0]?.total_24h_lp_fee ?? 0) / 1e6)}`,
+      value: `${formatUsdValue($poolTotals.total_fees_24h)}`,
       icon: HandCoins,
       hideOnMobile: true,
     },

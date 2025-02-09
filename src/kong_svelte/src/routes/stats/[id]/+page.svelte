@@ -185,27 +185,28 @@
   });
 
   let showDropdown = $state(false);
-  let dropdownRef = $state<HTMLElement | null>(null);
-  let buttonRef = $state<HTMLElement | null>(null);
+  let mobileButtonRef = $state<HTMLButtonElement | null>(null);
+  let desktopButtonRef = $state<HTMLButtonElement | null>(null);
+  let mobileDropdownRef = $state<HTMLElement | null>(null);
+  let desktopDropdownRef = $state<HTMLElement | null>(null);
 
   // Handle click outside
   onMount(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (!showDropdown) return;
-      
       const target = event.target as Node;
-      const dropdown = dropdownRef;
-      const button = buttonRef;
-
-      if (dropdown && button && 
-          !dropdown.contains(target) && 
-          !button.contains(target)) {
-        showDropdown = false;
+      if (!(mobileButtonRef?.contains(target) || mobileDropdownRef?.contains(target) || desktopButtonRef?.contains(target) || desktopDropdownRef?.contains(target))) {
+          showDropdown = false;
       }
     };
 
     document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener('touchend', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('touchend', handleClickOutside);
+    };
   });
 </script>
 
@@ -352,7 +353,7 @@
                     tvl: String(pool.tvl),
                     lp_token_supply: String(pool.lp_token_supply),
                     volume_24h: String(pool.daily_volume || "0"),
-                  } as BE.Pool;
+                  } as unknown as BE.Pool;
                 }}
               />
               <!-- Add Action Buttons for mobile -->
@@ -388,7 +389,7 @@
               <div class="flex items-center gap-2">
                 <div class="relative w-full">
                   <ButtonV2
-                    bind:this={buttonRef}
+                    bind:element={mobileButtonRef}
                     variant="outline"
                     size="md"
                     className="w-full text-nowrap"
@@ -403,7 +404,7 @@
                   <!-- Dropdown menu -->
                   {#if showDropdown}
                     <div
-                      bind:this={dropdownRef}
+                      bind:this={mobileDropdownRef}
                       class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-light rounded-lg shadow-lg z-50"
                     >
                       <button
@@ -547,7 +548,7 @@
                       tvl: String(pool.tvl),
                       lp_token_supply: String(pool.lp_token_supply),
                       volume_24h: String(pool.daily_volume || "0"),
-                    } as BE.Pool;
+                    } as unknown as BE.Pool;
                   }}
                 />
                 <!-- Action Buttons - Shown on all layouts -->
@@ -582,7 +583,7 @@
                 <div class="flex items-center gap-2">
                   <div class="relative w-full">
                     <ButtonV2
-                      bind:this={buttonRef}
+                      bind:element={desktopButtonRef}
                       variant="outline"
                       size="md"
                       className="w-full text-nowrap"
@@ -597,7 +598,7 @@
                     <!-- Dropdown menu -->
                     {#if showDropdown}
                       <div
-                        bind:this={dropdownRef}
+                        bind:this={desktopDropdownRef}
                         class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-light rounded-lg shadow-lg z-50"
                       >
                         <button
