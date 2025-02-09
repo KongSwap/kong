@@ -61,10 +61,6 @@
   let isQuoteLoading = false;
   let showSettings = false;
 
-  // Add these variables to track URL params
-  let currentToken0Id: string | null = null;
-  let currentToken1Id: string | null = null;
-
   // Add these near the other state variables at the top
   let token0Id: string | null = null;
   let token1Id: string | null = null;
