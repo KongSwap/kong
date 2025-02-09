@@ -32,8 +32,8 @@
   const activeSection = writable("pools");
   const activePoolView = writable("all");
   let isMobile = writable(false);
-  let searchQuery = $page.url.searchParams.get('search') || '';
-  let pageQuery = parseInt($page.url.searchParams.get('page') || '1');
+  let searchQuery = browser ? $page.url.searchParams.get('search') || '' : '';
+  let pageQuery = browser ? parseInt($page.url.searchParams.get('page') || '1') : 1;
   let searchTerm = searchQuery;
   let searchInput = searchQuery;
   let poolSearchTerm = writable("");
@@ -107,6 +107,7 @@
 
   // Add scroll handler for mobile
   async function handleMobileScroll() {
+    if (!browser) return;
     if (!$isMobile || $activePoolView !== 'all' || isMobileFetching || mobilePage >= mobileTotalPages) return;
 
     const container = document.querySelector('.mobile-pools-container');
@@ -141,6 +142,7 @@
   }
 
   onMount(() => {
+    if (!browser) return;
     isLoading.set(true);
     loadTokens();
     fetchPools({
@@ -165,54 +167,57 @@
     .finally(() => {
       isLoading.set(false);
     });
-
-    window.addEventListener("resize", checkMobile);
-    checkMobile();
+    if (browser) {
+      window.addEventListener("resize", checkMobile);
+      checkMobile();
+    }
     cleanup = () => {
-      window.removeEventListener("resize", checkMobile);
+      if (browser) {
+        window.removeEventListener("resize", checkMobile);
+      }
     };
     return cleanup;
   });
 
   // Update the reactive statement with debounce
-  $: {
+  $: if (browser) {
     clearTimeout(urlChangeDebounceTimer);
     urlChangeDebounceTimer = setTimeout(() => {
       const newSearch = $page.url.searchParams.get('search') || '';
-      const newPage = parseInt($page.url.searchParams.get('page') || '1');
+    const newPage = parseInt($page.url.searchParams.get('page') || '1');
+    
+    // Only update if the values have actually changed
+    if (newSearch !== searchTerm || newPage !== pagination.currentPage) {
+      searchTerm = newSearch;
+      searchInput = newSearch;
+      pagination.currentPage = newPage;
       
-      // Only update if the values have actually changed
-      if (newSearch !== searchTerm || newPage !== pagination.currentPage) {
-        searchTerm = newSearch;
-        searchInput = newSearch;
-        pagination.currentPage = newPage;
-        
-        // Fetch pools with new parameters
-        isLoading.set(true);
-        fetchPools({
-          page: newPage,
-          limit: pagination.limit,
-          search: newSearch
-        })
-        .then((result) => {
-          const poolsArray = result.pools ? result.pools : [];
-          livePools.set(poolsArray);
-          pagination.totalItems = result.total_count;
-          pagination.totalPages = result.total_pages;
-          pagination.currentPage = result.page;
-          pagination.limit = result.limit;
-          mobilePage = 1;
-          mobileTotalPages = result.total_pages;
-        })
-        .catch((error) => {
-          console.error('Error fetching pools:', error);
-          livePools.set([]);
-        })
-        .finally(() => {
-          isLoading.set(false);
-        });
-      }
-    }, 100); // 100ms debounce
+      // Fetch pools with new parameters
+      isLoading.set(true);
+      fetchPools({
+        page: newPage,
+        limit: pagination.limit,
+        search: newSearch
+      })
+      .then((result) => {
+        const poolsArray = result.pools ? result.pools : [];
+        livePools.set(poolsArray);
+        pagination.totalItems = result.total_count;
+        pagination.totalPages = result.total_pages;
+        pagination.currentPage = result.page;
+        pagination.limit = result.limit;
+        mobilePage = 1;
+        mobileTotalPages = result.total_pages;
+      })
+      .catch((error) => {
+        console.error('Error fetching pools:', error);
+        livePools.set([]);
+      })
+      .finally(() => {
+        isLoading.set(false);
+      });
+    }
+  }, 100); // 100ms debounce
   }
 
   function handleSearch() {
@@ -253,6 +258,7 @@
   }
 
   const checkMobile = () => {
+    if (!browser) return;
     $isMobile = window.innerWidth < 768;
   };
 
@@ -705,3 +711,9 @@
     {/if}
   </div>
 </section>
+
+{#if $auth.isConnected && browser}
+  <!-- Existing content -->
+{:else}
+  <div class="loading-state">Loading pools...</div>
+{/if}
