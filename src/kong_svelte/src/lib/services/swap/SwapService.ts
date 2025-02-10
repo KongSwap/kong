@@ -10,6 +10,7 @@ import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { requireWalletConnection } from "$lib/services/auth";
 import { SwapMonitor } from "./SwapMonitor";
 import { userTokens } from "$lib/stores/userTokens";
+import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -195,11 +196,11 @@ export class SwapService {
       throw new Error(quote.Err);
     }
 
-    const tokens = get(userTokens).tokens;
+    const tokens = await fetchTokensByCanisterId([params.payToken.canister_id, params.receiveToken.canister_id]);
     const receiveToken = tokens.find(
-      (t) => t.address === params.receiveToken.address,
+      (t) => t.canister_id === params.receiveToken.canister_id,
     );
-    const payToken = tokens.find((t) => t.address === params.payToken.address);
+    const payToken = tokens.find((t) => t.canister_id === params.payToken.canister_id);
     if (!receiveToken) throw new Error("Receive token not found");
 
     const receiveAmount = SwapService.fromBigInt(
@@ -304,7 +305,7 @@ export class SwapService {
       }
 
       requireWalletConnection();
-      const tokens = get(userTokens).tokens;
+      const tokens = await fetchTokensByCanisterId([params.payToken.canister_id, params.receiveToken.canister_id]);
       const payToken = tokens.find(
         (t) => t.canister_id === params.payToken.canister_id,
       );

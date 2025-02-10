@@ -28,6 +28,7 @@
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import { browser } from "$app/environment";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
   // Types
   type PanelType = "pay" | "receive";
@@ -129,7 +130,7 @@
   }
 
   // Add this function to handle initial URL params
-  function initializeFromUrl() {
+  async function initializeFromUrl() {
     if (!browser || !$userTokens.tokens.length) return;
 
     const token0Id =
@@ -140,11 +141,12 @@
 
     if (!token0Id && !token1Id) return;
 
+    const tokens = await fetchTokensByCanisterId([token0Id, token1Id]);
     const token0 = token0Id
-      ? $userTokens.tokens.find((t) => t.canister_id === token0Id)
+      ? tokens.find((t) => t.canister_id === token0Id)
       : null;
     const token1 = token1Id
-      ? $userTokens.tokens.find((t) => t.canister_id === token1Id)
+      ? tokens.find((t) => t.canister_id === token1Id)
       : null;
 
     if (token0 || token1) {
@@ -160,9 +162,9 @@
   }
 
   // Update onMount to handle URL parameters
-  onMount(() => {
+  onMount(async () => {
     if (browser) {
-      initializeFromUrl();
+      await initializeFromUrl();
       settingsStore.initializeStore();
 
       // Set up page store subscription for URL changes
@@ -324,26 +326,6 @@
     }
   }
 
-  // Initialization functions
-  async function initializeComponent(): Promise<void> {
-    try {
-      // Only initialize default tokens if no URL parameters are present
-      const token0Id = get(page).url.searchParams.get("token0");
-      const token1Id = get(page).url.searchParams.get("token1");
-
-      if (
-        !token0Id &&
-        !token1Id &&
-        !isInitialized &&
-        $userTokens.tokens.length > 0
-      ) {
-        isInitialized = true;
-        swapState.initializeTokens(initialFromToken, initialToToken);
-      }
-    } catch (error) {
-      console.error("Error initializing component:", error);
-    }
-  }
 
   async function handleAmountChange(event: CustomEvent) {
     const { value, panelType } = event.detail;

@@ -7,6 +7,7 @@ import { KONG_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConsta
 import { BigNumber } from 'bignumber.js';
 import { livePools } from '../pools/poolStore';
 import { userTokens } from '$lib/stores/userTokens';
+import { fetchTokensByCanisterId } from '$lib/api/tokens';
 
 export interface SwapState {
   payToken: FE.Token | null;
@@ -42,7 +43,7 @@ export interface SwapState {
 
 export interface SwapStore extends Writable<SwapState> {
   isInputExceedingBalance: Readable<boolean>;
-  initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null): void;
+  initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null): Promise<void>;
   setPayAmount(amount: string): void;
   setReceiveAmount(amount: string): void;
   setPayToken(token: FE.Token | null): void;
@@ -110,8 +111,8 @@ function createSwapStore(): SwapStore {
     update,
     isInputExceedingBalance,
 
-    initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null) {
-      const tokens = get(userTokens).tokens;
+    async initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null) {
+      const tokens = await fetchTokensByCanisterId([initialFromToken?.canister_id, initialToToken?.canister_id]);
       
       // If we have initial tokens, use them directly
       if (initialFromToken && initialToToken) {

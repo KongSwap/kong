@@ -1,8 +1,10 @@
+import { browser } from '$app/environment';
+import { fetchTokensByCanisterId } from '$lib/api/tokens';
 import { DEFAULT_TOKENS } from '$lib/constants/tokenConstants';
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 
 interface UserTokensState {
-  enabledTokens: { [canisterId: string]: FE.Token };
+  enabledTokens: { [canisterId: string]: boolean };
   tokens: FE.Token[];
 }
 
@@ -10,7 +12,7 @@ const STORAGE_KEY = 'kong_user_tokens';
 
 function createUserTokensStore() {
   // Initialize from localStorage if available
-  const initialState: UserTokensState = typeof window !== 'undefined' 
+  const initialState: UserTokensState = browser
     ? JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"enabledTokens": {}, "tokens": []}')
     : { enabledTokens: {}, tokens: [] };
 
@@ -19,9 +21,19 @@ function createUserTokensStore() {
 
   // Helper function to update localStorage
   const updateStorage = (newState: UserTokensState) => {
-    if (typeof window !== 'undefined') {
+    if (browser) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     }
+  };
+
+  const refreshTokenData = async () => {
+    const currentState = get(state);
+    const canisterIds = Object.keys(currentState.enabledTokens);
+    const tokens = await fetchTokensByCanisterId(canisterIds);
+    update(state => ({
+      ...state,
+      tokens
+    }));
   };
 
   return {
@@ -31,12 +43,9 @@ function createUserTokensStore() {
         const newState = {
           enabledTokens: {
             ...state.enabledTokens,
-            [token.canister_id]: token
+            [token.canister_id]: true
           },
-          tokens: Object.values({
-            ...state.enabledTokens,
-            [token.canister_id]: token
-          })
+          tokens: state.tokens
         };
         updateStorage(newState);
         return newState;
@@ -46,11 +55,11 @@ function createUserTokensStore() {
       update(state => {
         const newEnabledTokens = { ...state.enabledTokens };
         tokens.forEach(token => {
-          newEnabledTokens[token.canister_id] = token;
+          newEnabledTokens[token.canister_id] = true;
         });
         const newState = {
           enabledTokens: newEnabledTokens,
-          tokens: Object.values(newEnabledTokens)
+          tokens: state.tokens
         };
         updateStorage(newState);
         return newState;
@@ -62,18 +71,18 @@ function createUserTokensStore() {
         delete newEnabledTokens[canisterId];
         const newState = {
           enabledTokens: newEnabledTokens,
-          tokens: Object.values(newEnabledTokens)
+          tokens: state.tokens
         };
         updateStorage(newState);
         return newState;
       });
     },
     isTokenEnabled: (canisterId: string) => {
-      if (typeof window === 'undefined') return true; // Default to enabled if not in browser
+      if (!browser) return true; // Default to enabled if not in browser
       const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"enabledTokens": {}, "tokens": []}');
-      // If the token has never been seen before, consider it enabled
       return !!state.enabledTokens[canisterId];
     },
+    refreshTokenData,
     isDefaultToken: (canisterId: string) => {
       return Object.values(DEFAULT_TOKENS).includes(canisterId);
     }
@@ -81,7 +90,3 @@ function createUserTokensStore() {
 }
 
 export const userTokens = createUserTokensStore();
-
-userTokens.subscribe(state => {
-  state.tokens = Object.values(state.enabledTokens);
-});

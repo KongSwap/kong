@@ -53,7 +53,13 @@ function createUserPoolListStore() {
     subscribe,
     
     // Actions
+    reset: () => {
+      set(initialState);
+    },
+
     initialize: async () => {
+      // Reset state first
+      set(initialState);
       update(s => ({ ...s, loading: true }));
       try {
         const currentAuth = get(auth);
