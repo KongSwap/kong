@@ -71,7 +71,7 @@ fi
 CORE_CANISTERS_SCRIPTS=(
     "deploy_kong_backend.sh"
 	"deploy_kong_data.sh"
-	"deploy_kong_svelte.sh"
+	#"deploy_kong_svelte.sh"
 )
 
 for script in "${CORE_CANISTERS_SCRIPTS[@]}"; do
@@ -82,7 +82,7 @@ for script in "${CORE_CANISTERS_SCRIPTS[@]}"; do
 done
 
 # Deploy Internet Identity for local network
-[ "${NETWORK}" == "local" ] && dfx deploy internet_identity --network "${NETWORK}"
+#[ "${NETWORK}" == "local" ] && dfx deploy internet_identity --network "${NETWORK}"
 
 # Deploy test token ledgers, faucet, mint and create tokens and pools for local/staging
 if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then

@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 
-USER=kong_user1
+if [ -z "$1" ]
+	then
+		NETWORK=""
+	else
+		NETWORK="--network $1"
+fi
+
+IDENTITY="--identity kong_user1"
 KONG_BACKEND=$(dfx canister id kong_backend)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 10000000000" | bc)  # 10 seconds from now
-TOKEN="icp"
+TOKEN_LEDGER=$(dfx canister id ksusdt_ledger)
 
-dfx canister call --identity ${USER} ${TOKEN}_ledger icrc2_approve '
+dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc2_approve '
   record {
     amount = 100_010_000;
     expires_at = opt '${EXPIRES_AT}';
