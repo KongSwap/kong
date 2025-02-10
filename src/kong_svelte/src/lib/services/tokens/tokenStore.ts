@@ -10,6 +10,7 @@ import { auth } from "$lib/services/auth";
 import type { TokenState } from "./types";
 import { userTokens } from "$lib/stores/userTokens";
 import { userPoolListStore } from "$lib/stores/userPoolListStore";
+import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
 function createTokenStore() {
   const initialState: TokenState = {
@@ -276,7 +277,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
 };
 
 export const getTokenDecimals = async (canisterId: string) => {
-  const token = get(userTokens).tokens.find(t => t.canister_id === canisterId);
+  const token = get(userTokens).tokens.find(t => t.canister_id === canisterId) || await fetchTokensByCanisterId([canisterId])[0];
   return token?.decimals || 0;
 };
 
