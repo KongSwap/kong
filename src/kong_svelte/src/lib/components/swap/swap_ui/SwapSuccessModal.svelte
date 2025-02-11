@@ -5,6 +5,7 @@
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import Panel from '$lib/components/common/Panel.svelte';
+  import bananaDance from "$lib/assets/banana_dance.gif";
 
   export let show = false;
   export let payAmount: string = "0";
@@ -81,9 +82,10 @@
           <!-- Success Icon -->
           <div class="flex justify-center">
             <img 
-              src="/stats/banana_dance.gif" 
+              src={bananaDance} 
               class="w-24 opacity-90 hover:scale-110 transition-transform duration-300" 
               alt="Success" 
+              loading="eager"
             />
           </div>
           
