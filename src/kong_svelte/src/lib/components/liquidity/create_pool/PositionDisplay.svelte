@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { BigNumber } from 'bignumber.js';
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { livePools } from "$lib/services/pools/poolStore";
   import { userPoolListStore } from "$lib/stores/userPoolListStore";
-    import { onMount } from 'svelte';
-    import { auth } from '$lib/services/auth';
+  import { onMount } from "svelte";
+  import { auth } from "$lib/services/auth";
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
@@ -17,11 +16,16 @@
       await userPoolListStore.initialize();
     }
   });
-  
+
   // Calculate percentage of total pool
-  $: pool = $livePools.find(p => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol)
-  $: userPool = $userPoolListStore.filteredPools.find(p => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol)
-  $: hasPosition = userPool?.balance && userPool?.amount_0 && userPool?.amount_1;
+  $: pool = $livePools.find(
+    (p) => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol,
+  );
+  $: userPool = $userPoolListStore.filteredPools.find(
+    (p) => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol,
+  );
+  $: hasPosition =
+    userPool?.balance && userPool?.amount_0 && userPool?.amount_1;
   $: hasTokens = token0 && token1;
 </script>
 
@@ -33,17 +37,19 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <TokenImages tokens={[token0, token1]} size={24} overlap />
-            <span class="font-medium text-kong-text-primary/90 whitespace-nowrap text-base">
+            <span
+              class="font-medium text-kong-text-primary/90 whitespace-nowrap text-base"
+            >
               {token0.symbol}/{token1.symbol} Pool
             </span>
           </div>
 
           <!-- Status -->
           <div class="flex items-center">
-            {#if hasPosition}
-
-            {:else}
-              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-500 whitespace-nowrap">
+            {#if hasPosition}{:else}
+              <span
+                class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-500 whitespace-nowrap"
+              >
                 New Position
               </span>
             {/if}
@@ -54,37 +60,50 @@
         {#if hasPosition}
           <Panel variant="transparent" className="">
             <div class="grid grid-cols-3 w-full gap-6">
-            <div>
-              <div class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1">LP Tokens</div>
-              <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                {Number(userPool?.balance)}
+              <div>
+                <div
+                  class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1"
+                >
+                  LP Tokens
+                </div>
+                <div class="text-kong-text-primary/90 font-medium tabular-nums">
+                  {Number(userPool?.balance)}
+                </div>
               </div>
-            </div>
 
-            <div>
-              <div class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1">{token0?.symbol}</div>
-              <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                {Number(userPool?.amount_0)}
+              <div>
+                <div
+                  class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1"
+                >
+                  {token0?.symbol}
+                </div>
+                <div class="text-kong-text-primary/90 font-medium tabular-nums">
+                  {Number(userPool?.amount_0)}
+                </div>
               </div>
-            </div>
 
-            <div>
-              <div class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1">{token1?.symbol}</div>
-              <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                {Number(userPool?.amount_1)}
+              <div>
+                <div
+                  class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1"
+                >
+                  {token1?.symbol}
+                </div>
+                <div class="text-kong-text-primary/90 font-medium tabular-nums">
+                  {Number(userPool?.amount_1)}
+                </div>
               </div>
             </div>
-          </div>
           </Panel>
         {/if}
       </div>
-
     {:else}
       <!-- Vertical Layout -->
       <div class="flex items-center justify-between mb-5">
         <div class="flex flex-col">
           {#if hasPosition}
-            <div class="text-kong-text-primary/60 text-sm font-medium uppercase tracking-wider">
+            <div
+              class="text-kong-text-primary/60 text-sm font-medium uppercase tracking-wider"
+            >
               Current Position
             </div>
             <div class="text-kong-text-primary/40 text-xs mt-1">
@@ -93,10 +112,14 @@
           {:else}
             <div class="flex flex-col gap-1">
               <div class="inline-flex items-center gap-2">
-                <span class="text-sm font-medium uppercase tracking-wider text-kong-text-primary/90">
+                <span
+                  class="text-sm font-medium uppercase tracking-wider text-kong-text-primary/90"
+                >
                   New Position
                 </span>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300">
+                <span
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300"
+                >
                   First LP
                 </span>
               </div>
@@ -114,25 +137,35 @@
       {#if hasPosition}
         <div class="flex flex-col gap-3">
           <div class="bg-black/20 rounded-lg p-4">
-            <div class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1.5">
+            <div
+              class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1.5"
+            >
               LP Tokens
             </div>
-            <div class="text-kong-text-primary/90 text-lg font-medium tabular-nums">
+            <div
+              class="text-kong-text-primary/90 text-lg font-medium tabular-nums"
+            >
               {Number(userPool?.balance)}
             </div>
           </div>
 
           <div class="bg-black/20 rounded-lg p-4">
-            <div class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-3">
+            <div
+              class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-3"
+            >
               Pooled Assets
             </div>
             <div class="flex flex-col gap-3">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <TokenImages tokens={[token0]} size={24} />
-                  <span class="text-kong-text-primary/90 font-medium">{token0?.symbol}</span>
+                  <span class="text-kong-text-primary/90 font-medium"
+                    >{token0?.symbol}</span
+                  >
                 </div>
-                <span class="text-kong-text-primary/90 font-medium tabular-nums">
+                <span
+                  class="text-kong-text-primary/90 font-medium tabular-nums"
+                >
                   {Number(userPool?.amount_0)}
                 </span>
               </div>
@@ -140,9 +173,13 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <TokenImages tokens={[token1]} size={24} />
-                  <span class="text-kong-text-primary/90 font-medium">{token1?.symbol}</span>
+                  <span class="text-kong-text-primary/90 font-medium"
+                    >{token1?.symbol}</span
+                  >
                 </div>
-                <span class="text-kong-text-primary/90 font-medium tabular-nums">
+                <span
+                  class="text-kong-text-primary/90 font-medium tabular-nums"
+                >
                   {Number(userPool?.amount_1)}
                 </span>
               </div>

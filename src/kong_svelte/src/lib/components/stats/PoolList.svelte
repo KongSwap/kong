@@ -3,9 +3,8 @@
     import TokenImages from "$lib/components/common/TokenImages.svelte";
     import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
     import { flip } from "svelte/animate";
-    import type { Pool } from "$lib/services/pools/poolStore";
 
-    export let pools: Pool[] = [];
+    export let pools: any[] = [];
     export let isLoading: boolean = false;
     export let error: string | null = null;
 
@@ -34,7 +33,7 @@
                 <div class="apy-col">APY</div>
             </div>
             <div class="pool-body">
-                {#each validPools as pool (pool.address)}
+                {#each validPools as pool (pool.id)}
                     <div class="pool-row" animate:flip={{ duration: 300 }}>
                         <div class="pool-col">
                             <div class="pool-info">

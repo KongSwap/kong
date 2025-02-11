@@ -10,6 +10,7 @@ import { auth } from "$lib/services/auth";
 import type { TokenState } from "./types";
 import { userTokens } from "$lib/stores/userTokens";
 import { userPoolListStore } from "$lib/stores/userPoolListStore";
+import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
 function createTokenStore() {
   const initialState: TokenState = {
@@ -42,32 +43,6 @@ function createTokenStore() {
 }
 
 export const tokenStore = createTokenStore();
-
-export const liveTokens = readable<FE.Token[]>([], (set) => {
-  if (!browser) {
-    return;
-  }
-
-  const subscription = liveQuery(() => kongDB.tokens.toArray()).subscribe({
-    next: (tokens) => {
-      set(tokens || []);
-    },
-    error: (error) => {
-      set([]);
-    },
-  });
-
-  return () => {
-    subscription?.unsubscribe();
-  };
-});
-
-export const formattedTokens = derived(liveTokens, ($liveTokens) => {
-  return $liveTokens.map((t) => ({
-    ...t,
-    formattedPrice: Number(t.metrics?.price || 0).toFixed(2),
-  }));
-});
 
 const getCurrentWalletId = (): string => {
   const wallet = get(auth);
@@ -276,7 +251,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
 };
 
 export const getTokenDecimals = async (canisterId: string) => {
-  const token = get(userTokens).tokens.find(t => t.canister_id === canisterId);
+  const token = get(userTokens).tokens.find(t => t.canister_id === canisterId) || await fetchTokensByCanisterId([canisterId])[0];
   return token?.decimals || 0;
 };
 

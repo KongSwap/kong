@@ -6,7 +6,7 @@
   import { userPoolListStore } from "$lib/stores/userPoolListStore";
   import { getChartColors, getChartOptions } from './chartConfig';
   import { processPortfolioData, createChartData } from './portfolioDataProcessor';
-  import { derived, type Readable } from "svelte/store";
+  import { derived } from "svelte/store";
   import { userTokens } from "$lib/stores/userTokens";
   Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 

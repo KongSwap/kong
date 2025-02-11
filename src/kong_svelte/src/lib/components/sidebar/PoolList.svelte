@@ -4,7 +4,6 @@
   import { goto } from "$app/navigation";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { ChevronRight, Search, X, ArrowUpDown, Loader2 } from "lucide-svelte";
-  import { PoolService } from "$lib/services/pools";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { userPoolListStore } from "$lib/stores/userPoolListStore";
@@ -44,11 +43,19 @@
   let showUserPoolModal = false;
   let UserPoolComponent: any;
 
-  // Initialize store
+  // Initialize store and handle auth changes
   onMount(() => {
-    if ($auth.isConnected) {
-      userPoolListStore.initialize();
-    }
+    const unsubscribe = auth.subscribe(($auth) => {
+      if ($auth.isConnected) {
+        userPoolListStore.initialize();
+      } else {
+        userPoolListStore.reset();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   });
 
   // --- Event Handlers ---

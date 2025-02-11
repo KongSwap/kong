@@ -4,8 +4,6 @@ export type * from './types';
 // Export stores
 export {
   tokenStore,
-  liveTokens,
-  formattedTokens,
   portfolioValue,
   storedBalancesStore,
   loadBalances,
@@ -29,7 +27,5 @@ export { FavoriteService } from './favoriteService';
 // Export token logos
 export { 
   DEFAULT_LOGOS,
-  tokenLogoStore,
-  saveTokenLogo,
   getTokenLogo
 } from './tokenLogos';

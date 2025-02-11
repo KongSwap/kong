@@ -12,8 +12,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
   import { onMount } from "svelte";
-  import Modal from "$lib/components/common/Modal.svelte";
-  import { userTokens } from "$lib/stores/userTokens";
+    import { fetchTokensByCanisterId } from "$lib/api/tokens";
   // Props with proper TypeScript types
   let {
     title,
@@ -60,9 +59,12 @@
   const DEBOUNCE_DELAY = 1000; // 1 second between balance checks
 
   // Derived state using runes
-  let tokenInfo = $derived(
-    $userTokens.tokens.find((t) => t.canister_id === token?.canister_id),
-  );
+  let tokenInfo = $state<FE.Token | null>(null);
+  $effect(() => {
+    fetchTokensByCanisterId([token?.canister_id]).then(tokens => {
+      tokenInfo = tokens[0];
+    });
+  });
 
   let decimals = $derived(tokenInfo?.decimals || DEFAULT_DECIMALS);
   let isIcrc1 = $derived(tokenInfo?.icrc1 && !tokenInfo?.icrc2);

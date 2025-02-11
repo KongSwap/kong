@@ -7,7 +7,6 @@
   import { fade } from "svelte/transition";
   import { onMount, onDestroy } from "svelte";
   import { get } from "svelte/store";
-  import { replaceState } from "$app/navigation";
   import { page } from "$app/stores";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
@@ -28,6 +27,10 @@
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import { browser } from "$app/environment";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { tick } from "svelte";
+  import { SwapUrlService } from "$lib/services/swap/SwapUrlService";
+  import { SwapButtonService } from "$lib/services/swap/SwapButtonService";
 
   // Types
   type PanelType = "pay" | "receive";
@@ -38,8 +41,6 @@
   }
 
   // Props
-  export let initialFromToken: FE.Token | null = null;
-  export let initialToToken: FE.Token | null = null;
   export let currentMode: "normal" | "pro";
 
   const PANELS: PanelConfig[] = [
@@ -60,10 +61,11 @@
   let rotationCount = 0;
   let isQuoteLoading = false;
   let showSettings = false;
-
-  // Add these near the other state variables at the top
-  let token0Id: string | null = null;
-  let token1Id: string | null = null;
+  let insufficientFunds = false;
+  let reverseDebounce = false;
+  let hasValidPool = false;
+  let skipNextUrlInitialization = false;
+  let currentBalance: string | null = null;
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -85,98 +87,129 @@
     return { top, left };
   }
 
-  // Reactive statements
+  // -------------------------------------------------------------------------
+  // Consolidated balance refresh function
+  async function refreshBalances() {
+    if (!$auth.account?.owner || (!$swapState.payToken && !$swapState.receiveToken)) {
+      return;
+    }
 
-  $: insufficientFunds =
-    $swapState.payToken &&
-    $swapState.payAmount &&
-    Number($swapState.payAmount) >
-      Number(
-        loadBalances($auth.account?.owner, {
+    // Reset any previous error when tokens change
+    swapState.update(s => ({ ...s, error: null }));
+
+    if ($swapState.payToken && $swapState.payAmount && $swapState.payAmount !== "0") {
+      try {
+        const balance = await loadBalances($auth.account.owner, {
           tokens: [$swapState.payToken],
           forceRefresh: true,
-        }),
-      );
-
-  $: buttonText = (() => {
-    if (!$swapState.payToken || !$swapState.receiveToken)
-      return "Select Tokens";
-    if ($swapState.isProcessing) return "Processing...";
-    if (isQuoteLoading) return "Fetching Quote...";
-    if ($swapState.error) return $swapState.error;
-    if (insufficientFunds) return "Insufficient Funds";
-    if ($swapState.swapSlippage > $settingsStore.max_slippage)
-      return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${$settingsStore.max_slippage}%) - Click to Adjust`;
-    if (!$auth?.account?.owner) return "Click to Connect Wallet";
-    if (!$swapState.payAmount) return "Enter Amount";
-    return "SWAP";
-  })();
-
-  // Initialize tokens when they become available
-  $: if (
-    !isInitialized &&
-    initialFromToken !== undefined &&
-    initialToToken !== undefined
-  ) {
-    isInitialized = true;
-    swapState.update((state) => ({
-      ...state,
-      payToken: initialFromToken,
-      receiveToken: initialToToken,
-      payAmount: "",
-      receiveAmount: "",
-    }));
+        });
+        console.log('Balance loaded:', balance);
+        if (balance && balance[$swapState.payToken.canister_id]) {
+          const balanceData = balance[$swapState.payToken.canister_id];
+          const decimals = Number($swapState.payToken.decimals);
+          const rawBalance = balanceData.in_tokens.toString();
+          const adjustedBalance = Number(rawBalance) / Math.pow(10, decimals);
+          currentBalance = adjustedBalance.toString();
+          console.log('Balance comparison:', {
+            payAmount: $swapState.payAmount,
+            rawBalance,
+            adjustedBalance,
+            decimals
+          });
+          insufficientFunds = Number($swapState.payAmount) > adjustedBalance;
+          console.log('Updated insufficient funds:', insufficientFunds);
+        } else {
+          console.log('No balance data available');
+          currentBalance = null;
+          insufficientFunds = false;
+        }
+      } catch (error) {
+        console.error('Error loading balance:', error);
+        currentBalance = null;
+        insufficientFunds = false;
+      }
+    } else {
+      // If no pay amount used, just refresh balances for logging purposes
+      loadBalances($auth.account.owner, {
+        tokens: [$swapState.payToken, $swapState.receiveToken],
+        forceRefresh: true,
+      }).then(balance => {
+        console.log('Balance loaded:', balance);
+      });
+    }
   }
 
-  // Add this function to handle initial URL params
-  function initializeFromUrl() {
-    if (!browser || !$userTokens.tokens.length) return;
-
-    const token0Id =
-      $page.url.searchParams.get("from") ||
-      $page.url.searchParams.get("token0");
-    const token1Id =
-      $page.url.searchParams.get("to") || $page.url.searchParams.get("token1");
-
-    if (!token0Id && !token1Id) return;
-
-    const token0 = token0Id
-      ? $userTokens.tokens.find((t) => t.canister_id === token0Id)
-      : null;
-    const token1 = token1Id
-      ? $userTokens.tokens.find((t) => t.canister_id === token1Id)
-      : null;
-
-    if (token0 || token1) {
-      swapState.update((state) => ({
-        ...state,
-        payToken: token0 || state.payToken,
-        receiveToken: token1 || state.receiveToken,
-        payAmount: "",
-        receiveAmount: "",
-        error: null,
-      }));
+  // Reactive statement to call refreshBalances when token or amount changes
+  $: {
+    if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
+      refreshBalances();
+    } else {
+      currentBalance = null;
+      insufficientFunds = false;
     }
+  }
+  // -------------------------------------------------------------------------
+
+  $: buttonText = SwapButtonService.getButtonText(
+    $swapState,
+    $settingsStore,
+    isQuoteLoading,
+    insufficientFunds,
+    $auth
+  );
+
+  $: buttonDisabled = SwapButtonService.isButtonDisabled(
+    $swapState,
+    insufficientFunds,
+    isQuoteLoading,
+    $auth
+  );
+
+  // Replace initializeFromUrl with:
+  async function initializeFromUrl() {
+    await SwapUrlService.initializeFromUrl(
+      $userTokens.tokens,
+      fetchTokensByCanisterId,
+      (token0, token1) => {
+        swapState.update((state) => ({
+          ...state,
+          payToken: token0 || state.payToken,
+          receiveToken: token1 || state.receiveToken,
+          payAmount: "",
+          receiveAmount: "",
+          error: null,
+        }));
+      }
+    );
+  }
+
+  // Replace updateTokenInURL with:
+  function updateTokenInURL(param: "from" | "to", tokenId: string) {
+    SwapUrlService.updateTokenInURL(param, tokenId);
   }
 
   // Update onMount to handle URL parameters
-  onMount(() => {
+  onMount(async () => {
     if (browser) {
-      initializeFromUrl();
-      settingsStore.initializeStore();
-
-      // Set up page store subscription for URL changes
-      const unsubscribe = page.subscribe(() => {
-        if (browser) {
-          initializeFromUrl();
-        }
-      });
-
-      return () => {
-        unsubscribe();
-      };
+      if (skipNextUrlInitialization) {
+        console.log("Skipping initializeFromUrl because we just reversed tokens.");
+        skipNextUrlInitialization = false;
+      } else {
+        await initializeFromUrl();
+      }
+      await tick();
+      // If no tokens were set via the URL, initialize default tokens
+      if (!$swapState.payToken || !$swapState.receiveToken) {
+        await swapState.initializeTokens(null, null);
+      }
+      isInitialized = true;
+      console.log('Initialization complete');
     }
   });
+
+  $: if ($auth.isConnected) {
+    settingsStore.initializeStore();
+  }
 
   // Modify the poolExists function to add more debugging
   function poolExists(
@@ -319,31 +352,19 @@
       return;
     }
 
-    if (!insufficientFunds && $swapState.payAmount) {
-      await handleSwapClick();
+    if (!$swapState.payToken || !$swapState.receiveToken) {
+      toastStore.error("Please select tokens");
+      return;
     }
+
+    if (!$swapState.payAmount || $swapState.payAmount === "0") {
+      toastStore.error("Please enter an amount");
+      return;
+    }
+
+    await handleSwapClick();
   }
 
-  // Initialization functions
-  async function initializeComponent(): Promise<void> {
-    try {
-      // Only initialize default tokens if no URL parameters are present
-      const token0Id = get(page).url.searchParams.get("token0");
-      const token1Id = get(page).url.searchParams.get("token1");
-
-      if (
-        !token0Id &&
-        !token1Id &&
-        !isInitialized &&
-        $userTokens.tokens.length > 0
-      ) {
-        isInitialized = true;
-        swapState.initializeTokens(initialFromToken, initialToToken);
-      }
-    } catch (error) {
-      console.error("Error initializing component:", error);
-    }
-  }
 
   async function handleAmountChange(event: CustomEvent) {
     const { value, panelType } = event.detail;
@@ -373,58 +394,44 @@
     }
   }
 
+  // Modify handleReverseTokens to avoid referencing $swapState mid-update
   async function handleReverseTokens() {
-    if ($swapState.isProcessing) return;
+    if (!isInitialized || $swapState.isProcessing || reverseDebounce) return;
+    reverseDebounce = true;
+    setTimeout(() => (reverseDebounce = false), 500);
 
-    rotationCount++;
-
-    const tempPayToken = $swapState.payToken;
+    const currentPayToken = $swapState.payToken;
+    const currentReceiveToken = $swapState.receiveToken;
     const tempPayAmount = $swapState.payAmount;
     const tempReceiveAmount = $swapState.receiveAmount;
+    if (!currentPayToken || !currentReceiveToken) return;
 
-    // Update tokens and reset error state
+    rotationCount++;
     swapState.update((s) => ({
       ...s,
-      payToken: s.receiveToken,
-      receiveToken: tempPayToken,
+      payToken: currentReceiveToken,
+      receiveToken: currentPayToken,
       error: null,
     }));
 
-    // Load both balances at once after reversing
-    if ($swapState.payToken && $swapState.receiveToken) {
-      await loadBalances(auth?.pnp?.account?.owner?.toString(), {
-        tokens: [$swapState.payToken, $swapState.receiveToken],
-        forceRefresh: true,
-      });
-    }
+    await tick();
+    await refreshBalances();
 
-    // Set the new pay amount
+    // Update amounts and quote
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
       swapState.setPayAmount(tempReceiveAmount);
     } else if (tempPayAmount) {
       swapState.setPayAmount(tempPayAmount);
     }
-
-    // Update quote with reversed tokens
     await updateSwapQuote();
 
-    // Update URL params
-    if (
-      $swapState.payToken?.canister_id &&
-      $swapState.receiveToken?.canister_id
-    ) {
+    // Before updating the URL, set the flag:
+    skipNextUrlInitialization = true;
+
+    if ($swapState.payToken?.canister_id && $swapState.receiveToken?.canister_id) {
       updateTokenInURL("from", $swapState.payToken.canister_id);
       updateTokenInURL("to", $swapState.receiveToken.canister_id);
     }
-  }
-
-  // Update the updateTokenInURL function to use the correct parameter names
-  function updateTokenInURL(param: "from" | "to", tokenId: string) {
-    if (!browser) return;
-
-    const url = new URL(window.location.href);
-    url.searchParams.set(param, tokenId);
-    replaceState(url.toString(), {});
   }
 
   // Add a new state for quote loading
@@ -543,28 +550,8 @@
   }
 
   // Add a reactive statement to check pool existence
-  $: hasValidPool = poolExists($swapState.payToken, $swapState.receiveToken);
-
-  // Add a reactive statement to update button state when tokens change
   $: {
-    if ($swapState.payToken || $swapState.receiveToken) {
-      loadBalances(auth?.pnp?.account?.owner?.toString(), {
-        tokens: [$swapState.payToken, $swapState.receiveToken],
-        forceRefresh: true,
-      });
-      swapState.update((s) => ({
-        ...s,
-        error: null, // Reset error state when tokens change
-      }));
-    }
-  }
-
-  // Add reactive statement to load balances when auth becomes available
-  $: if ($auth.isConnected && $swapState.payToken && $swapState.receiveToken) {
-    loadBalances($auth.account?.owner?.toString(), {
-      tokens: [$swapState.payToken, $swapState.receiveToken],
-      forceRefresh: true,
-    });
+    hasValidPool = poolExists($swapState.payToken, $swapState.receiveToken);
   }
 
   // Add this near your other lifecycle hooks
@@ -649,9 +636,7 @@
           !isQuoteLoading}
         class:shine-animation={buttonText === "SWAP"}
         on:click={handleButtonAction}
-        disabled={$swapState.isProcessing ||
-          insufficientFunds ||
-          isQuoteLoading}
+        disabled={buttonDisabled}
       >
         <div class="button-content">
           {#if $swapState.isProcessing || isQuoteLoading}

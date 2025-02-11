@@ -9,7 +9,6 @@
   import { createEventDispatcher } from "svelte";
   import { tick } from "svelte";
   import { X } from "lucide-svelte";
-  import { writable } from "svelte/store";
   import { modalStack } from "$lib/stores/modalStore";
 
   const dispatch = createEventDispatcher();

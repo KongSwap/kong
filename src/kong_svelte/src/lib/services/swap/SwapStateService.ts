@@ -3,10 +3,10 @@ import type { Writable } from 'svelte/store';
 import { fromTokenDecimals, storedBalancesStore } from '$lib/services/tokens/tokenStore';
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
-import { KONG_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
+import { KONG_LEDGER_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { BigNumber } from 'bignumber.js';
 import { livePools } from '../pools/poolStore';
-import { userTokens } from '$lib/stores/userTokens';
+import { fetchTokensByCanisterId } from '$lib/api/tokens';
 
 export interface SwapState {
   payToken: FE.Token | null;
@@ -42,7 +42,7 @@ export interface SwapState {
 
 export interface SwapStore extends Writable<SwapState> {
   isInputExceedingBalance: Readable<boolean>;
-  initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null): void;
+  initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null): Promise<void>;
   setPayAmount(amount: string): void;
   setReceiveAmount(amount: string): void;
   setPayToken(token: FE.Token | null): void;
@@ -110,8 +110,10 @@ function createSwapStore(): SwapStore {
     update,
     isInputExceedingBalance,
 
-    initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null) {
-      const tokens = get(userTokens).tokens;
+    async initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null) {
+      // If no initial tokens are provided, use defaults: ICP and CKUSDT
+      const tokenIds = (initialFromToken || initialToToken) ? [initialFromToken?.canister_id, initialToToken?.canister_id] : [ICP_CANISTER_ID, KONG_LEDGER_CANISTER_ID];
+      const tokens = await fetchTokensByCanisterId(tokenIds);
       
       // If we have initial tokens, use them directly
       if (initialFromToken && initialToToken) {
@@ -130,7 +132,7 @@ function createSwapStore(): SwapStore {
       // If we have tokens loaded, set defaults
       if (tokens.length > 0) {
         const defaultPayToken = tokens.find(t => t.canister_id === ICP_CANISTER_ID);
-        const defaultReceiveToken = tokens.find(t => t.canister_id === KONG_CANISTER_ID);
+        const defaultReceiveToken = tokens.find(t => t.canister_id === KONG_LEDGER_CANISTER_ID);
 
         update(state => ({
           ...state,

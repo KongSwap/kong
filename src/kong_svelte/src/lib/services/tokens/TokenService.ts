@@ -7,11 +7,9 @@ import {
 import { get } from "svelte/store";
 import {
   INDEXER_URL,
-} from "$lib/constants/canisterConstants";
-import { loadPools } from "$lib/services/pools/poolStore";
+} from "$lib/api/index";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
-import { kongDB } from "../db";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "$lib/api/tokens";
 import { toastStore } from "$lib/stores/toastStore";

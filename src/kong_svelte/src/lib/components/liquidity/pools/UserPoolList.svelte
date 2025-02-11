@@ -4,7 +4,6 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { Plus, Minus } from "lucide-svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
-  import { livePools } from "$lib/services/pools/poolStore";
   import { onMount } from "svelte";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { writable } from "svelte/store";
@@ -85,9 +84,6 @@
         .map((poolBalance) => {
           const token0 = tokens[poolBalance.address_0];
           const token1 = tokens[poolBalance.address_1];
-          const matchingPool = $livePools.find(
-            (p) => p.address_0 === poolBalance.address_0 && p.address_1 === poolBalance.address_1
-          );
 
           return {
             id: poolBalance.name,

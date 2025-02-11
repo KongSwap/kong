@@ -1,6 +1,5 @@
 import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
-import { kongDB } from '$lib/services/db';
 import type { Settings } from './types';
 import { auth } from '../auth';
 
@@ -9,6 +8,8 @@ const DEFAULT_SETTINGS: Settings = {
   max_slippage: 2.0,
   timestamp: Date.now(),
 };
+
+const SETTINGS_KEY = 'kong_settings';
 
 function createSettingsStore() {
   const { subscribe, set, update } = writable<Settings>(DEFAULT_SETTINGS);
@@ -23,16 +24,23 @@ function createSettingsStore() {
       }
 
       try {
-        const dbSettings = await kongDB.settings.get(walletId);
-        if (dbSettings) {
-          set(dbSettings);
+        const storedSettings = localStorage.getItem(`${SETTINGS_KEY}_${walletId}`);
+        if (storedSettings) {
+          const dbSettings = JSON.parse(storedSettings);
+          // Ensure max_slippage is set when loading from localStorage
+          set({
+            ...DEFAULT_SETTINGS, // Start with defaults
+            ...dbSettings, // Override with stored settings
+            max_slippage: dbSettings.max_slippage ?? DEFAULT_SETTINGS.max_slippage // Ensure max_slippage has a value
+          });
         } else {
           // If no settings exist, store default settings
-          await kongDB.settings.put({
+          const defaultSettings = {
             ...DEFAULT_SETTINGS,
             principal_id: walletId,
             timestamp: Date.now()
-          });
+          };
+          localStorage.setItem(`${SETTINGS_KEY}_${walletId}`, JSON.stringify(defaultSettings));
         }
       } catch (error) {
         console.error('Error initializing settings:', error);
@@ -58,12 +66,12 @@ function createSettingsStore() {
 
       if (browser) {
         try {
-          kongDB.settings.put({
+          const settingsToStore = {
             ...newSettings,
             principal_id: walletId,
             timestamp: Date.now(),
-          });
-
+          };
+          localStorage.setItem(`${SETTINGS_KEY}_${walletId}`, JSON.stringify(settingsToStore));
         } catch (error) {
           console.error("Error updating settings:", error);
         }
@@ -74,7 +82,7 @@ function createSettingsStore() {
   }
 
   async function reset() {
-    const walletId = get(auth).account?.owner;
+    const walletId = get(auth).account?.owner?.toString();
     if (!walletId) {
       console.error('Wallet ID is not available.');
       return;
@@ -83,11 +91,12 @@ function createSettingsStore() {
     set(DEFAULT_SETTINGS);
     
     if (browser) {
-      await kongDB.settings.put({
+      const defaultSettings = {
         ...DEFAULT_SETTINGS,
         principal_id: walletId,
         timestamp: Date.now(),
-      });
+      };
+      localStorage.setItem(`${SETTINGS_KEY}_${walletId}`, JSON.stringify(defaultSettings));
     }
   }
 
@@ -99,7 +108,7 @@ function createSettingsStore() {
     reset,
     soundEnabled: derived(
       { subscribe },
-      ($settings) => $settings.sound_enabled,
+      ($settings) => $settings.sound_enabled ?? DEFAULT_SETTINGS.sound_enabled,
     ),
     currentLanguage: derived(
       { subscribe },

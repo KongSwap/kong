@@ -1,4 +1,4 @@
-import { INDEXER_URL } from "../../constants/canisterConstants";
+import { INDEXER_URL } from "$lib/api/index";
 
 export async function fetchTransactions(
   canisterId: string | number, 

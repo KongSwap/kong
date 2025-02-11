@@ -55,7 +55,7 @@
     "eslint-plugin-svelte": "^2.46.0",
     "jsdom": "26.0.0",
     "lodash-es": "^4.17.21",
-    "lucide-svelte": "0.474.0",
+    "lucide-svelte": "0.475.0",
     "postcss": "^8.4.47",
     "prettier": "^3.3.3",
     "prettier-eslint": "^16.3.0",

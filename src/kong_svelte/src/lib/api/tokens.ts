@@ -1,4 +1,4 @@
-import { INDEXER_URL } from "./index";
+import { INDEXER_URL } from "$lib/api/index";
 import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
 
 

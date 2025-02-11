@@ -2,7 +2,7 @@
   import { page } from "$app/stores";
   import { onDestroy, onMount } from "svelte";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { fetchTransactions } from "$lib/services/transactions";
+  import { fetchTransactions } from "$lib/api/transactions";
   import TransactionRow from "./TransactionRow.svelte";
   import { fetchTokens } from '$lib/api/tokens';
   import { writable } from 'svelte/store';
