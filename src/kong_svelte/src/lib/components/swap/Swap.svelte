@@ -62,16 +62,9 @@
   let isQuoteLoading = false;
   let showSettings = false;
   let insufficientFunds = false;
-
-  // Add a debounce mechanism
   let reverseDebounce = false;
-
-  // Ensure all necessary variables are defined
   let hasValidPool = false;
-
   let skipNextUrlInitialization = false;
-
-  // Add a store for the current balance
   let currentBalance: string | null = null;
 
   // Function to calculate optimal dropdown position
@@ -94,51 +87,68 @@
     return { top, left };
   }
 
-  // Reactive statements
-  $: {
-    // Only check balance if we have both a token and an amount
+  // -------------------------------------------------------------------------
+  // Consolidated balance refresh function
+  async function refreshBalances() {
+    if (!$auth.account?.owner || (!$swapState.payToken && !$swapState.receiveToken)) {
+      return;
+    }
+
+    // Reset any previous error when tokens change
+    swapState.update(s => ({ ...s, error: null }));
+
     if ($swapState.payToken && $swapState.payAmount && $swapState.payAmount !== "0") {
-      loadBalances($auth.account?.owner, {
-        tokens: [$swapState.payToken],
-        forceRefresh: true,
-      }).then(balance => {
+      try {
+        const balance = await loadBalances($auth.account.owner, {
+          tokens: [$swapState.payToken],
+          forceRefresh: true,
+        });
         console.log('Balance loaded:', balance);
         if (balance && balance[$swapState.payToken.canister_id]) {
           const balanceData = balance[$swapState.payToken.canister_id];
           const decimals = Number($swapState.payToken.decimals);
-          
-          // Convert bigint balance to human readable format using decimals
           const rawBalance = balanceData.in_tokens.toString();
           const adjustedBalance = Number(rawBalance) / Math.pow(10, decimals);
           currentBalance = adjustedBalance.toString();
-          
           console.log('Balance comparison:', {
             payAmount: $swapState.payAmount,
             rawBalance,
             adjustedBalance,
             decimals
           });
-
-          // Update insufficient funds using the adjusted balance
           insufficientFunds = Number($swapState.payAmount) > adjustedBalance;
-          
           console.log('Updated insufficient funds:', insufficientFunds);
         } else {
           console.log('No balance data available');
           currentBalance = null;
           insufficientFunds = false;
         }
-      }).catch(error => {
+      } catch (error) {
         console.error('Error loading balance:', error);
         currentBalance = null;
         insufficientFunds = false;
-      });
+      }
     } else {
-      console.log('Missing required data for balance check');
+      // If no pay amount used, just refresh balances for logging purposes
+      loadBalances($auth.account.owner, {
+        tokens: [$swapState.payToken, $swapState.receiveToken],
+        forceRefresh: true,
+      }).then(balance => {
+        console.log('Balance loaded:', balance);
+      });
+    }
+  }
+
+  // Reactive statement to call refreshBalances when token or amount changes
+  $: {
+    if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
+      refreshBalances();
+    } else {
       currentBalance = null;
       insufficientFunds = false;
     }
   }
+  // -------------------------------------------------------------------------
 
   $: buttonText = SwapButtonService.getButtonText(
     $swapState,
@@ -185,15 +195,21 @@
         console.log("Skipping initializeFromUrl because we just reversed tokens.");
         skipNextUrlInitialization = false;
       } else {
-        // Always load from the URL if present
         await initializeFromUrl();
       }
-      settingsStore.initializeStore();
-
+      await tick();
+      // If no tokens were set via the URL, initialize default tokens
+      if (!$swapState.payToken || !$swapState.receiveToken) {
+        await swapState.initializeTokens(null, null);
+      }
       isInitialized = true;
       console.log('Initialization complete');
     }
   });
+
+  $: if ($auth.isConnected) {
+    settingsStore.initializeStore();
+  }
 
   // Modify the poolExists function to add more debugging
   function poolExists(
@@ -399,12 +415,7 @@
     }));
 
     await tick();
-    if ($swapState.payToken && $swapState.receiveToken) {
-      await loadBalances(auth?.pnp?.account?.owner?.toString(), {
-        tokens: [$swapState.payToken, $swapState.receiveToken],
-        forceRefresh: true,
-      });
-    }
+    await refreshBalances();
 
     // Update amounts and quote
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
@@ -541,31 +552,6 @@
   // Add a reactive statement to check pool existence
   $: {
     hasValidPool = poolExists($swapState.payToken, $swapState.receiveToken);
-  }
-
-  // Add a reactive statement to update button state when tokens change
-  $: {
-    if ($swapState.payToken || $swapState.receiveToken) {
-      loadBalances(auth?.pnp?.account?.owner?.toString(), {
-        tokens: [$swapState.payToken, $swapState.receiveToken],
-        forceRefresh: true,
-      });
-      swapState.update((s) => ({
-        ...s,
-        error: null, // Reset error state when tokens change
-      }));
-    }
-  }
-
-  // Add a reactive statement to load balances when tokens change
-  $: if ($swapState.payToken && $auth.account?.owner) {
-    console.log('Triggering balance refresh');
-    loadBalances($auth.account.owner, {
-      tokens: [$swapState.payToken],
-      forceRefresh: true,
-    }).then(balance => {
-      console.log('Balance loaded:', balance);
-    });
   }
 
   // Add this near your other lifecycle hooks

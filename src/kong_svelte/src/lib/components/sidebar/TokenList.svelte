@@ -182,7 +182,7 @@
   </div>
 
   <div class="token-list-content">
-    <div class="token-rows">
+    <div class="token-rows !pb-20">
       {#each $filteredTokens.tokens as token (token.canister_id)}
         <div class="token-row-wrapper">
           <TokenRow
@@ -232,7 +232,7 @@
 
 <style scoped lang="postcss">
   .token-list-container {
-    @apply flex flex-col min-h-[87dvh] relative;
+    @apply flex flex-col min-h-[90dvh] relative;
   }
 
   .search-section {

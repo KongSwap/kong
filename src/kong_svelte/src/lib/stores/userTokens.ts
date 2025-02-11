@@ -30,10 +30,14 @@ function createUserTokensStore() {
     const currentState = get(state);
     const canisterIds = Object.keys(currentState.enabledTokens);
     const tokens = await fetchTokensByCanisterId(canisterIds);
-    update(state => ({
-      ...state,
-      tokens
-    }));
+    update(state => {
+      const newState = {
+        ...state,
+        tokens
+      };
+      updateStorage(newState);
+      return newState;
+    });
   };
 
   return {

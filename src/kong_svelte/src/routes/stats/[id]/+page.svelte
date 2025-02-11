@@ -352,7 +352,7 @@
                     pool_id: String(pool.pool_id),
                     tvl: String(pool.tvl),
                     lp_token_supply: String(pool.lp_token_supply),
-                    volume_24h: String(pool.daily_volume || "0"),
+                    volume_24h: String(pool.volume_24h || "0"),
                   } as unknown as BE.Pool;
                 }}
               />
@@ -377,7 +377,7 @@
                   className="!w-1/2 text-nowrap flex justify-center"
                   on:click={() =>
                     goto(
-                      `/swap?from=${selectedPool?.address_0}&to=${selectedPool?.address_1}`,
+                      `/swap?from=${selectedPool?.address_1}&to=${selectedPool?.address_0}`,
                     )}
                 >
                   <div class="flex items-center gap-2">
@@ -547,7 +547,7 @@
                       pool_id: String(pool.pool_id),
                       tvl: String(pool.tvl),
                       lp_token_supply: String(pool.lp_token_supply),
-                      volume_24h: String(pool.daily_volume || "0"),
+                      volume_24h: String(pool.volume_24h || "0"),
                     } as unknown as BE.Pool;
                   }}
                 />
@@ -572,7 +572,7 @@
                     className="!w-1/2 text-nowrap flex justify-center"
                     on:click={() =>
                       goto(
-                        `/swap?from=${selectedPool?.address_0}&to=${selectedPool?.address_1}`,
+                        `/swap?from=${selectedPool?.address_1}&to=${selectedPool?.address_0}`,
                       )}
                   >
                     <div class="flex items-center gap-2">

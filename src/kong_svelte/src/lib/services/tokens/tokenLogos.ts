@@ -10,7 +10,6 @@ import {
   KINIC_CANISTER_ID,
   CHAT_CANISTER_ID,
   CTZ_CANISTER_ID,
-  DOLR_CANISTER_ID,
   ICS_CANISTER_ID,
 } from "$lib/constants/canisterConstants";
 import { userTokens } from "$lib/stores/userTokens";
@@ -24,7 +23,6 @@ export const DEFAULT_LOGOS = {
   [KINIC_CANISTER_ID]: '/tokens/kinic_logo.png',
   [CHAT_CANISTER_ID]: '/tokens/openchat_logo.png',
   [CTZ_CANISTER_ID]: '/tokens/catalyze_logo.png',
-  [DOLR_CANISTER_ID]: '/tokens/yral_logo.png', // The yral token with DOLR as ticker
   [ICS_CANISTER_ID]: '/tokens/ics_logo.png',
   [BIL_CANISTER_ID]: '/tokens/bil_logo.webp',
   DEFAULT: '/tokens/not_verified.webp',
@@ -50,7 +48,6 @@ export async function saveTokenLogo(canister_id: string, image_url: string): Pro
 
 export async function getTokenLogo(canister_id: string): Promise<string> {
   try {    
-    // Check if it is a default logo, including the new yral token.
     if (canister_id in DEFAULT_LOGOS) {
       return DEFAULT_LOGOS[canister_id as keyof typeof DEFAULT_LOGOS];
     }

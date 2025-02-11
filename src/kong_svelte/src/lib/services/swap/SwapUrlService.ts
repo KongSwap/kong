@@ -1,6 +1,5 @@
 import { browser } from "$app/environment";
 import { replaceState } from "$app/navigation";
-import type { Token } from "$lib/types";
 
 export class SwapUrlService {
     static updateTokenInURL(param: "from" | "to", tokenId: string) {
@@ -12,9 +11,9 @@ export class SwapUrlService {
     }
 
     static async initializeFromUrl(
-        userTokens: Token[], 
-        fetchTokensByCanisterId: (ids: string[]) => Promise<Token[]>,
-        onTokensLoaded: (token0: Token | null, token1: Token | null) => void
+        userTokens: FE.Token[], 
+        fetchTokensByCanisterId: (ids: string[]) => Promise<FE.Token[]>,
+        onTokensLoaded: (token0: FE.Token | null, token1: FE.Token | null) => void
     ) {
         if (!browser || !userTokens.length) return;
 

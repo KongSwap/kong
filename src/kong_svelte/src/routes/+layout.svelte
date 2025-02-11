@@ -8,20 +8,22 @@
   import { appLoader } from "$lib/services/appLoader";
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
-  import QRModal from '$lib/components/common/QRModal.svelte';
-  import { themeStore } from '$lib/stores/themeStore';
-  import { browser } from '$app/environment';
+  import QRModal from "$lib/components/common/QRModal.svelte";
+  import { themeStore } from "$lib/stores/themeStore";
+  import { browser } from "$app/environment";
   import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
   import { auth } from "$lib/services/auth";
   import { kongDB } from "$lib/services/db";
-    import { userTokens } from "$lib/stores/userTokens";
-    import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
-    import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  
-  let pageTitle = $state(process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]");
+  import { userTokens } from "$lib/stores/userTokens";
+  import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
+
+  let pageTitle = $state(
+    process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
+  );
   let initializationPromise: Promise<void> | null = null;
   let initializationError: Error | null = null;
-  let defaultTokens: FE.Token[] = []
+  let defaultTokens: FE.Token[] = [];
   async function init() {
     if (initializationPromise) {
       return initializationPromise;
@@ -32,7 +34,7 @@
         await kongDB.initialize();
         await auth.initialize();
         await appLoader.initialize();
-        console.log('[App] App initialization complete');
+        console.log("[App] App initialization complete");
       } catch (error) {
         console.error("[App] Initialization error:", error);
         initializationError = error as Error;
@@ -45,16 +47,19 @@
   }
 
   onMount(async () => {
-    init().catch(error => {
+    init().catch((error) => {
       console.error("[App] Failed to initialize app:", error);
       initializationError = error;
     });
 
-    defaultTokens = await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS))
-    if(defaultTokens.length > 0 && !$auth.isConnected) {
-      userTokens.enableTokens(defaultTokens)
+    defaultTokens = await fetchTokensByCanisterId(
+      Object.values(DEFAULT_TOKENS),
+    );
+    if (defaultTokens.length > 0 && !$auth.isConnected) {
+      userTokens.enableTokens(defaultTokens);
     }
-    
+    await userTokens.refreshTokenData();
+
     if (browser) {
       themeStore.initTheme();
     }
@@ -67,10 +72,10 @@
   });
 
   $effect(() => {
-    if(defaultTokens.length > 0 && !$auth.isConnected) {
-      userTokens.enableTokens(defaultTokens)
+    if (defaultTokens.length > 0 && !$auth.isConnected) {
+      userTokens.enableTokens(defaultTokens);
     }
-  })
+  });
 </script>
 
 {#if initializationError}
@@ -85,7 +90,7 @@
 
 <div class="app-container">
   <PageWrapper page={$page.url.pathname}>
-      <div class="ticker-section">
+    <div class="ticker-section">
       <TokenTicker />
     </div>
     <div class="nav-container">
@@ -94,7 +99,7 @@
     <main class="content-container">
       {#key $page.url.pathname}
         <div class="w-full h-full" in:fade={{ duration: 250 }}>
-           <slot />
+          <slot />
         </div>
       {/key}
     </main>

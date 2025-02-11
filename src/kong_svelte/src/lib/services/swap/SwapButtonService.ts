@@ -1,5 +1,5 @@
+import type { Settings } from "../settings/types";
 import type { SwapState } from "./SwapStateService";
-import type { SettingsStore } from "../settings/settingsStore";
 
 interface AuthState {
   isConnected: boolean;
@@ -8,7 +8,7 @@ interface AuthState {
 export class SwapButtonService {
     static getButtonText(
         swapState: SwapState,
-        settingsStore: SettingsStore,
+        settingsStore: Settings,
         isQuoteLoading: boolean,
         insufficientFunds: boolean,
         auth: AuthState

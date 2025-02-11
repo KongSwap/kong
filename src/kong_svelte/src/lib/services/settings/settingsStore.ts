@@ -25,7 +25,12 @@ function createSettingsStore() {
       try {
         const dbSettings = await kongDB.settings.get(walletId);
         if (dbSettings) {
-          set(dbSettings);
+          // Ensure max_slippage is set when loading from DB
+          set({
+            ...DEFAULT_SETTINGS, // Start with defaults
+            ...dbSettings, // Override with DB settings
+            max_slippage: dbSettings.max_slippage ?? DEFAULT_SETTINGS.max_slippage // Ensure max_slippage has a value
+          });
         } else {
           // If no settings exist, store default settings
           await kongDB.settings.put({
@@ -99,7 +104,7 @@ function createSettingsStore() {
     reset,
     soundEnabled: derived(
       { subscribe },
-      ($settings) => $settings.sound_enabled,
+      ($settings) => $settings.sound_enabled ?? DEFAULT_SETTINGS.sound_enabled,
     ),
     currentLanguage: derived(
       { subscribe },

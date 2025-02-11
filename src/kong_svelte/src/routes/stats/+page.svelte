@@ -1,14 +1,11 @@
 <script lang="ts">
-  import { tooltip } from "$lib/actions/tooltip";
   import { writable, derived } from "svelte/store";
-  import type { Readable } from "svelte/store";
   import {
     CKUSDT_CANISTER_ID,
     ICP_CANISTER_ID,
     KONG_CANISTER_ID,
   } from "$lib/constants/canisterConstants";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { livePoolTotals } from "$lib/services/pools/poolStore";
   import {
     TrendingUp,
     ChevronDown,
