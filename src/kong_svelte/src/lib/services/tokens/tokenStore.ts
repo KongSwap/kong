@@ -44,32 +44,6 @@ function createTokenStore() {
 
 export const tokenStore = createTokenStore();
 
-export const liveTokens = readable<FE.Token[]>([], (set) => {
-  if (!browser) {
-    return;
-  }
-
-  const subscription = liveQuery(() => kongDB.tokens.toArray()).subscribe({
-    next: (tokens) => {
-      set(tokens || []);
-    },
-    error: (error) => {
-      set([]);
-    },
-  });
-
-  return () => {
-    subscription?.unsubscribe();
-  };
-});
-
-export const formattedTokens = derived(liveTokens, ($liveTokens) => {
-  return $liveTokens.map((t) => ({
-    ...t,
-    formattedPrice: Number(t.metrics?.price || 0).toFixed(2),
-  }));
-});
-
 const getCurrentWalletId = (): string => {
   const wallet = get(auth);
   return wallet?.account?.owner?.toString() || "anonymous";

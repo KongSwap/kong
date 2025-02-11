@@ -13,8 +13,7 @@ import {
   ICS_CANISTER_ID,
 } from "$lib/constants/canisterConstants";
 import { userTokens } from "$lib/stores/userTokens";
-import { kongDB } from '../db';
-import { get, writable } from 'svelte/store';
+import { get } from 'svelte/store';
 
 // The static assets URL.
 export const DEFAULT_LOGOS = {
@@ -28,23 +27,6 @@ export const DEFAULT_LOGOS = {
   DEFAULT: '/tokens/not_verified.webp',
   null: '/tokens/not_verified.webp'
 } as const;
-
-// Initialize the tokenLogoStore with the default logos.
-export const tokenLogoStore = writable<Record<string, string>>({
-  ...DEFAULT_LOGOS
-});
-
-export async function saveTokenLogo(canister_id: string, image_url: string): Promise<void> {
-  try {
-    await kongDB.images.put({
-      canister_id,
-      image_url,
-      timestamp: Date.now()
-    });
-  } catch (error) {
-    console.error('Error saving token logo:', error);
-  }
-}
 
 export async function getTokenLogo(canister_id: string): Promise<string> {
   try {    

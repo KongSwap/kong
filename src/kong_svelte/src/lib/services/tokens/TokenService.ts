@@ -7,7 +7,7 @@ import {
 import { get } from "svelte/store";
 import {
   INDEXER_URL,
-} from "$lib/constants/canisterConstants";
+} from "$lib/api/index";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";

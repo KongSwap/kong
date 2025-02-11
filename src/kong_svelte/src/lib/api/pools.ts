@@ -1,5 +1,4 @@
-import { INDEXER_URL } from "./index";
-
+import { INDEXER_URL } from "$lib/api/index";
 
 export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total_count: number, total_pages: number, page: number, limit: number}> => {
   try {

@@ -80,40 +80,7 @@ export const filteredLivePools = derived(
   },
 );
 
-export const livePoolTotals = readable<FE.PoolTotal[]>([], (set) => {
-  if (!browser) {
-    set([]);
-    return;
-  }
-
-  const subscription = liveQuery(async () => {
-    const totals = await kongDB.pool_totals.toArray();
-    if (!totals?.length) {
-      return [
-        {
-          id: "current",
-          total_tvl: BigInt(0),
-          total_24h_volume: BigInt(0),
-          total_24h_lp_fee: BigInt(0),
-          total_24h_num_swaps: BigInt(0),
-          timestamp: Date.now(),
-        },
-      ];
-    }
-    return totals;
-  }).subscribe({
-    next: (value) => {
-      set(value);
-    },
-    error: (err) => console.error("[livePoolTotals] Error:", err),
-  });
-
-  return () => {
-    if (subscription) subscription.unsubscribe();
-  };
-});
-
-export const liveUserPools = writable<ProcessedPool[]>([]);
+export const liveUserPools = writable<ExtendedPool[]>([]);
 
 export const loadPools = async () => {
   try {
@@ -126,16 +93,8 @@ export const loadPools = async () => {
     const pools = await formatPoolData(poolsData.pools);
 
     // Store in DB instead of cache
-    await kongDB.transaction("rw", [kongDB.pools, kongDB.pool_totals], async () => {
+    await kongDB.transaction("rw", [kongDB.pools], async () => {
       await kongDB.pools.bulkPut(pools);
-      await kongDB.pool_totals.put({
-        id: "current",
-        total_tvl: BigInt(poolsData.total_tvl),
-        total_24h_volume: BigInt(poolsData.total_24h_volume),
-        total_24h_lp_fee: BigInt(poolsData.total_24h_lp_fee),
-        total_24h_num_swaps: BigInt(poolsData.total_24h_num_swaps),
-        timestamp: Date.now(),
-      });
     });
 
     eventBus.emit("poolsUpdated", pools);

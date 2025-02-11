@@ -1,4 +1,3 @@
-import { writable } from 'svelte/store';
 
 type EventCallback = (...args: any[]) => void;
 

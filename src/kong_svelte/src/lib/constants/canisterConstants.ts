@@ -13,7 +13,6 @@ function getIndexerUrl() {
         return "https://api.kongswap.io";
     }
 }
-export const INDEXER_URL = getIndexerUrl();
 
 // Frontend Canister IDs
 export const KONG_SVELTE_CANISTER_ID = process.env.CANISTER_ID_KONG_SVELTE;

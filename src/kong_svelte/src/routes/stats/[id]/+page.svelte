@@ -14,13 +14,19 @@
   } from "$lib/constants/canisterConstants";
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { Droplets, ArrowLeftRight, Copy, PlusCircle, ChevronDown } from "lucide-svelte";
+  import {
+    Droplets,
+    ArrowLeftRight,
+    Copy,
+    PlusCircle,
+    ChevronDown,
+  } from "lucide-svelte";
   import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
   import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import { GOVERNANCE_CANISTER_IDS } from "$lib/services/sns/snsService";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { toastStore } from "$lib/stores/toastStore";
-    import { tokenData } from "$lib/stores/tokenData";
+  import { tokenData } from "$lib/stores/tokenData";
 
   // Add loading state for token lookup
   let isTokenLoading = $state(true);
@@ -40,9 +46,7 @@
 
   let icpToken = $state<FE.Token | undefined>(undefined);
   $effect(() => {
-    const found = $tokenData?.find(
-      (t) => t.canister_id === ICP_CANISTER_ID,
-    );
+    const found = $tokenData?.find((t) => t.canister_id === ICP_CANISTER_ID);
     if (found) {
       icpToken = found;
     }
@@ -53,7 +57,7 @@
     // React to both tokenData and page params changes
     const data = $tokenData;
     const pageId = $page.params.id;
-    
+
     if (data?.length > 0) {
       token = data.find((t) => t.canister_id === pageId);
       isTokenLoading = false;
@@ -195,17 +199,24 @@
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (!showDropdown) return;
       const target = event.target as Node;
-      if (!(mobileButtonRef?.contains(target) || mobileDropdownRef?.contains(target) || desktopButtonRef?.contains(target) || desktopDropdownRef?.contains(target))) {
-          showDropdown = false;
+      if (
+        !(
+          mobileButtonRef?.contains(target) ||
+          mobileDropdownRef?.contains(target) ||
+          desktopButtonRef?.contains(target) ||
+          desktopDropdownRef?.contains(target)
+        )
+      ) {
+        showDropdown = false;
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
-    document.addEventListener('touchend', handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
+    document.addEventListener("touchend", handleClickOutside);
 
     return () => {
-      document.removeEventListener('click', handleClickOutside);
-      document.removeEventListener('touchend', handleClickOutside);
+      document.removeEventListener("click", handleClickOutside);
+      document.removeEventListener("touchend", handleClickOutside);
     };
   });
 </script>
@@ -400,7 +411,7 @@
                       <ChevronDown class="w-4 h-4" />
                     </div>
                   </ButtonV2>
-                  
+
                   <!-- Dropdown menu -->
                   {#if showDropdown}
                     <div
@@ -421,7 +432,10 @@
                       <button
                         class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-b-lg"
                         on:click={() => {
-                          window.open(`https://nns.ic0.app/tokens/?import-ledger-id=${token?.canister_id}`, '_blank');
+                          window.open(
+                            `https://nns.ic0.app/tokens/?import-ledger-id=${token?.canister_id}`,
+                            "_blank",
+                          );
                           showDropdown = false;
                         }}
                       >
@@ -434,7 +448,10 @@
               </div>
 
               <!-- Token Statistics -->
-              <TokenStatistics {token} marketCapRank={token?.metrics?.market_cap_rank} />
+              <TokenStatistics
+                {token}
+                marketCapRank={token?.metrics?.market_cap_rank}
+              />
 
               <!-- Chart Panel -->
               <Panel
@@ -507,7 +524,7 @@
                                     (t) =>
                                       t.canister_id === selectedPool.address_0,
                                   )?.symbol
-                          }`
+                            }`
                           : ""}
                         quoteToken={selectedPool?.address_0 ===
                         token?.canister_id
@@ -589,12 +606,14 @@
                       className="w-full text-nowrap"
                       on:click={() => (showDropdown = !showDropdown)}
                     >
-                      <div class="flex items-center gap-2 justify-between w-full">
+                      <div
+                        class="flex items-center gap-2 justify-between w-full"
+                      >
                         {token?.address}
                         <ChevronDown class="w-4 h-4" />
                       </div>
                     </ButtonV2>
-                    
+
                     <!-- Dropdown menu -->
                     {#if showDropdown}
                       <div
@@ -605,7 +624,9 @@
                           class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-t-lg"
                           on:click={() => {
                             copyToClipboard(token?.address);
-                            toastStore.info("Token address copied to clipboard");
+                            toastStore.info(
+                              "Token address copied to clipboard",
+                            );
                             showDropdown = false;
                           }}
                         >
@@ -615,7 +636,10 @@
                         <button
                           class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-b-lg"
                           on:click={() => {
-                            window.open(`https://nns.ic0.app/tokens/?import-ledger-id=${token?.canister_id}`, '_blank');
+                            window.open(
+                              `https://nns.ic0.app/tokens/?import-ledger-id=${token?.canister_id}`,
+                              "_blank",
+                            );
                             showDropdown = false;
                           }}
                         >

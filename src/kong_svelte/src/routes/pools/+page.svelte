@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import {
+    formatToNonZeroDecimal,
+  } from "$lib/utils/numberFormatUtils";
   import { writable, derived } from "svelte/store";
   import Panel from "$lib/components/common/Panel.svelte";
   import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
@@ -21,10 +23,10 @@
   import DataTable from "$lib/components/common/DataTable.svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchPools, fetchPoolTotals } from "$lib/api/pools";
-  import { page } from '$app/stores';
-  import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
+  import { page } from "$app/stores";
+  import UserPoolList from "$lib/components/liquidity/pools/UserPoolList.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-    import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { userPoolListStore } from "$lib/stores/userPoolListStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { fetchTokens } from "$lib/api/tokens";
 
@@ -32,8 +34,10 @@
   const activeSection = writable("pools");
   const activePoolView = writable("all");
   let isMobile = writable(false);
-  let searchQuery = browser ? $page.url.searchParams.get('search') || '' : '';
-  let pageQuery = browser ? parseInt($page.url.searchParams.get('page') || '1') : 1;
+  let searchQuery = browser ? $page.url.searchParams.get("search") || "" : "";
+  let pageQuery = browser
+    ? parseInt($page.url.searchParams.get("page") || "1")
+    : 1;
   let searchTerm = searchQuery;
   let searchInput = searchQuery;
   let poolSearchTerm = writable("");
@@ -69,24 +73,32 @@
       let sorted = [...$livePools];
       sorted.sort((a, b) => {
         // Always put KONG at the top
-        if (a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID) return -1;
-        if (b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID) return 1;
+        if (
+          a.address_0 === KONG_CANISTER_ID ||
+          a.address_1 === KONG_CANISTER_ID
+        )
+          return -1;
+        if (
+          b.address_0 === KONG_CANISTER_ID ||
+          b.address_1 === KONG_CANISTER_ID
+        )
+          return 1;
 
         let aValue, bValue;
         switch ($mobileSortColumn) {
-          case 'price':
+          case "price":
             aValue = Number(getPoolPriceUsd(a));
             bValue = Number(getPoolPriceUsd(b));
             break;
-          case 'tvl':
+          case "tvl":
             aValue = Number(a.tvl);
             bValue = Number(b.tvl);
             break;
-          case 'rolling_24h_volume':
+          case "rolling_24h_volume":
             aValue = Number(a.rolling_24h_volume);
             bValue = Number(b.rolling_24h_volume);
             break;
-          case 'rolling_24h_apy':
+          case "rolling_24h_apy":
             aValue = Number(a.rolling_24h_apy);
             bValue = Number(b.rolling_24h_apy);
             break;
@@ -94,10 +106,12 @@
             aValue = Number(a.rolling_24h_volume);
             bValue = Number(b.rolling_24h_volume);
         }
-        return $mobileSortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+        return $mobileSortDirection === "asc"
+          ? aValue - bValue
+          : bValue - aValue;
       });
       return sorted;
-    }
+    },
   );
 
   // Add new state variables for mobile pagination
@@ -108,9 +122,15 @@
   // Add scroll handler for mobile
   async function handleMobileScroll() {
     if (!browser) return;
-    if (!$isMobile || $activePoolView !== 'all' || isMobileFetching || mobilePage >= mobileTotalPages) return;
+    if (
+      !$isMobile ||
+      $activePoolView !== "all" ||
+      isMobileFetching ||
+      mobilePage >= mobileTotalPages
+    )
+      return;
 
-    const container = document.querySelector('.mobile-pools-container');
+    const container = document.querySelector(".mobile-pools-container");
     if (!container) return;
 
     const { scrollTop, scrollHeight, clientHeight } = container;
@@ -123,13 +143,13 @@
         const result = await fetchPools({
           page: nextPage,
           limit: pagination.limit,
-          search: searchTerm
+          search: searchTerm,
         });
         $livePools = [...$livePools, ...(result.pools || [])];
         mobilePage = nextPage;
         mobileTotalPages = result.total_pages;
       } catch (error) {
-        console.error('Error fetching more pools:', error);
+        console.error("Error fetching more pools:", error);
       } finally {
         isMobileFetching = false;
       }
@@ -145,7 +165,7 @@
   let poolTotals = writable({
     total_volume_24h: 0,
     total_tvl: 0,
-    total_fees_24h: 0
+    total_fees_24h: 0,
   });
 
   // Update onMount to fetch totals
@@ -159,30 +179,30 @@
       fetchPools({
         page: pageQuery,
         limit: pagination.limit,
-        search: searchQuery
+        search: searchQuery,
       }),
-      fetchPoolTotals()
+      fetchPoolTotals(),
     ])
-    .then(([poolsResult, totalsResult]) => {
-      const poolsArray = poolsResult.pools ? poolsResult.pools : [];
-      livePools.set(poolsArray);
-      pagination.totalItems = poolsResult.total_count;
-      pagination.totalPages = poolsResult.total_pages;
-      pagination.currentPage = poolsResult.page;
-      pagination.limit = poolsResult.limit;
-      mobilePage = 1;
-      mobileTotalPages = poolsResult.total_pages;
-      
-      // Set the totals from API
-      poolTotals.set(totalsResult);
-    })
-    .catch((error) => {
-      console.error('Error fetching pools:', error);
-      livePools.set([]);
-    })
-    .finally(() => {
-      isLoading.set(false);
-    });
+      .then(([poolsResult, totalsResult]) => {
+        const poolsArray = poolsResult.pools ? poolsResult.pools : [];
+        livePools.set(poolsArray);
+        pagination.totalItems = poolsResult.total_count;
+        pagination.totalPages = poolsResult.total_pages;
+        pagination.currentPage = poolsResult.page;
+        pagination.limit = poolsResult.limit;
+        mobilePage = 1;
+        mobileTotalPages = poolsResult.total_pages;
+
+        // Set the totals from API
+        poolTotals.set(totalsResult);
+      })
+      .catch((error) => {
+        console.error("Error fetching pools:", error);
+        livePools.set([]);
+      })
+      .finally(() => {
+        isLoading.set(false);
+      });
 
     if (browser) {
       window.addEventListener("resize", checkMobile);
@@ -200,41 +220,41 @@
   $: if (browser) {
     clearTimeout(urlChangeDebounceTimer);
     urlChangeDebounceTimer = setTimeout(() => {
-      const newSearch = $page.url.searchParams.get('search') || '';
-    const newPage = parseInt($page.url.searchParams.get('page') || '1');
-    
-    // Only update if the values have actually changed
-    if (newSearch !== searchTerm || newPage !== pagination.currentPage) {
-      searchTerm = newSearch;
-      searchInput = newSearch;
-      pagination.currentPage = newPage;
-      
-      // Fetch pools with new parameters
-      isLoading.set(true);
-      fetchPools({
-        page: newPage,
-        limit: pagination.limit,
-        search: newSearch
-      })
-      .then((result) => {
-        const poolsArray = result.pools ? result.pools : [];
-        livePools.set(poolsArray);
-        pagination.totalItems = result.total_count;
-        pagination.totalPages = result.total_pages;
-        pagination.currentPage = result.page;
-        pagination.limit = result.limit;
-        mobilePage = 1;
-        mobileTotalPages = result.total_pages;
-      })
-      .catch((error) => {
-        console.error('Error fetching pools:', error);
-        livePools.set([]);
-      })
-      .finally(() => {
-        isLoading.set(false);
-      });
-    }
-  }, 100); // 100ms debounce
+      const newSearch = $page.url.searchParams.get("search") || "";
+      const newPage = parseInt($page.url.searchParams.get("page") || "1");
+
+      // Only update if the values have actually changed
+      if (newSearch !== searchTerm || newPage !== pagination.currentPage) {
+        searchTerm = newSearch;
+        searchInput = newSearch;
+        pagination.currentPage = newPage;
+
+        // Fetch pools with new parameters
+        isLoading.set(true);
+        fetchPools({
+          page: newPage,
+          limit: pagination.limit,
+          search: newSearch,
+        })
+          .then((result) => {
+            const poolsArray = result.pools ? result.pools : [];
+            livePools.set(poolsArray);
+            pagination.totalItems = result.total_count;
+            pagination.totalPages = result.total_pages;
+            pagination.currentPage = result.page;
+            pagination.limit = result.limit;
+            mobilePage = 1;
+            mobileTotalPages = result.total_pages;
+          })
+          .catch((error) => {
+            console.error("Error fetching pools:", error);
+            livePools.set([]);
+          })
+          .finally(() => {
+            isLoading.set(false);
+          });
+      }
+    }, 100); // 100ms debounce
   }
 
   function handleSearch() {
@@ -244,19 +264,19 @@
       if (searchValue !== searchTerm) {
         searchTerm = searchValue;
         poolSearchTerm.set(searchValue);
-        
+
         goto(`/pools?search=${encodeURIComponent(searchValue)}&page=1`, {
           keepFocus: true,
           noScroll: true,
-          replaceState: true
+          replaceState: true,
         });
 
         isLoading.set(true);
         try {
-          const result = await fetchPools({ 
-            page: 1, 
+          const result = await fetchPools({
+            page: 1,
             limit: pagination.limit,
-            search: searchValue
+            search: searchValue,
           });
           livePools.set(result.pools || []);
           pagination.totalItems = result.total_count;
@@ -266,7 +286,7 @@
           mobilePage = 1;
           mobileTotalPages = result.total_pages;
         } catch (error) {
-          console.error('Error searching pools:', error);
+          console.error("Error searching pools:", error);
         } finally {
           isLoading.set(false);
         }
@@ -301,7 +321,7 @@
       // Casting liveUserPools to any to call set
       $liveUserPools = $userPoolListStore.filteredPools as unknown as BE.Pool[];
     } catch (error) {
-      console.error('Error fetching user pools:', error);
+      console.error("Error fetching user pools:", error);
       $liveUserPools = [];
     } finally {
       isLoading.set(false);
@@ -314,13 +334,13 @@
       goto(`/pools?search=${encodeURIComponent(searchTerm)}&page=${page}`, {
         keepFocus: true,
         noScroll: true,
-        replaceState: true
+        replaceState: true,
       });
 
-      const result = await fetchPools({ 
-        page, 
+      const result = await fetchPools({
+        page,
         limit: pagination.limit,
-        search: searchTerm
+        search: searchTerm,
       });
       livePools.set(result.pools || []);
       pagination.totalItems = result.total_count;
@@ -328,14 +348,14 @@
       pagination.currentPage = result.page;
       pagination.limit = result.limit;
     } catch (error) {
-      console.error('Error fetching pools:', error);
+      console.error("Error fetching pools:", error);
     } finally {
       isLoading.set(false);
     }
   }
 
   function handlePoolClick(event: CustomEvent) {
-    console.log('Pool clicked', event.detail);
+    console.log("Pool clicked", event.detail);
   }
 
   // Add loadTokens function to load token data for mobile cards
@@ -366,7 +386,7 @@
     },
     {
       label: "Highest APY",
-      value: `${Math.max(...($livePools || []).map(pool => Number(pool.rolling_24h_apy))).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
+      value: `${Math.max(...($livePools || []).map((pool) => Number(pool.rolling_24h_apy))).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
       icon: Flame,
       hideOnMobile: true,
     },
@@ -402,7 +422,10 @@
                       class="px-3 py-2 text-sm {$activePoolView === 'user'
                         ? 'text-kong-text-primary bg-[#60A5FA]/10'
                         : 'text-kong-text-secondary'}"
-                      on:click={() => { $activePoolView = "user"; fetchUserPools(); }}
+                      on:click={() => {
+                        $activePoolView = "user";
+                        fetchUserPools();
+                      }}
                     >
                       My ({$liveUserPools.length})
                     </button>
@@ -452,7 +475,10 @@
                       </select>
                       <div class="w-px bg-kong-border"></div>
                       <button
-                        on:click={() => mobileSortDirection.update(d => d === "asc" ? "desc" : "asc")}
+                        on:click={() =>
+                          mobileSortDirection.update((d) =>
+                            d === "asc" ? "desc" : "asc",
+                          )}
                         class="px-3 text-[#60A5FA]"
                       >
                         <svelte:component
@@ -507,7 +533,10 @@
                           'user'
                             ? 'text-kong-text-primary'
                             : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                          on:click={() => { $activePoolView = "user"; fetchUserPools(); }}
+                          on:click={() => {
+                            $activePoolView = "user";
+                            fetchUserPools();
+                          }}
                         >
                           My Pools <span
                             class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary/80 px-1.5 rounded"
@@ -561,25 +590,42 @@
               <div class="h-full overflow-auto">
                 {#if $isMobile}
                   <!-- Mobile/Tablet Card View -->
-                  <div 
-                    class="lg:hidden space-y-3 pb-3 h-full overflow-auto py-2 mobile-pools-container" 
+                  <div
+                    class="lg:hidden space-y-3 pb-3 h-full overflow-auto py-2 mobile-pools-container"
                     on:scroll={handleMobileScroll}
                   >
                     {#each $sortedMobilePools as pool, i (pool.address_0 + pool.address_1)}
                       <button
-                        on:click={() => goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`)}
-                        class="w-full text-left bg-kong-bg-dark rounded-xl border border-kong-border/50 hover:border-[#60A5FA]/30 hover:bg-kong-bg-dark/80 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-lg backdrop-blur-sm {pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID ? 'bg-gradient-to-br from-[rgba(0,255,128,0.05)] to-[rgba(0,255,128,0.02)] active:bg-[rgba(0,255,128,0.04)] shadow-[inset_0_1px_1px_rgba(0,255,128,0.1)]' : 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'}"
+                        on:click={() =>
+                          goto(
+                            `/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`,
+                          )}
+                        class="w-full text-left bg-kong-bg-dark rounded-xl border border-kong-border/50 hover:border-[#60A5FA]/30 hover:bg-kong-bg-dark/80 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-lg backdrop-blur-sm {pool.address_0 ===
+                          KONG_CANISTER_ID ||
+                        pool.address_1 === KONG_CANISTER_ID
+                          ? 'bg-gradient-to-br from-[rgba(0,255,128,0.05)] to-[rgba(0,255,128,0.02)] active:bg-[rgba(0,255,128,0.04)] shadow-[inset_0_1px_1px_rgba(0,255,128,0.1)]'
+                          : 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'}"
                       >
                         <div class="p-4">
                           <!-- Pool Header -->
                           <div class="flex items-center justify-between mb-4">
                             <div class="flex items-center gap-2.5">
-                              <TokenImages tokens={[$tokenMap.get(pool.address_0), $tokenMap.get(pool.address_1)]} size={28} />
-                              <div class="text-base font-medium text-kong-text-primary">
+                              <TokenImages
+                                tokens={[
+                                  $tokenMap.get(pool.address_0),
+                                  $tokenMap.get(pool.address_1),
+                                ]}
+                                size={28}
+                              />
+                              <div
+                                class="text-base font-medium text-kong-text-primary"
+                              >
                                 {pool.symbol_0}/{pool.symbol_1}
                               </div>
                             </div>
-                            <div class="text-[#60A5FA] text-base font-medium flex items-center gap-1.5 bg-[#60A5FA]/5 px-2.5 py-1 rounded-lg">
+                            <div
+                              class="text-[#60A5FA] text-base font-medium flex items-center gap-1.5 bg-[#60A5FA]/5 px-2.5 py-1 rounded-lg"
+                            >
                               <Flame class="w-4 h-4" />
                               {Number(pool.rolling_24h_apy).toFixed(2)}%
                             </div>
@@ -588,27 +634,41 @@
                           <!-- Pool Stats -->
                           <div class="grid grid-cols-3 gap-4">
                             <div class="bg-black/20 rounded-lg p-2.5">
-                              <div class="text-xs text-kong-text-secondary mb-1">
+                              <div
+                                class="text-xs text-kong-text-secondary mb-1"
+                              >
                                 Price
                               </div>
-                              <div class="text-sm font-medium text-kong-text-primary">
+                              <div
+                                class="text-sm font-medium text-kong-text-primary"
+                              >
                                 {formatToNonZeroDecimal(getPoolPriceUsd(pool))}
                               </div>
                             </div>
                             <div class="bg-black/20 rounded-lg p-2.5">
-                              <div class="text-xs text-kong-text-secondary mb-1">
+                              <div
+                                class="text-xs text-kong-text-secondary mb-1"
+                              >
                                 TVL
                               </div>
-                              <div class="text-sm font-medium text-kong-text-primary">
+                              <div
+                                class="text-sm font-medium text-kong-text-primary"
+                              >
                                 {formatUsdValue(Number(pool.tvl))}
                               </div>
                             </div>
                             <div class="bg-black/20 rounded-lg p-2.5">
-                              <div class="text-xs text-kong-text-secondary mb-1">
+                              <div
+                                class="text-xs text-kong-text-secondary mb-1"
+                              >
                                 Volume 24h
                               </div>
-                              <div class="text-sm font-medium text-kong-text-primary">
-                                {formatUsdValue(Number(pool.rolling_24h_volume))}
+                              <div
+                                class="text-sm font-medium text-kong-text-primary"
+                              >
+                                {formatUsdValue(
+                                  Number(pool.rolling_24h_volume),
+                                )}
                               </div>
                             </div>
                           </div>
@@ -629,59 +689,70 @@
                       rowKey="pool_id"
                       columns={[
                         {
-                          key: 'pool_name',
-                          title: 'Pool',
-                          align: 'left',
-                          width: '30%',
+                          key: "pool_name",
+                          title: "Pool",
+                          align: "left",
+                          width: "30%",
                           sortable: true,
                           component: PoolRow,
                           componentProps: {},
-                          sortValue: (row) => `${row.symbol_0}/${row.symbol_1}`
+                          sortValue: (row) => `${row.symbol_0}/${row.symbol_1}`,
                         },
                         {
-                          key: 'price',
-                          title: 'Price',
-                          align: 'right',
-                          width: '17.5%',
+                          key: "price",
+                          title: "Price",
+                          align: "right",
+                          width: "17.5%",
                           sortable: true,
                           sortValue: (row) => Number(getPoolPriceUsd(row)),
-                          formatter: (row) => formatToNonZeroDecimal(getPoolPriceUsd(row))
+                          formatter: (row) =>
+                            formatToNonZeroDecimal(getPoolPriceUsd(row)),
                         },
                         {
-                          key: 'tvl',
-                          title: 'TVL',
-                          align: 'right',
-                          width: '17.5%',
+                          key: "tvl",
+                          title: "TVL",
+                          align: "right",
+                          width: "17.5%",
                           sortable: true,
                           sortValue: (row) => Number(row.tvl),
-                          formatter: (row) => formatUsdValue(Number(row.tvl))
+                          formatter: (row) => formatUsdValue(Number(row.tvl)),
                         },
                         {
-                          key: 'rolling_24h_volume',
-                          title: 'Vol 24H',
-                          align: 'right',
-                          width: '17.5%',
+                          key: "rolling_24h_volume",
+                          title: "Vol 24H",
+                          align: "right",
+                          width: "17.5%",
                           sortable: true,
                           sortValue: (row) => Number(row.rolling_24h_volume),
-                          formatter: (row) => formatUsdValue(Number(row.rolling_24h_volume))
+                          formatter: (row) =>
+                            formatUsdValue(Number(row.rolling_24h_volume)),
                         },
                         {
-                          key: 'rolling_24h_apy',
-                          title: 'APY',
-                          align: 'right',
-                          width: '17.5%',
+                          key: "rolling_24h_apy",
+                          title: "APY",
+                          align: "right",
+                          width: "17.5%",
                           sortable: true,
                           sortValue: (row) => Number(row.rolling_24h_apy),
-                          formatter: (row) => `${Number(row.rolling_24h_apy).toFixed(2)}%`
-                        }
+                          formatter: (row) =>
+                            `${Number(row.rolling_24h_apy).toFixed(2)}%`,
+                        },
                       ]}
                       itemsPerPage={pagination.limit}
                       totalItems={pagination.totalItems}
                       currentPage={pagination.currentPage}
-                      defaultSort={{ column: 'rolling_24h_volume', direction: 'desc' }}
+                      defaultSort={{
+                        column: "rolling_24h_volume",
+                        direction: "desc",
+                      }}
                       onPageChange={handlePageChange}
-                      onRowClick={(row) => goto(`/pools/add?token0=${row.address_0}&token1=${row.address_1}`)}
-                      isKongRow={(row) => row.address_0 === KONG_CANISTER_ID || row.address_1 === KONG_CANISTER_ID}
+                      onRowClick={(row) =>
+                        goto(
+                          `/pools/add?token0=${row.address_0}&token1=${row.address_1}`,
+                        )}
+                      isKongRow={(row) =>
+                        row.address_0 === KONG_CANISTER_ID ||
+                        row.address_1 === KONG_CANISTER_ID}
                       isLoading={$isLoading}
                     ></DataTable>
                   </div>
@@ -697,13 +768,17 @@
                   />
                 </div>
               {:else}
-                <div class="flex flex-col items-center justify-center h-64 text-center">
+                <div
+                  class="flex flex-col items-center justify-center h-64 text-center"
+                >
                   <p class="text-gray-400 mb-4">
                     Connect your wallet to view your liquidity positions
                   </p>
                   <button
                     class="px-6 py-2 bg-kong-primary text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
-                    on:click={() => { sidebarStore.open(); }}
+                    on:click={() => {
+                      sidebarStore.open();
+                    }}
                   >
                     Connect Wallet
                   </button>

@@ -1,4 +1,4 @@
-import { INDEXER_URL } from "$lib/constants/canisterConstants";
+import { INDEXER_URL } from "$lib/api/index";
 import { kongDB } from "../db";
 import { DEFAULT_LOGOS } from "../tokens/tokenLogos";
 
@@ -181,27 +181,6 @@ export interface TransactionResponse {
     pages: number;
   };
 }
-
-export const fetchTransactions = async (
-  poolId: number, 
-  page: number = 0, 
-  limit: number = 20
-): Promise<Transaction[]> => {
-  try {
-    const url = `${INDEXER_URL}/api/pools/${poolId}/transactions?page=${page}&limit=${limit}`;    
-    const response = await fetch(url);
-    const data: TransactionResponse = await response.json();
-    
-    if (!response.ok) {
-      console.error('API error:', data);
-      return [];
-    }
-    return data.transactions || []; // Return the transactions array from the response
-  } catch (error) {
-    console.error('Failed to fetch transactions:', error);
-    return [];
-  }
-};
 
 interface PoolsResponse {
   pools: BE.Pool[];
