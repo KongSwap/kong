@@ -9,6 +9,7 @@ import { get } from "svelte/store";
 import { auth } from "$lib/services/auth";
 import type { TokenState } from "./types";
 import { userTokens } from "$lib/stores/userTokens";
+import { userPoolListStore } from "$lib/stores/userPoolListStore";
 
 function createTokenStore() {
   const initialState: TokenState = {
@@ -73,26 +74,6 @@ const getCurrentWalletId = (): string => {
   return wallet?.account?.owner?.toString() || "anonymous";
 };
 
-// Instead, create our own live query for user pools
-export const userPoolsStore = readable<UserPoolBalance[]>([], (set) => {
-  if (!browser) {
-    set([]);
-    return;
-  }
-
-  const subscription = liveQuery(async () => {
-    const pools = await kongDB.user_pools.toArray();
-    return pools;
-  }).subscribe({
-    next: (value) => set(value),
-    error: (err) => console.error("[userPoolsStore] Error:", err),
-  });
-
-  return () => {
-    if (subscription) subscription.unsubscribe();
-  };
-});
-
 export const getStoredBalances = async (walletId: string) => {
   if (!walletId || walletId === "anonymous") {
     return {};
@@ -129,10 +110,10 @@ export const updateStoredBalances = async (walletId: string) => {
   storedBalancesStore.set(balances);
 };
 
-// Update the portfolioValue derived store to use the new userPoolsStore
+// Update the portfolioValue derived store
 export const portfolioValue = derived(
-  [tokenStore, userTokens, userPoolsStore, storedBalancesStore],
-  ([$tokenStore, $userTokens, $userPools, $storedBalances]) => {
+  [userTokens, userPoolListStore, storedBalancesStore],
+  ([$userTokens, $userPoolListStore, $storedBalances]) => {
     // Calculate token values
     const tokenValue = ($userTokens.tokens || []).reduce((acc, token) => {
       const balance = $storedBalances[token.canister_id]?.in_usd;
@@ -143,7 +124,7 @@ export const portfolioValue = derived(
     }, 0);
 
     // Calculate pool values
-    const poolValue = ($userPools || []).reduce((acc, pool) => {
+    const poolValue = ($userPoolListStore.filteredPools || []).reduce((acc, pool) => {
       const value = Number(pool.usd_balance) || 0;
       return acc + value;
     }, 0);

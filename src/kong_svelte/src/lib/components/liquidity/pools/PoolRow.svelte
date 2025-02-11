@@ -9,16 +9,17 @@
   import { tooltip } from "$lib/actions/tooltip";
 
   export let row: any;
-  export let tokenMap: Map<string, any>;
 
   $: pool = {
     ...row,
-    tvl: BigInt(row.tvl),
-    rolling_24h_volume: BigInt(row.rolling_24h_volume),
+    tvl: Number.isInteger(row.tvl) ? BigInt(row.tvl) : row.tvl,
+    rolling_24h_volume: Number.isInteger(row.rolling_24h_volume) ? BigInt(row.rolling_24h_volume) : row.rolling_24h_volume,
     displayTvl: Number(row.tvl) / 1e6
   };
 
-  $: isKongPool = pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID;
+  $: isKongPool = pool.token0?.canister_id === KONG_CANISTER_ID || pool.token1?.canister_id === KONG_CANISTER_ID;
+
+  $: tokens = [pool.token0, pool.token1].filter(Boolean);
 
   $: isTopVolume = Number(pool.rolling_24h_volume) > 0 && [...$livePools]
     .sort((a, b) => Number(b.rolling_24h_volume) - Number(a.rolling_24h_volume))
@@ -62,17 +63,14 @@
   <!-- Desktop view (table row) -->
   <div class="pool-info">
     <TokenImages
-      tokens={[
-        tokenMap.get(pool.address_0),
-        tokenMap.get(pool.address_1)
-      ]}
+      tokens={tokens}
       overlap={true}
       size={28}
     />
     <div class="pool-details">
       <div class="pool-name">
         <div class="flex items-center gap-2">
-          <span>{pool.symbol_0}/{pool.symbol_1}</span>
+          <span>{pool.token0?.symbol}/{pool.token1?.symbol}</span>
           {#if isTopVolume || isTopTVL || isTopAPY}
             <div class="flex gap-1 items-center">
               {#if isTopVolume}
@@ -102,16 +100,13 @@
     <div class="card-header">
       <div class="token-info">
         <TokenImages
-          tokens={[
-            tokenMap.get(pool.address_0),
-            tokenMap.get(pool.address_1)
-          ]}
+          tokens={tokens}
           size={32}
           overlap={true}
         />
         <div class="token-details">
           <div class="flex items-center gap-2">
-            <span class="token-pair">{pool.symbol_0}/{pool.symbol_1}</span>
+            <span class="token-pair">{pool.token0?.symbol}/{pool.token1?.symbol}</span>
             {#if isTopVolume || isTopTVL || isTopAPY}
               <div class="flex gap-1 items-center">
                 {#if isTopVolume}

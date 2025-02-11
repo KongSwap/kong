@@ -87,13 +87,19 @@ export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.To
 };
 
 export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE.Token[]> => {
+  const validCanisterIds = canisterIds.filter(id => typeof id === 'string');
   const response = await fetch(`${INDEXER_URL}/api/tokens/by_canister`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ canister_ids: canisterIds })
+    body: JSON.stringify({ canister_ids: validCanisterIds })
   });
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Error fetching tokens:', errorText);
+    throw new Error(errorText);
+  }
   const data = await response.json();
   return data.items.map(parseTokenData);
 };

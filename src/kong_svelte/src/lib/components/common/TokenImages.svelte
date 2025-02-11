@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tooltip as tooltipAction } from "$lib/actions/tooltip";
+    import { DEFAULT_LOGOS } from "$lib/services/tokens";
 
   export let tokens: FE.Token[] = [];
   export let size: number = 48;
@@ -7,8 +8,6 @@
   export let imageWrapperClass: string = "";
   export let overlap: boolean = false;
   export let tooltip: { text: string, direction: "top" | "bottom" | "left" | "right" } = { text: "", direction: "top" };
-
-  
 
   const DEFAULT_IMAGE = '/tokens/not_verified.webp';
 
@@ -37,7 +36,7 @@
     >
       <img
         class="w-full h-full rounded-full bg-transparent"
-        src={token?.logo_url || DEFAULT_IMAGE}
+        src={token?.logo_url || DEFAULT_LOGOS[token.canister_id] || DEFAULT_IMAGE}
         alt={getTokenAlt(token)}
         loading="eager"
         on:error={handleImageError}

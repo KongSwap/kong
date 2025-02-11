@@ -7,6 +7,7 @@
   import { fetchTokens } from '$lib/api/tokens';
   import { writable } from 'svelte/store';
   import { browser } from "$app/environment";
+    import { formatUsdValue } from "$lib/utils/tokenFormatters";
   
   // Create a store for tokens
   const tokensStore = writable<FE.Token[]>([]);
@@ -350,13 +351,40 @@
     observer.observe(element);
   }
 
+  const calculateTotalUsdValue = (
+    tx: FE.Transaction
+  ): string => {
+    const payToken = $tokensStore?.find(
+      (t) => t.token_id === tx.pay_token_id,
+    );
+    const receiveToken = $tokensStore?.find(
+      (t) => t.token_id === tx.receive_token_id,
+    );
+    if (!payToken || !receiveToken) return "0.00";
+
+    // Calculate USD value from pay side
+    const payUsdValue =
+      payToken.symbol === "ckUSDT"
+        ? tx.pay_amount
+        : tx.pay_amount * (Number(payToken.metrics.price) || 0);
+
+    // Calculate USD value from receive side
+    const receiveUsdValue =
+      receiveToken.symbol === "ckUSDT"
+        ? tx.receive_amount
+        : tx.receive_amount * (Number(receiveToken.metrics.price) || 0);
+
+    // Use the higher value
+    return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
+  };
+
   onDestroy(() => {
     if (observer) observer.disconnect();
   });
 </script>
 
 <Panel variant="transparent" type="main" {className}>
-  <div class="flex flex-col h-[300px]">
+  <div class="relative flex flex-col h-[300px]">
     {#if isLoadingTxns && !transactions.length}
       <div class="flex justify-center items-center p-4">
         <span class="loading loading-spinner loading-md" />
@@ -369,17 +397,24 @@
       </div>
     {:else}
       <div class="relative flex flex-col h-full">
+        <div class="hidden md:block sticky top-0 z-20 bg-kong-bg-light rounded-t-lg">
+          <table class="w-full">
+            <thead>
+              <tr class="text-left text-kong-text-primary/70 !font-normal">
+                <th class="px-4 py-2 w-[110px] rounded-tl-lg">Wallet</th>
+                <th class="px-4 py-2 w-[120px]">Paid</th>
+                <th class="px-4 py-2 w-[140px]">Received</th>
+                <th class="px-4 py-2 w-[100px]">Value</th>
+                <th class="px-4 py-2 w-[120px]">Date</th>
+                <th class="w-[50px] py-2">Link</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
+
         <div class="flex-1 overflow-y-auto overflow-x-hidden">
           <table class="w-full">
             <tbody class="hidden md:table-row-group">
-              <tr class="text-left text-kong-text-primary/70 bg-kong-bg-light/50 rounded-t-lg !font-normal">
-                <th class="px-4 py-2 w-[110px] sticky top-0 z-10 !font-normal">Wallet</th>
-                <th class="px-4 py-2 w-[120px] sticky top-0 z-10 !font-normal">Paid</th>
-                <th class="px-4 py-2 w-[140px] sticky top-0 z-10 !font-normal">Received</th>
-                <th class="px-4 py-2 w-[100px] sticky top-0 z-10 !font-normal">Value</th>
-                <th class="px-4 py-2 w-[120px] sticky top-0 z-10 !font-normal">Date</th>
-                <th class="w-[50px] py-2 sticky top-0 z-10 !font-normal">Link</th>
-              </tr>
               {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
                 <TransactionRow
                   {tx}
@@ -393,15 +428,62 @@
             
             <tbody class="md:hidden">
               {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
-                <tr class="block border-b border-kong-border/70 p-2 hover:bg-kong-bg-light">
-                  <td class="block p-2">
-                    <TransactionRow
-                      {tx}
-                      {token}
-                      formattedTokens={$tokensStore}
-                      isNew={newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : '')}
-                      mobile={mobile}
-                    />
+                <tr class="block border-b border-kong-border/30 p-3 hover:bg-kong-bg-light active:bg-kong-bg-light/50 transition-colors">
+                  <td class="block">
+                    <div class="flex flex-col gap-2">
+                      <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-kong-text-primary">
+                          {#if tx.receive_token_id === token.token_id}
+                            <span class="bg-kong-accent-green/20 text-kong-accent-green px-2 py-0.5 rounded-full text-xs">
+                             {token.symbol} BUY
+                            </span>
+                          {:else}
+                            <span class="bg-kong-accent-red/20 text-kong-accent-red px-2 py-0.5 rounded-full text-xs">
+                              {token.symbol} SELL
+                            </span>
+                          {/if}
+                        </span>
+                        <span class="text-xs text-kong-text-primary/60">
+                          {new Date(tx.timestamp).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                      
+                      <div class="flex flex-col gap-1">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs text-kong-text-primary/80">Paid:</span>
+                          <span class="text-sm font-medium text-kong-text-primary">
+                            {tx.pay_amount} {$tokensStore.find(t => t.token_id === tx.pay_token_id)?.symbol}
+                          </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs text-kong-text-primary/80">Received:</span>
+                          <span class="text-sm font-medium text-kong-text-primary">
+                            {tx.receive_amount} {$tokensStore.find(t => t.token_id === tx.receive_token_id)?.symbol}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div class="flex items-center justify-between pt-1">
+                        <span class="text-xs text-kong-text-primary/60">
+                          {calculateTotalUsdValue(tx)}
+                        </span>
+                        <button
+                          class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
+                          on:click|preventDefault={() => {
+                            window.open(`https://www.icexplorer.io/address/detail/${tx.user.principal_id}`, '_blank');
+                          }}
+                        >
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               {/each}
@@ -462,7 +544,17 @@
     }
 
     :global(.overflow-y-auto) {
-      height: calc(300px - 48px); /* Adjust height for mobile */
+      height: calc(100vh - 200px); /* More dynamic height */
+      -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+    }
+
+    :global(.transaction-highlight) {
+      animation: mobile-highlight 1.5s ease-out;
+    }
+
+    @keyframes mobile-highlight {
+      0% { background-color: rgba(99, 102, 241, 0.1); }
+      100% { background-color: transparent; }
     }
   }
 </style>

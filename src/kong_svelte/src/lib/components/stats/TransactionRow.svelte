@@ -12,6 +12,9 @@
   export let isNew: boolean;
   export let mobile = false;
 
+  // New computed property to determine the wallet address
+  $: walletAddress = typeof tx.user === 'object' && tx.user.principal_id ? tx.user.principal_id : String(tx.user || '');
+
   // Add a computed property to determine if this is a buy transaction
   $: isBuyTransaction = tx.receive_token_id === token.token_id;
 
@@ -45,22 +48,25 @@
   // Update copy function to show toast
   async function copyToClipboard(text: string, event: MouseEvent) {
     event.stopPropagation();
+    console.log('Attempting to copy wallet address:', text);
+    if (!walletAddress) {
+      console.error('Wallet address is empty!');
+      toastStore.error('Wallet address is empty', { title: 'Copy failed' });
+      return;
+    }
     try {
       await navigator.clipboard.writeText(text);
-      const target = event.currentTarget as HTMLElement;
+      const target = event.target as HTMLElement;
       target.classList.add('copied');
       setTimeout(() => {
         target.classList.remove('copied');
       }, 1000);
-      
-      // Show success toast
       toastStore.success('Wallet ID copied to clipboard', {
         duration: 2000,
         title: 'Copied!'
       });
     } catch (err) {
       console.error('Failed to copy:', err);
-      // Show error toast
       toastStore.error('Failed to copy wallet ID', {
         title: 'Error'
       });
@@ -79,10 +85,10 @@
     <td class="px-4 py-2 w-[120px]">
       <span
         class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary cursor-pointer hover:opacity-80 relative group"
-        style="background-color: {getPrincipalColor(tx.user?.principal_id || '')};"
-        on:click={(e) => copyToClipboard(tx.user?.principal_id || '', e)}
+        style="background-color: {getPrincipalColor(walletAddress)};"
+        on:click={(e) => copyToClipboard(walletAddress, e)}
       >
-        {tx.user?.principal_id?.slice(0, 8)}
+        {walletAddress.slice(0, 8)}
         <span class="copy-tooltip">Copy ID</span>
       </span>
     </td>
@@ -167,10 +173,10 @@
       <div class="col-span-2 flex justify-between items-center">
         <span
           class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary cursor-pointer hover:opacity-80 relative group"
-          style="background-color: {getPrincipalColor(tx.user?.principal_id || '')};"
-          on:click={(e) => copyToClipboard(tx.user?.principal_id || '', e)}
+          style="background-color: {getPrincipalColor(walletAddress)};"
+          on:click={(e) => copyToClipboard(walletAddress, e)}
         >
-          {tx.user?.principal_id?.slice(0, 8)}
+          {walletAddress.slice(0, 8)}
           <span class="copy-tooltip">Copy ID</span>
         </span>
         <span class="text-slate-400 text-xs">

@@ -40,12 +40,6 @@
     receiveToken?.decimals,
   );
 
-  $: {
-    if (payToken && receiveToken) {
-      currentRoutingPath = [payToken.canister_id, receiveToken.canister_id];
-    }
-  }
-
   $: quoteData = {
     gasFees,
     lpFees,

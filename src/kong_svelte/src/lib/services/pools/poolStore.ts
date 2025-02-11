@@ -5,7 +5,6 @@ import { eventBus } from "$lib/services/tokens/eventBus";
 import { kongDB } from "../db";
 import { liveQuery } from "dexie";
 import { browser } from "$app/environment";
-import { userPoolsStore } from "$lib/services/tokens/tokenStore";
 
 interface ExtendedPool extends BE.Pool {
   displayTvl?: number;
@@ -114,7 +113,7 @@ export const livePoolTotals = readable<FE.PoolTotal[]>([], (set) => {
   };
 });
 
-export { userPoolsStore as liveUserPools };
+export const liveUserPools = writable<ProcessedPool[]>([]);
 
 export const loadPools = async () => {
   try {
