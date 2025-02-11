@@ -30,7 +30,11 @@
   } = props;
 
   // Make tokens reactive to userTokens store changes
-  let tokens = $derived(Object.values($userTokens.enabledTokens));
+  let tokens = $derived(
+    Object.values($userTokens.tokens).filter(token => 
+      token && typeof token === 'object' && 'canister_id' in token && $userTokens.enabledTokens[token.canister_id]
+    )
+  );
 
   const BLOCKED_TOKEN_IDS = [];
   const DEFAULT_ICP_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"; // ICP canister ID
@@ -61,10 +65,6 @@
   $effect(() => {
     void updateFavorites();
   });
-
-  function toggleSort() {
-    sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
-  }
 
   async function updateFavorites() {
     const newFavorites = new Map<string, boolean>();
