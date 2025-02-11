@@ -1,5 +1,6 @@
 mod claims;
 mod db_updates;
+mod event_store;
 mod kong_settings;
 mod lp_tokens;
 mod pools;
