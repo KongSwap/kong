@@ -1,8 +1,8 @@
 use std::cmp;
 
-use super::stable_kong_settings::StableKongSettings;
-
 use crate::stable_memory::KONG_SETTINGS;
+
+use super::stable_kong_settings::StableKongSettings;
 
 const LAST_SYSTEM_USER_ID: u32 = 99;
 

@@ -9,6 +9,7 @@ use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::ic::logging::error_log;
 use crate::stable_db_update::db_update_map;
 use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TX_MAP;
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
@@ -76,7 +77,17 @@ fn update_tx(stable_tx_json: String) -> Result<String, String> {
     db_update_map::insert(&update);
 
     // send to event_store for Token Terminal
-    
+    let _ = send_to_event_store(&tx);
+
+    Ok("Tx updated".to_string())
+}
+
+fn send_to_event_store(tx: &StableTx) -> Result<(), String> {
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
+    let ts = get_time();
     let duration = Duration::from_nanos(ts);
     let timestamp = duration.as_millis() as u64;
     let event = match tx {
@@ -146,5 +157,5 @@ fn update_tx(stable_tx_json: String) -> Result<String, String> {
         });
     }
 
-    Ok("Tx updated".to_string())
+    Ok(())
 }
