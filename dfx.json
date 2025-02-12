@@ -59,6 +59,11 @@
 				}
 			]
     },
+    "prediction_markets_backend": {
+      "candid": "src/prediction_markets_backend/prediction_markets_backend.did",
+      "package": "prediction_markets_backend",
+      "type": "rust"
+    },
     "internet_identity": {
       "type": "custom",
       "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",

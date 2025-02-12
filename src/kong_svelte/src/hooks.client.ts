@@ -29,3 +29,6 @@ export const handleError = handleErrorWithSentry(async (error) => {
 		errorId
 	};
 });
+
+// Add the missing init export
+export const init = Sentry.init;

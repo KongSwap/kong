@@ -8,14 +8,16 @@ import { idlFactory as kongFaucetIDL } from "../../../../../declarations/kong_fa
 import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
 import { idlFactory as kongDataIDL } from "../../../../../declarations/kong_data";
 import { idlFactory as icpIDL } from "$lib/idls/icp.idl.js";
-
+import { idlFactory as predictionMarketsBackendIDL, canisterId as predictionMarketsBackendCanisterId } from "../../../../../declarations/prediction_markets_backend";
 export type CanisterType =
   | "kong_backend"
   | "kong_faucet"
   | "icrc1"
   | "icrc2"
   | "kong_data"
-  | "xrc";
+  | "xrc"
+  | "prediction_markets_backend";
+
 export const canisterIDLs = {
   kong_backend: kongBackendIDL,
   kong_faucet: kongFaucetIDL,
@@ -23,6 +25,7 @@ export const canisterIDLs = {
   icrc2: icrc2IDL,
   kong_data: kongDataIDL,
   ICP: icpIDL,
+  prediction_markets_backend: predictionMarketsBackendIDL,
 };
 
 let globalPnp: PNP | null = null;
@@ -35,12 +38,8 @@ export function initializePNP(): PNP {
 
     // Convert all canister IDs to Principal, but only if they are defined
     const delegationTargets = [Principal.fromText(kongBackendCanisterId)];
-
-    const isDev = import.meta.env.DEV;
     const derivationOrigin = () => {
-      if (isDev) {
-        return "http://localhost:5173";
-      }
+
       let httpPrefix = "https://";
       let icp0Suffix = ".icp0.io";
       if (process.env.DFX_NETWORK === "local") {
@@ -57,10 +56,10 @@ export function initializePNP(): PNP {
           ? "http://localhost:4943"
           : "https://icp0.io",
       isDev: process.env.DFX_NETWORK === "local",
-      whitelist: [kongBackendCanisterId],
+      whitelist: [kongBackendCanisterId, predictionMarketsBackendCanisterId],
       fetchRootKeys: process.env.DFX_NETWORK === "local",
       timeout: 1000 * 60 * 60 * 4, // 4 hours
-      verifyQuerySignatures: process.env.DFX_NETWORK !== "local",
+      verifyQuerySignatures: process.env.DFX_NETWORK !== "local", 
       identityProvider:
         process.env.DFX_NETWORK !== "local"
           ? "https://identity.ic0.app"

@@ -3,7 +3,7 @@
   export let page: string;
   let mouseX = 0;
   let mouseY = 0;
-
+  
   // Generate random positions for nebula gradients
   const nebulaPositions = {
     blue: {
@@ -24,6 +24,9 @@
     }
   };
 
+  // Add reactive declaration for competition page background
+  $: isCompetition = page && page.includes('/competition/kong-madness');
+
   function handleMouseMove(e: MouseEvent) {
     // Reduce the movement amount for subtler effect
     mouseX = (e.clientX / window.innerWidth - 1) * 20;
@@ -34,50 +37,54 @@
 <svelte:window on:mousemove={handleMouseMove}/>
 
 <div class="page-wrapper">
-  <!-- Move the background elements into a separate container -->
-  <div class="background-container">
-    <div class="dark-gradient" />
-    <div 
-      class="nebula-effect"
-      style="
-        transform: translate({mouseX * 0.5}px, {mouseY * 0.5}px);
-        --blue-x: {nebulaPositions.blue.x}%;
-        --blue-y: {nebulaPositions.blue.y}%;
-        --purple1-x: {nebulaPositions.purple1.x}%;
-        --purple1-y: {nebulaPositions.purple1.y}%;
-        --purple2-x: {nebulaPositions.purple2.x}%;
-        --purple2-y: {nebulaPositions.purple2.y}%;
-        --purple3-x: {nebulaPositions.purple3.x}%;
-        --purple3-y: {nebulaPositions.purple3.y}%;
-      "
-    />
-    
-    <!-- Add stars -->
-    <div 
-      class="stars"
-      style="transform: translate({mouseX * 0.2}px, {mouseY * 0.2}px)"
-    >
-      {#each Array(200) as _, i}
-        <div 
-          class="star"
-          style="
-            --size: {0.8 + Math.random() * 1.8}px;
-            --top: {Math.random() * 100}%;
-            --left: {Math.random() * 100}%;
-            --brightness: {0.5 + Math.random() * 0.5};"
-        />
-      {/each}
-    </div>
+  <!-- Updated background based on page type -->
+  {#if isCompetition}
+    <div class="background-container custom"></div>
+  {:else}
+    <div class="background-container">
+      <div class="dark-gradient"></div>
+      <div 
+        class="nebula-effect"
+        style="
+          transform: translate({mouseX * 0.5}px, {mouseY * 0.5}px);
+          --blue-x: {nebulaPositions.blue.x}%;
+          --blue-y: {nebulaPositions.blue.y}%;
+          --purple1-x: {nebulaPositions.purple1.x}%;
+          --purple1-y: {nebulaPositions.purple1.y}%;
+          --purple2-x: {nebulaPositions.purple2.x}%;
+          --purple2-y: {nebulaPositions.purple2.y}%;
+          --purple3-x: {nebulaPositions.purple3.x}%;
+          --purple3-y: {nebulaPositions.purple3.y}%;
+        "
+      ></div>
+      
+      <!-- Add stars -->
+      <div 
+        class="stars"
+        style="transform: translate({mouseX * 0.2}px, {mouseY * 0.2}px)"
+      >
+        {#each Array(200) as _, i}
+          <div 
+            class="star"
+            style="
+              --size: {0.8 + Math.random() * 1.8}px;
+              --top: {Math.random() * 100}%;
+              --left: {Math.random() * 100}%;
+              --brightness: {0.5 + Math.random() * 0.5};"
+          ></div>
+        {/each}
+      </div>
 
-    <!-- Add skyline -->
-    <div class="skyline-wrapper">
-      <img 
-        src="/backgrounds/skyline.svg" 
-        alt="Skyline" 
-        class="skyline"
-      />
+      <!-- Add skyline -->
+      <div class="skyline-wrapper">
+        <img 
+          src="/backgrounds/skyline.svg" 
+          alt="Skyline" 
+          class="skyline"
+        />
+      </div>
     </div>
-  </div>
+  {/if}
   
   <div class="ticker-wrapper">
     <slot />
@@ -97,7 +104,15 @@
     z-index: 0;
   }
 
-  /* Background container to manage layers */
+  /* Custom background for competition page */
+  .background-container.custom {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(90deg, #2a1b54 0%, #1a3a8f 100%);
+    z-index: -1;
+  }
+
+  /* Background container for default pages */
   .background-container {
     position: fixed;
     inset: 0;

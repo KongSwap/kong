@@ -71,7 +71,7 @@ fi
 CORE_CANISTERS_SCRIPTS=(
     "deploy_kong_backend.sh"
 	"deploy_kong_data.sh"
-	#"deploy_kong_svelte.sh"
+	"deploy_kong_svelte.sh"
 )
 
 for script in "${CORE_CANISTERS_SCRIPTS[@]}"; do
@@ -129,3 +129,6 @@ if [[ "${NETWORK}" == "ic" ]]; then
     echo "SHA256 for kong_backend.wasm.gz:"
     sha256sum "${DFX_ROOT}"/ic/canisters/kong_backend/kong_backend.wasm.gz
 fi
+
+# Deploy prediction markets backend canister
+dfx deploy prediction_markets_backend --network "${NETWORK}"
