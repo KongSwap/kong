@@ -27,7 +27,7 @@
     "@dfinity/utils": "2.10.0",
     "@moonpay/moonpay-js": "^0.6.2",
     "@sentry/sveltekit": "^8.50.0",
-    "@windoge98/plug-n-play": "0.0.40",
+    "@windoge98/plug-n-play": "0.0.40.1",
     "bignumber.js": "^9.1.2",
     "chart.js": "4.4.7",
     "chartjs-adapter-date-fns": "^3.0.0",
