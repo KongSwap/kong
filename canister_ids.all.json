@@ -88,5 +88,11 @@
     "staging_fe": "rdmx6-jaaaa-aaaaa-aaadq-cai",
     "staging": "rdmx6-jaaaa-aaaaa-aaadq-cai",
     "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+  },
+  "prediction_markets_backend": {
+    "local": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "staging_fe": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "staging": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "ic": "xidgj-jyaaa-aaaad-qghpq-cai"
   }
 }
