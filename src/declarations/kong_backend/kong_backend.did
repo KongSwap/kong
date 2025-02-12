@@ -333,6 +333,14 @@ type AddTokenReply = variant {
 };
 type AddTokenResult = variant { Ok : AddTokenReply; Err : text };
 
+type UpdateTokenArgs = record {
+    token : text;
+};
+type UpdateTokenReply = variant {
+    IC : ICTokenReply;
+};
+type UpdateTokenResult = variant { Ok : UpdateTokenReply; Err : text };
+
 type AddPoolArgs = record {
     token_0 : text;
     amount_0 : nat;
@@ -576,6 +584,8 @@ service : {
 
     // add a new token
     add_token : (AddTokenArgs) -> (AddTokenResult);
+    // update token details
+    update_token : (UpdateTokenArgs) -> (UpdateTokenResult);
     // add a new liquidity pool and token
     add_pool : (AddPoolArgs) -> (AddPoolResult);
 

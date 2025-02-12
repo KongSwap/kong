@@ -30,5 +30,3 @@ export const handleError = handleErrorWithSentry(async (error) => {
 	};
 });
 
-// Add the missing init export
-export const init = Sentry.init;

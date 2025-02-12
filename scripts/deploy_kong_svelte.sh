@@ -4,8 +4,20 @@ original_dir=$(pwd)
 root_dir="${original_dir}"/..
 static_dir="${root_dir}/src/kong_svelte/static/.well-known"
 
-# Copy canister IDs file
-cp "${root_dir}"/canister_ids.all.json "${root_dir}"/canister_ids.json
+# Add this at the very top of the script after initial_dir definitions
+NETWORK=${1:-local}
+
+# Deploy prediction markets backend canister
+root_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
+CANISTER_ID=$(jq -r ".prediction_markets_backend.${NETWORK}" "${root_dir}"/canister_ids.all.json)
+echo "CANISTER_ID: ${CANISTER_ID}"
+# Verify canister ID exists before deploying
+if [ -z "$CANISTER_ID" ] || [ "$CANISTER_ID" == "null" ]; then
+    echo "Error: Missing prediction_markets_backend canister ID for network ${NETWORK}"
+    exit 1
+fi
+
+dfx deploy prediction_markets_backend --network "${NETWORK}" --specified-id "${CANISTER_ID}"
 
 # Create .well-known directory if it doesn't exist
 mkdir -p "${static_dir}"
@@ -80,16 +92,16 @@ npm i
 
 if [ $1 == "ic" ]; then
     bash create_canister_id.sh ic
-    CANISTER_ID=$(jq -r ".[\"kong_svelte\"][\"ic\"]" "${root_dir}"/canister_ids.json)
+    CANISTER_ID=$(jq -r ".[\"kong_svelte\"][\"ic\"]" "${root_dir}"/canister_ids.all.json)
     create_static_files "ic" "${CANISTER_ID}"
     dfx build kong_svelte --network ic
 elif [ $1 == "staging" ]; then
     bash create_canister_id.sh staging
-    CANISTER_ID=$(jq -r ".[\"kong_svelte\"][\"staging\"]" "${root_dir}"/canister_ids.json)
+    CANISTER_ID=$(jq -r ".[\"kong_svelte\"][\"staging\"]" "${root_dir}"/canister_ids.all.json)
     create_static_files "staging" "${CANISTER_ID}"
     dfx deploy kong_svelte --network staging
 elif [ $1 == "local" ]; then
-    CANISTER_ID=$(jq -r ".[\"kong_svelte\"][\"local\"]" "${root_dir}"/canister_ids.json)
+    CANISTER_ID=$(jq -r ".[\"kong_svelte\"][\"local\"]" "${root_dir}"/canister_ids.all.json)
     echo "CANISTER_ID: ${CANISTER_ID}"
     create_static_files "local" "${CANISTER_ID}"
     dfx deploy kong_svelte --specified-id "${CANISTER_ID}"

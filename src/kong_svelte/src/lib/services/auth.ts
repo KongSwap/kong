@@ -1,14 +1,9 @@
 import { get, writable } from "svelte/store";
 import { type PNP } from "@windoge98/plug-n-play";
-import { idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
-import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
-import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
-import { idlFactory as kongDataIDL } from "../../../../declarations/kong_data";
-import { pnp } from "./pnp/PnpInitializer";
+import { pnp, canisterIDLs as pnpCanisterIDLs, type CanisterType as PnpCanisterType } from "./pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
 import { kongDB } from "./db";
-import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
 import { loadBalances, storedBalancesStore } from "./tokens/tokenStore";
 import { userTokens } from "$lib/stores/userTokens";
 import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
@@ -34,18 +29,9 @@ export const selectedWalletId = writable<string | null>(null);
 export const isConnected = writable<boolean>(false);
 export const connectionError = writable<string | null>(null);
 
-// Type definitions
-export type CanisterType = "kong_backend" | "icrc1" | "icrc2" | "kong_faucet";
-
-// Memoized IDL mappings
-export const canisterIDLs = Object.freeze({
-  kong_backend: kongBackendIDL,
-  kong_faucet: kongFaucetIDL,
-  icrc1: icrc2IDL,
-  icrc2: icrc2IDL,
-  kong_data: kongDataIDL,
-  sns_governance: snsGovernanceIDL,
-});
+// Type definitions and IDLs
+export type CanisterType = PnpCanisterType;
+export const canisterIDLs = pnpCanisterIDLs;
 
 function createAuthStore(pnp: PNP) {
   const store = writable({
