@@ -207,6 +207,10 @@ pub fn unremove(pool_id: u32) -> Result<(), String> {
 }
 
 fn archive_to_kong_data(pool: &StablePool) -> Result<(), String> {
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
     let pool_id = pool.pool_id;
     let pool_json = match serde_json::to_string(pool) {
         Ok(pool_json) => pool_json,

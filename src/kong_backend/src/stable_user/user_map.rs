@@ -131,6 +131,10 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
 }
 
 fn archive_to_kong_data(user: &StableUser) -> Result<(), String> {
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
     let user_id = user.user_id;
     let user_json = match serde_json::to_string(user) {
         Ok(user_json) => user_json,

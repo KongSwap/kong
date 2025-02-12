@@ -10,9 +10,9 @@ fi
 KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
 
 #dfx canister call ${NETWORK} ${KONG_CANISTER} tokens --output json '(null)' | jq
-dfx canister call ${NETWORK} ${KONG_CANISTER} tokens --output json '(opt "all")' | jq
+#dfx canister call ${NETWORK} ${KONG_CANISTER} tokens --output json '(opt "all")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} tokens --output json '(opt "ICP")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} tokens --output json '(opt "IC.ICP")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} tokens --output json '(opt "IC.zdzgz-siaaa-aaaar-qaiba-cai")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} tokens --output json '(opt "IC.zdzgz")' | jq
-#dfx canister call ${NETWORK} ${KONG_CANISTER} tokens --output json '(opt "ck")' | jq
+dfx canister call ${NETWORK} ${KONG_CANISTER} tokens --output json '(opt "DOLR")' | jq

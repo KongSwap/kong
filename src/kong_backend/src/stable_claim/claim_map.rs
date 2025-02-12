@@ -92,6 +92,10 @@ pub fn update_unclaimed_status(claim_id: u64, request_id: u64) -> Option<StableC
 }
 
 pub fn archive_to_kong_data(claim_id: u64) -> Result<(), String> {
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
     let claim = match get_by_claim_id(claim_id) {
         Some(claim) => claim,
         None => Err(format!("Failed to archive. claim_id #{} not found", claim_id))?,

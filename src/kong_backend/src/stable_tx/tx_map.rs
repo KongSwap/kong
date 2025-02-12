@@ -105,6 +105,10 @@ pub fn insert(tx: &StableTx) -> u64 {
 }
 
 pub fn archive_to_kong_data(tx_id: u64) -> Result<(), String> {
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
     let tx = match get_by_user_and_token_id(Some(tx_id), None, None, Some(1)).pop() {
         Some(tx) => tx,
         None => Err(format!("Failed to archive. tx_id #{} not found", tx_id))?,

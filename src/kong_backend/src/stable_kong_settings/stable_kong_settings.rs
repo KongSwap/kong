@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp;
 
 use crate::ic::{
-    canister_address::KONG_DATA,
+    canister_address::{EVENT_STORE, KONG_DATA},
     ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, CKUSDT_TOKEN_ID},
     icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN, ICP_TOKEN_ID},
     id::{kong_account, kong_backend_id},
@@ -20,6 +20,7 @@ pub struct StableKongSettings {
     pub kong_backend_id: String,
     pub kong_backend_account: Account,
     pub kong_data: Principal,
+    pub event_store: Principal,
     pub maintenance_mode: bool,
     pub kingkong: Vec<u32>, // list of user_ids for maintainers
     pub ckusdt_token_id: u32,
@@ -51,6 +52,7 @@ pub struct StableKongSettings {
     pub transfers_archive_interval_secs: u64,
     pub lp_tokens_archive_interval_secs: u64,
     pub archive_to_kong_data: bool,
+    pub send_to_event_store: bool,
 }
 
 impl Default for StableKongSettings {
@@ -76,6 +78,7 @@ impl Default for StableKongSettings {
             kong_backend_id: kong_backend_id(),
             kong_backend_account: kong_account(),
             kong_data: Principal::from_text(KONG_DATA).unwrap(),
+            event_store: Principal::from_text(EVENT_STORE).unwrap(),
             maintenance_mode: false,
             kingkong: vec![100, 101], // default kingkong users
             ckusdt_token_id: CKUSDT_TOKEN_ID,
@@ -107,6 +110,7 @@ impl Default for StableKongSettings {
             transfers_archive_interval_secs: 3600,       // archive transfers every hour
             lp_tokens_archive_interval_secs: 3600,       // archive lp_positions every hour
             archive_to_kong_data: true,                  // replicate to kong_data
+            send_to_event_store: false,                  // replicate to event_store (Token Terminal)
         }
     }
 }

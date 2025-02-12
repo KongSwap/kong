@@ -71,6 +71,7 @@ fi
 CORE_CANISTERS_SCRIPTS=(
     "deploy_kong_backend.sh"
 	"deploy_kong_data.sh"
+    "deploy_event_store.sh"
 	#"deploy_kong_svelte.sh"
 )
 
