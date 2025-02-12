@@ -7,7 +7,7 @@ use crate::stable_memory::DB_UPDATE_MAP;
 
 const MAX_DB_UPDATES: usize = 1_000;
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
+#[query(hidden = true)]
 fn backup_db_updates() -> Result<String, String> {
     let db_updates: Vec<StableDBUpdate> = DB_UPDATE_MAP.with(|m| {
         let map = m.borrow();
@@ -17,7 +17,7 @@ fn backup_db_updates() -> Result<String, String> {
     serde_json::to_string(&db_updates).map_err(|e| format!("Failed to serialize updates: {}", e))
 }
 
-#[update(hidden = true, guard = "caller_is_kingkong")]
+#[update(hidden = true)]
 fn remove_db_updates(db_update_id: u64) -> Result<String, String> {
     db_update_map::remove_old_updates(db_update_id);
 

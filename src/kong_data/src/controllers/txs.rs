@@ -19,7 +19,7 @@ use super::event_store::{Anonymizable, IdempotentEvent, PushEventsArgs};
 
 const MAX_TXS: usize = 1_000;
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
+#[query(hidden = true)]
 fn backup_txs(tx_id: Option<u64>, num_txs: Option<u16>) -> Result<String, String> {
     TX_MAP.with(|m| {
         let map = m.borrow();

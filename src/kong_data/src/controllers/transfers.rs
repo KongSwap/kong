@@ -3,14 +3,14 @@ use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
+use crate::stable_db_update::db_update_map;
+use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
 use crate::stable_memory::TRANSFER_MAP;
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
-use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
-use crate::stable_db_update::db_update_map;
 
 const MAX_TRANSFERS: usize = 1_000;
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
+#[query(hidden = true)]
 fn backup_transfers(transfer_id: Option<u64>, num_requests: Option<u16>) -> Result<String, String> {
     TRANSFER_MAP.with(|m| {
         let map = m.borrow();

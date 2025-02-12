@@ -10,7 +10,7 @@ use crate::stable_memory::LP_TOKEN_MAP;
 
 const MAX_LP_TOKENS: usize = 1_000;
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
+#[query(hidden = true)]
 fn backup_lp_tokens(lp_token_id: Option<u64>, num_lp_tokens: Option<u16>) -> Result<String, String> {
     LP_TOKEN_MAP.with(|m| {
         let map = m.borrow();

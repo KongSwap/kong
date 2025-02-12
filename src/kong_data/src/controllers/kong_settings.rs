@@ -2,12 +2,12 @@ use ic_cdk::{query, update};
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::caller_is_kingkong;
+use crate::stable_db_update::db_update_map;
+use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_memory::KONG_SETTINGS;
-use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
-use crate::stable_db_update::db_update_map;
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
+#[query(hidden = true)]
 fn backup_kong_settings() -> Result<String, String> {
     let kong_settings = KONG_SETTINGS.with(|m| m.borrow().get().clone());
     serde_json::to_string(&kong_settings).map_err(|e| format!("Failed to serialize: {}", e))

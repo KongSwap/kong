@@ -10,7 +10,7 @@ use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 
 const MAX_REQUESTS: usize = 100;
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
+#[query(hidden = true)]
 fn backup_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result<String, String> {
     REQUEST_MAP.with(|m| {
         let map = m.borrow();

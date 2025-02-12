@@ -11,7 +11,7 @@ use crate::stable_user::stable_user::{StableUser, StableUserId};
 
 const MAX_USERS: usize = 1_000;
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
+#[query(hidden = true)]
 fn backup_principal_id_map() -> Result<String, String> {
     PRINCIPAL_ID_MAP.with(|m| {
         let map = m.borrow();
