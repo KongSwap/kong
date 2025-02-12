@@ -34,7 +34,7 @@
       "type": "custom",
       "candid": "canisters/event_store.did",
       "wasm": "canisters/event_store.wasm.gz",
-      "specified_id": "bkyz2-fmaaa-aaaaa-qaaaq-cai",
+      "specified_id": "rsp5s-2yaaa-aaaar-qaojq-cai",
       "metadata": [
         {
           "name": "candid:service"

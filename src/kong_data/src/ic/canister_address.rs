@@ -13,5 +13,5 @@ pub const KONG_DATA: &str = if cfg!(feature = "staging") {
 pub const EVENT_STORE: &str = if cfg!(feature = "staging") {
     ""
 } else {
-    "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+    "rsp5s-2yaaa-aaaar-qaojq-cai"
 };
