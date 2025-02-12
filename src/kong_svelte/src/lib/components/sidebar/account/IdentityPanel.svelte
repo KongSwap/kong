@@ -267,7 +267,7 @@
   </div>
 {:else}
   <!-- Identity Panel -->
-  <div class="container">
+  <div class="container pb-4">
     {#if qrModal.isOpen}
       <Modal
         isOpen={qrModal.isOpen}
