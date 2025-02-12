@@ -4,14 +4,14 @@ use std::collections::BTreeMap;
 use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
-use crate::stable_memory::CLAIM_MAP;
-use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
 use crate::stable_db_update::db_update_map;
+use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
+use crate::stable_memory::CLAIM_MAP;
 
 const MAX_CLAIMS: usize = 1_000;
 
 /// serialize CLAIM_MAP for backup
-#[query(hidden = true, guard = "caller_is_kingkong")]
+#[query(hidden = true)]
 fn backup_claims(claim_id: Option<u64>, num_claims: Option<u16>) -> Result<String, String> {
     CLAIM_MAP.with(|m| {
         let map = m.borrow();

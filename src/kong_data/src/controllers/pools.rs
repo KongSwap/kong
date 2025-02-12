@@ -10,7 +10,7 @@ use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 
 const MAX_POOLS: usize = 1_000;
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
+#[query(hidden = true)]
 fn backup_pools(pool_id: Option<u32>, num_pools: Option<u16>) -> Result<String, String> {
     POOL_MAP.with(|m| {
         let map = m.borrow();
