@@ -57,6 +57,10 @@ pub fn update(lp_token: &StableLPToken) {
 }
 
 pub fn archive_to_kong_data(lp_token: &StableLPToken) -> Result<(), String> {
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
     let lp_token_id = lp_token.lp_token_id;
     let lp_token_json = match serde_json::to_string(lp_token) {
         Ok(lp_token_json) => lp_token_json,

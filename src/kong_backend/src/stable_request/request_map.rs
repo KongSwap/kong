@@ -55,6 +55,10 @@ pub fn update_reply(key: u64, reply: Reply) -> Option<StableRequest> {
 }
 
 pub fn archive_to_kong_data(request: &StableRequest) -> Result<(), String> {
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
     let request_id = request.request_id;
     let request_json = match serde_json::to_string(request) {
         Ok(request_json) => request_json,

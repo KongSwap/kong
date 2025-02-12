@@ -239,6 +239,10 @@ pub fn unremove(token_id: u32) -> Result<(), String> {
 }
 
 fn archive_to_kong_data(token: &StableToken) -> Result<(), String> {
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
     let token_id = token.token_id();
     let token_json = match serde_json::to_string(token) {
         Ok(token_json) => token_json,

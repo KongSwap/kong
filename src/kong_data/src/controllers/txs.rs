@@ -76,6 +76,7 @@ fn update_tx(stable_tx_json: String) -> Result<String, String> {
     db_update_map::insert(&update);
 
     // send to event_store for Token Terminal
+    
     let duration = Duration::from_nanos(ts);
     let timestamp = duration.as_millis() as u64;
     let event = match tx {

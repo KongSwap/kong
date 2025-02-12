@@ -112,16 +112,17 @@ fn process_send(
 }
 
 fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
-    if kong_settings_map::get().archive_to_kong_data {
-        let request =
-            request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
-        request_map::archive_to_kong_data(&request)?;
-        match request.reply {
-            Reply::Send(ref reply) => {
-                tx_map::archive_to_kong_data(reply.tx_id)?;
-            }
-            _ => Err("Invalid reply type".to_string())?,
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
+    let request = request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
+    request_map::archive_to_kong_data(&request)?;
+    match request.reply {
+        Reply::Send(ref reply) => {
+            tx_map::archive_to_kong_data(reply.tx_id)?;
         }
+        _ => Err("Invalid reply type".to_string())?,
     }
 
     Ok(())
