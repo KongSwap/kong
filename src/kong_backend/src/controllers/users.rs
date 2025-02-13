@@ -3,9 +3,17 @@ use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{PRINCIPAL_ID_MAP, USER_MAP};
+use crate::stable_user::principal_id_map::create_principal_id_map;
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 
 const MAX_USERS: usize = 1_000;
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn update_prinicpal_id_map() -> Result<String, String> {
+    create_principal_id_map();
+
+    Ok("Principal Id map updated".to_string())
+}
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_principal_id_map() -> Result<String, String> {
