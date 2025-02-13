@@ -2,7 +2,7 @@
   import Chart from 'chart.js/auto';
   import { onMount } from 'svelte';
   import 'chartjs-adapter-date-fns';
-  import type { ChartConfiguration, ChartData } from 'chart.js';
+  import type { ChartConfiguration, ChartData, ScatterDataPoint } from 'chart.js';
 
   export let market: any;
   export let marketBets: any[] = [];
@@ -46,7 +46,10 @@
 
     // Get start and end times
     const startTime = Math.floor((allTimestamps[0] / 1e6) / intervalMs) * intervalMs;
-    const endTime = Math.ceil((allTimestamps[allTimestamps.length - 1] / 1e6) / intervalMs) * intervalMs;
+    const endTime = Math.max(
+      Math.ceil((allTimestamps[allTimestamps.length - 1] / 1e6) / intervalMs) * intervalMs,
+      Math.ceil(Date.now() / intervalMs) * intervalMs
+    );
 
     // Create all intervals between start and end
     for (let intervalStart = startTime; intervalStart <= endTime; intervalStart += intervalMs) {
@@ -105,6 +108,18 @@
       }
     }
 
+    // Add final point at current time with latest percentages
+    const now = Date.now();
+    datasets.forEach((ds, i) => {
+      const lastPoint = ds.data[ds.data.length - 1];
+      if (lastPoint && lastPoint.x.getTime() < now) {
+        ds.data.push({
+          x: new Date(now),
+          y: lastPoint.y
+        });
+      }
+    });
+
     // If we only have one point, add another at the next interval
     datasets.forEach(ds => {
       if (ds.data.length === 1) {
@@ -120,20 +135,25 @@
     }
 
     // Define chart configuration with explicit type
-    const config = {
-      type: 'line' as const,
+    const config: ChartConfiguration<'line', ScatterDataPoint[]> = {
+      type: 'line',
       data: {
-        datasets: datasets
+        datasets: datasets.map(ds => ({
+          ...ds,
+          data: ds.data.map(point => ({
+            x: point.x.getTime(),
+            y: point.y
+          }))
+        }))
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
           x: {
-            type: 'time' as const,
+            type: 'time',
             time: {
-              unit: 'minute' as const,
-              stepSize: 15,
+              unit: 'minute',
               displayFormats: {
                 minute: 'MMM d, HH:mm'
               }
@@ -142,9 +162,10 @@
             display: false
           },
           y: {
-            type: 'linear' as const,
+            type: 'linear',
             min: 0,
             max: 100,
+            position: 'right',
             ticks: {
               callback: (val) => val + '%'
             }
@@ -152,7 +173,7 @@
         },
         plugins: {
           tooltip: {
-            mode: 'index' as const,
+            mode: 'index',
             intersect: false,
             callbacks: {
               title: (items) => {

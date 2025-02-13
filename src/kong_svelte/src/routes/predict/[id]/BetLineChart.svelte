@@ -54,7 +54,10 @@
 
     // Get start and end times
     const startTime = Math.floor((allTimestamps[0] / 1e6) / intervalMs) * intervalMs;
-    const endTime = Math.ceil((allTimestamps[allTimestamps.length - 1] / 1e6) / intervalMs) * intervalMs;
+    const endTime = Math.max(
+      Math.ceil((allTimestamps[allTimestamps.length - 1] / 1e6) / intervalMs) * intervalMs,
+      Math.ceil(Date.now() / intervalMs) * intervalMs
+    );
 
     // Create all intervals between start and end
     for (let intervalStart = startTime; intervalStart <= endTime; intervalStart += intervalMs) {
@@ -105,6 +108,18 @@
           y: Number(formatBalance(cumulative, 8)),
           betAmount: amounts[index],
           cumulative: cumulative
+        });
+      }
+
+      // Add final point at current time with latest cumulative amount
+      const now = Date.now();
+      const lastPoint = data[data.length - 1];
+      if (lastPoint && lastPoint.x.getTime() < now) {
+        data.push({
+          x: new Date(now),
+          y: lastPoint.y,
+          betAmount: 0,
+          cumulative: lastPoint.cumulative
         });
       }
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
   import { onMount, onDestroy } from "svelte";
   import { page } from "$app/stores";
   import {
@@ -16,6 +17,7 @@
     AlertTriangle,
     Dices,
     CircleHelp,
+    ArrowLeft,
   } from "lucide-svelte";
   import BetLineChart from "./BetLineChart.svelte";
   import ChanceLineChart from "./ChanceLineChart.svelte";
@@ -190,8 +192,16 @@
   $: outcomePercentages = market?.outcome_percentages || [];
 </script>
 
-<div class="min-h-screen text-kong-text-primary px-2 sm:px-4 py-4 sm:py-8">
+<div class="min-h-screen text-kong-text-primary px-2 sm:px-4">
   <div class="max-w-6xl mx-auto">
+    <button
+      on:click={() => goto('/predict')}
+      class="mb-4 flex items-center gap-2 px-3 py-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md hover:bg-kong-bg-dark/40"
+    >
+      <ArrowLeft class="w-4 h-4" />
+      <span class="text-sm">Back</span>
+    </button>
+
     {#if error}
       <div class="text-center py-8 sm:py-12">
         <p class="text-kong-accent-red text-base sm:text-lg" role="alert">{error}</p>

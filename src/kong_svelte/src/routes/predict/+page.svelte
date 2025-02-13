@@ -1,22 +1,17 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import {
-    getMarketsByStatus,
     placeBet,
     getAllBets,
     getAllCategories,
     getAllMarkets,
   } from "$lib/api/predictionMarket";
-  import { formatUsdValue } from "$lib/utils/tokenFormatters";
-  import { Coins, AlertTriangle, Flame, TrendingUpDown } from "lucide-svelte";
-  import Modal from "$lib/components/common/Modal.svelte";
-  import { auth } from "$lib/services/auth";
+  import { AlertTriangle } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { formatBalance, toScaledAmount } from "$lib/utils/numberFormatUtils";
   import MarketSection from "./MarketSection.svelte";
   import BetModal from './BetModal.svelte';
-  import BigNumber from "bignumber.js";
   import Panel from "$lib/components/common/Panel.svelte";
 
   let marketsByStatus: any = { active: [], resolved: [] };
@@ -41,39 +36,6 @@
   let previousBets: any[] = [];
   let newBetIds = new Set<string>();
   let isInitialLoad = true;
-
-  // Calculate the correct percentage for each outcome
-  function calculatePercentage(
-    amount: number | undefined,
-    total: number | undefined,
-  ): number {
-    // Convert inputs to numbers and handle undefined
-    const amountNum = Number(amount || 0);
-    const totalNum = Number(total || 0);
-
-    // Debug logging
-    console.log("Calculating percentage:", {
-      amount: amountNum,
-      total: totalNum,
-    });
-
-    // Safety check for invalid numbers
-    if (isNaN(amountNum) || isNaN(totalNum)) {
-      console.log("Invalid numbers detected:", { amountNum, totalNum });
-      return 0;
-    }
-
-    // If total is 0, check if this outcome has any amount
-    if (totalNum === 0) {
-      return amountNum > 0 ? 100 : 0;
-    }
-
-    // Calculate percentage
-    const percentage = (amountNum / totalNum) * 100;
-    console.log("Calculated percentage:", percentage);
-
-    return percentage;
-  }
 
   // Format category from variant to display text
   function formatCategory(category: any): string {
@@ -170,10 +132,10 @@
     }
   });
 
-  function openBetModal(market: any) {
+  function openBetModal(market: any, outcomeIndex?: number) {
     selectedMarket = market;
     betAmount = 0;
-    selectedOutcome = null;
+    selectedOutcome = outcomeIndex ?? null;
     showBetModal = true;
   }
 
@@ -238,20 +200,6 @@
       isBetting = false;
     }
   }
-
-  function marketIsTrending(market: any): boolean {
-    if (
-      !market.outcomes ||
-      !market.outcome_pools ||
-      market.total_pool === undefined
-    )
-      return false;
-    return market.outcomes.some((_: any, i: number) => {
-      return (
-        calculatePercentage(market.outcome_pools[i], market.total_pool) > 60
-      );
-    });
-  }
 </script>
 
 <div class="min-h-screen text-kong-text-primary px-4">
@@ -261,12 +209,11 @@
         <h1
           class="text-xl flex items-center gap-3 justify-center drop-shadow-lg md:text-3xl font-bold text-kong-text-primary max-w-2xl mx-auto text-kong-text-primary/80 bg-300"
         >
-          <TrendingUpDown size={28} class="gradient-stroke" strokeWidth={2.5} />
           Prediction Markets
         </h1>
 
         <p
-          class="text-kong-pm-text-secondary pl-8 flex items-center gap-2 justify-center"
+          class="text-kong-pm-text-secondary flex items-center gap-2 justify-center"
         >
           Predict the future and earn rewards.
         </p>
@@ -379,10 +326,7 @@
       <div class="lg:col-span-1">
         {#if recentBets.length > 0}
           <div class="sticky top-4">
-            <h2 class="text-2xl font-bold mb-2 flex items-center gap-2">
-              <span
-                class="w-2 h-2 bg-kong-accent-green rounded-full animate-pulse"
-              ></span>
+            <h2 class="text-sm uppercase font-medium mb-2 flex items-center gap-2">
               Recent Bets
             </h2>
             <Panel variant="transparent" type="main" className="!rounded !p-0">
