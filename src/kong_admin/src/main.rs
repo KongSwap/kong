@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.contains(&"--kong_data".to_string()) {
         let identity = create_anonymous_identity();
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
-        let kong_data = KongData::new(&agent, is_mainnet).await;
+        let kong_data = KongData::new(&agent).await;
         // Dump to kong_data
         users::update_users(&kong_data).await?;
         tokens::update_tokens(&kong_data).await?;
@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.contains(&"--db_updates".to_string()) {
         let identity = create_anonymous_identity();
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
-        let kong_data = KongData::new(&agent, is_mainnet).await;
+        let kong_data = KongData::new(&agent).await;
         let delay_secs = settings.db_updates_delay_secs.unwrap_or(60);
         // loop forever and update database
         loop {
