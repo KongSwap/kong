@@ -1,6 +1,5 @@
 use ic_cdk::{query, update};
 
-use crate::ic::guards::caller_is_kingkong;
 use crate::stable_db_update::db_update_map;
 use crate::stable_db_update::stable_db_update::StableDBUpdate;
 use crate::stable_memory::DB_UPDATE_MAP;
