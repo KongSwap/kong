@@ -1,66 +1,46 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { page } from "$app/stores";
   import {
     getMarket,
-    getAllBets,
     getMarketBets,
+    placeBet,
   } from "$lib/api/predictionMarket";
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import { formatBalance, toScaledAmount } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
-  import BetModal from "../BetModal.svelte";
-  import { TrendingUp, Clock, Users, History, BarChart3 } from "lucide-svelte";
-  import Chart from "chart.js/auto";
   import {
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    TimeScale,
-    TimeSeriesScale,
-  } from "chart.js";
-
-  // Register required Chart.js components
-  Chart.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    TimeScale,
-    TimeSeriesScale,
-  );
+    TrendingUp,
+    Clock,
+    Users,
+    BarChart3,
+    AlertTriangle,
+    Dices,
+    CircleHelp,
+  } from "lucide-svelte";
+  import BetLineChart from "./BetLineChart.svelte";
+  import ChanceLineChart from "./ChanceLineChart.svelte";
+  import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import MarketStatCard from './MarketStatCard.svelte';
+  import BetInput from './BetInput.svelte';
+  import BetSummary from './BetSummary.svelte';
+  import OutcomeProgressBar from './OutcomeProgressBar.svelte';
 
   let market: any = null;
   let loading = true;
   let error: string | null = null;
   let marketBets: any[] = [];
   let loadingBets = false;
-  let chartCanvas: HTMLCanvasElement;
-  let chart: Chart | null = null;
-
-  // Modal state
-  let showBetModal = false;
-  let betAmount = 0;
-  let selectedOutcome: number | null = null;
   let betError: string | null = null;
   let isBetting = false;
   let isApprovingAllowance = false;
+  let timeLeftInterval: ReturnType<typeof setInterval>;
+  let timeLeft: string = "";
 
-  function calculatePercentage(
-    amount: number | undefined,
-    total: number | undefined,
-  ): number {
-    const amountNum = Number(amount || 0);
-    const totalNum = Number(total || 0);
-    if (totalNum === 0) return amountNum > 0 ? 100 : 0;
-    return (amountNum / totalNum) * 100;
-  }
+  // Betting state
+  let betAmounts: number[] = [];
+  let selectedOutcome: number | null = null;
+  let selectedChartTab: string = "betHistory";
 
   function formatTimeLeft(endTime: string | undefined): string {
     if (!endTime) return "Unknown";
@@ -73,161 +53,17 @@
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-    if (days > 0) return `${days}d ${hours}h left`;
-    if (hours > 0) return `${hours}h ${minutes}m left`;
-    return `${minutes}m left`;
+    if (days > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
   }
 
-  function createBetHistoryChart() {
-    console.log("Creating chart with:", {
-      hasCanvas: !!chartCanvas,
-      hasMarket: !!market,
-      betCount: marketBets?.length,
-      outcomes: market?.outcomes,
-    });
-
-    if (!chartCanvas || !market || !marketBets.length) {
-      console.log("Skipping chart creation - missing required data");
-      return;
-    }
-
-    // Destroy existing chart if it exists
-    if (chart) {
-      console.log("Destroying existing chart");
-      chart.destroy();
-    }
-
-    // Process bet data
-    const betsByOutcome = market.outcomes.map((_, index) => {
-      const filteredBets = marketBets
-        .filter((bet) => Number(bet.outcome_index) === index)
-        .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
-      console.log(`Outcome ${index} has ${filteredBets.length} bets`);
-      return filteredBets;
-    });
-
-    // Calculate cumulative amounts
-    const datasets = market.outcomes.map((outcome, index) => {
-      const bets = betsByOutcome[index];
-      let cumulative = 0;
-      const data = bets.map((bet) => {
-        cumulative += Number(bet.amount);
-        return {
-          x: Number(bet.timestamp) / 1_000_000,
-          y: Number(formatBalance(cumulative, 8)),
-        };
-      });
-
-      console.log(`Dataset for ${outcome}:`, data);
-
-      // Add initial point if there are bets
-      if (data.length > 0) {
-        data.unshift({
-          x: data[0].x - 1000, // 1 second before first bet
-          y: 0,
-        });
-      }
-
-      return {
-        label: outcome,
-        data: data,
-        borderColor: index === 0 ? "#22c55e" : "#6366f1",
-        backgroundColor: index === 0 ? "#22c55e20" : "#6366f120",
-        fill: true,
-        tension: 0.4,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-      };
-    });
-
-    console.log("Final datasets:", datasets);
-
-    const config = {
-      type: "line" as const,
-      data: {
-        datasets,
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: {
-          duration: 750,
-          easing: "easeInOutQuart" as const,
-        },
-        interaction: {
-          intersect: false,
-          mode: "nearest" as const,
-        },
-        scales: {
-          x: {
-            type: "time" as const,
-            time: {
-              unit: "hour" as const,
-              displayFormats: {
-                hour: "MMM d, HH:mm",
-              },
-            },
-            grid: {
-              display: false,
-            },
-            ticks: {
-              color: "#94a3b8",
-            },
-          },
-          y: {
-            beginAtZero: true,
-            title: {
-              display: false,
-            },
-            grid: {
-              color: "#1e293b40",
-            },
-            ticks: {
-              color: "#94a3b8",
-              callback: function (value) {
-                return value.toLocaleString() + " KONG";
-              },
-            },
-          },
-        },
-        plugins: {
-          legend: {
-            position: "top" as const,
-            labels: {
-              color: "#94a3b8",
-              usePointStyle: true,
-              pointStyle: "circle" as const,
-            },
-          },
-          tooltip: {
-            backgroundColor: "#1e293b",
-            titleColor: "#94a3b8",
-            bodyColor: "#e2e8f0",
-            borderColor: "#334155",
-            borderWidth: 1,
-            padding: 12,
-            displayColors: true,
-            callbacks: {
-              title: (items) => {
-                const date = new Date(items[0].parsed.x);
-                return date.toLocaleString();
-              },
-              label: (item) => {
-                return ` ${item.dataset.label}: ${item.parsed.y.toLocaleString()} KONG`;
-              },
-            },
-          },
-        },
-      },
-    };
-
-    try {
-      console.log("Creating new chart with config:", config);
-      chart = new Chart(chartCanvas, config);
-      console.log("Chart created successfully");
-    } catch (error) {
-      console.error("Failed to create chart:", error);
+  function updateTimeLeft() {
+    if (market?.end_time) {
+      timeLeft = formatTimeLeft(market.end_time);
     }
   }
 
@@ -238,11 +74,6 @@
       const allBets = await getMarketBets(Number($page.params.id));
       console.log("Loaded market bets:", allBets);
       marketBets = allBets;
-
-      // Wait for next tick to ensure DOM is updated
-      setTimeout(() => {
-        createBetHistoryChart();
-      }, 0);
     } catch (e) {
       console.error("Failed to load market bets:", e);
     } finally {
@@ -256,21 +87,10 @@
       const marketData = await getMarket(marketId);
       market = marketData[0];
       await loadMarketBets();
-
-      // Add window resize handler
-      const handleResize = () => {
-        if (chart) {
-          createBetHistoryChart();
-        }
-      };
-      window.addEventListener("resize", handleResize);
-
-      return () => {
-        window.removeEventListener("resize", handleResize);
-        if (chart) {
-          chart.destroy();
-        }
-      };
+      
+      // Start countdown timer
+      updateTimeLeft();
+      timeLeftInterval = setInterval(updateTimeLeft, 1000);
     } catch (e) {
       error = "Failed to load market";
       console.error(e);
@@ -279,156 +99,364 @@
     }
   });
 
-  function openBetModal(outcomeIndex: number) {
-    selectedOutcome = outcomeIndex;
-    betAmount = 0;
-    showBetModal = true;
+  onDestroy(() => {
+    if (timeLeftInterval) {
+      clearInterval(timeLeftInterval);
+    }
+  });
+
+  function calculatePotentialWin(
+    outcomeIndex: number,
+    betAmount: number,
+  ): number {
+    if (!market || betAmount <= 0) return 0;
+
+    // Convert bet amount to token units (multiply by 10^8)
+    const betAmountScaled = toScaledAmount(betAmount, 8);
+    const currentTotalPool = Number(market.total_pool);
+    const outcomePool = Number(market.outcome_pools[outcomeIndex] || 0);
+
+    if (outcomePool === 0) return betAmount * 2; // If no bets yet, assume 2x return
+
+    // Calculate new total pool after bet
+    const newTotalPool = currentTotalPool + Number(betAmountScaled);
+
+    // Calculate your share of the outcome pool after your bet
+    const yourShareOfOutcome =
+      Number(betAmountScaled) / (outcomePool + Number(betAmountScaled));
+
+    // Your potential win is your share * total pool
+    const potentialWinScaled = Math.floor(
+      yourShareOfOutcome * Number(newTotalPool),
+    );
+
+    // Convert back from token units to display units
+    return Number(formatBalance(potentialWinScaled, 8));
   }
 
-  function closeBetModal() {
-    showBetModal = false;
-    betAmount = 0;
-    selectedOutcome = null;
-    betError = null;
+  async function handleBet(outcomeIndex: number, amount: number) {
+    if (!market) return;
+
+    try {
+      isBetting = true;
+      betError = null;
+
+      const tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
+      const kongToken = tokens[0];
+
+      if (!kongToken) {
+        throw new Error("Failed to fetch KONG token information");
+      }
+
+      // Convert bet amount to scaled token units
+      const scaledAmount = toScaledAmount(amount, kongToken.decimals);
+
+      await placeBet(kongToken, Number(market.id), outcomeIndex, scaledAmount);
+
+      // Reset betting state
+      betAmounts[outcomeIndex] = 0;
+      betAmounts = [...betAmounts];
+      selectedOutcome = null;
+
+      // Refresh market data
+      const marketId = Number($page.params.id);
+      const marketData = await getMarket(marketId);
+      market = marketData[0];
+      await loadMarketBets();
+    } catch (e) {
+      console.error("Bet error:", e);
+      betError = e instanceof Error ? e.message : "Failed to place bet";
+    } finally {
+      isBetting = false;
+    }
   }
 
-  async function handleBet(amount: number) {
-    // Implementation similar to main page
-    closeBetModal();
-    await loadMarketBets();
+  function calculateOdds(percentage: number): string {
+    if (percentage <= 0) return "0x";
+    if (percentage >= 100) return "1x";
+
+    // Convert percentage to decimal odds
+    // Decimal odds = 100/percentage
+    const decimalOdds = 100 / percentage;
+
+    // Round to 2 decimal places
+    return `${decimalOdds.toFixed(2)}x`;
   }
 
   $: totalPool = Number(market?.total_pool || 0);
   $: outcomes = market?.outcomes || [];
-  $: outcomePools = market?.outcome_pools?.map(Number) || [];
   $: betCounts = market?.bet_counts?.map(Number) || [];
   $: betCountPercentages = market?.bet_count_percentages || [];
   $: outcomePercentages = market?.outcome_percentages || [];
 </script>
 
-<div class="min-h-screen text-kong-text-primary px-4 py-8">
+<div class="min-h-screen text-kong-text-primary px-2 sm:px-4 py-4 sm:py-8">
   <div class="max-w-6xl mx-auto">
     {#if error}
-      <div class="text-center py-12">
-        <p class="text-kong-accent-red text-lg">{error}</p>
+      <div class="text-center py-8 sm:py-12">
+        <p class="text-kong-accent-red text-base sm:text-lg" role="alert">{error}</p>
+        <button
+          on:click={() => location.reload()}
+          class="mt-3 sm:mt-4 px-4 py-2 bg-kong-accent-green text-white rounded-md shadow-sm hover:shadow-md transition-shadow"
+          aria-label="Reload market data">Reload Market</button
+        >
       </div>
     {:else if loading}
-      <div class="text-center py-12">
+      <div
+        role="status"
+        aria-label="Loading market data"
+        class="space-y-3 sm:space-y-4 py-8 sm:py-12"
+      >
         <div
-          class="animate-spin w-12 h-12 border-4 border-kong-accent-green rounded-full border-t-transparent mx-auto"
-        />
+          class="h-6 sm:h-8 bg-kong-bg-light/30 rounded animate-pulse mx-auto w-full sm:w-1/2"
+        ></div>
+        <div
+          class="h-16 sm:h-20 bg-kong-bg-light/30 rounded animate-pulse mx-auto w-full sm:w-3/4"
+        ></div>
+        <div
+          class="h-32 sm:h-40 bg-kong-bg-light/30 rounded animate-pulse mx-auto w-full"
+        ></div>
       </div>
     {:else if market}
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Main market info -->
-        <div class="lg:col-span-2 space-y-6">
-          <!-- Market header -->
-          <Panel variant="transparent" type="main" className="!rounded">
-            <div class="space-y-4">
-              <h1 class="text-2xl font-bold">{market.question}</h1>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+        <!-- Left Column -->
+        <div class="lg:col-span-2 space-y-3 sm:space-y-4">
 
-              <div class="flex items-center gap-6 text-kong-pm-text-secondary">
-                <div class="flex items-center gap-2">
-                  <Clock size={16} />
-                  <span>{formatTimeLeft(market.end_time)}</span>
+          <!-- Chart Panel with Tabs -->
+          <Panel
+            variant="transparent"
+            className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn"
+          >
+           <!-- Market Info Panel -->
+          <div class="!rounded animate-fadeIn mb-2">
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div class="p-2 sm:p-2 bg-kong-accent-green/10 rounded flex items-center justify-center">
+                  <CircleHelp size={20} class="text-kong-accent-green sm:w-6 sm:h-6" />
                 </div>
-                <div class="flex items-center gap-2">
-                  <Users size={16} />
-                  <span>{betCounts.reduce((a, b) => a + b, 0)} bets</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <TrendingUp size={16} />
-                  <span>{formatBalance(totalPool, 8)} KONG pool</span>
-                </div>
+                <h1 class="text-xl sm:text-2xl lg:text-2xl font-bold text-kong-text-primary leading-tight">
+                  {market.question}
+                </h1>
+            </div>
+          </div>
+            <div class="flex flex-col gap-3 sm:gap-4">
+              <div class="flex gap-2 sm:gap-4 border-b border-kong-border overflow-x-auto scrollbar-none">
+                <button
+                  on:click={() => (selectedChartTab = "betHistory")}
+                  class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {selectedChartTab ===
+                  'betHistory'
+                    ? 'text-kong-accent-green font-medium'
+                    : 'text-kong-text-secondary hover:text-kong-text-primary'}"
+                >
+                  <span class="text-sm sm:text-base">Bet History</span>
+                  {#if selectedChartTab === "betHistory"}
+                    <div class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-accent-green rounded-t-full"></div>
+                  {/if}
+                </button>
+                <button
+                  on:click={() => (selectedChartTab = "percentageChance")}
+                  class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {selectedChartTab ===
+                  'percentageChance'
+                    ? 'text-kong-accent-green font-medium'
+                    : 'text-kong-text-secondary hover:text-kong-text-primary'}"
+                >
+                  <span class="text-sm sm:text-base">Percentage Chance</span>
+                  {#if selectedChartTab === "percentageChance"}
+                    <div class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-accent-green rounded-t-full"></div>
+                  {/if}
+                </button>
+              </div>
+              <div class="h-[300px]">
+                {#if selectedChartTab === "betHistory"}
+                  <BetLineChart {market} {marketBets} />
+                {:else}
+                  <ChanceLineChart {market} {marketBets} />
+                {/if}
               </div>
             </div>
           </Panel>
 
-          <!-- Bet History Chart -->
-          <Panel variant="transparent" type="main" className="!rounded">
-            <h2 class="text-xl font-bold mb-4">Betting History</h2>
-            <div class="h-[300px]">
-              <canvas bind:this={chartCanvas}></canvas>
-            </div>
-          </Panel>
-
-          <!-- Outcomes -->
-          <Panel variant="transparent" type="main" className="!rounded">
-            <h2 class="text-xl font-bold mb-4">Outcomes</h2>
-            <div class="space-y-3">
+          <!-- Outcomes Panel -->
+          <div class="space-y-2 sm:space-y-3">
+            <h2 class="text-lg sm:text-xl font-bold px-1">Outcomes</h2>
+            <div class="space-y-2 sm:space-y-3">
               {#each outcomes as outcome, i}
-                <div class="relative">
-                  <div
-                    class="absolute inset-0 rounded-lg"
-                    style="width: {outcomePercentages[i]}%"
-                  ></div>
-                  <div
-                    class="relative flex items-center justify-between p-4 hover:bg-kong-bg-dark/40 rounded-lg transition-colors"
-                  >
-                    <div class="flex-1">
-                      <div class="font-medium">{outcome}</div>
-                      <div
-                        class="flex items-center gap-4 text-sm text-kong-pm-text-secondary"
-                      >
-                        <span>{outcomePercentages[i].toFixed(1)}% chance</span>
-                        <div class="flex items-center gap-1">
-                          <BarChart3 size={14} />
-                          <span
-                            >{betCountPercentages[i].toFixed(1)}% of bets ({betCounts[
-                              i
-                            ]} total)</span
-                          >
+                <Panel className="relative !rounded">
+                  <div class="relative flex flex-col">
+                    <div
+                      class="flex items-center justify-between p-2 sm:p-3 hover:bg-kong-bg-dark/40 rounded transition-colors shadow-sm hover:shadow-md"
+                    >
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-sm sm:text-base truncate">{outcome}</div>
+                        <div
+                          class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-kong-pm-text-secondary"
+                        >
+                          <span class="flex items-center gap-1">
+                            <Dices size={12} class="sm:w-4 sm:h-4" />
+                            <span
+                              class={outcomePercentages[i] >= 75
+                                ? "text-emerald-500"
+                                : outcomePercentages[i] >= 50
+                                  ? "text-kong-accent-green"
+                                  : outcomePercentages[i] >= 25
+                                    ? "text-yellow-500"
+                                    : "text-red-500"}
+                            >
+                              {calculateOdds(outcomePercentages[i])} payout
+                            </span>
+                          </span>
+                          <div class="flex items-center gap-1">
+                            <BarChart3 size={12} class="sm:w-4 sm:h-4" />
+                            <span class="truncate"
+                              >{betCountPercentages[i].toFixed(1)}% of bets ({betCounts[
+                                i
+                              ]} total)</span
+                            >
+                          </div>
                         </div>
+                        <OutcomeProgressBar percentage={outcomePercentages[i]} />
+                      </div>
+                      <div class="ml-2 sm:ml-4">
+                        {#if selectedOutcome === i}
+                          <button
+                            aria-label={`Cancel bet for ${outcome}`}
+                            class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-bg-light text-kong-text-primary rounded-md font-medium shadow-sm hover:shadow-md transition-shadow hover:bg-kong-bg-dark text-sm sm:text-base"
+                            on:click={() => (selectedOutcome = null)}
+                          >
+                            Cancel
+                          </button>
+                        {:else}
+                          <button
+                            aria-label={`Place bet for ${outcome}`}
+                            class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-accent-green text-white rounded-md font-bold shadow-sm hover:shadow-md transition-shadow text-sm sm:text-base"
+                            on:click={() => (selectedOutcome = i)}
+                          >
+                            Bet
+                          </button>
+                        {/if}
                       </div>
                     </div>
-                    <button
-                      class="px-4 py-2 bg-kong-accent-green text-white rounded-lg font-medium hover:bg-kong-accent-green/90 transition-colors"
-                      on:click={() => openBetModal(i)}
-                    >
-                      Bet
-                    </button>
+
+                    {#if selectedOutcome === i}
+                      <div class="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-kong-border/10 p-3 sm:p-4 rounded">
+                        <div class="space-y-4">
+                          <div>
+                            <div class="flex items-center justify-between mb-3">
+                              <label class="text-sm font-medium text-kong-text-primary">
+                                Place your bet on <span class="text-kong-accent-green">{outcome}</span>
+                              </label>
+                              <button
+                                on:click={() => (selectedOutcome = null)}
+                                class="text-kong-text-secondary hover:text-kong-text-primary transition-colors p-1"
+                                aria-label="Cancel bet"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                              </button>
+                            </div>
+                            <BetInput bind:betAmount={betAmounts[i]} />
+                          </div>
+                          {#if betAmounts[i] > 0}
+                            <BetSummary
+                              betAmount={betAmounts[i]}
+                              potentialWin={calculatePotentialWin(i, betAmounts[i])}
+                              odds={calculateOdds(outcomePercentages[i])}
+                            />
+                          {/if}
+                          <div class="flex justify-end">
+                            <button
+                              class="px-4 py-2 bg-kong-accent-green text-white rounded font-bold shadow-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-w-[100px] justify-center group hover:bg-kong-accent-green-hover text-sm"
+                              on:click={() => handleBet(i, betAmounts[i])}
+                              disabled={isBetting || !betAmounts[i]}
+                            >
+                              {#if isBetting}
+                                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>{isApprovingAllowance ? 'Approving...' : 'Placing...'}</span>
+                              {:else}
+                                <span>Place Bet</span>
+                              {/if}
+                            </button>
+                          </div>
+                          {#if betError}
+                            <div
+                              class="p-2.5 bg-kong-accent-red/10 border border-kong-accent-red/30 rounded text-kong-accent-red flex items-center gap-2 animate-fadeIn"
+                            >
+                              <AlertTriangle class="w-4 h-4 flex-shrink-0" />
+                              <span class="text-xs">{betError}</span>
+                            </div>
+                          {/if}
+                        </div>
+                      </div>
+                    {/if}
                   </div>
-                </div>
+                </Panel>
               {/each}
             </div>
-          </Panel>
+          </div>
         </div>
 
-        <!-- Sidebar -->
-        <div class="space-y-6">
-          <!-- Market stats -->
+        <!-- Right Column -->
+        <div class="space-y-3 sm:space-y-4">
+          <!-- Market Stats Panel -->
           <Panel
             variant="transparent"
-            type="main"
-            className="!rounded !max-h-[500px] overflow-y-scroll"
+            className="bg-kong-bg-dark/80 backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn"
           >
-            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-              <History size={20} />
-              Recent Bets
-            </h2>
-            <div class="space-y-3">
-              {#each marketBets as bet}
-                <div
-                  class="flex items-center justify-between py-2 border-b border-kong-border/50 last:border-0"
-                >
-                  <div>
-                    <div class="font-medium">
-                      {outcomes[Number(bet.outcome_index)]}
+            <h2 class="text-base sm:text-lg font-bold mb-4 sm:mb-6">Market Statistics</h2>
+            <div class="grid grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4 lg:gap-6">
+              <MarketStatCard
+                icon={Clock}
+                label="Time Left"
+                value={timeLeft || formatTimeLeft(market.end_time)}
+              />
+              
+              <MarketStatCard
+                icon={Users}
+                label="Total Bets"
+                value={`${betCounts.reduce((a, b) => a + b, 0).toLocaleString()} bets`}
+              />
+              
+              <div class="col-span-2 lg:col-span-1">
+                <MarketStatCard
+                  icon={TrendingUp}
+                  label="Total Pool"
+                  value={`${formatBalance(totalPool, 8)} KONG`}
+                />
+              </div>
+            </div>
+          </Panel>
+
+          <!-- Recent Bets Panel -->
+          <Panel
+            variant="transparent"
+            className="p-3 sm:p-4 bg-kong-bg-dark !rounded shadow-md animate-fadeIn"
+          >
+            <div class="sticky top-4">
+              <h3 class="text-base sm:text-lg font-bold mb-3 sm:mb-4">Recent Bets</h3>
+              <div class="space-y-2 sm:space-y-3 max-h-[300px] sm:max-h-[500px] overflow-y-auto scrollbar-thin pr-2">
+                {#each marketBets as bet}
+                  <div
+                    class="flex items-center justify-between py-2 sm:py-3 px-2 border-b border-kong-border/50 last:border-0 hover:bg-kong-bg-dark/30 transition-colors rounded"
+                  >
+                    <div class="min-w-0 flex-1">
+                      <div class="font-medium text-sm sm:text-base truncate">
+                        {outcomes[Number(bet.outcome_index)]}
+                      </div>
+                      <div class="text-xs sm:text-sm text-kong-pm-text-secondary">
+                        {new Date(Number(bet.timestamp) / 1_000_000).toLocaleString()}
+                      </div>
                     </div>
-                    <div class="text-sm text-kong-pm-text-secondary">
-                      {new Date(
-                        Number(bet.timestamp) / 1_000_000,
-                      ).toLocaleString()}
+                    <div class="text-right ml-2">
+                      <div class="font-medium text-kong-accent-green text-sm sm:text-base">
+                        {formatBalance(Number(bet.amount), 8)}
+                      </div>
+                      <div class="text-xs text-kong-pm-text-secondary">
+                        KONG
+                      </div>
                     </div>
                   </div>
-                  <div class="text-right">
-                    <div class="font-medium text-kong-accent-green">
-                      {formatBalance(Number(bet.amount), 8)}
-                    </div>
-                    <div class="text-xs text-kong-pm-text-secondary">KONG</div>
-                  </div>
-                </div>
-              {/each}
+                {/each}
+              </div>
             </div>
           </Panel>
         </div>
@@ -437,19 +465,41 @@
   </div>
 </div>
 
-<BetModal
-  {showBetModal}
-  selectedMarket={market}
-  {isBetting}
-  {isApprovingAllowance}
-  {betError}
-  {selectedOutcome}
-  bind:betAmount
-  onClose={closeBetModal}
-  onBet={handleBet}
-  onOutcomeSelect={(index) => (selectedOutcome = index)}
-/>
+<style lang="postcss" scoped>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+  }
 
-<style lang="postcss">
-  /* Add any specific styles here */
+  /* Add scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    &::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background-color: rgb(var(--kong-border) / 0.5);
+      border-radius: 3px;
+    }
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
 </style>

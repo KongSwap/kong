@@ -48,59 +48,65 @@
     // Get all unique timestamps and sort them
     const allTimestamps = [...new Set(marketBets.map(bet => Number(bet.timestamp)))].sort((a, b) => a - b);
     
-    // Process bet data by outcome
-    const betsByOutcome = market.outcomes.map((_, index) => {
-      return marketBets
-        .filter(bet => Number(bet.outcome_index) === index)
-        .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
-    });
+    // Group timestamps into 15-minute intervals
+    const intervalMs = 15 * 60 * 1000; // 15 minutes in milliseconds
+    const groupedData: Map<number, { amounts: number[], timestamp: number }> = new Map();
 
-    // Calculate cumulative amounts with continuous lines
+    // Get start and end times
+    const startTime = Math.floor((allTimestamps[0] / 1e6) / intervalMs) * intervalMs;
+    const endTime = Math.ceil((allTimestamps[allTimestamps.length - 1] / 1e6) / intervalMs) * intervalMs;
+
+    // Create all intervals between start and end
+    for (let intervalStart = startTime; intervalStart <= endTime; intervalStart += intervalMs) {
+      groupedData.set(intervalStart, { 
+        amounts: new Array(market.outcomes.length).fill(0), 
+        timestamp: intervalStart * 1e6 
+      });
+    }
+
+    // Group bets into their respective intervals
+    for (const timestamp of allTimestamps) {
+      const timeMs = timestamp / 1e6;
+      const intervalStart = Math.floor(timeMs / intervalMs) * intervalMs;
+      const interval = groupedData.get(intervalStart)!;
+      
+      // Sum bet amounts for each outcome in this interval
+      marketBets
+        .filter(bet => Number(bet.timestamp) === timestamp)
+        .forEach(bet => {
+          interval.amounts[Number(bet.outcome_index)] += Number(bet.amount);
+        });
+    }
+
+    // Sort intervals by timestamp
+    const sortedIntervals = Array.from(groupedData.entries()).sort(([a], [b]) => a - b);
+
+    // Process bet data by outcome with cumulative amounts
     const datasets = market.outcomes.map((outcome, index) => {
       let cumulative = 0;
       const data = [];
 
       // Add initial zero point
-      if (allTimestamps.length > 0) {
-        data.push({
-          x: allTimestamps[0] / 1_000_000 - 1000, // 1 second before first bet
-          y: 0,
-          betAmount: 0,
-          cumulative: 0
-        });
-      }
+      data.push({
+        x: new Date(startTime),
+        y: 0,
+        betAmount: 0,
+        cumulative: 0
+      });
 
-      // Process each timestamp
-      allTimestamps.forEach(timestamp => {
-        // Find any bets for this outcome at this timestamp
-        const betsAtTime = betsByOutcome[index].filter(bet => Number(bet.timestamp) === timestamp);
-        
-        // Calculate bet amount for this timestamp
-        const timestampTotal = betsAtTime.length > 0 
-          ? betsAtTime.reduce((sum, bet) => sum + Number(bet.amount), 0)
-          : 0;
-        
+      // Process each interval
+      for (const [intervalStart, { amounts }] of sortedIntervals) {
         // Add to cumulative
-        cumulative += timestampTotal;
+        cumulative += amounts[index];
 
-        // Get the previous point's cumulative value (or 0 if no previous point)
-        const prevPoint = data[data.length - 1];
-        const prevCumulative = prevPoint ? prevPoint.cumulative : 0;
-        
-        // If there are no bets at this timestamp, use the previous cumulative amount
-        const currentCumulative = timestampTotal === 0 ? prevCumulative : cumulative;
-        
         // Always add a point with the current cumulative amount
         data.push({
-          x: timestamp / 1_000_000,
-          y: Number(formatBalance(currentCumulative, 8)),
-          betAmount: timestampTotal,
-          cumulative: currentCumulative
+          x: new Date(intervalStart),
+          y: Number(formatBalance(cumulative, 8)),
+          betAmount: amounts[index],
+          cumulative: cumulative
         });
-
-        // Update the running cumulative to match what we just used
-        cumulative = currentCumulative;
-      });
+      }
 
       return {
         label: outcome,
@@ -136,6 +142,11 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        defaults: {
+          font: {
+            family: '"Exo 2", sans-serif'
+          }
+        },
         animation: {
           duration: 750,
           easing: 'easeInOutQuart' as const
@@ -152,19 +163,18 @@
           x: {
             type: 'time' as const,
             time: {
-              unit: 'hour' as const,
+              unit: 'minute' as const,
+              stepSize: 15,
               displayFormats: {
-                hour: 'MMM d, HH:mm'
+                minute: 'MMM d, HH:mm'
               }
             },
-            grid: {
-              display: false
-            },
-            ticks: {
-              color: '#94a3b8'
-            }
+            grid: { display: false },
+            display: false
           },
           y: {
+            type: 'linear' as const,
+            position: 'right' as const,
             beginAtZero: true,
             title: {
               display: false
@@ -182,13 +192,7 @@
         },
         plugins: {
           legend: {
-            position: 'top' as const,
-            labels: {
-              color: '#94a3b8',
-              usePointStyle: true,
-              pointStyle: 'circle' as const,
-              padding: 20
-            }
+            display: false
           },
           tooltip: {
             enabled: true,
