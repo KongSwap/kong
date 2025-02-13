@@ -13,6 +13,7 @@ pub struct Database {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Settings {
+    pub dfx_pem_file: Option<String>,
     pub db_updates_delay_secs: Option<u64>,
     pub database: Database,
 }
