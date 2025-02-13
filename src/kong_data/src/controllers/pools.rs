@@ -11,6 +11,11 @@ use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 const MAX_POOLS: usize = 1_000;
 
 #[query(hidden = true)]
+fn max_pool_idx() -> u32 {
+    POOL_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
+#[query(hidden = true)]
 fn backup_pools(pool_id: Option<u32>, num_pools: Option<u16>) -> Result<String, String> {
     POOL_MAP.with(|m| {
         let map = m.borrow();

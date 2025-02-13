@@ -8,6 +8,11 @@ use crate::stable_token::token_map;
 
 const MAX_TOKENS: usize = 1_000;
 
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn max_token_idx() -> u32 {
+    TOKEN_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
 /// serializes TOKEN_MAP for backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_tokens(token_id: Option<u32>, num_tokens: Option<u16>) -> Result<String, String> {

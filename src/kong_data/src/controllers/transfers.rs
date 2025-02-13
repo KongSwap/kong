@@ -11,6 +11,11 @@ use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 const MAX_TRANSFERS: usize = 1_000;
 
 #[query(hidden = true)]
+fn max_transfer_idx() -> u64 {
+    TRANSFER_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
+#[query(hidden = true)]
 fn backup_transfers(transfer_id: Option<u64>, num_requests: Option<u16>) -> Result<String, String> {
     TRANSFER_MAP.with(|m| {
         let map = m.borrow();

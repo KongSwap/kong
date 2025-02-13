@@ -15,6 +15,11 @@ fn backup_principal_id_map() -> Result<String, String> {
     })
 }
 
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn max_user_idx() -> u32 {
+    USER_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
 /// serialize USER_MAP for backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {

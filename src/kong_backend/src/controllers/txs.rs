@@ -8,6 +8,11 @@ use crate::stable_tx::tx::Tx;
 
 const MAX_TXS: usize = 100;
 
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn max_txs_idx() -> u64 {
+    TX_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
 /// serialize TX_ARCHIVE_MAP for backup
 /// used for storing backup
 #[query(hidden = true, guard = "caller_is_kingkong")]

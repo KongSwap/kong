@@ -16,6 +16,11 @@ use crate::stable_user::user_map;
 
 const MAX_POOLS: usize = 1_000;
 
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn max_pool_idx() -> u32 {
+    POOL_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
 /// serializes POOL_MAP for backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_pools(pool_id: Option<u32>, num_pools: Option<u16>) -> Result<String, String> {

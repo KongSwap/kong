@@ -7,6 +7,11 @@ use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 
 const MAX_TRANSFERS: usize = 100;
 
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn max_transfer_idx() -> u64 {
+    TRANSFER_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
 /// serialize TRANSFER_ARCHIVE_MAP for backup
 /// used for storing backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
