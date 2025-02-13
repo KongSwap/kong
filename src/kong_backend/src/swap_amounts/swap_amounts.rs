@@ -11,6 +11,10 @@ use crate::swap;
 
 #[query(guard = "not_in_maintenance_mode")]
 pub fn swap_amounts(pay_token: String, pay_amount: Nat, receive_token: String) -> Result<SwapAmountsReply, String> {
+    if ic_cdk::api::data_certificate().is_none() {
+        return Err("swap_amount cannot be called in replicated mode".to_string());
+    }
+
     // Pay token
     let pay_token = token_map::get_by_token(&pay_token)?;
     let pay_chain = pay_token.chain();
