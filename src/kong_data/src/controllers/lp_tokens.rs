@@ -11,6 +11,11 @@ use crate::stable_memory::LP_TOKEN_MAP;
 const MAX_LP_TOKENS: usize = 1_000;
 
 #[query(hidden = true)]
+fn max_lp_token_idx() -> u64 {
+    LP_TOKEN_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
+#[query(hidden = true)]
 fn backup_lp_tokens(lp_token_id: Option<u64>, num_lp_tokens: Option<u16>) -> Result<String, String> {
     LP_TOKEN_MAP.with(|m| {
         let map = m.borrow();

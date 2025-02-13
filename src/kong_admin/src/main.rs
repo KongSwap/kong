@@ -38,7 +38,7 @@ const MAINNET_REPLICA: &str = "https://ic0.app";
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = env::args().collect::<Vec<String>>();
     let settings = read_settings()?;
-    let mut db_client = connect_db(&settings).await?;
+    //let mut db_client = connect_db(&settings).await?;
 
     let (replica_url, is_mainnet) = if args.contains(&"--mainnet".to_string()) {
         (MAINNET_REPLICA, true)
@@ -69,17 +69,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_backend = KongBackend::new(&agent).await;
         // Dump to kong_backend
-        kong_settings::update_kong_settings(&kong_backend).await?;
-        users::update_users(&kong_backend).await?;
-        tokens::update_tokens(&kong_backend).await?;
-        pools::update_pools(&kong_backend).await?;
-        lp_tokens::update_lp_tokens(&kong_backend).await?;
+        //kong_settings::update_kong_settings(&kong_backend).await?;
+        //users::update_users(&kong_backend).await?;
+        //tokens::update_tokens(&kong_backend).await?;
+        //pools::update_pools(&kong_backend).await?;
+        //lp_tokens::update_lp_tokens(&kong_backend).await?;
         // requests::update_requests(&kong_backend).await?;
-        claims::update_claims(&kong_backend).await?;
+        //claims::update_claims(&kong_backend).await?;
         // transfers::update_transfers(&kong_backend).await?;
         // txs::update_txs(&kong_backend).await?;
     }
 
+    /*
     let mut tokens_map;
     let mut pools_map;
     // read from flat files (./backups) and update database
@@ -115,6 +116,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             thread::sleep(Duration::from_secs(delay_secs));
         }
     }
+    */
 
     Ok(())
 }

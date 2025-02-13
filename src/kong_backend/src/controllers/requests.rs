@@ -7,6 +7,11 @@ use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 
 const MAX_REQUESTS: usize = 100;
 
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn max_request_idx() -> u64 {
+    REQUEST_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
 /// serialize REQUEST_ARCHIVE_MAP for backup
 /// used for storing backup
 #[query(hidden = true, guard = "caller_is_kingkong")]

@@ -1,9 +1,7 @@
-use candid::Principal;
-
 use crate::stable_memory::KONG_SETTINGS;
 use crate::stable_user::user_map;
 
-use super::id::{caller, is_caller_controller};
+use super::id::is_caller_controller;
 
 /// guard to make sure Kong Swap is not in maintenance mode
 pub fn not_in_maintenance_mode() -> Result<(), String> {
@@ -15,9 +13,6 @@ pub fn not_in_maintenance_mode() -> Result<(), String> {
 
 /// guard to make sure caller is King Kong
 pub fn caller_is_kingkong() -> Result<(), String> {
-    if caller() == Principal::from_text("6rjil-isfbu-gsmpe-ffvcl-v3ifl-xqgkr-en2ir-pbr54-cetku-syp4i-bae").unwrap() {
-        return Ok(());
-    }
     // Controllers are maintainers as well
     if is_caller_controller() {
         return Ok(());

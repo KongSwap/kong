@@ -11,6 +11,13 @@ use crate::stable_user::stable_user::{StableUser, StableUserId};
 
 const MAX_USERS: usize = 1_000;
 
+#[update(hidden = true)]
+fn update_prinicpal_id_map() -> Result<String, String> {
+    create_principal_id_map();
+
+    Ok("Principal Id map updated".to_string())
+}
+
 #[query(hidden = true)]
 fn backup_principal_id_map() -> Result<String, String> {
     PRINCIPAL_ID_MAP.with(|m| {
@@ -19,7 +26,12 @@ fn backup_principal_id_map() -> Result<String, String> {
     })
 }
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
+#[query(hidden = true)]
+fn max_user_idx() -> u32 {
+    USER_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
+#[query(hidden = true)]
 fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {
     USER_MAP.with(|m| {
         let map = m.borrow();

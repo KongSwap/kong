@@ -11,6 +11,11 @@ use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 const MAX_REQUESTS: usize = 100;
 
 #[query(hidden = true)]
+fn max_request_idx() -> u64 {
+    REQUEST_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
+#[query(hidden = true)]
 fn backup_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result<String, String> {
     REQUEST_MAP.with(|m| {
         let map = m.borrow();
