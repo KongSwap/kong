@@ -3,6 +3,11 @@ name = "kong_admin"
 version = "0.0.18"
 edition = "2021"
 
+[features]
+local = []
+staging = []
+prod = []
+
 [dependencies]
 kong_lib = { path = "../kong_lib" }
 tokio = { version = "1.40.0", features = ["full"] }

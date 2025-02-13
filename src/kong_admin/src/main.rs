@@ -1,6 +1,6 @@
 use crate::settings::read_settings;
 use agent::create_agent_from_identity;
-use agent::create_anonymous_identity;
+use agent::{create_anonymous_identity, create_identity_from_pem_file};
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::MakeTlsConnector;
 use std::env;
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.contains(&"--kong_data".to_string()) {
         let identity = create_anonymous_identity();
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
-        let kong_data = KongData::new(&agent, is_mainnet).await;
+        let kong_data = KongData::new(&agent).await;
         // Dump to kong_data
         users::update_users(&kong_data).await?;
         tokens::update_tokens(&kong_data).await?;
@@ -64,16 +64,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // read from flat files (./backups) and update kong_backend. used for development
     if args.contains(&"--kong_backend".to_string()) {
-        let identity = create_anonymous_identity();
+        let dfx_pem_file = settings.dfx_pem_file.as_ref().ok_or("dfx identity required for Kong Data")?;
+        let identity = create_identity_from_pem_file(dfx_pem_file);
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_backend = KongBackend::new(&agent).await;
         // Dump to kong_backend
+        kong_settings::update_kong_settings(&kong_backend).await?;
         users::update_users(&kong_backend).await?;
         tokens::update_tokens(&kong_backend).await?;
         pools::update_pools(&kong_backend).await?;
-        // lp_tokens::update_lp_tokens(&kong_backend).await?;
+        lp_tokens::update_lp_tokens(&kong_backend).await?;
         // requests::update_requests(&kong_backend).await?;
-        // claims::update_claims(&kong_backend).await?;
+        claims::update_claims(&kong_backend).await?;
         // transfers::update_transfers(&kong_backend).await?;
         // txs::update_txs(&kong_backend).await?;
     }
@@ -100,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.contains(&"--db_updates".to_string()) {
         let identity = create_anonymous_identity();
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
-        let kong_data = KongData::new(&agent, is_mainnet).await;
+        let kong_data = KongData::new(&agent).await;
         let delay_secs = settings.db_updates_delay_secs.unwrap_or(60);
         // loop forever and update database
         loop {
