@@ -27,10 +27,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use ic_cdk::api::call;
 use num_traits::{ToPrimitive, Zero, CheckedAdd, CheckedMul};
 use std::ops::{Add, Sub, Mul, Div};
+use strum_macros::EnumIter;
+use std::fmt;
+use crate::queries::BetWithMarket;
 
 // Constants
 const KONG_DECIMALS: u32 = 8;
-const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";
+const KONG_LEDGER_ID: &str = "ed276-pqaaa-aaaag-atuhq-cai";
 lazy_static::lazy_static! {
     static ref KONG_TRANSFER_FEE: StorableNat = StorableNat(candid::Nat::from(10_000u64)); // 0.0001 KONG
 }
@@ -294,8 +297,8 @@ async fn transfer_kong(to: Principal, amount: StorableNat) -> Result<(), String>
 }
 
 /// Represents different categories of prediction markets
-#[derive(candid::CandidType, Serialize, Deserialize, Clone, Debug)]
-enum MarketCategory {
+#[derive(candid::CandidType, Serialize, Deserialize, Clone, Debug, EnumIter)]
+pub enum MarketCategory {
     Crypto,      // Cryptocurrency related predictions
     Memes,       // Internet culture and meme predictions
     Sports,      // Sports events and outcomes
@@ -317,6 +320,12 @@ impl Storable for MarketCategory {
     }
 
     const BOUND: Bound = Bound::Unbounded;
+}
+
+impl fmt::Display for MarketCategory {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 /// Wrapper around Vec<Bet> that implements Storable trait for stable storage
@@ -664,7 +673,12 @@ async fn place_bet(market_id: MarketId, outcome_index: StorableNat, amount: Stor
     
     match call::call::<_, (Result<candid::Nat, TransferError>,)>(ledger, "icrc2_transfer_from", (args,)).await {
         Ok((Ok(_block_index),)) => Ok(()),
-        Ok((Err(e),)) => Err(BetError::TransferError(format!("Transfer failed: {:?}. Make sure you have approved the prediction market canister to spend your tokens using icrc2_approve", e))),
+        Ok((Err(e),)) => match e {
+            TransferError::InsufficientFunds { .. } => {
+                Err(BetError::TransferError("Insufficient KONG balance. Check allowance and try again.".to_string()))
+            },
+            _ => Err(BetError::TransferError(format!("Transfer failed: {:?}", e))),
+        },
         Err((code, msg)) => Err(BetError::TransferError(format!("Transfer failed: {} (code: {:?})", msg, code))),
     }?;
 

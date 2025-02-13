@@ -1,6 +1,14 @@
 use candid::Principal;
 use ic_cdk::query;
+use crate::MarketCategory;
 use crate::*;
+use strum::IntoEnumIterator;
+
+#[derive(candid::CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct BetWithMarket {
+    bet: Bet,
+    market: Market,
+}
 
 /// Gets a specific market by its ID with detailed betting statistics
 #[query]
@@ -109,6 +117,48 @@ pub fn get_all_markets() -> Vec<Market> {
     })
 }
 
+/// Gets all bets with their associated market information
+#[query]
+pub fn get_all_bets(start_index: u64, limit: u64, reverse: bool) -> Vec<BetWithMarket> {
+    // Pre-allocate a vector to store all bets
+    let mut all_bets = Vec::new();
+    
+    BETS.with(|bets| {
+        let bets = bets.borrow();
+        MARKETS.with(|markets| {
+            let markets = markets.borrow();
+            
+            // Collect all bets with their associated markets
+            for (market_id, bet_store) in bets.iter() {
+                if let Some(market) = markets.get(&market_id) {
+                    let market = market.clone();
+                    for bet in bet_store.0.iter() {
+                        all_bets.push(BetWithMarket {
+                            bet: bet.clone(),
+                            market: market.clone(),
+                        });
+                    }
+                }
+            }
+        });
+    });
+    
+    // Sort bets by timestamp
+    all_bets.sort_by(|a, b| {
+        if reverse {
+            b.bet.timestamp.cmp(&a.bet.timestamp)
+        } else {
+            a.bet.timestamp.cmp(&b.bet.timestamp)
+        }
+    });
+    
+    // Apply pagination
+    all_bets.into_iter()
+        .skip(start_index as usize)
+        .take(limit as usize)
+        .collect()
+}
+
 /// Gets all bets for a specific market
 #[query]
 pub fn get_market_bets(market_id: MarketId) -> Vec<Bet> {
@@ -118,6 +168,12 @@ pub fn get_market_bets(market_id: MarketId) -> Vec<Bet> {
             .map(|bet_store| bet_store.0)
             .unwrap_or_default()
     })
+}
+
+/// Get all categories
+#[query]
+pub fn get_all_categories() -> Vec<String> {
+    MarketCategory::iter().map(|c| c.to_string()).collect()
 }
 
 /// Gets the user's KONG balance REMOVE BEFORE PRODUCTION

@@ -1,13 +1,13 @@
 #!/bin/bash
 
-dfx canister call prediction_markets_backend create_market '(
-  "Who will win the first round matchup of Kongswap Madness",
-  variant { KongMadness },
-  "Winner by volume",
-  vec { "KONG"; "BOB" },
-  variant { Admin },
-  variant { Duration = 60 }
-)'
+# dfx canister call prediction_markets_backend create_market '(
+#   "Who will win the first round matchup of Kongswap Madness",
+#   variant { KongMadness },
+#   "Winner by volume",
+#   vec { "KONG"; "BOB" },
+#   variant { Admin },
+#   variant { Duration = 60 }
+# )'
 
 # dfx canister call prediction_markets_backend create_market '(
 #   "Will BTC reach 100k in 2025?",
@@ -52,3 +52,12 @@ dfx canister call prediction_markets_backend create_market '(
 #   variant { Admin },
 #     86400 : nat64
 # )'
+
+dfx canister call prediction_markets_backend create_market '(
+  "Who will win the first round matchup of Kongswap Madness",
+  variant { KongMadness },
+  "Winner by volume",
+  vec { "ksKONG"; "ksICP" },
+  variant { Admin },
+  variant { Duration = 60000 }
+)'

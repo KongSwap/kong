@@ -1,7 +1,6 @@
 import { auth } from "$lib/services/auth";
 import { canisterIDLs } from "$lib/services/pnp/PnpInitializer";
 import { Principal } from "@dfinity/principal";
-import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "../tokens/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
@@ -219,6 +218,7 @@ export class IcrcService {
   public static async checkAndRequestIcrc2Allowances(
     token: FE.Token,
     payAmount: bigint,
+    spender: string = KONG_BACKEND_PRINCIPAL,
   ): Promise<bigint | null> {
     if (!token?.canister_id) {
       throw new Error("Invalid token: missing canister_id");
@@ -238,7 +238,7 @@ export class IcrcService {
       const currentAllowance = allowanceStore.getAllowance(
         token.canister_id,
         auth.pnp.account.owner.toString(),
-        KONG_BACKEND_PRINCIPAL,
+        spender,
       );
 
       if (currentAllowance && currentAllowance.amount >= totalAmount) {
@@ -256,7 +256,7 @@ export class IcrcService {
         expected_allowance: [],
         expires_at: [expiresAt],
         spender: {
-          owner: Principal.fromText(kongBackendCanisterId),
+          owner: Principal.fromText(spender),
           subaccount: [],
         },
       };
@@ -274,7 +274,7 @@ export class IcrcService {
       allowanceStore.addAllowance(token.canister_id, {
         address: token.canister_id,
         wallet_address: auth.pnp.account.owner.toString(),
-        spender: KONG_BACKEND_PRINCIPAL,
+        spender: spender,
         amount: approveArgs.amount,
         timestamp: Date.now(),
       });

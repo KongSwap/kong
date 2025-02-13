@@ -78,7 +78,7 @@ else
 fi
 
 # Deploy internet identity canister
-dfx deploy internet_identity --network "${NETWORK}"
+[ "${NETWORK}" == "local" ] && dfx deploy internet_identity --network "${NETWORK}"
 
 # Deploy core canisters
 CORE_CANISTERS_SCRIPTS=(
@@ -93,9 +93,6 @@ for script in "${CORE_CANISTERS_SCRIPTS[@]}"; do
         bash "${script}" "${NETWORK}"
     } || echo "Warning: ${script} not found"
 done
-
-# Deploy Internet Identity for local network
-#[ "${NETWORK}" == "local" ] && dfx deploy internet_identity --network "${NETWORK}"
 
 # Deploy test token ledgers, faucet, mint and create tokens and pools for local/staging
 if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then

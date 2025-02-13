@@ -4,7 +4,7 @@
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
   import { onMount, onDestroy } from "svelte";
-  import { Droplet, Settings as SettingsIcon, Copy, ChartScatter, Menu, ChartCandlestick, X, Wallet, ChevronDown, Coins, Award, PiggyBank } from "lucide-svelte";
+  import { Droplet, Settings as SettingsIcon, Copy, ChartScatter, Menu, ChartCandlestick, X, Wallet, ChevronDown, Coins, Award, PiggyBank, TrendingUpDown, Joystick } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/services/tokens";
   import { tooltip } from "$lib/actions/tooltip";
@@ -97,6 +97,20 @@
       comingSoon: false
     },
     { 
+      label: 'Kong Madness',
+      description: 'Bet on the outcome of the Kong Madness tournament. Tokens compete based on daily volume.',
+      path: '/competition/kong-madness',
+      icon: Joystick,
+      comingSoon: false
+    },
+    { 
+      label: 'Prediction Markets',
+      description: 'Predict the outcome of events and earn rewards',
+      path: '/predict',
+      icon: TrendingUpDown,
+      comingSoon: false
+    },
+    { 
       label: 'Staking',
       description: 'Stake your tokens to earn yield and governance rights',
       path: '/pools/staking',
@@ -110,7 +124,7 @@
       icon: PiggyBank,
       comingSoon: true
     }
-  ];
+  ].filter(option => process.env.DFX_NETWORK !== 'ic' ? option : ["Kong Madness", "Prediction Markets"].includes(option.label));
 
   function showDropdown(type: 'swap' | 'earn' | 'stats') {
     clearTimeout(closeTimeout);

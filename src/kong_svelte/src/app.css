@@ -40,7 +40,15 @@ body {
   --logo-brightness: 1;
   --logo-invert: 0;
   --logo-hover-brightness: 0.9;
+  --accent-purple: 147 51 234;       /* #9333EA */
+  --accent-cyan: 34 211 238;         /* #22D3EE */
+  --surface-dark: 30 33 46;          /* #1E212E */
+  --surface-light: 45 50 66;         /* #2D3242 */
   color-scheme: dark light; /* Dark first */
+  --pm-dark: 23 25 35;
+  --pm-border: 40 44 58;
+  --pm-accent: 98 102 255;
+  --pm-text-secondary: 158 164 186;
 }
 
 /* Light theme overrides */
@@ -66,7 +74,15 @@ body {
   --logo-invert: 1;
   --logo-hover-brightness: 0.65;
   --chart-text-color: #334155;    /* Darker blue-gray for better contrast */
+  --accent-purple: 124 58 237;       /* #7C3AED */
+  --accent-cyan: 8 145 178;          /* #0891B2 */
+  --surface-dark: 225 230 240;       /* #E1E6F0 */
+  --surface-light: 240 245 252;      /* #F0F5FC */
   color-scheme: light dark; /* Helps with system transitions */
+  --pm-dark: 245 245 245;
+  --pm-border: 229 231 235;
+  --pm-accent: 79 70 229;
+  --pm-text-secondary: 107 114 128;
 }
 
 /* Dark theme overrides (more neutral navy background) */
