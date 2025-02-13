@@ -79,7 +79,7 @@ impl Default for StableKongSettings {
             kong_backend_account: kong_account(),
             kong_data: Principal::from_text(KONG_DATA).unwrap(),
             event_store: Principal::from_text(EVENT_STORE).unwrap(),
-            maintenance_mode: false,
+            maintenance_mode: true,
             kingkong: vec![100, 101], // default kingkong users
             ckusdt_token_id: CKUSDT_TOKEN_ID,
             ckusdt_symbol: CKUSDT_SYMBOL.to_string(),
@@ -109,7 +109,7 @@ impl Default for StableKongSettings {
             txs_archive_interval_secs: 3600,             // archive txs every hour
             transfers_archive_interval_secs: 3600,       // archive transfers every hour
             lp_tokens_archive_interval_secs: 3600,       // archive lp_positions every hour
-            archive_to_kong_data: true,                  // replicate to kong_data
+            archive_to_kong_data: false,                 // replicate to kong_data
             send_to_event_store: false,                  // replicate to event_store (Token Terminal)
         }
     }
