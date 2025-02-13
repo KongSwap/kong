@@ -62,6 +62,8 @@ fn update_users(stable_users_json: String) -> Result<String, String> {
         }
     });
 
+    create_principal_id_map();
+
     Ok("Users updated".to_string())
 }
 
