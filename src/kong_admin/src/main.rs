@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_backend = KongBackend::new(&agent).await;
         // Dump to kong_backend
-        //kong_settings::update_kong_settings(&kong_backend).await?;
+        kong_settings::update_kong_settings(&kong_backend).await?;
         //users::update_users(&kong_backend).await?;
         //tokens::update_tokens(&kong_backend).await?;
         //pools::update_pools(&kong_backend).await?;

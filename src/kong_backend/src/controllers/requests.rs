@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
+use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 
 const MAX_REQUESTS: usize = 100;
@@ -50,6 +51,12 @@ fn update_requests(stable_requests_json: String) -> Result<String, String> {
     });
 
     Ok("Requests updated".to_string())
+}
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn archive_requests() -> Result<String, String> {
+    archive_request_map();
+
+    Ok("Requests archived".to_string())
 }
 
 /// remove archive requests older than ts
