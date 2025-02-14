@@ -54,6 +54,8 @@ enum TokenIndex {
 /// * `Err(String)` - An error message if the operation fails.
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
+    return Err("add_pool is suspended temporarily".to_string());
+
     let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount) =
         check_arguments(&args).await?;
     let ts = get_time();
