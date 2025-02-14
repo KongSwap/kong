@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{TX_ARCHIVE_MAP, TX_MAP};
-use crate::stable_request::request::Request;
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
 use crate::stable_tx::tx_archive::archive_tx_map;
