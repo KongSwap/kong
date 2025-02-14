@@ -43,10 +43,19 @@ fn update_lp_tokens(stable_lp_tokens: String) -> Result<String, String> {
     };
 
     for (_, v) in lp_tokens {
-        lp_token_map::insert(&v)?;
+        lp_token_map::update(&v);
     }
 
     Ok("LP tokens updated".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn clear_lp_tokens() -> Result<String, String> {
+    LP_TOKEN_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+
+    Ok("LP tokens cleared".to_string())
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
