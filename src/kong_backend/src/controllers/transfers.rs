@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
+use crate::stable_transfer::transfer_archive::archive_transfer_map;
 
 const MAX_TRANSFERS: usize = 100;
 
@@ -49,6 +50,13 @@ fn update_transfers(stable_transfers_json: String) -> Result<String, String> {
     });
 
     Ok("Transfers updated".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn archive_transfers() -> Result<String, String> {
+    archive_transfer_map();
+
+    Ok("Transfers archived".to_string())
 }
 
 /// remove archive transfers older than ts

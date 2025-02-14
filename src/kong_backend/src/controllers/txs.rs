@@ -3,8 +3,10 @@ use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{TX_ARCHIVE_MAP, TX_MAP};
+use crate::stable_request::request::Request;
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
+use crate::stable_tx::tx_archive::archive_tx_map;
 
 const MAX_TXS: usize = 100;
 
@@ -50,6 +52,13 @@ fn update_txs(stable_txs_json: String) -> Result<String, String> {
     });
 
     Ok("Txs updated".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn archive_txs() -> Result<String, String> {
+    archive_tx_map();
+
+    Ok("Txs archived".to_string())
 }
 
 /// remove archive txs older than ts
