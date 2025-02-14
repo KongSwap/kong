@@ -1,4 +1,5 @@
 use ic_cdk::{query, update};
+use std::cmp::max;
 use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
@@ -7,7 +8,7 @@ use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 
-const MAX_REQUESTS: usize = 100;
+const MAX_REQUESTS: usize = 1000;
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn max_request_idx() -> u64 {
@@ -68,7 +69,10 @@ fn archive_requests_num() -> Result<String, String> {
         REQUEST_ARCHIVE_MAP.with(|request_archive_map| {
             let request = request_map.borrow();
             let mut request_archive = request_archive_map.borrow_mut();
-            let start_request_id = request_archive.last_key_value().map_or(0_u64, |(k, _)| k.0);
+            let start_request_id = max(
+                request.first_key_value().map_or(0_u64, |(k, _)| k.0),
+                request_archive.last_key_value().map_or(0_u64, |(k, _)| k.0),
+            );
             let end_request_id = start_request_id + MAX_REQUESTS as u64;
             for request_id in start_request_id..=end_request_id {
                 if let Some(request) = request.get(&StableRequestId(request_id)) {
@@ -78,7 +82,7 @@ fn archive_requests_num() -> Result<String, String> {
         });
     });
 
-    Ok("Archive requests removed".to_string())
+    Ok("Requests archived num".to_string())
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]

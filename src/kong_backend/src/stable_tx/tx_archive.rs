@@ -42,6 +42,22 @@ pub fn archive_tx_map() {
 
     let now = get_time();
 
+    // TX_MAP keep txs from the last hour
+    let one_hour_ago = now - 3_600_000_000_000;
+    let mut remove_list = Vec::new();
+    TX_MAP.with(|tx_map| {
+        tx_map.borrow().iter().for_each(|(tx_id, tx)| {
+            if tx.ts() < one_hour_ago {
+                remove_list.push(tx_id);
+            }
+        });
+    });
+    TX_MAP.with(|tx_map| {
+        remove_list.iter().for_each(|tx_id| {
+            tx_map.borrow_mut().remove(tx_id);
+        });
+    });
+    
     // TX_24H_MAP keep txs from the last 24 hours
     let one_day_ago = now - 86_400_000_000_000;
     let mut remove_list = Vec::new();
@@ -57,22 +73,6 @@ pub fn archive_tx_map() {
     TX_24H_MAP.with(|tx_24h_map| {
         remove_list.iter().for_each(|tx_id| {
             tx_24h_map.borrow_mut().remove(tx_id);
-        });
-    });
-
-    // TX_MAP keep txs from the last hour
-    let one_hour_ago = now - 3_600_000_000_000;
-    let mut remove_list = Vec::new();
-    TX_MAP.with(|tx_map| {
-        tx_map.borrow().iter().for_each(|(tx_id, tx)| {
-            if tx.ts() < one_hour_ago {
-                remove_list.push(tx_id);
-            }
-        });
-    });
-    TX_MAP.with(|tx_map| {
-        remove_list.iter().for_each(|tx_id| {
-            tx_map.borrow_mut().remove(tx_id);
         });
     });
 }
