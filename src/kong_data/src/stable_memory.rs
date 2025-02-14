@@ -25,6 +25,7 @@ pub const REQUEST_MEMORY_ID: MemoryId = MemoryId::new(5);
 pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(6);
 pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(7);
 pub const LP_TOKEN_MEMORY_ID: MemoryId = MemoryId::new(8);
+pub const EVENT_STORE_EVENTS_MEMORY_ID: MemoryId = MemoryId::new(9);
 
 pub const DB_UPDATE_MEMORY_ID: MemoryId = MemoryId::new(50);
 
@@ -91,4 +92,14 @@ thread_local! {
 /// A helper function to access the memory manager.
 pub fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
     MEMORY_MANAGER.with(|cell| f(&cell.borrow()))
+}
+
+/// A helper function to get read access to the memory.
+pub fn with_memory<R>(memory_id: MemoryId, f: impl FnOnce(&Memory) -> R) -> R {
+    with_memory_manager(|memory_manager| f(&memory_manager.get(memory_id)))
+}
+
+/// A helper function to get write access to the memory.
+pub fn with_memory_mut<R>(memory_id: MemoryId, f: impl FnOnce(&mut Memory) -> R) -> R {
+    with_memory_manager(|memory_manager| f(&mut memory_manager.get(memory_id)))
 }

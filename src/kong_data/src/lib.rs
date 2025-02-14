@@ -4,6 +4,7 @@ mod canister;
 mod chains;
 mod claims;
 mod controllers;
+mod event_store_client;
 mod helpers;
 mod ic;
 mod pools;
