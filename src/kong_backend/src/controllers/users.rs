@@ -81,3 +81,13 @@ fn update_user(stable_user_json: String) -> Result<String, String> {
 
     Ok("User updated".to_string())
 }
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_user(user_id: u32) -> Result<String, String> {
+    USER_MAP.with(|user_map| {
+        let mut map = user_map.borrow_mut();
+        map.remove(&StableUserId(user_id));
+    });
+
+    Ok("User removed".to_string())
+}

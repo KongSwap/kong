@@ -1,9 +1,9 @@
-use candid::Principal;
+use candid::{Nat, Principal};
 use ic_cdk::{query, update};
 use icrc_ledger_types::icrc1::account::Account;
 use std::collections::BTreeMap;
 
-use crate::helpers::nat_helpers::nat_zero;
+use crate::helpers::nat_helpers::{nat_add, nat_subtract, nat_zero};
 use crate::ic::guards::caller_is_kingkong;
 use crate::remove_liquidity::remove_liquidity::remove_liquidity_from_pool;
 use crate::remove_liquidity::remove_liquidity_args::RemoveLiquidityArgs;
@@ -165,4 +165,41 @@ fn update_pool_tvl(symbol: String) -> Result<String, String> {
     pool_map::update(&pool);
 
     serde_json::to_string(&pool).map_err(|e| format!("Failed to serialize: {}", e))
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn g20_payment() -> Result<String, String> {
+    let mut icp_ckusdt = pool_map::get_by_token("ICP_ckUSDT")?;
+    let amount_0 = Nat::from(311_341_379_409_u128);
+    let amount_1 = Nat::from(22_215_014_188_u128);
+    icp_ckusdt.balance_0 = nat_add(&icp_ckusdt.balance_0, &amount_0);
+    icp_ckusdt.balance_1 = nat_add(&icp_ckusdt.balance_1, &amount_1);
+    pool_map::update(&icp_ckusdt);
+    println!("ICP_ckUSDT updated");
+
+    let mut ckbtc_ckusdt = pool_map::get_by_token("ckBTC_ckUSDT")?;
+    let amount_0 = Nat::from(260_447_u128);
+    let amount_1 = Nat::from(250_405_302_u128);
+    ckbtc_ckusdt.balance_0 = nat_subtract(&ckbtc_ckusdt.balance_0, &amount_0).unwrap();
+    ckbtc_ckusdt.balance_1 = nat_subtract(&ckbtc_ckusdt.balance_1, &amount_1).unwrap();
+    pool_map::update(&ckbtc_ckusdt);
+    println!("ckBTC_ckUSDT updated");
+
+    let mut ckusdc_ckusdt = pool_map::get_by_token("ckUSDC_ckUSDT")?;
+    let amount_0 = Nat::from(20_625_749_630_u128);
+    let amount_1 = Nat::from(20_634_769_003_u128);
+    ckusdc_ckusdt.balance_0 = nat_subtract(&ckusdc_ckusdt.balance_0, &amount_0).unwrap();
+    ckusdc_ckusdt.balance_1 = nat_subtract(&ckusdc_ckusdt.balance_1, &amount_1).unwrap();
+    pool_map::update(&ckusdc_ckusdt);
+    println!("ckUSDC_ckUSDT updated");
+
+    let mut cketh_ckusdt = pool_map::get_by_token("ckETH_ckUSDT")?;
+    let amount_0 = Nat::from(16_464_841_411_276_600_000_u128);
+    let amount_1 = Nat::from(44_078_851_681_u128);
+    cketh_ckusdt.balance_0 = nat_subtract(&cketh_ckusdt.balance_0, &amount_0).unwrap();
+    cketh_ckusdt.balance_1 = nat_subtract(&cketh_ckusdt.balance_1, &amount_1).unwrap();
+    pool_map::update(&cketh_ckusdt);
+    println!("ckETH_ckUSDT updated");
+
+    Ok("Pools updated with g20 payments".to_string())
 }
