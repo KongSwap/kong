@@ -54,8 +54,6 @@ pub enum TokenIndex {
 /// 9. return_tokens() - otherwise if any errors occured, return tokens
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_liquidity(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
-    return Err("add_liquidity is suspended temporarily".to_string());
-
     // determine if using icrc2_approve or irc1_transfer method
     if args.tx_id_0.is_none() && args.tx_id_1.is_none() {
         add_liquidity_transfer_from(args).await
@@ -75,8 +73,6 @@ pub async fn add_liquidity(args: AddLiquidityArgs) -> Result<AddLiquidityReply, 
 /// Returns: u64 - request_id. poll requests(request_id) to return the current status of the request
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_liquidity_async(args: AddLiquidityArgs) -> Result<u64, String> {
-    return Err("add_liquidity is suspended temporarily".to_string());
-
     // determine if using icrc2_approve or irc1_transfer method
     if args.tx_id_0.is_none() && args.tx_id_1.is_none() {
         add_liquidity_transfer_from_async(args).await
