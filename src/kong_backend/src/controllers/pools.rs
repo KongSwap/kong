@@ -194,9 +194,11 @@ fn g20_payment() -> Result<String, String> {
     println!("ckUSDC_ckUSDT updated");
 
     let mut cketh_ckusdt = pool_map::get_by_token("ckETH_ckUSDT")?;
-    let amount_0 = Nat::from(16_464_841_411_276_600_000_u128);
+    let amount_0 = Nat::from(16_330_000_000_000_000_000_u128);
+    let fee_0 = Nat::from(108_056_736_117_801_000_u128);
     let amount_1 = Nat::from(44_078_851_681_u128);
     cketh_ckusdt.balance_0 = nat_subtract(&cketh_ckusdt.balance_0, &amount_0).unwrap();
+    cketh_ckusdt.lp_fee_0 = nat_add(&cketh_ckusdt.lp_fee_0, &fee_0);
     cketh_ckusdt.balance_1 = nat_subtract(&cketh_ckusdt.balance_1, &amount_1).unwrap();
     pool_map::update(&cketh_ckusdt);
     println!("ckETH_ckUSDT updated");
