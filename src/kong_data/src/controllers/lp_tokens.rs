@@ -75,3 +75,12 @@ fn update_lp_token(stable_lp_token_json: String) -> Result<String, String> {
 
     Ok("LP token updated".to_string())
 }
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn clear_lp_tokens() -> Result<String, String> {
+    LP_TOKEN_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+
+    Ok("LP tokens cleared".to_string())
+}

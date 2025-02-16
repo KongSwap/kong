@@ -92,3 +92,12 @@ fn update_user(stable_user_json: String) -> Result<String, String> {
 
     Ok("User updated".to_string())
 }
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn clear_users() -> Result<String, String> {
+    USER_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+
+    Ok("Users cleared".to_string())
+}

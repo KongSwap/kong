@@ -50,15 +50,6 @@ fn update_lp_tokens(stable_lp_tokens: String) -> Result<String, String> {
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn clear_lp_tokens() -> Result<String, String> {
-    LP_TOKEN_MAP.with(|m| {
-        m.borrow_mut().clear_new();
-    });
-
-    Ok("LP tokens cleared".to_string())
-}
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
 fn remove_zero_lp_tokens() -> Result<String, String> {
     LP_TOKEN_MAP.with(|m| {
         let mut map = m.borrow_mut();

@@ -76,3 +76,12 @@ fn update_token(stable_token_json: String) -> Result<String, String> {
 
     Ok("Token updated".to_string())
 }
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn clear_tokens() -> Result<String, String> {
+    TOKEN_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+
+    Ok("Tokens cleared".to_string())
+}
