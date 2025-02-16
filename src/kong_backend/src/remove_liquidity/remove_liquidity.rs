@@ -33,8 +33,6 @@ enum TokenIndex {
 ///   - payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1 does not include gas fees
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidityReply, String> {
-    return Err("remove_liquidity is suspended temporarily".to_string());
-
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
     let ts = get_time();
@@ -111,8 +109,6 @@ pub async fn remove_liquidity_from_pool(
 
 #[update]
 pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, String> {
-    return Err("remove_liquidity is suspended temporarily".to_string());
-
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
     let ts = get_time();
