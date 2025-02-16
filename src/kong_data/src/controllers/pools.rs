@@ -75,3 +75,12 @@ fn update_pool(stable_pool_json: String) -> Result<String, String> {
 
     Ok("Pool updated".to_string())
 }
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn clear_pools() -> Result<String, String> {
+    POOL_MAP.with(|pool_map| {
+        pool_map.borrow_mut().clear_new();
+    });
+
+    Ok("Pools cleared".to_string())
+}
