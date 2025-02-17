@@ -1,4 +1,11 @@
 use candid::Principal;
+use icrc_ledger_types::icrc1::account::Account;
+
+/// Account of the canister.
+#[allow(dead_code)]
+pub fn canister_id() -> Account {
+    Account::from(ic_cdk::api::id())
+}
 
 /// Principal ID of the caller.
 pub fn caller() -> Principal {

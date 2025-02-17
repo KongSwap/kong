@@ -15,7 +15,7 @@ pub struct StableKongSettings {
     pub kong_data: Principal,
     pub event_store: Principal,
     pub maintenance_mode: bool,
-    pub kingkong: Vec<u32>, // list of user_ids for maintainers
+    pub kingkong: Vec<u32>, // list of user_ids of maintainers
     pub ckusdt_token_id: u32,
     pub ckusdt_symbol: String,
     pub ckusdt_symbol_with_chain: String,
