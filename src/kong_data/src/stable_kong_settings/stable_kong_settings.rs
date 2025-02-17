@@ -4,16 +4,14 @@ use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
 
 use crate::ic::{
-    canister_address::{EVENT_STORE, KONG_DATA},
+    canister_address::{EVENT_STORE, KONG_BACKEND, KONG_DATA},
     ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, CKUSDT_TOKEN_ID},
     icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN, ICP_TOKEN_ID},
-    id::{kong_account, kong_backend_id},
 };
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct StableKongSettings {
-    pub kong_backend_id: String,
-    pub kong_backend_account: Account,
+    pub kong_backend: Account,
     pub kong_data: Principal,
     pub event_store: Principal,
     pub maintenance_mode: bool,
@@ -61,8 +59,7 @@ impl Default for StableKongSettings {
         let claim_map_idx = 0;
         let lp_token_map_idx = 0;
         Self {
-            kong_backend_id: kong_backend_id(),
-            kong_backend_account: kong_account(),
+            kong_backend: Account::from(Principal::from_text(KONG_BACKEND).unwrap()),
             kong_data: Principal::from_text(KONG_DATA).unwrap(),
             event_store: Principal::from_text(EVENT_STORE).unwrap(),
             maintenance_mode: false,

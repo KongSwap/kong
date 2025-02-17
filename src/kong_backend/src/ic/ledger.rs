@@ -13,7 +13,7 @@ pub struct StandardRecord {
 }
 
 pub async fn get_backend_canister_balance(ledger: &Principal) -> Result<Nat, String> {
-    ic_cdk::call::<(Account,), (Nat,)>(*ledger, "icrc1_balance_of", (kong_settings_map::get().kong_backend_account,))
+    ic_cdk::call::<(Account,), (Nat,)>(*ledger, "icrc1_balance_of", (kong_settings_map::get().kong_backend,))
         .await
         .map(|(balance,)| balance)
         .map_err(|e| e.1)

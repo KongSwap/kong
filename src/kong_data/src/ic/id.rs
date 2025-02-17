@@ -1,20 +1,4 @@
 use candid::Principal;
-use icrc_ledger_types::icrc1::account::Account;
-
-/// Principal of Kong backend
-pub fn kong_backend() -> Principal {
-    ic_cdk::api::id()
-}
-
-/// Cansiter ID of Kong backend
-pub fn kong_backend_id() -> String {
-    ic_cdk::api::id().to_text()
-}
-
-/// Account of Kong backend
-pub fn kong_account() -> Account {
-    Account::from(kong_backend())
-}
 
 /// Principal ID of the caller.
 pub fn caller() -> Principal {

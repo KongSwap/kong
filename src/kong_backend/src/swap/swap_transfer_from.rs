@@ -194,7 +194,7 @@ async fn process_swap(
     ts: u64,
 ) -> Result<(Nat, f64, f64, f64, Vec<SwapCalc>), String> {
     let caller_id = caller_id();
-    let kong_backend = kong_settings_map::get().kong_backend_account;
+    let kong_backend = kong_settings_map::get().kong_backend;
 
     request_map::update_status(request_id, StatusCode::Start, None);
 
