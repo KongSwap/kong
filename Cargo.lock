@@ -1308,7 +1308,7 @@ dependencies = [
 
 [[package]]
 name = "kong_admin"
-version = "0.0.18"
+version = "0.0.19"
 dependencies = [
  "anyhow",
  "candid",
@@ -1331,12 +1331,13 @@ dependencies = [
 
 [[package]]
 name = "kong_backend"
-version = "0.0.18"
+version = "0.0.19"
 dependencies = [
  "candid",
  "futures",
  "getrandom",
  "ic-cdk",
+ "ic-cdk-macros",
  "ic-cdk-timers",
  "ic-ledger-types",
  "ic-stable-structures",
@@ -1356,10 +1357,11 @@ dependencies = [
 
 [[package]]
 name = "kong_data"
-version = "0.0.18"
+version = "0.0.19"
 dependencies = [
  "candid",
  "ic-cdk",
+ "ic-cdk-macros",
  "ic-cdk-timers",
  "ic-ledger-types",
  "ic-stable-structures",
@@ -1376,11 +1378,12 @@ dependencies = [
 
 [[package]]
 name = "kong_faucet"
-version = "0.0.18"
+version = "0.0.19"
 dependencies = [
  "candid",
  "futures",
  "ic-cdk",
+ "ic-cdk-macros",
  "ic-ledger-types",
  "ic-stable-structures",
  "icrc-ledger-types",
@@ -1391,7 +1394,7 @@ dependencies = [
 
 [[package]]
 name = "kong_lib"
-version = "0.0.18"
+version = "0.0.19"
 dependencies = [
  "candid",
  "ic-cdk",

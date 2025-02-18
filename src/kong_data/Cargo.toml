@@ -1,6 +1,6 @@
 [package]
 name = "kong_data"
-version = "0.0.18"
+version = "0.0.19"
 edition = "2021"
 
 [lib]
@@ -15,6 +15,7 @@ prod = []
 [dependencies]
 candid = "0.10.10"
 ic-cdk = "0.17.0"
+ic-cdk-macros = "0.17.1"
 ic-cdk-timers = "0.11.0"
 ic-ledger-types = "0.14.0"
 ic-stable-structures = "0.6.6"

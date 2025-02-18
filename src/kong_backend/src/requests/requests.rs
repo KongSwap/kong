@@ -8,10 +8,6 @@ use crate::stable_request::request_map;
 
 #[query(guard = "not_in_maintenance_mode")]
 async fn requests(request_id: Option<u64>) -> Result<Vec<RequestReply>, String> {
-    if ic_cdk::api::data_certificate().is_none() {
-        return Err("swap_amount cannot be called in replicated mode".to_string());
-    }
-
     let request_id = match request_id {
         Some(request_id) => request_id,
         None => Err("request_id is required".to_string())?,

@@ -10,10 +10,6 @@ use crate::stable_token::token::Token;
 
 #[query(guard = "not_in_maintenance_mode")]
 fn remove_liquidity_amounts(token_0: String, token_1: String, remove_lp_token_amount: Nat) -> Result<RemoveLiquidityAmountsReply, String> {
-    if ic_cdk::api::data_certificate().is_none() {
-        return Err("swap_amount cannot be called in replicated mode".to_string());
-    }
-
     // Pool
     let pool = pool_map::get_by_tokens(&token_0, &token_1)?;
     let symbol = pool.symbol();
