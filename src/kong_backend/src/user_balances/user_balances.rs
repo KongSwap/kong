@@ -16,10 +16,6 @@ use crate::stable_user::user_map;
 
 #[query(guard = "not_in_maintenance_mode")]
 pub async fn user_balances(principal_id: String) -> Result<Vec<UserBalancesReply>, String> {
-    if ic_cdk::api::data_certificate().is_none() {
-        return Err("swap_amount cannot be called in replicated mode".to_string());
-    }
-
     let user_id = user_map::get_by_principal_id(&principal_id)
         .ok()
         .flatten()

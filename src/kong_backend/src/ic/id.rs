@@ -2,19 +2,10 @@ use candid::Principal;
 use ic_ledger_types::{AccountIdentifier, Subaccount};
 use icrc_ledger_types::icrc1::account::Account;
 
-/// Principal of Kong backend
-pub fn kong_backend() -> Principal {
-    ic_cdk::api::id()
-}
-
-/// Cansiter ID of Kong backend
-pub fn kong_backend_id() -> String {
-    ic_cdk::api::id().to_text()
-}
-
-/// Account of Kong backend
-pub fn kong_account() -> Account {
-    Account::from(kong_backend())
+/// Account of the canister.
+#[allow(dead_code)]
+pub fn canister_id() -> Account {
+    Account::from(ic_cdk::api::id())
 }
 
 /// Principal ID of the caller.
@@ -28,7 +19,6 @@ pub fn caller_principal_id() -> String {
 }
 
 /// Account of the caller.
-/// Accound is a combination of the caller's principal ID and subaccount ID.
 pub fn caller_id() -> Account {
     Account::from(caller())
 }

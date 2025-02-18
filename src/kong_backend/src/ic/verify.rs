@@ -48,7 +48,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                 {
                     Ok(query_response) => {
                         let blocks: Vec<Block> = query_response.blocks;
-                        let backend_account = kong_settings_map::get().kong_backend_account;
+                        let backend_account = kong_settings_map::get().kong_backend;
                         let backend_account_id =
                             AccountIdentifier::new(&backend_account.owner, &Subaccount(backend_account.subaccount.unwrap_or([0; 32])));
                         let amount = Tokens::from_e8s(nat_to_u64(amount).ok_or("Invalid ICP amount")?);
@@ -110,7 +110,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                                         Err("Transfer from does not match caller")?
                                     }
                                     let to = transfer.to;
-                                    if to != kong_settings_map::get().kong_backend_account {
+                                    if to != kong_settings_map::get().kong_backend {
                                         Err("Transfer to does not match Kong backend")?
                                     }
                                     let transfer_amount = transfer.amount;
@@ -157,7 +157,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                                     Err("Transfer from does not match caller")?
                                 }
                                 let to = transfer.to;
-                                if to != kong_settings_map::get().kong_backend_account {
+                                if to != kong_settings_map::get().kong_backend {
                                     Err("Transfer to does not match Kong backend")?
                                 }
                                 // make sure spender is None so not an icrc2_transfer_from transaction
@@ -251,7 +251,7 @@ pub async fn verify_block_id(
                                     Err("Burn from does not match caller")?
                                 }
                                 if let Some(spender) = spender {
-                                    if spender != kong_settings_map::get().kong_backend_account {
+                                    if spender != kong_settings_map::get().kong_backend {
                                         Err("Burn spender does not match Kong backend")?
                                     }
                                 } else {
@@ -270,12 +270,12 @@ pub async fn verify_block_id(
                                     if from != caller_id() {
                                         Err("Transfer from does not match caller")?
                                     }
-                                    if to != kong_settings_map::get().kong_backend_account {
+                                    if to != kong_settings_map::get().kong_backend {
                                         Err("Transfer to does not match Kong backend")?
                                     }
                                     if *transaction_type == TransactionType::TransferFrom {
                                         if let Some(spender) = spender {
-                                            if spender != kong_settings_map::get().kong_backend_account {
+                                            if spender != kong_settings_map::get().kong_backend {
                                                 Err("Transfer spender does not match Kong backend")?
                                             }
                                         } else {
@@ -296,7 +296,7 @@ pub async fn verify_block_id(
                                     if from != caller_id() {
                                         Err("Approve from does not match caller")?
                                     }
-                                    if spender != kong_settings_map::get().kong_backend_account {
+                                    if spender != kong_settings_map::get().kong_backend {
                                         Err("Approve spender does not match Kong backend")?
                                     }
                                     if approve_amount < *amount {
@@ -332,7 +332,7 @@ pub async fn verify_block_id(
                 {
                     Ok(query_response) => {
                         let blocks: Vec<Block> = query_response.blocks;
-                        let backend_account = kong_settings_map::get().kong_backend_account;
+                        let backend_account = kong_settings_map::get().kong_backend;
                         let backend_account_id =
                             AccountIdentifier::new(&backend_account.owner, &Subaccount(backend_account.subaccount.unwrap_or([0; 32])));
                         let amount = Tokens::from_e8s(nat_to_u64(amount).ok_or("Invalid ICP amount")?);

@@ -206,7 +206,7 @@ async fn process_add_liquidity(
     let add_amount_1 = &args.amount_1;
 
     let caller_id = caller_id();
-    let kong_backend = kong_settings_map::get().kong_backend_account;
+    let kong_backend = kong_settings_map::get().kong_backend;
     let mut transfer_ids = Vec::new();
 
     let mut transfer_0 = match transfer_id_0 {

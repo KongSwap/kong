@@ -3,9 +3,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::helpers::nat_helpers::nat_add;
 use crate::helpers::nat_helpers::nat_zero;
-use crate::ic::ledger::get_backend_canister_balance;
+use crate::ic::ledger::get_balance;
 use crate::stable_claim::claim_map;
 use crate::stable_claim::stable_claim::ClaimStatus;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::CLAIM_MAP;
 use crate::stable_memory::POOL_MAP;
 use crate::stable_token::stable_token::StableToken;
@@ -30,9 +31,10 @@ pub struct ExpectedBalance {
 /// actual_balance: the actual balance in the backend canister
 /// expected_balance: the expected balance stored in stable memory
 pub async fn check_token_balance(token: &StableToken) -> Result<(StableToken, Nat, ExpectedBalance, Int), String> {
+    let kong_backend = kong_settings_map::get().kong_backend;
     let token_id = token.token_id();
 
-    let actual_balance = get_backend_canister_balance(token.canister_id().ok_or("Principal id not found")?).await?;
+    let actual_balance = get_balance(kong_backend, token.canister_id().ok_or("Principal id not found")?).await?;
 
     // calculate the expected balance
     let mut expected_balance = ExpectedBalance {

@@ -17,10 +17,6 @@ use crate::stable_token::token::Token;
 /// Also calculate the amount of LP token user will receive
 #[query(guard = "not_in_maintenance_mode")]
 fn add_liquidity_amounts(token_0: String, amount: Nat, token_1: String) -> Result<AddLiquidityAmountsReply, String> {
-    if ic_cdk::api::data_certificate().is_none() {
-        return Err("swap_amount cannot be called in replicated mode".to_string());
-    }
-
     if let Ok(pool) = pool_map::get_by_tokens(&token_0, &token_1) {
         // Pool
         let symbol = pool.symbol();

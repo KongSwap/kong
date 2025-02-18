@@ -1,6 +1,6 @@
 [package]
 name = "kong_faucet"
-version = "0.0.18"
+version = "0.0.19"
 edition = "2021"
 description = "Kong Swap faucet canister"
 
@@ -23,3 +23,4 @@ ic-ledger-types = "0.14.0"
 icrc-ledger-types = "0.1.6"
 serde = "1.0.210"
 serde_json = "1.0.128"
+ic-cdk-macros = "0.17.1"

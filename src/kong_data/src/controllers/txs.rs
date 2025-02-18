@@ -88,7 +88,7 @@ fn update_tx(stable_tx_json: String) -> Result<String, String> {
 }
 
 fn send_to_event_store(tx: &StableTx) -> Result<(), String> {
-    if !kong_settings_map::get().archive_to_kong_data {
+    if !kong_settings_map::send_to_event_store() {
         return Ok(());
     }
 

@@ -9,10 +9,6 @@ use crate::stable_user::user_map;
 
 #[query(guard = "not_in_maintenance_mode")]
 fn txs(principal_id: Option<String>) -> Result<Vec<TxsReply>, String> {
-    if ic_cdk::api::data_certificate().is_none() {
-        return Err("swap_amount cannot be called in replicated mode".to_string());
-    }
-
     let txs = match principal_id {
         Some(principal_id) => {
             let user_id = match user_map::get_by_principal_id(&principal_id) {
