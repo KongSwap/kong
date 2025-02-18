@@ -106,6 +106,19 @@ fn remove_requests() -> Result<String, String> {
     Ok("Requests removed".to_string())
 }
 
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_archive_requests(ts: u64) -> Result<String, String> {
+    REQUEST_ARCHIVE_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map.iter().filter(|(_, v)| v.ts < ts).map(|(k, _)| k).collect();
+        keys_to_remove.iter().for_each(|k| {
+            map.remove(k);
+        });
+    });
+
+    Ok("Archive requests removed".to_string())
+}
+
 /// remove archive requests where request_id <= request_ids
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn remove_archive_request_ids(request_ids: u64) -> Result<String, String> {

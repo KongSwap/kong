@@ -48,7 +48,7 @@ static QUERY_METHODS: [&str; 11] = [
     "requests",
     "txs",
     "add_liquidity_amounts",
-    "remove_liquidity_amoutns",
+    "remove_liquidity_amounts",
     "swap_amounts",
 ];
 
