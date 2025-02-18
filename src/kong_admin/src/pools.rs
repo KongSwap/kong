@@ -126,7 +126,7 @@ pub async fn insert_pool_on_database(
                     lp_token_id = $12,
                     is_removed = $13,
                     raw_json = $14",
-            &[&pool_id, &token_id_0, &balance_0, &lp_fee_0, &kong_fee_0, &token_id_1, &balance_1, &lp_fee_1, &kong_fee_1, &lp_fee_bps, &kong_fee_bps, &lp_token_id, &is_removed, &tvl, &raw_json],
+            &[&pool_id, &token_id_0, &balance_0, &lp_fee_0, &kong_fee_0, &token_id_1, &balance_1, &lp_fee_1, &kong_fee_1, &lp_fee_bps, &kong_fee_bps, &lp_token_id, &is_removed, &raw_json],
         )
         .await?;
 
