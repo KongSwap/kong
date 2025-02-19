@@ -46,24 +46,21 @@ pub async fn return_pay_token(
             request_map::update_status(request_id, StatusCode::ReturnPayTokenSuccess, None);
         }
         Err(e) => {
-            let message = match claim_map::insert(
-                &StableClaim::new(
-                    user_id,
-                    token_id,
-                    pay_amount,
-                    Some(request_id),
-                    Some(Address::PrincipalId(*to_principal_id)),
-                    ts,
-                ),
-                pay_token,
-            ) {
-                Ok(claim_id) => {
-                    claim_ids.push(claim_id);
-                    format!("Saved as claim #{}. {}", claim_id, e)
-                }
-                Err(e) => format!("Failed to save claim. {}", e),
-            };
-            request_map::update_status(request_id, StatusCode::ReturnPayTokenFailed, Some(&message));
+            let claim = StableClaim::new(
+                user_id,
+                token_id,
+                pay_amount,
+                Some(request_id),
+                Some(Address::PrincipalId(*to_principal_id)),
+                ts,
+            );
+            let claim_id = claim_map::insert(&claim);
+            claim_ids.push(claim_id);
+            request_map::update_status(
+                request_id,
+                StatusCode::ReturnPayTokenFailed,
+                Some(&format!("Saved as claim #{}. {}", claim_id, e)),
+            );
         }
     };
 

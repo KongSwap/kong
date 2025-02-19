@@ -38,14 +38,16 @@ fn backup_claims(claim_id: Option<u64>, num_claims: Option<u16>) -> Result<Strin
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn update_claims(stable_claims: String) -> Result<String, String> {
     let claims: BTreeMap<StableClaimId, StableClaim> = match serde_json::from_str(&stable_claims) {
-        Ok(tokens) => tokens,
+        Ok(claims) => claims,
         Err(e) => return Err(format!("Invalid claims: {}", e)),
     };
 
-    for (_, v) in claims {
-        let token = token_map::get_by_token_id(v.token_id).ok_or("Token not found")?;
-        claim_map::insert(&v, &token)?;
-    }
+    CLAIM_MAP.with(|claim_map| {
+        let mut map = claim_map.borrow_mut();
+        for (k, v) in claims {
+            map.insert(k, v);
+        }
+    });
 
     Ok("Claims updated".to_string())
 }
