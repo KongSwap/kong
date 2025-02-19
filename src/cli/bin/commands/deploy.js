@@ -1,9 +1,10 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { deployTestLedgers } from '../utils/ledger.js';
-import { deployBackendCanisters, deployInternetIdentity, deployFrontend, deployFaucet } from '../utils/canister.js';
+import { deployBackendCanisters, deployInternetIdentity, deployFrontend, deployFaucet } from '../utils/deployUtils.js';
 import { execAsync, delay } from '../utils/cli.js';
 import { execSync } from 'child_process';
+import { cleanDfx } from './clean.js';
 // Check if dfx is installed and running
 const checkRequirements = async () => {
     try {
@@ -19,22 +20,8 @@ const setupLocalNetwork = async (network, clean) => {
     if (network === 'local') {
         console.log(chalk.blue('Setting up local network...'));
         if (clean) {
-            console.log(chalk.blue('Cleaning local network...'));
-            try {
-                await execAsync('dfx ping', { stdio: 'ignore' });
-                await execAsync('dfx stop', { stdio: 'inherit' });
-                await execAsync('dfx killall', { stdio: 'inherit' });
-                await execAsync('rm -rf .dfx', { stdio: 'inherit' });
-                // Clean up any stale lock files
-                await execAsync('rm -f .dfx/network/local/state/replicated_state/node-*/ic_consensus_pool/consensus/LOCK', { stdio: 'inherit' });
-                console.log(chalk.green('Cleaned existing network.'));
-            }
-            catch (error) {
-                console.log(chalk.yellow('No existing network found.'));
-            }
-            console.log(chalk.blue('Starting clean local network...'));
-            execSync('dfx start --clean --background', { stdio: 'inherit' });
-            await delay(8);
+            await cleanDfx(true);
+            await delay(5);
         }
         else {
             console.log(chalk.blue('Starting local network...'));
