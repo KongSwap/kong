@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 original_dir=$(pwd)
-root_dir="${CANISTER_IDS_ROOT}"
+root_dir="${CANISTER_IDS_ROOT:-${original_dir}/..}"
 canister_ids_file="${root_dir}/canister_ids.all.json"
 
 TOKEN_SYMBOL="ksBTC"
