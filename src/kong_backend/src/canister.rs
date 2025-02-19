@@ -27,7 +27,6 @@ use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::id::caller_principal_id;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -62,13 +61,6 @@ async fn init() {
     let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
             process_claims().await;
-        });
-    });
-
-    // start the background timer to process stats
-    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
-        ic_cdk::spawn(async {
-            _ = update_pool_stats();
         });
     });
 
@@ -110,13 +102,6 @@ async fn post_upgrade() {
     let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
             process_claims().await;
-        });
-    });
-
-    // start the background timer to process stats
-    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
-        ic_cdk::spawn(async {
-            _ = update_pool_stats();
         });
     });
 
