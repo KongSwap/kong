@@ -83,10 +83,16 @@
     "staging_fe": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "staging": ""
   },
-  "kskong_ledger": {
-    "ic": "",
-    "local": "ed276-pqaaa-aaaag-atuhq-cai",
-    "staging_fe": "",
-    "staging": "ed276-pqaaa-aaaag-atuhq-cai"
+  "internet_identity": {
+    "local": "rdmx6-jaaaa-aaaaa-aaadq-cai",
+    "staging_fe": "rdmx6-jaaaa-aaaaa-aaadq-cai",
+    "staging": "rdmx6-jaaaa-aaaaa-aaadq-cai",
+    "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+  },
+  "prediction_markets_backend": {
+    "local": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "staging_fe": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "staging": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "ic": "xidgj-jyaaa-aaaad-qghpq-cai"
   }
 }

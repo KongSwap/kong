@@ -42,7 +42,6 @@
       ]
     },
     "kong_svelte": {
-      "dependencies": [],
       "source": [
         "src/kong_svelte/dist"
       ],
@@ -68,6 +67,11 @@
           "name": "candid:service"
         }
       ]
+    },
+    "prediction_markets_backend": {
+      "candid": "src/prediction_markets_backend/prediction_markets_backend.did",
+      "package": "prediction_markets_backend",
+      "type": "rust"
     },
     "internet_identity": {
       "type": "custom",

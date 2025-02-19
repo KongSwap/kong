@@ -216,7 +216,7 @@
   }
 
   .detail-item.receive .detail-value {
-    @apply text-kong-accent-green text-sm;
+    @apply text-kong-text-accent-green text-sm;
   }
 
   .detail-item.total {

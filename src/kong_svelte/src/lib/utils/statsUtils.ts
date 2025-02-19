@@ -12,7 +12,7 @@ export type EnhancedToken = FE.Token & {
 export function getPriceChangeClass(token: FE.Token): string {
   if (!token?.metrics?.price_change_24h) return '';
   const change = Number(token?.metrics?.price_change_24h);
-  if (change > 0) return 'text-kong-accent-green';
+  if (change > 0) return 'text-kong-text-accent-green';
   if (change < 0) return 'text-kong-accent-red';
   return '';
 }

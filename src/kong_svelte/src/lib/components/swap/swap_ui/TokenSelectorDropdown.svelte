@@ -923,7 +923,7 @@
   }
 
   .selected-indicator {
-    @apply text-kong-accent-green;
+    @apply text-kong-text-accent-green;
     color: #4ade80;
     background: #4ade8010;
     border-radius: 50%;

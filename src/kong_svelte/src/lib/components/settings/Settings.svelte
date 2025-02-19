@@ -259,45 +259,35 @@
             <span>Clear Favorites</span>
             <span class="text-kong-text-secondary text-sm">Remove all saved tokens</span>
           </div>
-          <button 
-            class="action-button secondary"
-            on:click={clearFavorites}
-          >
-            Clear
-          </button>
+          <div class="flex items-center gap-2">
+            <button 
+              class="bg-kong-bg-light hover:bg-kong-accent-yellow/60 text-kong-text-primary px-4 py-2 rounded-lg"
+              on:click={clearFavorites}
+            >
+              Clear
+            </button>
+          </div>
         </div>
         
         <div class="setting-item">
-          <div class="setting-label">
+          <div class="flex flex-col">
             <span>Reset Application</span>
             <span class="text-kong-text-secondary text-sm">Clear all local data</span>
           </div>
-          <button 
-            class="action-button destructive"
-            on:click={resetDatabase}
+          <div class="flex items-center gap-2">
+            <button 
+              class="bg-kong-accent-red/30 hover:bg-kong-accent-red/60 text-red-100 px-4 py-2 rounded-lg"
+              on:click={resetDatabase}
           >
             Reset
-          </button>
-        
+            </button>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<style lang="postcss">
-  .settings-container {
-    @apply bg-kong-bg-light rounded-xl shadow-xl p-6 w-full max-w-2xl;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .header {
-    @apply flex justify-between items-center mb-6;
-  }
-
-  .done-button {
-    @apply text-sm font-medium px-4 py-1 rounded-lg hover:bg-kong-primary/10;
-  }
-
+<style lang="postcss" scoped>
   .content {
     @apply space-y-6;
   }
@@ -313,62 +303,6 @@
 
   .section-title {
     @apply text-kong-text-primary font-medium text-base;
-  }
-
-  .info-button {
-    @apply text-kong-text-secondary hover:text-kong-text-primary transition-colors p-1;
-  }
-
-  .info-banner {
-    @apply flex gap-3 p-3 rounded-lg bg-kong-primary/10 text-kong-text-primary text-sm;
-    border: 1px solid rgba(96, 165, 250, 0.2);
-  }
-
-  .slippage-controls {
-    @apply grid grid-cols-3 gap-2 sm:grid-cols-4;
-  }
-
-  .slippage-pill {
-    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all
-           bg-kong-bg-dark/40 text-kong-text-primary
-           hover:bg-kong-bg-dark/60
-           border border-transparent;
-  }
-
-  .slippage-pill.active {
-    @apply bg-kong-primary/10 border-kong-primary/30 text-kong-primary;
-  }
-
-  .slippage-pill.warning.active {
-    @apply bg-yellow-500/10 border-yellow-500/30 text-yellow-500;
-  }
-
-  .slippage-pill.danger.active {
-    @apply bg-red-500/10 border-red-500/30 text-red-500;
-  }
-
-  .custom-slippage-input {
-    @apply flex items-center gap-1 px-4 py-2 rounded-lg bg-kong-bg-dark/40 border border-transparent;
-  }
-
-  .custom-slippage-input.active {
-    @apply border-kong-primary/30 bg-kong-primary/10;
-  }
-
-  .custom-slippage-input.warning {
-    @apply border-yellow-500/30 bg-yellow-500/10;
-  }
-
-  .custom-slippage-input.danger {
-    @apply border-red-500/30 bg-red-500/10;
-  }
-
-  .slippage-input {
-    @apply w-full bg-transparent text-right text-sm text-kong-text-primary placeholder-kong-text-secondary;
-  }
-
-  .slippage-percent {
-    @apply text-kong-text-secondary text-sm;
   }
 
   .alert-banner {
@@ -403,18 +337,6 @@
 
   .theme-toggle {
     @apply p-2 rounded-lg bg-kong-bg-dark/40 hover:bg-kong-bg-dark/60 transition-colors;
-  }
-
-  .action-button {
-    @apply px-3 py-1.5 text-sm font-medium rounded-lg transition-colors;
-  }
-
-  .action-button.secondary {
-    @apply bg-kong-bg-dark/40 text-kong-text-primary hover:bg-kong-bg-dark/60;
-  }
-
-  .action-button.destructive {
-    @apply bg-red-500/10 text-red-500 hover:bg-red-500/20;
   }
 
   .slider-section {

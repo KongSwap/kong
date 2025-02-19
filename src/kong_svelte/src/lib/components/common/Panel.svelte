@@ -1,5 +1,7 @@
 <!-- Panel.svelte -->
 <script lang="ts">
+  import { fade, slide, type TransitionConfig } from 'svelte/transition';
+
   export let variant: "transparent" | "solid" = "transparent";
   export let type: "main" | "secondary" = "main";
   export let width: string = "auto";
@@ -8,11 +10,18 @@
   export let className: string = '';
   export let zIndex: number = 10;
   export let roundedBorders: boolean = true;
+  export let unpadded: boolean = false;
+  
+  // Transition props
+  export let transition: 'fade' | 'slide' | null = null;
+  export let transitionParams: TransitionConfig = {};
 </script>
 
 <div 
-  class="panel px-3 py-2 {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'}"
+  class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'}"
   style="width: {width}; height: {height}; z-index: {zIndex};"
+  in:slide={{ duration: 300, delay: 200, axis: 'x', ...transitionParams }}
+  out:fade={{ duration: 200 }}
 >
   <slot>{content}</slot>
 </div>
@@ -45,7 +54,7 @@
 }
 
 .panel:not(.no-rounded) {
-  @apply rounded-lg;
+  @apply rounded-xl;
 }
 
 .panel.no-rounded {

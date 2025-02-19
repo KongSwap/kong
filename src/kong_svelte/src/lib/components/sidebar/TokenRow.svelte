@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition";
-  import { Star, Send, HandCoins, ArrowUpDown, Droplets, PlusCircle } from "lucide-svelte";
+  import { Star, Send, HandCoins, ArrowUpDown, Droplets, Copy, MoreHorizontal } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import {
     formatUsdValue,
@@ -17,6 +17,7 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { activeDropdownId } from "$lib/stores/dropdownStore";
   import { accountStore } from "$lib/stores/accountStore";
+    import { toastStore } from "$lib/stores/toastStore";
 
   export let token: any;
 
@@ -273,15 +274,23 @@
                 class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-kong-text-primary hover:translate-x-0.5 flex items-center gap-2"
                 on:click|stopPropagation={() => {
                   activeDropdownId.set(null);
-                  sidebarStore.collapse();
-                  window.open(
-                    `https://nns.ic0.app/tokens/?import-ledger-id=${token?.canister_id}`,
-                    "_blank",
-                  );
+                  navigator.clipboard.writeText(token.canister_id);
+                  toastStore.success("Canister ID copied to clipboard");
                 }}
-              >
-                <PlusCircle size={16} />
-                Import to NNS
+            >
+                <Copy size={16} />
+                Copy Canister ID
+              </button>
+              <button
+                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-kong-text-primary hover:translate-x-0.5 flex items-center gap-2"
+                on:click|stopPropagation={() => {
+                  activeDropdownId.set(null);
+                  sidebarStore.collapse();
+                  goto(`/stats/${token.canister_id}`);
+                }}
+            >
+                <MoreHorizontal size={16} />
+                More Info
               </button>
             </div>
           {/if}

@@ -430,6 +430,12 @@ export const idlFactory = ({ IDL }) => {
     'RemoveLiquidity' : RemoveLiquidityReply,
   });
   const TxsResult = IDL.Variant({ 'Ok' : IDL.Vec(TxsReply), 'Err' : IDL.Text });
+  const UpdateTokenArgs = IDL.Record({ 'token' : IDL.Text });
+  const UpdateTokenReply = IDL.Variant({ 'IC' : ICTokenReply });
+  const UpdateTokenResult = IDL.Variant({
+    'Ok' : UpdateTokenReply,
+    'Err' : IDL.Text,
+  });
   const LPBalancesReply = IDL.Record({
     'ts' : IDL.Nat64,
     'usd_balance' : IDL.Float64,
@@ -515,6 +521,7 @@ export const idlFactory = ({ IDL }) => {
     'swap_async' : IDL.Func([SwapArgs], [SwapAsyncResult], []),
     'tokens' : IDL.Func([IDL.Opt(IDL.Text)], [TokensResult], ['query']),
     'txs' : IDL.Func([IDL.Opt(IDL.Text)], [TxsResult], ['query']),
+    'update_token' : IDL.Func([UpdateTokenArgs], [UpdateTokenResult], []),
     'user_balances' : IDL.Func([IDL.Text], [UserBalancesResult], ['query']),
     'validate_add_liquidity' : IDL.Func([], [ValidateAddLiquidityResult], []),
     'validate_remove_liquidity' : IDL.Func(

@@ -4,7 +4,7 @@
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
   import { onMount, onDestroy } from "svelte";
-  import { Droplet, Settings as SettingsIcon, Copy, ChartScatter, Menu, ChartCandlestick, X, Wallet, ChevronDown, Coins, Award, PiggyBank } from "lucide-svelte";
+  import { Droplet, Settings as SettingsIcon, Copy, ChartScatter, Menu, ChartCandlestick, X, Wallet, ChevronDown, Coins, Award, PiggyBank, TrendingUpDown, Joystick } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/services/tokens";
   import { tooltip } from "$lib/actions/tooltip";
@@ -97,6 +97,13 @@
       comingSoon: false
     },
     { 
+      label: 'Prediction Markets',
+      description: 'Predict the outcome of events and earn rewards',
+      path: '/predict',
+      icon: TrendingUpDown,
+      comingSoon: false
+    },
+    { 
       label: 'Staking',
       description: 'Stake your tokens to earn yield and governance rights',
       path: '/pools/staking',
@@ -110,7 +117,7 @@
       icon: PiggyBank,
       comingSoon: true
     }
-  ];
+  ].filter(option => process.env.DFX_NETWORK !== 'ic' ? option : ["Liquidity Pools"].includes(option.label));
 
   function showDropdown(type: 'swap' | 'earn' | 'stats') {
     clearTimeout(closeTimeout);
@@ -226,6 +233,7 @@
                     {#each earnOptions as option}
                       <button
                         class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
+                        class:active={$page.url.pathname === option.path}
                         on:click={async () => {
                           if (!option.comingSoon) {
                             hideDropdown();
@@ -235,12 +243,15 @@
                         }}
                         class:disabled={option.comingSoon}
                       >
+                        {console.log('Earn option:', option.path, 'Current path:', $page.url.pathname, 'Active:', $page.url.pathname === option.path)}
                         <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
                           <svelte:component this={option.icon} size={20} />
                         </div>
                         <div class="flex flex-col gap-1 pt-0.5">
                           <div class="flex items-center gap-2">
-                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">{option.label}</span>
+                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">
+                              {option.label}
+                            </span>
                             {#if option.comingSoon}
                               <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
                             {/if}
@@ -272,6 +283,7 @@
                     {#each swapOptions as option}
                       <button
                         class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
+                        class:active={$page.url.pathname === option.path}
                         on:click={() => handleSwapOptionClick(option)}
                         class:disabled={option.comingSoon}
                       >
@@ -280,7 +292,9 @@
                         </div>
                         <div class="flex flex-col gap-1 pt-0.5">
                           <div class="flex items-center gap-2">
-                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">{option.label}</span>
+                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">
+                              {option.label}
+                            </span>
                             {#if option.comingSoon}
                               <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
                             {/if}
@@ -312,6 +326,7 @@
                     {#each statsOptions as option}
                       <button
                         class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
+                        class:active={$page.url.pathname === option.path}
                         on:click={async () => {
                           if (!option.comingSoon) {
                             hideDropdown();
@@ -326,7 +341,9 @@
                         </div>
                         <div class="flex flex-col gap-1 pt-0.5">
                           <div class="flex items-center gap-2">
-                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">{option.label}</span>
+                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">
+                              {option.label}
+                            </span>
                             {#if option.comingSoon}
                               <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
                             {/if}
@@ -732,5 +749,17 @@
 
   .mobile-menu-header .logo-wide.light-logo {
     @apply invert brightness-[0.2];
+  }
+
+  /* Simplified active state styles */
+  .mobile-nav-btn.active span,
+  .nav-dropdown button.active span {
+    @apply text-kong-primary;
+  }
+
+  /* Hover state for active items */
+  .mobile-nav-btn.active:hover span,
+  .nav-dropdown button.active:hover span {
+    @apply text-kong-primary;
   }
 </style>

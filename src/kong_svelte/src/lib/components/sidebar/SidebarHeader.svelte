@@ -89,7 +89,7 @@
     <!-- Left Section -->
     <div class="left-section flex items-center gap-2 text-sm">
       <button
-        class="wallet-button flex gap-x-1 items-center text-kong-text-primary hover:text-kong-primary transition-colors"
+        class="wallet-button text-nowrap flex gap-x-1 items-center text-kong-text-primary hover:text-kong-primary transition-colors"
         on:click={() => accountStore.showAccountDetails()}
         use:tooltip={{ text: "View Account Details", direction: "bottom" }}
       >
@@ -110,7 +110,7 @@
       </button>
 
       <button
-        class="refresh-button text-gray-400 hover:text-white transition-colors !px-2 !py-2"
+        class="refresh-button text-gray-400 hover:text-white transition-colors !px-1 !py-2"
         on:click={() => handleReload(false)}
         disabled={isRefreshing}
         use:tooltip={{ text: "Refresh Portfolio", direction: "bottom" }}

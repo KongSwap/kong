@@ -527,7 +527,7 @@
   }
 
   .stat-value {
-    @apply text-lg font-medium tabular-nums text-kong-accent-green;
+    @apply text-lg font-medium tabular-nums text-kong-text-accent-green;
   }
 
   .content-section {

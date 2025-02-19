@@ -138,3 +138,45 @@ export function parseTokenAmount(
   const scaledStr = scaled.toFixed(0); // ensures integer expansion, e.g. no "1e+10"
   return BigInt(scaledStr);
 }
+
+export const calculatePercentage = (amount: number | undefined, total: number | undefined): number => {
+    const amountNum = Number(amount || 0);
+    const totalNum = Number(total || 0);
+    
+    if (isNaN(amountNum) || isNaN(totalNum)) return 0;
+    if (totalNum === 0) return amountNum > 0 ? 100 : 0;
+    
+    return (amountNum / totalNum) * 100;
+};
+
+export const formatCategory = (category: any): string => {
+    if (!category) return 'Other';
+    if (typeof category === 'string') return category.replace(/_/g, ' ');
+    return Object.keys(category)[0].replace(/_/g, ' ');
+};
+
+export const toFixed = (amount: number, decimals: number): number => {
+  console.log("amount", amount);
+  console.log("decimals", decimals);
+  console.log("new BigNumber(amount)", new BigNumber(amount));
+  console.log("new BigNumber(10).pow(decimals)", new BigNumber(10).pow(decimals));
+  console.log("new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toNumber()", new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toNumber());
+    return new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toNumber();
+};
+
+/**
+ * Converts a human-readable amount to a scaled token amount string.
+ * Example: 5 KONG with 8 decimals -> "500000000"
+ * 
+ * @param amount Human readable amount (e.g. 5)
+ * @param decimals Number of decimals for the token (e.g. 8)
+ * @returns Scaled amount as string suitable for contract calls
+ */
+export const toScaledAmount = (amount: number, decimals: number): string => {
+    if (!amount || amount <= 0) return "0";
+    
+    return new BigNumber(amount)
+        .multipliedBy(new BigNumber(10).pow(decimals))
+        .integerValue(BigNumber.ROUND_DOWN)
+        .toString();
+};

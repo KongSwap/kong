@@ -380,6 +380,10 @@ export type TxsReply = { 'AddLiquidity' : AddLiquidityReply } |
   { 'RemoveLiquidity' : RemoveLiquidityReply };
 export type TxsResult = { 'Ok' : Array<TxsReply> } |
   { 'Err' : string };
+export interface UpdateTokenArgs { 'token' : string }
+export type UpdateTokenReply = { 'IC' : ICTokenReply };
+export type UpdateTokenResult = { 'Ok' : UpdateTokenReply } |
+  { 'Err' : string };
 export type UserBalancesReply = { 'LP' : LPBalancesReply };
 export type UserBalancesResult = { 'Ok' : Array<UserBalancesReply> } |
   { 'Err' : string };
@@ -481,6 +485,7 @@ export interface _SERVICE {
   'swap_async' : ActorMethod<[SwapArgs], SwapAsyncResult>,
   'tokens' : ActorMethod<[[] | [string]], TokensResult>,
   'txs' : ActorMethod<[[] | [string]], TxsResult>,
+  'update_token' : ActorMethod<[UpdateTokenArgs], UpdateTokenResult>,
   'user_balances' : ActorMethod<[string], UserBalancesResult>,
   'validate_add_liquidity' : ActorMethod<[], ValidateAddLiquidityResult>,
   'validate_remove_liquidity' : ActorMethod<[], ValidateRemoveLiquidityResult>,

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 original_dir=$(pwd)
-root_dir="${original_dir}"/..
+root_dir="${CANISTER_IDS_ROOT:-${original_dir}/..}"
+canister_ids_file="${root_dir}/canister_ids.all.json"
 
 TOKEN_SYMBOL="ksKONG"
 TOKEN_LEDGER=$(echo ${TOKEN_SYMBOL}_ledger | tr '[:upper:]' '[:lower:]')
@@ -14,7 +15,7 @@ if [ "$1" == "staging" ]; then
 	bash create_canister_id.sh staging
 	SPECIFIED_ID=""
 elif [ "$1" == "local" ]; then
-	if CANISTER_ID=$(jq -r ".[\"${TOKEN_LEDGER}\"][\"local\"]" "${root_dir}"/canister_ids.all.json); then
+	if CANISTER_ID=$(jq -r ".[\"${TOKEN_LEDGER}\"][\"local\"]" "${canister_ids_file}"); then
 		[ "${CANISTER_ID}" != "null" ] && {
 			SPECIFIED_ID="--specified-id ${CANISTER_ID}"
 		}
