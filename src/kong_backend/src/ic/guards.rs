@@ -1,7 +1,7 @@
-use super::id::is_caller_controller;
-
 use crate::stable_memory::KONG_SETTINGS;
 use crate::stable_user::user_map;
+
+use super::id::is_caller_controller;
 
 /// guard to make sure Kong Swap is not in maintenance mode
 pub fn not_in_maintenance_mode() -> Result<(), String> {

@@ -1,10 +1,9 @@
 use anyhow::Result;
 use candid::{Decode, Encode, Principal};
 use ic_agent::Agent;
+use kong_lib::ic::canister_address::KONG_BACKEND;
 
 use super::kong_update::KongUpdate;
-
-const KONG_BACKEND_LOCAL: &str = "2ipq2-uqaaa-aaaar-qailq-cai";
 
 #[derive(Clone)]
 pub struct KongBackend {
@@ -14,7 +13,7 @@ pub struct KongBackend {
 
 impl KongBackend {
     pub async fn new(agent: &Agent) -> Self {
-        let canister_id = Principal::from_text(KONG_BACKEND_LOCAL).unwrap();
+        let canister_id = Principal::from_text(KONG_BACKEND).unwrap();
         KongBackend {
             agent: agent.clone(),
             canister_id,

@@ -1,9 +1,9 @@
-use candid::Principal;
+use candid::{Nat, Principal};
 use ic_cdk::{query, update};
 use icrc_ledger_types::icrc1::account::Account;
 use std::collections::BTreeMap;
 
-use crate::helpers::nat_helpers::nat_zero;
+use crate::helpers::nat_helpers::{nat_add, nat_subtract, nat_zero};
 use crate::ic::guards::caller_is_kingkong;
 use crate::remove_liquidity::remove_liquidity::remove_liquidity_from_pool;
 use crate::remove_liquidity::remove_liquidity_args::RemoveLiquidityArgs;
@@ -15,6 +15,11 @@ use crate::stable_token::token::Token;
 use crate::stable_user::user_map;
 
 const MAX_POOLS: usize = 1_000;
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn max_pool_idx() -> u32 {
+    POOL_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
 
 /// serializes POOL_MAP for backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
@@ -160,4 +165,30 @@ fn update_pool_tvl(symbol: String) -> Result<String, String> {
     pool_map::update(&pool);
 
     serde_json::to_string(&pool).map_err(|e| format!("Failed to serialize: {}", e))
+}
+
+/// adjust pool balances
+/// token = pool token symbol
+/// direction = "add" or "subtract"
+/// amount_0 = amount to add or subtract from balance_0
+/// amount_1 = amount to add or subtract from balance_1
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn adjust_pool_balances(symbol: String, direction: String, amount_0: Nat, amount_1: Nat) -> Result<String, String> {
+    let mut pool = pool_map::get_by_token(&symbol)?;
+    if direction == "add" {
+        pool.balance_0 = nat_add(&pool.balance_0, &amount_0);
+        pool.balance_1 = nat_add(&pool.balance_1, &amount_1);
+    } else if direction == "subtract" {
+        pool.balance_0 = nat_subtract(&pool.balance_0, &amount_0).unwrap();
+        pool.balance_1 = nat_subtract(&pool.balance_1, &amount_1).unwrap();
+    } else {
+        return Err("Invalid direction".to_string());
+    }
+
+    pool_map::update(&pool);
+
+    Ok(format!(
+        "Pool {} adjusted balance_0: {} balance_1: {}",
+        symbol, pool.balance_0, pool.balance_1
+    ))
 }

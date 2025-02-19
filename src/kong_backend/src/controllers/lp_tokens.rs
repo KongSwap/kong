@@ -9,6 +9,11 @@ use crate::stable_memory::LP_TOKEN_MAP;
 
 const MAX_LP_TOKENS: usize = 1_000;
 
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn max_lp_token_idx() -> u64 {
+    LP_TOKEN_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
+}
+
 /// serialize LP_TOKEN_LEDGER for backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_lp_tokens(lp_token_id: Option<u64>, num_lp_tokens: Option<u16>) -> Result<String, String> {
@@ -38,7 +43,7 @@ fn update_lp_tokens(stable_lp_tokens: String) -> Result<String, String> {
     };
 
     for (_, v) in lp_tokens {
-        lp_token_map::insert(&v)?;
+        lp_token_map::update(&v);
     }
 
     Ok("LP tokens updated".to_string())

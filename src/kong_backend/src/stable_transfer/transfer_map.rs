@@ -33,6 +33,10 @@ pub fn insert(transfer: &StableTransfer) -> u64 {
 }
 
 pub fn archive_to_kong_data(transfer_id: u64) -> Result<(), String> {
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
     let transfer = match get_by_transfer_id(transfer_id) {
         Some(transfer) => transfer,
         None => return Err(format!("Failed to archive. transfer_id #{} not found", transfer_id)),

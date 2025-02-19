@@ -9,11 +9,11 @@
       "type": "custom",
       "build": "bash ./scripts/build_kong_backend.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_backend.wasm",
-			"metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     },
     "kong_data": {
       "candid": "src/kong_data/kong_data.did",
@@ -24,11 +24,22 @@
       "type": "custom",
       "build": "bash ./scripts/build_kong_data.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_data.wasm",
-			"metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    },
+    "event_store": {
+      "type": "custom",
+      "candid": "canisters/event_store.did",
+      "wasm": "canisters/event_store.wasm.gz",
+      "specified_id": "rsp5s-2yaaa-aaaar-qaojq-cai",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     },
     "kong_svelte": {
       "source": [
@@ -36,11 +47,11 @@
       ],
       "type": "assets",
       "workspace": "kong_svelte",
-			"metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     },
     "kong_faucet": {
       "candid": "src/kong_faucet/kong_faucet.did",
@@ -51,11 +62,11 @@
       "type": "custom",
       "build": "bash ./scripts/build_kong_faucet.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_faucet.wasm",
-			"metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     },
     "prediction_markets_backend": {
       "candid": "src/prediction_markets_backend/prediction_markets_backend.did",
@@ -69,60 +80,60 @@
       "frontend": {},
       "specified_id": "rdmx6-jaaaa-aaaaa-aaadq-cai",
       "metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
+        {
+          "name": "candid:service"
+        }
+      ]
     },
     "ksusdt_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
       "metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
+        {
+          "name": "candid:service"
+        }
+      ]
     },
     "ksicp_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icp_ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ledger-canister.wasm.gz",
       "metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
+        {
+          "name": "candid:service"
+        }
+      ]
     },
     "ksbtc_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
       "metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
+        {
+          "name": "candid:service"
+        }
+      ]
     },
     "kseth_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger-u256.wasm.gz",
       "metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
+        {
+          "name": "candid:service"
+        }
+      ]
     },
     "kskong_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
       "metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
+        {
+          "name": "candid:service"
+        }
+      ]
     }
   },
   "defaults": {

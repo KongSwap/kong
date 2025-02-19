@@ -9,3 +9,9 @@ pub const KONG_DATA: &str = if cfg!(feature = "staging") {
 } else {
     "cbefx-hqaaa-aaaar-qakrq-cai"
 };
+
+pub const EVENT_STORE: &str = if cfg!(feature = "staging") {
+    ""
+} else {
+    "rsp5s-2yaaa-aaaar-qaojq-cai"
+};

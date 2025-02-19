@@ -11,6 +11,12 @@
     "staging_fe": "cbefx-hqaaa-aaaar-qakrq-cai",
     "staging": "6ukzc-hiaaa-aaaah-qpxqa-cai"
   },
+  "event_store": {
+    "ic": "rsp5s-2yaaa-aaaar-qaojq-cai",
+    "local": "rsp5s-2yaaa-aaaar-qaojq-cai",
+    "staging_fe": "rsp5s-2yaaa-aaaar-qaojq-cai",
+    "staging": ""
+  },
   "kong_svelte": {  
     "ic": "3ldz4-aiaaa-aaaar-qaina-cai",
     "local": "3ldz4-aiaaa-aaaar-qaina-cai",

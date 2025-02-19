@@ -1,6 +1,6 @@
 [package]
 name = "kong_backend"
-version = "0.0.17"
+version = "0.0.19"
 edition = "2021"
 description = "Kong Swap backend canister"
 
@@ -33,3 +33,4 @@ serde_cbor = "0.11.2"
 serde_json = "1.0.128"
 wildmatch = "2.4.0"
 itertools = "0.13.0"
+ic-cdk-macros = "0.17.1"

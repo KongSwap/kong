@@ -1,7 +1,12 @@
 [package]
 name = "kong_admin"
-version = "0.0.17"
+version = "0.0.19"
 edition = "2021"
+
+[features]
+local = []
+staging = []
+prod = []
 
 [dependencies]
 kong_lib = { path = "../kong_lib" }

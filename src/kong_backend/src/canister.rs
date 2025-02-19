@@ -1,5 +1,7 @@
 use candid::{decode_one, CandidType, Nat};
+use ic_cdk::api::call::{accept_message, method_name};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
+use ic_cdk_macros::inspect_message;
 use ic_cdk_timers::set_timer_interval;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
@@ -33,6 +35,22 @@ use crate::stable_transfer::transfer_archive::archive_transfer_map;
 use crate::stable_tx::tx_archive::archive_tx_map;
 use crate::stable_user::principal_id_map::create_principal_id_map;
 use crate::swap::swap_args::SwapArgs;
+
+// list of query calls
+// a bit hard-coded but shouldn't change often
+static QUERY_METHODS: [&str; 11] = [
+    "icrc1_name",
+    "icrc10_supported_standards",
+    "tokens",
+    "pools",
+    "get_user",
+    "user_balances",
+    "requests",
+    "txs",
+    "add_liquidity_amounts",
+    "remove_liquidity_amounts",
+    "swap_amounts",
+];
 
 #[init]
 async fn init() {
@@ -127,6 +145,19 @@ async fn post_upgrade() {
     );
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
+}
+
+/// inspect all ingress messages to the canister that are called as updates
+/// calling accept_message() will allow the message to be processed
+#[inspect_message]
+fn inspect_message() {
+    let method_name = method_name();
+    if QUERY_METHODS.contains(&method_name.as_str()) {
+        info_log(&format!("{} called as update from {}", method_name, caller_principal_id()));
+        ic_cdk::trap(&format!("{} must be called as query", method_name));
+    }
+
+    accept_message();
 }
 
 #[query]

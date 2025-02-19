@@ -199,7 +199,7 @@ async fn process_add_liquidity(
     let token_1 = pool.token_1();
 
     let caller_id = caller_id();
-    let kong_backend = kong_settings_map::get().kong_backend_account;
+    let kong_backend = kong_settings_map::get().kong_backend;
     let mut transfer_ids = Vec::new();
 
     request_map::update_status(request_id, StatusCode::Start, None);
