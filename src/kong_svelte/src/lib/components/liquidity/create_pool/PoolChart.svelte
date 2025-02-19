@@ -40,7 +40,7 @@
           {#if currentPool && $liquidityStore.token0 && $liquidityStore.token1}
             <div class="flex items-center gap-1">
               <span>{formatBalance(currentPool.balance_0, $liquidityStore.token0.decimals, 2)}</span>
-              <span class="text-kong-accent-green/80 text-sm mt-1">{$liquidityStore.token0.symbol}</span>
+              <span class="text-kong-text-accent-green/80 text-sm mt-1">{$liquidityStore.token0.symbol}</span>
             </div>
             <div class="flex items-center gap-1">
               <span>{formatBalance(currentPool.balance_1, $liquidityStore.token1.decimals, 2)}</span>
@@ -49,7 +49,7 @@
           {:else}
             <div class="flex items-center gap-1">
               <span>0.00</span>
-              <span class="text-kong-accent-green/80 text-sm mt-1">{$liquidityStore.token0?.symbol || '-'}</span>
+              <span class="text-kong-text-accent-green/80 text-sm mt-1">{$liquidityStore.token0?.symbol || '-'}</span>
             </div>
             <div class="flex items-center gap-1">
               <span>0.00</span>

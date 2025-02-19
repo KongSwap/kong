@@ -192,7 +192,7 @@
 
   function getTrendClass(value: number): string {
     if (!value) return '';
-    return value > 0 ? 'text-kong-accent-green' : value < 0 ? 'text-kong-accent-red' : '';
+    return value > 0 ? 'text-kong-text-accent-green' : value < 0 ? 'text-kong-accent-red' : '';
   }
 
   onMount(() => {

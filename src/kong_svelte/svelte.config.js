@@ -26,7 +26,8 @@ const config = {
         if (
           path === "/swap" ||
           path === "/pools" ||
-          path === "/stats"
+          path === "/stats" ||
+          path === "/predict"
         ) {
           return;
         }
@@ -40,6 +41,7 @@ const config = {
           id === "swap" ||
           id === "pools" ||
           id === "stats" ||
+          id === "predict" ||
           id === ".well-known" ||
           id === "ic-domains" ||
           id === ".well-known/ic-domains"
@@ -60,9 +62,7 @@ const config = {
     },
   }),
   onwarn: (warning, handler) => {
-    if (
-      warning.code.includes("a11y")
-    ) {
+    if (warning.code.includes("a11y")) {
       return;
     }
     handler(warning);

@@ -11,5 +11,5 @@ pub const CKBTC_LEDGER: &str = "zeyan-7qaaa-aaaar-qaibq-cai";
 pub const CKETH: &str = "ksETH";
 pub const CKETH_LEDGER: &str = "zr7ra-6yaaa-aaaar-qaica-cai";
 
-pub const KONG: &str = "ksKONG";
-pub const KONG_LEDGER: &str = "ed276-pqaaa-aaaag-atuhq-cai";
+pub const KONG: &str = "KONG";
+pub const KONG_LEDGER: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";

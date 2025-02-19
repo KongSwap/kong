@@ -243,7 +243,7 @@
   function getTrendClass(token: FE.Token): string {
     return token?.metrics?.price_change_24h
       ? Number(token.metrics.price_change_24h) > 0
-        ? "text-kong-accent-green"
+        ? "text-kong-text-accent-green"
         : Number(token.metrics.price_change_24h) < 0
           ? "text-kong-accent-red"
           : ""

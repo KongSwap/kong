@@ -1,0 +1,92 @@
+{
+  "kong_backend": {
+    "ic": "2ipq2-uqaaa-aaaar-qailq-cai",
+    "local": "2ipq2-uqaaa-aaaar-qailq-cai",
+    "staging_fe": "2ipq2-uqaaa-aaaar-qailq-cai",
+    "staging": "l4lgk-raaaa-aaaar-qahpq-cai"
+  },
+  "kong_data": {
+    "ic": "cbefx-hqaaa-aaaar-qakrq-cai",
+    "local": "cbefx-hqaaa-aaaar-qakrq-cai",
+    "staging_fe": "cbefx-hqaaa-aaaar-qakrq-cai",
+    "staging": "6ukzc-hiaaa-aaaah-qpxqa-cai"
+  },
+  "kong_svelte": {  
+    "ic": "3ldz4-aiaaa-aaaar-qaina-cai",
+    "local": "3ldz4-aiaaa-aaaar-qaina-cai",
+    "staging_fe": "edoy4-liaaa-aaaar-qakha-cai",
+    "staging": "edoy4-liaaa-aaaar-qakha-cai"
+  },
+  "kong_faucet": {
+    "ic": "",
+    "local": "ohr23-xqaaa-aaaar-qahqq-cai",
+    "staging_fe": "",
+    "staging": "ohr23-xqaaa-aaaar-qahqq-cai"
+  },
+  "usdt_ledger": {
+    "ic": "cngnf-vqaaa-aaaar-qag4q-cai",
+    "local": "",
+    "staging_fe": "cngnf-vqaaa-aaaar-qag4q-cai",
+    "staging": ""
+  },
+  "ksusdt_ledger": {
+    "ic": "",
+    "local": "zdzgz-siaaa-aaaar-qaiba-cai",
+    "staging_fe": "",
+    "staging": "zdzgz-siaaa-aaaar-qaiba-cai"
+  },
+  "icp_ledger": {
+    "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai",
+    "local": "",
+    "staging_fe": "ryjl3-tyaaa-aaaaa-aaaba-cai",
+    "staging": ""
+  },
+  "ksicp_ledger": {
+    "ic": "",
+    "local": "nppha-riaaa-aaaal-ajf2q-cai",
+    "staging_fe": "",
+    "staging": "nppha-riaaa-aaaal-ajf2q-cai"
+  },
+  "btc_ledger": {
+    "ic": "mxzaz-hqaaa-aaaar-qaada-cai",
+    "local": "",
+    "staging_fe": "mxzaz-hqaaa-aaaar-qaada-cai",
+    "staging": ""
+  },
+  "ksbtc_ledger": {
+    "ic": "",
+    "local": "zeyan-7qaaa-aaaar-qaibq-cai",
+    "staging_fe": "",
+    "staging": "zeyan-7qaaa-aaaar-qaibq-cai"
+  },
+  "eth_ledger": {
+    "ic": "ss2fx-dyaaa-aaaar-qacoq-cai",
+    "local": "",
+    "staging_fe": "ss2fx-dyaaa-aaaar-qacoq-cai",
+    "staging": ""
+  },
+  "kseth_ledger": {
+    "ic": "",
+    "local": "zr7ra-6yaaa-aaaar-qaica-cai",
+    "staging_fe": "",
+    "staging": "zr7ra-6yaaa-aaaar-qaica-cai"
+  },
+  "kong_ledger": {
+    "ic": "o7oak-iyaaa-aaaaq-aadzq-cai",
+    "local": "",
+    "staging_fe": "o7oak-iyaaa-aaaaq-aadzq-cai",
+    "staging": ""
+  },
+  "internet_identity": {
+    "local": "rdmx6-jaaaa-aaaaa-aaadq-cai",
+    "staging_fe": "rdmx6-jaaaa-aaaaa-aaadq-cai",
+    "staging": "rdmx6-jaaaa-aaaaa-aaadq-cai",
+    "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+  },
+  "prediction_markets_backend": {
+    "local": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "staging_fe": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "staging": "xidgj-jyaaa-aaaad-qghpq-cai",
+    "ic": "xidgj-jyaaa-aaaad-qghpq-cai"
+  }
+}

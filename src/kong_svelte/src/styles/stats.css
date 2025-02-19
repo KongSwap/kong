@@ -31,7 +31,7 @@
 }
 
 .positive {
-  @apply text-kong-accent-green;
+  @apply text-kong-text-accent-green;
   @apply flex items-center justify-end;
   @apply w-full h-full;
 }

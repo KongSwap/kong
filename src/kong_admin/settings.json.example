@@ -1,0 +1,11 @@
+{
+  "db_updates_delay_secs": 10,
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "user": "postgres",
+    "password": "",
+    "db_name": "kong-apis2"
+  },
+  "dfx_pem_file": "/Users/username/.dfx-iden/Kong.pem"
+}

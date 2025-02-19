@@ -390,7 +390,7 @@
         <div class="grid grid-cols-2 gap-4">
           <Panel variant="transparent" className="stat-card">
             <h4 class="text-sm text-kong-text-secondary">24h Change</h4>
-            <p class:text-kong-accent-green={performanceMetrics.dailyChange > 0} 
+            <p class:text-kong-text-accent-green={performanceMetrics.dailyChange > 0} 
                class:text-kong-accent-red={performanceMetrics.dailyChange < 0}
                class="text-lg font-bold">
               {performanceMetrics.dailyChange > 0 ? '+' : ''}{performanceMetrics.dailyChange.toFixed(2)}%
@@ -399,7 +399,7 @@
 
           <Panel variant="transparent" className="stat-card">
             <h4 class="text-sm text-kong-text-secondary">Best Performer</h4>
-            <p class="text-lg font-bold text-kong-accent-green">
+            <p class="text-lg font-bold text-kong-text-accent-green">
               {performanceMetrics.bestPerformer.symbol} 
               ({performanceMetrics.bestPerformer.change > 0 ? '+' : ''}
               {performanceMetrics.bestPerformer.change.toFixed(2)}%)
