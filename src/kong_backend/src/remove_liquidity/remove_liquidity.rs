@@ -463,17 +463,15 @@ async fn transfer_token(
             };
         }
         Err(e) => {
-            let message = match claim_map::insert(
-                &StableClaim::new(
-                    user_id,
-                    token_id,
-                    &amount,
-                    Some(request_id),
-                    Some(Address::PrincipalId(*to_principal_id)),
-                    ts,
-                ),
-                token,
-            ) {
+            let claim = StableClaim::new(
+                user_id,
+                token_id,
+                &amount,
+                Some(request_id),
+                Some(Address::PrincipalId(*to_principal_id)),
+                ts,
+            );
+            let message = match claim_map::insert(&claim, token) {
                 Ok(claim_id) => {
                     claim_ids.push(claim_id);
                     format!("Saved as claim #{}. {}", claim_id, e)

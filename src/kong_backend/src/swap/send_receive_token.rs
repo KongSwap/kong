@@ -57,17 +57,15 @@ pub async fn send_receive_token(
             request_map::update_status(request_id, StatusCode::SendReceiveTokenSuccess, None);
         }
         Err(e) => {
-            let message = match claim_map::insert(
-                &StableClaim::new(
-                    user_id,
-                    receive_token_id,
-                    receive_amount,
-                    Some(request_id),
-                    Some(to_address.clone()),
-                    ts,
-                ),
-                receive_token,
-            ) {
+            let claim = StableClaim::new(
+                user_id,
+                receive_token_id,
+                receive_amount,
+                Some(request_id),
+                Some(to_address.clone()),
+                ts,
+            );
+            let message = match claim_map::insert(&claim, receive_token) {
                 Ok(claim_id) => {
                     claim_ids.push(claim_id);
                     format!("Saved as claim #{}. {}", claim_id, e)
