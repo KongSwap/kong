@@ -29,7 +29,7 @@
         class="px-2 py-1.5 bg-kong-bg-light hover:bg-kong-bg-dark text-xs rounded transition-all border border-kong-border hover:border-kong-accent-green/50 font-medium group"
         on:click={() => handleQuickAmount(quickAmount)}
       >
-        <span class="text-kong-text-secondary group-hover:text-kong-accent-green transition-colors">{quickAmount}</span>
+        <span class="text-kong-text-secondary group-hover:text-kong-text-accent-green transition-colors">{quickAmount}</span>
       </button>
     {/each}
   </div>

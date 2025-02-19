@@ -14,6 +14,21 @@ export default {
         alumni: ["Space Grotesk", "sans-serif"],
         play: ["Press Start 2P", "monospace"],
       },
+      ringColor: {
+        DEFAULT: 'rgb(var(--accent-blue) / 0.2)',
+      },
+      ringOffsetColor: {
+        DEFAULT: 'rgb(var(--bg-dark))',
+      },
+      ringWidth: {
+        DEFAULT: '2px',
+      },
+      ringOpacity: {
+        DEFAULT: '0.2',
+      },
+      ring: {
+        DEFAULT: '2px rgb(var(--accent-blue) / 0.2)',
+      },
       colors: {
         "k-light-blue": "#0095EB",
         "primary-blue": "#3B82F6",
@@ -27,6 +42,7 @@ export default {
           "accent-blue": "rgb(var(--accent-blue) / <alpha-value>)",
           "accent-red": "rgb(var(--accent-red) / <alpha-value>)",
           "accent-green": "rgb(var(--accent-green) / <alpha-value>)",
+          "accent-yellow": "rgb(var(--accent-yellow) / <alpha-value>)",
           "accent-green-hover": "rgb(var(--accent-green-hover) / <alpha-value>)",
           "accent-blue-hover": "rgb(var(--accent-blue-hover) / <alpha-value>)",
           "accent-red-hover": "rgb(var(--accent-red-hover) / <alpha-value>)",

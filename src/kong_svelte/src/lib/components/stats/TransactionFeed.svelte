@@ -434,7 +434,7 @@
                       <div class="flex justify-between items-center">
                         <span class="text-sm font-medium text-kong-text-primary">
                           {#if tx.receive_token_id === token.token_id}
-                            <span class="bg-kong-accent-green/20 text-kong-accent-green px-2 py-0.5 rounded-full text-xs">
+                            <span class="bg-kong-accent-green/20 text-kong-text-accent-green px-2 py-0.5 rounded-full text-xs">
                              {token.symbol} BUY
                             </span>
                           {:else}

@@ -5,10 +5,9 @@
   import SimpleChart from "$lib/components/common/SimpleChart.svelte";
   import { fade } from "svelte/transition";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { onDestroy, onMount } from "svelte";
+  import { onMount } from "svelte";
   import { fetchTokens, fetchTokensByCanisterId } from "$lib/api/tokens";
   import { tweened } from 'svelte/motion';
-  import { cubicOut } from 'svelte/easing';
 
   let hoveredToken: FE.Token | null = null;
   let hoverTimeout: NodeJS.Timeout;
@@ -35,11 +34,6 @@
 
   let tickerWidth = 0;
   let contentWidth = 0;
-
-  // Create a separate store for visual tokens to prevent animation resets
-  let displayTokens: FE.Token[] = [];
-  let animationStartTime = Date.now();
-  let animationOffset = 0;
 
   async function fetchTickerData() {
     try {
@@ -531,7 +525,7 @@
   }
 
   .positive {
-    @apply text-kong-accent-green;
+    @apply text-kong-text-accent-green;
   }
 
   .negative {

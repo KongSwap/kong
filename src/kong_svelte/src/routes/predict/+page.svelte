@@ -1,18 +1,20 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import {
     placeBet,
     getAllBets,
     getAllCategories,
     getAllMarkets,
   } from "$lib/api/predictionMarket";
-  import { AlertTriangle } from "lucide-svelte";
+  import { AlertTriangle, Plus, ClipboardList } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  import { formatBalance, toScaledAmount } from "$lib/utils/numberFormatUtils";
+  import { toScaledAmount } from "$lib/utils/numberFormatUtils";
   import MarketSection from "./MarketSection.svelte";
-  import BetModal from './BetModal.svelte';
-  import Panel from "$lib/components/common/Panel.svelte";
+  import BetModal from "./BetModal.svelte";
+  import RecentBets from "$lib/components/predict/RecentBets.svelte";
+    import { toastStore } from "$lib/stores/toastStore";
+    import { goto } from "$app/navigation";
 
   let marketsByStatus: any = { active: [], resolved: [] };
   let loading = true;
@@ -37,6 +39,14 @@
   let newBetIds = new Set<string>();
   let isInitialLoad = true;
 
+  let pollInterval: ReturnType<typeof setInterval>;
+
+  onDestroy(() => {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+    }
+  });
+
   // Format category from variant to display text
   function formatCategory(category: any): string {
     if (!category) return "Other";
@@ -59,16 +69,20 @@
       // Store previous bets before updating
       previousBets = [...recentBets];
       recentBets = await getAllBets(0, 5);
-      
+
       // Only identify new bets if it's not the initial load
       if (!isInitialLoad) {
         newBetIds = new Set(
           recentBets
-            .filter(newBet => !previousBets.some(oldBet => 
-              oldBet.bet.timestamp === newBet.bet.timestamp && 
-              oldBet.bet.outcome_index === newBet.bet.outcome_index
-            ))
-            .map(bet => `${bet.bet.timestamp}-${bet.bet.outcome_index}`)
+            .filter(
+              (newBet) =>
+                !previousBets.some(
+                  (oldBet) =>
+                    oldBet.timestamp === newBet.timestamp &&
+                    oldBet.outcome_index === newBet.outcome_index,
+                ),
+            )
+            .map((bet) => `${bet.timestamp}-${bet.outcome_index}`),
         );
 
         // Clear animation after a delay
@@ -92,40 +106,36 @@
       // Initial data load
       const [allMarketsResult, categoriesResult] = await Promise.all([
         getAllMarkets(),
-        getAllCategories()
+        getAllCategories(),
       ]);
-      
+
       // Convert nanoseconds to milliseconds for comparison
       const nowNs = BigInt(Date.now()) * BigInt(1_000_000);
-      
+
       // Process markets once
       marketsByStatus = {
-        active: allMarketsResult.filter(market => 
-          'Open' in market.status && 
-          BigInt(market.end_time) > nowNs
+        active: allMarketsResult.filter(
+          (market) =>
+            "Open" in market.status && BigInt(market.end_time) > nowNs,
         ),
-        expired_unresolved: allMarketsResult.filter(market => 
-          'Open' in market.status && 
-          BigInt(market.end_time) <= nowNs
+        expired_unresolved: allMarketsResult.filter(
+          (market) =>
+            "Open" in market.status && BigInt(market.end_time) <= nowNs,
         ),
-        resolved: allMarketsResult.filter(market => 
-          'Closed' in market.status
-        )
+        resolved: allMarketsResult.filter(
+          (market) => "Closed" in market.status,
+        ),
       };
-      
-      categories = ['All', ...categoriesResult];
-      
+
+      categories = ["All", ...categoriesResult];
+
       // Initial bets load
       await loadRecentBets();
 
       // Set up polling for recent bets
-      const pollInterval = setInterval(loadRecentBets, 1000 * 10); // 10 seconds
-      
-      return () => {
-        clearInterval(pollInterval);
-      };
+      pollInterval = setInterval(loadRecentBets, 1000 * 10); // 10 seconds
     } catch (e) {
-      error = 'Failed to load prediction markets';
+      error = "Failed to load prediction markets";
       console.error(e);
     } finally {
       loading = false;
@@ -149,16 +159,16 @@
 
   async function handleBet(amount: number) {
     if (!selectedMarket || selectedOutcome === null) return;
-    
+
     try {
       isBetting = true;
       betError = null;
 
       const tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
       const kongToken = tokens[0];
-      
+
       if (!kongToken) {
-        throw new Error('Failed to fetch KONG token information');
+        throw new Error("Failed to fetch KONG token information");
       }
 
       // Convert bet amount to scaled token units
@@ -168,34 +178,38 @@
         kongToken,
         Number(selectedMarket.id),
         selectedOutcome,
-        scaledAmount
+        scaledAmount,
       );
 
+      toastStore.add({
+        title: "Bet Placed",
+        message: `You bet ${amount} KONG on ${selectedMarket.outcomes[selectedOutcome]}`,
+        type: "success",
+      });
+
       closeBetModal();
-      
+
       // Refresh markets first, then bets sequentially to avoid race conditions
       const newMarkets = await getAllMarkets();
-      
+
       // Convert nanoseconds to milliseconds for comparison
       const nowNs = BigInt(Date.now()) * BigInt(1_000_000);
-      
+
       // Update markets state
       marketsByStatus = {
-        active: newMarkets.filter(market => 
-          'Open' in market.status && 
-          BigInt(market.end_time) > nowNs
+        active: newMarkets.filter(
+          (market) =>
+            "Open" in market.status && BigInt(market.end_time) > nowNs,
         ),
-        expired_unresolved: newMarkets.filter(market => 
-          'Open' in market.status && 
-          BigInt(market.end_time) <= nowNs
+        expired_unresolved: newMarkets.filter(
+          (market) =>
+            "Open" in market.status && BigInt(market.end_time) <= nowNs,
         ),
-        resolved: newMarkets.filter(market => 
-          'Closed' in market.status
-        )
+        resolved: newMarkets.filter((market) => "Closed" in market.status),
       };
     } catch (e) {
-      console.error('Bet error:', e);
-      betError = e instanceof Error ? e.message : 'Failed to place bet';
+      console.error("Bet error:", e);
+      betError = e instanceof Error ? e.message : "Failed to place bet";
     } finally {
       isBetting = false;
     }
@@ -204,27 +218,27 @@
 
 <div class="min-h-screen text-kong-text-primary px-4">
   <div class="max-w-7xl mx-auto">
-    <div class="text-center mb-8 flex justify-between items-center">
+    <div class="text-center mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-6">
       <div class="flex flex-col gap-2">
         <h1
-          class="text-xl flex items-center gap-3 justify-center drop-shadow-lg md:text-3xl font-bold text-kong-text-primary max-w-2xl mx-auto text-kong-text-primary/80 bg-300"
+          class="text-2xl flex items-center gap-3 justify-center md:justify-start drop-shadow-lg md:text-3xl font-bold text-kong-text-primary/80 bg-300"
         >
           Prediction Markets
         </h1>
 
         <p
-          class="text-kong-pm-text-secondary flex items-center gap-2 justify-center"
+          class="text-kong-pm-text-secondary flex items-center gap-2 justify-center md:justify-start text-sm md:text-base"
         >
           Predict the future and earn rewards.
         </p>
       </div>
 
       <!-- Category Filters -->
-      <div class="flex items-center">
-        <div class="flex flex-wrap gap-2 justify-center">
+      <div class="flex flex-col items-center justify-center md:justify-end gap-4">
+        <div class="w-full flex flex-wrap gap-2 justify-center max-w-full overflow-x-auto pb-2 md:pb-0">
           {#each categories as category}
             <button
-              class="px-3 py-1 rounded-full text-sm font-medium transition-colors
+              class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap
                             {selectedCategory === category ||
               (category === 'All' && !selectedCategory)
                 ? 'bg-kong-pm-accent text-white'
@@ -324,53 +338,31 @@
 
       <!-- Recent bets column - takes up 1/4 of the space -->
       <div class="lg:col-span-1">
-        {#if recentBets.length > 0}
-          <div class="sticky top-4">
-            <h2 class="text-sm uppercase font-medium mb-2 flex items-center gap-2">
-              Recent Bets
-            </h2>
-            <Panel variant="transparent" type="main" className="!rounded !p-0">
-              <div>
-                {#each recentBets as { bet, market }}
-                  <div
-                    class="flex flex-col py-3 px-4 border-b border-kong-border/50 last:border-0 {newBetIds.has(`${bet.timestamp}-${bet.outcome_index}`) ? 'flash-new-bet' : ''}"
-                  >
-                    <!-- Market Question -->
-                    <div
-                      class="text-kong-text-primary font-medium line-clamp-2"
-                    >
-                      {market.question}
-                    </div>
-
-                    <!-- Bet Details -->
-                    <div class="flex items-center justify-between mt-1">
-                      <div class="flex flex-col">
-                        <span class="text-kong-accent-green">
-                          {market.outcomes[Number(bet.outcome_index)]}
-                        </span>
-                        <span class="text-xs text-kong-pm-text-secondary">
-                          {new Date(
-                            Number(bet.timestamp) / 1_000_000,
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                      <div class="flex items-center gap-1">
-                        <span
-                          class="font-medium text-kong-accent-green"
-                        >
-                          {formatBalance(bet.amount, 8)}
-                        </span>
-                        <span class="text-xs text-kong-pm-text-secondary"
-                          >KONG</span
-                        >
-                      </div>
-                    </div>
-                  </div>
-                {/each}
-              </div>
-            </Panel>
-          </div>
-        {/if}
+        <div class="mb-2 flex flex-col gap-2">
+          <button
+          on:click={() => goto('/predict/create')}
+          class="w-full p-3 bg-kong-accent-green hover:bg-kong-accent-green-hover text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+        >
+          <Plus class="w-3.5 h-3.5" />
+          Create Market
+        </button>
+          <button
+            on:click={() => goto('/predict/history')}
+            class="w-full p-3 bg-kong-surface-dark hover:bg-kong-surface-light text-kong-text-primary rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            <ClipboardList class="w-3.5 h-3.5" />
+            View History
+          </button>
+        </div>
+        <div class="sticky top-4">
+          <RecentBets
+            bets={recentBets}
+            {newBetIds}
+            showOutcomes={false}
+            maxHeight="500px"
+            loading={loadingBets}
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -378,16 +370,16 @@
 
 <!-- Betting Modal -->
 <BetModal
-    {showBetModal}
-    {selectedMarket}
-    {isBetting}
-    {isApprovingAllowance}
-    {betError}
-    {selectedOutcome}
-    bind:betAmount
-    onClose={closeBetModal}
-    onBet={handleBet}
-    onOutcomeSelect={(index) => selectedOutcome = index}
+  {showBetModal}
+  {selectedMarket}
+  {isBetting}
+  {isApprovingAllowance}
+  {betError}
+  {selectedOutcome}
+  bind:betAmount
+  onClose={closeBetModal}
+  onBet={handleBet}
+  onOutcomeSelect={(index) => (selectedOutcome = index)}
 />
 
 <style lang="postcss" scoped>

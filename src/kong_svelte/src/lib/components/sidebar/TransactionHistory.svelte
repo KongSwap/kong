@@ -345,7 +345,7 @@
       
       <div class="flex items-center justify-between">
         <span class="text-sm text-kong-text-secondary">Status</span>
-        <span class="text-xs px-2 py-1 rounded-full {selectedTransaction.status === 'Success' ? 'bg-kong-accent-green/10 text-kong-accent-green' : 'bg-kong-accent-red/10 text-kong-accent-red'}">
+        <span class="text-xs px-2 py-1 rounded-full {selectedTransaction.status === 'Success' ? 'bg-kong-accent-green/10 text-kong-text-accent-green' : 'bg-kong-accent-red/10 text-kong-accent-red'}">
           {selectedTransaction.status}
         </span>
       </div>
@@ -567,7 +567,7 @@
               <div class="ml-2 sm:ml-3 flex items-center gap-1 sm:gap-2 shrink-0">
                 <span class="hidden sm:inline text-xs text-kong-text-secondary">{tx.formattedDate}</span>
                 <span 
-                  class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full shrink-0 min-w-[52px] text-center {tx.status === 'Success' ? 'bg-kong-accent-green/10 text-kong-accent-green' : 'bg-kong-accent-red/10 text-kong-accent-red'}"
+                  class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full shrink-0 min-w-[52px] text-center {tx.status === 'Success' ? 'bg-kong-accent-green/10 text-kong-text-accent-green' : 'bg-kong-accent-red/10 text-kong-accent-red'}"
                 >
                   {tx.status}
                 </span>

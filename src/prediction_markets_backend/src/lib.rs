@@ -11,9 +11,12 @@ pub use queries::*;
 mod authentication;
 pub use authentication::*;
 
-use candid::Principal;
-use ic_cdk::{caller, post_upgrade, pre_upgrade, query, update};
-use std::str::FromStr;
+mod config;
+pub use config::admin::*;
+
+use candid::{self, Principal};
+use ic_cdk::{self, call, post_upgrade, pre_upgrade, update};
+use ic_cdk::api::call;
 use ic_stable_structures::{
     memory_manager::{MemoryId, MemoryManager, VirtualMemory},
     storable::Bound,
@@ -24,16 +27,14 @@ use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicU64, Ordering};
-use ic_cdk::api::call;
 use num_traits::{ToPrimitive, Zero, CheckedAdd, CheckedMul};
 use std::ops::{Add, Sub, Mul, Div};
-use strum_macros::EnumIter;
 use std::fmt;
-use crate::queries::BetWithMarket;
+use std::str::FromStr;
 
 // Constants
 const KONG_DECIMALS: u32 = 8;
-const KONG_LEDGER_ID: &str = "ed276-pqaaa-aaaag-atuhq-cai";
+const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";
 lazy_static::lazy_static! {
     static ref KONG_TRANSFER_FEE: StorableNat = StorableNat(candid::Nat::from(10_000u64)); // 0.0001 KONG
 }
@@ -297,8 +298,8 @@ async fn transfer_kong(to: Principal, amount: StorableNat) -> Result<(), String>
 }
 
 /// Represents different categories of prediction markets
-#[derive(candid::CandidType, Serialize, Deserialize, Clone, Debug, EnumIter)]
-pub enum MarketCategory {
+#[derive(candid::CandidType, Serialize, Deserialize, Clone, Debug, strum::EnumIter)]
+enum MarketCategory {
     Crypto,      // Cryptocurrency related predictions
     Memes,       // Internet culture and meme predictions
     Sports,      // Sports events and outcomes
@@ -306,6 +307,20 @@ pub enum MarketCategory {
     KongMadness, // Kong Madness tournament predictions
     AI,          // Artificial Intelligence related predictions
     Other,       // Other categories not covered above
+}
+
+impl fmt::Display for MarketCategory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MarketCategory::Crypto => write!(f, "Crypto"),
+            MarketCategory::Memes => write!(f, "Memes"),
+            MarketCategory::Sports => write!(f, "Sports"),
+            MarketCategory::Politics => write!(f, "Politics"),
+            MarketCategory::KongMadness => write!(f, "KongMadness"),
+            MarketCategory::AI => write!(f, "AI"),
+            MarketCategory::Other => write!(f, "Other"),
+        }
+    }
 }
 
 impl Storable for MarketCategory {
@@ -320,12 +335,6 @@ impl Storable for MarketCategory {
     }
 
     const BOUND: Bound = Bound::Unbounded;
-}
-
-impl fmt::Display for MarketCategory {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
 
 /// Wrapper around Vec<Bet> that implements Storable trait for stable storage
@@ -366,6 +375,7 @@ struct Market {
     outcome_percentages: Vec<f64>, // Percentage of total pool for each outcome
     bet_counts: Vec<StorableNat>,      // Number of bets for each outcome
     bet_count_percentages: Vec<f64>, // Percentage of total bets for each outcome
+    resolved_by: Option<Principal>,   // Principal ID of the admin who resolved the market
 }
 
 /// Legacy Market struct for migration
@@ -395,14 +405,15 @@ impl From<LegacyMarket> for Market {
             outcomes: legacy.outcomes,
             resolution_method: legacy.resolution_method,
             status: legacy.status,
-            created_at: StorableNat::from(0u64),
+            created_at: StorableNat::from(0u64), // Default for legacy markets
             end_time: legacy.end_time,
             total_pool: StorableNat::from(legacy.total_pool),
             resolution_data: legacy.resolution_data,
-            outcome_pools: vec![StorableNat::default(); outcome_count],
+            outcome_pools: vec![StorableNat::from(0u64); outcome_count],
             outcome_percentages: vec![0.0; outcome_count],
             bet_counts: vec![StorableNat::from(0u64); outcome_count],
             bet_count_percentages: vec![0.0; outcome_count],
+            resolved_by: None,
         }
     }
 }
@@ -580,6 +591,11 @@ fn create_market(
 
     let creator = ic_cdk::caller();
     
+    // Verify the caller is an admin
+    if !is_admin(creator) {
+        return Err("Only admins can create markets".to_string());
+    }
+    
     MARKETS.with(|markets| {
         let market_id = StorableNat::from(NEXT_ID.fetch_add(1, Ordering::Relaxed));
         let outcome_count = outcomes.len();
@@ -604,6 +620,7 @@ fn create_market(
                 outcome_percentages: vec![0.0; outcome_count],
                 bet_counts: vec![StorableNat::from(0u64); outcome_count],
                 bet_count_percentages: vec![0.0; outcome_count],
+                resolved_by: None,
             },
         );
         
@@ -627,7 +644,7 @@ enum BetError {
 #[update]
 /// Places a bet on a specific market outcome using KONG tokens
 async fn place_bet(market_id: MarketId, outcome_index: StorableNat, amount: StorableNat) -> Result<(), BetError> {
-    let user = caller();
+    let user = ic_cdk::caller();
     let market_id_clone = market_id.clone();
     
     // Get market and validate state
@@ -673,12 +690,7 @@ async fn place_bet(market_id: MarketId, outcome_index: StorableNat, amount: Stor
     
     match call::call::<_, (Result<candid::Nat, TransferError>,)>(ledger, "icrc2_transfer_from", (args,)).await {
         Ok((Ok(_block_index),)) => Ok(()),
-        Ok((Err(e),)) => match e {
-            TransferError::InsufficientFunds { .. } => {
-                Err(BetError::TransferError("Insufficient KONG balance. Check allowance and try again.".to_string()))
-            },
-            _ => Err(BetError::TransferError(format!("Transfer failed: {:?}", e))),
-        },
+        Ok((Err(e),)) => Err(BetError::TransferError(format!("Transfer failed: {:?}. Make sure you have approved the prediction market canister to spend your tokens using icrc2_approve", e))),
         Err((code, msg)) => Err(BetError::TransferError(format!("Transfer failed: {} (code: {:?})", msg, code))),
     }?;
 
@@ -760,7 +772,7 @@ async fn resolve_via_oracle(
     outcome_indices: Vec<StorableNat>,
     _signature: Vec<u8>,
 ) -> Result<(), ResolutionError> {
-    let oracle_principal = caller();
+    let oracle_principal = ic_cdk::caller();
     
     // Verify oracle is whitelisted
     if !ORACLES.with(|o| o.borrow().contains_key(&oracle_principal)) {
@@ -816,7 +828,12 @@ async fn resolve_via_admin(market_id: MarketId, outcome_indices: Vec<StorableNat
     if outcome_indices.is_empty() {
         return Err(ResolutionError::InvalidOutcome);
     }
-    let admin = caller();
+    let admin = ic_cdk::caller();
+    
+    // Verify the caller is an admin
+    if !is_admin(admin) {
+        return Err(ResolutionError::Unauthorized);
+    }
     
     // Get market and validate state
     let mut market = MARKETS.with(|markets| {
@@ -824,10 +841,8 @@ async fn resolve_via_admin(market_id: MarketId, outcome_indices: Vec<StorableNat
         markets_ref.get(&market_id).ok_or(ResolutionError::MarketNotFound).map(|m| m.clone())
     })?;
     
-    // Verify the caller is the market creator
-    if market.creator != admin {
-        return Err(ResolutionError::Unauthorized);
-    }
+    // Set the admin who resolved the market
+    market.resolved_by = Some(admin);
 
     // Verify resolution method is Admin
     match market.resolution_method {

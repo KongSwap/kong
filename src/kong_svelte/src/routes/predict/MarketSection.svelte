@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { formatCategory, calculatePercentage } from "$lib/utils/numberFormatUtils";
+  import {
+    formatCategory,
+    calculatePercentage,
+  } from "$lib/utils/numberFormatUtils";
   import { Coins, Plus, Calendar, ArrowUpRight } from "lucide-svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
@@ -24,6 +27,15 @@
         return "from-kong-accent-green/80";
     }
   }
+
+  function getBgClass(colorClass: string): string {
+    switch (colorClass) {
+      case "bg-yellow-400":
+        return "opacity-50 hover:opacity-100";
+      default:
+        return "";
+    }
+  }
 </script>
 
 <div class="mb-8">
@@ -33,132 +45,156 @@
     </div>
   {:else}
     <div class="relative pb-3">
-      <h2 class="text-sm uppercase text-kong-text-primary items-center font-medium flex gap-2">
-        <div class="bg-gradient-to-l h-3 rounded-r-xl to-transparent px-3 py-0.5 w-[20px] {getGradientClass(statusColor)}">
-        </div>
+      <h2
+        class="text-sm uppercase text-kong-text-primary items-center font-medium flex gap-2"
+      >
+        <div
+          class="bg-gradient-to-l h-3 rounded-r-lg to-transparent px-3 py-0.5 w-[20px] {getGradientClass(
+            statusColor,
+          )}"
+        ></div>
         {title}
       </h2>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
       {#each markets as market (market.id)}
         <Panel
           variant="transparent"
-          className="relative {isResolved
+          className="relative {getBgClass(statusColor)} {isResolved
             ? 'opacity-70 hover:opacity-100'
-            : ''} group hover:bg-kong-bg-dark/10 transition-all duration-200"
+            : ''} group hover:bg-kong-bg-dark/10 transition-all duration-200 flex flex-col min-h-[200px] sm:min-h-[220px]"
         >
           {#if isResolved}
             <div class="absolute top-2 right-2">
               <span
-                class="px-2 py-0.5 bg-kong-accent-green/20 text-kong-accent-green text-xs rounded-full"
+                class="px-2 py-0.5 bg-kong-accent-green/20 text-kong-text-accent-green text-xs rounded-full"
               >
                 Resolved
               </span>
             </div>
           {/if}
 
-          <div class="flex justify-between items-start mb-3">
-            <div class="flex-1 pr-2">
-              <button
-                class="text-base font-medium mb-1.5 text-kong-text-primary text-left group-hover:text-kong-accent-green transition-colors flex items-start gap-2 line-clamp-2"
-                on:click={() => {
-                  goto(`/predict/${market.id}`);
-                }}
-              >
-                <span class="flex-1">{market.question}</span>
-                <ArrowUpRight
-                  class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
-                />
-              </button>
-              <div class="flex items-center gap-2 text-sm">
-                <span
-                  class="px-1.5 py-0.5 bg-kong-pm-accent/10 text-kong-pm-accent rounded text-xs font-medium"
+          <!-- Header section -->
+          <div class="flex-initial">
+            <div class="flex justify-between items-start mb-2 sm:mb-3">
+              <div class="flex-1">
+                <button
+                  class="text-sm sm:text-base line-clamp-2 font-medium mb-1 sm:mb-1.5 text-kong-text-primary text-left group-hover:text-kong-text-accent-green transition-colors relative min-h-[2.5rem] sm:min-h-[3rem] w-full"
+                  title={market.question}
+                  on:click={() => {
+                    goto(`/predict/${market.id}`);
+                  }}
                 >
-                  {formatCategory(market.category)}
-                </span>
-                {#if showEndTime}
+                  <span class="block pr-3">{market.question}</span>
+                  <ArrowUpRight
+                    class="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity absolute top-0 right-0"
+                  />
+                </button>
+                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-sm">
                   <span
-                    class="flex items-center gap-1 text-kong-pm-text-secondary text-xs"
+                    class="px-1.5 py-0.5 bg-kong-pm-accent/10 text-kong-pm-accent rounded text-xs font-medium"
                   >
-                    <Calendar class="w-3 h-3" />
-                    <CountdownTimer endTime={market.end_time} />
+                    {formatCategory(market.category)}
                   </span>
-                {/if}
-              </div>
-            </div>
-          </div>
-
-          <!-- Outcomes -->
-          <div class="space-y-2">
-            {#each market.outcomes as outcome, i}
-              <div class="relative group/outcome">
-                <div
-                  class="h-10 bg-kong-bg-dark/10 rounded p-1.5 {title !== 'Pending Resolution' && !isResolved ? 'hover:bg-kong-surface-light/5 cursor-pointer' : ''} transition-colors relative"
-                  on:click={() => title !== 'Pending Resolution' && !isResolved && openBetModal(market, i)}
-                >
-                  <div
-                    class="absolute bottom-0 left-0 h-1 bg-kong-accent-green/40 rounded transition-all"
-                    style:width={`${calculatePercentage(
-                      market.outcome_pools[i],
-                      market.outcome_pools.reduce(
-                        (acc, pool) => acc + Number(pool || 0),
-                        0,
-                      ),
-                    ).toFixed(1)}%`}
-                  ></div>
-                  <div
-                    class="relative flex justify-between items-center h-full"
-                  >
-                    <div class="flex items-center gap-2">
-                      <span class="font-medium text-kong-text-primary text-sm">{outcome}</span>
-                    </div>
-                    <div class="text-right flex items-center gap-2">
-                      <div class="text-kong-pm-accent font-bold text-sm">
-                        {calculatePercentage(
-                          market.outcome_pools[i],
-                          market.outcome_pools.reduce(
-                            (acc, pool) => acc + Number(pool || 0),
-                            0,
-                          ),
-                        ).toFixed(1)}%
-                      </div>
-                      <div class="text-xs text-kong-pm-text-secondary">
-                        {formatBalance(market.outcome_pools[i], 8)}
-                      </div>
-                    </div>
-                  </div>
+                  {#if showEndTime}
+                    <span
+                      class="flex items-center gap-1 text-kong-pm-text-secondary text-xs whitespace-nowrap"
+                    >
+                      <Calendar class="w-3 h-3" />
+                      <CountdownTimer endTime={market.end_time} />
+                    </span>
+                  {/if}
                 </div>
               </div>
-            {/each}
+            </div>
           </div>
 
-          <!-- Card Footer -->
-          {#if !isResolved && title !== 'Pending Resolution'}
-            <div class="mt-3 pt-2 border-t border-kong-pm-border">
-              <button
-                class="w-full flex items-center justify-center py-2 border shadow-sm border-kong-accent-green/50 hover:bg-kong-accent-green/10 text-kong-accent-green rounded font-medium transition-all text-sm"
-                on:click={() => openBetModal(market)}
-              >
-                <Coins class="w-3.5 h-3.5 mr-1.5" />
-                Place Bet
-              </button>
+          <!-- Outcomes section -->
+          <div class="flex-1 flex flex-col">
+            <div class="space-y-1.5 sm:space-y-2 mb-2 sm:mb-3">
+              {#each market.outcomes as outcome, i}
+                <div class="relative group/outcome rounded {title !==
+                      'Pending Resolution' && !isResolved
+                      ? 'hover:bg-kong-surface-light/40 cursor-pointer'
+                      : ''}">
+                  <button
+                    class="h-8 sm:h-10 hover:bg-white/10 rounded p-1.5 transition-colors relative w-full"
+                    on:click={() =>
+                      title !== "Pending Resolution" &&
+                      !isResolved &&
+                      openBetModal(market, i)}
+                  >
+                    <div
+                      class="absolute bottom-0 left-0 h-1 bg-kong-accent-green/40 rounded transition-all"
+                      style:width={`${calculatePercentage(
+                        market.outcome_pools[i],
+                        market.outcome_pools.reduce(
+                          (acc, pool) => acc + Number(pool || 0),
+                          0,
+                        ),
+                      ).toFixed(1)}%`}
+                    ></div>
+                    <div
+                      class="relative flex justify-between items-center h-full gap-2"
+                    >
+                      <div class="flex items-center gap-2 min-w-0">
+                        <span class="font-medium text-kong-text-primary text-xs sm:text-sm truncate"
+                          >{outcome}</span
+                        >
+                      </div>
+                      <div class="text-right flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                        <div class="text-kong-pm-accent font-bold text-xs sm:text-sm whitespace-nowrap">
+                          {calculatePercentage(
+                            market.outcome_pools[i],
+                            market.outcome_pools.reduce(
+                              (acc, pool) => acc + Number(pool || 0),
+                              0,
+                            ),
+                          ).toFixed(1)}%
+                        </div>
+                        <div class="text-xs text-kong-pm-text-secondary hidden sm:block">
+                          {formatBalance(market.outcome_pools[i], 8)}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              {/each}
             </div>
-          {:else if title === 'Pending Resolution'}
-            <div class="mt-3 pt-2 border-t border-kong-pm-border">
-              <div class="text-center text-xs text-kong-pm-text-secondary">
-                Awaiting resolution
+
+            <!-- Push footer to bottom -->
+            <div class="flex-1"></div>
+
+            <!-- Card Footer -->
+            {#if !isResolved && title !== "Pending Resolution"}
+              <div class="pt-1.5 sm:pt-2 border-t border-kong-pm-border">
+                <div class="flex items-center justify-center">
+                  <button
+                    class="w-full flex items-center justify-center py-1.5 sm:py-2 border shadow-sm border-kong-accent-green/50 hover:bg-kong-accent-green/10 text-kong-text-accent-green rounded font-medium transition-all text-xs sm:text-sm"
+                    on:click={() => openBetModal(market)}
+                  >
+                    <Coins class="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1.5" />
+                    Place Bet
+                  </button>
+                </div>
               </div>
-            </div>
-          {:else}
-            <div class="mt-3 pt-2 border-t border-kong-pm-border">
-              <div class="text-center text-xs text-kong-pm-text-secondary">
-                Resolved on {new Date(
-                  Number(market.end_time) / 1_000_000,
-                ).toLocaleDateString()}
+            {:else if title === "Pending Resolution"}
+              <div class="pt-2 border-t border-kong-pm-border">
+                <div class="text-center text-xs text-kong-pm-text-secondary">
+                  Awaiting resolution
+                </div>
               </div>
-            </div>
-          {/if}
+            {:else}
+              <div class="pt-2 border-t border-kong-pm-border">
+                <div class="text-center text-xs text-kong-pm-text-secondary">
+                  Resolved on {new Date(
+                    Number(market.end_time) / 1_000_000,
+                  ).toLocaleDateString()}
+                </div>
+              </div>
+            {/if}
+          </div>
         </Panel>
       {/each}
 

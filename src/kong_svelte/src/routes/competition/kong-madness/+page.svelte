@@ -9,6 +9,7 @@
     import { getMarket, placeBet, getUserHistory } from '$lib/api/predictionMarket';
     import { auth } from '$lib/services/auth';
     import { Principal } from '@dfinity/principal';
+    import { formatBalance } from '$lib/utils/numberFormatUtils';
 
     let tokens: any[] = [];
     let market: any = null;
@@ -281,7 +282,7 @@
                                 <div class="bet-card bg-white/5 rounded-lg p-3 mb-2">
                                     <div class="flex justify-between items-center">
                                         <span class="text-lg font-teko">{bet.outcome_text}</span>
-                                        <span class="text-green-400 font-bold">{bet.bet_amount.toLocaleString()} KONG</span>
+                                        <span class="text-green-400 font-bold">{formatBalance(bet.bet_amount, 8)} KONG</span>
                                     </div>
                                 </div>
                             {/each}
@@ -296,9 +297,9 @@
                                     <div class="flex justify-between items-center">
                                         <span class="text-lg font-teko">{bet.outcome_text}</span>
                                         <div class="text-right">
-                                            <div class="text-gray-400 text-sm">Bet: {bet.bet_amount.toLocaleString()} KONG</div>
+                                            <div class="text-gray-400 text-sm">Bet: {formatBalance(bet.bet_amount, 8)} KONG</div>
                                             {#if bet.winnings}
-                                                <div class="text-green-400 font-bold">Won: {bet.winnings.toLocaleString()} KONG</div>
+                                                <div class="text-green-400 font-bold">Won: {formatBalance(bet.winnings, 8)} KONG</div>
                                             {:else}
                                                 <div class="text-red-400">Lost</div>
                                             {/if}
@@ -313,11 +314,11 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div class="stat-card bg-white/5 rounded-lg p-3 text-center">
                                 <div class="text-sm text-gray-400">Total Wagered</div>
-                                <div class="text-xl font-bold text-white">{userBets.total_wagered.toLocaleString()} KONG</div>
+                                <div class="text-xl font-bold text-white">{formatBalance(userBets.total_wagered, 8)} KONG</div>
                             </div>
                             <div class="stat-card bg-white/5 rounded-lg p-3 text-center">
                                 <div class="text-sm text-gray-400">Total Won</div>
-                                <div class="text-xl font-bold text-green-400">{userBets.total_won.toLocaleString()} KONG</div>
+                                <div class="text-xl font-bold text-green-400">{formatBalance(userBets.total_won, 8)} KONG</div>
                             </div>
                         </div>
                     </div>
@@ -361,7 +362,7 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z" />
                                             </svg>
-                                            Your bet: {userBets.active_bets.find(bet => bet.market.id === match.id && bet.outcome_text === match.player1?.symbol)?.bet_amount.toLocaleString()} KONG
+                                            Your bet: {formatBalance(userBets.active_bets.find(bet => bet.market.id === match.id && bet.outcome_text === match.player1?.symbol)?.bet_amount, 8)} KONG
                                         </span>
                                     {/if}
                                 </div>
@@ -434,7 +435,7 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z" />
                                             </svg>
-                                            Your bet: {userBets.active_bets.find(bet => bet.market.id === match.id && bet.outcome_text === match.player2?.symbol)?.bet_amount.toLocaleString()} KONG
+                                            Your bet: {formatBalance(userBets.active_bets.find(bet => bet.market.id === match.id && bet.outcome_text === match.player2?.symbol)?.bet_amount, 8)} KONG
                                         </span>
                                     {/if}
                                 </div>
@@ -530,7 +531,7 @@
                             <div class="mt-3 flex justify-between items-center">
                                 <span class="text-sm text-kong-text-secondary">Potential Winnings</span>
                                 <div class="text-right">
-                                    <span class="text-lg font-bold text-green-400">{potentialWinnings.toFixed(2)} KONG</span>
+                                    <span class="text-lg font-bold text-green-400">{formatBalance(potentialWinnings, 8)} KONG</span>
                                     <p class="text-xs text-kong-text-secondary">({((potentialWinnings/betAmount - 1) * 100).toFixed(1)}% return)</p>
                                 </div>
                             </div>
@@ -550,7 +551,7 @@
                     <div class="flex flex-col gap-2">
                         <div class="flex justify-between">
                             <span class="text-kong-text-secondary">Amount</span>
-                            <span class="text-kong-text-primary font-bold">{betAmount} KONG</span>
+                            <span class="text-kong-text-primary font-bold">{formatBalance(betAmount, 8)} KONG</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-kong-text-secondary">Token</span>
@@ -563,8 +564,8 @@
                         <div class="flex justify-between">
                             <span class="text-kong-text-secondary">Potential Winnings</span>
                             <div class="text-right">
-                                <span class="text-green-400 font-bold">{potentialWinnings.toFixed(2)} KONG</span>
-                                <p class="text-xs text-kong-text-secondary">({((potentialWinnings/betAmount - 1) * 100).toFixed(1)}% return)</p>
+                                <span class="text-green-400 font-bold">{formatBalance(potentialWinnings, 8)} KONG</span>
+                                <p class="text-xs text-kong-text-secondary">({((potentialWinnings/betAmount - 1) * 100)}% return)</p>
                             </div>
                         </div>
                     </div>

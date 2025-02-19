@@ -5,13 +5,18 @@
     "node": ">=18.0.0",
     "npm": ">=10.0.0"
   },
+  "bin": {
+    "kong": "src/cli/bin/index.js"
+  },
   "scripts": {
     "build": "npm run build --workspaces",
-    "kong:deploy:local": "cd scripts/local && ./deploy_kong.sh ",
+    "kong:deploy:local": "cd scripts && ./deploy_kong.sh local ",
     "prebuild": "npm run prebuild --workspaces",
     "pretest": "npm run prebuild --workspaces",
     "start": "doppler run -- npm --workspace=src/kong_svelte start",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "cli:install": "sh ./scripts/setup_cli.sh",
+    "cli:build": "npm run build --workspace=@kong/cli"
   },
   "dependencies": {
     "@dfinity/agent": "2.2.0",
@@ -23,8 +28,12 @@
     "@dfinity/principal": "2.2.0",
     "@dfinity/utils": "2.10.0"
   },
+  "devDependencies": {
+    "@kong/cli": "file:src/cli"
+  },
   "workspaces": [
-    "src/kong_svelte"
+    "src/kong_svelte",
+    "src/cli"
   ],
   "type": "module"
 }

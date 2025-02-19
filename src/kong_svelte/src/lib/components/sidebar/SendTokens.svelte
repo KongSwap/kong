@@ -691,7 +691,7 @@
   .validation-status {
     @apply text-sm mt-1 px-1;
     &.success {
-      @apply text-kong-accent-green;
+      @apply text-kong-text-accent-green;
     }
     &.error {
       @apply text-kong-accent-red;

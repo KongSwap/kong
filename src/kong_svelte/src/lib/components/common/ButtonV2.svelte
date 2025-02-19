@@ -39,7 +39,7 @@
   const outlineThemeClasses = {
     primary: "border border-kong-primary text-kong-primary hover:bg-kong-primary/10",
     secondary: "border border-white/10 text-white/90 hover:bg-white/5",
-    "accent-green": "border border-kong-accent-green text-kong-accent-green hover:bg-kong-accent-green/10",
+    "accent-green": "border border-kong-accent-green text-kong-text-accent-green hover:bg-kong-accent-green/10",
     "accent-blue": "border border-kong-accent-blue text-kong-accent-blue hover:bg-kong-accent-blue/10",
     "accent-red": "border border-kong-accent-red text-kong-accent-red hover:bg-kong-accent-red/10",
     success: "border border-kong-success text-kong-success hover:bg-kong-success/10",
@@ -51,7 +51,7 @@
   const transparentThemeClasses = {
     primary: "bg-transparent text-kong-primary hover:bg-kong-primary/10",
     secondary: "bg-transparent text-white/90 hover:bg-white/5",
-    "accent-green": "bg-transparent text-kong-accent-green hover:bg-kong-accent-green/10",
+    "accent-green": "bg-transparent text-kong-text-accent-green hover:bg-kong-accent-green/10",
     "accent-blue": "bg-transparent text-kong-accent-blue hover:bg-kong-accent-blue/10",
     "accent-red": "bg-transparent text-kong-accent-red hover:bg-kong-accent-red/10",
     success: "bg-transparent text-kong-success hover:bg-kong-success/10",

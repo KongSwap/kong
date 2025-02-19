@@ -16,20 +16,14 @@
       return;
     }
 
-    // Extract unique timestamps from marketBets, sorted ascending
-    const allTimestamps = [...new Set(marketBets.map(bet => Number(bet.timestamp)))].sort((a, b) => a - b);
-
     const outcomes: string[] = market.outcomes || [];
     const numOutcomes = outcomes.length;
-
-    // Initialize cumulative bet counts for each outcome
-    const cumulative: number[] = new Array(numOutcomes).fill(0);
 
     // Prepare datasets array, one for each outcome
     const datasets = outcomes.map((outcome: string, index: number) => ({
       label: outcome,
       data: [{
-        x: new Date(allTimestamps[0] / 1e6 - 1000), // Start 1 second before first bet
+        x: new Date(marketBets[0].timestamp), // Start at the time of the first bet
         y: 50 // Start at 50%
       }] as { x: Date, y: number }[],
       borderColor: index === 0 ? '#22c55e' : '#6366f1',
@@ -40,95 +34,60 @@
       showLine: true
     }));
 
-    // Group timestamps into 15-minute intervals
-    const intervalMs = 15 * 60 * 1000; // 15 minutes in milliseconds
-    const groupedData: Map<number, { counts: number[], timestamp: number }> = new Map();
+    // New cumulative calculation using grouping by 1-minute intervals
+    const intervalMs = 60 * 1000; // 1 minute intervals
+    const sortedBets = [...marketBets].sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+    const minTimeMs = Math.floor(Number(sortedBets[0].timestamp) / 1e6);
+    const maxTimeMs = Math.ceil(Number(sortedBets[sortedBets.length - 1].timestamp) / 1e6);
+    const startTime = Math.floor(minTimeMs / intervalMs) * intervalMs;
+    const endTime = Math.ceil(maxTimeMs / intervalMs) * intervalMs;
 
-    // Get start and end times
-    const startTime = Math.floor((allTimestamps[0] / 1e6) / intervalMs) * intervalMs;
-    const endTime = Math.max(
-      Math.ceil((allTimestamps[allTimestamps.length - 1] / 1e6) / intervalMs) * intervalMs,
-      Math.ceil(Date.now() / intervalMs) * intervalMs
-    );
-
-    // Create all intervals between start and end
-    for (let intervalStart = startTime; intervalStart <= endTime; intervalStart += intervalMs) {
-      groupedData.set(intervalStart, { 
-        counts: new Array(numOutcomes).fill(0), 
-        timestamp: intervalStart * 1e6 
-      });
+    // Create buckets for each 1-minute interval
+    const buckets = new Map<number, number[]>();
+    for (let t = startTime; t <= endTime; t += intervalMs) {
+      buckets.set(t, new Array(numOutcomes).fill(0));
     }
 
-    // Group bets into their respective intervals
-    for (const timestamp of allTimestamps) {
-      const timeMs = timestamp / 1e6;
-      const intervalStart = Math.floor(timeMs / intervalMs) * intervalMs;
-      const interval = groupedData.get(intervalStart)!;
-      
-      // Count bets for each outcome in this interval
-      for (let i = 0; i < numOutcomes; i++) {
-        const count = marketBets.filter(bet => 
-          Number(bet.outcome_index) === i && 
-          Number(bet.timestamp) === timestamp
-        ).length;
-        interval.counts[i] += count;
+    // Sum bet amounts into their respective minute buckets
+    for (const bet of sortedBets) {
+      const betTimeMs = Number(bet.timestamp) / 1e6;
+      const bucketTime = Math.floor(betTimeMs / intervalMs) * intervalMs;
+      const arr = buckets.get(bucketTime);
+      if (arr) {
+        arr[Number(bet.outcome_index)] += Number(bet.amount);
       }
     }
 
-    // Sort intervals by timestamp
-    const sortedIntervals = Array.from(groupedData.entries()).sort(([a], [b]) => a - b);
+    // Initialize cumulative amounts
+    const runningAmounts = new Array(numOutcomes).fill(0);
+    // Initialize each dataset with an initial value of 50% at the start time
+    const initDate = new Date(startTime);
+    for (let i = 0; i < numOutcomes; i++) {
+      datasets[i].data.push({ x: initDate, y: 50 });
+    }
 
-    // Calculate cumulative percentages for each interval
-    let runningCounts = new Array(numOutcomes).fill(0);
-
-    // Add initial 50-50 point at the start
-    datasets.forEach(ds => {
-      ds.data = [{
-        x: new Date(startTime),
-        y: 50
-      }];
-    });
-
-    // Process each interval
-    for (const [intervalStart, { counts }] of sortedIntervals) {
-      // Update running counts
+    // Process each bucket in chronological order
+    const sortedBuckets = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
+    for (const [bucketTime, sums] of sortedBuckets) {
       for (let i = 0; i < numOutcomes; i++) {
-        runningCounts[i] += counts[i];
+        runningAmounts[i] += sums[i];
       }
-
-      const totalCount = runningCounts.reduce((sum, count) => sum + count, 0);
-      
-      // Calculate and add percentages for each outcome
+      const totalAmount = runningAmounts.reduce((a, b) => a + b, 0);
+      const bucketDate = new Date(bucketTime);
       for (let i = 0; i < numOutcomes; i++) {
-        const percentage = totalCount === 0 ? 50 : (runningCounts[i] / totalCount) * 100;
-        datasets[i].data.push({
-          x: new Date(intervalStart),
-          y: percentage
-        });
+        const percentage = totalAmount === 0 ? 50 : (runningAmounts[i] / totalAmount) * 100;
+        datasets[i].data.push({ x: bucketDate, y: percentage });
       }
     }
 
-    // Add final point at current time with latest percentages
-    const now = Date.now();
-    datasets.forEach((ds, i) => {
-      const lastPoint = ds.data[ds.data.length - 1];
-      if (lastPoint && lastPoint.x.getTime() < now) {
-        ds.data.push({
-          x: new Date(now),
-          y: lastPoint.y
-        });
+    // Add a final data point at the current time if needed
+    const now = new Date();
+    if (datasets[0].data[datasets[0].data.length - 1].x.getTime() < now.getTime()) {
+      for (let i = 0; i < numOutcomes; i++) {
+        const lastPoint = datasets[i].data[datasets[i].data.length - 1];
+        datasets[i].data.push({ x: now, y: lastPoint.y });
       }
-    });
-
-    // If we only have one point, add another at the next interval
-    datasets.forEach(ds => {
-      if (ds.data.length === 1) {
-        ds.data.push({ 
-          x: new Date(startTime + intervalMs), 
-          y: ds.data[0].y 
-        });
-      }
-    });
+    }
 
     if (chart) {
       chart.destroy();

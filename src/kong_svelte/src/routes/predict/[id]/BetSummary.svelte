@@ -20,13 +20,13 @@
           </div>
         </div>
       </div>
-      <span class="font-medium text-sm text-kong-accent-green">
+      <span class="font-medium text-sm text-kong-text-accent-green">
         {potentialWin.toLocaleString()} KONG
       </span>
     </div>
     <div class="flex items-center justify-between">
       <span class="text-xs text-kong-text-secondary">Return multiplier</span>
-      <span class="font-medium text-sm text-kong-accent-green">
+      <span class="font-medium text-sm text-kong-text-accent-green">
         {odds}
       </span>
     </div>

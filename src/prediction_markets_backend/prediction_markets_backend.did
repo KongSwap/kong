@@ -1,164 +1,236 @@
-type Bet = record {
-  market_id : nat;
-  user : principal;
-  timestamp : nat;
-  amount : nat;
-  outcome_index : nat;
-};
-type BetError = variant {
-  MarketNotFound;
-  MarketClosed;
-  BetRecordingFailed;
-  TransferError : text;
-  MarketUpdateFailed;
-  InvalidOutcome;
-  InsufficientBalance;
-  BalanceUpdateFailed;
-};
-type BetWithMarket = record { bet : Bet; market : Market };
-type Delegation = record {
-  created : nat64;
-  targets_list_hash : blob;
-  target : principal;
-  expiration : opt nat64;
-};
-type DelegationError = variant {
-  NotFound;
-  Unauthorized;
-  InvalidRequest : text;
-  StorageError : text;
-  Expired;
-};
-type DelegationRequest = record {
-  targets : vec principal;
-  expiration : opt nat64;
-};
-type DelegationResponse = record { delegations : vec Delegation };
-type Distribution = record {
-  bet_amount : nat;
-  winnings : nat;
-  user : principal;
-  outcome_index : nat;
-};
-type GetFeeBalanceResult = record {
-  balance : nat;
-  admin_principal : principal;
-};
+// Prediction Markets Candid Interface
+
+// ICRC-21 Types
 type ICRC21ConsentMessageRequest = record {
-  method : text;
-  canister : principal;
+    canister : principal;
+    method : text;
 };
-type ICRC21ConsentMessageResponse = record { consent_message : text };
-type Market = record {
-  id : nat;
-  bet_count_percentages : vec float64;
-  status : MarketStatus;
-  outcome_pools : vec nat;
-  creator : principal;
-  outcome_percentages : vec float64;
-  question : text;
-  resolution_data : opt text;
-  created_at : nat;
-  end_time : nat;
-  total_pool : nat;
-  outcomes : vec text;
-  resolution_method : ResolutionMethod;
-  category : MarketCategory;
-  rules : text;
-  bet_counts : vec nat;
+
+type ICRC21ConsentMessageResponse = record {
+    consent_message : text;
 };
+
+// ICRC-34 Types
+type DelegationError = variant {
+    InvalidRequest : text;
+    Expired;
+    NotFound;
+    StorageError : text;
+    Unauthorized;
+};
+
+type DelegationRequest = record {
+    targets : vec principal;
+    expiration : opt nat64;
+};
+
+type Delegation = record {
+    target : principal;
+    created : nat64;
+    expiration : opt nat64;
+    targets_list_hash : vec nat8;
+};
+
+type DelegationResponse = record {
+    delegations : vec Delegation;
+};
+
+type RevokeDelegationRequest = record {
+    targets : vec principal;
+};
+
+// Type definitions
+type MarketId = nat;
+type Timestamp = nat;
+
 type MarketCategory = variant {
-  AI;
-  Memes;
-  Crypto;
-  Other;
-  Politics;
-  KongMadness;
-  Sports;
+    Crypto;
+    Memes;
+    Sports;
+    Politics;
+    KongMadness;
+    AI;
+    Other;
 };
-type MarketEndTime = variant { SpecificDate : nat; Duration : nat };
-type MarketResult = record {
-  bet_count_percentages : vec float64;
-  outcome_pools : vec nat;
-  outcome_percentages : vec float64;
-  winning_pool : nat;
-  distributions : vec Distribution;
-  total_pool : nat;
-  market : Market;
-  winning_outcomes : vec nat;
-  bet_counts : vec nat;
+
+type Market = record {
+    id : MarketId;
+    creator : principal;
+    question : text;
+    category : MarketCategory;
+    outcomes : vec text;
+    resolution_method : ResolutionMethod;
+    status : MarketStatus;
+    created_at : Timestamp;
+    end_time : Timestamp;
+    total_pool : nat;
+    resolution_data : opt text;
+    outcome_pools : vec nat;      // Amount in pool for each outcome
+    outcome_percentages : vec float64;  // Percentage of total pool for each outcome
+    bet_counts : vec nat;        // Number of bets for each outcome
+    bet_count_percentages : vec float64;  // Percentage of total bets for each outcome
+    resolved_by : opt principal;  // Principal ID of the admin who resolved the market
 };
-type MarketStatus = variant { Disputed; Open; Closed : vec nat };
-type MarketsByStatus = record {
-  resolved : vec MarketResult;
-  active : vec Market;
-  expired_unresolved : vec Market;
-};
-type ResolutionError = variant {
-  MarketNotFound;
-  MarketStillOpen;
-  TransferError : text;
-  InvalidOutcome;
-  InvalidMethod;
-  AlreadyResolved;
-  Unauthorized;
-  UpdateFailed;
-  PayoutFailed;
-};
+
 type ResolutionMethod = variant {
-  Oracle : record {
-    oracle_principals : vec principal;
-    required_confirmations : nat;
-  };
-  Decentralized : record { quorum : nat };
-  Admin;
+    Admin;
+    Oracle : record {
+        oracle_principals : vec principal;
+        required_confirmations : nat;
+    };
+    Decentralized : record {
+        quorum : nat;
+    };
 };
-type Result = variant { Ok : nat; Err : text };
-type Result_1 = variant { Ok : DelegationResponse; Err : DelegationError };
-type Result_2 = variant { Ok; Err : DelegationError };
-type Result_3 = variant { Ok; Err : BetError };
-type Result_4 = variant { Ok; Err : ResolutionError };
-type RevokeDelegationRequest = record { targets : vec principal };
+
+type MarketStatus = variant {
+    Open;
+    Closed : vec nat;
+    Disputed;
+};
+
+type Bet = record {
+    user : principal;
+    market_id : MarketId;
+    amount : nat;
+    outcome_index : nat;
+    timestamp : Timestamp;
+};
+
+type BetError = variant {
+    MarketNotFound;
+    MarketClosed;
+    InvalidOutcome;
+    InsufficientBalance;
+    BalanceUpdateFailed;
+    MarketUpdateFailed;
+    BetRecordingFailed;
+    TransferError : text;
+};
+
+type ResolutionError = variant {
+    Unauthorized;
+    MarketNotFound;
+    InvalidMethod;
+    MarketStillOpen;  // Market's end time has not been reached yet
+    AlreadyResolved;
+    InvalidOutcome;
+    UpdateFailed;
+    PayoutFailed;
+};
+
+type MarketEndTime = variant {
+    Duration : nat;     // Duration in seconds from creation
+    SpecificDate : nat; // Unix timestamp for end date
+};
+
+type Distribution = record {
+    user : principal;
+    outcome_index : nat;
+    bet_amount : nat;
+    winnings : nat;
+};
+
+type MarketResult = record {
+    market : Market;
+    winning_outcomes : vec nat;
+    total_pool : nat;
+    winning_pool : nat;
+    outcome_pools : vec nat;  // Amount in pool for each outcome
+    outcome_percentages : vec float64;  // Percentage of total pool for each outcome
+    bet_counts : vec nat;  // Number of bets for each outcome
+    bet_count_percentages : vec float64;  // Percentage of total bets for each outcome
+    distributions : vec Distribution;
+};
+
+type MarketsByStatus = record {
+    active : vec Market;
+    expired_unresolved : vec Market;
+    resolved : vec MarketResult;
+};
+
 type UserBetInfo = record {
-  outcome_text : text;
-  bet_amount : nat;
-  winnings : opt nat;
-  market : Market;
-  outcome_index : nat;
+    market : Market;
+    bet_amount : nat;
+    outcome_index : nat;
+    outcome_text : text;
+    winnings : opt nat;
 };
+
 type UserHistory = record {
-  pending_resolution : vec UserBetInfo;
-  total_wagered : nat;
-  current_balance : nat;
-  total_won : nat;
-  active_bets : vec UserBetInfo;
-  resolved_bets : vec UserBetInfo;
+    active_bets : vec UserBetInfo;
+    pending_resolution : vec UserBetInfo;
+    resolved_bets : vec UserBetInfo;
+    total_wagered : nat;
+    total_won : nat;
+    current_balance : nat;
 };
+
+type GetFeeBalanceResult = record {
+    admin_principal: principal;
+    balance: nat;
+};
+
+// Admin types
+type AdminError = variant {
+    Unauthorized;
+    NotFound;
+    LastAdmin;
+};
+
 service : {
-  create_market : (
-      text,
-      MarketCategory,
-      text,
-      vec text,
-      ResolutionMethod,
-      MarketEndTime,
-    ) -> (Result);
-  get_all_bets : (nat64, nat64, bool) -> (vec BetWithMarket) query;
-  get_all_categories : () -> (vec text) query;
-  get_all_markets : () -> (vec Market) query;
-  get_balance : (principal) -> (nat) query;
-  get_fee_balance : () -> (GetFeeBalanceResult) query;
-  get_market : (nat) -> (opt Market) query;
-  get_market_bets : (nat) -> (vec Bet) query;
-  get_markets_by_status : () -> (MarketsByStatus) query;
-  get_user_history : (principal) -> (UserHistory) query;
-  icrc21_canister_call_consent_message : (ICRC21ConsentMessageRequest) -> (
-      ICRC21ConsentMessageResponse,
-    ) query;
-  icrc_34_delegate : (DelegationRequest) -> (Result_1);
-  icrc_34_get_delegation : (DelegationRequest) -> (Result_1) query;
-  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_2);
-  place_bet : (nat, nat, nat) -> (Result_3);
-  resolve_via_admin : (nat, vec nat) -> (Result_4);
-  resolve_via_oracle : (nat, vec nat, blob) -> (Result_4);
-}
+    // Admin management
+    is_admin : (principal) -> (bool) query;
+    get_admin_principals : () -> (vec principal) query;
+    add_admin : (principal) -> (variant { Ok; Err : text });
+    remove_admin : (principal) -> (variant { Ok; Err : text });
+
+    // ICRC-21 endpoint
+    icrc21_canister_call_consent_message : (ICRC21ConsentMessageRequest) -> (ICRC21ConsentMessageResponse) query;
+
+    // ICRC-34 endpoints
+    icrc_34_get_delegation : (DelegationRequest) -> (variant { Ok: DelegationResponse; Err: DelegationError }) query;
+    icrc_34_delegate : (DelegationRequest) -> (variant { Ok: DelegationResponse; Err: DelegationError });
+    icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (variant { Ok; Err: DelegationError });
+
+    get_fee_balance : () -> (GetFeeBalanceResult) query;
+    // Market creation
+    create_market : (
+        question : text,
+        category : MarketCategory,
+        rules : text,
+        outcomes : vec text,
+        resolution_method : ResolutionMethod,
+        end_time_spec : MarketEndTime
+    ) -> (variant { Ok : MarketId; Err : text });
+
+    // Betting
+    place_bet : (
+        market_id : MarketId,
+        outcome_index : nat,
+        amount : nat
+    ) -> (variant { Ok; Err : BetError });
+
+    // Token management
+    get_balance : (user : principal) -> (nat) query;
+
+    // Market resolution
+    resolve_via_admin : (
+        market_id : MarketId,
+        outcome_indices : vec nat
+    ) -> (variant { Ok; Err : ResolutionError });
+
+    resolve_via_oracle : (
+        market_id : MarketId,
+        outcome_indices : vec nat,
+        signature : vec nat8
+    ) -> (variant { Ok; Err : ResolutionError });
+
+    // Query methods
+    get_market : (market_id : MarketId) -> (opt Market) query;
+    get_all_markets : () -> (vec Market) query;
+    get_market_bets : (market_id : MarketId) -> (vec Bet) query;
+    get_markets_by_status : () -> (MarketsByStatus) query;
+    get_user_history : (user : principal) -> (UserHistory) query;
+};
+
