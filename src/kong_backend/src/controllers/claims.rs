@@ -51,14 +51,6 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
     Ok("Claims updated".to_string())
 }
 
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn clear_claims() -> Result<String, String> {
-    CLAIM_MAP.with(|m| {
-        m.borrow_mut().clear_new();
-    });
-    Ok("Claims cleared".to_string())
-}
-
 // "unclaimed"
 // "claiming"
 // "claimed"
