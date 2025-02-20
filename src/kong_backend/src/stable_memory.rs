@@ -22,7 +22,6 @@ pub const USER_MEMORY_ID: MemoryId = MemoryId::new(21);
 pub const TOKEN_MEMORY_ID: MemoryId = MemoryId::new(22);
 pub const POOL_MEMORY_ID: MemoryId = MemoryId::new(23);
 pub const TX_MEMORY_ID: MemoryId = MemoryId::new(24);
-pub const TX_24H_MEMORY_ID: MemoryId = MemoryId::new(25);
 pub const REQUEST_MEMORY_ID: MemoryId = MemoryId::new(26);
 pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(27);
 pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(28);
@@ -67,11 +66,6 @@ thread_local! {
     // stable memory for storing all transactions
     pub static TX_MAP: RefCell<StableBTreeMap<StableTxId, StableTx, Memory>> = with_memory_manager(|memory_manager| {
         RefCell::new(StableBTreeMap::init(memory_manager.get(TX_MEMORY_ID)))
-    });
-
-    // stable memory for storing txs for the last 24 hours. used for calculating rolling stats
-    pub static TX_24H_MAP: RefCell<StableBTreeMap<StableTxId, StableTx, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(TX_24H_MEMORY_ID)))
     });
 
     // stable memory for storing all requests made by users
