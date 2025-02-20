@@ -48,7 +48,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // read from flat files (./backups) and update kong_data
     if args.contains(&"--kong_data".to_string()) {
-        let identity = create_anonymous_identity();
+        let dfx_pem_file = settings.dfx_pem_file.as_ref().ok_or("dfx identity required for Kong Data")?;
+        let identity = create_identity_from_pem_file(dfx_pem_file);
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_data = KongData::new(&agent).await;
         // Dump to kong_data
