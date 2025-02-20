@@ -3,10 +3,10 @@ use ic_cdk::api::call::{accept_message, method_name};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_macros::inspect_message;
 use ic_cdk_timers::set_timer_interval;
+use ic_stable_structures::Memory as DefaultMemoryTrait;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
-
 use serde::Deserialize;
 use std::time::Duration;
 
@@ -27,6 +27,7 @@ use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::id::caller_principal_id;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings_map;
+use crate::stable_memory::{with_memory_manager, TX_24H_MAP, TX_24H_MEMORY_ID};
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -57,36 +58,7 @@ async fn init() {
 
     create_principal_id_map();
 
-    // start the background timer to process claims
-    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
-        ic_cdk::spawn(async {
-            process_claims().await;
-        });
-    });
-
-    // start the background timer to archive tx map
-    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
-        ic_cdk::spawn(async {
-            archive_tx_map(); // archive transaction map
-        });
-    });
-
-    // start the background timer to archive request map
-    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
-        ic_cdk::spawn(async {
-            archive_request_map();
-        });
-    });
-
-    // start the background timer to archive transfer map
-    let _ = set_timer_interval(
-        Duration::from_secs(kong_settings_map::get().transfers_archive_interval_secs),
-        || {
-            ic_cdk::spawn(async {
-                archive_transfer_map();
-            });
-        },
-    );
+    set_timer_processes().await;
 }
 
 #[pre_upgrade]
@@ -98,17 +70,26 @@ fn pre_upgrade() {
 async fn post_upgrade() {
     create_principal_id_map();
 
+    set_timer_processes().await;
+
+    TX_24H_MAP.with(|cell| {
+        cell.borrow_mut().clear_new();
+    });
+    with_memory_manager(|memory_manager| {
+        let memory = memory_manager.get(TX_24H_MEMORY_ID);
+        if memory.size() > 0 {
+            memory.write(0, &[0]);
+        }
+    });
+
+    info_log(&format!("{} canister is upgraded", APP_NAME));
+}
+
+async fn set_timer_processes() {
     // start the background timer to process claims
     let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
             process_claims().await;
-        });
-    });
-
-    // start the background timer to archive tx map
-    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
-        ic_cdk::spawn(async {
-            archive_tx_map();
         });
     });
 
@@ -129,7 +110,12 @@ async fn post_upgrade() {
         },
     );
 
-    info_log(&format!("{} canister is upgraded", APP_NAME));
+    // start the background timer to archive tx map
+    let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
+        ic_cdk::spawn(async {
+            archive_tx_map();
+        });
+    });
 }
 
 /// inspect all ingress messages to the canister that are called as updates
