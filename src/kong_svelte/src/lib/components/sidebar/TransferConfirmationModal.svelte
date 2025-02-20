@@ -12,6 +12,7 @@
   export let token: FE.Token;
   export let tokenFee: bigint;
   export let isValidating = false;
+  export let toPrincipal: string;
 
   // Memoized computed values using stores or let variables
   let receiverAmount: string;
@@ -35,7 +36,7 @@
 
   // Improve performance by using CSS custom properties
   onMount(() => {
-    const container = document.querySelector('.token-logo-container');
+    const container = document.querySelector('.token-logo-container') as HTMLElement;
     if (container) {
       const handleMouseOver = () => {
         container.style.setProperty('--scale', '1.1');
@@ -64,9 +65,10 @@
   height="auto"
   target="body"
 >
-  <div class="confirm-box pb-6">
+  <div class="confirm-box pb-4">
+    <!-- Keep original header -->
     <section class="transfer-summary" aria-label="Transfer Amount Summary">
-      <div class="token-container">
+      <div class="token-container flex items-center gap-4">
         <div class="token-logo-container">
           <div class="shine-effect" />
           <img 
@@ -76,58 +78,47 @@
             loading="lazy"
           />
         </div>
-      </div>
-
-      <div class="amount-display">
-        <span class="amount">{new BigNumber(amount).plus(new BigNumber(token.fee_fixed).dividedBy(10 ** token.decimals)).toString()}</span>
-        <span class="symbol">{token.symbol}</span>
+        <div class="flex flex-col items-end justify-end !text-kong-text-primary">
+          <span class="text-2xl">{token.name}</span>
+          <span class="text-sm text-kong-text-accent-blue">{token.symbol}</span>
+        </div>
       </div>
     </section>
 
-    <section class="details-grid" aria-label="Transfer Details">
-      <div class="detail-item send">
-        <div class="detail-label">
-          <span>You Send</span>
-          <span class="detail-hint">Amount being sent</span>
+    <!-- New receipt-style transaction details -->
+    <section class="receipt-details">
+      <div class="receipt-row">
+        <span class="row-label">Amount</span>
+        <div class="amount-info">
+          <span>{new BigNumber(amount).toString()} {token.symbol}</span>
         </div>
-        <span class="detail-value">{new BigNumber(amount).toString()} {token.symbol}</span>
       </div>
-      <div class="detail-item fee">
-        <div class="detail-label">
-          <span>Network Fee</span>
-          <span class="detail-hint">Transaction cost</span>
-        </div>
-        <span class="detail-value">
-          {formattedFee} {token.symbol}
-        </span>
+
+      <div class="receipt-row">
+        <span class="row-label">Network Fee</span>
+        <span class="fee-amount">{formattedFee} {token.symbol}</span>
       </div>
-      <div class="detail-item receive">
-        <div class="detail-label">
-          <span>Receiver Gets</span>
-          <span class="detail-hint">Final amount received</span>
+
+      <div class="h-0.5 bg-gradient-to-r from-transparent via-kong-text-primary/15 to-transparent" />
+
+      <div class="receipt-row total">
+        <span class="row-label">Total</span>
+        <div class="total-amount flex items-end flex-col">
+        {totalAmount} {token.symbol}
+        <span class="usd-value">${new BigNumber(totalAmount).multipliedBy(token.metrics.price).toFixed(3)}</span>
         </div>
-        <span class="detail-value">
-          {receiverAmount} {token.symbol}
-        </span>
       </div>
-      <div class="detail-item total">
-        <div class="detail-label">
-          <span>Total Amount</span>
-          <span class="detail-hint">Including network fee</span>
-        </div>
-        <span class="detail-value">
-          {totalAmount} {token.symbol}
-        </span>
+
+      <div class="receipt-divider" />
+
+      <div class="destination-section">
+        <span class="section-label">Destination Wallet</span>
+        <span class="wallet-address">{toPrincipal}</span>
       </div>
     </section>
 
     <footer class="confirm-actions">
-      <button 
-        type="button" 
-        class="cancel-btn" 
-        on:click={onClose}
-        aria-label="Cancel transfer"
-      >
+      <button type="button" class="cancel-btn" on:click={onClose}>
         Cancel
       </button>
       <button
@@ -136,10 +127,9 @@
         class:loading={isValidating}
         on:click={onConfirm}
         disabled={isValidating}
-        aria-label={isValidating ? 'Processing transfer' : 'Confirm transfer'}
       >
         {#if isValidating}
-          <span class="loading-spinner" aria-hidden="true" />
+          <span class="loading-spinner" />
           Processing...
         {:else}
           Confirm Transfer
@@ -149,8 +139,8 @@
   </div>
 </Modal>
 
-<style scoped lang="postcss">
-  /* Use CSS custom properties for better performance */
+<style lang="postcss">
+  /* Keep original header styles */
   .token-container {
     @apply relative flex justify-center;
     --scale: 1;
@@ -159,7 +149,7 @@
   }
 
   .token-logo-container {
-    @apply relative w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden;
+    @apply relative w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden;
     will-change: transform;
   }
 
@@ -182,108 +172,75 @@
     will-change: transform;
   }
 
-  .details-grid {
-    @apply space-y-2 md:space-y-3 mb-4 md:mb-6 bg-kong-bg-dark/20 p-3 md:p-4 rounded-xl;
+  /* New receipt styles */
+  .receipt-details {
+    @apply bg-kong-bg-dark/20 rounded-xl p-4 space-y-3 mt-4;
   }
 
-  .detail-item {
-    @apply flex justify-between items-start p-2.5 md:p-3 rounded-lg bg-kong-bg-light/30 hover:bg-kong-bg-light/40 transition-colors duration-200;
+  .receipt-row {
+    @apply flex justify-between items-baseline;
   }
 
-  .detail-label {
-    @apply flex flex-col gap-0.5 md:gap-1;
+  .row-label {
+    @apply text-sm text-kong-text-primary/70;
   }
 
-  .detail-label span:first-child {
-    @apply text-xs md:text-sm font-medium text-kong-text-primary;
+  .amount-info {
+    @apply flex flex-col items-end;
   }
 
-  .detail-hint {
-    @apply text-[10px] md:text-xs text-kong-text-primary/40;
+  .usd-value {
+    @apply text-xs text-kong-text-secondary;
   }
 
-  .detail-value {
-    @apply font-medium text-right max-w-[50%] break-all;
+  .fee-amount {
+    @apply text-sm text-kong-accent-red;
   }
 
-  /* Specific colors for different types */
-  .detail-item.send .detail-value {
-    @apply text-kong-text-primary text-sm;
+  .total {
+    @apply font-medium text-base;
   }
 
-  .detail-item.fee .detail-value {
-    @apply text-kong-accent-red text-sm;
+  .receipt-divider {
+    @apply my-4 border-t border-kong-border/10;
   }
 
-  .detail-item.receive .detail-value {
-    @apply text-kong-text-accent-green text-sm;
+  .destination-section {
+    @apply flex flex-col gap-2;
   }
 
-  .detail-item.total {
-    @apply mt-3 md:mt-4 border-t border-kong-border/10 pt-3 md:pt-4 bg-kong-bg-light/50;
+  .section-label {
+    @apply text-sm text-kong-text-primary/70;
   }
 
-  .detail-item.total .detail-value {
-    @apply font-bold text-sm md:text-base text-kong-text-primary;
+  .wallet-address {
+    @apply text-xs font-mono text-kong-text-primary bg-kong-bg-light/30 p-2 rounded-lg break-all;
   }
 
-  .detail-item.total .detail-label span:first-child {
-    @apply font-bold;
-  }
-
-  .confirm-actions {
-    @apply flex gap-2 md:gap-3 pt-3 md:pt-4 border-t border-kong-border/10;
-  }
-
-  .confirm-actions button {
-    @apply flex-1 py-2.5 md:py-3 px-2 md:px-3 rounded-lg text-sm md:text-base font-medium text-center justify-center items-center gap-1.5 md:gap-2 transition-colors duration-200;
-  }
-
-  .loading-spinner {
-    @apply inline-block h-3 w-3 md:h-4 md:w-4 border-2 border-kong-border/30 border-t-kong-border rounded-full;
-    animation: spin 1s linear infinite;
-    will-change: transform;
-  }
-
+  /* Keep existing animations */
   @keyframes shine-diagonal {
     from { transform: rotate(45deg) translateX(-100%); }
     to { transform: rotate(45deg) translateX(100%); }
   }
 
-  @keyframes spin {
-    to { transform: rotate(360deg); }
+  /* Keep existing button styles */
+  .confirm-actions {
+    @apply flex gap-2 mt-4;
   }
 
-  .confirm-box {
-    @apply px-3 md:px-6;
-  }
-
-  .transfer-summary {
-    @apply mb-4 md:mb-6 text-center;
-  }
-
-  .amount-display {
-    @apply flex items-baseline justify-center gap-1.5 md:gap-2 mt-3 md:mt-4;
-  }
-
-  .amount {
-    @apply text-2xl md:text-3xl font-bold text-kong-text-primary break-all;
-  }
-
-  .symbol {
-    @apply text-base md:text-lg text-kong-text-primary/70;
-  }
-
-  /* Add button styles back */
   .cancel-btn {
-    @apply bg-kong-bg-light hover:bg-kong-bg-light/80 text-kong-text-primary/90;
+    @apply flex-1 py-2.5 px-4 rounded-lg bg-kong-bg-light hover:bg-kong-bg-light/80 
+           text-kong-text-primary/90 text-sm font-medium transition-colors;
   }
 
   .confirm-btn {
-    @apply bg-kong-primary hover:bg-kong-accent-green text-white disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply flex-1 py-2.5 px-4 rounded-lg bg-kong-primary hover:bg-kong-accent-green 
+           text-white text-sm font-medium transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed
+           flex items-center justify-center gap-2;
   }
 
-  .confirm-btn.loading {
-    @apply bg-kong-primary/50;
+  .loading-spinner {
+    @apply w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin;
   }
 </style> 
