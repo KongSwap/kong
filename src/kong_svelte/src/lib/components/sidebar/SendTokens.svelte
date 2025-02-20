@@ -189,7 +189,8 @@
       amount,
       token,
       tokenFee,
-      isValidating
+      isValidating,
+      toPrincipal: recipientAddress
     });
   }
 

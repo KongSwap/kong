@@ -276,3 +276,23 @@ pub fn icrc_34_revoke_delegation(request: RevokeDelegationRequest) -> Result<(),
         Ok(())
     })
 }
+
+#[derive(CandidType, Clone, Debug, Deserialize)]
+pub struct Icrc28TrustedOriginsResponse {
+    pub trusted_origins: Vec<String>,
+}
+
+// list every base URL that users will authenticate to your app from
+#[update]
+fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
+    let trusted_origins = vec![
+        format!("https://edoy4-liaaa-aaaar-qakha-cai.localhost:5173"), // svelte FE
+        format!("http://localhost:5173"),
+        String::from("https://kongswap.io"),
+        String::from("https://www.kongswap.io"),
+        String::from("https://edoy4-liaaa-aaaar-qakha-cai.icp0.io"),
+        String::from("https://dev.kongswap.io"),
+    ];
+
+    Icrc28TrustedOriginsResponse { trusted_origins }
+}
