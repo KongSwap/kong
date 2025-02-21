@@ -26,7 +26,7 @@
     "@dfinity/principal": "2.3.0",
     "@dfinity/utils": "2.10.1",
     "@sentry/sveltekit": "9.1.0",
-    "@windoge98/plug-n-play": "0.0.41",
+    "@windoge98/plug-n-play": "0.0.42",
     "bignumber.js": "9.1.2",
     "chart.js": "4.4.8",
     "chartjs-adapter-date-fns": "3.0.0",
