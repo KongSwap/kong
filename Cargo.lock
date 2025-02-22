@@ -2852,6 +2852,7 @@ dependencies = [
  "ic-cdk",
  "ic-cdk-macros",
  "ic-stable-structures",
+ "icrc-ledger-types",
  "lazy_static",
  "num-bigint",
  "num-traits",

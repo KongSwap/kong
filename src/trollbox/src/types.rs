@@ -27,10 +27,7 @@ impl Storable for Message {
         serde_json::from_slice(&bytes).unwrap()
     }
 
-    const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Bounded {
-        max_size: (MAX_MESSAGE_LENGTH + MAX_USERNAME_LENGTH + 100) as u32, // Account for all fields plus some overhead
-        is_fixed_size: false,
-    };
+    const BOUND: ic_stable_structures::storable::Bound = ic_stable_structures::storable::Bound::Unbounded;
 }
 
 #[derive(CandidType, Deserialize)]

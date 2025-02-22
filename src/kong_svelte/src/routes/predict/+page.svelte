@@ -14,7 +14,6 @@
   import MarketSection from "./MarketSection.svelte";
   import BetModal from "./BetModal.svelte";
   import RecentBets from "$lib/components/predict/RecentBets.svelte";
-  import TrollBox from "$lib/components/predict/TrollBox.svelte";
   import { toastStore } from "$lib/stores/toastStore";
   import { goto } from "$app/navigation";
   import { auth } from "$lib/services/auth";
@@ -105,6 +104,12 @@
     }
   }
 
+  $: if ($auth.isConnected) {
+        isAdmin($auth.account.owner).then((isAdmin) => {
+          isUserAdmin = isAdmin;
+        });
+      }
+
   onMount(async () => {
     try {
       // Initial data load
@@ -112,12 +117,6 @@
         getAllMarkets(),
         getAllCategories(),
       ]);
-
-      // Check if user is admin
-      if ($auth.isConnected) {
-        isUserAdmin = await isAdmin($auth.account.owner);
-        console.log("isUserAdmin", isUserAdmin);
-      }
 
       // Convert nanoseconds to milliseconds for comparison
       const nowNs = BigInt(Date.now()) * BigInt(1_000_000);

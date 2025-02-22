@@ -1,3 +1,7 @@
+use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
+use icrc_ledger_types::icrc21::responses::ConsentInfo;
+use icrc_ledger_types::icrc21::errors::ErrorInfo;
+
 // Module declarations
 mod authentication;
 mod types;

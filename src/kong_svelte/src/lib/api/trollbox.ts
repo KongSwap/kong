@@ -82,7 +82,7 @@ export async function getMessage(id: bigint): Promise<Message | null> {
 export async function createMessage(payload: MessagePayload): Promise<Message> {
     const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
         anon: false,
-        requiresSigning: false,
+        requiresSigning: true,
     });
     
     try {

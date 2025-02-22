@@ -4,7 +4,6 @@
   import { MessageSquare, X, Smile } from 'lucide-svelte';
   import { slide, fade } from 'svelte/transition';
   import * as trollboxApi from '$lib/api/trollbox';
-  import * as tokensApi from '$lib/api/tokens';
   import type { Message } from '$lib/api/trollbox';
 
   let messages: Message[] = [];

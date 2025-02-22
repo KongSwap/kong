@@ -6,6 +6,9 @@ use std::cell::RefCell;
 use std::time::{SystemTime, UNIX_EPOCH};
 use ic_stable_structures::storable::Bound;
 use std::borrow::Cow;
+use icrc_ledger_types::icrc21::errors::ErrorInfo;
+use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
+use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 
 // We'll implement our own simple hash function since we don't have sha2
 fn hash_principals(principals: &[Principal]) -> Vec<u8> {
@@ -40,19 +43,45 @@ pub struct ICRC21ConsentMessageResponse {
     pub consent_message: String,
 }
 
+#[derive(CandidType, Deserialize, Debug)]
+pub struct CreateMessageArgs {
+    pub message: String,
+    pub channel: Option<String>,
+}
+
 /// Generates a consent message for ICRC-21 canister calls
 /// This follows the specification from https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-21/icrc_21_consent_msg.md
 #[query]
-pub fn icrc21_canister_call_consent_message(request: ICRC21ConsentMessageRequest) -> ICRC21ConsentMessageResponse {
+pub fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageRequest) -> Result<ConsentInfo, ErrorInfo> {
     let caller_principal = caller();
-    let consent_message = format!(
-        "By signing this message, I confirm that I want to call the '{}' method on the '{}' canister on behalf of principal '{}'.",
-        request.method,
-        request.canister,
-        caller_principal
-    );
+    
+    let consent_message = match consent_msg_request.method.as_str() {
+        "create_message" => {
+            let message = decode_one::<String>(&consent_msg_request.arg)
+                .map_err(|e| ErrorInfo { 
+                    description: format!("Failed to decode message: {}", e) 
+                })?;
 
-    ICRC21ConsentMessageResponse { consent_message }
+            ConsentMessage::GenericDisplayMessage(format!(
+                "# Approve Trollbox Message\n\nMessage: {}\n\nFrom: {}",
+                message,
+                caller_principal
+            ))
+        },
+        // Add other method matches here as needed
+        _ => ConsentMessage::GenericDisplayMessage(
+            format!("Approve Trollbox to execute {}?", 
+                consent_msg_request.method,
+            )
+        ),
+    };
+
+    let metadata = ConsentMessageMetadata {
+        language: "en".to_string(),
+        utc_offset_minutes: None,
+    };
+
+    Ok(ConsentInfo { metadata, consent_message })
 }
 
 // ICRC-34 Types and Functions

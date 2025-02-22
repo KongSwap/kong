@@ -22,3 +22,4 @@ lazy_static = "1.4"
 strum = { version = "0.27.0", features = ["derive"] }
 strum_macros = "0.27.0"
 chrono = { version = "0.4.39", default-features = false, features = ["alloc", "std"] }
+icrc-ledger-types = "0.1.8"

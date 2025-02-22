@@ -39,10 +39,9 @@
   }
 </script>
 
-<Modal {isOpen} on:close={close}>
+<Modal {isOpen} on:close={close} variant="transparent" title="Resolve Market">
   <div class="p-4">
-    <h2 class="text-lg font-semibold mb-4">Resolve Market</h2>
-    <p class="text-sm text-kong-pm-text-secondary mb-4">{market?.question}</p>
+    <p class="text-lg text-kong-pm-text-secondary mb-4">{market?.question}</p>
     
     <div class="space-y-2">
       <h3 class="text-sm font-medium mb-2">Select Winning Outcome:</h3>

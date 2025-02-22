@@ -40,7 +40,7 @@ export function initializePNP(): PNP {
     }
 
     // Convert all canister IDs to Principal, but only if they are defined
-    const delegationTargets = [Principal.fromText(kongBackendCanisterId), Principal.fromText(predictionMarketsBackendCanisterId)];
+    const delegationTargets = [Principal.fromText(kongBackendCanisterId), Principal.fromText(predictionMarketsBackendCanisterId), Principal.fromText(trollboxCanisterId)];
     const derivationOrigin = () => {
 
       let httpPrefix = "https://";
