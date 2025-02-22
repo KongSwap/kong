@@ -226,7 +226,7 @@
           className="!py-0 flex flex-col overflow-hidden {className}"
         >
           <div
-            class="modal-content flex flex-col overflow-hidden"
+            class="flex flex-col overflow-hidden modal-content"
             style="min-height: {minHeight};"
           >
             {#if loading}
@@ -238,7 +238,7 @@
             <div class="drag-handle touch-pan-x"></div>
 
             <header
-              class="flex justify-between items-center flex-shrink-0 px-3 pb-4 pt-3"
+              class="flex items-center justify-between flex-shrink-0 px-3 pt-3 pb-4"
             >
               <slot name="title">
                 {#if typeof title === "string"}

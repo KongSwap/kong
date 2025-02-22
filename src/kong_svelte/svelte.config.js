@@ -19,6 +19,8 @@ const config = {
     alias: {
       $lib: "src/lib",
       "$lib/*": "src/lib/*",
+      $declarations: "../declarations",
+      "$declarations/*": "../declarations/*",
     },
     prerender: {
       handleHttpError: ({ path, referrer, message }) => {

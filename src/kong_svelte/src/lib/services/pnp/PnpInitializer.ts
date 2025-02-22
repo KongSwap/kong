@@ -1,5 +1,6 @@
 import { Principal } from "@dfinity/principal";
 import { createPNP, type PNP } from "@windoge98/plug-n-play";
+import { browser } from '$app/environment';
 import {
   idlFactory as kongBackendIDL,
   canisterId as kongBackendCanisterId,
@@ -30,14 +31,20 @@ export const canisterIDLs = {
 
 let globalPnp: PNP | null = null;
 
-export function initializePNP(): PNP {
+export function initializePNP(): PNP | null {
+  if (!browser) {
+    return null;
+  }
   try {
     if (globalPnp) {
       return globalPnp;
     }
 
     // Convert all canister IDs to Principal, but only if they are defined
-    const delegationTargets = [Principal.fromText(kongBackendCanisterId), Principal.fromText(predictionMarketsBackendCanisterId)];
+    const delegationTargets = [
+      kongBackendCanisterId ? Principal.fromText(kongBackendCanisterId) : null,
+      predictionMarketsBackendCanisterId ? Principal.fromText(predictionMarketsBackendCanisterId) : null
+    ].filter(Boolean) as Principal[];
     const derivationOrigin = () => {
 
       let httpPrefix = "https://";
@@ -77,7 +84,10 @@ export function initializePNP(): PNP {
   }
 }
 
-export function getPnpInstance(): PNP {
+export function getPnpInstance(): PNP | null {
+  if (!browser) {
+    return null;
+  }
   if (!globalPnp) {
     return initializePNP();
   }

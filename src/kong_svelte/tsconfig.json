@@ -20,7 +20,10 @@
     "typeRoots": [
       "./node_modules/@types",
       "./src/lib/types"
-    ]
+    ],
+    "paths": {
+      "$declarations/*": ["../declarations/*"]
+    }
   },
   "include": [
     "src/**/*.d.ts",

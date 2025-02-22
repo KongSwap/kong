@@ -154,7 +154,12 @@ function createAuthStore(pnp: PNP) {
 export type AuthStore = ReturnType<typeof createAuthStore>;
 
 // Create singleton auth store instance
-export const auth = createAuthStore(pnp);
+export const auth = browser ? createAuthStore(pnp) : createAuthStore(null as any);
+
+// Initialize auth only in browser
+if (browser) {
+  auth.initialize();
+}
 
 // Helper functions
 export function requireWalletConnection(): void {
