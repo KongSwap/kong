@@ -13,7 +13,7 @@
   let isOpen = false;
   let nextCursor: bigint | null = null;
   let isLoading = false;
-  let pendingMessage: { message: string; created_at: bigint } | null = null;
+  let pendingMessages: Array<{ message: string; created_at: bigint; id: string }> = [];
   let isLoadingMore = false;
   let hasMoreMessages = true;
   let showEmojiPicker = false;
@@ -155,26 +155,30 @@
     const message = messageInput.trim();
     messageInput = '';
     
-    // Add pending message
-    pendingMessage = {
+    // Add pending message with unique id
+    const pendingId = crypto.randomUUID();
+    const pendingMessage = {
       message,
-      created_at: BigInt(Date.now() * 1000000)
+      created_at: BigInt(Date.now() * 1000000),
+      id: pendingId
     };
+    pendingMessages = [...pendingMessages, pendingMessage];
     
     // Scroll to bottom after adding pending message
     setTimeout(scrollToBottom, 0);
 
     try {
       const newMessage = await trollboxApi.createMessage({ message });
-      // Add new message at the end (newest messages at bottom)
+      // Remove pending message and add confirmed message
+      pendingMessages = pendingMessages.filter(msg => msg.id !== pendingId);
       messages = [...messages, newMessage];
-      pendingMessage = null;
       
       // Scroll to bottom after message is added
       setTimeout(scrollToBottom, 0);
     } catch (error) {
       console.error('Error sending message:', error);
-      pendingMessage = null;
+      // Remove pending message on error
+      pendingMessages = pendingMessages.filter(msg => msg.id !== pendingId);
       messageInput = message; // Restore message input on error
     }
   }
@@ -282,7 +286,7 @@
           </div>
         {/each}
 
-        {#if pendingMessage}
+        {#each pendingMessages as pending}
           <div class="flex flex-col space-y-1 opacity-50">
             <div class="flex items-center gap-2">
               <img
@@ -292,12 +296,12 @@
               />
               <span class="text-xs font-medium text-kong-accent-purple">Sending...</span>
               <span class="text-xs text-kong-pm-text-secondary">
-                {new Date(Number(pendingMessage.created_at / BigInt(1000000))).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {new Date(Number(pending.created_at / BigInt(1000000))).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
-            <p class="text-sm text-kong-text-primary break-words">{@html pendingMessage.message}</p>
+            <p class="text-sm text-kong-text-primary break-words">{@html pending.message}</p>
           </div>
-        {/if}
+        {/each}
       </div>
 
       <!-- Message input -->

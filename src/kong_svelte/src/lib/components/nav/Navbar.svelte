@@ -19,11 +19,11 @@
 
   let showSettings = false;
   let isMobile = false;
-  let activeTab: "swap" | "earn" | "stats" = "swap";
+  let activeTab: "swap" | "predict" | "earn" | "stats" = "swap";
   let navOpen = false;
   let closeTimeout: ReturnType<typeof setTimeout>;
   let activeDropdown: 'swap' | 'earn' | 'stats' | null = null;
-  const tabs = ["swap", "earn", "stats"] as const;
+  const tabs = ["swap", "predict", "earn", "stats"] as const;
 
   const statsOptions = [
     { 
@@ -65,7 +65,7 @@
     }
   });
 
-  function onTabChange(tab: "swap" | "earn" | "stats") {
+  function onTabChange(tab: "swap" | "earn" | "stats" | "predict") {
     activeTab = tab;
   }
 
@@ -94,13 +94,6 @@
       description: 'Provide liquidity to earn trading fees and rewards',
       path: '/pools',
       icon: Coins,
-      comingSoon: false
-    },
-    { 
-      label: 'Prediction Markets',
-      description: 'Predict the outcome of events and earn rewards',
-      path: '/predict',
-      icon: TrendingUpDown,
       comingSoon: false
     },
     { 
@@ -155,6 +148,8 @@
       activeTab = 'earn';
     } else if (path.startsWith('/stats')) {
       activeTab = 'stats';
+    } else if (path.startsWith('/predict')) {
+      activeTab = 'predict';
     }
   }
 
@@ -355,6 +350,16 @@
                   </div>
                 {/if}
               </div>
+            {:else if tab === 'predict'}
+              <button
+                class="nav-link {activeTab === tab ? 'active' : ''}"
+                on:click={() => {
+                  goto('/predict');
+                  onTabChange('predict');
+                }}
+              >
+                {tab.toUpperCase()}
+              </button>
             {/if}
           {/each}
         </nav>
@@ -531,6 +536,25 @@
                     </div>
                   </button>
                 {/each}
+              </div>
+            {:else if tab === 'predict'}
+              <div class="mobile-nav-group">
+                <div class="mobile-nav-group-title">PREDICT</div>
+                <button
+                  class="mobile-nav-btn {activeTab === 'predict' && $page.url.pathname === '/predict' ? 'active' : ''}"
+                  on:click={() => {
+                    onTabChange('predict');
+                    goto('/predict');
+                    navOpen = false;
+                  }}
+                >
+                  <div class="mobile-nav-btn-icon">
+                    <TrendingUpDown size={18} />
+                  </div>
+                  <div class="mobile-nav-btn-content">
+                    <span>Prediction Markets</span>
+                  </div>
+                </button>
               </div>
             {/if}
           {/each}

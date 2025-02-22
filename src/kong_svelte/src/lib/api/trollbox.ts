@@ -4,6 +4,7 @@ import { canisterIDLs } from "$lib/services/pnp/PnpInitializer";
 import { auth } from "$lib/services/auth";
 import { Principal } from "@dfinity/principal";
 import * as tokensApi from "$lib/api/tokens";
+import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
 export interface Message {
     id: bigint;
@@ -26,6 +27,16 @@ export interface MessagePayload {
     message: string;
 }
 
+// Cache for token data
+let tokenCache: Record<string, {
+    symbol: string;
+    price: string;
+    price_change_24h: string;
+    timestamp: number;
+}> = {};
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
 async function processMessageTokens(message: Message): Promise<Message> {
     const tokenPattern = /#([a-z0-9-]+)/g;
     const matches = [...message.message.matchAll(tokenPattern)];
@@ -35,14 +46,38 @@ async function processMessageTokens(message: Message): Promise<Message> {
     let processedMessage = message.message;
     const canisterIds = matches.map(match => match[1]);
     
+    // Filter out canisterIds that are already in cache and still valid
+    const now = Date.now();
+    const canisterIdsToFetch = canisterIds.filter(id => {
+        const cached = tokenCache[id];
+        return !cached || (now - cached.timestamp) > CACHE_TTL;
+    });
+    
     try {
-        const tokens = await tokensApi.fetchTokensByCanisterId(canisterIds);
-        tokens.forEach(token => {
-            const pattern = new RegExp(`#${token.canister_id}`, 'g');
-            processedMessage = processedMessage.replace(
-                pattern, 
-                `<a href="/stats/${token.canister_id}"><span class="bg-kong-primary/20 rounded-md px-1.5 py-0.5 text-kong-text-primary text-xs">${token.symbol} - <span class="text-kong-text-accent-green">${token.metrics.price} (${token.metrics.price_change_24h || 0}%)</span></span></a>`
-            );
+        // Only fetch tokens that aren't in cache or are expired
+        if (canisterIdsToFetch.length > 0) {
+            const tokens = await tokensApi.fetchTokensByCanisterId(canisterIdsToFetch);
+            tokens.forEach(token => {
+                // Update cache
+                tokenCache[token.canister_id] = {
+                    symbol: token.symbol,
+                    price: formatToNonZeroDecimal(token.metrics.price),
+                    price_change_24h: formatToNonZeroDecimal(token.metrics.price_change_24h || 0),
+                    timestamp: now
+                };
+            });
+        }
+
+        // Replace all tokens in message using cache
+        canisterIds.forEach(canisterId => {
+            const token = tokenCache[canisterId];
+            if (token) {
+                const pattern = new RegExp(`#${canisterId}`, 'g');
+                processedMessage = processedMessage.replace(
+                    pattern, 
+                    `<a href="/stats/${canisterId}"><span class="bg-kong-primary/20 rounded-md px-1.5 py-0.5 text-kong-text-primary text-xs">${token.symbol} - <span class="${Number(token.price_change_24h) > 0 ? 'text-kong-text-accent-green' : 'text-kong-text-accent-red'}">${token.price} (${token.price_change_24h}%)</span></span></a>`
+                );
+            }
         });
     } catch (error) {
         console.error('Error processing tokens in message:', error);
