@@ -54,19 +54,21 @@ async function processMessageTokens(message: Message): Promise<Message> {
 export async function getMessages(params?: PaginationParams): Promise<MessagesPage> {
     const actor = createAnonymousActorHelper(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox);
     
+    // Construct candid params according to the interface definition
+    // PaginationParams = IDL.Record({ cursor: IDL.Opt(IDL.Nat64), limit: IDL.Opt(IDL.Nat64) })
     const candid_params = {
-        cursor: params?.cursor !== undefined ? [params.cursor] : [],
-        limit: params?.limit !== undefined ? [params.limit] : []
+        cursor: params?.cursor ? [params.cursor] : [], // IDL.Opt wraps value in array or empty array
+        limit: params?.limit ? [params.limit] : []     // IDL.Opt wraps value in array or empty array
     };
     
-    const result = await actor.get_messages([candid_params]);
+    const result = await actor.get_messages([candid_params]); // Wrap in array for IDL.Opt
     
     // Process tokens in all messages
     const processedMessages = await Promise.all(result.messages.map(processMessageTokens));
     
     return {
         messages: processedMessages,
-        next_cursor: result.next_cursor
+        next_cursor: result.next_cursor[0] ?? null // Unwrap IDL.Opt result
     };
 }
 

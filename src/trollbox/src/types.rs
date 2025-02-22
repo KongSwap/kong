@@ -1,6 +1,6 @@
 use candid::{CandidType, Deserialize, Principal};
 use ic_stable_structures::Storable;
-use serde;
+use serde::Serialize;
 
 // Constants
 pub const MAX_MESSAGE_LENGTH: usize = 280; // Twitter-style limit
@@ -9,7 +9,7 @@ pub const MAX_USERNAME_LENGTH: usize = 32;
 pub const DEFAULT_PAGE_SIZE: usize = 20;
 
 // Message structure
-#[derive(CandidType, Deserialize, Clone, Debug, serde::Serialize)]
+#[derive(Debug, Clone, CandidType, Deserialize, Serialize)]
 pub struct Message {
     pub id: u64,
     pub message: String,
@@ -32,7 +32,7 @@ impl Storable for Message {
 
 #[derive(CandidType, Deserialize)]
 pub struct PaginationParams {
-    pub cursor: Option<u64>,  // nat64 in Candid
+    pub cursor: Option<u64>,  // Timestamp in nanoseconds
     pub limit: Option<u64>,   // nat64 in Candid
 }
 

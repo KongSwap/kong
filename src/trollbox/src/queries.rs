@@ -28,14 +28,14 @@ pub fn get_messages(params: Option<PaginationParams>) -> MessagesPage {
         // Collect all messages
         let mut messages: Vec<Message> = store.iter().map(|(_, msg)| msg.clone()).collect();
         
-        // Sort by newest first
-        messages.sort_by(|a, b| b.id.cmp(&a.id));
+        // Sort by newest first (using timestamp)
+        messages.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
-        // Apply cursor-based pagination
+        // Apply cursor-based pagination using timestamps
         let start_idx = match params.cursor {
-            Some(cursor_id) => messages
+            Some(cursor_timestamp) => messages
                 .iter()
-                .position(|msg| msg.id <= cursor_id)
+                .position(|msg| msg.created_at <= cursor_timestamp)
                 .unwrap_or(messages.len()),
             None => 0,
         };
@@ -47,9 +47,9 @@ pub fn get_messages(params: Option<PaginationParams>) -> MessagesPage {
             .take(limit)
             .collect::<Vec<_>>();
 
-        // Set next cursor to the id of the last message if we have more messages
+        // Set next cursor to the timestamp of the last message if we have more messages
         let next_cursor = if messages.len() == limit {
-            messages.last().map(|msg| msg.id)
+            messages.last().map(|msg| msg.created_at)
         } else {
             None
         };

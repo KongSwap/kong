@@ -23,3 +23,5 @@ strum = { version = "0.27.0", features = ["derive"] }
 strum_macros = "0.27.0"
 chrono = { version = "0.4.39", default-features = false, features = ["alloc", "std"] }
 icrc-ledger-types = "0.1.8"
+regex = "1.10.6"
+rustrict = "0.7.33"

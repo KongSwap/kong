@@ -11,7 +11,7 @@
   let messageInput = '';
   let chatContainer: HTMLElement;
   let isOpen = false;
-  let nextCursor: bigint | undefined = undefined;
+  let nextCursor: bigint | null = null;
   let isLoading = false;
   let pendingMessage: { message: string; created_at: bigint } | null = null;
   let isLoadingMore = false;
@@ -23,13 +23,15 @@
   let tokenCache: Record<string, string> = {};
   let pollInterval: ReturnType<typeof setInterval>;
 
-  onMount(async () => {
-    // Load emoji picker on client side
+  async function initialize() {
     if (browser) {
       await import('emoji-picker-element');
     }
-
     loadMessages();
+  }
+
+  onMount(() => {
+    initialize();
     
     // Start polling for new messages
     pollInterval = setInterval(loadMessages, 7000);
@@ -59,15 +61,38 @@
     };
   });
 
+  function isNearBottom() {
+    if (!chatContainer) return false;
+    const threshold = 100; // pixels from bottom
+    return (chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight) < threshold;
+  }
+
   async function loadMessages() {
     try {
       isLoading = true;
+      const wasAtBottom = isNearBottom();
+      // Load initial messages without a cursor to get newest messages
       const result = await trollboxApi.getMessages();
-      messages = result.messages.reverse();
-      nextCursor = result.next_cursor === null ? undefined : result.next_cursor;
       
-      // Initial scroll to bottom after loading
-      setTimeout(scrollToBottom, 0);
+      if (messages.length === 0) {
+        // First load - set all messages
+        messages = result.messages.sort((a, b) => Number(a.created_at - b.created_at));
+        nextCursor = result.next_cursor;
+        hasMoreMessages = result.next_cursor !== null;
+        setTimeout(scrollToBottom, 0);
+      } else {
+        // Interval update - only add new messages that we don't have
+        const latestMessageTime = messages[messages.length - 1].created_at;
+        const newMessages = result.messages.filter(msg => msg.created_at > latestMessageTime);
+        
+        if (newMessages.length > 0) {
+          messages = [...messages, ...newMessages.sort((a, b) => Number(a.created_at - b.created_at))];
+          // Only scroll to bottom if user was already at bottom
+          if (wasAtBottom) {
+            setTimeout(scrollToBottom, 0);
+          }
+        }
+      }
     } catch (error) {
       console.error('Error loading messages:', error);
     } finally {
@@ -76,30 +101,38 @@
   }
 
   async function loadMoreMessages() {
-    if (nextCursor === undefined || isLoadingMore || !hasMoreMessages) return;
+    if (nextCursor === null || isLoadingMore || !hasMoreMessages) return;
 
     try {
       isLoadingMore = true;
       const oldHeight = chatContainer.scrollHeight;
       const oldScroll = chatContainer.scrollTop;
       
-      const result = await trollboxApi.getMessages({ cursor: nextCursor });
-      
+      // Load older messages using the timestamp cursor
+      const result = await trollboxApi.getMessages({
+        cursor: nextCursor,  // cursor is already a bigint
+        limit: BigInt(20)
+      });
+
       if (result.messages.length === 0) {
         hasMoreMessages = false;
         return;
       }
 
-      messages = [...messages, ...result.messages.reverse()];
-      nextCursor = result.next_cursor === null ? undefined : result.next_cursor;
+      // Sort and add older messages at the beginning (they should appear at the top)
+      const oldMessages = result.messages.sort((a, b) => Number(a.created_at - b.created_at));
+      messages = [...oldMessages, ...messages];
+      nextCursor = result.next_cursor;
+      hasMoreMessages = result.next_cursor !== null;
 
-      // After the DOM updates, restore scroll position
+      // Maintain scroll position after loading older messages
       setTimeout(() => {
         const newHeight = chatContainer.scrollHeight;
-        chatContainer.scrollTop = oldScroll + (newHeight - oldHeight);
+        chatContainer.scrollTop = newHeight - oldHeight + oldScroll;
       }, 0);
     } catch (error) {
       console.error('Error loading more messages:', error);
+      hasMoreMessages = false;
     } finally {
       isLoadingMore = false;
     }
@@ -133,6 +166,7 @@
 
     try {
       const newMessage = await trollboxApi.createMessage({ message });
+      // Add new message at the end (newest messages at bottom)
       messages = [...messages, newMessage];
       pendingMessage = null;
       
@@ -142,7 +176,6 @@
       console.error('Error sending message:', error);
       pendingMessage = null;
       messageInput = message; // Restore message input on error
-      // TODO: Show error to user
     }
   }
 
@@ -157,7 +190,7 @@
     const target = event.target as HTMLElement;
     const scrollThreshold = 100;
     
-    if (target.scrollTop <= scrollThreshold && nextCursor !== undefined && !isLoadingMore && hasMoreMessages) {
+    if (target.scrollTop <= scrollThreshold && nextCursor !== null && !isLoadingMore && hasMoreMessages) {
       loadMoreMessages();
     }
   }

@@ -4,7 +4,7 @@ use crate::types::*;
 
 #[ic_cdk::update]
 pub fn create_message(content: String) -> Result<Message, String> {
-    validate_message(&content)?;
+    let censored_content = validate_message(&content)?;
 
     let id = MESSAGE_COUNTER.with(|counter| {
         let next_id = *counter.borrow();
@@ -14,7 +14,7 @@ pub fn create_message(content: String) -> Result<Message, String> {
 
     let message = Message {
         id,
-        message: content,
+        message: censored_content,
         principal: ic_cdk::api::caller(),
         created_at: time(),
     };

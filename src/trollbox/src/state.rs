@@ -2,6 +2,9 @@ use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemor
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
 use std::cell::RefCell;
 use crate::types::Message;
+use regex::Regex;
+use lazy_static::lazy_static;
+use rustrict::{CensorStr, Type, Censor};
 
 // Type aliases
 pub type Memory = VirtualMemory<DefaultMemoryImpl>;
@@ -20,15 +23,37 @@ thread_local! {
     pub static MESSAGE_COUNTER: RefCell<u64> = RefCell::new(0);
 }
 
+lazy_static! {
+    static ref HTML_TAG_RE: Regex = Regex::new("<[^>]+>").unwrap();
+    static ref CSS_RULE_RE: Regex = Regex::new(r"\{[^\}]+\}|\bstyle\s*=").unwrap();
+}
+
 // Helper function to validate message content
-pub fn validate_message(message: &str) -> Result<(), String> {
+pub fn validate_message(message: &str) -> Result<String, String> {
     use crate::types::MAX_MESSAGE_LENGTH;
     
-    if message.trim().is_empty() {
+    let trimmed = message.trim();
+    if trimmed.is_empty() {
         return Err("Message cannot be empty".to_string());
     }
     if message.len() > MAX_MESSAGE_LENGTH {
         return Err(format!("Message too long. Maximum length is {}", MAX_MESSAGE_LENGTH));
     }
-    Ok(())
+
+    // Check for HTML tags
+    if HTML_TAG_RE.is_match(message) {
+        return Err("HTML tags are not allowed".to_string());
+    }
+
+    // Check for CSS rules or inline styles
+    if CSS_RULE_RE.is_match(message) {
+        return Err("CSS styling is not allowed".to_string());
+    }
+
+    // Replace inappropriate words with "gorilla"
+    let (censored, _) = Censor::from_str(message)
+        .with_censor_replacement('🦍')
+        .censor_and_analyze();
+    
+    Ok(censored)
 } 
