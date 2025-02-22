@@ -254,51 +254,142 @@
 
       {:else}
         <Panel>
-          <div class="grid gap-8 md:grid-cols-2">
-            <!-- Token Overview -->
-            <div class="space-y-4">
+          <div class="space-y-8">
+            <!-- Token Identity Card -->
+            <div class="p-6 border rounded-xl bg-kong-bg-light/5 border-kong-border/20">
               <div class="flex items-center gap-4">
                 {#if logo}
-                  <img src={logo} alt="Token logo" class="w-12 h-12 rounded-full" />
+                  <img src={logo} alt="Token logo" class="w-16 h-16 rounded-xl" />
                 {:else}
-                  <div class="flex items-center justify-center w-12 h-12 rounded-full bg-kong-bg-primary">
+                  <div class="flex items-center justify-center w-16 h-16 text-2xl rounded-xl bg-kong-bg-primary">
                     {symbol?.[0] || '?'}
                   </div>
                 {/if}
                 <div>
-                  <h3 class="text-xl font-bold">{name}</h3>
-                  <div class="flex gap-2 mt-1">
-                    <span class="px-2 py-1 text-xs rounded-full bg-kong-bg-primary">{symbol}</span>
+                  <h3 class="text-2xl font-bold">{name}</h3>
+                  <div class="flex items-center gap-3 mt-2">
+                    <span class="px-3 py-1 text-sm rounded-full bg-kong-bg-primary">{symbol}</span>
+                    <div class="flex items-center gap-1.5 text-sm text-kong-text-secondary">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                      </svg>
+                      {decimals} Decimals
+                    </div>
                   </div>
                 </div>
               </div>
-              <!-- Rest of review content -->
             </div>
 
-            <!-- Mining Stats -->
-            <div class="space-y-4">
-              <h4 class="text-lg font-semibold">Mining Economics</h4>
-              <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                  <span>Total Mineable</span>
-                  <span class="font-mono">{totalMined.toLocaleString()}</span>
+            <!-- Grid Layout -->
+            <div class="grid gap-6 md:grid-cols-2">
+              <!-- Token Metrics -->
+              <div class="p-6 border rounded-xl bg-kong-bg-light/5 border-kong-border/20">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-1.5 h-6 rounded-full bg-kong-primary animate-pulse"></div>
+                  <h4 class="text-lg font-semibold">Core Parameters</h4>
                 </div>
-                <!-- Other stats -->
+                <div class="space-y-4">
+                  <div class="flex justify-between">
+                    <span class="text-kong-text-secondary">Total Supply</span>
+                    <span class="font-mono text-kong-primary">{totalSupply.toLocaleString()} {symbol}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-kong-text-secondary">Transfer Fee</span>
+                    <span class="font-mono text-kong-primary">
+                      {transferFee > 0 ? `${transferFee} ${symbol}` : 'Free Transfers'}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-kong-text-secondary">Base Units</span>
+                    <span class="font-mono text-kong-primary">1 {symbol} = 10<sup class="text-[0.6em]">{decimals}</sup></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mining Economics -->
+              <div class="p-6 border rounded-xl bg-kong-bg-light/5 border-kong-border/20">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-1.5 h-6 rounded-full bg-kong-accent-green animate-pulse"></div>
+                  <h4 class="text-lg font-semibold">Mining Schedule</h4>
+                </div>
+                <div class="space-y-4">
+                  <div class="flex justify-between">
+                    <span class="text-kong-text-secondary">Initial Reward</span>
+                    <span class="font-mono text-kong-primary">{initialBlockReward} {symbol}/block</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-kong-text-secondary">Block Time</span>
+                    <span class="font-mono text-kong-primary">{blockTimeTargetSeconds}s Target</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-kong-text-secondary">Halving Every</span>
+                    <span class="font-mono text-kong-primary">{difficultyAdjustmentBlocks.toLocaleString()} Blocks</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Social Links -->
+              {#if socialLinks.length > 0}
+                <div class="p-6 border rounded-xl bg-kong-bg-light/5 border-kong-border/20 md:col-span-2">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-1.5 h-6 rounded-full bg-kong-accent-blue animate-pulse"></div>
+                    <h4 class="text-lg font-semibold">Community Links</h4>
+                  </div>
+                  <div class="grid gap-3 md:grid-cols-2">
+                    {#each socialLinks as link}
+                      <a href={link.url} target="_blank" rel="noopener" class="flex items-center gap-3 p-3 transition-all duration-200 border rounded-lg hover:border-kong-primary/30 border-kong-border/20">
+                        <div class="p-2 rounded-lg bg-kong-bg-dark/50">
+                          <svg class="w-5 h-5 text-kong-primary" viewBox="0 0 24 24">
+                            <path fill="currentColor" d={platformIcons[detectPlatform(link.url)]} />
+                          </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-sm font-medium truncate text-kong-text-primary">{link.platform}</p>
+                          <p class="text-sm truncate text-kong-text-secondary">{link.url}</p>
+                        </div>
+                      </a>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+            </div>
+
+            <!-- Final Warning -->
+            <div class="p-4 mt-6 border rounded-lg bg-kong-accent-red/10 border-kong-accent-red/20">
+              <div class="flex items-center gap-3">
+                <AlertTriangle class="flex-shrink-0 text-kong-accent-red" size={20} />
+                <p class="text-sm text-kong-accent-red/90">
+                  Important: Mining parameters and total supply cannot be changed after deployment.
+                  Double-check all values before proceeding.
+                </p>
               </div>
             </div>
-          </div>
 
-          <div class="flex justify-between pt-6 border-t border-kong-border/30">
-            <button on:click={prevStep} class="text-kong-primary hover:opacity-80">
-              ← Back
-            </button>
-            <button
-              on:click={handleSubmit}
-              disabled={isSubmitting}
-              class="kong-button bg-kong-accent-green hover:bg-kong-accent-green-hover"
-            >
-              {isSubmitting ? 'Creating...' : 'Launch Token'}
-            </button>
+            <!-- Action Buttons -->
+            <div class="flex justify-between pt-6 border-t border-kong-border/30">
+              <button on:click={prevStep} class="text-kong-primary hover:opacity-80">
+                ← Back
+              </button>
+              <button
+                on:click={handleSubmit}
+                disabled={isSubmitting}
+                class="flex items-center gap-2 px-6 py-3 font-medium text-white transition-all duration-300 rounded-xl 
+                       bg-gradient-to-r from-kong-accent-green to-kong-accent-blue hover:from-kong-accent-green/90 
+                       hover:to-kong-accent-blue/90 hover:shadow-glow active:scale-[0.98] disabled:opacity-50"
+              >
+                {#if isSubmitting}
+                  <svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"/>
+                  </svg>
+                  Launching...
+                {:else}
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                  Launch Token
+                {/if}
+              </button>
+            </div>
           </div>
         </Panel>
       {/if}

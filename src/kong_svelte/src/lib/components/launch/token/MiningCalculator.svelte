@@ -183,8 +183,8 @@
   }
 </script>
 
-<div class="custom-mining-section group">
-  <div class="flex items-center gap-3 mb-6">
+<div class="space-y-6">
+  <div class="flex items-center gap-3 mb-4">
     <div class="w-1.5 h-6 rounded-full bg-kong-primary animate-pulse"></div>
     <h3 class="text-xl font-bold font-space-grotesk text-kong-text-primary">
       Mining Dynamics Simulator
@@ -194,8 +194,8 @@
   <div class="grid gap-8 lg:grid-cols-2">
     <!-- Left Column - Inputs -->
     <div class="space-y-6">
-      <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
-        <h3 class="mb-3 text-sm font-medium text-kong-text-primary/80">Protocol Presets</h3>
+      <div class="p-4 rounded-xl bg-kong-bg-light/30">
+        <h4 class="mb-3 text-sm font-medium text-kong-text-primary/80">Protocol Presets</h4>
         <div class="flex flex-wrap gap-2">
           {#each presets as preset}
             <button
@@ -236,7 +236,7 @@
         </div>
 
         <!-- Halving Blocks Input -->
-        <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
+        <div class="p-4 rounded-xl bg-kong-bg-light/30 border-kong-border/20">
           <label class="block mb-2 text-sm font-medium text-kong-text-primary/80">Halving Cycle</label>
           <input
             type="number"
@@ -276,7 +276,7 @@
     </div>
 
     <!-- Right Column - Visualizations -->
-    <div class="p-6 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
+    <div class="p-6 rounded-xl bg-kong-bg-light/30 border-kong-border/20">
       <!-- Supply Overview -->
       <div class="mb-6">
         <div class="flex items-center gap-3 mb-4">
@@ -397,21 +397,5 @@
 </div>
 
 <style>
-  .custom-mining-section {
-    margin-top: 1.5rem;
-    border-radius: 1rem;
-    background: linear-gradient(
-      145deg,
-      rgba(var(--bg-dark), 0.8) 0%,
-      rgba(var(--bg-light), 0.4) 100%
-    );
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(var(--border), 0.3);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    padding: 1.5rem;
-  }
 
-  .shadow-glow {
-    box-shadow: 0 0 20px rgba(var(--primary), 0.15);
-  }
 </style>
