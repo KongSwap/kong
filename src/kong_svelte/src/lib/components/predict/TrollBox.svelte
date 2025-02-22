@@ -5,6 +5,7 @@
   import { slide, fade } from 'svelte/transition';
   import * as trollboxApi from '$lib/api/trollbox';
   import type { Message } from '$lib/api/trollbox';
+  import { browser } from '$app/environment';
 
   let messages: Message[] = [];
   let messageInput = '';
@@ -20,6 +21,43 @@
   let emojiButton: HTMLElement;
   let windowWidth: number;
   let tokenCache: Record<string, string> = {};
+  let pollInterval: ReturnType<typeof setInterval>;
+
+  onMount(async () => {
+    // Load emoji picker on client side
+    if (browser) {
+      await import('emoji-picker-element');
+    }
+
+    loadMessages();
+    
+    // Start polling for new messages
+    pollInterval = setInterval(loadMessages, 7000);
+
+    // Handle clicking outside of emoji picker
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showEmojiPicker && 
+          emojiPickerContainer && 
+          !emojiPickerContainer.contains(event.target as Node) &&
+          !emojiButton.contains(event.target as Node)) {
+        showEmojiPicker = false;
+      }
+    };
+
+    const handleResize = () => {
+      windowWidth = window.innerWidth;
+    };
+
+    handleResize();
+    document.addEventListener('click', handleClickOutside);
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      window.removeEventListener('resize', handleResize);
+      clearInterval(pollInterval);
+    };
+  });
 
   async function loadMessages() {
     try {
@@ -71,33 +109,6 @@
     // Scroll chat to bottom when emoji picker opens on mobile
     setTimeout(scrollToBottom, 0);
   }
-
-  onMount(() => {
-    loadMessages();
-    
-    // Handle clicking outside of emoji picker
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showEmojiPicker && 
-          emojiPickerContainer && 
-          !emojiPickerContainer.contains(event.target as Node) &&
-          !emojiButton.contains(event.target as Node)) {
-        showEmojiPicker = false;
-      }
-    };
-
-    const handleResize = () => {
-      windowWidth = window.innerWidth;
-    };
-
-    handleResize();
-    document.addEventListener('click', handleClickOutside);
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-      window.removeEventListener('resize', handleResize);
-    };
-  });
 
   function scrollToBottom() {
     if (chatContainer) {
@@ -173,11 +184,6 @@
     }, 0);
   }
 </script>
-
-<svelte:head>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.18.3/css/emoji-picker.css">
-  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.18.3/index.js"></script>
-</svelte:head>
 
 <!-- Fixed button and chat container -->
 <div class="fixed bottom-0 right-4 z-50 flex flex-col items-end gap-1 pb-4">
@@ -315,7 +321,6 @@
     class="bg-kong-pm-accent hover:bg-kong-pm-accent/90 text-white p-2 sm:p-3 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center gap-2 z-50"
   >
     <MessageSquare class="w-5 h-5" />
-    <span class="text-sm font-medium hidden sm:inline">Chat</span>
   </button>
 </div>
 
