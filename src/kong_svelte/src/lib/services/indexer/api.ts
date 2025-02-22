@@ -1,4 +1,4 @@
-import { INDEXER_URL } from "$lib/api/index";
+import { API_URL } from "$lib/api/index";
 import { kongDB } from "../db";
 import { DEFAULT_LOGOS } from "../tokens/tokenLogos";
 
@@ -35,7 +35,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<FE.Token[]> =>
     }
 
     const response = await fetch(
-      `${INDEXER_URL}/api/tokens?${queryString}`,
+      `${API_URL}/api/tokens?${queryString}`,
       options
     );
    
@@ -111,7 +111,7 @@ export const fetchChartData = async (
   };
   const interval = intervalMap[resolution] || '1d';
 
-  const url = `${INDEXER_URL}/api/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
+  const url = `${API_URL}/api/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
   
   try {
     const response = await fetch(url);
@@ -188,7 +188,7 @@ interface PoolsResponse {
 }
 
 export const fetchPools = async (): Promise<PoolsResponse> => {
-  const url = `${INDEXER_URL}/api/pools`;
+  const url = `${API_URL}/api/pools`;
   const response = await fetch(url);
   const data = await response.json();
   return data || {};

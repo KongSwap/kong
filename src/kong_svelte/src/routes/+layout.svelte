@@ -18,7 +18,8 @@
   import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import AlertBar from "$lib/components/common/AlertBar.svelte";
-
+  import TrollBox from "$lib/components/predict/TrollBox.svelte";
+  
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
   );
@@ -92,7 +93,7 @@
 <div class="app-container">
   <PageWrapper page={$page.url.pathname}>
     {#if process.env.DFX_NETWORK !== "ic"}
-      <AlertBar href="/predict" type="success">
+      <!-- <AlertBar href="/predict" type="success">
         <svg
           slot="icon"
           xmlns="http://www.w3.org/2000/svg"
@@ -105,7 +106,7 @@
           /></svg
         >
         Prediction markets are live! Place your bets now!
-      </AlertBar>
+      </AlertBar> -->
     {/if}
     <div class="ticker-section">
       <TokenTicker />
@@ -124,6 +125,8 @@
   <Toast />
   <AddToHomeScreen />
   <QRModal />
+  <!-- Add TrollBox component -->
+  <TrollBox />
   <div id="modals"></div>
 </div>
 

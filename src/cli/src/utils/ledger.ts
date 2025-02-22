@@ -39,7 +39,7 @@ export const deployLedger = (ledger: string, network: string) => {
 };
 
 // List of all test ledgers
-export const TEST_LEDGERS = ['ksusdt', 'ksicp', 'ksbtc', 'kseth', 'kskong'] as const;
+export const TEST_LEDGERS = ['ksusdt', 'ksicp', 'ksbtc', 'kseth', 'kong'] as const;
 export type TestLedger = typeof TEST_LEDGERS[number];
 
 // Deploy all test ledgers for a given network

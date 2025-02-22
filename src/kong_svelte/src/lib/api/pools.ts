@@ -1,4 +1,4 @@
-import { INDEXER_URL } from "$lib/api/index";
+import { API_URL } from "$lib/api/index";
 
 export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total_count: number, total_pages: number, page: number, limit: number}> => {
   try {
@@ -27,7 +27,7 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
     }
 
     const response = await fetch(
-      `${INDEXER_URL}/api/pools?${queryString}`,
+      `${API_URL}/api/pools?${queryString}`,
       options
     );
    
@@ -111,7 +111,7 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
 
 export const fetchPoolTotals = async (): Promise<{total_volume_24h: number, total_tvl: number, total_fees_24h: number}> => {
   try {
-    const response = await fetch(`${INDEXER_URL}/api/pools/totals`);
+    const response = await fetch(`${API_URL}/api/pools/totals`);
     const data = await response.json();
     return data;
   } catch (error) {

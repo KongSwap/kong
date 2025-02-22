@@ -6,7 +6,7 @@ import {
 } from "$lib/utils/numberFormatUtils";
 import { get } from "svelte/store";
 import {
-  INDEXER_URL,
+  API_URL,
 } from "$lib/api/index";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
@@ -227,8 +227,8 @@ export class TokenService {
       
       // Use different endpoints based on transaction type
       const url = tx_type === 'pool'
-        ? `${INDEXER_URL}/api/users/${principalId}/transactions/liquidity?${queryParams.toString()}`
-        : `${INDEXER_URL}/api/users/${principalId}/transactions/swap?${queryParams.toString()}`;
+        ? `${API_URL}/api/users/${principalId}/transactions/liquidity?${queryParams.toString()}`
+        : `${API_URL}/api/users/${principalId}/transactions/swap?${queryParams.toString()}`;
       
       const response = await fetch(url);
       const responseText = await response.text();
@@ -402,7 +402,7 @@ export class TokenService {
     } catch (error) {
       console.error("Error fetching user transactions:", {
         error,
-        url: `${INDEXER_URL}/api/users/${principalId}/transactions/${tx_type}`,
+        url: `${API_URL}/api/users/${principalId}/transactions/${tx_type}`,
         principalId,
         cursor,
         limit,

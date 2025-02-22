@@ -5,6 +5,7 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { auth } from "$lib/services/auth";
 import { Principal } from "@dfinity/principal";
 import BigNumber from "bignumber.js";
+import { get } from "svelte/store";
 
 export async function getMarket(marketId: number) {
     const actor = createAnonymousActorHelper(PREDICTION_MARKETS_CANISTER_ID, canisterIDLs.prediction_markets_backend);
@@ -62,7 +63,10 @@ export interface CreateMarketParams {
 }
 
 export async function createMarket(params: CreateMarketParams) {
-    const actor = createAnonymousActorHelper(PREDICTION_MARKETS_CANISTER_ID, canisterIDLs.prediction_markets_backend);
+    const actor = auth.pnp.getActor(PREDICTION_MARKETS_CANISTER_ID, canisterIDLs.prediction_markets_backend, {
+        anon: false,
+        requiresSigning: true,
+    });
     const result = await actor.create_market(
         params.question,
         params.category,
@@ -148,11 +152,34 @@ export async function placeBet(token: FE.Token, marketId: number, outcomeIndex: 
     }
 }
 
-export async function resolveMarketViaAdmin(marketId: number, outcomeIndices: number[]) {
-    const actor = createAnonymousActorHelper(PREDICTION_MARKETS_CANISTER_ID, canisterIDLs.prediction_markets_backend);
-    const result = await actor.resolve_via_admin(marketId, outcomeIndices);
-    console.log('Resolved market via admin:', result);
-    return result;
+export async function resolveMarketViaAdmin(marketId: string, winningOutcome: number): Promise<void> {
+  try {
+    const actor = auth.pnp.getActor(
+      PREDICTION_MARKETS_CANISTER_ID,
+      canisterIDLs.prediction_markets_backend,
+      { anon: false, requiresSigning: false }
+    );
+    
+    const result = await actor.resolve_via_admin(marketId, [winningOutcome]);
+    
+    if ('Err' in result) {
+      switch (result.Err) {
+        case 'MarketNotFound':
+          throw new Error("Market not found");
+        case 'MarketStillOpen':
+          throw new Error("Market is still open");
+        case 'AlreadyResolved':
+          throw new Error("Market has already been resolved");
+        case 'Unauthorized':
+          throw new Error("You are not authorized to resolve this market");
+        default:
+          throw new Error(`Failed to resolve market: ${JSON.stringify(result.Err)}`);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to resolve market via admin:", error);
+    throw error;
+  }
 }
 
 export async function resolveMarketViaOracle(marketId: number, outcomeIndices: number[], signature: Uint8Array) {
@@ -171,5 +198,15 @@ export async function getAllCategories() {
     const actor = createAnonymousActorHelper(PREDICTION_MARKETS_CANISTER_ID, canisterIDLs.prediction_markets_backend);
     const categories = await actor.get_all_categories();
     return categories;
+}
+
+export async function isAdmin(principal: Principal) {
+    const actor = createAnonymousActorHelper(PREDICTION_MARKETS_CANISTER_ID, canisterIDLs.prediction_markets_backend);
+    return await actor.is_admin(principal);
+}
+
+export async function getAdminPrincipals() {
+    const actor = createAnonymousActorHelper(PREDICTION_MARKETS_CANISTER_ID, canisterIDLs.prediction_markets_backend);
+    return await actor.get_admin_principals();
 }
 

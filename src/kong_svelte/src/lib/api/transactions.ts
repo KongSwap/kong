@@ -1,4 +1,4 @@
-import { INDEXER_URL } from "$lib/api/index";
+import { API_URL } from "$lib/api/index";
 
 export async function fetchTransactions(
   canisterId: string | number, 
@@ -8,7 +8,7 @@ export async function fetchTransactions(
 ): Promise<FE.Transaction[]> {
   // Handle both string and number IDs
   const idParam = typeof canisterId === 'string' ? canisterId : canisterId.toString();
-  const url = `${INDEXER_URL}/api/tokens/${idParam}/transactions?page=${page}&limit=${limit}`;
+  const url = `${API_URL}/api/tokens/${idParam}/transactions?page=${page}&limit=${limit}`;
   
   try {
     const response = await fetch(url, {

@@ -589,7 +589,8 @@ fn create_market(
         }
     };
 
-    let creator = ic_cdk::caller();
+    let creator = ic_cdk::api::caller();
+    ic_cdk::println!("Creator: {:?}", creator.to_string());
     
     // Verify the caller is an admin
     if !is_admin(creator) {

@@ -10,7 +10,7 @@ export const KONG_DATA_PRINCIPAL = process.env.CANISTER_ID_KONG_DATA || 'cbefx-h
 // Frontend Canister IDs
 export const KONG_SVELTE_CANISTER_ID = process.env.CANISTER_ID_KONG_SVELTE;
 export const KONG_BACKEND_CANISTER_ID = process.env.CANISTER_ID_KONG_BACKEND;
-export const KONG_LEDGER_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_KSKONG_LEDGER : 'o7oak-iyaaa-aaaaq-aadzq-cai';
+export const KONG_LEDGER_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
 export const PREDICTION_MARKETS_CANISTER_ID = process.env.CANISTER_ID_PREDICTION_MARKETS_BACKEND
 
 // Token Canister IDs
@@ -26,5 +26,7 @@ export const GHOST_CANISTER_ID = '4c4fd-caaaa-aaaaq-aaa3a-cai';
 export const CTZ_CANISTER_ID = 'uf2wh-taaaa-aaaaq-aabna-cai';
 export const KINIC_CANISTER_ID = '73mez-iiaaa-aaaaq-aaasq-cai';
 export const DOLR_CANISTER_ID = '6rdgd-kyaaa-aaaaq-aaavq-cai';
-export const KONG_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_KSKONG_LEDGER : 'o7oak-iyaaa-aaaaq-aadzq-cai';
+export const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
 export const ICS_CANISTER_ID = 'ca6gz-lqaaa-aaaaq-aacwa-cai';
+
+export const TROLLBOX_CANISTER_ID = process.env.CANISTER_ID_TROLLBOX

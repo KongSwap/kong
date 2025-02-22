@@ -6,10 +6,13 @@ use ic_cdk::{caller, query, update};
 use serde::{Serialize, Deserialize};
 use std::cell::RefCell;
 
-const DEFAULT_ADMIN_PRINCIPALS: [&str; 3] = [
+const DEFAULT_ADMIN_PRINCIPALS: [&str; 5] = [
     "4jxje-hbmra-4otqc-6hor3-cpwlh-sqymk-6h4ef-42sqn-o3ip5-s3mxk-uae",
     "6rjil-isfbu-gsmpe-ffvcl-v3ifl-xqgkr-en2ir-pbr54-cetku-syp4i-bae",
+    // Shill principals below
     "7ohni-sbpse-y327l-syhzk-jn6n4-hw277-erei5-xhkjr-lbh6b-rjqei-sqe",
+    "6ydau-gqejl-yqbq7-tm2i5-wscbd-lsaxy-oaetm-dxddd-s5rtd-yrpq2-eae",
+    "7tkjz-crmrh-7xm6b-3lp47-qed53-hzzir-2xmji-glvi7-7hqil-674vk-dae",
 ];
 
 thread_local! {

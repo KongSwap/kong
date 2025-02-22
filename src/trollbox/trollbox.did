@@ -1,0 +1,48 @@
+type Delegation = record {
+  created : nat64;
+  targets_list_hash : blob;
+  target : principal;
+  expiration : opt nat64;
+};
+type DelegationError = variant {
+  NotFound;
+  Unauthorized;
+  InvalidRequest : text;
+  StorageError : text;
+  Expired;
+};
+type DelegationRequest = record {
+  targets : vec principal;
+  expiration : opt nat64;
+};
+type DelegationResponse = record { delegations : vec Delegation };
+type ICRC21ConsentMessageRequest = record {
+  method : text;
+  canister : principal;
+};
+type ICRC21ConsentMessageResponse = record { consent_message : text };
+type Icrc28TrustedOriginsResponse = record { trusted_origins : vec text };
+type Message = record {
+  id : nat64;
+  "principal" : principal;
+  created_at : nat64;
+  message : text;
+};
+type MessagesPage = record { messages : vec Message; next_cursor : opt nat64 };
+type PaginationParams = record { cursor : opt nat64; limit : opt nat64 };
+type Result = variant { Ok : Message; Err : text };
+type Result_1 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_2 = variant { Ok; Err : DelegationError };
+type RevokeDelegationRequest = record { targets : vec principal };
+service : () -> {
+  create_message : (text) -> (Result);
+  get_message : (nat64) -> (opt Message) query;
+  get_messages : (opt PaginationParams) -> (MessagesPage) query;
+  icrc21_canister_call_consent_message : (ICRC21ConsentMessageRequest) -> (
+      ICRC21ConsentMessageResponse,
+    ) query;
+  icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
+  icrc_34_delegate : (DelegationRequest) -> (Result_1);
+  icrc_34_get_delegation : (DelegationRequest) -> (Result_1) query;
+  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_2);
+}

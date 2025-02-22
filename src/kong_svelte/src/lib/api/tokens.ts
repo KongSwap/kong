@@ -1,4 +1,4 @@
-import { INDEXER_URL } from "$lib/api/index";
+import { API_URL } from "$lib/api/index";
 import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
 
 
@@ -64,7 +64,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.To
     }
 
     const response = await fetch(
-      `${INDEXER_URL}/api/tokens?${queryString}`,
+      `${API_URL}/api/tokens?${queryString}`,
       options
     );
    
@@ -88,7 +88,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.To
 
 export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE.Token[]> => {
   const validCanisterIds = canisterIds.filter(id => typeof id === 'string');
-  const response = await fetch(`${INDEXER_URL}/api/tokens/by_canister`, {
+  const response = await fetch(`${API_URL}/api/tokens/by_canister`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

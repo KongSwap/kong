@@ -2843,6 +2843,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "trollbox"
+version = "0.1.0"
+dependencies = [
+ "candid",
+ "chrono",
+ "ciborium",
+ "ic-cdk",
+ "ic-cdk-macros",
+ "ic-stable-structures",
+ "lazy_static",
+ "num-bigint",
+ "num-traits",
+ "serde",
+ "serde_json",
+ "strum 0.27.0",
+ "strum_macros 0.27.0",
+]
+
+[[package]]
 name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

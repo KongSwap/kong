@@ -1,6 +1,22 @@
-CANISTER_ID=$(jq -r ".prediction_markets_backend.${NETWORK}" "${root_dir}"/canister_ids.all.json)
+original_dir=$(pwd)
+root_dir="${CANISTER_IDS_ROOT:-${original_dir}/..}"
+canister_ids_file="${root_dir}/canister_ids.all.json"
+
+# Set network to local if not provided
+NETWORK="${NETWORK:-local}"
+echo "Using network: ${NETWORK}"
+
+# Validate that the network exists in the canister_ids file
+if ! jq -e ".prediction_markets_backend.${NETWORK}" "${canister_ids_file}" > /dev/null 2>&1; then
+    echo "Error: Network '${NETWORK}' not found in canister_ids file"
+    echo "Available networks: $(jq -r '.prediction_markets_backend | keys | join(", ")' "${canister_ids_file}")"
+    exit 1
+fi
+
+CANISTER_ID=$(jq -r ".prediction_markets_backend.${NETWORK}" "${canister_ids_file}")
 echo "CANISTER_ID: ${CANISTER_ID}"
-# Verify canister ID exists before deploying
+
+# Verify canister ID exists and is not empty
 if [ -z "$CANISTER_ID" ] || [ "$CANISTER_ID" == "null" ]; then
     echo "Error: Missing prediction_markets_backend canister ID for network ${NETWORK}"
     exit 1

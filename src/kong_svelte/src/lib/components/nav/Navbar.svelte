@@ -117,7 +117,7 @@
       icon: PiggyBank,
       comingSoon: true
     }
-  ].filter(option => process.env.DFX_NETWORK !== 'ic' ? option : ["Liquidity Pools"].includes(option.label));
+  ];
 
   function showDropdown(type: 'swap' | 'earn' | 'stats') {
     clearTimeout(closeTimeout);

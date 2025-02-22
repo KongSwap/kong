@@ -68,11 +68,38 @@
         }
       ]
     },
+    "trollbox": {
+        "type": "custom",
+        "candid": "src/trollbox/trollbox.did",
+        "main": "src/trollbox/src/lib.rs",
+        "wasm": "target/wasm32-unknown-unknown/release/trollbox.wasm",
+        "package": "trollbox",
+        "build": "sh scripts/build_rust_canister.sh trollbox",
+        "declarations": {
+          "node_compatibility": true
+        },
+        "metadata": [
+          {
+            "name": "candid:service"
+          }
+        ]
+      },
     "prediction_markets_backend": {
-      "candid": "src/prediction_markets_backend/prediction_markets_backend.did",
-      "package": "prediction_markets_backend",
-      "type": "rust"
-    },
+        "type": "custom",
+        "candid": "src/prediction_markets_backend/prediction_markets_backend.did",
+        "main": "src/prediction_markets_backend/src/lib.rs",
+        "wasm": "target/wasm32-unknown-unknown/release/prediction_markets_backend.wasm",
+        "package": "prediction_markets_backend",
+        "build": "sh scripts/build_rust_canister.sh prediction_markets_backend",
+        "declarations": {
+          "node_compatibility": true
+        },
+        "metadata": [
+          {
+            "name": "candid:service"
+          }
+        ]
+      },
     "internet_identity": {
       "type": "custom",
       "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
@@ -125,7 +152,7 @@
         }
       ]
     },
-    "kskong_ledger": {
+    "kong_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",

@@ -5,6 +5,7 @@
     getAllBets,
     getAllCategories,
     getAllMarkets,
+    isAdmin,
   } from "$lib/api/predictionMarket";
   import { AlertTriangle, Plus, ClipboardList } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
@@ -13,13 +14,16 @@
   import MarketSection from "./MarketSection.svelte";
   import BetModal from "./BetModal.svelte";
   import RecentBets from "$lib/components/predict/RecentBets.svelte";
-    import { toastStore } from "$lib/stores/toastStore";
-    import { goto } from "$app/navigation";
+  import TrollBox from "$lib/components/predict/TrollBox.svelte";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { goto } from "$app/navigation";
+  import { auth } from "$lib/services/auth";
 
   let marketsByStatus: any = { active: [], resolved: [] };
   let loading = true;
   let loadingBets = false;
   let error: string | null = null;
+  let isUserAdmin = false;
 
   // Modal state
   let showBetModal = false;
@@ -108,6 +112,12 @@
         getAllMarkets(),
         getAllCategories(),
       ]);
+
+      // Check if user is admin
+      if ($auth.isConnected) {
+        isUserAdmin = await isAdmin($auth.account.owner);
+        console.log("isUserAdmin", isUserAdmin);
+      }
 
       // Convert nanoseconds to milliseconds for comparison
       const nowNs = BigInt(Date.now()) * BigInt(1_000_000);
@@ -214,6 +224,33 @@
       isBetting = false;
     }
   }
+
+  async function refreshMarkets() {
+    try {
+      const allMarketsResult = await getAllMarkets();
+      
+      // Convert nanoseconds to milliseconds for comparison
+      const nowNs = BigInt(Date.now()) * BigInt(1_000_000);
+
+      // Update markets state
+      marketsByStatus = {
+        active: allMarketsResult.filter(
+          (market) =>
+            "Open" in market.status && BigInt(market.end_time) > nowNs,
+        ),
+        expired_unresolved: allMarketsResult.filter(
+          (market) =>
+            "Open" in market.status && BigInt(market.end_time) <= nowNs,
+        ),
+        resolved: allMarketsResult.filter(
+          (market) => "Closed" in market.status,
+        ),
+      };
+    } catch (error) {
+      console.error("Failed to refresh markets:", error);
+      toastStore.error("Failed to refresh markets");
+    }
+  }
 </script>
 
 <div class="min-h-screen text-kong-text-primary px-4">
@@ -284,6 +321,7 @@
                     formatCategory(selectedCategory),
               )}
               {openBetModal}
+              onMarketResolved={refreshMarkets}
             />
           {/if}
 
@@ -301,6 +339,7 @@
               )}
               showEndTime={false}
               {openBetModal}
+              onMarketResolved={refreshMarkets}
             />
           {/if}
 
@@ -318,6 +357,7 @@
               )}
               isResolved={true}
               {openBetModal}
+              onMarketResolved={refreshMarkets}
             />
           {/if}
 
@@ -339,22 +379,26 @@
       <!-- Recent bets column - takes up 1/4 of the space -->
       <div class="lg:col-span-1">
         <div class="mb-2 flex flex-col gap-2">
-          <button
-          on:click={() => goto('/predict/create')}
-          class="w-full p-3 bg-kong-accent-green hover:bg-kong-accent-green-hover text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
-        >
-          <Plus class="w-3.5 h-3.5" />
-          Create Market
-        </button>
+          {#if isUserAdmin}
+            <button
+              on:click={() => goto('/predict/create')}
+              class="w-full p-3 bg-kong-accent-green hover:bg-kong-accent-green-hover text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+            >
+              <Plus class="w-3.5 h-3.5" />
+              Create Market
+            </button>
+          {/if}
+          {#if $auth.isConnected}
           <button
             on:click={() => goto('/predict/history')}
             class="w-full p-3 bg-kong-surface-dark hover:bg-kong-surface-light text-kong-text-primary rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
           >
             <ClipboardList class="w-3.5 h-3.5" />
-            View History
-          </button>
+              View History
+            </button>
+          {/if}
         </div>
-        <div class="sticky top-4">
+        <div class="sticky top-4 space-y-4">
           <RecentBets
             bets={recentBets}
             {newBetIds}

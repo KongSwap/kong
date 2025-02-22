@@ -9,6 +9,7 @@ import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
 import { idlFactory as kongDataIDL } from "../../../../../declarations/kong_data";
 import { idlFactory as icpIDL } from "$lib/idls/icp.idl.js";
 import { idlFactory as predictionMarketsBackendIDL, canisterId as predictionMarketsBackendCanisterId } from "../../../../../declarations/prediction_markets_backend";
+import { idlFactory as trollboxIDL, canisterId as trollboxCanisterId } from "../../../../../declarations/trollbox";
 export type CanisterType =
   | "kong_backend"
   | "kong_faucet"
@@ -16,7 +17,8 @@ export type CanisterType =
   | "icrc2"
   | "kong_data"
   | "xrc"
-  | "prediction_markets_backend";
+  | "prediction_markets_backend"
+  | "trollbox";
 
 export const canisterIDLs = {
   kong_backend: kongBackendIDL,
@@ -26,6 +28,7 @@ export const canisterIDLs = {
   kong_data: kongDataIDL,
   ICP: icpIDL,
   prediction_markets_backend: predictionMarketsBackendIDL,
+  trollbox: trollboxIDL,
 };
 
 let globalPnp: PNP | null = null;
@@ -56,7 +59,7 @@ export function initializePNP(): PNP {
           ? "http://localhost:4943"
           : "https://icp0.io",
       isDev: process.env.DFX_NETWORK === "local",
-      whitelist: [kongBackendCanisterId, predictionMarketsBackendCanisterId],
+      whitelist: [kongBackendCanisterId, predictionMarketsBackendCanisterId, trollboxCanisterId],
       fetchRootKeys: process.env.DFX_NETWORK === "local",
       timeout: 1000 * 60 * 60 * 4, // 4 hours
       verifyQuerySignatures: process.env.DFX_NETWORK !== "local", 

@@ -7,4 +7,4 @@ function getIndexerUrl() {
       return "https://api.kongswap.io";
   }
 }
-export const INDEXER_URL = getIndexerUrl();
+export const API_URL = getIndexerUrl();

@@ -38,5 +38,3 @@ export const createActor = (canisterId, options = {}) => {
     ...options.actorOptions,
   });
 };
-
-export const prediction_markets_backend = canisterId ? createActor(canisterId) : undefined;
