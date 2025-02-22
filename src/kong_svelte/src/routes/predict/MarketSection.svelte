@@ -8,7 +8,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
   import { goto } from "$app/navigation";
-  import AdminResolutionModal from "$lib/components/predict/AdminResolutionModal.svelte";
+  import AdminResolutionModal from "./AdminResolutionModal.svelte";
   import { auth } from "$lib/services/auth";
   import { get } from "svelte/store";
   import { isAdmin } from "$lib/api/predictionMarket";

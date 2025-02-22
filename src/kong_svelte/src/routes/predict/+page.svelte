@@ -3,8 +3,6 @@
   import {
     placeBet,
     getAllBets,
-    getAllCategories,
-    getAllMarkets,
     isAdmin,
   } from "$lib/api/predictionMarket";
   import { AlertTriangle, Plus, ClipboardList } from "lucide-svelte";
@@ -12,17 +10,14 @@
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { toScaledAmount } from "$lib/utils/numberFormatUtils";
   import MarketSection from "./MarketSection.svelte";
+  import LazyMarketSection from "./LazyMarketSection.svelte";
   import BetModal from "./BetModal.svelte";
-  import RecentBets from "$lib/components/predict/RecentBets.svelte";
+  import RecentBets from "./RecentBets.svelte";
   import { toastStore } from "$lib/stores/toastStore";
   import { goto } from "$app/navigation";
   import { auth } from "$lib/services/auth";
-
-  let marketsByStatus: any = { active: [], resolved: [] };
-  let loading = true;
-  let loadingBets = false;
-  let error: string | null = null;
-  let isUserAdmin = false;
+  import { marketStore, filteredMarkets } from "$lib/stores/marketStore";
+  import { debounce } from "lodash-es";
 
   // Modal state
   let showBetModal = false;
@@ -33,14 +28,12 @@
   let isBetting = false;
   let isApprovingAllowance = false;
 
-  // Update category state
-  let categories: string[] = ["All"];
-  let selectedCategory: string | null = null;
-
   let recentBets: any[] = [];
   let previousBets: any[] = [];
   let newBetIds = new Set<string>();
   let isInitialLoad = true;
+  let loadingBets = false;
+  let isUserAdmin = false;
 
   let pollInterval: ReturnType<typeof setInterval>;
 
@@ -69,9 +62,17 @@
     if (loadingBets) return;
     try {
       loadingBets = true;
+      const startTime = Date.now();
+      
       // Store previous bets before updating
       previousBets = [...recentBets];
       recentBets = await getAllBets(0, 5);
+
+      // Minimum loading time of 500ms to prevent flash
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 500) {
+        await new Promise(resolve => setTimeout(resolve, 500 - elapsed));
+      }
 
       // Only identify new bets if it's not the initial load
       if (!isInitialLoad) {
@@ -81,19 +82,11 @@
               (newBet) =>
                 !previousBets.some(
                   (oldBet) =>
-                    oldBet.timestamp === newBet.timestamp &&
-                    oldBet.outcome_index === newBet.outcome_index,
+                    getBetId(oldBet) === getBetId(newBet)
                 ),
             )
-            .map((bet) => `${bet.timestamp}-${bet.outcome_index}`),
+            .map(getBetId)
         );
-
-        // Clear animation after a delay
-        if (newBetIds.size > 0) {
-          setTimeout(() => {
-            newBetIds.clear();
-          }, 1500);
-        }
       } else {
         isInitialLoad = false;
       }
@@ -104,52 +97,35 @@
     }
   }
 
+  function getBetId(bet: any) {
+    return `${bet.timestamp}-${bet.user}`;
+  }
+
   $: if ($auth.isConnected) {
-        isAdmin($auth.account.owner).then((isAdmin) => {
-          isUserAdmin = isAdmin;
-        });
-      }
+    isAdmin($auth.account.owner).then((isAdmin) => {
+      isUserAdmin = isAdmin;
+    });
+  }
 
   onMount(async () => {
-    try {
-      // Initial data load
-      const [allMarketsResult, categoriesResult] = await Promise.all([
-        getAllMarkets(),
-        getAllCategories(),
-      ]);
+    // Initialize market store
+    await marketStore.init();
 
-      // Convert nanoseconds to milliseconds for comparison
-      const nowNs = BigInt(Date.now()) * BigInt(1_000_000);
+    // Initial bets load
+    await loadRecentBets();
 
-      // Process markets once
-      marketsByStatus = {
-        active: allMarketsResult.filter(
-          (market) =>
-            "Open" in market.status && BigInt(market.end_time) > nowNs,
-        ),
-        expired_unresolved: allMarketsResult.filter(
-          (market) =>
-            "Open" in market.status && BigInt(market.end_time) <= nowNs,
-        ),
-        resolved: allMarketsResult.filter(
-          (market) => "Closed" in market.status,
-        ),
-      };
-
-      categories = ["All", ...categoriesResult];
-
-      // Initial bets load
-      await loadRecentBets();
-
-      // Set up polling for recent bets
-      pollInterval = setInterval(loadRecentBets, 1000 * 10); // 10 seconds
-    } catch (e) {
-      error = "Failed to load prediction markets";
-      console.error(e);
-    } finally {
-      loading = false;
-    }
+    // Set up polling for recent bets and market refresh
+    pollInterval = setInterval(() => {
+      loadRecentBets();
+      // Refresh markets every 30 seconds
+      debouncedRefreshMarkets();
+    }, 1000 * 30); // 30 seconds
   });
+
+  // Debounced market refresh to prevent too frequent updates
+  const debouncedRefreshMarkets = debounce(() => {
+    marketStore.refreshMarkets();
+  }, 1000);
 
   function openBetModal(market: any, outcomeIndex?: number) {
     selectedMarket = market;
@@ -197,57 +173,15 @@
       });
 
       closeBetModal();
-
-      // Refresh markets first, then bets sequentially to avoid race conditions
-      const newMarkets = await getAllMarkets();
-
-      // Convert nanoseconds to milliseconds for comparison
-      const nowNs = BigInt(Date.now()) * BigInt(1_000_000);
-
-      // Update markets state
-      marketsByStatus = {
-        active: newMarkets.filter(
-          (market) =>
-            "Open" in market.status && BigInt(market.end_time) > nowNs,
-        ),
-        expired_unresolved: newMarkets.filter(
-          (market) =>
-            "Open" in market.status && BigInt(market.end_time) <= nowNs,
-        ),
-        resolved: newMarkets.filter((market) => "Closed" in market.status),
-      };
+      
+      // Refresh markets after successful bet
+      await marketStore.refreshMarkets();
+      
     } catch (e) {
       console.error("Bet error:", e);
       betError = e instanceof Error ? e.message : "Failed to place bet";
     } finally {
       isBetting = false;
-    }
-  }
-
-  async function refreshMarkets() {
-    try {
-      const allMarketsResult = await getAllMarkets();
-      
-      // Convert nanoseconds to milliseconds for comparison
-      const nowNs = BigInt(Date.now()) * BigInt(1_000_000);
-
-      // Update markets state
-      marketsByStatus = {
-        active: allMarketsResult.filter(
-          (market) =>
-            "Open" in market.status && BigInt(market.end_time) > nowNs,
-        ),
-        expired_unresolved: allMarketsResult.filter(
-          (market) =>
-            "Open" in market.status && BigInt(market.end_time) <= nowNs,
-        ),
-        resolved: allMarketsResult.filter(
-          (market) => "Closed" in market.status,
-        ),
-      };
-    } catch (error) {
-      console.error("Failed to refresh markets:", error);
-      toastStore.error("Failed to refresh markets");
     }
   }
 </script>
@@ -272,15 +206,14 @@
       <!-- Category Filters -->
       <div class="flex flex-col items-center justify-center md:justify-end gap-4">
         <div class="w-full flex flex-wrap gap-2 justify-center max-w-full overflow-x-auto pb-2 md:pb-0">
-          {#each categories as category}
+          {#each $marketStore.categories as category}
             <button
               class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap
-                            {selectedCategory === category ||
-              (category === 'All' && !selectedCategory)
+                            {$marketStore.selectedCategory === category ||
+              (category === 'All' && !$marketStore.selectedCategory)
                 ? 'bg-kong-pm-accent text-white'
                 : 'bg-kong-pm-dark text-kong-pm-text-secondary hover:bg-kong-pm-accent/20'}"
-              on:click={() =>
-                (selectedCategory = category === "All" ? null : category)}
+              on:click={() => marketStore.setCategory(category === "All" ? null : category)}
             >
               {category}
             </button>
@@ -294,12 +227,12 @@
       <!-- Markets column - takes up 3/4 of the space -->
       <div class="lg:col-span-3">
         <!-- Market Sections -->
-        {#if error}
+        {#if $marketStore.error}
           <div class="text-center py-12 text-kong-accent-red">
             <AlertTriangle class="w-12 h-12 mx-auto mb-4" />
-            <p class="text-lg font-medium">{error}</p>
+            <p class="text-lg font-medium">{$marketStore.error}</p>
           </div>
-        {:else if loading}
+        {:else if $marketStore.loading}
           <div class="text-center py-12">
             <div
               class="animate-spin w-12 h-12 border-4 border-kong-accent-green rounded-full border-t-transparent mx-auto"
@@ -308,60 +241,42 @@
           </div>
         {:else}
           <!-- Active Markets -->
-          {#if marketsByStatus.active?.length > 0}
+          {#if $filteredMarkets.active?.length > 0}
             <MarketSection
               title="Active Markets"
               statusColor="bg-kong-accent-green"
-              markets={marketsByStatus.active.filter(
-                (market) =>
-                  !selectedCategory ||
-                  selectedCategory === "All" ||
-                  formatCategory(market.category) ===
-                    formatCategory(selectedCategory),
-              )}
+              markets={$filteredMarkets.active}
               {openBetModal}
-              onMarketResolved={refreshMarkets}
+              onMarketResolved={async () => await marketStore.refreshMarkets()}
             />
           {/if}
 
           <!-- Expired Unresolved Markets -->
-          {#if marketsByStatus.expired_unresolved?.length > 0}
+          {#if $filteredMarkets.expired_unresolved?.length > 0}
             <MarketSection
               title="Pending Resolution"
               statusColor="bg-yellow-400"
-              markets={marketsByStatus.expired_unresolved.filter(
-                (market) =>
-                  !selectedCategory ||
-                  selectedCategory === "All" ||
-                  formatCategory(market.category) ===
-                    formatCategory(selectedCategory),
-              )}
+              markets={$filteredMarkets.expired_unresolved}
               showEndTime={false}
               {openBetModal}
-              onMarketResolved={refreshMarkets}
+              onMarketResolved={async () => await marketStore.refreshMarkets()}
             />
           {/if}
 
           <!-- Resolved Markets -->
-          {#if marketsByStatus.resolved?.length > 0}
-            <MarketSection
+          {#if $filteredMarkets.resolved?.length > 0}
+            <LazyMarketSection
               title="Resolved Markets"
               statusColor="bg-kong-accent-green"
-              markets={marketsByStatus.resolved.filter(
-                (market) =>
-                  !selectedCategory ||
-                  selectedCategory === "All" ||
-                  formatCategory(market.category) ===
-                    formatCategory(selectedCategory),
-              )}
+              markets={$filteredMarkets.resolved}
               isResolved={true}
               {openBetModal}
-              onMarketResolved={refreshMarkets}
+              onMarketResolved={async () => await marketStore.refreshMarkets()}
             />
           {/if}
 
           <!-- No Markets Message -->
-          {#if (!marketsByStatus.active || marketsByStatus.active.length === 0) && (!marketsByStatus.expired_unresolved || marketsByStatus.expired_unresolved.length === 0) && (!marketsByStatus.resolved || marketsByStatus.resolved.length === 0)}
+          {#if (!$filteredMarkets.active || $filteredMarkets.active.length === 0) && (!$filteredMarkets.expired_unresolved || $filteredMarkets.expired_unresolved.length === 0) && (!$filteredMarkets.resolved || $filteredMarkets.resolved.length === 0)}
             <div class="text-center py-12">
               <div class="max-w-md mx-auto text-kong-pm-text-secondary">
                 <div class="mb-4 text-2xl">📉</div>
@@ -400,7 +315,6 @@
         <div class="sticky top-4 space-y-4">
           <RecentBets
             bets={recentBets}
-            {newBetIds}
             showOutcomes={false}
             maxHeight="500px"
             loading={loadingBets}

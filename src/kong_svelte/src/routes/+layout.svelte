@@ -18,7 +18,7 @@
   import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import AlertBar from "$lib/components/common/AlertBar.svelte";
-  import TrollBox from "$lib/components/predict/TrollBox.svelte";
+  import TrollBox from "$lib/components/common/TrollBox.svelte";
   
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",

@@ -24,10 +24,8 @@
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import MarketStatCard from "./MarketStatCard.svelte";
-  import BetInput from "./BetInput.svelte";
-  import BetSummary from "./BetSummary.svelte";
   import OutcomeProgressBar from "./OutcomeProgressBar.svelte";
-  import RecentBets from "$lib/components/predict/RecentBets.svelte";
+  import RecentBets from "../RecentBets.svelte";
   import { slide, fade, crossfade } from "svelte/transition";
   import BetModal from "../BetModal.svelte";
     import { toastStore } from "$lib/stores/toastStore";
