@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Token Mining Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>">
+    <script type="importmap">
+    {
+        "imports": {
+            "@dfinity/agent": "https://cdn.jsdelivr.net/npm/@dfinity/agent@0.20.2/+esm",
+            "@dfinity/principal": "https://cdn.jsdelivr.net/npm/@dfinity/principal@0.20.2/+esm",
+            "@windoge98/plug-n-play": "https://cdn.jsdelivr.net/npm/@windoge98/plug-n-play@0.0.40/+esm",
+            "@dfinity/identity": "https://cdn.jsdelivr.net/npm/@dfinity/identity@0.20.2/+esm",
+            "@dfinity/candid": "https://cdn.jsdelivr.net/npm/@dfinity/candid@0.20.2/+esm",
+            "icrc35": "https://cdn.jsdelivr.net/npm/icrc35@latest/+esm"
+        }
+    }
+    </script>
+    <!-- Vite/Svelte dev setup -->
+    <script type="module">
+      import { Buffer } from 'https://cdn.jsdelivr.net/npm/buffer@6.0.3/+esm';
+      window.Buffer = Buffer;
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,53 @@
+type ArchiveOptions = record {
+  num_blocks_to_archive : nat64;
+  max_transactions_per_response : opt nat64;
+  trigger_threshold : nat64;
+  more_controller_ids : opt vec principal;
+  max_message_size_bytes : opt nat64;
+  cycles_for_archive_creation : opt nat64;
+  node_max_memory_size_bytes : opt nat64;
+  controller_id : principal;
+};
+type HttpRequest = record {
+  url : text;
+  method : text;
+  body : blob;
+  headers : vec record { text; text };
+};
+type HttpResponse = record {
+  body : blob;
+  headers : vec record { text; text };
+  status_code : nat16;
+};
+type Result = variant { Ok : TokenInfo; Err : text };
+type Result_1 = variant { Ok : nat64; Err : text };
+type Result_2 = variant { Ok : principal; Err : text };
+type Result_3 = variant { Ok; Err : text };
+type TokenInfo = record {
+  decimals : nat8;
+  ticker : text;
+  transfer_fee : nat64;
+  logo : opt text;
+  name : text;
+  ledger_id : opt principal;
+  archive_options : opt ArchiveOptions;
+  total_supply : nat64;
+};
+type TokenInitArgs = record {
+  decimals : opt nat8;
+  ticker : text;
+  transfer_fee : opt nat64;
+  logo : opt text;
+  name : text;
+  archive_options : opt ArchiveOptions;
+  total_supply : nat64;
+};
+service : (TokenInitArgs) -> {
+  get_auth_status : () -> (bool) query;
+  get_info : () -> (Result) query;
+  get_target : () -> (Result_1) query;
+  http_request : (HttpRequest) -> (HttpResponse) query;
+  start_token : () -> (Result_2);
+  submit_solution : (nat64) -> (Result_3);
+  whoami : () -> (principal) query;
+}
