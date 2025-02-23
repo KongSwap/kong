@@ -94,15 +94,14 @@ cp "$TOKEN_BACKEND_DIR/token_backend.did.d.ts" "$FRONTEND_BUILD_DIR/"
 INIT_ARGS='(record {
     name = "Floppa";
     ticker = "FLOPS";
-    total_supply = 1_000_000_000_000;
+    total_supply = 21_000_000_0000_0000;
     logo = null;
     decimals = opt 8;
     transfer_fee = opt 10_000;
     archive_options = null;
-    initial_block_reward = 1_000_000;
-    initial_difficulty = 16;
+    initial_block_reward = 251881_0000_0000;
     block_time_target_seconds = 20;
-    difficulty_adjustment_blocks = 1;
+    halving_interval = 100;
 })'
 
 # Deploy with or without reinstall mode based on argument

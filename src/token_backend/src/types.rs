@@ -31,10 +31,8 @@ pub struct TokenInitArgs {
     pub decimals: Option<u8>,
     pub transfer_fee: Option<u64>,
     pub archive_options: Option<ArchiveOptions>,
-    pub initial_block_reward: u64,
-    pub initial_difficulty: u32,
     pub block_time_target_seconds: u64,
-    pub difficulty_adjustment_blocks: u64,
+    pub halving_interval: u64,
 }
 
 #[derive(CandidType, Serialize, Deserialize)]
@@ -121,5 +119,5 @@ pub struct MiningInfo {
     pub current_difficulty: u32,
     pub current_block_reward: u64,
     pub block_time_target: u64,
-    pub next_difficulty_adjustment: u64,
+    pub next_halving_interval: u64,
 } 

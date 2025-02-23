@@ -112,9 +112,9 @@ type MinerStats = record {
 };
 type MinerStatus = variant { Inactive; Active };
 type MiningInfo = record {
-  next_difficulty_adjustment : nat64;
   block_time_target : nat64;
   current_difficulty : nat32;
+  next_halving_interval : nat64;
   current_block_reward : nat64;
 };
 type Result = variant { Ok; Err : text };
@@ -138,13 +138,12 @@ type TokenInitArgs = record {
   decimals : opt nat8;
   initial_block_reward : nat64;
   ticker : text;
-  initial_difficulty : nat32;
   block_time_target_seconds : nat64;
   transfer_fee : opt nat64;
   logo : opt text;
   name : text;
   archive_options : opt ArchiveOptions;
-  difficulty_adjustment_blocks : nat64;
+  halving_interval : nat64;
   total_supply : nat64;
 };
 type TokenMetrics = record { circulating_supply : nat64; total_supply : nat64 };

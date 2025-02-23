@@ -179,13 +179,12 @@ export interface TokenInitArgs {
   'decimals' : [] | [number],
   'initial_block_reward' : bigint,
   'ticker' : string,
-  'initial_difficulty' : number,
   'block_time_target_seconds' : bigint,
   'transfer_fee' : [] | [bigint],
   'logo' : [] | [string],
   'name' : string,
   'archive_options' : [] | [ArchiveOptions],
-  'difficulty_adjustment_blocks' : bigint,
+  'halving_interval' : bigint,
   'total_supply' : bigint,
 }
 export interface TokenMetrics {

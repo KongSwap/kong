@@ -456,13 +456,6 @@ thread_local! {
         ).expect("Failed to init BLOCK_TIME_TARGET")
     );
 
-    static DIFFICULTY_ADJUSTMENT_BLOCKS: RefCell<StableCell<u64, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(14))),
-            0,
-        ).expect("Failed to init DIFFICULTY_ADJUSTMENT_BLOCKS")
-    );
-
     static BLOCK_TIMESTAMPS: RefCell<StableCell<StorableTimestamps, Memory>> = RefCell::new(
         StableCell::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(15))),
@@ -522,28 +515,35 @@ thread_local! {
 
     // Add heartbeat counter
     static HEARTBEAT_COUNTER: RefCell<u32> = RefCell::new(0);
+
+    // Add halving interval
+    static HALVING_INTERVAL: RefCell<StableCell<u64, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(14))),
+            0,
+        ).expect("Failed to init HALVING_INTERVAL")
+    );
 }
 
 pub fn init_mining_params(
     initial_block_reward: u64,
-    initial_difficulty: u32,
     block_time_target: u64,
-    difficulty_adjustment_blocks: u64
+    halving_interval: u64
 ) {
     BLOCK_REWARD.with(|r| {
         r.borrow_mut().set(initial_block_reward).expect("Failed to set block reward");
     });
     
     MINING_DIFFICULTY.with(|d| {
-        d.borrow_mut().set(initial_difficulty).expect("Failed to set mining difficulty");
+        d.borrow_mut().set(16).expect("Failed to set mining difficulty");
     });
     
     BLOCK_TIME_TARGET.with(|t| {
         t.borrow_mut().set(block_time_target).expect("Failed to set block time target");
     });
     
-    DIFFICULTY_ADJUSTMENT_BLOCKS.with(|d| {
-        d.borrow_mut().set(difficulty_adjustment_blocks).expect("Failed to set difficulty adjustment blocks");
+    HALVING_INTERVAL.with(|h| {
+        h.borrow_mut().set(halving_interval).expect("Failed to set halving interval");
     });
 
     // Initialize empty timestamps vector
@@ -560,7 +560,6 @@ pub fn init_mining_params(
     LAST_BLOCK_HASH.with(|h| {
         h.borrow_mut().set(StorableHash([0; 32])).expect("Failed to init last block hash");
     });
-
 }
 
 // Difficulty adjustment parameters and functions
@@ -722,16 +721,20 @@ pub fn get_current_block() -> Option<BlockTemplate> {
 }
 
 fn calculate_block_reward(block_height: u64) -> u64 {
-    // TODO: Implement block reward calculation
-    // add init argument for halving interval
     BLOCK_REWARD.with(|r| {
         let initial_reward = *r.borrow().get();
-        // Halve the reward every 210,000 blocks
-        let halvings = block_height / 210_000;
-        if halvings >= 64 {
+        
+        // Get halving interval from stable storage
+        let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
+        
+        // Calculate number of halvings that have occurred
+        let halvings = block_height / halving_interval;
+        
+        // After 64 halvings (or if interval is 0) reward becomes 0
+        if halvings >= 64 || halving_interval == 0 {
             0
         } else {
-            initial_reward >> halvings
+            initial_reward >> halvings // Bit shift right = divide by 2^halvings
         }
     })
 }
@@ -1262,13 +1265,14 @@ pub fn get_mining_info() -> MiningInfo {
     let difficulty = MINING_DIFFICULTY.with(|d| *d.borrow().get());
     let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
     let target = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
-    let adj_blocks = DIFFICULTY_ADJUSTMENT_BLOCKS.with(|d| *d.borrow().get());
+    let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
+    let next_halving = halving_interval - (height % halving_interval);
 
     MiningInfo {
         current_difficulty: difficulty,
         current_block_reward: calculate_block_reward(height),
         block_time_target: target,
-        next_difficulty_adjustment: adj_blocks - (height % adj_blocks),
+        next_halving_interval: next_halving,
     }
 }
 

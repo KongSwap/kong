@@ -13,13 +13,12 @@ export const idlFactory = ({ IDL }) => {
     'decimals' : IDL.Opt(IDL.Nat8),
     'initial_block_reward' : IDL.Nat64,
     'ticker' : IDL.Text,
-    'initial_difficulty' : IDL.Nat32,
     'block_time_target_seconds' : IDL.Nat64,
     'transfer_fee' : IDL.Opt(IDL.Nat64),
     'logo' : IDL.Opt(IDL.Text),
     'name' : IDL.Text,
     'archive_options' : IDL.Opt(ArchiveOptions),
-    'difficulty_adjustment_blocks' : IDL.Nat64,
+    'halving_interval' : IDL.Nat64,
     'total_supply' : IDL.Nat64,
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
@@ -282,13 +281,12 @@ export const init = ({ IDL }) => {
     'decimals' : IDL.Opt(IDL.Nat8),
     'initial_block_reward' : IDL.Nat64,
     'ticker' : IDL.Text,
-    'initial_difficulty' : IDL.Nat32,
     'block_time_target_seconds' : IDL.Nat64,
     'transfer_fee' : IDL.Opt(IDL.Nat64),
     'logo' : IDL.Opt(IDL.Text),
     'name' : IDL.Text,
     'archive_options' : IDL.Opt(ArchiveOptions),
-    'difficulty_adjustment_blocks' : IDL.Nat64,
+    'halving_interval' : IDL.Nat64,
     'total_supply' : IDL.Nat64,
   });
   return [TokenInitArgs];

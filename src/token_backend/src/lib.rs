@@ -151,9 +151,8 @@ struct TokenInitArgs {
     transfer_fee: Option<u64>,
     archive_options: Option<ArchiveOptions>,
     initial_block_reward: u64,
-    initial_difficulty: u32,
     block_time_target_seconds: u64,
-    difficulty_adjustment_blocks: u64,
+    halving_interval: u64,
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
@@ -222,7 +221,6 @@ fn heartbeat() {
 fn init(args: TokenInitArgs) {
     // Initialize memory manager and stable structures
     const TOTAL_MEMORY_REGIONS: u8 = 25; // Updated to accommodate all regions (0-24)
-    const MIN_INITIAL_DIFFICULTY: u32 = 10; // Minimum recommended difficulty
 
     MEMORY_MANAGER.with(|m| {
         let mm = m.borrow_mut();
@@ -269,12 +267,10 @@ fn init(args: TokenInitArgs) {
     });
 
     // Initialize mining parameters with minimum difficulty check
-    let initial_difficulty = args.initial_difficulty.max(MIN_INITIAL_DIFFICULTY);
     mining::init_mining_params(
         args.initial_block_reward,
-        initial_difficulty,
         args.block_time_target_seconds,
-        args.difficulty_adjustment_blocks
+        args.halving_interval
     );
 
     ic_cdk::println!("Token backend initialized with stable memory structures and security measures");

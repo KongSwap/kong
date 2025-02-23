@@ -139,13 +139,12 @@ type TokenInitArgs = record {
   decimals : opt nat8;
   initial_block_reward : nat64;
   ticker : text;
-  initial_difficulty : nat32;
   block_time_target_seconds : nat64;
   transfer_fee : opt nat64;
   logo : opt text;
   name : text;
   archive_options : opt ArchiveOptions;
-  difficulty_adjustment_blocks : nat64;
+  halving_interval : nat64;
   total_supply : nat64;
 };
 type TokenMetrics = record { circulating_supply : nat64; total_supply : nat64 };
