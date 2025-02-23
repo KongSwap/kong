@@ -21,5 +21,8 @@
     "tslib": "^2.4.1",
     "typescript": "^5.2.2",
     "vite": "^4.5.1"
+  },
+  "dependencies": {
+    "@windoge98/plug-n-play": "^0.0.42"
   }
 }

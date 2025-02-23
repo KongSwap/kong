@@ -1,0 +1,31 @@
+type MinerInfo = record {
+  speed_percentage : nat8;
+  current_token : opt principal;
+  chunks_per_refresh : nat64;
+  miner_type : MinerType;
+  is_mining : bool;
+};
+type MinerType = variant { Premium; Lite; Normal };
+type MiningStats = record {
+  total_hashes : nat64;
+  blocks_mined : nat64;
+  chunks_since_refresh : nat64;
+  total_rewards : nat64;
+  last_hash_rate : float64;
+  start_time : nat64;
+};
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : MinerInfo; Err : text };
+service : (record {}) -> {
+  claim_rewards : () -> (Result);
+  connect_token : (principal) -> (Result);
+  disconnect_token : () -> (Result);
+  get_canister_id : () -> (principal) query;
+  get_info : () -> (Result_1) query;
+  get_mining_stats : () -> (opt MiningStats) query;
+  set_mining_speed : (nat8) -> (Result);
+  set_template_refresh_interval : (nat64) -> (Result);
+  start_mining : () -> (Result);
+  stop_mining : () -> (Result);
+  transform_miner : (MinerType) -> (Result);
+}

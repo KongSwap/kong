@@ -2,7 +2,7 @@
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <number_of_miners>"
-    echo "Example: $0 3 (will deploy miner, miner1, and miner2)"
+    echo "Example: $0 3 (will deploy miner, miner1, and miner2) if present in dfx.json"
     exit 1
 fi
 

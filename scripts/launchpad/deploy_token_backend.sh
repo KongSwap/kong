@@ -20,17 +20,32 @@ done
 
 # Setup directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")" # Go up two levels to reach project root
 DECLARATIONS_DIR="$PROJECT_ROOT/src/declarations/token_backend"
 TOKEN_BACKEND_DIR="$PROJECT_ROOT/src/token_backend"
 FRONTEND_DIR="$TOKEN_BACKEND_DIR/frontend-svelte"
 FRONTEND_BUILD_DIR="$TOKEN_BACKEND_DIR/frontend"
 
+# Check if directories exist
+if [ ! -d "$PROJECT_ROOT" ]; then
+  echo "Error: Project root directory not found at $PROJECT_ROOT"
+  exit 1
+fi
+
+if [ ! -d "$TOKEN_BACKEND_DIR" ]; then
+  echo "Error: Token backend directory not found at $TOKEN_BACKEND_DIR"
+  exit 1
+fi
+
 # First build the Svelte frontend
 echo "Building Svelte frontend..."
-cd "$FRONTEND_DIR"
-npm install
-npm run build
+if [ -d "$FRONTEND_DIR" ]; then
+  cd "$FRONTEND_DIR"
+  npm install
+  npm run build
+else
+  echo "Warning: Frontend directory not found at $FRONTEND_DIR - skipping frontend build"
+fi
 
 # Rename hashed CSS file to index.css
 echo "Renaming CSS file..."

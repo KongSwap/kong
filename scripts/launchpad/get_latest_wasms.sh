@@ -2,13 +2,14 @@
 set -euo pipefail
 
 # Directory setup
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-WASM_BASE_DIR="$PROJECT_ROOT/src/kong_svelte/static/wasm"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+WASM_BASE_DIR="$PROJECT_ROOT/src/kong_svelte/static/wasms"
+TOKEN_BACKEND_DIR="$PROJECT_ROOT/src/token_backend"
 
 # Check if ic-wasm is installed
-if ! command -v ic-wasm &> /dev/null; then
-    echo "ic-wasm is not installed. Installing..."
+if ! command -v ic-wasm &>/dev/null; then
+    echo "ic-wasm is not installed. Installing..." # Checking and installing ic-wasm if not present
     cargo install ic-wasm
 fi
 
@@ -18,54 +19,46 @@ ICRC_WASM_URL="https://download.dfinity.systems/ic/${IC_COMMIT}/canisters/ic-icr
 ICRC_DID_URL="https://raw.githubusercontent.com/dfinity/ic/${IC_COMMIT}/rs/rosetta-api/icrc1/ledger/ledger.did"
 
 # Create WASM directories
-mkdir -p "$WASM_BASE_DIR/icrc_wasm"
-mkdir -p "$WASM_BASE_DIR/miner_wasm"
-mkdir -p "$WASM_BASE_DIR/token_backend_wasm"
-mkdir -p "$PROJECT_ROOT/src/kong_svelte/static/wasms"
+mkdir -p "$WASM_BASE_DIR/miner"
+mkdir -p "$WASM_BASE_DIR/token_backend"
+mkdir -p "$WASM_BASE_DIR/ledger"
+mkdir -p "$TOKEN_BACKEND_DIR"
 
 # 1. Download ICRC ledger WASM and candid
-echo "Fetching ICRC ledger..."
-curl -L "$ICRC_WASM_URL" | gunzip > "$WASM_BASE_DIR/icrc_wasm/ledger.wasm"
-curl -L "$ICRC_DID_URL" > "$WASM_BASE_DIR/icrc_wasm/ledger.did"
-cp "$WASM_BASE_DIR/icrc_wasm/ledger.did" "$PROJECT_ROOT/src/kong_svelte/src/icrc_ledger.did"
+echo "Fetching ICRC ledger..." # Step 1: Initiating download of ICRC ledger WASM and candid files
+
+curl -L "$ICRC_WASM_URL" | gunzip >"$WASM_BASE_DIR/ledger/ledger.wasm" # Downloading and extracting ICRC ledger WASM
+curl -L "$ICRC_DID_URL" >"$WASM_BASE_DIR/ledger/ledger.did" # Downloading ICRC ledger candid file
 
 # 2. Build token_backend and miner WASMs
-echo "Building local canisters..."
+echo "Building local canisters..." # Step 2: Starting build process for local canisters
 cd "$PROJECT_ROOT"
 
 # Build token_backend
-echo "Building token_backend..."
-cargo build --target wasm32-unknown-unknown --release -p token_backend
-cp "target/wasm32-unknown-unknown/release/token_backend.wasm" "$WASM_BASE_DIR/token_backend_wasm/token_backend.wasm"
-candid-extractor target/wasm32-unknown-unknown/release/token_backend.wasm > "$WASM_BASE_DIR/token_backend_wasm/token_backend.did"
-cp "$WASM_BASE_DIR/token_backend_wasm/token_backend.did" "$PROJECT_ROOT/src/kong_svelte/src/token_backend.did"
-ic-wasm "$WASM_BASE_DIR/token_backend_wasm/token_backend.wasm" -o "$WASM_BASE_DIR/token_backend_wasm/token_backend.wasm" metadata candid:service -f "$WASM_BASE_DIR/token_backend_wasm/token_backend.did" -v public
+echo "Building token_backend..." # Step 2.1: Building token_backend canister
+cargo build --target wasm32-unknown-unknown --release -p token_backend # Compiling token_backend to WASM
+candid-extractor target/wasm32-unknown-unknown/release/token_backend.wasm > "$WASM_BASE_DIR/token_backend/token_backend.did" # Extracting candid interface for token_backend
+ic-wasm "target/wasm32-unknown-unknown/release/token_backend.wasm" -o "target/wasm32-unknown-unknown/release/token_backend.wasm" metadata candid:service -f "$WASM_BASE_DIR/token_backend/token_backend.did" -v public # Adding metadata to token_backend WASM
 
 # Build miner
-echo "Building miner..."
-cargo build --target wasm32-unknown-unknown --release -p miner
-cp "target/wasm32-unknown-unknown/release/miner.wasm" "$WASM_BASE_DIR/miner_wasm/miner.wasm"
-candid-extractor target/wasm32-unknown-unknown/release/miner.wasm > "$WASM_BASE_DIR/miner_wasm/miner.did"
-cp "$WASM_BASE_DIR/miner_wasm/miner.did" "$PROJECT_ROOT/src/kong_svelte/src/miner.did"
-ic-wasm "$WASM_BASE_DIR/miner_wasm/miner.wasm" -o "$WASM_BASE_DIR/miner_wasm/miner.wasm" metadata candid:service -f "$WASM_BASE_DIR/miner_wasm/miner.did" -v public
+echo "Building miner..." # Step 2.2: Building miner canister
+cargo build --target wasm32-unknown-unknown --release -p miner # Compiling miner to WASM
+candid-extractor target/wasm32-unknown-unknown/release/miner.wasm >"$WASM_BASE_DIR/miner/miner.did" # Extracting candid interface for miner
+ic-wasm "target/wasm32-unknown-unknown/release/miner.wasm" -o "target/wasm32-unknown-unknown/release/miner.wasm" metadata candid:service -f "$WASM_BASE_DIR/miner/miner.did" -v public # Adding metadata to miner WASM
 
-# Copy all required assets to frontend
-echo "Copying frontend resources..."
-cp "$WASM_BASE_DIR/icrc_wasm/ledger.wasm" "$PROJECT_ROOT/src/kong_svelte/static/wasms/"
-cp "$WASM_BASE_DIR/icrc_wasm/ledger.did" "$PROJECT_ROOT/src/kong_svelte/static/wasms/"
-cp "$WASM_BASE_DIR/token_backend_wasm/token_backend.wasm" "$PROJECT_ROOT/src/kong_svelte/static/wasms/"
-cp "$WASM_BASE_DIR/token_backend_wasm/token_backend.did" "$PROJECT_ROOT/src/kong_svelte/static/wasms/"
-cp "$WASM_BASE_DIR/miner_wasm/miner.wasm" "$PROJECT_ROOT/src/kong_svelte/static/wasms/"
-cp "$WASM_BASE_DIR/miner_wasm/miner.did" "$PROJECT_ROOT/src/kong_svelte/static/wasms/"
+# Copy optimized WASM files to their final destinations
+cp "target/wasm32-unknown-unknown/release/token_backend.wasm" "$WASM_BASE_DIR/token_backend/token_backend.wasm" # Copying optimized token_backend WASM
+cp "target/wasm32-unknown-unknown/release/miner.wasm" "$WASM_BASE_DIR/miner/miner.wasm" # Copying optimized miner WASM
+cp "$WASM_BASE_DIR/miner/miner.did" "$PROJECT_ROOT/src/kong_svelte/src/miner.did" # Copying miner candid file to source directory
 
 # Compress and hash
-echo "Compressing and hashing..."
-gzip -9 -k "$PROJECT_ROOT/src/kong_svelte/static/wasms/ledger.wasm"
-gzip -9 -k "$PROJECT_ROOT/src/kong_svelte/static/wasms/token_backend.wasm"
-gzip -9 -k "$PROJECT_ROOT/src/kong_svelte/static/wasms/miner.wasm"
+echo "Compressing and hashing..." # Step 4: Compressing WASM files and generating hashes
+gzip -9 -k "$WASM_BASE_DIR/ledger/ledger.wasm" # Compressing ledger WASM in static folder
+gzip -9 -k "$WASM_BASE_DIR/token_backend/token_backend.wasm" # Compressing token_backend WASM in static folder 
+gzip -9 -k "$WASM_BASE_DIR/miner/miner.wasm" # Compressing miner WASM in static folder
 
-find "$PROJECT_ROOT/src/kong_svelte/static/wasms" -name "*.wasm" | while read -r wasm; do
-    sha256sum "$wasm" > "${wasm}.sha256"
+find "$WASM_BASE_DIR" -name "*.wasm" | while read -r wasm; do
+    sha256sum "$wasm" >"${wasm}.sha256" # Generating SHA-256 hash for each WASM file
 done
 
-echo "All required WASMs/DIDs/hashes available in:\n$PROJECT_ROOT/src/kong_svelte/static/wasms"
+echo "All required WASMs/DIDs/hashes available in:\n$PROJECT_ROOT/src/kong_svelte/static/wasms" # Final step: Confirming availability of all files

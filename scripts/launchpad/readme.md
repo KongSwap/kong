@@ -68,7 +68,7 @@ The system consists of two main components:
 - Submit solutions back to token backend
 - Receive rewards when valid solutions found
 
-Flow:
+Flow:***
 1. Miner requests block template from token_backend
 2. Miner performs proof-of-work calculations
 3. If solution found, miner submits to token_backend
@@ -77,4 +77,4 @@ Flow:
 ## Troubleshooting
 
 ### Issues
-- **to be identified**
+- **to be identified*****

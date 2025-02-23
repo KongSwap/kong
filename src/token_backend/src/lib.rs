@@ -385,7 +385,7 @@ async fn start_token() -> Result<Principal, String> {
 
 // Helper function to read ICRC ledger WASM
 fn icrc_ledger_wasm() -> Vec<u8> {
-    include_bytes!("../../launchpad_backend/wasm/icrc_wasm/ledger.wasm").to_vec()
+    include_bytes!("../../kong_svelte/static/wasms/ledger/ledger.wasm").to_vec()
 }
 
 // Update get_info to use stable cell
