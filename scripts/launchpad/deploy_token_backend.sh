@@ -70,7 +70,16 @@ cargo build --target wasm32-unknown-unknown --release -p token_backend
 
 # Extract Candid interface
 echo "Extracting Candid interface..."
-candid-extractor "target/wasm32-unknown-unknown/release/token_backend.wasm" >"$DECLARATIONS_DIR/token_backend.did"
+WASM_PATH="target/wasm32-unknown-unknown/release/token_backend.wasm"
+candid-extractor "$WASM_PATH" >"$DECLARATIONS_DIR/token_backend.did"
+
+# Add metadata to WASM using ic-wasm
+echo "Adding metadata to WASM..."
+ic-wasm "$WASM_PATH" -o "$WASM_PATH" metadata candid:service -f "$DECLARATIONS_DIR/token_backend.did" -v public
+
+# Clear dfx cache to ensure fresh generation
+echo "Clearing dfx cache..."
+dfx cache delete
 
 # Generate declarations
 echo "Generating type declarations..."
@@ -100,8 +109,8 @@ INIT_ARGS='(record {
     transfer_fee = opt 10_000;
     archive_options = null;
     initial_block_reward = 251881_0000_0000;
-    block_time_target_seconds = 20;
-    halving_interval = 100;
+    block_time_target_seconds = 5;
+    halving_interval = 10;
 })'
 
 # Deploy with or without reinstall mode based on argument
@@ -113,7 +122,4 @@ else
   dfx deploy token_backend --argument "$INIT_ARGS"
 fi
 
-# Get canister ID
-# CANISTER_ID=$(dfx canister id token_backend --network=ic)
-# echo "Canister ID: $CANISTER_ID"
 echo "Deployment complete!"
