@@ -14,7 +14,6 @@
   import { userTokens } from "$lib/stores/userTokens";
 
   let WalletProviderComponent: any;
-  let AddCustomTokenModalComponent: any;
   let TokenListComponent: any;
   let PoolListComponent: any;
   let TransactionHistoryComponent: any;
@@ -68,7 +67,6 @@
   onDestroy(() => {
     // Clear component references
     WalletProviderComponent = null;
-    AddCustomTokenModalComponent = null;
     TokenListComponent = null;
     PoolListComponent = null;
     TransactionHistoryComponent = null;
@@ -82,7 +80,6 @@
 
   let activeTab: "tokens" | "pools" | "history" = "tokens";
   let isExpanded = false;
-  let showAddTokenModal = false;
   let showManageTokensModal = false;
 
   sidebarStore.subscribe((state) => {

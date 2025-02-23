@@ -1,8 +1,5 @@
 // src/kong_svelte/src/lib/services/tokens/tokenStore.ts
-import { readable, derived, writable } from "svelte/store";
-import { liveQuery } from "dexie";
-import { kongDB } from "$lib/services/db";
-import { browser } from "$app/environment";
+import { derived, writable } from "svelte/store";
 import { TokenService } from "./TokenService";
 import BigNumber from "bignumber.js";
 import { get } from "svelte/store";
@@ -55,14 +52,11 @@ export const getStoredBalances = async (walletId: string) => {
   }
 
   try {
-    const storedBalances = await kongDB.token_balances
-      .where("wallet_id")
-      .equals(walletId)
-      .toArray();
+    const storedBalances = get(storedBalancesStore);
 
-    return storedBalances.reduce(
-      (acc, balance) => {
-        acc[balance.canister_id] = {
+    return Object.entries(storedBalances).reduce(
+      (acc, [canisterId, balance]: [string, TokenBalance]) => {
+        acc[canisterId] = {
           in_tokens: balance.in_tokens,
           in_usd: balance.in_usd,
         };
@@ -159,8 +153,6 @@ export const loadBalances = async (
       }));
 
     if (entries.length > 0) {
-      await kongDB.token_balances.bulkPut(entries);
-      
       // Update the store only if we have valid balances
       const newBalances = { ...get(storedBalancesStore) };
       entries.forEach(entry => {
@@ -229,14 +221,6 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
     );
 
     if (balances[canisterId]) {
-      await kongDB.token_balances.put({
-        wallet_id: owner,
-        canister_id: canisterId,
-        in_tokens: balances[canisterId].in_tokens,
-        in_usd: balances[canisterId].in_usd,
-        timestamp: Date.now(),
-      });
-
       // Update storedBalancesStore
       await updateStoredBalances(owner);
     }

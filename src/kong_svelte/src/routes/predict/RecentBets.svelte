@@ -3,7 +3,6 @@
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { goto } from "$app/navigation";
   import { fade } from 'svelte/transition';
-  import { onMount } from 'svelte';
 
   export let bets: any[] = [];
   export let outcomes: string[] | null = null;

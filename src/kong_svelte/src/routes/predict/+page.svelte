@@ -18,6 +18,7 @@
   import { auth } from "$lib/services/auth";
   import { marketStore, filteredMarkets } from "$lib/stores/marketStore";
   import { debounce } from "lodash-es";
+  import { startPolling, stopPolling } from "$lib/utils/pollingService";
 
   // Modal state
   let showBetModal = false;
@@ -35,12 +36,9 @@
   let loadingBets = false;
   let isUserAdmin = false;
 
-  let pollInterval: ReturnType<typeof setInterval>;
-
   onDestroy(() => {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-    }
+    // Stop the polling task
+    stopPolling("recentBets");
   });
 
   // Format category from variant to display text
@@ -114,12 +112,11 @@
     // Initial bets load
     await loadRecentBets();
 
-    // Set up polling for recent bets and market refresh
-    pollInterval = setInterval(() => {
+    // Start polling for recent bets and refresh markets using the generic polling service
+    startPolling("recentBets", () => {
       loadRecentBets();
-      // Refresh markets every 30 seconds
       debouncedRefreshMarkets();
-    }, 1000 * 30); // 30 seconds
+    }, 30000);
   });
 
   // Debounced market refresh to prevent too frequent updates

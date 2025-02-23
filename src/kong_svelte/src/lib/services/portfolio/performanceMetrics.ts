@@ -1,5 +1,6 @@
-import type { PortfolioHistory } from './portfolioHistory';
-import type { FE } from '$lib/types';
+import type { PortfolioHistory } from '$lib/services/portfolio/portfolioHistory';
+import { get } from 'svelte/store';
+import { storedBalancesStore } from '$lib/services/tokens/tokenStore';
 
 export interface PerformanceMetrics {
   dailyChange: number;
@@ -20,22 +21,6 @@ const calculatePercentageChange = (newValue: number, oldValue: number): number =
   return ((newValue - oldValue) / oldValue) * 100;
 };
 
-const findValueAtTime = (history: PortfolioHistory[], hoursAgo: number): number | null => {
-  if (!history.length) return null;
-  
-  const targetTime = Date.now() - (hoursAgo * 60 * 60 * 1000);
-  
-  // Find the closest data point to our target time
-  return history.reduce((closest, current) => {
-    if (!closest) return current;
-    
-    const currentDiff = Math.abs(current.timestamp - targetTime);
-    const closestDiff = Math.abs(closest.timestamp - targetTime);
-    
-    return currentDiff < closestDiff ? current : closest;
-  }, null as PortfolioHistory | null)?.totalValue ?? null;
-};
-
 export const calculatePerformanceMetrics = (
   history: PortfolioHistory[],
   tokens: FE.Token[]
@@ -43,20 +28,22 @@ export const calculatePerformanceMetrics = (
   // Sort history by timestamp to ensure correct ordering
   const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
   
+  // For 24h change, we should have exactly 2 points - 24h ago and now
   const currentValue = sortedHistory[sortedHistory.length - 1]?.totalValue ?? 0;
+  const dayAgoValue = sortedHistory[0]?.totalValue ?? currentValue;
   
-  // Find values at different time periods
-  const dayAgoValue = findValueAtTime(sortedHistory, 24) ?? currentValue;
-  const weekAgoValue = findValueAtTime(sortedHistory, 24 * 7) ?? currentValue;
-  const monthAgoValue = findValueAtTime(sortedHistory, 24 * 30) ?? currentValue;
-  
-  // Calculate changes
+  // Calculate daily change
   const dailyChange = calculatePercentageChange(currentValue, dayAgoValue);
-  const weeklyChange = calculatePercentageChange(currentValue, weekAgoValue);
-  const monthlyChange = calculatePercentageChange(currentValue, monthAgoValue);
   
-  // Find best and worst performing tokens
-  const performers = tokens
+  // Filter tokens to only include ones the user actually owns
+  const balances = get(storedBalancesStore);
+  const ownedTokens = tokens.filter(t => {
+    const balance = balances[t.canister_id];
+    return balance && Number(balance.in_usd) > 0;
+  });
+  
+  // Find best and worst performing tokens among owned tokens based on tokens' 24hr percent change
+  const performers = ownedTokens
     .filter(t => t.metrics?.price_change_24h && !isNaN(Number(t.metrics.price_change_24h)))
     .map(t => ({
       symbol: t.symbol,
@@ -66,8 +53,8 @@ export const calculatePerformanceMetrics = (
   
   return {
     dailyChange: Number(dailyChange.toFixed(2)),
-    weeklyChange: Number(weeklyChange.toFixed(2)),
-    monthlyChange: Number(monthlyChange.toFixed(2)),
+    weeklyChange: 0, // We only have 24h data now
+    monthlyChange: 0, // We only have 24h data now
     bestPerformer: performers[0] || { symbol: '', change: 0 },
     worstPerformer: performers[performers.length - 1] || { symbol: '', change: 0 }
   };

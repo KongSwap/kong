@@ -30,6 +30,8 @@ interface ProcessedPool {
   searchableText: string;
   token0?: FE.Token;
   token1?: FE.Token;
+  rolling_24h_apy?: number;
+  rolling_24h_volume?: string;
 }
 
 const initialState: PoolListState = {

@@ -6,8 +6,9 @@
   import { fade } from "svelte/transition";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { onMount } from "svelte";
-  import { fetchTokens, fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens";
   import { tweened } from 'svelte/motion';
+  import { startPolling, stopPolling } from "$lib/utils/pollingService";
 
   let hoveredToken: FE.Token | null = null;
   let hoverTimeout: NodeJS.Timeout;
@@ -19,7 +20,6 @@
     { class: string; timeout: NodeJS.Timeout }
   >();
   let isVisible = true;
-  let pollInterval: NodeJS.Timeout;
   let quoteToken: FE.Token | null = null;
   let tickerTokens: FE.Token[] = [];
   let icpToken: FE.Token | null = null;
@@ -198,29 +198,28 @@
     // Initial fetch
     fetchTickerData();
 
-    // Set up polling with a longer interval to prevent frequent jerks
-    pollInterval = setInterval(() => {
-      if (isVisible && !isChartHovered && !isTickerHovered) {
-        const prevTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
-        fetchTickerData().then(() => {
-          const newTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
-          if (prevTokens === newTokens) {
-            // If tokens didn't change, only update prices
-            tickerTokens = tickerTokens.map(t => ({...t})); // Shallow clone to trigger update
-          }
-        });
-      }
-    }, 14000);
+    startPolling(
+      "tickerData",
+      () => {
+        if (isVisible && !isChartHovered && !isTickerHovered) {
+          const prevTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
+          fetchTickerData().then(() => {
+            const newTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
+            if (prevTokens === newTokens) {
+              tickerTokens = tickerTokens.map(t => ({ ...t }));
+            }
+          });
+        }
+      },
+      14000
+    );
 
     // Cleanup function
     return () => {
       if (observer) {
         observer.disconnect();
       }
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-      // Clear all timeouts
+      stopPolling("tickerData");
       priceFlashStates.forEach((state) => {
         clearTimeout(state.timeout);
       });
