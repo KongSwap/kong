@@ -8,10 +8,6 @@ use crate::stable_pool::pool_map;
 
 #[query(guard = "not_in_maintenance_mode")]
 fn pools(symbol: Option<String>) -> Result<PoolsReply, String> {
-    if ic_cdk::api::data_certificate().is_none() {
-        return Err("swap_amount cannot be called in replicated mode".to_string());
-    }
-
     let pools = match symbol.as_deref() {
         Some(symbol) => pool_map::get_by_token_wildcard(symbol),
         None => pool_map::get(),

@@ -22,10 +22,11 @@ impl Storable for StableClaimId {
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClaimStatus {
     Unclaimed,
-    Claiming, // used as a caller guard to prevent reentrancy
+    Claiming, // used as a guard to prevent re-entrancy
     Claimed,
     TooManyAttempts,
     UnclaimedOverride,
+    Claimable, // claim where user needs to call claim() to get the token
 }
 
 impl std::fmt::Display for ClaimStatus {
@@ -36,6 +37,7 @@ impl std::fmt::Display for ClaimStatus {
             ClaimStatus::Claimed => write!(f, "Success"),
             ClaimStatus::TooManyAttempts => write!(f, "TooManyAttempts"),
             ClaimStatus::UnclaimedOverride => write!(f, "UnclaimedOverride"),
+            ClaimStatus::Claimable => write!(f, "Claimable"),
         }
     }
 }

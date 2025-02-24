@@ -20,7 +20,7 @@ use crate::add_token::add_token_args::AddTokenArgs;
 use crate::add_token::add_token_reply::AddTokenReply;
 use crate::add_token::update_token_args::UpdateTokenArgs;
 use crate::add_token::update_token_reply::UpdateTokenReply;
-use crate::claims::claims::process_claims;
+use crate::claims::claims_timer::process_claims_timer;
 use crate::helpers::nat_helpers::{nat_to_decimals_f64, nat_to_f64};
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::id::caller_principal_id;
@@ -77,7 +77,7 @@ async fn set_timer_processes() {
     // start the background timer to process claims
     let _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
-            process_claims().await;
+            process_claims_timer().await;
         });
     });
 

@@ -78,10 +78,16 @@ pub fn update_claimed_status(claim_id: u64, request_id: u64, transfer_id: u64) -
     })
 }
 
-// used for reverting back a claim to unclaimed status when a claim fails
+// used to revert back a claim to unclaimed status when a claim fails
 pub fn update_unclaimed_status(claim_id: u64, request_id: u64) -> Option<StableClaim> {
     add_attempt_request_id(claim_id, request_id);
     update_status(claim_id, ClaimStatus::Unclaimed)
+}
+
+// used to revert back a claim to claimable status when a claim fails
+pub fn update_claimable_status(claim_id: u64, request_id: u64) -> Option<StableClaim> {
+    add_attempt_request_id(claim_id, request_id);
+    update_status(claim_id, ClaimStatus::Claimable)
 }
 
 pub fn archive_to_kong_data(claim_id: u64) -> Result<(), String> {
