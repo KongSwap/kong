@@ -10,11 +10,14 @@
   export let logo: string = "";
 
   // Logo file handling
-  let logoPreview: string = "";
+  let logoPreview: string = logo; // Initialize from the logo prop
   let showAdvanced = false;
 
   let humanFee: string = (transferFee / 10 ** decimals).toFixed(decimals);
   let baseFeeInput: string = transferFee.toString();
+  
+  // Make sure logoPreview stays in sync with logo when coming back to this step
+  $: logoPreview = logo || logoPreview;
   
   // Sync when decimals change
   $: {
@@ -124,38 +127,101 @@
           Transfer Fee
         </label>
         
+        <!-- Fee Presets -->
+        <div class="flex flex-wrap gap-2 mb-3">
+          <button 
+            on:click={() => { humanFee = "0"; updateFromHuman(); }} 
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === 0 ? 'bg-kong-accent-green/20 border border-kong-accent-green/30 text-kong-accent-green' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+          >
+            None
+          </button>
+          <button 
+            on:click={() => { humanFee = (0.0001).toFixed(4); updateFromHuman(); }} 
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === Math.round(0.0001 * 10 ** decimals) ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+          >
+            Minimal
+          </button>
+          <button 
+            on:click={() => { humanFee = (0.001).toFixed(3); updateFromHuman(); }} 
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === Math.round(0.001 * 10 ** decimals) ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+          >
+            Low
+          </button>
+          <button 
+            on:click={() => { humanFee = (0.01).toFixed(2); updateFromHuman(); }} 
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === Math.round(0.01 * 10 ** decimals) ? 'bg-kong-accent-red/20 border border-kong-accent-red/30 text-kong-accent-red' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+          >
+            Standard
+          </button>
+        </div>
+        
         <!-- Human Input -->
-        <div>
-          <input
-            type="number"
-            bind:value={humanFee}
-            class="w-full px-4 py-3 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
-            placeholder="0.00"
-          />
-          <div class="mt-1 text-xs text-kong-text-secondary/50">
-            {#if humanFee > 0}
-               Fee per transfer ({symbol || "TOKEN"})
-            {:else}
-               Transfers will be free
-            {/if}
+        <div class="mb-3">
+          <div class="flex items-center">
+            <input
+              type="number"
+              bind:value={humanFee}
+              on:change={updateFromHuman}
+              class="w-full px-4 py-3 text-sm transition-all duration-200 border rounded-l-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
+              placeholder="0.00"
+            />
+            <div class="flex items-center h-12 px-4 text-sm border-r border-t border-b border-kong-border/30 rounded-r-xl text-kong-text-secondary bg-kong-bg-dark/30">
+              {symbol || "TOKEN"}
+            </div>
           </div>
         </div>
 
-        <div class="p-2 mt-3 rounded-lg bg-kong-bg-dark/30">
-          <p class="text-xs leading-relaxed text-kong-text-secondary/60">
-            <span class="font-medium text-kong-primary/80">Key Details:</span><br>
-            • 1 {symbol || "TOKEN"} = 10<sup>{decimals}</sup> base units<br>
-
-            {#if humanFee >= 0.01}
-              <span class="inline-block mt-2 text-kong-accent-red/80">
-                High fee alert: This is {humanFee * 100}% of 1 {symbol || "TOKEN"}
-              </span>
-            {:else if humanFee > 0}
-              <span class="inline-block mt-2 text-kong-accent-blue/80">
-                Current fee: {humanFee} {symbol || "TOKEN"} ({(humanFee * 10 ** decimals).toLocaleString()} base units)
-              </span>
+        <!-- Fee Info Card -->
+        <div class="p-3 rounded-lg bg-gradient-to-r from-kong-bg-dark/50 to-kong-bg-light/10 border border-kong-border/20">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-4 h-4 text-kong-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h4 class="text-sm font-medium text-kong-text-primary">Fee Impact</h4>
+          </div>
+          
+          <div class="space-y-2 text-xs">
+            {#if transferFee === 0}
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-kong-accent-green animate-pulse"></div>
+                <span class="text-kong-accent-green">Free transfers (zero fee)</span>
+              </div>
+              <p class="text-kong-text-secondary/60">Users can transfer tokens without any cost</p>
+            {:else if humanFee <= 0.0001}
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-kong-primary animate-pulse"></div>
+                <span class="text-kong-primary">Minimal fee: {humanFee} {symbol || "TOKEN"}</span>
+              </div>
+              <p class="text-kong-text-secondary/60">Protects against spam while keeping costs very low</p>
+            {:else if humanFee <= 0.001}
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-kong-primary animate-pulse"></div>
+                <span class="text-kong-primary">Low fee: {humanFee} {symbol || "TOKEN"}</span>
+              </div>
+              <p class="text-kong-text-secondary/60">Balanced approach for most tokens</p>
+            {:else if humanFee <= 0.01}
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-kong-accent-blue animate-pulse"></div>
+                <span class="text-kong-accent-blue">Medium fee: {humanFee} {symbol || "TOKEN"}</span>
+              </div>
+              <p class="text-kong-text-secondary/60">Higher fee helps incentivize holding</p>
+            {:else}
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-kong-accent-red animate-pulse"></div>
+                <span class="text-kong-accent-red">High fee: {humanFee} {symbol || "TOKEN"}</span>
+              </div>
+              <p class="text-kong-text-secondary/60">May discourage frequent transfers</p>
             {/if}
-          </p>
+            
+            {#if transferFee > 0}
+              <div class="flex items-center gap-2 pt-1 mt-1 border-t border-kong-border/10">
+                <span class="text-kong-text-secondary/80">Actual amount: {transferFee.toLocaleString()} base units</span>
+                <span class="px-1.5 py-0.5 text-[10px] rounded bg-kong-bg-dark/70 text-kong-text-secondary/60">
+                  {(transferFee / 10 ** decimals * 100).toFixed(2)}%
+                </span>
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
     </div>

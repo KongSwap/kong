@@ -116,7 +116,6 @@ type MiningInfo = record {
   current_difficulty : nat32;
   next_halving_interval : nat64;
   current_block_reward : nat64;
-  mining_complete : bool;
 };
 type Result = variant { Ok : bool; Err : text };
 type Result_1 = variant { Ok; Err : text };

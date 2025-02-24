@@ -120,4 +120,5 @@ pub struct MiningInfo {
     pub current_block_reward: u64,
     pub block_time_target: u64,
     pub next_halving_interval: u64,
+    pub mining_complete: bool,
 } 

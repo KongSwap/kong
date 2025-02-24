@@ -12,6 +12,7 @@
   export let tokenLogo = "";
   export let name = "";
   export let transferFee = 0;
+  export let miningComplete = false;
 
   type Preset = {
     name: string;
@@ -190,6 +191,19 @@
       Mining Dynamics Simulator
     </h3>
   </div>
+
+  <!-- Mining Complete Banner -->
+  {#if miningComplete}
+    <div class="p-4 mb-6 rounded-xl bg-gradient-to-br from-kong-accent-green/20 to-kong-bg-dark/50 border border-kong-accent-green/30">
+      <div class="flex items-center gap-3">
+        <div class="w-2 h-2 rounded-full bg-kong-accent-green animate-pulse"></div>
+        <h4 class="text-lg font-medium text-kong-accent-green">Mining Complete</h4>
+      </div>
+      <p class="mt-2 text-sm text-kong-text-secondary/80">
+        This token has reached its maximum supply or minimum reward threshold. No new blocks will be mined.
+      </p>
+    </div>
+  {/if}
 
   <div class="grid gap-8 lg:grid-cols-2">
     <!-- Left Column - Inputs -->

@@ -92,6 +92,8 @@ cp "$DECLARATIONS_DIR/token_backend.did.js" "$TOKEN_BACKEND_DIR/"
 cp "$DECLARATIONS_DIR/token_backend.did.d.ts" "$TOKEN_BACKEND_DIR/"
 cp "$DECLARATIONS_DIR/index.js" "$TOKEN_BACKEND_DIR/"
 cp "$DECLARATIONS_DIR/index.d.ts" "$TOKEN_BACKEND_DIR/"
+# Also copy the Candid interface to the src subdirectory
+cp "$DECLARATIONS_DIR/token_backend.did" "$TOKEN_BACKEND_DIR/src/token_backend.did"
 
 # Copy the Candid interface to frontend build directory
 echo "Copying Candid interface to frontend..."
@@ -111,7 +113,7 @@ INIT_ARGS='(record {
     archive_options = null;
     initial_block_reward = 251881_0000_0000;
     block_time_target_seconds = 5;
-    halving_interval = 10;
+    halving_interval = 1;
 })'
 
 # Deploy with or without reinstall mode based on argument

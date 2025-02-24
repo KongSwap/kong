@@ -770,11 +770,16 @@ fn calculate_block_reward(block_height: u64) -> u64 {
         // Get halving interval from stable storage
         let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
         
+        // If halving_interval is 0, use continuous emission (always same reward)
+        if halving_interval == 0 {
+            return initial_reward;
+        }
+        
         // Calculate number of halvings that have occurred
         let halvings = block_height / halving_interval;
         
-        // After 64 halvings (or if interval is 0) reward becomes 0
-        if halvings >= 64 || halving_interval == 0 {
+        // After 64 halvings reward becomes 0
+        if halvings >= 64 {
             0
         } else {
             initial_reward >> halvings // Bit shift right = divide by 2^halvings
@@ -915,6 +920,12 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
     // Get current block height and check security
     let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
     
+    // Check if mining is complete first
+    let current_reward = calculate_block_reward(height);
+    if is_mining_complete(current_reward) {
+        return Err("Mining is complete. No new blocks can be generated.".to_string());
+    }
+    
     // For blocks after 0, verify caller is a registered active miner
     if height > 0 {
         let caller = ic_cdk::caller();
@@ -945,8 +956,38 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
         d.borrow_mut().set(new_difficulty).expect("Failed to update difficulty");
     });
     
+    // Calculate reward for this height
+    let block_reward = calculate_block_reward(height);
+    
+    // Check if this will be the final block (next one would have zero reward)
+    let next_reward = calculate_block_reward(height + 1);
+    let is_final_block = next_reward == 0 || next_reward <= crate::TOKEN_INFO.with(|t| {
+        t.borrow().as_ref().map_or(0, |info| info.transfer_fee)
+    });
+    
     // Generate events for this block
-    let events = generate_events(height, old_difficulty, new_difficulty);
+    let mut events = generate_events(height, old_difficulty, new_difficulty);
+    
+    // Add special final block event if needed
+    if is_final_block {
+        let supply = crate::CIRCULATING_SUPPLY.with(|s| *s.borrow());
+        let total = crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or(0, |info| info.total_supply));
+        let percentage = if total > 0 { (supply as f64 / total as f64) * 100.0 } else { 0.0 };
+        
+        events.push(Event {
+            event_type: EventType::SystemAnnouncement {
+                message: format!(
+                    "This is the final mining block. Mining complete at height {}. Total supply: {}/{} ({:.2}%)",
+                    height, supply, total, percentage
+                ),
+                severity: "important".to_string(),
+            },
+            timestamp: ic_cdk::api::time() / 1_000_000_000,
+            block_height: height,
+        });
+        
+        ic_cdk::println!("[FINAL BLOCK] Mining will complete after this block.");
+    }
     
     // Log system state before generation
     log_system_telemetry();
@@ -1172,6 +1213,13 @@ const REQUIRED_SUBMISSION_CYCLES: u128 = 420_690; // Required cycles per submiss
 
 #[ic_cdk::update]
 pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_hash: Hash, hashes_processed: u64) -> Result<bool, String> {
+    // Check if mining is complete first
+    let current_height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
+    let current_reward = calculate_block_reward(current_height);
+    if is_mining_complete(current_reward) {
+        return Err("Mining is complete. Token has reached its maximum supply or minimum reward threshold.".to_string());
+    }
+
     // First verify cycles payment
     let available_cycles = ic_cdk::api::call::msg_cycles_available128();
     if available_cycles < REQUIRED_SUBMISSION_CYCLES {
@@ -1314,9 +1362,29 @@ pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_hash: Ha
         b.borrow_mut().set(None).expect("Failed to clear current block");
     });
     
+    // Step 4: Check if mining is complete after this block
+    if is_mining_complete(calculate_block_reward(current_block.height + 1)) {
+        // Create a special mining completion event
+        let current_time = ic_cdk::api::time() / 1_000_000_000; // Convert to seconds
+        let event = Event {
+            event_type: EventType::SystemAnnouncement {
+                message: format!("Mining complete at block height {}. Maximum supply reached or minimum reward threshold hit.", current_block.height + 1),
+                severity: "info".to_string(),
+            },
+            timestamp: current_time,
+            block_height: current_block.height + 1,
+        };
+        
+        // Add this event to the batch
+        add_event_to_batch(event.clone());
+        
+        ic_cdk::println!("[MINING COMPLETE] No more blocks will be mined after this point.");
+        return Ok(true);
+    }
+    
     ic_cdk::println!("Generating new block...");
     
-    // Step 4: Generate new block with retry
+    // Step 5: Generate new block with retry
     let mut retries = 3;
     while retries > 0 {
         match generate_new_block().await {
@@ -1347,13 +1415,58 @@ pub fn get_mining_info() -> MiningInfo {
     let target = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
     let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
     let next_halving = halving_interval - (height % halving_interval);
+    
+    // Calculate the current block reward
+    let current_reward = calculate_block_reward(height);
+    
+    // Check if mining is complete
+    // This occurs when either:
+    // 1. The block reward becomes too small (less than transfer fee)
+    // 2. We've reached the target supply
+    let mining_complete = is_mining_complete(current_reward);
 
     MiningInfo {
         current_difficulty: difficulty,
-        current_block_reward: calculate_block_reward(height),
+        current_block_reward: current_reward,
         block_time_target: target,
         next_halving_interval: next_halving,
+        mining_complete,
     }
+}
+
+/// Determines if mining is effectively complete based on current conditions
+fn is_mining_complete(current_reward: u64) -> bool {
+    // Get current circulating supply
+    let supply = crate::CIRCULATING_SUPPLY.with(|s| *s.borrow());
+    
+    // Get total supply from token info
+    let total_supply = crate::TOKEN_INFO.with(|t| {
+        t.borrow().as_ref().map_or(0, |info| info.total_supply)
+    });
+    
+    // Get transfer fee
+    let transfer_fee = crate::TOKEN_INFO.with(|t| {
+        t.borrow().as_ref().map_or(0, |info| info.transfer_fee)
+    });
+    
+    // Mining is complete if:
+    // 1. Reward is zero or less than transfer fee (not economically viable)
+    // 2. We've mined 99.99% of total supply
+    let reward_too_small = current_reward == 0 || current_reward <= transfer_fee;
+    let supply_nearly_complete = total_supply > 0 && 
+                                 ((total_supply - supply) * 10000 / total_supply) < 1; // Less than 0.01% remaining
+    
+    // Log the status
+    if reward_too_small {
+        ic_cdk::println!("[Mining Complete] Reward {current_reward} is too small (transfer fee: {transfer_fee})");
+    }
+    
+    if supply_nearly_complete {
+        ic_cdk::println!("[Mining Complete] Supply nearly reached: {supply}/{total_supply} ({:.4}%)", 
+            (supply as f64 / total_supply as f64) * 100.0);
+    }
+    
+    reward_too_small || supply_nearly_complete
 }
 
 // Add query method to get total cycles earned
