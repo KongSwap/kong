@@ -72,7 +72,7 @@ async fn send_claim(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(), String> {
-    let claim_status = claim.status.clone();
+    let claim_status = &claim.status;
     // set the claim status to claiming to prevent reentrancy before sending the claim
     claim_map::update_claiming_status(claim.claim_id);
 

@@ -10,7 +10,7 @@ pub fn to_claims_reply(claim: &StableClaim) -> ClaimsReply {
         Some(token) => (token.chain().to_string(), token.symbol().to_string(), token.fee()),
         None => ("Chain not found".to_string(), "Symbol not found".to_string(), nat_zero()),
     };
-    let to_address = match claim.to_address.as_ref() {
+    let to_address = match &claim.to_address {
         Some(address) => address.to_string(),
         None => "To address not found".to_string(),
     };

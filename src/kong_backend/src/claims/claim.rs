@@ -9,6 +9,7 @@ use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::ic::id::{caller_id, caller_principal_id};
 use crate::stable_claim::claim_map;
+use crate::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_request::request::Request;
 use crate::stable_request::request_map;
 use crate::stable_request::stable_request::StableRequest;
@@ -30,10 +31,13 @@ async fn claim(claim_id: u64) -> Result<ClaimReply, String> {
     if claim.user_id != user_id {
         return Err("Claim not found".to_string());
     }
+    if claim.status != ClaimStatus::Claimable {
+        return Err("Claim not found".to_string());
+    };
 
     let ts = get_time();
-    let to_address = match claim.to_address.clone() {
-        Some(address) => address,
+    let to_address = match &claim.to_address {
+        Some(address) => address.clone(),
         None => Address::PrincipalId(caller_id()),
     };
 
