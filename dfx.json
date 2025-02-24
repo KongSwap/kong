@@ -136,7 +136,7 @@
       ]
     },
     "token_backend": {
-      "candid": "src/token_backend/src/token_backend.did",
+      "candid": "src/token_backend/token_backend.did",
       "package": "token_backend",
       "type": "rust",
       "metadata": [

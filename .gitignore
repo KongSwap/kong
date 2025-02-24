@@ -141,3 +141,6 @@ settings.*.json
 canister_ids.json
 
 *.env.doppler
+
+# wasms for kong_svelte
+kong_svelte/static/wasms

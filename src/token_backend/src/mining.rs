@@ -258,7 +258,7 @@ struct MinerRateLimit {
 impl Default for MinerRateLimit {
     fn default() -> Self {
         Self {
-            submissions_per_minute: 60, // One submission per second on average
+            submissions_per_minute: 60,
             last_submission: 0,
             submission_count: 0,
         }
@@ -561,30 +561,49 @@ pub fn init_mining_params(
         h.borrow_mut().set(StorableHash([0; 32])).expect("Failed to init last block hash");
     });
 }
-
 // Difficulty adjustment parameters and functions
 // --------------------------------------------
+
+#[derive(Debug, Clone)]
+struct AdjustmentCache {
+    last_target_time: u64,
+    min_diff: u32,
+    max_diff: u32,
+    increase_factor: f64,
+    decrease_factor: f64,
+    half_life: f64,
+}
+
+thread_local! {
+    static ADJUSTMENT_CACHE: RefCell<Option<AdjustmentCache>> = RefCell::new(None);
+}
 
 /// Calculates difficulty adjustment parameters based on the target block time.
 /// Returns a tuple of (min_difficulty, max_difficulty, increase_factor, decrease_factor, half_life)
 /// that are appropriately scaled for the given target time.
 fn get_adjustment_factors(target_time: u64) -> (u32, u32, f64, f64, f64) {
-    // Base parameters calibrated for 60 second block times
-    const BASE_MIN_DIFF: u32 = 9;         // Minimum difficulty floor
-    const BASE_MAX_DIFF: u32 = 9_000;     // Maximum difficulty ceiling 
-    const BASE_INCREASE: f64 = 1.18;      // Maximum 18% increase per block
-    const BASE_DECREASE: f64 = 0.91;      // Maximum 9% decrease per block
-    const BASE_HALF_LIFE: f64 = 0.09;     // Base half-life for exponential adjustments
+    // Base parameters calibrated for wide range (3s to 1hr blocks)
+    const BASE_MIN_DIFF: u32 = 12;        // Higher minimum for fast block protection
+    const BASE_MAX_DIFF: u32 = 12_000;    // Increased maximum ceiling
+    const BASE_INCREASE: f64 = 1.15;      // More conservative 15% max increase
+    const BASE_DECREASE: f64 = 0.88;      // More gradual 12% max decrease
+    const BASE_HALF_LIFE: f64 = 0.12;     // Slower response time base
 
-    // Scale factors based on ratio of target time to 60 seconds
+    // Logarithmic scaling for wide time range
     let time_ratio = (target_time as f64) / 60.0;
+    let log_scale = (time_ratio.ln().exp() - 1.0).ln().max(0.0) + 1.0;
+    let time_factor = (time_ratio + 1.0).log2();  // Handle sub-minute ranges better
     
-    // Calculate scaled parameters:
-    let min_diff = BASE_MIN_DIFF;  // Minimum difficulty remains constant
-    let max_diff = ((BASE_MAX_DIFF as f64) * time_ratio.sqrt()) as u32;
-    let increase = 1.0 + ((BASE_INCREASE - 1.0) * (1.0/time_ratio.sqrt()));
-    let decrease = 1.0 - ((1.0 - BASE_DECREASE) * (1.0/time_ratio.sqrt()));
-    let half_life = BASE_HALF_LIFE * time_ratio.sqrt();
+    // Calculate scaled parameters with non-linear adjustments
+    let min_diff = BASE_MIN_DIFF;
+    let max_diff = ((BASE_MAX_DIFF as f64) * time_factor.sqrt()).clamp(100.0, 100_000.0) as u32;
+    
+    // Dynamic scaling factors with upper/lower bounds
+    let increase = 1.0 + ((BASE_INCREASE - 1.0) * (1.0 / log_scale)).clamp(0.01, 0.5);
+    let decrease = 1.0 - ((1.0 - BASE_DECREASE) * (1.0 / log_scale)).clamp(0.01, 0.3);
+    
+    // Adaptive half-life calculation with minimum bound
+    let half_life = (BASE_HALF_LIFE * time_factor.sqrt()).clamp(0.01, 2.0);
 
     (min_diff, max_diff, increase, decrease, half_life)
 }
@@ -592,12 +611,34 @@ fn get_adjustment_factors(target_time: u64) -> (u32, u32, f64, f64, f64) {
 /// Adjusts mining difficulty based on block time variations and consecutive block patterns.
 fn adjust_difficulty_asert() -> u32 {
     // Get current mining parameters
-    let target = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
-    let (min_diff, max_diff, increase_factor, decrease_factor, half_life) = get_adjustment_factors(target);
-    let current_diff = MINING_DIFFICULTY.with(|d| *d.borrow().get());
     let target_time = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
+    let current_diff = MINING_DIFFICULTY.with(|d| *d.borrow().get());
     let now = ic_cdk::api::time() / 1_000_000_000;
-    
+
+    // Get cached factors or calculate new ones if target time changed
+    let (min_diff, max_diff, increase_factor, decrease_factor, half_life) = ADJUSTMENT_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        match &*cache {
+            Some(c) if c.last_target_time == target_time => {
+                // Return cached values
+                (c.min_diff, c.max_diff, c.increase_factor, c.decrease_factor, c.half_life)
+            }
+            _ => {
+                // Calculate new values and update cache
+                let (min, max, inc, dec, hl) = get_adjustment_factors(target_time);
+                *cache = Some(AdjustmentCache {
+                    last_target_time: target_time,
+                    min_diff: min,
+                    max_diff: max,
+                    increase_factor: inc,
+                    decrease_factor: dec,
+                    half_life: hl,
+                });
+                (min, max, inc, dec, hl)
+            }
+        }
+    });
+
     // Get timestamp of last block
     let last_timestamp = BLOCK_TIMESTAMPS.with(|ts| {
         let data = ts.borrow().get().0.clone();
@@ -673,6 +714,7 @@ fn adjust_difficulty_asert() -> u32 {
     // Log detailed adjustment information
     ic_cdk::println!(
         "[ASERT Difficulty Adjustment]\n\
+         Cached params: {}\n\
          Previous: {}, New: {} (change: {:.2}%)\n\
          Block time: {}s (target: {}s)\n\
          Consecutive fast blocks: {}\n\
@@ -682,6 +724,7 @@ fn adjust_difficulty_asert() -> u32 {
          Decrease multiplier: {:.2}x\n\
          Adjustment mode: {}\n\
          Estimated hashes needed: {} (Lite: {} chunks, Normal: {} chunks, Premium: {} chunks)",
+        ADJUSTMENT_CACHE.with(|c| c.borrow().is_some()),
         current_diff,
         new_diff,
         (new_diff as f64 / current_diff as f64 - 1.0) * 100.0,
@@ -905,6 +948,9 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
     // Generate events for this block
     let events = generate_events(height, old_difficulty, new_difficulty);
     
+    // Log system state before generation
+    log_system_telemetry();
+    
     // Create new block template with IC-specific timestamp and VERIFIED difficulty
     let block = BlockTemplate::new(
         height,
@@ -970,8 +1016,9 @@ fn check_rate_limit(miner: Principal) -> Result<(), String> {
         let rate_limit = rate_limits.entry(miner)
             .or_insert_with(MinerRateLimit::default);
         
-        // Reset counter if minute has passed
-        if now - rate_limit.last_submission >= 60_000_000_000 { // 60 seconds in nanoseconds
+        // Reset counter if 30 seconds has passed
+        // per 60 seconds gets too defensive too quickly for fast block times
+        if now - rate_limit.last_submission >= 30_000_000_000 { // 30 seconds in nanoseconds
             rate_limit.submission_count = 0;
             rate_limit.last_submission = now;
         }
@@ -989,6 +1036,39 @@ fn check_rate_limit(miner: Principal) -> Result<(), String> {
         limits.set(StorableRateLimits(rate_limits)).expect("Failed to update rate limits");
         
         Ok(())
+    })
+}
+
+/// Allows miners to check if they can submit a solution before attempting submission
+/// Returns Ok(true) if submission is allowed, Ok(false) if rate limited, or Err for other errors
+#[ic_cdk::query]
+pub fn can_submit_solution() -> Result<bool, String> {
+    let miner = ic_cdk::caller();
+    
+    MINER_RATE_LIMITS.with(|limits| {
+        let limits = limits.borrow();
+        let rate_limits = limits.get().0.clone();
+        
+        let now = ic_cdk::api::time();
+        
+        // If miner not in rate limits yet, they can submit
+        if !rate_limits.contains_key(&miner) {
+            return Ok(true);
+        }
+        
+        let rate_limit = rate_limits.get(&miner).unwrap();
+        
+        // Check if we should reset counter due to time elapsed
+        if now - rate_limit.last_submission >= 30_000_000_000 { // 30 seconds in nanoseconds
+            return Ok(true);
+        }
+        
+        // Check if rate limit would be exceeded
+        if rate_limit.submission_count >= rate_limit.submissions_per_minute {
+            return Ok(false);
+        }
+        
+        Ok(true)
     })
 }
 
@@ -1282,15 +1362,6 @@ pub fn get_total_cycles_earned() -> u128 {
     TOTAL_CYCLES_EARNED.with(|total| *total.borrow().get())
 }
 
-// Add update method to change block time target
-#[ic_cdk::update]
-pub fn set_block_time_target(seconds: u64) -> u64 {
-    BLOCK_TIME_TARGET.with(|t| {
-        t.borrow_mut().set(seconds).expect("Failed to set block time target");
-        seconds
-    })
-}
-
 // Add query to get current block time target
 #[ic_cdk::query]
 pub fn get_block_time_target() -> u64 {
@@ -1318,8 +1389,8 @@ pub fn update_block_template() -> bool {
         // Get time since target was exceeded
         let excess_time = time_since_last - target_time;
         
-        // Calculate heartbeat interval as 1/10th of target time
-        let heartbeat_interval = target_time / 10;
+        // Use the safeguarded heartbeat calculation
+        let heartbeat_interval = calculate_heartbeat_interval();
         
         // Only increment counter every heartbeat_interval seconds after target time
         let mut should_decrease = false;
@@ -1446,4 +1517,24 @@ fn initialize_memory() {
             manager.get(MemoryId::new(i));
         }
     });
-} 
+}
+
+fn calculate_heartbeat_interval() -> u64 {
+    let target_time = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
+    let heartbeat_interval = if target_time < 10 {
+        1 // Minimum 1 second interval
+    } else {
+        target_time / 10
+    };
+    heartbeat_interval.max(1) // Final safety net
+}
+
+fn log_system_telemetry() {
+    ic_cdk::println!(
+        "[SYSTEM TELEMETRY] block_time={} difficulty={} solutions_processed={} rate_limits={}",
+        BLOCK_TIME_TARGET.with(|t| *t.borrow().get()),
+        MINING_DIFFICULTY.with(|d| *d.borrow().get()),
+        PROCESSED_SOLUTIONS.with(|s| s.borrow().get().0.len()),
+        MINER_RATE_LIMITS.with(|r| r.borrow().get().0.len())
+    );
+}

@@ -99,7 +99,8 @@ cp "$TOKEN_BACKEND_DIR/token_backend.did.js" "$FRONTEND_BUILD_DIR/"
 cp "$TOKEN_BACKEND_DIR/token_backend.did" "$FRONTEND_BUILD_DIR/"
 cp "$TOKEN_BACKEND_DIR/token_backend.did.d.ts" "$FRONTEND_BUILD_DIR/"
 
-# Default initialization arguments
+# Default initialization arguments // this is legit the most idiotic thing I've ever done.
+# But if the system adjusts to these parameters from hell, pretty sure good boy params are in heaven
 INIT_ARGS='(record {
     name = "Floppa";
     ticker = "FLOPS";

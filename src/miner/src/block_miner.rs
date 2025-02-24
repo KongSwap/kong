@@ -40,6 +40,8 @@ pub struct BlockMiner {
     miner_type: MinerType,
     chunks_per_refresh: u64,
     current_difficulty: u32, // Track current difficulty
+    last_rate_limit: Option<u64>,
+    backoff_duration: u64,
 }
 
 impl BlockMiner {
@@ -58,6 +60,8 @@ impl BlockMiner {
             miner_type: MinerType::Normal,
             chunks_per_refresh: 5, // Default to 5 chunks per refresh
             current_difficulty: 0, // Initialize to 0 to force first update
+            last_rate_limit: None,
+            backoff_duration: 10_000_000_000, // Reset to 10 seconds
         }
     }
 
@@ -227,5 +231,31 @@ impl BlockMiner {
         }
         
         None
+    }
+
+    pub fn handle_rate_limit(&mut self) {
+        let now = ic_cdk::api::time();
+        
+        if let Some(last_limit) = self.last_rate_limit {
+            // If we got rate limited again within 60 seconds, increase backoff
+            if now - last_limit < 60_000_000_000 {
+                // Exponential backoff: double the wait time, cap at 30 seconds
+                self.backoff_duration = (self.backoff_duration * 2).min(30_000_000_000);
+            } else {
+                // Reset backoff if it's been a while
+                self.backoff_duration = 10_000_000_000; // Reset to 10 seconds
+            }
+        }
+        
+        self.last_rate_limit = Some(now);
+        
+        ic_cdk::println!(
+            "[{:?} Miner] Rate limited - backing off for {:.1} seconds",
+            self.miner_type,
+            self.backoff_duration as f64 / 1_000_000_000.0
+        );
+        
+        // Actually wait
+        std::thread::sleep(std::time::Duration::from_nanos(self.backoff_duration));
     }
 }
