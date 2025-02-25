@@ -1,23 +1,18 @@
 <script lang="ts">
-  import AdvancedOptions from '$lib/components/launch/token/AdvancedOptions.svelte';
   import { Settings } from "lucide-svelte";
 
-  // Basic token parameters
-  export let name: string = "";
-  export let symbol: string = "";
+  // Economics parameters
   export let decimals: number = 8;
+  // Ensure decimals is within valid range
+  $: if (decimals < 6) decimals = 6;
+  $: if (decimals > 16) decimals = 16;
+  
   export let transferFee: number = 0; // Stored in base units (10^decimals)
-  export let logo: string = "";
-
-  // Logo file handling
-  let logoPreview: string = logo; // Initialize from the logo prop
+  export let symbol: string = ""; // We need symbol from the TokenIdentity component for display
+  
   let showAdvanced = false;
-
   let humanFee: string = (transferFee / 10 ** decimals).toFixed(decimals);
   let baseFeeInput: string = transferFee.toString();
-  
-  // Make sure logoPreview stays in sync with logo when coming back to this step
-  $: logoPreview = logo || logoPreview;
   
   // Sync when decimals change
   $: {
@@ -43,84 +38,19 @@
       humanFee = (value / 10 ** decimals).toFixed(decimals);
     }
   }
-
-  function handleLogoUpload(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        logoPreview = e.target?.result as string;
-        logo = logoPreview;
-      };
-      reader.readAsDataURL(file);
-    }
-  }
 </script>
 
 <div class="space-y-6">
   <div class="flex items-center gap-3 mb-6">
     <div class="w-1.5 h-6 rounded-full bg-kong-primary animate-pulse"></div>
     <h3 class="text-xl font-bold font-space-grotesk text-kong-text-primary">
-      Token Foundations
+      Token Economics & Precision
     </h3>
   </div>
 
   <div class="grid gap-6 md:grid-cols-2">
-    <!-- Left Column -->
-    <div class="space-y-6">
-      <!-- Token Name -->
-      <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
-        <label class="block mb-2 text-sm font-medium text-kong-text-primary/80">
-          Token Name <span class="text-kong-accent-red">*</span>
-        </label>
-        <input
-          type="text"
-          bind:value={name}
-          class="w-full px-4 py-3 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
-          placeholder="My Token"
-          maxlength="40"
-        />
-        <div class="flex justify-between mt-2 text-xs text-kong-text-secondary/50">
-          <span class="flex items-center gap-1.5">
-            {#if name.length === 0}
-              <span class="w-2 h-2 rounded-full bg-kong-accent-red/80 animate-pulse"></span>
-              Required
-            {:else}
-              <span class="w-2 h-2 rounded-full bg-kong-primary/80"></span>
-              {name.length}/40
-            {/if}
-          </span>
-          <span>Display name</span>
-        </div>
-      </div>
-
-      <!-- Token Symbol -->
-      <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
-        <label class="block mb-2 text-sm font-medium text-kong-text-primary/80">
-          Token Symbol <span class="text-kong-accent-red">*</span>
-        </label>
-        <input
-          type="text"
-          bind:value={symbol}
-          class="w-full px-4 py-3 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
-          placeholder="MTK"
-          maxlength="10"
-        />
-        <div class="flex justify-between mt-2 text-xs text-kong-text-secondary/50">
-          <span class="flex items-center gap-1.5">
-            {#if symbol.length === 0}
-              <span class="w-2 h-2 rounded-full bg-kong-accent-red/80 animate-pulse"></span>
-              Required
-            {:else}
-              <span class="w-2 h-2 rounded-full bg-kong-primary/80"></span>
-              {symbol.length}/10
-            {/if}
-          </span>
-          <span>Ticker symbol</span>
-        </div>
-      </div>
+    <!-- Left Column: Transfer Fee -->
+    <div>
       <!-- Transfer Fee -->
       <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
         <label class="block mb-2 text-sm font-medium text-kong-text-primary/80">
@@ -133,25 +63,25 @@
             on:click={() => { humanFee = "0"; updateFromHuman(); }} 
             class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === 0 ? 'bg-kong-accent-green/20 border border-kong-accent-green/30 text-kong-accent-green' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
-            None
+            Free
           </button>
           <button 
             on:click={() => { humanFee = (0.0001).toFixed(4); updateFromHuman(); }} 
             class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === Math.round(0.0001 * 10 ** decimals) ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
-            Minimal
+            Common
           </button>
           <button 
             on:click={() => { humanFee = (0.001).toFixed(3); updateFromHuman(); }} 
             class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === Math.round(0.001 * 10 ** decimals) ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
-            Low
+            Standard
           </button>
           <button 
             on:click={() => { humanFee = (0.01).toFixed(2); updateFromHuman(); }} 
             class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === Math.round(0.01 * 10 ** decimals) ? 'bg-kong-accent-red/20 border border-kong-accent-red/30 text-kong-accent-red' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
-            Standard
+            High
           </button>
         </div>
         
@@ -165,14 +95,14 @@
               class="w-full px-4 py-3 text-sm transition-all duration-200 border rounded-l-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
               placeholder="0.00"
             />
-            <div class="flex items-center h-12 px-4 text-sm border-r border-t border-b border-kong-border/30 rounded-r-xl text-kong-text-secondary bg-kong-bg-dark/30">
+            <div class="flex items-center h-12 px-4 text-sm border-t border-b border-r border-kong-border/30 rounded-r-xl text-kong-text-secondary bg-kong-bg-dark/30">
               {symbol || "TOKEN"}
             </div>
           </div>
         </div>
 
         <!-- Fee Info Card -->
-        <div class="p-3 rounded-lg bg-gradient-to-r from-kong-bg-dark/50 to-kong-bg-light/10 border border-kong-border/20">
+        <div class="p-3 border rounded-lg bg-gradient-to-r from-kong-bg-dark/50 to-kong-bg-light/10 border-kong-border/20">
           <div class="flex items-center gap-2 mb-2">
             <svg class="w-4 h-4 text-kong-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -187,28 +117,28 @@
                 <span class="text-kong-accent-green">Free transfers (zero fee)</span>
               </div>
               <p class="text-kong-text-secondary/60">Users can transfer tokens without any cost</p>
-            {:else if humanFee <= 0.0001}
+            {:else if parseFloat(humanFee) <= 0.0001}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-primary animate-pulse"></div>
-                <span class="text-kong-primary">Minimal fee: {humanFee} {symbol || "TOKEN"}</span>
+                <span class="text-kong-primary">Common fee: {humanFee} {symbol || "TOKEN"}</span>
               </div>
-              <p class="text-kong-text-secondary/60">Protects against spam while keeping costs very low</p>
-            {:else if humanFee <= 0.001}
+              <p class="text-kong-text-secondary/60">Standard fee used by Bitcoin and most ICRC tokens</p>
+            {:else if parseFloat(humanFee) <= 0.001}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-primary animate-pulse"></div>
-                <span class="text-kong-primary">Low fee: {humanFee} {symbol || "TOKEN"}</span>
+                <span class="text-kong-primary">Standard fee: {humanFee} {symbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">Balanced approach for most tokens</p>
-            {:else if humanFee <= 0.01}
+            {:else if parseFloat(humanFee) <= 0.01}
               <div class="flex items-center gap-2">
-                <div class="w-2 h-2 rounded-full bg-kong-accent-blue animate-pulse"></div>
-                <span class="text-kong-accent-blue">Medium fee: {humanFee} {symbol || "TOKEN"}</span>
+                <div class="w-2 h-2 rounded-full bg-kong-accent-red animate-pulse"></div>
+                <span class="text-kong-accent-red">High fee: {humanFee} {symbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">Higher fee helps incentivize holding</p>
             {:else}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-accent-red animate-pulse"></div>
-                <span class="text-kong-accent-red">High fee: {humanFee} {symbol || "TOKEN"}</span>
+                <span class="text-kong-accent-red">Very high fee: {humanFee} {symbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">May discourage frequent transfers</p>
             {/if}
@@ -217,7 +147,7 @@
               <div class="flex items-center gap-2 pt-1 mt-1 border-t border-kong-border/10">
                 <span class="text-kong-text-secondary/80">Actual amount: {transferFee.toLocaleString()} base units</span>
                 <span class="px-1.5 py-0.5 text-[10px] rounded bg-kong-bg-dark/70 text-kong-text-secondary/60">
-                  {(transferFee / 10 ** decimals * 100).toFixed(2)}%
+                  {(parseFloat(humanFee) * 100).toFixed(2)}%
                 </span>
               </div>
             {/if}
@@ -226,72 +156,98 @@
       </div>
     </div>
 
-    <!-- Right Column -->
-    <div class="space-y-6">
-      <!-- Logo Upload -->
-      <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
-        <label class="block mb-3 text-sm font-medium text-kong-text-primary/80">
-          Token Logo
-        </label>
-        <label class="flex flex-col items-center justify-center w-full h-48 overflow-hidden transition-all duration-200 border-2 border-dashed cursor-pointer rounded-xl border-kong-border/30 hover:border-kong-primary/50 group">
-          {#if logoPreview}
-            <div class="relative w-32 h-32 overflow-hidden transition-transform duration-300 rounded-full group-hover:scale-105">
-              <img 
-                src={logoPreview} 
-                alt="Token logo" 
-                class="object-cover w-full h-full"
-                width="128"
-                height="128"
-              />
-            </div>
-          {:else}
-            <div class="text-center">
-              <div class="mb-2 text-kong-text-secondary/50">
-                <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-              </div>
-              <span class="text-xs text-kong-text-secondary/60">Click to upload</span>
-              <span class="block text-xs text-kong-text-secondary/40">PNG, JPG (max 2MB)</span>
-            </div>
-          {/if}
-          <input type="file" accept="image/*" on:change={handleLogoUpload} class="hidden" />
-        </label>
-      </div>
-
+    <!-- Right Column: Decimals -->
+    <div>
       <!-- Decimals -->
       <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
         <label class="block mb-2 text-sm font-medium text-kong-text-primary/80">
           Decimals <span class="text-kong-accent-red">*</span>
         </label>
-        <input
-          type="number"
-          bind:value={decimals}
-          class="w-full px-4 py-3 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
-          min="0"
-          max="18"
-        />
-        <div class="mt-2 text-xs text-kong-text-secondary/50">
-          {#if decimals < 0 || decimals > 18}
-            <span class="text-kong-accent-red/80">Must be between 0-18</span>
-          {:else}
-            <span class="flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-kong-primary/80"></span>
-              {decimals} decimal places
-            </span>
-          {/if}
+        
+        <!-- Decimals Presets -->
+        <div class="flex flex-wrap gap-2 mb-3">
+          <button 
+            on:click={() => { decimals = 8; }} 
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${decimals === 8 ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+          >
+            Bitcoin (8)
+          </button>
+          <button 
+            on:click={() => { decimals = 8; }} 
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${decimals === 8 ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+          >
+            ICP/ICRC (8)
+          </button>
+          <button 
+            on:click={() => { decimals = 6; }} 
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${decimals === 6 ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+          >
+            USDC (6)
+          </button>
+          <button 
+            on:click={() => { decimals = 16; }} 
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${decimals === 16 ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+          >
+            MAX (16)
+          </button>
         </div>
-        <div class="p-2 mt-2 rounded-lg bg-kong-bg-dark/30">
-          <p class="text-xs leading-relaxed text-kong-text-secondary/60">
-            <span class="font-medium text-kong-primary/80">Common examples:</span><br>
-            • Bitcoin-style: 8 decimals<br>
-            • USD-stablecoins: 6 decimals<br>
-            • Ethereum-style: 18 decimals<br>
-            • Most ICRC tokens: 8 decimals<br>
-            <span class="inline-block mt-1 text-kong-accent-blue/80">
-              (1 token = 10<sup class="text-[0.6em]">{decimals}</sup> base units)
-            </span>
-          </p>
+        
+        <!-- Custom input with slider -->
+        <div class="mb-3">
+          <div class="flex items-center gap-3">
+            <input
+              type="range"
+              bind:value={decimals}
+              min="6"
+              max="16"
+              step="1"
+              class="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-kong-bg-dark/70 accent-kong-primary"
+            />
+            <div class="flex items-center justify-center w-12 h-8 font-mono text-sm font-semibold rounded bg-kong-bg-dark/70 text-kong-primary">
+              {decimals}
+            </div>
+          </div>
+        </div>
+
+        <!-- Decimals Visualization -->
+        <div class="p-3 border rounded-lg bg-gradient-to-r from-kong-bg-dark/50 to-kong-bg-light/10 border-kong-border/20">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-4 h-4 text-kong-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h4 class="text-sm font-medium text-kong-text-primary">Divisibility</h4>
+          </div>
+          
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-kong-accent-blue animate-pulse"></div>
+              <span class="text-xs text-kong-accent-blue">1 {symbol || "TOKEN"} = 
+                <span class="font-mono font-medium text-kong-accent-green">
+                  {decimals > 0 ? `10${decimals === 1 ? '' : '<sup>' + decimals + '</sup>'}` : '1'} 
+                </span> 
+                base units
+              </span>
+            </div>
+            
+            <div class="flex items-center gap-1">
+              <span class="text-xs font-medium text-kong-text-primary">Minimum:</span>
+              <span class="font-mono text-xs text-kong-text-secondary">
+                {`0.${'0'.repeat(decimals-1)}1`} {symbol || "TOKEN"}
+              </span>
+            </div>
+            
+            <div class="pt-1 mt-1 text-xs border-t border-kong-border/10">
+              {#if decimals <= 6}
+                <span class="text-kong-text-secondary/70">Minimum precision similar to USDC</span>
+              {:else if decimals <= 8}
+                <span class="text-kong-text-secondary/70">Standard precision for most cryptocurrencies</span>
+              {:else if decimals <= 12}
+                <span class="text-kong-text-secondary/70">High precision for advanced use cases</span>
+              {:else}
+                <span class="text-kong-text-secondary/70">Very high precision for specialized tokens</span>
+              {/if}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -312,7 +268,11 @@
 
   {#if showAdvanced}
     <div class="p-6 mt-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
-      <AdvancedOptions />
+      <!-- Placeholder for AdvancedOptions component - uncomment when component is available -->
+      <!-- <AdvancedOptions /> -->
+      <div class="p-4 text-center text-kong-text-secondary/60">
+        Advanced options are coming soon
+      </div>
       
       <button
         class="w-full px-6 py-3 mt-6 font-medium text-white transition-all duration-300 rounded-xl 
@@ -330,4 +290,4 @@
   .shadow-glow {
     box-shadow: 0 0 20px rgba(var(--primary), 0.15);
   }
-</style>
+</style> 
