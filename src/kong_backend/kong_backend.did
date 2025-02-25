@@ -552,9 +552,10 @@ type ClaimsReply = record {
     amount : nat;
     fee : nat;
     to_address : text;
+    desc : text;
     ts : nat64;
 };
-type ClaimsResult = variant { OK : ClaimsReply; Err : text };
+type ClaimsResult = variant { Ok : vec ClaimsReply; Err : text };
 type ClaimReply = record {
     claim_id : nat64;
     status : text;
@@ -563,10 +564,11 @@ type ClaimReply = record {
     amount : nat;
     fee : nat;
     to_address : text;
+    desc : text;
     transfer_ids : vec TransferIdReply;
     ts : nat64;
 };
-type ClaimResult = variant { OK : ClaimReply; Err : text };
+type ClaimResult = variant { Ok : ClaimReply; Err : text };
 
 type SendArgs = record {
     token : text;

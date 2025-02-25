@@ -51,6 +51,7 @@ pub struct StableClaim {
     pub amount: Nat,
     pub request_id: Option<u64>,     // optional to allow claims not associated with a request. ie. airdrops
     pub to_address: Option<Address>, // optional, will default to caller's principal id
+    pub desc: Option<String>,
     pub attempt_request_id: Vec<u64>,
     pub transfer_ids: Vec<u64>,
     pub ts: u64,
@@ -66,6 +67,7 @@ impl StableClaim {
             amount: amount.clone(),
             request_id,
             to_address,
+            desc: None,
             attempt_request_id: Vec::new(),
             transfer_ids: Vec::new(),
             ts,

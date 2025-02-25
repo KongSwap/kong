@@ -12,5 +12,6 @@ pub struct ClaimsReply {
     pub amount: Nat,
     pub fee: Nat,
     pub to_address: String,
+    pub desc: String,
     pub ts: u64,
 }

@@ -38,6 +38,7 @@ pub async fn process_claim(
             amount: amount.clone(),
             fee: token.fee(),
             to_address: to_address.to_string(),
+            desc: claim.desc.as_ref().map_or_else(String::new, |desc| desc.to_string()),
             transfer_ids: to_transfer_ids(&transfer_ids),
             ts,
         },
@@ -50,6 +51,7 @@ pub async fn process_claim(
                 amount: amount.clone(),
                 fee: token.fee(),
                 to_address: to_address.to_string(),
+                desc: claim.desc.as_ref().map_or_else(String::new, |desc| desc.to_string()),
                 transfer_ids: to_transfer_ids(&transfer_ids),
                 ts,
             };
