@@ -689,13 +689,14 @@
 
 <style lang="postcss">
   .container {
-    @apply flex flex-col gap-4;
+    @apply flex flex-col gap-3 sm:gap-4;
   }
 
   .token-info-banner {
-    @apply flex items-center gap-3 p-3 mb-2 rounded-lg
+    @apply flex items-center gap-2 p-2.5 mb-2 rounded-lg
            bg-kong-surface-dark border border-kong-border/30
-           transition-all duration-200;
+           transition-all duration-200
+           sm:gap-3 sm:p-3;
   }
 
   .token-logo {
@@ -704,7 +705,8 @@
   }
 
   .token-logo img {
-    @apply w-8 h-8 rounded-full object-contain;
+    @apply w-7 h-7 rounded-full object-contain
+           sm:w-8 sm:h-8;
   }
 
   .token-details {
@@ -720,10 +722,11 @@
   }
 
   .card-section {
-    @apply flex flex-col gap-2 mb-4 
-           bg-kong-surface-dark/50 rounded-lg p-4
+    @apply flex flex-col gap-2 mb-3 
+           bg-kong-surface-dark/50 rounded-lg p-3
            border border-kong-border/20
-           transition-all duration-200;
+           transition-all duration-200
+           sm:mb-4 sm:p-4;
   }
 
   .section-header {
@@ -760,13 +763,14 @@
   }
 
   .input-wrapper input {
-    @apply w-full h-12 rounded-lg text-kong-text-primary px-4
+    @apply w-full h-10 rounded-lg text-kong-text-primary px-3
            bg-kong-bg-light/70 backdrop-blur-sm
            border border-kong-border/50
            hover:border-kong-border
            focus:border-kong-primary focus:outline-none
            focus:ring-1 focus:ring-kong-primary/20
-           transition-all duration-200;
+           transition-all duration-200
+           sm:h-12 sm:px-4;
 
     &::placeholder {
       @apply text-kong-text-primary/30;
@@ -784,7 +788,8 @@
   }
 
   .validation-status {
-    @apply flex items-center gap-1.5 text-sm mt-2 px-1;
+    @apply flex items-center gap-1.5 text-xs mt-1.5 px-1
+           sm:text-sm sm:mt-2;
     
     .status-icon {
       @apply flex items-center justify-center;
@@ -804,11 +809,12 @@
   }
 
   .tab-button {
-    @apply px-3 py-1.5 rounded-lg text-sm
+    @apply px-2.5 py-1 rounded-lg text-xs
            bg-kong-bg-light/50 backdrop-blur-sm
            border border-kong-border/20
            text-kong-text-primary/70
-           transition-all duration-200;
+           transition-all duration-200
+           sm:px-3 sm:py-1.5 sm:text-sm;
 
     &.active {
       @apply bg-kong-primary/20 border-kong-primary/50 text-kong-text-primary;
@@ -816,7 +822,8 @@
   }
 
   .balance-display {
-    @apply flex flex-col gap-1 text-sm mt-3 px-1;
+    @apply flex flex-col gap-1 text-xs mt-2 px-1
+           sm:text-sm sm:mt-3;
   }
 
   .balance-info, .fee-info {
@@ -832,20 +839,24 @@
   }
 
   .summary-section {
-    @apply bg-kong-primary/10 rounded-lg p-4 mb-4
-           border border-kong-primary/20;
+    @apply bg-kong-primary/10 rounded-lg p-3 mb-3
+           border border-kong-primary/20
+           sm:p-4 sm:mb-4;
   }
 
   .summary-header {
-    @apply text-sm font-medium text-kong-text-primary mb-3;
+    @apply text-xs font-medium text-kong-text-primary mb-2
+           sm:text-sm sm:mb-3;
   }
 
   .summary-content {
-    @apply flex flex-col gap-2;
+    @apply flex flex-col gap-1.5
+           sm:gap-2;
   }
 
   .summary-row {
-    @apply flex justify-between items-center text-sm;
+    @apply flex justify-between items-center text-xs
+           sm:text-sm;
   }
 
   .summary-value {
@@ -857,9 +868,10 @@
   }
 
   .send-btn {
-    @apply h-12 w-full rounded-lg font-medium
+    @apply h-10 w-full rounded-lg font-medium
            flex items-center justify-center gap-1
-           transition-all duration-200;
+           transition-all duration-200
+           sm:h-12;
 
     &:not(.disabled):not(.error) {
       @apply bg-kong-primary text-white 

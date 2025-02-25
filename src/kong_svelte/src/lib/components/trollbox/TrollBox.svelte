@@ -520,7 +520,7 @@
              sm:w-96
              fixed w-[95vw] max-w-lg bottom-16 left-1/2 -translate-x-1/2
              sm:static sm:transform-none mb-2 overflow-hidden"
-      style="height: {window.innerWidth < 640 ? 'calc(100vh - 8rem)' : '550px'}"
+      style="height: {window.innerWidth < 640 ? 'calc(100vh - 10.2rem)' : '570px'}"
       transition:fade={{ duration: 200 }}
     >
       <!-- Header Component -->

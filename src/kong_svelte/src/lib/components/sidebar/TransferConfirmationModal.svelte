@@ -204,27 +204,29 @@
 
 <style scoped lang="postcss">
   .confirm-container {
-    @apply flex flex-col gap-5 px-4 py-2;
+    @apply flex flex-col gap-3 px-3 py-2;
   }
   
   /* Transfer Header Styles */
   .transfer-header {
-    @apply flex flex-col gap-4 items-center justify-center p-4 
+    @apply flex flex-col gap-3 items-center justify-center p-3 
            bg-kong-surface-dark/80 rounded-lg border border-kong-border/30;
   }
   
   .token-info {
-    @apply flex items-center gap-3;
+    @apply flex items-center gap-2;
   }
   
   .token-logo {
-    @apply w-12 h-12 rounded-full overflow-hidden 
+    @apply w-10 h-10 rounded-full overflow-hidden 
            bg-kong-bg-light p-1 border border-kong-border/20
-           flex items-center justify-center;
+           flex items-center justify-center
+           sm:w-12 sm:h-12;
   }
   
   .token-image {
-    @apply w-10 h-10 rounded-full object-contain;
+    @apply w-8 h-8 rounded-full object-contain
+           sm:w-10 sm:h-10;
   }
   
   .token-details {
@@ -257,12 +259,14 @@
   }
   
   .detail-section {
-    @apply bg-kong-surface-dark/50 rounded-lg p-4 
-           border border-kong-border/20;
+    @apply bg-kong-surface-dark/50 rounded-lg p-3 
+           border border-kong-border/20
+           sm:p-4;
   }
   
   .section-title {
-    @apply text-sm font-medium text-kong-text-primary/90 mb-3;
+    @apply text-sm font-medium text-kong-text-primary/90 mb-2
+           sm:mb-3;
   }
   
   .detail-rows {
@@ -308,9 +312,10 @@
   }
   
   .warning-section {
-    @apply flex items-start gap-2 p-3 rounded-lg
+    @apply flex items-start gap-2 p-2.5 rounded-lg
            bg-kong-accent-yellow/10 border border-kong-accent-yellow/20
-           text-xs text-kong-text-primary/80;
+           text-xs text-kong-text-primary/80
+           sm:p-3;
   }
   
   .warning-icon {
@@ -319,25 +324,28 @@
   
   /* Action Buttons */
   .action-buttons {
-    @apply grid grid-cols-2 gap-3 mt-2;
+    @apply grid grid-cols-2 gap-2 mt-2
+           sm:gap-3;
   }
   
   .cancel-button {
-    @apply h-12 rounded-lg font-medium
+    @apply h-10 rounded-lg font-medium
            bg-kong-bg-light/80 text-kong-text-primary/80
            hover:bg-kong-bg-light hover:text-kong-text-primary
            disabled:opacity-50 disabled:cursor-not-allowed
-           transition-all duration-200;
+           transition-all duration-200
+           sm:h-12;
   }
   
   .confirm-button {
-    @apply h-12 rounded-lg font-medium
+    @apply h-10 rounded-lg font-medium
            flex items-center justify-center gap-2
            bg-kong-primary text-white
            hover:bg-kong-primary-hover
            disabled:opacity-70 disabled:cursor-not-allowed
-           transition-all duration-200;
-    
+           transition-all duration-200
+           sm:h-12;
+
     &.loading {
       @apply bg-kong-primary/90;
     }
