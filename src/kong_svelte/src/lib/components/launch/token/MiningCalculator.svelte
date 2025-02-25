@@ -1,9 +1,12 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { AlertTriangle, ArrowRight, Settings, Clock, Zap, ChevronsRight, TrendingUp } from 'lucide-svelte';
   export let blockReward = 0;
   export let halvingBlocks = 0;
   export let blockTimeSeconds = 0;
   export let maxSupply: number = 0;
+  // Flag to indicate if maxSupply is being calculated dynamically
+  let isDynamicSupply = true;
   export let decimals = 8;
   export let circulationDays = 0;
   export let totalMined = 0;
@@ -16,7 +19,7 @@
   export let currentSubStep = 1; // This will be bound to the parent component
 
   // Track whether we're in preset view or custom view
-  let isCustomView = false;
+  $: isCustomView = currentSubStep === 2;
 
   type Preset = {
     id: string;
@@ -33,133 +36,111 @@
   const presets: Preset[] = [
     {
       id: "bitcoin",
-      name: "Bitcoin-like",
-      description: "Classic deflationary model with halving every 210,000 blocks",
+      name: "Bitcoin Classic",
+      description: "The original deflationary model with halving every 210,000 blocks",
       blockReward: 50,
       halvingBlocks: 210000,
       blockTimeSeconds: 600,
-      maxSupply: 21_000_000,
+      maxSupply: 21000000,
       category: 'popular',
       icon: "₿"
     },
     {
       id: "bitcoin-turbo",
-      name: "Bitcoin Turbo",
+      name: "Rapid Bitcoin",
       description: "Bitcoin economics with much faster block times",
       blockReward: 50,
       halvingBlocks: 2100000,
       blockTimeSeconds: 15,
-      maxSupply: 21_000_000,
+      maxSupply: 21000000,
       category: 'fast',
       icon: "⚡"
     },
     {
       id: "litecoin",
-      name: "Litecoin-like",
+      name: "Silver Standard",
       description: "Faster blocks and 4x the supply of Bitcoin",
       blockReward: 50,
       halvingBlocks: 840000,
       blockTimeSeconds: 150,
-      maxSupply: 84_000_000,
+      maxSupply: 84000000,
       category: 'popular',
       icon: "Ł"
     },
     {
       id: "dogecoin",
-      name: "Dogecoin-like",
+      name: "Meme Economy",
       description: "High reward with fast blocks and larger supply",
       blockReward: 10000,
       halvingBlocks: 100000,
       blockTimeSeconds: 60,
-      maxSupply: 100_000_000,
+      maxSupply: 100000000000,
       category: 'popular',
       icon: "Ð"
     },
     {
       id: "icp-like",
-      name: "ICP-like",
+      name: "Internet Computer",
       description: "Balanced economics with medium block times",
       blockReward: 100,
       halvingBlocks: 500000,
       blockTimeSeconds: 60,
-      maxSupply: 469_213_710,
+      maxSupply: 469213710,
       category: 'balanced',
       icon: "∞"
     },
     {
-      id: "dash-like",
-      name: "Dash-like",
-      description: "Fast blocks with moderate supply",
-      blockReward: 45,
-      halvingBlocks: 210000,
-      blockTimeSeconds: 150,
-      maxSupply: 18_900_000,
-      category: 'fast',
-      icon: "D"
-    },
-    {
       id: "hyper-fast",
-      name: "Hyper Fast",
+      name: "Lightning Network",
       description: "Extremely fast blocks for high-frequency mining",
       blockReward: 10,
       halvingBlocks: 3000000,
       blockTimeSeconds: 5,
-      maxSupply: 25_000_000,
+      maxSupply: 30000000,
       category: 'fast',
       icon: "🚀"
     },
     {
       id: "slow-burn",
-      name: "Slow Burn",
+      name: "Tortoise Wealth",
       description: "Slow and steady with high rewards",
       blockReward: 500,
       halvingBlocks: 50000,
       blockTimeSeconds: 900,
-      maxSupply: 10_000_000,
+      maxSupply: 25000000,
       category: 'slow',
       icon: "🐢"
     },
     {
-      id: "micro-mining",
-      name: "Micro Mining",
-      description: "Small rewards but very frequent blocks",
-      blockReward: 1,
-      halvingBlocks: 10000000,
-      blockTimeSeconds: 3,
-      maxSupply: 100_000_000,
-      category: 'fast',
-      icon: "μ"
-    },
-    {
       id: "long-term",
-      name: "Long-term HODLer",
+      name: "Century Token",
       description: "Very slow emission over decades",
       blockReward: 1000,
       halvingBlocks: 100000,
       blockTimeSeconds: 1800,
-      maxSupply: 50_000_000,
+      maxSupply: 100000000,
       category: 'slow',
       icon: "🧠"
     },
     {
       id: "balanced",
-      name: "Perfectly Balanced",
+      name: "Equilibrium",
       description: "Balanced parameters for steady emission",
       blockReward: 100,
       halvingBlocks: 250000,
       blockTimeSeconds: 60,
-      maxSupply: 50_000_000,
+      maxSupply: 50000000,
       category: 'balanced',
       icon: "⚖️"
     },
     {
       id: "eth-classic",
-      name: "Ethereum Classic",
+      name: "Ethereum Style",
       description: "Similar to early Ethereum economics",
       blockReward: 5,
       halvingBlocks: 0, // No halvings
       blockTimeSeconds: 13,
-      maxSupply: 210_000_000,
+      maxSupply: 210000000,
       category: 'popular',
       icon: "Ξ"
     }
@@ -172,6 +153,8 @@
   $: slowPresets = presets.filter(p => p.category === 'slow');
 
   function applyPreset(preset: Preset) {
+    // When applying a preset, we use its fixed maxSupply
+    isDynamicSupply = false;
     blockReward = preset.blockReward;
     halvingBlocks = preset.halvingBlocks;
     blockTimeSeconds = preset.blockTimeSeconds;
@@ -179,12 +162,15 @@
   }
 
   function switchToCustomView() {
-    isCustomView = true;
+    // When switching to custom view, enable dynamic supply calculation
+    isDynamicSupply = true;
+    calculateTotalSupply();
     currentSubStep = 2;
   }
 
   function continueWithSelectedPreset() {
-    isCustomView = true;
+    // Keep the preset supply when continuing
+    isDynamicSupply = false;
     currentSubStep = 2;
   }
 
@@ -238,8 +224,8 @@
   let effectiveHalvingLimitReached = false;
   let transferFeeLimitReached = false;
 
-  // Convert transfer fee to base units for comparison
-  $: transferFeeBaseUnits = toBaseUnits(transferFee);
+  // Convert transfer fee to base units for comparison - with safety check
+  $: transferFeeBaseUnits = Math.max(0, toBaseUnits(transferFee));
   
   $: {
     timeline = [];
@@ -258,7 +244,7 @@
 
     if (maxSupply && blockReward && halvingBlocks >= 0 && blockTimeSeconds) {
       // First, check if the initial reward is already below transfer fee
-      if (currentRewardBaseUnits <= transferFeeBaseUnits) {
+      if (transferFeeBaseUnits > 0 && currentRewardBaseUnits <= transferFeeBaseUnits) {
         transferFeeLimitReached = true;
       }
 
@@ -277,9 +263,9 @@
         // Calculate exact amount mined in this period (in token units)
         const exactMinedTokenUnits = blocksInPeriod * currentRewardTokenUnits;
         
-        // Keep track of economically viable mining - exactly matching backend logic
-        // from is_mining_complete() function (rewards <= transfer fee are not economically viable)
-        const economicallyViable = currentRewardBaseUnits > transferFeeBaseUnits;
+        // Keep track of economically viable mining - only if transfer fee is greater than zero
+        // rewards <= transfer fee are not economically viable
+        const economicallyViable = transferFeeBaseUnits === 0 || currentRewardBaseUnits > transferFeeBaseUnits;
         
         // Calculate actual mined amount, capped by remaining supply (in token units)
         const actualMinedTokenUnits = Math.min(exactMinedTokenUnits, remainingSupply);
@@ -315,8 +301,8 @@
             currentRewardBaseUnits = currentRewardBaseUnits >> 1; // Bit shift right = divide by 2
           }
           
-          // Check if this is the first time we're dropping below transfer fee
-          if (!transferFeeLimitReached && currentRewardBaseUnits <= transferFeeBaseUnits) {
+          // Check if this is the first time we're dropping below transfer fee (only if transfer fee > 0)
+          if (transferFeeBaseUnits > 0 && !transferFeeLimitReached && currentRewardBaseUnits <= transferFeeBaseUnits) {
             transferFeeLimitReached = true;
             effectiveHalvingLimit = totalHalvings + 1; // Current halving is the last effective one
           }
@@ -340,11 +326,12 @@
         effectiveHalvingLimit = totalHalvings;
       }
 
-      // Mark if we hit the effective halving limit
-      effectiveHalvingLimitReached = transferFeeLimitReached && effectiveHalvingLimit > 0;
+      // Mark if we hit the effective halving limit (only if transfer fee is non-zero)
+      effectiveHalvingLimitReached = transferFeeBaseUnits > 0 && transferFeeLimitReached && effectiveHalvingLimit > 0;
 
-      // Update warning condition - now include transfer fee warning condition
-      incompleteMiningWarning = (remainingSupply / maxSupply) > 0.01 || transferFeeLimitReached;
+      // Update warning condition - only include transfer fee warning if transfer fee is non-zero
+      incompleteMiningWarning = (remainingSupply / maxSupply) > 0.01 || 
+                              (transferFeeBaseUnits > 0 && transferFeeLimitReached);
 
       // Calculate percentage mined
       minedPercentage = ((totalMined / maxSupply) * 100).toFixed(1);
@@ -366,10 +353,43 @@
     halvingBlocks = Math.ceil(required * 0.8); // Use 80% of calculated value
   }
   
-  // Reset view if step changes externally
-  $: if (currentSubStep === 1) {
-    isCustomView = false;
+  // Calculate total supply from mining parameters
+  function calculateTotalSupply() {
+    if (!blockReward || !halvingBlocks) return;
+    
+    // For Bitcoin-like halving schedule
+    if (halvingBlocks > 0) {
+      let calculatedSupply = 0;
+      let currentReward = blockReward;
+      let halving = 0;
+      
+      // Calculate through halvings until reward becomes negligible
+      while (currentReward > 0.00001 && halving < 50) {
+        calculatedSupply += currentReward * halvingBlocks;
+        currentReward = currentReward / 2;
+        halving++;
+      }
+      
+      // Round to a nice number
+      const magnitude = Math.pow(10, Math.floor(Math.log10(calculatedSupply)));
+      maxSupply = Math.ceil(calculatedSupply / magnitude) * magnitude;
+    } else {
+      // For non-halving tokens, use a reasonable fixed supply
+      maxSupply = blockReward * 10000;
+    }
   }
+  
+  // Watch for changes in mining parameters to update total supply
+  $: if (isDynamicSupply && (blockReward || halvingBlocks || blockTimeSeconds)) {
+    calculateTotalSupply();
+  }
+  
+  // Calculate total supply when the component loads if using dynamic calculation
+  onMount(() => {
+    if (isDynamicSupply && blockReward && halvingBlocks) {
+      calculateTotalSupply();
+    }
+  });
 
   // Function to get a quick description of mining duration
   function getDurationDescription(seconds: number, halvings: number): string {
@@ -441,97 +461,27 @@
 </script>
 
 <div class="space-y-6">
-  <div class="flex items-center gap-3 mb-4">
-    <div class="w-1.5 h-6 rounded-full bg-kong-primary animate-pulse"></div>
-    <h3 class="text-xl font-bold font-space-grotesk text-kong-text-primary">
-      {isCustomView ? "Mining Dynamics Simulator" : "Select Mining Profile"}
-    </h3>
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div class="flex items-center gap-3">
+      <div class="w-1.5 h-6 rounded-full bg-kong-primary animate-pulse"></div>
+      <h3 class="text-xl font-bold font-space-grotesk text-kong-text-primary">
+        {isCustomView ? "Mining Dynamics Simulator" : "Select Mining Profile"}
+      </h3>
+    </div>
+    {#if isCustomView}
+      <!-- Custom view indicator -->
+      <button 
+        on:click={() => currentSubStep = 1}
+        class="px-3 py-1.5 text-sm font-medium border rounded-lg text-kong-accent-blue border-kong-accent-blue/30 bg-kong-accent-blue/10 hover:bg-kong-accent-blue/20"
+      >
+        Back to Presets
+      </button>
+    {/if}
   </div>
 
   {#if !isCustomView}
     <!-- STEP 1: Preset Selection View -->
     <div class="transition-all duration-300 animate-fadeIn">
-      <!-- Featured Presets Section -->
-      <div class="mb-8">
-        <h4 class="flex items-center gap-2 mb-4 text-base font-medium text-kong-text-primary">
-          <div class="w-1 h-5 rounded-full bg-gradient-to-b from-kong-primary to-kong-accent-blue"></div>
-          Popular Mining Models
-        </h4>
-        
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-2">
-          {#each popularPresets as preset}
-            <button 
-              on:click={() => applyPreset(preset)}
-              class="p-5 text-left transition-all duration-200 border rounded-xl group hover:border-kong-primary/50 bg-gradient-to-br from-kong-bg-dark/70 to-kong-bg-light/5 border-kong-border/30 hover:shadow-glow-sm"
-            >
-              <div class="flex items-center gap-3">
-                <div class="flex items-center justify-center w-10 h-10 text-lg font-bold transition-all duration-200 border rounded-lg bg-gradient-to-br from-kong-primary/10 to-kong-accent-blue/10 text-kong-primary border-kong-primary/20 group-hover:from-kong-primary/20 group-hover:to-kong-accent-blue/20">
-                  {preset.icon || preset.name[0]}
-                </div>
-                <div>
-                  <h5 class="text-base font-bold text-transparent bg-gradient-to-r from-kong-primary to-kong-accent-blue bg-clip-text">{preset.name}</h5>
-                  <p class="text-xs text-kong-text-secondary">{preset.description}</p>
-                </div>
-              </div>
-              
-              <div class="grid grid-cols-2 gap-x-6 gap-y-3 mt-5 md:grid-cols-4">
-                <div>
-                  <div class="flex items-center gap-1 text-xs text-kong-text-secondary/70">
-                    <Clock size={14} />
-                    Block Time
-                  </div>
-                  <p class="mt-1 text-sm font-medium text-kong-text-primary">
-                    {preset.blockTimeSeconds}s
-                    <span class="text-xs text-kong-text-secondary/70">
-                      ({getBlockTimeDescription(preset.blockTimeSeconds)})
-                    </span>
-                  </p>
-                </div>
-                
-                <div>
-                  <div class="flex items-center gap-1 text-xs text-kong-text-secondary/70">
-                    <Zap size={14} />
-                    Reward
-                  </div>
-                  <p class="mt-1 text-sm font-medium text-kong-text-primary">
-                    {preset.blockReward} {tokenTicker || "tokens"}
-                  </p>
-                </div>
-                
-                <div>
-                  <div class="flex items-center gap-1 text-xs text-kong-text-secondary/70">
-                    <ChevronsRight size={14} />
-                    Halving
-                  </div>
-                  <p class="mt-1 text-sm font-medium text-kong-text-primary">
-                    {preset.halvingBlocks === 0 ? "None" : preset.halvingBlocks.toLocaleString()}
-                  </p>
-                </div>
-                
-                <div>
-                  <div class="flex items-center gap-1 text-xs text-kong-text-secondary/70">
-                    <TrendingUp size={14} />
-                    Duration
-                  </div>
-                  <p class="mt-1 text-sm font-medium text-kong-accent-blue">
-                    {getEstimatedYears(preset)}
-                  </p>
-                </div>
-              </div>
-              
-              <div class="flex items-center justify-between mt-4 pt-3 border-t border-kong-border/10">
-                <span class="text-xs text-kong-text-secondary/70">
-                  ~{formatNumber(getEmissionsPerDay(preset))} daily output
-                </span>
-                <span class="px-2 py-0.5 text-xs rounded bg-kong-primary/10 text-kong-primary">
-                  Select
-                </span>
-              </div>
-            </button>
-          {/each}
-        </div>
-      </div>
-
       <!-- Additional Presets Sections -->
       <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
         <!-- Fast Mining -->
@@ -550,9 +500,9 @@
                 <div class="flex items-center justify-center flex-shrink-0 w-8 h-8 text-base font-bold transition-all duration-200 border rounded-lg bg-gradient-to-br from-kong-primary/5 to-kong-accent-green/5 border-kong-primary/10 text-kong-accent-green">
                   {preset.icon || preset.name[0]}
                 </div>
-                <div class="text-left overflow-hidden">
-                  <h5 class="text-sm font-medium text-kong-text-primary truncate">{preset.name}</h5>
-                  <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                <div class="overflow-hidden text-left">
+                  <h5 class="text-sm font-medium truncate text-kong-text-primary">{preset.name}</h5>
+                  <div class="flex flex-wrap mt-1 gap-x-4 gap-y-1">
                     <span class="text-xs text-kong-text-secondary/70">{preset.blockTimeSeconds}s blocks</span>
                     <span class="text-xs text-kong-accent-green">{preset.blockReward} rewards</span>
                   </div>
@@ -578,9 +528,9 @@
                 <div class="flex items-center justify-center flex-shrink-0 w-8 h-8 text-base font-bold transition-all duration-200 border rounded-lg bg-gradient-to-br from-kong-primary/5 to-kong-accent-blue/5 border-kong-primary/10 text-kong-primary">
                   {preset.icon || preset.name[0]}
                 </div>
-                <div class="text-left overflow-hidden">
-                  <h5 class="text-sm font-medium text-kong-text-primary truncate">{preset.name}</h5>
-                  <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                <div class="overflow-hidden text-left">
+                  <h5 class="text-sm font-medium truncate text-kong-text-primary">{preset.name}</h5>
+                  <div class="flex flex-wrap mt-1 gap-x-4 gap-y-1">
                     <span class="text-xs text-kong-text-secondary/70">{preset.blockTimeSeconds}s blocks</span>
                     <span class="text-xs text-kong-primary">{preset.blockReward} rewards</span>
                   </div>
@@ -606,9 +556,9 @@
                 <div class="flex items-center justify-center flex-shrink-0 w-8 h-8 text-base font-bold transition-all duration-200 border rounded-lg bg-gradient-to-br from-kong-accent-blue/5 to-kong-accent-red/5 border-kong-accent-red/10 text-kong-accent-red">
                   {preset.icon || preset.name[0]}
                 </div>
-                <div class="text-left overflow-hidden">
-                  <h5 class="text-sm font-medium text-kong-text-primary truncate">{preset.name}</h5>
-                  <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                <div class="overflow-hidden text-left">
+                  <h5 class="text-sm font-medium truncate text-kong-text-primary">{preset.name}</h5>
+                  <div class="flex flex-wrap mt-1 gap-x-4 gap-y-1">
                     <span class="text-xs text-kong-text-secondary/70">{preset.blockTimeSeconds}s blocks</span>
                     <span class="text-xs text-kong-accent-red">{preset.blockReward} rewards</span>
                   </div>
@@ -628,41 +578,41 @@
               on:click={continueWithSelectedPreset}
               class="px-4 py-2 text-sm font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-kong-primary to-kong-accent-blue hover:from-kong-primary/90 hover:to-kong-accent-blue/90"
             >
-              Continue with Selected Preset
+              Customize This Preset
             </button>
             <button
               on:click={switchToCustomView}
               class="flex items-center gap-1 px-3 py-2 text-sm transition-all duration-200 rounded-lg bg-kong-bg-dark/60 text-kong-text-primary hover:bg-kong-bg-dark/80"
             >
               <Settings size={16} />
-              <span>Custom</span>
+              <span>Create Custom</span>
             </button>
           </div>
         </div>
         
         <div class="grid grid-cols-2 gap-5 sm:grid-cols-4">
-          <div class="overflow-hidden rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border border-kong-border/20">
+          <div class="overflow-hidden border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
             <div class="px-3 py-2">
               <span class="text-xs font-medium text-kong-text-secondary/70">Block Reward</span>
               <div class="mt-1 text-lg font-bold text-kong-primary">{blockReward} <span class="text-xs text-kong-text-secondary/70">{tokenTicker || "tokens"}</span></div>
             </div>
           </div>
           
-          <div class="overflow-hidden rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border border-kong-border/20">
+          <div class="overflow-hidden border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
             <div class="px-3 py-2">
               <span class="text-xs font-medium text-kong-text-secondary/70">Block Time</span>
               <div class="mt-1 text-lg font-bold text-kong-accent-blue">{blockTimeSeconds} <span class="text-xs text-kong-text-secondary/70">seconds</span></div>
             </div>
           </div>
           
-          <div class="overflow-hidden rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border border-kong-border/20">
+          <div class="overflow-hidden border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
             <div class="px-3 py-2">
               <span class="text-xs font-medium text-kong-text-secondary/70">Halving Blocks</span>
               <div class="mt-1 text-lg font-bold text-kong-accent-green">{halvingBlocks ? halvingBlocks.toLocaleString() : "None"}</div>
             </div>
           </div>
           
-          <div class="overflow-hidden rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border border-kong-border/20">
+          <div class="overflow-hidden border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
             <div class="px-3 py-2">
               <span class="text-xs font-medium text-kong-text-secondary/70">Total Supply</span>
               <div class="mt-1 text-lg font-bold text-kong-text-primary">{formatNumber(maxSupply)} <span class="text-xs text-kong-text-secondary/70">{tokenTicker || "tokens"}</span></div>
@@ -671,7 +621,7 @@
         </div>
         
         <!-- Supply Progress Bar Preview -->
-        <div class="mt-6 px-4 pt-4 border-t border-kong-border/20">
+        <div class="px-4 pt-4 mt-6 border-t border-kong-border/20">
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium text-kong-text-primary">Estimated Timeline</span>
             <span class="text-xs text-kong-accent-blue">
@@ -697,7 +647,7 @@
     <!-- STEP 2: Custom Configuration View -->
     <!-- Mining Complete Banner -->
     {#if miningComplete}
-      <div class="p-4 mb-6 rounded-xl bg-gradient-to-br from-kong-accent-green/20 to-kong-bg-dark/50 border border-kong-accent-green/30">
+      <div class="p-4 mb-6 border rounded-xl bg-gradient-to-br from-kong-accent-green/20 to-kong-bg-dark/50 border-kong-accent-green/30">
         <div class="flex items-center gap-3">
           <div class="w-2 h-2 rounded-full bg-kong-accent-green animate-pulse"></div>
           <h4 class="text-lg font-medium text-kong-accent-green">Mining Complete</h4>
@@ -711,29 +661,6 @@
     <div class="grid gap-8 lg:grid-cols-2">
       <!-- Left Column - Inputs -->
       <div class="space-y-6">
-        <div class="p-4 rounded-xl bg-gradient-to-br from-kong-bg-dark/50 to-kong-bg-light/10 border border-kong-border/20">
-          <div class="flex items-center justify-between mb-3">
-            <h4 class="text-sm font-medium text-kong-text-primary/80">Mining Profile Presets</h4>
-            <span class="text-xs text-kong-accent-blue">One-click setup</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2 mb-4 sm:grid-cols-3">
-            {#each presets.slice(0, 6) as preset}
-              <button
-                on:click={() => applyPreset(preset)}
-                class="relative p-3 text-center transition-all duration-200 border rounded-lg group hover:scale-[1.02] bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 
-                       border-kong-border/30 hover:border-kong-primary/50 hover:shadow-glow"
-              >
-                <div class="absolute w-1.5 h-10 rounded-full bg-gradient-to-b from-kong-primary to-kong-accent-blue opacity-0 -left-1 top-1/2 -translate-y-1/2 group-hover:opacity-100 transition-opacity"></div>
-                <div class="text-sm font-medium text-transparent bg-gradient-to-r from-kong-primary to-kong-accent-blue bg-clip-text">
-                  {preset.name}
-                </div>
-                <div class="mt-1 text-xs text-kong-text-secondary/70">
-                  {preset.blockTimeSeconds}s blocks
-                </div>
-              </button>
-            {/each}
-          </div>
-        </div>
 
         <div class="space-y-4">
           <!-- Block Reward Input -->
@@ -765,7 +692,7 @@
                 step="1"
                 class="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-kong-bg-dark/70 accent-kong-primary"
               />
-              <div class="flex items-center justify-center w-20 h-8 ml-3 text-sm font-mono rounded bg-kong-bg-dark/70 text-kong-primary">
+              <div class="flex items-center justify-center w-20 h-8 ml-3 font-mono text-sm rounded bg-kong-bg-dark/70 text-kong-primary">
                 {blockReward}
               </div>
             </div>
@@ -925,11 +852,63 @@
               </div>
             </div>
           </div>
+
+          <!-- Supply Settings -->
+          <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-sm font-medium text-kong-text-primary/80">Total Supply</label>
+              <div class="flex items-center gap-2">
+                <button 
+                  on:click={() => {
+                    isDynamicSupply = true;
+                    calculateTotalSupply();
+                  }} 
+                  class={`px-2 py-0.5 text-xs rounded-lg transition-all duration-200 ${isDynamicSupply ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary hover:text-kong-text-primary'}`}
+                >
+                  Auto
+                </button>
+                <button 
+                  on:click={() => isDynamicSupply = false} 
+                  class={`px-2 py-0.5 text-xs rounded-lg transition-all duration-200 ${!isDynamicSupply ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary hover:text-kong-text-primary'}`}
+                >
+                  Custom
+                </button>
+              </div>
+            </div>
+            
+            <div class="relative mb-3">
+              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <svg class="w-5 h-5 text-kong-text-secondary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <input
+                type="number"
+                bind:value={maxSupply}
+                disabled={isDynamicSupply}
+                class="w-full py-3 pl-10 pr-4 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
+                min="1"
+                placeholder="e.g., 21000000"
+              />
+            </div>
+            
+            <div class="flex items-center justify-between text-xs text-kong-text-secondary/70">
+              {#if isDynamicSupply}
+                <div class="flex items-center gap-1.5">
+                  <div class="w-2 h-2 rounded-full bg-kong-accent-green animate-pulse"></div>
+                  <span>Auto-calculated from mining parameters</span>
+                </div>
+              {:else}
+                <div>Manually set supply</div>
+              {/if}
+              <span>{formatNumber(maxSupply)} {tokenTicker || "tokens"}</span>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Right Column - Visualizations -->
-      <div class="p-6 rounded-xl bg-gradient-to-br from-kong-bg-dark/50 to-kong-bg-light/10 border border-kong-border/20">
+      <div class="p-6 border rounded-xl bg-gradient-to-br from-kong-bg-dark/50 to-kong-bg-light/10 border-kong-border/20">
         <!-- Supply Overview with Token Preview -->
         <div class="mb-6">
           <div class="flex flex-wrap items-center gap-4 mb-5">
@@ -950,18 +929,18 @@
           </div>
           
           <!-- Interactive Supply Bar -->
-          <div class="overflow-hidden mb-6 border rounded-lg bg-gradient-to-r from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
+          <div class="mb-6 overflow-hidden border rounded-lg bg-gradient-to-r from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
             <div class="p-4">
               <div class="flex items-center justify-between">
                 <div>
                   <span class="text-xs font-medium uppercase text-kong-text-secondary/60">Total Supply</span>
-                  <div class="text-2xl font-mono font-bold text-kong-text-primary">
+                  <div class="font-mono text-2xl font-bold text-kong-text-primary">
                     {formatNumber(maxSupply)} <span class="text-sm text-kong-text-secondary">{tokenTicker}</span>
                   </div>
                 </div>
                 <div class="text-right">
                   <span class="text-xs font-medium uppercase text-kong-text-secondary/60">Mined</span>
-                  <div class="text-xl font-mono font-bold text-transparent bg-gradient-to-r from-kong-primary to-kong-accent-blue bg-clip-text">
+                  <div class="font-mono text-xl font-bold text-transparent bg-gradient-to-r from-kong-primary to-kong-accent-blue bg-clip-text">
                     {minedPercentage}%
                   </div>
                 </div>
@@ -993,7 +972,7 @@
           <!-- Mining Stats Cards -->
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <!-- Days to Mine -->
-            <div class="overflow-hidden rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border border-kong-border/20">
+            <div class="overflow-hidden border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
               <div class="px-3 py-2 text-center">
                 <span class="text-xs font-medium text-kong-text-secondary/70">Duration</span>
                 <div class="flex items-center justify-center gap-1 mt-1">
@@ -1008,7 +987,7 @@
             </div>
             
             <!-- Halvings -->
-            <div class="overflow-hidden rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border border-kong-border/20">
+            <div class="overflow-hidden border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
               <div class="px-3 py-2 text-center">
                 <span class="text-xs font-medium text-kong-text-secondary/70">Halvings</span>
                 <div class="flex items-center justify-center gap-1 mt-1">
@@ -1028,7 +1007,7 @@
             </div>
             
             <!-- Daily Output -->
-            <div class="overflow-hidden rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border border-kong-border/20">
+            <div class="overflow-hidden border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
               <div class="px-3 py-2 text-center">
                 <span class="text-xs font-medium text-kong-text-secondary/70">Daily Output</span>
                 <div class="flex items-center justify-center gap-1 mt-1">
@@ -1043,7 +1022,7 @@
             </div>
             
             <!-- Final Reward -->
-            <div class="overflow-hidden rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border border-kong-border/20">
+            <div class="overflow-hidden border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
               <div class="px-3 py-2 text-center">
                 <span class="text-xs font-medium text-kong-text-secondary/70">Final Reward</span>
                 <div class="flex items-center justify-center gap-1 mt-1">
@@ -1065,10 +1044,10 @@
             <div class="flex items-start gap-3">
               <AlertTriangle class="flex-shrink-0 w-5 h-5 mt-0.5 text-kong-accent-red animate-pulse" />
               <div>
-                {#if transferFeeLimitReached}
+                {#if transferFeeBaseUnits > 0 && transferFeeLimitReached}
                   <h4 class="text-sm font-medium text-kong-accent-red">Transfer Fee Limit Detected</h4>
                   <p class="mt-1 text-xs text-kong-text-secondary/80">
-                    Block rewards will become smaller than the transfer fee ({transferFee} {tokenTicker}) after {effectiveHalvingLimit} halvings, 
+                    Block rewards will become smaller than the transfer fee ({toTokenUnits(transferFeeBaseUnits).toFixed(decimals)} {tokenTicker}) after {effectiveHalvingLimit} halvings, 
                     potentially limiting mining to {minedPercentage}% of total supply. 
                     This means only {formatNumber(totalMined)} of {formatNumber(maxSupply)} {tokenTicker} will be economically minable.
                   </p>
@@ -1094,9 +1073,9 @@
                   >
                     Extend Halving Interval
                   </button>
-                  {#if transferFeeLimitReached}
+                  {#if transferFeeBaseUnits > 0 && transferFeeLimitReached}
                     <button
-                      on:click={() => transferFee = Math.max(0, Math.floor(transferFee / 2))}
+                      on:click={() => transferFee = Math.max(0, transferFee / 2)}
                       class="px-3 py-1.5 text-xs rounded-lg bg-kong-accent-red/10 hover:bg-kong-accent-red/20 
                              text-kong-accent-red transition-all duration-200 border border-kong-accent-red/20"
                     >
@@ -1155,7 +1134,7 @@
                       </span>
                     {/if}
                   </div>
-                  <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                  <div class="grid grid-cols-2 text-sm gap-x-6 gap-y-3">
                     <div class="flex items-center justify-between">
                       <span class="text-xs text-kong-text-secondary/80">Reward</span>
                       <span class="font-mono text-xs font-medium text-kong-primary">{formatNumber(period.reward)} {tokenTicker}</span>

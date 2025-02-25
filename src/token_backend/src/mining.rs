@@ -956,9 +956,6 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
         d.borrow_mut().set(new_difficulty).expect("Failed to update difficulty");
     });
     
-    // Calculate reward for this height
-    let block_reward = calculate_block_reward(height);
-    
     // Check if this will be the final block (next one would have zero reward)
     let next_reward = calculate_block_reward(height + 1);
     let is_final_block = next_reward == 0 || next_reward <= crate::TOKEN_INFO.with(|t| {

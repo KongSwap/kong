@@ -659,21 +659,6 @@ fn set_mining_speed(percentage: u8) -> Result<(), String> {
     })
 }
 
-// Keep transform_miner for testing but update it to work with new speed control
-#[ic_cdk::update]
-fn transform_miner(new_type: block_miner::MinerType) -> Result<(), String> {
-    caller_is_controller()?;
-    
-    BLOCK_MINER.with(|m| {
-        if let Some(miner) = m.borrow_mut().as_mut() {
-            miner.transform(new_type);
-            Ok(())
-        } else {
-            Err("Miner not initialized".to_string())
-        }
-    })
-}
-
 #[ic_cdk::update]
 fn set_template_refresh_interval(chunks: u64) -> Result<(), String> {
     caller_is_controller()?;

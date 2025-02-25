@@ -403,4 +403,86 @@ export class IcrcService {
     }
     return bytes;
   }
+
+  /**
+   * Creates a subaccount from a principal for CMC operations
+   * @param principal The principal to derive the subaccount from
+   * @returns A Uint8Array representing the subaccount (32 bytes)
+   */
+  private static createSubaccountFromPrincipal(principal: Principal): Uint8Array {
+    const principalBytes = principal.toUint8Array();
+    const subaccount = new Uint8Array(32);
+    subaccount.set(principalBytes, 0);
+    return subaccount;
+  }
+
+  /**
+   * Sends ICP to the Cycles Minting Canister (CMC) with a specific memo
+   * Used for canister creation and cycle top-up operations
+   * 
+   * @param amount The amount of ICP to send in E8s (1 ICP = 10^8 E8s)
+   * @param principal The principal that will control the created canister
+   * @param memo The memo to include in the transaction (default: CREATE_CANISTER memo)
+   * @returns A Promise with the transaction result
+   */
+  public static async transferIcpToCmc(
+    amount: bigint,
+    principal: Principal,
+    memo: bigint = 1095062083n // CREATE_CANISTER memo
+  ): Promise<Result<bigint>> {
+    try {
+      console.log(`[IcrcService][transferIcpToCmc] Starting transfer of ${amount} E8s to CMC`);
+      
+      // Constants
+      // TODO! make this not use "magic" canister ids
+      const CMC_CANISTER_ID = "rkp4c-7iaaa-aaaaa-aaaca-cai"; // Cycles Minting Canister ID
+      const ICP_LEDGER_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"; // ICP Ledger canister ID
+      const ICP_FEE = 10000n; // Standard ICP fee in E8s
+      
+      // Create subaccount from principal
+      const subaccount = Array.from(this.createSubaccountFromPrincipal(principal));
+      
+      // Convert memo to byte array
+      const memoArray = Array.from(
+        new Uint8Array(new BigUint64Array([memo]).buffer)
+      );
+      
+      console.log(`[IcrcService][transferIcpToCmc] Preparing transfer to CMC with memo ${memo}`);
+      console.log(`[IcrcService][transferIcpToCmc] Controller principal: ${principal.toText()}`);
+      
+      // Get ICP ledger actor
+      const ledgerActor = auth.getActor(
+        ICP_LEDGER_ID,
+        canisterIDLs.icrc1,
+        { anon: false, requiresSigning: true }
+      );
+      
+      // Prepare transfer arguments
+      const transferArgs = {
+        to: {
+          owner: Principal.fromText(CMC_CANISTER_ID),
+          subaccount: [subaccount]
+        },
+        amount,
+        fee: [ICP_FEE],
+        memo: [memoArray],
+        from_subaccount: [],
+        created_at_time: []
+      };
+      
+      console.log(`[IcrcService][transferIcpToCmc] Executing transfer to CMC`);
+      const result = await ledgerActor.icrc1_transfer(transferArgs);
+      
+      if ("Ok" in result) {
+        console.log(`[IcrcService][transferIcpToCmc] Transfer successful, block index: ${result.Ok}`);
+      } else {
+        console.error(`[IcrcService][transferIcpToCmc] Transfer failed:`, result.Err);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error("[IcrcService][transferIcpToCmc] Error sending ICP to CMC:", error);
+      return { Err: error };
+    }
+  }
 }

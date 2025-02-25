@@ -6,11 +6,12 @@ import BigNumber from "bignumber.js";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { swapStatusStore } from "./swapStore";
 import { auth, canisterIDLs } from "$lib/services/auth";
-import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { KONG_BACKEND_CANISTER_ID, KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { requireWalletConnection } from "$lib/services/auth";
 import { SwapMonitor } from "./SwapMonitor";
 import { userTokens } from "$lib/stores/userTokens";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
+import { getWalletIdentity } from "$lib/utils/wallet";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -490,5 +491,204 @@ export class SwapService {
     // Ensure that the max amount is not negative
     const maxAmount = balance.minus(gasFee);
     return BigNumber.maximum(maxAmount, new BigNumber(0));
+  }
+
+  /**
+   * Gets KONG to ICP swap quote
+   */
+  public static async getKongToIcpQuote(
+    kongAmountE8s: bigint,
+    kongDecimals: number,
+    icpDecimals: number,
+  ): Promise<{ receiveAmount: string; slippage: number }> {
+    try {
+      console.log("Getting KONG to ICP swap quote");
+      const actor = await auth.getActor(
+        KONG_BACKEND_CANISTER_ID,
+        canisterIDLs.kong_backend,
+        { anon: true }
+      );
+      
+      const quote = await actor.swap_amounts(
+        "KONG",
+        kongAmountE8s,
+        "ICP",
+      );
+
+      if ("Ok" in quote) {
+        return {
+          receiveAmount: this.fromBigInt(quote.Ok.receive_amount, icpDecimals),
+          slippage: quote.Ok.slippage,
+        };
+      }
+
+      throw new Error(quote.Err || "Failed to get swap quote");
+    } catch (error) {
+      console.error("Error getting KONG/ICP quote:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Executes KONG to ICP swap with proper approval
+   */
+  public static async swapKongToIcp(
+    kongAmountE8s: bigint,
+    maxSlippage: number = 2.0,
+  ): Promise<bigint> {
+    try {
+      console.log('[SwapService][swapKongToIcp] Starting swap with params:', {
+        kongAmount: kongAmountE8s.toString(),
+        maxSlippage
+      });
+
+      // Check if wallet is connected
+      requireWalletConnection();
+      
+      // Get current identity directly from PNP
+      const identity = getWalletIdentity(auth.pnp);
+      if (!identity) {
+        throw new Error('No identity found from wallet');
+      }
+      
+      console.log('[SwapService][swapKongToIcp] Got identity:', {
+        isAnonymous: identity.getPrincipal().isAnonymous(),
+        principal: identity.getPrincipal().toText()
+      });
+
+      // First get Kong actor to approve the swap
+      console.log('[SwapService][swapKongToIcp] Getting Kong actor...');
+      const kongActor = await auth.pnp.getActor(
+        KONG_CANISTER_ID,
+        canisterIDLs.icrc2,
+        { requiresSigning: true, anon: false }
+      );
+      
+      // Get name using anonymous actor for read operations
+      const anonKongActor = await auth.getActor(
+        KONG_CANISTER_ID,
+        canisterIDLs.icrc2,
+        { anon: true }
+      );
+      
+      console.log('[SwapService][swapKongToIcp] Kong actor obtained with identity');
+
+      // Check KONG balance before approval
+      try {
+        const balance = await anonKongActor.icrc1_balance_of({
+          owner: identity.getPrincipal(),
+          subaccount: []
+        });
+        console.log('[SwapService][swapKongToIcp] Current KONG balance:', {
+          balance: balance.toString(),
+          requiredAmount: kongAmountE8s.toString()
+        });
+      } catch (balanceError) {
+        console.error('[SwapService][swapKongToIcp] Failed to fetch KONG balance:', balanceError);
+      }
+
+      console.log('[SwapService][swapKongToIcp] Getting backend actor...');
+      const backendActor = await auth.pnp.getActor(
+        KONG_BACKEND_CANISTER_ID,
+        canisterIDLs.kong_backend,
+        { requiresSigning: true, anon: false }
+      );
+      
+      // Get backend principal directly from canister ID
+      console.log('[SwapService][swapKongToIcp] Creating backend principal from:', KONG_BACKEND_CANISTER_ID);
+      const backendPrincipal = Principal.fromText(KONG_BACKEND_CANISTER_ID);
+      
+      // Add 10% buffer to approval amount
+      const approveAmount = kongAmountE8s * BigInt(110) / BigInt(100);
+      console.log('[SwapService][swapKongToIcp] Calculated approval amount:', {
+        original: kongAmountE8s.toString(),
+        withBuffer: approveAmount.toString(),
+        bufferPercent: '10%'
+      });
+      
+      // Check current allowance before approval
+      try {
+        const currentAllowance = await anonKongActor.icrc2_allowance({
+          account: {
+            owner: identity.getPrincipal(),
+            subaccount: []
+          },
+          spender: {
+            owner: backendPrincipal,
+            subaccount: []
+          }
+        });
+        console.log('[SwapService][swapKongToIcp] Current allowance:', currentAllowance);
+      } catch (allowanceError) {
+        console.error('[SwapService][swapKongToIcp] Failed to fetch current allowance:', allowanceError);
+      }
+      
+      // Approve Kong backend to spend tokens
+      const approveArgs = {
+        spender: {
+          owner: backendPrincipal,
+          subaccount: [],
+        },
+        amount: approveAmount,
+        fee: [BigInt(10000)],
+        memo: [],
+        from_subaccount: [],
+        created_at_time: [],
+        expected_allowance: [],
+        expires_at: [],
+      };
+
+      console.log('[SwapService][swapKongToIcp] Calling icrc2_approve...');
+      const approveResult = await kongActor.icrc2_approve(approveArgs);
+      console.log('[SwapService][swapKongToIcp] Approve result:', approveResult);
+
+      if ("Err" in approveResult) {
+        console.error('[SwapService][swapKongToIcp] Approval failed:', {
+          error: approveResult.Err,
+          args: approveArgs,
+          identity: identity?.getPrincipal().toString(),
+          backendPrincipal: backendPrincipal.toString()
+        });
+        throw new Error(typeof approveResult.Err === 'string' ? approveResult.Err : 'Failed to approve Kong backend');
+      }
+
+      console.log('[SwapService][swapKongToIcp] Approval successful, constructing swap args...');
+
+      // Execute the swap
+      const swapArgs = {
+        pay_token: "KONG",
+        pay_amount: kongAmountE8s,
+        receive_token: "ICP",
+        receive_amount: [],
+        max_slippage: [maxSlippage],
+        receive_address: [],
+        referred_by: [],
+        pay_tx_id: [],
+      };
+
+      console.log('[SwapService][swapKongToIcp] Swap args:', JSON.stringify(swapArgs, (_, v) => 
+        typeof v === 'bigint' ? v.toString() : v
+      ));
+
+      console.log('[SwapService][swapKongToIcp] Executing swap...');
+      const result = await backendActor.swap(swapArgs);
+      console.log('[SwapService][swapKongToIcp] Swap result:', result);
+
+      if ("Ok" in result) {
+        console.log('[SwapService][swapKongToIcp] Swap successful, receive amount:', result.Ok.receive_amount.toString());
+        return result.Ok.receive_amount;
+      }
+
+      console.error('[SwapService][swapKongToIcp] Swap failed:', result.Err);
+      throw new Error(typeof result.Err === 'string' ? result.Err : 'Swap failed');
+    } catch (error) {
+      console.error("[SwapService][swapKongToIcp] Error executing KONG/ICP swap:", {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        type: error?.constructor?.name
+      });
+      throw error;
+    }
   }
 }

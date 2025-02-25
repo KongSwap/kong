@@ -17,8 +17,8 @@
   let name = "";
   let symbol = "";
   let decimals = 8;
-  let totalSupply = 1000000;
-  let transferFee = 0.0001; // Standard ICRC transfer fee (10,000 base units with 8 decimals)
+  let totalSupply = 1000000000;
+  let transferFee = 10000; // Standard ICRC transfer fee (10,000 base units with 8 decimals)
   let logo = "";
 
   // Mining parameters
@@ -116,12 +116,13 @@
       }
     }
     else if (currentStep === 2) {
-      // Mining sub-steps
-      if (miningSubStep < subSteps[currentStep]) {
-        miningSubStep++;
+      // For mining step, check button intent
+      if (miningSubStep === 1) {
+        // If on preset view, go to custom view
+        miningSubStep = 2;
       } else {
-        // Move to community step
-        currentStep++;
+        // If on custom view, always go to community step (step 3)
+        currentStep = 3;
       }
     } 
     else if (currentStep < 4) {
@@ -140,7 +141,8 @@
     else if (currentStep === 2) {
       // Mining sub-steps
       if (miningSubStep > 1) {
-        miningSubStep--;
+        // If on custom view, go back to preset view
+        miningSubStep = 1;
       } else {
         // Go back to token step (economics)
         currentStep--;
@@ -148,9 +150,9 @@
       }
     }
     else if (currentStep === 3) {
-      // Go back to mining step
+      // Go back to mining step - always go to custom view
       currentStep--;
-      miningSubStep = 2; // Set to last mining sub-step
+      miningSubStep = 2; // Set to custom mining
     }
     else if (currentStep > 1) {
       // For review, go back to community
@@ -170,6 +172,7 @@
 
     isSubmitting = true;
     try {
+      // Prepare the token initialization arguments
       const initArgs = {
         name,
         ticker: symbol,
@@ -182,12 +185,11 @@
         difficulty_adjustment_blocks: difficultyAdjustmentBlocks
       };
       
-      await new Promise(resolve => setTimeout(resolve, 1000)); // TODO: Replace with actual API call
-      console.log("Creating token with args:", initArgs);
-      goto("/launch");
+      // Navigate to the token launch page with the token parameters
+      const tokenParams = encodeURIComponent(JSON.stringify(initArgs));
+      goto(`/launch/deploy-token?params=${tokenParams}`);
     } catch (error) {
       console.error("Error creating token:", error);
-    } finally {
       isSubmitting = false;
     }
   }
@@ -223,407 +225,397 @@
   }
 </script>
 
-<div class="min-h-screen text-kong-text-primary">
-  <div class="container flex flex-col h-screen px-4 mx-auto">
-    <div class="grid h-full gap-6 lg:grid-cols-12">
-      <!-- Left sidebar with navigation -->
-      <div class="lg:col-span-3">
-        <div class="sticky flex flex-col gap-5 top-6">
-          <!-- Back button -->
+<div class="grid gap-6 lg:grid-cols-12 max-w-[1200px] mx-auto">
+  <!-- Left sidebar with navigation -->
+  <div class="lg:col-span-3">
+    <div class="sticky flex flex-col gap-5 top-6">
+      <!-- Back button -->
+      <button 
+        on:click={handleCancel}
+        class="flex items-center gap-2 px-3 py-2 transition-colors rounded-lg text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light/10"
+      >
+        <ArrowLeft size={18} />
+        <span>Back to Launch</span>
+      </button>
+      
+      <!-- Form navigation -->
+      <div class="transition-all duration-200 border rounded-xl bg-kong-bg-secondary/50 border-kong-border/30 backdrop-blur-sm">
+        <div class="space-y-3">
           <button 
-            on:click={handleCancel}
-            class="flex items-center gap-2 px-3 py-2 transition-colors rounded-lg text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light/10"
+            class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 1 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
+            on:click={() => currentStep = 1}
           >
-            <ArrowLeft size={18} />
-            <span>Back to Launch</span>
+            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-kong-primary text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
+              1
+            </div>
+            <div class="text-left">
+              <span class="block text-sm">Token Basics</span>
+              <span class="text-xs opacity-70">Name, symbol, supply</span>
+            </div>
           </button>
           
-          <!-- Form navigation -->
-          <div class="transition-all duration-200 border rounded-xl bg-kong-bg-secondary/50 border-kong-border/30 backdrop-blur-sm">
-            <div class="space-y-3">
+          <button 
+            class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 2 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
+            on:click={() => currentStep = 2}
+          >
+            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
+              2
+            </div>
+            <div class="text-left">
+              <span class="block text-sm">Mining Schedule</span>
+              <span class="text-xs opacity-70">Block rewards, timing</span>
+            </div>
+          </button>
+          
+          <button 
+            class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 3 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
+            on:click={() => currentStep = 3}
+          >
+            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-kong-accent-green text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
+              3
+            </div>
+            <div class="text-left">
+              <span class="block text-sm">Community</span>
+              <span class="text-xs opacity-70">Social links, channels</span>
+            </div>
+          </button>
+          
+          <button 
+            class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 4 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
+            on:click={() => currentStep = 4}
+          >
+            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 4 ? 'bg-gradient-to-br from-kong-accent-green to-kong-accent-blue text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
+              4
+            </div>
+            <div class="text-left">
+              <span class="block text-sm">Review & Launch</span>
+              <span class="text-xs opacity-70">Final verification</span>
+            </div>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Help card -->
+      <div class="p-5 transition-all duration-200 border rounded-xl bg-kong-bg-secondary/30 border-kong-border/30 backdrop-blur-sm">
+        <div class="flex items-start gap-3">
+          <div class="p-2 rounded-lg bg-kong-bg-light/10 text-kong-primary">
+            <HelpCircle size={18} />
+          </div>
+          <div>
+            <h3 class="mb-1 text-sm font-medium">Need Help?</h3>
+            <p class="text-xs text-kong-text-secondary">
+              Creating a token with the right parameters is important. Contact support for guidance.
+            </p>
+            <a href="https://www.youtube.com/watch?v=l60MnDJklnM" target="_blank" rel="noopener" class="inline-flex items-center gap-1 mt-3 text-xs text-kong-primary hover:underline">
+              <span>Read the docs</span>
+              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content area -->
+  <div class="pr-2 overflow-auto lg:col-span-9">
+    <div class="w-full">
+      <!-- Step 1: Token Basics -->
+      {#if currentStep === 1}
+        <div class="flex flex-col">
+          <div class="flex flex-col px-6 mb-2">
+            
+            <!-- Added clickable mini-step indicator for token setup with reduced bottom margin -->
+            <div class="flex items-center justify-between px-2 mb-1">
               <button 
-                class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 1 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
-                on:click={() => currentStep = 1}
+                on:click={() => setTokenSubStep(1)}
+                class={`flex flex-col items-center transition-all duration-200 ${tokenSubStep === 1 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
               >
-                <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-kong-primary text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
-                  1
-                </div>
-                <div class="text-left">
-                  <span class="block text-sm">Token Basics</span>
-                  <span class="text-xs opacity-70">Name, symbol, supply</span>
-                </div>
+                <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${tokenSubStep === 1 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>1A</div>
+                <span class="text-xs font-medium">Token Identity</span>
               </button>
               
-              <button 
-                class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 2 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
-                on:click={() => currentStep = 2}
-              >
-                <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
-                  2
-                </div>
-                <div class="text-left">
-                  <span class="block text-sm">Mining Schedule</span>
-                  <span class="text-xs opacity-70">Block rewards, timing</span>
-                </div>
-              </button>
+              <div class="h-0.5 flex-1 mx-2 bg-kong-border/30 relative">
+                <div class={`absolute top-0 left-0 h-full bg-kong-accent-blue transition-all duration-300 ${tokenSubStep > 1 ? 'w-full' : 'w-0'}`}></div>
+              </div>
               
               <button 
-                class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 3 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
-                on:click={() => currentStep = 3}
+                on:click={() => setTokenSubStep(2)}
+                class={`flex flex-col items-center transition-all duration-200 ${tokenSubStep === 2 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
               >
-                <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-kong-accent-green text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
-                  3
-                </div>
-                <div class="text-left">
-                  <span class="block text-sm">Community</span>
-                  <span class="text-xs opacity-70">Social links, channels</span>
-                </div>
-              </button>
-              
-              <button 
-                class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 4 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
-                on:click={() => currentStep = 4}
-              >
-                <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 4 ? 'bg-gradient-to-br from-kong-accent-green to-kong-accent-blue text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
-                  4
-                </div>
-                <div class="text-left">
-                  <span class="block text-sm">Review & Launch</span>
-                  <span class="text-xs opacity-70">Final verification</span>
-                </div>
+                <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${tokenSubStep === 2 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>1B</div>
+                <span class="text-xs font-medium">Token Economics</span>
               </button>
             </div>
           </div>
           
-          <!-- Help card -->
-          <div class="p-5 transition-all duration-200 border rounded-xl bg-kong-bg-secondary/30 border-kong-border/30 backdrop-blur-sm">
-            <div class="flex items-start gap-3">
-              <div class="p-2 rounded-lg bg-kong-bg-light/10 text-kong-primary">
-                <HelpCircle size={18} />
-              </div>
-              <div>
-                <h3 class="mb-1 text-sm font-medium">Need Help?</h3>
-                <p class="text-xs text-kong-text-secondary">
-                  Creating a token with the right parameters is important. Contact support for guidance.
-                </p>
-                <a href="https://docs.kong.land/tokens/create" target="_blank" rel="noopener" class="inline-flex items-center gap-1 mt-3 text-xs text-kong-primary hover:underline">
-                  <span>Read the docs</span>
-                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </div>
+          <!-- Reduced padding to match the mining section -->
+          <Panel variant="solid" type="main" className="p-4 backdrop-blur-xl">
+            {#if tokenSubStep === 1}
+              <!-- Token Identity Component -->
+              <TokenIdentity
+                bind:name
+                bind:symbol
+                bind:logo
+              />
+            {:else}
+              <!-- Token Economics Component -->
+              <TokenEconomics
+                bind:decimals
+                bind:transferFee
+                symbol={symbol}
+              />
+            {/if}
+          </Panel>
+          
+          <div class="flex justify-between mt-6">
+            <button on:click={handleCancel} class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-gray-500 hover:bg-kong-gray-600 flex items-center gap-2">
+              <ArrowLeft size="20" />
+              Cancel
+            </button>
+            
+            <div class="flex gap-3">
+              {#if tokenSubStep > 1}
+                <button on:click={prevStep} class="px-6 py-2.5 font-medium transition-colors rounded-lg border border-kong-border bg-transparent hover:bg-kong-bg-light/20 flex items-center gap-2">
+                  <ArrowLeft size="20" />
+                  Back to Identity
+                </button>
+              {/if}
+              
+              <button on:click={nextStep} class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2">
+                {#if tokenSubStep < subSteps[currentStep]}
+                  Continue to Economics
+                {:else}
+                  Continue to Mining
+                {/if}
+              </button>
             </div>
           </div>
         </div>
-      </div>
+        
+      <!-- Step 2: Mining Schedule -->
+      {:else if currentStep === 2}
+        <div class="flex flex-col">
+          <div class="flex flex-col px-6 mb-2">
 
-      <!-- Main content area -->
-      <div class="lg:col-span-9 overflow-auto min-h-[calc(100vh-3rem)] max-h-screen pr-2">
-        <div class="w-full max-w-5xl">
-          <!-- Step 1: Token Basics -->
-          {#if currentStep === 1}
-            <div class="flex flex-col">
-              <div class="flex flex-col px-6 mb-6">
-                <div class="mb-4 flex items-center justify-between">
-                  <h1 class="text-2xl font-bold">Step 1: Token Basics</h1>
-                  <div class="text-sm text-kong-text-secondary">Step {currentStep} of {totalSteps}</div>
-                </div>
-                
-                <!-- Added clickable mini-step indicator for token setup -->
-                <div class="flex items-center justify-between px-2 mb-6">
-                  <button 
-                    on:click={() => setTokenSubStep(1)}
-                    class={`flex flex-col items-center transition-all duration-200 ${tokenSubStep === 1 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
-                  >
-                    <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${tokenSubStep === 1 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>1A</div>
-                    <span class="text-xs font-medium">Token Identity</span>
-                  </button>
-                  
-                  <div class="h-0.5 flex-1 mx-2 bg-kong-border/30 relative">
-                    <div class={`absolute top-0 left-0 h-full bg-kong-accent-blue transition-all duration-300 ${tokenSubStep > 1 ? 'w-full' : 'w-0'}`}></div>
-                  </div>
-                  
-                  <button 
-                    on:click={() => setTokenSubStep(2)}
-                    class={`flex flex-col items-center transition-all duration-200 ${tokenSubStep === 2 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
-                  >
-                    <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${tokenSubStep === 2 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>1B</div>
-                    <span class="text-xs font-medium">Token Economics</span>
-                  </button>
-                </div>
+            <!-- Mining mini-step indicator with reduced bottom margin -->
+            <div class="flex items-center justify-between px-2 mb-1">
+              <button 
+                on:click={() => setMiningSubStep(1)}
+                class={`flex flex-col items-center transition-all duration-200 ${miningSubStep === 1 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
+              >
+                <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${miningSubStep === 1 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>2A</div>
+                <span class="text-xs font-medium">Select Preset</span>
+              </button>
+              
+              <div class="h-0.5 flex-1 mx-2 bg-kong-border/30 relative">
+                <div class={`absolute top-0 left-0 h-full bg-kong-accent-blue transition-all duration-300 ${miningSubStep > 1 ? 'w-full' : 'w-0'}`}></div>
               </div>
               
-              <Panel variant="solid" type="main" className="p-6 backdrop-blur-xl">
-                {#if tokenSubStep === 1}
-                  <!-- Token Identity Component -->
-                  <TokenIdentity
-                    bind:name
-                    bind:symbol
-                    bind:logo
-                  />
-                {:else}
-                  <!-- Token Economics Component -->
-                  <TokenEconomics
-                    bind:decimals
-                    bind:transferFee
-                    symbol={symbol}
-                  />
-                {/if}
-              </Panel>
-              
-              <div class="flex justify-between mt-6">
-                <button on:click={handleCancel} class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-gray-500 hover:bg-kong-gray-600 flex items-center gap-2">
-                  <ArrowLeft size="20" />
-                  Cancel
-                </button>
-                
-                <div class="flex gap-3">
-                  {#if tokenSubStep > 1}
-                    <button on:click={prevStep} class="px-6 py-2.5 font-medium transition-colors rounded-lg border border-kong-border bg-transparent hover:bg-kong-bg-light/20 flex items-center gap-2">
-                      <ArrowLeft size="20" />
-                      Back to Identity
-                    </button>
-                  {/if}
-                  
-                  <button on:click={nextStep} class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2">
-                    {#if tokenSubStep < subSteps[currentStep]}
-                      Continue to Economics
-                    {:else}
-                      Continue to Mining
-                    {/if}
-                  </button>
-                </div>
-              </div>
+              <button 
+                on:click={() => setMiningSubStep(2)}
+                class={`flex flex-col items-center transition-all duration-200 ${miningSubStep === 2 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
+              >
+                <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${miningSubStep === 2 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>2B</div>
+                <span class="text-xs font-medium">Customize</span>
+              </button>
             </div>
+          </div>
+          
+          <!-- Removed additional padding from the Panel component -->
+          <Panel variant="solid" type="main" className="p-4 backdrop-blur-xl">
+            <MiningCalculator
+              bind:blockReward={initialBlockReward}
+              bind:blockTimeSeconds={blockTimeTargetSeconds}
+              bind:halvingBlocks={difficultyAdjustmentBlocks}
+              bind:maxSupply={totalSupply}
+              bind:circulationDays
+              bind:totalMined
+              bind:minedPercentage
+              bind:miningComplete
+              bind:miningSubStep
+              tokenTicker={symbol}
+              tokenLogo={logo}
+              transferFee={transferFee}
+              decimals={decimals}
+              name={name}
+            />
+          </Panel>
+          
+          <div class="flex justify-between mt-6">
+            <button on:click={prevStep} class="px-6 py-2.5 font-medium transition-colors rounded-lg border border-kong-border bg-transparent hover:bg-kong-bg-light/20 flex items-center gap-2">
+              <ArrowLeft size="20" />
+              {#if miningSubStep > 1}
+                Back to Mining Presets
+              {:else}
+                Back to Token Economics
+              {/if}
+            </button>
             
-          <!-- Step 2: Mining Schedule -->
-          {:else if currentStep === 2}
-            <div class="flex flex-col">
-              <div class="flex flex-col px-6 mb-6">
-                <div class="mb-4 flex items-center justify-between">
-                  <h1 class="text-2xl font-bold">Step 2: Mining Schedule</h1>
-                  <div class="text-sm text-kong-text-secondary">Step {currentStep} of {totalSteps}</div>
-                </div>
-                
-                <!-- Mining mini-step indicator -->
-                <div class="flex items-center justify-between px-2 mb-6">
-                  <button 
-                    on:click={() => setMiningSubStep(1)}
-                    class={`flex flex-col items-center transition-all duration-200 ${miningSubStep === 1 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
-                  >
-                    <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${miningSubStep === 1 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>2A</div>
-                    <span class="text-xs font-medium">Presets</span>
-                  </button>
-                  
-                  <div class="h-0.5 flex-1 mx-2 bg-kong-border/30 relative">
-                    <div class={`absolute top-0 left-0 h-full bg-kong-accent-blue transition-all duration-300 ${miningSubStep > 1 ? 'w-full' : 'w-0'}`}></div>
-                  </div>
-                  
-                  <button 
-                    on:click={() => setMiningSubStep(2)}
-                    class={`flex flex-col items-center transition-all duration-200 ${miningSubStep === 2 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
-                  >
-                    <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${miningSubStep === 2 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>2B</div>
-                    <span class="text-xs font-medium">Custom</span>
-                  </button>
-                </div>
-              </div>
-              
-              <Panel variant="solid" type="main" className="p-6 backdrop-blur-xl">
-                <MiningCalculator
-                  bind:initialBlockReward
-                  bind:blockTimeTargetSeconds
-                  bind:difficultyAdjustmentBlocks
-                  bind:circulationDays
-                  bind:totalMined
-                  bind:minedPercentage
-                  bind:miningComplete
-                  bind:miningSubStep
-                  tokenTicker={symbol}
-                  tokenLogo={logo}
-                  tokenDecimals={decimals}
-                />
-              </Panel>
-              
-              <div class="flex justify-between mt-6">
-                <button on:click={prevStep} class="px-6 py-2.5 font-medium transition-colors rounded-lg border border-kong-border bg-transparent hover:bg-kong-bg-light/20 flex items-center gap-2">
-                  <ArrowLeft size="20" />
-                  {#if miningSubStep > 1}
-                    Back to Presets
-                  {:else}
-                    Back to Token Economics
-                  {/if}
-                </button>
-                
-                <button on:click={nextStep} class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2">
-                  {#if miningSubStep < subSteps[currentStep]}
-                    Continue to Custom
-                  {:else}
-                    Add Social Links
-                  {/if}
-                </button>
-              </div>
-            </div>
-
-          <!-- Step 3: Community -->
-          {:else if currentStep === 3}
-            <div class="flex flex-col">
-              <div class="flex flex-col px-6 mb-6">
-                <div class="mb-4 flex items-center justify-between">
-                  <h1 class="text-2xl font-bold">Step 3: Community Links</h1>
-                  <div class="text-sm text-kong-text-secondary">Step {currentStep} of {totalSteps}</div>
-                </div>
-              </div>
-              
-              <Panel variant="solid" type="main" className="p-6 backdrop-blur-xl">
-                <SocialLinks 
-                  bind:socialLinks
-                  tokenName={name}
-                  tokenSymbol={symbol}
-                />
-              </Panel>
-              
-              <div class="flex justify-between mt-6">
-                <button on:click={prevStep} class="px-6 py-2.5 font-medium transition-colors rounded-lg border border-kong-border bg-transparent hover:bg-kong-bg-light/20 flex items-center gap-2">
-                  <ArrowLeft size="20" />
-                  Back to Mining
-                </button>
-                
-                <button on:click={nextStep} class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2">
-                  Review & Complete
-                </button>
-              </div>
-            </div>
-
-          <!-- Step 4: Review -->
-          {:else if currentStep === 4}
-            <div class="flex flex-col">
-              <div class="flex flex-col px-6 mb-6">
-                <div class="mb-4 flex items-center justify-between">
-                  <h1 class="text-2xl font-bold">Step 4: Review & Create</h1>
-                  <div class="text-sm text-kong-text-secondary">Step {currentStep} of {totalSteps}</div>
-                </div>
-              </div>
-              
-              <Panel variant="solid" type="main" className="p-6 backdrop-blur-xl">
-                <div class="space-y-6">
-                  <div class="mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Token Summary</h2>
-                    <div class="grid grid-cols-2 gap-6">
-                      <!-- Token details -->
-                      <div class="bg-kong-bg-light/10 rounded-lg p-4 border border-kong-border/20">
-                        <h3 class="text-lg font-medium mb-3 text-kong-text-primary">Token Identity</h3>
-                        <div class="space-y-2">
-                          <div class="flex justify-between">
-                            <span class="text-kong-text-secondary">Name:</span>
-                            <span class="font-medium">{name || "Not set"}</span>
-                          </div>
-                          <div class="flex justify-between">
-                            <span class="text-kong-text-secondary">Symbol:</span>
-                            <span class="font-medium">{symbol || "Not set"}</span>
-                          </div>
-                          <div class="flex justify-between">
-                            <span class="text-kong-text-secondary">Logo:</span>
-                            <span class="font-medium">{logo ? "✓ Uploaded" : "✗ Not uploaded"}</span>
-                          </div>
-                        </div>
-                        <button on:click={() => { currentStep = 1; tokenSubStep = 1; }} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Token Identity</button>
-                      </div>
-                      
-                      <!-- Economics details -->
-                      <div class="bg-kong-bg-light/10 rounded-lg p-4 border border-kong-border/20">
-                        <h3 class="text-lg font-medium mb-3 text-kong-text-primary">Token Economics</h3>
-                        <div class="space-y-2">
-                          <div class="flex justify-between">
-                            <span class="text-kong-text-secondary">Decimals:</span>
-                            <span class="font-medium">{decimals}</span>
-                          </div>
-                          <div class="flex justify-between">
-                            <span class="text-kong-text-secondary">Transfer Fee:</span>
-                            <span class="font-medium">{transferFee} {symbol}</span>
-                          </div>
-                        </div>
-                        <button on:click={() => { currentStep = 1; tokenSubStep = 2; }} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Token Economics</button>
-                      </div>
-                      
-                      <!-- Mining details -->
-                      <div class="bg-kong-bg-light/10 rounded-lg p-4 border border-kong-border/20">
-                        <h3 class="text-lg font-medium mb-3 text-kong-text-primary">Mining Schedule</h3>
-                        <div class="space-y-2">
-                          <div class="flex justify-between">
-                            <span class="text-kong-text-secondary">Initial Block Reward:</span>
-                            <span class="font-medium">{initialBlockReward} {symbol}</span>
-                          </div>
-                          <div class="flex justify-between">
-                            <span class="text-kong-text-secondary">Block Time Target:</span>
-                            <span class="font-medium">{blockTimeTargetSeconds} seconds</span>
-                          </div>
-                          <div class="flex justify-between">
-                            <span class="text-kong-text-secondary">Difficulty Adjustment:</span>
-                            <span class="font-medium">Every {difficultyAdjustmentBlocks} blocks</span>
-                          </div>
-                        </div>
-                        <button on:click={() => { currentStep = 2; }} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Mining Schedule</button>
-                      </div>
-                      
-                      <!-- Social Links -->
-                      <div class="bg-kong-bg-light/10 rounded-lg p-4 border border-kong-border/20">
-                        <h3 class="text-lg font-medium mb-3 text-kong-text-primary">Community Links</h3>
-                        <div class="space-y-2">
-                          {#if socialLinks.length > 0}
-                            {#each socialLinks as link}
-                              <div class="flex justify-between">
-                                <span class="text-kong-text-secondary">{link.type}:</span>
-                                <span class="font-medium truncate max-w-[150px]">{link.url}</span>
-                              </div>
-                            {/each}
-                          {:else}
-                            <div class="text-kong-text-secondary text-center py-2">No social links added</div>
-                          {/if}
-                        </div>
-                        <button on:click={() => currentStep = 3} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Community Links</button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- User Agreement -->
-                  <div class="bg-kong-bg-light/10 rounded-lg p-4 border border-kong-border/20">
-                    <h3 class="text-lg font-medium mb-3 text-kong-text-primary">Terms & Conditions</h3>
-                    <div class="space-y-4">
-                      <div class="flex items-start gap-2">
-                        <input type="checkbox" id="agreement" class="mt-1" />
-                        <label for="agreement" class="text-sm text-kong-text-secondary">
-                          I understand that I am creating a new token on the Internet Computer blockchain. I have the right to create this token and understand that once created, certain parameters cannot be changed.
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Panel>
-              
-              <div class="flex justify-between mt-6">
-                <button on:click={prevStep} class="px-6 py-2.5 font-medium transition-colors rounded-lg border border-kong-border bg-transparent hover:bg-kong-bg-light/20 flex items-center gap-2">
-                  <ArrowLeft size="20" />
-                  Back to Community
-                </button>
-                
-                <button 
-                  on:click={handleSubmit} 
-                  class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
-                  disabled={isSubmitting || $errorStore.hasErrors}
-                >
-                  {#if isSubmitting}
-                    Creating...
-                  {:else}
-                    Create Token
-                  {/if}
-                </button>
-              </div>
-            </div>
-          {/if}
+            <button on:click={nextStep} class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2">
+              {#if miningSubStep === 1}
+                Customize Mining Parameters
+              {:else}
+                Continue to Community Links
+              {/if}
+              {#if miningSubStep === 2}
+                <span class="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded">Next: Step 3</span>
+              {/if}
+            </button>
+          </div>
         </div>
-      </div>
+
+      <!-- Step 3: Community -->
+      {:else if currentStep === 3}
+        <div class="flex flex-col">
+
+          <Panel variant="solid" type="main" className="p-4 backdrop-blur-xl">
+            <SocialLinks 
+              bind:socialLinks
+              tokenName={name}
+              tokenSymbol={symbol}
+            />
+          </Panel>
+          
+          <div class="flex justify-between mt-6">
+            <button on:click={prevStep} class="px-6 py-2.5 font-medium transition-colors rounded-lg border border-kong-border bg-transparent hover:bg-kong-bg-light/20 flex items-center gap-2">
+              <ArrowLeft size="20" />
+              Back to Mining
+            </button>
+            
+            <button on:click={nextStep} class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2">
+              Review & Complete
+            </button>
+          </div>
+        </div>
+
+      <!-- Step 4: Review -->
+      {:else if currentStep === 4}
+        <div class="flex flex-col">
+          <div class="flex flex-col px-6 mb-2">
+            <div class="flex items-center justify-between mb-2">
+              <h1 class="text-xl font-bold">Review & Create</h1>
+              <div class="text-sm text-kong-text-secondary">Step {currentStep} of {totalSteps}</div>
+            </div>
+          </div>
+          
+          <Panel variant="solid" type="main" className="p-4 backdrop-blur-xl">
+            <div class="space-y-6">
+              <div class="mb-6">
+                <h2 class="mb-4 text-lg font-semibold">Token Summary</h2>
+                <div class="grid grid-cols-2 gap-6">
+                  <!-- Token details -->
+                  <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
+                    <h3 class="mb-3 text-base font-medium text-kong-text-primary">Token Identity</h3>
+                    <div class="space-y-2">
+                      <div class="flex justify-between">
+                        <span class="text-kong-text-secondary">Name:</span>
+                        <span class="font-medium">{name || "Not set"}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-kong-text-secondary">Symbol:</span>
+                        <span class="font-medium">{symbol || "Not set"}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-kong-text-secondary">Logo:</span>
+                        <span class="font-medium">{logo ? "✓ Uploaded" : "✗ Not uploaded"}</span>
+                      </div>
+                    </div>
+                    <button on:click={() => { currentStep = 1; tokenSubStep = 1; }} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Token Identity</button>
+                  </div>
+                  
+                  <!-- Economics details -->
+                  <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
+                    <h3 class="mb-3 text-base font-medium text-kong-text-primary">Token Economics</h3>
+                    <div class="space-y-2">
+                      <div class="flex justify-between">
+                        <span class="text-kong-text-secondary">Decimals:</span>
+                        <span class="font-medium">{decimals}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-kong-text-secondary">Transfer Fee:</span>
+                        <span class="font-medium">{transferFee} {symbol}</span>
+                      </div>
+                    </div>
+                    <button on:click={() => { currentStep = 1; tokenSubStep = 2; }} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Token Economics</button>
+                  </div>
+                  
+                  <!-- Mining details -->
+                  <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
+                    <h3 class="mb-3 text-base font-medium text-kong-text-primary">Mining Schedule</h3>
+                    <div class="space-y-2">
+                      <div class="flex justify-between">
+                        <span class="text-kong-text-secondary">Initial Block Reward:</span>
+                        <span class="font-medium">{initialBlockReward} {symbol}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-kong-text-secondary">Block Time Target:</span>
+                        <span class="font-medium">{blockTimeTargetSeconds} seconds</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-kong-text-secondary">Difficulty Adjustment:</span>
+                        <span class="font-medium">Every {difficultyAdjustmentBlocks} blocks</span>
+                      </div>
+                    </div>
+                    <button on:click={() => { currentStep = 2; }} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Mining Schedule</button>
+                  </div>
+                  
+                  <!-- Social Links -->
+                  <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
+                    <h3 class="mb-3 text-base font-medium text-kong-text-primary">Community Links</h3>
+                    <div class="space-y-2">
+                      {#if socialLinks.length > 0}
+                        {#each socialLinks as link}
+                          <div class="flex justify-between">
+                            <span class="text-kong-text-secondary">{link.type}:</span>
+                            <span class="font-medium truncate max-w-[150px]">{link.url}</span>
+                          </div>
+                        {/each}
+                      {:else}
+                        <div class="py-2 text-center text-kong-text-secondary">No social links added</div>
+                      {/if}
+                    </div>
+                    <button on:click={() => currentStep = 3} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Community Links</button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- User Agreement -->
+              <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
+                <h3 class="mb-3 text-base font-medium text-kong-text-primary">Terms & Conditions</h3>
+                <div class="space-y-4">
+                  <div class="flex items-start gap-2">
+                    <input type="checkbox" id="agreement" class="mt-1" />
+                    <label for="agreement" class="text-sm text-kong-text-secondary">
+                      I understand that I am creating a new token on the Internet Computer blockchain. I have the right to create this token and understand that once created, certain parameters cannot be changed.
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Panel>
+          
+          <div class="flex justify-between mt-6">
+            <button on:click={prevStep} class="px-6 py-2.5 font-medium transition-colors rounded-lg border border-kong-border bg-transparent hover:bg-kong-bg-light/20 flex items-center gap-2">
+              <ArrowLeft size="20" />
+              Back to Community
+            </button>
+            
+            <button 
+              on:click={handleSubmit} 
+              class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+              disabled={isSubmitting || $errorStore.hasErrors}
+            >
+              {#if isSubmitting}
+                Creating...
+              {:else}
+                Create Token
+              {/if}
+            </button>
+          </div>
+        </div>
+      {/if}
     </div>
   </div>
 </div>

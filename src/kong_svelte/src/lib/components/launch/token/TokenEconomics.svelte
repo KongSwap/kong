@@ -5,7 +5,7 @@
   export let decimals: number = 8;
   // Ensure decimals is within valid range
   $: if (decimals < 6) decimals = 6;
-  $: if (decimals > 16) decimals = 16;
+  $: if (decimals > 18) decimals = 18;
   
   export let transferFee: number = 0; // Stored in base units (10^decimals)
   export let symbol: string = ""; // We need symbol from the TokenIdentity component for display
@@ -18,24 +18,34 @@
   $: {
     // Update human fee when base units change
     if (parseInt(baseFeeInput) !== transferFee) {
-      humanFee = (transferFee / 10 ** decimals).toFixed(decimals);
+      humanFee = (Math.max(0, transferFee) / 10 ** decimals).toFixed(decimals);
       baseFeeInput = transferFee.toString();
     }
   }
 
   function updateFromHuman() {
     const value = parseFloat(humanFee);
-    if (!isNaN(value)) {
+    if (!isNaN(value) && value >= 0) {
       transferFee = Math.round(value * 10 ** decimals);
       baseFeeInput = transferFee.toString();
+    } else {
+      // Handle invalid input - reset to 0
+      transferFee = 0;
+      humanFee = "0";
+      baseFeeInput = "0";
     }
   }
 
   function updateFromBase() {
     const value = parseInt(baseFeeInput);
-    if (!isNaN(value)) {
+    if (!isNaN(value) && value >= 0) {
       transferFee = value;
       humanFee = (value / 10 ** decimals).toFixed(decimals);
+    } else {
+      // Handle invalid input - reset to 0
+      transferFee = 0;
+      humanFee = "0";
+      baseFeeInput = "0";
     }
   }
 </script>
@@ -70,12 +80,6 @@
             class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === Math.round(0.0001 * 10 ** decimals) ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
             Common
-          </button>
-          <button 
-            on:click={() => { humanFee = (0.001).toFixed(3); updateFromHuman(); }} 
-            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === Math.round(0.001 * 10 ** decimals) ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
-          >
-            Standard
           </button>
           <button 
             on:click={() => { humanFee = (0.01).toFixed(2); updateFromHuman(); }} 
@@ -122,7 +126,7 @@
                 <div class="w-2 h-2 rounded-full bg-kong-primary animate-pulse"></div>
                 <span class="text-kong-primary">Common fee: {humanFee} {symbol || "TOKEN"}</span>
               </div>
-              <p class="text-kong-text-secondary/60">Standard fee used by Bitcoin and most ICRC tokens</p>
+              <p class="text-kong-text-secondary/60">Standard fee used by most ICRC tokens</p>
             {:else if parseFloat(humanFee) <= 0.001}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-primary animate-pulse"></div>
@@ -170,12 +174,6 @@
             on:click={() => { decimals = 8; }} 
             class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${decimals === 8 ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
-            Bitcoin (8)
-          </button>
-          <button 
-            on:click={() => { decimals = 8; }} 
-            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${decimals === 8 ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
-          >
             ICP/ICRC (8)
           </button>
           <button 
@@ -185,10 +183,10 @@
             USDC (6)
           </button>
           <button 
-            on:click={() => { decimals = 16; }} 
+            on:click={() => { decimals = 18; }} 
             class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${decimals === 16 ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
-            MAX (16)
+            MAX (18)
           </button>
         </div>
         
@@ -252,38 +250,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Advanced Options -->
-  <div class="pt-4 border-t border-kong-border/20">
-    <button 
-      class="flex items-center gap-2 px-4 py-2.5 transition-all duration-200 rounded-xl
-             bg-gradient-to-r from-kong-primary/90 to-kong-accent-blue/90 hover:from-kong-primary 
-             hover:to-kong-accent-blue hover:shadow-glow"
-      on:click={() => showAdvanced = true}
-    >
-      <Settings size={18} class="text-white/90" />
-      <span class="font-medium text-white/90 drop-shadow-sm">Advanced Configuration</span>
-    </button>
-  </div>
-
-  {#if showAdvanced}
-    <div class="p-6 mt-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
-      <!-- Placeholder for AdvancedOptions component - uncomment when component is available -->
-      <!-- <AdvancedOptions /> -->
-      <div class="p-4 text-center text-kong-text-secondary/60">
-        Advanced options are coming soon
-      </div>
-      
-      <button
-        class="w-full px-6 py-3 mt-6 font-medium text-white transition-all duration-300 rounded-xl 
-               bg-gradient-to-r from-kong-primary/90 to-kong-accent-blue/90 hover:from-kong-primary 
-               hover:to-kong-accent-blue hover:shadow-glow active:scale-[0.98]"
-        on:click={() => showAdvanced = false}
-      >
-        <span class="drop-shadow-sm">Save Advanced Settings</span>
-      </button>
-    </div>
-  {/if}
 </div>
 
 <style>
