@@ -7,6 +7,15 @@ pub fn create_message(content: String) -> Result<Message, String> {
     let caller = ic_cdk::api::caller();
     let current_time = time();
     
+    // Check if user is banned
+    if let Some(remaining_ban_seconds) = is_user_banned(&caller) {
+        return Err(format!(
+            "You are banned from posting for {} more {} until your ban expires.",
+            remaining_ban_seconds,
+            if remaining_ban_seconds == 1 { "second" } else { "seconds" }
+        ));
+    }
+    
     // Check if user is sending messages too quickly
     let can_send = LAST_MESSAGE_TIME.with(|last_time_map| {
         let mut map = last_time_map.borrow_mut();

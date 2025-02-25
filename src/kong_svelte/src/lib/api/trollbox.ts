@@ -5,6 +5,7 @@ import { auth } from "$lib/services/auth";
 import { Principal } from "@dfinity/principal";
 import * as tokensApi from "$lib/api/tokens";
 import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+import { get } from "svelte/store";
 
 export interface Message {
     id: bigint;
@@ -36,6 +37,11 @@ let tokenCache: Record<string, {
 }> = {};
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+// Cache for admin status check
+let isAdminCache: boolean | null = null;
+let isAdminCacheExpiry = 0;
+const ADMIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 async function processMessageTokens(message: Message): Promise<Message> {
     const tokenPattern = /#([a-z0-9-]+)/g;
@@ -170,4 +176,151 @@ function extractErrorMessage(error: any): string | null {
     }
     
     return null;
+}
+
+/**
+ * Check if the current authenticated user is an admin
+ */
+export async function isAdmin(): Promise<boolean> {
+    const now = Date.now();
+    
+    // Return cached result if available and not expired
+    if (isAdminCache !== null && now < isAdminCacheExpiry) {
+        return isAdminCache;
+    }
+    
+    // Need authentication to check admin status
+    const authState = get(auth);
+    if (!authState.isConnected) {
+        return false;
+    }
+    
+    try {
+        const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
+            anon: false,
+            requiresSigning: true,
+        });
+        
+        // Call a canister method to check if current principal is admin
+        // This assumes the canister has an is_admin method that returns a boolean
+        const result = await actor.is_admin(authState.account.owner);
+        
+        // Cache the result
+        isAdminCache = result;
+        isAdminCacheExpiry = now + ADMIN_CACHE_TTL;
+        
+        return result;
+    } catch (error) {
+        console.error('Error checking admin status:', error);
+        return false;
+    }
+}
+
+/**
+ * Delete a message (admin only)
+ */
+export async function deleteMessage(messageId: bigint): Promise<boolean> {
+    const authState = get(auth);
+    if (!authState.isConnected) {
+        throw new Error('Authentication required');
+    }
+    
+    try {
+        const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
+            anon: false,
+            requiresSigning: true,
+        });
+        
+        const result = await actor.delete_message(messageId);
+        
+        if ('Err' in result) {
+            throw new Error(result.Err);
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error deleting message:', error);
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error('Failed to delete message');
+    }
+}
+
+/**
+ * Ban a user for a specified number of days (admin only)
+ */
+export async function banUser(principal: Principal, days: bigint): Promise<boolean> {
+    const authState = get(auth);
+    if (!authState.isConnected) {
+        throw new Error('Authentication required');
+    }
+    
+    try {
+        const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
+            anon: false,
+            requiresSigning: true,
+        });
+        
+        const result = await actor.ban_user(principal, days);
+        
+        if ('Err' in result) {
+            throw new Error(result.Err);
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error banning user:', error);
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error('Failed to ban user');
+    }
+}
+
+/**
+ * Unban a user (admin only)
+ */
+export async function unbanUser(principal: Principal): Promise<boolean> {
+    const authState = get(auth);
+    if (!authState.isConnected) {
+        throw new Error('Authentication required');
+    }
+    
+    try {
+        const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
+            anon: false,
+            requiresSigning: true,
+        });
+        
+        const result = await actor.unban_user(principal);
+        
+        if ('Err' in result) {
+            throw new Error(result.Err);
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error unbanning user:', error);
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error('Failed to unban user');
+    }
+}
+
+/**
+ * Check if a user is banned and get the remaining time
+ */
+export async function checkBanStatus(principal: Principal): Promise<bigint | null> {
+    try {
+        const actor = createAnonymousActorHelper(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox);
+        const result = await actor.check_ban_status(principal);
+        
+        // Return null if not banned, or the remaining ban time in seconds
+        return result.length > 0 ? result[0] : null;
+    } catch (error) {
+        console.error('Error checking ban status:', error);
+        return null;
+    }
 }

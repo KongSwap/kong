@@ -57,7 +57,7 @@
   }
 
   function handlePortfolioClick() {
-    goto(`/wallet/${$auth?.account?.owner?.toString()}`);
+    goto(`/wallets/${$auth?.account?.owner?.toString()}`);
     sidebarStore.collapse();
   }
 

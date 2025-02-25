@@ -109,6 +109,48 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
   }
 };
 
+export const fetchPoolBalanceHistory = async (poolId: string | number): Promise<any> => {
+  try {
+    // Use the exact endpoint without any query parameters
+    const endpoint = `${API_URL}/api/pools/${poolId}/balance-history`;
+    console.log('Calling pool balance history endpoint:', endpoint);
+    
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      // Try to get more information about the error
+      let errorInfo = '';
+      try {
+        const errorData = await response.text();
+        errorInfo = errorData ? ` - ${errorData}` : '';
+      } catch (e) {
+        // Ignore error parsing error
+      }
+      
+      throw new Error(`Failed to fetch pool balance history: ${response.status} ${response.statusText}${errorInfo}`);
+    }
+    
+    const data = await response.json();
+    
+    // Log the first item to help debug
+    if (Array.isArray(data) && data.length > 0) {
+      console.log('Sample balance history item:', data[0]);
+    } else {
+      console.log('Empty or unexpected response format:', data);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching pool balance history:', error);
+    throw error;
+  }
+};
+
 export const fetchPoolTotals = async (): Promise<{total_volume_24h: number, total_tvl: number, total_fees_24h: number}> => {
   try {
     const response = await fetch(`${API_URL}/api/pools/totals`);

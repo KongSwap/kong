@@ -41,7 +41,7 @@
   <div class="flex flex-col space-y-2">
     {#each tabs as tab}
       <a
-        href="/wallet/{principal}{tab.path}"
+        href="/wallets/{principal}{tab.path}"
         data-sveltekit-prefetch
         class="flex items-center gap-3 p-2 rounded-lg transition-colors {isCurrentPath(tab.path)
           ? 'bg-kong-primary text-white'

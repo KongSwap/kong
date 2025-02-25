@@ -17,6 +17,7 @@
     Award,
     PiggyBank,
     TrendingUpDown,
+    Search,
   } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/services/tokens";
@@ -31,6 +32,7 @@
   import NavOption from "./NavOption.svelte";
   import MobileNavGroup from "./MobileNavGroup.svelte";
   import MobileMenuItem from "./MobileMenuItem.svelte";
+  import { searchStore } from "$lib/stores/searchStore";
 
   let showSettings = false;
   let isMobile = false;
@@ -38,7 +40,13 @@
   let navOpen = false;
   let closeTimeout: ReturnType<typeof setTimeout>;
   let activeDropdown: "swap" | "earn" | "stats" | null = null;
-  const tabs = ["swap", "predict", "earn", "stats"] as const;
+
+  // Filter tabs based on DFX_NETWORK
+  const allTabs = ["swap", "predict", "earn", "stats"] as const;
+  $: tabs =
+    process.env.DFX_NETWORK !== "ic"
+      ? allTabs
+      : allTabs.filter((tab) => tab !== "predict");
 
   const dataOptions = [
     {
@@ -53,13 +61,6 @@
       description: "Visualize token price changes with bubbles",
       path: "/stats/bubbles",
       icon: ChartScatter,
-      comingSoon: false,
-    },
-    {
-      label: "My Portfolio",
-      description: "View your portfolio distribution",
-      path: "/portfolio",
-      icon: Wallet,
       comingSoon: false,
     },
   ];
@@ -184,6 +185,10 @@
       textElement.style.display = "block";
     }
   }
+
+  function handleOpenSearch() {
+    searchStore.open();
+  }
 </script>
 
 <div class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
@@ -302,6 +307,16 @@
           <SettingsIcon size={18} />
         </button>
 
+        {#if process.env.DFX_NETWORK !== "ic"}
+          <button
+            class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
+            on:click={handleOpenSearch}
+            use:tooltip={{ text: "Search", direction: "bottom" }}
+          >
+            <Search size={18} />
+          </button>
+        {/if}
+
         {#if $auth.isConnected}
           {#if process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging"}
             <button
@@ -389,21 +404,23 @@
             onClose={() => (navOpen = false)}
           />
 
-          <MobileNavGroup
-            title="PREDICT"
-            options={[
-              {
-                label: "Prediction Markets",
-                description: "Trade on future outcomes",
-                path: "/predict",
-                icon: TrendingUpDown,
-                comingSoon: false,
-              },
-            ]}
-            {activeTab}
-            {onTabChange}
-            onClose={() => (navOpen = false)}
-          />
+          {#if process.env.DFX_NETWORK === "ic"}
+            <MobileNavGroup
+              title="PREDICT"
+              options={[
+                {
+                  label: "Prediction Markets",
+                  description: "Trade on future outcomes",
+                  path: "/predict",
+                  icon: TrendingUpDown,
+                  comingSoon: false,
+                },
+              ]}
+              {activeTab}
+              {onTabChange}
+              onClose={() => (navOpen = false)}
+            />
+          {/if}
         </div>
 
         <div class="mobile-nav-section">
@@ -417,6 +434,18 @@
             }}
             iconBackground="bg-kong-text-primary/10"
           />
+
+          {#if process.env.DFX_NETWORK !== "ic"}
+            <MobileMenuItem
+              label="Search"
+              icon={Search}
+              onClick={() => {
+                handleOpenSearch();
+                navOpen = false;
+              }}
+              iconBackground="bg-kong-text-primary/10"
+            />
+          {/if}
 
           {#if $auth.isConnected}
             {#if process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging"}

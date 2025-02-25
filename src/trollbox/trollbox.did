@@ -52,20 +52,24 @@ type Message = record {
 };
 type MessagesPage = record { messages : vec Message; next_cursor : opt nat64 };
 type PaginationParams = record { cursor : opt nat64; limit : opt nat64 };
-type Result = variant { Ok : Message; Err : text };
-type Result_1 = variant { Ok : ConsentInfo; Err : ErrorInfo };
-type Result_2 = variant { Ok : DelegationResponse; Err : DelegationError };
-type Result_3 = variant { Ok; Err : DelegationError };
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : Message; Err : text };
+type Result_2 = variant { Ok : ConsentInfo; Err : ErrorInfo };
+type Result_3 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_4 = variant { Ok; Err : DelegationError };
 type RevokeDelegationRequest = record { targets : vec principal };
 service : () -> {
-  create_message : (text) -> (Result);
+  add_admin : (principal) -> (Result);
+  create_message : (text) -> (Result_1);
+  delete_message : (nat64) -> (Result);
   get_message : (nat64) -> (opt Message) query;
   get_messages : (opt PaginationParams) -> (MessagesPage) query;
   icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
-      Result_1,
+      Result_2,
     ) query;
   icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
-  icrc_34_delegate : (DelegationRequest) -> (Result_2);
-  icrc_34_get_delegation : (DelegationRequest) -> (Result_2) query;
-  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_3);
+  icrc_34_delegate : (DelegationRequest) -> (Result_3);
+  icrc_34_get_delegation : (DelegationRequest) -> (Result_3) query;
+  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_4);
+  is_admin : (principal) -> (bool) query;
 }

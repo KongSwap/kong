@@ -65,30 +65,35 @@ export interface PaginationParams {
   'cursor' : [] | [bigint],
   'limit' : [] | [bigint],
 }
-export type Result = { 'Ok' : Message } |
+export type Result = { 'Ok' : null } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : ConsentInfo } |
+export type Result_1 = { 'Ok' : Message } |
+  { 'Err' : string };
+export type Result_2 = { 'Ok' : ConsentInfo } |
   { 'Err' : ErrorInfo };
-export type Result_2 = { 'Ok' : DelegationResponse } |
+export type Result_3 = { 'Ok' : DelegationResponse } |
   { 'Err' : DelegationError };
-export type Result_3 = { 'Ok' : null } |
+export type Result_4 = { 'Ok' : null } |
   { 'Err' : DelegationError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
 export interface _SERVICE {
-  'create_message' : ActorMethod<[string], Result>,
+  'add_admin' : ActorMethod<[Principal], Result>,
+  'create_message' : ActorMethod<[string], Result_1>,
+  'delete_message' : ActorMethod<[bigint], Result>,
   'get_message' : ActorMethod<[bigint], [] | [Message]>,
   'get_messages' : ActorMethod<[[] | [PaginationParams]], MessagesPage>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],
-    Result_1
+    Result_2
   >,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
-  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_2>,
-  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_2>,
+  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_3>,
+  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_3>,
   'icrc_34_revoke_delegation' : ActorMethod<
     [RevokeDelegationRequest],
-    Result_3
+    Result_4
   >,
+  'is_admin' : ActorMethod<[Principal], boolean>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

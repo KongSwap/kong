@@ -27,7 +27,7 @@
     
     isSearching = true;
     try {
-      await goto(`/wallet/${searchInput.trim()}`);
+      await goto(`/wallets/${searchInput.trim()}`);
       showSearchDialog = false;
       searchInput = '';
     } finally {

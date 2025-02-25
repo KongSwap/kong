@@ -18,7 +18,7 @@ function createWalletNavigationStore() {
       const tab = tabs.find(t => t.id === tabId);
       if (tab) {
         set(tabId);
-        goto(`/wallet/${principal}/${tab.path}`);
+        goto(`/wallets/${principal}/${tab.path}`);
       }
     },
     setTab: (tabId: string) => set(tabId)
