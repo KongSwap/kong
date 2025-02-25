@@ -19,9 +19,10 @@
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
   import { goto } from "$app/navigation";
+  import { userPoolListStore } from "$lib/stores/userPoolListStore";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "history";
@@ -36,14 +37,39 @@
     { id: "history", icon: History },
   ];
 
+  // Initialize both token and pool data when component mounts
+  onMount(async () => {
+    if ($auth.isConnected) {
+      isRefreshing = true;
+      try {
+        const currentWalletId = $auth?.account?.owner?.toString();
+        if (currentWalletId) {
+          // Load both tokens and pools in parallel on first load
+          await Promise.all([
+            loadBalances(currentWalletId, { forceRefresh: true }),
+            userPoolListStore.initialize()
+          ]);
+        }
+      } finally {
+        isRefreshing = false;
+      }
+    }
+  });
+
   async function handleReload(isPolling = false) {
     if (!isRefreshing) {
       isRefreshing = isPolling === true ? false : true;
       try {
         const currentWalletId = $auth?.account?.owner?.toString();
         if (currentWalletId) {
-          // Load balances and update stores
-          await loadBalances(currentWalletId, { forceRefresh: true });
+          // Load balances and pool data in parallel
+          await Promise.all([
+            // Load balances and update stores
+            loadBalances(currentWalletId, { forceRefresh: true }),
+            
+            // Initialize pool data to ensure portfolio value is accurate
+            userPoolListStore.initialize()
+          ]);
         }
       } finally {
         isRefreshing = false;
