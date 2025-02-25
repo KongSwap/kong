@@ -9,6 +9,12 @@ fn caller_is_admin() -> bool {
     })
 }
 
+/// Check if the caller is a controller of the canister
+fn caller_is_controller() -> bool {
+    let caller_principal = caller();
+    ic_cdk::api::is_controller(&caller_principal)
+}
+
 /// Check if a specific principal is an admin
 #[ic_cdk::query]
 pub fn is_admin(principal: String) -> bool {
@@ -48,8 +54,9 @@ pub fn init_admin() {
 /// Allows admins to add new admins
 #[ic_cdk::update]
 pub fn add_admin(principal: String) -> Result<(), String> {
-    if !caller_is_admin() {
-        return Err("Unauthorized: Only admins can add new admins".to_string());
+    // Check if caller is an admin or the controller
+    if !caller_is_admin() && !caller_is_controller() {
+        return Err("Unauthorized: Only admins or controllers can add new admins".to_string());
     }
     
     ADMINS.with(|admins| {

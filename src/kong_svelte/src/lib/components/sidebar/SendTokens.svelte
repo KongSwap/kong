@@ -7,12 +7,12 @@
   import BigNumber from "bignumber.js";
   import QrScanner from "$lib/components/common/QrScanner.svelte";
   import { onMount } from "svelte";
-  import { Clipboard } from "lucide-svelte";
-  import { Camera } from "lucide-svelte";
+  import { Clipboard, Camera, ArrowRight, Info, X, Check } from "lucide-svelte";
   import { AccountIdentifier } from "@dfinity/ledger-icp";
   import { SubAccount } from "@dfinity/ledger-icp";
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
+  import { fly, fade } from 'svelte/transition';
 
   export let token: FE.Token;
 
@@ -479,32 +479,59 @@
     }
     return "";
   }
+
+  function getFeeDisplay() {
+    if (!tokenFee) return "Loading...";
+    return `${new BigNumber(tokenFee.toString()).dividedBy(new BigNumber(10).pow(token.decimals))} ${token.symbol}`;
+  }
 </script>
 
-<div class="container pb-6 px-4">
+<div class="container pb-6 px-4" in:fade={{ duration: 200 }}>
   <form on:submit|preventDefault={handleSubmit}>
-    <div class="id-card mt-2">
-      <div class="id-header">
-        <span>Recipient Address</span>
+    <!-- Token Info Banner -->
+    <div class="token-info-banner">
+      <div class="token-logo">
+        <img src={token.logo_url} alt={token.symbol} width="32" height="32" />
+      </div>
+      <div class="token-details">
+        <span class="token-name">{token.name}</span>
+        <span class="token-balance">
+          Balance: {formatBalance(
+            selectedAccount === "main"
+              ? balances.default.toString()
+              : (balances.subaccount?.toString() ?? "0"),
+            token.decimals,
+          )}
+          {token.symbol}
+        </span>
+      </div>
+    </div>
+
+    <!-- Recipient Address Section -->
+    <div class="card-section">
+      <div class="section-header">
+        <span class="section-title">Recipient Address</span>
         <div class="header-actions">
+          {#if hasCamera}
+            <button
+              type="button"
+              class="action-button"
+              on:click={() => (showScanner = true)}
+              title="Scan QR Code"
+            >
+              <Camera class="w-4 h-4" />
+              <span class="button-text">Scan QR</span>
+            </button>
+          {/if}
           <button
             type="button"
-            class="utility-button"
-            on:click={() => (showScanner = true)}
-            title="Scan QR Code"
-          >
-            <Camera class="w-4 h-4" />
-            <span class="button-text text-nowrap">Scan QR</span>
-          </button>
-          <button
-            type="button"
-            class="utility-button"
+            class="action-button"
             on:click={recipientAddress
               ? () => (recipientAddress = "")
               : handlePaste}
           >
             {#if recipientAddress}
-              ✕
+              <X class="w-4 h-4" />
               <span class="button-text">Clear</span>
             {:else}
               <Clipboard class="w-4 h-4" />
@@ -520,7 +547,7 @@
             bind:value={recipientAddress}
             placeholder="Paste address or enter manually"
             class:error={errorMessage && recipientAddress}
-            class:valid={addressType === "principal" && !errorMessage}
+            class:valid={addressType !== null && !errorMessage}
           />
         </div>
 
@@ -529,16 +556,27 @@
             class="validation-status"
             class:success={validationMessage.type === "success"}
             class:error={validationMessage.type === "error"}
+            in:fly={{ y: -10, duration: 150 }}
           >
+            <span class="status-icon">
+              {#if validationMessage.type === "success"}
+                <Check size={14} />
+              {:else if validationMessage.type === "error"}
+                <X size={14} />
+              {:else}
+                <Info size={14} />
+              {/if}
+            </span>
             <span class="status-text">{validationMessage.text}</span>
           </div>
         {/if}
       </div>
     </div>
 
-    <div class="id-card mt-4">
-      <div class="id-header">
-        <span>Amount</span>
+    <!-- Amount Section -->
+    <div class="card-section">
+      <div class="section-header">
+        <span class="section-title">Amount</span>
         <div class="header-actions">
           {#if token.symbol === "ICP" && balances.subaccount && balances.subaccount > BigInt(0)}
             <div class="account-tabs">
@@ -560,9 +598,9 @@
               </button>
             </div>
           {/if}
-          <button type="button" class="utility-button" on:click={setMaxAmount}
-            >Max</button
-          >
+          <button type="button" class="action-button" on:click={setMaxAmount}>
+            Max
+          </button>
         </div>
       </div>
 
@@ -578,17 +616,45 @@
               errorMessage.includes("Amount")}
           />
           <div class="balance-display">
-            Balance: {formatBalance(
-              selectedAccount === "main"
-                ? balances.default.toString()
-                : (balances.subaccount?.toString() ?? "0"),
-              token.decimals,
-            )}
-            {token.symbol}
+            <div class="balance-info">
+              <span>Available:</span>
+              <span class="balance-value">{formatBalance(
+                selectedAccount === "main"
+                  ? balances.default.toString()
+                  : (balances.subaccount?.toString() ?? "0"),
+                token.decimals,
+              )}
+              {token.symbol}</span>
+            </div>
+            <div class="fee-info">
+              <span>Network Fee:</span>
+              <span class="fee-value">{getFeeDisplay()}</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Summary Section (only shows when form is valid) -->
+    {#if isFormValid}
+      <div class="summary-section" in:fly={{ y: 20, duration: 200 }}>
+        <div class="summary-header">Transaction Summary</div>
+        <div class="summary-content">
+          <div class="summary-row">
+            <span>Sending</span>
+            <span class="summary-value">{amount} {token.symbol}</span>
+          </div>
+          <div class="summary-row">
+            <span>To</span>
+            <span class="summary-value address-truncate">{recipientAddress}</span>
+          </div>
+          <div class="summary-row">
+            <span>Fee</span>
+            <span class="summary-value">{getFeeDisplay()}</span>
+          </div>
+        </div>
+      </div>
+    {/if}
 
     <button
       type="submit"
@@ -602,7 +668,13 @@
         background: errorMessage ? "bg-kong-accent-red" : "bg-kong-bg-dark"
       }}
     >
-      {isValidating ? "Processing..." : "Send Tokens"}
+      {#if isValidating}
+        <div class="spinner"></div>
+        Processing...
+      {:else}
+        <ArrowRight class="w-5 h-5 mr-2" />
+        Send {token.symbol}
+      {/if}
     </button>
   </form>
 
@@ -615,67 +687,196 @@
   {/if}
 </div>
 
-<style scoped lang="postcss">
+<style lang="postcss">
   .container {
-    @apply flex flex-col gap-6;
+    @apply flex flex-col gap-3 sm:gap-4;
   }
 
-  .id-card {
-    @apply flex flex-col gap-2;
+  .token-info-banner {
+    @apply flex items-center gap-2 p-2.5 mb-2 rounded-lg
+           bg-kong-surface-dark border border-kong-border/30
+           transition-all duration-200
+           sm:gap-3 sm:p-3;
   }
 
-  .id-header {
-    @apply flex justify-between items-center text-kong-text-primary/70 text-sm;
+  .token-logo {
+    @apply flex-shrink-0 rounded-full overflow-hidden
+           bg-kong-bg-light p-1 border border-kong-border/20;
+  }
+
+  .token-logo img {
+    @apply w-7 h-7 rounded-full object-contain
+           sm:w-8 sm:h-8;
+  }
+
+  .token-details {
+    @apply flex flex-col;
+  }
+
+  .token-name {
+    @apply text-kong-text-primary font-medium;
+  }
+
+  .token-balance {
+    @apply text-sm text-kong-text-secondary;
+  }
+
+  .card-section {
+    @apply flex flex-col gap-2 mb-3 
+           bg-kong-surface-dark/50 rounded-lg p-3
+           border border-kong-border/20
+           transition-all duration-200
+           sm:mb-4 sm:p-4;
+  }
+
+  .section-header {
+    @apply flex justify-between items-center mb-1;
+  }
+
+  .section-title {
+    @apply text-kong-text-primary/90 text-sm font-medium;
   }
 
   .header-actions {
     @apply flex items-center gap-2;
   }
 
-  .utility-button {
-    @apply px-3 rounded-lg py-0.5 
-             hover:border-kong-border/20 hover:bg-kong-bg-light
-             text-kong-text-primary/70 hover:text-kong-text-primary
-             transition-all duration-200
-             flex items-center justify-center gap-2;
+  .action-button {
+    @apply px-3 rounded-lg py-1.5
+           bg-kong-bg-light/50 border border-kong-border/10
+           hover:bg-kong-bg-light hover:border-kong-border/30
+           text-kong-text-primary/80 hover:text-kong-text-primary
+           transition-all duration-200
+           flex items-center justify-center gap-2;
 
     .button-text {
-      @apply hidden md:inline;
+      @apply hidden md:inline text-sm;
     }
 
     &:active {
-      @apply border-kong-primary bg-kong-primary/20;
+      @apply border-kong-primary bg-kong-primary/10 scale-98;
     }
   }
 
+  .input-wrapper {
+    @apply relative w-full;
+  }
+
   .input-wrapper input {
-    @apply w-full h-11 rounded-lg text-kong-text-primary px-4
-             bg-kong-bg-light backdrop-blur-sm
-             border border-kong-border 
-             hover:border-kong-border
-             focus:border-kong-primary focus:outline-none
-             transition-colors;
+    @apply w-full h-10 rounded-lg text-kong-text-primary px-3
+           bg-kong-bg-light/70 backdrop-blur-sm
+           border border-kong-border/50
+           hover:border-kong-border
+           focus:border-kong-primary focus:outline-none
+           focus:ring-1 focus:ring-kong-primary/20
+           transition-all duration-200
+           sm:h-12 sm:px-4;
 
     &::placeholder {
       @apply text-kong-text-primary/30;
     }
 
     &.error {
-      @apply border-kong-accent-red/50 bg-kong-accent-red/5;
+      @apply border-kong-accent-red/70 bg-kong-accent-red/5
+             focus:ring-kong-accent-red/20;
     }
 
     &.valid {
-      @apply border-kong-accent-green/50 bg-kong-accent-green/5;
+      @apply border-kong-accent-green/50 bg-kong-accent-green/5
+             focus:ring-kong-accent-green/20;
     }
   }
 
+  .validation-status {
+    @apply flex items-center gap-1.5 text-xs mt-1.5 px-1
+           sm:text-sm sm:mt-2;
+    
+    .status-icon {
+      @apply flex items-center justify-center;
+    }
+    
+    &.success {
+      @apply text-kong-text-accent-green;
+    }
+    
+    &.error {
+      @apply text-kong-accent-red;
+    }
+  }
+
+  .account-tabs {
+    @apply flex gap-1 mr-2;
+  }
+
+  .tab-button {
+    @apply px-2.5 py-1 rounded-lg text-xs
+           bg-kong-bg-light/50 backdrop-blur-sm
+           border border-kong-border/20
+           text-kong-text-primary/70
+           transition-all duration-200
+           sm:px-3 sm:py-1.5 sm:text-sm;
+
+    &.active {
+      @apply bg-kong-primary/20 border-kong-primary/50 text-kong-text-primary;
+    }
+  }
+
+  .balance-display {
+    @apply flex flex-col gap-1 text-xs mt-2 px-1
+           sm:text-sm sm:mt-3;
+  }
+
+  .balance-info, .fee-info {
+    @apply flex justify-between items-center;
+  }
+
+  .balance-value {
+    @apply text-kong-text-primary/90 font-medium;
+  }
+
+  .fee-value {
+    @apply text-kong-text-secondary;
+  }
+
+  .summary-section {
+    @apply bg-kong-primary/10 rounded-lg p-3 mb-3
+           border border-kong-primary/20
+           sm:p-4 sm:mb-4;
+  }
+
+  .summary-header {
+    @apply text-xs font-medium text-kong-text-primary mb-2
+           sm:text-sm sm:mb-3;
+  }
+
+  .summary-content {
+    @apply flex flex-col gap-1.5
+           sm:gap-2;
+  }
+
+  .summary-row {
+    @apply flex justify-between items-center text-xs
+           sm:text-sm;
+  }
+
+  .summary-value {
+    @apply text-kong-text-primary font-medium;
+  }
+
+  .address-truncate {
+    @apply truncate max-w-[200px];
+  }
+
   .send-btn {
-    @apply h-12 w-full rounded-lg font-medium mt-4
-           transition-all duration-200;
+    @apply h-10 w-full rounded-lg font-medium
+           flex items-center justify-center gap-1
+           transition-all duration-200
+           sm:h-12;
 
     &:not(.disabled):not(.error) {
       @apply bg-kong-primary text-white 
-             hover:bg-kong-accent-green;
+             hover:bg-kong-primary-hover
+             active:scale-98;
     }
 
     &.disabled {
@@ -689,33 +890,14 @@
     }
   }
 
-  .validation-status {
-    @apply text-sm mt-1 px-1;
-    &.success {
-      @apply text-kong-text-accent-green;
-    }
-    &.error {
-      @apply text-kong-accent-red;
-    }
+  .spinner {
+    @apply w-5 h-5 border-2 border-t-transparent border-white rounded-full mr-2;
+    animation: spin 0.8s linear infinite;
   }
 
-  .account-tabs {
-    @apply flex gap-1 mr-2;
-  }
-
-  .tab-button {
-    @apply px-3 py-1 rounded-lg text-sm
-             bg-kong-bg-light backdrop-blur-sm
-             border border-kong-border/10
-             text-kong-text-primary/70
-             transition-all duration-200;
-
-    &.active {
-      @apply bg-kong-primary/20 border-kong-primary text-kong-text-primary;
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
     }
-  }
-
-  .balance-display {
-    @apply text-sm text-kong-text-primary/60 mt-2 px-1;
   }
 </style>

@@ -223,7 +223,8 @@
           {variant}
           width="100%"
           height="100%"
-          className="!py-0 flex flex-col overflow-hidden {className}"
+          unpadded={!isPadded}
+          className="flex flex-col overflow-hidden {className}"
         >
           <div
             class="modal-content flex flex-col overflow-hidden"

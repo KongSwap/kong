@@ -9,15 +9,14 @@
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
   import ButtonV2 from "../common/ButtonV2.svelte";
   import { fly } from 'svelte/transition';
-  import { Loader2 } from "lucide-svelte";
   import { Coins } from "lucide-svelte";
   import { userTokens } from "$lib/stores/userTokens";
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
 
   let WalletProviderComponent: any;
   let TokenListComponent: any;
   let PoolListComponent: any;
   let TransactionHistoryComponent: any;
-  let ManageTokensModalComponent: any;
 
   // Keep track of component loading promises
   let loadingPromises: Promise<any>[] = [];
@@ -57,12 +56,6 @@
     );
   }
 
-  async function loadManageTokensModal() {
-    ManageTokensModalComponent = await loadComponent(() => 
-      import("$lib/components/sidebar/ManageTokensModal.svelte")
-    );
-  }
-
   // Cleanup function
   onDestroy(() => {
     // Clear component references
@@ -70,8 +63,7 @@
     TokenListComponent = null;
     PoolListComponent = null;
     TransactionHistoryComponent = null;
-    ManageTokensModalComponent = null;
-    
+
     // Cancel any pending loads
     loadingPromises = [];
   });
@@ -80,7 +72,6 @@
 
   let activeTab: "tokens" | "pools" | "history" = "tokens";
   let isExpanded = false;
-  let showManageTokensModal = false;
 
   sidebarStore.subscribe((state) => {
     isExpanded = state.isExpanded;
@@ -121,7 +112,9 @@
     />
     {#if !$auth.isConnected}
       {#await loadWalletProvider()}
-        <div class="fixed inset-0 z-[2] flex items-center justify-center text-kong-text-primary">Loading...</div>
+        <div class="fixed inset-0 z-[2] flex items-center justify-center text-kong-text-primary">
+          <LoadingIndicator text="Loading wallet provider..." />
+        </div>
       {:then}
         {#if WalletProviderComponent}
           <svelte:component
@@ -161,15 +154,14 @@
               </header>
 
               <!-- Main Content Section -->
-              <main class="min-h-0 px-2 !rounded-t-none !rounded-b-lg flex-1">
+              <main class="min-h-0 px-2 flex-1">
                 <div
-                  class="flex flex-col flex-1 h-full gap-1 rounded-lg bg-kong-bg-light !rounded-t-none border-l !rounded-b-lg border-b border-r border-kong-border"
+                  class="flex flex-col flex-1 h-full rounded-lg bg-kong-bg-light !rounded-t-none border-l border-b border-r border-kong-border"
                 >
                   {#if activeTab === "tokens"}
                     {#await loadTokenList()}
-                      <div class="flex flex-col justify-center items-center min-h-[87dvh]">
-                        <Loader2 class="animate-spin" size={20} />
-                        <p>Loading tokens...</p>
+                      <div class="flex flex-col justify-center items-center h-[calc(100vh-180px)] md:h-[calc(100vh-220px)]">
+                        <LoadingIndicator text="Loading tokens..." />
                       </div>
                     {:then}
                       {#if TokenListComponent}
@@ -178,9 +170,8 @@
                     {/await}
                   {:else if activeTab === "pools"}
                     {#await loadPoolList()}
-                      <div class="flex flex-col justify-center items-center min-h-[87dvh]">
-                        <Loader2 class="animate-spin" size={20} />
-                        <p>Loading pools...</p>
+                      <div class="flex flex-col justify-center items-center h-[calc(100vh-180px)] md:h-[calc(100vh-220px)]">
+                        <LoadingIndicator text="Loading pools..." />
                       </div>
                     {:then}
                       {#if PoolListComponent}
@@ -189,9 +180,8 @@
                     {/await}
                   {:else if activeTab === "history"}
                     {#await loadTransactionHistory()}
-                      <div class="flex flex-col justify-center items-center min-h-[87dvh]">
-                        <Loader2 class="animate-spin" size={20} />
-                        <p>Loading transactions...</p>
+                      <div class="flex flex-col justify-center items-center h-[calc(100vh-180px)] md:h-[calc(100vh-220px)]">
+                        <LoadingIndicator text="Loading transactions..." />
                       </div>
                     {:then}
                       {#if TransactionHistoryComponent}
@@ -207,34 +197,11 @@
                 class="px-4 pt-1 border-t border-kong-border/30 z-10 bg-kong-bg-dark"
               >
                 <div class="flex justify-end gap-x-2">
-                  <ButtonV2
-                    variant="transparent"
-                    theme="primary"
-                    className="add-token-button mb-1 !text-kong-text-primary/50"
-                    on:click={() => (showManageTokensModal = true)}
-                  >
-                    <div class="flex items-center gap-x-2">
-                      <Coins size={16} />
-                      Manage Tokens
-                    </div>
-                  </ButtonV2>
+                  &nbsp;
                 </div>
               </footer>
             </div>
           </Panel>
-
-          {#if showManageTokensModal}
-            {#await loadManageTokensModal()}
-              <!-- Optional loading state -->
-            {:then}
-              {#if ManageTokensModalComponent}
-                <svelte:component
-                  this={ManageTokensModalComponent}
-                  bind:isOpen={showManageTokensModal}
-                />
-              {/if}
-            {/await}
-          {/if}
         </div>
       </div>
     {/if}

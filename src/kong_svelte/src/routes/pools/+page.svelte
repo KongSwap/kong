@@ -254,7 +254,7 @@
             isLoading.set(false);
           });
       }
-    }, 100); // 100ms debounce
+    }, 350); // 350ms debounce
   }
 
   function handleSearch() {

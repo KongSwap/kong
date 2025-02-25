@@ -57,7 +57,7 @@
     </div>
   {/if}
 
-  {#each messages as message (message.id)}
+  {#each messages as message, index (`${message.id.toString()}-${index}`)}
     <MessageItem 
       {message}
       {isUserAdmin}
@@ -72,7 +72,7 @@
     />
   {/each}
 
-  {#each pendingMessages as pending (pending.id)}
+  {#each pendingMessages as pending, index (`pending-${pending.id}-${index}`)}
     <PendingMessageItem {pending} avatar={$auth.account.owner.toString() || 'pending'} />
   {/each}
 </div>

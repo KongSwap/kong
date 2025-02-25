@@ -234,10 +234,11 @@
 </script>
 
 <div 
-  class="flex flex-col relative group transition-opacity duration-200 {
+  class="message-item flex flex-col relative group transition-opacity duration-200 {
     isDeleting ? 'opacity-60' : ''
   } {isCurrentUser ? 'items-end' : 'items-start'}"
   transition:fade={{ duration: 150 }}
+  data-message-id="{message.id.toString()}"
 >
   {#if !isCurrentUser}
     <div class="flex items-center gap-1.5 mb-0.5 ml-7">
@@ -250,7 +251,7 @@
       <img
         src={`https://api.dicebear.com/7.x/notionists-neutral/svg?seed=${message.principal.toText()}&size=20`}
         alt="avatar"
-        class="w-6 h-6 rounded-full bg-kong-pm-dark mb-0.5"
+        class="w-8 h-8 rounded-full bg-kong-pm-dark mb-0.5"
       />
     {/if}
     
