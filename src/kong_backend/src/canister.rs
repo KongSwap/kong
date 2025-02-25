@@ -44,10 +44,10 @@ static QUERY_METHODS: [&str; 11] = [
     "get_user",
     "user_balances",
     "requests",
-    "txs",
     "add_liquidity_amounts",
     "remove_liquidity_amounts",
     "swap_amounts",
+    "claims",
 ];
 
 #[init]

@@ -17,11 +17,13 @@ use crate::stable_request::status::StatusCode;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
+/// Claim a claimable claim
+/// used by user to claim a claimable claim which exists in CLAIM_MAP
 #[update(guard = "not_in_maintenance_mode")]
 async fn claim(claim_id: u64) -> Result<ClaimReply, String> {
-    // make sure claim belongs to user
     let claim = claim_map::get_by_claim_id(claim_id).ok_or("Claim not found")?;
     let token = token_map::get_by_token_id(claim.token_id).ok_or("Token not found")?;
+    // make sure the caller is the owner of the claim
     let principal_id = caller_principal_id();
     let user_id = user_map::get_by_principal_id(&principal_id)
         .ok()
@@ -31,16 +33,19 @@ async fn claim(claim_id: u64) -> Result<ClaimReply, String> {
     if claim.user_id != user_id {
         return Err("Claim not found".to_string());
     }
+    // make sure claim is in claimable state
     if claim.status != ClaimStatus::Claimable {
         return Err("Claim not found".to_string());
     };
 
     let ts = get_time();
+    // if to_address is not provided, use the caller's principal id
     let to_address = match &claim.to_address {
         Some(address) => address.clone(),
         None => Address::PrincipalId(caller_id()),
     };
 
+    // register new request for this claim
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Claim(claim.claim_id), ts));
     let reply = match process_claim(request_id, &claim, &token, &claim.amount, &to_address, ts).await {
         Ok(reply) => {
