@@ -28,6 +28,8 @@ enum ClaimStatus {
     TooManyAttempts,
     #[postgres(name = "UnclaimedOverride")]
     UnclaimedOverride,
+    #[postgres(name = "Claimable")]
+    Claimable,
 }
 
 pub fn serialize_claim_status(claim_status: &stable_claim::ClaimStatus) -> serde_json::Value {
@@ -37,6 +39,7 @@ pub fn serialize_claim_status(claim_status: &stable_claim::ClaimStatus) -> serde
         stable_claim::ClaimStatus::Claimed => json!("Claimed"),
         stable_claim::ClaimStatus::TooManyAttempts => json!("TooManyAttempts"),
         stable_claim::ClaimStatus::UnclaimedOverride => json!("UnclaimedOverride"),
+        stable_claim::ClaimStatus::Claimable => json!("Claimable"),
     }
 }
 
@@ -46,6 +49,13 @@ pub fn serialize_option_address(address: Option<&Address>) -> serde_json::Value 
             Address::AccountId(account_id) => json!(account_id.to_string()),
             Address::PrincipalId(principal_id) => json!(principal_id.to_string()),
         },
+        None => json!("None"),
+    }
+}
+
+pub fn serialize_option_desc(desc: Option<&String>) -> serde_json::Value {
+    match desc {
+        Some(desc) => json!(desc),
         None => json!("None"),
     }
 }
@@ -60,6 +70,7 @@ pub fn serialize_claim(claim: &StableClaim) -> serde_json::Value {
             "amount": claim.amount.to_string(),
             "request_id": claim.request_id,
             "to_address": serialize_option_address(claim.to_address.as_ref()),
+            "desc": serialize_option_desc(claim.desc.as_ref()),
             "attempt_request_id": claim.attempt_request_id,
             "transfer_ids": claim.transfer_ids,
             "ts": claim.ts,
@@ -117,6 +128,7 @@ pub async fn insert_claim_on_database(
         stable_claim::ClaimStatus::Claimed => ClaimStatus::Claimed,
         stable_claim::ClaimStatus::TooManyAttempts => ClaimStatus::TooManyAttempts,
         stable_claim::ClaimStatus::UnclaimedOverride => ClaimStatus::UnclaimedOverride,
+        stable_claim::ClaimStatus::Claimable => ClaimStatus::Claimable,
     };
     let decimals = tokens_map.get(&v.token_id).ok_or(format!("token_id={} not found", v.token_id))?;
     let amount = round_f64(v.amount.0.to_f64().unwrap() / 10_u64.pow(*decimals as u32) as f64, *decimals);

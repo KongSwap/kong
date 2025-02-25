@@ -26,6 +26,7 @@ pub enum ClaimStatus {
     Claimed,
     TooManyAttempts,
     UnclaimedOverride,
+    Claimable, // claim where user needs to call claim() to get the token
 }
 
 impl std::fmt::Display for ClaimStatus {
@@ -36,6 +37,7 @@ impl std::fmt::Display for ClaimStatus {
             ClaimStatus::Claimed => write!(f, "Success"),
             ClaimStatus::TooManyAttempts => write!(f, "TooManyAttempts"),
             ClaimStatus::UnclaimedOverride => write!(f, "UnclaimedOverride"),
+            ClaimStatus::Claimable => write!(f, "Claimable"),
         }
     }
 }
