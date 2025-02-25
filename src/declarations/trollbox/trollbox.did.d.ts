@@ -77,7 +77,9 @@ export type Result_4 = { 'Ok' : null } |
   { 'Err' : DelegationError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
 export interface _SERVICE {
-  'add_admin' : ActorMethod<[Principal], Result>,
+  'add_admin' : ActorMethod<[string], Result>,
+  'ban_user' : ActorMethod<[Principal, bigint], Result>,
+  'check_ban_status' : ActorMethod<[Principal], [] | [bigint]>,
   'create_message' : ActorMethod<[string], Result_1>,
   'delete_message' : ActorMethod<[bigint], Result>,
   'get_message' : ActorMethod<[bigint], [] | [Message]>,
@@ -93,7 +95,8 @@ export interface _SERVICE {
     [RevokeDelegationRequest],
     Result_4
   >,
-  'is_admin' : ActorMethod<[Principal], boolean>,
+  'is_admin' : ActorMethod<[string], boolean>,
+  'unban_user' : ActorMethod<[Principal], Result>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

@@ -139,7 +139,7 @@
   </div>
 </div>
 
-<style>
+<style scoped lang="postcss">
   .animate-spin {
     animation: spin 1s linear infinite;
   }

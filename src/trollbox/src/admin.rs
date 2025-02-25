@@ -1,7 +1,6 @@
 use ic_cdk::api::caller;
 use crate::state::*;
-use crate::types::*;
-
+use candid::Principal;
 /// Check if the caller is an admin
 fn caller_is_admin() -> bool {
     let caller_principal = caller();
@@ -12,10 +11,19 @@ fn caller_is_admin() -> bool {
 
 /// Check if a specific principal is an admin
 #[ic_cdk::query]
-pub fn is_admin(principal: candid::Principal) -> bool {
-    ADMINS.with(|admins| {
-        admins.borrow().contains(&principal)
-    })
+pub fn is_admin(principal: String) -> bool {
+    // Convert string to Principal
+    match candid::Principal::from_text(principal) {
+        Ok(principal_obj) => {
+            ADMINS.with(|admins| {
+                admins.borrow().contains(&principal_obj)
+            })
+        },
+        Err(_) => {
+            // Invalid principal string format
+            false
+        }
+    }
 }
 
 /// Initialize the first admin (should be called during canister initialization)
@@ -39,13 +47,13 @@ pub fn init_admin() {
 
 /// Allows admins to add new admins
 #[ic_cdk::update]
-pub fn add_admin(principal: candid::Principal) -> Result<(), String> {
+pub fn add_admin(principal: String) -> Result<(), String> {
     if !caller_is_admin() {
         return Err("Unauthorized: Only admins can add new admins".to_string());
     }
     
     ADMINS.with(|admins| {
-        admins.borrow_mut().insert(principal);
+        admins.borrow_mut().insert(Principal::from_text(principal).unwrap());
     });
     
     Ok(())

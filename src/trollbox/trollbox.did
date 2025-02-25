@@ -59,7 +59,9 @@ type Result_3 = variant { Ok : DelegationResponse; Err : DelegationError };
 type Result_4 = variant { Ok; Err : DelegationError };
 type RevokeDelegationRequest = record { targets : vec principal };
 service : () -> {
-  add_admin : (principal) -> (Result);
+  add_admin : (text) -> (Result);
+  ban_user : (principal, nat64) -> (Result);
+  check_ban_status : (principal) -> (opt nat64) query;
   create_message : (text) -> (Result_1);
   delete_message : (nat64) -> (Result);
   get_message : (nat64) -> (opt Message) query;
@@ -71,5 +73,6 @@ service : () -> {
   icrc_34_delegate : (DelegationRequest) -> (Result_3);
   icrc_34_get_delegation : (DelegationRequest) -> (Result_3) query;
   icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_4);
-  is_admin : (principal) -> (bool) query;
+  is_admin : (text) -> (bool) query;
+  unban_user : (principal) -> (Result);
 }

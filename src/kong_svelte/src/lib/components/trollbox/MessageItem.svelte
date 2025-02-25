@@ -5,7 +5,8 @@
   import { auth } from '$lib/services/auth';
   import { fetchTokensByCanisterId } from '$lib/api/tokens';
   import { DEFAULT_LOGOS } from "$lib/services/tokens";
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import { goto } from '$app/navigation';
   
   export let message: Message;
   export let isUserAdmin: boolean = false;
@@ -67,8 +68,12 @@
     return matches;
   }
 
+  // Token link click event handler
+  let tokenLinkClickHandler: (event: CustomEvent) => void;
+
   // Initialize token data
   onMount(async () => {
+    // Fetch token data
     const canisterIds = extractCanisterIds(message.message);
     if (canisterIds.length > 0) {
       try {
@@ -82,10 +87,33 @@
         console.error('Error fetching token data:', error);
       }
     }
+    
+    // Setup token link click event listener
+    tokenLinkClickHandler = (event: CustomEvent) => {
+      const href = event.detail.href;
+      if (href) {
+        goto(href);
+      }
+    };
+    
+    window.addEventListener('token-link-click', tokenLinkClickHandler as EventListener);
+  });
+  
+  // Clean up event listeners
+  onDestroy(() => {
+    if (tokenLinkClickHandler) {
+      window.removeEventListener('token-link-click', tokenLinkClickHandler as EventListener);
+    }
   });
 
   function processMessageContent(content) {
-    // Changed to match Telegram-style commands: /price canister-id
+    // First check if the content already contains HTML for token links (from the API)
+    if (content.includes('class="token-link"')) {
+      // Content already has processed token links, don't double-process
+      return content;
+    }
+    
+    // Process Telegram-style commands: /price canister-id
     const tokenRegex = /\/price\s+([a-zA-Z0-9-]+)/g;
     
     return content.replace(tokenRegex, (match, canisterId) => {
@@ -93,7 +121,7 @@
       
       // Fallback token display when data is not available
       if (!token) {
-        return `<span class="bg-kong-primary/20 rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-xs">
+        return `<span class="bg-kong-primary/20 rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-xs" data-canister-id="${canisterId}" onclick="(function(e) { e.stopPropagation(); const href = '/stats/${canisterId}'; window.dispatchEvent(new CustomEvent('token-link-click', {detail: {href: href}})); return false; })(event)">
           <span class="flex items-center gap-0.5">
             <img 
               src="${DEFAULT_IMAGE}" 
@@ -135,7 +163,7 @@
       
       const formattedChange = priceChange.startsWith("-") ? priceChange : `+${priceChange}`;
       
-      return `<span class="bg-kong-primary/20 rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-xs">
+      return `<a href="/stats/${canisterId}" class="token-link local-generated" data-canister-id="${canisterId}" onclick="(function(e) { e.preventDefault(); e.stopPropagation(); const href = '/stats/${canisterId}'; window.dispatchEvent(new CustomEvent('token-link-click', {detail: {href: href}})); return false; })(event)"><span class="bg-kong-primary/20 rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-sm">
         <span class="flex items-center gap-0.5">
           <img 
             src="${logoUrl}" 
@@ -149,7 +177,7 @@
           $${price}
           <span class="${priceChangeClass} flex items-center gap-0.5">(${formattedChange}%)${arrowIcon}</span>
         </span>
-      </span>`;
+      </span></a>`;
     });
   }
 
@@ -177,10 +205,30 @@
     showBanOptions = !showBanOptions;
   }
 
-  // Close dropdown when clicking outside of it
-  function handleOutsideClick(event: MouseEvent) {
-    if (showBanOptions) {
-      showBanOptions = false;
+  // Handle direct clicks on token representations that aren't properly captured by the global handler
+  function handleTokenClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    
+    // Find if we're inside a token-like element (either from API or locally generated)
+    const tokenElement = target.closest('span.bg-kong-primary\\/20');
+    if (tokenElement) {
+      // Check if we're inside a message that has token links
+      const tokenLink = tokenElement.closest('a.token-link') || 
+                        tokenElement.closest('.message-content')?.querySelector('a.token-link');
+      
+      if (tokenLink) {        
+        // Prevent default behavior
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Get the href and navigate programmatically
+        const href = tokenLink.getAttribute('href');
+        if (href) {
+          setTimeout(() => goto(href), 10);
+        }
+        
+        return false;
+      }
     }
   }
 </script>
@@ -212,7 +260,12 @@
         : 'bg-kong-pm-dark text-kong-text-primary rounded-t-md rounded-br-md rounded-bl-sm'
       } px-3 py-2 relative group"
     >
-      <p class="text-sm break-words leading-relaxed">{@html processedMessage}</p>
+      <!-- Add data-debug-content attribute for troubleshooting if needed -->
+      <p class="text-sm break-words leading-relaxed message-content" 
+         data-debug-content={processedMessage}
+         on:click={handleTokenClick}>
+        {@html processedMessage}
+      </p>
       
       <span class="text-xs text-kong-pm-text-secondary {isCurrentUser ? 'ml-1.5' : 'mr-1.5'} whitespace-nowrap inline-block">
         {timeString}
@@ -328,10 +381,7 @@
   {/if}
 </div>
 
-<style>
-  .animate-spin {
-    animation: spin 1s linear infinite;
-  }
+<style scoped lang="postcss">
   
   @keyframes spin {
     from { transform: rotate(0deg); }
