@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition";
-  import { Star, Send, HandCoins, ArrowUpDown, Droplets, Copy, MoreHorizontal } from "lucide-svelte";
+  import { Star, Send, HandCoins, ArrowUpDown, Droplets, Copy, MoreHorizontal, Trash2 } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import {
     formatUsdValue,
@@ -17,9 +17,12 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { activeDropdownId } from "$lib/stores/dropdownStore";
   import { accountStore } from "$lib/stores/accountStore";
-    import { toastStore } from "$lib/stores/toastStore";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { userTokens } from "$lib/stores/userTokens";
+  import { createEventDispatcher } from "svelte";
 
   export let token: any;
+  export let onRemove: (canisterId: string) => void = () => {}; // Add callback for token removal
 
   let showTokenDetails = false;
   let isPressed = false;
@@ -30,6 +33,10 @@
   const LOG_THROTTLE = 1000; // 1 second
   let isFavorite = false;
   let dropdownVisible = false;
+  let isDefaultToken = false;
+
+  // Check if this is a default token that shouldn't be removable
+  $: isDefaultToken = userTokens.isDefaultToken(token.canister_id);
 
   // Subscribe to the store and update local dropdown visibility
   activeDropdownId.subscribe((id) => {
@@ -85,6 +92,16 @@
       case "receive":
         accountStore.showAccountDetails("principal");
         break;
+      case "remove":
+        // Disable the token in the userTokens store
+        userTokens.disableToken(token.canister_id);
+        
+        // Show success message
+        toastStore.success(`${token.symbol} has been removed from your token list`);
+        
+        // Call the onRemove callback to notify parent component
+        onRemove(token.canister_id);
+        break;
       // Add more actions as needed
     }
     dropdownVisible = false;
@@ -124,8 +141,9 @@
 >
   {#if dropdownVisible}
     <div
-      class="fixed inset-0 bg-black/50 z-[90] animate-fadeIn"
-      transition:fade={{ duration: 150 }}
+      class="fixed inset-0 bg-black/50 z-[90]"
+      in:fade={{ duration: 100 }}
+      out:fade={{ duration: 200 }}
       on:click={() => activeDropdownId.set(null)}
     />
   {/if}
@@ -139,8 +157,6 @@
     class:bg-gradient-to-b={dropdownVisible}
     class:from-kong-bg-light={dropdownVisible}
     class:to-kong-bg-dark={dropdownVisible}
-    in:fly={{ y: 20, duration: 400, delay: 200 }}
-    out:fade={{ duration: 200 }}
     on:mousedown={() => (isPressed = true)}
     on:mouseup={() => (isPressed = false)}
     on:click|stopPropagation={handleRowClick}
@@ -204,11 +220,13 @@
               bind:this={dropdownEl}
               class="absolute {showAbove
                 ? 'bottom-[calc(100%+1px)]'
-                : 'top-[calc(100%+2px)]'} -right-1 z-[100] min-w-[250px] p-1.5 bg-kong-bg-light border border-kong-border {showAbove
+                : 'top-[calc(100%+2px)]'} -right-1 z-[9999] min-w-[250px] p-1.5 bg-kong-bg-light border border-kong-border {showAbove
                 ? 'rounded-t-lg'
                 : 'rounded-b-lg'} shadow-lg origin-{showAbove
                 ? 'bottom'
-                : 'top'} animate-slideDown"
+                : 'top'}"
+              in:fly={{ y: showAbove ? -10 : 10, duration: 200, delay: 150 }}
+              out:fade={{ duration: 150 }}
               on:click|stopPropagation
             >
               <div
@@ -277,10 +295,11 @@
                   navigator.clipboard.writeText(token.canister_id);
                   toastStore.success("Canister ID copied to clipboard");
                 }}
-            >
+              >
                 <Copy size={16} />
                 Copy Canister ID
               </button>
+              
               <button
                 class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-kong-text-primary hover:translate-x-0.5 flex items-center gap-2"
                 on:click|stopPropagation={() => {
@@ -288,10 +307,23 @@
                   sidebarStore.collapse();
                   goto(`/stats/${token.canister_id}`);
                 }}
-            >
+              >
                 <MoreHorizontal size={16} />
                 More Info
               </button>
+              
+              <!-- Remove Token button - only show for non-default tokens -->
+              {#if !isDefaultToken}
+                <button
+                  class="w-full text-left p-2.5 text-red-500/90 transition-all duration-200 rounded-md hover:bg-red-500/15 hover:text-red-500 hover:translate-x-0.5 flex items-center gap-2"
+                  on:click|stopPropagation={() => {
+                    handleMenuAction("remove", token);
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Remove Token
+                </button>
+              {/if}
             </div>
           {/if}
         </div>

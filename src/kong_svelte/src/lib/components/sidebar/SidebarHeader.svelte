@@ -2,7 +2,6 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import AccountDetails from "./AccountDetails.svelte";
   import { accountStore } from "$lib/stores/accountStore";
-  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import {
     RefreshCw,
     IdCard,
@@ -11,6 +10,7 @@
     Droplets,
     X,
     Power,
+    Loader2,
   } from "lucide-svelte";
   import {
     loadBalances,
@@ -126,7 +126,7 @@
         }}
       >
         {#if isRefreshing}
-          <LoadingIndicator />
+          <Loader2 size={18} />
         {:else}
           {formatUsdValue($portfolioValue || 0)}
         {/if}

@@ -3,6 +3,8 @@
   import BigNumber from "bignumber.js";
   import Modal from "$lib/components/common/Modal.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import { ArrowRight, Check, AlertTriangle } from "lucide-svelte";
+  import { fly, fade } from 'svelte/transition';
 
   // Props
   export let isOpen = false;
@@ -18,20 +20,45 @@
   let receiverAmount: string;
   let totalAmount: string;
   let formattedFee: string;
+  let usdValue: string = "0.00";
+  let truncatedAddress: string;
 
   $: {
     try {
       receiverAmount = new BigNumber(amount).toString();
       totalAmount = new BigNumber(amount)
-        .plus(new BigNumber(token.fee_fixed).dividedBy(10 ** token.decimals))
+        .plus(new BigNumber(tokenFee?.toString() || "10000").dividedBy(10 ** token.decimals))
         .toString();
       formattedFee = formatBalance(tokenFee?.toString() || "10000", token.decimals);
+      
+      // Calculate USD value if price is available
+      if (token.metrics?.price) {
+        usdValue = new BigNumber(amount).multipliedBy(token.metrics.price).toFixed(2);
+      }
+      
+      // Create truncated address for display
+      if (toPrincipal && toPrincipal.length > 16) {
+        truncatedAddress = `${toPrincipal.substring(0, 8)}...${toPrincipal.substring(toPrincipal.length - 8)}`;
+      } else {
+        truncatedAddress = toPrincipal;
+      }
     } catch (error) {
       console.error('Error calculating amounts:', error);
       receiverAmount = amount;
       totalAmount = amount;
       formattedFee = '0';
     }
+  }
+
+  // Animation timing
+  let showSuccess = false;
+  
+  function handleConfirm() {
+    showSuccess = true;
+    setTimeout(() => {
+      onConfirm();
+      showSuccess = false;
+    }, 800);
   }
 
   // Improve performance by using CSS custom properties
@@ -60,187 +87,293 @@
   {isOpen}
   variant="transparent"
   {onClose}
-  title="Confirm Your Transfer"
-  width="min(420px, 92vw)"
+  title="Confirm Transfer"
+  width="min(450px, 92vw)"
   height="auto"
   target="body"
+  isPadded={false}
 >
-  <div class="confirm-box pb-4">
-    <!-- Keep original header -->
-    <section class="transfer-summary" aria-label="Transfer Amount Summary">
-      <div class="token-container flex items-center gap-4">
-        <div class="token-logo-container">
-          <div class="shine-effect" />
+  <div class="confirm-container" in:fade={{ duration: 200 }}>
+    <!-- Transfer Header -->
+    <div class="transfer-header">
+      <div class="token-info">
+        <div class="token-logo">
           <img 
             src={token.logo_url} 
-            alt={`${token.symbol} token logo`}
+            alt={token.symbol}
             class="token-image" 
             loading="lazy"
           />
         </div>
-        <div class="flex flex-col items-end justify-end !text-kong-text-primary">
-          <span class="text-2xl">{token.name}</span>
-          <span class="text-sm text-kong-text-accent-blue">{token.symbol}</span>
+        <div class="token-details">
+          <span class="token-name">{token.name}</span>
+          <span class="token-symbol">{token.symbol}</span>
         </div>
       </div>
-    </section>
-
-    <!-- New receipt-style transaction details -->
-    <section class="receipt-details">
-      <div class="receipt-row">
-        <span class="row-label">Amount</span>
-        <div class="amount-info">
-          <span>{new BigNumber(amount).toString()} {token.symbol}</span>
+      
+      <div class="transfer-amount">
+        <span class="amount-value">{amount} {token.symbol}</span>
+        {#if usdValue !== "0.00"}
+          <span class="usd-value">≈ ${usdValue} USD</span>
+        {/if}
+      </div>
+    </div>
+    
+    <!-- Transfer Details -->
+    <div class="transfer-details">
+      <div class="detail-section">
+        <div class="section-title">
+          <span>Transaction Details</span>
+        </div>
+        
+        <div class="detail-rows">
+          <div class="detail-row">
+            <span class="detail-label">You're sending</span>
+            <span class="detail-value">{amount} {token.symbol}</span>
+          </div>
+          
+          <div class="detail-row">
+            <span class="detail-label">Network fee</span>
+            <span class="detail-value fee">{formattedFee} {token.symbol}</span>
+          </div>
+          
+          <div class="detail-row total">
+            <span class="detail-label">Total amount</span>
+            <span class="detail-value">{totalAmount} {token.symbol}</span>
+          </div>
         </div>
       </div>
-
-      <div class="receipt-row">
-        <span class="row-label">Network Fee</span>
-        <span class="fee-amount">{formattedFee} {token.symbol}</span>
-      </div>
-
-      <div class="h-0.5 bg-gradient-to-r from-transparent via-kong-text-primary/15 to-transparent" />
-
-      <div class="receipt-row total">
-        <span class="row-label">Total</span>
-        <div class="total-amount flex items-end flex-col">
-        {totalAmount} {token.symbol}
-        <span class="usd-value">${new BigNumber(totalAmount).multipliedBy(token.metrics.price).toFixed(3)}</span>
+      
+      <div class="detail-section">
+        <div class="section-title">
+          <span>Recipient</span>
+        </div>
+        
+        <div class="recipient-address">
+          <div class="address-display">
+            <span class="address-value" title={toPrincipal}>{truncatedAddress}</span>
+          </div>
+          <div class="address-type">
+            {toPrincipal.length === 64 ? 'Account ID' : 'Principal ID'}
+          </div>
         </div>
       </div>
-
-      <div class="receipt-divider" />
-
-      <div class="destination-section">
-        <span class="section-label">Destination Wallet</span>
-        <span class="wallet-address">{toPrincipal}</span>
+      
+      <!-- Warning Section -->
+      <div class="warning-section">
+        <AlertTriangle size={16} class="warning-icon" />
+        <span class="warning-text">Transfers are irreversible. Please verify all details before confirming.</span>
       </div>
-    </section>
-
-    <footer class="confirm-actions">
-      <button type="button" class="cancel-btn" on:click={onClose}>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button 
+        type="button" 
+        class="cancel-button" 
+        on:click={onClose}
+        disabled={isValidating || showSuccess}
+      >
         Cancel
       </button>
+      
       <button
         type="button"
-        class="confirm-btn"
+        class="confirm-button"
         class:loading={isValidating}
-        on:click={onConfirm}
-        disabled={isValidating}
+        class:success={showSuccess}
+        on:click={handleConfirm}
+        disabled={isValidating || showSuccess}
       >
-        {#if isValidating}
-          <span class="loading-spinner" />
+        {#if showSuccess}
+          <div class="success-icon">
+            <Check size={18} />
+          </div>
+          Confirmed!
+        {:else if isValidating}
+          <div class="spinner"></div>
           Processing...
         {:else}
+          <ArrowRight size={18} />
           Confirm Transfer
         {/if}
       </button>
-    </footer>
+    </div>
   </div>
 </Modal>
 
-<style lang="postcss">
-  /* Keep original header styles */
-  .token-container {
-    @apply relative flex justify-center;
-    --scale: 1;
-    transform: scale(var(--scale));
-    transition: transform 0.3s ease;
+<style scoped lang="postcss">
+  .confirm-container {
+    @apply flex flex-col gap-5 px-4 py-2;
   }
-
-  .token-logo-container {
-    @apply relative w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden;
-    will-change: transform;
+  
+  /* Transfer Header Styles */
+  .transfer-header {
+    @apply flex flex-col gap-4 items-center justify-center p-4 
+           bg-kong-surface-dark/80 rounded-lg border border-kong-border/30;
   }
-
+  
+  .token-info {
+    @apply flex items-center gap-3;
+  }
+  
+  .token-logo {
+    @apply w-12 h-12 rounded-full overflow-hidden 
+           bg-kong-bg-light p-1 border border-kong-border/20
+           flex items-center justify-center;
+  }
+  
   .token-image {
-    @apply w-full h-full rounded-full relative z-10;
-    transform: translateZ(0);
+    @apply w-10 h-10 rounded-full object-contain;
   }
-
-  .shine-effect {
-    @apply absolute inset-0 w-[250%] h-[250%] z-20 -top-[50%] -left-[50%];
-    background: linear-gradient(
-      45deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.1) 45%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0.1) 55%,
-      transparent 100%
-    );
-    animation: shine-diagonal 3s infinite linear;
-    will-change: transform;
+  
+  .token-details {
+    @apply flex flex-col;
   }
-
-  /* New receipt styles */
-  .receipt-details {
-    @apply bg-kong-bg-dark/20 rounded-xl p-4 space-y-3 mt-4;
+  
+  .token-name {
+    @apply text-kong-text-primary font-medium;
   }
-
-  .receipt-row {
-    @apply flex justify-between items-baseline;
+  
+  .token-symbol {
+    @apply text-sm text-kong-text-secondary;
   }
-
-  .row-label {
-    @apply text-sm text-kong-text-primary/70;
+  
+  .transfer-amount {
+    @apply flex flex-col items-center;
   }
-
-  .amount-info {
-    @apply flex flex-col items-end;
+  
+  .amount-value {
+    @apply text-2xl font-medium text-kong-text-primary;
   }
-
+  
   .usd-value {
-    @apply text-xs text-kong-text-secondary;
+    @apply text-sm text-kong-text-secondary;
   }
-
-  .fee-amount {
-    @apply text-sm text-kong-accent-red;
+  
+  /* Transfer Details Styles */
+  .transfer-details {
+    @apply flex flex-col gap-4;
   }
-
-  .total {
-    @apply font-medium text-base;
+  
+  .detail-section {
+    @apply bg-kong-surface-dark/50 rounded-lg p-4 
+           border border-kong-border/20;
   }
-
-  .receipt-divider {
-    @apply my-4 border-t border-kong-border/10;
+  
+  .section-title {
+    @apply text-sm font-medium text-kong-text-primary/90 mb-3;
   }
-
-  .destination-section {
+  
+  .detail-rows {
     @apply flex flex-col gap-2;
   }
-
-  .section-label {
-    @apply text-sm text-kong-text-primary/70;
+  
+  .detail-row {
+    @apply flex justify-between items-center;
+    
+    &.total {
+      @apply mt-2 pt-2 border-t border-kong-border/10 
+             font-medium text-kong-text-primary;
+    }
   }
-
-  .wallet-address {
-    @apply text-xs font-mono text-kong-text-primary bg-kong-bg-light/30 p-2 rounded-lg break-all;
+  
+  .detail-label {
+    @apply text-sm text-kong-text-secondary;
   }
-
-  /* Keep existing animations */
-  @keyframes shine-diagonal {
-    from { transform: rotate(45deg) translateX(-100%); }
-    to { transform: rotate(45deg) translateX(100%); }
+  
+  .detail-value {
+    @apply text-sm text-kong-text-primary;
+    
+    &.fee {
+      @apply text-kong-text-secondary;
+    }
   }
-
-  /* Keep existing button styles */
-  .confirm-actions {
-    @apply flex gap-2 mt-4;
+  
+  .recipient-address {
+    @apply flex flex-col gap-2;
   }
-
-  .cancel-btn {
-    @apply flex-1 py-2.5 px-4 rounded-lg bg-kong-bg-light hover:bg-kong-bg-light/80 
-           text-kong-text-primary/90 text-sm font-medium transition-colors;
+  
+  .address-display {
+    @apply bg-kong-bg-light/50 rounded-lg p-3 
+           border border-kong-border/30;
   }
-
-  .confirm-btn {
-    @apply flex-1 py-2.5 px-4 rounded-lg bg-kong-primary hover:bg-kong-accent-green 
-           text-white text-sm font-medium transition-colors
+  
+  .address-value {
+    @apply text-xs font-mono text-kong-text-primary break-all;
+  }
+  
+  .address-type {
+    @apply text-xs text-kong-text-secondary mt-1 px-1;
+  }
+  
+  .warning-section {
+    @apply flex items-start gap-2 p-3 rounded-lg
+           bg-kong-accent-yellow/10 border border-kong-accent-yellow/20
+           text-xs text-kong-text-primary/80;
+  }
+  
+  .warning-icon {
+    @apply text-kong-accent-yellow flex-shrink-0 mt-0.5;
+  }
+  
+  /* Action Buttons */
+  .action-buttons {
+    @apply grid grid-cols-2 gap-3 mt-2;
+  }
+  
+  .cancel-button {
+    @apply h-12 rounded-lg font-medium
+           bg-kong-bg-light/80 text-kong-text-primary/80
+           hover:bg-kong-bg-light hover:text-kong-text-primary
            disabled:opacity-50 disabled:cursor-not-allowed
-           flex items-center justify-center gap-2;
+           transition-all duration-200;
   }
-
-  .loading-spinner {
-    @apply w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin;
+  
+  .confirm-button {
+    @apply h-12 rounded-lg font-medium
+           flex items-center justify-center gap-2
+           bg-kong-primary text-white
+           hover:bg-kong-primary-hover
+           disabled:opacity-70 disabled:cursor-not-allowed
+           transition-all duration-200;
+    
+    &.loading {
+      @apply bg-kong-primary/90;
+    }
+    
+    &.success {
+      @apply bg-kong-accent-green;
+    }
+  }
+  
+  .spinner {
+    @apply w-5 h-5 border-2 border-t-transparent border-white rounded-full;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  .success-icon {
+    @apply flex items-center justify-center;
+    animation: pop 0.3s ease-out;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  @keyframes pop {
+    0% {
+      transform: scale(0.5);
+      opacity: 0;
+    }
+    70% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 </style> 

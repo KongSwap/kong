@@ -44,12 +44,20 @@ function createUserTokensStore() {
     subscribe,
     enableToken: (token: FE.Token) => {
       update(state => {
+        // First check if token already exists in the tokens array
+        const tokenExists = state.tokens.some(t => t.canister_id === token.canister_id);
+        
+        // Create new tokens array with the token added if it doesn't exist
+        const newTokens = tokenExists 
+          ? state.tokens 
+          : [...state.tokens, token];
+        
         const newState = {
           enabledTokens: {
             ...state.enabledTokens,
             [token.canister_id]: true
           },
-          tokens: state.tokens
+          tokens: newTokens
         };
         updateStorage(newState);
         return newState;
@@ -58,12 +66,22 @@ function createUserTokensStore() {
     enableTokens: (tokens: FE.Token[]) => {
       update(state => {
         const newEnabledTokens = { ...state.enabledTokens };
+        const existingTokenIds = new Set(state.tokens.map(t => t.canister_id));
+        let newTokens = [...state.tokens];
+        
         tokens.forEach(token => {
+          // Mark as enabled
           newEnabledTokens[token.canister_id] = true;
+          
+          // Add to tokens array if not already there
+          if (!existingTokenIds.has(token.canister_id)) {
+            newTokens.push(token);
+          }
         });
+        
         const newState = {
           enabledTokens: newEnabledTokens,
-          tokens: state.tokens
+          tokens: newTokens
         };
         updateStorage(newState);
         return newState;
@@ -73,9 +91,13 @@ function createUserTokensStore() {
       update(state => {
         const newEnabledTokens = { ...state.enabledTokens };
         delete newEnabledTokens[canisterId];
+        
+        // Also remove from the tokens array
+        const newTokens = state.tokens.filter(token => token.canister_id !== canisterId);
+        
         const newState = {
           enabledTokens: newEnabledTokens,
-          tokens: state.tokens
+          tokens: newTokens
         };
         updateStorage(newState);
         return newState;

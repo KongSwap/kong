@@ -50,7 +50,7 @@ function createTrollboxStore() {
       return update(state => {
         // Prevent loading too frequently
         const now = Date.now();
-        if (now - state.lastLoadTime < 2000) return state;
+        if (now - state.lastLoadTime < 1000) return state;
         
         state.isLoading = true;
         state.lastLoadTime = now;
@@ -58,75 +58,100 @@ function createTrollboxStore() {
         // Load new messages asynchronously
         trollboxApi.getMessages().then(result => {
           update(state => {
-            if (state.messages.length === 0) {
-              // First load - set all messages
-              state.messages = result.messages.sort((a, b) => Number(a.created_at - b.created_at));
+            // Preserve pending messages - create a safe copy before any modifications
+            const currentPendingMessages = [...state.pendingMessages];
+            const currentPendingIds = new Set(state.pendingMessageIds);
+            
+            // Sort server messages first
+            const sortedServerMessages = result.messages.sort((a, b) => Number(a.created_at - b.created_at));
+            
+            // Ensure there are no duplicate IDs in the messages array
+            const uniqueMessages = [];
+            const seenIds = new Set();
+            
+            for (const msg of sortedServerMessages) {
+              const idStr = msg.id.toString();
+              if (!seenIds.has(idStr)) {
+                seenIds.add(idStr);
+                uniqueMessages.push(msg);
+              } else {
+                console.warn(`Duplicate message ID detected: ${idStr}. Skipping duplicate.`);
+              }
+            }
+            
+            // Quick check if we need to update the messages array
+            const needsUpdate = 
+              state.messages.length !== uniqueMessages.length ||
+              !state.messages.every((msg, i) => msg.id.toString() === uniqueMessages[i].id.toString());
+              
+            if (state.messages.length === 0 || needsUpdate) {
+              // Update messages array if needed
+              state.messages = uniqueMessages;
               state.nextCursor = result.next_cursor;
               state.hasMoreMessages = result.next_cursor !== null;
-              setTimeout(scrollToBottom, 0);
-            } else {
-              // Find new messages
-              const existingMessageIds = new Set(state.messages.map(msg => msg.id.toString()));
-              const newMessages = result.messages.filter(msg => !existingMessageIds.has(msg.id.toString()));
               
-              if (newMessages.length > 0) {
-                
-                // Merge and sort messages
-                const mergedMessages = [...state.messages, ...newMessages];
-                state.messages = mergedMessages.sort((a, b) => Number(a.created_at - b.created_at));
-                
+              if (wasAtBottom) {
+                setTimeout(scrollToBottom, 0);
+              }
+              
+              // Only process pending messages if we actually got new server messages
+              if (currentPendingMessages.length > 0) {
                 // Check for confirmed pending messages
-                if (state.pendingMessages.length > 0) {
-                  const initialPendingCount = state.pendingMessages.length;
-                  state.pendingMessages = state.pendingMessages.filter(pending => {
-                    // Look for matching message
-                    for (const newMsg of newMessages) {
-                      const timeDiff = Math.abs(Number(pending.created_at - newMsg.created_at));
+                state.pendingMessages = currentPendingMessages.filter(pending => {
+                  // Consider a pending message to be confirmed if ANY server message matches it
+                  for (const serverMsg of uniqueMessages) {
+                    // Check for matching content
+                    if (pending.message === serverMsg.message) {
+                      // Also check for reasonable time proximity (2 minutes)
+                      const timeDiff = Math.abs(Number(pending.created_at - serverMsg.created_at));
                       const isRecentEnough = timeDiff < 120_000_000_000; // 2 minutes in nanoseconds
-                      const contentMatch = pending.message === newMsg.message;
                       
-                      if (isRecentEnough && contentMatch && state.pendingMessageIds.has(pending.id)) {
-                        state.pendingMessageIds.delete(pending.id);
+                      if (isRecentEnough) {
+                        // This pending message has been confirmed by the server
+                        currentPendingIds.delete(pending.id);
                         return false; // Remove from pending
                       }
                     }
-                    return true; // Keep in pending
-                  });
-                  
-                  // Update localStorage if needed
-                  if (state.pendingMessages.length !== initialPendingCount) {
-                    savePendingMessagesToStorage(state.pendingMessages);
                   }
-                }
+                  return true; // Keep in pending list
+                });
                 
-                // Scroll to bottom if needed
-                if (wasAtBottom) {
-                  setTimeout(scrollToBottom, 0);
-                }
-              }
-              
-              // More aggressive polling for pending messages
-              if (state.pendingMessageIds.size > 0) {
-                const timeElapsed = Date.now() - state.lastSubmissionTime;
+                // Update the pending IDs set
+                state.pendingMessageIds = currentPendingIds;
                 
-                // For first 10 seconds, check every 2 seconds
-                if (timeElapsed < 10000) {
-                  setTimeout(() => this.loadMessages(wasAtBottom, scrollToBottom), 2000);
-                }
-                // For up to 1 minute, check every 5 seconds
-                else if (timeElapsed < 60000) {
-                  setTimeout(() => this.loadMessages(wasAtBottom, scrollToBottom), 5000);
-                }
-                // For up to 5 minutes, fall back to normal polling
-                else if (timeElapsed > 150000) {
-                  // After 5 minutes, assume the message failed and clean up
-                  state.pendingMessages = state.pendingMessages.filter(msg => {
-                    const msgAge = Date.now() - Number(msg.created_at) / 1000000;
-                    return msgAge < 150000; // Keep only messages less than 2 minutes old
-                  });
-                  state.pendingMessageIds = new Set(state.pendingMessages.map(msg => msg.id));
+                // Update localStorage if needed
+                if (state.pendingMessages.length !== currentPendingMessages.length) {
                   savePendingMessagesToStorage(state.pendingMessages);
                 }
+              }
+            }
+            
+            // More aggressive polling for pending messages
+            if (state.pendingMessageIds.size > 0) {
+              const timeElapsed = Date.now() - state.lastSubmissionTime;
+              
+              // For first 10 seconds, check every 2 seconds
+              if (timeElapsed < 10000) {
+                // Use direct function call to loadMessages with closure variables
+                setTimeout(() => {
+                  trollboxStore.loadMessages(wasAtBottom, scrollToBottom);
+                }, 2000);
+              }
+              // For up to 1 minute, check every 5 seconds
+              else if (timeElapsed < 60000) {
+                setTimeout(() => {
+                  trollboxStore.loadMessages(wasAtBottom, scrollToBottom);
+                }, 5000);
+              }
+              // For up to 5 minutes, fall back to normal polling
+              else if (timeElapsed > 150000) {
+                // After 5 minutes, assume the message failed and clean up
+                state.pendingMessages = state.pendingMessages.filter(msg => {
+                  const msgAge = Date.now() - Number(msg.created_at) / 1000000;
+                  return msgAge < 150000; // Keep only messages less than 2 minutes old
+                });
+                state.pendingMessageIds = new Set(state.pendingMessages.map(msg => msg.id));
+                savePendingMessagesToStorage(state.pendingMessages);
               }
             }
             
@@ -155,38 +180,71 @@ function createTrollboxStore() {
         
         state.isLoadingMore = true;
         
-        // Capture current scroll position
-        const oldHeight = chatContainer.scrollHeight;
-        const oldScroll = chatContainer.scrollTop;
+        // Find the first visible message element for better position anchoring
+        const messageElements = chatContainer.querySelectorAll('.message-item');
+        let firstVisibleMessageId = null;
+        
+        if (messageElements.length > 0) {
+          for (let i = 0; i < messageElements.length; i++) {
+            const element = messageElements[i] as HTMLElement;
+            const rect = element.getBoundingClientRect();
+            // If the element is visible in the viewport
+            if (rect.top >= 0 || rect.bottom > 0) {
+              firstVisibleMessageId = element.getAttribute('data-message-id');
+              break;
+            }
+          }
+        }
         
         // Load older messages using the timestamp cursor
         trollboxApi.getMessages({
           cursor: state.nextCursor,
           limit: BigInt(20)
         }).then(result => {
-          update(state => {
-            if (result.messages.length === 0) {
+          if (result.messages.length === 0) {
+            update(state => {
               state.hasMoreMessages = false;
               state.isLoadingMore = false;
               return state;
-            }
-            
-            // Sort and add older messages at the beginning
-            const oldMessages = result.messages.sort((a, b) => Number(a.created_at - b.created_at));
+            });
+            return;
+          }
+          
+          // Sort older messages
+          const oldMessages = result.messages.sort((a, b) => Number(a.created_at - b.created_at));
+          
+          // Update state with new messages
+          update(state => {
+            // Add older messages at the beginning
             state.messages = [...oldMessages, ...state.messages];
             state.nextCursor = result.next_cursor;
             state.hasMoreMessages = result.next_cursor !== null;
             state.isLoadingMore = false;
-            
-            // Maintain scroll position after loading older messages
-            setTimeout(() => {
-              const newHeight = chatContainer.scrollHeight;
-              chatContainer.scrollTop = newHeight - oldHeight + oldScroll;
-              if (callback) callback();
-            }, 0);
-            
             return state;
           });
+          
+          // Handle scroll position in a separate step after state update
+          setTimeout(() => {
+            // Find the previously first message in the new list
+            if (firstVisibleMessageId) {
+              const messageElements = chatContainer.querySelectorAll('.message-item');
+              
+              // Find the element that corresponds to our reference message
+              for (let i = 0; i < messageElements.length; i++) {
+                const element = messageElements[i] as HTMLElement;
+                const messageId = element.getAttribute('data-message-id');
+                
+                if (messageId === firstVisibleMessageId) {
+                  // Found our reference message, scroll to it
+                  element.scrollIntoView({ block: 'start', behavior: 'auto' });
+                  break;
+                }
+              }
+            }
+            
+            if (callback) callback();
+          }, 50); // Longer timeout to ensure DOM is fully updated
+          
         }).catch(error => {
           console.error('Error loading more messages:', error);
           update(state => {
@@ -253,6 +311,7 @@ function createTrollboxStore() {
     // Delete a message
     deleteMessage: (messageId: bigint) => {
       return update(state => {
+        // More efficient approach - direct filter without creating copies first
         state.messages = state.messages.filter(msg => msg.id !== messageId);
         return state;
       });

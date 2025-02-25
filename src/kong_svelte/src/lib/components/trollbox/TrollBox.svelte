@@ -65,18 +65,22 @@
         // Clear the flag
         localStorage.removeItem(MESSAGE_SUBMISSION_FLAG);
         // Immediately trigger a message refresh
-        setTimeout(() => loadMessages(), 500);
+        setTimeout(() => safeRefresh(true), 500);
         // Set flag to show refresh prompt
         showRefreshPrompt = true;
         
         // Aggressive polling for the first 30 seconds
         for (let i = 1; i <= 5; i++) {
-          setTimeout(() => loadMessages(), i * 2000);
+          setTimeout(() => loadMessages(true), i * 2000);
         }
+      } else {
+        // Standard initialization
+        safeRefresh(true);
       }
+    } else {
+      // Always do a load on initialization
+      loadMessages(true);
     }
-    
-    loadMessages();
     
     if ($auth.isConnected) {
       checkAdminStatus();
@@ -84,13 +88,16 @@
     
     // Check for banned users periodically
     checkBannedUsers();
+    
+    // Ensure we scroll to bottom after initialization
+    setTimeout(scrollToBottom, 500);
   }
 
   onMount(() => {
     initialize();
     
-    // Start polling for new messages - slightly more frequent
-    pollInterval = setInterval(loadMessages, 7000);
+    // Start polling for new messages - less frequent polling to reduce overhead
+    pollInterval = setInterval(loadMessages, 10000); // 10 seconds
 
     // Handle window focus - refresh messages when window regains focus
     const handleWindowFocus = () => {
@@ -185,6 +192,13 @@
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', visibilityChangeHandler);
 
+    // Ensure we scroll to the bottom when the component is mounted
+    // Use a small delay to ensure the DOM is fully rendered
+    setTimeout(scrollToBottom, 500);
+    
+    // Also scroll to bottom after initial messages are loaded
+    trollboxStore.loadMessages(true, scrollToBottom);
+
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('focus', handleWindowFocus);
@@ -202,13 +216,54 @@
     return (chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight) < threshold;
   }
 
-  function loadMessages() {
+  function loadMessages(scrollAfterLoad = false) {
     const wasAtBottom = isNearBottom();
-    trollboxStore.loadMessages(wasAtBottom, scrollToBottom);
+    trollboxStore.loadMessages(wasAtBottom || scrollAfterLoad, () => {
+      if (wasAtBottom || scrollAfterLoad) {
+        scrollToBottom();
+      }
+    });
+  }
+
+  // Safe refresh method that ensures a complete state recovery
+  function safeRefresh(forceScrollToBottom = false) {
+    // First check if we're at the bottom
+    const wasAtBottom = isNearBottom() || forceScrollToBottom;
+    
+    // Perform a refresh
+    loadMessages(forceScrollToBottom);
+    
+    // Add just one additional refresh with a reasonable delay
+    setTimeout(() => {
+      loadMessages(forceScrollToBottom);
+      
+      // Scroll to bottom if we were at the bottom or force scroll is requested
+      if (wasAtBottom) {
+        setTimeout(scrollToBottom, 50);
+      }
+    }, 800);
   }
 
   async function loadMoreMessages() {
     if (!chatContainer) return;
+    
+    // Find the first visible message element
+    const messageElements = chatContainer.querySelectorAll('.message-item');
+    let firstVisibleMessageId = null;
+    
+    if (messageElements.length > 0) {
+      for (let i = 0; i < messageElements.length; i++) {
+        const element = messageElements[i] as HTMLElement;
+        const rect = element.getBoundingClientRect();
+        // If the element is visible in the viewport
+        if (rect.top >= 0 || rect.bottom > 0) {
+          firstVisibleMessageId = element.getAttribute('data-message-id');
+          break;
+        }
+      }
+    }
+    
+    // Call the store method with the container reference
     trollboxStore.loadMoreMessages(chatContainer);
   }
 
@@ -219,7 +274,8 @@
 
   function scrollToBottom() {
     if (chatContainer) {
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+      // Set scrollTop to the maximum possible value to ensure we're at the very bottom
+      chatContainer.scrollTop = chatContainer.scrollHeight - chatContainer.clientHeight;
     }
   }
 
@@ -247,6 +303,7 @@
     setTimeout(scrollToBottom, 0);
 
     try {
+      // Submit message to backend
       const newMessage = await trollboxApi.createMessage({ message });
       
       // Clear submission flag
@@ -254,7 +311,7 @@
         localStorage.removeItem(MESSAGE_SUBMISSION_FLAG);
       }
       
-      // Remove from pending
+      // Find and remove from pending if it exists
       const pendingToRemove = [...pendingMessageIds].find(id => {
         const pending = pendingMessages.find(p => p.id === id);
         return pending && pending.message === message;
@@ -270,8 +327,8 @@
       // Scroll to bottom after message is added
       setTimeout(scrollToBottom, 0);
       
-      // Refresh again after a short delay to catch the new message if it's not already there
-      setTimeout(() => loadMessages(), 1000);
+      // Perform safe refresh to ensure state is consistent
+      safeRefresh();
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -325,7 +382,7 @@
     isOpen = !isOpen;
     if (isOpen) {
       // Reload messages when opening the trollbox
-      loadMessages();
+      loadMessages(true);
       setTimeout(scrollToBottom, 100);
     }
   }
@@ -355,16 +412,21 @@
     try {
       deletingMessageIds = new Set(deletingMessageIds).add(messageId);
       
-      // Small delay to show the deletion animation before actually deleting
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Shorter animation delay - just enough for visual feedback
+      await new Promise(resolve => setTimeout(resolve, 150));
       
+      // Save pendingMessages to restore later
+      const savedPendingMessages = [...pendingMessages];
+      const savedPendingIds = new Set(pendingMessageIds);
+      
+      // Perform deletion on backend
       await trollboxApi.deleteMessage(messageId);
       
-      // Small delay after deletion for visual feedback
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Remove message from the local state
+      // Remove message from the local state immediately without additional delay
       trollboxStore.deleteMessage(messageId);
+      
+      // Do a single refresh to keep things in sync
+      loadMessages();
     } catch (error) {
       console.error('Error deleting message:', error);
       if (error instanceof Error) {
@@ -443,7 +505,8 @@
 
   // Force refresh messages
   function refreshMessages() {
-    loadMessages();
+    // Use safe refresh instead of simple refresh
+    safeRefresh();
     showRefreshPrompt = false;
   }
 </script>
@@ -457,7 +520,7 @@
              sm:w-96
              fixed w-[95vw] max-w-lg bottom-16 left-1/2 -translate-x-1/2
              sm:static sm:transform-none mb-2 overflow-hidden"
-      style="height: {window.innerWidth < 640 ? 'calc(100vh - 8rem)' : '420px'}"
+      style="height: {window.innerWidth < 640 ? 'calc(100vh - 8rem)' : '550px'}"
       transition:fade={{ duration: 200 }}
     >
       <!-- Header Component -->

@@ -1,13 +1,14 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { goto } from "$app/navigation";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { ChevronRight, Search, X, ArrowUpDown, Loader2 } from "lucide-svelte";
+  import { ChevronRight, Search, X, ArrowUpDown } from "lucide-svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { userPoolListStore } from "$lib/stores/userPoolListStore";
   import { auth } from "$lib/services/auth";
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
 
   // --- Type Definitions ---
   interface FilterPair {
@@ -87,8 +88,8 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="pool-list-container" on:keydown={handleKeydown}>
-  <div class="search-section">
+<div class="pool-list-container flex flex-col" on:keydown={handleKeydown}>
+  <div class="search-section bg-kong-bg-dark/50">
     {#if !pool}
       <div class="search-bar">
         <div class="search-controls">
@@ -102,6 +103,10 @@
               type="text"
               placeholder="Search pools by name or token..."
               class="search-input"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
             />
             {#if $userPoolListStore.searchQuery}
               <button
@@ -143,12 +148,11 @@
     {/if}
   </div>
 
-  <div class="pool-list-content">
+  <div class="pool-list-content rounded-b-lg">
     <div class="pool-list">
       {#if $userPoolListStore.loading}
         <div class="empty-state" in:fade>
-          <Loader2 class="animate-spin" size={20} />
-          <p>Loading positions...</p>
+          <LoadingIndicator text="Loading positions..." />
         </div>
       {:else if $userPoolListStore.error}
         <div class="state-message error" in:fade>
@@ -245,16 +249,16 @@
 
 <style lang="postcss">
   .pool-list-container {
-    @apply flex flex-col h-[87dvh] relative;
+    @apply h-[calc(100vh-180px)] md:h-[calc(100vh-140px)] relative;
   }
 
   .search-section {
-    @apply sticky top-0 z-20 bg-kong-bg-light;
+    @apply sticky top-0 z-20;
     @apply border-b border-kong-border;
   }
 
   .pool-list-content {
-    @apply flex-1 overflow-hidden relative;
+    @apply flex-1 overflow-hidden relative bg-kong-bg-light;
   }
 
   .pool-list {
@@ -262,7 +266,7 @@
   }
 
   .search-bar {
-    @apply flex items-center justify-between p-3 gap-3;
+    @apply flex items-center justify-between py-2 px-3 gap-3;
   }
 
   .search-controls {
@@ -281,6 +285,8 @@
     @apply w-full bg-transparent border-none py-2 pl-9 pr-3.5 text-sm
            text-kong-text-primary placeholder-kong-text-secondary/70 
            focus:outline-none focus:ring-1 focus:ring-kong-accent-blue/40;
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
   }
 
   .clear-button {
