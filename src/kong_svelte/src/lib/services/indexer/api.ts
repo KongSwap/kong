@@ -47,7 +47,7 @@ export const fetchChartData = async (
     
     // Parse and transform the data
     if (Array.isArray(data)) {
-      return data.map(candle => {
+      const processedData = data.map(candle => {
         // Parse the ISO string to UTC timestamp in milliseconds
         const timestamp = Date.parse(candle.candle_start);
         
@@ -59,9 +59,10 @@ export const fetchChartData = async (
           close_price: candle.close_price,
           volume: candle.volume || 0
         };
-      })
-      .filter(candle => !isNaN(candle.candle_start)) // Remove any invalid timestamps
-      .sort((a, b) => a.candle_start - b.candle_start); // Sort by timestamp
+      });
+      
+      return processedData
+        .filter(candle => !isNaN(candle.candle_start)) // Remove any invalid timestamps
     }
     
     return [];

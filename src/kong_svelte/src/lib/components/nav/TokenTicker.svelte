@@ -24,6 +24,8 @@
   let tickerTokens: FE.Token[] = [];
   let icpToken: FE.Token | null = null;
   let ckUSDCToken: FE.Token | null = null;
+  // Track which quote token is actually being used for the chart
+  let actualQuoteToken: 'ckUSDT' | 'ICP' = 'ckUSDT';
 
   // Track previous prices to detect changes using a more efficient structure
   let previousPrices = new Map<string, number>();
@@ -377,7 +379,7 @@
         {:else if hoveredToken.symbol === "ckUSDC"}
           ckUSDC/ckUSDT
         {:else}
-          {hoveredToken.symbol}/ICP
+          {hoveredToken.symbol}/{actualQuoteToken}
         {/if}
       </span>
       <div class="flex items-center gap-2">
@@ -405,12 +407,13 @@
             hoveredToken
         }
         quoteToken={
-          hoveredToken.symbol === "ICP" ? 
+          hoveredToken.symbol === "ICP" || hoveredToken.symbol === "ckUSDT" || hoveredToken.symbol === "ckUSDC" ?
             quoteToken ?? hoveredToken :
-          hoveredToken.symbol === "ckUSDT" || hoveredToken.symbol === "ckUSDC" ?
-            quoteToken ?? hoveredToken :
-            icpToken ?? hoveredToken
+            quoteToken ?? icpToken ?? hoveredToken  // Always try ckUSDT first, fallback to ICP
         }
+        on:quoteTokenUsed={(event) => {
+          actualQuoteToken = event.detail.symbol === "ckUSDT" ? "ckUSDT" : "ICP";
+        }}
       />
     {/key}
   </button>

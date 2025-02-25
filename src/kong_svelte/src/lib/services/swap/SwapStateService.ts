@@ -22,7 +22,6 @@ export interface SwapState {
   showReceiveTokenSelector: boolean;
   showConfirmation: boolean;
   showSuccessModal: boolean;
-  showBananaRain: boolean;
   gasFees: string[];
   lpFees: string[];
   swapSlippage: number;
@@ -73,7 +72,6 @@ function createSwapStore(): SwapStore {
     showReceiveTokenSelector: false,
     showConfirmation: false,
     showSuccessModal: false,
-    showBananaRain: false,
     gasFees: [],
     lpFees: [],
     swapSlippage: 0,
