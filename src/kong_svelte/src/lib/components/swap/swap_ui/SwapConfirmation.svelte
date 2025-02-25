@@ -43,19 +43,6 @@
   let quoteUpdateInterval: ReturnType<typeof setInterval>;
   const QUOTE_UPDATE_INTERVAL = 1000; // 1 second
 
-  $: payUsdValue = formatBalance(payAmount.toString(), payToken?.decimals);
-  $: receiveUsdValue = formatBalance(
-    receiveAmount.toString(),
-    receiveToken?.decimals,
-  );
-
-  $: quoteData = {
-    gasFees,
-    lpFees,
-    payToken,
-    receiveToken,
-  };
-
   const dispatch = createEventDispatcher<{
     quoteUpdate: { receiveAmount: string };
   }>();
@@ -146,16 +133,24 @@
         );
 
         // Calculate price impact using BigNumber for precision
-        const payAmountNum = new BigNumber(payAmount).times(10 ** payToken.decimals);
-        const receiveAmountNum = new BigNumber(quote.Ok.receive_amount.toString());
+        const payAmountNum = new BigNumber(payAmount);
+        const receiveAmountNum = new BigNumber(SwapService.fromBigInt(
+          quote.Ok.receive_amount,
+          receiveToken.decimals
+        ));
         
         if (payAmountNum.isGreaterThan(0) && receiveAmountNum.isGreaterThan(0)) {
           // Calculate price impact using mid_price
-          const expectedAmount = new BigNumber(payAmountNum).times(quote.Ok.mid_price);
+          // Use formatted values directly without applying additional scaling
+          const expectedAmount = payAmountNum.times(quote.Ok.mid_price);
           const actualAmount = receiveAmountNum;
           
           if (expectedAmount.isGreaterThan(0)) {
             priceImpact = expectedAmount.minus(actualAmount).div(expectedAmount).times(100).toNumber();
+            // Ensure we don't have negative price impact (which could happen due to rounding)
+            priceImpact = Math.max(0, priceImpact);
+            // Cap at 100% to avoid displaying unreasonable values
+            priceImpact = Math.min(100, priceImpact);
           } else {
             priceImpact = 0;
           }

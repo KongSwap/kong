@@ -25,6 +25,7 @@
 
   export let baseToken: FE.Token;
   export let quoteToken: FE.Token;
+  export let price_change_24h: number | null = null;
   
   // Set up event dispatcher for token info
   const dispatch = createEventDispatcher();
@@ -120,7 +121,7 @@
         y: parseFloat(candle.close_price as string)
       }));
 
-      const chartColor = getChartColor(priceChange);
+      const chartColor = getChartColor(price_change_24h);
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
       gradient.addColorStop(0, `${chartColor}33`); // 20% opacity
       gradient.addColorStop(1, `${chartColor}00`); // 0% opacity
