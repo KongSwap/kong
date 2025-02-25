@@ -1,7 +1,6 @@
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::claims::claim;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_claim::claim_map;
 use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
@@ -53,7 +52,8 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn insert_claim(claim: StableClaim) -> Result<String, String> {
+fn insert_claim(stable_claim: String) -> Result<String, String> {
+    let claim = serde_json::from_str(&stable_claim).map_err(|e| format!("Invalid claim: {}", e))?;
     let claim_id = claim_map::insert(&claim);
 
     let _ = claim_map::archive_to_kong_data(claim_id);
