@@ -131,6 +131,43 @@ export async function createMessage(payload: MessagePayload): Promise<Message> {
         return processMessageTokens(result.Ok);
     } catch (error) {
         console.error('Create message error:', error);
-        throw error;
+        
+        // Handle different error types and extract the meaningful error message
+        if (error instanceof Error) {
+            // Could be our own thrown error or a network/system error
+            throw error;
+        } else if (typeof error === 'object' && error !== null) {
+            // Handle IC rejection errors which might be deeply nested
+            const message = extractErrorMessage(error);
+            throw new Error(message || 'Failed to send message');
+        }
+        throw new Error('Failed to send message');
     }
+}
+
+// Helper function to extract meaningful error messages from IC rejection objects
+function extractErrorMessage(error: any): string | null {
+    // Check for common error patterns in IC responses
+    if (error.message) return error.message;
+    if (typeof error.toString === 'function') {
+        const errorStr = error.toString();
+        if (errorStr !== '[object Object]') return errorStr;
+    }
+    
+    // Check for rejection message in various formats
+    if (error.reject_message) return error.reject_message;
+    if (error.error_message) return error.error_message;
+    
+    // Look for nested error objects
+    for (const key of ['error', 'cause', 'detail', 'details']) {
+        if (error[key]) {
+            if (typeof error[key] === 'string') return error[key];
+            if (typeof error[key] === 'object') {
+                const nested = extractErrorMessage(error[key]);
+                if (nested) return nested;
+            }
+        }
+    }
+    
+    return null;
 }

@@ -5,9 +5,14 @@ use crate::types::Message;
 use regex::Regex;
 use lazy_static::lazy_static;
 use rustrict::{CensorStr, Type, Censor};
+use std::collections::HashMap;
+use candid::Principal;
 
 // Type aliases
 pub type Memory = VirtualMemory<DefaultMemoryImpl>;
+
+// Spam prevention constants
+pub const MIN_MESSAGE_INTERVAL_NS: u64 = 5_000_000_000; // 5 seconds in nanoseconds
 
 thread_local! {
     pub static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = RefCell::new(
@@ -21,6 +26,9 @@ thread_local! {
     );
 
     pub static MESSAGE_COUNTER: RefCell<u64> = RefCell::new(0);
+    
+    // Track last message timestamp per user for spam prevention
+    pub static LAST_MESSAGE_TIME: RefCell<HashMap<Principal, u64>> = RefCell::new(HashMap::new());
 }
 
 lazy_static! {

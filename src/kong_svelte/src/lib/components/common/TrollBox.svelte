@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { auth } from '$lib/services/auth';
-  import { MessageSquare, X, Smile } from 'lucide-svelte';
+  import { MessageSquare, X, Smile, AlertCircle } from 'lucide-svelte';
   import { slide, fade } from 'svelte/transition';
   import * as trollboxApi from '$lib/api/trollbox';
   import type { Message } from '$lib/api/trollbox';
@@ -22,6 +22,8 @@
   let windowWidth: number;
   let tokenCache: Record<string, string> = {};
   let pollInterval: ReturnType<typeof setInterval>;
+  let errorMessage: string = '';
+  let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 
   async function initialize() {
     if (browser) {
@@ -58,6 +60,7 @@
       document.removeEventListener('click', handleClickOutside);
       window.removeEventListener('resize', handleResize);
       clearInterval(pollInterval);
+      if (errorTimeout) clearTimeout(errorTimeout);
     };
   });
 
@@ -149,6 +152,20 @@
     }
   }
 
+  function showError(message: string, duration: number = 5000) {
+    errorMessage = message;
+    
+    // Clear any existing timeout
+    if (errorTimeout) {
+      clearTimeout(errorTimeout);
+    }
+    
+    // Set a new timeout to clear the error message
+    errorTimeout = setTimeout(() => {
+      errorMessage = '';
+    }, duration);
+  }
+
   async function handleSubmit() {
     if (!messageInput.trim() || !$auth.isConnected) return;
 
@@ -179,6 +196,16 @@
       console.error('Error sending message:', error);
       // Remove pending message on error
       pendingMessages = pendingMessages.filter(msg => msg.id !== pendingId);
+      
+      // Display error message to user
+      if (error instanceof Error) {
+        showError(error.message);
+      } else if (typeof error === 'string') {
+        showError(error);
+      } else {
+        showError('Failed to send message. Please try again later.');
+      }
+      
       messageInput = message; // Restore message input on error
     }
   }
@@ -303,6 +330,14 @@
           </div>
         {/each}
       </div>
+
+      <!-- Error message -->
+      {#if errorMessage}
+        <div class="px-3 py-2 bg-red-900/40 border-t border-b border-red-800 flex items-center gap-2" transition:slide={{ duration: 200 }}>
+          <AlertCircle class="w-4 h-4 text-red-400 shrink-0" />
+          <p class="text-sm text-red-200">{errorMessage}</p>
+        </div>
+      {/if}
 
       <!-- Message input -->
       <div class="p-2 border-t border-kong-pm-border">
