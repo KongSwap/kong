@@ -81,7 +81,7 @@ async function processMessageTokens(message: Message): Promise<Message> {
                 const pattern = new RegExp(`#${canisterId}`, 'g');
                 processedMessage = processedMessage.replace(
                     pattern, 
-                    `<a href="/stats/${canisterId}"><span class="bg-kong-primary/20 rounded-md px-1.5 py-0.5 text-kong-text-primary text-xs">${token.symbol} - <span class="${Number(token.price_change_24h) > 0 ? 'text-kong-text-accent-green' : 'text-kong-text-accent-red'}">${token.price} (${token.price_change_24h}%)</span></span></a>`
+                    `<a href="/stats/${canisterId}" class="token-link" data-canister-id="${canisterId}" onclick="event.stopPropagation();"><span class="bg-kong-primary/20 rounded-md px-1.5 py-0.5 text-kong-text-primary">${token.symbol} - <span class="${Number(token.price_change_24h) > 0 ? 'text-kong-text-accent-green' : 'text-kong-text-accent-red'}">${token.price} (${token.price_change_24h}%)</span></span></a>`
                 );
             }
         });
@@ -201,9 +201,8 @@ export async function isAdmin(): Promise<boolean> {
             requiresSigning: true,
         });
         
-        // Call a canister method to check if current principal is admin
-        // This assumes the canister has an is_admin method that returns a boolean
-        const result = await actor.is_admin(authState.account.owner);
+        // Call is_admin with principal as a string instead of a Principal object
+        const result = await actor.is_admin(authState.account.owner.toString());
         
         // Cache the result
         isAdminCache = result;

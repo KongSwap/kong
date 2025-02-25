@@ -78,7 +78,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const Result_4 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
   return IDL.Service({
-    'add_admin' : IDL.Func([IDL.Principal], [Result], []),
+    'add_admin' : IDL.Func([IDL.Text], [Result], []),
     'ban_user' : IDL.Func([IDL.Principal, IDL.Nat64], [Result], []),
     'check_ban_status' : IDL.Func(
         [IDL.Principal],
@@ -114,7 +114,7 @@ export const idlFactory = ({ IDL }) => {
         [Result_4],
         [],
       ),
-    'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
+    'is_admin' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'unban_user' : IDL.Func([IDL.Principal], [Result], []),
   });
 };
