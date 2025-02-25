@@ -1,6 +1,5 @@
 use ic_cdk::api::caller;
 use crate::state::*;
-use crate::types::*;
 
 /// Check if the caller is an admin
 fn caller_is_admin() -> bool {
