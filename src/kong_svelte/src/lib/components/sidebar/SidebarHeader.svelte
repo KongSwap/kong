@@ -19,9 +19,10 @@
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
   import { goto } from "$app/navigation";
+  import { userPoolListStore } from "$lib/stores/userPoolListStore";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "history";
@@ -36,6 +37,13 @@
     { id: "history", icon: History },
   ];
 
+  // Initialize pool data when component mounts
+  onMount(() => {
+    if ($auth.isConnected) {
+      userPoolListStore.initialize();
+    }
+  });
+
   async function handleReload(isPolling = false) {
     if (!isRefreshing) {
       isRefreshing = isPolling === true ? false : true;
@@ -44,6 +52,9 @@
         if (currentWalletId) {
           // Load balances and update stores
           await loadBalances(currentWalletId, { forceRefresh: true });
+          
+          // Also initialize pool data to ensure portfolio value is accurate
+          await userPoolListStore.initialize();
         }
       } finally {
         isRefreshing = false;

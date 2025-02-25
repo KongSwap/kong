@@ -214,7 +214,7 @@ export class TokenService {
     principalId: string, 
     cursor?: number,
     limit: number = 40, 
-    tx_type: 'swap' | 'pool' = 'swap'
+    tx_type: 'swap' | 'pool' | 'send' = 'swap'
   ): Promise<{ transactions: any[], has_more: boolean, next_cursor?: number }> {
     try {
       const queryParams = new URLSearchParams({
@@ -226,9 +226,14 @@ export class TokenService {
       }
       
       // Use different endpoints based on transaction type
-      const url = tx_type === 'pool'
-        ? `${API_URL}/api/users/${principalId}/transactions/liquidity?${queryParams.toString()}`
-        : `${API_URL}/api/users/${principalId}/transactions/swap?${queryParams.toString()}`;
+      let url;
+      if (tx_type === 'pool') {
+        url = `${API_URL}/api/users/${principalId}/transactions/liquidity?${queryParams.toString()}`;
+      } else if (tx_type === 'send') {
+        url = `${API_URL}/api/users/${principalId}/transactions/send?${queryParams.toString()}`;
+      } else {
+        url = `${API_URL}/api/users/${principalId}/transactions/swap?${queryParams.toString()}`;
+      }
       
       const response = await fetch(url);
       const responseText = await response.text();
@@ -387,6 +392,40 @@ export class TokenService {
               receive_token_canister: receiveToken?.canister_id || '',
               gas_fee: (rawTx.gas_fee || '0').replace(/_/g, ''),
               lp_fee: (rawTx.lp_fee || '0').replace(/_/g, '')
+            }
+          };
+        } else if (tx.tx_type === 'Send' || tx_type === 'send') {
+          // Handle send transaction
+          const rawTx = tx.raw_json?.SendTx || tx;
+          if (!rawTx) {
+            console.error('Invalid send transaction data:', tx);
+            return null;
+          }
+
+          // Find the token in the response
+          const token = tokens.find((t: any) => t.token_id === rawTx.token_id || t.canister_id === rawTx.token_canister);
+
+          // Format amounts by removing underscores and adjusting for decimals
+          const amount = rawTx.amount?.replace(/_/g, '') || '0';
+
+          // Format amount based on token decimals
+          const formattedAmount = token 
+            ? (Number(amount) / Math.pow(10, token.decimals)).toString() 
+            : amount;
+
+          return {
+            tx_id: rawTx.tx_id || rawTx.id || `send-${Date.now()}`,
+            tx_type: 'send',
+            status: rawTx.status || 'Success',
+            timestamp: rawTx.ts?.toString() || rawTx.timestamp?.toString() || Date.now().toString(),
+            details: {
+              amount: formattedAmount,
+              token_id: rawTx.token_id || '',
+              token_symbol: token?.symbol || rawTx.token_symbol || 'Unknown',
+              token_canister: token?.canister_id || rawTx.token_canister || '',
+              from: rawTx.from || tx.from || '',
+              to: rawTx.to || tx.to || '',
+              fee: (rawTx.fee || '0').replace(/_/g, '')
             }
           };
         }

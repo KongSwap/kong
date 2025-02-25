@@ -198,7 +198,7 @@ export async function isAdmin(): Promise<boolean> {
     try {
         const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
             anon: false,
-            requiresSigning: true,
+            requiresSigning: false,
         });
         
         // Call is_admin with principal as a string instead of a Principal object
