@@ -12,5 +12,4 @@ KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
 
 REQUEST_ID='(8:nat64)'
 
-#dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} requests --output json "(null)" | jq
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} requests --output json '(opt '${REQUEST_ID}')' | jq
