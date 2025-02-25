@@ -92,9 +92,9 @@ export const portfolioValue = derived(
       return acc;
     }, 0);
 
-    // Calculate pool values using processedPools instead of filteredPools to ensure all pools are included
+    // Calculate pool values using processedPools, ensuring the array exists
     const poolValue = ($userPoolListStore.processedPools || []).reduce((acc, pool) => {
-      const value = Number(pool.usd_balance) || 0;
+      const value = pool && pool.usd_balance ? Number(pool.usd_balance) : 0;
       return acc + value;
     }, 0);
 

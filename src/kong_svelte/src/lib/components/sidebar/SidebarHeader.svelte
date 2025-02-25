@@ -37,10 +37,22 @@
     { id: "history", icon: History },
   ];
 
-  // Initialize pool data when component mounts
-  onMount(() => {
+  // Initialize both token and pool data when component mounts
+  onMount(async () => {
     if ($auth.isConnected) {
-      userPoolListStore.initialize();
+      isRefreshing = true;
+      try {
+        const currentWalletId = $auth?.account?.owner?.toString();
+        if (currentWalletId) {
+          // Load both tokens and pools in parallel on first load
+          await Promise.all([
+            loadBalances(currentWalletId, { forceRefresh: true }),
+            userPoolListStore.initialize()
+          ]);
+        }
+      } finally {
+        isRefreshing = false;
+      }
     }
   });
 
@@ -50,11 +62,14 @@
       try {
         const currentWalletId = $auth?.account?.owner?.toString();
         if (currentWalletId) {
-          // Load balances and update stores
-          await loadBalances(currentWalletId, { forceRefresh: true });
-          
-          // Also initialize pool data to ensure portfolio value is accurate
-          await userPoolListStore.initialize();
+          // Load balances and pool data in parallel
+          await Promise.all([
+            // Load balances and update stores
+            loadBalances(currentWalletId, { forceRefresh: true }),
+            
+            // Initialize pool data to ensure portfolio value is accurate
+            userPoolListStore.initialize()
+          ]);
         }
       } finally {
         isRefreshing = false;
