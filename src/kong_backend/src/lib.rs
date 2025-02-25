@@ -27,7 +27,6 @@ mod swap;
 mod swap_amounts;
 mod tokens;
 mod transfers;
-mod txs;
 mod user;
 mod user_balances;
 
