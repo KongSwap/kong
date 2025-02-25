@@ -1,6 +1,7 @@
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
+use crate::claims::claim;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_claim::claim_map;
 use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
@@ -51,11 +52,15 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
     Ok("Claims updated".to_string())
 }
 
-// "unclaimed"
-// "claiming"
-// "claimed"
-// "too_many_attempts"
-// "unclaimed_override"
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn insert_claim(claim: StableClaim) -> Result<String, String> {
+    let claim_id = claim_map::insert(&claim);
+
+    let _ = claim_map::archive_to_kong_data(claim_id);
+
+    Ok(format!("Claim #{} inserted", claim_id))
+}
+
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> {
     let status = match status.as_str() {
@@ -64,11 +69,13 @@ fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> 
         "claimed" => ClaimStatus::Claimed,
         "too_many_attempts" => ClaimStatus::TooManyAttempts,
         "unclaimed_override" => ClaimStatus::UnclaimedOverride,
+        "claimable" => ClaimStatus::Claimable,
         _ => return Err("Invalid status".to_string()),
     };
 
     claim_map::update_status(claim_id, status).ok_or("Claim not found")?;
 
     let _ = claim_map::archive_to_kong_data(claim_id);
-    Ok("Claim status changed".to_string())
+
+    Ok(format!("Claim #{} status changed", claim_id))
 }
