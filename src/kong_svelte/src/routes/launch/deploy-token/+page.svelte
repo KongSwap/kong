@@ -15,6 +15,7 @@
   import { SwapService } from "$lib/services/swap/SwapService";
   import { getWalletIdentity } from "$lib/utils/wallet";
   import { IcrcService } from "$lib/services/icrc/IcrcService";
+  import { tokenParams } from "$lib/stores/tokenParams";
   
   // States for the token deployment process
   const PROCESS_STEPS = {
@@ -38,8 +39,8 @@
     { name: "Completed", description: "Token creation successful" }
   ];
 
-  // Token parameters from URL query
-  let tokenParams: any = null;
+  // Token parameters from store
+  let currentTokenParams: any = null;
   let currentStep = PROCESS_STEPS.PREPARING;
   let errorMessage = "";
   let errorDetails = "";
@@ -65,6 +66,7 @@
   const KONG_DECIMALS = 8;
   const ICP_DECIMALS = 8;
   const IC_HOST = "https://icp0.io";
+  const IC_DASHBOARD_BASE_URL = "https://dashboard.internetcomputer.org/canister/";
   
   // Wasm module constants
   const COMPRESSED_WASM_URL = "/wasms/token_backend/token_backend.wasm.gz";
@@ -149,23 +151,23 @@
       archive_options: null,
       initial_block_reward: BigInt(params.initial_block_reward),
       block_time_target_seconds: params.block_time_target_seconds,
-      halving_interval: params.difficulty_adjustment_blocks // Renamed to match expected param name
+      halving_interval: params.halving_interval // Use the correct parameter name
     };
   }
   
   // Initialization
   onMount(async () => {
     try {
-      // Extract token parameters from URL
-      const paramsString = $page.url.searchParams.get("params");
-      if (!paramsString) {
+      // Get token parameters from store
+      tokenParams.subscribe(params => {
+        currentTokenParams = params;
+      })();
+      
+      if (!currentTokenParams || !currentTokenParams.name || !currentTokenParams.ticker) {
         throw new Error("No token parameters provided");
       }
       
-      // Parse and adapt token parameters
-      const rawParams = JSON.parse(decodeURIComponent(paramsString));
-      tokenParams = adaptTokenParameters(rawParams);
-      console.log("Token parameters:", tokenParams);
+      console.log("Token parameters:", currentTokenParams);
       
       // Fixed amount for token deployment - 200 KONG
       kongAmount = "200";
@@ -294,8 +296,8 @@
         addLog(`Canister created successfully with ID: ${canisterId}`);
         
         // Store the new canister in cache
-        if (tokenParams) {
-          storeCanisterInCache(canisterId, tokenParams);
+        if (currentTokenParams) {
+          storeCanisterInCache(canisterId, currentTokenParams);
         }
         
         return newCanisterId;
@@ -410,6 +412,11 @@
       // Create the token initialization arguments
       const initArgsBuffer = await (async () => {
         // Define the token initialization arguments schema
+        const SocialLink = IDL.Record({
+          platform: IDL.Text,
+          url: IDL.Text
+        });
+        
         const TokenInitArgs = IDL.Record({
           name: IDL.Text,
           ticker: IDL.Text,
@@ -426,7 +433,8 @@
           ),
           initial_block_reward: IDL.Nat,
           block_time_target_seconds: IDL.Nat64,
-          halving_interval: IDL.Nat64
+          halving_interval: IDL.Nat64,
+          social_links: IDL.Opt(IDL.Vec(SocialLink))
         });
         
         // Prepare the arguments
@@ -440,7 +448,10 @@
           archive_options: initArgs.archive_options,
           initial_block_reward: initArgs.initial_block_reward,
           block_time_target_seconds: initArgs.block_time_target_seconds,
-          halving_interval: initArgs.halving_interval
+          halving_interval: initArgs.halving_interval,
+          social_links: Array.isArray(initArgs.social_links) && initArgs.social_links.length > 0 
+            ? [initArgs.social_links] 
+            : []
         };
         
         // Use the proper Candid encoding approach
@@ -486,25 +497,30 @@
       // Install the token_backend wasm to the canister
       addLog(`Installing token code to canister ${canisterIdPrincipal.toText()}`);
     
-      // Convert token params for initialization
+      // Use token params directly from the store
       const initArgs = {
-        name: tokenParams.name,
-        ticker: tokenParams.ticker,
-        total_supply: tokenParams.total_supply,
-        logo: tokenParams.logo,
-        decimals: tokenParams.decimals,
-        transfer_fee: tokenParams.transfer_fee,
+        name: currentTokenParams.name,
+        ticker: currentTokenParams.ticker,
+        total_supply: currentTokenParams.total_supply,
+        logo: currentTokenParams.logo,
+        decimals: currentTokenParams.decimals[0],
+        transfer_fee: currentTokenParams.transfer_fee[0],
         archive_options: null,
-        initial_block_reward: tokenParams.initial_block_reward,
-        block_time_target_seconds: tokenParams.block_time_target_seconds,
-        halving_interval: tokenParams.halving_interval
+        initial_block_reward: currentTokenParams.initial_block_reward,
+        block_time_target_seconds: currentTokenParams.block_time_target_seconds,
+        halving_interval: currentTokenParams.halving_interval,
+        social_links: currentTokenParams.social_links && currentTokenParams.social_links.length > 0 
+          ? currentTokenParams.social_links[0] 
+          : []
       };
       
       // For logging - format nicely
       const formattedArgs = JSON.stringify({
         ...initArgs,
         total_supply: initArgs.total_supply.toString(),
-        initial_block_reward: initArgs.initial_block_reward.toString()
+        initial_block_reward: initArgs.initial_block_reward.toString(),
+        block_time_target_seconds: initArgs.block_time_target_seconds.toString(),
+        halving_interval: initArgs.halving_interval.toString()
       }, null, 2);
       
       addLog(`Initializing token with parameters: ${formattedArgs}`);
@@ -544,7 +560,10 @@
       currentStep = PROCESS_STEPS.COMPLETED;
       addLog("🎉 Token creation completed successfully!");
       addLog(`Your token is now available at canister ID: ${canisterId}`);
-      addLog(`You can view it on the IC Dashboard: https://dashboard.internetcomputer.org/canister/${canisterId}`);
+      addLog(`You can view it on the IC Dashboard: ${IC_DASHBOARD_BASE_URL}${canisterId}`);
+      
+      // Reset token params store after successful deployment
+      tokenParams.reset();
       
     } catch (error) {
       console.error("Error during token deployment:", error);
@@ -653,15 +672,6 @@
                     <ExternalLink size={12} />
                   </a>
                 </div>
-              </div>
-            </div>
-          {/if}
-          
-          {#if tokenParams}
-            <div class="pt-2 mt-2 border-t border-kong-border/30">
-              <div class="flex items-center justify-between">
-                <span class="text-xs text-kong-text-secondary">Token Name:</span>
-                <span class="text-xs font-medium">{tokenParams.name} ({tokenParams.ticker})</span>
               </div>
             </div>
           {/if}
@@ -868,7 +878,7 @@
                 <div>
                   <h3 class="font-medium text-kong-accent-green">Token Deployment Successful!</h3>
                   <p class="mt-1 text-sm text-kong-text-secondary">
-                    Your token "{tokenParams?.name}" ({tokenParams?.ticker}) has been successfully deployed to 
+                    Your token "{currentTokenParams?.name}" ({currentTokenParams?.ticker}) has been successfully deployed to 
                     the Internet Computer with canister ID: <span class="font-mono text-kong-primary">{canisterId}</span>
                   </p>
                   
@@ -901,46 +911,46 @@
               <div class="grid gap-4 md:grid-cols-2">
                 <div class="p-3 rounded-lg bg-kong-bg-dark/30">
                   <span class="text-xs text-kong-text-secondary">Name:</span>
-                  <div class="text-sm font-medium">{tokenParams?.name}</div>
+                  <div class="text-sm font-medium">{currentTokenParams?.name}</div>
                 </div>
                 
                 <div class="p-3 rounded-lg bg-kong-bg-dark/30">
                   <span class="text-xs text-kong-text-secondary">Symbol:</span>
-                  <div class="text-sm font-medium">{tokenParams?.ticker}</div>
+                  <div class="text-sm font-medium">{currentTokenParams?.ticker}</div>
                 </div>
                 
                 <div class="p-3 rounded-lg bg-kong-bg-dark/30">
                   <span class="text-xs text-kong-text-secondary">Total Supply:</span>
-                  <div class="text-sm font-medium">{tokenParams?.total_supply.toLocaleString()} {tokenParams?.ticker}</div>
+                  <div class="text-sm font-medium">{currentTokenParams?.total_supply.toLocaleString()} {currentTokenParams?.ticker}</div>
                 </div>
                 
                 <div class="p-3 rounded-lg bg-kong-bg-dark/30">
                   <span class="text-xs text-kong-text-secondary">Decimals:</span>
-                  <div class="text-sm font-medium">{tokenParams?.decimals?.[0] || 8}</div>
+                  <div class="text-sm font-medium">{currentTokenParams?.decimals?.[0] || 8}</div>
                 </div>
                 
                 <div class="p-3 rounded-lg bg-kong-bg-dark/30">
                   <span class="text-xs text-kong-text-secondary">Transfer Fee:</span>
                   <div class="text-sm font-medium">
-                    {tokenParams?.transfer_fee ? 
-                      (tokenParams.transfer_fee[0] / Math.pow(10, tokenParams.decimals[0])).toFixed(tokenParams.decimals[0]) : 
-                      "0"} {tokenParams?.ticker}
+                    {currentTokenParams?.transfer_fee ? 
+                      (currentTokenParams.transfer_fee[0] / Math.pow(10, currentTokenParams.decimals[0])).toFixed(currentTokenParams.decimals[0]) : 
+                      "0"} {currentTokenParams?.ticker}
                   </div>
                 </div>
                 
                 <div class="p-3 rounded-lg bg-kong-bg-dark/30">
                   <span class="text-xs text-kong-text-secondary">Block Reward:</span>
-                  <div class="text-sm font-medium">{tokenParams?.initial_block_reward.toLocaleString()} {tokenParams?.ticker}</div>
+                  <div class="text-sm font-medium">{currentTokenParams?.initial_block_reward.toLocaleString()} {currentTokenParams?.ticker}</div>
                 </div>
                 
                 <div class="p-3 rounded-lg bg-kong-bg-dark/30">
                   <span class="text-xs text-kong-text-secondary">Block Time:</span>
-                  <div class="text-sm font-medium">{tokenParams?.block_time_target_seconds} seconds</div>
+                  <div class="text-sm font-medium">{currentTokenParams?.block_time_target_seconds} seconds</div>
                 </div>
                 
                 <div class="p-3 rounded-lg bg-kong-bg-dark/30">
                   <span class="text-xs text-kong-text-secondary">Difficulty Adjustment:</span>
-                  <div class="text-sm font-medium">Every {tokenParams?.difficulty_adjustment_blocks.toLocaleString()} blocks</div>
+                  <div class="text-sm font-medium">Every {currentTokenParams?.halving_interval.toLocaleString()} blocks</div>
                 </div>
               </div>
             </div>

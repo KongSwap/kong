@@ -10,8 +10,8 @@
   import MiningCalculator from "$lib/components/launch/token/MiningCalculator.svelte";
   import SocialLinks from "$lib/components/launch/token/SocialLinks.svelte";
   import Tooltip from "$lib/components/common/Tooltip.svelte";
-  import type { SocialLink } from "$lib/components/launch/token/SocialLinks.svelte";
   import { writable } from 'svelte/store';
+  import { tokenParams } from "$lib/stores/tokenParams";
 
   // Basic token parameters
   let name = "";
@@ -24,7 +24,7 @@
   // Mining parameters
   let initialBlockReward = 100;
   let blockTimeTargetSeconds = 30;
-  let difficultyAdjustmentBlocks = 100000;
+  let halvingInterval = 100000;
 
   // Archive options
   let archiveOptions = {
@@ -81,7 +81,7 @@
     // Mining params
     if (initialBlockReward <= 0) errors.push('Block reward must be greater than 0');
     if (blockTimeTargetSeconds <= 0) errors.push('Block time target must be greater than 0');
-    if (difficultyAdjustmentBlocks <= 0) errors.push('Halving blocks must be greater than 0');
+    if (halvingInterval <= 0) errors.push('Halving interval must be greater than 0');
 
     errorStore.set({
       hasErrors: errors.length > 0,
@@ -172,22 +172,23 @@
 
     isSubmitting = true;
     try {
-      // Prepare the token initialization arguments
-      const initArgs = {
+      // Update the token parameters store
+      tokenParams.update(store => ({
+        ...store,
         name,
         ticker: symbol,
         decimals: [decimals],
-        total_supply: totalSupply,
-        transfer_fee: [transferFee],
+        total_supply: BigInt(totalSupply),
+        transfer_fee: [BigInt(transferFee)],
         logo: logo ? [logo] : [],
-        initial_block_reward: initialBlockReward,
-        block_time_target_seconds: blockTimeTargetSeconds,
-        difficulty_adjustment_blocks: difficultyAdjustmentBlocks
-      };
+        initial_block_reward: BigInt(initialBlockReward),
+        block_time_target_seconds: BigInt(blockTimeTargetSeconds),
+        halving_interval: BigInt(halvingInterval),
+        social_links: socialLinks.length > 0 ? [socialLinks.map(link => ({ platform: link.platform, url: link.url }))] : []
+      }));
       
-      // Navigate to the token launch page with the token parameters
-      const tokenParams = encodeURIComponent(JSON.stringify(initArgs));
-      goto(`/launch/deploy-token?params=${tokenParams}`);
+      // Navigate to the token launch page without URL parameters
+      goto(`/launch/deploy-token`);
     } catch (error) {
       console.error("Error creating token:", error);
       isSubmitting = false;
@@ -428,13 +429,13 @@
             <MiningCalculator
               bind:blockReward={initialBlockReward}
               bind:blockTimeSeconds={blockTimeTargetSeconds}
-              bind:halvingBlocks={difficultyAdjustmentBlocks}
+              bind:halvingBlocks={halvingInterval}
               bind:maxSupply={totalSupply}
               bind:circulationDays
               bind:totalMined
               bind:minedPercentage
               bind:miningComplete
-              bind:miningSubStep
+              bind:currentSubStep={miningSubStep}
               tokenTicker={symbol}
               tokenLogo={logo}
               transferFee={transferFee}
@@ -472,7 +473,7 @@
 
           <Panel variant="solid" type="main" className="p-4 backdrop-blur-xl">
             <SocialLinks 
-              bind:socialLinks
+              bind:links={socialLinks}
               tokenName={name}
               tokenSymbol={symbol}
             />
@@ -554,8 +555,8 @@
                         <span class="font-medium">{blockTimeTargetSeconds} seconds</span>
                       </div>
                       <div class="flex justify-between">
-                        <span class="text-kong-text-secondary">Difficulty Adjustment:</span>
-                        <span class="font-medium">Every {difficultyAdjustmentBlocks} blocks</span>
+                        <span class="text-kong-text-secondary">Halving Interval:</span>
+                        <span class="font-medium">Every {halvingInterval} blocks</span>
                       </div>
                     </div>
                     <button on:click={() => { currentStep = 2; }} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Mining Schedule</button>
@@ -568,7 +569,7 @@
                       {#if socialLinks.length > 0}
                         {#each socialLinks as link}
                           <div class="flex justify-between">
-                            <span class="text-kong-text-secondary">{link.type}:</span>
+                            <span class="text-kong-text-secondary">{link.platform}:</span>
                             <span class="font-medium truncate max-w-[150px]">{link.url}</span>
                           </div>
                         {/each}

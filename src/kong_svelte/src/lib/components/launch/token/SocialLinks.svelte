@@ -1,5 +1,8 @@
 <script lang="ts">
-  let links: Array<{platform: string; url: string}> = [];
+  export let links: Array<{platform: string; url: string}> = [];
+  export let tokenName = '';
+  export let tokenSymbol = '';
+  
   let newPlatform = '';
   let newUrl = '';
   let inputError = '';

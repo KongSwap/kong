@@ -139,6 +139,7 @@ struct TokenInfo {
     decimals: u8,
     transfer_fee: u64,
     archive_options: Option<ArchiveOptions>,
+    social_links: Option<Vec<SocialLink>>,
 }
 
 #[derive(CandidType, Serialize, Deserialize)]
@@ -153,6 +154,7 @@ struct TokenInitArgs {
     initial_block_reward: u64,
     block_time_target_seconds: u64,
     halving_interval: u64,
+    social_links: Option<Vec<SocialLink>>,
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
@@ -253,6 +255,7 @@ fn init(args: TokenInitArgs) {
             decimals: args.decimals.unwrap_or(8),
             transfer_fee: args.transfer_fee.unwrap_or(1),
             archive_options: args.archive_options,
+            social_links: args.social_links,
         })).expect("Failed to set token info");
     });
 
@@ -773,6 +776,122 @@ fn get_recent_events(limit: Option<u32>) -> Vec<Event> {
             }
         }
         events
+    })
+}
+
+// Social links management functions
+#[ic_cdk::query]
+fn get_social_links() -> Result<Vec<SocialLink>, String> {
+    TOKEN_INFO_CELL.with(|info| {
+        info.borrow()
+            .get()
+            .as_ref()
+            .ok_or_else(|| "Token not initialized".to_string())
+            .map(|token_info| token_info.social_links.clone().unwrap_or_default())
+    })
+}
+
+#[ic_cdk::update]
+fn add_social_link(platform: String, url: String) -> Result<(), String> {
+    // First check authentication
+    let caller = require_auth()?;
+    
+    // Then check if caller is creator
+    let is_creator = CREATOR_CELL.with(|c| {
+        c.borrow().get().as_ref().map(|p| p.0) == Some(caller)
+    });
+    if !is_creator {
+        return Err("Only creator can modify social links".to_string());
+    }
+
+    TOKEN_INFO_CELL.with(|info| {
+        let mut token_info = info.borrow()
+            .get()
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| "Token not initialized".to_string())?;
+        
+        let mut links = token_info.social_links.unwrap_or_default();
+        links.push(SocialLink { platform, url });
+        token_info.social_links = Some(links);
+        
+        info.borrow_mut()
+            .set(Some(token_info))
+            .map_err(|e| format!("Failed to update token info: {:?}", e))?;
+        
+        Ok(())
+    })
+}
+
+#[ic_cdk::update]
+fn update_social_link(index: usize, platform: String, url: String) -> Result<(), String> {
+    // First check authentication
+    let caller = require_auth()?;
+    
+    // Then check if caller is creator
+    let is_creator = CREATOR_CELL.with(|c| {
+        c.borrow().get().as_ref().map(|p| p.0) == Some(caller)
+    });
+    if !is_creator {
+        return Err("Only creator can modify social links".to_string());
+    }
+
+    TOKEN_INFO_CELL.with(|info| {
+        let mut token_info = info.borrow()
+            .get()
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| "Token not initialized".to_string())?;
+        
+        let mut links = token_info.social_links.unwrap_or_default();
+        if index >= links.len() {
+            return Err(format!("Social link index {} out of bounds", index));
+        }
+        
+        links[index] = SocialLink { platform, url };
+        token_info.social_links = Some(links);
+        
+        info.borrow_mut()
+            .set(Some(token_info))
+            .map_err(|e| format!("Failed to update token info: {:?}", e))?;
+        
+        Ok(())
+    })
+}
+
+#[ic_cdk::update]
+fn remove_social_link(index: usize) -> Result<(), String> {
+    // First check authentication
+    let caller = require_auth()?;
+    
+    // Then check if caller is creator
+    let is_creator = CREATOR_CELL.with(|c| {
+        c.borrow().get().as_ref().map(|p| p.0) == Some(caller)
+    });
+    if !is_creator {
+        return Err("Only creator can modify social links".to_string());
+    }
+
+    TOKEN_INFO_CELL.with(|info| {
+        let mut token_info = info.borrow()
+            .get()
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| "Token not initialized".to_string())?;
+        
+        let mut links = token_info.social_links.unwrap_or_default();
+        if index >= links.len() {
+            return Err(format!("Social link index {} out of bounds", index));
+        }
+        
+        links.remove(index);
+        token_info.social_links = Some(links);
+        
+        info.borrow_mut()
+            .set(Some(token_info))
+            .map_err(|e| format!("Failed to update token info: {:?}", e))?;
+        
+        Ok(())
     })
 }
 

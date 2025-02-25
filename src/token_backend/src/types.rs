@@ -20,6 +20,13 @@ pub struct TokenInfo {
     pub decimals: u8,
     pub transfer_fee: u64,
     pub archive_options: Option<ArchiveOptions>,
+    pub social_links: Option<Vec<SocialLink>>,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct SocialLink {
+    pub platform: String,
+    pub url: String,
 }
 
 #[derive(CandidType, Serialize, Deserialize)]
@@ -33,6 +40,7 @@ pub struct TokenInitArgs {
     pub archive_options: Option<ArchiveOptions>,
     pub block_time_target_seconds: u64,
     pub halving_interval: u64,
+    pub social_links: Option<Vec<SocialLink>>,
 }
 
 #[derive(CandidType, Serialize, Deserialize)]
