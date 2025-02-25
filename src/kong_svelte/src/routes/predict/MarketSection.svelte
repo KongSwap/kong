@@ -8,6 +8,11 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
   import { goto } from "$app/navigation";
+  import AdminResolutionModal from "./AdminResolutionModal.svelte";
+  import { auth } from "$lib/services/auth";
+  import { get } from "svelte/store";
+  import { isAdmin } from "$lib/api/predictionMarket";
+  import { onMount } from "svelte";
 
   export let title: string;
   export let statusColor: string;
@@ -15,6 +20,28 @@
   export let isResolved: boolean = false;
   export let showEndTime: boolean = true;
   export let openBetModal: (market: any, outcomeIndex?: number) => void;
+  export let onMarketResolved: () => Promise<void>;
+
+  let showResolutionModal = false;
+  let selectedMarket: any = null;
+  let isUserAdmin = false;
+
+  // Check if user is admin
+  onMount(async () => {
+    const authStore = get(auth);
+    if (authStore.isConnected && authStore.account) {
+      isUserAdmin = await isAdmin(authStore.account.owner);
+    }
+  });
+
+  function openResolutionModal(market: any) {
+    selectedMarket = market;
+    showResolutionModal = true;
+  }
+
+  async function handleResolved() {
+    await onMarketResolved();
+  }
 
   // Get gradient class based on status color
   function getGradientClass(colorClass: string): string {
@@ -37,6 +64,13 @@
     }
   }
 </script>
+
+<AdminResolutionModal
+  isOpen={showResolutionModal}
+  market={selectedMarket}
+  on:close={() => showResolutionModal = false}
+  on:resolved={handleResolved}
+/>
 
 <div class="mb-8">
   {#if markets.length === 0}
@@ -181,9 +215,19 @@
               </div>
             {:else if title === "Pending Resolution"}
               <div class="pt-2 border-t border-kong-pm-border">
-                <div class="text-center text-xs text-kong-pm-text-secondary">
-                  Awaiting resolution
-                </div>
+                {#if isUserAdmin}
+                  <button
+                    class="w-full flex items-center justify-center py-1.5 sm:py-2 border shadow-sm border-kong-accent-green/50 hover:bg-kong-accent-green/10 text-kong-text-accent-green rounded font-medium transition-all text-xs sm:text-sm"
+                    on:click={() => openResolutionModal(market)}
+                  >
+                    <Coins class="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1.5" />
+                    Resolve Market
+                  </button>
+                {:else}
+                  <div class="text-center text-xs text-kong-pm-text-secondary">
+                    Awaiting resolution
+                  </div>
+                {/if}
               </div>
             {:else}
               <div class="pt-2 border-t border-kong-pm-border">

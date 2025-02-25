@@ -3,16 +3,25 @@
   import AccountDetails from "./AccountDetails.svelte";
   import { accountStore } from "$lib/stores/accountStore";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
-  import { RefreshCw, IdCard, Coins, History, Droplets, X, Power } from "lucide-svelte";
+  import {
+    RefreshCw,
+    IdCard,
+    Coins,
+    History,
+    Droplets,
+    X,
+    Power,
+  } from "lucide-svelte";
   import {
     loadBalances,
     portfolioValue,
   } from "$lib/services/tokens/tokenStore";
   import { auth } from "$lib/services/auth";
-  import PortfolioModal from "$lib/components/portfolio/PortfolioModal.svelte";
   import { tooltip } from "$lib/actions/tooltip";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { onDestroy } from "svelte";
+  import { startPolling, stopPolling } from "$lib/utils/pollingService";
+  import { goto } from "$app/navigation";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "history";
@@ -20,8 +29,6 @@
 
   let windowWidth: number;
   let isRefreshing = false;
-  let showPortfolioModal = false;
-  let pollInterval: ReturnType<typeof setInterval> | null = null;
 
   const tabs: { id: "tokens" | "pools" | "history"; icon: any }[] = [
     { id: "tokens", icon: Coins },
@@ -50,35 +57,22 @@
   }
 
   function handlePortfolioClick() {
-    showPortfolioModal = true;
+    goto(`/wallets/${$auth?.account?.owner?.toString()}`);
+    sidebarStore.collapse();
   }
 
-  function startPolling() {
-    // Don't start a new poll if one is already running
-    if (pollInterval) return;
-  
-    
-    // Set up new interval
-    pollInterval = setInterval(() => handleReload(true), 20000);
-  }
-
-  function stopPolling() {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      pollInterval = null;
+  // Use the generic polling service in a reactive block
+  $: {
+    if ($sidebarStore.isOpen) {
+      startPolling("sidebarHeader", () => handleReload(true), 20000);
+    } else {
+      stopPolling("sidebarHeader");
     }
-  }
-
-  // Modify the reactive statement to prevent unnecessary polling restarts
-  $: if ($sidebarStore.isOpen && !pollInterval) {
-    startPolling();
-  } else if (!$sidebarStore.isOpen && pollInterval) {
-    stopPolling();
   }
 
   // Cleanup on component destruction
   onDestroy(() => {
-    stopPolling();
+    stopPolling("sidebarHeader");
   });
 </script>
 
@@ -100,7 +94,10 @@
       <button
         class="portfolio-button flex items-center font-medium text-kong-text-primary hover:text-kong-primary transition-colors"
         on:click={handlePortfolioClick}
-        use:tooltip={{ text: "View Portfolio Distribution", direction: "bottom" }}
+        use:tooltip={{
+          text: "View Portfolio Distribution",
+          direction: "bottom",
+        }}
       >
         {#if isRefreshing}
           <LoadingIndicator />
@@ -175,11 +172,6 @@
 </header>
 
 <AccountDetails />
-
-<PortfolioModal
-  isOpen={showPortfolioModal}
-  onClose={() => (showPortfolioModal = false)}
-/>
 
 <style scoped lang="postcss">
   .header {

@@ -6,7 +6,7 @@ const defaultTokens = () => {
     return {
       icp: process.env.CANISTER_ID_KSICP_LEDGER,
       ckusdt: process.env.CANISTER_ID_KSUSDT_LEDGER,
-      kong: process.env.CANISTER_ID_KSKONG_LEDGER,
+      kong: process.env.CANISTER_ID_KONG_LEDGER,
     };
   }
   return {

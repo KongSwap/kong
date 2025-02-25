@@ -87,6 +87,7 @@ CORE_CANISTERS_SCRIPTS=(
     "deploy_kong_svelte.sh"
     "deploy_prediction_markets.sh"
     "deploy_event_store.sh"
+    "deploy_trollbox.sh"
 )
 
 for script in "${CORE_CANISTERS_SCRIPTS[@]}"; do
@@ -105,7 +106,7 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
         "deploy_ksicp_ledger.sh"
         "deploy_ksbtc_ledger.sh"
         "deploy_kseth_ledger.sh"
-        "deploy_kskong_ledger.sh"
+        "deploy_kong_ledger.sh"
     )
 
     for script in "${LEDGER_SCRIPTS[@]}"; do

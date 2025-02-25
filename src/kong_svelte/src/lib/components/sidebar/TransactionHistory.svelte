@@ -68,8 +68,6 @@
   let loadingMore = false;
   let observer: IntersectionObserver;
   let loadMoreTrigger: HTMLDivElement;
-  let containerHeight: number;
-  let scrollY: number = 0;
   let listContainer: HTMLDivElement;
 
   // Constants for virtual scrolling

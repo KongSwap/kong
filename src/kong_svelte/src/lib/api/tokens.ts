@@ -1,4 +1,4 @@
-import { INDEXER_URL } from "$lib/api/index";
+import { API_URL } from "$lib/api/index";
 import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
 
 
@@ -6,7 +6,7 @@ interface TokensParams {
   page?: number;
   limit?: number;
   search?: string;
-  canisterIds?: string[];
+  canister_id?: string;
 }
 
 const parseTokenData = (token: any): FE.Token => {
@@ -36,14 +36,14 @@ const parseTokenData = (token: any): FE.Token => {
 
 export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.Token[], total_count: number}> => {
   try {
-    const { page = 1, limit = 150, canisterIds } = params || {};
+    const { page = 1, limit = 150, canister_id } = params || {};
     
     // Build query string for pagination
     const queryString = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
       search: params?.search || '',
-      t: Date.now().toString() // Use valid parameter name
+      canister_id: canister_id || ''
     }).toString();
 
     // Determine if we need to make a GET or POST request
@@ -56,15 +56,11 @@ export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.To
       cache: 'no-store'
     };
 
-    if (canisterIds && canisterIds.length > 0) {
-      options.method = 'POST';
-      options.body = JSON.stringify({ canister_ids: canisterIds });
-    } else {
-      options.method = 'GET';
-    }
+
+    options.method = 'GET';
 
     const response = await fetch(
-      `${INDEXER_URL}/api/tokens?${queryString}`,
+      `${API_URL}/api/tokens?${queryString}`,
       options
     );
    
@@ -88,7 +84,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<{tokens: FE.To
 
 export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE.Token[]> => {
   const validCanisterIds = canisterIds.filter(id => typeof id === 'string');
-  const response = await fetch(`${INDEXER_URL}/api/tokens/by_canister`, {
+  const response = await fetch(`${API_URL}/api/tokens/by_canister`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

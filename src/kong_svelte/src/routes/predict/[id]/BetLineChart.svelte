@@ -54,9 +54,10 @@
 
     // Get start and end times
     const startTime = Math.floor((allTimestamps[0] / 1e6) / intervalMs) * intervalMs;
-    const endTime = Math.max(
+    const marketEndTimeMs = Number(market.end_time) / 1e6;
+    const endTime = Math.min(
       Math.ceil((allTimestamps[allTimestamps.length - 1] / 1e6) / intervalMs) * intervalMs,
-      Math.ceil(Date.now() / intervalMs) * intervalMs
+      Math.ceil(marketEndTimeMs / intervalMs) * intervalMs
     );
 
     // Create all intervals between start and end
@@ -111,12 +112,11 @@
         });
       }
 
-      // Add final point at current time with latest cumulative amount
-      const now = Date.now();
+      // Add final point at market end time with latest cumulative amount
       const lastPoint = data[data.length - 1];
-      if (lastPoint && lastPoint.x.getTime() < now) {
+      if (lastPoint && lastPoint.x.getTime() < marketEndTimeMs) {
         data.push({
-          x: new Date(now),
+          x: new Date(marketEndTimeMs),
           y: lastPoint.y,
           betAmount: 0,
           cumulative: lastPoint.cumulative

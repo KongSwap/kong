@@ -32,9 +32,9 @@ dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksETH_LEDGER} icrc1_symbol '
 dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksETH_LEDGER} icrc1_balance_of "(record {
 	owner=principal \"${PRINCIPAL_ID}\"; subaccount=null;
 },)"
-ksKONG_LEDGER="kskong_ledger"
-dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksKONG_LEDGER} icrc1_symbol '()'
-dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksKONG_LEDGER} icrc1_balance_of "(record {
+KONG_LEDGER="kong_ledger"
+dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${KONG_LEDGER} icrc1_symbol '()'
+dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${KONG_LEDGER} icrc1_balance_of "(record {
 	owner=principal \"${PRINCIPAL_ID}\"; subaccount=null;
 },)"
 
@@ -62,9 +62,9 @@ dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksETH_LEDGER} icrc1_symbol '
 dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksETH_LEDGER} icrc1_balance_of "(record {
 	owner=principal \"${PRINCIPAL_ID}\"; subaccount=null;
 },)"
-ksKONG_LEDGER="kskong_ledger"
-dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksKONG_LEDGER} icrc1_symbol '()'
-dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksKONG_LEDGER} icrc1_balance_of "(record {
+KONG_LEDGER="kong_ledger"
+dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${KONG_LEDGER} icrc1_symbol '()'
+dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${KONG_LEDGER} icrc1_balance_of "(record {
 	owner=principal \"${PRINCIPAL_ID}\"; subaccount=null;
 },)"
 
@@ -92,8 +92,8 @@ dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksETH_LEDGER} icrc1_symbol '
 dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksETH_LEDGER} icrc1_balance_of "(record {
 	owner=principal \"${PRINCIPAL_ID}\"; subaccount=null;
 },)"
-ksKONG_LEDGER="kskong_ledger"
-dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksKONG_LEDGER} icrc1_symbol '()'
-dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ksKONG_LEDGER} icrc1_balance_of "(record {
+KONG_LEDGER="kong_ledger"
+dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${KONG_LEDGER} icrc1_symbol '()'
+dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${KONG_LEDGER} icrc1_balance_of "(record {
 	owner=principal \"${PRINCIPAL_ID}\"; subaccount=null;
 },)"

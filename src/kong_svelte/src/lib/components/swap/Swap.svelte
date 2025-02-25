@@ -537,7 +537,6 @@
       error: null,
       isProcessing: false,
       showConfirmation: false,
-      showBananaRain: false,
       swapSlippage: 0, // Reset slippage
       lpFees: null, // Reset fees
       routingPath: null, // Reset routing

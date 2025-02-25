@@ -7,7 +7,6 @@
   import { auth } from '$lib/services/auth';
   import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
-  import { fade, fly } from 'svelte/transition';
   import { themeStore } from '$lib/stores/themeStore';
   import { Sun, Moon } from 'lucide-svelte';
   import Slider from "../common/Slider.svelte";
@@ -18,7 +17,6 @@
   let slippageInputValue = '2.0';
   let isMobile = false;
   let isCustomSlippage = false;
-  let showSlippageInfo = false;
 
   // Predefined slippage values for quick selection
   const quickSlippageValues = [1, 2, 3, 5];

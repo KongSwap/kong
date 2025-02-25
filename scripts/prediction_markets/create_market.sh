@@ -6,8 +6,54 @@ dfx canister call prediction_markets_backend create_market '(
   "Winner by volume",
   vec { "KONG"; "BOB" },
   variant { Admin },
-  variant { Duration = 60 }
+  variant { Duration = 600 }
 )'
+
+dfx canister call prediction_markets_backend create_market '(
+  "Who will win the first round matchup of Kongswap Madness",
+  variant { KongMadness },
+  "Winner by volume",
+  vec { "KONG"; "BOB" },
+  variant { Admin },
+  variant { Duration = 600 }
+)'
+
+dfx canister call prediction_markets_backend create_market '(
+  "Who will win the first round matchup of Kongswap Madness",
+  variant { KongMadness },
+  "Winner by volume",
+  vec { "KONG"; "BOB" },
+  variant { Admin },
+  variant { Duration = 600 }
+)'
+
+dfx canister call prediction_markets_backend create_market '(
+  "Who will win the first round matchup of Kongswap Madness",
+  variant { KongMadness },
+  "Winner by volume",
+  vec { "KONG"; "BOB" },
+  variant { Admin },
+  variant { Duration = 600 }
+)'
+
+dfx canister call prediction_markets_backend create_market '(
+  "Who will win the first round matchup of Kongswap Madness",
+  variant { KongMadness },
+  "Winner by volume",
+  vec { "KONG"; "BOB" },
+  variant { Admin },
+  variant { Duration = 600 }
+)'
+
+dfx canister call prediction_markets_backend create_market '(
+  "Who will win the first round matchup of Kongswap Madness",
+  variant { KongMadness },
+  "Winner by volume",
+  vec { "KONG"; "BOB" },
+  variant { Admin },
+  variant { Duration = 600 }
+)'
+
 
 # dfx canister call prediction_markets_backend create_market '(
 #   "Will BTC reach 100k in 2025?",

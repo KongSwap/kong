@@ -7,6 +7,7 @@ members = [
     "src/kong_admin",
     "src/sdk/rsKong",
     "src/prediction_markets_backend",
+    "src/trollbox",
 ]
 resolver = "2"
 

@@ -2,13 +2,10 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
-export type AdminError = { 'LastAdmin' : null } |
-  { 'NotFound' : null } |
-  { 'Unauthorized' : null };
 export interface Bet {
-  'market_id' : MarketId,
+  'market_id' : bigint,
   'user' : Principal,
-  'timestamp' : Timestamp,
+  'timestamp' : bigint,
   'amount' : bigint,
   'outcome_index' : bigint,
 }
@@ -20,6 +17,7 @@ export type BetError = { 'MarketNotFound' : null } |
   { 'InvalidOutcome' : null } |
   { 'InsufficientBalance' : null } |
   { 'BalanceUpdateFailed' : null };
+export interface BetWithMarket { 'bet' : Bet, 'market' : Market }
 export interface Delegation {
   'created' : bigint,
   'targets_list_hash' : Uint8Array | number[],
@@ -51,8 +49,11 @@ export interface ICRC21ConsentMessageRequest {
   'canister' : Principal,
 }
 export interface ICRC21ConsentMessageResponse { 'consent_message' : string }
+export interface Icrc28TrustedOriginsResponse {
+  'trusted_origins' : Array<string>,
+}
 export interface Market {
-  'id' : MarketId,
+  'id' : bigint,
   'bet_count_percentages' : Array<number>,
   'status' : MarketStatus,
   'outcome_pools' : Array<bigint>,
@@ -60,12 +61,13 @@ export interface Market {
   'outcome_percentages' : Array<number>,
   'question' : string,
   'resolution_data' : [] | [string],
-  'created_at' : Timestamp,
-  'end_time' : Timestamp,
+  'created_at' : bigint,
+  'end_time' : bigint,
   'total_pool' : bigint,
   'outcomes' : Array<string>,
   'resolution_method' : ResolutionMethod,
   'category' : MarketCategory,
+  'rules' : string,
   'resolved_by' : [] | [Principal],
   'bet_counts' : Array<bigint>,
 }
@@ -78,7 +80,6 @@ export type MarketCategory = { 'AI' : null } |
   { 'Sports' : null };
 export type MarketEndTime = { 'SpecificDate' : bigint } |
   { 'Duration' : bigint };
-export type MarketId = bigint;
 export interface MarketResult {
   'bet_count_percentages' : Array<number>,
   'outcome_pools' : Array<bigint>,
@@ -100,6 +101,7 @@ export interface MarketsByStatus {
 }
 export type ResolutionError = { 'MarketNotFound' : null } |
   { 'MarketStillOpen' : null } |
+  { 'TransferError' : string } |
   { 'InvalidOutcome' : null } |
   { 'InvalidMethod' : null } |
   { 'AlreadyResolved' : null } |
@@ -114,8 +116,19 @@ export type ResolutionMethod = {
   } |
   { 'Decentralized' : { 'quorum' : bigint } } |
   { 'Admin' : null };
+export type Result = { 'Ok' : null } |
+  { 'Err' : string };
+export type Result_1 = { 'Ok' : bigint } |
+  { 'Err' : string };
+export type Result_2 = { 'Ok' : DelegationResponse } |
+  { 'Err' : DelegationError };
+export type Result_3 = { 'Ok' : null } |
+  { 'Err' : DelegationError };
+export type Result_4 = { 'Ok' : null } |
+  { 'Err' : BetError };
+export type Result_5 = { 'Ok' : null } |
+  { 'Err' : ResolutionError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
-export type Timestamp = bigint;
 export interface UserBetInfo {
   'outcome_text' : string,
   'bet_amount' : bigint,
@@ -132,7 +145,7 @@ export interface UserHistory {
   'resolved_bets' : Array<UserBetInfo>,
 }
 export interface _SERVICE {
-  'add_admin' : ActorMethod<[Principal], { 'Ok' : null } | { 'Err' : string }>,
+  'add_admin' : ActorMethod<[Principal], Result>,
   'create_market' : ActorMethod<
     [
       string,
@@ -142,56 +155,36 @@ export interface _SERVICE {
       ResolutionMethod,
       MarketEndTime,
     ],
-    { 'Ok' : MarketId } |
-      { 'Err' : string }
+    Result_1
   >,
   'get_admin_principals' : ActorMethod<[], Array<Principal>>,
+  'get_all_bets' : ActorMethod<[bigint, bigint, boolean], Array<BetWithMarket>>,
+  'get_all_categories' : ActorMethod<[], Array<string>>,
   'get_all_markets' : ActorMethod<[], Array<Market>>,
   'get_balance' : ActorMethod<[Principal], bigint>,
   'get_fee_balance' : ActorMethod<[], GetFeeBalanceResult>,
-  'get_market' : ActorMethod<[MarketId], [] | [Market]>,
-  'get_market_bets' : ActorMethod<[MarketId], Array<Bet>>,
+  'get_market' : ActorMethod<[bigint], [] | [Market]>,
+  'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
   'get_markets_by_status' : ActorMethod<[], MarketsByStatus>,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ICRC21ConsentMessageRequest],
     ICRC21ConsentMessageResponse
   >,
-  'icrc_34_delegate' : ActorMethod<
-    [DelegationRequest],
-    { 'Ok' : DelegationResponse } |
-      { 'Err' : DelegationError }
-  >,
-  'icrc_34_get_delegation' : ActorMethod<
-    [DelegationRequest],
-    { 'Ok' : DelegationResponse } |
-      { 'Err' : DelegationError }
-  >,
+  'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
+  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_2>,
+  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_2>,
   'icrc_34_revoke_delegation' : ActorMethod<
     [RevokeDelegationRequest],
-    { 'Ok' : null } |
-      { 'Err' : DelegationError }
+    Result_3
   >,
   'is_admin' : ActorMethod<[Principal], boolean>,
-  'place_bet' : ActorMethod<
-    [MarketId, bigint, bigint],
-    { 'Ok' : null } |
-      { 'Err' : BetError }
-  >,
-  'remove_admin' : ActorMethod<
-    [Principal],
-    { 'Ok' : null } |
-      { 'Err' : string }
-  >,
-  'resolve_via_admin' : ActorMethod<
-    [MarketId, Array<bigint>],
-    { 'Ok' : null } |
-      { 'Err' : ResolutionError }
-  >,
+  'place_bet' : ActorMethod<[bigint, bigint, bigint], Result_4>,
+  'remove_admin' : ActorMethod<[Principal], Result>,
+  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_5>,
   'resolve_via_oracle' : ActorMethod<
-    [MarketId, Array<bigint>, Uint8Array | number[]],
-    { 'Ok' : null } |
-      { 'Err' : ResolutionError }
+    [bigint, Array<bigint>, Uint8Array | number[]],
+    Result_5
   >,
 }
 export declare const idlFactory: IDL.InterfaceFactory;

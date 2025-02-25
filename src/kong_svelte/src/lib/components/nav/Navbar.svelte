@@ -4,42 +4,65 @@
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
   import { onMount, onDestroy } from "svelte";
-  import { Droplet, Settings as SettingsIcon, Copy, ChartScatter, Menu, ChartCandlestick, X, Wallet, ChevronDown, Coins, Award, PiggyBank, TrendingUpDown, Joystick } from "lucide-svelte";
+  import {
+    Droplet,
+    Settings as SettingsIcon,
+    Copy,
+    ChartScatter,
+    Menu,
+    ChartCandlestick,
+    X,
+    Wallet,
+    Coins,
+    Award,
+    PiggyBank,
+    TrendingUpDown,
+    Search,
+  } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/services/tokens";
   import { tooltip } from "$lib/actions/tooltip";
-  import { page } from '$app/stores';
+  import { page } from "$app/stores";
   import Sidebar from "$lib/components/sidebar/Sidebar.svelte";
   import { browser } from "$app/environment";
   import Settings from "$lib/components/settings/Settings.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { swapModeService } from "$lib/services/settings/swapModeService";
-    import { themeStore } from "$lib/stores/themeStore";
+  import { themeStore } from "$lib/stores/themeStore";
+  import NavOption from "./NavOption.svelte";
+  import MobileNavGroup from "./MobileNavGroup.svelte";
+  import MobileMenuItem from "./MobileMenuItem.svelte";
+  import { searchStore } from "$lib/stores/searchStore";
 
   let showSettings = false;
   let isMobile = false;
-  let activeTab: "swap" | "earn" | "stats" = "swap";
+  let activeTab: "swap" | "predict" | "earn" | "stats" = "swap";
   let navOpen = false;
   let closeTimeout: ReturnType<typeof setTimeout>;
-  let activeDropdown: 'swap' | 'earn' | 'stats' | null = null;
-  const tabs = ["swap", "earn", "stats"] as const;
+  let activeDropdown: "swap" | "earn" | "stats" | null = null;
 
-  const statsOptions = [
-    { 
-      label: 'Overview',
-      description: 'View general statistics and platform metrics',
-      path: '/stats',
+  // Filter tabs based on DFX_NETWORK
+  const allTabs = ["swap", "predict", "earn", "stats"] as const;
+  $: tabs =
+    process.env.DFX_NETWORK !== "ic"
+      ? allTabs
+      : allTabs.filter((tab) => tab !== "predict");
+
+  const dataOptions = [
+    {
+      label: "Overview",
+      description: "View general statistics and platform metrics",
+      path: "/stats",
       icon: ChartCandlestick,
-      comingSoon: false
+      comingSoon: false,
     },
-    { 
-      label: 'Bubbles',
-      description: 'Visualize token price changes with bubbles',
-      path: '/stats/bubbles',
+    {
+      label: "Bubbles",
+      description: "Visualize token price changes with bubbles",
+      path: "/stats/bubbles",
       icon: ChartScatter,
-      comingSoon: false
-    }
+      comingSoon: false,
+    },
   ];
 
   function handleOpenSettings() {
@@ -56,16 +79,16 @@
 
   onMount(() => {
     checkMobile();
-    window.addEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
   });
 
   onDestroy(() => {
     if (browser) {
-      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener("resize", checkMobile);
     }
   });
 
-  function onTabChange(tab: "swap" | "earn" | "stats") {
+  function onTabChange(tab: "swap" | "earn" | "stats" | "predict") {
     activeTab = tab;
   }
 
@@ -74,7 +97,7 @@
       toastStore.error("No Principal ID available");
       return;
     }
-    
+
     try {
       await navigator.clipboard.writeText(text);
       toastStore.success("Principal ID copied");
@@ -89,37 +112,31 @@
   }
 
   const earnOptions = [
-    { 
-      label: 'Liquidity Pools',
-      description: 'Provide liquidity to earn trading fees and rewards',
-      path: '/pools',
+    {
+      label: "Liquidity Pools",
+      description: "Provide liquidity to earn trading fees and rewards",
+      path: "/pools",
       icon: Coins,
-      comingSoon: false
+      comingSoon: false,
     },
-    { 
-      label: 'Prediction Markets',
-      description: 'Predict the outcome of events and earn rewards',
-      path: '/predict',
-      icon: TrendingUpDown,
-      comingSoon: false
-    },
-    { 
-      label: 'Staking',
-      description: 'Stake your tokens to earn yield and governance rights',
-      path: '/pools/staking',
+    {
+      label: "Staking",
+      description: "Stake your tokens to earn yield and governance rights",
+      path: "/pools/staking",
       icon: Award,
-      comingSoon: true
+      comingSoon: true,
     },
-    { 
-      label: 'Borrow & Lend',
-      description: 'Lend assets to earn interest or borrow against your collateral',
-      path: '/pools/lending',
+    {
+      label: "Borrow & Lend",
+      description:
+        "Lend assets to earn interest or borrow against your collateral",
+      path: "/pools/lending",
       icon: PiggyBank,
-      comingSoon: true
-    }
-  ].filter(option => process.env.DFX_NETWORK !== 'ic' ? option : ["Liquidity Pools"].includes(option.label));
+      comingSoon: true,
+    },
+  ];
 
-  function showDropdown(type: 'swap' | 'earn' | 'stats') {
+  function showDropdown(type: "swap" | "earn" | "stats") {
     clearTimeout(closeTimeout);
     activeDropdown = type;
   }
@@ -131,59 +148,46 @@
   }
 
   const swapOptions = [
-    { 
-      label: 'Basic Swap',
-      description: 'Simple and intuitive token swapping interface',
-      path: '/swap',
+    {
+      label: "Basic Swap",
+      description: "Simple and intuitive token swapping interface",
+      path: "/swap",
       icon: Wallet,
-      comingSoon: false
+      comingSoon: false,
     },
-    { 
-      label: 'Pro Swap',
-      description: 'Advanced trading features with detailed market data',
-      path: '/swap/pro',
+    {
+      label: "Pro Swap",
+      description: "Advanced trading features with detailed market data",
+      path: "/swap/pro",
       icon: Coins,
-      comingSoon: false
-    }
+      comingSoon: false,
+    },
   ];
 
   $: {
     const path = $page.url.pathname;
-    if (path.startsWith('/swap')) {
-      activeTab = 'swap';
-    } else if (path.startsWith('/earn') || path.startsWith('/pools')) {
-      activeTab = 'earn';
-    } else if (path.startsWith('/stats')) {
-      activeTab = 'stats';
-    }
-  }
-
-  async function handleSwapClick() {
-    const lastMode = swapModeService.getLastMode();
-    const path = lastMode === 'pro' ? '/swap/pro' : '/swap';
-    await goto(path);
-    onTabChange('swap');
-  }
-
-  function handleSwapOptionClick(option: typeof swapOptions[number]) {
-    if (!option.comingSoon) {
-      hideDropdown();
-      setTimeout(async () => {
-        const mode = option.path === '/swap/pro' ? 'pro' : 'basic';
-        swapModeService.saveMode(mode);
-        await goto(option.path);
-        onTabChange('swap');
-      }, 150);
+    if (path.startsWith("/swap")) {
+      activeTab = "swap";
+    } else if (path.startsWith("/earn") || path.startsWith("/pools")) {
+      activeTab = "earn";
+    } else if (path.startsWith("/stats")) {
+      activeTab = "stats";
+    } else if (path.startsWith("/predict")) {
+      activeTab = "predict";
     }
   }
 
   function handleImageError(event: Event) {
     const img = event.target as HTMLImageElement;
     const textElement = img.nextElementSibling as HTMLElement;
-    img.style.display = 'none';
+    img.style.display = "none";
     if (textElement) {
-      textElement.style.display = 'block';
+      textElement.style.display = "block";
     }
+  }
+
+  function handleOpenSearch() {
+    searchStore.open();
   }
 </script>
 
@@ -191,19 +195,25 @@
   <div class="mx-auto h-16 flex items-center justify-between px-6">
     <div class="flex items-center gap-10">
       {#if isMobile}
-        <button class="h-[34px] w-[34px] flex items-center justify-center" on:click={() => (navOpen = !navOpen)}>
+        <button
+          class="h-[34px] w-[34px] flex items-center justify-center"
+          on:click={() => (navOpen = !navOpen)}
+        >
           <Menu size={20} color={$themeStore === "dark" ? "white" : "black"} />
         </button>
       {:else}
-        <button class="flex items-center hover:opacity-90 transition-opacity" on:click={() => goto("/swap")}>
-          <img 
+        <button
+          class="flex items-center hover:opacity-90 transition-opacity"
+          on:click={() => goto("/swap")}
+        >
+          <img
             src="/titles/logo-white-wide.png"
-            alt="Kong Logo" 
+            alt="Kong Logo"
             class="h-[30px] transition-all duration-200"
-            class:light-logo={$themeStore === 'light'}
+            class:light-logo={$themeStore === "light"}
             on:error={handleImageError}
           />
-          <span 
+          <span
             class="hidden text-xl font-bold text-kong-text-primary"
             style="display: none;"
           >
@@ -213,148 +223,49 @@
 
         <nav class="flex items-center gap-0.5">
           {#each tabs as tab}
-            {#if tab === 'earn'}
-              <div 
-                class="nav-dropdown"
-                on:mouseenter={() => showDropdown('earn')}
-                on:mouseleave={hideDropdown}
+            {#if tab === "earn"}
+              <NavOption
+                label="EARN"
+                options={earnOptions}
+                isActive={activeTab === "earn"}
+                {activeDropdown}
+                onShowDropdown={showDropdown}
+                onHideDropdown={hideDropdown}
+                {onTabChange}
+                defaultPath="/pools"
+              />
+            {:else if tab === "swap"}
+              <NavOption
+                label="SWAP"
+                options={swapOptions}
+                isActive={activeTab === "swap"}
+                {activeDropdown}
+                onShowDropdown={showDropdown}
+                onHideDropdown={hideDropdown}
+                {onTabChange}
+                defaultPath="/swap"
+              />
+            {:else if tab === "stats"}
+              <NavOption
+                label="STATS"
+                options={dataOptions}
+                isActive={activeTab === "stats"}
+                {activeDropdown}
+                onShowDropdown={showDropdown}
+                onHideDropdown={hideDropdown}
+                {onTabChange}
+                defaultPath="/stats"
+              />
+            {:else if tab === "predict"}
+              <button
+                class="nav-link {activeTab === tab ? 'active' : ''}"
+                on:click={() => {
+                  goto("/predict");
+                  onTabChange("predict");
+                }}
               >
-                <button
-                  class="nav-link {activeTab === tab ? 'active' : ''}"
-                  on:click={() => goto('/pools')}
-                >
-                  {tab.toUpperCase()}
-                  <ChevronDown size={16} />
-                </button>
-                
-                {#if activeDropdown === 'earn'}
-                  <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
-                    <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">EARN OPTIONS</div>
-                    {#each earnOptions as option}
-                      <button
-                        class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
-                        class:active={$page.url.pathname === option.path}
-                        on:click={async () => {
-                          if (!option.comingSoon) {
-                            hideDropdown();
-                            await goto(option.path);
-                            onTabChange('earn');
-                          }
-                        }}
-                        class:disabled={option.comingSoon}
-                      >
-                        {console.log('Earn option:', option.path, 'Current path:', $page.url.pathname, 'Active:', $page.url.pathname === option.path)}
-                        <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
-                          <svelte:component this={option.icon} size={20} />
-                        </div>
-                        <div class="flex flex-col gap-1 pt-0.5">
-                          <div class="flex items-center gap-2">
-                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">
-                              {option.label}
-                            </span>
-                            {#if option.comingSoon}
-                              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
-                            {/if}
-                          </div>
-                          <span class="text-sm text-kong-text-secondary leading-normal">{option.description}</span>
-                        </div>
-                      </button>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-            {:else if tab === 'swap'}
-              <div 
-                class="nav-dropdown"
-                on:mouseenter={() => showDropdown('swap')}
-                on:mouseleave={hideDropdown}
-              >
-                <button
-                  class="nav-link {activeTab === tab ? 'active' : ''}"
-                  on:click={handleSwapClick}
-                >
-                  {tab.toUpperCase()}
-                  <ChevronDown size={16} />
-                </button>
-                
-                {#if activeDropdown === 'swap'}
-                  <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
-                    <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">SWAP OPTIONS</div>
-                    {#each swapOptions as option}
-                      <button
-                        class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
-                        class:active={$page.url.pathname === option.path}
-                        on:click={() => handleSwapOptionClick(option)}
-                        class:disabled={option.comingSoon}
-                      >
-                        <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
-                          <svelte:component this={option.icon} size={20} />
-                        </div>
-                        <div class="flex flex-col gap-1 pt-0.5">
-                          <div class="flex items-center gap-2">
-                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">
-                              {option.label}
-                            </span>
-                            {#if option.comingSoon}
-                              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
-                            {/if}
-                          </div>
-                          <span class="text-sm text-kong-text-secondary leading-normal">{option.description}</span>
-                        </div>
-                      </button>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-            {:else if tab === 'stats'}
-              <div 
-                class="nav-dropdown"
-                on:mouseenter={() => showDropdown('stats')}
-                on:mouseleave={hideDropdown}
-              >
-                <button
-                  class="nav-link {activeTab === tab ? 'active' : ''}"
-                  on:click={() => goto('/stats')}
-                >
-                  {tab.toUpperCase()}
-                  <ChevronDown size={16} />
-                </button>
-                
-                {#if activeDropdown === 'stats'}
-                  <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
-                    <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">STATS OPTIONS</div>
-                    {#each statsOptions as option}
-                      <button
-                        class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
-                        class:active={$page.url.pathname === option.path}
-                        on:click={async () => {
-                          if (!option.comingSoon) {
-                            hideDropdown();
-                            await goto(option.path);
-                            onTabChange('stats');
-                          }
-                        }}
-                        class:disabled={option.comingSoon}
-                      >
-                        <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
-                          <svelte:component this={option.icon} size={20} />
-                        </div>
-                        <div class="flex flex-col gap-1 pt-0.5">
-                          <div class="flex items-center gap-2">
-                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">
-                              {option.label}
-                            </span>
-                            {#if option.comingSoon}
-                              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
-                            {/if}
-                          </div>
-                          <span class="text-sm text-kong-text-secondary leading-normal">{option.description}</span>
-                        </div>
-                      </button>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
+                {tab.toUpperCase()}
+              </button>
             {/if}
           {/each}
         </nav>
@@ -362,16 +273,21 @@
     </div>
 
     {#if isMobile}
-      <div class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
-        <button class="flex items-center hover:opacity-90 transition-opacity" on:click={() => goto("/")}>
-          <img 
+      <div
+        class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center"
+      >
+        <button
+          class="flex items-center hover:opacity-90 transition-opacity"
+          on:click={() => goto("/")}
+        >
+          <img
             src="/titles/logo-white-wide.png"
-            alt="Kong Logo" 
+            alt="Kong Logo"
             class="h-6 transition-all duration-200"
-            class:light-logo={$themeStore === 'light'}
+            class:light-logo={$themeStore === "light"}
             on:error={handleImageError}
           />
-          <span 
+          <span
             class="hidden text-lg font-bold text-kong-text-primary"
             style="display: none;"
           >
@@ -391,8 +307,18 @@
           <SettingsIcon size={18} />
         </button>
 
+        {#if process.env.DFX_NETWORK !== "ic"}
+          <button
+            class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
+            on:click={handleOpenSearch}
+            use:tooltip={{ text: "Search", direction: "bottom" }}
+          >
+            <Search size={18} />
+          </button>
+        {/if}
+
         {#if $auth.isConnected}
-          {#if process.env.DFX_NETWORK === 'local' || process.env.DFX_NETWORK === 'staging'}
+          {#if process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging"}
             <button
               class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
               on:click={claimTokens}
@@ -436,13 +362,16 @@
 {#if navOpen && isMobile}
   <div class="mobile-menu" transition:fade={{ duration: 200 }}>
     <div class="mobile-menu-overlay" on:click={() => (navOpen = false)} />
-    <div class="mobile-menu-content" transition:slide={{ duration: 200, axis: "x" }}>
+    <div
+      class="mobile-menu-content"
+      transition:slide={{ duration: 200, axis: "x" }}
+    >
       <div class="mobile-menu-header">
-        <img 
+        <img
           src="/titles/logo-white-wide.png"
-          alt="Kong Logo" 
+          alt="Kong Logo"
           class="logo-wide"
-          class:light-logo={$themeStore === 'light'}
+          class:light-logo={$themeStore === "light"}
         />
         <button class="mobile-close-btn" on:click={() => (navOpen = false)}>
           <X size={16} />
@@ -451,122 +380,101 @@
 
       <nav class="mobile-nav">
         <div class="mobile-nav-section">
-          {#each tabs as tab}
-            {#if tab === 'earn'}
-              <div class="mobile-nav-group">
-                <div class="mobile-nav-group-title">EARN</div>
-                {#each earnOptions as option}
-                  <button
-                    class="mobile-nav-btn {activeTab === 'earn' && option.path === '/pools' ? 'active' : ''}"
-                    on:click={() => {
-                      if (!option.comingSoon) {
-                        onTabChange('earn');
-                        goto(option.path);
-                        navOpen = false;
-                      }
-                    }}
-                    class:disabled={option.comingSoon}
-                  >
-                    <div class="mobile-nav-btn-icon">
-                      <svelte:component this={option.icon} size={18} />
-                    </div>
-                    <div class="mobile-nav-btn-content">
-                      <span>{option.label}</span>
-                      {#if option.comingSoon}
-                        <span class="coming-soon-badge">Soon</span>
-                      {/if}
-                    </div>
-                  </button>
-                {/each}
-              </div>
-            {:else if tab === 'swap'}
-              <div class="mobile-nav-group mb-0">
-                <div class="mobile-nav-group-title">SWAP</div>
-                {#each swapOptions as option}
-                  <button
-                    class="mobile-nav-btn {activeTab === 'swap' && $page.url.pathname === option.path ? 'active' : ''}"
-                    on:click={() => {
-                      if (!option.comingSoon) {
-                        handleSwapOptionClick(option);
-                        navOpen = false;
-                      }
-                    }}
-                    class:disabled={option.comingSoon}
-                  >
-                    <div class="mobile-nav-btn-icon">
-                      <svelte:component this={option.icon} size={18} />
-                    </div>
-                    <div class="mobile-nav-btn-content">
-                      <span>{option.label}</span>
-                      {#if option.comingSoon}
-                        <span class="coming-soon-badge">Soon</span>
-                      {/if}
-                    </div>
-                  </button>
-                {/each}
-              </div>
-            {:else if tab === 'stats'}
-              <div class="mobile-nav-group">
-                <div class="mobile-nav-group-title">STATS</div>
-                {#each statsOptions as option}
-                  <button
-                    class="mobile-nav-btn {activeTab === 'stats' && $page.url.pathname === option.path ? 'active' : ''}"
-                    on:click={() => {
-                      if (!option.comingSoon) {
-                        onTabChange('stats');
-                        goto(option.path);
-                        navOpen = false;
-                      }
-                    }}
-                    class:disabled={option.comingSoon}
-                  >
-                    <div class="mobile-nav-btn-icon">
-                      <svelte:component this={option.icon} size={18} />
-                    </div>
-                    <div class="mobile-nav-btn-content">
-                      <span>{option.label}</span>
-                      {#if option.comingSoon}
-                        <span class="coming-soon-badge">Soon</span>
-                      {/if}
-                    </div>
-                  </button>
-                {/each}
-              </div>
-            {/if}
-          {/each}
+          <MobileNavGroup
+            title="SWAP"
+            options={swapOptions}
+            {activeTab}
+            {onTabChange}
+            onClose={() => (navOpen = false)}
+          />
+
+          <MobileNavGroup
+            title="EARN"
+            options={earnOptions}
+            {activeTab}
+            {onTabChange}
+            onClose={() => (navOpen = false)}
+          />
+
+          <MobileNavGroup
+            title="STATS"
+            options={dataOptions}
+            {activeTab}
+            {onTabChange}
+            onClose={() => (navOpen = false)}
+          />
+
+          {#if process.env.DFX_NETWORK === "ic"}
+            <MobileNavGroup
+              title="PREDICT"
+              options={[
+                {
+                  label: "Prediction Markets",
+                  description: "Trade on future outcomes",
+                  path: "/predict",
+                  icon: TrendingUpDown,
+                  comingSoon: false,
+                },
+              ]}
+              {activeTab}
+              {onTabChange}
+              onClose={() => (navOpen = false)}
+            />
+          {/if}
         </div>
 
         <div class="mobile-nav-section">
           <div class="mobile-nav-section-title">ACCOUNT</div>
-          <button class="mobile-nav-btn" on:click={handleOpenSettings}>
-            <div class="mobile-nav-btn-icon bg-kong-text-primary/10">
-              <SettingsIcon size={18} />
-            </div>
-            <span>Settings</span>
-          </button>
+          <MobileMenuItem
+            label="Settings"
+            icon={SettingsIcon}
+            onClick={() => {
+              handleOpenSettings();
+              navOpen = false;
+            }}
+            iconBackground="bg-kong-text-primary/10"
+          />
+
+          {#if process.env.DFX_NETWORK !== "ic"}
+            <MobileMenuItem
+              label="Search"
+              icon={Search}
+              onClick={() => {
+                handleOpenSearch();
+                navOpen = false;
+              }}
+              iconBackground="bg-kong-text-primary/10"
+            />
+          {/if}
 
           {#if $auth.isConnected}
-            {#if process.env.DFX_NETWORK === 'local' || process.env.DFX_NETWORK === 'staging'}
-              <button class="mobile-nav-btn" on:click={claimTokens}>
-                <div class="mobile-nav-btn-icon bg-kong-text-primary/10">
-                  <Droplet size={18} />
-                </div>
-                <span>Claim Tokens</span>
-              </button>
+            {#if process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging"}
+              <MobileMenuItem
+                label="Claim Tokens"
+                icon={Droplet}
+                onClick={() => {
+                  claimTokens();
+                  navOpen = false;
+                }}
+                iconBackground="bg-kong-text-primary/10"
+              />
             {/if}
 
-            <button class="mobile-nav-btn" on:click={() => copyToClipboard(auth.pnp?.account?.owner)}>
-              <div class="mobile-nav-btn-icon bg-kong-text-primary/10">
-                <Copy size={18} />
-              </div>
-              <span>Copy Principal ID</span>
-            </button>
+            <MobileMenuItem
+              label="Copy Principal ID"
+              icon={Copy}
+              onClick={() => {
+                copyToClipboard(auth.pnp?.account?.owner);
+                navOpen = false;
+              }}
+              iconBackground="bg-kong-text-primary/10"
+            />
           {/if}
         </div>
       </nav>
 
       <div class="mobile-menu-footer">
-        <button 
+        <button
           class="mobile-wallet-btn"
           on:click={() => {
             handleConnect();
@@ -582,82 +490,30 @@
 {/if}
 
 {#if showSettings}
-  <Modal 
+  <Modal
     isOpen={true}
     title="Settings"
     height="auto"
     variant="transparent"
-    on:close={() => showSettings = false}
+    on:close={() => (showSettings = false)}
   >
-    <Settings on:close={() => showSettings = false} />
+    <Settings on:close={() => (showSettings = false)} />
   </Modal>
 {/if}
 
 {#if $sidebarStore.isOpen}
   <div class="sidebar-portal">
-    <div 
+    <div
       class="sidebar-backdrop"
       transition:fade={{ duration: 150 }}
       on:click={() => sidebarStore.close()}
     />
-    <Sidebar
-      onClose={() => sidebarStore.close()}
-    />
+    <Sidebar onClose={() => sidebarStore.close()} />
   </div>
 {/if}
 
 <style scoped lang="postcss">
-  .nav-link {
-    @apply relative h-16 px-5 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200;
-  }
-
-  .nav-link:hover {
-    @apply text-kong-text-primary;
-  }
-
-  .nav-link.active {
-    @apply text-kong-primary;
-    text-shadow: 0 0px 30px theme(colors.kong.primary);
-  }
-
   /* Mobile Menu */
-  .mobile-menu-content {
-    @apply fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col;
-    @apply bg-kong-bg-dark border-r border-kong-border;
-  }
-
-  .mobile-menu-header {
-    @apply flex items-center justify-between p-5 border-b border-kong-border;
-  }
-
-  .mobile-menu-header .logo-wide {
-    filter: brightness(var(--logo-brightness, 1)) invert(var(--logo-invert, 0));
-    width: 180px;
-  }
-
-  .mobile-nav-btn {
-    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-200 text-sm font-medium;
-  }
-
-  .mobile-nav-btn:hover,
-  .mobile-nav-btn.active {
-    color: theme(colors.kong.text-primary);
-    @apply bg-kong-text-primary/10 border-kong-border-light light:border-gray-800/20;
-  }
-
-  .nav-dropdown {
-    @apply relative z-[60];
-  }
-
-  .nav-dropdown .nav-link {
-    @apply flex items-center gap-1;
-  }
-
-  .nav-dropdown::after {
-    @apply content-[''] absolute top-full left-0 w-full h-2 bg-transparent;
-  }
-
-
   .mobile-menu {
     @apply fixed inset-0 z-50;
   }
@@ -694,40 +550,12 @@
     @apply text-xs font-semibold text-kong-text-secondary/70 px-2 mb-2 tracking-wider;
   }
 
-  .mobile-nav-group {
-    @apply mb-3;
-  }
-
-  .mobile-nav-group-title {
-    @apply text-xs font-semibold text-kong-text-secondary/70 px-2 mb-2;
-  }
-
-  .mobile-nav-btn {
-    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-200 text-sm font-medium;
-  }
-
-  .mobile-nav-btn.active {
-    @apply text-kong-text-primary bg-kong-primary/10;
-  }
-
-  .mobile-nav-btn-icon {
-    @apply flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-kong-text-primary/5;
-  }
-
-  .mobile-nav-btn-content {
-    @apply flex items-center justify-between flex-1;
-  }
-
   .mobile-menu-footer {
     @apply p-0;
   }
 
   .mobile-wallet-btn {
     @apply w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
-  }
-
-  .coming-soon-badge {
-    @apply text-[10px] font-medium px-2 py-0.5 rounded bg-kong-primary/20 text-kong-primary;
   }
 
   .sidebar-portal {
@@ -738,7 +566,7 @@
     @apply fixed inset-0 bg-black/20 backdrop-blur-[4px];
   }
 
-  /* Update logo styles */
+  /* Logo styles */
   .light-logo {
     @apply invert brightness-[0.8] transition-all duration-200;
   }
@@ -751,15 +579,17 @@
     @apply invert brightness-[0.2];
   }
 
-  /* Simplified active state styles */
-  .mobile-nav-btn.active span,
-  .nav-dropdown button.active span {
-    @apply text-kong-primary;
+  /* Basic nav link for predict tab */
+  .nav-link {
+    @apply relative h-16 px-5 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200;
   }
 
-  /* Hover state for active items */
-  .mobile-nav-btn.active:hover span,
-  .nav-dropdown button.active:hover span {
+  .nav-link:hover {
+    @apply text-kong-text-primary;
+  }
+
+  .nav-link.active {
     @apply text-kong-primary;
+    text-shadow: 0 0px 30px theme(colors.kong.primary);
   }
 </style>

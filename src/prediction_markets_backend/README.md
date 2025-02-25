@@ -12,14 +12,14 @@ dfx start --background
 # Deploys your canisters to the replica and generates your candid interface
 dfx deploy prediction_markets_backend
 ```
-#deploy the kskong_ledger canister
+#deploy the kong_ledger canister
 ```bash
-dfx deploy kskong_ledger
+dfx deploy kong_ledger
 ```
 
-#mint tokens for the selected profiles (change the principals in the mint_kskong.sh script to send to your identities)  
+#mint tokens for the selected profiles (change the principals in the mint_kong.sh script to send to your identities)  
 ```bash
-./scripts/mint_kskong.sh
+./scripts/mint_kong.sh
 ```
 
 #end to end testing of the markets run

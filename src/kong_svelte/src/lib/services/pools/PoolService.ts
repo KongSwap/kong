@@ -1,13 +1,11 @@
 // services/PoolService.ts
 import { auth, requireWalletConnection } from "$lib/services/auth";
-import { get } from "svelte/store";
 import { IcrcService } from "../icrc/IcrcService";
 import { canisterIDLs } from "../pnp/PnpInitializer";
 import { PoolSerializer } from "./PoolSerializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { toastStore } from "$lib/stores/toastStore";
 import { KONG_BACKEND_CANISTER_ID, KONG_DATA_PRINCIPAL } from "$lib/constants/canisterConstants";
-import { kongDB } from "$lib/services/db";
 
 export class PoolService {
   protected static instance: PoolService;
