@@ -411,6 +411,7 @@
             quoteToken ?? hoveredToken :
             quoteToken ?? icpToken ?? hoveredToken  // Always try ckUSDT first, fallback to ICP
         }
+        price_change_24h={Number(hoveredToken.metrics?.price_change_24h || 0)}
         on:quoteTokenUsed={(event) => {
           actualQuoteToken = event.detail.symbol === "ckUSDT" ? "ckUSDT" : "ICP";
         }}
