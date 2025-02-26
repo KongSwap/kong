@@ -915,7 +915,6 @@ pub fn get_event_batches(start_height: Option<u64>) -> Vec<EventBatch> {
     })
 }
 
-#[ic_cdk::update]
 pub async fn generate_new_block() -> Result<BlockTemplate, String> {
     // Get current block height and check security
     let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
@@ -1647,4 +1646,26 @@ fn log_system_telemetry() {
         PROCESSED_SOLUTIONS.with(|s| s.borrow().get().0.len()),
         MINER_RATE_LIMITS.with(|r| r.borrow().get().0.len())
     );
+}
+
+// Add a new function for creating the genesis block
+#[ic_cdk::update]
+pub async fn create_genesis_block() -> Result<BlockTemplate, String> {
+    // Check if caller is the controller
+    let caller = ic_cdk::caller();
+    let is_controller = ic_cdk::api::is_controller(&caller);
+    
+    if !is_controller {
+        return Err("Only the controller can create the genesis block".to_string());
+    }
+    
+    // Check if block height is 0 (genesis block hasn't been created yet)
+    let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
+    
+    if height > 0 {
+        return Err(format!("Genesis block has already been generated. Current block height is {}", height));
+    }
+    
+    // Call the internal generate_new_block function to create the genesis block
+    generate_new_block().await
 }

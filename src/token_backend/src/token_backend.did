@@ -152,8 +152,8 @@ type TrustedOriginsResponse = record { trusted_origins : vec text };
 service : (TokenInitArgs) -> {
   can_submit_solution : () -> (Result) query;
   cleanup_expired_delegations : () -> (nat64);
+  create_genesis_block : () -> (Result_2);
   deregister_miner : () -> (Result_1);
-  generate_new_block : () -> (Result_2);
   get_active_miners : () -> (vec principal) query;
   get_auth_status : () -> (bool) query;
   get_average_block_time : (opt nat32) -> (BlockTimeResult) query;

@@ -37,7 +37,7 @@
 
   function getCanisterId(): string {
     if (pnp?.isDev) {
-      return 'sk4hs-faaaa-aaaag-at3rq-cai';
+      return 'sk4hs-faaaa-aaaag-at3rq-cai'; // staging
     }
     if (typeof window !== 'undefined' && window.__CANISTER_ID__) {
       return window.__CANISTER_ID__;

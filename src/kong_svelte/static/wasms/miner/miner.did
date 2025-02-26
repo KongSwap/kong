@@ -27,5 +27,4 @@ service : (record {}) -> {
   set_template_refresh_interval : (nat64) -> (Result);
   start_mining : () -> (Result);
   stop_mining : () -> (Result);
-  transform_miner : (MinerType) -> (Result);
 }

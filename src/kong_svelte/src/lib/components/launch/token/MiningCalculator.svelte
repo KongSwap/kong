@@ -50,8 +50,8 @@
       name: "Rapid Bitcoin",
       description: "Bitcoin economics with much faster block times",
       blockReward: 50,
-      halvingBlocks: 2100000,
-      blockTimeSeconds: 15,
+      halvingBlocks: 210000,
+      blockTimeSeconds: 600,
       maxSupply: 21000000,
       category: 'fast',
       icon: "⚡"
@@ -77,17 +77,6 @@
       maxSupply: 100000000000,
       category: 'popular',
       icon: "Ð"
-    },
-    {
-      id: "icp-like",
-      name: "Internet Computer",
-      description: "Balanced economics with medium block times",
-      blockReward: 100,
-      halvingBlocks: 500000,
-      blockTimeSeconds: 60,
-      maxSupply: 469213710,
-      category: 'balanced',
-      icon: "∞"
     },
     {
       id: "hyper-fast",

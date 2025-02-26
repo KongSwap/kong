@@ -114,15 +114,18 @@ type MinerStatus = variant { Inactive; Active };
 type MiningInfo = record {
   block_time_target : nat64;
   current_difficulty : nat32;
+  mining_complete : bool;
   next_halving_interval : nat64;
   current_block_reward : nat64;
 };
-type Result = variant { Ok : bool; Err : text };
-type Result_1 = variant { Ok; Err : text };
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : bool; Err : text };
 type Result_2 = variant { Ok : BlockTemplate; Err : text };
 type Result_3 = variant { Ok : TokenInfo; Err : text };
-type Result_4 = variant { Ok : DelegationResponse; Err : DelegationError };
-type Result_5 = variant { Ok : principal; Err : text };
+type Result_4 = variant { Ok : vec SocialLink; Err : text };
+type Result_5 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_6 = variant { Ok : principal; Err : text };
+type SocialLink = record { url : text; platform : text };
 type SupportedStandard = record { url : text; name : text };
 type TokenInfo = record {
   decimals : nat8;
@@ -133,6 +136,7 @@ type TokenInfo = record {
   ledger_id : opt principal;
   archive_options : opt ArchiveOptions;
   total_supply : nat64;
+  social_links : opt vec SocialLink;
 };
 type TokenInitArgs = record {
   decimals : opt nat8;
@@ -145,13 +149,15 @@ type TokenInitArgs = record {
   archive_options : opt ArchiveOptions;
   halving_interval : nat64;
   total_supply : nat64;
+  social_links : opt vec SocialLink;
 };
 type TokenMetrics = record { circulating_supply : nat64; total_supply : nat64 };
 type TrustedOriginsResponse = record { trusted_origins : vec text };
 service : (TokenInitArgs) -> {
-  can_submit_solution : () -> (Result) query;
+  add_social_link : (text, text) -> (Result);
+  can_submit_solution : () -> (Result_1) query;
   cleanup_expired_delegations : () -> (nat64);
-  deregister_miner : () -> (Result_1);
+  deregister_miner : () -> (Result);
   generate_new_block : () -> (Result_2);
   get_active_miners : () -> (vec principal) query;
   get_auth_status : () -> (bool) query;
@@ -168,6 +174,7 @@ service : (TokenInitArgs) -> {
   get_mining_info : () -> (MiningInfo) query;
   get_recent_events : (opt nat32) -> (vec Event) query;
   get_recent_events_from_batches : (opt nat32) -> (vec Event) query;
+  get_social_links : () -> (Result_4) query;
   get_total_cycles_earned : () -> (nat) query;
   http_request : (HttpRequest) -> (HttpResponse) query;
   icrc10_supported_standards : () -> (vec SupportedStandard) query;
@@ -175,9 +182,11 @@ service : (TokenInitArgs) -> {
       ConsentMessageResponse,
     ) query;
   icrc28_trusted_origins : () -> (TrustedOriginsResponse) query;
-  icrc34_delegate : (DelegationRequest) -> (Result_4);
-  register_miner : () -> (Result_1);
-  start_token : () -> (Result_5);
-  submit_solution : (principal, nat64, blob, nat64) -> (Result);
+  icrc34_delegate : (DelegationRequest) -> (Result_5);
+  register_miner : () -> (Result);
+  remove_social_link : (nat64) -> (Result);
+  start_token : () -> (Result_6);
+  submit_solution : (principal, nat64, blob, nat64) -> (Result_1);
+  update_social_link : (nat64, text, text) -> (Result);
   whoami : () -> (principal) query;
 }

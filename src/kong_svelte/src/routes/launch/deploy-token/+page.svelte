@@ -1,21 +1,16 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import Panel from "$lib/components/common/Panel.svelte";
   import { writable } from "svelte/store";
   import { ArrowLeft, ArrowRight, AlertTriangle, CheckCircle, Loader2, ExternalLink } from "lucide-svelte";
-  import Tooltip from "$lib/components/common/Tooltip.svelte";
   
   import { Principal } from "@dfinity/principal";
   import { Actor, HttpAgent } from "@dfinity/agent";
-  import { idlFactory as swapIdl } from "$lib/constants/swap.did.js";
-  import { idlFactory as ledgerIDL } from "$lib/constants/icp_ledger.did.js";
-  import { idlFactory as tokenBackendIDL } from "$lib/constants/token_backend.did.js";
   import { SwapService } from "$lib/services/swap/SwapService";
-  import { getWalletIdentity } from "$lib/utils/wallet";
   import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { tokenParams } from "$lib/stores/tokenParams";
+  import { createCanister } from "$lib/services/canister/create_canister";
   
   // States for the token deployment process
   const PROCESS_STEPS = {
@@ -80,7 +75,7 @@
         throw new Error("Wallet not connected");
       }
       
-      const identity = getWalletIdentity(auth.auth.pnp);
+      const identity = auth.auth.pnp.getIdentity();
       if (!identity) {
         throw new Error("Failed to get wallet identity");
       }
@@ -254,7 +249,7 @@
   }
   
   // Create a canister using ICP
-  async function createCanister(icpE8s: bigint) {
+  async function createCanisterWithIcp(icpE8s: bigint) {
     try {
       processingMessage = "Creating canister...";
       addLog(`Preparing ICP transfer to CMC (${CMC_CANISTER_ID})`);
@@ -276,7 +271,7 @@
         
         // Notify CMC to create canister
         addLog("Notifying CMC to create canister...");
-        const { createCanister, getDefaultCanisterSettings } = await import("$lib/services/canister");
+        const { createCanister, getDefaultCanisterSettings } = await import("$lib/services/canister/create_canister");
         
         // Canister creation settings
         // TODO! force this to be on kong subnet
@@ -549,7 +544,7 @@
       // Step 2: Create canister via CMC
       currentStep = PROCESS_STEPS.CREATE_CANISTER;
       addLog("Step 2: Creating canister with ICP");
-      const canisterIdPrincipal = await createCanister(adjustedIcpE8s);
+      const canisterIdPrincipal = await createCanisterWithIcp(adjustedIcpE8s);
       
       // Step 3: Install token code
       currentStep = PROCESS_STEPS.DEPLOY_TOKEN;

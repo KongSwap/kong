@@ -433,6 +433,7 @@ fn update_circulating_supply(amount: u64) {
 // Re-export mining functions
 pub use mining::{
     generate_new_block,
+    create_genesis_block,
     submit_solution,
     get_current_block,
     get_mining_difficulty,

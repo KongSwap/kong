@@ -1,6 +1,6 @@
 import { Principal } from '@dfinity/principal';
 import { CMCCanister } from '@dfinity/cmc';
-import { HttpAgent } from '@dfinity/agent';
+import { auth } from '$lib/services/auth';
 
 // Types for canister creation
 export interface CanisterSettings {
@@ -29,27 +29,12 @@ export interface NotifyCreateCanisterArgs {
 }
 
 // CMC Canister ID
-export const CMC_CANISTER_ID = Principal.fromText("rkp4c-7iaaa-aaaaa-aaaca-cai");
+export const CMC_CANISTER_ID = "rkp4c-7iaaa-aaaaa-aaaca-cai";
 
 // Create CMC actor with authentication
-export async function getCMCActor(pnp: any) {
-  const identity = getWalletIdentity(pnp);
-  
-  if (!identity) {
-    throw new Error("No identity found in wallet");
-  }
-
-  // Create agent with identity
-  const agent = new HttpAgent({
-    host: 'https://icp0.io',
-    identity: identity
-  });
-
-  // Create CMC actor using the official package
-  return CMCCanister.create({
-    agent,
-    canisterId: CMC_CANISTER_ID
-  });
+export async function getCMCActor() {
+  let actor = await auth.getActor(CMC_CANISTER_ID, CMCCanister);
+  return actor;
 }
 
 /**
@@ -65,7 +50,7 @@ export async function createCanister(
 ): Promise<Principal> {
   try {
     console.log('Creating a new canister with CMC...');
-    const cmcActor = await getCMCActor(pnp);
+    const cmcActor = await getCMCActor();
     
     if (!cmcActor) {
       throw new Error('CMC Actor is not properly initialized');
