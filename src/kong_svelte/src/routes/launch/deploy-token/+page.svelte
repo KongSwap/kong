@@ -40,7 +40,7 @@
   let isProcessing = false;
   
   // Deployment data
-  let kongAmount = "500"; // Fixed amount for token deployment - 500 KONG
+  let kongAmount = "80"; // Fixed amount for token deployment - 500 KONG
   let icpAmount = "0"; 
   let canisterId = "";
   let kongIcpRate = "0";
@@ -102,6 +102,11 @@
       currentStep = PROCESS_STEPS.ERROR;
           return;
     }
+    
+    // Set initial value for estimatedTCycles to prevent showing "0"
+    if (estimatedTCycles === "0") {
+      estimatedTCycles = "...";
+    }
   });
 </script>
 
@@ -138,7 +143,7 @@
     {icpAmount}
     {canisterId}
     {kongIcpRate}
-    {estimatedTCycles}
+    bind:estimatedTCycles
     {actualIcpReceived}
     {IC_DASHBOARD_BASE_URL}
   />
@@ -168,6 +173,8 @@
     bind:icpAmount
     bind:canisterId
     bind:actualIcpReceived
+    bind:estimatedTCycles
+    bind:kongIcpRate
     processSteps={PROCESS_STEPS}
   />
   

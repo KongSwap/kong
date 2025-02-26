@@ -409,27 +409,17 @@ export class IcrcService {
    * Implementation based on the example code
    */
   private static createSubAccount(principal: Principal): number[] {
-    // Convert principal to text representation
-    const principalText = principal.toText();
+    // Convert principal to bytes
+    const bytes = principal.toUint8Array();
     
     // Create a new subaccount with 32 bytes (all zeros)
     const subaccount = new Uint8Array(32);
     
-    if (principalText.length > 0) {
-      // For non-empty principals, we'll use a simpler approach
-      // that doesn't rely on internal Principal methods
-      
-      // Get the principal's raw text representation
-      const principalId = principal.toText();
-      
-      // Use the length of the principal ID as the first byte
-      subaccount[0] = principalId.length;
-      
-      // Convert the principal ID string to bytes and place in the subaccount
-      for (let i = 0; i < principalId.length && i < 31; i++) {
-        subaccount[i + 1] = principalId.charCodeAt(i);
-      }
-    }
+    // Set the first byte to the length of the principal
+    subaccount[0] = bytes.length;
+    
+    // Copy the principal bytes into the subaccount starting at position 1
+    subaccount.set(bytes, 1);
     
     return Array.from(subaccount);
   }

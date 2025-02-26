@@ -1,20 +1,26 @@
 import { Principal } from "@dfinity/principal";
-import { ICManagementCanister } from "@dfinity/ic-management";
 import { IDL } from "@dfinity/candid";
 import { inflate } from "pako";
 import { auth } from "../auth";
+import { idlFactory as icManagementIdlFactory } from "./ic-management.idl";
 
 export interface WasmMetadata {
     path: string;
     compressedPath?: string;
     description: string;
     initArgsType?: any;
+    wasmModule?: Uint8Array;
+    initArgs?: any;
 }
 
 export const IC_MANAGEMENT_CANISTER_ID = "aaaaa-aa";
 
 export async function getICManagementActor() {
-  let actor = await auth.getActor(IC_MANAGEMENT_CANISTER_ID, ICManagementCanister);
+  let actor = await auth.getActor(
+    IC_MANAGEMENT_CANISTER_ID, 
+    icManagementIdlFactory,
+    { requiresSigning: true }
+  );
   return actor;
 }
 
@@ -32,19 +38,23 @@ export class InstallService {
         initArgs?: any
     ): Promise<void> {
         try {
-            // Fetch and decompress WASM
-            const wasmModule = await InstallService.fetchWasmModule(wasmMetadata);
+            // Use provided wasmModule or fetch it
+            const wasmModule = wasmMetadata.wasmModule || 
+                await InstallService.fetchWasmModule(wasmMetadata);
             
             // Get the management canister actor
             const management = await getICManagementActor();
 
             // Encode init args if present
-            const arg = InstallService.encodeInitArgs(wasmMetadata.initArgsType, initArgs);
+            const arg = InstallService.encodeInitArgs(
+                wasmMetadata.initArgsType, 
+                wasmMetadata.initArgs || initArgs
+            );
 
             // Install the WASM
-            await management.installCode({
+            await management.install_code({
                 canisterId: Principal.fromText(canisterId),
-                wasmModule,
+                wasm_module: wasmModule,
                 mode: { install: null },
                 arg
             });
@@ -103,6 +113,9 @@ export class InstallService {
     private static convertToCandidArgs(args: any): any {
         if (Array.isArray(args)) {
             return args.map(arg => InstallService.convertToCandidArgs(arg));
+        } else if (typeof args === 'bigint') {
+            // Handle BigInt values directly - no conversion needed for Candid
+            return args;
         } else if (typeof args === 'object' && args !== null) {
             const result: any = {};
             for (const [key, value] of Object.entries(args)) {

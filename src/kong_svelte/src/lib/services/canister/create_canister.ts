@@ -1,51 +1,13 @@
 import { Principal } from '@dfinity/principal';
 import { auth } from '$lib/services/auth';
 import { IcrcService } from '../icrc/IcrcService';
-
-// Create a CUSTOM FUCKING IDL FACTORY
-function createCmcIdlFactory() {
-  return ({ IDL }) => {
-    const SubnetFilter = IDL.Record({ subnet_type: IDL.Opt(IDL.Text) });
-    const SubnetSelection = IDL.Variant({
-      'Filter': IDL.Record({ filter: SubnetFilter }),
-      'Subnet': IDL.Record({ subnet: IDL.Principal })
-    });
-    
-    const CanisterSettings = IDL.Record({
-      controllers: IDL.Opt(IDL.Vec(IDL.Principal)),
-      compute_allocation: IDL.Opt(IDL.Nat),
-      memory_allocation: IDL.Opt(IDL.Nat),
-      freezing_threshold: IDL.Opt(IDL.Nat)
-    });
-    
-    const NotifyCreateCanisterArg = IDL.Record({
-      block_index: IDL.Nat64,
-      controller: IDL.Principal,
-      subnet_selection: IDL.Opt(IDL.Vec(SubnetSelection)),
-      subnet_type: IDL.Opt(IDL.Text),
-      settings: IDL.Opt(CanisterSettings)
-    });
-    
-    const NotifyResult = IDL.Variant({
-      'Ok': IDL.Principal,
-      'Err': IDL.Variant({
-        'Refunded': IDL.Record({ block_index: IDL.Opt(IDL.Nat64), reason: IDL.Text }),
-        'InvalidTransaction': IDL.Text,
-        'Other': IDL.Record({ error_message: IDL.Text, error_code: IDL.Nat }),
-        'Processing': IDL.Null,
-        'TransactionTooOld': IDL.Nat64
-      })
-    });
-    
-    return IDL.Service({
-      'notify_create_canister': IDL.Func([NotifyCreateCanisterArg], [NotifyResult], [])
-    });
-  };
-}
+import { idlFactory as cmcIdlFactory } from '$lib/services/canister/cmc.idl';
 
 // Constants
 const CMC_CANISTER_ID = "rkp4c-7iaaa-aaaaa-aaaca-cai"; // Cycles Minting Canister ID
 const CREATE_CANISTER_MEMO = 1095062083n; // Memo for canister creation
+
+// Helper function to create a subaccount from a principal
 
 export async function createCanister(args) {
   try {
@@ -56,7 +18,10 @@ export async function createCanister(args) {
       ? Principal.fromText(args.controller) 
       : args.controller;
     
+    console.log('Controller principal:', controllerPrincipal.toText());
+    
     // Transfer ICP to CMC with the CREATE_CANISTER memo
+    // The subaccount is derived from the controller principal
     const transferResult = await IcrcService.transferIcpToCmc(
       args.amount,
       controllerPrincipal,
@@ -69,13 +34,26 @@ export async function createCanister(args) {
     
     // Get the block index from the successful transfer
     const blockIndex = transferResult.Ok;
+    console.log('Transfer successful, block index:', blockIndex.toString());
     
-    // Using your precious getActor with a custom IDL factory
+    // Use the imported CMC IDL factory
     const cmcActor = await auth.getActor(
       CMC_CANISTER_ID,
-      createCmcIdlFactory(),
+      cmcIdlFactory,
       { requiresSigning: true }
     );
+    
+    // Ensure settings has all required fields
+    const completeSettings = {
+      controllers: args.settings?.controllers ? [args.settings.controllers] : [],
+      freezing_threshold: args.settings?.freezing_threshold || [],
+      memory_allocation: args.settings?.memory_allocation || [],
+      compute_allocation: args.settings?.compute_allocation || [],
+      wasm_memory_threshold: args.settings?.wasm_memory_threshold || [],
+      reserved_cycles_limit: args.settings?.reserved_cycles_limit || [],
+      log_visibility: args.settings?.log_visibility || [],
+      wasm_memory_limit: args.settings?.wasm_memory_limit || []
+    };
     
     // Format notify args
     const notifyArgs = {
@@ -83,8 +61,11 @@ export async function createCanister(args) {
       controller: controllerPrincipal,
       subnet_type: args.subnetType ? [args.subnetType] : [],
       subnet_selection: args.subnet_selection || [],
-      settings: args.settings ? [args.settings] : []
+      settings: [completeSettings]
     };
+    
+    console.log('Notify args:', JSON.stringify(notifyArgs, (_, v) => 
+      typeof v === 'bigint' ? v.toString() : v));
     
     // Call the function
     const result = await cmcActor.notify_create_canister(notifyArgs);

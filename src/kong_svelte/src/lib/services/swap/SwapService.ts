@@ -545,6 +545,24 @@ export class SwapService {
         kongAmount: kongAmountE8s.toString(),
         maxSlippage
       });
+      
+      // Get the principal from wallet - try multiple methods for better compatibility
+      let principal = auth.pnp.activeWallet?.principal;
+      
+      // Fallback to account owner if activeWallet principal is not available
+      if (!principal && auth.pnp?.account?.owner) {
+        principal = auth.pnp.account.owner;
+      }
+      
+      if (!principal) {
+        throw new Error("Please connect your wallet to continue");
+      }
+      
+      // Convert principal to proper format if needed
+      const principalObj = typeof principal === 'string' 
+        ? Principal.fromText(principal) 
+        : principal;
+      
       // First get Kong actor to approve the swap - using auth.getActor consistently
       console.log('[SwapService][swapKongToIcp] Getting Kong actor...');
       const kongActor = await auth.getActor(
@@ -565,7 +583,7 @@ export class SwapService {
       // Check KONG balance before approval
       try {
         const balance = await anonKongActor.icrc1_balance_of({
-          owner: principal,
+          owner: principalObj,
           subaccount: []
         });
         console.log('[SwapService][swapKongToIcp] Current KONG balance:', {
@@ -600,7 +618,7 @@ export class SwapService {
       try {
         const currentAllowance = await anonKongActor.icrc2_allowance({
           account: {
-            owner: principal,
+            owner: principalObj,
             subaccount: []
           },
           spender: {
@@ -656,7 +674,7 @@ export class SwapService {
         console.error('[SwapService][swapKongToIcp] Approval failed:', {
           error: approveResult.Err,
           args: approveArgs,
-          identity: principal.toString(),
+          identity: principalObj.toString(),
           backendPrincipal: backendPrincipal.toString()
         });
         throw new Error(typeof approveResult.Err === 'string' ? approveResult.Err : 'Failed to approve Kong backend');
@@ -676,13 +694,18 @@ export class SwapService {
         pay_tx_id: [],
       };
 
-      console.log('[SwapService][swapKongToIcp] Swap args:', JSON.stringify(swapArgs, (_, v) => 
-        typeof v === 'bigint' ? v.toString() : v
-      ));
+      // Create a safe serializer function for BigInt values
+      const safeStringifyWithBigInt = (obj: any) => {
+        return JSON.stringify(obj, (_, value) =>
+          typeof value === 'bigint' ? value.toString() : value
+        );
+      };
+
+      console.log('[SwapService][swapKongToIcp] Swap args:', safeStringifyWithBigInt(swapArgs));
 
       console.log('[SwapService][swapKongToIcp] Executing swap...');
       const result = await backendActor.swap(swapArgs);
-      console.log('[SwapService][swapKongToIcp] Swap result:', result);
+      console.log('[SwapService][swapKongToIcp] Swap result:', safeStringifyWithBigInt(result));
 
       if ("Ok" in result) {
         console.log('[SwapService][swapKongToIcp] Swap successful, receive amount:', result.Ok.receive_amount.toString());
@@ -698,7 +721,30 @@ export class SwapService {
         stack: error instanceof Error ? error.stack : undefined,
         type: error?.constructor?.name
       });
-      throw error;
+      
+      // Create more user-friendly error message
+      let userMessage = "Failed to swap KONG to ICP";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("Wallet not connected")) {
+          userMessage = "Please connect your wallet to continue";
+        } else if (error.message.includes("Channel was closed") || 
+                  error.message.includes("No Agent could be found")) {
+          userMessage = "Wallet connection was interrupted. Please try again and keep the wallet window open";
+        } else if (error.message.includes("Insufficient balance")) {
+          userMessage = "Insufficient KONG balance for this swap";
+        } else if (error.message.includes("serialization")) {
+          userMessage = "Error processing response from wallet. Please try again";
+        } else {
+          userMessage = error.message;
+        }
+      }
+      
+      const enhancedError = new Error(userMessage);
+      if (error instanceof Error) {
+        enhancedError.stack = error.stack;
+      }
+      throw enhancedError;
     }
   }
 }

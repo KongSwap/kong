@@ -10,7 +10,21 @@
   
   // Function to add a log entry
   export function addLog(message: string) {
-    logStore.update(logs => [...logs, message]);
+    logStore.update(logs => {
+      // Check if this exact message is already the last entry in the log
+      if (logs.length > 0 && logs[logs.length - 1] === message) {
+        // Skip duplicate consecutive entries
+        return logs;
+      }
+      
+      // Check if this message already exists anywhere in the log
+      if (logs.includes(message)) {
+        // Skip duplicate entries even if not consecutive
+        return logs;
+      }
+      
+      return [...logs, message];
+    });
     
     // Scroll to bottom on next tick
     setTimeout(() => {
