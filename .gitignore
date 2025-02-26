@@ -130,7 +130,6 @@ dist/
 .env
 .secrets
 ca-certificate*.crt
-package-lock.json
 backups/
 *.dump
 **/public/.ic-assets.json5

@@ -15,6 +15,7 @@
     token: FE.Token;
     tokenFee: bigint;
     isValidating: boolean;
+    toPrincipal: string;
   } | null = null;
 
   function handleClose() {
@@ -62,5 +63,6 @@
     token={transferDetails.token}
     tokenFee={transferDetails.tokenFee}
     isValidating={transferDetails.isValidating}
+    toPrincipal={transferDetails.toPrincipal}
   />
 {/if}

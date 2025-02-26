@@ -463,23 +463,17 @@ async fn transfer_token(
             };
         }
         Err(e) => {
-            let message = match claim_map::insert(
-                &StableClaim::new(
-                    user_id,
-                    token_id,
-                    &amount,
-                    Some(request_id),
-                    Some(Address::PrincipalId(*to_principal_id)),
-                    ts,
-                ),
-                token,
-            ) {
-                Ok(claim_id) => {
-                    claim_ids.push(claim_id);
-                    format!("Saved as claim #{}. {}", claim_id, e)
-                }
-                Err(e) => format!("Failed to save claim. {}", e),
-            };
+            let claim = StableClaim::new(
+                user_id,
+                token_id,
+                &amount,
+                Some(request_id),
+                Some(Address::PrincipalId(*to_principal_id)),
+                ts,
+            );
+            let claim_id = claim_map::insert(&claim);
+            claim_ids.push(claim_id);
+            let message = format!("Saved as claim #{}. {}", claim_id, e);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Failed, Some(&message)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Failed, Some(&message)),

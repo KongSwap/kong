@@ -8,8 +8,8 @@ use crate::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::{
     CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_MEMORY_ID, LP_TOKEN_MAP, LP_TOKEN_MEMORY_ID, MEMORY_MANAGER, POOL_MAP, POOL_MEMORY_ID,
     REQUEST_ARCHIVE_MAP, REQUEST_ARCHIVE_MEMORY_ID, REQUEST_MAP, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_ARCHIVE_MAP,
-    TRANSFER_ARCHIVE_MEMORY_ID, TRANSFER_MAP, TRANSFER_MEMORY_ID, TX_24H_MAP, TX_ARCHIVE_MAP, TX_ARCHIVE_MEMORY_ID, TX_MAP, TX_MEMORY_ID,
-    USER_MAP, USER_MEMORY_ID,
+    TRANSFER_ARCHIVE_MEMORY_ID, TRANSFER_MAP, TRANSFER_MEMORY_ID, TX_ARCHIVE_MAP, TX_ARCHIVE_MEMORY_ID, TX_MAP, TX_MEMORY_ID, USER_MAP,
+    USER_MEMORY_ID,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -72,7 +72,6 @@ async fn status() -> Result<String, String> {
             "# of pools": get_number_of_pools(),
             "# of requests (1h)": get_number_of_requests(),
             "# of requests (archive)": get_number_of_requests_archive(),
-            "# of swaps (24h)": get_number_of_swaps_24h(),
             "# of txs (1h)": get_number_of_txs(),
             "# of txs (archive)": get_number_of_txs_archive(),
             "# of transfers (1h)": get_number_of_transfers(),
@@ -98,10 +97,6 @@ pub fn get_number_of_pools() -> u64 {
 
 pub fn get_number_of_txs() -> u64 {
     TX_MAP.with(|m| m.borrow().len())
-}
-
-pub fn get_number_of_swaps_24h() -> u64 {
-    TX_24H_MAP.with(|m| m.borrow().len())
 }
 
 pub fn get_number_of_txs_archive() -> u64 {

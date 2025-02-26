@@ -76,7 +76,7 @@ impl Default for StableKongSettings {
             kong_backend: Account::from(Principal::from_text(KONG_BACKEND).unwrap()),
             kong_data: Principal::from_text(KONG_DATA).unwrap(),
             event_store: Principal::from_text(EVENT_STORE).unwrap(),
-            maintenance_mode: true,
+            maintenance_mode: false,
             kingkong: vec![100, 101], // default kingkong users
             ckusdt_token_id: CKUSDT_TOKEN_ID,
             ckusdt_symbol: CKUSDT_SYMBOL.to_string(),

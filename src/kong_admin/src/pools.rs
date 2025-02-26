@@ -104,7 +104,6 @@ pub async fn insert_pool_on_database(
     let kong_fee_bps = v.kong_fee_bps as i16;
     let lp_token_id = v.lp_token_id as i32;
     let is_removed = v.is_removed;
-    let tvl = round_f64(v.tvl.0.to_f64().unwrap() / 1_000_000.0, 6); // in USD
     let raw_json = serialize_pool(v);
 
     db_client
