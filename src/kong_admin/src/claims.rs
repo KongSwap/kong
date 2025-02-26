@@ -135,6 +135,7 @@ pub async fn insert_claim_on_database(
     let amount = round_f64(v.amount.0.to_f64().unwrap() / 10_u64.pow(*decimals as u32) as f64, *decimals);
     let request_id = v.request_id.map(|x| x as i64);
     let to_address = v.to_address.as_ref().map(|x| x.to_string());
+    let desc = v.desc.as_ref().map(|x| x.to_string());
     let attempt_request_id = v.attempt_request_id.iter().map(|x| *x as i64).collect::<Vec<_>>();
     let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<_>>();
     let ts = v.ts as f64 / 1_000_000_000.0;
@@ -143,8 +144,8 @@ pub async fn insert_claim_on_database(
     db_client
         .execute(
             "INSERT INTO claims
-                (claim_id, user_id, token_id, status, amount, request_id, to_address, attempt_request_id, transfer_ids, ts, raw_json)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, to_timestamp($10), $11)
+                (claim_id, user_id, token_id, status, amount, request_id, to_address, desc, attempt_request_id, transfer_ids, ts, raw_json)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11), $12)
                 ON CONFLICT (claim_id) DO UPDATE SET
                     user_id = $2,
                     token_id = $3,
@@ -152,10 +153,11 @@ pub async fn insert_claim_on_database(
                     amount = $5,
                     request_id = $6,
                     to_address = $7,
-                    attempt_request_id = $8,
-                    transfer_ids = $9,
-                    ts = to_timestamp($10),
-                    raw_json = $11",
+                    desc = $8,
+                    attempt_request_id = $9,
+                    transfer_ids = $10,
+                    ts = to_timestamp($11),
+                    raw_json = $12",
             &[
                 &claim_id,
                 &user_id,
@@ -164,6 +166,7 @@ pub async fn insert_claim_on_database(
                 &amount,
                 &request_id,
                 &to_address,
+                &desc,
                 &attempt_request_id,
                 &transfer_ids,
                 &ts,
