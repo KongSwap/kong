@@ -405,15 +405,33 @@ export class IcrcService {
   }
 
   /**
-   * Creates a subaccount from a principal for CMC operations
-   * @param principal The principal to derive the subaccount from
-   * @returns A Uint8Array representing the subaccount (32 bytes)
+   * Creates a subaccount from a principal
+   * Implementation based on the example code
    */
-  private static createSubaccountFromPrincipal(principal: Principal): Uint8Array {
-    const principalBytes = principal.toUint8Array();
+  private static createSubAccount(principal: Principal): number[] {
+    // Convert principal to text representation
+    const principalText = principal.toText();
+    
+    // Create a new subaccount with 32 bytes (all zeros)
     const subaccount = new Uint8Array(32);
-    subaccount.set(principalBytes, 0);
-    return subaccount;
+    
+    if (principalText.length > 0) {
+      // For non-empty principals, we'll use a simpler approach
+      // that doesn't rely on internal Principal methods
+      
+      // Get the principal's raw text representation
+      const principalId = principal.toText();
+      
+      // Use the length of the principal ID as the first byte
+      subaccount[0] = principalId.length;
+      
+      // Convert the principal ID string to bytes and place in the subaccount
+      for (let i = 0; i < principalId.length && i < 31; i++) {
+        subaccount[i + 1] = principalId.charCodeAt(i);
+      }
+    }
+    
+    return Array.from(subaccount);
   }
 
   /**
@@ -427,11 +445,22 @@ export class IcrcService {
    */
   public static async transferIcpToCmc(
     amount: bigint,
-    principal: Principal,
+    principal: Principal | Promise<Principal>,
     memo: bigint = 1095062083n // CREATE_CANISTER memo
   ): Promise<Result<bigint>> {
     try {
       console.log(`[IcrcService][transferIcpToCmc] Starting transfer of ${amount} E8s to CMC`);
+      
+      // Ensure principal is resolved if it's a Promise
+      const resolvedPrincipal = principal instanceof Promise ? await principal : principal;
+      
+      // Log principal type for debugging
+      console.log(`[IcrcService][transferIcpToCmc] Principal type: ${typeof resolvedPrincipal}, value: ${resolvedPrincipal}`);
+      
+      // Validate that we have a proper Principal object
+      if (!resolvedPrincipal || typeof resolvedPrincipal.toString !== 'function') {
+        throw new Error(`Invalid principal: ${resolvedPrincipal}`);
+      }
       
       // Constants
       // TODO! make this not use "magic" canister ids
@@ -439,8 +468,8 @@ export class IcrcService {
       const ICP_LEDGER_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"; // ICP Ledger canister ID
       const ICP_FEE = 10000n; // Standard ICP fee in E8s
       
-      // Create subaccount from principal
-      const subaccount = Array.from(this.createSubaccountFromPrincipal(principal));
+      // Create subaccount from principal using the method from the example code
+      const subaccount = this.createSubAccount(resolvedPrincipal);
       
       // Convert memo to byte array
       const memoArray = Array.from(
@@ -448,7 +477,7 @@ export class IcrcService {
       );
       
       console.log(`[IcrcService][transferIcpToCmc] Preparing transfer to CMC with memo ${memo}`);
-      console.log(`[IcrcService][transferIcpToCmc] Controller principal: ${principal.toText()}`);
+      console.log(`[IcrcService][transferIcpToCmc] Controller principal: ${resolvedPrincipal.toText()}`);
       
       // Get ICP ledger actor
       const ledgerActor = auth.getActor(

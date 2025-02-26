@@ -9,6 +9,7 @@ export const idlFactory = ({ IDL }) => {
     'node_max_memory_size_bytes' : IDL.Opt(IDL.Nat64),
     'controller_id' : IDL.Principal,
   });
+  const SocialLink = IDL.Record({ 'url' : IDL.Text, 'platform' : IDL.Text });
   const TokenInitArgs = IDL.Record({
     'decimals' : IDL.Opt(IDL.Nat8),
     'initial_block_reward' : IDL.Nat64,
@@ -20,6 +21,7 @@ export const idlFactory = ({ IDL }) => {
     'archive_options' : IDL.Opt(ArchiveOptions),
     'halving_interval' : IDL.Nat64,
     'total_supply' : IDL.Nat64,
+    'social_links' : IDL.Opt(IDL.Vec(SocialLink)),
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
   const EventType = IDL.Variant({
@@ -93,6 +95,7 @@ export const idlFactory = ({ IDL }) => {
     'ledger_id' : IDL.Opt(IDL.Principal),
     'archive_options' : IDL.Opt(ArchiveOptions),
     'total_supply' : IDL.Nat64,
+    'social_links' : IDL.Opt(IDL.Vec(SocialLink)),
   });
   const Result_2 = IDL.Variant({ 'Ok' : TokenInfo, 'Err' : IDL.Text });
   const TokenMetrics = IDL.Record({
@@ -128,6 +131,10 @@ export const idlFactory = ({ IDL }) => {
     'block_time_target' : IDL.Nat64,
     'current_difficulty' : IDL.Nat32,
     'current_block_reward' : IDL.Nat64,
+  });
+  const Result_7 = IDL.Variant({
+    'Ok' : IDL.Vec(SocialLink),
+    'Err' : IDL.Text,
   });
   const Result_3 = IDL.Variant({ 'Ok' : IDL.Nat64, 'Err' : IDL.Text });
   const HttpRequest = IDL.Record({
@@ -194,6 +201,7 @@ export const idlFactory = ({ IDL }) => {
   const Result_5 = IDL.Variant({ 'Ok' : IDL.Principal, 'Err' : IDL.Text });
   const Result_6 = IDL.Variant({ 'Ok' : IDL.Bool, 'Err' : IDL.Text });
   return IDL.Service({
+    'add_social_link' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
     'cleanup_expired_delegations' : IDL.Func([], [IDL.Nat64], []),
     'deregister_miner' : IDL.Func([], [Result], []),
     'generate_new_block' : IDL.Func([], [Result_1], []),
@@ -236,6 +244,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(Event)],
         ['query'],
       ),
+    'get_social_links' : IDL.Func([], [Result_7], ['query']),
     'get_target' : IDL.Func([], [Result_3], ['query']),
     'get_total_cycles_earned' : IDL.Func([], [IDL.Nat], ['query']),
     'http_request' : IDL.Func([HttpRequest], [HttpResponse], ['query']),
@@ -256,11 +265,17 @@ export const idlFactory = ({ IDL }) => {
       ),
     'icrc34_delegate' : IDL.Func([DelegationRequest], [Result_4], []),
     'register_miner' : IDL.Func([], [Result], []),
+    'remove_social_link' : IDL.Func([IDL.Nat64], [Result], []),
     'set_block_time_target' : IDL.Func([IDL.Nat64], [IDL.Nat64], []),
     'start_token' : IDL.Func([], [Result_5], []),
     'submit_solution' : IDL.Func(
         [IDL.Principal, IDL.Nat64, IDL.Vec(IDL.Nat8), IDL.Nat64],
         [Result_6],
+        [],
+      ),
+    'update_social_link' : IDL.Func(
+        [IDL.Nat64, IDL.Text, IDL.Text],
+        [Result],
         [],
       ),
     'whoami' : IDL.Func([], [IDL.Principal], ['query']),
@@ -277,6 +292,7 @@ export const init = ({ IDL }) => {
     'node_max_memory_size_bytes' : IDL.Opt(IDL.Nat64),
     'controller_id' : IDL.Principal,
   });
+  const SocialLink = IDL.Record({ 'url' : IDL.Text, 'platform' : IDL.Text });
   const TokenInitArgs = IDL.Record({
     'decimals' : IDL.Opt(IDL.Nat8),
     'initial_block_reward' : IDL.Nat64,
@@ -288,6 +304,7 @@ export const init = ({ IDL }) => {
     'archive_options' : IDL.Opt(ArchiveOptions),
     'halving_interval' : IDL.Nat64,
     'total_supply' : IDL.Nat64,
+    'social_links' : IDL.Opt(IDL.Vec(SocialLink)),
   });
   return [TokenInitArgs];
 };

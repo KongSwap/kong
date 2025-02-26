@@ -49,14 +49,13 @@
 
   let currentStep = 1;
   let tokenSubStep = 1; // 1 for Identity, 2 for Economics
-  let miningSubStep = 1; // For the mining steps
   let isSubmitting = false;
   const totalSteps = 4;
   
   // Define the number of sub-steps for each step
   const subSteps = {
     1: 2, // Token Basics now has 2 sub-steps (Identity and Economics)
-    2: 2, // Mining Schedule has 2 sub-steps
+    2: 1, // Mining Schedule has 1 sub-step (removed substeps)
     3: 1, // Community has no sub-steps
     4: 1  // Review has no sub-steps
   };
@@ -112,19 +111,8 @@
       } else {
         // Move to the mining step
         currentStep++;
-        miningSubStep = 1;
       }
     }
-    else if (currentStep === 2) {
-      // For mining step, check button intent
-      if (miningSubStep === 1) {
-        // If on preset view, go to custom view
-        miningSubStep = 2;
-      } else {
-        // If on custom view, always go to community step (step 3)
-        currentStep = 3;
-      }
-    } 
     else if (currentStep < 4) {
       // For other steps, just move to the next step
       currentStep++;
@@ -139,20 +127,13 @@
       }
     }
     else if (currentStep === 2) {
-      // Mining sub-steps
-      if (miningSubStep > 1) {
-        // If on custom view, go back to preset view
-        miningSubStep = 1;
-      } else {
-        // Go back to token step (economics)
-        currentStep--;
-        tokenSubStep = 2; // Set to economics sub-step
-      }
+      // Go back to token step (economics)
+      currentStep--;
+      tokenSubStep = 2; // Set to economics sub-step
     }
     else if (currentStep === 3) {
-      // Go back to mining step - always go to custom view
+      // Go back to mining step
       currentStep--;
-      miningSubStep = 2; // Set to custom mining
     }
     else if (currentStep > 1) {
       // For review, go back to community
@@ -172,9 +153,8 @@
 
     isSubmitting = true;
     try {
-      // Update the token parameters store
-      tokenParams.update(store => ({
-        ...store,
+      // Format token parameters
+      const tokenParameters = {
         name,
         ticker: symbol,
         decimals: [decimals],
@@ -185,9 +165,12 @@
         block_time_target_seconds: BigInt(blockTimeTargetSeconds),
         halving_interval: BigInt(halvingInterval),
         social_links: socialLinks.length > 0 ? [socialLinks.map(link => ({ platform: link.platform, url: link.url }))] : []
-      }));
+      };
+
+      // Update the token parameters store
+      tokenParams.set(tokenParameters);
       
-      // Navigate to the token launch page without URL parameters
+      // Navigate to the token deployment page with parameters
       goto(`/launch/deploy-token`);
     } catch (error) {
       console.error("Error creating token:", error);
@@ -202,27 +185,6 @@
   // Navigate between token sub-steps
   function setTokenSubStep(step: number) {
     tokenSubStep = step;
-  }
-
-  // Navigate between mining sub-steps
-  function setMiningSubStep(step: number) {
-    miningSubStep = step;
-  }
-
-  // Handle file upload for logo
-  function handleLogoUpload(event) {
-    const input = event.target;
-    const file = input.files?.[0];
-    
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (typeof e.target?.result === 'string') {
-          logo = e.target.result;
-        }
-      };
-      reader.readAsDataURL(file);
-    }
   }
 </script>
 
@@ -325,32 +287,7 @@
       <!-- Step 1: Token Basics -->
       {#if currentStep === 1}
         <div class="flex flex-col">
-          <div class="flex flex-col px-6 mb-2">
-            
-            <!-- Added clickable mini-step indicator for token setup with reduced bottom margin -->
-            <div class="flex items-center justify-between px-2 mb-1">
-              <button 
-                on:click={() => setTokenSubStep(1)}
-                class={`flex flex-col items-center transition-all duration-200 ${tokenSubStep === 1 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
-              >
-                <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${tokenSubStep === 1 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>1A</div>
-                <span class="text-xs font-medium">Token Identity</span>
-              </button>
-              
-              <div class="h-0.5 flex-1 mx-2 bg-kong-border/30 relative">
-                <div class={`absolute top-0 left-0 h-full bg-kong-accent-blue transition-all duration-300 ${tokenSubStep > 1 ? 'w-full' : 'w-0'}`}></div>
-              </div>
-              
-              <button 
-                on:click={() => setTokenSubStep(2)}
-                class={`flex flex-col items-center transition-all duration-200 ${tokenSubStep === 2 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
-              >
-                <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${tokenSubStep === 2 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>1B</div>
-                <span class="text-xs font-medium">Token Economics</span>
-              </button>
-            </div>
-          </div>
-          
+
           <!-- Reduced padding to match the mining section -->
           <Panel variant="solid" type="main" className="p-4 backdrop-blur-xl">
             {#if tokenSubStep === 1}
@@ -399,29 +336,7 @@
       {:else if currentStep === 2}
         <div class="flex flex-col">
           <div class="flex flex-col px-6 mb-2">
-
-            <!-- Mining mini-step indicator with reduced bottom margin -->
-            <div class="flex items-center justify-between px-2 mb-1">
-              <button 
-                on:click={() => setMiningSubStep(1)}
-                class={`flex flex-col items-center transition-all duration-200 ${miningSubStep === 1 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
-              >
-                <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${miningSubStep === 1 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>2A</div>
-                <span class="text-xs font-medium">Select Preset</span>
-              </button>
-              
-              <div class="h-0.5 flex-1 mx-2 bg-kong-border/30 relative">
-                <div class={`absolute top-0 left-0 h-full bg-kong-accent-blue transition-all duration-300 ${miningSubStep > 1 ? 'w-full' : 'w-0'}`}></div>
-              </div>
-              
-              <button 
-                on:click={() => setMiningSubStep(2)}
-                class={`flex flex-col items-center transition-all duration-200 ${miningSubStep === 2 ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
-              >
-                <div class={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${miningSubStep === 2 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/30 text-kong-text-secondary'}`}>2B</div>
-                <span class="text-xs font-medium">Customize</span>
-              </button>
-            </div>
+            <!-- Mining mini-step indicator removed -->
           </div>
           
           <!-- Removed additional padding from the Panel component -->
@@ -435,7 +350,6 @@
               bind:totalMined
               bind:minedPercentage
               bind:miningComplete
-              bind:currentSubStep={miningSubStep}
               tokenTicker={symbol}
               tokenLogo={logo}
               transferFee={transferFee}
@@ -447,22 +361,11 @@
           <div class="flex justify-between mt-6">
             <button on:click={prevStep} class="px-6 py-2.5 font-medium transition-colors rounded-lg border border-kong-border bg-transparent hover:bg-kong-bg-light/20 flex items-center gap-2">
               <ArrowLeft size="20" />
-              {#if miningSubStep > 1}
-                Back to Mining Presets
-              {:else}
-                Back to Token Economics
-              {/if}
+              Back to Token Economics
             </button>
             
             <button on:click={nextStep} class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2">
-              {#if miningSubStep === 1}
-                Customize Mining Parameters
-              {:else}
-                Continue to Community Links
-              {/if}
-              {#if miningSubStep === 2}
-                <span class="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded">Next: Step 3</span>
-              {/if}
+              Continue to Community Links
             </button>
           </div>
         </div>

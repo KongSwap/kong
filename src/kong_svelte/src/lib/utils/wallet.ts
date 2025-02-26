@@ -13,7 +13,11 @@ export function getWalletIdentity(pnp: PNP): any {
   }
 
   try {
-    return pnp.getIdentity();
+    if (pnp.account && pnp.account.owner) {
+      return pnp.account.owner;
+    }
+    console.warn('No account owner found in PNP instance');
+    return null;
   } catch (error) {
     console.error('Error getting wallet identity:', error);
     return null;
@@ -30,7 +34,7 @@ export function isWalletConnected(pnp: PNP): boolean {
   if (!pnp) return false;
   
   try {
-    return pnp.isWalletConnected() && !!pnp.getIdentity();
+    return pnp.isWalletConnected() && !!pnp.account?.owner;
   } catch (error) {
     console.error('Error checking wallet connection:', error);
     return false;
@@ -47,8 +51,8 @@ export function getWalletPrincipal(pnp: PNP): string | null {
   if (!isWalletConnected(pnp)) return null;
   
   try {
-    const identity = pnp.getIdentity();
-    return identity?.getPrincipal().toText() || null;
+    const identity = pnp.account?.owner;
+    return identity?.toString() || null;
   } catch (error) {
     console.error('Error getting wallet principal:', error);
     return null;

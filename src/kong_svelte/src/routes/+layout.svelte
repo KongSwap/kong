@@ -18,6 +18,7 @@
   import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import AlertBar from "$lib/components/common/AlertBar.svelte";
+  import DeploymentNotification from "$lib/components/common/DeploymentNotification.svelte";
 
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
@@ -125,6 +126,7 @@
   <AddToHomeScreen />
   <QRModal />
   <div id="modals"></div>
+  <DeploymentNotification />
 </div>
 
 <style scoped lang="postcss">

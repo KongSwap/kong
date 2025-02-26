@@ -213,8 +213,8 @@
   let effectiveHalvingLimitReached = false;
   let transferFeeLimitReached = false;
 
-  // Convert transfer fee to base units for comparison - with safety check
-  $: transferFeeBaseUnits = Math.max(0, toBaseUnits(transferFee));
+  // Transfer fee is already in base units (10^decimals) from the parent component
+  $: transferFeeBaseUnits = Math.max(0, transferFee);
   
   $: {
     timeline = [];
@@ -280,15 +280,8 @@
         
         // Handle halving logic
         if (halvingBlocks > 0 && blocksInPeriod === halvingBlocks) {
-          // Calculate next reward exactly as backend does (in base units)
-          if (halvingBlocks === 0) {
-            // No halvings - same as backend logic
-            // No change needed
-          } else {
-            // Calculate halving exactly as backend does (using bit shift)
-            // This is equivalent to dividing by 2, but it's done in integer math in the backend
-            currentRewardBaseUnits = currentRewardBaseUnits >> 1; // Bit shift right = divide by 2
-          }
+          // Calculate next reward properly - true halving is dividing by 2
+          currentRewardBaseUnits = Math.floor(currentRewardBaseUnits / 2);
           
           // Check if this is the first time we're dropping below transfer fee (only if transfer fee > 0)
           if (transferFeeBaseUnits > 0 && !transferFeeLimitReached && currentRewardBaseUnits <= transferFeeBaseUnits) {
@@ -1062,15 +1055,6 @@
                   >
                     Extend Halving Interval
                   </button>
-                  {#if transferFeeBaseUnits > 0 && transferFeeLimitReached}
-                    <button
-                      on:click={() => transferFee = Math.max(0, transferFee / 2)}
-                      class="px-3 py-1.5 text-xs rounded-lg bg-kong-accent-red/10 hover:bg-kong-accent-red/20 
-                             text-kong-accent-red transition-all duration-200 border border-kong-accent-red/20"
-                    >
-                      Lower Transfer Fee
-                    </button>
-                  {/if}
                 </div>
               </div>
             </div>

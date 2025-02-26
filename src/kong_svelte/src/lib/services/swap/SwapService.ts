@@ -493,6 +493,8 @@ export class SwapService {
     return BigNumber.maximum(maxAmount, new BigNumber(0));
   }
 
+    // Function to get the principal ID
+
   /**
    * Gets KONG to ICP swap quote
    */
@@ -537,31 +539,18 @@ export class SwapService {
     maxSlippage: number = 2.0,
   ): Promise<bigint> {
     try {
+
+      
       console.log('[SwapService][swapKongToIcp] Starting swap with params:', {
         kongAmount: kongAmountE8s.toString(),
         maxSlippage
       });
-
-      // Check if wallet is connected
-      requireWalletConnection();
-      
-      // Get current identity directly from PNP
-      const identity = getWalletIdentity(auth.pnp);
-      if (!identity) {
-        throw new Error('No identity found from wallet');
-      }
-      
-      console.log('[SwapService][swapKongToIcp] Got identity:', {
-        isAnonymous: identity.getPrincipal().isAnonymous(),
-        principal: identity.getPrincipal().toText()
-      });
-
-      // First get Kong actor to approve the swap
+      // First get Kong actor to approve the swap - using auth.getActor consistently
       console.log('[SwapService][swapKongToIcp] Getting Kong actor...');
-      const kongActor = await auth.pnp.getActor(
+      const kongActor = await auth.getActor(
         KONG_CANISTER_ID,
         canisterIDLs.icrc2,
-        { requiresSigning: true, anon: false }
+        { anon: false }
       );
       
       // Get name using anonymous actor for read operations
@@ -576,7 +565,7 @@ export class SwapService {
       // Check KONG balance before approval
       try {
         const balance = await anonKongActor.icrc1_balance_of({
-          owner: identity.getPrincipal(),
+          owner: principal,
           subaccount: []
         });
         console.log('[SwapService][swapKongToIcp] Current KONG balance:', {
@@ -588,10 +577,11 @@ export class SwapService {
       }
 
       console.log('[SwapService][swapKongToIcp] Getting backend actor...');
-      const backendActor = await auth.pnp.getActor(
+      // Use auth.getActor consistently here too
+      const backendActor = await auth.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { requiresSigning: true, anon: false }
+        { anon: false }
       );
       
       // Get backend principal directly from canister ID
@@ -610,7 +600,7 @@ export class SwapService {
       try {
         const currentAllowance = await anonKongActor.icrc2_allowance({
           account: {
-            owner: identity.getPrincipal(),
+            owner: principal,
             subaccount: []
           },
           spender: {
@@ -639,14 +629,34 @@ export class SwapService {
       };
 
       console.log('[SwapService][swapKongToIcp] Calling icrc2_approve...');
-      const approveResult = await kongActor.icrc2_approve(approveArgs);
+      
+      // Add a timeout promise to handle potential channel closure
+      const approvePromise = kongActor.icrc2_approve(approveArgs);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Approval timed out - please try again")), 60000);
+      });
+      
+      // Race the approval against the timeout
+      const approveResult = await Promise.race([approvePromise, timeoutPromise])
+        .catch(error => {
+          // Check if this is a channel closure error
+          if (error.message && (
+              error.message.includes("Channel was closed") || 
+              error.message.includes("No Agent could be found")
+            )) {
+            console.error('[SwapService][swapKongToIcp] Channel closed during approval:', error);
+            throw new Error("Wallet connection was interrupted. Please try again and keep the wallet window open until the transaction completes.");
+          }
+          throw error;
+        });
+      
       console.log('[SwapService][swapKongToIcp] Approve result:', approveResult);
 
       if ("Err" in approveResult) {
         console.error('[SwapService][swapKongToIcp] Approval failed:', {
           error: approveResult.Err,
           args: approveArgs,
-          identity: identity?.getPrincipal().toString(),
+          identity: principal.toString(),
           backendPrincipal: backendPrincipal.toString()
         });
         throw new Error(typeof approveResult.Err === 'string' ? approveResult.Err : 'Failed to approve Kong backend');

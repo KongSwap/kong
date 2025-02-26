@@ -10,6 +10,9 @@
   export let transferFee: number = 0; // Stored in base units (10^decimals)
   export let symbol: string = ""; // We need symbol from the TokenIdentity component for display
   
+  // Ensure symbol is always uppercase for display
+  $: displaySymbol = symbol.toUpperCase();
+  
   let showAdvanced = false;
   let humanFee: string = (transferFee / 10 ** decimals).toFixed(decimals);
   let baseFeeInput: string = transferFee.toString();
@@ -100,7 +103,7 @@
               placeholder="0.00"
             />
             <div class="flex items-center h-12 px-4 text-sm border-t border-b border-r border-kong-border/30 rounded-r-xl text-kong-text-secondary bg-kong-bg-dark/30">
-              {symbol || "TOKEN"}
+              {displaySymbol || "TOKEN"}
             </div>
           </div>
         </div>
@@ -124,25 +127,25 @@
             {:else if parseFloat(humanFee) <= 0.0001}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-primary animate-pulse"></div>
-                <span class="text-kong-primary">Common fee: {humanFee} {symbol || "TOKEN"}</span>
+                <span class="text-kong-primary">Common fee: {humanFee} {displaySymbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">Standard fee used by most ICRC tokens</p>
             {:else if parseFloat(humanFee) <= 0.001}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-primary animate-pulse"></div>
-                <span class="text-kong-primary">Standard fee: {humanFee} {symbol || "TOKEN"}</span>
+                <span class="text-kong-primary">Standard fee: {humanFee} {displaySymbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">Balanced approach for most tokens</p>
             {:else if parseFloat(humanFee) <= 0.01}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-accent-red animate-pulse"></div>
-                <span class="text-kong-accent-red">High fee: {humanFee} {symbol || "TOKEN"}</span>
+                <span class="text-kong-accent-red">High fee: {humanFee} {displaySymbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">Higher fee helps incentivize holding</p>
             {:else}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-accent-red animate-pulse"></div>
-                <span class="text-kong-accent-red">Very high fee: {humanFee} {symbol || "TOKEN"}</span>
+                <span class="text-kong-accent-red">Very high fee: {humanFee} {displaySymbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">May discourage frequent transfers</p>
             {/if}
@@ -184,7 +187,7 @@
           </button>
           <button 
             on:click={() => { decimals = 18; }} 
-            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${decimals === 16 ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${decimals === 18 ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
             MAX (18)
           </button>
@@ -197,7 +200,7 @@
               type="range"
               bind:value={decimals}
               min="6"
-              max="16"
+              max="18"
               step="1"
               class="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-kong-bg-dark/70 accent-kong-primary"
             />
@@ -219,7 +222,7 @@
           <div class="space-y-2">
             <div class="flex items-center gap-2">
               <div class="w-2 h-2 rounded-full bg-kong-accent-blue animate-pulse"></div>
-              <span class="text-xs text-kong-accent-blue">1 {symbol || "TOKEN"} = 
+              <span class="text-xs text-kong-accent-blue">1 {displaySymbol || "TOKEN"} = 
                 <span class="font-mono font-medium text-kong-accent-green">
                   {decimals > 0 ? `10${decimals === 1 ? '' : '<sup>' + decimals + '</sup>'}` : '1'} 
                 </span> 
@@ -230,7 +233,7 @@
             <div class="flex items-center gap-1">
               <span class="text-xs font-medium text-kong-text-primary">Minimum:</span>
               <span class="font-mono text-xs text-kong-text-secondary">
-                {`0.${'0'.repeat(decimals-1)}1`} {symbol || "TOKEN"}
+                {`0.${'0'.repeat(decimals-1)}1`} {displaySymbol || "TOKEN"}
               </span>
             </div>
             

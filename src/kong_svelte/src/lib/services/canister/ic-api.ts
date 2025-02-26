@@ -2,14 +2,6 @@
 // This service provides a comprehensive interface to the Internet Computer Dashboard API v3
 // Documentation: https://ic-api.internetcomputer.org/api/v3/swagger
 
-import { LRUCache } from 'lru-cache';
-
-// Cache configuration
-const cache = new LRUCache<string, any>({
-  max: 500, // Maximum number of items
-  ttl: 1000 * 60 * 5, // Time to live: 5 minutes
-});
-
 // Types for API responses
 export interface NodeMetrics {
   cpu_usage: number;
@@ -167,22 +159,9 @@ function validateResponse<T>(data: any, endpoint: string): T {
   return data as T;
 }
 
-// Helper function to handle API responses with enhanced error handling and caching
-async function fetchFromIC<T>(endpoint: string, options: {
-  useCache?: boolean;
-  cacheTTL?: number;
-} = {}): Promise<T> {
-  const { useCache = true, cacheTTL } = options;
+// Helper function to handle API responses with enhanced error handling
+async function fetchFromIC<T>(endpoint: string): Promise<T> {
   const url = `${IC_API_BASE_URL}${endpoint}`;
-
-  // Check cache first if enabled
-  if (useCache) {
-    const cachedData = cache.get(endpoint);
-    if (cachedData) {
-      console.log(`Cache hit for ${endpoint}`);
-      return cachedData as T;
-    }
-  }
 
   try {
     console.log(`Fetching from IC API: ${url}`);
@@ -209,13 +188,6 @@ async function fetchFromIC<T>(endpoint: string, options: {
     const data = await response.json();
     const validatedData = validateResponse<T>(data, endpoint);
 
-    // Cache the response if caching is enabled
-    if (useCache) {
-      cache.set(endpoint, validatedData, {
-        ttl: cacheTTL,
-      });
-    }
-
     console.log(`IC API response for ${endpoint}:`, validatedData);
     return validatedData;
   } catch (error) {
@@ -233,45 +205,33 @@ async function fetchFromIC<T>(endpoint: string, options: {
 
 // Fetch list of all subnets
 export async function fetchSubnets(): Promise<Subnet[]> {
-  const response = await fetchFromIC<SubnetsResponse>('/subnets', {
-    cacheTTL: 1000 * 60 * 15, // Cache for 15 minutes
-  });
+  const response = await fetchFromIC<SubnetsResponse>('/subnets');
   return response.subnets;
 }
 
 // Fetch details for a specific subnet
 export async function fetchSubnetDetails(subnetId: string): Promise<SubnetDetail> {
-  return fetchFromIC<SubnetDetail>(`/subnets/${subnetId}`, {
-    cacheTTL: 1000 * 60 * 5, // Cache for 5 minutes
-  });
+  return fetchFromIC<SubnetDetail>(`/subnets/${subnetId}`);
 }
 
 // Fetch ICP to XDR conversion rates
 export async function fetchICPtoXDRRates(): Promise<ConversionRateResponse> {
-  return fetchFromIC<ConversionRateResponse>('/icp-xdr-conversion-rates', {
-    cacheTTL: 1000 * 60, // Cache for 1 minute
-  });
+  return fetchFromIC<ConversionRateResponse>('/icp-xdr-conversion-rates');
 }
 
 // Fetch averaged ICP to XDR conversion rates
 export async function fetchAverageICPtoXDRRates(): Promise<ConversionRateResponse> {
-  return fetchFromIC<ConversionRateResponse>('/avg-icp-xdr-conversion-rates', {
-    cacheTTL: 1000 * 60, // Cache for 1 minute
-  });
+  return fetchFromIC<ConversionRateResponse>('/avg-icp-xdr-conversion-rates');
 }
 
 // Fetch current ICP price in USD
 export async function fetchICPPrice(): Promise<ICPPriceResponse> {
-  return fetchFromIC<ICPPriceResponse>('/icp-usd-rate', {
-    cacheTTL: 1000 * 30, // Cache for 30 seconds
-  });
+  return fetchFromIC<ICPPriceResponse>('/icp-usd-rate');
 }
 
 // Fetch 24h ICP price change percentage
 export async function fetchICPPriceChange(): Promise<ICPPriceChange> {
-  return fetchFromIC<ICPPriceChange>('/icp-usd-percent-change-24h', {
-    cacheTTL: 1000 * 60, // Cache for 1 minute
-  });
+  return fetchFromIC<ICPPriceChange>('/icp-usd-percent-change-24h');
 }
 
 // Helper function to get the most recent ICP price
@@ -306,9 +266,7 @@ export function getMostRecentXDRRate(rates: [number, number][]): ConversionRate 
 export async function fetchSubnetsWithMetrics(): Promise<Subnet[]> {
   try {
     // Fetch basic subnet data first
-    const subnets = await fetchFromIC<{ subnets: Subnet[] }>('/subnets', {
-      cacheTTL: 1000 * 60 * 15, // Cache for 15 minutes
-    })
+    const subnets = await fetchFromIC<{ subnets: Subnet[] }>('/subnets')
       .then(r => r.subnets)
       .catch(e => {
         console.error('Failed to fetch basic subnet data:', e);
@@ -338,12 +296,8 @@ export async function fetchSubnetsWithMetrics(): Promise<Subnet[]> {
 
     // Try to fetch additional data in parallel
     const [nodes, dataCenters] = await Promise.allSettled([
-      fetchFromIC<{ nodes: NodeInfo[] }>('/nodes', {
-        cacheTTL: 1000 * 60 * 5, // Cache for 5 minutes
-      }).then(r => r.nodes),
-      fetchFromIC<{ data_centers: DataCenter[] }>('/data-centers', {
-        cacheTTL: 1000 * 60 * 30, // Cache for 30 minutes
-      }).then(r => r.data_centers),
+      fetchFromIC<{ nodes: NodeInfo[] }>('/nodes').then(r => r.nodes),
+      fetchFromIC<{ data_centers: DataCenter[] }>('/data-centers').then(r => r.data_centers),
     ]);
 
     // Add node data if available
@@ -379,12 +333,8 @@ export async function fetchSubnetsWithMetrics(): Promise<Subnet[]> {
 export async function fetchSubnetDetailsWithAnalysis(subnetId: string): Promise<SubnetDetail> {
   const [detail, historicalMetrics, performance] = await Promise.all([
     fetchSubnetDetails(subnetId),
-    fetchFromIC<SubnetHistoricalMetrics>(`/metrics/historical/${subnetId}`, {
-      cacheTTL: 1000 * 60 * 30, // Cache for 30 minutes
-    }),
-    fetchFromIC<SubnetDetail['performance_analysis']>(`/metrics/performance/${subnetId}`, {
-      cacheTTL: 1000 * 60 * 5, // Cache for 5 minutes
-    })
+    fetchFromIC<SubnetHistoricalMetrics>(`/metrics/historical/${subnetId}`),
+    fetchFromIC<SubnetDetail['performance_analysis']>(`/metrics/performance/${subnetId}`)
   ]);
 
   return {

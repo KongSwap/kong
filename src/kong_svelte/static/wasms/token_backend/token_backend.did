@@ -157,8 +157,8 @@ service : (TokenInitArgs) -> {
   add_social_link : (text, text) -> (Result);
   can_submit_solution : () -> (Result_1) query;
   cleanup_expired_delegations : () -> (nat64);
+  create_genesis_block : () -> (Result_2);
   deregister_miner : () -> (Result);
-  generate_new_block : () -> (Result_2);
   get_active_miners : () -> (vec principal) query;
   get_auth_status : () -> (bool) query;
   get_average_block_time : (opt nat32) -> (BlockTimeResult) query;

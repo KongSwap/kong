@@ -164,6 +164,9 @@ export type Result_5 = { 'Ok' : Principal } |
   { 'Err' : string };
 export type Result_6 = { 'Ok' : boolean } |
   { 'Err' : string };
+export type Result_7 = { 'Ok' : Array<SocialLink> } |
+  { 'Err' : string };
+export interface SocialLink { 'url' : string, 'platform' : string }
 export interface SupportedStandard { 'url' : string, 'name' : string }
 export interface TokenInfo {
   'decimals' : number,
@@ -174,6 +177,7 @@ export interface TokenInfo {
   'ledger_id' : [] | [Principal],
   'archive_options' : [] | [ArchiveOptions],
   'total_supply' : bigint,
+  'social_links' : [] | [Array<SocialLink>],
 }
 export interface TokenInitArgs {
   'decimals' : [] | [number],
@@ -186,6 +190,7 @@ export interface TokenInitArgs {
   'archive_options' : [] | [ArchiveOptions],
   'halving_interval' : bigint,
   'total_supply' : bigint,
+  'social_links' : [] | [Array<SocialLink>],
 }
 export interface TokenMetrics {
   'circulating_supply' : bigint,
@@ -193,6 +198,7 @@ export interface TokenMetrics {
 }
 export interface TrustedOriginsResponse { 'trusted_origins' : Array<string> }
 export interface _SERVICE {
+  'add_social_link' : ActorMethod<[string, string], Result>,
   'cleanup_expired_delegations' : ActorMethod<[], bigint>,
   'deregister_miner' : ActorMethod<[], Result>,
   'generate_new_block' : ActorMethod<[], Result_1>,
@@ -211,6 +217,7 @@ export interface _SERVICE {
   'get_mining_info' : ActorMethod<[], MiningInfo>,
   'get_recent_events' : ActorMethod<[[] | [number]], Array<Event>>,
   'get_recent_events_from_batches' : ActorMethod<[[] | [number]], Array<Event>>,
+  'get_social_links' : ActorMethod<[], Result_7>,
   'get_target' : ActorMethod<[], Result_3>,
   'get_total_cycles_earned' : ActorMethod<[], bigint>,
   'http_request' : ActorMethod<[HttpRequest], HttpResponse>,
@@ -222,12 +229,14 @@ export interface _SERVICE {
   'icrc28_trusted_origins' : ActorMethod<[], TrustedOriginsResponse>,
   'icrc34_delegate' : ActorMethod<[DelegationRequest], Result_4>,
   'register_miner' : ActorMethod<[], Result>,
+  'remove_social_link' : ActorMethod<[bigint], Result>,
   'set_block_time_target' : ActorMethod<[bigint], bigint>,
   'start_token' : ActorMethod<[], Result_5>,
   'submit_solution' : ActorMethod<
     [Principal, bigint, Uint8Array | number[], bigint],
     Result_6
   >,
+  'update_social_link' : ActorMethod<[bigint, string, string], Result>,
   'whoami' : ActorMethod<[], Principal>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
