@@ -273,13 +273,19 @@
         addLog("Notifying CMC to create canister...");
         const { createCanister, getDefaultCanisterSettings } = await import("$lib/services/canister/create_canister");
         
-        // Canister creation settings
-        // TODO! force this to be on kong subnet
-        // later we will give the user the option to choose subnet
+        // Create a Principal from the subnet ID string
+        const subnetPrincipal = Principal.fromText("pzp6e-ekpqk-3c5x7-2h6so-njoeq-mt45d-h3h6c-q3mxf-vpeq5-fk5o7-yae");
+        addLog(`Targeting specific subnet for fast swaps: ${subnetPrincipal.toText()}`);
+        
+        // Canister creation settings with specific subnet
         const notifyArgs: any = {
           blockIndex,
           controller: principal,
-          subnet_selection: [], // random subnet
+          subnet_selection: [{
+            Subnet: {
+              subnet: subnetPrincipal
+            }
+          }],
           subnet_type: [],
           settings: getDefaultCanisterSettings(principal)
         };
