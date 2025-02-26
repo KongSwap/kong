@@ -45,7 +45,6 @@ export async function getCMCActor() {
  * @returns The Principal ID of the newly created canister
  */
 export async function createCanister(
-  pnp: any, 
   args: NotifyCreateCanisterArgs
 ): Promise<Principal> {
   try {

@@ -28,8 +28,9 @@
     "@dfinity/ledger-icp": "2.6.8",
     "@dfinity/nns": "8.2.2",
     "@dfinity/principal": "2.2.0",
-    "@dfinity/utils": "2.10.0",
-    "flowbite-svelte": "^0.48.4"
+    "@dfinity/utils": "^2.10.1",
+    "flowbite-svelte": "^0.48.4",
+    "pako": "^2.1.0"
   },
   "devDependencies": {
     "@kong/cli": "file:src/cli"

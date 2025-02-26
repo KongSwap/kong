@@ -1,126 +1,115 @@
-import { Principal } from '@dfinity/principal';
-import { Actor, HttpAgent } from '@dfinity/agent';
-import { IDL } from '@dfinity/candid';
-import { ICManagementCanister } from '@dfinity/ic-management';
-import { getWalletIdentity } from '$lib/utils/wallet';
+import { Principal } from "@dfinity/principal";
+import { ICManagementCanister } from "@dfinity/ic-management";
+import { IDL } from "@dfinity/candid";
+import { inflate } from "pako";
+import { auth } from "../auth";
 
-/**
- * Installs WASM code to a canister using the IC Management Canister
- * 
- * @param pnp The Plug-n-Play instance
- * @param canisterId The target canister ID as a Principal
- * @param wasmModule The WASM binary module to install
- * @param initArgs Optional initialization arguments for the canister
- * @param mode Installation mode ('install', 'reinstall', or 'upgrade')
- * @returns A promise that resolves when the code is installed
- */
-export async function installWasm(
-  pnp: any,
-  canisterId: Principal,
-  wasmModule: Uint8Array,
-  initArgs?: any,
-  mode: 'install' | 'reinstall' | 'upgrade' = 'install'
-): Promise<void> {
-  try {
-    console.log(`Installing WASM to canister ${canisterId.toText()} using mode: ${mode}`);
-    
-    // Get identity from wallet
-    const identity = getWalletIdentity(pnp);
-    if (!identity) {
-      throw new Error("No identity found in wallet. Please connect your wallet first.");
-    }
-
-    // Create authenticated agent
-    const agent = new HttpAgent({
-      host: 'https://icp0.io',
-      identity: identity
-    });
-
-    // Create IC Management Canister actor
-    const management = ICManagementCanister.create({
-      agent,
-    });
-
-    // Encode initArgs if provided
-    let arg = new Uint8Array();
-    if (initArgs) {
-      try {
-        // Convert argument to Candid format
-        const schema = getInitArgsSchema();
-        const encoded = IDL.encode([IDL.Record(schema)], [initArgs]);
-        arg = new Uint8Array(encoded);
-        console.log('Encoded initialization arguments with schema:', schema);
-      } catch (error) {
-        console.error('Failed to encode initialization arguments:', error);
-        throw new Error(`Failed to encode arguments: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-
-    // Determine install mode
-    const installMode = { 
-      [mode]: null 
-    };
-
-    // Call the IC Management Canister to install the code
-    await management.installCode({
-      canisterId: canisterId,
-      wasmModule: wasmModule,
-      mode: installMode,
-      arg: arg
-    });
-
-    console.log(`Successfully installed WASM to canister ${canisterId.toText()}`);
-  } catch (error) {
-    console.error('Error installing WASM:', error);
-    throw new Error(`Failed to install WASM: ${error instanceof Error ? error.message : String(error)}`);
-  }
+export interface WasmMetadata {
+    path: string;
+    compressedPath?: string;
+    description: string;
+    initArgsType?: any;
 }
 
-/**
- * Creates a schema for token initialization arguments
- * This schema matches the token_backend canister's init args structure
- */
-function getInitArgsSchema() {
-  return {
-    name: IDL.Text,
-    ticker: IDL.Text,
-    total_supply: IDL.Nat,
-    logo: IDL.Text,
-    decimals: IDL.Nat8,
-    transfer_fee: IDL.Nat,
-    archive_options: IDL.Opt(IDL.Record({
-      num_blocks_to_archive: IDL.Nat64,
-      trigger_threshold: IDL.Nat64,
-      max_message_size_bytes: IDL.Opt(IDL.Nat64),
-      cycles_for_archive_creation: IDL.Opt(IDL.Nat64),
-      node_max_memory_size_bytes: IDL.Opt(IDL.Nat64),
-      controller_id: IDL.Principal
-    })),
-    initial_block_reward: IDL.Nat,
-    block_time_target_seconds: IDL.Nat,
-    halving_interval: IDL.Nat
-  };
+export const IC_MANAGEMENT_CANISTER_ID = "aaaaa-aa";
+
+export async function getICManagementActor() {
+  let actor = await auth.getActor(IC_MANAGEMENT_CANISTER_ID, ICManagementCanister);
+  return actor;
 }
 
-/**
- * Loads a WASM module from a URL
- * 
- * @param url The URL to fetch the WASM module from
- * @returns The WASM module as a Uint8Array
- */
-export async function loadWasmModule(url: string): Promise<Uint8Array> {
-  try {
-    console.log(`Fetching WASM module from ${url}...`);
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch WASM module: ${response.statusText}`);
+export class InstallService {
+    /**
+     * Installs a WASM module on a canister
+     * @param canisterId - The target canister ID
+     * @param wasmMetadata - Metadata about the WASM module to install
+     * @param initArgs - Optional initialization arguments
+     * @returns Promise<void>
+     */
+    public static async installWasm(
+        canisterId: string,
+        wasmMetadata: WasmMetadata,
+        initArgs?: any
+    ): Promise<void> {
+        try {
+            // Fetch and decompress WASM
+            const wasmModule = await InstallService.fetchWasmModule(wasmMetadata);
+            
+            // Get the management canister actor
+            const management = await getICManagementActor();
+
+            // Encode init args if present
+            const arg = InstallService.encodeInitArgs(wasmMetadata.initArgsType, initArgs);
+
+            // Install the WASM
+            await management.installCode({
+                canisterId: Principal.fromText(canisterId),
+                wasmModule,
+                mode: { install: null },
+                arg
+            });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('out of cycles')) {
+                throw new Error('Insufficient cycles. Please top up your canister and try again.');
+            }
+            throw error;
+        }
     }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    return new Uint8Array(arrayBuffer);
-  } catch (error) {
-    console.error('Error loading WASM module:', error);
-    throw new Error(`Failed to load WASM module: ${error instanceof Error ? error.message : String(error)}`);
-  }
-} 
+
+    /**
+     * Fetches and optionally decompresses a WASM module
+     */
+    private static async fetchWasmModule(wasmMetadata: WasmMetadata): Promise<Uint8Array> {
+        if (wasmMetadata.compressedPath) {
+            try {
+                const compressedResponse = await fetch(wasmMetadata.compressedPath);
+                if (compressedResponse.ok) {
+                    const compressedData = await compressedResponse.arrayBuffer();
+                    return new Uint8Array(inflate(new Uint8Array(compressedData)));
+                }
+            } catch (error) {
+                console.warn('Failed to fetch/decompress WASM, falling back to uncompressed:', error);
+            }
+        }
+
+        const response = await fetch(wasmMetadata.path);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch WASM file: ${response.statusText}`);
+        }
+        return new Uint8Array(await response.arrayBuffer());
+    }
+
+    /**
+     * Encodes initialization arguments for the WASM module
+     */
+    private static encodeInitArgs(initArgsType: any, initArgs: any): Uint8Array {
+        if (!initArgsType || !initArgs) {
+            return new Uint8Array();
+        }
+
+        try {
+            const candidArgs = InstallService.convertToCandidArgs(initArgs);
+            return new Uint8Array(IDL.encode([initArgsType], [candidArgs]));
+        } catch (error) {
+            console.error('Failed to encode init args:', error);
+            throw new Error(`Failed to encode initialization arguments: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    /**
+     * Converts JavaScript arguments to Candid format
+     */
+    private static convertToCandidArgs(args: any): any {
+        if (Array.isArray(args)) {
+            return args.map(arg => InstallService.convertToCandidArgs(arg));
+        } else if (typeof args === 'object' && args !== null) {
+            const result: any = {};
+            for (const [key, value] of Object.entries(args)) {
+                result[key] = InstallService.convertToCandidArgs(value);
+            }
+            return result;
+        }
+        return args;
+    }
+}

@@ -6,11 +6,13 @@
   import { ArrowLeft, ArrowRight, AlertTriangle, CheckCircle, Loader2, ExternalLink } from "lucide-svelte";
   
   import { Principal } from "@dfinity/principal";
-  import { Actor, HttpAgent } from "@dfinity/agent";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { tokenParams } from "$lib/stores/tokenParams";
   import { createCanister } from "$lib/services/canister/create_canister";
+  import { auth } from "$lib/services/auth";
+  import { InstallService } from "$lib/services/canister/install_wasm";
+  import type { WasmMetadata } from "$lib/services/canister/install_wasm";
   
   // States for the token deployment process
   const PROCESS_STEPS = {
@@ -52,8 +54,23 @@
   let actualIcpReceived = "0"; // Actual ICP received from swap
   
   // Wallet and identity
-  let walletIdentity = null;
   let principal = null;
+  
+  // Function to get the principal ID
+  async function getPrincipal() {
+    if (!$auth.isConnected) {
+      throw new Error("Wallet not connected");
+    }
+    
+    // Access the principal through auth.pnp.account.owner
+    const principal = auth.pnp?.account?.owner;
+    
+    if (!principal) {
+      throw new Error("Principal not found");
+    }
+    
+    return principal;
+  }
   
   // Constants for the IC mainnet
   const CMC_CANISTER_ID = "rkp4c-7iaaa-aaaaa-aaaca-cai"; // Cycles Minting Canister ID
@@ -66,27 +83,6 @@
   // Wasm module constants
   const COMPRESSED_WASM_URL = "/wasms/token_backend/token_backend.wasm.gz";
   let wasmModule: ArrayBuffer | null = null;
-  
-  // Get wallet identity from auth service
-  async function getIdentity() {
-    try {
-      const auth = await import("$lib/services/auth");
-      if (!auth.auth?.pnp?.isWalletConnected()) {
-        throw new Error("Wallet not connected");
-      }
-      
-      const identity = auth.auth.pnp.getIdentity();
-      if (!identity) {
-        throw new Error("Failed to get wallet identity");
-      }
-      
-      principal = identity.getPrincipal();
-      return identity;
-    } catch (error) {
-      console.error("Error getting identity:", error);
-      throw new Error("Failed to get identity: " + error.message);
-    }
-  }
   
   // Load the token_backend wasm module
   async function loadWasmModule() {
@@ -153,6 +149,16 @@
   // Initialization
   onMount(async () => {
     try {
+      // Check if wallet is connected
+      if (!$auth.isConnected) {
+        errorMessage = "Please connect your wallet to deploy a token";
+        currentStep = PROCESS_STEPS.ERROR;
+        return;
+      }
+      
+      // Get principal
+      principal = getPrincipal();
+      
       // Get token parameters from store
       tokenParams.subscribe(params => {
         currentTokenParams = params;
@@ -166,9 +172,6 @@
       
       // Fixed amount for token deployment - 200 KONG
       kongAmount = "200";
-      
-      // Connect to wallet and get identity
-      walletIdentity = await getIdentity();
       
       // Get swap quote for 200 KONG to ICP
       await getKongToIcpQuote();
@@ -254,12 +257,10 @@
       processingMessage = "Creating canister...";
       addLog(`Preparing ICP transfer to CMC (${CMC_CANISTER_ID})`);
       
-      if (!walletIdentity) {
-        walletIdentity = await getIdentity();
+      // Ensure principal is initialized
+      if (!principal) {
+        principal = getPrincipal();
       }
-      
-      // Get the principal that will control the canister
-      const principal = walletIdentity.getPrincipal();
       
       // Send ICP to CMC with the CREATE_CANISTER memo
       addLog(`Sending ${SwapService.fromBigInt(icpE8s, ICP_DECIMALS)} ICP to CMC with memo ${CREATE_CANISTER_MEMO}`);
@@ -290,8 +291,7 @@
           settings: getDefaultCanisterSettings(principal)
         };
         
-        const auth = await import("$lib/services/auth");
-        const newCanisterId = await createCanister(auth.auth.pnp, notifyArgs);
+        const newCanisterId = await createCanister(notifyArgs);
         canisterId = newCanisterId.toText();
         
         addLog(`Canister created successfully with ID: ${canisterId}`);
@@ -311,193 +311,20 @@
     }
   }
   
-  // Install WASM module to a canister
-  async function installWasm(canisterIdPrincipal, wasmModule, initArgs) {
-    try {
-      if (!walletIdentity) {
-        walletIdentity = await getIdentity();
-      }
-      
-      const agent = new HttpAgent({
-        host: IC_HOST,
-        identity: walletIdentity
-      });
-      
-      await agent.fetchRootKey().catch(console.error);
-      
-      // Create management canister actor
-      const managementCanister = Actor.createActor(
-        ({ IDL }) => {
-          const canisterId = IDL.Principal;
-          const definiteCanisterSettings = IDL.Record({
-            controllers: IDL.Vec(IDL.Principal),
-            compute_allocation: IDL.Nat,
-            memory_allocation: IDL.Nat,
-            freezing_threshold: IDL.Nat
-          });
-          const canisterSettings = IDL.Record({
-            controllers: IDL.Opt(IDL.Vec(IDL.Principal)),
-            compute_allocation: IDL.Opt(IDL.Nat),
-            memory_allocation: IDL.Opt(IDL.Nat),
-            freezing_threshold: IDL.Opt(IDL.Nat)
-          });
-          const wasm_module = IDL.Vec(IDL.Nat8);
-          
-          return IDL.Service({
-            canister_status: IDL.Func([IDL.Record({ canister_id: canisterId })], 
-              [IDL.Record({
-                status: IDL.Variant({
-                  running: IDL.Null,
-                  stopping: IDL.Null,
-                  stopped: IDL.Null
-                }),
-                memory_size: IDL.Nat,
-                cycles: IDL.Nat,
-                settings: definiteCanisterSettings,
-                module_hash: IDL.Opt(IDL.Vec(IDL.Nat8)),
-                idle_cycles_burned_per_day: IDL.Nat
-              })], 
-              []
-            ),
-            create_canister: IDL.Func([IDL.Record({ settings: IDL.Opt(canisterSettings) })], 
-              [IDL.Record({ canister_id: canisterId })], 
-              []
-            ),
-            delete_canister: IDL.Func([IDL.Record({ canister_id: canisterId })], [], []),
-            deposit_cycles: IDL.Func([IDL.Record({ canister_id: canisterId })], [], []),
-            install_code: IDL.Func([
-              IDL.Record({
-                arg: IDL.Vec(IDL.Nat8),
-                wasm_module: wasm_module,
-                mode: IDL.Variant({
-                  install: IDL.Null,
-                  reinstall: IDL.Null,
-                  upgrade: IDL.Null
-                }),
-                canister_id: canisterId
-              })
-            ], [], []),
-            provisional_create_canister_with_cycles: IDL.Func([
-              IDL.Record({
-                settings: IDL.Opt(canisterSettings),
-                amount: IDL.Opt(IDL.Nat)
-              })
-            ], [IDL.Record({ canister_id: canisterId })], []),
-            provisional_top_up_canister: IDL.Func([
-              IDL.Record({
-                canister_id: canisterId,
-                amount: IDL.Nat
-              })
-            ], [], []),
-            raw_rand: IDL.Func([], [IDL.Vec(IDL.Nat8)], []),
-            start_canister: IDL.Func([IDL.Record({ canister_id: canisterId })], [], []),
-            stop_canister: IDL.Func([IDL.Record({ canister_id: canisterId })], [], []),
-            uninstall_code: IDL.Func([IDL.Record({ canister_id: canisterId })], [], []),
-            update_settings: IDL.Func([
-              IDL.Record({
-                canister_id: IDL.Principal,
-                settings: canisterSettings
-              })
-            ], [], [])
-          });
-        },
-        {
-          agent,
-          canisterId: Principal.fromText("aaaaa-aa")
-        }
-      );
-      
-      // Serialize init args to Candid
-      const { IDL } = await import('@dfinity/candid');
-      
-      // Create the token initialization arguments
-      const initArgsBuffer = await (async () => {
-        // Define the token initialization arguments schema
-        const SocialLink = IDL.Record({
-          platform: IDL.Text,
-          url: IDL.Text
-        });
-        
-        const TokenInitArgs = IDL.Record({
-          name: IDL.Text,
-          ticker: IDL.Text,
-          total_supply: IDL.Nat,
-          logo: IDL.Opt(IDL.Text),
-          decimals: IDL.Nat8,
-          transfer_fee: IDL.Nat,
-          archive_options: IDL.Opt(
-            IDL.Record({
-              num_blocks_to_archive: IDL.Nat64,
-              trigger_threshold: IDL.Nat64,
-              controller_id: IDL.Principal
-            })
-          ),
-          initial_block_reward: IDL.Nat,
-          block_time_target_seconds: IDL.Nat64,
-          halving_interval: IDL.Nat64,
-          social_links: IDL.Opt(IDL.Vec(SocialLink))
-        });
-        
-        // Prepare the arguments
-        const args = {
-          name: initArgs.name,
-          ticker: initArgs.ticker,
-          total_supply: initArgs.total_supply,
-          logo: initArgs.logo.length > 0 ? [initArgs.logo[0]] : [],
-          decimals: initArgs.decimals,
-          transfer_fee: initArgs.transfer_fee,
-          archive_options: initArgs.archive_options,
-          initial_block_reward: initArgs.initial_block_reward,
-          block_time_target_seconds: initArgs.block_time_target_seconds,
-          halving_interval: initArgs.halving_interval,
-          social_links: Array.isArray(initArgs.social_links) && initArgs.social_links.length > 0 
-            ? [initArgs.social_links] 
-            : []
-        };
-        
-        // Use the proper Candid encoding approach
-        return IDL.encode([TokenInitArgs], [args]);
-      })();
-      
-      // Install the code
-      addLog(`Installing WASM module to canister ${canisterIdPrincipal.toText()}`);
-      await managementCanister.install_code({
-        arg: initArgsBuffer,
-        wasm_module: new Uint8Array(wasmModule),
-        mode: { install: null },
-        canister_id: canisterIdPrincipal
-      });
-      
-      addLog("WASM module installed successfully");
-      return true;
-    } catch (error) {
-      console.error("Error installing WASM module:", error);
-      throw new Error("Failed to install WASM module: " + error.message);
-    }
-  }
-  
   // Install token code to canister
   async function installTokenCode(canisterIdPrincipal) {
     try {
       processingMessage = "Installing token code...";
       
-      if (!wasmModule) {
-        addLog("WASM module not loaded, fetching now...");
-        wasmModule = await loadWasmModule();
-      }
-      
       addLog("Preparing token initialization parameters");
       
-      const agent = new HttpAgent({
-        host: IC_HOST,
-        identity: walletIdentity
-      });
+      // Define the WASM metadata for token_backend
+      const tokenWasmMetadata: WasmMetadata = {
+        path: "/wasms/token_backend/token_backend.wasm",
+        compressedPath: "/wasms/token_backend/token_backend.wasm.gz",
+        description: "Token Backend WASM Module"
+      };
       
-      await agent.fetchRootKey().catch(console.error);
-      
-      // Install the token_backend wasm to the canister
-      addLog(`Installing token code to canister ${canisterIdPrincipal.toText()}`);
-    
       // Use token params directly from the store
       const initArgs = {
         name: currentTokenParams.name,
@@ -526,8 +353,13 @@
       
       addLog(`Initializing token with parameters: ${formattedArgs}`);
       
-      // Install the code with the initialization arguments
-      await installWasm(canisterIdPrincipal, wasmModule, initArgs);
+      // Install the WASM using InstallService
+      addLog(`Installing token code to canister ${canisterIdPrincipal.toText()}`);
+      await InstallService.installWasm(
+        canisterIdPrincipal.toText(),
+        tokenWasmMetadata,
+        initArgs
+      );
       
       addLog("Token code installed successfully");
       return true;
@@ -748,7 +580,7 @@
           {/if}
           
           <!-- Connection status warning if needed -->
-          {#if currentStep === PROCESS_STEPS.SWAP_KONG_TO_ICP && (!walletIdentity || !principal)}
+          {#if currentStep === PROCESS_STEPS.SWAP_KONG_TO_ICP && (!$auth.isConnected || !principal)}
             <div class="p-4 border rounded-lg bg-yellow-500/10 border-yellow-500/30">
               <div class="flex items-start gap-3">
                 <AlertTriangle class="flex-shrink-0 mt-0.5 text-yellow-500" size={20} />
