@@ -38,7 +38,6 @@ const MAINNET_REPLICA: &str = "https://ic0.app";
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = env::args().collect::<Vec<String>>();
     let settings = read_settings()?;
-    let mut db_client = connect_db(&settings).await?;
 
     let (replica_url, is_mainnet) = if args.contains(&"--mainnet".to_string()) {
         (MAINNET_REPLICA, true)
@@ -66,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // read from flat files (./backups) and update kong_backend. used for development
     if args.contains(&"--kong_backend".to_string()) {
-        let dfx_pem_file = settings.dfx_pem_file.as_ref().ok_or("dfx identity required for Kong Data")?;
+        let dfx_pem_file = settings.dfx_pem_file.as_ref().ok_or("dfx identity required for Kong Backend")?;
         let identity = create_identity_from_pem_file(dfx_pem_file);
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_backend = KongBackend::new(&agent).await;
@@ -78,43 +77,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         lp_tokens::update_lp_tokens(&kong_backend).await?;
         requests::update_requests(&kong_backend).await?;
         claims::update_claims(&kong_backend).await?;
+        claims::insert_claims(&kong_backend).await?;
         transfers::update_transfers(&kong_backend).await?;
         txs::update_txs(&kong_backend).await?;
     }
 
-    let mut tokens_map;
-    let mut pools_map;
     // read from flat files (./backups) and update database
-    if args.contains(&"--database".to_string()) {
-        // Dump to database
-        users::update_users_on_database(&db_client).await?;
-        tokens_map = tokens::update_tokens_on_database(&db_client).await?;
-        pools_map = pools::update_pools_on_database(&db_client, &tokens_map).await?;
-        lp_tokens::update_lp_tokens_on_database(&db_client, &tokens_map).await?;
-        requests::update_requests_on_database(&db_client).await?;
-        claims::update_claims_on_database(&db_client, &tokens_map).await?;
-        transfers::update_transfers_on_database(&db_client, &tokens_map).await?;
-        txs::update_txs_on_database(&db_client, &tokens_map, &pools_map).await?;
-    } else {
-        tokens_map = tokens::load_tokens_from_database(&db_client).await?;
-        pools_map = pools::load_pools_from_database(&db_client).await?;
-    }
+    if args.contains(&"--database".to_string()) || args.contains(&"--db_updates".to_string()) {
+        let mut tokens_map;
+        let mut pools_map;
+        let mut db_client = connect_db(&settings).await?;
 
-    // read from kong_data and update database
-    if args.contains(&"--db_updates".to_string()) {
-        let identity = create_anonymous_identity();
-        let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
-        let kong_data = KongData::new(&agent).await;
-        let delay_secs = settings.db_updates_delay_secs.unwrap_or(60);
-        // loop forever and update database
-        loop {
-            if let Err(err) = get_db_updates(&kong_data, &db_client, &mut tokens_map, &mut pools_map).await {
-                eprintln!("{}", err);
-                if db_client.is_closed() {
-                    db_client = connect_db(&settings).await?;
+        if args.contains(&"--database".to_string()) {
+            // Dump to database
+            users::update_users_on_database(&db_client).await?;
+            tokens_map = tokens::update_tokens_on_database(&db_client).await?;
+            pools_map = pools::update_pools_on_database(&db_client, &tokens_map).await?;
+            lp_tokens::update_lp_tokens_on_database(&db_client, &tokens_map).await?;
+            requests::update_requests_on_database(&db_client).await?;
+            claims::update_claims_on_database(&db_client, &tokens_map).await?;
+            transfers::update_transfers_on_database(&db_client, &tokens_map).await?;
+            txs::update_txs_on_database(&db_client, &tokens_map, &pools_map).await?;
+        } else {
+            tokens_map = tokens::load_tokens_from_database(&db_client).await?;
+            pools_map = pools::load_pools_from_database(&db_client).await?;
+        }
+
+        if args.contains(&"--db_updates".to_string()) {
+            // read from kong_data and update database
+            let identity = create_anonymous_identity();
+            let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
+            let kong_data = KongData::new(&agent).await;
+            let delay_secs = settings.db_updates_delay_secs.unwrap_or(60);
+            // loop forever and update database
+            loop {
+                if let Err(err) = get_db_updates(&kong_data, &db_client, &mut tokens_map, &mut pools_map).await {
+                    eprintln!("{}", err);
+                    if db_client.is_closed() {
+                        db_client = connect_db(&settings).await?;
+                    }
                 }
+                thread::sleep(Duration::from_secs(delay_secs));
             }
-            thread::sleep(Duration::from_secs(delay_secs));
         }
     }
 

@@ -52,13 +52,18 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn insert_claim(stable_claim: String) -> Result<String, String> {
-    let claim = serde_json::from_str(&stable_claim).map_err(|e| format!("Invalid claim: {}", e))?;
-    let claim_id = claim_map::insert(&claim);
+fn insert_claims(stable_claims: String) -> Result<String, String> {
+    let claims: Vec<StableClaim> = match serde_json::from_str(&stable_claims) {
+        Ok(claims) => claims,
+        Err(e) => return Err(format!("Invalid claims: {}", e)),
+    };
 
-    let _ = claim_map::archive_to_kong_data(claim_id);
+    for claim in claims {
+        let claim_id = claim_map::insert(&claim);
+        let _ = claim_map::archive_to_kong_data(claim_id);
+    }
 
-    Ok(format!("Claim #{} inserted", claim_id))
+    Ok("Claims inserted".to_string())
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
