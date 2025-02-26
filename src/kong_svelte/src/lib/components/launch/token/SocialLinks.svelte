@@ -54,12 +54,84 @@
 </script>
 
 <div class="space-y-6 custom-links-section group">
-  <!-- Header with animated pulse -->
+  <!-- Header with animated pulse and optional badge -->
   <div class="flex items-center gap-3 mb-6">
     <div class="w-1.5 h-6 rounded-full bg-kong-primary animate-pulse"></div>
     <h3 class="text-xl font-bold font-space-grotesk text-kong-text-primary">
       Connect Your Community
     </h3>
+    <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-kong-bg-light/50 text-kong-text-secondary border border-kong-border/20">
+      Optional
+    </span>
+  </div>
+  
+  <!-- Optional message explaining this can be added later -->
+  <div class="p-3 text-sm border rounded-lg bg-kong-bg-light/30 border-kong-border/20 text-kong-text-secondary">
+    <div class="flex items-start gap-2">
+      <svg class="w-5 h-5 mt-0.5 flex-shrink-0 text-kong-accent-blue" fill="none" viewBox="0 0 24 24">
+        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <p>
+        You can add community links now or later after your token launches. These links help your community find and connect with your project.
+      </p>
+    </div>
+  </div>
+  
+  <!-- Links list with platform-specific styling -->
+  <div class="space-y-3 added-links">
+    {#each links as link, index (index)}
+      <div class="group/link relative transition-all duration-200 hover:-translate-y-0.5">
+        <div class="absolute inset-0 transition-opacity duration-300 rounded-lg opacity-0 bg-gradient-to-r from-kong-primary/10 to-kong-accent-blue/10 group-hover/link:opacity-100" />
+        
+        <div class="relative flex items-center justify-between p-4 transition-all duration-200 border rounded-lg bg-kong-bg-light/30 border-kong-border/20 hover:border-kong-primary/30">
+          <div class="flex items-center flex-1 min-w-0 gap-3">
+            <!-- Platform icon -->
+            <div class="p-2 rounded-lg bg-kong-bg-dark/50">
+              <svg class="w-5 h-5 text-kong-primary" viewBox="0 0 24 24">
+                {#if platformIcons[detectPlatform(link.url)]}
+                  <path fill="currentColor" d={platformIcons[detectPlatform(link.url)]} />
+                {:else}
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                {/if}
+              </svg>
+            </div>
+            
+            <div class="flex-1 min-w-0">
+              <p class="mb-1 text-sm font-semibold truncate text-kong-text-primary">
+                {link.platform}
+              </p>
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1.5 text-sm break-all text-kong-accent-blue hover:text-kong-accent-blue/80 transition-colors"
+              >
+                <span class="truncate">{link.url}</span>
+                <svg class="flex-shrink-0 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+          
+          <button
+            on:click={() => removeLink(index)}
+            class="p-1.5 text-kong-text-secondary hover:text-kong-accent-red rounded-full transition-colors duration-150 hover:bg-kong-bg-light/20 ml-2"
+          >
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    {:else}
+      <!-- Empty state with animation -->
+      <div class="flex flex-col items-center py-8 space-y-3 text-center rounded-lg bg-kong-bg-light/5 animate-pulse-slow">
+        <p class="italic text-kong-text-secondary/70">
+          No links yet - let's build your community! 🚀
+        </p>
+      </div>
+    {/each}
   </div>
   
   <!-- Enhanced input form with gradient focus -->
@@ -134,66 +206,6 @@
       <span class="drop-shadow-sm">Add Community Link</span>
     </button>
   </form>
-
-  <!-- Links list with platform-specific styling -->
-  <div class="space-y-3 added-links">
-    {#each links as link, index (index)}
-      <div class="group/link relative transition-all duration-200 hover:-translate-y-0.5">
-        <div class="absolute inset-0 transition-opacity duration-300 rounded-lg opacity-0 bg-gradient-to-r from-kong-primary/10 to-kong-accent-blue/10 group-hover/link:opacity-100" />
-        
-        <div class="relative flex items-center justify-between p-4 transition-all duration-200 border rounded-lg bg-kong-bg-light/30 border-kong-border/20 hover:border-kong-primary/30">
-          <div class="flex items-center flex-1 min-w-0 gap-3">
-            <!-- Platform icon -->
-            <div class="p-2 rounded-lg bg-kong-bg-dark/50">
-              <svg class="w-5 h-5 text-kong-primary" viewBox="0 0 24 24">
-                {#if platformIcons[detectPlatform(link.url)]}
-                  <path fill="currentColor" d={platformIcons[detectPlatform(link.url)]} />
-                {:else}
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                {/if}
-              </svg>
-            </div>
-            
-            <div class="flex-1 min-w-0">
-              <p class="mb-1 text-sm font-semibold truncate text-kong-text-primary">
-                {link.platform}
-              </p>
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-flex items-center gap-1.5 text-sm break-all text-kong-accent-blue hover:text-kong-accent-blue/80 transition-colors"
-              >
-                <span class="truncate">{link.url}</span>
-                <svg class="flex-shrink-0 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                </svg>
-              </a>
-            </div>
-          </div>
-          
-          <button
-            on:click={() => removeLink(index)}
-            class="p-1.5 text-kong-text-secondary hover:text-kong-accent-red rounded-full transition-colors duration-150 hover:bg-kong-bg-light/20 ml-2"
-          >
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    {:else}
-      <!-- Empty state with animation -->
-      <div class="flex flex-col items-center py-8 space-y-3 text-center rounded-lg bg-kong-bg-light/5 animate-pulse-slow">
-        <svg class="w-12 h-12 text-kong-text-secondary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.684 3.999l3.316 3m3.316-3l-3.316 3M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 3h.01"/>
-        </svg>
-        <p class="italic text-kong-text-secondary/70">
-          No links yet - let's build your community! 🚀
-        </p>
-      </div>
-    {/each}
-  </div>
 </div>
 
 <style>

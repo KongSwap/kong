@@ -12,7 +12,8 @@ const defaultTokenParams: TokenInitArgs = {
   archive_options: [],
   initial_block_reward: BigInt(0),
   block_time_target_seconds: BigInt(5),
-  halving_interval: BigInt(0)
+  halving_interval: BigInt(0),
+  social_links: [],
 };
 
 function createTokenParamsStore() {

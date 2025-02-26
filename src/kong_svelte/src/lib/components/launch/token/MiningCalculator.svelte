@@ -5,8 +5,8 @@
   export let halvingBlocks = 0;
   export let blockTimeSeconds = 0;
   export let maxSupply: number = 0;
-  // Flag to indicate if maxSupply is being calculated dynamically
-  let isDynamicSupply = true;
+  // Set isDynamicSupply to false by default - we want manual control
+  let isDynamicSupply = false;
   export let decimals = 8;
   export let circulationDays = 0;
   export let totalMined = 0;
@@ -20,6 +20,9 @@
 
   // Track whether we're in preset view or custom view
   $: isCustomView = currentSubStep === 2;
+
+  // Track which preset is currently selected
+  let selectedPreset: string | null = null;
 
   type Preset = {
     id: string;
@@ -51,14 +54,14 @@
       description: "Bitcoin economics with much faster block times",
       blockReward: 50,
       halvingBlocks: 210000,
-      blockTimeSeconds: 600,
+      blockTimeSeconds: 60,
       maxSupply: 21000000,
       category: 'fast',
       icon: "⚡"
     },
     {
       id: "litecoin",
-      name: "Silver Standard",
+      name: "Litecoin",
       description: "Faster blocks and 4x the supply of Bitcoin",
       blockReward: 50,
       halvingBlocks: 840000,
@@ -69,7 +72,7 @@
     },
     {
       id: "dogecoin",
-      name: "Meme Economy",
+      name: "Dogecoin",
       description: "High reward with fast blocks and larger supply",
       blockReward: 10000,
       halvingBlocks: 100000,
@@ -80,7 +83,7 @@
     },
     {
       id: "hyper-fast",
-      name: "Lightning Network",
+      name: "Lightning Fast",
       description: "Extremely fast blocks for high-frequency mining",
       blockReward: 10,
       halvingBlocks: 3000000,
@@ -91,7 +94,7 @@
     },
     {
       id: "slow-burn",
-      name: "Tortoise Wealth",
+      name: "Steady Miner",
       description: "Slow and steady with high rewards",
       blockReward: 500,
       halvingBlocks: 50000,
@@ -101,19 +104,19 @@
       icon: "🐢"
     },
     {
-      id: "long-term",
-      name: "Century Token",
-      description: "Very slow emission over decades",
-      blockReward: 1000,
-      halvingBlocks: 100000,
-      blockTimeSeconds: 1800,
-      maxSupply: 100000000,
+      id: "bitcoin-slow",
+      name: "Bitcoin Long",
+      description: "Bitcoin-style with slower block times",
+      blockReward: 50,
+      halvingBlocks: 210000,
+      blockTimeSeconds: 1200,
+      maxSupply: 21000000,
       category: 'slow',
-      icon: "🧠"
+      icon: "₿"
     },
     {
       id: "balanced",
-      name: "Equilibrium",
+      name: "Balanced",
       description: "Balanced parameters for steady emission",
       blockReward: 100,
       halvingBlocks: 250000,
@@ -121,6 +124,17 @@
       maxSupply: 50000000,
       category: 'balanced',
       icon: "⚖️"
+    },
+    {
+      id: "goldcoin",
+      name: "Gold Standard",
+      description: "Medium-paced mining with balanced rewards",
+      blockReward: 50,
+      halvingBlocks: 210000,
+      blockTimeSeconds: 180,
+      maxSupply: 21000000,
+      category: 'balanced',
+      icon: "🔶"
     },
     {
       id: "eth-classic",
@@ -141,25 +155,26 @@
   $: balancedPresets = presets.filter(p => p.category === 'balanced');
   $: slowPresets = presets.filter(p => p.category === 'slow');
 
+  // Track which preset's timeline is being shown
+  let selectedPresetForTimeline: string | null = null;
+  let presetTimeline: TimelinePeriod[] = [];
+  
   function applyPreset(preset: Preset) {
     // When applying a preset, we use its fixed maxSupply
-    isDynamicSupply = false;
     blockReward = preset.blockReward;
     halvingBlocks = preset.halvingBlocks;
     blockTimeSeconds = preset.blockTimeSeconds;
     maxSupply = preset.maxSupply;
+    selectedPreset = preset.id; // Mark this preset as selected
   }
 
   function switchToCustomView() {
-    // When switching to custom view, enable dynamic supply calculation
-    isDynamicSupply = true;
-    calculateTotalSupply();
+    // When switching to custom view, we'll maintain the current maxSupply
     currentSubStep = 2;
   }
 
   function continueWithSelectedPreset() {
     // Keep the preset supply when continuing
-    isDynamicSupply = false;
     currentSubStep = 2;
   }
 
@@ -175,6 +190,10 @@
   function formatNumber(n: number): string {
     if (!n) return "0";
     if (n < 1 && n >= minimumUnit) {
+      // For very small numbers, use scientific notation if too long
+      if (n < 0.0001) {
+        return n.toExponential(2);
+      }
       return n.toFixed(decimals).replace(/\.?0+$/, '');
     }
     if (n >= 1000000000) {
@@ -213,9 +232,9 @@
   let effectiveHalvingLimitReached = false;
   let transferFeeLimitReached = false;
 
-  // Transfer fee is already in base units (10^decimals) from the parent component
-  $: transferFeeBaseUnits = Math.max(0, transferFee);
-  
+  // Add this computed value to convert transferFee to base units
+  $: transferFeeBaseUnits = transferFee; 
+
   $: {
     timeline = [];
     let remainingSupply = maxSupply;
@@ -280,8 +299,15 @@
         
         // Handle halving logic
         if (halvingBlocks > 0 && blocksInPeriod === halvingBlocks) {
-          // Calculate next reward properly - true halving is dividing by 2
-          currentRewardBaseUnits = Math.floor(currentRewardBaseUnits / 2);
+          // Calculate next reward exactly as backend does (in base units)
+          if (halvingBlocks === 0) {
+            // No halvings - same as backend logic
+            // No change needed
+          } else {
+            // Calculate halving exactly as backend does (using bit shift)
+            // This is equivalent to dividing by 2, but it's done in integer math in the backend
+            currentRewardBaseUnits = Math.floor(currentRewardBaseUnits / 2); // Integer division to match backend
+          }
           
           // Check if this is the first time we're dropping below transfer fee (only if transfer fee > 0)
           if (transferFeeBaseUnits > 0 && !transferFeeLimitReached && currentRewardBaseUnits <= transferFeeBaseUnits) {
@@ -311,9 +337,9 @@
       // Mark if we hit the effective halving limit (only if transfer fee is non-zero)
       effectiveHalvingLimitReached = transferFeeBaseUnits > 0 && transferFeeLimitReached && effectiveHalvingLimit > 0;
 
-      // Update warning condition - only include transfer fee warning if transfer fee is non-zero
-      incompleteMiningWarning = (remainingSupply / maxSupply) > 0.01 || 
-                              (transferFeeBaseUnits > 0 && transferFeeLimitReached);
+      // Update warning condition - only show warning for supply gap, not for transfer fee limit
+      incompleteMiningWarning = (remainingSupply / maxSupply) > 0.01 && 
+                              !(transferFeeBaseUnits > 0 && transferFeeLimitReached);
 
       // Calculate percentage mined
       minedPercentage = ((totalMined / maxSupply) * 100).toFixed(1);
@@ -348,7 +374,7 @@
       // Calculate through halvings until reward becomes negligible
       while (currentReward > 0.00001 && halving < 50) {
         calculatedSupply += currentReward * halvingBlocks;
-        currentReward = currentReward / 2;
+        currentReward = Math.floor(currentReward / 2); // Integer division to match backend
         halving++;
       }
       
@@ -361,16 +387,9 @@
     }
   }
   
-  // Watch for changes in mining parameters to update total supply
-  $: if (isDynamicSupply && (blockReward || halvingBlocks || blockTimeSeconds)) {
-    calculateTotalSupply();
-  }
-  
-  // Calculate total supply when the component loads if using dynamic calculation
+  // Only calculate total supply when explicitly requested, not automatically
   onMount(() => {
-    if (isDynamicSupply && blockReward && halvingBlocks) {
-      calculateTotalSupply();
-    }
+    // No automatic supply calculation on mount
   });
 
   // Function to get a quick description of mining duration
@@ -440,6 +459,70 @@
     }
     return `${years.toFixed(1)} years`;
   }
+
+  // Calculate timeline for a preset
+  function calculatePresetTimeline(preset: Preset) {
+    // Reset timeline
+    presetTimeline = [];
+    
+    let remainingSupply = preset.maxSupply;
+    let currentReward = preset.blockReward;
+    let totalDays = 0;
+    
+    if (preset.halvingBlocks === 0) {
+      // For non-halving presets, calculate single period
+      const blocksNeeded = Math.ceil(remainingSupply / currentReward);
+      const durationDays = (blocksNeeded * preset.blockTimeSeconds) / (24 * 60 * 60);
+      
+      presetTimeline.push({
+        reward: currentReward,
+        blocks: blocksNeeded,
+        durationDays: durationDays,
+        mined: Math.min(blocksNeeded * currentReward, remainingSupply),
+        economicallyViable: true
+      });
+      
+      return;
+    }
+    
+    // For halving presets
+    let halvingCount = 0;
+    
+    while (remainingSupply > 0 && currentReward > 0.00001 && halvingCount < 10) {
+      const blocksInPeriod = Math.min(preset.halvingBlocks, Math.ceil(remainingSupply / currentReward));
+      const exactMined = blocksInPeriod * currentReward;
+      const actualMined = Math.min(exactMined, remainingSupply);
+      const periodDuration = (blocksInPeriod * preset.blockTimeSeconds) / (24 * 60 * 60);
+      
+      presetTimeline.push({
+        reward: currentReward,
+        blocks: blocksInPeriod,
+        durationDays: periodDuration,
+        mined: actualMined,
+        economicallyViable: true
+      });
+      
+      totalDays += periodDuration;
+      remainingSupply -= actualMined;
+      
+      if (blocksInPeriod === preset.halvingBlocks) {
+        currentReward = Math.floor(currentReward / 2);
+        halvingCount++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  function viewPresetTimeline(preset: Preset) {
+    if (selectedPresetForTimeline === preset.id) {
+      selectedPresetForTimeline = null;
+      presetTimeline = [];
+    } else {
+      selectedPresetForTimeline = preset.id;
+      calculatePresetTimeline(preset);
+    }
+  }
 </script>
 
 <div class="space-y-6">
@@ -477,7 +560,7 @@
             {#each fastPresets as preset}
               <button 
                 on:click={() => applyPreset(preset)}
-                class="flex items-center w-full gap-3 p-3 transition-all duration-200 border rounded-lg group hover:border-kong-primary/30 bg-gradient-to-br from-kong-bg-dark/70 to-kong-bg-light/5 border-kong-border/20"
+                class="flex items-center w-full gap-3 p-3 transition-all duration-200 border rounded-lg group hover:border-kong-primary/30 bg-gradient-to-br from-kong-bg-dark/70 to-kong-bg-light/5 border-kong-border/20 {selectedPreset === preset.id ? 'ring-2 ring-kong-accent-green/70 border-kong-accent-green/30' : ''}"
               >
                 <div class="flex items-center justify-center flex-shrink-0 w-8 h-8 text-base font-bold transition-all duration-200 border rounded-lg bg-gradient-to-br from-kong-primary/5 to-kong-accent-green/5 border-kong-primary/10 text-kong-accent-green">
                   {preset.icon || preset.name[0]}
@@ -505,7 +588,7 @@
             {#each balancedPresets as preset}
               <button 
                 on:click={() => applyPreset(preset)}
-                class="flex items-center w-full gap-3 p-3 transition-all duration-200 border rounded-lg group hover:border-kong-primary/30 bg-gradient-to-br from-kong-bg-dark/70 to-kong-bg-light/5 border-kong-border/20"
+                class="flex items-center w-full gap-3 p-3 transition-all duration-200 border rounded-lg group hover:border-kong-primary/30 bg-gradient-to-br from-kong-bg-dark/70 to-kong-bg-light/5 border-kong-border/20 {selectedPreset === preset.id ? 'ring-2 ring-kong-primary/70 border-kong-primary/30' : ''}"
               >
                 <div class="flex items-center justify-center flex-shrink-0 w-8 h-8 text-base font-bold transition-all duration-200 border rounded-lg bg-gradient-to-br from-kong-primary/5 to-kong-accent-blue/5 border-kong-primary/10 text-kong-primary">
                   {preset.icon || preset.name[0]}
@@ -533,7 +616,7 @@
             {#each slowPresets as preset}
               <button 
                 on:click={() => applyPreset(preset)}
-                class="flex items-center w-full gap-3 p-3 transition-all duration-200 border rounded-lg group hover:border-kong-primary/30 bg-gradient-to-br from-kong-bg-dark/70 to-kong-bg-light/5 border-kong-border/20"
+                class="flex items-center w-full gap-3 p-3 transition-all duration-200 border rounded-lg group hover:border-kong-primary/30 bg-gradient-to-br from-kong-bg-dark/70 to-kong-bg-light/5 border-kong-border/20 {selectedPreset === preset.id ? 'ring-2 ring-kong-accent-red/70 border-kong-accent-red/30' : ''}"
               >
                 <div class="flex items-center justify-center flex-shrink-0 w-8 h-8 text-base font-bold transition-all duration-200 border rounded-lg bg-gradient-to-br from-kong-accent-blue/5 to-kong-accent-red/5 border-kong-accent-red/10 text-kong-accent-red">
                   {preset.icon || preset.name[0]}
@@ -556,18 +639,18 @@
         <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
           <h4 class="text-base font-medium text-kong-text-primary">Selected Mining Profile</h4>
           <div class="flex items-center gap-2">
-            <button 
-              on:click={continueWithSelectedPreset}
-              class="px-4 py-2 text-sm font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-kong-primary to-kong-accent-blue hover:from-kong-primary/90 hover:to-kong-accent-blue/90"
-            >
-              Customize This Preset
-            </button>
             <button
               on:click={switchToCustomView}
               class="flex items-center gap-1 px-3 py-2 text-sm transition-all duration-200 rounded-lg bg-kong-bg-dark/60 text-kong-text-primary hover:bg-kong-bg-dark/80"
             >
               <Settings size={16} />
               <span>Create Custom</span>
+            </button>
+            <button 
+              on:click={continueWithSelectedPreset}
+              class="px-4 py-2 text-sm font-medium text-white transition-all duration-200 rounded-lg bg-gradient-to-r from-kong-primary to-kong-accent-blue hover:from-kong-primary/90 hover:to-kong-accent-blue/90"
+            >
+              Customize This Preset
             </button>
           </div>
         </div>
@@ -839,23 +922,6 @@
           <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
             <div class="flex items-center justify-between mb-2">
               <label class="text-sm font-medium text-kong-text-primary/80">Total Supply</label>
-              <div class="flex items-center gap-2">
-                <button 
-                  on:click={() => {
-                    isDynamicSupply = true;
-                    calculateTotalSupply();
-                  }} 
-                  class={`px-2 py-0.5 text-xs rounded-lg transition-all duration-200 ${isDynamicSupply ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary hover:text-kong-text-primary'}`}
-                >
-                  Auto
-                </button>
-                <button 
-                  on:click={() => isDynamicSupply = false} 
-                  class={`px-2 py-0.5 text-xs rounded-lg transition-all duration-200 ${!isDynamicSupply ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary hover:text-kong-text-primary'}`}
-                >
-                  Custom
-                </button>
-              </div>
             </div>
             
             <div class="relative mb-3">
@@ -867,7 +933,6 @@
               <input
                 type="number"
                 bind:value={maxSupply}
-                disabled={isDynamicSupply}
                 class="w-full py-3 pl-10 pr-4 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
                 min="1"
                 placeholder="e.g., 21000000"
@@ -875,15 +940,8 @@
             </div>
             
             <div class="flex items-center justify-between text-xs text-kong-text-secondary/70">
-              {#if isDynamicSupply}
-                <div class="flex items-center gap-1.5">
-                  <div class="w-2 h-2 rounded-full bg-kong-accent-green animate-pulse"></div>
-                  <span>Auto-calculated from mining parameters</span>
-                </div>
-              {:else}
-                <div>Manually set supply</div>
-              {/if}
-              <span>{formatNumber(maxSupply)} {tokenTicker || "tokens"}</span>
+              <div>Manually set supply</div>
+              <span>{formatNumber(maxSupply)} {tokenTicker}</span>
             </div>
           </div>
         </div>
@@ -1008,7 +1066,7 @@
               <div class="px-3 py-2 text-center">
                 <span class="text-xs font-medium text-kong-text-secondary/70">Final Reward</span>
                 <div class="flex items-center justify-center gap-1 mt-1">
-                  <span class="text-xl font-bold text-kong-accent-yellow">
+                  <span class="text-lg font-bold text-kong-accent-yellow">
                     {formatNumber(finalReward)}
                   </span>
                   <span class="text-xs text-kong-text-secondary/70">
@@ -1026,20 +1084,11 @@
             <div class="flex items-start gap-3">
               <AlertTriangle class="flex-shrink-0 w-5 h-5 mt-0.5 text-kong-accent-red animate-pulse" />
               <div>
-                {#if transferFeeBaseUnits > 0 && transferFeeLimitReached}
-                  <h4 class="text-sm font-medium text-kong-accent-red">Transfer Fee Limit Detected</h4>
-                  <p class="mt-1 text-xs text-kong-text-secondary/80">
-                    Block rewards will become smaller than the transfer fee ({toTokenUnits(transferFeeBaseUnits).toFixed(decimals)} {tokenTicker}) after {effectiveHalvingLimit} halvings, 
-                    potentially limiting mining to {minedPercentage}% of total supply. 
-                    This means only {formatNumber(totalMined)} of {formatNumber(maxSupply)} {tokenTicker} will be economically minable.
-                  </p>
-                {:else}
-                  <h4 class="text-sm font-medium text-kong-accent-red">Supply Gap Detected</h4>
-                  <p class="mt-1 text-xs text-kong-text-secondary/80">
-                    Current parameters will only mine <span class="font-medium text-kong-accent-red">{minedPercentage}%</span> of total supply 
-                    ({formatNumber(totalMined)} of {formatNumber(maxSupply)} {tokenTicker}).
-                  </p>
-                {/if}
+                <h4 class="text-sm font-medium text-kong-accent-red">Supply Gap Detected</h4>
+                <p class="mt-1 text-xs text-kong-text-secondary/80">
+                  Current parameters will only mine <span class="font-medium text-kong-accent-red">{minedPercentage}%</span> of total supply 
+                  ({formatNumber(totalMined)} of {formatNumber(maxSupply)} {tokenTicker}).
+                </p>
                 <div class="flex flex-wrap gap-2 mt-3">
                   <button
                     on:click={calculateRequiredBlockReward}
@@ -1056,6 +1105,23 @@
                     Extend Halving Interval
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        {/if}
+        
+        <!-- Transfer fee info note (only if effective halving limit reached) -->
+        {#if effectiveHalvingLimitReached}
+          <div class="p-4 mb-6 border rounded-lg bg-gradient-to-br from-kong-primary/10 to-kong-bg-dark/50 border-kong-primary/30">
+            <div class="flex items-start gap-3">
+              <Zap class="flex-shrink-0 w-5 h-5 mt-0.5 text-kong-primary" />
+              <div>
+                <h4 class="text-sm font-medium text-kong-primary">Transfer Fee Threshold</h4>
+                <p class="mt-1 text-xs text-kong-text-secondary/80">
+                  After {effectiveHalvingLimit} halvings, block rewards become smaller than the transfer fee 
+                  ({(transferFeeBaseUnits / Math.pow(10, decimals)).toFixed(decimals)} {tokenTicker}).
+                  <span class="text-kong-text-primary"> Locked periods in the timeline are not economically viable to mine.</span>
+                </p>
               </div>
             </div>
           </div>
@@ -1086,11 +1152,34 @@
             <div class="relative pb-4 pl-4 mb-2 border-l-2 border-dashed border-kong-border/30">
               <div class="absolute top-0 left-[-8px] w-4 h-4 rounded-full bg-kong-primary"></div>
               <div class="absolute bottom-0 left-[-6px] w-3 h-3 rounded-full bg-kong-accent-green"></div>
+              
+              {#if halvingBlocks > 0 && timeline.length > 1}
+                {@const totalDuration = timeline.reduce((sum, period) => sum + period.durationDays, 0)}
+                {@const cumulativeDurations = timeline.reduce((acc, period, idx) => {
+                  const prevTotal = idx > 0 ? acc[idx-1] : 0;
+                  acc.push(prevTotal + period.durationDays);
+                  return acc;
+                }, [])}
+                
+                {#each timeline.slice(0, timeline.length - 1) as _, i}
+                  {#if i > 0}
+                    <div 
+                      class="absolute left-[-6px] w-3 h-3 rounded-full bg-kong-accent-blue" 
+                      style="top: {(cumulativeDurations[i-1] / totalDuration) * 100}%;"
+                    >
+                      <div class="absolute left-4 transform -translate-y-1/2 px-1.5 py-0.5 text-[10px] rounded bg-kong-bg-dark/80 text-kong-accent-blue whitespace-nowrap">
+                        Halving {i}
+                      </div>
+                    </div>
+                  {/if}
+                {/each}
+              {/if}
             </div>
             
             <div class="space-y-3">
               {#each timeline.slice(0, showAllPeriods ? timeline.length : Math.min(3, timeline.length)) as period, i}
-                <div class="p-4 transition-all duration-200 border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 hover:from-kong-bg-dark/90 hover:to-kong-bg-light/0 border-kong-border/20 hover:border-kong-border/30">
+                <div class="p-4 transition-all duration-200 border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 hover:from-kong-bg-dark/90 hover:to-kong-bg-light/0 border-kong-border/20 hover:border-kong-border/30
+                  {!period.economicallyViable ? 'opacity-70' : ''}">
                   <div class="flex items-center gap-2 mb-2">
                     <div class="flex items-center justify-center w-5 h-5 rounded-full bg-kong-bg-dark/70 text-kong-accent-blue">
                       <span class="text-xs font-bold">{i+1}</span>
@@ -1102,8 +1191,11 @@
                       <span class="px-1.5 py-0.5 text-xs rounded bg-kong-primary/10 text-kong-primary">Start</span>
                     {/if}
                     {#if !period.economicallyViable}
-                      <span class="px-1.5 py-0.5 text-xs rounded bg-kong-accent-red/10 text-kong-accent-red">
-                        Below Transfer Fee
+                      <span class="ml-auto flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-kong-bg-dark/50 text-kong-text-secondary/80">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <span>Locked</span>
                       </span>
                     {/if}
                   </div>

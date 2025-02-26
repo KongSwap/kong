@@ -1,84 +1,101 @@
 import { Principal } from '@dfinity/principal';
-import { HttpAgent } from '@dfinity/agent';
-import { CMCCanister } from '@dfinity/cmc';
 import { auth } from '$lib/services/auth';
+import { IcrcService } from '../icrc/IcrcService';
 
-// CMC Canister ID
-export const CMC_CANISTER_ID = Principal.fromText("rkp4c-7iaaa-aaaaa-aaaca-cai");
-
-/**
- * Returns default canister settings with the provided controller
- * 
- * @param controller The principal to set as controller
- * @returns Default canister settings object
- */
-export function getDefaultCanisterSettings(controller) {
-  return {
-    controllers: [controller],
-    freezing_threshold: 2_592_000n,
-    memory_allocation: 0n,
-    compute_allocation: 0n
+// Create a CUSTOM FUCKING IDL FACTORY
+function createCmcIdlFactory() {
+  return ({ IDL }) => {
+    const SubnetFilter = IDL.Record({ subnet_type: IDL.Opt(IDL.Text) });
+    const SubnetSelection = IDL.Variant({
+      'Filter': IDL.Record({ filter: SubnetFilter }),
+      'Subnet': IDL.Record({ subnet: IDL.Principal })
+    });
+    
+    const CanisterSettings = IDL.Record({
+      controllers: IDL.Opt(IDL.Vec(IDL.Principal)),
+      compute_allocation: IDL.Opt(IDL.Nat),
+      memory_allocation: IDL.Opt(IDL.Nat),
+      freezing_threshold: IDL.Opt(IDL.Nat)
+    });
+    
+    const NotifyCreateCanisterArg = IDL.Record({
+      block_index: IDL.Nat64,
+      controller: IDL.Principal,
+      subnet_selection: IDL.Opt(IDL.Vec(SubnetSelection)),
+      subnet_type: IDL.Opt(IDL.Text),
+      settings: IDL.Opt(CanisterSettings)
+    });
+    
+    const NotifyResult = IDL.Variant({
+      'Ok': IDL.Principal,
+      'Err': IDL.Variant({
+        'Refunded': IDL.Record({ block_index: IDL.Opt(IDL.Nat64), reason: IDL.Text }),
+        'InvalidTransaction': IDL.Text,
+        'Other': IDL.Record({ error_message: IDL.Text, error_code: IDL.Nat }),
+        'Processing': IDL.Null,
+        'TransactionTooOld': IDL.Nat64
+      })
+    });
+    
+    return IDL.Service({
+      'notify_create_canister': IDL.Func([NotifyCreateCanisterArg], [NotifyResult], [])
+    });
   };
 }
 
-/**
- * Notifies the Cycles Minting Canister to create a new canister
- * 
- * @param args Arguments for canister creation
- * @returns The Principal ID of the newly created canister
- */
+// Constants
+const CMC_CANISTER_ID = "rkp4c-7iaaa-aaaaa-aaaca-cai"; // Cycles Minting Canister ID
+const CREATE_CANISTER_MEMO = 1095062083n; // Memo for canister creation
+
 export async function createCanister(args) {
   try {
     console.log('Creating a new canister with CMC...');
-    
-    // Get identity from your auth service
-    if (!auth.pnp || !auth.pnp.isWalletConnected()) {
-      throw new Error('Wallet not connected');
-    }
-    
-    const identity = auth.pnp.activeWallet.identity;
-    
-    if (!identity) {
-      throw new Error('No identity found. Please reconnect your wallet.');
-    }
-    
-    // Create agent
-    const agent = new HttpAgent({
-      host: "https://icp0.io",
-      identity
-    });
     
     // Ensure controller is a Principal object
     const controllerPrincipal = typeof args.controller === 'string' 
       ? Principal.fromText(args.controller) 
       : args.controller;
     
-    // Create CMC instance
-    const cmc = CMCCanister.create({
-      agent,
-      canisterId: CMC_CANISTER_ID,
-    });
+    // Transfer ICP to CMC with the CREATE_CANISTER memo
+    const transferResult = await IcrcService.transferIcpToCmc(
+      args.amount,
+      controllerPrincipal,
+      CREATE_CANISTER_MEMO
+    );
     
+    if ('Err' in transferResult) {
+      throw new Error(`Failed to transfer ICP to CMC: ${JSON.stringify(transferResult.Err)}`);
+    }
+    
+    // Get the block index from the successful transfer
+    const blockIndex = transferResult.Ok;
+    
+    // Using your precious getActor with a custom IDL factory
+    const cmcActor = await auth.getActor(
+      CMC_CANISTER_ID,
+      createCmcIdlFactory(),
+      { requiresSigning: true }
+    );
+    
+    // Format notify args
     const notifyArgs = {
-      block_index: args.blockIndex,
+      block_index: blockIndex,
       controller: controllerPrincipal,
-      subnet_type: args.subnetType || undefined,
-      subnet_selection: args.subnet_selection && args.subnet_selection.length > 0 
-        ? args.subnet_selection[0]
-        : undefined,
-      settings: args.settings || undefined,
+      subnet_type: args.subnetType ? [args.subnetType] : [],
+      subnet_selection: args.subnet_selection || [],
+      settings: args.settings ? [args.settings] : []
     };
     
-    console.log('Calling notifyCreateCanister with args:', JSON.stringify(notifyArgs, (_, v) => 
-      typeof v === 'bigint' ? v.toString() : v instanceof Principal ? v.toText() : v
-    ));
+    // Call the function
+    const result = await cmcActor.notify_create_canister(notifyArgs);
     
-    // The CMC package handles all the array wrapping internally based on the IDL
-    const canisterId = await cmc.notifyCreateCanister(notifyArgs);
-    console.log('Successfully created canister with ID:', canisterId.toText());
-    return canisterId;
+    if ('Ok' in result) {
+      return result.Ok;
+    } else {
+      throw new Error(`CMC error: ${JSON.stringify(result.Err)}`);
+    }
   } catch (error) {
     console.error('Error creating canister:', error);
-    throw new Error(`Failed to create canister: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
   }
 }

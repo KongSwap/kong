@@ -26,6 +26,20 @@
     }
   }
 
+  // Format the human fee to show the correct number of decimal places without trailing zeros
+  function formatHumanFee(value: number, decimals: number): string {
+    // First use toFixed to ensure we have the right precision
+    const fixed = value.toFixed(decimals);
+    // Then remove trailing zeros if there are any
+    return fixed.replace(/\.?0+$/, '');
+  }
+  
+  // Update the humanFee when decimals change
+  $: {
+    // When decimals change, update the human fee display
+    humanFee = formatHumanFee(transferFee / 10 ** decimals, decimals);
+  }
+
   function updateFromHuman() {
     const value = parseFloat(humanFee);
     if (!isNaN(value) && value >= 0) {
@@ -34,7 +48,7 @@
     } else {
       // Handle invalid input - reset to 0
       transferFee = 0;
-      humanFee = "0";
+      humanFee = "0" + (decimals > 0 ? "." + "0".repeat(decimals) : "");
       baseFeeInput = "0";
     }
   }
@@ -51,6 +65,14 @@
       baseFeeInput = "0";
     }
   }
+
+  // Define preset values in base units (not tokens)
+  const COMMON_FEE_BASE_UNITS = 10000;   // 10,000 base units
+  const HIGH_FEE_BASE_UNITS = 1000000;   // 1,000,000 base units
+  
+  // Calculate human-readable values based on current decimals
+  $: commonFeeHuman = COMMON_FEE_BASE_UNITS / (10 ** decimals);
+  $: highFeeHuman = HIGH_FEE_BASE_UNITS / (10 ** decimals);
 </script>
 
 <div class="space-y-6">
@@ -73,20 +95,20 @@
         <!-- Fee Presets -->
         <div class="flex flex-wrap gap-2 mb-3">
           <button 
-            on:click={() => { humanFee = "0"; updateFromHuman(); }} 
+            on:click={() => { transferFee = 0; humanFee = "0"; }} 
             class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === 0 ? 'bg-kong-accent-green/20 border border-kong-accent-green/30 text-kong-accent-green' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
             Free
           </button>
           <button 
-            on:click={() => { humanFee = (0.0001).toFixed(4); updateFromHuman(); }} 
-            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === Math.round(0.0001 * 10 ** decimals) ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+            on:click={() => { transferFee = COMMON_FEE_BASE_UNITS; humanFee = formatHumanFee(commonFeeHuman, decimals); }} 
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === COMMON_FEE_BASE_UNITS ? 'bg-kong-primary/20 border border-kong-primary/30 text-kong-primary' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
             Common
           </button>
           <button 
-            on:click={() => { humanFee = (0.01).toFixed(2); updateFromHuman(); }} 
-            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === Math.round(0.01 * 10 ** decimals) ? 'bg-kong-accent-red/20 border border-kong-accent-red/30 text-kong-accent-red' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
+            on:click={() => { transferFee = HIGH_FEE_BASE_UNITS; humanFee = formatHumanFee(highFeeHuman, decimals); }} 
+            class={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${transferFee === HIGH_FEE_BASE_UNITS ? 'bg-kong-accent-red/20 border border-kong-accent-red/30 text-kong-accent-red' : 'bg-kong-bg-dark/50 border border-kong-border/30 text-kong-text-secondary hover:border-kong-primary/30'}`}
           >
             High
           </button>
@@ -124,28 +146,28 @@
                 <span class="text-kong-accent-green">Free transfers (zero fee)</span>
               </div>
               <p class="text-kong-text-secondary/60">Users can transfer tokens without any cost</p>
-            {:else if parseFloat(humanFee) <= 0.0001}
+            {:else if transferFee <= COMMON_FEE_BASE_UNITS}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-primary animate-pulse"></div>
-                <span class="text-kong-primary">Common fee: {humanFee} {displaySymbol || "TOKEN"}</span>
+                <span class="text-kong-primary">Common fee: {formatHumanFee(parseFloat(humanFee), decimals)} {displaySymbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">Standard fee used by most ICRC tokens</p>
-            {:else if parseFloat(humanFee) <= 0.001}
+            {:else if transferFee <= COMMON_FEE_BASE_UNITS * 10}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-primary animate-pulse"></div>
-                <span class="text-kong-primary">Standard fee: {humanFee} {displaySymbol || "TOKEN"}</span>
+                <span class="text-kong-primary">Standard fee: {formatHumanFee(parseFloat(humanFee), decimals)} {displaySymbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">Balanced approach for most tokens</p>
-            {:else if parseFloat(humanFee) <= 0.01}
+            {:else if transferFee <= HIGH_FEE_BASE_UNITS}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-accent-red animate-pulse"></div>
-                <span class="text-kong-accent-red">High fee: {humanFee} {displaySymbol || "TOKEN"}</span>
+                <span class="text-kong-accent-red">High fee: {formatHumanFee(parseFloat(humanFee), decimals)} {displaySymbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">Higher fee helps incentivize holding</p>
             {:else}
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-kong-accent-red animate-pulse"></div>
-                <span class="text-kong-accent-red">Very high fee: {humanFee} {displaySymbol || "TOKEN"}</span>
+                <span class="text-kong-accent-red">Very high fee: {formatHumanFee(parseFloat(humanFee), decimals)} {displaySymbol || "TOKEN"}</span>
               </div>
               <p class="text-kong-text-secondary/60">May discourage frequent transfers</p>
             {/if}
@@ -154,7 +176,7 @@
               <div class="flex items-center gap-2 pt-1 mt-1 border-t border-kong-border/10">
                 <span class="text-kong-text-secondary/80">Actual amount: {transferFee.toLocaleString()} base units</span>
                 <span class="px-1.5 py-0.5 text-[10px] rounded bg-kong-bg-dark/70 text-kong-text-secondary/60">
-                  {(parseFloat(humanFee) * 100).toFixed(2)}%
+                  {(parseFloat(humanFee) * 100).toFixed(4)}%
                 </span>
               </div>
             {/if}
@@ -224,7 +246,11 @@
               <div class="w-2 h-2 rounded-full bg-kong-accent-blue animate-pulse"></div>
               <span class="text-xs text-kong-accent-blue">1 {displaySymbol || "TOKEN"} = 
                 <span class="font-mono font-medium text-kong-accent-green">
-                  {decimals > 0 ? `10${decimals === 1 ? '' : '<sup>' + decimals + '</sup>'}` : '1'} 
+                  {#if decimals > 0}
+                    {@html `10<sup>${decimals}</sup>`}
+                  {:else}
+                    1
+                  {/if}
                 </span> 
                 base units
               </span>

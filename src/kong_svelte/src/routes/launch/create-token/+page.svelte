@@ -17,14 +17,14 @@
   let name = "";
   let symbol = "";
   let decimals = 8;
-  let totalSupply = 1000000000;
+  let totalSupply = 21000000;
   let transferFee = 10000; // Standard ICRC transfer fee (10,000 base units with 8 decimals)
   let logo = "";
 
   // Mining parameters
-  let initialBlockReward = 100;
-  let blockTimeTargetSeconds = 30;
-  let halvingInterval = 100000;
+  let initialBlockReward = 50;
+  let blockTimeTargetSeconds = 60;
+  let halvingInterval = 210000;
 
   // Archive options
   let archiveOptions = {
@@ -147,24 +147,21 @@
       return;
     }
 
-    if (!confirm("Are you sure you want to create this token? Some parameters cannot be changed after creation.")) {
-      return;
-    }
-
     isSubmitting = true;
     try {
       // Format token parameters
       const tokenParameters = {
         name,
         ticker: symbol,
-        decimals: [decimals],
+        decimals: decimals !== null && decimals !== undefined ? ([decimals] as [number]) : ([] as []),
         total_supply: BigInt(totalSupply),
-        transfer_fee: [BigInt(transferFee)],
-        logo: logo ? [logo] : [],
+        transfer_fee: transferFee !== null && transferFee !== undefined ? ([BigInt(transferFee)] as [bigint]) : ([] as []),
+        logo: logo ? ([logo] as [string]) : ([] as []),
         initial_block_reward: BigInt(initialBlockReward),
         block_time_target_seconds: BigInt(blockTimeTargetSeconds),
         halving_interval: BigInt(halvingInterval),
-        social_links: socialLinks.length > 0 ? [socialLinks.map(link => ({ platform: link.platform, url: link.url }))] : []
+        social_links: socialLinks.length > 0 ? ([socialLinks.map(link => ({ platform: link.platform, url: link.url }))] as [Array<{platform: string, url: string}>]) : ([] as []),
+        archive_options: [] as [] // Empty array instead of the object since we're not using it
       };
 
       // Update the token parameters store
