@@ -12,6 +12,7 @@ use std::io::{BufReader, Read};
 use std::path::Path;
 use tokio_postgres::Client;
 
+use super::kong_backend::KongBackend;
 use super::kong_update::KongUpdate;
 use super::math_helpers::round_f64;
 
@@ -28,6 +29,8 @@ enum ClaimStatus {
     TooManyAttempts,
     #[postgres(name = "UnclaimedOverride")]
     UnclaimedOverride,
+    #[postgres(name = "Claimable")]
+    Claimable,
 }
 
 pub fn serialize_claim_status(claim_status: &stable_claim::ClaimStatus) -> serde_json::Value {
@@ -37,6 +40,7 @@ pub fn serialize_claim_status(claim_status: &stable_claim::ClaimStatus) -> serde
         stable_claim::ClaimStatus::Claimed => json!("Claimed"),
         stable_claim::ClaimStatus::TooManyAttempts => json!("TooManyAttempts"),
         stable_claim::ClaimStatus::UnclaimedOverride => json!("UnclaimedOverride"),
+        stable_claim::ClaimStatus::Claimable => json!("Claimable"),
     }
 }
 
@@ -46,6 +50,13 @@ pub fn serialize_option_address(address: Option<&Address>) -> serde_json::Value 
             Address::AccountId(account_id) => json!(account_id.to_string()),
             Address::PrincipalId(principal_id) => json!(principal_id.to_string()),
         },
+        None => json!("None"),
+    }
+}
+
+pub fn serialize_option_desc(desc: Option<&String>) -> serde_json::Value {
+    match desc {
+        Some(desc) => json!(desc),
         None => json!("None"),
     }
 }
@@ -60,6 +71,7 @@ pub fn serialize_claim(claim: &StableClaim) -> serde_json::Value {
             "amount": claim.amount.to_string(),
             "request_id": claim.request_id,
             "to_address": serialize_option_address(claim.to_address.as_ref()),
+            "desc": serialize_option_desc(claim.desc.as_ref()),
             "attempt_request_id": claim.attempt_request_id,
             "transfer_ids": claim.transfer_ids,
             "ts": claim.ts,
@@ -117,6 +129,7 @@ pub async fn insert_claim_on_database(
         stable_claim::ClaimStatus::Claimed => ClaimStatus::Claimed,
         stable_claim::ClaimStatus::TooManyAttempts => ClaimStatus::TooManyAttempts,
         stable_claim::ClaimStatus::UnclaimedOverride => ClaimStatus::UnclaimedOverride,
+        stable_claim::ClaimStatus::Claimable => ClaimStatus::Claimable,
     };
     let decimals = tokens_map.get(&v.token_id).ok_or(format!("token_id={} not found", v.token_id))?;
     let amount = round_f64(v.amount.0.to_f64().unwrap() / 10_u64.pow(*decimals as u32) as f64, *decimals);
@@ -194,6 +207,41 @@ pub async fn update_claims<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn
         let mut contents = String::new();
         reader.read_to_string(&mut contents)?;
         kong_update.update_claims(&contents).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn insert_claims(kong_backend: &KongBackend) -> Result<(), Box<dyn std::error::Error>> {
+    let dir_path = "./backups";
+    let re_pattern = Regex::new(r"^insert_claims.*.json$").unwrap();
+    let mut files = fs::read_dir(dir_path)?
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| {
+            if re_pattern.is_match(entry.file_name().to_str().unwrap()) {
+                Some(entry)
+            } else {
+                None
+            }
+        })
+        .map(|entry| {
+            // sort by the number in the filename
+            let file = entry.path();
+            let filename = Path::new(&file).file_name().unwrap().to_str().unwrap();
+            let number_str = filename.split('.').nth(1).unwrap();
+            let number = number_str.parse::<u32>().unwrap();
+            (number, file)
+        })
+        .collect::<Vec<_>>();
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+
+    for file in files {
+        println!("processing: {:?}", file.1.file_name().unwrap());
+        let file = File::open(file.1)?;
+        let mut reader = BufReader::new(file);
+        let mut contents = String::new();
+        reader.read_to_string(&mut contents)?;
+        kong_backend.insert_claims(&contents).await?;
     }
 
     Ok(())

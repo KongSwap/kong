@@ -25,6 +25,17 @@ impl KongBackend {
         let icrc1_name = self.agent.query(&self.canister_id, "icrc1_name").with_arg(Encode!()?).await?;
         Ok(Decode!(icrc1_name.as_slice(), String)?)
     }
+
+    #[allow(dead_code)]
+    pub async fn insert_claims(&self, claims: &str) -> Result<String> {
+        let result = self
+            .agent
+            .update(&self.canister_id, "insert_claims")
+            .with_arg(Encode!(&claims)?)
+            .await?;
+        let call_result = Decode!(result.as_slice(), Result<String, String>)?;
+        call_result.map_err(|e| anyhow::anyhow!(e))
+    }
 }
 
 impl KongUpdate for KongBackend {
