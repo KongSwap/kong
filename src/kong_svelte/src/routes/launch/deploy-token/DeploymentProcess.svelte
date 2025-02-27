@@ -230,8 +230,8 @@
         lastLogMessage = swapMessage;
       }
       
-    //   const swapResult = await SwapService.swapKongToIcp(kongE8s);
-        const swapResult = 12000000 // 0.12 icp
+      const swapResult = await SwapService.swapKongToIcp(kongE8s);
+        // const swapResult = 12000000 // 0.12 icp test fast
       
       // Handle different result formats - ensure we're working with a bigint
       let actualIcpE8s;
@@ -346,7 +346,9 @@
     const createArgs = {
       amount: icpE8s,
       controller: principal,
-      settings
+      settings,
+      // Specify the subnet ID for token deployment
+      subnet_id: "pzp6e-ekpqk-3c5x7-2h6so-njoeq-mt45d-h3h6c-q3mxf-vpeq5-fk5o7-yae"
     };
     
     try {

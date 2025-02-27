@@ -29,7 +29,8 @@ export async function createCanister(args) {
     );
     
     if ('Err' in transferResult) {
-      throw new Error(`Failed to transfer ICP to CMC: ${JSON.stringify(transferResult.Err)}`);
+      throw new Error(`Failed to transfer ICP to CMC: ${JSON.stringify(transferResult.Err, (key, value) => 
+        typeof value === 'bigint' ? value.toString() : value)}`);
     }
     
     // Get the block index from the successful transfer
@@ -55,17 +56,28 @@ export async function createCanister(args) {
       wasm_memory_limit: args.settings?.wasm_memory_limit || []
     };
     
+    // Prepare subnet selection if subnet_id is provided
+    let subnet_selection = [];
+    if (args.subnet_id) {
+      subnet_selection = [{
+        Subnet: {
+          subnet: Principal.fromText(args.subnet_id)
+        }
+      }];
+    }
+    
     // Format notify args
     const notifyArgs = {
       block_index: blockIndex,
       controller: controllerPrincipal,
       subnet_type: args.subnetType ? [args.subnetType] : [],
-      subnet_selection: args.subnet_selection || [],
+      subnet_selection: subnet_selection,
       settings: [completeSettings]
     };
     
-    console.log('Notify args:', JSON.stringify(notifyArgs, (_, v) => 
-      typeof v === 'bigint' ? v.toString() : v));
+    // Use a custom replacer function to handle BigInt values
+    console.log('Notify args:', JSON.stringify(notifyArgs, (key, value) => 
+      typeof value === 'bigint' ? value.toString() : value));
     
     // Call the function
     const result = await cmcActor.notify_create_canister(notifyArgs);
@@ -73,7 +85,8 @@ export async function createCanister(args) {
     if ('Ok' in result) {
       return result.Ok;
     } else {
-      throw new Error(`CMC error: ${JSON.stringify(result.Err)}`);
+      throw new Error(`CMC error: ${JSON.stringify(result.Err, (key, value) => 
+        typeof value === 'bigint' ? value.toString() : value)}`);
     }
   } catch (error) {
     console.error('Error creating canister:', error);

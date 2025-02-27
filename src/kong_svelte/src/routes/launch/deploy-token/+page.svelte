@@ -40,7 +40,7 @@
   let isProcessing = false;
   
   // Deployment data
-  let kongAmount = "80"; // Fixed amount for token deployment - 500 KONG
+  let kongAmount = "500"; // Fixed amount for token deployment - 500 KONG
   let icpAmount = "0"; 
   let canisterId = "";
   let kongIcpRate = "0";

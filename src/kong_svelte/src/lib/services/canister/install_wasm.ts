@@ -3,6 +3,10 @@ import { IDL } from "@dfinity/candid";
 import { inflate } from "pako";
 import { auth } from "../auth";
 import { idlFactory as icManagementIdlFactory } from "./ic-management.idl";
+import { getWalletIdentity } from "$lib/utils/wallet";
+import { ICManagementCanister } from "@dfinity/ic-management";
+import { createAgent } from "@dfinity/utils";
+import { pnp } from "../pnp/PnpInitializer";
 
 export interface WasmMetadata {
     path: string;
@@ -15,14 +19,20 @@ export interface WasmMetadata {
 
 export const IC_MANAGEMENT_CANISTER_ID = "aaaaa-aa";
 
-export async function getICManagementActor() {
+export async function getICManagementActor1() {
   let actor = await auth.getActor(
     IC_MANAGEMENT_CANISTER_ID, 
     icManagementIdlFactory,
-    { requiresSigning: true }
+    { anon: false, requiresSigning: true }
   );
   return actor;
 }
+
+export const agent = await createAgent({
+    identity: getWalletIdentity(pnp),
+    host: "https://ic0.app",
+  });
+
 
 export class InstallService {
     /**
@@ -53,8 +63,8 @@ export class InstallService {
 
             // Install the WASM
             await management.install_code({
-                canisterId: Principal.fromText(canisterId),
-                wasm_module: wasmModule,
+                canister_id: Principal.fromText(canisterId), // yea its not canisterID but canister_id took me 5L coffee to figure out
+                wasm_module: wasmModule, // same here, atleast it isnt as bad as nested results with ok err and a random "," within tuples
                 mode: { install: null },
                 arg
             });

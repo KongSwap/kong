@@ -39,6 +39,13 @@
       path: '/launch/create-miner',
       icon: PiggyBank,
       comingSoon: false
+    },
+    {
+      label: 'My Canisters',
+      description: 'Manage your deployed canisters',
+      path: '/my-canisters',
+      icon: Joystick,
+      comingSoon: false
     }
   ];
 
@@ -136,7 +143,7 @@ const statsOptions = [
     }
   ].filter(option => process.env.DFX_NETWORK !== 'ic' ? option : ["Liquidity Pools"].includes(option.label));
 
-  function showDropdown(type: 'swap' | 'earn' | 'stats') {
+  function showDropdown(type: 'swap' | 'earn' | 'stats' | 'launch') {
     clearTimeout(closeTimeout);
     activeDropdown = type;
   }
