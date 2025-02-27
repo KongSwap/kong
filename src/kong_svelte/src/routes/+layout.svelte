@@ -118,11 +118,9 @@
       <Navbar />
     </div>
     <main class="content-container">
-      {#key $page.url.pathname}
-        <div class="w-full h-full" in:fade={{ duration: 250 }}>
-          <slot />
-        </div>
-      {/key}
+      <div class="w-full h-full">
+        <slot />
+      </div>
     </main>
   </PageWrapper>
   <Toast />

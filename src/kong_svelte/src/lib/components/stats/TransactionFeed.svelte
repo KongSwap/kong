@@ -8,6 +8,8 @@
   import { writable } from 'svelte/store';
   import { browser } from "$app/environment";
     import { formatUsdValue } from "$lib/utils/tokenFormatters";
+    import { WalletIcon } from "lucide-svelte";
+    import { goto } from "$app/navigation";
   
   // Create a store for tokens
   const tokensStore = writable<FE.Token[]>([]);
@@ -24,6 +26,15 @@
     } catch (error) {
       console.error('Error loading tokens:', error);
     }
+  }
+
+  // Utility function to format principal IDs
+  function formatPrincipalId(principalId: string): string {
+    // Check if the principal ID ends with "-2" and remove it if it does
+    if (principalId && principalId.endsWith("-2")) {
+      return principalId.slice(0, -2);
+    }
+    return principalId;
   }
 
   onMount(() => {
@@ -472,16 +483,24 @@
                         <span class="text-xs text-kong-text-primary/60">
                           {calculateTotalUsdValue(tx)}
                         </span>
+                        <div class="flex items-center gap-2">
+                          <button
+                            class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
+                            on:click|preventDefault={() => goto(`/wallets/${formatPrincipalId(tx.user.principal_id)}`)}
+                        >
+                          <WalletIcon class="w-4 h-4 text-kong-text-secondary" />
+                        </button>
                         <button
                           class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
                           on:click|preventDefault={() => {
-                            window.open(`https://www.icexplorer.io/address/detail/${tx.user.principal_id}`, '_blank');
+                            window.open(`https://www.icexplorer.io/address/detail/${formatPrincipalId(tx.user.principal_id)}`, '_blank');
                           }}
                         >
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                           </svg>
                         </button>
+                        </div>
                       </div>
                     </div>
                   </td>

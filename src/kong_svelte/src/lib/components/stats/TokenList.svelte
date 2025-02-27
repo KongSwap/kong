@@ -3,13 +3,13 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { flip } from "svelte/animate";
-  import { storedBalancesStore } from "$lib/services/tokens/tokenStore";
+  import { currentUserBalancesStore } from "$lib/services/tokens/tokenStore";
 
   export let tokens: FE.Token[] = [];
 
   // Calculate formatted values reactively based on stored balances
   $: formattedTokens = tokens.map(token => {
-    const balance = $storedBalancesStore[token.canister_id];
+    const balance = $currentUserBalancesStore[token.canister_id];
     return {
       ...token,
       formattedUsdValue: balance?.in_usd || "0"

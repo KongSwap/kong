@@ -38,7 +38,7 @@ vi.mock('$lib/services/tokens/tokenStore', () => {
         return { unsubscribe: vi.fn() };
       })
     },
-    storedBalancesStore: {
+    currentUserBalancesStore: {
       subscribe: vi.fn((callback) => {
         callback(balancesStoreValue);
         return { unsubscribe: vi.fn() };

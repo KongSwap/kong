@@ -1,9 +1,12 @@
 <script lang="ts">
-  import { page } from "$app/stores";
   import Panel from "$lib/components/common/Panel.svelte";
 
   let { children } = $props<{ children: any }>();
 </script>
+
+<svelte:head>
+  <title>Prediction Markets - KongSwap</title>
+</svelte:head>
 
 {#if process.env.DFX_NETWORK !== 'ic'}
   <!-- Regular prediction markets content -->

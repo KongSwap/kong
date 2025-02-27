@@ -89,13 +89,14 @@ export class TokenService {
     }
 
     const authStore = get(auth);
-    if (!authStore.isConnected) {
-      console.log('Auth store not connected');
-      return {};
-    }
+    // Comment out the auth check to allow fetching balances when not signed in
+    // if (!authStore.isConnected) {
+    //   console.log('Auth store not connected');
+    //   return {};
+    // }
 
     try {
-      let principal = principalId ? principalId : authStore.account.owner;
+      let principal = principalId ? principalId : authStore.account?.owner;
       if (typeof principal === "string") {
         principal = Principal.fromText(principal);
       }
@@ -187,10 +188,10 @@ export class TokenService {
       const usdValue = parseFloat(actualBalance) * Number(price);
 
       let finalBalance;
-      if (typeof balance === "object") {
+      if (balance && typeof balance === "object") {
         finalBalance = balance.default;
       } else {
-        finalBalance = balance;
+        finalBalance = balance || BigInt(0);
       }
 
       return {

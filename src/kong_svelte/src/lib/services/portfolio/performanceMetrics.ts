@@ -1,6 +1,6 @@
 import type { PortfolioHistory } from '$lib/services/portfolio/portfolioHistory';
 import { get } from 'svelte/store';
-import { storedBalancesStore } from '$lib/services/tokens/tokenStore';
+import { currentUserBalancesStore } from '$lib/services/tokens/tokenStore';
 
 export interface PerformanceMetrics {
   dailyChange: number;
@@ -36,7 +36,7 @@ export const calculatePerformanceMetrics = (
   const dailyChange = calculatePercentageChange(currentValue, dayAgoValue);
   
   // Filter tokens to only include ones the user actually owns
-  const balances = get(storedBalancesStore);
+  const balances = get(currentUserBalancesStore);
   const ownedTokens = tokens.filter(t => {
     const balance = balances[t.canister_id];
     return balance && Number(balance.in_usd) > 0;

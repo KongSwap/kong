@@ -3,38 +3,60 @@
   import { writable, derived } from "svelte/store";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { ArrowRightLeft } from "lucide-svelte";
+  import { ArrowRightLeft, ChevronLeft, ChevronRight } from "lucide-svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { userTokens } from "$lib/stores/userTokens";
+  import { walletDataStore, WalletDataService } from "$lib/services/wallet";
   import Panel from "$lib/components/common/Panel.svelte";
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import { page } from "$app/state";
   
-  let principal = page.params.principalId;
-  let isLoading = false;
-  let hasMore = true;
-  let currentCursor: number | undefined = undefined;
+  // Get layout props
+  let { initialDataLoading, initError } = $props<{ initialDataLoading: boolean, initError: string | null }>();
+  
+  // Reactive store for the principal
+  const currentPrincipal = writable(page.params.principalId);
+  let isLoading = writable(false);
+  let totalPages = writable(1);
+  let currentPage = writable(1);
   const PAGE_SIZE = 10;
+  
+  // Store cursor values for each page
+  let pageCursors: Map<number, number | undefined> = new Map();
+  // Initialize first page with undefined cursor
+  pageCursors.set(1, undefined);
   
   // Transaction store
   const transactionStore = writable<any[]>([]);
   
+  // Keep track of the URL timestamp to detect changes
+  let lastTimestamp = $state(page.url.searchParams.get('t') || '');
+
+  // Create a derived store for wallet data
+  const walletData = derived(walletDataStore, $walletDataStore => $walletDataStore);
+
   // Helper function to find token by canister ID
   function findToken(canisterId: string): FE.Token | undefined {
-    return $userTokens.tokens.find((t) => t.canister_id === canisterId);
+    return $walletData?.tokens?.find((t) => t.canister_id === canisterId);
   }
 
-  async function loadMoreTransactions() {
-    if (isLoading || !hasMore) {
-      console.log("Skipping load - isLoading:", isLoading, "hasMore:", hasMore);
+  async function loadPage(pageNumber: number, forPrincipal: string) {
+    if ($isLoading) {
+      console.log("Already loading, skipping request");
       return;
     }
     
-    isLoading = true;
+    isLoading.set(true);
+    currentPage.set(pageNumber);
     
     try {
+      // Get the cursor for the requested page
+      const cursor = pageCursors.get(pageNumber);
+      
+      console.log(`Loading swaps page ${pageNumber} for principal: ${forPrincipal} with cursor:`, cursor);
+      
       const response = await TokenService.fetchUserTransactions(
-        principal,
-        currentCursor,
+        forPrincipal,
+        cursor,
         PAGE_SIZE,
         'swap'
       );
@@ -42,109 +64,138 @@
       const { transactions: userTransactions, has_more, next_cursor } = response;
 
       if (!userTransactions || userTransactions.length === 0) {
-        console.log("No transactions received");
-        hasMore = false;
-      } else {
-        console.log("Received transactions:", userTransactions.length, userTransactions);
-        transactionStore.update(txs => {
-          console.log("txs", txs)
-          // Create a map of existing transactions using composite key
-          const existingTxs = new Map(
-            txs.map(tx => [`${tx.tx_id}-${tx.timestamp}`, tx])
-          );
-          
-          // Add new transactions, overwriting any duplicates
-          userTransactions.forEach(tx => {
-            existingTxs.set(`${tx.tx_id}-${tx.timestamp}`, tx);
-          });
-          
-          // Convert back to array and sort by timestamp descending
-          const newTxs = Array.from(existingTxs.values())
-            .sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
-          return newTxs;
-        });
+        console.log(`No swap transactions found for principal: ${forPrincipal}`);
+        transactionStore.set([]);
         
-        hasMore = has_more;
-        if (next_cursor && next_cursor !== currentCursor) {
-          currentCursor = next_cursor;
+        // Update total pages if we got no results
+        if (pageNumber === 1) {
+          totalPages.set(1);
         } else {
-          hasMore = false;
-          console.log("No more transactions available or same cursor received");
+          // If a page beyond the first returns no results, we may have overestimated pages
+          totalPages.set(pageNumber - 1);
+          // Go back to the last valid page
+          if ($currentPage > $totalPages) {
+            loadPage($totalPages, forPrincipal);
+            return;
+          }
+        }
+      } else {
+        console.log(`Received ${userTransactions.length} swap transactions for principal: ${forPrincipal}`);
+        transactionStore.set(userTransactions.sort((a, b) => Number(b.timestamp) - Number(a.timestamp)));
+        
+        // Store the next cursor for the next page
+        if (has_more && next_cursor !== undefined) {
+          pageCursors.set(pageNumber + 1, next_cursor);
+          totalPages.set(Math.max($totalPages, pageNumber + 1));
+        } else {
+          totalPages.set(pageNumber);
         }
       }
     } catch (error) {
-      console.error("Failed to load transactions:", error);
-      hasMore = false;
+      console.error(`Failed to load swap transactions for principal: ${forPrincipal}`, error);
+      transactionStore.set([]);
+      // Ensure we have at least one page even on error
+      if (pageNumber === 1) {
+        totalPages.set(1);
+      } else {
+        // If an error occurred on a page beyond the first, try to go back to a valid page
+        loadPage(Math.max(pageNumber - 1, 1), forPrincipal);
+        return;
+      }
     } finally {
-      isLoading = false;
+      isLoading.set(false);
     }
   }
 
-  // Filter for swap transactions with additional logging
+  function goToPage(pageNum: number) {
+    if (pageNum >= 1 && pageNum <= $totalPages && pageNum !== $currentPage) {
+      loadPage(pageNum, $currentPrincipal);
+    }
+  }
+
+  // Helper to ensure wallet data is loaded and then initialize data
+  async function ensureWalletDataAndLoadSwaps(principalId: string) {
+    try {
+      // Check if we need to load wallet data first
+      if (!$walletData?.tokens || $walletData.tokens.length === 0) {
+        console.log(`Ensuring wallet data is loaded for principal: ${principalId}`);
+        await WalletDataService.initializeWallet(principalId);
+      }
+    } catch (error) {
+      console.error("Failed to load wallet data:", error);
+    } finally {
+      // Load swap data regardless of token loading success/failure
+      initializeData(principalId);
+    }
+  }
+
+  function initializeData(forPrincipal: string) {
+    console.log("Initializing swaps data for principal:", forPrincipal);
+    // Reset all data structures
+    transactionStore.set([]);
+    totalPages.set(1);
+    currentPage.set(1);
+    pageCursors = new Map([[1, undefined]]);
+    
+    // Load the first page for this principal
+    loadPage(1, forPrincipal);
+  }
+
+  // Filter for swap transactions
   const swapTransactions = derived(
     transactionStore,
     ($transactions) => {
-      console.log("Processing transactions:", $transactions);
-      const filtered = $transactions.filter(tx => {
-        console.log("Checking transaction:", tx);
-        const isValid = tx && tx.tx_type === "swap" && tx.details;
-        if (!isValid) {
-          console.log("Filtered out transaction:", tx);
-        }
-        return isValid;
-      });
-      console.log("Filtered transactions:", filtered.length, filtered);
-      return filtered;
+      return $transactions.filter(tx => tx && tx.tx_type === "swap" && tx.details);
     }
   );
-
-  // Intersection Observer for infinite scroll
-  let observerTarget: HTMLDivElement;
   
   onMount(() => {
-    console.log("Component mounted, initializing for principal:", principal);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const shouldLoad = entries[0].isIntersecting && !isLoading && hasMore;
-        console.log("Intersection observer triggered:", {
-          isIntersecting: entries[0].isIntersecting,
-          isLoading,
-          hasMore,
-          shouldLoad
-        });
-        if (shouldLoad) {
-          loadMoreTransactions();
-        }
-      },
-      {
-        rootMargin: "100px",
-      }
-    );
-
-    if (observerTarget) {
-      observer.observe(observerTarget);
-      console.log("Observer attached to target");
+    console.log("Swaps component mounted for principal:", $currentPrincipal);
+    // Only load additional data if initial wallet loading is complete
+    if (!initialDataLoading) {
+      ensureWalletDataAndLoadSwaps($currentPrincipal);
     }
-
-    // Initial load
-    loadMoreTransactions();
-
-    return () => {
-      if (observerTarget) {
-        observer.unobserve(observerTarget);
-      }
-    };
   });
 
-  // Reset when principal changes with logging
-  $: if (principal) {
-    console.log("Principal changed, resetting transactions for:", principal);
-    transactionStore.set([]);
-    currentCursor = undefined;
-    hasMore = true;
-    loadMoreTransactions();
-  }
+  // Watch for changes in URL parameters AND the timestamp query parameter
+  // This ensures we detect both direct principal changes and cache-busting timestamps
+  $effect(() => {
+    const newPrincipal = page.params.principalId;
+    const urlTimestamp = page.url.searchParams.get('t') || '';
+    const currentUrl = page.url.pathname + page.url.search;
+    
+    console.log(`URL state change: path=${currentUrl}, principal=${newPrincipal}, timestamp=${urlTimestamp}, lastTimestamp=${lastTimestamp}`);
+    
+    if (newPrincipal !== $currentPrincipal || urlTimestamp !== lastTimestamp) {
+      console.log(`Detected navigation change - Principal: ${$currentPrincipal} → ${newPrincipal}, Timestamp: ${lastTimestamp} → ${urlTimestamp}`);
+      
+      // Update our tracking variables
+      currentPrincipal.set(newPrincipal);
+      lastTimestamp = urlTimestamp;
+      
+      // Only load additional data if initial wallet loading is complete
+      if (!initialDataLoading) {
+        ensureWalletDataAndLoadSwaps(newPrincipal);
+      }
+    }
+  });
+
+  // Watch for initialDataLoading state changes
+  $effect(() => {
+    if (initialDataLoading === false && $currentPrincipal) {
+      // Check if we have tokens loaded
+      const hasTokens = $walletData?.tokens?.length > 0;
+      console.log('Initial data loading complete, has tokens:', hasTokens);
+      
+      // When layout loading completes, load token and swap data
+      ensureWalletDataAndLoadSwaps($currentPrincipal);
+    }
+  });
 </script>
+
+<svelte:head>
+  <title>Recent Swaps by {$currentPrincipal} - KongSwap</title>
+</svelte:head>
 
 <Panel variant="transparent">
   <div class="flex items-center justify-between mb-4">
@@ -154,14 +205,22 @@
     </div>
   </div>
 
-  <div class="max-h-[600px] overflow-y-auto">
-    {#if $swapTransactions.length === 0 && !isLoading}
+  <div>
+    {#if initialDataLoading}
+      <LoadingIndicator text="Initializing wallet data..." size={24} />
+    {:else if initError}
+      <div class="text-center py-8 text-kong-accent-red">
+        {initError}
+      </div>
+    {:else if $isLoading}
+      <LoadingIndicator text="Loading swap transactions..." size={24} />
+    {:else if $swapTransactions.length === 0}
       <div class="text-center py-8 text-kong-text-secondary">
-        No recent transactions
+        No recent swap transactions found for {$currentPrincipal}
       </div>
     {:else}
-      <!-- Table Headers -->
-      <div class="grid grid-cols-[1fr,1fr,1fr,0.8fr] gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-dark">
+      <!-- Table Headers - Hidden on mobile -->
+      <div class="hidden sm:grid sm:grid-cols-[1fr,1fr,1fr,0.8fr] gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-dark">
         <div>From</div>
         <div>To</div>
         <div class="text-right">Value</div>
@@ -171,7 +230,8 @@
       <!-- Table Body -->
       <div class="divide-y divide-kong-bg-dark">
         {#each $swapTransactions as tx (`${tx.tx_id}-${tx.timestamp}`)}
-          <div class="grid grid-cols-[1fr,1fr,1fr,0.8fr] gap-4 items-center px-4 py-3 hover:bg-kong-bg-dark/30 transition-colors">
+          <!-- Desktop view - grid layout -->
+          <div class="hidden sm:grid sm:grid-cols-[1fr,1fr,1fr,0.8fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-dark/30 transition-colors">
             <!-- From -->
             <div class="flex items-center gap-2">
               <TokenImages
@@ -201,7 +261,7 @@
             <!-- USD Value -->
             <div class="text-right text-sm">
               <div class="font-medium">
-                ${formatToNonZeroDecimal(tx.details.receive_amount * $userTokens.tokens.find(t => t.canister_id === tx.details.receive_token_canister)?.metrics.price || 0)}
+                ${formatToNonZeroDecimal(tx.details.receive_amount * Number(findToken(tx.details.receive_token_canister)?.metrics?.price || 0))}
               </div>
             </div>
 
@@ -211,20 +271,90 @@
               {new Date(Number(tx.timestamp) / 1_000_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
           </div>
-        {/each}
-
-        <!-- Infinite scroll observer target -->
-        <div
-          bind:this={observerTarget}
-          class="h-4 w-full"
-        >
-          {#if isLoading}
-            <div class="flex justify-center py-4">
-              <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-kong-primary" />
+          
+          <!-- Mobile view - card layout -->
+          <div class="sm:hidden p-4 hover:bg-kong-bg-dark/30 transition-colors">
+            <!-- Top row: From → To and Date -->
+            <div class="flex justify-between items-center mb-3">
+              <!-- From → To -->
+              <div class="flex items-center gap-1">
+                <div class="flex items-center">
+                  <TokenImages
+                    tokens={[findToken(tx.details.pay_token_canister)].filter(Boolean)}
+                    size={24}
+                  />
+                </div>
+                <ArrowRightLeft class="w-3 h-3 mx-1 text-kong-text-secondary" />
+                <div class="flex items-center">
+                  <TokenImages
+                    tokens={[findToken(tx.details.receive_token_canister)].filter(Boolean)}
+                    size={24}
+                  />
+                </div>
+              </div>
+              
+              <!-- Date -->
+              <div class="text-xs text-kong-text-secondary">
+                {new Date(Number(tx.timestamp) / 1_000_000).toLocaleDateString()}
+              </div>
             </div>
-          {/if}
-        </div>
+            
+            <!-- Amount details -->
+            <div class="flex justify-between items-center">
+              <!-- From amount -->
+              <div class="text-sm">
+                <div class="font-medium text-kong-accent-red">
+                  -{formatToNonZeroDecimal(tx.details.pay_amount)} {tx.details.pay_token_symbol}
+                </div>
+              </div>
+              
+              <!-- To amount -->
+              <div class="text-sm">
+                <div class="font-medium text-kong-text-accent-green">
+                  +{formatToNonZeroDecimal(tx.details.receive_amount)} {tx.details.receive_token_symbol}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Bottom row: USD Value and Time -->
+            <div class="flex justify-between items-center mt-2">
+              <div class="text-xs text-kong-text-secondary">
+                {new Date(Number(tx.timestamp) / 1_000_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+              <div class="text-sm font-medium">
+                ${formatToNonZeroDecimal(tx.details.receive_amount * Number(findToken(tx.details.receive_token_canister)?.metrics?.price || 0))}
+              </div>
+            </div>
+          </div>
+        {/each}
       </div>
     {/if}
+
+    <!-- Pagination Controls - Always displayed -->
+    <div class="mt-4 sm:mt-6 pt-3 border-t border-kong-bg-dark flex justify-between sm:justify-end">
+      <div class="flex items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm text-kong-text-secondary">
+        <span class="whitespace-nowrap">Page {$currentPage} of {Math.max($totalPages, 1)}</span>
+        
+        <div class="flex">
+          <button 
+            class="px-1 sm:px-2 py-1 rounded-l-md border border-kong-bg-dark hover:bg-kong-bg-dark/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={$currentPage === 1 || $isLoading || initialDataLoading}
+            on:click={() => goToPage($currentPage - 1)}
+            aria-label="Previous page"
+          >
+            <ChevronLeft class="w-3 h-3 sm:w-4 sm:h-4" />
+          </button>
+          
+          <button 
+            class="px-1 sm:px-2 py-1 rounded-r-md border-t border-r border-b border-kong-bg-dark hover:bg-kong-bg-dark/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+            disabled={$currentPage === $totalPages || $isLoading || initialDataLoading}
+            on:click={() => goToPage($currentPage + 1)}
+            aria-label="Next page"
+          >
+            <ChevronRight class="w-3 h-3 sm:w-4 sm:h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </Panel>

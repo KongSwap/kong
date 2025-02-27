@@ -369,6 +369,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Liquidity Pools - KongSwap</title>
+</svelte:head>
+
 <PageHeader
   title="Liquidity Pools"
   description="Provide liquidity to earn trading fees and rewards"

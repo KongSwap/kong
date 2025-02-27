@@ -1,127 +1,147 @@
 <script lang="ts">
-  import { page } from "$app/stores";
-  import { onMount } from "svelte";
+  import { page } from "$app/state";
   import SideNav from "./SideNav.svelte";
   import ValueOverview from "./ValueOverview.svelte";
-  import WalletInfo from "./WalletInfo.svelte";
-  import { initializeWalletBalances, getStoredWalletBalances, walletBalancesStore, currentWalletStore } from "$lib/stores/walletBalancesStore";
-  import { TokenService } from "$lib/services/tokens/TokenService";
-  import { userTokens } from "$lib/stores/userTokens";
+  import { WalletDataService, walletDataStore } from "$lib/services/wallet";
   import Panel from "$lib/components/common/Panel.svelte";
+  import { Copy, CheckCircle } from "lucide-svelte";
 
   let { children } = $props<{ children: any }>();
 
   // Track initialization state
-  let isLoading = $state(true);
+  let isLoading = $derived($walletDataStore.isLoading);
   let error = $state<string | null>(null);
-
+  let showCopiedIndicator = $state(false);
+  
   // Get principal from the URL params
-  let principal = $derived($page.params.principalId);
+  let principal = $derived(page.params.principalId);
 
-  async function initializeWallet() {
+  // Single function to load wallet data
+  async function loadWalletData() {
     try {
-      isLoading = true;
+      // Update local error state
       error = null;
-
-      // First ensure we have tokens
-      console.log('Fetching tokens...');
-      const tokens = await TokenService.fetchTokens();
-      if (!tokens?.length) {
-        throw new Error('No tokens available');
+      
+      // Skip if no principal or anonymous
+      if (!principal || principal === "anonymous") {
+        throw new Error("No wallet connected");
       }
-      console.log('Fetched tokens:', tokens.length, 'tokens');
-
-      // Now initialize balances for current wallet
-      console.log('Initializing balances for wallet:', principal);
-      await initializeWalletBalances(principal);
-
-      // Verify we got balances
-      const newBalances = await getStoredWalletBalances(principal);
-      console.log('New balances loaded:', Object.keys(newBalances).length, 'tokens with balances');
-
-      if (Object.keys(newBalances).length === 0) {
-        console.warn('No balances received after initialization');
-      }
+      
+      console.log('Loading wallet data for:', principal);
+      
+      // This will handle loading state internally in the store
+      await WalletDataService.initializeWallet(principal);
     } catch (err) {
-      console.error("Failed to initialize wallet:", err);
-      error = err instanceof Error ? err.message : "Failed to initialize wallet";
-      walletBalancesStore.set({}); // Clear balances on error
-      currentWalletStore.set(null);
-    } finally {
-      isLoading = false;
+      console.error("Failed to load wallet data:", err);
+      error = err instanceof Error ? err.message : "Failed to load wallet data";
     }
   }
 
-  // Initialize when principal changes and is different from current wallet
+  // Monitor wallet data changes
   $effect(() => {
-    const currentWallet = $currentWalletStore;
-    if (principal && currentWallet !== principal) {
-      initializeWallet();
-    } else if (!principal) {
-      // Clear balances if no principal
-      walletBalancesStore.set({});
-      currentWalletStore.set(null);
+    const walletData = $walletDataStore;
+    console.log('Wallet data updated for', walletData.currentWallet, ':', 
+      'tokens:', walletData.tokens?.length || 0, 
+      'balances:', Object.keys(walletData.balances || {}).length);
+    
+    // Update local error state
+    if (walletData.error) {
+      error = walletData.error;
     }
   });
 
-  // Monitor balance changes
+  // Load data when principalId changes
   $effect(() => {
-    const balances = $walletBalancesStore;
-    const currentWallet = $currentWalletStore;
-    console.log('Wallet balances updated for', currentWallet, ':', Object.keys(balances).length, 'tokens with balances');
+    if (principal) {
+      // Check if we need to load data
+      const currentWallet = $walletDataStore.currentWallet;
+      const hasBalances = Object.keys($walletDataStore.balances || {}).length > 0;
+      const isCurrentlyLoading = $walletDataStore.isLoading;
+      
+      // Always load data if the principal changed or we don't have balances
+      // But avoid reloading if we're already loading for this principal
+      if ((currentWallet !== principal || !hasBalances) && 
+          !(isCurrentlyLoading && currentWallet === principal)) {
+        console.log('Loading wallet data due to principal change or missing balances');
+        loadWalletData();
+      } else {
+        console.log(`Wallet data already loaded for ${principal}`);
+      }
+    } else {
+      // Reset wallet data if no principal
+      WalletDataService.reset();
+    }
   });
+
+  // Format short address for display
+  function formatShortAddress(address: string): string {
+    if (address.length > 15) {
+      return `${address.substring(0, 8)}...${address.substring(address.length - 6)}`;
+    }
+    return address;
+  }
+
+  // Copy principal ID to clipboard with visual feedback
+  function copyPrincipalToClipboard() {
+    if (principal) {
+      navigator.clipboard.writeText(principal);
+      showCopiedIndicator = true;
+      setTimeout(() => {
+        showCopiedIndicator = false;
+      }, 2000);
+    }
+  }
+
 </script>
 
-{#if process.env.DFX_NETWORK !== 'ic'}
+<svelte:head>
+  <title>Wallet data for {principal} - KongSwap</title>
+</svelte:head>
+
 <div class="container mx-auto max-w-[1300px] text-kong-text-primary my-4">
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
     <!-- Navigation Column -->
     <div class="space-y-6">
       <ValueOverview {principal} {isLoading} {error} />
+      
+      <!-- Principal ID Panel with Copy Button -->
+      <Panel>
+        <div class="flex flex-col gap-3">
+          <h3 class="text-sm uppercase font-medium text-kong-text-primary">Wallet ID</h3>
+          
+          <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-kong-bg-dark/30">
+            <div class="text-sm font-mono text-kong-text-secondary truncate">
+              {formatShortAddress(principal || '')}
+            </div>
+            
+            <button 
+              class="p-1.5 rounded-md hover:bg-kong-bg-dark/80 transition-colors text-kong-text-secondary hover:text-kong-primary flex items-center"
+              on:click={copyPrincipalToClipboard}
+              title="Copy principal ID to clipboard"
+              disabled={!principal}
+            >
+              {#if showCopiedIndicator}
+                <CheckCircle size={16} class="text-green-500" />
+              {:else}
+                <Copy size={16} />
+              {/if}
+            </button>
+          </div>
+          
+          {#if showCopiedIndicator}
+            <div class="text-xs text-center text-kong-text-accent-green">
+              Copied to clipboard!
+            </div>
+          {/if}
+        </div>
+      </Panel>
+      
       <SideNav {principal} />
     </div>
     <!-- Content Area -->
     <div class="lg:col-span-3 space-y-6">
-      <WalletInfo {principal} />
-      {@render children?.()}
+      <!-- Pass isLoading and error to child components via slot props -->
+      {@render children?.({initialDataLoading: isLoading, initError: error})}
     </div>
   </div>
 </div>
-{:else}
- <!-- Coming Soon Display -->
- <div class="container mx-auto px-4 py-16 flex flex-col items-center justify-center min-h-[70vh] text-center">
-   <Panel 
-     variant="transparent" 
-     type="main" 
-     width="100%" 
-     className="max-w-2xl p-8 flex flex-col items-center"
-     transition="fade"
-     transitionParams={{ duration: 400 }}
-   >
-     <!-- Icon/Graphic -->
-     <div class="mb-6 inline-flex p-6 rounded-full bg-kong-bg-light/50">
-       <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-kong-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-       </svg>
-     </div>
-     
-     <!-- Title -->
-     <h1 class="text-3xl font-bold text-kong-text-primary mb-4">Advanced Wallet Data Coming Soon!</h1>
-     
-     <!-- Description -->
-     <p class="text-kong-text-secondary text-lg mb-8">
-       We're working hard to bring you advanced wallet features on the KongSwap. 
-       Stay tuned for a seamless token management experience.
-     </p>
-     
-     <!-- Progress Indicator -->
-     <div class="w-full bg-kong-border h-2 rounded-full mb-4 overflow-hidden">
-       <div class="bg-kong-accent-blue h-full rounded-full w-full relative overflow-hidden">
-         <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shine"></div>
-       </div>
-     </div>
-     
-     <p class="text-kong-text-secondary">Development in progress - 98% complete</p>
-   </Panel>
- </div>
-{/if}

@@ -52,7 +52,7 @@ export const getStoredBalances = async (walletId: string) => {
   }
 
   try {
-    const storedBalances = get(storedBalancesStore);
+    const storedBalances = get(currentUserBalancesStore);
 
     return Object.entries(storedBalances).reduce(
       (acc, [canisterId, balance]: [string, TokenBalance]) => {
@@ -71,17 +71,17 @@ export const getStoredBalances = async (walletId: string) => {
 };
 
 // Create a store for balances
-export const storedBalancesStore = writable({});
+export const currentUserBalancesStore = writable({});
 
 // Update it whenever needed
 export const updateStoredBalances = async (walletId: string) => {
   const balances = await getStoredBalances(walletId);
-  storedBalancesStore.set(balances);
+  currentUserBalancesStore.set(balances);
 };
 
 // Update the portfolioValue derived store
 export const portfolioValue = derived(
-  [userTokens, userPoolListStore, storedBalancesStore],
+  [userTokens, userPoolListStore, currentUserBalancesStore],
   ([$userTokens, $userPoolListStore, $storedBalances]) => {
     // Calculate token values
     const tokenValue = ($userTokens.tokens || []).reduce((acc, token) => {
@@ -154,7 +154,7 @@ export const loadBalances = async (
 
     if (entries.length > 0) {
       // Update the store only if we have valid balances
-      const newBalances = { ...get(storedBalancesStore) };
+      const newBalances = { ...get(currentUserBalancesStore) };
       entries.forEach(entry => {
         newBalances[entry.canister_id] = {
           in_tokens: entry.in_tokens,
@@ -162,7 +162,7 @@ export const loadBalances = async (
         };
       });
       
-      storedBalancesStore.set(newBalances);
+      currentUserBalancesStore.set(newBalances);
     }
 
     return balances;
@@ -196,7 +196,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
 
     // Check database first if not forcing refresh
     if (!forceRefresh) {
-      const existingBalance = get(storedBalancesStore)[canisterId];
+      const existingBalance = get(currentUserBalancesStore)[canisterId];
 
       if (existingBalance) {
         const balance = {
@@ -206,7 +206,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
           },
         };
 
-        // Update storedBalancesStore
+        // Update currentUserBalancesStore
         await updateStoredBalances(owner);
 
         tokenStore.removePendingRequest(canisterId);
@@ -221,7 +221,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
     );
 
     if (balances[canisterId]) {
-      // Update storedBalancesStore
+      // Update currentUserBalancesStore
       await updateStoredBalances(owner);
     }
 

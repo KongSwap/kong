@@ -1,13 +1,9 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
-  import { loadBalances, storedBalancesStore } from "$lib/services/tokens/tokenStore";
+  import { onDestroy } from "svelte";
+  import { loadBalances, currentUserBalancesStore } from "$lib/services/tokens/tokenStore";
   import { scale, fade } from "svelte/transition";
-  import { flip } from "svelte/animate";
   import { cubicOut } from "svelte/easing";
   import { browser } from "$app/environment";
-  import { Star } from "lucide-svelte";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatUsdValue, formatTokenBalance } from "$lib/utils/tokenFormatters";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { toastStore } from "$lib/stores/toastStore";
@@ -54,7 +50,7 @@
 
   const BLOCKED_TOKEN_IDS = [];
   const DEFAULT_ICP_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"; // ICP canister ID
-  const TOKEN_ITEM_HEIGHT = 64; // Height of each token item in pixels
+  const TOKEN_ITEM_HEIGHT = 72; // Increased height to accommodate borders and padding
 
   let searchQuery = $state("");
   let searchInput: HTMLInputElement;
@@ -76,9 +72,6 @@
   // Add a state to track which tokens have had balance loading attempts
   let balanceLoadAttempts = $state(new Set<string>());
   
-  // Cache for token balances to avoid recalculations
-  let tokenBalanceCache = $state(new Map<string, { tokens: string; usd: string }>());
-
   type FilterType = "all" | "ck" | "favorites";
 
   // Define filter tabs constant
@@ -118,7 +111,7 @@
       sortColumn,
       sortDirection,
       apiTokens,
-      $storedBalancesStore
+      $currentUserBalancesStore
     );
   }
 
@@ -301,10 +294,18 @@
     favoriteTokens = new Map(favoriteTokens); // Trigger reactivity
   }
 
+  // Create tokens map once for TokenBalanceService
+  let tokensMap = $derived(
+    tokens.reduce((acc, token) => {
+      acc[token.canister_id] = token;
+      return acc;
+    }, {} as Record<string, FE.Token>)
+  );
+
   // Update balance functions to use TokenBalanceService with caching and error handling
   function getTokenBalance(token: FE.Token): bigint {
     try {
-      return TokenBalanceService.getTokenBalance(token, $storedBalancesStore);
+      return TokenBalanceService.getTokenBalance(token, $currentUserBalancesStore);
     } catch (error) {
       console.warn(`Error getting balance for ${token.symbol}:`, error);
       return 0n;
@@ -312,25 +313,18 @@
   }
 
   function getTokenDisplayBalance(canisterId: string): { tokens: string; usd: string } {
-    // Check cache first
-    if (tokenBalanceCache.has(canisterId)) {
-      return tokenBalanceCache.get(canisterId)!;
-    }
-    
     try {
       // Calculate and cache the result
-      const result = TokenBalanceService.getTokenDisplayBalance(canisterId, $storedBalancesStore);
-      tokenBalanceCache.set(canisterId, result);
+      const result = TokenBalanceService.getTokenDisplayBalance(canisterId, $currentUserBalancesStore, tokensMap);
       return result;
     } catch (error) {
       // Return empty values on error
       const emptyResult = { tokens: "0", usd: "$0.00" };
-      tokenBalanceCache.set(canisterId, emptyResult);
       return emptyResult;
     }
   }
 
-  // Optimized function to load balances only for tokens that haven't been loaded yet
+  // Optimized function to load balances in batch
   async function loadTokenBalances(principal: string, tokensToLoad: FE.Token[]) {
     if (!browser || !principal || tokensToLoad.length === 0) return;
     
@@ -348,12 +342,16 @@
       if (canisterId) balanceLoadAttempts.add(canisterId);
     });
     
-    // Load balances for unloaded tokens
     try {
-      await loadBalances(principal, { 
-        tokens: unloadedTokens,
-        forceRefresh: false
-      });
+      // Load balances in batches to avoid overloading the network
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < unloadedTokens.length; i += BATCH_SIZE) {
+        const batch = unloadedTokens.slice(i, i + BATCH_SIZE);
+        await loadBalances(principal, { 
+          tokens: batch,
+          forceRefresh: false
+        });
+      }
     } catch (error) {
       console.warn("Error loading token balances:", error);
     }
@@ -517,9 +515,6 @@
       // Load favorites
       void loadFavorites();
       
-      // Clear token balance cache when dropdown opens
-      tokenBalanceCache.clear();
-      
       setTimeout(() => {
         searchInput?.focus();
         window.addEventListener("click", handleClickOutside);
@@ -658,7 +653,7 @@
                     <div style="height: {enabledFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
                       {#each enabledTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
                         <div
-                          style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px;"
+                          style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
                         >
                           <TokenItem
                             {token}
@@ -696,7 +691,7 @@
                       <div style="height: {apiFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
                         {#each apiTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
                           <div
-                            style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px;"
+                            style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
                           >
                             <TokenItem
                               {token}
@@ -870,14 +865,14 @@
   .tokens-container {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.5rem;
     min-height: 100%;
     touch-action: pan-y;
-    padding: 0 0.5rem;
+    padding: 0.5rem;
   }
 
   .token-section {
-    @apply space-y-1.5;
+    @apply space-y-2;
   }
 
   .token-section:not(:first-child) {

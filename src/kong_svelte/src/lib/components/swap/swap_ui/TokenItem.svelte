@@ -109,23 +109,28 @@
   </div>
 </div>
 
-<style lang="postcss">
+<style lang="postcss" scoped>
   .token-item {
-    @apply flex items-center justify-between py-3 rounded-xl bg-kong-bg-dark cursor-pointer transition-all duration-200 touch-pan-y select-none mx-4 border border-transparent;
+    @apply flex items-center justify-between p-3 mx-2 rounded-lg bg-kong-bg-dark cursor-pointer transition-all duration-200 touch-pan-y select-none;
+    height: 64px; /* Fixed height to match TOKEN_ITEM_HEIGHT minus padding */
+    box-sizing: border-box;
   }
 
   .token-item:hover {
-    @apply bg-kong-border/10 transform-none border-transparent;
+    @apply bg-kong-primary/10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
   .token-item.selected {
-    @apply bg-kong-primary/5 px-2 border-l-4 border-l-kong-accent-green rounded-lg;
+    @apply bg-kong-primary/5 rounded-lg border-l-[6px] border-kong-accent-blue;
+    padding: 12px 12px 12px 8px; /* Adjust padding to account for the border */
     margin-left: 0.5rem;
     margin-right: 0.5rem;
   }
 
   .token-item.selected:hover {
-    @apply bg-kong-primary/10;
+    @apply bg-kong-primary/15;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
   }
 
   .token-item.disabled {
@@ -205,22 +210,22 @@
   }
 
   .token-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .selected-indicator {
-    @apply text-kong-text-accent-green;
-    color: #4ade80;
-    background: #4ade8010;
-    border-radius: 50%;
-    padding: 4px;
-    display: flex;
+    @apply flex items-center justify-end;
+    gap: 0.75rem;
+    min-width: 120px; /* Fixed width to ensure consistent alignment */
   }
 
   .token-balance {
-    margin-right: 8px;
+    @apply text-right flex flex-col items-end;
+  }
+
+  .selected-indicator {
+    @apply text-kong-accent-green;
+    background: rgba(74, 222, 128, 0.1);
+    border-radius: 50%;
+    padding: 4px;
+    display: flex;
+    margin-left: 4px;
   }
 
   .enable-token-button {

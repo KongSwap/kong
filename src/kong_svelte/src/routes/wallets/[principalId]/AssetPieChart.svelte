@@ -21,7 +21,7 @@
   import { getChartColors } from '$lib/components/portfolio/chartConfig';
   import { processPortfolioData, createChartData } from '$lib/components/portfolio/portfolioDataProcessor';
   import { userTokens } from '$lib/stores/userTokens';
-  import { storedBalancesStore } from "$lib/services/tokens/tokenStore";
+  import { currentUserBalancesStore } from "$lib/services/tokens/tokenStore";
   import { walletPoolListStore } from '$lib/stores/walletPoolListStore';
   import { derived } from 'svelte/store';
 
@@ -96,7 +96,7 @@
 
   $: portfolioData = (() => {
     const tokens = $userTokens.tokens;
-    const balances = $storedBalancesStore;
+    const balances = $currentUserBalancesStore;
     const walletPools = $liveWalletPools;
     
     const dataKey = safeSerialize({ 

@@ -1,6 +1,5 @@
 import { get } from 'svelte/store';
-import { userTokens } from '$lib/stores/userTokens';
-import { storedBalancesStore } from '$lib/services/tokens/tokenStore';
+import { walletDataStore } from '$lib/services/wallet';
 
 export interface PortfolioHistory {
   timestamp: number;
@@ -11,14 +10,17 @@ export interface PortfolioHistory {
 
 // Helper function to calculate current portfolio details using real token metrics
 function getCurrentPortfolioDetails() {
-  const tokensList = get(userTokens).tokens;
-  const balances = get(storedBalancesStore);
+  const walletData = get(walletDataStore);
+  
+  if (!walletData || !walletData.tokens || !walletData.balances) {
+    return { tokenValue: 0, lpValue: 0, tokenValue24h: 0, lpValue24h: 0 };
+  }
   
   let tokenValue = 0;
   let tokenValue24h = 0;
   
-  tokensList.forEach(token => {
-    const balanceData = balances[token.canister_id];
+  walletData.tokens.forEach(token => {
+    const balanceData = walletData.balances?.[token.canister_id];
     if (balanceData && token.metrics) {
       const currentValue = Number(balanceData.in_usd);
       const priceChange = parseFloat(token.metrics.price_change_24h) || 0;

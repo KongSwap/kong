@@ -8,6 +8,7 @@
     Shield,
   } from "lucide-svelte";
   import { page } from "$app/state";
+    import { goto } from "$app/navigation";
   let { principal } = $props<{ principal: string }>();
 
   interface WalletTab {
@@ -20,9 +21,8 @@
   const tabs: WalletTab[] = [
     { id: "overview", label: "Wallet Overview", icon: BarChart2, path: "" },
     { id: "tokens", label: "Tokens", icon: Coins, path: "/tokens" },
-    { id: "pools", label: "LP Positions", icon: Droplets, path: "/pools" },
+    { id: "pools", label: "LP Positions", icon: Droplets, path: "/liquidity" },
     { id: "swaps", label: "Recent Swaps", icon: ArrowRightLeft, path: "/swaps" },
-    { id: "risk", label: "Risk Analysis", icon: Shield, path: "/risk" },
   ];
 
   const currentPath = page.url.pathname.split("/").pop() || "";
@@ -40,8 +40,8 @@
 <Panel variant="transparent">
   <div class="flex flex-col space-y-2">
     {#each tabs as tab}
-      <a
-        href="/wallets/{principal}{tab.path}"
+      <button
+        onclick={() => goto(`/wallets/${principal}${tab.path}`)}
         data-sveltekit-prefetch
         class="flex items-center gap-3 p-2 rounded-lg transition-colors {isCurrentPath(tab.path)
           ? 'bg-kong-primary text-white'
@@ -51,7 +51,7 @@
           <tab.icon class="w-5 h-5" />
         {/key}
         <span>{tab.label}</span>
-      </a>
+      </button>
     {/each}
   </div>
 </Panel>
