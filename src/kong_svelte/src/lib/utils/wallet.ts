@@ -6,22 +6,31 @@ import type { PNP } from "@windoge98/plug-n-play";
  * @param pnp The Plug-n-Play wallet instance
  * @returns The user's identity or null if not connected
  */
-export function getWalletIdentity(pnp: PNP): any {
-  if (!pnp || !pnp.isWalletConnected()) {
-    console.warn('Wallet not connected when trying to get identity');
-    return null;
+export function getWalletIdentity(pnp: PNP) {
+  if (!pnp) return null;
+  
+  // For Plug
+  if (pnp.identity) {
+    return pnp.identity;
+  }
+  
+  // For OISY
+  if (pnp.activeWallet?.signerAgent?.getIdentity()) {
+    return pnp.activeWallet.signerAgent.getIdentity();
+  }
+  
+  // For Internet Identity
+  if (pnp.activeWallet?.authClient?.getIdentity()) {
+    return pnp.activeWallet.authClient.getIdentity();
+  }
+  
+  // Try active wallet as fallback
+  if (pnp.activeWallet?.identity) {
+    return pnp.activeWallet.identity;
   }
 
-  try {
-    if (pnp.account && pnp.account.owner) {
-      return pnp.account.owner;
-    }
-    console.warn('No account owner found in PNP instance');
-    return null;
-  } catch (error) {
-    console.error('Error getting wallet identity:', error);
-    return null;
-  }
+  // Try provider as last resort
+  return pnp.provider?.identity;
 }
 
 /**

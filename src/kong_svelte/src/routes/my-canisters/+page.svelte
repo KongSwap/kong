@@ -3,15 +3,25 @@
     import { canisterStore, type CanisterMetadata } from '$lib/stores/canisters';
     import { auth } from '$lib/services/auth';
     import { Principal } from '@dfinity/principal';
-    import { InstallService, type WasmMetadata, agent } from '$lib/services/canister/install_wasm';
+    import { InstallService, type WasmMetadata, agent, getICManagementActor } from '$lib/services/canister/install_wasm';
     import { idlFactory as icManagementIdlFactory } from '$lib/services/canister/ic-management.idl';
 
     // Available WASM types
     const AVAILABLE_WASMS: Record<string, WasmMetadata> = {
         'token_backend': {
-            path: '/wasms/token_backend.wasm',
-            compressedPath: '/wasms/token_backend.wasm.gz',
+            path: '/wasms/token_backend/token_backend.wasm',
+            // compressedPath: '/wasms/token_backend/token_backend.wasm.gz',  // Comment out compressed path
             description: 'Token implementation canister',
+            initArgsType: null
+        },
+        'ledger': {
+            path: '/wasms/ledger/ledger.wasm',
+            description: 'Ledger canister',
+            initArgsType: null
+        },
+        'miner': {
+            path: '/wasms/miner/miner.wasm',
+            description: 'Miner canister',
             initArgsType: null
         }
     };
@@ -167,7 +177,11 @@
             installError = null;
             
             const wasmMetadata = AVAILABLE_WASMS[selectedWasm];
-            await InstallService.installWasm(selectedCanisterId, wasmMetadata);
+            console.log("Selected WASM metadata:", wasmMetadata);
+            
+            // Always use chunked upload for WASM installation to handle large files
+            console.log(`Using chunked upload for WASM installation`);
+            await InstallService.installWasmChunked(selectedCanisterId, wasmMetadata);
             
             // Update canister metadata with WASM type
             canisterStore.updateCanister(selectedCanisterId, {
@@ -181,7 +195,27 @@
             closeInstallModal();
         } catch (error) {
             console.error('Failed to install WASM:', error);
-            installError = error instanceof Error ? error.message : String(error);
+            
+            // Create a more detailed error message
+            let errorMessage = '';
+            if (error instanceof Error) {
+                errorMessage = error.message;
+                // Add stack trace for debugging
+                console.error('Error stack:', error.stack);
+                
+                // Check for specific error types
+                if (errorMessage.includes('decompress') || errorMessage.includes('header check')) {
+                    errorMessage += '\n\nThe WASM file appears to be corrupted or not properly compressed. Please check the file format.';
+                } else if (errorMessage.includes('canister module format')) {
+                    errorMessage += '\n\nThe WASM module format is not supported. Please ensure you are using a compatible WASM file.';
+                } else if (errorMessage.includes('out of cycles')) {
+                    errorMessage += '\n\nYour canister is out of cycles. Please top up your canister and try again.';
+                }
+            } else {
+                errorMessage = String(error);
+            }
+            
+            installError = errorMessage;
         } finally {
             installing = false;
         }
@@ -195,17 +229,11 @@
         
         try {
             // Try to get status directly
-            let management = await auth.getActor("aaaaa-aa", icManagementIdlFactory, { anon: false, requiresSigning: true });
-            console.log("Calling canister_status with:", {
-                canister_id: Principal.fromText(canisterId).toText()
-            });
-
+            let management = await getICManagementActor();
             console.log("Management actor:", management);
             
             try {
-                const response = await management.canister_status({
-                    canister_id: Principal.fromText(canisterId)
-                });
+                const response = await management.canisterStatus(Principal.fromText(canisterId));
 
                 console.log("Canister status response:", response);
                 canisterStatuses[canisterId] = {
