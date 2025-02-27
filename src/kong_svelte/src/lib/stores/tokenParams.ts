@@ -9,7 +9,7 @@ const defaultTokenParams: TokenInitArgs = {
   logo: [],
   decimals: [8], // Default to 8 decimals
   transfer_fee: [BigInt(10000)], // Default transfer fee
-  archive_options: [],
+  archive_options: [], // Empty array for optional field
   initial_block_reward: BigInt(0),
   block_time_target_seconds: BigInt(5),
   halving_interval: BigInt(0),

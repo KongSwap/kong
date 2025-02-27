@@ -9,7 +9,7 @@
   import type { WasmMetadata } from "$lib/services/canister/install_wasm";
   import { fetchICPtoXDRRates } from "$lib/services/canister/ic-api";
   import { createCanister } from "$lib/services/canister/create_canister";
-  import { idlFactory } from "$declarations/token_backend/token_backend.did";
+  import { idlFactory } from "$declarations/token_backend/token_backend.did.js";
 
   // Extend WasmMetadata type to include the properties we need
   interface TokenWasmMetadata {

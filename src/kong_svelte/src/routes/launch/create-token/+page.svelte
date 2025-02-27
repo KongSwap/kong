@@ -161,7 +161,7 @@
         block_time_target_seconds: BigInt(blockTimeTargetSeconds),
         halving_interval: BigInt(halvingInterval),
         social_links: socialLinks.length > 0 ? ([socialLinks.map(link => ({ platform: link.platform, url: link.url }))] as [Array<{platform: string, url: string}>]) : ([] as []),
-        archive_options: [] as [] // Empty array instead of the object since we're not using it
+        archive_options: [] as []
       };
 
       // Update the token parameters store
