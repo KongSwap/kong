@@ -53,7 +53,7 @@
   <TokenImages tokens={[row]} containerClass="self-center" size={24} />
   <span class="token-name">{row.name}</span>
   <span class="token-symbol">{row.symbol}</span>
-  <div class="flex gap-1 items-center">
+  <div class="flex items-center gap-1">
     {#if isTopVolume}
       <div use:tooltip={{ text: `#${row.volumeRank} by Volume`, direction: "top" }}>
         <Flame class="w-4 h-4 text-orange-400" />

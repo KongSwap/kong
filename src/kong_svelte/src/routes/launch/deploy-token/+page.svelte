@@ -40,7 +40,7 @@
   let isProcessing = false;
   
   // Deployment data
-  let kongAmount = "500"; // Fixed amount for token deployment - 500 KONG
+  let kongAmount = "200"; // Fixed amount for token deployment - 500 KONG
   let icpAmount = "0"; 
   let canisterId = "";
   let kongIcpRate = "0";
@@ -50,7 +50,7 @@
   // Step display information
   const stepInfo = [
     { name: "Preparing", description: "Loading token parameters" },
-    { name: "Swap KONG to ICP", description: "Convert KONG tokens to ICP" },
+    { name: "Swap KONG to CYCLES", description: "Convert KONG tokens to ICP" },
     { name: "Create Canister", description: "Create and deploy token canister" },
     { name: "Deploy Token", description: "Install token code" },
     { name: "Initialize Token", description: "Configure token parameters" },

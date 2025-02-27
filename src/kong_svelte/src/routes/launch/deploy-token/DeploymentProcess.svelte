@@ -74,6 +74,9 @@
   const KONG_DECIMALS = 8;
   const ICP_DECIMALS = 8;
 
+  // Create a store for the token actor
+  let tokenActor: any = null;
+
   // Helper function to get the most recent XDR rate from the API response
   function getXDRRate(ratesArray: [number, number][]): number {
     if (!ratesArray || !Array.isArray(ratesArray) || ratesArray.length === 0) {
@@ -351,7 +354,8 @@
       controller: principal,
       settings,
       // Specify the subnet ID for token deployment
-      subnet_id: "pzp6e-ekpqk-3c5x7-2h6so-njoeq-mt45d-h3h6c-q3mxf-vpeq5-fk5o7-yae"
+      // subnet_id: "pzp6e-ekpqk-3c5x7-2h6so-njoeq-mt45d-h3h6c-q3mxf-vpeq5-fk5o7-yae"
+      subnet_id: "4ecnw-byqwz-dtgss-ua2mh-pfvs7-c3lct-gtf4e-hnu75-j7eek-iifqm-sqe"
     };
     
     try {
@@ -376,13 +380,86 @@
 
   // Function to process tokenParams for BigInt values
   function processTokenParamsForBigInt(tokenParams: any) {
-    const processedParams = { ...tokenParams };
-    Object.keys(processedParams).forEach(key => {
-      if (typeof processedParams[key] === 'bigint') {
-        processedParams[key] = processedParams[key].toString();
+    // Create a deep copy to avoid modifying the original
+    const processedParams = JSON.parse(JSON.stringify(tokenParams, (key, value) => 
+      typeof value === 'bigint' ? value.toString() : value
+    ));
+    
+    // Convert string numbers back to BigInt for fields that need to be BigInt
+    const bigIntFields = ['initial_block_reward', 'block_time_target_seconds', 'halving_interval', 'total_supply'];
+    
+    bigIntFields.forEach(field => {
+      if (processedParams[field] && typeof processedParams[field] === 'string') {
+        processedParams[field] = BigInt(processedParams[field]);
       }
     });
+    
+    // Handle optional fields that might be arrays containing BigInt
+    if (processedParams.transfer_fee && processedParams.transfer_fee.length > 0 && 
+        typeof processedParams.transfer_fee[0] === 'string') {
+      processedParams.transfer_fee[0] = BigInt(processedParams.transfer_fee[0]);
+    }
+    
     return processedParams;
+  }
+
+  // Function to check if canister is installed and ready
+  async function verifyCanisterStatus(canisterPrincipal: Principal): Promise<boolean> {
+    try {
+      const verifyMessage = "Verifying canister status...";
+      if (lastLogMessage !== verifyMessage) {
+        addLog(verifyMessage);
+        lastLogMessage = verifyMessage;
+      }
+      
+      // Create an actor to communicate with the canister
+      tokenActor = await createTokenActor(canisterPrincipal);
+      
+      // Call a simple method to verify the canister is responsive
+      const metadata = await tokenActor.metadata();
+      
+      // Log success with some token details
+      const verifySuccessMessage = `Verified token canister is active: ${metadata?.name || 'Unknown'} (${metadata?.symbol || 'Unknown'})`;
+      if (lastLogMessage !== verifySuccessMessage) {
+        addLog(verifySuccessMessage);
+        lastLogMessage = verifySuccessMessage;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Canister verification error:", error);
+      const errorMsg = `Canister verification failed: ${error.message}`;
+      if (lastLogMessage !== errorMsg) {
+        addLog(errorMsg);
+        lastLogMessage = errorMsg;
+      }
+      return false;
+    }
+  }
+
+  // Function to create token actor
+  async function createTokenActor(canisterPrincipal: Principal) {
+    try {
+      const createActorMsg = "Creating token actor for interaction...";
+      if (lastLogMessage !== createActorMsg) {
+        addLog(createActorMsg);
+        lastLogMessage = createActorMsg;
+      }
+      
+      return await auth.getActor(
+        canisterPrincipal.toString(),
+        idlFactory,
+        { requiresSigning: true }
+      );
+    } catch (error) {
+      console.error("Error creating token actor:", error);
+      const errorMsg = `Error creating token actor: ${error.message}`;
+      if (lastLogMessage !== errorMsg) {
+        addLog(errorMsg);
+        lastLogMessage = errorMsg;
+      }
+      throw error;
+    }
   }
 
   // Function to install token code
@@ -410,11 +487,24 @@
     // Process tokenParams to handle BigInt values
     const safeTokenParams = processTokenParamsForBigInt(tokenParams);
     
-    // Create metadata for installation with proper init args type
+    // Fix linter error by creating proper init args
+    // Use correct IDL structure for init args
     const metadata: TokenWasmMetadata = {
       wasmModule: new Uint8Array(wasmModule),
       initArgs: safeTokenParams,
-      initArgsType: idlFactory({IDL}).init_args[0],
+      initArgsType: IDL.Record({
+        name: IDL.Text,
+        ticker: IDL.Text,
+        decimals: IDL.Opt(IDL.Nat8),
+        total_supply: IDL.Nat64,
+        transfer_fee: IDL.Opt(IDL.Nat64),
+        logo: IDL.Opt(IDL.Text),
+        initial_block_reward: IDL.Nat64,
+        block_time_target_seconds: IDL.Nat64,
+        halving_interval: IDL.Nat64,
+        social_links: IDL.Opt(IDL.Vec(IDL.Record({ platform: IDL.Text, url: IDL.Text }))),
+        archive_options: IDL.Opt(IDL.Record({}))
+      }),
       path: "wasms/token_backend.wasm.gz",
       description: "Token Backend"
     };
@@ -479,6 +569,183 @@
     return principal;
   }
 
+  // Function to retry deployment
+  export async function retryDeployment() {
+    isProcessing = true;
+    try {
+      // Get the last successful step from session storage
+      const savedStep = browser ? parseInt(sessionStorage.getItem(STORAGE_KEYS.LAST_SUCCESSFUL_STEP) || "0") : 0;
+      
+      // Set current step to the next step after the last successful one
+      currentStep = savedStep + 1;
+      
+      // Log the retry attempt
+      const retryMessage = `Retrying deployment from step ${currentStep} (${Object.keys(processSteps).find(key => processSteps[key] === currentStep) || 'Unknown'})`;
+      if (lastLogMessage !== retryMessage) {
+        addLog(retryMessage);
+        lastLogMessage = retryMessage;
+      }
+      
+      // Restore saved data if available
+      if (browser) {
+        // Restore canister ID if we're past the CREATE_CANISTER step
+        if (savedStep >= processSteps.CREATE_CANISTER) {
+          const savedCanisterId = sessionStorage.getItem(STORAGE_KEYS.CANISTER_ID);
+          if (savedCanisterId) {
+            canisterId = savedCanisterId;
+            addLog(`Restored canister ID: ${canisterId}`);
+          }
+        }
+        
+        // Restore ICP amount if we're past the SWAP_KONG_TO_ICP step
+        if (savedStep >= processSteps.SWAP_KONG_TO_ICP) {
+          const savedIcpAmount = sessionStorage.getItem(STORAGE_KEYS.ACTUAL_ICP);
+          if (savedIcpAmount) {
+            actualIcpReceived = savedIcpAmount;
+            addLog(`Restored ICP amount: ${actualIcpReceived}`);
+          }
+        }
+      }
+      
+      // Execute the appropriate step based on the current step
+      switch (currentStep) {
+        case processSteps.SWAP_KONG_TO_ICP:
+          await executeSwapAndContinue();
+          break;
+        case processSteps.CREATE_CANISTER:
+          await createCanisterAndContinue();
+          break;
+        case processSteps.DEPLOY_TOKEN:
+          await deployTokenAndContinue();
+          break;
+        case processSteps.INITIALIZE_TOKEN:
+          await initializeTokenAndContinue();
+          break;
+        default:
+          // If we don't know which step to retry, start from the beginning
+          await startDeployment();
+      }
+    } catch (error) {
+      console.error("Retry error:", error);
+      currentStep = processSteps.ERROR;
+      errorMessage = error.message;
+      errorDetails = error.stack || "";
+      const errorMsg = `❌ Error during retry: ${error.message}`;
+      if (lastLogMessage !== errorMsg) {
+        addLog(errorMsg);
+        lastLogMessage = errorMsg;
+      }
+      saveDeploymentState();
+    } finally {
+      isProcessing = false;
+    }
+  }
+  
+  // Helper functions for each step of the deployment process
+  async function executeSwapAndContinue() {
+    const step1Message = "Step 1: Swapping KONG to ICP";
+    if (lastLogMessage !== step1Message) {
+      addLog(step1Message);
+      lastLogMessage = step1Message;
+    }
+    saveDeploymentState();
+    
+    const icpE8s = await executeKongSwap();
+    lastSuccessfulStep = processSteps.SWAP_KONG_TO_ICP;
+    
+    // Continue with next step
+    await createCanisterAndContinue(icpE8s);
+  }
+  
+  async function createCanisterAndContinue(icpE8s?: bigint) {
+    currentStep = processSteps.CREATE_CANISTER;
+    const step2Message = "Step 2: Creating canister with ICP";
+    if (lastLogMessage !== step2Message) {
+      addLog(step2Message);
+      lastLogMessage = step2Message;
+    }
+    saveDeploymentState();
+    
+    // If icpE8s is not provided, try to calculate it from actualIcpReceived
+    if (!icpE8s && actualIcpReceived) {
+      icpE8s = SwapService.toBigInt(actualIcpReceived, ICP_DECIMALS);
+    }
+    
+    if (!icpE8s) {
+      throw new Error("ICP amount not available for canister creation");
+    }
+    
+    const canisterPrincipal = await createCanisterWithIcp(icpE8s);
+    lastSuccessfulStep = processSteps.CREATE_CANISTER;
+    
+    // Continue with next step
+    await deployTokenAndContinue(canisterPrincipal);
+  }
+  
+  async function deployTokenAndContinue(canisterPrincipal?: Principal) {
+    currentStep = processSteps.DEPLOY_TOKEN;
+    const step3Message = "Step 3: Installing token code";
+    if (lastLogMessage !== step3Message) {
+      addLog(step3Message);
+      lastLogMessage = step3Message;
+    }
+    saveDeploymentState();
+    
+    // If canisterPrincipal is not provided, try to get it from canisterId
+    if (!canisterPrincipal && canisterId) {
+      canisterPrincipal = Principal.fromText(canisterId);
+    }
+    
+    if (!canisterPrincipal) {
+      throw new Error("Canister ID not available for token deployment");
+    }
+    
+    await installTokenCode(canisterPrincipal);
+    lastSuccessfulStep = processSteps.DEPLOY_TOKEN;
+    
+    // Continue with next step
+    await initializeTokenAndContinue(canisterPrincipal);
+  }
+  
+  async function initializeTokenAndContinue(canisterPrincipal?: Principal) {
+    currentStep = processSteps.INITIALIZE_TOKEN;
+    const step4Message = "Step 4: Initializing token";
+    if (lastLogMessage !== step4Message) {
+      addLog(step4Message);
+      lastLogMessage = step4Message;
+    }
+    saveDeploymentState();
+    
+    // If canisterPrincipal is not provided, try to get it from canisterId
+    if (!canisterPrincipal && canisterId) {
+      canisterPrincipal = Principal.fromText(canisterId);
+    }
+    
+    if (!canisterPrincipal) {
+      throw new Error("Canister ID not available for token initialization");
+    }
+    
+    // Give the canister a few seconds to stabilize
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Verify canister is working properly
+    const isVerified = await verifyCanisterStatus(canisterPrincipal);
+    if (!isVerified) {
+      throw new Error("Token canister verification failed. The deployment might not be fully successful.");
+    }
+    
+    lastSuccessfulStep = processSteps.INITIALIZE_TOKEN;
+    
+    // Complete
+    currentStep = processSteps.COMPLETED;
+    const completedMessage = "🎉 Token deployment completed successfully!";
+    if (lastLogMessage !== completedMessage) {
+      addLog(completedMessage);
+      lastLogMessage = completedMessage;
+    }
+    saveDeploymentState();
+  }
+
   // Function to start deployment
   export async function startDeployment() {
     isProcessing = true;
@@ -491,62 +758,8 @@
       }
       await calculateEstimatedTCycles();
       
-      // Step 1: Swap KONG to ICP
-      currentStep = processSteps.SWAP_KONG_TO_ICP;
-      const step1Message = "Step 1: Swapping KONG to ICP";
-      if (lastLogMessage !== step1Message) {
-        addLog(step1Message);
-        lastLogMessage = step1Message;
-      }
-      saveDeploymentState();
-      
-      const icpE8s = await executeKongSwap();
-      lastSuccessfulStep = processSteps.SWAP_KONG_TO_ICP;
-      
-      // Step 2: Create canister
-      currentStep = processSteps.CREATE_CANISTER;
-      const step2Message = "Step 2: Creating canister with ICP";
-      if (lastLogMessage !== step2Message) {
-        addLog(step2Message);
-        lastLogMessage = step2Message;
-      }
-      saveDeploymentState();
-      
-      const canisterPrincipal = await createCanisterWithIcp(icpE8s);
-      lastSuccessfulStep = processSteps.CREATE_CANISTER;
-      
-      // Step 3: Deploy token
-      currentStep = processSteps.DEPLOY_TOKEN;
-      const step3Message = "Step 3: Installing token code";
-      if (lastLogMessage !== step3Message) {
-        addLog(step3Message);
-        lastLogMessage = step3Message;
-      }
-      saveDeploymentState();
-      
-      await installTokenCode(canisterPrincipal);
-      lastSuccessfulStep = processSteps.DEPLOY_TOKEN;
-      
-      // Step 4: Initialize token
-      currentStep = processSteps.INITIALIZE_TOKEN;
-      const step4Message = "Step 4: Initializing token";
-      if (lastLogMessage !== step4Message) {
-        addLog(step4Message);
-        lastLogMessage = step4Message;
-      }
-      saveDeploymentState();
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      lastSuccessfulStep = processSteps.INITIALIZE_TOKEN;
-      
-      // Complete
-      currentStep = processSteps.COMPLETED;
-      const completedMessage = "🎉 Token deployment completed successfully!";
-      if (lastLogMessage !== completedMessage) {
-        addLog(completedMessage);
-        lastLogMessage = completedMessage;
-      }
-      saveDeploymentState();
-      
+      // Start from the beginning
+      await executeSwapAndContinue();
     } catch (error) {
       console.error("Deployment error:", error);
       currentStep = processSteps.ERROR;
@@ -562,13 +775,6 @@
     } finally {
       isProcessing = false;
     }
-  }
-
-  // Function to retry deployment
-  export async function retryDeployment() {
-    const savedStep = browser ? parseInt(sessionStorage.getItem(STORAGE_KEYS.LAST_SUCCESSFUL_STEP) || "0") : 0;
-    currentStep = savedStep;
-    await startDeployment();
   }
 
   // Initialize on mount
