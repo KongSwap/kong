@@ -17,7 +17,7 @@
     "staging_fe": "rsp5s-2yaaa-aaaar-qaojq-cai",
     "staging": ""
   },
-  "kong_svelte": {  
+  "kong_svelte": {
     "ic": "3ldz4-aiaaa-aaaar-qaina-cai",
     "local": "3ldz4-aiaaa-aaaar-qaina-cai",
     "staging_fe": "edoy4-liaaa-aaaar-qakha-cai",
@@ -79,8 +79,14 @@
   },
   "kong_ledger": {
     "ic": "o7oak-iyaaa-aaaaq-aadzq-cai",
-    "local": "o7oak-iyaaa-aaaaq-aadzq-cai",
+    "local": "",
     "staging_fe": "o7oak-iyaaa-aaaaq-aadzq-cai",
+    "staging": ""
+  },
+  "kskong_ledger": {
+    "ic": "",
+    "local": "o7oak-iyaaa-aaaaq-aadzq-cai",
+    "staging_fe": "",
     "staging": ""
   },
   "internet_identity": {
