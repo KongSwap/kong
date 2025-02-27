@@ -307,16 +307,14 @@
           <SettingsIcon size={18} />
         </button>
 
-        {#if process.env.DFX_NETWORK !== "ic"}
-          <button
-            class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
-            on:click={handleOpenSearch}
-            use:tooltip={{ text: "Search", direction: "bottom" }}
-          >
-            <Search size={18} />
-          </button>
-        {/if}
-
+        <button
+          class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
+          on:click={handleOpenSearch}
+          use:tooltip={{ text: "Search", direction: "bottom" }}
+        >
+          <Search size={18} />
+        </button>
+        
         {#if $auth.isConnected}
           {#if process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging"}
             <button
@@ -347,6 +345,13 @@
           <span>{$auth.isConnected ? "Wallet" : "Connect"}</span>
         </button>
       {:else}
+        <button
+          class="h-[34px] w-[34px] flex items-center justify-center rounded-md text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40"
+          on:click={handleOpenSearch}
+        >
+          <Search size={18} />
+        </button>
+        
         <button
           class="h-[34px] w-[34px] flex items-center justify-center rounded-md text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40"
           class:selected={$sidebarStore.isOpen}

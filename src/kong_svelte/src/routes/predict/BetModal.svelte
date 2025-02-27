@@ -3,7 +3,7 @@
   import { AlertTriangle, CircleHelp, Clock, Coins } from "lucide-svelte";
   import { formatBalance, toFixed } from "$lib/utils/numberFormatUtils";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
-  import { storedBalancesStore } from "$lib/services/tokens/tokenStore";
+  import { currentUserBalancesStore } from "$lib/services/tokens/tokenStore";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { calculateMaxAmount } from "$lib/utils/tokenValidationUtils";
 
@@ -22,9 +22,9 @@
   let kongBalance = 0;
   let maxAmount = 0;
 
-  // Subscribe to the storedBalancesStore to get KONG balance
+  // Subscribe to the currentUserBalancesStore to get KONG balance
   $: {
-    const balances = $storedBalancesStore;
+    const balances = $currentUserBalancesStore;
     if (balances && balances[KONG_LEDGER_CANISTER_ID]) {
       const rawBalance = BigInt(balances[KONG_LEDGER_CANISTER_ID].in_tokens);
       kongBalance = Number(rawBalance) / 1e8;

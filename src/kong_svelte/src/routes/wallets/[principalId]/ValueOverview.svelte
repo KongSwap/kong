@@ -1,10 +1,11 @@
 <script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
+  import LoadingEllipsis from "$lib/components/common/LoadingEllipsis.svelte";
   import type { PortfolioHistory } from "$lib/services/portfolio/portfolioHistory";
-  import { userTokens } from "$lib/stores/userTokens";
-  import { walletBalancesStore, currentWalletStore } from "$lib/stores/walletBalancesStore";
+  import { WalletDataService, walletDataStore } from "$lib/services/wallet";
   import { getPortfolioHistory } from "$lib/services/portfolio/portfolioHistory";
   import { calculatePerformanceMetrics } from "$lib/services/portfolio/performanceMetrics";
+  import { walletPoolListStore } from "$lib/stores/walletPoolListStore";
 
   let { isLoading, error, principal } = $props<{
     isLoading: boolean;
@@ -18,10 +19,34 @@
     bestPerformer: { symbol: "", change: 0 }
   });
 
-  // Calculate total portfolio value
-  let portfolioValue = $derived(Object.values($walletBalancesStore)
-    .reduce((total, balance) => total + Number(balance.in_usd), 0)
-    .toFixed(2));
+  // Get wallet data from the store
+  let walletData = $derived($walletDataStore);
+  
+  // Subscribe to the pool list store
+  let poolsData = $state({
+    processedPools: [],
+    loading: false,
+    walletId: null
+  });
+  
+  // Subscribe to the pool list store
+  walletPoolListStore.subscribe(value => {
+    poolsData = value;
+  });
+
+  // Augment isLoading to include both stores' loading states
+  let isDataLoading = $derived(isLoading || walletData.isLoading || poolsData.loading);
+
+  // Calculate token balances value
+  let tokenValue = $derived(Object.values(walletData.balances)
+    .reduce((total, balance) => total + Number(balance.in_usd), 0));
+    
+  // Calculate liquidity pool value
+  let lpValue = $derived(poolsData.processedPools
+    .reduce((total, pool) => total + Number(pool.usd_balance || 0), 0));
+    
+  // Calculate total portfolio value (tokens + liquidity pools)
+  let portfolioValue = $derived((tokenValue + lpValue).toFixed(2));
 
   // Calculate 24hr PnL
   let dailyPnL = $derived(portfolioHistory.length >= 2 
@@ -30,9 +55,18 @@
 
   // Load history when wallet changes or balances update
   $effect(() => {
-    const balances = $walletBalancesStore;
+    const balances = walletData.balances;
     if (principal && Object.keys(balances).length > 0) {
       loadHistory();
+    }
+  });
+  
+  // Ensure liquidity pools are loaded when principal changes
+  $effect(() => {
+    if (principal && !poolsData.loading && 
+        (!poolsData.walletId || poolsData.walletId !== principal)) {
+      console.log('Loading liquidity pools for portfolio calculation');
+      walletPoolListStore.fetchPoolsForWallet(principal);
     }
   });
 
@@ -47,7 +81,7 @@
         portfolioHistory = history;
         performanceMetrics = calculatePerformanceMetrics(
           history,
-          $userTokens.tokens,
+          walletData.tokens,
         );
       } else {
         // If no history, set default values
@@ -69,38 +103,40 @@
   }
 </script>
 
-{#if isLoading && Object.keys($walletBalancesStore).length === 0}
-  <Panel variant="transparent" className="flex items-center justify-center min-h-[200px]">
-    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-kong-primary"></div>
-  </Panel>
-{:else if error}
-  <Panel variant="transparent">
-    <div class="text-kong-accent-red">{error}</div>
-  </Panel>
-{:else}
-  <Panel variant="transparent">
-    <div class="space-y-2">
-      <div>
-        <h2 class="text-sm uppercase font-medium text-kong-text-primary mb-2">
-          Total Portfolio Value
-        </h2>
+<Panel variant="transparent">
+  <div class="space-y-2">
+    <div>
+      <h2 class="text-sm uppercase font-medium text-kong-text-primary mb-2">
+        Total Portfolio Value
+      </h2>
+      {#if error}
+        <div class="text-kong-accent-red">{error}</div>
+      {:else if isDataLoading}
+        <!-- Loading indicator for portfolio value with bouncing ellipsis -->
+        <div class="text-4xl font-bold text-kong-text-primary flex items-center">
+          $<LoadingEllipsis color="text-kong-text-primary" size="text-4xl" />
+        </div>
+        <div class="text-base font-bold flex items-center">
+          <LoadingEllipsis color="text-kong-text-primary" size="text-base" />
+        </div>
+      {:else}
         <p class="text-4xl font-bold text-kong-text-primary">
           {Number(portfolioValue).toLocaleString(undefined, {
             style: "currency",
             currency: "USD",
           })}
         </p>
-      </div>
-      <div
-        class:text-kong-text-accent-green={performanceMetrics.dailyChange > 0}
-        class:text-kong-accent-red={performanceMetrics.dailyChange < 0}
-        class="text-base font-bold flex"
-      >
-        {dailyPnL.toLocaleString(undefined, {
-          style: "currency",
-          currency: "USD",
-        })} &nbsp; ({performanceMetrics.dailyChange.toFixed(2)}%)
-      </div>
+        <div
+          class:text-kong-text-accent-green={performanceMetrics.dailyChange > 0}
+          class:text-kong-accent-red={performanceMetrics.dailyChange < 0}
+          class="text-base font-bold flex"
+        >
+          {dailyPnL.toLocaleString(undefined, {
+            style: "currency",
+            currency: "USD",
+          })} &nbsp; ({performanceMetrics.dailyChange.toFixed(2)}%)
+        </div>
+      {/if}
     </div>
-  </Panel>
-{/if}
+  </div>
+</Panel>

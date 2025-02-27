@@ -284,6 +284,10 @@
   });
 </script>
 
+<svelte:head>
+  <title>Market Stats - KongSwap</title>
+</svelte:head>
+
 <PageHeader
   title="Market Stats"
   description="Track token performance and market activity"

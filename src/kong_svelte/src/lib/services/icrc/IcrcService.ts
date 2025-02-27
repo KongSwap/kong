@@ -150,7 +150,7 @@ export class IcrcService {
     requestKeys.forEach(key => {
       this.pendingRequests.set(key, promise);
       // Clean up after 5 seconds
-      setTimeout(() => this.pendingRequests.delete(key), 5000);
+      setTimeout(() => this.pendingRequests.delete(key), 200);
     });
     
     try {

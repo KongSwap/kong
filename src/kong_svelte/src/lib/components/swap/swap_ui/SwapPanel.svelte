@@ -4,7 +4,7 @@
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import {
-    storedBalancesStore,
+    currentUserBalancesStore,
   } from "$lib/services/tokens/tokenStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
@@ -236,7 +236,7 @@
           return;
         }
 
-        const balance = $storedBalancesStore[token.canister_id]?.in_tokens;
+        const balance = $currentUserBalancesStore[token.canister_id]?.in_tokens;
         if (!balance) {
           console.error("Balance not available for token", token.symbol);
           toastStore.error(`Balance not available for ${token.symbol}`);
@@ -533,7 +533,7 @@
               on:click={handleMaxClick}
             >
               {formatTokenBalance(
-                $storedBalancesStore[token.canister_id]?.in_tokens.toString() ||
+                $currentUserBalancesStore[token.canister_id]?.in_tokens.toString() ||
                   "0",
                 token.decimals,
               )}

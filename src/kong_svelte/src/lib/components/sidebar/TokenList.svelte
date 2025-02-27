@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { storedBalancesStore, loadBalances } from "$lib/services/tokens/tokenStore";
+  import { currentUserBalancesStore, loadBalances } from "$lib/services/tokens/tokenStore";
   import { onMount } from "svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { Search, Plus } from "lucide-svelte";
@@ -161,7 +161,7 @@
       userTokenList,
       debouncedSearch,
       hideZeroStore,
-      storedBalancesStore,
+      currentUserBalancesStore,
       sortDirectionStore,
       apiSearchResults,
       searchQuery,

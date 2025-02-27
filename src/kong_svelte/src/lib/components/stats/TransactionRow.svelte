@@ -5,6 +5,7 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { getPrincipalColor } from "$lib/utils/principalColorUtils";
   import { toastStore } from "$lib/stores/toastStore";
+  import { goto } from "$app/navigation";
 
   export let tx: FE.Transaction;
   export let token: FE.Token;
@@ -12,8 +13,17 @@
   export let isNew: boolean;
   export let mobile = false;
 
+  // Utility function to format principal IDs
+  function formatPrincipalId(principalId: string): string {
+    // Check if the principal ID ends with "-2" and remove it if it does
+    if (principalId && principalId.endsWith("-2")) {
+      return principalId.slice(0, -2);
+    }
+    return principalId;
+  }
+
   // New computed property to determine the wallet address
-  $: walletAddress = typeof tx.user === 'object' && tx.user.principal_id ? tx.user.principal_id : String(tx.user || '');
+  $: walletAddress = typeof tx.user === 'object' && tx.user.principal_id ? formatPrincipalId(tx.user.principal_id) : String(tx.user || '');
 
   // Add a computed property to determine if this is a buy transaction
   $: isBuyTransaction = tx.receive_token_id === token.token_id;
@@ -86,10 +96,9 @@
       <span
         class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary cursor-pointer hover:opacity-80 relative group"
         style="background-color: {getPrincipalColor(walletAddress)};"
-        on:click={(e) => copyToClipboard(walletAddress, e)}
+        on:click={(e) => goto(`/wallets/${walletAddress}`)}
       >
         {walletAddress.slice(0, 8)}
-        <span class="copy-tooltip">Copy ID</span>
       </span>
     </td>
 
@@ -140,7 +149,7 @@
       {#if tx.tx_id}
         <div class="flex justify-center w-full pr-3">
         <a
-          href={`https://www.icexplorer.io/address/detail/${tx.user.principal_id}`}
+          href={`https://www.icexplorer.io/address/detail/${formatPrincipalId(tx.user.principal_id)}`}
           target="_blank"
           rel="noopener noreferrer"
           class="text-blue-400/70 hover:text-blue-300"
@@ -209,7 +218,7 @@
         </div>
         {#if tx.tx_id}
           <a
-            href={`https://www.icexplorer.io/address/detail/${tx.user.principal_id}`}
+            href={`https://www.icexplorer.io/address/detail/${formatPrincipalId(tx.user.principal_id)}`}
             target="_blank"
             rel="noopener noreferrer"
             class="text-blue-400/70 hover:text-blue-300"

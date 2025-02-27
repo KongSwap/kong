@@ -11,6 +11,7 @@
   export let zIndex: number = 10;
   export let roundedBorders: boolean = true;
   export let unpadded: boolean = false;
+  export let animated: boolean = false;
   
   // Transition props
   export let transition: 'fade' | 'slide' | null = null;
@@ -28,17 +29,24 @@
 
 {#if transition === 'slide'}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'} {animated ? 'animated' : ''}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:slide={params}
   >
     <slot>{content}</slot>
   </div>
-{:else}
+{:else if transition === 'fade'}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'} {animated ? 'animated' : ''}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:fade={params}
+  >
+    <slot>{content}</slot>
+  </div>
+{:else}
+  <div 
+    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'} {animated ? 'animated' : ''}"
+    style="width: {width}; height: {height}; z-index: {zIndex};"
   >
     <slot>{content}</slot>
   </div>
@@ -47,6 +55,9 @@
 <style lang="postcss">
 .panel {
   @apply relative text-kong-text-primary flex flex-col min-h-0;
+}
+
+.panel.animated {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

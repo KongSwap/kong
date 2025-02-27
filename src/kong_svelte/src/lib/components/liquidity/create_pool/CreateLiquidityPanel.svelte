@@ -8,7 +8,7 @@
   import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
   import {
     loadBalances,
-    storedBalancesStore,
+    currentUserBalancesStore,
   } from "$lib/services/tokens/tokenStore";
   import {
     calculateAmount1FromPrice,
@@ -104,9 +104,9 @@
     );
   }
   $: token0Balance =
-    $storedBalancesStore[token0?.canister_id]?.in_tokens?.toString() || "0";
+    $currentUserBalancesStore[token0?.canister_id]?.in_tokens?.toString() || "0";
   $: token1Balance =
-    $storedBalancesStore[token1?.canister_id]?.in_tokens?.toString() || "0";
+    $currentUserBalancesStore[token1?.canister_id]?.in_tokens?.toString() || "0";
 
   function handleTokenSelect(index: 0 | 1, token: FE.Token) {
     const otherToken = index === 0 ? token1 : token0;

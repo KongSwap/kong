@@ -221,6 +221,10 @@
   });
 </script>
 
+<svelte:head> 
+  <title>{token?.name} ({token?.symbol}) Chart and Stats - KongSwap</title>
+</svelte:head>
+
 <div class="p-4 pt-0">
   {#if isTokenLoading}
     <!-- Improved loading state -->

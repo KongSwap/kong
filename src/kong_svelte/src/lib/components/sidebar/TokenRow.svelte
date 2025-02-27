@@ -8,7 +8,7 @@
   } from "$lib/utils/tokenFormatters";
   import TokenDetails from "$lib/components/common/TokenDetails.svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
-  import { storedBalancesStore } from "$lib/services/tokens";
+  import { currentUserBalancesStore } from "$lib/services/tokens";
   import {
     CKUSDT_CANISTER_ID,
     ICP_CANISTER_ID,
@@ -45,7 +45,7 @@
 
   // Update balance formatting when storedBalances changes
   $: {
-    const balance = $storedBalancesStore[token.canister_id];
+    const balance = $currentUserBalancesStore[token.canister_id];
     if (balance) {
       formattedBalance = formatTokenBalance(
         balance.in_tokens?.toString() || "0",

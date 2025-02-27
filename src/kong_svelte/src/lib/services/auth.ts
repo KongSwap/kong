@@ -3,7 +3,7 @@ import { type PNP } from "@windoge98/plug-n-play";
 import { pnp, canisterIDLs as pnpCanisterIDLs, type CanisterType as PnpCanisterType } from "./pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
-import { loadBalances, storedBalancesStore } from "./tokens/tokenStore";
+import { loadBalances, currentUserBalancesStore } from "./tokens/tokenStore";
 import { userTokens } from "$lib/stores/userTokens";
 import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
@@ -116,7 +116,7 @@ function createAuthStore(pnp: PNP) {
       selectedWalletId.set(null);
       isConnected.set(false);
       connectionError.set(null);
-      storedBalancesStore.set({});
+      currentUserBalancesStore.set({});
       storage.clear();
     },
 
