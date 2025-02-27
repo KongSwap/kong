@@ -43,7 +43,7 @@
     {
       label: 'My Canisters',
       description: 'Manage your deployed canisters',
-      path: '/my-canisters',
+      path: '/launch/my-canisters',
       icon: Joystick,
       comingSoon: false
     }
@@ -211,15 +211,15 @@ const statsOptions = [
   }
 </script>
 
-<div class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
-  <div class="mx-auto h-16 flex items-center justify-between px-6">
+<div class="relative top-0 left-0 z-50 w-full pt-2 mb-4">
+  <div class="flex items-center justify-between h-16 px-6 mx-auto">
     <div class="flex items-center gap-10">
       {#if isMobile}
         <button class="h-[34px] w-[34px] flex items-center justify-center" on:click={() => (navOpen = !navOpen)}>
           <Menu size={20} color={$themeStore === "dark" ? "white" : "black"} />
         </button>
       {:else}
-        <button class="flex items-center hover:opacity-90 transition-opacity" on:click={() => goto("/swap")}>
+        <button class="flex items-center transition-opacity hover:opacity-90" on:click={() => goto("/swap")}>
           <img 
             src="/titles/logo-white-wide.png"
             alt="Kong Logo" 
@@ -253,7 +253,7 @@ const statsOptions = [
                 
                 {#if activeDropdown === 'launch'}
                   <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
-                    <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">LAUNCH OPTIONS</div>
+                    <div class="px-5 pb-3 mb-2 text-xs font-semibold tracking-wider border-b text-kong-text-secondary border-kong-border">LAUNCH OPTIONS</div>
                     {#each launchOptions as option}
                       <button
                         class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
@@ -266,7 +266,7 @@ const statsOptions = [
                         }}
                         class:disabled={option.comingSoon}
                       >
-                        <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
+                        <div class="flex items-center justify-center flex-shrink-0 transition-all duration-300 ease-out transform rounded-md w-11 h-11 bg-kong-text-primary/5 text-kong-text-primary group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
                           <svelte:component this={option.icon} size={20} />
                         </div>
                         <div class="flex flex-col gap-1 pt-0.5">
@@ -278,7 +278,7 @@ const statsOptions = [
                               <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
                             {/if}
                           </div>
-                          <span class="text-sm text-kong-text-secondary leading-normal">{option.description}</span>
+                          <span class="text-sm leading-normal text-kong-text-secondary">{option.description}</span>
                         </div>
                       </button>
                     {/each}
@@ -301,7 +301,7 @@ const statsOptions = [
                 
                 {#if activeDropdown === 'earn'}
                   <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
-                    <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">EARN OPTIONS</div>
+                    <div class="px-5 pb-3 mb-2 text-xs font-semibold tracking-wider border-b text-kong-text-secondary border-kong-border">EARN OPTIONS</div>
                     {#each earnOptions as option}
                       <button
                         class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
@@ -316,7 +316,7 @@ const statsOptions = [
                         class:disabled={option.comingSoon}
                       >
                         {console.log('Earn option:', option.path, 'Current path:', $page.url.pathname, 'Active:', $page.url.pathname === option.path)}
-                        <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
+                        <div class="flex items-center justify-center flex-shrink-0 transition-all duration-300 ease-out transform rounded-md w-11 h-11 bg-kong-text-primary/5 text-kong-text-primary group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
                           <svelte:component this={option.icon} size={20} />
                         </div>
                         <div class="flex flex-col gap-1 pt-0.5">
@@ -328,7 +328,7 @@ const statsOptions = [
                               <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
                             {/if}
                           </div>
-                          <span class="text-sm text-kong-text-secondary leading-normal">{option.description}</span>
+                          <span class="text-sm leading-normal text-kong-text-secondary">{option.description}</span>
                         </div>
                       </button>
                     {/each}
@@ -351,7 +351,7 @@ const statsOptions = [
                 
                 {#if activeDropdown === 'swap'}
                   <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
-                    <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">SWAP OPTIONS</div>
+                    <div class="px-5 pb-3 mb-2 text-xs font-semibold tracking-wider border-b text-kong-text-secondary border-kong-border">SWAP OPTIONS</div>
                     {#each swapOptions as option}
                       <button
                         class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
@@ -359,7 +359,7 @@ const statsOptions = [
                         on:click={() => handleSwapOptionClick(option)}
                         class:disabled={option.comingSoon}
                       >
-                        <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
+                        <div class="flex items-center justify-center flex-shrink-0 transition-all duration-300 ease-out transform rounded-md w-11 h-11 bg-kong-text-primary/5 text-kong-text-primary group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
                           <svelte:component this={option.icon} size={20} />
                         </div>
                         <div class="flex flex-col gap-1 pt-0.5">
@@ -371,7 +371,7 @@ const statsOptions = [
                               <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
                             {/if}
                           </div>
-                          <span class="text-sm text-kong-text-secondary leading-normal">{option.description}</span>
+                          <span class="text-sm leading-normal text-kong-text-secondary">{option.description}</span>
                         </div>
                       </button>
                     {/each}
@@ -394,7 +394,7 @@ const statsOptions = [
                 
                 {#if activeDropdown === 'stats'}
                   <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
-                    <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">STATS OPTIONS</div>
+                    <div class="px-5 pb-3 mb-2 text-xs font-semibold tracking-wider border-b text-kong-text-secondary border-kong-border">STATS OPTIONS</div>
                     {#each statsOptions as option}
                       <button
                         class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
@@ -408,7 +408,7 @@ const statsOptions = [
                         }}
                         class:disabled={option.comingSoon}
                       >
-                        <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
+                        <div class="flex items-center justify-center flex-shrink-0 transition-all duration-300 ease-out transform rounded-md w-11 h-11 bg-kong-text-primary/5 text-kong-text-primary group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
                           <svelte:component this={option.icon} size={20} />
                         </div>
                         <div class="flex flex-col gap-1 pt-0.5">
@@ -420,7 +420,7 @@ const statsOptions = [
                               <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
                             {/if}
                           </div>
-                          <span class="text-sm text-kong-text-secondary leading-normal">{option.description}</span>
+                          <span class="text-sm leading-normal text-kong-text-secondary">{option.description}</span>
                         </div>
                       </button>
                     {/each}
@@ -434,8 +434,8 @@ const statsOptions = [
     </div>
 
     {#if isMobile}
-      <div class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
-        <button class="flex items-center hover:opacity-90 transition-opacity" on:click={() => goto("/")}>
+      <div class="absolute flex items-center justify-center -translate-x-1/2 left-1/2">
+        <button class="flex items-center transition-opacity hover:opacity-90" on:click={() => goto("/")}>
           <img 
             src="/titles/logo-white-wide.png"
             alt="Kong Logo" 
@@ -578,7 +578,7 @@ const statsOptions = [
                 {/each}
               </div>
             {:else if tab === 'swap'}
-              <div class="mobile-nav-group mb-0">
+              <div class="mb-0 mobile-nav-group">
                 <div class="mobile-nav-group-title">SWAP</div>
                 {#each swapOptions as option}
                   <button

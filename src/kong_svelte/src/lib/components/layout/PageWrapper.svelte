@@ -4,7 +4,7 @@
   let mouseX = 0;
   let mouseY = 0;
   
-  // Generate random positions for nebula gradients
+  // Generate random positions for nebula gradients once
   const nebulaPositions = {
     blue: {
       x: 20 + Math.random() * 40, // 20-60%
@@ -27,11 +27,31 @@
   // Add reactive declaration for competition page background
   $: isCompetition = page && page.includes('/competition/kong-madness');
 
+  // Throttle mouse move handler to reduce calculations
+  let ticking = false;
   function handleMouseMove(e: MouseEvent) {
-    // Reduce the movement amount for subtler effect
-    mouseX = (e.clientX / window.innerWidth - 1) * 20;
-    mouseY = (e.clientY / window.innerHeight - 1) * 20;
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        // Reduce movement amount and calculation frequency
+        mouseX = (e.clientX / window.innerWidth - 0.5) * 10;
+        mouseY = (e.clientY / window.innerHeight - 0.5) * 10;
+        ticking = false;
+      });
+      ticking = true;
+    }
   }
+
+  // Enhanced 3D star field with depth layers
+  const starCount = 80; // Increased for better effect
+  const starLayers = 3; // Create multiple depth layers
+  const stars = Array(starCount).fill(0).map(() => ({
+    size: 0.6 + Math.random() * 2.2, // Varied sizes
+    top: Math.random() * 100,
+    left: Math.random() * 100,
+    brightness: 0.4 + Math.random() * 0.6,
+    depth: Math.floor(Math.random() * starLayers), // Random depth layer
+    twinkle: Math.random() > 0.7 // Some stars will twinkle
+  }));
 </script>
 
 <svelte:window on:mousemove={handleMouseMove}/>
@@ -46,7 +66,7 @@
       <div 
         class="nebula-effect"
         style="
-          transform: translate({mouseX * 0.5}px, {mouseY * 0.5}px);
+          transform: translate({mouseX * 0.2}px, {mouseY * 0.2}px);
           --blue-x: {nebulaPositions.blue.x}%;
           --blue-y: {nebulaPositions.blue.y}%;
           --purple1-x: {nebulaPositions.purple1.x}%;
@@ -58,29 +78,35 @@
         "
       ></div>
       
-      <!-- Add stars -->
-      <div 
-        class="stars"
-        style="transform: translate({mouseX * 0.2}px, {mouseY * 0.2}px)"
-      >
-        {#each Array(200) as _, i}
+      <!-- Enhanced 3D parallax stars -->
+      <div class="stars-container">
+        {#each [0, 1, 2] as layer}
           <div 
-            class="star"
-            style="
-              --size: {0.8 + Math.random() * 1.8}px;
-              --top: {Math.random() * 100}%;
-              --left: {Math.random() * 100}%;
-              --brightness: {0.5 + Math.random() * 0.5};"
-          ></div>
+            class="stars-layer"
+            style="transform: translate({mouseX * (0.05 + layer * 0.1)}px, {mouseY * (0.05 + layer * 0.1)}px)"
+          >
+            {#each stars.filter(star => star.depth === layer) as star}
+              <div 
+                class="star {star.twinkle ? 'twinkle' : ''}"
+                style="
+                  --size: {star.size}px;
+                  --top: {star.top}%;
+                  --left: {star.left}%;
+                  --brightness: {star.brightness};
+                  --depth: {layer};"
+              ></div>
+            {/each}
+          </div>
         {/each}
       </div>
 
-      <!-- Add skyline -->
+      <!-- Add skyline with reduced animation -->
       <div class="skyline-wrapper">
         <img 
           src="/backgrounds/skyline.svg" 
           alt="Skyline" 
           class="skyline"
+          style="transform: translate({mouseX * 0.05}px, 0)"
         />
       </div>
     </div>
@@ -110,6 +136,7 @@
     inset: 0;
     background: linear-gradient(90deg, #2a1b54 0%, #1a3a8f 100%);
     z-index: -1;
+    will-change: transform; /* Optimize for GPU */
   }
 
   /* Background container for default pages */
@@ -118,6 +145,7 @@
     inset: 0;
     z-index: -1;
     overflow: hidden;
+    will-change: transform; /* Optimize for GPU */
   }
 
   /* Dark theme gradient */
@@ -130,7 +158,7 @@
       rgb(10, 15, 35) 100%
     );
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.5s ease;
   }
 
   /* Show dark gradient only in dark mode */
@@ -138,13 +166,12 @@
     opacity: 1;
   }
 
-  /* Nebula effect */
+  /* Nebula effect - optimized with fewer gradients */
   .nebula-effect {
     position: absolute;
     inset: 0;
     opacity: 0;
-    filter: blur(100px);
-    transform: translateY(-20%);
+    filter: blur(80px); /* Reduced blur radius */
     background: 
       radial-gradient(
         circle at var(--blue-x) var(--blue-y),
@@ -157,21 +184,12 @@
         transparent 60%
       ),
       radial-gradient(
-        circle at var(--purple2-x) var(--purple2-y),
-        rgba(168, 85, 247, 0.4),
-        transparent 50%
-      ),
-      radial-gradient(
         circle at var(--purple3-x) var(--purple3-y),
         rgba(88, 28, 135, 0.5),
         transparent 55%
-      ),
-      radial-gradient(
-        circle at 50% 50%,
-        rgba(15, 23, 42, 0.2),
-        transparent 70%
       );
-    transition: opacity 0.3s ease, transform 0.2s ease-out;
+    transition: opacity 0.5s ease;
+    will-change: transform; /* Optimize for GPU */
   }
 
   /* Show nebula only in dark mode */
@@ -218,42 +236,21 @@
     z-index: 1;
   }
 
-  /* Grass silhouette for light theme */
+  /* Grass silhouette for light theme - simplified */
   :global(:root:not(.dark)) .grass-silhouette {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     height: 180px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320' preserveAspectRatio='none'%3E%3Cpath fill='%2392C584' fill-opacity='0.2' d='M0,160 C120,160 180,110 240,110 C300,110 360,160 420,160 C480,160 540,110 600,110 C660,110 720,160 780,160 C840,160 900,110 960,110 C1020,110 1080,160 1140,160 C1200,160 1260,110 1320,110 C1380,110 1440,160 1440,160 L1440,320 L0,320 Z'/%3E%3Cpath fill='%2375B465' fill-opacity='0.3' d='M0,180 C60,180 120,140 180,140 C240,140 300,180 360,180 C420,180 480,140 540,140 C600,140 660,180 720,180 C780,180 840,140 900,140 C960,140 1020,180 1080,180 C1140,180 1200,140 1260,140 C1320,140 1380,180 1440,180 L1440,320 L0,320 Z'/%3E%3Cpath fill='%235AA349' fill-opacity='0.4' d='M0,220 C40,220 60,200 120,200 C180,200 240,220 300,220 C360,220 420,200 480,200 C540,200 600,220 660,220 C720,220 780,200 840,200 C900,200 960,220 1020,220 C1080,220 1140,200 1200,200 C1260,200 1320,220 1380,220 C1410,220 1430,200 1440,200 L1440,320 L0,320 Z'/%3E%3Cpath fill='%23508B3F' fill-opacity='0.5' d='M0,240 C30,240 45,230 90,230 C135,230 180,240 225,240 C270,240 315,230 360,230 C405,230 450,240 495,240 C540,240 585,230 630,230 C675,230 720,240 765,240 C810,240 855,230 900,230 C945,230 990,240 1035,240 C1080,240 1125,230 1170,230 C1215,230 1260,240 1305,240 C1350,240 1395,230 1440,230 L1440,320 L0,320 Z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320' preserveAspectRatio='none'%3E%3Cpath fill='%2392C584' fill-opacity='0.2' d='M0,160 C120,160 180,110 240,110 C300,110 360,160 420,160 C480,160 540,110 600,110 C660,110 720,160 780,160 C840,160 900,110 960,110 C1020,110 1080,160 1140,160 C1200,160 1260,110 1320,110 C1380,110 1440,160 1440,160 L1440,320 L0,320 Z'/%3E%3Cpath fill='%2375B465' fill-opacity='0.3' d='M0,180 C60,180 120,140 180,140 C240,140 300,180 360,180 C420,180 480,140 540,140 C600,140 660,180 720,180 C780,180 840,140 900,140 C960,140 1020,180 1080,180 C1140,180 1200,140 1260,140 C1320,140 1380,180 1440,180 L1440,320 L0,320 Z'/%3E%3Cpath fill='%235AA349' fill-opacity='0.4' d='M0,220 C40,220 60,200 120,200 C180,200 240,220 300,220 C360,220 420,200 480,200 C540,200 600,220 660,220 C720,220 780,200 840,200 C900,200 960,220 1020,220 C1080,220 1140,200 1200,200 C1260,200 1320,220 1380,220 C1410,220 1430,200 1440,200 L1440,320 L0,320 Z'/%3E%3C/svg%3E");
     background-size: cover;
     background-position: center;
     pointer-events: none;
     z-index: 0;
   }
 
-  /* Add some grass blades */
-  :global(:root:not(.dark)) .grass-silhouette::after {
-    content: '';
-    position: absolute;
-    bottom: 40px;
-    left: 0;
-    right: 0;
-    height: 60px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 100'%3E%3Cg fill='%23508B3F' fill-opacity='0.3'%3E%3Cpath d='M0,50 L10,0 L20,50 L30,10 L40,50 L50,0 L60,50 L70,20 L80,50 L90,0 L100,50'/%3E%3C/g%3E%3C/svg%3E");
-    background-size: 100px 100%;
-    background-repeat: repeat-x;
-    animation: sway 8s ease-in-out infinite alternate;
-  }
-
-  @keyframes sway {
-    from {
-      transform: translateX(-10px) scaleY(0.95);
-    }
-    to {
-      transform: translateX(10px) scaleY(1.05);
-    }
-  }
+  /* Removed animated grass blades */
 
   /* Hide grass and tree silhouettes in dark theme */
   :global(:root.dark) .grass-silhouette,
@@ -261,13 +258,21 @@
     display: none;
   }
 
-  /* Stars styling */
-  .stars {
+  /* Enhanced 3D stars styling */
+  .stars-container {
     position: absolute;
     inset: 0;
     z-index: 1;
     opacity: 0;
-    transition: opacity 0.3s ease, transform 0.2s ease-out;
+    transition: opacity 0.5s ease;
+    perspective: 1000px; /* Add perspective for 3D effect */
+  }
+
+  .stars-layer {
+    position: absolute;
+    inset: 0;
+    will-change: transform; /* Optimize for GPU */
+    transform-style: preserve-3d; /* Maintain 3D space */
   }
 
   .star {
@@ -279,7 +284,29 @@
     top: var(--top);
     left: var(--left);
     opacity: var(--brightness);
-    box-shadow: 0 0 2px white;
+    box-shadow: 0 0 calc(var(--size) * 0.8) rgba(255, 255, 255, 0.8); /* Glow effect */
+    transform: translateZ(calc(var(--depth) * 50px)); /* 3D depth positioning */
+  }
+
+  /* Twinkle animation for some stars */
+  .star.twinkle {
+    animation: twinkle 4s ease-in-out infinite;
+    animation-delay: calc(var(--top) * 100ms); /* Randomize animation timing */
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: var(--brightness); }
+    50% { opacity: calc(var(--brightness) * 0.3); }
+  }
+
+  /* Show elements in dark mode */
+  :global(:root.dark) .stars-container {
+    opacity: 1;
+  }
+
+  /* Remove old stars styling */
+  .stars {
+    display: none;
   }
 
   /* Skyline styling */
@@ -291,7 +318,8 @@
     height: 30vh;
     z-index: 2;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.5s ease;
+    will-change: transform; /* Optimize for GPU */
   }
 
   .skyline {
@@ -299,11 +327,10 @@
     height: 100%;
     object-fit: cover;
     object-position: bottom;
-    transition: transform 0.2s ease-out;
+    will-change: transform; /* Optimize for GPU */
   }
 
   /* Show elements in dark mode */
-  :global(:root.dark) .stars,
   :global(:root.dark) .skyline-wrapper {
     opacity: 0.8;
   }

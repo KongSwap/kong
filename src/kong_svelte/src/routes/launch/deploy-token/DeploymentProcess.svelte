@@ -2,17 +2,20 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import { Principal } from "@dfinity/principal";
+  import { IDL } from "@dfinity/candid";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { auth } from "$lib/services/auth";
   import { InstallService } from "$lib/services/canister/install_wasm";
   import type { WasmMetadata } from "$lib/services/canister/install_wasm";
   import { fetchICPtoXDRRates } from "$lib/services/canister/ic-api";
   import { createCanister } from "$lib/services/canister/create_canister";
+  import { idlFactory } from "$declarations/token_backend/token_backend.did";
 
   // Extend WasmMetadata type to include the properties we need
   interface TokenWasmMetadata {
     wasmModule: Uint8Array;
     initArgs: any;
+    initArgsType: any;
     path: string;
     description: string;
   }
@@ -407,10 +410,11 @@
     // Process tokenParams to handle BigInt values
     const safeTokenParams = processTokenParamsForBigInt(tokenParams);
     
-    // Create metadata for installation
+    // Create metadata for installation with proper init args type
     const metadata: TokenWasmMetadata = {
       wasmModule: new Uint8Array(wasmModule),
       initArgs: safeTokenParams,
+      initArgsType: idlFactory({IDL}).init_args[0],
       path: "wasms/token_backend.wasm.gz",
       description: "Token Backend"
     };

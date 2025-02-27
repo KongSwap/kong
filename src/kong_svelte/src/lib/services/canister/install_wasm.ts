@@ -1,22 +1,16 @@
 import { Principal } from "@dfinity/principal";
 import { IDL } from "@dfinity/candid";
-import { inflate } from "pako";
-import { auth } from "../auth";
-import { idlFactory as icManagementIdlFactory } from "./ic-management.idl";
-import { getWalletIdentity } from "$lib/utils/wallet";
 import { ICManagementCanister } from "@dfinity/ic-management";
 import { createAgent } from "@dfinity/utils";
-import { initializePNP, pnp } from "../pnp/PnpInitializer";
-import { HttpAgent } from "@dfinity/agent";
 import type { PNP } from "@windoge98/plug-n-play";
 import { getPnpInstance } from '../pnp/PnpInitializer';
+import pako from 'pako';
 
 let icManagementActor = null;
 let globalPnp: PNP | null = null;
 
 export interface WasmMetadata {
     path: string;
-    compressedPath?: string;
     description: string;
     initArgsType?: any;
     wasmModule?: Uint8Array;
@@ -76,57 +70,78 @@ export const agent = null; // This will be replaced by the agent created in getI
 
 export class InstallService {
     /**
-     * Installs a WASM module on a canister
+     * Installs a WASM module on a canister using chunked upload
      * @param canisterId - The target canister ID
      * @param wasmMetadata - Metadata about the WASM module to install
      * @param initArgs - Optional initialization arguments
+     * @param chunkSize - Size of chunks in bytes (default: 1MB)
      * @returns Promise<void>
      */
     public static async installWasm(
         canisterId: string,
         wasmMetadata: WasmMetadata,
-        initArgs?: any
+        initArgs?: any,
+        chunkSize: number = 1000000
     ): Promise<void> {
         try {
             console.log("Installing WASM for canister:", canisterId);
-            console.log("WASM metadata:", JSON.stringify(wasmMetadata, null, 2));
+            console.log("WASM metadata:", JSON.stringify({
+                path: wasmMetadata.path,
+                description: wasmMetadata.description
+            }, null, 2));
             
-            // Use provided wasmModule or fetch it
+            // Fetch the WASM module
             const wasmModule = wasmMetadata.wasmModule || 
                 await InstallService.fetchWasmModule(wasmMetadata);
             
-            // Validate the WASM module
             if (!wasmModule) {
-                console.error("WASM module is undefined!");
                 throw new Error("Failed to load WASM module: Module is undefined");
             }
             
             console.log("WASM module loaded, byte length:", wasmModule.length);
             
-            // Get the management canister actor
             const management = await getICManagementActor();
-            console.log("Management actor obtained:", management);
+            const canisterPrincipal = Principal.fromText(canisterId);
+            
+            // Check if we need to compress the WASM (if it's over 2MB)
+            let moduleToInstall = wasmModule;
+            const MAX_DIRECT_INSTALL_SIZE = 2 * 1024 * 1024; // 2MB
 
-            // Encode init args if present
+            if (wasmModule.length > MAX_DIRECT_INSTALL_SIZE) {
+                // Compress the WASM with gzip if it's larger than 2MB
+                console.log("WASM file is larger than 2MB, compressing with gzip");
+                
+                // Only compress if it doesn't already have gzip header (0x1F8B08)
+                const isAlreadyCompressed = wasmModule[0] === 0x1F && wasmModule[1] === 0x8B && wasmModule[2] === 0x08;
+                
+                if (!isAlreadyCompressed) {
+                    console.log("Compressing WASM file...");
+                    moduleToInstall = pako.gzip(wasmModule);
+                    console.log("Compressed WASM size:", moduleToInstall.length, 
+                                "Compression ratio:", (moduleToInstall.length / wasmModule.length).toFixed(2));
+                } else {
+                    console.log("WASM file is already compressed");
+                }
+                
+                // If it's still too large after compression, use chunking as a fallback
+                if (moduleToInstall.length > MAX_DIRECT_INSTALL_SIZE) {
+                    console.log("WASM is still larger than 2MB after compression, using chunked upload");
+                    return await InstallService.installWasmChunked(canisterId, moduleToInstall, wasmMetadata, initArgs, chunkSize);
+                }
+            }
+            
+            // Install the WASM (compressed or not)
             const arg = InstallService.encodeInitArgs(
                 wasmMetadata.initArgsType, 
                 wasmMetadata.initArgs || initArgs
             );
             
-            console.log("Encoded init args length:", arg.length);
-            console.log("Calling installCode with parameters:", {
-                canister_id: canisterId,
-                wasm_module_length: wasmModule?.length,
-                mode: "install", 
-                arg_length: arg.length
-            });
-
-            // Install the WASM
+            console.log("Installing WASM directly, size:", moduleToInstall.length);
             await management.installCode({
-                canisterId: Principal.fromText(canisterId),
-                wasmModule: Array.from(wasmModule),
+                canisterId: canisterPrincipal,
+                wasmModule: moduleToInstall,
                 mode: { install: null },
-                arg: Array.from(arg),
+                arg: arg,
                 sender_canister_version: []
             });
             
@@ -141,154 +156,84 @@ export class InstallService {
         }
     }
 
-    /**
-     * Installs a WASM module on a canister using chunked upload for large files
-     */
-    public static async installWasmChunked(
+    // Move chunking logic to a separate method
+    private static async installWasmChunked(
         canisterId: string,
+        wasmModule: Uint8Array,
         wasmMetadata: WasmMetadata,
         initArgs?: any,
-        chunkSize: number = 1048576 // 1MB chunks (maximum allowed by IC)
+        chunkSize: number = 1000000
     ): Promise<void> {
-        try {
-            console.log("Installing large WASM for canister:", canisterId);
+        // Clear existing chunk store
+        await InstallService.clearChunkStore(canisterId);
+        
+        const management = await getICManagementActor();
+        const canisterPrincipal = Principal.fromText(canisterId);
+        
+        // Upload chunks
+        let offset = 0;
+        const totalChunks = Math.ceil(wasmModule.length / chunkSize);
+        console.log(`Uploading WASM in ${totalChunks} chunks of ~${chunkSize/1024/1024}MB each`);
+        
+        while (offset < wasmModule.length) {
+            const chunk = wasmModule.slice(offset, offset + chunkSize);
+            const chunkNumber = Math.floor(offset / chunkSize) + 1;
+            console.log(`Uploading chunk ${chunkNumber}/${totalChunks}: ${offset} to ${offset + chunk.length} bytes`);
             
-            const wasmModule = wasmMetadata.wasmModule || 
-                await InstallService.fetchWasmModule(wasmMetadata);
-            
-            if (!wasmModule) {
-                throw new Error("Failed to load WASM module: Module is undefined");
-            }
-            
-            console.log("WASM module loaded, byte length:", wasmModule.length);
-            
-            const management = await getICManagementActor();
-            const canisterPrincipal = Principal.fromText(canisterId);
-            
-            // Upload chunks
-            let offset = 0;
-            const totalChunks = Math.ceil(wasmModule.length / chunkSize);
-            console.log(`Uploading WASM in ${totalChunks} chunks of ~${chunkSize/1024/1024}MB each`);
-            
-            while (offset < wasmModule.length) {
-                const chunk = wasmModule.slice(offset, offset + chunkSize);
-                const chunkNumber = Math.floor(offset / chunkSize) + 1;
-                console.log(`Uploading chunk ${chunkNumber}/${totalChunks}: ${offset} to ${offset + chunk.length} bytes`);
-                
-                await management.uploadChunk({
-                    canisterId: canisterPrincipal,
-                    chunk: Array.from(chunk)
-                });
-                
-                offset += chunk.length;
-                console.log(`Uploaded ${offset}/${wasmModule.length} bytes (${Math.round(offset/wasmModule.length*100)}%)`);
-            }
-            
-            // Install from chunks
-            const arg = InstallService.encodeInitArgs(
-                wasmMetadata.initArgsType, 
-                wasmMetadata.initArgs || initArgs
-            );
-            
-            console.log("Installing from chunks");
-            await management.installCode({
+            // Convert to Array for proper serialization
+            await management.uploadChunk({
                 canisterId: canisterPrincipal,
-                wasmModule: [], // Empty array signals to use the uploaded chunks
-                mode: { install: null },
-                arg: Array.from(arg),
-                sender_canister_version: []
+                chunk: Array.from(chunk) // Convert Uint8Array to number[]
             });
             
-            console.log("WASM installation successful!");
-        } catch (error) {
-            console.error("Chunked WASM installation error:", error);
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            if (errorMessage.includes('out of cycles')) {
-                throw new Error('Insufficient cycles. Please top up your canister and try again.');
-            }
-            throw error;
+            offset += chunk.length;
+            console.log(`Uploaded ${offset}/${wasmModule.length} bytes (${Math.round(offset/wasmModule.length*100)}%)`);
         }
+        
+        // Install from chunks
+        const arg = InstallService.encodeInitArgs(
+            wasmMetadata.initArgsType, 
+            wasmMetadata.initArgs || initArgs
+        );
+        
+        console.log("Installing from chunks");
+        await management.installCode({
+            canisterId: canisterPrincipal,
+            wasmModule: [], // Empty array signals to use the uploaded chunks
+            mode: { install: null },
+            arg: arg,
+            sender_canister_version: []
+        });
+        
+        console.log("Chunked WASM installation successful!");
     }
-
+    
     /**
-     * Fetches and optionally decompresses a WASM module
+     * Fetches a WASM module
      */
     private static async fetchWasmModule(wasmMetadata: WasmMetadata): Promise<Uint8Array> {
-        const validatePath = (path: string) => {
-            if (!path.startsWith('/')) {
-                throw new Error(`Invalid WASM path: ${path} - must start with '/'`);
-            }
-        };
-
-        const loadWasm = async (path: string, tryDecompress: boolean = false): Promise<Uint8Array> => {
-            try {
-                console.log("Fetching WASM from:", path);
-                const response = await fetch(path);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status} - ${response.statusText}`);
-                }
-                
-                const buffer = await response.arrayBuffer();
-                console.log(`Fetched ${buffer.byteLength} bytes`);
-                
-                const data = new Uint8Array(buffer);
-                
-                // Try decompression only if requested
-                if (tryDecompress) {
-                    try {
-                        console.log("Attempting to decompress WASM file...");
-                        const decompressed = inflate(data);
-                        console.log("Decompression successful, size:", decompressed.length);
-                        return decompressed;
-                    } catch (decompressError) {
-                        console.log("File is not compressed or decompression failed:", decompressError);
-                        // If decompression fails, return the original data
-                        // This handles cases where the file might have .gz extension but isn't actually compressed
-                        return data;
-                    }
-                }
-                
-                return data;
-            } catch (error) {
-                console.error(`Failed to load WASM:`, error);
-                throw error;
-            }
-        };
-
         try {
-            // If we have a wasmModule already, use it
-            if (wasmMetadata.wasmModule) {
-                console.log("Using provided WASM module");
-                return wasmMetadata.wasmModule;
+            const response = await fetch(wasmMetadata.path);
+            console.log('WASM fetch response:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch WASM: ${response.status} ${response.statusText}`);
             }
             
-            let wasm: Uint8Array | null = null;
+            const buffer = await response.arrayBuffer();
+            console.log('WASM buffer size:', buffer.byteLength);
             
-            // Try compressed path first if available
-            if (wasmMetadata.compressedPath) {
-                validatePath(wasmMetadata.compressedPath);
-                try {
-                    wasm = await loadWasm(wasmMetadata.compressedPath, true);
-                } catch (error) {
-                    console.warn("Failed to load compressed WASM, falling back to uncompressed:", error);
-                }
+            const wasmBytes = new Uint8Array(buffer);
+            
+            // Log if the file is already gzipped (gzip header is 0x1F, 0x8B, 0x08)
+            if (wasmBytes.length > 2 && wasmBytes[0] === 0x1F && wasmBytes[1] === 0x8B && wasmBytes[2] === 0x08) {
+                console.log('Fetched WASM is already gzip compressed');
             }
             
-            // If compressed path failed or doesn't exist, try uncompressed
-            if (!wasm && wasmMetadata.path) {
-                validatePath(wasmMetadata.path);
-                wasm = await loadWasm(wasmMetadata.path, false);
-            }
-            
-            if (!wasm || wasm.length === 0) {
-                throw new Error("Failed to load WASM: Empty or missing WASM file");
-            }
-            
-            return wasm;
+            return wasmBytes;
         } catch (error) {
-            console.error("WASM loading failed:", error);
-            throw new Error(`Failed to load WASM: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.error('WASM fetch failed:', error);
+            throw error;
         }
     }
 
@@ -326,5 +271,26 @@ export class InstallService {
             return result;
         }
         return args;
+    }
+
+    /**
+     * Clears the chunk store for a canister
+     * @param canisterId - The target canister ID
+     */
+    public static async clearChunkStore(canisterId: string): Promise<void> {
+        try {
+            console.log("Clearing chunk store for canister:", canisterId);
+            
+            const management = await getICManagementActor();
+            
+            await management.clearChunkStore({
+                canisterId: Principal.fromText(canisterId)
+            });
+            
+            console.log("Chunk store cleared successfully");
+        } catch (error) {
+            console.error("Failed to clear chunk store:", error);
+            throw error;
+        }
     }
 }

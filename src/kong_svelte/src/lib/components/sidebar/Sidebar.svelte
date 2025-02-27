@@ -114,9 +114,7 @@
 {#key $sidebarStore.isOpen}
   <div class="fixed inset-0 w-full h-screen md:static md:w-auto md:h-auto">
     <div
-      class="fixed inset-0 bg-black/40 backdrop-blur-sm cursor-zoom-out pointer-events-auto md:hidden"
-      in:fade|local={{ duration: 200 }}
-      out:fade|local={{ duration: 200 }}
+      class="fixed inset-0 pointer-events-auto bg-black/40 backdrop-blur-sm cursor-zoom-out md:hidden"
       on:click={handleClose}
       role="button"
       tabindex="-1"
@@ -146,8 +144,6 @@
           class={`fixed right-0 top-0 bottom-0 w-full md:right-4 md:top-4 md:bottom-4 md:w-[527px] grid transform-gpu backface-hidden pointer-events-auto perspective-1000 ${
             isExpanded ? "inset-0 w-auto" : ""
           }`}
-          in:fly={{ x: 20, duration: 200 }}
-          out:fly={{ x: 20, duration: 200 }}
         >
           <Panel
             width="100%"
@@ -207,7 +203,7 @@
 
               <!-- Footer Section -->
               <footer
-                class="px-4 pt-1 border-t border-kong-border/30 z-10 bg-kong-bg-dark"
+                class="z-10 px-4 pt-1 border-t border-kong-border/30 bg-kong-bg-dark"
               >
                 <div class="flex justify-end gap-x-2">
                   <ButtonV2
