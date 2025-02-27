@@ -135,7 +135,7 @@ pub async fn insert_claim_on_database(
     let amount = round_f64(v.amount.0.to_f64().unwrap() / 10_u64.pow(*decimals as u32) as f64, *decimals);
     let request_id = v.request_id.map(|x| x as i64);
     let to_address = v.to_address.as_ref().map(|x| x.to_string());
-    let desc = v.desc.as_ref().map(|x| x.to_string());
+    let desc = v.desc.clone();
     let attempt_request_id = v.attempt_request_id.iter().map(|x| *x as i64).collect::<Vec<_>>();
     let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<_>>();
     let ts = v.ts as f64 / 1_000_000_000.0;
