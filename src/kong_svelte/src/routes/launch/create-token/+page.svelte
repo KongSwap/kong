@@ -394,12 +394,6 @@
       <!-- Step 4: Review -->
       {:else if currentStep === 4}
         <div class="flex flex-col">
-          <div class="flex flex-col px-6 mb-2">
-            <div class="flex items-center justify-between mb-2">
-              <h1 class="text-xl font-bold">Review & Create</h1>
-              <div class="text-sm text-kong-text-secondary">Step {currentStep} of {totalSteps}</div>
-            </div>
-          </div>
           
           <Panel variant="solid" type="main" className="p-4 backdrop-blur-xl">
             <div class="space-y-6">

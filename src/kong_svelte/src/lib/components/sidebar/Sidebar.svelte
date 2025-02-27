@@ -111,14 +111,15 @@
   }
 </script>
 
-{#key $sidebarStore.isOpen}
-  <div class="fixed inset-0 w-full h-screen md:static md:w-auto md:h-auto">
+{#if $sidebarStore.isOpen}
+  <div class="fixed inset-0 w-full h-screen md:static md:w-auto md:h-auto" transition:fade={{ duration: 10 }}>
     <div
       class="fixed inset-0 pointer-events-auto bg-black/40 backdrop-blur-sm cursor-zoom-out md:hidden"
       on:click={handleClose}
       role="button"
       tabindex="-1"
       aria-label="Close sidebar"
+      transition:fade={{ duration: 10 }}
     />
     {#if !$auth.isConnected}
       {#await loadWalletProvider()}
@@ -139,11 +140,13 @@
         class="fixed inset-0 z-[2] isolate pointer-events-none"
         role="dialog"
         aria-modal="true"
+        transition:fade={{ duration: 10 }}
       >
         <div
           class={`fixed right-0 top-0 bottom-0 w-full md:right-4 md:top-4 md:bottom-4 md:w-[527px] grid transform-gpu backface-hidden pointer-events-auto perspective-1000 ${
             isExpanded ? "inset-0 w-auto" : ""
           }`}
+          transition:fly={{ x: 10, duration: 10 }}
         >
           <Panel
             width="100%"
@@ -238,7 +241,7 @@
       </div>
     {/if}
   </div>
-{/key}
+{/if}
 
 <style scoped lang="postcss">
   :global(.wallet-modal) {

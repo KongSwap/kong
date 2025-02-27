@@ -45,7 +45,7 @@
         </div>
         <div class="stat-item">
           <button
-            class="stat-value truncate canister-id"
+            class="truncate stat-value canister-id"
             on:click={() => copyToClipboard(token.canister_id)}
             title="Click to copy"
           >

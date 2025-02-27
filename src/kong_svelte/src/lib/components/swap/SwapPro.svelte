@@ -57,8 +57,8 @@
   // Initialize on mount
   onMount(() => {
     // Initialize tokens from swapState if available
-    if ($swapState.payToken) fromToken = $swapState.payToken;
-    if ($swapState.receiveToken) toToken = $swapState.receiveToken;
+    if (initialFromToken) $swapState.payToken = initialFromToken;
+    if (initialToToken) $swapState.receiveToken = initialToToken;
 
     const mediaQuery = window.matchMedia("(max-width: 768px)");
     isMobile = mediaQuery.matches;
@@ -125,8 +125,6 @@
         <div class="mobile-swap-section">
           <div class="swap-section">
             <Swap
-              initialFromToken={fromToken}
-              initialToToken={toToken}
               {currentMode}
               on:modeChange
               on:tokenChange={handleTokenChange}
@@ -171,8 +169,6 @@
           <!-- Swap interface -->
           <div class="swap-section">
             <Swap
-              initialFromToken={fromToken}
-              initialToToken={toToken}
               {currentMode}
               on:modeChange
               on:tokenChange={handleTokenChange}
@@ -192,17 +188,19 @@
 <style lang="postcss">
   .swap-pro-container {
     width: 100%;
-    height: 100%;
+    height: 85vh;
     background: var(--color-background);
     position: relative;
     @apply px-4;
-    padding-top: 0;
+    padding-top: 0.5rem;
     overflow: hidden;
   }
 
   .layout-container {
     height: 100%;
     width: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   .main-content {
@@ -210,6 +208,7 @@
     gap: 1.5rem;
     height: 100%;
     width: 100%;
+    overflow: hidden;
   }
 
   .left-section {
@@ -219,98 +218,189 @@
     gap: 1rem;
     height: 100%;
     min-width: 0; /* Allow shrinking */
+    overflow: hidden;
   }
 
   .chart-wrapper {
     width: 100%;
     height: 100%;
-    min-height: 400px;
+    min-height: 0;
   }
 
   :global(.chart-area) {
     flex: 2;
-    min-height: 300px;
+    min-height: 0;
+    overflow: hidden;
   }
 
   :global(.transaction-feed) {
     flex: 1;
-    min-height: 200px;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .right-section {
-    width: 500px;
-    min-width: 500px;
+    width: 450px;
+    min-width: 450px;
+    max-width: 450px;
     height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    overflow-y: auto;
+    gap: 0.3rem;
+    overflow: hidden;
+    padding-right: 0;
   }
 
   .swap-section {
     flex-shrink: 0;
+    width: 100%;
   }
 
   .token-info-section {
-    flex-shrink: 0;
+    flex: 1;
+    overflow: hidden;
+    margin-top: 0;
+    width: 100%;
+  }
+
+  /* Fix for swap button and panels */
+  :global(.right-section .swap-button) {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+  }
+
+  :global(.right-section .swap-panel) {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Override for direction change button */
+  :global(.right-section .direction-button),
+  :global(.right-section .swap-direction-button) {
+    width: auto !important;
+    min-width: auto !important;
+    max-width: fit-content !important;
+  }
+  
+  /* Fix for circular buttons */
+  :global(.right-section button.icon-button),
+  :global(.right-section button.circular-button),
+  :global(.right-section button.round-button) {
+    width: auto !important;
+    min-width: auto !important;
+    max-width: fit-content !important;
+  }
+  
+  :global(.token-info-panel) {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 1rem !important;
+  }
+  
+  :global(.token-info-panel .token-info-content) {
+    width: 100% !important;
+  }
+  
+  :global(.token-info-panel .stats-grid) {
+    width: 100% !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  :global(.right-section button.enter-amount-button) {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    border-radius: 8px !important;
+  }
+  
+  :global(.right-section .swap-form) {
+    width: 100% !important;
+  }
+  
+  :global(.right-section .swap-container) {
+    width: 100% !important;
+  }
+
+  :global(.right-section .action-button),
+  :global(.right-section .enter-amount-button),
+  :global(.right-section .swap-action-button) {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  :global(.right-section .token-selector) {
+    width: 100% !important;
+  }
+  
+  :global(.right-section .input-container) {
+    width: 100% !important;
   }
 
   /* Mobile styles */
   @media (max-width: 768px) {
     .swap-pro-container {
       padding: 0.5rem;
-      padding-top: 0;
-      height: 100%;
-      overflow: auto;
+      padding-top: 0.5rem;
+      height: 85vh;
+      overflow: hidden;
     }
 
     .main-content {
       flex-direction: column;
       gap: 1rem;
-      height: auto;
+      height: 100%;
     }
 
     .left-section {
       gap: 1rem;
+      overflow: hidden;
     }
 
     .right-section {
       width: 100%;
       min-width: 0;
       height: auto;
-      overflow: visible;
+      overflow: hidden;
+      padding-right: 0;
+    }
+
+    .swap-section, 
+    .token-info-section {
+      width: 100%;
     }
 
     .mobile-chart-section {
       display: flex;
       flex-direction: column;
       gap: 1rem;
-      height: auto;
-      padding: 0.5rem;
-      overflow: visible;
+      height: 100%;
+      padding: 0;
+      overflow: hidden;
     }
 
     :global(.chart-area) {
-      flex: none;
-      height: 400px !important;
-      min-height: 300px;
-      max-height: 400px;
-      margin-bottom: 1rem;
+      flex: 2;
+      height: auto !important;
+      min-height: 0;
+      max-height: none;
+      margin-bottom: 0.5rem;
     }
 
     :global(.transaction-feed) {
-      flex: none;
-      height: 300px !important;
-      min-height: 200px;
-      max-height: 300px;
-      overflow-y: auto;
+      flex: 1;
+      height: auto !important;
+      min-height: 0;
+      max-height: none;
+      overflow: hidden;
       border-top: 1px solid rgb(var(--border) / 0.8);
-      padding-top: 1rem;
+      padding-top: 0.5rem;
     }
 
     .chart-wrapper {
       height: 100%;
-      min-height: 300px;
+      min-height: 0;
       margin-bottom: 0;
     }
   }
@@ -318,8 +408,9 @@
   /* Desktop adjustments */
   @media (min-width: 1920px) {
     .right-section {
-      width: 600px;
-      min-width: 600px;
+      width: 500px;
+      min-width: 500px;
+      max-width: 500px;
     }
   }
 
@@ -327,37 +418,39 @@
     .right-section {
       width: 400px;
       min-width: 400px;
+      max-width: 400px;
     }
   }
 
   /* Height-based responsive adjustments */
   @media (max-height: 800px) {
     .swap-pro-container {
-      padding: 1rem;
-      padding-top: 0;
+      padding: 0.5rem;
+      padding-top: 0.5rem;
     }
 
     .main-content {
-      gap: 1rem;
+      gap: 0.5rem;
     }
 
     :global(.chart-area) {
-      min-height: 250px;
+      flex: 2;
     }
 
     :global(.transaction-feed) {
-      min-height: 150px;
+      flex: 1;
     }
   }
 
   /* Very short screens */
   @media (max-height: 600px) {
-    :global(.chart-area) {
-      min-height: 200px;
+    .swap-pro-container {
+      height: 85vh;
+      min-height: 85vh;
     }
-
-    :global(.transaction-feed) {
-      min-height: 120px;
+    
+    .main-content {
+      height: 100%;
     }
   }
 
