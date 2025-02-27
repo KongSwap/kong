@@ -2,7 +2,6 @@
   import "../app.css";
   import { onMount, onDestroy } from "svelte";
   import { page } from "$app/stores";
-  import { fade } from "svelte/transition";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
   import { appLoader } from "$lib/services/appLoader";
@@ -20,6 +19,8 @@
   import TrollBox from "$lib/components/trollbox/TrollBox.svelte";
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";
+  import { keyboardShortcuts } from "$lib/services/keyboardShortcuts";
+  import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
   
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
@@ -50,19 +51,13 @@
     return initializationPromise;
   }
 
-  function handleKeyDown(event: KeyboardEvent) {
-    // Ctrl+K or Cmd+K to open search
-    if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-      event.preventDefault();
-      searchStore.open();
-    }
-  }
-
   onMount(() => {
-    // Add keyboard shortcut listener
+    // Initialize theme
     if (browser) {
-      window.addEventListener('keydown', handleKeyDown);
       themeStore.initTheme();
+      
+      // Initialize keyboard shortcuts
+      keyboardShortcuts.initialize();
     }
     
     // Initialize the app
@@ -88,7 +83,7 @@
   onDestroy(() => {
     if (browser) {
       appLoader.destroy();
-      window.removeEventListener('keydown', handleKeyDown);
+      keyboardShortcuts.destroy();
     }
   });
 
@@ -129,6 +124,7 @@
   <!-- Add TrollBox component -->
   <TrollBox />
   <GlobalSearch isOpen={$searchStore.isOpen} on:close={() => searchStore.close()} />
+  <KeyboardShortcutsHelp />
   <div id="modals"></div>
 </div>
 
