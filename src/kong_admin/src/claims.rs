@@ -144,7 +144,7 @@ pub async fn insert_claim_on_database(
     db_client
         .execute(
             "INSERT INTO claims
-                (claim_id, user_id, token_id, status, amount, request_id, to_address, desc, attempt_request_id, transfer_ids, ts, raw_json)
+                (claim_id, user_id, token_id, status, amount, request_id, to_address, \"desc\", attempt_request_id, transfer_ids, ts, raw_json)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11), $12)
                 ON CONFLICT (claim_id) DO UPDATE SET
                     user_id = $2,
@@ -153,7 +153,7 @@ pub async fn insert_claim_on_database(
                     amount = $5,
                     request_id = $6,
                     to_address = $7,
-                    desc = $8,
+                    \"desc\" = $8,
                     attempt_request_id = $9,
                     transfer_ids = $10,
                     ts = to_timestamp($11),
