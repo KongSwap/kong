@@ -34,12 +34,12 @@ impl Display for MarketCategory {
 impl Storable for MarketCategory {
     fn to_bytes(&self) -> Cow<[u8]> {
         let mut buf = vec![];
-        ciborium::ser::into_writer(self, &mut buf).unwrap();
+        ciborium::ser::into_writer(self, &mut buf).expect("Failed to serialize MarketCategory");
         Cow::Owned(buf)
     }
 
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        ciborium::de::from_reader(bytes.as_ref()).unwrap()
+        ciborium::de::from_reader(bytes.as_ref()).expect("Failed to deserialize MarketCategory")
     }
 
     const BOUND: Bound = Bound::Unbounded;
