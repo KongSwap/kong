@@ -1,7 +1,7 @@
 import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
-import type { Settings } from './types';
-import { auth } from '../auth';
+import type { Settings } from '$lib/types/settings.ts';
+import { auth } from '$lib/services/auth';
 
 const DEFAULT_SETTINGS: Settings = {
   sound_enabled: false,

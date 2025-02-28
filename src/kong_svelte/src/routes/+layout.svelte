@@ -1,10 +1,8 @@
 <script lang="ts">
   import "../app.css";
-  import { onMount, onDestroy } from "svelte";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
-  import { appLoader } from "$lib/services/appLoader";
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
   import QRModal from "$lib/components/common/QRModal.svelte";
@@ -22,36 +20,36 @@
   import { keyboardShortcuts } from "$lib/services/keyboardShortcuts";
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
   
-  let pageTitle = $state(
+  const pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
   );
-  let initializationPromise: Promise<void> | null = null;
-  let initializationError: Error | null = null;
-  let defaultTokens: FE.Token[] = [];
+  let initializationPromise = $state<Promise<void> | null>(null);
+  let defaultTokens = $state<FE.Token[]>([]);
+  let { children } = $props();
   
   async function init() {
     if (initializationPromise) {
       return initializationPromise;
     }
 
-    initializationPromise = (async () => {
+    const promise = (async () => {
       try {
         await kongDB.initialize();
         await auth.initialize();
-        await appLoader.initialize();
         console.log("[App] App initialization complete");
       } catch (error) {
         console.error("[App] Initialization error:", error);
-        initializationError = error as Error;
         initializationPromise = null;
         throw error;
       }
     })();
 
-    return initializationPromise;
+    initializationPromise = promise;
+    return promise;
   }
 
-  onMount(() => {
+  // Initialize on component mount
+  $effect.root(() => {
     // Initialize theme
     if (browser) {
       themeStore.initTheme();
@@ -63,7 +61,6 @@
     // Initialize the app
     init().catch((error) => {
       console.error("[App] Failed to initialize app:", error);
-      initializationError = error instanceof Error ? error : new Error(String(error));
     });
     
     // Load tokens
@@ -78,13 +75,13 @@
       .catch((error) => {
         console.error("[App] Failed to fetch tokens:", error);
       });
-  });
-
-  onDestroy(() => {
-    if (browser) {
-      appLoader.destroy();
-      keyboardShortcuts.destroy();
-    }
+      
+    // Cleanup on destroy
+    return () => {
+      if (browser) {  
+        keyboardShortcuts.destroy();
+      }
+    };
   });
 
   $effect(() => {
@@ -94,27 +91,29 @@
   });
 </script>
 
-{#if initializationError}
-  <div class="error-message">
-    Failed to initialize app: {initializationError.message}
-  </div>
-{/if}
-
 <svelte:head>
   <title>{pageTitle} - Rumble in the crypto jungle!</title>
+  <style>
+    body {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      @apply dark:bg-[#010101] light:bg-gray-200 transition-colors duration-200;
+    }
+  </style>
 </svelte:head>
 
-<div class="app-container">
-  <PageWrapper page={$page.url.pathname}>
+<div class="flex flex-col min-h-screen w-full origin-center">
+  <PageWrapper page={page.url.pathname}>
     <div class="ticker-section">
       <TokenTicker />
     </div>
-    <div class="nav-container">
+    <div class="bg-transparent">
       <Navbar />
     </div>
-    <main class="content-container">
+    <main class="flex flex-col items-center w-full">
       <div class="w-full h-full">
-        <slot />
+        {@render children?.()}
       </div>
     </main>
   </PageWrapper>
@@ -127,28 +126,3 @@
   <KeyboardShortcutsHelp />
   <div id="modals"></div>
 </div>
-
-<style scoped lang="postcss">
-  :global(body) {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    @apply dark:bg-[#010101] light:bg-gray-200 transition-colors duration-200;
-  }
-
-  .nav-container {
-    background-color: transparent;
-  }
-
-  .content-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-  }
-
-  .app-container {
-    @apply flex flex-col min-h-screen w-full;
-    transform-origin: center;
-  }
-</style>

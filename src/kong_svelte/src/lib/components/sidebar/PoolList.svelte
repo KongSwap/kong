@@ -6,7 +6,7 @@
   import { ChevronRight, Search, X, ArrowUpDown } from "lucide-svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/services/auth";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
 
@@ -48,9 +48,9 @@
   onMount(() => {
     const unsubscribe = auth.subscribe(($auth) => {
       if ($auth.isConnected) {
-        userPoolListStore.initialize();
+        currentUserPoolsStore.initialize();
       } else {
-        userPoolListStore.reset();
+        currentUserPoolsStore.reset();
       }
     });
 
@@ -76,9 +76,9 @@
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && $userPoolListStore.searchQuery) {
+    if (event.key === "Escape" && $currentUserPoolsStore.searchQuery) {
       event.preventDefault();
-      userPoolListStore.setSearchQuery("");
+      currentUserPoolsStore.setSearchQuery("");
       searchInput.focus();
     } else if (event.key === "/" && document.activeElement !== searchInput) {
       event.preventDefault();
@@ -99,7 +99,7 @@
             </div>
             <input
               bind:this={searchInput}
-              bind:value={$userPoolListStore.searchQuery}
+              bind:value={$currentUserPoolsStore.searchQuery}
               type="text"
               placeholder="Search pools by name or token..."
               class="search-input"
@@ -108,11 +108,11 @@
               autocapitalize="off"
               spellcheck="false"
             />
-            {#if $userPoolListStore.searchQuery}
+            {#if $currentUserPoolsStore.searchQuery}
               <button
                 class="clear-button"
                 on:click={() => {
-                  userPoolListStore.setSearchQuery("");
+                  currentUserPoolsStore.setSearchQuery("");
                   searchInput.focus();
                 }}
                 aria-label="Clear search"
@@ -124,13 +124,13 @@
 
           <button
             class="sort-toggle"
-            on:click={userPoolListStore.toggleSort}
-            aria-label={`Sort by value ${$userPoolListStore.sortDirection === "desc" ? "ascending" : "descending"}`}
+            on:click={currentUserPoolsStore.toggleSort}
+            aria-label={`Sort by value ${$currentUserPoolsStore.sortDirection === "desc" ? "ascending" : "descending"}`}
           >
             <span class="toggle-label">Value</span>
             <div
               class="sort-icon-wrapper"
-              class:ascending={$userPoolListStore.sortDirection === "asc"}
+              class:ascending={$currentUserPoolsStore.sortDirection === "asc"}
             >
               <ArrowUpDown size={14} />
             </div>
@@ -150,28 +150,28 @@
 
   <div class="pool-list-content rounded-b-lg">
     <div class="pool-list">
-      {#if $userPoolListStore.loading}
+      {#if $currentUserPoolsStore.loading}
         <div class="empty-state" in:fade>
           <LoadingIndicator text="Loading positions..." />
         </div>
-      {:else if $userPoolListStore.error}
+      {:else if $currentUserPoolsStore.error}
         <div class="state-message error" in:fade>
-          <p>{$userPoolListStore.error}</p>
+          <p>{$currentUserPoolsStore.error}</p>
           <button
             class="retry-button"
-            on:click={() => userPoolListStore.initialize()}
+            on:click={() => currentUserPoolsStore.initialize()}
           >
             Retry
           </button>
         </div>
-      {:else if $userPoolListStore.filteredPools.length === 0}
+      {:else if $currentUserPoolsStore.filteredPools.length === 0}
         <div class="state-message" in:fade>
-          {#if $userPoolListStore.searchQuery && !pool}
-            <p>No pools found matching "{$userPoolListStore.searchQuery}"</p>
+          {#if $currentUserPoolsStore.searchQuery && !pool}
+            <p>No pools found matching "{$currentUserPoolsStore.searchQuery}"</p>
             <button
               class="clear-search-button"
               on:click={() => {
-                userPoolListStore.setSearchQuery("");
+                currentUserPoolsStore.setSearchQuery("");
                 searchInput.focus();
               }}
             >
@@ -187,7 +187,7 @@
           {/if}
         </div>
       {:else}
-        {#each $userPoolListStore.filteredPools as poolItem}
+        {#each $currentUserPoolsStore.filteredPools as poolItem}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div
             class="pool-item"

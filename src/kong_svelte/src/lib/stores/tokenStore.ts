@@ -1,12 +1,12 @@
-// src/kong_svelte/src/lib/services/tokens/tokenStore.ts
+// src/kong_svelte/src/lib/stores/tokenStore.ts
 import { derived, writable } from "svelte/store";
-import { TokenService } from "./TokenService";
+import { TokenService } from "$lib/services/tokens/TokenService";
 import BigNumber from "bignumber.js";
 import { get } from "svelte/store";
 import { auth } from "$lib/services/auth";
-import type { TokenState } from "./types";
+import type { TokenState } from "$lib/services/tokens/types";
 import { userTokens } from "$lib/stores/userTokens";
-import { userPoolListStore } from "$lib/stores/userPoolListStore";
+import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
 function createTokenStore() {
@@ -81,8 +81,8 @@ export const updateStoredBalances = async (walletId: string) => {
 
 // Update the portfolioValue derived store
 export const portfolioValue = derived(
-  [userTokens, userPoolListStore, currentUserBalancesStore],
-  ([$userTokens, $userPoolListStore, $storedBalances]) => {
+  [userTokens, currentUserPoolsStore, currentUserBalancesStore],
+  ([$userTokens, $currentUserPoolsStore, $storedBalances]) => {
     // Calculate token values
     const tokenValue = ($userTokens.tokens || []).reduce((acc, token) => {
       const balance = $storedBalances[token.canister_id]?.in_usd;
@@ -93,7 +93,7 @@ export const portfolioValue = derived(
     }, 0);
 
     // Calculate pool values using processedPools, ensuring the array exists
-    const poolValue = ($userPoolListStore.processedPools || []).reduce((acc, pool) => {
+    const poolValue = ($currentUserPoolsStore.processedPools || []).reduce((acc, pool) => {
       const value = pool && pool.usd_balance ? Number(pool.usd_balance) : 0;
       return acc + value;
     }, 0);
@@ -172,26 +172,35 @@ export const loadBalances = async (
   }
 };
 
-export const loadBalance = async (canisterId: string, forceRefresh = false) => {
+export const loadBalance = async (canisterId: string, forceRefresh = false): Promise<FE.TokenBalance> => {
+  // Helper function for default/empty balance
+  const emptyBalance = (): FE.TokenBalance => ({
+    in_tokens: BigInt(0),
+    in_usd: "0",
+  });
+
   const authStore = get(auth);
   if(!authStore.isConnected) {
-    return {};
+    return emptyBalance();
   }
 
   try {
     if (get(tokenStore).pendingBalanceRequests.has(canisterId)) {
-      return {};
+      return emptyBalance();
     }
 
     const owner = getCurrentWalletId();
     const userTokensStore = get(userTokens);
     tokenStore.addPendingRequest(canisterId);
 
+    // Cleanup helper to ensure we always remove pending request
+    const cleanup = () => tokenStore.removePendingRequest(canisterId);
+
     const token = userTokensStore.tokens.find(t => t.canister_id === canisterId);
     if (!token) {
       console.warn(`Token not found for canister ID: ${canisterId}`);
-      tokenStore.removePendingRequest(canisterId);
-      return {};
+      cleanup();
+      return emptyBalance();
     }
 
     // Check database first if not forcing refresh
@@ -199,18 +208,13 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
       const existingBalance = get(currentUserBalancesStore)[canisterId];
 
       if (existingBalance) {
-        const balance = {
-          [canisterId]: {
-            in_tokens: existingBalance.in_tokens,
-            in_usd: existingBalance.in_usd,
-          },
-        };
-
         // Update currentUserBalancesStore
         await updateStoredBalances(owner);
-
-        tokenStore.removePendingRequest(canisterId);
-        return balance;
+        cleanup();
+        return {
+          in_tokens: existingBalance.in_tokens,
+          in_usd: existingBalance.in_usd,
+        };
       }
     }
 
@@ -225,12 +229,12 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
       await updateStoredBalances(owner);
     }
 
-    tokenStore.removePendingRequest(canisterId);
-    return balances;
+    cleanup();
+    return balances[canisterId] || emptyBalance();
   } catch (error) {
     console.error("Error loading balance:", error);
     tokenStore.removePendingRequest(canisterId);
-    return {};
+    return emptyBalance();
   }
 };
 

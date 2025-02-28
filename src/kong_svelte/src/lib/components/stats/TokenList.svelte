@@ -3,7 +3,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { flip } from "svelte/animate";
-  import { currentUserBalancesStore } from "$lib/services/tokens/tokenStore";
+  import { currentUserBalancesStore } from "$lib/stores/tokenStore";
 
   export let tokens: FE.Token[] = [];
 

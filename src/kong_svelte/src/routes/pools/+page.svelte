@@ -26,7 +26,7 @@
   import { page } from "$app/stores";
   import UserPoolList from "$lib/components/liquidity/pools/UserPoolList.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { fetchTokens } from "$lib/api/tokens";
 
@@ -316,10 +316,10 @@
   async function fetchUserPools() {
     isLoading.set(true);
     try {
-      await userPoolListStore.initialize();
+      await currentUserPoolsStore.initialize();
 
       // Casting liveUserPools to any to call set
-      $liveUserPools = $userPoolListStore.filteredPools as unknown as BE.Pool[];
+      $liveUserPools = $currentUserPoolsStore.filteredPools as unknown as BE.Pool[];
     } catch (error) {
       console.error("Error fetching user pools:", error);
       $liveUserPools = [];

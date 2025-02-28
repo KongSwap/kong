@@ -2,37 +2,51 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { onMount } from "svelte";
   import { InfoIcon } from "lucide-svelte";
   import { tooltip } from "$lib/actions/tooltip";
-  import { writable } from "svelte/store";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
+  import { tweened } from 'svelte/motion';
 
-  export let token: FE.Token;
-  export let marketCapRank: number | null;
+  // Props using $props() for Svelte 5 runes mode
+  const { token, marketCapRank = null } = $props<{
+    token: FE.Token;
+    marketCapRank: number | null;
+  }>();
 
-  let previousPrice: number | null = null;
-  let priceFlash: 'up' | 'down' | null = null;
+  // State variables
+  let previousPrice: number | null = $state(null);
+  let priceFlash: 'up' | 'down' | null = $state(null);
   let priceFlashTimeout: NodeJS.Timeout;
-
-  // Create a writable store for live token data
-  const liveToken = writable<FE.Token | null>(null);
-
-  // Add these after liveToken store
-  const marketCap = tweened(0, { duration: 500, easing: cubicOut });
-  const volume24h = tweened(0, { duration: 500, easing: cubicOut });
-  const totalSupplyTweened = tweened(0, { duration: 500, easing: cubicOut });
-  const circulatingSupplyTweened = tweened(0, { duration: 500, easing: cubicOut });
+  
+  // Live token data (replacing writable store)
+  let liveToken: FE.Token | null = $state(null);
+  
+  // Motion values (replacing tweened stores)
+  let marketCapValue = $state(0);
+  let volume24hValue = $state(0);
+  let totalSupplyValue = $state(0);
+  let circulatingSupplyValue = $state(0);
+  
+  // Create tweened motions
+  const marketCapMotion = tweened(0, { duration: 500, easing: cubicOut });
+  const volume24hMotion = tweened(0, { duration: 500, easing: cubicOut });
+  const totalSupplyMotion = tweened(0, { duration: 500, easing: cubicOut });
+  const circulatingSupplyMotion = tweened(0, { duration: 500, easing: cubicOut });
+  
+  // Derived values from motions
+  const marketCap = $derived($marketCapMotion);
+  const volume24h = $derived($volume24hMotion);
+  const totalSupplyTweened = $derived($totalSupplyMotion);
+  const circulatingSupplyTweened = $derived($circulatingSupplyMotion);
 
   // Function to update token data
   async function updateTokenData() {
     try {
       const result = await fetchTokensByCanisterId([token.canister_id]);
       if (result && result[0]) {
-        // Create a new object to force reactivity
-        liveToken.set({ ...result[0] });
+        // Update state variable
+        liveToken = { ...result[0] };
       }
     } catch (error) {
       console.error("Error fetching token data:", error);
@@ -42,11 +56,11 @@
   // Initial fetch
   updateTokenData();
 
-  // Use the live token data with fallback to prop token
-  $: activeToken = $liveToken || token;
+  // Derived active token (replacing reactive statement)
+  const activeToken = $derived(liveToken || token);
 
-  // Track price changes efficiently
-  $: {
+  // Track price changes with effect
+  $effect(() => {
     const currentPrice = Number(activeToken?.metrics?.price || 0);
     if (previousPrice !== null && currentPrice !== previousPrice) {
       if (priceFlashTimeout) {
@@ -56,24 +70,31 @@
       priceFlashTimeout = setTimeout(() => priceFlash = null, 1000);
     }
     previousPrice = currentPrice;
-  }
+  });
 
-  // Update these reactive statements
-  $: {
+  // Update motion values with effect
+  $effect(() => {
     if (activeToken?.metrics) {
-      marketCap.set(Number(activeToken.metrics.market_cap || 0));
-      volume24h.set(Number(activeToken.metrics.volume_24h || 0));
-      totalSupplyTweened.set(Number(activeToken.metrics.total_supply || 0) / 10 ** activeToken.decimals);
-      circulatingSupplyTweened.set(Number(activeToken.metrics.total_supply || 0) / 10 ** activeToken.decimals);
+      marketCapValue = Number(activeToken.metrics.market_cap || 0);
+      volume24hValue = Number(activeToken.metrics.volume_24h || 0);
+      totalSupplyValue = Number(activeToken.metrics.total_supply || 0) / 10 ** activeToken.decimals;
+      circulatingSupplyValue = Number(activeToken.metrics.total_supply || 0) / 10 ** activeToken.decimals;
+      
+      // Update motion values
+      marketCapMotion.set(marketCapValue);
+      volume24hMotion.set(volume24hValue);
+      totalSupplyMotion.set(totalSupplyValue);
+      circulatingSupplyMotion.set(circulatingSupplyValue);
     }
-  }
+  });
 
   function calculateVolumePercentage(volume: number, marketCap: number): string {
     if (!marketCap) return "0.00%";
     return ((volume / marketCap) * 100).toFixed(2) + "%";
   }
 
-  onMount(() => {
+  // Lifecycle with cleanup
+  $effect.root(() => {
     const pollInterval = setInterval(async () => {
       try {
         await updateTokenData();
@@ -87,16 +108,19 @@
       if (priceFlashTimeout) {
         clearTimeout(priceFlashTimeout);
       }
-      marketCap.set(0);
-      volume24h.set(0);
-      totalSupplyTweened.set(0);
-      circulatingSupplyTweened.set(0);
+      marketCapMotion.set(0);
+      volume24hMotion.set(0);
+      totalSupplyMotion.set(0);
+      circulatingSupplyMotion.set(0);
     };
   });
 
-  // Use activeToken instead of directly using $liveToken
-  $: formattedPrice = formatUsdValue(activeToken?.metrics?.price || 0, true);
-  $: formattedPriceChange24h = Number(activeToken?.metrics?.price_change_24h) || 0;
+  // Derived formatted values
+  const formattedPrice = $derived(Number(activeToken?.metrics?.price).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2
+  }));
+  const formattedPriceChange24h = $derived(Number(activeToken?.metrics?.price_change_24h) || 0);
 </script>
 
 <Panel variant="transparent" type="main" className="p-6">
@@ -118,7 +142,7 @@
           class:flash-green-text={priceFlash === 'up'}
           class:flash-red-text={priceFlash === 'down'}
         >
-          {formattedPrice}
+          ${formattedPrice}
         </div>
         {#if formattedPriceChange24h}
           <div class="text-sm">
@@ -139,7 +163,7 @@
       <div>
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Market Cap</div>
         <div class="text-xl font-medium text-kong-text-primary">
-          {formatUsdValue($marketCap)}
+          {formatUsdValue(marketCap)}
         </div>
         <div class="text-sm text-kong-text-primary/40 mt-1">
           Rank #{marketCapRank !== null ? marketCapRank : "N/A"}
@@ -150,7 +174,7 @@
       <div>
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">24h Volume</div>
         <div class="text-xl font-medium text-kong-text-primary">
-          {formatUsdValue($volume24h)}
+          {formatUsdValue(volume24h)}
         </div>
         <div class="text-sm text-kong-text-primary/40 mt-1">
           {activeToken.metrics.volume_24h
@@ -163,7 +187,7 @@
       <div>
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Total Supply</div>
         <div class="text-xl font-medium text-kong-text-primary">
-          {formatToNonZeroDecimal($totalSupplyTweened)}
+          {formatToNonZeroDecimal(totalSupplyTweened)}
         </div>
         <div class="text-sm text-kong-text-primary/40 mt-1">
           {activeToken?.symbol || ""} tokens
@@ -174,7 +198,7 @@
       <div>
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Circulating Supply</div>
         <div class="text-xl font-medium text-kong-text-primary">
-          {formatToNonZeroDecimal($circulatingSupplyTweened)}
+          {formatToNonZeroDecimal(circulatingSupplyTweened)}
         </div>
         <div class="text-sm text-kong-text-primary/40 mt-1">
           {activeToken?.symbol || ""} tokens
@@ -184,7 +208,7 @@
   </div>
 </Panel>
 
-<style>
+<style scoped>
   .flash-green-text {
     animation: flashGreen 1s ease-out;
   }

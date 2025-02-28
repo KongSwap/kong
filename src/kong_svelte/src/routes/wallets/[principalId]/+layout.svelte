@@ -98,8 +98,8 @@
   <title>Wallet data for {principal} - KongSwap</title>
 </svelte:head>
 
-<div class="container mx-auto max-w-[1300px] text-kong-text-primary my-4">
-  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+<div class="container mx-auto max-w-[1300px] text-kong-text-primary my-4 px-4">
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
     <!-- Navigation Column -->
     <div class="space-y-6">
       <ValueOverview {principal} {isLoading} {error} />

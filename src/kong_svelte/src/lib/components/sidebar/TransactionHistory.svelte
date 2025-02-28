@@ -64,7 +64,6 @@
   let error: string | null = null;
   let transactions: any[] = [];
   let hasMore = true;
-  let currentCursor: number | undefined;
   let loadingMore = false;
   let observer: IntersectionObserver;
   let loadMoreTrigger: HTMLDivElement;

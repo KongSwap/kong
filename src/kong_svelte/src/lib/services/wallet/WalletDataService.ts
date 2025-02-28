@@ -1,6 +1,5 @@
 import { writable, get } from 'svelte/store';
 import { fetchTokens } from '$lib/api/tokens';
-import { auth } from '$lib/services/auth';
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { formatBalance } from "$lib/utils/numberFormatUtils";

@@ -1,18 +1,23 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher } from "svelte";
   import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { toastStore } from "$lib/stores/toastStore";
-  import { Principal } from "@dfinity/principal";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import BigNumber from "bignumber.js";
   import QrScanner from "$lib/components/common/QrScanner.svelte";
   import { onMount } from "svelte";
   import { Clipboard, Camera, ArrowRight, Info, X, Check } from "lucide-svelte";
-  import { AccountIdentifier } from "@dfinity/ledger-icp";
-  import { SubAccount } from "@dfinity/ledger-icp";
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
-  import { fly, fade } from 'svelte/transition';
+  import { fly, fade } from "svelte/transition";
+  import { getAccountIds } from "$lib/utils/accountUtils";
+  import { 
+    calculateMaxAmount, 
+    validateTokenAmount, 
+    validateAddress, 
+    formatTokenInput,
+    getInitialBalances,
+  } from "$lib/utils/validators/tokenValidators";
 
   export let token: FE.Token;
 
@@ -29,15 +34,9 @@
     main: "",
   };
 
-  let balances: { default: bigint; subaccount?: bigint } =
-    token?.symbol === "ICP"
-      ? {
-          default: BigInt(0),
-          subaccount: BigInt(0),
-        }
-      : {
-          default: BigInt(0),
-        };
+  let balances: TokenBalances = getInitialBalances(token?.symbol);
+  let addressValidation = { isValid: false, errorMessage: "", addressType: null };
+  let amountValidation = { isValid: false, errorMessage: "" };
 
   const dispatch = createEventDispatcher();
 
@@ -54,212 +53,33 @@
     loadTokenFee();
   }
 
-  $: maxAmount =
-    token?.symbol === "ICP"
-      ? selectedAccount === "main"
-        ? new BigNumber(balances.default.toString())
-            .dividedBy(new BigNumber(10).pow(token.decimals))
-            .minus(
-              new BigNumber(tokenFee?.toString() || "10000").dividedBy(
-                new BigNumber(10).pow(token.decimals),
-              ),
-            )
-            .toNumber()
-        : new BigNumber(balances.subaccount.toString())
-            .dividedBy(new BigNumber(10).pow(token.decimals))
-            .minus(
-              new BigNumber(tokenFee?.toString() || "10000").dividedBy(
-                new BigNumber(10).pow(token.decimals),
-              ),
-            )
-            .toNumber()
-      : new BigNumber(balances.default.toString())
-          .dividedBy(new BigNumber(10).pow(token.decimals))
-          .minus(
-            new BigNumber(tokenFee?.toString() || "10000").dividedBy(
-              new BigNumber(10).pow(token.decimals),
-            ),
-          )
-          .toNumber();
-  let addressType: "principal" | "account" | null = null;
+  $: maxAmount = token?.symbol === "ICP"
+      ? calculateMaxAmount(
+          selectedAccount === "main" ? balances.default : balances.subaccount,
+          token.decimals,
+          tokenFee
+        )
+      : calculateMaxAmount(balances.default, token.decimals, tokenFee);
+      
   let showConfirmation = false;
-
-  function isValidHex(str: string): boolean {
-    const hexRegex = /^[0-9a-fA-F]+$/;
-    return hexRegex.test(str);
-  }
-
-  function detectAddressType(address: string): "principal" | "account" | null {
-    if (!address) return null;
-
-    // Check for Account ID (64 character hex string)
-    if (address.length === 64 && isValidHex(address)) {
-      return "account";
-    }
-
-    // Check for Principal ID
-    try {
-      Principal.fromText(address);
-      return "principal";
-    } catch {
-      return null;
-    }
-  }
-
-  function validateAddress(address: string): boolean {
-    if (!address) {
-      errorMessage = "Address is required";
-      return false;
-    }
-
-    const cleanAddress = address.trim();
-
-    if (cleanAddress.length === 0) {
-      errorMessage = "Address cannot be empty";
-      return false;
-    }
-
-    addressType = detectAddressType(cleanAddress);
-
-    if (addressType === "account" && token.symbol !== "ICP") {
-      errorMessage = `Account ID can't be used with ${token.name}`;
-      return false;
-    }
-
-    if (addressType === null) {
-      errorMessage = "Invalid address format";
-      return false;
-    }
-
-    // Clear error message on success
-    errorMessage = "";
-    return true;
-  }
-
-  function validateAmount(value: string): boolean {
-    if (!value) {
-      errorMessage = "Amount is required";
-      return false;
-    }
-    
-    const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue <= 0) {
-      errorMessage = "Amount must be greater than 0";
-      return false;
-    }
-
-    const currentBalance = selectedAccount === "main" ? balances.default : balances.subaccount;
-    const maxAmount = new BigNumber(currentBalance.toString())
-      .dividedBy(new BigNumber(10).pow(token.decimals))
-      .minus(
-        new BigNumber(tokenFee?.toString() || "10000").dividedBy(
-          new BigNumber(10).pow(token.decimals),
-        ),
-      )
-      .toNumber();
-
-    if (numValue > maxAmount) {
-      errorMessage = "Insufficient balance for transfer + fee";
-      return false;
-    }
-
-    errorMessage = "";
-    return true;
-  }
 
   function handleAmountInput(event: Event) {
     const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/[^0-9.]/g, "");
-
-    const parts = value.split(".");
-    if (parts.length > 2) {
-      value = `${parts[0]}.${parts[1]}`;
-    }
-
-    if (parts[1]?.length > token.decimals) {
-      value = `${parts[0]}.${parts[1].slice(0, token.decimals)}`;
-    }
-
-    amount = value;
-    validateAmount(value); // Remove errorMessage = "" to let validation set proper message
+    amount = formatTokenInput(input.value, token.decimals);
+    
+    const currentBalance = selectedAccount === "main" ? balances.default : balances.subaccount;
+    amountValidation = validateTokenAmount(amount, currentBalance, token.decimals, tokenFee);
+    errorMessage = amountValidation.errorMessage;
   }
 
   async function handleSubmit() {
-    dispatch('confirmTransfer', {
+    dispatch("confirmTransfer", {
       amount,
       token,
       tokenFee,
       isValidating,
-      toPrincipal: recipientAddress
+      toPrincipal: recipientAddress,
     });
-  }
-
-  function getAccountIds(
-    principalStr: string,
-    rawSubaccount: any,
-  ): { subaccount: string; main: string } {
-    try {
-      const principal = Principal.fromText(principalStr);
-
-      // Create account ID with provided subaccount
-      const subAccount = convertToSubaccount(rawSubaccount);
-      const subaccountId = AccountIdentifier.fromPrincipal({
-        principal,
-        subAccount,
-      }).toHex();
-
-      // Create account ID with main (zero) subaccount
-      const mainAccountId = AccountIdentifier.fromPrincipal({
-        principal,
-        subAccount: undefined,
-      }).toHex();
-
-      return {
-        subaccount: subaccountId,
-        main: mainAccountId,
-      };
-    } catch (error) {
-      console.error("Error creating account identifier:", error);
-      return {
-        subaccount: "",
-        main: "",
-      };
-    }
-  }
-
-  function convertToSubaccount(raw: any): SubAccount | undefined {
-    try {
-      if (!raw) return undefined;
-
-      if (raw instanceof SubAccount) return raw;
-
-      let bytes: Uint8Array;
-      if (raw instanceof Uint8Array) {
-        bytes = raw;
-      } else if (Array.isArray(raw)) {
-        bytes = new Uint8Array(raw);
-      } else if (typeof raw === "number") {
-        bytes = new Uint8Array(32).fill(0);
-        bytes[31] = raw;
-      } else {
-        return undefined;
-      }
-
-      if (bytes.length !== 32) {
-        const paddedBytes = new Uint8Array(32).fill(0);
-        paddedBytes.set(bytes.slice(0, 32));
-        bytes = paddedBytes;
-      }
-
-      const subAccountResult = SubAccount.fromBytes(bytes);
-      if (subAccountResult instanceof Error) {
-        throw subAccountResult;
-      }
-      return subAccountResult;
-    } catch (error) {
-      console.error("Error converting subaccount:", error);
-      return undefined;
-    }
   }
 
   $: if (auth.pnp?.account?.owner) {
@@ -276,7 +96,9 @@
 
     try {
       const decimals = token.decimals || 8;
-      const amountBigInt = BigInt(new BigNumber(amount).times(new BigNumber(10).pow(decimals)).toString());
+      const amountBigInt = BigInt(
+        new BigNumber(amount).times(new BigNumber(10).pow(decimals)).toString(),
+      );
 
       toastStore.info(`Sending ${amount} ${token.symbol}...`);
 
@@ -301,7 +123,7 @@
         toastStore.success(`Successfully sent ${token.symbol}`);
         recipientAddress = "";
         amount = "";
-        dispatch('close');
+        dispatch("close");
         await loadBalances();
       } else if (result?.Err) {
         const errMsg =
@@ -327,24 +149,36 @@
       return;
     }
     amount = maxAmount.toFixed(token.decimals);
-    errorMessage = "";
+    
+    const currentBalance = selectedAccount === "main" ? balances.default : balances.subaccount;
+    amountValidation = validateTokenAmount(amount, currentBalance, token.decimals, tokenFee);
+    errorMessage = amountValidation.errorMessage;
   }
 
-  $: {
-    if (recipientAddress) {
-      validateAddress(recipientAddress);
-    }
-    if (amount) {
-      validateAmount(amount);
-    }
+  $: if (recipientAddress) {
+    addressValidation = validateAddress(recipientAddress, token.symbol, token.name);
+    errorMessage = addressValidation.errorMessage;
+  } else {
+    addressValidation = { isValid: false, errorMessage: "", addressType: null };
+    if (!amount) errorMessage = "";
   }
 
-  $: isFormValid = amount && 
-                   recipientAddress && 
-                   !errorMessage && 
-                   addressType !== null && 
-                   validateAddress(recipientAddress) && 
-                   validateAmount(amount);
+  $: if (amount) {
+    const currentBalance = selectedAccount === "main" ? balances.default : balances.subaccount;
+    amountValidation = validateTokenAmount(amount, currentBalance, token.decimals, tokenFee);
+    if (!addressValidation.errorMessage) errorMessage = amountValidation.errorMessage;
+  } else {
+    amountValidation = { isValid: false, errorMessage: "" };
+    if (!addressValidation.errorMessage) errorMessage = "";
+  }
+
+  $: isFormValid =
+    amount &&
+    recipientAddress &&
+    !errorMessage &&
+    addressValidation.addressType !== null &&
+    addressValidation.isValid &&
+    amountValidation.isValid;
 
   $: validationMessage = (() => {
     if (!recipientAddress)
@@ -357,12 +191,12 @@
         type: "error",
         text: errorMessage,
       };
-    if (addressType === "principal")
+    if (addressValidation.addressType === "principal")
       return {
         type: "success",
         text: "Valid Principal ID",
       };
-    if (addressType === "account")
+    if (addressValidation.addressType === "account")
       return {
         type: "success",
         text: "Valid Account ID",
@@ -384,8 +218,9 @@
 
   function handleScan(scannedText: string) {
     const cleanedText = scannedText.trim();
+    const validation = validateAddress(cleanedText, token.symbol, token.name);
 
-    if (validateAddress(cleanedText)) {
+    if (validation.isValid) {
       recipientAddress = cleanedText;
       toastStore.success("QR code scanned successfully");
       showScanner = false;
@@ -408,9 +243,9 @@
 
   onMount(() => {
     checkCameraAvailability();
-    document.addEventListener('confirmTransfer', confirmTransfer);
+    document.addEventListener("confirmTransfer", confirmTransfer);
     return () => {
-      document.removeEventListener('confirmTransfer', confirmTransfer);
+      document.removeEventListener("confirmTransfer", confirmTransfer);
     };
   });
 
@@ -450,10 +285,7 @@
       }
     } catch (error) {
       console.error("Error loading balances:", error);
-      balances =
-        token?.symbol === "ICP"
-          ? { default: BigInt(0), subaccount: BigInt(0) }
-          : { default: BigInt(0) };
+      balances = getInitialBalances(token?.symbol);
     }
   }
 
@@ -465,14 +297,14 @@
     if (!recipientAddress) {
       return "Enter a recipient address";
     }
-    if (recipientAddress && !validateAddress(recipientAddress)) {
-      return "Invalid address format";
+    if (recipientAddress && !addressValidation.isValid) {
+      return addressValidation.errorMessage || "Invalid address format";
     }
     if (!amount) {
       return "Enter an amount";
     }
-    if (amount && !validateAmount(amount)) {
-      return "Invalid amount";
+    if (amount && !amountValidation.isValid) {
+      return amountValidation.errorMessage || "Invalid amount";
     }
     if (errorMessage) {
       return errorMessage;
@@ -547,7 +379,7 @@
             bind:value={recipientAddress}
             placeholder="Paste address or enter manually"
             class:error={errorMessage && recipientAddress}
-            class:valid={addressType !== null && !errorMessage}
+            class:valid={addressValidation.addressType !== null && !errorMessage}
           />
         </div>
 
@@ -618,13 +450,15 @@
           <div class="balance-display">
             <div class="balance-info">
               <span>Available:</span>
-              <span class="balance-value">{formatBalance(
-                selectedAccount === "main"
-                  ? balances.default.toString()
-                  : (balances.subaccount?.toString() ?? "0"),
-                token.decimals,
-              )}
-              {token.symbol}</span>
+              <span class="balance-value"
+                >{formatBalance(
+                  selectedAccount === "main"
+                    ? balances.default.toString()
+                    : (balances.subaccount?.toString() ?? "0"),
+                  token.decimals,
+                )}
+                {token.symbol}</span
+              >
             </div>
             <div class="fee-info">
               <span>Network Fee:</span>
@@ -646,7 +480,9 @@
           </div>
           <div class="summary-row">
             <span>To</span>
-            <span class="summary-value address-truncate">{recipientAddress}</span>
+            <span class="summary-value address-truncate"
+              >{recipientAddress}</span
+            >
           </div>
           <div class="summary-row">
             <span>Fee</span>
@@ -665,7 +501,7 @@
       use:tooltip={{
         text: getTooltipMessage(),
         direction: "top",
-        background: errorMessage ? "bg-kong-accent-red" : "bg-kong-bg-dark"
+        background: errorMessage ? "bg-kong-accent-red" : "bg-kong-bg-dark",
       }}
     >
       {#if isValidating}
@@ -790,15 +626,15 @@
   .validation-status {
     @apply flex items-center gap-1.5 text-xs mt-1.5 px-1
            sm:text-sm sm:mt-2;
-    
+
     .status-icon {
       @apply flex items-center justify-center;
     }
-    
+
     &.success {
       @apply text-kong-text-accent-green;
     }
-    
+
     &.error {
       @apply text-kong-accent-red;
     }
@@ -826,7 +662,8 @@
            sm:text-sm sm:mt-3;
   }
 
-  .balance-info, .fee-info {
+  .balance-info,
+  .fee-info {
     @apply flex justify-between items-center;
   }
 

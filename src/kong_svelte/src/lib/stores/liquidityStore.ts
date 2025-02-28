@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { livePools } from '../pools/poolStore';
+import { livePools } from '$lib/services/pools/poolStore';
 import { writable } from 'svelte/store';
 
 interface LiquidityState {

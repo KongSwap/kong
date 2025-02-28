@@ -1,25 +1,11 @@
 // Export types
 export type * from './types';
 
-// Export stores
-export {
-  tokenStore,
-  portfolioValue,
-  currentUserBalancesStore,
-  loadBalances,
-  loadBalance,
-  getTokenDecimals,
-  fromTokenDecimals
-} from './tokenStore';
-
 // Export token service
 export { TokenService } from './TokenService';
 
 // Export allowance store
 export { allowanceStore } from './allowanceStore';
-
-// Export event bus
-export { eventBus } from './eventBus';
 
 // Export favorite service
 export { FavoriteService } from './favoriteService';

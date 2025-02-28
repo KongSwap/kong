@@ -4,7 +4,6 @@
     import { onMount } from 'svelte';
     import { Check, Coins, AlertTriangle } from 'lucide-svelte';
     import Modal from '$lib/components/common/Modal.svelte';
-    import { calculateUsdValue } from '$lib/utils/liquidityUtils';
     import { KONG_LEDGER_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
     import { getMarket, placeBet, getUserHistory } from '$lib/api/predictionMarket';
     import { auth } from '$lib/services/auth';

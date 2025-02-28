@@ -2,7 +2,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { livePools } from "$lib/services/pools/poolStore";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { onMount } from "svelte";
   import { auth } from "$lib/services/auth";
 
@@ -13,7 +13,7 @@
 
   onMount(async () => {
     if ($auth.isConnected) {
-      await userPoolListStore.initialize();
+      await currentUserPoolsStore.initialize();
     }
   });
 
@@ -21,7 +21,7 @@
   $: pool = $livePools.find(
     (p) => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol,
   );
-  $: userPool = $userPoolListStore.filteredPools.find(
+  $: userPool = $currentUserPoolsStore.filteredPools.find(
     (p) => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol,
   );
   $: hasPosition =

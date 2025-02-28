@@ -1,7 +1,7 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
+  import { liquidityStore } from "$lib/stores/liquidityStore";
   import {
     formatToNonZeroDecimal,
     parseTokenAmount,
@@ -9,7 +9,6 @@
   import { onDestroy } from "svelte";
   import { PoolService } from "$lib/services/pools/PoolService";
   import { toastStore } from "$lib/stores/toastStore";
-  import { auth } from "$lib/services/auth";
 
   export let isCreatingPool: boolean = false;
   export let show: boolean;

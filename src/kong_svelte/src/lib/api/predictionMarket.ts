@@ -1,6 +1,6 @@
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { PREDICTION_MARKETS_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { canisterIDLs } from "$lib/services/pnp/PnpInitializer";
+import { canisterIDLs } from "$lib/config/auth.config";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { auth } from "$lib/services/auth";
 import { Principal } from "@dfinity/principal";

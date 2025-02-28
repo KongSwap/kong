@@ -1,4 +1,4 @@
-import { fetchChartData } from '$lib/services/indexer/api';
+import { fetchChartData } from '$lib/api/transactions';
 
 // Configuration for the datafeed
 const configurationData = {
@@ -34,11 +34,15 @@ export class KongDatafeed {
   public lastBar: Bar | null = null;
   private currentPrice: number;
   private onRealtimeCallback: ((bar: Bar) => void) | null = null;
+  private fromTokenDecimals: number;
+  private toTokenDecimals: number;
 
-  constructor(fromTokenId: number, toTokenId: number, currentPrice: number) {
+  constructor(fromTokenId: number, toTokenId: number, currentPrice: number, fromTokenDecimals: number = 8, toTokenDecimals: number = 8) {
     this.fromTokenId = fromTokenId;
     this.toTokenId = toTokenId;
     this.currentPrice = currentPrice;
+    this.fromTokenDecimals = fromTokenDecimals;
+    this.toTokenDecimals = toTokenDecimals;
   }
 
   onReady(callback: (configuration: any) => void): void {
@@ -57,11 +61,14 @@ export class KongDatafeed {
   }
 
   resolveSymbol(symbolName: string, onSymbolResolvedCallback: (symbolInfo: any) => void, onError: (error: string) => void): void {
-    // Calculate precision and price scale based on current price
+    // Calculate precision and price scale based on current price and token decimals
     const getPriceScale = (price: number) => {
-      if (price >= 1000) return 100;        // 2 decimals
-      if (price >= 1) return 10000;         // 4 decimals
-      return 100000000;                       // 6 decimals
+      // Adjust price based on token decimals to get the actual price
+      const adjustedPrice = price * Math.pow(10, this.toTokenDecimals - this.fromTokenDecimals);
+      
+      if (adjustedPrice >= 1000) return 10000;        // 4 decimals
+      if (adjustedPrice >= 1) return 1000000;         // 6 decimals
+      return 100000000;                               // 8 decimals
     };
 
     // Symbol information object
@@ -83,9 +90,18 @@ export class KongDatafeed {
       supported_resolutions: configurationData.supported_resolutions,
       volume_precision: 8,
       data_status: 'streaming',
-      currency_code: 'USD'
+      currency_code: 'USD',
+      // Add explicit formatting options to prevent the split error
+      minmove2: 0,
+      fractional: false
     };
-    onSymbolResolvedCallback(symbolInfo);
+    
+    console.log(`Resolving symbol with price ${this.currentPrice}, adjusted with decimals (${this.fromTokenDecimals}/${this.toTokenDecimals}), using pricescale: ${getPriceScale(this.currentPrice)}`);
+    
+    // Use setTimeout to make the callback asynchronous as required by TradingView
+    setTimeout(() => {
+      onSymbolResolvedCallback(symbolInfo);
+    }, 0);
   }
 
   async getBars(
@@ -240,9 +256,22 @@ export class KongDatafeed {
   public updateCurrentPrice(newPrice: number) {
     if (newPrice === this.currentPrice) return;
     
+    // Check if we need to update the price scale (crossing threshold)
+    const needsPriceScaleUpdate = 
+      (this.currentPrice >= 1000 && newPrice < 1000) ||
+      (this.currentPrice < 1000 && newPrice >= 1000) ||
+      (this.currentPrice >= 1 && newPrice < 1) ||
+      (this.currentPrice < 1 && newPrice >= 1);
+    
     this.currentPrice = newPrice;
+    
+    if (needsPriceScaleUpdate) {
+      console.log(`Price crossed threshold (${this.currentPrice}), chart may need refresh for proper decimal display`);
+      // The chart will need to be reinitialized to show the correct decimal places
+      // This is handled by the component when it detects significant price changes
+    }
+    
     if (this.lastBar && this.onRealtimeCallback) {
-      
       const updatedBar = {
         ...this.lastBar,
         high: Math.max(this.lastBar.high, newPrice),

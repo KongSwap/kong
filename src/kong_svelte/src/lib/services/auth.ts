@@ -1,9 +1,9 @@
 import { get, writable } from "svelte/store";
 import { type PNP } from "@windoge98/plug-n-play";
-import { pnp, canisterIDLs as pnpCanisterIDLs, type CanisterType as PnpCanisterType } from "./pnp/PnpInitializer";
+import { pnp, canisterIDLs as pnpCanisterIDLs, type CanisterType as PnpCanisterType } from "$lib/config/auth.config";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
-import { loadBalances, currentUserBalancesStore } from "./tokens/tokenStore";
+import { loadBalances, currentUserBalancesStore } from "$lib/stores/tokenStore";
 import { userTokens } from "$lib/stores/userTokens";
 import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";

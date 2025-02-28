@@ -3,13 +3,13 @@ import { createPNP, type PNP } from "@windoge98/plug-n-play";
 import {
   idlFactory as kongBackendIDL,
   canisterId as kongBackendCanisterId,
-} from "../../../../../declarations/kong_backend";
-import { idlFactory as kongFaucetIDL } from "../../../../../declarations/kong_faucet";
+} from "../../../../declarations/kong_backend";
+import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
 import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
-import { idlFactory as kongDataIDL } from "../../../../../declarations/kong_data";
+import { idlFactory as kongDataIDL } from "../../../../declarations/kong_data";
 import { idlFactory as icpIDL } from "$lib/idls/icp.idl.js";
-import { idlFactory as predictionMarketsBackendIDL, canisterId as predictionMarketsBackendCanisterId } from "../../../../../declarations/prediction_markets_backend";
-import { idlFactory as trollboxIDL, canisterId as trollboxCanisterId } from "../../../../../declarations/trollbox";
+import { idlFactory as predictionMarketsBackendIDL, canisterId as predictionMarketsBackendCanisterId } from "../../../../declarations/prediction_markets_backend";
+import { idlFactory as trollboxIDL, canisterId as trollboxCanisterId } from "../../../../declarations/trollbox";
 export type CanisterType =
   | "kong_backend"
   | "kong_faucet"

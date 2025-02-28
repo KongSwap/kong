@@ -8,6 +8,8 @@ export function getChartConfig(params: {
   autosize?: boolean;
   currentPrice?: number;
   theme?: string;
+  quoteTokenDecimals?: number;
+  baseTokenDecimals?: number;
 }) {
   const { 
     symbol, 
@@ -18,19 +20,27 @@ export function getChartConfig(params: {
     isMobile, 
     autosize,
     currentPrice = 1000,
-    theme = 'dark'
+    theme = 'dark',
+    quoteTokenDecimals = 8,
+    baseTokenDecimals = 8
   } = params;
 
   const getPrecision = (price: number) => {
-    if (price >= 1000) return 2;
-    if (price >= 1) return 4;
-    return 6;
+    // Adjust price based on token decimals to get the actual price
+    const adjustedPrice = price * Math.pow(10, baseTokenDecimals - quoteTokenDecimals);
+    
+    if (adjustedPrice >= 1000) return 5;
+    if (adjustedPrice >= 1) return 6;
+    return 8;
   };
 
   const getMinMove = (price: number) => {
-    if (price >= 1000) return 0.01;
-    if (price >= 1) return 0.0001;
-    return 0.000001;
+    // Adjust price based on token decimals to get the actual price
+    const adjustedPrice = price * Math.pow(10, baseTokenDecimals - quoteTokenDecimals);
+    
+    if (adjustedPrice >= 1000) return 0.0001;
+    if (adjustedPrice >= 1) return 0.000001;
+    return 0.00000001;
   };
 
   const precision = getPrecision(currentPrice);
@@ -75,6 +85,7 @@ export function getChartConfig(params: {
       backgroundColor: theme === 'dark' ? '#000000' : '#FFFFFF',
       foregroundColor: "#00A1FA"
     },
+    numeric_formatting: { decimal_sign: '.' },
     disabled_features: [
       'use_localstorage_for_settings',
       'study_templates',
@@ -120,56 +131,30 @@ export function getChartConfig(params: {
       "mainSeriesProperties.candleStyle.wickUpColor": "#00cc81",
       "mainSeriesProperties.candleStyle.wickDownColor": "#d11b1b",
       
-      // Chart background and grid - adjust for themes
+      // Chart background and grid
+      "paneProperties.background": theme === 'dark' ? '#000000' : '#FFFFFF',
+      "paneProperties.backgroundType": "solid",
       "paneProperties.vertGridProperties.color": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
       "paneProperties.horzGridProperties.color": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
-      "paneProperties.backgroundType": "solid",
-      "paneProperties.background": theme === 'dark' ? '#000000' : '#FFFFFF',
       
-      // Chart area
-      "chartProperties.background": theme === 'dark' ? '#000000' : '#FFFFFF',
-      "chartProperties.backgroundType": "solid",
-      
-      // Price axis
-      "scalesProperties.backgroundColor": theme === 'dark' ? '#000000' : '#FFFFFF',
-      "scalesProperties.lineColor": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
-      "scalesProperties.textColor": theme === 'dark' ? '#9BA1B0' : '#4B5563',
-      "scalesProperties.fontSize": isMobile ? 14 : 12,
-      
-      // Time axis
-      "timeScale.backgroundColor": theme === 'dark' ? '#000000' : '#FFFFFF',
+      // Time scale
+      "timeScale.rightOffset": 5,
+      "timeScale.barSpacing": 6,
+      "timeScale.minBarSpacing": 4,
+      "timeScale.rightBarStaysOnScroll": true,
+      "timeScale.borderVisible": true,
       "timeScale.borderColor": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      "timeScale.backgroundColor": theme === 'dark' ? '#000000' : '#FFFFFF',
       "timeScale.textColor": theme === 'dark' ? '#9BA1B0' : '#4B5563',
-      
-      // Loading screen
-      "loading_screen.backgroundColor": theme === 'dark' ? '#000000' : '#FFFFFF',
-      "loading_screen.foregroundColor": "#00A1FA",
       
       // Volume
       "volumePaneSize": "medium",
+      
       ...(isMobile ? {
         "paneProperties.topMargin": 8,
         "paneProperties.bottomMargin": 8,
-        "paneProperties.leftAxisMargin": 8,
-        "paneProperties.rightAxisMargin": 8,
         
-        // Price display settings
-        "scalesProperties.fontSize": 11,
-        "scalesProperties.textColor": "#9BA1B0",
-        "scalesProperties.lineColor": theme === 'dark' ? 
-          'rgba(255, 255, 255, 0.1)' : 
-          'rgba(0, 0, 0, 0.1)',
-        "scalesProperties.showLeftScale": false,
-        "scalesProperties.showRightScale": true,
-        
-        // Price format settings
-        "priceScale.autoScale": true,
-        "priceScale.formatAmount": 6,
-        "priceFormat.type": "price",
-        "priceFormat.precision": precision,
-        "priceFormat.minMove": minMove,
-        
-        // Time scale settings
+        // Mobile-specific settings
         "timeScale.fontSize": 11,
         "timeScale.rightOffset": 3,
         "timeScale.leftOffset": 3,
@@ -194,20 +179,17 @@ export function getChartConfig(params: {
         "paneProperties.horzGridProperties.color": "rgba(255, 255, 255, 0.03)",
         
         // Crosshair settings
-        "crossHairProperties.color": "#9BA1B0",
-        "crossHairProperties.width": 0.5,
-        "crossHairProperties.style": 2,
+        "crosshairProperties.color": "#9BA1B0",
+        "crosshairProperties.width": 0.5,
+        "crosshairProperties.style": 2,
       } : {}),
     },
     studies_overrides: {
       "volume.volume.color.0": "#d11b1b",
       "volume.volume.color.1": "#00cc81",
       "volume.volume.transparency": theme === 'dark' ? 50 : 65,
-      "volume.volume ma.color": "#00A1FA",
-      "volume.volume ma.transparency": theme === 'dark' ? 30 : 45,
-      "volume.volume ma.linewidth": 2,
-      "volume.show ma": true,
-      "volume.ma length": 20
+      "volume.volume.color": "#00A1FA",
+      "volume.volume.linewidth": 2
     }
   };
 } 

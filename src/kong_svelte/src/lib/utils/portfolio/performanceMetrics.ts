@@ -1,6 +1,6 @@
-import type { PortfolioHistory } from '$lib/services/portfolio/portfolioHistory';
+import type { PortfolioHistory } from '$lib/utils/portfolio/portfolioHistory';
 import { get } from 'svelte/store';
-import { currentUserBalancesStore } from '$lib/services/tokens/tokenStore';
+import { currentUserBalancesStore } from '$lib/stores/tokenStore';
 
 export interface PerformanceMetrics {
   dailyChange: number;

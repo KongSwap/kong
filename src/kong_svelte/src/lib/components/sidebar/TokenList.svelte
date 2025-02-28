@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { currentUserBalancesStore, loadBalances } from "$lib/services/tokens/tokenStore";
+  import { currentUserBalancesStore, loadBalances } from "$lib/stores/tokenStore";
   import { onMount } from "svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { Search, Plus } from "lucide-svelte";
@@ -14,9 +14,6 @@
   import { debounce } from "$lib/utils/debounce";
   import { auth } from "$lib/services/auth";
   import { userTokens } from "$lib/stores/userTokens";
-  import { goto } from "$app/navigation";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { ChevronRight } from "lucide-svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
 
   // Use $props() instead of export let

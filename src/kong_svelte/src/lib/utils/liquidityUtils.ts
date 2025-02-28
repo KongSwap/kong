@@ -1,6 +1,6 @@
 import { BigNumber } from 'bignumber.js';
 import { get } from 'svelte/store';
-import { currentUserBalancesStore, tokenStore } from '$lib/services/tokens/tokenStore';
+import { currentUserBalancesStore, tokenStore } from '$lib/stores/tokenStore';
 
 /**
  * Formats a display value based on token decimals

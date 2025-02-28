@@ -6,9 +6,9 @@
   import LoadingEllipsis from "$lib/components/common/LoadingEllipsis.svelte";
   import { page } from "$app/state";
   import { Coins, DollarSign, TrendingUp, ArrowUp, ArrowDown } from "lucide-svelte";
-  import type { PortfolioHistory } from "$lib/services/portfolio/portfolioHistory";
-  import { getPortfolioHistory } from "$lib/services/portfolio/portfolioHistory";
-  import { calculatePerformanceMetrics } from "$lib/services/portfolio/performanceMetrics";
+  import type { PortfolioHistory } from "$lib/utils/portfolio/portfolioHistory";
+  import { getPortfolioHistory } from "$lib/utils/portfolio/portfolioHistory";
+  import { calculatePerformanceMetrics } from "$lib/utils/portfolio/performanceMetrics";
 
   let { initialDataLoading, initError } = $props<{ initialDataLoading: boolean, initError: string | null }>();
   let isLoading = $state(initialDataLoading);

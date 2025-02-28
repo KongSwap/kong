@@ -2,10 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { 
   getPriceChangeClass, 
   formatPoolData, 
-  filterPools, 
-  filterTokens,
   getPoolPriceUsd,
-  type EnhancedToken
 } from '$lib/utils/statsUtils';
 import BigNumber from 'bignumber.js';
 
@@ -31,10 +28,6 @@ function createMockPool(overrides: Partial<BE.Pool> = {}): BE.Pool {
     rolling_24h_apy: 0,
     address_0: '',
     address_1: '',
-    decimals_0: 0,
-    decimals_1: 0,
-    total_shares: '',
-    shares_to_tokens_rate: '',
     symbol_0: '',
     symbol_1: '',
     price: 0,
@@ -47,6 +40,11 @@ function createMockPool(overrides: Partial<BE.Pool> = {}): BE.Pool {
     pool_id: 0,
     chain_0: '',
     chain_1: '',
+    lp_token_supply: 0n,
+    symbol: '',
+    lp_fee_bps: 0,
+    tvl: 0n,
+    is_removed: false,
     ...overrides
   };
 }
@@ -95,77 +93,6 @@ describe('formatPoolData', () => {
       id: 'BTC-USDT-0',
       apy: '10.50'
     });
-  });
-});
-
-describe('filterPools', () => {
-  const pools: BE.Pool[] = [
-    { symbol_0: 'BTC', symbol_1: 'USDT' } as BE.Pool,
-    { symbol_0: 'ETH', symbol_1: 'USDC' } as BE.Pool,
-    { symbol_0: 'BTC', symbol_1: 'ETH' } as BE.Pool
-  ];
-
-  it('should return all pools when query is empty', () => {
-    expect(filterPools(pools, '')).toEqual(pools);
-  });
-
-  it('should filter pools by symbol pair', () => {
-    expect(filterPools(pools, 'BTC')).toHaveLength(2);
-    expect(filterPools(pools, 'ETH')).toHaveLength(2);
-    expect(filterPools(pools, 'USDT')).toHaveLength(1);
-  });
-
-  it('should be case insensitive', () => {
-    expect(filterPools(pools, 'btc')).toHaveLength(2);
-    expect(filterPools(pools, 'eth')).toHaveLength(2);
-  });
-
-  it('should return empty array when no matches found', () => {
-    expect(filterPools(pools, 'XRP')).toHaveLength(0);
-  });
-});
-
-describe('filterTokens', () => {
-  const tokens: FE.Token[] = [
-    { symbol: 'BTC', name: 'Bitcoin' } as FE.Token,
-    { symbol: 'ETH', name: 'Ethereum' } as FE.Token,
-    { symbol: 'USDT', name: 'Tether' } as FE.Token
-  ];
-
-  it('should return all tokens when query is empty', () => {
-    expect(filterTokens(tokens, '')).toEqual(tokens);
-  });
-
-  it('should filter tokens by symbol', () => {
-    const btcResults = filterTokens(tokens, 'BTC');
-    // BTC only matches symbol
-    expect(btcResults).toHaveLength(1);
-    expect(btcResults[0].symbol).toBe('BTC');
-  });
-
-  it('should filter tokens by name', () => {
-    const bitcoinResults = filterTokens(tokens, 'Bitcoin');
-    // Bitcoin only matches name
-    expect(bitcoinResults).toHaveLength(1);
-    expect(bitcoinResults[0].name).toBe('Bitcoin');
-  });
-
-  it('should be case insensitive', () => {
-    const btcResults = filterTokens(tokens, 'btc');
-    expect(btcResults).toHaveLength(1);
-    expect(btcResults[0].symbol).toBe('BTC');
-  });
-
-  it('should return empty array when no matches found', () => {
-    expect(filterTokens(tokens, 'XRP')).toHaveLength(0);
-  });
-
-  it('should match both symbol and name containing the search term', () => {
-    // 'eth' matches both ETH symbol and Ethereum name
-    const ethResults = filterTokens(tokens, 'eth');
-    expect(ethResults).toHaveLength(2);
-    expect(ethResults.some(t => t.symbol === 'ETH')).toBe(true);
-    expect(ethResults.some(t => t.name === 'Ethereum')).toBe(true);
   });
 });
 

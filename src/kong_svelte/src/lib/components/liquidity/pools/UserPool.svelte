@@ -3,16 +3,16 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { loadBalance } from "$lib/services/tokens/tokenStore";
+  import { loadBalance } from "$lib/stores/tokenStore";
   import { PoolService } from "$lib/services/pools";
   import { livePools } from "$lib/services/pools/poolStore";
   import { toastStore } from "$lib/stores/toastStore";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { goto } from "$app/navigation";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { BigNumber } from 'bignumber.js';
-  import { fetchTokensByCanisterId } from '$lib/api/tokens';
-    import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { BigNumber } from "bignumber.js";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
 
   const dispatch = createEventDispatcher();
 
@@ -21,20 +21,29 @@
 
   let token0: any = null;
   let token1: any = null;
-  let lastPoolSymbols = { address_0: '', address_1: '' };
+  let lastPoolSymbols = { address_0: "", address_1: "" };
 
-  $: if (pool && (pool.address_0 !== lastPoolSymbols.address_0 || pool.address_1 !== lastPoolSymbols.address_1)) {
+  $: if (
+    pool &&
+    (pool.address_0 !== lastPoolSymbols.address_0 ||
+      pool.address_1 !== lastPoolSymbols.address_1)
+  ) {
     lastPoolSymbols = { address_0: pool.address_0, address_1: pool.address_1 };
     fetchTokenData();
   }
 
   async function fetchTokenData() {
     try {
-      const tokensData = await fetchTokensByCanisterId([pool.address_0, pool.address_1]);
-      token0 = tokensData.find((t: any) => t.canister_id === pool.address_0) || null;
-      token1 = tokensData.find((t: any) => t.canister_id === pool.address_1) || null;      
+      const tokensData = await fetchTokensByCanisterId([
+        pool.address_0,
+        pool.address_1,
+      ]);
+      token0 =
+        tokensData.find((t: any) => t.canister_id === pool.address_0) || null;
+      token1 =
+        tokensData.find((t: any) => t.canister_id === pool.address_1) || null;
     } catch (e) {
-      console.error('Error fetching token data by canister id:', e);
+      console.error("Error fetching token data by canister id:", e);
       token0 = null;
       token1 = null;
     }
@@ -67,16 +76,14 @@
   let isCalculating = false;
 
   // Get token objects for images
-  $: actualPool = $livePools.find(
-    (p) => {
-      return p.address_0 === pool.address_0 && p.address_1 === pool.address_1    
-    }
-  );
+  $: actualPool = $livePools.find((p) => {
+    return p.address_0 === pool.address_0 && p.address_1 === pool.address_1;
+  });
 
   // Reset state when modal opens/closes
   $: if (!showModal) {
     resetState();
-    dispatch('liquidityRemoved');
+    dispatch("liquidityRemoved");
   }
 
   function resetState() {
@@ -94,9 +101,9 @@
     // Calculate amount with BigNumber and format to token decimals
     const amount = maxAmount
       .multipliedBy(percentage)
-      .decimalPlaces(token0.decimals, BigNumber.ROUND_DOWN)
-    
-      removeLiquidityAmount = amount.gt(0) ? amount.toString() : "0"
+      .decimalPlaces(token0.decimals, BigNumber.ROUND_DOWN);
+
+    removeLiquidityAmount = amount.gt(0) ? amount.toString() : "0";
     handleInputChange();
   }
 
@@ -200,7 +207,7 @@
           await Promise.all([
             loadBalance(token0.canister_id, true),
             loadBalance(token1.canister_id, true),
-            userPoolListStore.initialize(),
+            currentUserPoolsStore.initialize(),
           ]);
         } else if (requestStatus.reply?.Failed) {
           throw new Error(requestStatus.reply.Failed || "Transaction failed");
@@ -224,7 +231,7 @@
     } catch (err) {
       // Ensure we still refresh balances even on error
       await Promise.all([
-        userPoolListStore.initialize(),
+        currentUserPoolsStore.initialize(),
         loadBalance(token0.canister_id, true),
         loadBalance(token1.canister_id, true),
       ]);
@@ -278,15 +285,15 @@
   }
 
   // Add null checks before accessing pool properties
-  $: token0Address = pool?.address_0 || '';
-  $: token1Address = pool?.address_1 || '';
+  $: token0Address = pool?.address_0 || "";
+  $: token1Address = pool?.address_1 || "";
 </script>
 
 <Modal
   bind:isOpen={showModal}
   onClose={() => {
     showModal = false;
-    dispatch('liquidityRemoved');
+    dispatch("liquidityRemoved");
   }}
   variant="solid"
   width="min(420px, 95vw)"
@@ -301,21 +308,21 @@
   <div class="pool-details">
     <div class="pool-header">
       {#if activeTab === "earnings"}
-      <div class="stats-wrapper">
-        <div class="stats-grid">
-          <div class="stat-item">
-            <span class="stat-label">Total Value</span>
-            <span class="stat-value !text-kong-text-primary"
-              >${formatToNonZeroDecimal(pool.usd_balance)}</span
-            >
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">APY</span>
-            <span class="stat-value">{actualPool?.rolling_24h_apy}%</span>
+        <div class="stats-wrapper">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">Total Value</span>
+              <span class="stat-value !text-kong-text-primary"
+                >${formatToNonZeroDecimal(pool.usd_balance)}</span
+              >
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">APY</span>
+              <span class="stat-value">{actualPool?.rolling_24h_apy}%</span>
+            </div>
           </div>
         </div>
-      </div>
-    {/if}
+      {/if}
       <div class="token-amounts">
         <div class="token-row">
           <TokenImages tokens={[token0]} size={20} />
@@ -364,7 +371,9 @@
           <div class="input-section">
             <div class="input-header">
               <span>Amount (LP Tokens)</span>
-              <span class="balance">Balance: {Number(pool.balance).toFixed(8)}</span>
+              <span class="balance"
+                >Balance: {Number(pool.balance).toFixed(8)}</span
+              >
             </div>
             <input
               type="number"
@@ -376,7 +385,10 @@
             />
             <div class="percentage-buttons">
               {#each [25, 50, 75, 100] as percent}
-                <button class="percent-btn" on:click={() => setPercentage(percent)}>
+                <button
+                  class="percent-btn"
+                  on:click={() => setPercentage(percent)}
+                >
                   {percent}%
                 </button>
               {/each}
@@ -389,21 +401,37 @@
               <div class="token-preview-item">
                 <TokenImages tokens={[token0]} size={20} />
                 <div class="token-preview-details">
-                  <span class="amount">{Number(estimatedAmounts.amount0).toLocaleString()}</span>
+                  <span class="amount"
+                    >{Number(estimatedAmounts.amount0).toLocaleString()}</span
+                  >
                   <span class="symbol">{pool.symbol_0}</span>
                 </div>
-                <span class="usd-value">${calculateTokenUsdValue(estimatedAmounts.amount0, token0)}</span>
+                <span class="usd-value"
+                  >${calculateTokenUsdValue(
+                    estimatedAmounts.amount0,
+                    token0,
+                  )}</span
+                >
               </div>
               <div class="token-preview-item">
                 <TokenImages tokens={[token1]} size={20} />
                 <div class="token-preview-details">
-                  <span class="amount">{Number(estimatedAmounts.amount1).toLocaleString()}</span>
+                  <span class="amount"
+                    >{Number(estimatedAmounts.amount1).toLocaleString()}</span
+                  >
                   <span class="symbol">{pool.symbol_1}</span>
                 </div>
-                <span class="usd-value">${calculateTokenUsdValue(estimatedAmounts.amount1, token1)}</span>
+                <span class="usd-value"
+                  >${calculateTokenUsdValue(
+                    estimatedAmounts.amount1,
+                    token1,
+                  )}</span
+                >
               </div>
             </div>
-            <div class="total-value">Total Value: ${calculateTotalUsdValue()}</div>
+            <div class="total-value">
+              Total Value: ${calculateTotalUsdValue()}
+            </div>
           </div>
 
           {#if error}

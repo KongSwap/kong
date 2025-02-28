@@ -18,7 +18,7 @@ import {
 } from '$lib/utils/liquidityUtils';
 
 // Updated mock tokenStore with bigger balances in microtokens
-vi.mock('$lib/services/tokens/tokenStore', () => {
+vi.mock('$lib/stores/tokenStore', () => {
   const storeValue = {
     balances: {
       'token0-id': { in_tokens: '200000000000' },

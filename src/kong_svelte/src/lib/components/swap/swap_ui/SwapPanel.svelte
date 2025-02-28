@@ -5,7 +5,7 @@
   import { cubicOut } from "svelte/easing";
   import {
     currentUserBalancesStore,
-  } from "$lib/services/tokens/tokenStore";
+  } from "$lib/stores/tokenStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapState } from "$lib/services/swap/SwapStateService";

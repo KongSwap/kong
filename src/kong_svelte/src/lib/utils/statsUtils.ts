@@ -3,12 +3,6 @@ import { userTokens } from '$lib/stores/userTokens';
 import { get } from 'svelte/store';
 import BigNumber from 'bignumber.js';
 
-export type EnhancedToken = FE.Token & {
-  marketCapRank?: number;
-  volumeRank?: number;
-  isHot?: boolean;
-};
-
 export function getPriceChangeClass(token: FE.Token): string {
   if (!token?.metrics?.price_change_24h) return '';
   const change = Number(token?.metrics?.price_change_24h);
@@ -31,23 +25,6 @@ export async function formatPoolData(pools: BE.Pool[]): Promise<BE.Pool[]> {
     };
   }));
   return poolsMap;
-}
-
-export function filterPools(pools: BE.Pool[], query: string): BE.Pool[] {
-  if (!query) return pools;
-  const lowerQuery = query.toLowerCase();
-  return pools.filter(pool =>
-    `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase().includes(lowerQuery),
-  );
-}
-
-export function filterTokens(tokens: FE.Token[], searchQuery: string): FE.Token[] {
-  if (!searchQuery) return tokens;
-  const lowerCaseQuery = searchQuery.toLowerCase();
-  return tokens.filter(token =>
-    token.symbol.toLowerCase().includes(lowerCaseQuery) ||
-    token.name.toLowerCase().includes(lowerCaseQuery)
-  );
 }
 
 export function getPoolPriceUsd(pool: BE.Pool): number {

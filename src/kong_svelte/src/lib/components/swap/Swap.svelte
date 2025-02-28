@@ -7,7 +7,6 @@
   import { fade } from "svelte/transition";
   import { onMount, onDestroy } from "svelte";
   import { get } from "svelte/store";
-  import { page } from "$app/stores";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
@@ -15,8 +14,8 @@
   import {
     getTokenDecimals,
     loadBalances,
-  } from "$lib/services/tokens/tokenStore";
-  import { settingsStore } from "$lib/services/settings/settingsStore";
+  } from "$lib/stores/tokenStore";
+  import { settingsStore } from "$lib/stores/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";

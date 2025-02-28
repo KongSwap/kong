@@ -5,11 +5,11 @@
   import AmountInputs from "./AmountInputs.svelte";
   import InitialPriceInput from "./InitialPriceInput.svelte";
   import PoolWarning from "./PoolWarning.svelte";
-  import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
+  import { liquidityStore } from "$lib/stores/liquidityStore";
   import {
     loadBalances,
     currentUserBalancesStore,
-  } from "$lib/services/tokens/tokenStore";
+  } from "$lib/stores/tokenStore";
   import {
     calculateAmount1FromPrice,
     validateTokenSelect,
@@ -32,7 +32,7 @@
   import { BigNumber } from "bignumber.js";
   import { userTokens } from "$lib/stores/userTokens";
   import { fetchTokensByCanisterId } from "$lib/api/tokens"
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
 
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
   const DEFAULT_TOKEN = "ICP";
@@ -389,7 +389,7 @@
     onClose={() => {
       liquidityStore.resetAmounts();
       showConfirmModal = false;
-      userPoolListStore.initialize();
+      currentUserPoolsStore.initialize();
     }}
   />
 {/if}

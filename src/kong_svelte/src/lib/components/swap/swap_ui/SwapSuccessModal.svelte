@@ -2,7 +2,7 @@
   import { formatBalance } from '$lib/utils/numberFormatUtils';
   import { fade } from "svelte/transition";
   import coinReceivedSound from "$lib/assets/sounds/coin_received.mp3";
-  import { settingsStore } from "$lib/services/settings/settingsStore";
+  import { settingsStore } from "$lib/stores/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import Panel from '$lib/components/common/Panel.svelte';
   import bananaDance from "$lib/assets/banana_dance.gif";
@@ -13,7 +13,6 @@
   export let receiveAmount: string = "0";
   export let receiveToken: FE.Token | null = null;
   export let onClose: () => void;
-  export let principalId: string = "";
 
   // Validate tokens are defined
   $: isValid = payToken && receiveToken && 

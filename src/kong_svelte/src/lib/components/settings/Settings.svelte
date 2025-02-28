@@ -1,47 +1,99 @@
 <script lang="ts">
   import Toggle from "../common/Toggle.svelte";
-  import { settingsStore } from '$lib/services/settings/settingsStore';
+  import { settingsStore } from '$lib/stores/settingsStore';
   import { toastStore } from '$lib/stores/toastStore';
-  import { kongDB } from '$lib/services/db';
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { auth } from '$lib/services/auth';
-  import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
   import { themeStore } from '$lib/stores/themeStore';
   import { Sun, Moon } from 'lucide-svelte';
   import Slider from "../common/Slider.svelte";
 
   let soundEnabled = true;
-  let settingsSubscription: () => void;
   let slippageValue: number = 2.0;
   let slippageInputValue = '2.0';
   let isMobile = false;
   let isCustomSlippage = false;
+  let previousAuthState = { isConnected: false, principalId: null };
 
   // Predefined slippage values for quick selection
   const quickSlippageValues = [1, 2, 3, 5];
+  
+  // Constants for localStorage keys
+  const SETTINGS_KEY = 'kong_settings';
+  const FAVORITES_KEY = 'kong_favorites';
 
-  // Subscribe to settings changes using liveQuery
-  const settings = liveQuery(async () => {
-    return await kongDB.settings.toArray();
-  });
+  // Function to get settings from localStorage
+  function getSettings() {
+    if (browser) {
+      const walletId = $auth?.account?.owner?.toString() || 'default';
+      const settingsKey = `${SETTINGS_KEY}_${walletId}`;
+      const storedSettings = localStorage.getItem(settingsKey);
+      
+      if (storedSettings) {
+        try {
+          return JSON.parse(storedSettings);
+        } catch (error) {
+          console.error('Error parsing settings from localStorage:', error);
+        }
+      }
+    }
+    
+    // Default settings if nothing found
+    return {
+      sound_enabled: true,
+      max_slippage: 2.0,
+      timestamp: Date.now()
+    };
+  }
 
-  // Cleanup subscription on component destroy
-  onDestroy(() => {
-    if (settingsSubscription) {
-      settingsSubscription();
+  // Function to load and apply user settings
+  function loadUserSettings() {
+    const settings = getSettings();
+    soundEnabled = settings.sound_enabled;
+    slippageValue = settings.max_slippage || 2.0;
+    slippageInputValue = slippageValue.toString();
+    isCustomSlippage = !quickSlippageValues.includes(slippageValue);
+    
+    // Update settings store
+    settingsStore.set(settings);
+  }
+
+  // Watch for auth changes to reload settings when user authenticates
+  $: {
+    const currentAuthState = {
+      isConnected: $auth.isConnected,
+      principalId: $auth.account?.owner?.toString() || null
+    };
+    
+    // Check if auth state has changed
+    if (browser && 
+        (previousAuthState.isConnected !== currentAuthState.isConnected || 
+         previousAuthState.principalId !== currentAuthState.principalId)) {
+      
+      console.log('Auth state changed, reloading user settings');
+      loadUserSettings();
+      
+      // Update previous state
+      previousAuthState = currentAuthState;
+    }
+  }
+
+  // Initialize settings on mount
+  onMount(() => {
+    // Load initial settings
+    loadUserSettings();
+    
+    // Handle resize for mobile detection
+    handleResize();
+    if (browser) {
+      window.addEventListener('resize', handleResize);
+      initializeSlippageFromStorage();
+      return () => window.removeEventListener('resize', handleResize);
     }
   });
 
   // Subscribe to settings changes
-  $: if ($settings) {
-    const currentSettings = $settings[0];
-    if (currentSettings) {
-      soundEnabled = currentSettings.sound_enabled;
-      settingsStore.set(currentSettings);
-    }
-  }
-
   $: if ($settingsStore) {
     soundEnabled = $settingsStore.sound_enabled;
     slippageValue = $settingsStore.max_slippage || 2.0;
@@ -69,7 +121,6 @@
     }
   }
 
-
   function handleSlippageChange() {
     if (!$auth.isConnected) {
       toastStore.error('Please connect your wallet to save settings');
@@ -86,7 +137,6 @@
     slippageValue = boundedValue;
   }
 
-
   function handleToggleSound(event: CustomEvent<boolean>) {
     if ($auth.isConnected) {
       settingsStore.updateSetting('sound_enabled', event.detail);
@@ -99,9 +149,12 @@
 
   async function clearFavorites() {
     if (confirm('Are you sure you want to clear your favorite tokens?')) {
-      // TODO: readd clearing favorites
-      await kongDB.favorite_tokens.clear();
-      toastStore.success('Favorites cleared successfully. Please refresh the page for changes to take effect.');
+      if (browser) {
+        // Clear favorites from localStorage
+        const walletId = $auth?.account?.owner?.toString() || 'default';
+        localStorage.removeItem(`${FAVORITES_KEY}_${walletId}`);
+        toastStore.success('Favorites cleared successfully. Please refresh the page for changes to take effect.');
+      }
     }
   }
 
@@ -115,13 +168,20 @@
         // Show loading toast
         toastStore.info('Resetting application...');
         
-        // Try to reset database with timeout
-        await Promise.race([
-          kongDB.resetDatabase(),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Reset timeout')), 5000)
-          )
-        ]);
+        // Clear all localStorage items related to the app
+        if (browser) {
+          // Get all keys from localStorage
+          const keysToRemove = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('kong_') || key === 'slippage')) {
+              keysToRemove.push(key);
+            }
+          }
+          
+          // Remove all keys
+          keysToRemove.forEach(key => localStorage.removeItem(key));
+        }
 
         toastStore.success('Reset successful, reloading...');
         
@@ -132,7 +192,7 @@
         window.location.reload();
       }
     } catch (error) {
-      console.error('Error resetting database:', error);
+      console.error('Error resetting application:', error);
       toastStore.error('Reset failed, forcing reload...');
       
       // Force reload as fallback
@@ -145,15 +205,6 @@
       isMobile = window.innerWidth <= 768;
     }
   }
-
-  onMount(() => {
-    handleResize();
-    if (browser) {
-      window.addEventListener('resize', handleResize);
-      initializeSlippageFromStorage();
-      return () => window.removeEventListener('resize', handleResize);
-    }
-  });
 
   function handleThemeToggle() {
     themeStore.toggleTheme();

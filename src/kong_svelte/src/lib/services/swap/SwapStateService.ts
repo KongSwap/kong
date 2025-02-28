@@ -1,6 +1,6 @@
 import { writable, derived, type Readable } from 'svelte/store';
 import type { Writable } from 'svelte/store';
-import { fromTokenDecimals, currentUserBalancesStore } from '$lib/services/tokens/tokenStore';
+import { fromTokenDecimals, currentUserBalancesStore } from '$lib/stores/tokenStore';
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
 import { KONG_LEDGER_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';

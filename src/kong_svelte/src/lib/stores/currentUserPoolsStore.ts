@@ -1,4 +1,4 @@
-import { writable, derived, get } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
@@ -46,7 +46,7 @@ const initialState: PoolListState = {
   initialFilterApplied: false
 };
 
-function createUserPoolListStore() {
+function createCurrentUserPoolsStore() {
   const { subscribe, update, set } = writable<PoolListState>(initialState);
   let searchDebounceTimer: ReturnType<typeof setTimeout>;
   const SEARCH_DEBOUNCE = 150;
@@ -97,7 +97,7 @@ function createUserPoolListStore() {
           await fetchTokensForPools(poolsWithIds);
           
           // Make sure filteredPools is updated
-          userPoolListStore.updateFilteredPools();
+          currentUserPoolsStore.updateFilteredPools();
         }
       } catch (error) {
         handleError("Failed to load user pools", error);
@@ -131,7 +131,7 @@ function createUserPoolListStore() {
         ...s,
         sortDirection: s.sortDirection === 'desc' ? 'asc' : 'desc'
       }));
-      userPoolListStore.updateFilteredPools();
+      currentUserPoolsStore.updateFilteredPools();
     },
 
     // Add filtered pools updater
@@ -225,4 +225,4 @@ function sortPools(pools: ProcessedPool[], direction: 'asc' | 'desc'): Processed
   );
 }
 
-export const userPoolListStore = createUserPoolListStore(); 
+export const currentUserPoolsStore = createCurrentUserPoolsStore(); 
