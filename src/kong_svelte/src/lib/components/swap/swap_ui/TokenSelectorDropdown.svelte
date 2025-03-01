@@ -17,6 +17,7 @@
   import { TokenBalanceService } from "$lib/services/tokens/tokenBalanceService";
   import VirtualScroller from "$lib/components/common/VirtualScroller.svelte";
   import { virtualScroll } from "$lib/utils/virtualScroll";
+  import AddCustomTokenModal from "$lib/components/sidebar/AddCustomTokenModal.svelte";
 
   const props = $props();
   const {
@@ -71,6 +72,9 @@
   
   // Add a state to track which tokens have had balance loading attempts
   let balanceLoadAttempts = $state(new Set<string>());
+  
+  // Add a state to control the visibility of the AddCustomTokenModal
+  let isAddCustomTokenModalOpen = $state(false);
   
   type FilterType = "all" | "ck" | "favorites";
 
@@ -441,6 +445,20 @@
     onClose();
   }
 
+  // Handle when a custom token is added through the modal
+  function handleCustomTokenAdded(event: CustomEvent<FE.Token>) {
+    const newToken = event.detail;
+    
+    // Close the modal
+    isAddCustomTokenModalOpen = false;
+    
+    // If the token was successfully added, select it
+    if (newToken && canSelectToken(newToken)) {
+      handleSelect(newToken);
+      onClose();
+    }
+  }
+
   function handleClickOutside(event: MouseEvent) {
     if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
       onClose();
@@ -713,6 +731,20 @@
                   </div>
                 {/if}
                 
+                <!-- Add Custom Token Button -->
+                <div class="add-token-button-container">
+                  <button 
+                    class="add-token-button"
+                    on:click={(e) => {
+                      e.stopPropagation();
+                      isAddCustomTokenModalOpen = true;
+                    }}
+                  >
+                    <div class="add-icon">+</div>
+                    <span>Add Custom Token</span>
+                  </button>
+                </div>
+                
                 {#if filteredTokens.length === 0}
                   <div class="empty-state">
                     <span>No tokens found</span>
@@ -936,4 +968,32 @@
     pointer-events: none;
     z-index: 5;
   }
+  
+  /* Add Token Button Styles */
+  .add-token-button-container {
+    @apply px-2 py-3 mt-2;
+  }
+  
+  .add-token-button {
+    @apply w-full flex items-center justify-center gap-2 py-3 px-4 
+           bg-kong-bg-light/50 hover:bg-kong-bg-light/80
+           text-kong-text-primary font-medium rounded-lg
+           border border-kong-border/30 transition-all duration-200;
+  }
+  
+  .add-token-button:hover {
+    @apply border-kong-primary/40 bg-kong-primary/10;
+  }
+  
+  .add-icon {
+    @apply flex items-center justify-center w-5 h-5 rounded-full
+           bg-kong-primary/20 text-kong-primary font-bold;
+  }
 </style>
+
+<!-- Add Custom Token Modal -->
+<AddCustomTokenModal 
+  isOpen={isAddCustomTokenModalOpen}
+  onClose={() => isAddCustomTokenModalOpen = false}
+  on:tokenAdded={handleCustomTokenAdded}
+/>

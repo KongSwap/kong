@@ -1,5 +1,8 @@
 import { API_URL } from "$lib/api/index";
 import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
+import { auth } from "$lib/services/auth";
+import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { canisterIDLs } from "$lib/services/auth";
 
 
 interface TokensParams {
@@ -99,3 +102,57 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE
   const data = await response.json();
   return data.items.map(parseTokenData);
 };
+
+/**
+ * Adds a token to the Kong backend
+ * @param token The token canister ID to add (e.g. "IC.ryjl3-tyaaa-aaaaa-aaaba-cai")
+ * @returns The result of the add_token operation
+ */
+export const addToken = async (token: string): Promise<any> => {
+  try {
+    // Get the actor for the kong_backend canister
+    const actor = await auth.getActor(
+      KONG_BACKEND_CANISTER_ID,
+      canisterIDLs.kong_backend
+    );
+    
+    // Format the token canister ID if needed
+    const formattedToken = token.startsWith("IC.") ? token : `IC.${token}`;
+    
+    // Call the add_token method with the token canister ID
+    const result = await actor.add_token({ token: formattedToken });
+    
+    if ('Err' in result) {
+      throw new Error(result.Err);
+    }
+    
+    // Process the response to handle any BigInt values
+    const processResponse = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj;
+      
+      if (typeof obj === 'bigint') {
+        return obj.toString();
+      }
+      
+      if (Array.isArray(obj)) {
+        return obj.map(processResponse);
+      }
+      
+      if (typeof obj === 'object') {
+        const newObj: Record<string, any> = {};
+        for (const key in obj) {
+          newObj[key] = processResponse(obj[key]);
+        }
+        return newObj;
+      }
+      
+      return obj;
+    };
+    
+    return processResponse(result.Ok);
+  } catch (error) {
+    console.error('Error adding token:', error);
+    throw error;
+  }
+};
+

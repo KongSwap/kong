@@ -14,10 +14,8 @@
   import { debounce } from "$lib/utils/debounce";
   import { auth } from "$lib/services/auth";
   import { userTokens } from "$lib/stores/userTokens";
-  import { goto } from "$app/navigation";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { ChevronRight } from "lucide-svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
+  import AddCustomTokenModal from "$lib/components/sidebar/AddCustomTokenModal.svelte";
 
   // Use $props() instead of export let
   const props = $props<{ tokens: FE.Token[] }>();
@@ -43,6 +41,9 @@
   // Store for user's tokens
   const userTokenList = writable<FE.Token[]>([]);
 
+  // State for custom token modal
+  let isAddCustomTokenModalOpen = $state(false);
+  
   // Initialize userTokenList with tokens prop
   $effect(() => {
     userTokenList.set(props.tokens);
@@ -348,13 +349,27 @@
     }
   }
 
-  // Create a function to handle token removal
+  // Handle token removal
   function handleTokenRemoval(canisterId: string) {
     // Update local list immediately for better UI responsiveness
     userTokenList.update(tokens => tokens.filter(token => token.canister_id !== canisterId));
     
     // Then update the store (which will trigger the effect above)
     userTokens.disableToken(canisterId);
+  }
+
+  // Handle token added from modal
+  function handleTokenAdded(event: CustomEvent<FE.Token>) {
+    const newToken = event.detail;
+    
+    // Check if token is already in the list
+    const currentTokens = get(userTokenList);
+    const alreadyExists = currentTokens.some(t => t.canister_id === newToken.canister_id);
+    
+    if (!alreadyExists) {
+      // Add to local userTokenList for immediate display
+      userTokenList.update(tokens => [newToken, ...tokens]);
+    }
   }
 </script>
 
@@ -538,9 +553,27 @@
           {/if}
         </div>
       {/if}
+      
+      <!-- Add custom token button -->
+      <div class="add-custom-token-container">
+        <button 
+          class="add-custom-token-button" 
+          on:click={() => isAddCustomTokenModalOpen = true}
+        >
+          <Plus size={16} />
+          <span>Add Custom Token</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- Custom Token Modal -->
+<AddCustomTokenModal 
+  isOpen={isAddCustomTokenModalOpen}
+  onClose={() => isAddCustomTokenModalOpen = false}
+  on:tokenAdded={handleTokenAdded}
+/>
 
 <style scoped lang="postcss">
   .token-list-container {
@@ -695,5 +728,16 @@
     to {
       transform: rotate(360deg);
     }
+  }
+
+  /* Add custom token button styles */
+  .add-custom-token-container {
+    @apply mt-4 px-2 py-2 border-t border-kong-border/30;
+  }
+
+  .add-custom-token-button {
+    @apply w-full flex items-center justify-center gap-2 px-3 py-2.5 
+           bg-kong-bg-dark/70 text-kong-text-primary rounded-lg
+           hover:bg-kong-bg-dark transition-colors;
   }
 </style>
