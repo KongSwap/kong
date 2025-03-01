@@ -269,51 +269,53 @@
   {/if}
 
   <!-- Pagination -->
-  <div class="sticky bottom-0 left-0 right-0 flex items-center justify-between px-4 py-1 border-t border-kong-border backdrop-blur-md">
-    <div class="flex items-center text-sm text-kong-text-secondary">
-      {#if totalItems > 0}
-        Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
-      {:else}
-        No items to display
-      {/if}
-    </div>
-    <div class="flex items-center gap-2">
-      <button
-        class="pagination-button {currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
-        on:click={previousPage}
-        disabled={currentPage === 1 || totalItems === 0}
-      >
-        Previous
-      </button>
-      
-      {#if totalItems > 0}
-        {#each Array(totalPages) as _, i}
-          {@const pageNum = i + 1}
-          {@const showPage = 
-            pageNum === 1 || 
-            pageNum === totalPages || 
-            (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)}
-          
-          {#if showPage}
-            <button
-              class="pagination-button {currentPage === pageNum ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
-              on:click={() => goToPage(pageNum)}
-            >
-              {pageNum}
-            </button>
-          {:else if pageNum === currentPage - 2 || pageNum === currentPage + 2}
-            <span class="px-1 text-kong-text-secondary">...</span>
-          {/if}
-        {/each}
-      {/if}
-      
-      <button
-        class="pagination-button {currentPage === totalPages || totalItems === 0 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
-        on:click={nextPage}
-        disabled={currentPage === totalPages || totalItems === 0}
-      >
-        Next
-      </button>
+  <div class="bg-kong-bg-dark sticky bottom-0 z-20 !backdrop-blur-[12px]">
+    <div class="border-t border-kong-border bg-kong-bg-dark flex items-center justify-between px-4 py-1">
+      <div class="flex items-center text-sm text-kong-text-secondary">
+        {#if totalItems > 0}
+          Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
+        {:else}
+          No items to display
+        {/if}
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          class="pagination-button {currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+          on:click={previousPage}
+          disabled={currentPage === 1 || totalItems === 0}
+        >
+          Previous
+        </button>
+        
+        {#if totalItems > 0}
+          {#each Array(totalPages) as _, i}
+            {@const pageNum = i + 1}
+            {@const showPage = 
+              pageNum === 1 || 
+              pageNum === totalPages || 
+              (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)}
+            
+            {#if showPage}
+              <button
+                class="pagination-button {currentPage === pageNum ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
+                on:click={() => goToPage(pageNum)}
+              >
+                {pageNum}
+              </button>
+            {:else if pageNum === currentPage - 2 || pageNum === currentPage + 2}
+              <span class="px-1 text-kong-text-secondary">...</span>
+            {/if}
+          {/each}
+        {/if}
+        
+        <button
+          class="pagination-button {currentPage === totalPages || totalItems === 0 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+          on:click={nextPage}
+          disabled={currentPage === totalPages || totalItems === 0}
+        >
+          Next
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -347,7 +349,7 @@
     position: relative;
     background-color: var(--kong-bg-dark);
   }
-
+  
   .flash-green {
     animation: flashGreen 2s ease-out;
   }
