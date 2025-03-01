@@ -2,10 +2,11 @@
   import { createEventDispatcher } from "svelte";
   import { fade, fly } from "svelte/transition";
   import { BigNumber } from "bignumber.js";
-  import { formatToNonZeroDecimal, parseTokenAmount } from "$lib/utils/numberFormatUtils";
+  import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import { currentUserBalancesStore } from "$lib/services/tokens/tokenStore";
   import { PoolService } from "$lib/services/pools";
   import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
+  import { calculateTokenUsdValue } from "$lib/utils/liquidityUtils";
   import TokenInput from "./TokenInput.svelte";
 
   const dispatch = createEventDispatcher();
@@ -57,24 +58,6 @@
     }
     return null;
   })();
-
-  // Calculate USD value for tokens using proper price lookup
-  function calculateTokenUsdValue(amount: string, token: any): string {
-    // Find token to get its canister_id
-    if (!token?.canister_id || !amount) {
-      return "0";
-    }
-
-    const price = token.metrics.price;
-
-    if (!price) {
-      return "0";
-    }
-
-    // Calculate USD value
-    const usdValue = Number(amount) * Number(price);
-    return formatToNonZeroDecimal(usdValue);
-  }
 
   async function handleAddAmountChange(index: 0 | 1, value: string) {
     if (index === 0) {

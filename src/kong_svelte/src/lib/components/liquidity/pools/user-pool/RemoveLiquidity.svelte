@@ -2,11 +2,11 @@
   import { createEventDispatcher } from "svelte";
   import { fade, fly } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { loadBalance } from "$lib/services/tokens/tokenStore";
   import { PoolService } from "$lib/services/pools";
   import { toastStore } from "$lib/stores/toastStore";
   import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { calculateTokenUsdValue } from "$lib/utils/liquidityUtils";
 
   const dispatch = createEventDispatcher();
 
@@ -159,24 +159,6 @@
     }
   }
 
-  // Calculate USD value for tokens using proper price lookup
-  function calculateTokenUsdValue(amount: string, token: any): string {
-    // Find token to get its canister_id
-    if (!token?.canister_id || !amount) {
-      return "0";
-    }
-
-    const price = token.metrics.price;
-
-    if (!price) {
-      return "0";
-    }
-
-    // Calculate USD value
-    const usdValue = Number(amount) * Number(price);
-    return formatToNonZeroDecimal(usdValue);
-  }
-
   // Calculate total USD value of tokens to receive
   function calculateTotalUsdValue(): string {
     const amount0Usd = Number(
@@ -188,7 +170,7 @@
     if (isNaN(amount0Usd) || isNaN(amount1Usd)) {
       return "0";
     }
-    return formatToNonZeroDecimal(amount0Usd + amount1Usd);
+    return (amount0Usd + amount1Usd).toFixed(2);
   }
 </script>
 
