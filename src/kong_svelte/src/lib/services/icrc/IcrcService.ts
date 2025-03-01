@@ -475,14 +475,14 @@ export class IcrcService {
         canisterIDLs.icrc1,
         { anon: false, requiresSigning: true }
       );
-      
+
       // Prepare transfer arguments
       const transferArgs = {
         to: {
           owner: Principal.fromText(CMC_CANISTER_ID),
           subaccount: [subaccount]
         },
-        amount,
+        amount: amount - ICP_FEE,
         fee: [ICP_FEE],
         memo: [memoArray],
         from_subaccount: [],

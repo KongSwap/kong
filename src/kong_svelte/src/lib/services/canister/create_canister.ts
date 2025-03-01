@@ -45,6 +45,7 @@ export async function createCanister(args) {
     );
     
     // Ensure settings has all required fields
+    // TODO! figure this out, whats best practice etc
     const completeSettings = {
       controllers: args.settings?.controllers ? [args.settings.controllers] : [],
       freezing_threshold: args.settings?.freezing_threshold || [],
@@ -57,6 +58,10 @@ export async function createCanister(args) {
     };
     
     // Prepare subnet selection if subnet_id is provided
+    // TODO! allow user to enter subnet_id here, we can call cmc
+    // cmc returns all available subnets that are deployable
+    // then use api to figure out specs of each subnet
+    // 13 nodes == 500 billion cycles, kong subnet is 1500 billion cycles to create etc
     let subnet_selection = [];
     if (args.subnet_id) {
       subnet_selection = [{

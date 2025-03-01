@@ -54,7 +54,7 @@ cp "$WASM_BASE_DIR/miner/miner.did" "$PROJECT_ROOT/src/kong_svelte/src/miner.did
 # Compress and hash
 echo "Compressing and hashing..." # Step 4: Compressing WASM files and generating hashes
 # gzip -9 -kf "$WASM_BASE_DIR/ledger/ledger.wasm" # Compressing ledger WASM in static folder
-# gzip -9 -kf "$WASM_BASE_DIR/token_backend/token_backend.wasm" # Compressing token_backend WASM in static folder 
+gzip -9 -kf "$WASM_BASE_DIR/token_backend/token_backend.wasm" # Compressing token_backend WASM in static folder 
 # gzip -9 -kf "$WASM_BASE_DIR/miner/miner.wasm" # Compressing miner WASM in static folder
 
 find "$WASM_BASE_DIR" -name "*.wasm" | while read -r wasm; do
