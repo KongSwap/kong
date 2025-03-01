@@ -347,8 +347,10 @@ export class PoolService {
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend
       );
-      const result = await actor.get_pool(token0, token1);
-      return result.Ok || null;
+      
+      // Use get_by_tokens instead of get_pool
+      const result = await actor.get_by_tokens("IC." + token0, "IC." + token1);
+      return result || null;
     } catch (err) {
       console.error("Error getting pool:", err);
       return null;

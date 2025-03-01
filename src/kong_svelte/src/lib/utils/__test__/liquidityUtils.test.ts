@@ -14,7 +14,16 @@ import {
   processLiquidityInput,
   calculateUsdValue,
   findPool,
-  validateLiquidityForm
+  validateLiquidityForm,
+  getPoolForTokenPair,
+  validateTokenSelect,
+  calculateToken1FromPoolRatio,
+  calculateToken0FromPoolRatio,
+  calculateToken1FromPrice,
+  calculateToken0FromPrice,
+  calculateAmountFromPercentage,
+  calculateTokenUsdValue,
+  formatToNonZeroDecimal
 } from '$lib/utils/liquidityUtils';
 
 // Updated mock tokenStore with bigger balances in microtokens
@@ -306,5 +315,247 @@ describe('formatLargeNumber', () => {
     expect(formatLargeNumber('1000000000000', 2)).toBe('1,000,000.00'); // 1M
     expect(formatLargeNumber('1000000000000000', 2)).toBe('1,000,000,000.00'); // 1B
     expect(formatLargeNumber('1000000000000000000', 2)).toBe('1,000,000,000,000.00'); // 1T
+  });
+});
+
+describe('getPoolForTokenPair', () => {
+  it('should find matching pools', () => {
+    const token0 = { canister_id: 'token0-id' } as FE.Token;
+    const token1 = { canister_id: 'token1-id' } as FE.Token;
+    const pools = [
+      { address_0: 'token0-id', address_1: 'token1-id' } as BE.Pool,
+      { address_0: 'token2-id', address_1: 'token3-id' } as BE.Pool
+    ];
+
+    expect(getPoolForTokenPair(token0, token1, pools)).toBe(pools[0]);
+    expect(getPoolForTokenPair(token1, token0, pools)).toBe(pools[0]); // Test reverse order
+    expect(getPoolForTokenPair(null, token1, pools)).toBe(null);
+    expect(getPoolForTokenPair(token0, token1, [])).toBe(null);
+  });
+});
+
+describe('validateTokenSelect', () => {
+  it('should validate token selection correctly', () => {
+    const icp = { symbol: 'ICP', canister_id: 'icp-id' } as FE.Token;
+    const ckusdt = { symbol: 'ckUSDT', canister_id: 'ckusdt-id' } as FE.Token;
+    const btc = { symbol: 'BTC', canister_id: 'btc-id' } as FE.Token;
+    const eth = { symbol: 'ETH', canister_id: 'eth-id' } as FE.Token;
+    const tokens = [icp, ckusdt, btc, eth];
+    const allowedTokens = ['ICP', 'ckUSDT'];
+    
+    // Valid: one token is in allowed list
+    const result1 = validateTokenSelect(icp, btc, allowedTokens, 'ICP', tokens);
+    expect(result1.isValid).toBe(true);
+    expect(result1.newToken).toBe(icp);
+    
+    // Valid: both tokens are in allowed list
+    const result2 = validateTokenSelect(icp, ckusdt, allowedTokens, 'ICP', tokens);
+    expect(result2.isValid).toBe(true);
+    expect(result2.newToken).toBe(icp);
+    
+    // Invalid: same token
+    const result3 = validateTokenSelect(btc, btc, allowedTokens, 'ICP', tokens);
+    expect(result3.isValid).toBe(false);
+    expect(result3.newToken?.symbol).toBe('ICP');
+    expect(result3.error).toBe('One token must be ICP or ckUSDT');
+    
+    // Invalid: neither token is in allowed list
+    const result4 = validateTokenSelect(btc, eth, allowedTokens, 'ICP', tokens);
+    expect(result4.isValid).toBe(false);
+    expect(result4.newToken?.symbol).toBe('ICP');
+    expect(result4.error).toBe('One token must be ICP or ckUSDT');
+    
+    // No other token selected yet
+    const result5 = validateTokenSelect(icp, null, allowedTokens, 'ICP', tokens);
+    expect(result5.isValid).toBe(true);
+    expect(result5.newToken).toBe(icp);
+  });
+});
+
+describe('calculateToken1FromPoolRatio', () => {
+  it('should calculate token1 amount based on token0 amount and pool ratio', async () => {
+    const token0 = { decimals: 6 } as FE.Token;
+    const token1 = { decimals: 6 } as FE.Token;
+    const pool = { 
+      balance_0: '1000000000', // 1000 tokens
+      balance_1: '5000000000'  // 5000 tokens
+    } as unknown as BE.Pool;
+    
+    // 1 token0 should give 5 token1 based on pool ratio
+    expect(await calculateToken1FromPoolRatio('1', token0, token1, pool)).toBe('5.000000');
+    expect(await calculateToken1FromPoolRatio('10', token0, token1, pool)).toBe('50.000000');
+    expect(await calculateToken1FromPoolRatio('0', token0, token1, pool)).toBe('0');
+    
+    // Test with different decimals
+    const token0Dec8 = { decimals: 8 } as FE.Token;
+    const token1Dec4 = { decimals: 4 } as FE.Token;
+    expect(await calculateToken1FromPoolRatio('1', token0Dec8, token1Dec4, pool)).toBe('50000.000000');
+  });
+  
+  it('should handle edge cases', async () => {
+    const token0 = { decimals: 6 } as FE.Token;
+    const token1 = { decimals: 6 } as FE.Token;
+    
+    // Empty pool
+    const emptyPool = { 
+      balance_0: '0', 
+      balance_1: '0' 
+    } as unknown as BE.Pool;
+    expect(await calculateToken1FromPoolRatio('1', token0, token1, emptyPool)).toBe('0');
+    
+    // Invalid input
+    expect(await calculateToken1FromPoolRatio('invalid', token0, token1, {} as unknown as BE.Pool)).toBe('0');
+  });
+});
+
+describe('calculateToken0FromPoolRatio', () => {
+  it('should calculate token0 amount based on token1 amount and pool ratio', async () => {
+    const token0 = { decimals: 6 } as FE.Token;
+    const token1 = { decimals: 6 } as FE.Token;
+    const pool = { 
+      balance_0: '1000000000', // 1000 tokens
+      balance_1: '5000000000'  // 5000 tokens
+    } as unknown as BE.Pool;
+    
+    // 5 token1 should give 1 token0 based on pool ratio
+    expect(await calculateToken0FromPoolRatio('5', token0, token1, pool)).toBe('1.000000');
+    expect(await calculateToken0FromPoolRatio('50', token0, token1, pool)).toBe('10.000000');
+    expect(await calculateToken0FromPoolRatio('0', token0, token1, pool)).toBe('0');
+  });
+  
+  it('should handle edge cases', async () => {
+    const token0 = { decimals: 6 } as FE.Token;
+    const token1 = { decimals: 6 } as FE.Token;
+    
+    // Empty pool
+    const emptyPool = { 
+      balance_0: '0', 
+      balance_1: '0' 
+    } as unknown as BE.Pool;
+    expect(await calculateToken0FromPoolRatio('1', token0, token1, emptyPool)).toBe('0');
+    
+    // Invalid input
+    expect(await calculateToken0FromPoolRatio('invalid', token0, token1, {} as unknown as BE.Pool)).toBe('0');
+  });
+});
+
+describe('calculateToken1FromPrice', () => {
+  it('should calculate token1 amount based on token0 amount and price', () => {
+    // 1 token0 at price 50000 should give 50000 token1
+    expect(calculateToken1FromPrice('1', '50000')).toBe('50000');
+    expect(calculateToken1FromPrice('2.5', '1000')).toBe('2500');
+    expect(calculateToken1FromPrice('0', '1000')).toBe('0');
+  });
+  
+  it('should handle invalid inputs', () => {
+    expect(calculateToken1FromPrice('', '1000')).toBe('0');
+    expect(calculateToken1FromPrice('1', '')).toBe('0');
+    expect(calculateToken1FromPrice('invalid', '1000')).toBe('0');
+    expect(calculateToken1FromPrice('1', 'invalid')).toBe('0');
+  });
+});
+
+describe('calculateToken0FromPrice', () => {
+  it('should calculate token0 amount based on token1 amount and price', () => {
+    // 50000 token1 at price 50000 should give 1 token0
+    expect(calculateToken0FromPrice('50000', '50000')).toBe('1');
+    expect(calculateToken0FromPrice('2500', '1000')).toBe('2.5');
+    expect(calculateToken0FromPrice('0', '1000')).toBe('0');
+  });
+  
+  it('should handle invalid inputs', () => {
+    expect(calculateToken0FromPrice('', '1000')).toBe('0');
+    expect(calculateToken0FromPrice('1000', '')).toBe('0');
+    expect(calculateToken0FromPrice('invalid', '1000')).toBe('0');
+    expect(calculateToken0FromPrice('1000', 'invalid')).toBe('0');
+  });
+});
+
+describe('calculateAmountFromPercentage', () => {
+  it('should calculate token amount based on percentage of balance', () => {
+    const token = { 
+      decimals: 6,
+      fee: 0.001 // 0.1%
+    } as FE.Token;
+    
+    // 50% of 1000 tokens should be 500
+    expect(calculateAmountFromPercentage(token, '1000000000', 50)).toBe('500.000000');
+    
+    // 25% of 1000 tokens should be 250
+    expect(calculateAmountFromPercentage(token, '1000000000', 25)).toBe('250.000000');
+    
+    // 100% of 1000 tokens should be 1000 minus 2x fee
+    expect(calculateAmountFromPercentage(token, '1000000000', 100)).toBe('999.998000');
+  });
+  
+  it('should handle edge cases', () => {
+    const token = { 
+      decimals: 6,
+      fee: 0.001
+    } as FE.Token;
+    
+    expect(calculateAmountFromPercentage(token, '0', 50)).toBe('0');
+    expect(calculateAmountFromPercentage(null as unknown as FE.Token, '1000000000', 50)).toBe('0');
+    expect(calculateAmountFromPercentage(token, '', 50)).toBe('0');
+    
+    // Balance less than fee
+    expect(calculateAmountFromPercentage(token, '1000', 100)).toBe('0');
+  });
+});
+
+describe('calculateTokenUsdValue', () => {
+  it('should calculate USD value for a token amount', () => {
+    const token = { 
+      canister_id: 'token-id',
+      metrics: { price: '50000' }
+    } as FE.Token;
+    
+    // 1 token at price $50000 should be $50000
+    expect(calculateTokenUsdValue('1', token)).toBe('50,000.00');
+    
+    // 0.5 token at price $50000 should be $25000
+    expect(calculateTokenUsdValue('0.5', token)).toBe('25,000.00');
+    
+    // 0 token should be $0
+    expect(calculateTokenUsdValue('0', token)).toBe('0');
+  });
+  
+  it('should handle invalid inputs', () => {
+    const token = { 
+      canister_id: 'token-id',
+      metrics: { price: '50000' }
+    } as FE.Token;
+    
+    expect(calculateTokenUsdValue('', token)).toBe('0');
+    expect(calculateTokenUsdValue('invalid', token)).toBe('0');
+    expect(calculateTokenUsdValue('1', null)).toBe('0');
+    
+    const tokenWithoutPrice = { 
+      canister_id: 'token-id',
+      metrics: {}
+    } as FE.Token;
+    expect(calculateTokenUsdValue('1', tokenWithoutPrice)).toBe('0');
+  });
+});
+
+describe('formatToNonZeroDecimal', () => {
+  it('should format numbers with appropriate decimal places', () => {
+    // Very small numbers should have 6 decimal places
+    expect(formatToNonZeroDecimal(0.000123)).toBe('0.000123');
+    
+    // Small numbers should have 4 decimal places
+    expect(formatToNonZeroDecimal(0.1234)).toBe('0.1234');
+    
+    // Regular numbers should have 2 decimal places
+    expect(formatToNonZeroDecimal(123.456)).toBe('123.46');
+    
+    // Large numbers should have 2 decimal places and commas
+    expect(formatToNonZeroDecimal(12345.67)).toBe('12,345.67');
+    expect(formatToNonZeroDecimal(1234567.89)).toBe('1,234,567.89');
+  });
+  
+  it('should handle edge cases', () => {
+    expect(formatToNonZeroDecimal(0)).toBe('0');
+    expect(formatToNonZeroDecimal(NaN)).toBe('0');
   });
 }); 

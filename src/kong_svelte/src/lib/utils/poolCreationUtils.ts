@@ -67,12 +67,3 @@ export function updateQueryParams(token0Id?: string, token1Id?: string) {
   const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
   window.history.replaceState({}, '', newUrl);
 }
-
-export function calculateAmount1FromPrice(amount0: string, initialPrice: string) {
-  if (!amount0 || !initialPrice) return;
-  const price = new BigNumber(initialPrice);
-  if (price.isZero()) return;
-  
-  const cleanAmount0 = amount0.replace(/[,_]/g, "");
-  return price.times(cleanAmount0).toString();
-}
