@@ -17,7 +17,7 @@
   import { TokenBalanceService } from "$lib/services/tokens/tokenBalanceService";
   import VirtualScroller from "$lib/components/common/VirtualScroller.svelte";
   import { virtualScroll } from "$lib/utils/virtualScroll";
-  import AddCustomTokenModal from "$lib/components/sidebar/AddCustomTokenModal.svelte";
+  import AddNewTokenModal from "$lib/components/sidebar/AddNewTokenModal.svelte";
 
   const props = $props();
   const {
@@ -73,8 +73,8 @@
   // Add a state to track which tokens have had balance loading attempts
   let balanceLoadAttempts = $state(new Set<string>());
   
-  // Add a state to control the visibility of the AddCustomTokenModal
-  let isAddCustomTokenModalOpen = $state(false);
+  // Add a state to control the visibility of the AddNewTokenModal
+  let isAddNewTokenModalOpen = $state(false);
   
   type FilterType = "all" | "ck" | "favorites";
 
@@ -450,7 +450,7 @@
     const newToken = event.detail;
     
     // Close the modal
-    isAddCustomTokenModalOpen = false;
+    isAddNewTokenModalOpen = false;
     
     // If the token was successfully added, select it
     if (newToken && canSelectToken(newToken)) {
@@ -731,17 +731,17 @@
                   </div>
                 {/if}
                 
-                <!-- Add Custom Token Button -->
+                <!-- Add New Token Button -->
                 <div class="add-token-button-container">
                   <button 
                     class="add-token-button"
                     on:click={(e) => {
                       e.stopPropagation();
-                      isAddCustomTokenModalOpen = true;
+                      isAddNewTokenModalOpen = true;
                     }}
                   >
                     <div class="add-icon">+</div>
-                    <span>Add Custom Token</span>
+                    <span>Add New Token</span>
                   </button>
                 </div>
                 
@@ -991,9 +991,9 @@
   }
 </style>
 
-<!-- Add Custom Token Modal -->
-<AddCustomTokenModal 
-  isOpen={isAddCustomTokenModalOpen}
-  onClose={() => isAddCustomTokenModalOpen = false}
+<!-- Add New Token Modal -->
+<AddNewTokenModal 
+  isOpen={isAddNewTokenModalOpen}
+  onClose={() => isAddNewTokenModalOpen = false}
   on:tokenAdded={handleCustomTokenAdded}
 />

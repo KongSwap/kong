@@ -403,7 +403,7 @@
       <Panel className="flex-1 {$isMobile ? '' : '!p-0'}" variant="transparent">
         <div class="overflow-hidden flex flex-col h-full">
           <!-- Header with full-width search and "My Pools" button -->
-          <div class="flex flex-col sticky top-0 z-20">
+          <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md">
             <div class="flex flex-col gap-3 sm:gap-0">
               <!-- Mobile-only buttons -->
               <div class="sm:hidden space-y-2">
@@ -411,20 +411,20 @@
                 <div class="flex gap-2 w-full">
                   <!-- View Toggle -->
                   <div
-                    class="flex border border-kong-border rounded-lg overflow-hidden"
+                    class="flex border border-white/[0.08] rounded-lg overflow-hidden shadow-inner bg-white/[0.02]"
                   >
                     <button
                       class="px-3 py-2 text-sm {$activePoolView === 'all'
-                        ? 'text-kong-text-primary bg-[#60A5FA]/10'
+                        ? 'text-kong-text-primary bg-kong-primary/10 font-medium'
                         : 'text-kong-text-secondary'}"
                       on:click={() => ($activePoolView = "all")}
                     >
                       All
                     </button>
-                    <div class="w-px bg-kong-border"></div>
+                    <div class="w-px bg-white/[0.04]"></div>
                     <button
                       class="px-3 py-2 text-sm {$activePoolView === 'user'
-                        ? 'text-kong-text-primary bg-[#60A5FA]/10'
+                        ? 'text-kong-text-primary bg-kong-primary/10 font-medium'
                         : 'text-kong-text-secondary'}"
                       on:click={() => {
                         $activePoolView = "user";
@@ -440,7 +440,7 @@
                     <input
                       type="text"
                       placeholder="Search pools..."
-                      class="w-full bg-kong-bg-dark border border-kong-border rounded-lg pl-8 pr-2 py-2 text-sm text-kong-text-primary placeholder-kong-text-secondary focus:outline-none"
+                      class="w-full bg-white/[0.02] border border-white/[0.08] rounded-lg pl-8 pr-2 py-2 text-sm text-kong-text-primary placeholder-kong-text-secondary focus:outline-none focus:ring-1 focus:ring-kong-primary/20 transition-all duration-200"
                       bind:value={searchInput}
                       on:input={handleSearch}
                     />
@@ -466,7 +466,7 @@
                   <div class="flex gap-2 w-full">
                     <!-- Sort -->
                     <div
-                      class="flex-1 flex bg-kong-bg-dark border border-kong-border rounded-lg overflow-hidden"
+                      class="flex-1 flex bg-white/[0.02] border border-white/[0.08] rounded-lg overflow-hidden shadow-inner"
                     >
                       <select
                         bind:value={$mobileSortColumn}
@@ -477,13 +477,13 @@
                         <option value="rolling_24h_apy">APY</option>
                         <option value="price">Price</option>
                       </select>
-                      <div class="w-px bg-kong-border"></div>
+                      <div class="w-px bg-white/[0.04]"></div>
                       <button
                         on:click={() =>
                           mobileSortDirection.update((d) =>
                             d === "asc" ? "desc" : "asc",
                           )}
-                        class="px-3 text-[#60A5FA]"
+                        class="px-3 text-kong-primary"
                       >
                         <svelte:component
                           this={$mobileSortDirection === "asc"
@@ -496,7 +496,7 @@
 
                     <!-- Add Position Button -->
                     <button
-                      class="bg-kong-bg-dark border border-kong-border rounded-lg px-4 py-2 text-kong-text-primary hover:bg-kong-bg-dark/90 flex items-center gap-2"
+                      class="bg-kong-primary text-white rounded-lg px-4 py-2 hover:bg-kong-primary-hover flex items-center gap-2 transition-all duration-200 shadow-md"
                       on:click={() => goto("/pools/add")}
                     >
                       <svg
@@ -512,20 +512,20 @@
                       >
                         <path d="M12 5v14M5 12h14" />
                       </svg>
-                      <span class="text-sm">Add</span>
+                      <span class="text-sm font-medium">Add</span>
                     </button>
                   </div>
                 {/if}
               </div>
               <!-- Desktop view -->
-              <div class="hidden sm:flex er-b border-kong-border py-1">
+              <div class="hidden sm:flex border-b border-white/[0.04] py-1">
                 <div class="flex-1">
                   <div class="flex items-center">
                     <div class="flex bg-transparent">
                       <button
                         class="px-4 py-2 transition-colors duration-200 {$activePoolView ===
                         'all'
-                          ? 'text-kong-text-primary'
+                          ? 'text-kong-text-primary font-medium'
                           : 'text-kong-text-secondary hover:text-kong-text-primary'}"
                         on:click={() => ($activePoolView = "all")}
                       >
@@ -535,7 +535,7 @@
                         <button
                           class="px-4 py-2 transition-colors duration-200 {$activePoolView ===
                           'user'
-                            ? 'text-kong-text-primary'
+                            ? 'text-kong-text-primary font-medium'
                             : 'text-kong-text-secondary hover:text-kong-text-primary'}"
                           on:click={() => {
                             $activePoolView = "user";
@@ -543,7 +543,7 @@
                           }}
                         >
                           My Pools <span
-                            class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary/80 px-1.5 rounded"
+                            class="text-xs ml-1 font-bold py-0.5 text-white bg-kong-primary px-1.5 rounded"
                             >{$liveUserPools.length}</span
                           >
                         </button>
@@ -556,7 +556,7 @@
                         placeholder={$isMobile == true
                           ? "Search pools..."
                           : "Search pools by name, symbol, or canister ID"}
-                        class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
+                        class="w-full bg-transparent text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:border-b focus:border-kong-primary/20 transition-all duration-200 pb-1"
                         bind:value={searchInput}
                         on:input={handleSearch}
                       />
@@ -565,7 +565,7 @@
                 </div>
 
                 <button
-                  class="-mt-2 -mb-1 flex items-center gap-2 rounded-none !rounded-tr-lg px-6 py-2 text-white bg-kong-primary/20 hover:bg-kong-primary hover:text-white hover:border-[#60A5FA]/30 hover:drop-shadow-[0_0_8px_rgba(96,165,250,0.3)] transition-all duration-200"
+                  class="-mt-2 -mb-1 flex items-center gap-2 rounded-none !rounded-tr-lg px-6 py-2 text-white bg-kong-primary hover:bg-kong-primary-hover hover:shadow-[0_0_15px_rgba(0,149,235,0.2)] transition-all duration-200"
                   on:click={() => goto("/pools/add")}
                 >
                   <svg
@@ -604,10 +604,10 @@
                           goto(
                             `/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`,
                           )}
-                        class="w-full text-left bg-kong-bg-dark rounded-xl border border-kong-border/50 hover:border-[#60A5FA]/30 hover:bg-kong-bg-dark/80 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-lg backdrop-blur-sm {pool.address_0 ===
+                        class="w-full text-left bg-white/[0.02] rounded-xl border border-white/[0.04] hover:border-kong-primary/20 hover:bg-white/[0.04] active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-lg backdrop-blur-md {pool.address_0 ===
                           KONG_CANISTER_ID ||
                         pool.address_1 === KONG_CANISTER_ID
-                          ? 'bg-gradient-to-br from-[rgba(0,255,128,0.05)] to-[rgba(0,255,128,0.02)] active:bg-[rgba(0,255,128,0.04)] shadow-[inset_0_1px_1px_rgba(0,255,128,0.1)]'
+                          ? 'bg-gradient-to-br from-[rgba(0,149,235,0.05)] to-[rgba(0,149,235,0.02)] active:bg-[rgba(0,149,235,0.04)] shadow-[inset_0_1px_1px_rgba(0,149,235,0.1)]'
                           : 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'}"
                       >
                         <div class="p-4">
@@ -628,7 +628,7 @@
                               </div>
                             </div>
                             <div
-                              class="text-[#60A5FA] text-base font-medium flex items-center gap-1.5 bg-[#60A5FA]/5 px-2.5 py-1 rounded-lg"
+                              class="text-kong-primary text-base font-medium flex items-center gap-1.5 bg-kong-primary/5 px-2.5 py-1 rounded-lg"
                             >
                               <Flame class="w-4 h-4" />
                               {Number(pool.rolling_24h_apy).toFixed(2)}%
@@ -637,7 +637,7 @@
 
                           <!-- Pool Stats -->
                           <div class="grid grid-cols-3 gap-4">
-                            <div class="bg-black/20 rounded-lg p-2.5">
+                            <div class="bg-black/10 rounded-lg p-2.5">
                               <div
                                 class="text-xs text-kong-text-secondary mb-1"
                               >
@@ -649,7 +649,7 @@
                                 {formatToNonZeroDecimal(getPoolPriceUsd(pool))}
                               </div>
                             </div>
-                            <div class="bg-black/20 rounded-lg p-2.5">
+                            <div class="bg-black/10 rounded-lg p-2.5">
                               <div
                                 class="text-xs text-kong-text-secondary mb-1"
                               >
@@ -661,7 +661,7 @@
                                 {formatUsdValue(Number(pool.tvl))}
                               </div>
                             </div>
-                            <div class="bg-black/20 rounded-lg p-2.5">
+                            <div class="bg-black/10 rounded-lg p-2.5">
                               <div
                                 class="text-xs text-kong-text-secondary mb-1"
                               >
@@ -681,6 +681,7 @@
                     {/each}
                     {#if isMobileFetching}
                       <div class="text-center text-kong-text-secondary py-4">
+                        <div class="inline-block w-5 h-5 border-2 border-kong-primary/20 border-t-kong-primary rounded-full animate-spin mr-2"></div>
                         Loading more pools...
                       </div>
                     {/if}
@@ -773,18 +774,28 @@
                 </div>
               {:else}
                 <div
-                  class="flex flex-col items-center justify-center h-64 text-center"
+                  class="flex flex-col items-center justify-center h-64 text-center p-6 bg-white/[0.02] rounded-xl border border-white/[0.04] shadow-lg backdrop-blur-md m-4"
                 >
-                  <p class="text-gray-400 mb-4">
+                  <div class="p-4 rounded-full bg-kong-primary/5 text-kong-primary/70 mb-4">
+                    <Droplets size={40} />
+                  </div>
+                  <p class="text-lg font-medium text-kong-text-primary mb-2">
                     Connect your wallet to view your liquidity positions
                   </p>
+                  <p class="text-sm text-kong-text-primary/60 max-w-md mb-6">
+                    Provide liquidity to pools and earn trading fees and rewards
+                  </p>
                   <button
-                    class="px-6 py-2 bg-kong-primary text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
+                    class="px-6 py-2.5 bg-kong-primary text-white rounded-lg hover:bg-kong-primary-hover transition-all duration-200 flex items-center gap-2 shadow-md"
                     on:click={() => {
                       sidebarStore.open();
                     }}
                   >
-                    Connect Wallet
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="6" width="20" height="12" rx="2" />
+                      <path d="M12 12h.01" />
+                    </svg>
+                    <span class="font-medium">Connect Wallet</span>
                   </button>
                 </div>
               {/if}
@@ -799,5 +810,10 @@
 {#if $auth.isConnected && browser}
   <!-- Existing content -->
 {:else}
-  <div class="loading-state">Loading pools...</div>
+  <div class="loading-state flex flex-col items-center justify-center h-64 gap-4">
+    <div class="loading-animation">
+      <Droplets size={32} class="animate-pulse text-kong-primary" />
+    </div>
+    <p class="loading-text text-base font-medium text-kong-text-primary/70">Loading pools...</p>
+  </div>
 {/if}

@@ -10,10 +10,14 @@
   import { PoolService } from "$lib/services/pools/PoolService";
   import { toastStore } from "$lib/stores/toastStore";
   import { auth } from "$lib/services/auth";
+  import { loadBalance } from "$lib/services/tokens/tokenStore";
+  import { userPoolListStore } from "$lib/stores/userPoolListStore";
 
   export let isCreatingPool: boolean = false;
   export let show: boolean;
   export let onClose: () => void;
+  export let modalKey: string = `confirm-liquidity-${Date.now()}`;
+  export let target: string = "#portal-target";
 
   // Get values directly from the store
   $: token0 = $liquidityStore.token0;
@@ -75,6 +79,14 @@
 
         if (result) {
           toastStore.success("Pool created successfully!");
+          
+          // Reload balances and pool list after successful pool creation
+          await Promise.all([
+            loadBalance(token0.canister_id, true),
+            loadBalance(token1.canister_id, true),
+            userPoolListStore.initialize(),
+          ]);
+          
           onClose();
         }
       } else {
@@ -98,7 +110,15 @@
         const addLiquidityResult = await PoolService.addLiquidity(params);
 
         if (addLiquidityResult) {
-          PoolService.pollRequestStatus(addLiquidityResult);
+          await PoolService.pollRequestStatus(addLiquidityResult);
+          
+          // Reload balances and pool list after successful liquidity addition
+          await Promise.all([
+            loadBalance(token0.canister_id, true),
+            loadBalance(token1.canister_id, true),
+            userPoolListStore.initialize(),
+          ]);
+          
           onClose();
         }
       }
@@ -125,6 +145,8 @@
   variant="solid"
   width="460px"
   height="auto"
+  {modalKey}
+  {target}
 >
   <div class="flex flex-col min-h-[400px] px-4 pb-4">
     {#if error}

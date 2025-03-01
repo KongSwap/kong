@@ -15,7 +15,7 @@
   import { auth } from "$lib/services/auth";
   import { userTokens } from "$lib/stores/userTokens";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
-  import AddCustomTokenModal from "$lib/components/sidebar/AddCustomTokenModal.svelte";
+  import AddNewTokenModal from "$lib/components/sidebar/AddNewTokenModal.svelte";
 
   // Use $props() instead of export let
   const props = $props<{ tokens: FE.Token[] }>();
@@ -42,7 +42,7 @@
   const userTokenList = writable<FE.Token[]>([]);
 
   // State for custom token modal
-  let isAddCustomTokenModalOpen = $state(false);
+  let isAddNewTokenModalOpen = $state(false);
   
   // Initialize userTokenList with tokens prop
   $effect(() => {
@@ -554,14 +554,14 @@
         </div>
       {/if}
       
-      <!-- Add custom token button -->
+      <!-- Add New Token button -->
       <div class="add-custom-token-container">
         <button 
           class="add-custom-token-button" 
-          on:click={() => isAddCustomTokenModalOpen = true}
+          on:click={() => isAddNewTokenModalOpen = true}
         >
           <Plus size={16} />
-          <span>Add Custom Token</span>
+          <span>Add New Token</span>
         </button>
       </div>
     </div>
@@ -569,9 +569,9 @@
 </div>
 
 <!-- Custom Token Modal -->
-<AddCustomTokenModal 
-  isOpen={isAddCustomTokenModalOpen}
-  onClose={() => isAddCustomTokenModalOpen = false}
+<AddNewTokenModal 
+  isOpen={isAddNewTokenModalOpen}
+  onClose={() => isAddNewTokenModalOpen = false}
   on:tokenAdded={handleTokenAdded}
 />
 
@@ -730,7 +730,7 @@
     }
   }
 
-  /* Add custom token button styles */
+  /* Add New Token button styles */
   .add-custom-token-container {
     @apply mt-4 px-2 py-2 border-t border-kong-border/30;
   }
