@@ -1,8 +1,7 @@
 // src/kong_svelte/src/lib/services/tokens/tokenStore.ts
-import { derived, writable } from "svelte/store";
+import { derived, writable, get } from "svelte/store";
 import { TokenService } from "./TokenService";
 import BigNumber from "bignumber.js";
-import { get } from "svelte/store";
 import { auth } from "$lib/services/auth";
 import type { TokenState } from "./types";
 import { userTokens } from "$lib/stores/userTokens";
@@ -79,10 +78,18 @@ export const updateStoredBalances = async (walletId: string) => {
   currentUserBalancesStore.set(balances);
 };
 
+// Create a store to track when updates are in progress
+export const isUpdatingPortfolio = writable(false);
+
 // Update the portfolioValue derived store
 export const portfolioValue = derived(
-  [userTokens, userPoolListStore, currentUserBalancesStore],
-  ([$userTokens, $userPoolListStore, $storedBalances]) => {
+  [userTokens, userPoolListStore, currentUserBalancesStore, isUpdatingPortfolio],
+  ([$userTokens, $userPoolListStore, $storedBalances, $isUpdating], set) => {
+    // If we're in the middle of updating, don't update the value
+    if ($isUpdating) {
+      return; // Keep the previous value
+    }
+    
     // Calculate token values
     const tokenValue = ($userTokens.tokens || []).reduce((acc, token) => {
       const balance = $storedBalances[token.canister_id]?.in_usd;
@@ -100,11 +107,12 @@ export const portfolioValue = derived(
 
     // Combine values and format
     const totalValue = tokenValue + poolValue;
-    return totalValue.toLocaleString("en-US", {
+    set(totalValue.toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    });
+    }));
   },
+  "0.00" // Default value
 );
 
 export const loadBalances = async (

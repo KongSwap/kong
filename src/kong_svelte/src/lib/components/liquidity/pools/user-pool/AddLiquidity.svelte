@@ -23,6 +23,11 @@
   let isAddingLiquidity = false;
   let isCalculatingAdd = false;
   let addError: string | null = null;
+  
+  // Debounce timers
+  let debounceTimer0: ReturnType<typeof setTimeout> | null = null;
+  let debounceTimer1: ReturnType<typeof setTimeout> | null = null;
+  const DEBOUNCE_DELAY = 500; // 750ms debounce delay
 
   // Get token balances
   $: token0Balance = token0?.canister_id 
@@ -58,6 +63,28 @@
     }
     return null;
   })();
+
+  // Debounced handler for amount changes
+  function handleAddAmountChangeDebounced(index: 0 | 1, value: string) {
+    // Update the display value immediately for better UX
+    if (index === 0) {
+      displayValue0 = value;
+      // Clear any existing timer
+      if (debounceTimer0) clearTimeout(debounceTimer0);
+      // Set a new timer
+      debounceTimer0 = setTimeout(() => {
+        handleAddAmountChange(index, value);
+      }, DEBOUNCE_DELAY);
+    } else {
+      displayValue1 = value;
+      // Clear any existing timer
+      if (debounceTimer1) clearTimeout(debounceTimer1);
+      // Set a new timer
+      debounceTimer1 = setTimeout(() => {
+        handleAddAmountChange(index, value);
+      }, DEBOUNCE_DELAY);
+    }
+  }
 
   async function handleAddAmountChange(index: 0 | 1, value: string) {
     if (index === 0) {
@@ -185,7 +212,7 @@
     disabled={isAddingLiquidity || isCalculatingAdd}
     decimals={token0?.decimals || 8}
     parsedBalance={parsedToken0Balance}
-    on:valueChange={(e) => handleAddAmountChange(0, e.detail)}
+    on:valueChange={(e) => handleAddAmountChangeDebounced(0, e.detail)}
     on:error={(e) => addError = e.detail}
   />
 
@@ -199,7 +226,7 @@
       disabled={isAddingLiquidity || isCalculatingAdd}
       decimals={token1?.decimals || 8}
       parsedBalance={parsedToken1Balance}
-      on:valueChange={(e) => handleAddAmountChange(1, e.detail)}
+      on:valueChange={(e) => handleAddAmountChangeDebounced(1, e.detail)}
       on:error={(e) => addError = e.detail}
     />
   </div>

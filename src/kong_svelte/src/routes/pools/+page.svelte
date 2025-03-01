@@ -403,7 +403,7 @@
       <Panel className="flex-1 {$isMobile ? '' : '!p-0'}" variant="transparent">
         <div class="overflow-hidden flex flex-col h-full">
           <!-- Header with full-width search and "My Pools" button -->
-          <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md">
+          <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md rounded-t-xl">
             <div class="flex flex-col gap-3 sm:gap-0">
               <!-- Mobile-only buttons -->
               <div class="sm:hidden space-y-2">
@@ -518,12 +518,12 @@
                 {/if}
               </div>
               <!-- Desktop view -->
-              <div class="hidden sm:flex border-b border-white/[0.04] py-1">
+              <div class="hidden sm:flex border-b border-white/[0.04] py-1 rounded-t-xl">
                 <div class="flex-1">
                   <div class="flex items-center">
                     <div class="flex bg-transparent">
                       <button
-                        class="px-4 py-2 transition-colors duration-200 {$activePoolView ===
+                        class="px-4 py-2 transition-colors duration-200 rounded {$activePoolView ===
                         'all'
                           ? 'text-kong-text-primary font-medium'
                           : 'text-kong-text-secondary hover:text-kong-text-primary'}"
@@ -565,7 +565,7 @@
                 </div>
 
                 <button
-                  class="-mt-2 -mb-1 flex items-center gap-2 rounded-none !rounded-tr-lg px-6 py-2 text-white bg-kong-primary hover:bg-kong-primary-hover hover:shadow-[0_0_15px_rgba(0,149,235,0.2)] transition-all duration-200"
+                  class="-mt-2 -mb-1 flex items-center gap-2 rounded-none !rounded-tr-xl px-6 py-2 text-white bg-kong-primary hover:bg-kong-primary-hover hover:shadow-[0_0_15px_rgba(0,149,235,0.2)] transition-all duration-200"
                   on:click={() => goto("/pools/add")}
                 >
                   <svg
