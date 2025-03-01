@@ -92,7 +92,7 @@
   variant="transparent"
   width="min(420px, 95vw)"
   height="auto"
-  className="!flex !flex-col !rounded-xl !overflow-hidden"
+  className="!flex !flex-col !rounded-xl !overflow-hidden !max-h-[90vh]"
   isPadded={false}
 >
   <div slot="title" class="modal-header">
@@ -193,16 +193,16 @@
   }
 
   .pool-details {
-    @apply flex flex-col h-full;
+    @apply flex flex-col flex-1 overflow-hidden;
   }
 
   .pool-content {
-    @apply p-4 flex-1 overflow-y-auto max-h-[70vh];
+    @apply p-4 overflow-y-auto;
   }
 
   @media (max-width: 640px) {
     .pool-content {
-      @apply max-h-[80vh];
+      @apply pb-6;
     }
   }
 </style> 
