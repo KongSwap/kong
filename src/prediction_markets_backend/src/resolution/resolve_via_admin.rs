@@ -3,7 +3,7 @@ use ic_cdk::update;
 use super::finalize_market::*;
 use super::resolution::*;
 
-use crate::admin::admin::*;
+use crate::controllers::admin::*;
 use crate::nat::*;
 use crate::stable_memory::*;
 
@@ -37,7 +37,7 @@ async fn resolve_via_admin(market_id: MarketId, outcome_indices: Vec<StorableNat
     }
 
     // Verify market has ended
-    if StorableNat::from(ic_cdk::api::time()) < market.end_time {
+    if ic_cdk::api::time() < market.end_time {
         return Err(ResolutionError::MarketStillOpen);
     }
 

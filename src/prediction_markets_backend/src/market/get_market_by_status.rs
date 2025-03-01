@@ -9,7 +9,7 @@ use crate::stable_memory::*;
 /// Get markets grouped by their status: active, expired but unresolved, and resolved
 #[query]
 pub fn get_markets_by_status() -> MarketsByStatus {
-    let current_time = ic_cdk::api::time();
+    let now = ic_cdk::api::time();
 
     MARKETS.with(|markets| {
         let markets = markets.borrow();
@@ -37,7 +37,7 @@ pub fn get_markets_by_status() -> MarketsByStatus {
                     let mut market = market.clone();
                     market.rules = String::new(); // Remove rules as they're not relevant in this context
 
-                    if StorableNat::from(current_time) < market.end_time {
+                    if now < market.end_time {
                         result.active.push(market);
                     } else {
                         result.expired_unresolved.push(market);

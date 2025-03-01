@@ -1,5 +1,4 @@
 export const idlFactory = ({ IDL }) => {
-  const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
   const MarketCategory = IDL.Variant({
     'AI' : IDL.Null,
     'Memes' : IDL.Null,
@@ -21,7 +20,7 @@ export const idlFactory = ({ IDL }) => {
     'SpecificDate' : IDL.Nat,
     'Duration' : IDL.Nat,
   });
-  const Result_1 = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
+  const Result = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
   const Bet = IDL.Record({
     'market_id' : IDL.Nat,
     'user' : IDL.Principal,
@@ -125,14 +124,14 @@ export const idlFactory = ({ IDL }) => {
     'StorageError' : IDL.Text,
     'Expired' : IDL.Null,
   });
-  const Result_2 = IDL.Variant({
+  const Result_1 = IDL.Variant({
     'Ok' : DelegationResponse,
     'Err' : DelegationError,
   });
   const RevokeDelegationRequest = IDL.Record({
     'targets' : IDL.Vec(IDL.Principal),
   });
-  const Result_3 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
+  const Result_2 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
   const BetError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
     'MarketClosed' : IDL.Null,
@@ -143,7 +142,7 @@ export const idlFactory = ({ IDL }) => {
     'InsufficientBalance' : IDL.Null,
     'BalanceUpdateFailed' : IDL.Null,
   });
-  const Result_4 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
+  const Result_3 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
   const ResolutionError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
     'MarketStillOpen' : IDL.Null,
@@ -155,9 +154,8 @@ export const idlFactory = ({ IDL }) => {
     'UpdateFailed' : IDL.Null,
     'PayoutFailed' : IDL.Null,
   });
-  const Result_5 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ResolutionError });
+  const Result_4 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ResolutionError });
   return IDL.Service({
-    'add_admin' : IDL.Func([IDL.Principal], [Result], []),
     'create_market' : IDL.Func(
         [
           IDL.Text,
@@ -167,10 +165,9 @@ export const idlFactory = ({ IDL }) => {
           ResolutionMethod,
           MarketEndTime,
         ],
-        [Result_1],
+        [Result],
         [],
       ),
-    'get_admin_principals' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
     'get_all_bets' : IDL.Func(
         [IDL.Nat64, IDL.Nat64, IDL.Bool],
         [IDL.Vec(BetWithMarket)],
@@ -194,24 +191,22 @@ export const idlFactory = ({ IDL }) => {
         [Icrc28TrustedOriginsResponse],
         ['query'],
       ),
-    'icrc_34_delegate' : IDL.Func([DelegationRequest], [Result_2], []),
+    'icrc_34_delegate' : IDL.Func([DelegationRequest], [Result_1], []),
     'icrc_34_get_delegation' : IDL.Func(
         [DelegationRequest],
-        [Result_2],
+        [Result_1],
         ['query'],
       ),
     'icrc_34_revoke_delegation' : IDL.Func(
         [RevokeDelegationRequest],
-        [Result_3],
+        [Result_2],
         [],
       ),
-    'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
-    'place_bet' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [Result_4], []),
-    'remove_admin' : IDL.Func([IDL.Principal], [Result], []),
-    'resolve_via_admin' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [Result_5], []),
+    'place_bet' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [Result_3], []),
+    'resolve_via_admin' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [Result_4], []),
     'resolve_via_oracle' : IDL.Func(
         [IDL.Nat, IDL.Vec(IDL.Nat), IDL.Vec(IDL.Nat8)],
-        [Result_5],
+        [Result_4],
         [],
       ),
   });

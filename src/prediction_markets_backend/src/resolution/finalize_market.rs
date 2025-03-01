@@ -39,7 +39,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<Storable
     ic_cdk::println!("Total winning pool: {}", total_winning_pool.to_u64());
     ic_cdk::println!("Total market pool: {}", market.total_pool.to_u64());
 
-    if total_winning_pool > StorableNat::from(0u64) {
+    if total_winning_pool > 0u64 {
         // Get all winning bets
         let winning_bets = BETS.with(|bets| {
             let bets = bets.borrow();

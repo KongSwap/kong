@@ -111,7 +111,7 @@ async fn place_bet(market_id: MarketId, outcome_index: StorableNat, amount: Stor
         .bet_counts
         .iter()
         .map(|count| {
-            if total_bets > StorableNat::from(0u64) {
+            if !total_bets.is_zero() {
                 count.to_f64() / total_bets.to_f64()
             } else {
                 0.0

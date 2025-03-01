@@ -17,7 +17,7 @@ use crate::nat::*;
 use crate::resolution::resolution::*;
 use crate::user::user::*;
 
-pub mod admin;
+pub mod controllers;
 pub mod balance;
 pub mod bet;
 pub mod canister;
