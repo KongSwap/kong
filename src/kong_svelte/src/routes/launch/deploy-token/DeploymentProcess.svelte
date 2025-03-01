@@ -11,6 +11,8 @@
   import { createCanister } from "$lib/services/canister/create_canister";
   import { idlFactory } from "$declarations/token_backend/token_backend.did.js";
   import { canisterStore } from "$lib/stores/canisters";
+  import { deploymentHistoryStore, type DeploymentHistoryEntry as StoreDeploymentHistoryEntry } from "$lib/stores/deploymentHistory";
+  import { automaticMode } from "$lib/stores/deploymentMode";
 
   // Extend WasmMetadata type to include the properties we need
   interface TokenWasmMetadata {
@@ -46,6 +48,10 @@
   export let actualIcpReceived: string;
   export let estimatedTCycles: string;
   export let kongIcpRate: string;
+  
+  // Props for manual mode
+  export let onStepComplete = (step: number) => {};
+  export let deploymentId: string | null = null;
 
   // Track last log message to avoid duplicates
   let lastLogMessage = "";
@@ -67,6 +73,11 @@
     LAST_SUCCESSFUL_STEP: "kong_token_deployment_last_successful_step",
     DEPLOYMENT_HISTORY: "kong_token_deployment_history" // Add storage for deployment history
   };
+
+  // Generate a unique deployment ID
+  function generateDeploymentId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+  }
 
   // Wasm module constants
   const COMPRESSED_WASM_URL = "/wasms/token_backend/token_backend.wasm.gz";
@@ -122,6 +133,22 @@
   
   // Add entry to deployment history
   function addToDeploymentHistory(step: number, success: boolean, data?: any, error?: string) {
+    // Create new entry
+    const entry: DeploymentHistoryEntry = {
+      step,
+      stepName: getStepName(step),
+      timestamp: Date.now(),
+      success,
+      data,
+      error
+    };
+    
+    // Add to store if we have a deployment ID
+    if (deploymentId) {
+      deploymentHistoryStore.addStep(deploymentId, entry);
+    }
+    
+    // Also maintain backward compatibility with session storage
     if (browser) {
       // Get existing history
       const historyStr = sessionStorage.getItem(STORAGE_KEYS.DEPLOYMENT_HISTORY) || "[]";
@@ -133,16 +160,6 @@
         console.error("Error parsing deployment history:", err);
         history = [];
       }
-      
-      // Create new entry
-      const entry: DeploymentHistoryEntry = {
-        step,
-        stepName: getStepName(step),
-        timestamp: Date.now(),
-        success,
-        data,
-        error
-      };
       
       // Add to history
       history.push(entry);
@@ -782,6 +799,105 @@
     }
   }
   
+  // Load a previous deployment
+  export function loadDeployment(deployment: StoreDeploymentHistoryEntry) {
+    // Set deployment ID
+    deploymentId = deployment.id;
+    
+    // Set token parameters if available
+    if (deployment.tokenName) tokenParams.name = deployment.tokenName;
+    if (deployment.tokenSymbol) tokenParams.ticker = deployment.tokenSymbol;
+    
+    // Set canister ID if available
+    if (deployment.canisterId) {
+      canisterId = deployment.canisterId;
+      addLog(`Loaded canister ID: ${canisterId}`);
+    }
+    
+    // Find the last successful step
+    const steps = deploymentHistoryStore.getSteps(deployment.id);
+    const successfulSteps = steps.filter(step => step.success);
+    
+    if (successfulSteps.length > 0) {
+      const lastStep = Math.max(...successfulSteps.map(s => s.step));
+      lastSuccessfulStep = lastStep;
+      currentStep = lastStep + 1;
+      
+      // If the last step was INITIALIZE_TOKEN, set to COMPLETED
+      if (lastStep === processSteps.INITIALIZE_TOKEN) {
+        currentStep = processSteps.COMPLETED;
+      }
+    } else {
+      // Start from the beginning
+      lastSuccessfulStep = processSteps.PREPARING;
+      currentStep = processSteps.SWAP_KONG_TO_ICP;
+    }
+    
+    // If deployment is already completed, set to completed step
+    if (deployment.completed) {
+      currentStep = processSteps.COMPLETED;
+      lastSuccessfulStep = processSteps.INITIALIZE_TOKEN;
+    }
+    
+    // If there was an error, set error state
+    if (deployment.error) {
+      errorMessage = deployment.error;
+      currentStep = processSteps.ERROR;
+    }
+    
+    // Log the loaded deployment
+    addLog(`Loaded deployment: ${deployment.tokenName} (${deployment.tokenSymbol})`);
+    addLog(`Current step: ${getStepName(currentStep)}`);
+  }
+  
+  // Execute the current step manually
+  export async function executeCurrentStep() {
+    if (isProcessing) return;
+    
+    isProcessing = true;
+    try {
+      switch (currentStep) {
+        case processSteps.SWAP_KONG_TO_ICP:
+          await executeSwapAndContinue();
+          break;
+        case processSteps.CREATE_CANISTER:
+          await createCanisterAndContinue();
+          break;
+        case processSteps.DEPLOY_TOKEN:
+          await deployTokenAndContinue();
+          break;
+        case processSteps.INITIALIZE_TOKEN:
+          await initializeTokenAndContinue();
+          break;
+        default:
+          throw new Error(`Unknown step to execute: ${currentStep}`);
+      }
+    } catch (error) {
+      console.error("Step execution error:", error);
+      currentStep = processSteps.ERROR;
+      errorMessage = error.message;
+      errorDetails = error.stack || "";
+      const errorMsg = `❌ Error: ${error.message}`;
+      if (lastLogMessage !== errorMsg) {
+        addLog(errorMsg);
+        lastLogMessage = errorMsg;
+      }
+      
+      // Record error in history
+      addToDeploymentHistory(currentStep, false, null, error.message);
+      
+      // Update deployment in store with error
+      if (deploymentId) {
+        deploymentHistoryStore.updateDeployment(deploymentId, {
+          error: error.message,
+          completed: false
+        });
+      }
+    } finally {
+      isProcessing = false;
+    }
+  }
+  
   // Helper functions for each step of the deployment process
   async function executeSwapAndContinue() {
     currentStep = processSteps.SWAP_KONG_TO_ICP;
@@ -805,8 +921,14 @@
       
       saveDeploymentState();
       
-      // Continue with next step
-      await createCanisterAndContinue(icpE8s);
+      // Notify parent component that step is complete
+      onStepComplete(processSteps.SWAP_KONG_TO_ICP);
+      
+      // Only continue to next step if in automatic mode
+      if ($automaticMode) {
+        // Continue with next step
+        await createCanisterAndContinue(icpE8s);
+      }
     } catch (error) {
       // Record failed step
       addToDeploymentHistory(processSteps.SWAP_KONG_TO_ICP, false, null, error.message);
@@ -844,8 +966,14 @@
       
       saveDeploymentState();
       
-      // Continue with next step
-      await deployTokenAndContinue(canisterPrincipal);
+      // Notify parent component that step is complete
+      onStepComplete(processSteps.CREATE_CANISTER);
+      
+      // Only continue to next step if in automatic mode
+      if ($automaticMode) {
+        // Continue with next step
+        await deployTokenAndContinue(canisterPrincipal);
+      }
     } catch (error) {
       // Record failed step
       addToDeploymentHistory(processSteps.CREATE_CANISTER, false, null, error.message);
@@ -882,8 +1010,14 @@
       
       saveDeploymentState();
       
-      // Continue with next step
-      await initializeTokenAndContinue(canisterPrincipal);
+      // Notify parent component that step is complete
+      onStepComplete(processSteps.DEPLOY_TOKEN);
+      
+      // Only continue to next step if in automatic mode
+      if ($automaticMode) {
+        // Continue with next step
+        await initializeTokenAndContinue(canisterPrincipal);
+      }
     } catch (error) {
       // Record failed step
       addToDeploymentHistory(processSteps.DEPLOY_TOKEN, false, null, error.message);
@@ -941,6 +1075,14 @@
         tokenSymbol: tokenParams.ticker
       });
       
+      // Update the deployment in the store with completion status and canister ID
+      if (deploymentId) {
+        deploymentHistoryStore.updateDeployment(deploymentId, {
+          canisterId: canisterPrincipal.toString(),
+          completed: true
+        });
+      }
+      
       saveDeploymentState();
 
       // Add the deployed canister to the user's cache
@@ -958,6 +1100,9 @@
         addLog(addedToMyCanisters);
         lastLogMessage = addedToMyCanisters;
       }
+      
+      // Notify parent component that step is complete
+      onStepComplete(processSteps.INITIALIZE_TOKEN);
     } catch (error) {
       // Record failed step
       addToDeploymentHistory(processSteps.INITIALIZE_TOKEN, false, null, error.message);
@@ -968,8 +1113,24 @@
   // Function to start deployment
   export async function startDeployment() {
     isProcessing = true;
+    
+    // Generate a new deployment ID if not provided
+    if (!deploymentId) {
+      deploymentId = generateDeploymentId();
+    }
+    
+    // Create a new deployment entry in the store
+    deploymentHistoryStore.addDeployment({
+      id: deploymentId,
+      tokenName: tokenParams.name,
+      tokenSymbol: tokenParams.ticker,
+      timestamp: Date.now(),
+      steps: [],
+      completed: false
+    });
+    
     try {
-      // Clear existing deployment history when starting fresh
+      // Clear existing deployment history when starting fresh (for backward compatibility)
       if (browser) {
         sessionStorage.setItem(STORAGE_KEYS.DEPLOYMENT_HISTORY, JSON.stringify([]));
       }
@@ -1009,6 +1170,14 @@
       
       // Record error in history
       addToDeploymentHistory(currentStep, false, null, error.message);
+      
+      // Update deployment in store with error
+      if (deploymentId) {
+        deploymentHistoryStore.updateDeployment(deploymentId, {
+          error: error.message,
+          completed: false
+        });
+      }
       
       saveDeploymentState();
       throw error;

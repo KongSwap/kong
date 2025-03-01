@@ -64,6 +64,7 @@ pub fn init_asset_certification() {
         ("/.ic-assets.json5", include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/frontend-svelte/dist/.ic-assets.json5")).to_vec()),
         ("/token_backend.did", include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/token_backend.did")).to_vec()),
         ("/token_backend.did.js", include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/token_backend.did.js")).to_vec()),
+        ("/icrc-35", crate::standards::ICRC35_PAGE.as_bytes().to_vec()),
     ];
 
     for (path, content) in files.iter() {
@@ -94,6 +95,78 @@ fn get_static_file(path: &str) -> Option<(&'static [u8], &'static str)> {
         "/token_backend.did" => Some((include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/token_backend.did")), "text/plain")),
         "/token_backend.did.js" => Some((include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/token_backend.did.js")), "text/javascript")),
         "/icrc-35" => Some((crate::standards::ICRC35_PAGE.as_bytes(), "text/html")),
+        "/debug-canister-info" => {
+            let canister_id = ic_cdk::id().to_text();
+            let debug_info = format!(
+                "Current canister ID: {}\nExpected canister ID: {}",
+                canister_id, canister_id
+            );
+            Some((Box::leak(debug_info.into_bytes().into_boxed_slice()), "text/plain"))
+        },
+        "/debug" => {
+            let canister_id = ic_cdk::id().to_text();
+            
+            // Get certification status
+            let certification_status = if let Some(_) = ic_cdk::api::data_certificate() {
+                "Certification is available"
+            } else {
+                "Certification is NOT available"
+            };
+            
+            // Check if ICRC-35 page is certified
+            let icrc35_certified = CERTIFICATION_TREE.with(|tree| {
+                let tree = tree.borrow();
+                tree.get("/icrc-35".as_bytes()).is_some()
+            });
+            
+            let debug_html = format!(
+                r#"<!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Debug Information</title>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                        h1 {{ color: #333; }}
+                        .info {{ background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
+                        .label {{ font-weight: bold; }}
+                    </style>
+                </head>
+                <body>
+                    <h1>Canister Debug Information</h1>
+                    
+                    <div class="info">
+                        <p><span class="label">Current Canister ID:</span> {}</p>
+                        <p><span class="label">Expected Canister ID:</span> {}</p>
+                        <p><span class="label">Certification Status:</span> {}</p>
+                        <p><span class="label">ICRC-35 Page Certified:</span> {}</p>
+                    </div>
+                    
+                    <h2>Injected Variables</h2>
+                    <p>The following variables are injected into HTML responses:</p>
+                    <pre>
+window.__CANISTER_ID__ = "{}";
+window.canisterId = "{}";
+window.canisterIdRoot = "{}";
+                    </pre>
+                    
+                    <h2>Test Links</h2>
+                    <ul>
+                        <li><a href="/">Home Page</a></li>
+                        <li><a href="/icrc-35">ICRC-35 Page</a></li>
+                    </ul>
+                </body>
+                </html>"#,
+                canister_id,
+                canister_id,
+                certification_status,
+                if icrc35_certified { "Yes" } else { "No" },
+                canister_id,
+                canister_id,
+                canister_id
+            );
+            
+            Some((Box::leak(debug_html.into_bytes().into_boxed_slice()), "text/html"))
+        },
         _ => None,
     }
 }
@@ -120,13 +193,20 @@ pub fn http_request(req: HttpRequest) -> HttpResponse {
             ));
         }
 
+        // Get the current canister ID
+        let canister_id = ic_cdk::id().to_text();
+        
         // For HTML content, inject the canister ID
         let body = if content_type == "text/html" {
             let html = String::from_utf8_lossy(content);
-            let canister_id = ic_cdk::id().to_text();
             let script_tag = format!(
-                r#"<script>window.__CANISTER_ID__ = "{}";</script>"#,
-                canister_id
+                r#"<script>
+                    window.__CANISTER_ID__ = "{}";
+                    // Override any hardcoded canister IDs in the frontend
+                    window.canisterId = "{}";
+                    window.canisterIdRoot = "{}";
+                </script>"#,
+                canister_id, canister_id, canister_id
             );
             // Insert script tag before closing head tag
             let modified_html = html.replace("</head>", &format!("{}</head>", script_tag));
@@ -136,6 +216,8 @@ pub fn http_request(req: HttpRequest) -> HttpResponse {
         };
 
         headers.push(("Content-Length".to_string(), body.len().to_string()));
+        // Add X-Canister-ID header to all responses
+        headers.push(("X-Canister-ID".to_string(), canister_id));
 
         HttpResponse {
             status_code: 200,
@@ -149,4 +231,4 @@ pub fn http_request(req: HttpRequest) -> HttpResponse {
             body: ByteBuf::from("Not Found"),
         }
     }
-} 
+}

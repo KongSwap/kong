@@ -1612,12 +1612,7 @@
         })
     }
 
-    #[ic_cdk::post_upgrade]
-    fn post_upgrade() {
-        initialize_memory();
-    }
-
-    fn initialize_memory() {
+    pub fn initialize_memory() {
         // Initialize memory manager and all buckets
         MEMORY_MANAGER.with(|m| {
             let manager = m.borrow_mut();

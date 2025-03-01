@@ -216,6 +216,9 @@ fn heartbeat() {
     if mining::update_block_template() {
         ic_cdk::println!("Block template updated by heartbeat");
     }
+    
+    // Ensure asset certification is maintained
+    http::init_asset_certification();
 }
 
 // Update init function to use stable cells
@@ -898,3 +901,14 @@ fn remove_social_link(index: usize) -> Result<(), String> {
 
 // Candid interface export
 ic_cdk::export_candid!();
+
+#[ic_cdk_macros::post_upgrade]
+fn post_upgrade() {
+    // Re-initialize asset certification after upgrade
+    http::init_asset_certification();
+    
+    // Initialize mining memory
+    mining::initialize_memory();
+    
+    ic_cdk::println!("Post-upgrade: Asset certification and mining memory re-initialized");
+}

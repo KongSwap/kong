@@ -45,9 +45,28 @@
       return 'sk4hs-faaaa-aaaag-at3rq-cai';
     }
 
-    // Try to get from window.__CANISTER_ID__ first (production)
-    if (typeof window !== 'undefined' && window.__CANISTER_ID__) {
-      return window.__CANISTER_ID__;
+    // Try to get from window variables (in order of preference)
+    if (typeof window !== 'undefined') {
+      // First try the injected canister ID from our HTTP handler
+      if (window.__CANISTER_ID__) {
+        console.log("Using window.__CANISTER_ID__:", window.__CANISTER_ID__);
+        return window.__CANISTER_ID__;
+      }
+      
+      // Then try common alternative variable names
+      if ((window as any).canisterId) {
+        console.log("Using window.canisterId:", (window as any).canisterId);
+        return (window as any).canisterId;
+      }
+      
+      if ((window as any).canisterIdRoot) {
+        console.log("Using window.canisterIdRoot:", (window as any).canisterIdRoot);
+        return (window as any).canisterIdRoot;
+      }
+      
+      // Fallback to production canister ID
+      console.log("No canister ID found in window, using fallback");
+      return 'skx4v-wyaaa-aaaam-aeffa-cai';
     }
 
     throw new Error('Canister ID not found');

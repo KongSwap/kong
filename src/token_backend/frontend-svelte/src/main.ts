@@ -10,6 +10,8 @@ import App from './App.svelte'
 declare global {
   interface Window {
     __CANISTER_ID__: string;
+    canisterId?: string;
+    canisterIdRoot?: string;
   }
 }
 

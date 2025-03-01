@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { CheckCircle, Loader2 } from "lucide-svelte";
+  import { CheckCircle, Loader2, Play } from "lucide-svelte";
+  import { automaticMode } from "$lib/stores/deploymentMode";
   
   // Props
   export let currentStep: number;
   export let steps: { name: string; description: string }[];
   export let processSteps: Record<string, number>;
   export let isProcessing: boolean;
+  export let onExecuteStep: (step: number) => void = () => {};
 </script>
 
 <div class="steps-container">
@@ -15,7 +17,7 @@
         {#if currentStep > index}
           <CheckCircle class="text-green-500" size={24} />
         {:else if currentStep === index && isProcessing}
-          <Loader2 class="animate-spin text-blue-500" size={24} />
+          <Loader2 class="text-blue-500 animate-spin" size={24} />
         {:else}
           <div class="step-number">{index + 1}</div>
         {/if}
@@ -24,6 +26,17 @@
         <h3 class="step-title">{step.name}</h3>
         <p class="step-description">{step.description}</p>
       </div>
+      
+      {#if !$automaticMode && currentStep === index && !isProcessing}
+        <button 
+          class="execute-button" 
+          on:click={() => onExecuteStep(index)}
+          title="Execute this step"
+        >
+          <Play size={16} />
+          Execute
+        </button>
+      {/if}
     </div>
     {#if index < steps.length - 1}
       <div class="step-connector" class:active={currentStep > index}></div>
@@ -48,6 +61,7 @@
     border-radius: 0.5rem;
     background-color: rgba(255, 255, 255, 0.05);
     transition: all 0.3s ease;
+    position: relative;
   }
   
   .step.active {
@@ -99,5 +113,28 @@
   
   .step-connector.active {
     background-color: rgb(34, 197, 94);
+  }
+  
+  .execute-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: rgb(59, 130, 246);
+    color: white;
+    border: none;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  .execute-button:hover {
+    background-color: rgb(37, 99, 235);
   }
 </style> 
