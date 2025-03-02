@@ -12,6 +12,9 @@
   export let isEditing: boolean = false;
   export let newName: string = '';
   export let newTags: string = '';
+  // hasUpgrade indicates whether a newer version of the canister's WASM is available
+  // When true, a red notification dot will be shown on the upgrade button
+  export let hasUpgrade: boolean = false;
 
   // Event dispatcher
   const dispatch = createEventDispatcher();
@@ -83,7 +86,7 @@
 
   // Generate canister URL for IC Dashboard and direct access
   function getCanisterUrl(canisterId: string): string {
-    return `https://${canisterId}.icp0.io`;
+    return `https://${canisterId}.raw.icp0.io`;
   }
 
   function getIcDashboardUrl(canisterId: string): string {
@@ -304,9 +307,19 @@
         <div class="grid grid-cols-2 gap-2">
           <button
             on:click={openInstallModal}
-            class="px-3 py-2 text-sm text-white transition-colors bg-blue-600 rounded dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600"
+            class="relative px-3 py-2 text-sm text-white transition-colors bg-blue-600 rounded dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600"
           >
-            Check For Upgrades
+            {#if canisterStatus?.moduleHash || canister.wasmType}
+              Upgrade Canister
+            {:else}
+              Install WASM
+            {/if}
+            {#if hasUpgrade}
+              <span class="absolute top-0 right-0 flex w-3 h-3 -mt-1 -mr-1">
+                <span class="absolute inline-flex w-full h-full bg-red-400 rounded-full opacity-75 animate-ping"></span>
+                <span class="relative inline-flex w-3 h-3 bg-red-500 rounded-full"></span>
+              </span>
+            {/if}
           </button>
           
           <button

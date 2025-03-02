@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { createPNP, walletsList } from '@windoge98/plug-n-play';
-  import { idlFactory } from '../../token_backend.did.js';
+  import { idlFactory } from '../../../../src/declarations/token_backend/token_backend.did.js';
   import { tokenStore } from './stores/tokens';
   import { tokenInfo } from './stores/token-info';
   import Header from './components/Header.svelte';
@@ -40,11 +40,6 @@
 
   // Get canister ID based on environment
   function getCanisterId(): string {
-    // For local development
-    if (pnp?.isDev) {
-      return 'sk4hs-faaaa-aaaag-at3rq-cai';
-    }
-
     // Try to get from window variables (in order of preference)
     if (typeof window !== 'undefined') {
       // First try the injected canister ID from our HTTP handler
@@ -64,12 +59,14 @@
         return (window as any).canisterIdRoot;
       }
       
-      // Fallback to production canister ID
-      console.log("No canister ID found in window, using fallback");
-      return 'skx4v-wyaaa-aaaam-aeffa-cai';
+      // Add your actual canister ID here as a fallback
+      // Replace this with your actual canister ID
+      const fallbackCanisterId = "bkyz2-fmaaa-aaaaa-qaaaq-cai";
+      console.log("Using fallback canister ID:", fallbackCanisterId);
+      return fallbackCanisterId;
     }
-
-    throw new Error('Canister ID not found');
+    
+    throw new Error('Canister ID not found in window variables');
   }
 
   // Initialize PNP
@@ -91,6 +88,9 @@
             pnp = createPNP({
               hostUrl: "https://icp0.io",
               isDev: false,
+              identityProvider: "https://identity.ic0.app",
+              derivationOrigin: window.location.origin,
+              persistSession: true
             });
             
             // Test PNP initialization
@@ -167,23 +167,12 @@
       const actor = await getAnonActor();
       console.log("Got anonymous actor");
 
-      console.log("Fetching token info...");
-      const info = await actor.get_info();
-      console.log("Token info result:", info);
-
-      if ('Ok' in info) {
-        tokenInfo.setInfo(info.Ok.name, info.Ok.ticker);
-        console.log("Token info updated in store");
-      } else if ('Err' in info) {
-        console.error("Error getting token info:", info.Err);
-        tokenInfo.setInfo('Error loading token', 'ERROR');
-      }
-
       console.log("Refreshing metrics...");
       await refreshMetrics();
       
       console.log("Setting up metrics refresh interval...");
-      setInterval(refreshMetrics, 10000);
+      // Update refresh interval to once per minute (60000ms) instead of every 10 seconds
+      setInterval(refreshMetrics, 60000);
       
       console.log("App initialization complete");
     } catch (error) {
@@ -207,17 +196,46 @@
       }
 
       // Check if result is already the mining info (not wrapped in Ok/Err)
-      if (typeof result === 'object' && 'current_difficulty' in result) {
-        console.log("Mining info data:", result);
-        miningInfo = result;
-      } else if ('Ok' in result) {
-        console.log("Mining info data:", result.Ok);
-        miningInfo = result.Ok;
-      } else if ('Err' in result) {
-        console.error('Failed to get mining info:', result.Err);
-        miningInfo = null;
+      if (typeof result === 'object') {
+        // Check if the result has the expected structure
+        if ('current_difficulty' in result) {
+          console.log("Mining info data:", result);
+          
+          // Handle missing next_difficulty_adjustment field if needed
+          if (!('next_difficulty_adjustment' in result) && 'next_halving_interval' in result) {
+            // The backend might be using a different field name or structure
+            // Create a compatible object with the fields we have
+            miningInfo = {
+              ...result,
+              // Add any missing fields that the frontend expects
+              next_difficulty_adjustment: result.next_halving_interval || BigInt(0)
+            };
+          } else {
+            miningInfo = result;
+          }
+        } else if ('Ok' in result && result.Ok && typeof result.Ok === 'object' && 'current_difficulty' in result.Ok) {
+          console.log("Mining info data:", result.Ok);
+          
+          // Handle missing next_difficulty_adjustment field if needed
+          if (!('next_difficulty_adjustment' in result.Ok) && 'next_halving_interval' in result.Ok) {
+            // Create a compatible object with the fields we have
+            miningInfo = {
+              ...result.Ok,
+              // Add any missing fields that the frontend expects
+              next_difficulty_adjustment: result.Ok.next_halving_interval || BigInt(0)
+            };
+          } else {
+            miningInfo = result.Ok;
+          }
+        } else if ('Err' in result) {
+          console.error('Failed to get mining info:', result.Err);
+          miningInfo = null;
+        } else {
+          console.error('Unexpected mining info response format:', result);
+          miningInfo = null;
+        }
       } else {
-        console.error('Unexpected mining info response format:', result);
+        console.error('Unexpected mining info response type:', typeof result);
         miningInfo = null;
       }
     } catch (error) {
@@ -418,7 +436,7 @@
   
   <main class="container mx-auto px-4 py-16 min-h-[calc(100vh-120px)]">
     {#if currentPage === 'info'}
-      <Info {isConnected} {metrics} />
+      <Info {isConnected} {metrics} {pnp} />
     {:else if currentPage === 'leaderboard'}
       <Leaderboard />
     {:else if currentPage === 'buy'}

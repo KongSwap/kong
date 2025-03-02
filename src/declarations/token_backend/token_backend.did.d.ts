@@ -145,26 +145,25 @@ export interface MinerStats {
 export type MinerStatus = { 'Inactive' : null } |
   { 'Active' : null };
 export interface MiningInfo {
-  'next_difficulty_adjustment' : bigint,
   'block_time_target' : bigint,
   'current_difficulty' : number,
+  'mining_complete' : boolean,
+  'next_halving_interval' : bigint,
   'current_block_reward' : bigint,
 }
 export type Result = { 'Ok' : null } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : BlockTemplate } |
+export type Result_1 = { 'Ok' : boolean } |
   { 'Err' : string };
-export type Result_2 = { 'Ok' : TokenInfo } |
+export type Result_2 = { 'Ok' : BlockTemplate } |
   { 'Err' : string };
-export type Result_3 = { 'Ok' : bigint } |
+export type Result_3 = { 'Ok' : TokenInfo } |
   { 'Err' : string };
-export type Result_4 = { 'Ok' : DelegationResponse } |
+export type Result_4 = { 'Ok' : Array<SocialLink> } |
+  { 'Err' : string };
+export type Result_5 = { 'Ok' : DelegationResponse } |
   { 'Err' : DelegationError };
-export type Result_5 = { 'Ok' : Principal } |
-  { 'Err' : string };
-export type Result_6 = { 'Ok' : boolean } |
-  { 'Err' : string };
-export type Result_7 = { 'Ok' : Array<SocialLink> } |
+export type Result_6 = { 'Ok' : Principal } |
   { 'Err' : string };
 export interface SocialLink { 'url' : string, 'platform' : string }
 export interface SupportedStandard { 'url' : string, 'name' : string }
@@ -199,16 +198,17 @@ export interface TokenMetrics {
 export interface TrustedOriginsResponse { 'trusted_origins' : Array<string> }
 export interface _SERVICE {
   'add_social_link' : ActorMethod<[string, string], Result>,
+  'can_submit_solution' : ActorMethod<[], Result_1>,
   'cleanup_expired_delegations' : ActorMethod<[], bigint>,
+  'create_genesis_block' : ActorMethod<[], Result_2>,
   'deregister_miner' : ActorMethod<[], Result>,
-  'generate_new_block' : ActorMethod<[], Result_1>,
   'get_active_miners' : ActorMethod<[], Array<Principal>>,
   'get_auth_status' : ActorMethod<[], boolean>,
   'get_average_block_time' : ActorMethod<[[] | [number]], BlockTimeResult>,
   'get_block_time_target' : ActorMethod<[], bigint>,
   'get_current_block' : ActorMethod<[], [] | [BlockTemplate]>,
   'get_event_batches' : ActorMethod<[[] | [bigint]], Array<EventBatch>>,
-  'get_info' : ActorMethod<[], Result_2>,
+  'get_info' : ActorMethod<[], Result_3>,
   'get_metrics' : ActorMethod<[], MetricsResult>,
   'get_miner_leaderboard' : ActorMethod<[[] | [number]], Array<MinerInfo>>,
   'get_miner_stats' : ActorMethod<[Principal], [] | [MinerInfo]>,
@@ -217,8 +217,7 @@ export interface _SERVICE {
   'get_mining_info' : ActorMethod<[], MiningInfo>,
   'get_recent_events' : ActorMethod<[[] | [number]], Array<Event>>,
   'get_recent_events_from_batches' : ActorMethod<[[] | [number]], Array<Event>>,
-  'get_social_links' : ActorMethod<[], Result_7>,
-  'get_target' : ActorMethod<[], Result_3>,
+  'get_social_links' : ActorMethod<[], Result_4>,
   'get_total_cycles_earned' : ActorMethod<[], bigint>,
   'http_request' : ActorMethod<[HttpRequest], HttpResponse>,
   'icrc10_supported_standards' : ActorMethod<[], Array<SupportedStandard>>,
@@ -227,14 +226,13 @@ export interface _SERVICE {
     ConsentMessageResponse
   >,
   'icrc28_trusted_origins' : ActorMethod<[], TrustedOriginsResponse>,
-  'icrc34_delegate' : ActorMethod<[DelegationRequest], Result_4>,
+  'icrc34_delegate' : ActorMethod<[DelegationRequest], Result_5>,
   'register_miner' : ActorMethod<[], Result>,
   'remove_social_link' : ActorMethod<[bigint], Result>,
-  'set_block_time_target' : ActorMethod<[bigint], bigint>,
-  'start_token' : ActorMethod<[], Result_5>,
+  'start_token' : ActorMethod<[], Result_6>,
   'submit_solution' : ActorMethod<
     [Principal, bigint, Uint8Array | number[], bigint],
-    Result_6
+    Result_1
   >,
   'update_social_link' : ActorMethod<[bigint, string, string], Result>,
   'whoami' : ActorMethod<[], Principal>,

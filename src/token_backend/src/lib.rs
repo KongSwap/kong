@@ -86,6 +86,8 @@ thread_local! {
             0,
         ).expect("Failed to init BLOCK_HEIGHT")
     );
+
+    static HEARTBEAT_COUNTER: RefCell<u64> = RefCell::new(0);
 }
 
 // Define Memory type
@@ -209,16 +211,21 @@ impl Storable for TokenInfo {
 // Add heartbeat system method
 #[ic_cdk::heartbeat]
 fn heartbeat() {
-    // Clean up expired rate limits
-    security::cleanup_rate_limits();
-
-    // Update block template and adjust difficulty if needed
-    if mining::update_block_template() {
-        ic_cdk::println!("Block template updated by heartbeat");
-    }
+    let counter = HEARTBEAT_COUNTER.with(|c| {
+        let mut counter = c.borrow_mut();
+        *counter += 1;
+        *counter
+    });
     
-    // Ensure asset certification is maintained
-    http::init_asset_certification();
+    // Clean up rate limits every 60 heartbeats (less frequently)
+    if counter % 60 == 0 {
+        security::cleanup_rate_limits();
+        
+        // Update block template every 60 heartbeats
+        if mining::update_block_template() {
+            ic_cdk::println!("Block template updated by heartbeat");
+        }
+    }
 }
 
 // Update init function to use stable cells
@@ -446,6 +453,7 @@ pub use mining::{
     get_recent_events_from_batches,
     get_average_block_time,
     BlockTimeResult,
+    restore_mining_params,
 };
 
 // Re-export standards types for Candid
@@ -902,13 +910,37 @@ fn remove_social_link(index: usize) -> Result<(), String> {
 // Candid interface export
 ic_cdk::export_candid!();
 
+#[ic_cdk_macros::pre_upgrade]
+fn pre_upgrade() {
+    // The pre_upgrade hook ensures that stable memory is properly preserved
+    // No additional action needed as we're using StableCell for storage
+    ic_cdk::println!("Pre-upgrade: Preparing for canister upgrade");
+}
+
 #[ic_cdk_macros::post_upgrade]
 fn post_upgrade() {
     // Re-initialize asset certification after upgrade
     http::init_asset_certification();
     
-    // Initialize mining memory
+    // Initialize memory manager to ensure all regions are allocated
+    MEMORY_MANAGER.with(|m| {
+        let mm = m.borrow_mut();
+        const TOTAL_MEMORY_REGIONS: u8 = 25; // Updated to accommodate all regions (0-24)
+        for i in 0..TOTAL_MEMORY_REGIONS {
+            mm.get(MemoryId::new(i));
+        }
+    });
+    
+    // Initialize mining memory and restore parameters if needed
     mining::initialize_memory();
     
+    // Log the current mining parameters after upgrade
+    let difficulty = mining::get_mining_difficulty();
+    let block_time = mining::get_block_time_target();
+    let mining_info = mining::get_mining_info();
+    
+    ic_cdk::println!("Post-upgrade: Mining parameters - difficulty: {}, block_time_target: {}", 
+        difficulty, block_time);
+    ic_cdk::println!("Post-upgrade: Mining info: {:?}", mining_info);
     ic_cdk::println!("Post-upgrade: Asset certification and mining memory re-initialized");
 }

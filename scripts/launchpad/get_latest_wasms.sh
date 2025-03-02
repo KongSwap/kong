@@ -36,6 +36,7 @@ cd "$PROJECT_ROOT"
 
 # Build token_backend
 echo "Building token_backend..." # Step 2.1: Building token_backend canister
+sh scripts/launchpad/upgrade_token_backend_fe.sh
 cargo build --target wasm32-unknown-unknown --release -p token_backend # Compiling token_backend to WASM
 candid-extractor target/wasm32-unknown-unknown/release/token_backend.wasm > "$WASM_BASE_DIR/token_backend/token_backend.did" # Extracting candid interface for token_backend
 ic-wasm "target/wasm32-unknown-unknown/release/token_backend.wasm" -o "target/wasm32-unknown-unknown/release/token_backend.wasm" metadata candid:service -f "$WASM_BASE_DIR/token_backend/token_backend.did" -v public # Adding metadata to token_backend WASM

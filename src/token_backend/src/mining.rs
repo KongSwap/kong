@@ -710,50 +710,6 @@
         // Calculate and clamp new difficulty
         let new_diff = (current_diff as f64 * adjustment_factor) as u32;
         let new_diff = new_diff.clamp(min_diff, max_diff);
-        
-        // Log detailed adjustment information
-        ic_cdk::println!(
-            "[ASERT Difficulty Adjustment]\n\
-            Cached params: {}\n\
-            Previous: {}, New: {} (change: {:.2}%)\n\
-            Block time: {}s (target: {}s)\n\
-            Consecutive fast blocks: {}\n\
-            Consecutive slow blocks: {}\n\
-            Half-life: {:.1}s\n\
-            Increase multiplier: {:.2}x\n\
-            Decrease multiplier: {:.2}x\n\
-            Adjustment mode: {}\n\
-            Estimated hashes needed: {} (Lite: {} chunks, Normal: {} chunks, Premium: {} chunks)",
-            ADJUSTMENT_CACHE.with(|c| c.borrow().is_some()),
-            current_diff,
-            new_diff,
-            (new_diff as f64 / current_diff as f64 - 1.0) * 100.0,
-            actual_time,
-            target_time,
-            consecutive_fast,
-            consecutive_slow,
-            half_life_seconds,
-            increase_multiplier,
-            decrease_multiplier,
-            if consecutive_fast > 2 {
-                "EMERGENCY RISE"
-            } else if consecutive_fast > 0 {
-                "ACCELERATED RISE"
-            } else if consecutive_slow > 2 {
-                "EMERGENCY DROP"
-            } else if consecutive_slow > 0 {
-                "ACCELERATED DROP"
-            } else if !is_heartbeat && actual_time < target_time {
-                "INCREASE"
-            } else {
-                "NORMAL"
-            },
-            new_diff,
-            (new_diff as f64 / 50_000.0).ceil(),
-            (new_diff as f64 / 100_000.0).ceil(),
-            (new_diff as f64 / 200_000.0).ceil()
-        );
-        
         new_diff
     }
 
@@ -981,12 +937,7 @@
                 timestamp: ic_cdk::api::time() / 1_000_000_000,
                 block_height: height,
             });
-            
-            ic_cdk::println!("[FINAL BLOCK] Mining will complete after this block.");
         }
-        
-        // Log system state before generation
-        log_system_telemetry();
         
         // Create new block template with IC-specific timestamp and VERIFIED difficulty
         let block = BlockTemplate::new(
@@ -998,11 +949,6 @@
         
         // Verify consistency
         if block.difficulty != new_difficulty {
-            ic_cdk::println!(
-                "WARNING: Block template difficulty mismatch! Expected {} but got {}",
-                new_difficulty,
-                block.difficulty
-            );
             // Force consistency
             let mut fixed_block = block.clone();
             fixed_block.difficulty = new_difficulty;
@@ -1181,25 +1127,7 @@
                 }
                 
                 info.stats.last_hashrate_update = Some(now);
-                
-                // Log mining progress with improved format
-                let processed_mh = info.stats.total_hashes_processed as f64 / 1_000_000.0;
-                let current_rate = info.stats.current_hashrate;
-                let avg_rate = info.stats.average_hashrate;
-                let best_rate = info.stats.best_hashrate;
-                let block_height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
-                
                 miners.insert(miner, info);
-                
-                ic_cdk::println!(
-                    "[Miner: {}] Block {} - {:.2} MH processed, {:.2} MH/s current, {:.2} MH/s avg, {:.2} MH/s best",
-                    miner.to_text(),
-                    block_height,
-                    processed_mh,
-                    current_rate,
-                    avg_rate,
-                    best_rate
-                );
             }
         });
     }
@@ -1219,22 +1147,12 @@
         // First verify cycles payment
         let available_cycles = ic_cdk::api::call::msg_cycles_available128();
         if available_cycles < REQUIRED_SUBMISSION_CYCLES {
-            ic_cdk::println!(
-                "[Cycle Payment] Insufficient cycles: {} (required: {})",
-                available_cycles,
-                REQUIRED_SUBMISSION_CYCLES
-            );
             return Err("Insufficient cycles attached. 25,000 cycles required per submission.".to_string());
         }
 
         // Accept exactly the required cycles
         let accepted = ic_cdk::api::call::msg_cycles_accept128(REQUIRED_SUBMISSION_CYCLES);
         if accepted < REQUIRED_SUBMISSION_CYCLES {
-            ic_cdk::println!(
-                "[Cycle Payment] Failed to accept full cycles: accepted {} of {}",
-                accepted,
-                REQUIRED_SUBMISSION_CYCLES
-            );
             return Err("Failed to accept cycles. Please try again.".to_string());
         }
 
@@ -1243,12 +1161,6 @@
             let current = *total.borrow().get();
             total.borrow_mut().set(current + accepted).expect("Failed to update total cycles");
         });
-
-        ic_cdk::println!(
-            "[Cycle Payment] Accepted {} cycles from miner {}",
-            accepted,
-            ic_cdk::caller()
-        );
 
         // Cool, got payment for self sustainability, now let's process the solution
         // check if the module hash of caller is one of our miner versions
@@ -1291,7 +1203,6 @@
             });
 
             if already_processed {
-                ic_cdk::println!("Solution already processed for block {}", current_block.height);
                 return Ok(true);
             }
         }
@@ -1336,22 +1247,13 @@
             h.borrow_mut().set(StorableHash(solution_hash)).expect("Failed to update last block hash");
         });
         
-        ic_cdk::println!("Block hash updated, processing reward...");
-        
         // Step 2: Process reward if applicable
         let reward = calculate_block_reward(current_block.height);
         if reward > 0 {
             transfer_to_miner(ledger_id, caller, reward).await?;
-            ic_cdk::println!("Reward transferred, updating supply...");
-            
             crate::update_circulating_supply(reward);
-            ic_cdk::println!("Supply updated, updating miner stats...");
-            
             crate::update_miner_stats(caller, reward);
-            ic_cdk::println!("Miner stats updated");
         }
-        
-        ic_cdk::println!("Clearing current block...");
         
         // Step 3: Clear current block
         CURRENT_BLOCK.with(|b| {
@@ -1374,22 +1276,17 @@
             // Add this event to the batch
             add_event_to_batch(event.clone());
             
-            ic_cdk::println!("[MINING COMPLETE] No more blocks will be mined after this point.");
             return Ok(true);
         }
-        
-        ic_cdk::println!("Generating new block...");
         
         // Step 5: Generate new block with retry
         let mut retries = 3;
         while retries > 0 {
             match generate_new_block().await {
                 Ok(_) => {
-                    ic_cdk::println!("New block generated successfully");
                     break;
                 },
-                Err(e) if retries > 1 => {
-                    ic_cdk::println!("Failed to generate new block, retrying... ({})", e);
+                Err(_e) if retries > 1 => {
                     retries -= 1;
                 },
                 Err(e) => return Err(format!("Failed to generate new block after retries: {}", e))
@@ -1410,7 +1307,13 @@
         let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
         let target = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
         let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
-        let next_halving = halving_interval - (height % halving_interval);
+        
+        // Calculate next_halving, handling the case where halving_interval is 0
+        let next_halving = if halving_interval == 0 {
+            0  // No halving will occur when halving_interval is 0
+        } else {
+            halving_interval - (height % halving_interval)
+        };
         
         // Calculate the current block reward
         let current_reward = calculate_block_reward(height);
@@ -1451,16 +1354,6 @@
         let reward_too_small = current_reward == 0 || current_reward <= transfer_fee;
         let supply_nearly_complete = total_supply > 0 && 
                                     ((total_supply - supply) * 10000 / total_supply) < 1; // Less than 0.01% remaining
-        
-        // Log the status
-        if reward_too_small {
-            ic_cdk::println!("[Mining Complete] Reward {current_reward} is too small (transfer fee: {transfer_fee})");
-        }
-        
-        if supply_nearly_complete {
-            ic_cdk::println!("[Mining Complete] Supply nearly reached: {supply}/{total_supply} ({:.4}%)", 
-                (supply as f64 / total_supply as f64) * 100.0);
-        }
         
         reward_too_small || supply_nearly_complete
     }
@@ -1532,14 +1425,6 @@
                         b.borrow_mut().set(Some(current.clone())).expect("Failed to update block");
                     }
                 });
-                
-                ic_cdk::println!(
-                    "Difficulty decreased by 1 after passing target time ({}s excess): {} -> {}",
-                    excess_time,
-                    current_diff,
-                    new_diff
-                );
-                
                 true
             } else {
                 false
@@ -1621,6 +1506,43 @@
                 manager.get(MemoryId::new(i));
             }
         });
+
+        // Check if mining parameters are reset (set to 0) and reinitialize them if needed
+        let difficulty = MINING_DIFFICULTY.with(|d| *d.borrow().get());
+        let block_time_target = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
+        let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
+        let block_reward = BLOCK_REWARD.with(|r| *r.borrow().get());
+
+        // If any of the critical mining parameters are 0, reinitialize with default values
+        if difficulty == 0 || block_time_target == 0 || halving_interval == 0 || block_reward == 0 {
+            ic_cdk::println!("Critical mining parameters were reset during upgrade. Restoring defaults.");
+            
+            // Default values (adjust these based on your token's requirements)
+            let default_difficulty = if difficulty == 0 { 16 } else { difficulty };
+            let default_block_time = if block_time_target == 0 { 60 } else { block_time_target }; // 60 seconds
+            let default_halving = if halving_interval == 0 { 210000 } else { halving_interval }; // 210,000 blocks
+            let default_reward = if block_reward == 0 { 50 * 100000000 } else { block_reward }; // 50 tokens with 8 decimals
+            
+            // Restore the parameters
+            MINING_DIFFICULTY.with(|d| {
+                d.borrow_mut().set(default_difficulty).expect("Failed to restore mining difficulty");
+            });
+            
+            BLOCK_TIME_TARGET.with(|t| {
+                t.borrow_mut().set(default_block_time).expect("Failed to restore block time target");
+            });
+            
+            HALVING_INTERVAL.with(|h| {
+                h.borrow_mut().set(default_halving).expect("Failed to restore halving interval");
+            });
+            
+            BLOCK_REWARD.with(|r| {
+                r.borrow_mut().set(default_reward).expect("Failed to restore block reward");
+            });
+            
+            ic_cdk::println!("Mining parameters restored: difficulty={}, block_time={}, halving_interval={}, block_reward={}",
+                default_difficulty, default_block_time, default_halving, default_reward);
+        }
     }
 
     fn calculate_heartbeat_interval() -> u64 {
@@ -1631,16 +1553,6 @@
             target_time / 10
         };
         heartbeat_interval.max(1) // Final safety net
-    }
-
-    fn log_system_telemetry() {
-        ic_cdk::println!(
-            "[SYSTEM TELEMETRY] block_time={} difficulty={} solutions_processed={} rate_limits={}",
-            BLOCK_TIME_TARGET.with(|t| *t.borrow().get()),
-            MINING_DIFFICULTY.with(|d| *d.borrow().get()),
-            PROCESSED_SOLUTIONS.with(|s| s.borrow().get().0.len()),
-            MINER_RATE_LIMITS.with(|r| r.borrow().get().0.len())
-        );
     }
 
     // Add a new function for creating the genesis block
@@ -1663,4 +1575,43 @@
         
         // Call the internal generate_new_block function to create the genesis block
         generate_new_block().await
+    }
+
+    // Add a new function for emergency restoration of mining parameters
+    #[ic_cdk::update]
+    pub fn restore_mining_params(
+        block_reward: u64,
+        mining_difficulty: u32,
+        block_time_target: u64,
+        halving_interval: u64
+    ) -> Result<(), String> {
+        // Check if caller is a controller
+        let caller = ic_cdk::caller();
+        let is_controller = ic_cdk::api::is_controller(&caller);
+        
+        if !is_controller {
+            return Err("Only the controller can restore mining parameters".to_string());
+        }
+        
+        // Restore the parameters
+        MINING_DIFFICULTY.with(|d| {
+            d.borrow_mut().set(mining_difficulty).expect("Failed to restore mining difficulty");
+        });
+        
+        BLOCK_TIME_TARGET.with(|t| {
+            t.borrow_mut().set(block_time_target).expect("Failed to restore block time target");
+        });
+        
+        HALVING_INTERVAL.with(|h| {
+            h.borrow_mut().set(halving_interval).expect("Failed to restore halving interval");
+        });
+        
+        BLOCK_REWARD.with(|r| {
+            r.borrow_mut().set(block_reward).expect("Failed to restore block reward");
+        });
+        
+        ic_cdk::println!("Mining parameters manually restored: difficulty={}, block_time={}, halving_interval={}, block_reward={}",
+            mining_difficulty, block_time_target, halving_interval, block_reward);
+        
+        Ok(())
     }

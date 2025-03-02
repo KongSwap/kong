@@ -7,6 +7,7 @@ export interface CanisterMetadata {
   tags?: string[];
   createdAt: number;
   wasmType?: string;
+  wasmVersion?: number;
 }
 
 const STORAGE_KEY = 'kong_canisters';

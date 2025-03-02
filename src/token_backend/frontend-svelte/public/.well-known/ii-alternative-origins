@@ -1,3 +1,7 @@
 {
-  "alternativeOrigins": ["http://localhost:4943"]
+  "alternativeOrigins": [
+    "http://localhost:5173",
+    "https://skx4v-wyaaa-aaaam-aeffa-cai.raw.icp0.io",
+    "https://skx4v-wyaaa-aaaam-aeffa-cai.icp0.io"
+  ]
 } 

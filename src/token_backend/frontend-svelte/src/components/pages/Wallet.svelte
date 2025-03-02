@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { createPNP } from '@windoge98/plug-n-play';
-  import { idlFactory } from '../../../../token_backend.did.js';
+  import { idlFactory } from '../../../../../../src/declarations/token_backend/token_backend.did.js';
   import { tokenStore } from '../../stores/tokens';
 
   let pnp: any = null;
@@ -12,17 +12,18 @@
 
   // Get canister ID based on environment
   function getCanisterId(): string {
-    if (pnp?.isDev) {
-      return 'sk4hs-faaaa-aaaag-at3rq-cai';
+    if (typeof window !== 'undefined') {
+      if (window.__CANISTER_ID__) {
+        return window.__CANISTER_ID__;
+      }
+      if ((window as any).canisterId) {
+        return (window as any).canisterId;
+      }
+      if ((window as any).canisterIdRoot) {
+        return (window as any).canisterIdRoot;
+      }
     }
-    if (typeof window !== 'undefined' && window.__CANISTER_ID__) {
-      return window.__CANISTER_ID__;
-    }
-    const canisterId = tokenStore.getCanisterIdBySymbol('KONG');
-    if (canisterId) {
-      return canisterId;
-    }
-    return 'sk4hs-faaaa-aaaag-at3rq-cai';
+    throw new Error('Canister ID not found in window variables');
   }
 
   async function getAuthActor() {
@@ -94,6 +95,9 @@
       pnp = createPNP({
         hostUrl: "https://icp0.io",
         isDev: false,
+        identityProvider: "https://identity.ic0.app",
+        derivationOrigin: window.location.origin,
+        persistSession: true
       });
 
       await fetchWalletData();

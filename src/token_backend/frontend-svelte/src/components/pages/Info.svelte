@@ -1,23 +1,24 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { createPNP } from '@windoge98/plug-n-play';
-  import { idlFactory } from '../../../../token_backend.did.js';
+  import { idlFactory } from '../../../../../../src/declarations/token_backend/token_backend.did.js';
   import { tokenInfo } from '../../stores/token-info';
-  import { tokenStore } from '../../stores/tokens';
-  import type { TokenInfo, Result, MiningInfo, Block, _SERVICE } from '../../../../token_backend.did.js';
+  import type { TokenInfo as CanisterTokenInfo, Result, MiningInfo, BlockTemplate, _SERVICE } from '../../../../../../src/declarations/token_backend/token_backend.did.js';
+  import type { TokenInfo } from '../../stores/token-info';
+  import { Principal } from '@dfinity/principal';
+  import { createPNP } from '@windoge98/plug-n-play';
 
   export let isConnected: boolean = false;
   export let metrics: any = null;
+  export let pnp: any = null;
 
   let tokenInfoValue: TokenInfo;
   tokenInfo.subscribe(value => {
     console.log('TokenInfo updated:', value);
-    tokenInfoValue = value as TokenInfo;
+    tokenInfoValue = value;
   });
 
   let miningInfo: MiningInfo | null = null;
-  let currentBlock: Block | null = null;
-  let pnp: any = null;
+  let currentBlock: BlockTemplate | null = null;
   let anonActor: _SERVICE | null = null;
   let tokenMetrics: {
     total_supply: bigint;
@@ -26,7 +27,7 @@
     total_transactions: number;
   } | null = null;
   let activeMinerCount = 0;
-  let averageBlockTime: bigint | null = null;
+  let averageBlockTime: number | null = null;
   let intervals: (number | NodeJS.Timeout)[] = [];
   let lastUpdateTimes = {
     mining: null as number | null,
@@ -34,26 +35,83 @@
     metrics: null as number | null,
     network: null as number | null
   };
+  let logoUrl: string | null = null;
 
   function getCanisterId(): string {
-    if (pnp?.isDev) {
-      return 'sk4hs-faaaa-aaaag-at3rq-cai'; // staging
+    if (typeof window !== 'undefined') {
+      console.log('Looking for canister ID in window variables');
+      if (window.__CANISTER_ID__) {
+        console.log('Found canister ID in window.__CANISTER_ID__:', window.__CANISTER_ID__);
+        return window.__CANISTER_ID__;
+      }
+      if ((window as any).canisterId) {
+        console.log('Found canister ID in window.canisterId:', (window as any).canisterId);
+        return (window as any).canisterId;
+      }
+      if ((window as any).canisterIdRoot) {
+        console.log('Found canister ID in window.canisterIdRoot:', (window as any).canisterIdRoot);
+        return (window as any).canisterIdRoot;
+      }
+      
+      // Add fallback canister ID
+      const fallbackCanisterId = "bkyz2-fmaaa-aaaaa-qaaaq-cai";
+      console.log("Using fallback canister ID:", fallbackCanisterId);
+      return fallbackCanisterId;
     }
-    if (typeof window !== 'undefined' && window.__CANISTER_ID__) {
-      return window.__CANISTER_ID__;
+    console.error('Canister ID not found in window variables');
+    throw new Error('Canister ID not found in window variables');
+  }
+
+  async function initializePnp() {
+    if (!pnp && typeof window !== 'undefined') {
+      console.log("Initializing PNP locally in Info component");
+      try {
+        // Ensure global is defined
+        if (typeof (window as any).global === 'undefined') {
+          (window as any).global = window;
+        }
+        
+        pnp = createPNP({
+          hostUrl: "https://icp0.io",
+          isDev: false,
+          identityProvider: "https://identity.ic0.app",
+          derivationOrigin: window.location.origin,
+          persistSession: true
+        });
+        
+        console.log("PNP initialized locally in Info component");
+      } catch (error) {
+        console.error("Failed to initialize PNP locally:", error);
+      }
     }
-    throw new Error('Canister ID not found');
   }
 
   async function getAnonActor(): Promise<_SERVICE> {
     try {
-      if (!anonActor) {
-        const canisterId = getCanisterId();
-        anonActor = await pnp.getActor(canisterId, idlFactory, { anon: true });
+      // If we already have an actor instance, use it
+      if (anonActor) {
+        return anonActor as _SERVICE;
       }
-      return anonActor;
+      
+      // If pnp is not provided, try to initialize it
+      if (!pnp) {
+        await initializePnp();
+      }
+      
+      // If pnp is available, use it to create an actor
+      if (pnp) {
+        const canisterId = getCanisterId();
+        console.log("Info.svelte: Creating anonymous actor for canister:", canisterId);
+        anonActor = await pnp.getActor(canisterId, idlFactory, { anon: true });
+        if (!anonActor) {
+          throw new Error("Failed to create anonymous actor");
+        }
+        return anonActor as _SERVICE;
+      }
+      
+      throw new Error("PNP not initialized");
     } catch (error) {
-      console.error("Failed to create anonymous actor:", error);
+      console.error("Info.svelte: Failed to create anonymous actor:", error);
       throw error;
     }
   }
@@ -73,13 +131,49 @@
         return;
       }
 
-      miningInfo = 'Ok' in result ? result.Ok : 
-                   'current_difficulty' in result ? result :
-                   null;
-
-      if ('Err' in result) {
-        console.error('Failed to get mining info:', result.Err);
+      // Handle different response formats
+      if (typeof result === 'object') {
+        if ('Ok' in result && result.Ok) {
+          // Handle result wrapped in Ok
+          const okResult = result.Ok;
+          
+          // Check if we have the expected structure
+          if (typeof okResult === 'object') {
+            // Create a compatible object with the fields we have
+            const miningInfoData: any = { ...okResult };
+            
+            // Handle field name mismatch
+            if (!('next_difficulty_adjustment' in okResult) && 'next_halving_interval' in okResult) {
+              miningInfoData.next_difficulty_adjustment = okResult.next_halving_interval || BigInt(0);
+            }
+            
+            miningInfo = miningInfoData as MiningInfo;
+          }
+        } else if ('Err' in result) {
+          console.error('Failed to get mining info:', result.Err);
+          miningInfo = null;
+        } else if ('current_difficulty' in result) {
+          // Direct result without Ok/Err wrapper
+          const directResult = result;
+          
+          // Create a compatible object with the fields we have
+          const miningInfoData: any = { ...directResult };
+          
+          // Handle field name mismatch
+          if (!('next_difficulty_adjustment' in directResult) && 'next_halving_interval' in directResult) {
+            miningInfoData.next_difficulty_adjustment = directResult.next_halving_interval || BigInt(0);
+          }
+          
+          miningInfo = miningInfoData as MiningInfo;
+        } else {
+          console.error('Unexpected mining info response format:', result);
+          miningInfo = null;
+        }
+      } else {
+        console.error('Unexpected mining info response type:', typeof result);
+        miningInfo = null;
       }
+      
       lastUpdateTimes.mining = Date.now();
     } catch (error) {
       console.error('Error in refreshMiningInfo:', error);
@@ -97,7 +191,11 @@
         return;
       }
 
-      currentBlock = 'Ok' in result ? result.Ok : null;
+      if ('Ok' in result) {
+        currentBlock = result.Ok as BlockTemplate;
+      } else {
+        currentBlock = null;
+      }
 
       if ('Err' in result) {
         console.error('Failed to get current block:', result.Err);
@@ -112,31 +210,64 @@
   async function fetchTokenMetrics() {
     try {
       const actor = await getAnonActor();
-      const result = await actor.get_info();
       
-      if ('Ok' in result) {
-        // Update tokenInfo store with all token information
+      // First get token info for basic token details
+      const infoResult = await actor.get_info();
+      
+      if ('Ok' in infoResult) {
+        const info = infoResult.Ok as CanisterTokenInfo;
+        
+        // Update tokenInfo with all available fields
         tokenInfo.setInfo(
-          result.Ok.name, 
-          result.Ok.ticker,
-          Array.isArray(result.Ok.decimals) ? result.Ok.decimals[0] : 8,
-          Array.isArray(result.Ok.logo) ? result.Ok.logo[0] : undefined,
-          Array.isArray(result.Ok.ledger_id) ? result.Ok.ledger_id[0] : undefined,
-          Array.isArray(result.Ok.archive_options) ? result.Ok.archive_options[0] : undefined,
-          result.Ok.total_supply
+          info.name, 
+          info.ticker,
+          info.decimals,
+          info.logo,
+          info.ledger_id && info.ledger_id.length > 0 && info.ledger_id[0]?.toText ? [Principal.fromText(info.ledger_id[0].toText())] : [],
+          info.archive_options,
+          info.total_supply,
+          info.transfer_fee,
+          info.social_links
         );
-
+        
+        // Set the logo URL if available
+        if (info.logo && info.logo.length > 0) {
+          logoUrl = info.logo[0] || null;
+        }
+      }
+      
+      if ('Err' in infoResult) {
+        console.error('Failed to get token info:', infoResult.Err);
+      }
+      
+      // Now get metrics for supply information
+      if (metrics) {
+        // If metrics were passed from App.svelte, use them
+        console.log("Using metrics from App.svelte:", metrics);
         tokenMetrics = {
-          total_supply: result.Ok.total_supply,
-          circulating_supply: result.Ok.total_supply, // Assuming all tokens are in circulation for now
-          holders: 0, // This info isn't available yet
-          total_transactions: 0 // This info isn't available yet
+          total_supply: metrics.total_supply,
+          circulating_supply: metrics.circulating_supply,
+          holders: 0,
+          total_transactions: 0
         };
+      } else {
+        // Otherwise fetch metrics directly
+        console.log("Fetching metrics directly");
+        const metricsResult = await actor.get_metrics();
+        
+        if ('Ok' in metricsResult) {
+          console.log("Got metrics:", metricsResult.Ok);
+          tokenMetrics = {
+            total_supply: metricsResult.Ok.total_supply,
+            circulating_supply: metricsResult.Ok.circulating_supply,
+            holders: 0,
+            total_transactions: 0
+          };
+        } else if ('Err' in metricsResult) {
+          console.error('Failed to get metrics:', metricsResult.Err);
+        }
       }
-
-      if ('Err' in result) {
-        console.error('Failed to get token info:', result.Err);
-      }
+      
       lastUpdateTimes.metrics = Date.now();
     } catch (error) {
       console.error('Error fetching token metrics:', error);
@@ -153,9 +284,9 @@
       activeMinerCount = activeMiners.length;
 
       // Get average block time
-      const blockTimeResult = await actor.get_average_block_time();
+      const blockTimeResult = await actor.get_average_block_time([]);
       if ('Ok' in blockTimeResult) {
-        averageBlockTime = blockTimeResult.Ok;
+        averageBlockTime = Number(blockTimeResult.Ok);
       }
       lastUpdateTimes.network = Date.now();
     } catch (error) {
@@ -175,57 +306,41 @@
   const formatDate = (timestamp: bigint): string => 
     new Date(Number(timestamp) * 1000).toLocaleString();
 
-  async function initialize() {
-    try {
-      console.log('Starting initialization...');
-      
-      if (typeof window !== 'undefined' && typeof (window as any).global === 'undefined') {
-        (window as any).global = window;
-      }
-
-      console.log('Creating PNP...');
-      pnp = createPNP({
-        hostUrl: "https://icp0.io",
-        isDev: false,
-      });
-
-      console.log('Fetching tokens...');
-      try {
-        await tokenStore.fetchTokens();
-        // Add direct canister call to get token info
-        const actor = await getAnonActor();
-        const result = await actor.get_info();
-        console.log('Direct token info result:', result);
-      } catch (error) {
-        console.error('Error fetching tokens:', error);
-      }
-
-      await Promise.all([
-        refreshMiningInfo(),
-        refreshCurrentBlock(),
-        fetchTokenMetrics(),
-        refreshNetworkStatus()
-      ]);
-      
-      // Set up auto-refresh intervals
-      intervals = [
-        setInterval(refreshMiningInfo, 1000),
-        setInterval(refreshCurrentBlock, 1000), 
-        setInterval(fetchTokenMetrics, 3000),
-        setInterval(refreshNetworkStatus, 1000)
-      ];
-    } catch (error) {
-      console.error('Initialization failed:', error);
-    }
-  }
-
   onMount(() => {
-    initialize().catch(error => {
-      console.error('Failed to initialize:', error);
-    });
-
+    const initialize = async () => {
+      try {
+        console.log('Info component mounted');
+        
+        // Initialize PNP if not provided
+        if (!pnp) {
+          await initializePnp();
+        }
+        
+        // Fetch token info and metrics
+        await fetchTokenMetrics();
+        
+        // Fetch mining info and current block
+        await refreshMiningInfo();
+        await refreshCurrentBlock();
+        await refreshNetworkStatus();
+        
+        // Set up refresh intervals for dynamic data
+        intervals.push(setInterval(refreshMiningInfo, 30000)); // Every 30 seconds
+        intervals.push(setInterval(refreshCurrentBlock, 30000)); // Every 30 seconds
+        intervals.push(setInterval(refreshNetworkStatus, 60000)); // Every minute
+        intervals.push(setInterval(fetchTokenMetrics, 60000)); // Refresh metrics every minute
+        
+        console.log('Info component initialization complete');
+      } catch (error) {
+        console.error('Error initializing Info component:', error);
+      }
+    };
+    
+    initialize();
+    
     return () => {
-      intervals.forEach(clearInterval);
+      // Clean up intervals on component unmount
+      intervals.forEach(interval => clearInterval(interval));
     };
   });
 </script>
@@ -235,12 +350,12 @@
   <div class="p-4 mb-6 text-center transition-all duration-300 border shadow-xl bg-black/40 border-emerald-900/50 rounded-xl hover:border-emerald-700/50 hover:shadow-2xl">
     <h2 class="mb-2 text-lg font-medium text-emerald-500">Floppa's Ledger ID</h2>
     <div class="flex items-center justify-center gap-2">
-      <code class="px-3 py-1 font-mono text-sm text-white rounded-lg bg-black/30">{tokenInfoValue.ledger_id || 'Ledger not yet initialized'}</code>
+      <code class="px-3 py-1 font-mono text-sm text-white rounded-lg bg-black/30">{tokenInfoValue?.ledger_id && tokenInfoValue.ledger_id.length > 0 && tokenInfoValue.ledger_id[0]?.toText ? Principal.fromText(tokenInfoValue.ledger_id[0].toText()).toText() : 'Ledger not yet initialized'}</code>
       <button 
         class="p-2 transition-colors rounded-lg hover:bg-black/20" 
         on:click={() => {
-          if (tokenInfoValue?.ledger_id) {
-            navigator.clipboard.writeText(String(tokenInfoValue.ledger_id));
+          if (tokenInfoValue?.ledger_id && tokenInfoValue.ledger_id.length > 0 && tokenInfoValue.ledger_id[0]?.toText) {
+            navigator.clipboard.writeText(Principal.fromText(tokenInfoValue.ledger_id[0].toText()).toText());
           } else {
             alert('Ledger not yet initialized');
           }
@@ -264,10 +379,18 @@
         </div>
       {/if}
       <div class="flex items-center gap-3 mb-6">
-        <svg class="w-6 h-6 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 16v-4M12 8h.01"/>
-        </svg>
+        <!-- Display logo if available -->
+        {#if tokenInfoValue?.logo && tokenInfoValue.logo.length > 0}
+          {@const logoData = tokenInfoValue.logo[0]}
+          {#if logoData}
+            <img src={logoData.startsWith('data:') ? logoData : `data:image/png;base64,${logoData}`} alt="Token Logo" class="w-8 h-8 rounded-full" />
+          {/if}
+        {:else}
+          <svg class="w-6 h-6 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+        {/if}
         <h3 class="text-xl font-bold text-emerald-500">Token Information</h3>
       </div>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -293,20 +416,26 @@
             {/if}
           </p>
         </div>
-        {#if metrics}
-          <div class="space-y-1">
-            <span class="text-sm text-gray-400">Total Supply</span>
-            <p class="text-lg font-medium text-white">{formatTokenAmount(metrics.total_supply)} {tokenInfoValue.ticker}</p>
-          </div>
-          <div class="space-y-1">
-            <span class="text-sm text-gray-400">Circulating Supply</span>
-            <p class="text-lg font-medium text-white">{formatTokenAmount(metrics.circulating_supply)} {tokenInfoValue.ticker}</p>
-          </div>
-        {:else}
-          <div class="flex items-center justify-center col-span-2 py-4 italic text-gray-400">
-            Loading token metrics...
-          </div>
-        {/if}
+        <div class="space-y-1">
+          <span class="text-sm text-gray-400">Total Supply</span>
+          <p class="text-lg font-medium text-white">
+            {#if tokenMetrics?.total_supply}
+              {formatTokenAmount(tokenMetrics.total_supply)} {tokenInfoValue.ticker}
+            {:else}
+              {formatTokenAmount(tokenInfoValue.total_supply)} {tokenInfoValue.ticker}
+            {/if}
+          </p>
+        </div>
+        <div class="space-y-1">
+          <span class="text-sm text-gray-400">Circulating Supply</span>
+          <p class="text-lg font-medium text-white">
+            {#if tokenMetrics?.circulating_supply}
+              {formatTokenAmount(tokenMetrics.circulating_supply)} {tokenInfoValue.ticker}
+            {:else}
+              {formatTokenAmount(tokenInfoValue.total_supply)} {tokenInfoValue.ticker}
+            {/if}
+          </p>
+        </div>
       </div>
     </div>
 

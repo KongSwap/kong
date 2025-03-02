@@ -122,7 +122,7 @@ pub struct UpgradeArgs {
     pub change_archive_options: Option<ChangeArchiveOptions>,
 }
     
-#[derive(CandidType, Serialize, Deserialize)]
+#[derive(CandidType, Serialize, Deserialize, Debug)]
 pub struct MiningInfo {
     pub current_difficulty: u32,
     pub current_block_reward: u64,

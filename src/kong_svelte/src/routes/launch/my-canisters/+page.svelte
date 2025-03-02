@@ -27,6 +27,17 @@
         }
     };
 
+    // WASM versions - increment these when new versions are available
+    // These version numbers are used to determine if a canister has an upgrade available
+    // When a new WASM version is released, increment the corresponding version number here
+    // and the UI will automatically show an upgrade notification for affected canisters
+    // current: token_backend: 14, ledger: 1, miner: 1
+    const WASM_VERSIONS: Record<string, number> = {
+        'token_backend': 14,
+        'ledger': 1,
+        'miner': 1
+    };
+
     // UI state
     let canisters: CanisterMetadata[] = [];
     let editingCanister: CanisterMetadata | null = null;
@@ -60,7 +71,7 @@
     }
     
     let canisterStatuses: Record<string, CanisterStatus | null> = {};
-    let loadingStatus: Record<string, boolean> = {};
+    let loadingStatuses: Record<string, boolean> = {};
     let statusErrors: Record<string, string | null> = {};
 
     // Format helpers
@@ -96,7 +107,15 @@
         const canister = event.detail.canister;
         editingCanister = canister;
         newName = canister.name || '';
-        newTags = canister.tags?.join(', ') || '';
+        newTags = canister.tags ? canister.tags.join(', ') : '';
+    }
+
+    function handleTopUp(event: CustomEvent) {
+        const canisterId = event.detail.id;
+        // Redirect to the top-up page or open a top-up modal
+        console.log(`Top up canister: ${canisterId}`);
+        // This is a placeholder - implement actual top-up functionality
+        alert(`Top up functionality for canister ${canisterId} would be implemented here.`);
     }
 
     function saveEdit() {
@@ -160,6 +179,16 @@
         selectedCanisterId = event.detail.id;
         selectedWasm = '';
         installError = null;
+        
+        // Check if this is an upgrade or a fresh install
+        const canister = canisters.find(c => c.id === selectedCanisterId);
+        const isUpgrade = canister && canister.wasmType;
+        
+        // If it's an upgrade, pre-select the current WASM type
+        if (isUpgrade && canister.wasmType) {
+            selectedWasm = canister.wasmType;
+        }
+        
         showInstallModal = true;
     }
 
@@ -198,28 +227,59 @@
             // Close modal
             closeInstallModal();
         } catch (error) {
-            console.error('Failed to install WASM:', error);
+            console.error("WASM installation error:", error);
+            installError = error instanceof Error ? error.message : String(error);
+        } finally {
+            installing = false;
+        }
+    }
+
+    // Helper function to check if a canister has a newer version available
+    function hasNewerVersion(canister: CanisterMetadata): boolean {
+        // If no WASM type is set, we can't determine if there's a newer version
+        if (!canister.wasmType) return false;
+        
+        // If the canister has a wasmVersion property and it's less than the current version,
+        // then a newer version is available
+        const currentVersion = canister.wasmVersion || 0;
+        const latestVersion = WASM_VERSIONS[canister.wasmType] || 0;
+        
+        return currentVersion < latestVersion;
+    }
+
+    // When upgrading, update the wasmVersion to the latest
+    async function upgradeWasm() {
+        if (!selectedCanisterId || !selectedWasm) {
+            installError = 'Please select a WASM file to upgrade to';
+            return;
+        }
+
+        await InstallService.clearChunkStore(selectedCanisterId);
+
+        try {
+            installing = true;
+            installError = null;
             
-            // Create a more detailed error message
-            let errorMessage = '';
-            if (error instanceof Error) {
-                errorMessage = error.message;
-                // Add stack trace for debugging
-                console.error('Error stack:', error.stack);
-                
-                // Check for specific error types
-                if (errorMessage.includes('decompress') || errorMessage.includes('header check')) {
-                    errorMessage += '\n\nThe WASM file appears to be corrupted or not properly compressed. Please check the file format.';
-                } else if (errorMessage.includes('canister module format')) {
-                    errorMessage += '\n\nThe WASM module format is not supported. Please ensure you are using a compatible WASM file.';
-                } else if (errorMessage.includes('out of cycles')) {
-                    errorMessage += '\n\nYour canister is out of cycles. Please top up your canister and try again.';
-                }
-            } else {
-                errorMessage = String(error);
-            }
+            const wasmMetadata = AVAILABLE_WASMS[selectedWasm];
+            console.log("Selected WASM metadata for upgrade:", wasmMetadata);
             
-            installError = errorMessage;
+            console.log(`Upgrading canister with new WASM`);
+            await InstallService.upgradeWasm(selectedCanisterId, wasmMetadata);
+            
+            // Update canister metadata with WASM type and version
+            canisterStore.updateCanister(selectedCanisterId, {
+                wasmType: selectedWasm,
+                wasmVersion: WASM_VERSIONS[selectedWasm] || 1
+            });
+            
+            // Refresh status
+            fetchCanisterStatus(selectedCanisterId);
+            
+            // Close modal
+            closeInstallModal();
+        } catch (error) {
+            console.error("WASM upgrade error:", error);
+            installError = error instanceof Error ? error.message : String(error);
         } finally {
             installing = false;
         }
@@ -227,7 +287,7 @@
 
     // Fetch canister status
     async function fetchCanisterStatus(canisterId: string) {
-        loadingStatus[canisterId] = true;
+        loadingStatuses[canisterId] = true;
         statusErrors[canisterId] = null;
         console.log(agent)
         
@@ -343,7 +403,7 @@
         } catch (error) {
             statusErrors[canisterId] = String(error);
         } finally {
-            loadingStatus[canisterId] = false;
+            loadingStatuses[canisterId] = false;
         }
     }
 
@@ -429,19 +489,21 @@
             <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {#each canisters as canister (canister.id)}
                     <Canister 
-                        {canister}
+                        canister={canister}
                         canisterStatus={canisterStatuses[canister.id]}
                         statusError={statusErrors[canister.id]}
-                        loadingStatus={loadingStatus[canister.id]}
+                        loadingStatus={loadingStatuses[canister.id]}
                         isEditing={editingCanister?.id === canister.id}
-                        {newName}
-                        {newTags}
+                        newName={newName}
+                        newTags={newTags}
+                        hasUpgrade={hasNewerVersion(canister)}
                         on:edit={startEdit}
                         on:save={saveEdit}
                         on:cancel={cancelEdit}
                         on:remove={removeCanister}
-                        on:refresh-status={() => fetchCanisterStatus(canister.id)}
+                        on:refresh-status={(e) => fetchCanisterStatus(e.detail.id)}
                         on:install-wasm={openInstallModal}
+                        on:top-up={handleTopUp}
                     />
                 {/each}
             </div>
@@ -490,10 +552,23 @@
 {#if showInstallModal}
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
         <div class="w-full max-w-md p-6 bg-gray-800 border border-gray-700 rounded-lg backdrop-blur-sm">
-            <h2 class="mb-4 text-xl font-bold text-white">Check For Upgrades</h2>
+            {#if canisters.find(c => c.id === selectedCanisterId)?.wasmType}
+                <h2 class="mb-4 text-xl font-bold text-white">Upgrade Canister</h2>
+            {:else}
+                <h2 class="mb-4 text-xl font-bold text-white">Install WASM</h2>
+            {/if}
             
-            <div class="p-3 mb-4 text-sm text-green-400 bg-green-900 bg-opacity-50 border border-green-700 rounded">
-                Your canister is already running the latest version.
+            <div class="mb-4">
+                <label class="block mb-2 text-sm font-medium text-gray-300">Select WASM to upgrade to</label>
+                <select 
+                    bind:value={selectedWasm}
+                    class="w-full px-3 py-2 text-gray-800 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="">-- Select WASM --</option>
+                    {#each Object.entries(AVAILABLE_WASMS) as [key, wasm]}
+                        <option value={key}>{wasm.description}</option>
+                    {/each}
+                </select>
             </div>
             
             {#if installError}
@@ -503,11 +578,48 @@
             {/if}
             
             <div class="flex justify-end space-x-2">
+                {#if canisters.find(c => c.id === selectedCanisterId)?.wasmType}
+                    <button 
+                        on:click={upgradeWasm} 
+                        disabled={installing || !selectedWasm}
+                        class="px-4 py-2 text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {#if installing}
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-2 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Upgrading...
+                            </span>
+                        {:else}
+                            Upgrade
+                        {/if}
+                    </button>
+                {:else}
+                    <button 
+                        on:click={installWasm} 
+                        disabled={installing || !selectedWasm}
+                        class="px-4 py-2 text-white transition-colors bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {#if installing}
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-2 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Installing...
+                            </span>
+                        {:else}
+                            Install
+                        {/if}
+                    </button>
+                {/if}
                 <button 
                     on:click={closeInstallModal} 
                     class="px-4 py-2 text-gray-300 transition-colors bg-gray-700 rounded-md hover:bg-gray-600"
                 >
-                    Close
+                    Cancel
                 </button>
             </div>
         </div>
