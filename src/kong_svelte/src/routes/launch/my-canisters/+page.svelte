@@ -7,6 +7,7 @@
     import { idlFactory as icManagementIdlFactory } from '$lib/services/canister/ic-management.idl';
     import Canister from './Canister.svelte';
     import PageWrapper from '$lib/components/layout/PageWrapper.svelte';
+    import KongAgent from './KongAgent.svelte';
 
     // Available WASM types
     const AVAILABLE_WASMS: Record<string, WasmMetadata> = {
@@ -54,6 +55,11 @@
     let selectedWasm = '';
     let installing = false;
     let installError: string | null = null;
+    
+    // Kong Agent state
+    let showKongAgent = false;
+    let kongAgentCanisterId: string | null = null;
+    let kongAgentWasmType: string | null = null;
     
     // Canister status tracking
     interface CanisterStatus {
@@ -196,6 +202,19 @@
         showInstallModal = false;
         selectedCanisterId = null;
         selectedWasm = '';
+    }
+
+    // Kong Agent functions
+    function openKongAgent(event: CustomEvent) {
+        kongAgentCanisterId = event.detail.id;
+        kongAgentWasmType = event.detail.wasmType;
+        showKongAgent = true;
+    }
+    
+    function closeKongAgent() {
+        showKongAgent = false;
+        kongAgentCanisterId = null;
+        kongAgentWasmType = null;
     }
 
     async function installWasm() {
@@ -504,6 +523,7 @@
                         on:refresh-status={(e) => fetchCanisterStatus(e.detail.id)}
                         on:install-wasm={openInstallModal}
                         on:top-up={handleTopUp}
+                        on:open-kong-agent={openKongAgent}
                     />
                 {/each}
             </div>
@@ -624,4 +644,13 @@
             </div>
         </div>
     </div>
+{/if} 
+
+<!-- Kong Agent Chat Interface -->
+{#if showKongAgent && kongAgentCanisterId}
+    <KongAgent 
+        canisterId={kongAgentCanisterId} 
+        wasmType={kongAgentWasmType}
+        on:close={closeKongAgent}
+    />
 {/if} 
