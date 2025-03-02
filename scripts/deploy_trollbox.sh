@@ -1,5 +1,7 @@
+#!/bin/bash
+
 original_dir=$(pwd)
-root_dir="${CANISTER_IDS_ROOT:-${original_dir}/..}"
+root_dir="${CANISTER_IDS_ROOT:-${original_dir}}"
 canister_ids_file="${root_dir}/canister_ids.all.json"
 
 # Set network to local if not provided

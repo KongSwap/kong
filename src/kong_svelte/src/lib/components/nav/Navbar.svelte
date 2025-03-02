@@ -18,6 +18,8 @@
     PiggyBank,
     TrendingUpDown,
     Search,
+    ChevronDown,
+    Gamepad as Joystick,
   } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/services/tokens";
@@ -33,13 +35,14 @@
   import MobileNavGroup from "./MobileNavGroup.svelte";
   import MobileMenuItem from "./MobileMenuItem.svelte";
   import { searchStore } from "$lib/stores/searchStore";
+  import { swapModeService } from "$lib/services/settings/swapModeService";
 
   let showSettings = false;
   let isMobile = false;
   let activeTab: "swap" | "predict" | "earn" | "stats" | "launch" = "swap";
   let navOpen = false;
   let closeTimeout: ReturnType<typeof setTimeout>;
-  let activeDropdown: 'swap' | 'earn' | 'stats' | 'launch' | null = null;
+  let activeDropdown: 'swap' | 'earn' | 'stats' | 'launch' | 'predict' | null = null;
   
   // Filter tabs based on DFX_NETWORK
   const allTabs = ["swap", "predict", "earn", "stats", "launch"] as const;
@@ -167,7 +170,7 @@
     },
   ];
 
-  function showDropdown(type: 'swap' | 'earn' | 'stats' | 'launch') {
+  function showDropdown(type: 'swap' | 'earn' | 'stats' | 'launch' | 'predict') {
     clearTimeout(closeTimeout);
     activeDropdown = type;
   }
@@ -485,29 +488,29 @@
                         icon: TrendingUpDown,
                         comingSoon: false,
                       },
-                    ] as const}
+                    ] as option}
                       <button
                         class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-50 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
-                        class:active={$page.url.pathname === $0.path}
+                        class:active={$page.url.pathname === option.path}
                         on:click={() => {
                           hideDropdown();
-                          goto($0.path);
+                          goto(option.path);
                         }}
-                        class:disabled={$0.comingSoon}
+                        class:disabled={option.comingSoon}
                       >
                         <div class="flex items-center justify-center flex-shrink-0 transition-all ease-out transform rounded-md duration-50 w-11 h-11 bg-kong-text-primary/5 text-kong-text-primary group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
-                          <svelte:component this={$0.icon} size={20} />
+                          <svelte:component this={option.icon} size={20} />
                         </div>
                         <div class="flex flex-col gap-1 pt-0.5">
                           <div class="flex items-center gap-2">
                             <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">
-                              {$0.label}
+                              {option.label}
                             </span>
-                            {#if $0.comingSoon}
+                            {#if option.comingSoon}
                               <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
                             {/if}
                           </div>
-                          <span class="text-sm leading-normal text-kong-text-secondary">{$0.description}</span>
+                          <span class="text-sm leading-normal text-kong-text-secondary">{option.description}</span>
                         </div>
                       </button>
                     {/each}
@@ -634,106 +637,78 @@
               <div class="mobile-nav-group">
                 <div class="mobile-nav-group-title">LAUNCH</div>
                 {#each launchOptions as option}
-                  <button
-                    class="mobile-nav-item {$page.url.pathname === option.path ? 'active' : ''}"
-                    on:click={() => {
+                  <MobileMenuItem
+                    label={option.label}
+                    icon={option.icon}
+                    onClick={() => {
                       if (!option.comingSoon) {
                         navOpen = false;
                         goto(option.path);
                       }
                     }}
-                  >
-                    <div class="flex items-center gap-2">
-                      <svelte:component this={option.icon} size={18} />
-                      <div class="text-left">
-                        <div class="font-medium">{option.label}</div>
-                        <div class="text-xs text-kong-text-secondary">{option.description}</div>
-                      </div>
-                    </div>
-                    {#if option.comingSoon}
-                      <div class="text-xs text-kong-text-secondary">Coming Soon</div>
-                    {/if}
-                  </button>
+                    isActive={$page.url.pathname === option.path}
+                    iconBackground="bg-kong-text-primary/5"
+                    comingSoon={option.comingSoon}
+                  />
                 {/each}
               </div>
             {:else if tab === 'earn'}
               <div class="mobile-nav-group">
                 <div class="mobile-nav-group-title">EARN</div>
                 {#each earnOptions as option}
-                  <button
-                    class="mobile-nav-btn {activeTab === 'earn' && option.path === '/pools' ? 'active' : ''}"
-                    on:click={() => {
+                  <MobileMenuItem
+                    label={option.label}
+                    icon={option.icon}
+                    onClick={() => {
                       if (!option.comingSoon) {
                         onTabChange('earn');
                         goto(option.path);
                         navOpen = false;
                       }
                     }}
-                    class:disabled={option.comingSoon}
-                  >
-                    <div class="mobile-nav-btn-icon">
-                      <svelte:component this={option.icon} size={18} />
-                    </div>
-                    <div class="mobile-nav-btn-content">
-                      <span>{option.label}</span>
-                      {#if option.comingSoon}
-                        <span class="coming-soon-badge">Soon</span>
-                      {/if}
-                    </div>
-                  </button>
+                    isActive={activeTab === 'earn' && option.path === '/pools'}
+                    iconBackground="bg-kong-text-primary/5"
+                    comingSoon={option.comingSoon}
+                  />
                 {/each}
               </div>
             {:else if tab === 'swap'}
               <div class="mb-0 mobile-nav-group">
                 <div class="mobile-nav-group-title">SWAP</div>
                 {#each swapOptions as option}
-                  <button
-                    class="mobile-nav-btn {activeTab === 'swap' && $page.url.pathname === option.path ? 'active' : ''}"
-                    on:click={() => {
+                  <MobileMenuItem
+                    label={option.label}
+                    icon={option.icon}
+                    onClick={() => {
                       if (!option.comingSoon) {
                         handleSwapOptionClick(option);
                         navOpen = false;
                       }
                     }}
-                    class:disabled={option.comingSoon}
-                  >
-                    <div class="mobile-nav-btn-icon">
-                      <svelte:component this={option.icon} size={18} />
-                    </div>
-                    <div class="mobile-nav-btn-content">
-                      <span>{option.label}</span>
-                      {#if option.comingSoon}
-                        <span class="coming-soon-badge">Soon</span>
-                      {/if}
-                    </div>
-                  </button>
+                    isActive={activeTab === 'swap' && $page.url.pathname === option.path}
+                    iconBackground="bg-kong-text-primary/5"
+                    comingSoon={option.comingSoon}
+                  />
                 {/each}
               </div>
             {:else if tab === 'stats'}
               <div class="mobile-nav-group">
                 <div class="mobile-nav-group-title">STATS</div>
                 {#each dataOptions as option}
-                  <button
-                    class="mobile-nav-btn {activeTab === 'stats' && $page.url.pathname === option.path ? 'active' : ''}"
-                    on:click={() => {
+                  <MobileMenuItem
+                    label={option.label}
+                    icon={option.icon}
+                    onClick={() => {
                       if (!option.comingSoon) {
                         onTabChange('stats');
                         goto(option.path);
                         navOpen = false;
                       }
                     }}
-                    class:disabled={option.comingSoon}
-                  >
-                    <div class="mobile-nav-btn-icon">
-                      <svelte:component this={option.icon} size={18} />
-                    </div>
-                    <div class="mobile-nav-btn-content">
-                      <span>{option.label}</span>
-                      {#if option.comingSoon}
-                        <span class="coming-soon-badge">Soon</span>
-                      {/if}
-                    </div>
-                  </button>
+                    isActive={activeTab === 'stats' && $page.url.pathname === option.path}
+                    iconBackground="bg-kong-text-primary/5"
+                    comingSoon={option.comingSoon}
+                  />
                 {/each}
               </div>
             {:else if tab === 'predict'}
@@ -747,26 +722,19 @@
                     icon: TrendingUpDown,
                     comingSoon: false,
                   },
-                ] as const}
-                  <button
-                    class="mobile-nav-btn {activeTab === 'predict' && $page.url.pathname === $0.path ? 'active' : ''}"
-                    on:click={() => {
+                ] as option}
+                  <MobileMenuItem
+                    label={option.label}
+                    icon={option.icon}
+                    onClick={() => {
                       hideDropdown();
-                      goto($0.path);
+                      goto(option.path);
                       navOpen = false;
                     }}
-                    class:disabled={$0.comingSoon}
-                  >
-                    <div class="mobile-nav-btn-icon">
-                      <svelte:component this={$0.icon} size={18} />
-                    </div>
-                    <div class="mobile-nav-btn-content">
-                      <span>{$0.label}</span>
-                      {#if $0.comingSoon}
-                        <span class="coming-soon-badge">Soon</span>
-                      {/if}
-                    </div>
-                  </button>
+                    isActive={activeTab === 'predict' && $page.url.pathname === option.path}
+                    iconBackground="bg-kong-text-primary/5"
+                    comingSoon={option.comingSoon}
+                  />
                 {/each}
               </div>
             {/if}
@@ -899,6 +867,14 @@
     @apply text-xs font-semibold text-kong-text-secondary/70 px-2 mb-2 tracking-wider;
   }
 
+  .mobile-nav-group {
+    @apply mb-4;
+  }
+
+  .mobile-nav-group-title {
+    @apply text-xs font-semibold text-kong-text-secondary/70 px-2 mb-2 tracking-wider;
+  }
+
   .mobile-menu-footer {
     @apply p-0;
   }
@@ -921,7 +897,7 @@
   }
 
   .mobile-menu-header .logo-wide {
-    @apply transition-all duration-200;
+    @apply transition-all duration-200 max-h-8 w-auto;
   }
 
   .mobile-menu-header .logo-wide.light-logo {
@@ -940,5 +916,10 @@
   .nav-link.active {
     @apply text-kong-primary;
     text-shadow: 0 0px 30px theme(colors.kong.primary);
+  }
+
+  /* Dropdown positioning fix */
+  .nav-dropdown {
+    @apply relative;
   }
 </style>
