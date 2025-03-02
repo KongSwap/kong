@@ -32,9 +32,9 @@
     // These version numbers are used to determine if a canister has an upgrade available
     // When a new WASM version is released, increment the corresponding version number here
     // and the UI will automatically show an upgrade notification for affected canisters
-    // current: token_backend: 14, ledger: 1, miner: 1
+    // current: token_backend: 1, ledger: 1, miner: 1
     const WASM_VERSIONS: Record<string, number> = {
-        'token_backend': 14,
+        'token_backend': 1,
         'ledger': 1,
         'miner': 1
     };
@@ -46,6 +46,7 @@
     let newTags = '';
     let principal: Principal | null = null;
     let newCanisterId = '';
+    let newCanisterType = '';
     let showAddModal = false;
     let addError = '';
     
@@ -152,6 +153,7 @@
     // Add custom canister
     function showAddCanisterModal() {
         newCanisterId = '';
+        newCanisterType = '';
         addError = '';
         showAddModal = true;
     }
@@ -169,7 +171,8 @@
             // Add to store
             canisterStore.addCanister({
                 id: canisterId,
-                createdAt: Date.now()
+                createdAt: Date.now(),
+                wasmType: newCanisterType || undefined // Include the selected type if provided
             });
             
             // Close modal and fetch status
@@ -548,6 +551,20 @@
                 {#if addError}
                     <p class="mt-1 text-sm text-red-400">{addError}</p>
                 {/if}
+            </div>
+            
+            <div class="mb-4">
+                <label class="block mb-1 text-sm font-medium text-gray-300">Canister Type</label>
+                <select 
+                    bind:value={newCanisterType}
+                    class="w-full px-3 py-2 text-white bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                    <option value="">-- Select Type (Optional) --</option>
+                    {#each Object.entries(AVAILABLE_WASMS) as [key, wasm]}
+                        <option value={key}>{wasm.description}</option>
+                    {/each}
+                </select>
+                <p class="mt-1 text-xs text-gray-400">Selecting the correct type helps Kong Agent provide appropriate functionality.</p>
             </div>
             
             <div class="flex justify-end space-x-2">
