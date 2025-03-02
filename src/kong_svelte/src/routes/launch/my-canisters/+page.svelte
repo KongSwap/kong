@@ -6,8 +6,8 @@
     import { InstallService, type WasmMetadata, agent, getICManagementActor } from '$lib/services/canister/install_wasm';
     import { idlFactory as icManagementIdlFactory } from '$lib/services/canister/ic-management.idl';
     import Canister from './Canister.svelte';
-    import PageWrapper from '$lib/components/layout/PageWrapper.svelte';
     import KongAgent from './KongAgent.svelte';
+    import { goto } from '$app/navigation';
 
     // Available WASM types
     const AVAILABLE_WASMS: Record<string, WasmMetadata> = {
@@ -119,10 +119,8 @@
 
     function handleTopUp(event: CustomEvent) {
         const canisterId = event.detail.id;
-        // Redirect to the top-up page or open a top-up modal
-        console.log(`Top up canister: ${canisterId}`);
-        // This is a placeholder - implement actual top-up functionality
-        alert(`Top up functionality for canister ${canisterId} would be implemented here.`);
+        // Redirect to the top-up page with the canister ID
+        goto(`/launch/top-up?canisterId=${canisterId}`);
     }
 
     function saveEdit() {
@@ -456,7 +454,6 @@
     });
 </script>
 
-<PageWrapper page="launch/my-canisters">
     <div class="container px-4 py-8 mx-auto">
         <div class="flex items-center justify-between mb-8">
             <h1 class="text-2xl font-bold text-white">My Canisters</h1>
@@ -532,7 +529,6 @@
             </div>
         {/if}
     </div>
-</PageWrapper>
 
 <!-- Add Canister Modal -->
 {#if showAddModal}

@@ -46,6 +46,13 @@
       path: '/launch/my-canisters',
       icon: Joystick,
       comingSoon: false
+    },
+    {
+      label: 'Top Up Canister',
+      description: 'Add cycles to your canisters',
+      path: '/launch/top-up',
+      icon: Droplet,
+      comingSoon: false
     }
   ];
 

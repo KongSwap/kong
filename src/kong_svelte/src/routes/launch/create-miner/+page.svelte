@@ -8,6 +8,7 @@
     MinerType,
     MinerInitArgs,
   } from "$declarations/miner/miner.did.d";
+  import { minerParams } from "$lib/stores/minerParams";
 
   let selectedType: MinerType = { Normal: null };
   let isSubmitting = false;
@@ -103,17 +104,19 @@
   async function handleSubmit(type: MinerType) {
     isSubmitting = true;
     try {
-      // TODO: Replace with actual API call
-      // TODO: Replace with actual principal
-      const initArgs: MinerInitArgs = {
-        owner: null as any, // Will be set by the backend
+      // Store the selected miner type in the minerParams store
+      const initArgs: MinerInitArgs & { minerType: MinerType } = {
+        owner: null, // Will be set by the backend
+        minerType: type
       };
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("Creating miner with type:", type);
-      goto("/launch");
+      
+      // Update the miner parameters store
+      minerParams.set(initArgs);
+      
+      // Navigate to the miner deployment page
+      goto("/launch/deploy-miner");
     } catch (error) {
-      console.error("Error creating miner:", error);
+      console.error("Error preparing miner deployment:", error);
     } finally {
       isSubmitting = false;
     }
