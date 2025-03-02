@@ -31,7 +31,7 @@ export const deployLedger = (ledger, network) => {
     });
 };
 // List of all test ledgers
-export const TEST_LEDGERS = ['ksusdt', 'ksicp', 'ksbtc', 'kseth', 'kskong'];
+export const TEST_LEDGERS = ['ksusdt', 'ksicp', 'ksbtc', 'kseth', 'kong'];
 // Deploy all test ledgers for a given network
 export const deployTestLedgers = (network) => {
     console.log(chalk.blue('Deploying test ledgers...'));

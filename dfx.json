@@ -68,10 +68,37 @@
         }
       ]
     },
+    "trollbox": {
+      "type": "custom",
+      "candid": "src/trollbox/trollbox.did",
+      "main": "src/trollbox/src/lib.rs",
+      "wasm": "target/wasm32-unknown-unknown/release/trollbox.wasm",
+      "package": "trollbox",
+      "build": "sh scripts/build_rust_canister.sh trollbox",
+      "declarations": {
+        "node_compatibility": true
+      },
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    },
     "prediction_markets_backend": {
+      "type": "custom",
       "candid": "src/prediction_markets_backend/prediction_markets_backend.did",
+      "main": "src/prediction_markets_backend/src/lib.rs",
+      "wasm": "target/wasm32-unknown-unknown/release/prediction_markets_backend.wasm",
       "package": "prediction_markets_backend",
-      "type": "rust"
+      "build": "sh scripts/build_rust_canister.sh prediction_markets_backend",
+      "declarations": {
+        "node_compatibility": true
+      },
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     },
     "internet_identity": {
       "type": "custom",

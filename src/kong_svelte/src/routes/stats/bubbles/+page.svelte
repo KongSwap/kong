@@ -314,6 +314,10 @@
   });
 </script>
 
+<svelte:head>
+  <title>Market Bubbles - KongSwap</title>
+</svelte:head>
+
 <div class="bubbles-container" bind:this={containerElement}>
   {#if loading && !tokens.length}
     <div class="loading">Loading tokens...</div>

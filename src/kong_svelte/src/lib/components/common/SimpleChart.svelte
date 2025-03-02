@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import {
     Chart,
     LineController,
@@ -25,6 +25,10 @@
 
   export let baseToken: FE.Token;
   export let quoteToken: FE.Token;
+  export let price_change_24h: number | null = null;
+  
+  // Set up event dispatcher for token info
+  const dispatch = createEventDispatcher();
 
   let canvas: HTMLCanvasElement;
   let chart: Chart;
@@ -63,7 +67,6 @@
 
   async function initChart() {
     if (!canvas || !baseToken?.token_id || !quoteToken?.token_id) {
-      console.log('Missing required tokens:', { baseToken, quoteToken });
       return;
     }
     isLoading = true;
@@ -76,73 +79,49 @@
     const startTime = now - 24 * 60 * 60;
 
     try {
-      console.log('Fetching chart data for:', {
-        base: baseToken.symbol,
-        quote: quoteToken.symbol,
-        baseId: baseToken.token_id,
-        quoteId: quoteToken.token_id
-      });
-
-      // Handle different pair cases
-      let baseId, quoteId;
+      // Determine token IDs for the API call
+      let baseId = baseToken.token_id || 1;
+      let quoteId = quoteToken.token_id || 1;
       
-      if (baseToken.symbol === "ckUSDC" || quoteToken.symbol === "ckUSDC") {
-        // ckUSDC/ckUSDT pair - ensure ckUSDC is always base
-        baseId = baseToken.symbol === "ckUSDC" ? baseToken.token_id : quoteToken.token_id;
-        quoteId = baseToken.symbol === "ckUSDT" ? baseToken.token_id : quoteToken.token_id;
-      } else if (baseToken.symbol === "ICP") {
-        // ICP/ckUSDT pair
-        baseId = 1; // ICP's fixed token_id
-        quoteId = quoteToken.token_id;
-      } else if (quoteToken.symbol === "ICP") {
-        // TOKEN/ICP pair
-        baseId = baseToken.token_id;
-        quoteId = 1; // ICP's fixed token_id
-      } else {
-        baseId = baseToken.token_id;
-        quoteId = quoteToken.token_id;
-      }
-
-      // Ensure we have valid IDs before fetching
-      if (!baseId || !quoteId) {
-        console.error('Invalid token IDs:', { baseId, quoteId, baseToken, quoteToken });
-        isLoading = false;
-        return;
+      // Special case for ICP token
+      if (baseToken.symbol === "ICP") {
+        baseId = baseToken.token_id || 1;
+        // Let quote token know we're using it
+        dispatch('quoteTokenUsed', quoteToken);
       }
 
       const candleData = await fetchChartData(
-        baseId,
         quoteId,
+        baseId,
         startTime,
         now,
         "15"
       ) as CandleData[];
 
-      console.log('Received candle data:', {
-        length: candleData.length,
-        first: candleData[0],
-        last: candleData[candleData.length - 1]
-      });
-
       if (candleData.length === 0) {
-        console.log('No candle data received');
+        const noDataElement = document.createElement('div');
+        noDataElement.className = 'no-data-message';
+        noDataElement.textContent = 'No chart data available';
+        canvas.parentNode?.appendChild(noDataElement);
         isLoading = false;
         return;
       }
 
-      const firstPrice = parseFloat(candleData[0].close_price as string);
-      data = candleData.map(candle => ({
-        x: new Date(candle.candle_start * 1000),
+      // Sort candleData in chronological order (oldest to newest)
+      const sortedCandleData = [...candleData].sort((a, b) => a.candle_start - b.candle_start);
+      
+      const firstPrice = parseFloat(sortedCandleData[0].close_price as string);
+      const lastPrice = parseFloat(sortedCandleData[sortedCandleData.length - 1].close_price as string);
+      currentPrice = lastPrice.toString();
+      priceChange = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : null;
+      
+      // Use the raw price data without inversion
+      data = sortedCandleData.map(candle => ({
+        x: new Date(candle.candle_start),
         y: parseFloat(candle.close_price as string)
       }));
 
-      console.log('Processed data:', {
-        length: data.length,
-        first: data[0],
-        last: data[data.length - 1]
-      });
-
-      const chartColor = getChartColor(priceChange);
+      const chartColor = getChartColor(price_change_24h);
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
       gradient.addColorStop(0, `${chartColor}33`); // 20% opacity
       gradient.addColorStop(1, `${chartColor}00`); // 0% opacity
@@ -151,7 +130,7 @@
         type: 'line',
         data: {
           datasets: [{
-            data,
+            data: data.map(d => ({ x: d.x.getTime(), y: d.y })),
             borderColor: chartColor,
             borderWidth: 1.5,
             tension: 0.4,
@@ -247,7 +226,6 @@
       });
     } catch (error) {
       console.error('Chart initialization failed:', error);
-      isLoading = false;
     } finally {
       isLoading = false;
     }
@@ -260,6 +238,11 @@
   onDestroy(() => {
     if (chart) {
       chart.destroy();
+    }
+    // Clean up any no-data-message elements
+    const noDataElement = canvas?.parentNode?.querySelector('.no-data-message');
+    if (noDataElement) {
+      noDataElement.remove();
     }
   });
 </script>
@@ -275,7 +258,7 @@
   <canvas bind:this={canvas}></canvas>
 </div>
 
-<style scoped>
+<style lang="postcss" scoped>
   .chart-container {
     width: 100%;
     height: 100%;
@@ -323,5 +306,20 @@
       stroke-dasharray: 90, 150;
       stroke-dashoffset: -124;
     }
+  }
+
+  .no-data-message {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: theme(colors.kong.text-secondary);
+    background: theme(colors.kong.bg-dark);
+    z-index: 5;
   }
 </style> 

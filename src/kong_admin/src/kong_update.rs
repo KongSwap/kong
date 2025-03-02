@@ -1,6 +1,7 @@
 use anyhow::Result;
 
 pub trait KongUpdate {
+    #[allow(dead_code)]
     async fn update_kong_settings(&self, kong_settings: &str) -> Result<String>;
     async fn update_users(&self, users: &str) -> Result<String>;
     async fn update_tokens(&self, tokens: &str) -> Result<String>;

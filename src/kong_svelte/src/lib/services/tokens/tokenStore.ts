@@ -1,11 +1,7 @@
 // src/kong_svelte/src/lib/services/tokens/tokenStore.ts
-import { readable, derived, writable } from "svelte/store";
-import { liveQuery } from "dexie";
-import { kongDB } from "$lib/services/db";
-import { browser } from "$app/environment";
+import { derived, writable, get } from "svelte/store";
 import { TokenService } from "./TokenService";
 import BigNumber from "bignumber.js";
-import { get } from "svelte/store";
 import { auth } from "$lib/services/auth";
 import type { TokenState } from "./types";
 import { userTokens } from "$lib/stores/userTokens";
@@ -55,14 +51,11 @@ export const getStoredBalances = async (walletId: string) => {
   }
 
   try {
-    const storedBalances = await kongDB.token_balances
-      .where("wallet_id")
-      .equals(walletId)
-      .toArray();
+    const storedBalances = get(currentUserBalancesStore);
 
-    return storedBalances.reduce(
-      (acc, balance) => {
-        acc[balance.canister_id] = {
+    return Object.entries(storedBalances).reduce(
+      (acc, [canisterId, balance]: [string, TokenBalance]) => {
+        acc[canisterId] = {
           in_tokens: balance.in_tokens,
           in_usd: balance.in_usd,
         };
@@ -77,18 +70,26 @@ export const getStoredBalances = async (walletId: string) => {
 };
 
 // Create a store for balances
-export const storedBalancesStore = writable({});
+export const currentUserBalancesStore = writable({});
 
 // Update it whenever needed
 export const updateStoredBalances = async (walletId: string) => {
   const balances = await getStoredBalances(walletId);
-  storedBalancesStore.set(balances);
+  currentUserBalancesStore.set(balances);
 };
+
+// Create a store to track when updates are in progress
+export const isUpdatingPortfolio = writable(false);
 
 // Update the portfolioValue derived store
 export const portfolioValue = derived(
-  [userTokens, userPoolListStore, storedBalancesStore],
-  ([$userTokens, $userPoolListStore, $storedBalances]) => {
+  [userTokens, userPoolListStore, currentUserBalancesStore, isUpdatingPortfolio],
+  ([$userTokens, $userPoolListStore, $storedBalances, $isUpdating], set) => {
+    // If we're in the middle of updating, don't update the value
+    if ($isUpdating) {
+      return; // Keep the previous value
+    }
+    
     // Calculate token values
     const tokenValue = ($userTokens.tokens || []).reduce((acc, token) => {
       const balance = $storedBalances[token.canister_id]?.in_usd;
@@ -98,19 +99,20 @@ export const portfolioValue = derived(
       return acc;
     }, 0);
 
-    // Calculate pool values
-    const poolValue = ($userPoolListStore.filteredPools || []).reduce((acc, pool) => {
-      const value = Number(pool.usd_balance) || 0;
+    // Calculate pool values using processedPools, ensuring the array exists
+    const poolValue = ($userPoolListStore.processedPools || []).reduce((acc, pool) => {
+      const value = pool && pool.usd_balance ? Number(pool.usd_balance) : 0;
       return acc + value;
     }, 0);
 
     // Combine values and format
     const totalValue = tokenValue + poolValue;
-    return totalValue.toLocaleString("en-US", {
+    set(totalValue.toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    });
+    }));
   },
+  "0.00" // Default value
 );
 
 export const loadBalances = async (
@@ -159,10 +161,8 @@ export const loadBalances = async (
       }));
 
     if (entries.length > 0) {
-      await kongDB.token_balances.bulkPut(entries);
-      
       // Update the store only if we have valid balances
-      const newBalances = { ...get(storedBalancesStore) };
+      const newBalances = { ...get(currentUserBalancesStore) };
       entries.forEach(entry => {
         newBalances[entry.canister_id] = {
           in_tokens: entry.in_tokens,
@@ -170,7 +170,7 @@ export const loadBalances = async (
         };
       });
       
-      storedBalancesStore.set(newBalances);
+      currentUserBalancesStore.set(newBalances);
     }
 
     return balances;
@@ -204,7 +204,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
 
     // Check database first if not forcing refresh
     if (!forceRefresh) {
-      const existingBalance = get(storedBalancesStore)[canisterId];
+      const existingBalance = get(currentUserBalancesStore)[canisterId];
 
       if (existingBalance) {
         const balance = {
@@ -214,7 +214,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
           },
         };
 
-        // Update storedBalancesStore
+        // Update currentUserBalancesStore
         await updateStoredBalances(owner);
 
         tokenStore.removePendingRequest(canisterId);
@@ -229,15 +229,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
     );
 
     if (balances[canisterId]) {
-      await kongDB.token_balances.put({
-        wallet_id: owner,
-        canister_id: canisterId,
-        in_tokens: balances[canisterId].in_tokens,
-        in_usd: balances[canisterId].in_usd,
-        timestamp: Date.now(),
-      });
-
-      // Update storedBalancesStore
+      // Update currentUserBalancesStore
       await updateStoredBalances(owner);
     }
 

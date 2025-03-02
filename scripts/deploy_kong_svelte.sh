@@ -15,16 +15,13 @@ npm i
 if [ $1 == "ic" ]; then
     bash create_canister_id.sh ic
     CANISTER_ID=$(jq -r ".[\"kong_svelte\"][\"ic\"]" "${root_dir}"/canister_ids.all.json)
-    create_static_files "ic" "${CANISTER_ID}"
     dfx build kong_svelte --network ic
 elif [ $1 == "staging" ]; then
     bash create_canister_id.sh staging
     CANISTER_ID=$(jq -r ".[\"kong_svelte\"][\"staging\"]" "${root_dir}"/canister_ids.all.json)
-    create_static_files "staging" "${CANISTER_ID}"
     dfx deploy kong_svelte --network staging
 elif [ $1 == "local" ]; then
     CANISTER_ID=$(jq -r ".[\"kong_svelte\"][\"local\"]" "${root_dir}"/canister_ids.all.json)
     echo "CANISTER_ID: ${CANISTER_ID}"
-    create_static_files "local" "${CANISTER_ID}"
     dfx deploy kong_svelte --specified-id "${CANISTER_ID}"
 fi

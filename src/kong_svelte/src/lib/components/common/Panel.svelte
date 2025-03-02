@@ -11,24 +11,53 @@
   export let zIndex: number = 10;
   export let roundedBorders: boolean = true;
   export let unpadded: boolean = false;
+  export let animated: boolean = false;
   
   // Transition props
   export let transition: 'fade' | 'slide' | null = null;
   export let transitionParams: TransitionConfig = {};
+
+  // Default transition parameters
+  const defaultSlideParams = { duration: 300, delay: 200, axis: 'x' };
+  const defaultFadeParams = { duration: 200 };
+
+  $: params = {
+    ...(transition === 'slide' ? defaultSlideParams : defaultFadeParams),
+    ...transitionParams
+  };
 </script>
 
-<div 
-  class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'}"
-  style="width: {width}; height: {height}; z-index: {zIndex};"
-  in:slide={{ duration: 300, delay: 200, axis: 'x', ...transitionParams }}
-  out:fade={{ duration: 200 }}
->
-  <slot>{content}</slot>
-</div>
+{#if transition === 'slide'}
+  <div 
+    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'} {animated ? 'animated' : ''}"
+    style="width: {width}; height: {height}; z-index: {zIndex};"
+    transition:slide={params}
+  >
+    <slot>{content}</slot>
+  </div>
+{:else if transition === 'fade'}
+  <div 
+    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'} {animated ? 'animated' : ''}"
+    style="width: {width}; height: {height}; z-index: {zIndex};"
+    transition:fade={params}
+  >
+    <slot>{content}</slot>
+  </div>
+{:else}
+  <div 
+    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'} {animated ? 'animated' : ''}"
+    style="width: {width}; height: {height}; z-index: {zIndex};"
+  >
+    <slot>{content}</slot>
+  </div>
+{/if}
 
 <style lang="postcss">
 .panel {
   @apply relative text-kong-text-primary flex flex-col min-h-0;
+}
+
+.panel.animated {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

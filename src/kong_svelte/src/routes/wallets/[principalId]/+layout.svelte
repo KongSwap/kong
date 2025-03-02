@@ -1,0 +1,147 @@
+<script lang="ts">
+  import { page } from "$app/state";
+  import SideNav from "./SideNav.svelte";
+  import ValueOverview from "./ValueOverview.svelte";
+  import { WalletDataService, walletDataStore } from "$lib/services/wallet";
+  import Panel from "$lib/components/common/Panel.svelte";
+  import { Copy, CheckCircle } from "lucide-svelte";
+
+  let { children } = $props<{ children: any }>();
+
+  // Track initialization state
+  let isLoading = $derived($walletDataStore.isLoading);
+  let error = $state<string | null>(null);
+  let showCopiedIndicator = $state(false);
+  
+  // Get principal from the URL params
+  let principal = $derived(page.params.principalId);
+
+  // Single function to load wallet data
+  async function loadWalletData() {
+    try {
+      // Update local error state
+      error = null;
+      
+      // Skip if no principal or anonymous
+      if (!principal || principal === "anonymous") {
+        throw new Error("No wallet connected");
+      }
+      
+      console.log('Loading wallet data for:', principal);
+      
+      // This will handle loading state internally in the store
+      await WalletDataService.initializeWallet(principal);
+    } catch (err) {
+      console.error("Failed to load wallet data:", err);
+      error = err instanceof Error ? err.message : "Failed to load wallet data";
+    }
+  }
+
+  // Monitor wallet data changes
+  $effect(() => {
+    const walletData = $walletDataStore;
+    console.log('Wallet data updated for', walletData.currentWallet, ':', 
+      'tokens:', walletData.tokens?.length || 0, 
+      'balances:', Object.keys(walletData.balances || {}).length);
+    
+    // Update local error state
+    if (walletData.error) {
+      error = walletData.error;
+    }
+  });
+
+  // Load data when principalId changes
+  $effect(() => {
+    if (principal) {
+      // Check if we need to load data
+      const currentWallet = $walletDataStore.currentWallet;
+      const hasBalances = Object.keys($walletDataStore.balances || {}).length > 0;
+      const isCurrentlyLoading = $walletDataStore.isLoading;
+      
+      // Always load data if the principal changed or we don't have balances
+      // But avoid reloading if we're already loading for this principal
+      if ((currentWallet !== principal || !hasBalances) && 
+          !(isCurrentlyLoading && currentWallet === principal)) {
+        console.log('Loading wallet data due to principal change or missing balances');
+        loadWalletData();
+      } else {
+        console.log(`Wallet data already loaded for ${principal}`);
+      }
+    } else {
+      // Reset wallet data if no principal
+      WalletDataService.reset();
+    }
+  });
+
+  // Format short address for display
+  function formatShortAddress(address: string): string {
+    if (address.length > 15) {
+      return `${address.substring(0, 8)}...${address.substring(address.length - 6)}`;
+    }
+    return address;
+  }
+
+  // Copy principal ID to clipboard with visual feedback
+  function copyPrincipalToClipboard() {
+    if (principal) {
+      navigator.clipboard.writeText(principal);
+      showCopiedIndicator = true;
+      setTimeout(() => {
+        showCopiedIndicator = false;
+      }, 2000);
+    }
+  }
+
+</script>
+
+<svelte:head>
+  <title>Wallet data for {principal} - KongSwap</title>
+</svelte:head>
+
+<div class="container mx-auto max-w-[1300px] text-kong-text-primary my-4">
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Navigation Column -->
+    <div class="space-y-6">
+      <ValueOverview {principal} {isLoading} {error} />
+      
+      <!-- Principal ID Panel with Copy Button -->
+      <Panel>
+        <div class="flex flex-col gap-3">
+          <h3 class="text-sm uppercase font-medium text-kong-text-primary">Wallet ID</h3>
+          
+          <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-kong-bg-dark/30">
+            <div class="text-sm font-mono text-kong-text-secondary truncate">
+              {formatShortAddress(principal || '')}
+            </div>
+            
+            <button 
+              class="p-1.5 rounded-md hover:bg-kong-bg-dark/80 transition-colors text-kong-text-secondary hover:text-kong-primary flex items-center"
+              on:click={copyPrincipalToClipboard}
+              title="Copy principal ID to clipboard"
+              disabled={!principal}
+            >
+              {#if showCopiedIndicator}
+                <CheckCircle size={16} class="text-green-500" />
+              {:else}
+                <Copy size={16} />
+              {/if}
+            </button>
+          </div>
+          
+          {#if showCopiedIndicator}
+            <div class="text-xs text-center text-kong-text-accent-green">
+              Copied to clipboard!
+            </div>
+          {/if}
+        </div>
+      </Panel>
+      
+      <SideNav {principal} />
+    </div>
+    <!-- Content Area -->
+    <div class="lg:col-span-3 space-y-6">
+      <!-- Pass isLoading and error to child components via slot props -->
+      {@render children?.({initialDataLoading: isLoading, initError: error})}
+    </div>
+  </div>
+</div>

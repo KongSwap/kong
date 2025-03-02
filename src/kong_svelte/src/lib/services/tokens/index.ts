@@ -5,7 +5,7 @@ export type * from './types';
 export {
   tokenStore,
   portfolioValue,
-  storedBalancesStore,
+  currentUserBalancesStore,
   loadBalances,
   loadBalance,
   getTokenDecimals,

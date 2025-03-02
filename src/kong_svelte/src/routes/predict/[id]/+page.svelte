@@ -24,10 +24,8 @@
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import MarketStatCard from "./MarketStatCard.svelte";
-  import BetInput from "./BetInput.svelte";
-  import BetSummary from "./BetSummary.svelte";
   import OutcomeProgressBar from "./OutcomeProgressBar.svelte";
-  import RecentBets from "$lib/components/predict/RecentBets.svelte";
+  import RecentBets from "../RecentBets.svelte";
   import { slide, fade, crossfade } from "svelte/transition";
   import BetModal from "../BetModal.svelte";
     import { toastStore } from "$lib/stores/toastStore";
@@ -213,6 +211,11 @@
   $: betCounts = market?.bet_counts?.map(Number) || [];
   $: betCountPercentages = market?.bet_count_percentages || [];
   $: outcomePercentages = market?.outcome_percentages || [];
+  $: isMarketClosed = market?.status?.Closed !== undefined;
+  $: winningOutcomes = isMarketClosed ? market.status.Closed : [];
+  $: isMarketResolved = isMarketClosed;
+  $: marketEndTime = market?.end_time ? Number(market.end_time) / 1_000_000 : null;
+  $: isPendingResolution = !isMarketResolved && marketEndTime && marketEndTime < Date.now();
 </script>
 
 <div class="min-h-screen text-kong-text-primary px-2 sm:px-4">
@@ -272,11 +275,31 @@
                     class="text-kong-text-accent-green sm:w-6 sm:h-6"
                   />
                 </div>
-                <h1
-                  class="text-xl sm:text-2xl lg:text-2xl font-bold text-kong-text-primary leading-tight"
-                >
-                  {market.question}
-                </h1>
+                <div class="flex-1">
+                  <h1
+                    class="text-xl sm:text-2xl lg:text-2xl font-bold text-kong-text-primary leading-tight"
+                  >
+                    {market.question}
+                  </h1>
+                  {#if isMarketResolved || isPendingResolution}
+                    <div class="flex items-center gap-2 mt-1">
+                      {#if isMarketClosed}
+                        <span class="px-2 py-0.5 bg-kong-accent-green/20 text-kong-text-accent-green text-xs rounded-full">
+                          Resolved
+                        </span>
+                        {#if market.resolved_by}
+                          <span class="text-xs text-kong-text-secondary">
+                            by {market.resolved_by[0].toString().slice(0, 8)}...
+                          </span>
+                        {/if}
+                      {:else if isPendingResolution}
+                        <span class="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded-full">
+                          Pending Resolution
+                        </span>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
               </div>
             </div>
             <div class="flex flex-col gap-3 sm:gap-4">
@@ -386,8 +409,13 @@
                       class="flex items-center justify-between p-2 sm:p-3 rounded transition-colors"
                     >
                       <div class="flex-1 min-w-0">
-                        <div class="font-medium text-sm sm:text-base truncate">
+                        <div class="font-medium text-sm sm:text-base truncate flex items-center gap-2">
                           {outcome}
+                          {#if isMarketClosed && winningOutcomes.some(w => Number(w) === i)}
+                            <span class="text-xs px-1.5 py-0.5 bg-kong-accent-green/20 text-kong-text-accent-green rounded">
+                              Winner
+                            </span>
+                          {/if}
                         </div>
                         <div
                           class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-kong-pm-text-secondary"
@@ -420,16 +448,30 @@
                         />
                       </div>
                       <div class="ml-2 sm:ml-4">
-                        <button
-                          aria-label={`Place bet for ${outcome}`}
-                          class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-accent-green hover:bg-kong-accent-green-hover text-white rounded-md font-bold shadow-sm hover:shadow-md transition-shadow text-sm sm:text-base"
-                          on:click={() => {
-                            selectedOutcome = i;
-                            showBetModal = true;
-                          }}
-                        >
-                          Bet
-                        </button>
+                        {#if !isMarketResolved && !isPendingResolution}
+                          <button
+                            aria-label={`Place bet for ${outcome}`}
+                            class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-accent-green hover:bg-kong-accent-green-hover text-white rounded-md font-bold shadow-sm hover:shadow-md transition-shadow text-sm sm:text-base"
+                            on:click={() => {
+                              selectedOutcome = i;
+                              showBetModal = true;
+                            }}
+                          >
+                            Bet
+                          </button>
+                        {:else if isMarketClosed && winningOutcomes.some(w => Number(w) === i)}
+                          <div class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-accent-green/20 text-kong-text-accent-green rounded-md text-sm sm:text-base font-medium">
+                            Winner
+                          </div>
+                        {:else if isPendingResolution}
+                          <div class="text-sm text-yellow-500">
+                            Pending
+                          </div>
+                        {:else}
+                          <div class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-bg-dark/50 text-kong-text-secondary rounded-md text-sm sm:text-base">
+                            Lost
+                          </div>
+                        {/if}
                       </div>
                     </div>
                   </div>
@@ -455,7 +497,7 @@
               <MarketStatCard
                 icon={Clock}
                 label="Time Left"
-                value={timeLeft || formatTimeLeft(market.end_time)}
+                value={isMarketResolved ? 'Market Closed' : (timeLeft || formatTimeLeft(market.end_time))}
               />
 
               <MarketStatCard

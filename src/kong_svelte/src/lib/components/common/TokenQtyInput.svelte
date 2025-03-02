@@ -3,7 +3,7 @@
 <script lang="ts">
 	import { livePools } from '$lib/services/pools/poolStore';
 	import { formatToNonZeroDecimal, formatBalance } from '$lib/utils/numberFormatUtils';
-	import { storedBalancesStore } from '$lib/services/tokens/tokenStore';
+	import { currentUserBalancesStore } from '$lib/services/tokens/tokenStore';
 	import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
 	import BigNumber from 'bignumber.js';
 	import { createEventDispatcher } from 'svelte';
@@ -21,7 +21,7 @@
 	let { value = $bindable(0), token, error, disabled = false, placeholder = 'Enter amount', onTokenSelect = null, onInput = null }: TokenQtyInputProps = $props();
 
 	// Use reactive statements to compute derived values
-	let rawBalance = $derived($storedBalancesStore[token.canister_id]?.in_tokens || 0n);
+	let rawBalance = $derived($currentUserBalancesStore[token.canister_id]?.in_tokens || 0n);
 	let pool = $derived($livePools.find(p => p.address_0 === token.canister_id && p.address_1 === CKUSDT_CANISTER_ID));
 	let poolPrice = $derived(pool?.price ? parseFloat(pool.price.toString()) : 0);
 	let usdValue = $derived(formatToNonZeroDecimal(parseFloat(value.toString()) * poolPrice));

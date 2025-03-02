@@ -87,6 +87,7 @@ CORE_CANISTERS_SCRIPTS=(
     "deploy_kong_svelte.sh"
     "deploy_prediction_markets.sh"
     "deploy_event_store.sh"
+    "deploy_trollbox.sh"
 )
 
 for script in "${CORE_CANISTERS_SCRIPTS[@]}"; do

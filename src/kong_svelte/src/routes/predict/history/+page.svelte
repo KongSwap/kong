@@ -6,7 +6,7 @@
   import { ArrowLeft, TrendingUp, Wallet, Award, Activity, ArrowUpRight } from "lucide-svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
-  import PerformanceChart from "$lib/components/predict/PerformanceChart.svelte";
+  import PerformanceChart from "./PerformanceChart.svelte";
   import { fade } from "svelte/transition";
   let history: any = null;
   let loading = true;

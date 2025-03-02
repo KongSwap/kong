@@ -26,6 +26,7 @@ pub enum ClaimStatus {
     Claimed,
     TooManyAttempts,
     UnclaimedOverride,
+    Claimable, // claim where user needs to call claim() to get the token
 }
 
 impl std::fmt::Display for ClaimStatus {
@@ -36,6 +37,7 @@ impl std::fmt::Display for ClaimStatus {
             ClaimStatus::Claimed => write!(f, "Success"),
             ClaimStatus::TooManyAttempts => write!(f, "TooManyAttempts"),
             ClaimStatus::UnclaimedOverride => write!(f, "UnclaimedOverride"),
+            ClaimStatus::Claimable => write!(f, "Claimable"),
         }
     }
 }
@@ -49,6 +51,7 @@ pub struct StableClaim {
     pub amount: Nat,
     pub request_id: Option<u64>,     // optional to allow claims not associated with a request. ie. airdrops
     pub to_address: Option<Address>, // optional, will default to caller's principal id
+    pub desc: Option<String>,
     pub attempt_request_id: Vec<u64>,
     pub transfer_ids: Vec<u64>,
     pub ts: u64,

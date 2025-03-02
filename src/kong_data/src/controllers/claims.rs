@@ -10,13 +10,13 @@ use crate::stable_memory::CLAIM_MAP;
 
 const MAX_CLAIMS: usize = 1_000;
 
-#[query(hidden = true)]
+#[query(hidden = true, guard = "caller_is_kingkong")]
 fn max_claim_idx() -> u64 {
     CLAIM_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
 }
 
 /// serialize CLAIM_MAP for backup
-#[query(hidden = true)]
+#[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_claims(claim_id: Option<u64>, num_claims: Option<u16>) -> Result<String, String> {
     CLAIM_MAP.with(|m| {
         let map = m.borrow();

@@ -1,6 +1,6 @@
 import { writable, derived, type Readable } from 'svelte/store';
 import type { Writable } from 'svelte/store';
-import { fromTokenDecimals, storedBalancesStore } from '$lib/services/tokens/tokenStore';
+import { fromTokenDecimals, currentUserBalancesStore } from '$lib/services/tokens/tokenStore';
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
 import { KONG_LEDGER_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
@@ -22,7 +22,6 @@ export interface SwapState {
   showReceiveTokenSelector: boolean;
   showConfirmation: boolean;
   showSuccessModal: boolean;
-  showBananaRain: boolean;
   gasFees: string[];
   lpFees: string[];
   swapSlippage: number;
@@ -73,7 +72,6 @@ function createSwapStore(): SwapStore {
     showReceiveTokenSelector: false,
     showConfirmation: false,
     showSuccessModal: false,
-    showBananaRain: false,
     gasFees: [],
     lpFees: [],
     swapSlippage: 0,
@@ -91,13 +89,14 @@ function createSwapStore(): SwapStore {
   const swapStore = { subscribe };
 
   const isInputExceedingBalance = derived(
-    [storedBalancesStore, swapStore],
-    ([$storedBalancesStore, $swapState]) => {
-      if (!$swapState.payToken || !$swapState.payAmount) {
+    [currentUserBalancesStore, swapStore],
+    ([$currentUserBalancesStore, $swapState]) => {
+      // Check if currentUserBalancesStore is null or undefined
+      if (!$currentUserBalancesStore || !$swapState.payToken || !$swapState.payAmount) {
         return false;
       }
       
-      const balance = $storedBalancesStore[$swapState.payToken.canister_id] || BigInt(0);
+      const balance = $currentUserBalancesStore[$swapState.payToken.canister_id] || BigInt(0);
       const payAmountBN = new BigNumber($swapState.payAmount);
       const payAmountInTokens = fromTokenDecimals(payAmountBN, $swapState.payToken.decimals);
       return Number(payAmountInTokens) > Number(balance);

@@ -31,7 +31,7 @@
     }
   }
 
-  onMount(async () => {
+  onMount(() => {
     // Add debug logging for tokens
     const unsubscribe = tokensStore.subscribe(tokens => {
         console.log('TokensStore updated:', tokens.length);
@@ -48,8 +48,10 @@
 
     if (listContainer) {
         resizeObserver.observe(listContainer);
-        await loadTokens(); // Make sure tokens are loaded
-        loadTransactions(false);
+        // Load tokens and transactions without awaiting
+        loadTokens().then(() => {
+            loadTransactions(false);
+        });
     }
 
     return () => {
@@ -68,8 +70,6 @@
   let loadingMore = false;
   let observer: IntersectionObserver;
   let loadMoreTrigger: HTMLDivElement;
-  let containerHeight: number;
-  let scrollY: number = 0;
   let listContainer: HTMLDivElement;
 
   // Constants for virtual scrolling
@@ -77,11 +77,12 @@
   const BUFFER_SIZE = 5; // Number of items to render above/below viewport
   const PAGE_SIZE = 25;
 
-  type FilterType = 'swap' | 'pool';
+  type FilterType = 'swap' | 'pool' | 'send';
   let selectedFilter: FilterType = "swap";
   const filterOptions = [
     { id: "swap" as const, label: "Swap" },
     { id: "pool" as const, label: "Pool" },
+    { id: "send" as const, label: "Send" },
   ];
 
   // Create stores for better state management

@@ -1,0 +1,27 @@
+[package]
+name = "trollbox"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+candid = "0.10"
+ic-cdk = "0.17.1"
+ic-cdk-macros = "0.17.1"
+ic-stable-structures = "0.6.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ciborium = "0.2.0"  # CBOR serialization
+num-traits = "0.2"
+num-bigint = "0.4"
+lazy_static = "1.4"
+strum = { version = "0.27.0", features = ["derive"] }
+strum_macros = "0.27.0"
+chrono = { version = "0.4.39", default-features = false, features = ["alloc", "std"] }
+icrc-ledger-types = "0.1.8"
+regex = "1.10.6"
+rustrict = "0.7.33"

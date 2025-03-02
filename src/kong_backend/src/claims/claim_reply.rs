@@ -14,6 +14,7 @@ pub struct ClaimReply {
     pub amount: Nat,
     pub fee: Nat,
     pub to_address: String,
+    pub desc: String,
     pub transfer_ids: Vec<TransferIdReply>,
     pub ts: u64,
 }

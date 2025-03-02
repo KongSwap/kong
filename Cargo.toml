@@ -9,6 +9,7 @@ members = [
     "src/prediction_markets_backend",
     "src/miner",
     "src/token_backend",
+    "src/trollbox",
 ]
 resolver = "2"
 

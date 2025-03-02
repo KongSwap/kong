@@ -208,7 +208,7 @@
 
       <div
         bind:this={modalElement}
-        class="relative will-change-transform max-w-full px-1 max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
+        class="relative will-change-transform max-w-full {isPadded ? 'px-4' : ''} max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
         style="width: {modalWidth}; z-index: {zIndex + 1};"
         on:mousedown={handleDragStart}
         on:mousemove={handleDragMove}
@@ -223,7 +223,7 @@
           {variant}
           width="100%"
           height="100%"
-          className="!py-0 flex flex-col overflow-hidden {className}"
+          className="flex flex-col overflow-hidden {className}"
         >
           <div
             class="flex flex-col overflow-hidden modal-content"

@@ -30,6 +30,8 @@ interface ProcessedPool {
   searchableText: string;
   token0?: FE.Token;
   token1?: FE.Token;
+  rolling_24h_apy?: number;
+  rolling_24h_volume?: string;
 }
 
 const initialState: PoolListState = {
@@ -93,6 +95,9 @@ function createUserPoolListStore() {
           
           // Fetch tokens and update again
           await fetchTokensForPools(poolsWithIds);
+          
+          // Make sure filteredPools is updated
+          userPoolListStore.updateFilteredPools();
         }
       } catch (error) {
         handleError("Failed to load user pools", error);

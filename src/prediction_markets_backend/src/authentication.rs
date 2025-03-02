@@ -283,7 +283,7 @@ pub struct Icrc28TrustedOriginsResponse {
 }
 
 // list every base URL that users will authenticate to your app from
-#[update]
+#[query]
 fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
     let trusted_origins = vec![
         format!("https://edoy4-liaaa-aaaar-qakha-cai.localhost:5173"), // svelte FE

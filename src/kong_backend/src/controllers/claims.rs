@@ -52,18 +52,20 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn clear_claims() -> Result<String, String> {
-    CLAIM_MAP.with(|m| {
-        m.borrow_mut().clear_new();
-    });
-    Ok("Claims cleared".to_string())
+fn insert_claims(stable_claims: String) -> Result<String, String> {
+    let claims: Vec<StableClaim> = match serde_json::from_str(&stable_claims) {
+        Ok(claims) => claims,
+        Err(e) => return Err(format!("Invalid claims: {}", e)),
+    };
+
+    for claim in claims {
+        let claim_id = claim_map::insert(&claim);
+        let _ = claim_map::archive_to_kong_data(claim_id);
+    }
+
+    Ok("Claims inserted".to_string())
 }
 
-// "unclaimed"
-// "claiming"
-// "claimed"
-// "too_many_attempts"
-// "unclaimed_override"
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> {
     let status = match status.as_str() {
@@ -72,11 +74,13 @@ fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> 
         "claimed" => ClaimStatus::Claimed,
         "too_many_attempts" => ClaimStatus::TooManyAttempts,
         "unclaimed_override" => ClaimStatus::UnclaimedOverride,
+        "claimable" => ClaimStatus::Claimable,
         _ => return Err("Invalid status".to_string()),
     };
 
     claim_map::update_status(claim_id, status).ok_or("Claim not found")?;
 
     let _ = claim_map::archive_to_kong_data(claim_id);
-    Ok("Claim status changed".to_string())
+
+    Ok(format!("Claim #{} status changed", claim_id))
 }

@@ -2,6 +2,8 @@
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { handleFormattedNumberInput } from "$lib/utils/formUtils";
   import Panel from "$lib/components/common/Panel.svelte";
+  import { BigNumber } from "bignumber.js";
+  import { toastStore } from "$lib/stores/toastStore";
 
   export let token0: FE.Token | null;
   export let token1: FE.Token | null;
@@ -11,6 +13,7 @@
   export let token1Balance: string;
   export let onAmountChange: (index: 0 | 1, value: string) => void;
   export let onPercentageClick: (percentage: number) => void;
+  export let onToken1PercentageClick: (percentage: number) => void;
 
   let input0Element: HTMLInputElement;
   let input1Element: HTMLInputElement;
@@ -42,6 +45,35 @@
         result.newCursorPosition,
       );
     });
+  }
+
+  // Handle percentage clicks for token1
+  function handleToken1PercentageClick(percentage: number) {
+    if (!token1 || !token1Balance) return;
+
+    try {
+      const balance = new BigNumber(token1Balance).div(
+        new BigNumber(10).pow(token1.decimals),
+      );
+      if (!balance.isFinite() || balance.isLessThanOrEqualTo(0)) return;
+
+      // If it's 100% (MAX), subtract both the token fee and transaction fee
+      const adjustedBalance =
+        percentage === 100
+          ? balance.minus(new BigNumber(token1.fee * 2))
+          : balance.times(percentage).div(100);
+
+      // Format to avoid excessive decimals (use token's decimal places)
+      onAmountChange(
+        1,
+        adjustedBalance.gt(0)
+          ? adjustedBalance.toFormat(token1.decimals, BigNumber.ROUND_DOWN)
+          : "0",
+      );
+    } catch (error) {
+      console.error("Error calculating percentage amount:", error);
+      toastStore.error("Failed to calculate amount");
+    }
   }
 
   // Update these reactive statements to also update the input values directly
@@ -119,6 +151,7 @@
             class="amount-input"
             value={displayValue1}
             on:input={(e) => handleFormattedInput(1, e)}
+            disabled={!token1}
           />
         </div>
       </div>
@@ -127,6 +160,19 @@
           Available: {token1 ? formatBalance(token1Balance, token1.decimals) : "0.00"}
           {token1?.symbol || ""}
         </span>
+        <div class="percentage-buttons">
+          {#if token1 && parseFloat(token1Balance) > 0}
+            <button on:click={() => onToken1PercentageClick(25)}>25%</button>
+            <button on:click={() => onToken1PercentageClick(50)}>50%</button>
+            <button on:click={() => onToken1PercentageClick(75)}>75%</button>
+            <button on:click={() => onToken1PercentageClick(100)}>MAX</button>
+          {:else}
+            <button disabled>25%</button>
+            <button disabled>50%</button>
+            <button disabled>75%</button>
+            <button disabled>MAX</button>
+          {/if}
+        </div>
       </div>
     </div>
   </div>

@@ -23,7 +23,7 @@
     const datasets = outcomes.map((outcome: string, index: number) => ({
       label: outcome,
       data: [{
-        x: new Date(marketBets[0].timestamp), // Start at the time of the first bet
+        x: new Date(Number(marketBets[0].timestamp) / 1e6), // Convert BigInt timestamp to milliseconds
         y: 50 // Start at 50%
       }] as { x: Date, y: number }[],
       borderColor: index === 0 ? '#22c55e' : '#6366f1',
@@ -36,11 +36,19 @@
 
     // New cumulative calculation using grouping by 1-minute intervals
     const intervalMs = 60 * 1000; // 1 minute intervals
-    const sortedBets = [...marketBets].sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+    const sortedBets = [...marketBets].sort((a, b) => {
+      const aTime = Number(a.timestamp);
+      const bTime = Number(b.timestamp);
+      return aTime - bTime;
+    });
     const minTimeMs = Math.floor(Number(sortedBets[0].timestamp) / 1e6);
     const maxTimeMs = Math.ceil(Number(sortedBets[sortedBets.length - 1].timestamp) / 1e6);
+    const marketEndTimeMs = Number(market.end_time) / 1e6;
     const startTime = Math.floor(minTimeMs / intervalMs) * intervalMs;
-    const endTime = Math.ceil(maxTimeMs / intervalMs) * intervalMs;
+    const endTime = Math.min(
+      Math.ceil(maxTimeMs / intervalMs) * intervalMs,
+      Math.ceil(marketEndTimeMs / intervalMs) * intervalMs
+    );
 
     // Create buckets for each 1-minute interval
     const buckets = new Map<number, number[]>();
@@ -52,9 +60,11 @@
     for (const bet of sortedBets) {
       const betTimeMs = Number(bet.timestamp) / 1e6;
       const bucketTime = Math.floor(betTimeMs / intervalMs) * intervalMs;
-      const arr = buckets.get(bucketTime);
-      if (arr) {
-        arr[Number(bet.outcome_index)] += Number(bet.amount);
+      if (bucketTime <= endTime) {  // Only include bets up to end time
+        const arr = buckets.get(bucketTime);
+        if (arr) {
+          arr[Number(bet.outcome_index)] += Number(bet.amount);
+        }
       }
     }
 
@@ -80,12 +90,12 @@
       }
     }
 
-    // Add a final data point at the current time if needed
-    const now = new Date();
-    if (datasets[0].data[datasets[0].data.length - 1].x.getTime() < now.getTime()) {
+    // Add final point at market end time with latest cumulative amount
+    const lastBucketTime = sortedBuckets[sortedBuckets.length - 1]?.[0] || startTime;
+    if (lastBucketTime < marketEndTimeMs) {
       for (let i = 0; i < numOutcomes; i++) {
         const lastPoint = datasets[i].data[datasets[i].data.length - 1];
-        datasets[i].data.push({ x: now, y: lastPoint.y });
+        datasets[i].data.push({ x: new Date(marketEndTimeMs), y: lastPoint.y });
       }
     }
 

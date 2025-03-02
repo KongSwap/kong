@@ -6,8 +6,9 @@
   import { fade } from "svelte/transition";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { onMount } from "svelte";
-  import { fetchTokens, fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens";
   import { tweened } from 'svelte/motion';
+  import { startPolling, stopPolling } from "$lib/utils/pollingService";
 
   let hoveredToken: FE.Token | null = null;
   let hoverTimeout: NodeJS.Timeout;
@@ -19,11 +20,12 @@
     { class: string; timeout: NodeJS.Timeout }
   >();
   let isVisible = true;
-  let pollInterval: NodeJS.Timeout;
   let quoteToken: FE.Token | null = null;
   let tickerTokens: FE.Token[] = [];
   let icpToken: FE.Token | null = null;
   let ckUSDCToken: FE.Token | null = null;
+  // Track which quote token is actually being used for the chart
+  let actualQuoteToken: 'ckUSDT' | 'ICP' = 'ckUSDT';
 
   // Track previous prices to detect changes using a more efficient structure
   let previousPrices = new Map<string, number>();
@@ -198,29 +200,28 @@
     // Initial fetch
     fetchTickerData();
 
-    // Set up polling with a longer interval to prevent frequent jerks
-    pollInterval = setInterval(() => {
-      if (isVisible && !isChartHovered && !isTickerHovered) {
-        const prevTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
-        fetchTickerData().then(() => {
-          const newTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
-          if (prevTokens === newTokens) {
-            // If tokens didn't change, only update prices
-            tickerTokens = tickerTokens.map(t => ({...t})); // Shallow clone to trigger update
-          }
-        });
-      }
-    }, 14000);
+    startPolling(
+      "tickerData",
+      () => {
+        if (isVisible && !isChartHovered && !isTickerHovered) {
+          const prevTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
+          fetchTickerData().then(() => {
+            const newTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
+            if (prevTokens === newTokens) {
+              tickerTokens = tickerTokens.map(t => ({ ...t }));
+            }
+          });
+        }
+      },
+      14000
+    );
 
     // Cleanup function
     return () => {
       if (observer) {
         observer.disconnect();
       }
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-      // Clear all timeouts
+      stopPolling("tickerData");
       priceFlashStates.forEach((state) => {
         clearTimeout(state.timeout);
       });
@@ -378,7 +379,7 @@
         {:else if hoveredToken.symbol === "ckUSDC"}
           ckUSDC/ckUSDT
         {:else}
-          {hoveredToken.symbol}/ICP
+          {hoveredToken.symbol}/{actualQuoteToken}
         {/if}
       </span>
       <div class="flex items-center gap-2">
@@ -406,12 +407,14 @@
             hoveredToken
         }
         quoteToken={
-          hoveredToken.symbol === "ICP" ? 
+          hoveredToken.symbol === "ICP" || hoveredToken.symbol === "ckUSDT" || hoveredToken.symbol === "ckUSDC" ?
             quoteToken ?? hoveredToken :
-          hoveredToken.symbol === "ckUSDT" || hoveredToken.symbol === "ckUSDC" ?
-            quoteToken ?? hoveredToken :
-            icpToken ?? hoveredToken
+            quoteToken ?? icpToken ?? hoveredToken  // Always try ckUSDT first, fallback to ICP
         }
+        price_change_24h={Number(hoveredToken.metrics?.price_change_24h || 0)}
+        on:quoteTokenUsed={(event) => {
+          actualQuoteToken = event.detail.symbol === "ckUSDT" ? "ckUSDT" : "ICP";
+        }}
       />
     {/key}
   </button>

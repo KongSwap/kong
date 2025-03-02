@@ -160,7 +160,7 @@ service : {
   icrc21_canister_call_consent_message : (ICRC21ConsentMessageRequest) -> (
       ICRC21ConsentMessageResponse,
     ) query;
-  icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse);
+  icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
   icrc_34_delegate : (DelegationRequest) -> (Result_2);
   icrc_34_get_delegation : (DelegationRequest) -> (Result_2) query;
   icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_3);

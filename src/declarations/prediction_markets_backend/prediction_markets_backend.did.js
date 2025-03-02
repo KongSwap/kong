@@ -189,7 +189,11 @@ export const idlFactory = ({ IDL }) => {
         [ICRC21ConsentMessageResponse],
         ['query'],
       ),
-    'icrc28_trusted_origins' : IDL.Func([], [Icrc28TrustedOriginsResponse], []),
+    'icrc28_trusted_origins' : IDL.Func(
+        [],
+        [Icrc28TrustedOriginsResponse],
+        ['query'],
+      ),
     'icrc_34_delegate' : IDL.Func([DelegationRequest], [Result_2], []),
     'icrc_34_get_delegation' : IDL.Func(
         [DelegationRequest],

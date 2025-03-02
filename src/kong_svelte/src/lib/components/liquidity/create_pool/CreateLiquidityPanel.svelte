@@ -8,14 +8,20 @@
   import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
   import {
     loadBalances,
-    storedBalancesStore,
+    currentUserBalancesStore,
   } from "$lib/services/tokens/tokenStore";
   import {
-    calculateAmount1FromPrice,
     validateTokenSelect,
     updateQueryParams,
     doesPoolExist,
   } from "$lib/utils/poolCreationUtils";
+  import { 
+    calculateToken1FromPrice, 
+    calculateToken0FromPrice,
+    calculateToken1FromPoolRatio,
+    calculateToken0FromPoolRatio,
+    calculateAmountFromPercentage
+  } from "$lib/utils/liquidityUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import { page } from "$app/stores";
   import { auth } from "$lib/services/auth";
@@ -104,9 +110,9 @@
     );
   }
   $: token0Balance =
-    $storedBalancesStore[token0?.canister_id]?.in_tokens?.toString() || "0";
+    $currentUserBalancesStore[token0?.canister_id]?.in_tokens?.toString() || "0";
   $: token1Balance =
-    $storedBalancesStore[token1?.canister_id]?.in_tokens?.toString() || "0";
+    $currentUserBalancesStore[token1?.canister_id]?.in_tokens?.toString() || "0";
 
   function handleTokenSelect(index: 0 | 1, token: FE.Token) {
     const otherToken = index === 0 ? token1 : token0;
@@ -137,55 +143,51 @@
   }
 
   function handlePriceChange(value: string) {
-    if (poolExists === false || pool.balance_0 === 0n) {
+    if (poolExists === false || pool?.balance_0 === 0n) {
       liquidityStore.setInitialPrice(value);
-      liquidityStore.setAmount(
-        1,
-        calculateAmount1FromPrice($liquidityStore.amount0, value),
-      );
+      const amount1 = calculateToken1FromPrice($liquidityStore.amount0, value);
+      liquidityStore.setAmount(1, amount1);
     }
   }
 
   async function handleAmountChange(index: 0 | 1, value: string) {
-    if (
-      (poolExists === false ||
-        (poolExists === true && pool?.balance_0 === 0n)) &&
-      index === 0
-    ) {
-      liquidityStore.setAmount(index, value);
-      const amount1 = calculateAmount1FromPrice(
-        value,
-        $liquidityStore.initialPrice,
-      );
-      liquidityStore.setAmount(1, amount1 || "0");
-    } else if (poolExists === true && index === 0) {
-      // For existing pools, calculate the other amount based on pool ratio
-      liquidityStore.setAmount(0, value);
-      try {
-        if (!token0 || !token1) return;
-
-        const amount0 = parseTokenAmount(value, token0.decimals);
-        if (!amount0) return;
-
-        const result = await PoolService.calculateLiquidityAmounts(
-          token0.canister_id,
-          amount0,
-          token1.canister_id,
+    // Always update the input value in the store
+    liquidityStore.setAmount(index, value);
+    
+    // For new pools or pools with zero balance
+    if (poolExists === false || (poolExists === true && pool?.balance_0 === 0n)) {
+      // Calculate the other amount based on the initial price
+      if (index === 0 && $liquidityStore.initialPrice) {
+        const amount1 = calculateToken1FromPrice(
+          value,
+          $liquidityStore.initialPrice
         );
-
-        if (result.Ok) {
-          // Convert the BigInt amount to display format
-          const amount1Display = (
-            Number(result.Ok.amount_1) / Math.pow(10, token1.decimals)
-          ).toString();
-          liquidityStore.setAmount(1, amount1Display);
+        liquidityStore.setAmount(1, amount1 || "0");
+      } else if (index === 1 && $liquidityStore.initialPrice) {
+        // Calculate amount0 from amount1 and price
+        const amount0 = calculateToken0FromPrice(
+          value,
+          $liquidityStore.initialPrice
+        );
+        liquidityStore.setAmount(0, amount0);
+      }
+    } 
+    // For existing pools with non-zero balance
+    else if (poolExists === true && pool && token0 && token1) {
+      try {
+        if (index === 0) {
+          // Calculate amount1 based on pool ratio when token0 amount changes
+          const amount1 = await calculateToken1FromPoolRatio(value, token0, token1, pool);
+          liquidityStore.setAmount(1, amount1);
+        } else {
+          // Calculate amount0 based on pool ratio when token1 amount changes
+          const amount0 = await calculateToken0FromPoolRatio(value, token0, token1, pool);
+          liquidityStore.setAmount(0, amount0);
         }
       } catch (error) {
         console.error("Error calculating liquidity amounts:", error);
         toastStore.error("Failed to calculate amounts");
       }
-    } else {
-      liquidityStore.setAmount(index, value);
     }
   }
 
@@ -253,27 +255,20 @@
 
   function handlePercentageClick(percentage: number) {
     if (!token0 || !token0Balance) return;
-
     try {
-      const balance = new BigNumber(token0Balance).div(
-        new BigNumber(10).pow(token0.decimals),
-      );
-      if (!balance.isFinite() || balance.isLessThanOrEqualTo(0)) return;
+      const amount = calculateAmountFromPercentage(token0, token0Balance, percentage);
+      handleAmountChange(0, amount);
+    } catch (error) {
+      console.error("Error calculating percentage amount:", error);
+      toastStore.error("Failed to calculate amount");
+    }
+  }
 
-      // If it's 100% (MAX), subtract both the token fee and transaction fee
-      const adjustedBalance =
-        percentage === 100
-          ? balance.minus(new BigNumber(token0.fee * 2))
-          : balance.times(percentage).div(100);
-
-      // Format to avoid excessive decimals (use token's decimal places)
-
-      handleAmountChange(
-        0,
-        adjustedBalance.gt(0)
-          ? adjustedBalance.toFormat(token0.decimals, BigNumber.ROUND_DOWN)
-          : "0",
-      );
+  function handleToken1PercentageClick(percentage: number) {
+    if (!token1 || !token1Balance) return;
+    try {
+      const amount = calculateAmountFromPercentage(token1, token1Balance, percentage);
+      handleAmountChange(1, amount);
     } catch (error) {
       console.error("Error calculating percentage amount:", error);
       toastStore.error("Failed to calculate amount");
@@ -309,7 +304,7 @@
         />
       {/if}
 
-      {#if token0 && token1 && (poolExists === false || pool.balance_0 === 0n)}
+      {#if token0 && token1 && (poolExists === false || pool?.balance_0 === 0n)}
         <div class="flex flex-col gap-4">
           <PoolWarning {token0} {token1} />
           <div>
@@ -342,6 +337,7 @@
           {token1Balance}
           onAmountChange={(index, value) => handleAmountChange(index, value)}
           onPercentageClick={handlePercentageClick}
+          onToken1PercentageClick={handleToken1PercentageClick}
         />
       </div>
 

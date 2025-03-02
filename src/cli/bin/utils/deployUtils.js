@@ -86,7 +86,7 @@ export const deployFaucet = async (network) => {
             { symbol: 'ksicp', amount: '1_000_000_000_000_000' }, // 10,000,000 ksICP
             { symbol: 'ksbtc', amount: '150_000_000_000' }, // 1,500 ksBTC
             { symbol: 'kseth', amount: '30_000_000_000_000_000_000_000' }, // 30,000 ksETH
-            { symbol: 'kskong', amount: '200_000_000_000_000' } // 2,000,000 ksKONG
+            { symbol: 'kong', amount: '200_000_000_000_000' } // 2,000,000 KONG
         ];
         for (const token of tokens) {
             console.log(chalk.blue(`Minting ${token.symbol} to faucet...`));

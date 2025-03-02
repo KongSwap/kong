@@ -8,12 +8,11 @@ const MAX_DB_UPDATES: usize = 1_000;
 
 #[query(hidden = true)]
 fn backup_db_updates() -> Result<String, String> {
-    let db_updates: Vec<StableDBUpdate> = DB_UPDATE_MAP.with(|m| {
+    DB_UPDATE_MAP.with(|m| {
         let map = m.borrow();
-        map.iter().take(MAX_DB_UPDATES).map(|(_, v)| v).collect()
-    });
-
-    serde_json::to_string(&db_updates).map_err(|e| format!("Failed to serialize updates: {}", e))
+        let db_updates = map.iter().take(MAX_DB_UPDATES).map(|(_, v)| v).collect::<Vec<StableDBUpdate>>();
+        serde_json::to_string(&db_updates).map_err(|e| format!("Failed to serialize updates: {}", e))
+    })
 }
 
 #[update(hidden = true)]

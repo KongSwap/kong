@@ -103,7 +103,6 @@
           tokens: [$swapState.payToken],
           forceRefresh: true,
         });
-        console.log('Balance loaded:', balance);
         if (balance && balance[$swapState.payToken.canister_id]) {
           const balanceData = balance[$swapState.payToken.canister_id];
           const decimals = Number($swapState.payToken.decimals);
@@ -133,9 +132,7 @@
       loadBalances($auth.account.owner, {
         tokens: [$swapState.payToken, $swapState.receiveToken],
         forceRefresh: true,
-      }).then(balance => {
-        console.log('Balance loaded:', balance);
-      });
+      })
     }
   }
 
@@ -537,7 +534,6 @@
       error: null,
       isProcessing: false,
       showConfirmation: false,
-      showBananaRain: false,
       swapSlippage: 0, // Reset slippage
       lpFees: null, // Reset fees
       routingPath: null, // Reset routing
