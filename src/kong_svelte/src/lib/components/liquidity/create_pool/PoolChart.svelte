@@ -71,9 +71,32 @@
   let isLoading = false;
   let errorMessage = '';
   
-  // Reactive statement to fetch data when the pool changes
+  // Track token pair to avoid unnecessary refreshes
+  let previousToken0Id = null;
+  let previousToken1Id = null;
+  
+  // Only refresh chart when the pool or token pair changes, not on every amount change
   $: if (currentPool && isChartAvailable) {
-    fetchBalanceHistoryData();
+    const token0Id = $liquidityStore.token0?.canister_id || null;
+    const token1Id = $liquidityStore.token1?.canister_id || null;
+    
+    // Only fetch new data if tokens have changed
+    if (token0Id !== previousToken0Id || token1Id !== previousToken1Id) {
+      previousToken0Id = token0Id;
+      previousToken1Id = token1Id;
+      fetchBalanceHistoryData();
+    } else if (balanceHistory.length > 0) {
+      // Just update the existing charts with current token labels when amounts change
+      // but don't fetch new data
+      updateCharts();
+    }
+  }
+  
+  // Function to update charts without fetching new data
+  function updateCharts() {
+    // Use the improved methods with the flag to avoid recreating charts
+    initOrUpdateBalanceChart(false);
+    initOrUpdateTVLChart(false);
   }
   
   async function fetchBalanceHistoryData() {
@@ -155,8 +178,16 @@
     return token0Variation || token1Variation || lpVariation;
   }
   
-  function initOrUpdateBalanceChart() {
+  function initOrUpdateBalanceChart(shouldReinitialize = true) {
     if (!balanceChartCanvas || !balanceHistory || balanceHistory.length === 0 || !isChartAvailable || !Chart) return;
+    
+    // If we're just updating labels but not recreating the entire chart
+    if (!shouldReinitialize && balanceChartInstance) {
+      balanceChartInstance.data.datasets[0].label = $liquidityStore.token0?.symbol || 'Token 0';
+      balanceChartInstance.data.datasets[1].label = $liquidityStore.token1?.symbol || 'Token 1';
+      balanceChartInstance.update('none'); // Minimal animation
+      return;
+    }
     
     // Clean up existing chart instance if it exists
     if (balanceChartInstance) {
@@ -429,8 +460,14 @@
     });
   }
   
-  function initOrUpdateTVLChart() {
+  function initOrUpdateTVLChart(shouldReinitialize = true) {
     if (!tvlChartCanvas || !balanceHistory || balanceHistory.length === 0 || !isChartAvailable || !Chart) return;
+    
+    // If we're just updating without recreating the entire chart
+    if (!shouldReinitialize && tvlChartInstance) {
+      tvlChartInstance.update('none'); // Minimal animation
+      return;
+    }
     
     // Clean up existing chart instance if it exists
     if (tvlChartInstance) {

@@ -31,14 +31,14 @@
     CKUSDT_CANISTER_ID,
     ICP_CANISTER_ID,
   } from "$lib/constants/canisterConstants";
-  import { PoolService } from "$lib/services/pools/PoolService";
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";
   import PositionDisplay from "$lib/components/liquidity/create_pool/PositionDisplay.svelte";
   import { BigNumber } from "bignumber.js";
   import { userTokens } from "$lib/stores/userTokens";
-  import { fetchTokensByCanisterId } from "$lib/api/tokens"
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { calculateLiquidityAmounts } from "$lib/api/pools";
 
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
   const DEFAULT_TOKEN = "ICP";
@@ -51,6 +51,17 @@
 
   // Track if initial load has happened
   let initialLoadComplete = false;
+
+  // Helper to safely convert value to BigNumber
+  function toBigNumber(value: any): BigNumber {
+    if (!value) return new BigNumber(0);
+    try {
+      return new BigNumber(value.toString());
+    } catch (error) {
+      console.error("Error converting to BigNumber:", error);
+      return new BigNumber(0);
+    }
+  }
 
   // Initial token loading from URL or defaults
   onMount(() => {
@@ -151,22 +162,25 @@
   }
 
   async function handleAmountChange(index: 0 | 1, value: string) {
+    // Sanitize input: remove any commas from the input value
+    const sanitizedValue = value.replace(/,/g, '');
+    
     // Always update the input value in the store
-    liquidityStore.setAmount(index, value);
+    liquidityStore.setAmount(index, sanitizedValue);
     
     // For new pools or pools with zero balance
     if (poolExists === false || (poolExists === true && pool?.balance_0 === 0n)) {
       // Calculate the other amount based on the initial price
       if (index === 0 && $liquidityStore.initialPrice) {
         const amount1 = calculateToken1FromPrice(
-          value,
+          sanitizedValue,
           $liquidityStore.initialPrice
         );
         liquidityStore.setAmount(1, amount1 || "0");
       } else if (index === 1 && $liquidityStore.initialPrice) {
         // Calculate amount0 from amount1 and price
         const amount0 = calculateToken0FromPrice(
-          value,
+          sanitizedValue,
           $liquidityStore.initialPrice
         );
         liquidityStore.setAmount(0, amount0);
@@ -177,11 +191,11 @@
       try {
         if (index === 0) {
           // Calculate amount1 based on pool ratio when token0 amount changes
-          const amount1 = await calculateToken1FromPoolRatio(value, token0, token1, pool);
+          const amount1 = await calculateToken1FromPoolRatio(sanitizedValue, token0, token1, pool);
           liquidityStore.setAmount(1, amount1);
         } else {
           // Calculate amount0 based on pool ratio when token1 amount changes
-          const amount0 = await calculateToken0FromPoolRatio(value, token0, token1, pool);
+          const amount0 = await calculateToken0FromPoolRatio(sanitizedValue, token0, token1, pool);
           liquidityStore.setAmount(0, amount0);
         }
       } catch (error) {
@@ -230,24 +244,24 @@
       }
 
       if (poolExists === true && pool?.balance_0 !== 0n) {
-        const result = await PoolService.calculateLiquidityAmounts(
+        const result = await calculateLiquidityAmounts(
           token0.symbol,
           amount0,
           token1.symbol,
         );
         if (!result.Ok) {
-        throw new Error("Failed to calculate liquidity amounts");
-      }
-      
+          throw new Error("Failed to calculate liquidity amounts");
+        }
 
-      // Update store with calculated amount
-      liquidityStore.setAmount(
-        1,
-        (Number(result.Ok.amount_1) / Math.pow(10, token1.decimals)).toString(),
-      );
-    }
-    showConfirmModal = true;
-  } catch (error) {
+        // Update store with calculated amount using BigNumber
+        const calculatedAmount = toBigNumber(result.Ok.amount_1)
+          .div(new BigNumber(10).pow(token1.decimals))
+          .toString();
+        
+        liquidityStore.setAmount(1, calculatedAmount);
+      }
+      showConfirmModal = true;
+    } catch (error) {
       console.error("Error adding liquidity:", error);
       toastStore.error(error.message || "Failed to add liquidity");
     }
@@ -256,7 +270,9 @@
   function handlePercentageClick(percentage: number) {
     if (!token0 || !token0Balance) return;
     try {
+      // Calculate amount based on percentage using BigNumber
       const amount = calculateAmountFromPercentage(token0, token0Balance, percentage);
+      // Pass the amount to handleAmountChange which now sanitizes inputs
       handleAmountChange(0, amount);
     } catch (error) {
       console.error("Error calculating percentage amount:", error);
@@ -267,7 +283,9 @@
   function handleToken1PercentageClick(percentage: number) {
     if (!token1 || !token1Balance) return;
     try {
+      // Calculate amount based on percentage using BigNumber
       const amount = calculateAmountFromPercentage(token1, token1Balance, percentage);
+      // Pass the amount to handleAmountChange which now sanitizes inputs
       handleAmountChange(1, amount);
     } catch (error) {
       console.error("Error calculating percentage amount:", error);

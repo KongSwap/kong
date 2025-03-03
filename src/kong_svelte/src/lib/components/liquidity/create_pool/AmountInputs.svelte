@@ -47,48 +47,31 @@
     });
   }
 
-  // Handle percentage clicks for token1
-  function handleToken1PercentageClick(percentage: number) {
-    if (!token1 || !token1Balance) return;
-
-    try {
-      const balance = new BigNumber(token1Balance).div(
-        new BigNumber(10).pow(token1.decimals),
-      );
-      if (!balance.isFinite() || balance.isLessThanOrEqualTo(0)) return;
-
-      // If it's 100% (MAX), subtract both the token fee and transaction fee
-      const adjustedBalance =
-        percentage === 100
-          ? balance.minus(new BigNumber(token1.fee * 2))
-          : balance.times(percentage).div(100);
-
-      // Format to avoid excessive decimals (use token's decimal places)
-      onAmountChange(
-        1,
-        adjustedBalance.gt(0)
-          ? adjustedBalance.toFormat(token1.decimals, BigNumber.ROUND_DOWN)
-          : "0",
-      );
-    } catch (error) {
-      console.error("Error calculating percentage amount:", error);
-      toastStore.error("Failed to calculate amount");
-    }
-  }
-
-  // Update these reactive statements to also update the input values directly
+  // Update these reactive statements to properly handle formatted values
   $: {
-    displayValue0 = amount0;
+    // Remove commas from amount0 to ensure consistent formatting
+    const rawAmount0 = amount0.replace(/,/g, '');
+    displayValue0 = formatWithCommas(rawAmount0);
     if (input0Element) {
-      input0Element.value = amount0;
+      input0Element.value = displayValue0;
     }
   }
 
   $: {
-    displayValue1 = amount1;
+    // Remove commas from amount1 to ensure consistent formatting
+    const rawAmount1 = amount1.replace(/,/g, '');
+    displayValue1 = formatWithCommas(rawAmount1);
     if (input1Element) {
-      input1Element.value = amount1;
+      input1Element.value = displayValue1;
     }
+  }
+
+  // Helper function to format with commas
+  function formatWithCommas(value: string): string {
+    if (!value) return "";
+    const parts = value.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
   }
 </script>
 

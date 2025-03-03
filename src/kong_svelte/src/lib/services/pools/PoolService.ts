@@ -71,36 +71,6 @@ export class PoolService {
   }
 
   /**
-   * Calculate required amounts for adding liquidity
-   */
-  public static async calculateLiquidityAmounts(
-    token0Symbol: string,
-    amount0: bigint,
-    token1Symbol: string,
-  ): Promise<any> {
-    try {
-      const actor = createAnonymousActorHelper(
-        KONG_BACKEND_CANISTER_ID,
-        canisterIDLs.kong_backend,
-      );
-      const result = await actor.add_liquidity_amounts(
-        "IC." + token0Symbol,
-        amount0,
-        "IC." + token1Symbol,
-      );
-
-      if (!result.Ok) {
-        throw new Error(result.Err || "Failed to calculate liquidity amounts");
-      }
-
-      return result;
-    } catch (error) {
-      console.error("Error calculating liquidity amounts:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Calculate amounts that would be received when removing liquidity
    */
   public static async calculateRemoveLiquidityAmounts(
@@ -137,14 +107,6 @@ export class PoolService {
       console.error("Error calculating removal amounts:", error);
       throw error;
     }
-  }
-
-  public static async addLiquidityAmounts(
-    token0Symbol: string,
-    amount0: bigint,
-    token1Symbol: string,
-  ): Promise<any> {
-    return this.calculateLiquidityAmounts(token0Symbol, amount0, token1Symbol);
   }
 
   /**

@@ -22,3 +22,6 @@ lazy_static = "1.4"
 strum = { version = "0.27.0", features = ["derive"] }
 strum_macros = "0.27.0"
 icrc-ledger-types = "0.1.8"
+
+[dev-dependencies]
+candid-extractor = "0.1.5"

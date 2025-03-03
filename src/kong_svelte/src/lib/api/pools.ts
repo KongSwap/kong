@@ -1,4 +1,7 @@
 import { API_URL } from "$lib/api/index";
+import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
+import {canisterIDLs } from "$lib/services/auth";
 
 export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total_count: number, total_pages: number, page: number, limit: number}> => {
   try {
@@ -161,3 +164,34 @@ export const fetchPoolTotals = async (): Promise<{total_volume_24h: number, tota
     throw error;
   }
 }
+
+
+  /**
+   * Calculate required amounts for adding liquidity
+   */
+  export async function calculateLiquidityAmounts(
+    token0Symbol: string,
+    amount0: bigint,
+    token1Symbol: string,
+  ): Promise<any> {
+    try {
+      const actor = createAnonymousActorHelper(
+        KONG_BACKEND_CANISTER_ID,
+        canisterIDLs.kong_backend,
+      );
+      const result = await actor.add_liquidity_amounts(
+        "IC." + token0Symbol,
+        amount0,
+        "IC." + token1Symbol,
+      );
+
+      if (!result.Ok) {
+        throw new Error(result.Err || "Failed to calculate liquidity amounts");
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Error calculating liquidity amounts:", error);
+      throw error;
+    }
+  }
