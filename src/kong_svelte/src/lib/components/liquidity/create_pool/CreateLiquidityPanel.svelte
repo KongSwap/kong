@@ -52,6 +52,17 @@
   // Track if initial load has happened
   let initialLoadComplete = false;
 
+  // Helper to safely convert value to BigNumber
+  function toBigNumber(value: any): BigNumber {
+    if (!value) return new BigNumber(0);
+    try {
+      return new BigNumber(value.toString());
+    } catch (error) {
+      console.error("Error converting to BigNumber:", error);
+      return new BigNumber(0);
+    }
+  }
+
   // Initial token loading from URL or defaults
   onMount(() => {
     if ($userTokens.tokens.length > 0) {
@@ -242,11 +253,12 @@
           throw new Error("Failed to calculate liquidity amounts");
         }
 
-        // Update store with calculated amount
-        liquidityStore.setAmount(
-          1,
-          (Number(result.Ok.amount_1) / Math.pow(10, token1.decimals)).toString(),
-        );
+        // Update store with calculated amount using BigNumber
+        const calculatedAmount = toBigNumber(result.Ok.amount_1)
+          .div(new BigNumber(10).pow(token1.decimals))
+          .toString();
+        
+        liquidityStore.setAmount(1, calculatedAmount);
       }
       showConfirmModal = true;
     } catch (error) {
@@ -258,7 +270,7 @@
   function handlePercentageClick(percentage: number) {
     if (!token0 || !token0Balance) return;
     try {
-      // Calculate amount based on percentage
+      // Calculate amount based on percentage using BigNumber
       const amount = calculateAmountFromPercentage(token0, token0Balance, percentage);
       // Pass the amount to handleAmountChange which now sanitizes inputs
       handleAmountChange(0, amount);
@@ -271,7 +283,7 @@
   function handleToken1PercentageClick(percentage: number) {
     if (!token1 || !token1Balance) return;
     try {
-      // Calculate amount based on percentage
+      // Calculate amount based on percentage using BigNumber
       const amount = calculateAmountFromPercentage(token1, token1Balance, percentage);
       // Pass the amount to handleAmountChange which now sanitizes inputs
       handleAmountChange(1, amount);

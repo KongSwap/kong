@@ -5,6 +5,7 @@
   import { userPoolListStore } from "$lib/stores/userPoolListStore";
   import { onMount, onDestroy } from "svelte";
   import { auth } from "$lib/services/auth";
+  import { BigNumber } from "bignumber.js";
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
@@ -40,8 +41,8 @@
   $: userPoolPercentage = calculateUserPoolPercentage(
     pool?.balance_0, 
     pool?.balance_1, 
-    Number(userPool?.amount_0), 
-    Number(userPool?.amount_1), 
+    userPool?.amount_0, 
+    userPool?.amount_1, 
     getTokenDecimals(token0, userPool?.token0, 0),
     getTokenDecimals(token1, userPool?.token1, 1)
   );
@@ -103,12 +104,30 @@
     }
   }
   
-  // Optimized calculation function with minimized parameters
+  // Helper to safely convert value to BigNumber
+  function toBigNumber(value: any): BigNumber {
+    if (!value) return new BigNumber(0);
+    try {
+      return new BigNumber(value.toString());
+    } catch (error) {
+      console.error("Error converting to BigNumber:", error);
+      return new BigNumber(0);
+    }
+  }
+
+  // Format number for display with proper decimal places
+  function formatNumber(value: BigNumber | string | number | undefined): string {
+    if (!value) return "0";
+    const bn = typeof value === 'object' && 'toFormat' in value ? value : toBigNumber(value);
+    return bn.toFormat(8, BigNumber.ROUND_DOWN);
+  }
+  
+  // Optimized calculation function with minimized parameters using BigNumber
   function calculateUserPoolPercentage(
     poolBalance0: bigint | undefined,
     poolBalance1: bigint | undefined,
-    userAmount0: number | undefined,
-    userAmount1: number | undefined,
+    userAmount0: string | number | undefined,
+    userAmount1: string | number | undefined,
     token0Decimals: number,
     token1Decimals: number
   ): string {
@@ -117,22 +136,25 @@
     }
     
     try {
-      // Safely handle numeric values
-      const userAmount0Num = Number(userAmount0 || 0);
-      const userAmount1Num = Number(userAmount1 || 0);
+      // Convert values to BigNumber with proper scaling
+      const userAmount0BN = toBigNumber(userAmount0);
+      const userAmount1BN = toBigNumber(userAmount1);
       
-      // Convert BigInt pool balances to numbers with appropriate decimal scaling
-      const poolBalance0Num = Number(poolBalance0) / Math.pow(10, token0Decimals);
-      const poolBalance1Num = Number(poolBalance1) / Math.pow(10, token1Decimals);
+      // Convert BigInt pool balances to BigNumber with appropriate decimal scaling
+      const divisor0 = new BigNumber(10).pow(token0Decimals);
+      const divisor1 = new BigNumber(10).pow(token1Decimals);
       
-      if (poolBalance0Num === 0 || poolBalance1Num === 0) return "0";
+      const poolBalance0BN = toBigNumber(poolBalance0).div(divisor0);
+      const poolBalance1BN = toBigNumber(poolBalance1).div(divisor1);
+      
+      if (poolBalance0BN.isZero() || poolBalance1BN.isZero()) return "0";
       
       // Calculate percentages based on both tokens
-      const percentage0 = (userAmount0Num / poolBalance0Num) * 100;
-      const percentage1 = (userAmount1Num / poolBalance1Num) * 100;
+      const percentage0 = userAmount0BN.div(poolBalance0BN).times(100);
+      const percentage1 = userAmount1BN.div(poolBalance1BN).times(100);
       
       // Use the average of both percentages (they should be very close)
-      const averagePercentage = (percentage0 + percentage1) / 2;
+      const averagePercentage = percentage0.plus(percentage1).div(2);
       
       // Format to 2 decimal places
       return averagePercentage.toFixed(2);
@@ -181,7 +203,7 @@
                   LP Tokens
                 </div>
                 <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                  {Number(userPool?.balance).toLocaleString(undefined, {maximumFractionDigits: 8})}
+                  {formatNumber(userPool?.balance)}
                 </div>
                 <div class="text-kong-text-primary/40 text-xs mt-1">
                   {userPoolPercentage}% of pool
@@ -195,7 +217,7 @@
                   {token0Symbol}
                 </div>
                 <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                  {Number(userPool?.amount_0).toLocaleString(undefined, {maximumFractionDigits: 8})}
+                  {formatNumber(userPool?.amount_0)}
                 </div>
               </div>
 
@@ -206,7 +228,7 @@
                   {token1Symbol}
                 </div>
                 <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                  {Number(userPool?.amount_1).toLocaleString(undefined, {maximumFractionDigits: 8})}
+                  {formatNumber(userPool?.amount_1)}
                 </div>
               </div>
             </div>
@@ -262,7 +284,7 @@
             <div
               class="text-kong-text-primary/90 text-lg font-medium tabular-nums"
             >
-              {Number(userPool?.balance).toLocaleString(undefined, {maximumFractionDigits: 8})}
+              {formatNumber(userPool?.balance)}
             </div>
           </div>
 
@@ -283,7 +305,7 @@
                 <span
                   class="text-kong-text-primary/90 font-medium tabular-nums"
                 >
-                  {Number(userPool?.amount_0).toLocaleString(undefined, {maximumFractionDigits: 8})}
+                  {formatNumber(userPool?.amount_0)}
                 </span>
               </div>
               <div class="h-px bg-white/5" />
@@ -297,7 +319,7 @@
                 <span
                   class="text-kong-text-primary/90 font-medium tabular-nums"
                 >
-                  {Number(userPool?.amount_1).toLocaleString(undefined, {maximumFractionDigits: 8})}
+                  {formatNumber(userPool?.amount_1)}
                 </span>
               </div>
             </div>
