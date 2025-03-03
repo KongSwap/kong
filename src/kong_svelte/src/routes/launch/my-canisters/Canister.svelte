@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { Principal } from '@dfinity/principal';
   import { InstallService } from '$lib/services/canister/install_wasm';
   import type { CanisterMetadata } from '$lib/stores/canisters';
   import { createEventDispatcher } from 'svelte';
@@ -7,20 +6,10 @@
   import { formatCycles } from '$lib/utils/cycles';
   import { formatDate } from '$lib/utils/dateUtils';
   import { truncateMiddle } from '$lib/utils/stringUtils';
-  import { canisterStore } from '$lib/stores/canisters';
-  import { get } from 'svelte/store';
 
   // Props
   export let canister: CanisterMetadata;
   export let canisterStatus: any = null;
-  export let statusError: string | null = null;
-  export let loadingStatus: boolean = false;
-  export let isEditing: boolean = false;
-  export let newName: string = '';
-  export let newTags: string = '';
-  // hasUpgrade indicates whether a newer version of the canister's WASM is available
-  // When true, a red notification dot will be shown on the upgrade button
-  export let hasUpgrade: boolean = false;
 
   // Event dispatcher
   const dispatch = createEventDispatcher();
@@ -170,6 +159,7 @@
           </svg>
         </button>
         
+        <!-- svelte-ignore a11y_consider_explicit_label -->
         <button 
           on:click={() => startEdit()} 
           class="p-1 text-blue-500 rounded-full hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -202,7 +192,7 @@
     <!-- Creation Date -->
     <div class="mb-3">
       <p class="text-xs text-gray-500 dark:text-gray-400">
-        Created: {formatDate(canister.createdAt)}
+        Created: {formatDate(new Date(canister.createdAt))}
       </p>
     </div>
     
