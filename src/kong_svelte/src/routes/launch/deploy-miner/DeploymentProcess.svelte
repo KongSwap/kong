@@ -4,12 +4,14 @@
   import { auth } from "$lib/services/auth";
   import { canisterStore } from "$lib/stores/canisters";
   import { Principal } from "@dfinity/principal";
+  import { IDL } from "@dfinity/candid";
   import { InstallService, type WasmMetadata } from "$lib/services/canister/install_wasm";
   // import { kongSwapService } from "$lib/services/kong_swap";
   import { createEventDispatcher } from "svelte";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { fetchICPtoXDRRates } from "$lib/services/canister/ic-api";
   import { get } from "svelte/store";
+  import { createCanister } from "$lib/services/canister/create_canister";
   
   // Props
   export let minerParams: any;
@@ -40,7 +42,7 @@
   const MINER_WASM_METADATA: WasmMetadata = {
     path: MINER_WASM_PATH,
     description: "Miner canister",
-    initArgsType: null
+    initArgsType: IDL.Record({})
   };
   
   // Constants for conversion
@@ -105,7 +107,7 @@
       const xdrPerIcp = xdrRateValue / 10000;
       console.log(`XDR rate: 1 ICP = ${xdrPerIcp} XDR`);
       
-      // Calculate the XDR amount
+      // Calculate the XDR amount - ensure we're using proper number conversion
       const icpValue = parseFloat(icpAmount);
       const xdrAmount = icpValue * xdrPerIcp;
       
@@ -118,7 +120,6 @@
       
       // Set the values
       estimatedTCycles = formattedTCycles;
-      actualIcpReceived = icpAmount;
       
       // Set the KONG to ICP rate for reference
       kongIcpRate = (icpValue / parseFloat(kongAmount)).toFixed(6);
@@ -209,13 +210,26 @@
     addLog(`Swapping ${kongAmount} KONG to ICP...`);
     
     try {
-      // Reuse the already calculated values from calculateEstimatedTCycles
-      // or recalculate if needed
+      // Recalculate if needed to get the latest rates
       if (!estimatedTCycles || estimatedTCycles === "0") {
         await calculateEstimatedTCycles();
       }
       
-      addLog(`Successfully calculated conversion: ${kongAmount} KONG → ${icpAmount} ICP → ${parseFloat(estimatedTCycles).toFixed(4)} T cycles`);
+      // Perform the actual KONG to ICP swap
+      const kongE8s = SwapService.toBigInt(kongAmount, KONG_DECIMALS);
+      
+      addLog(`Initiating swap of ${kongAmount} KONG to ICP...`);
+      const swapResult = await SwapService.swapKongToIcp(
+        kongE8s,
+        2.0 // Default max slippage of 2%
+      );
+      
+      // Update with actual received ICP amount
+      actualIcpReceived = SwapService.fromBigInt(swapResult, ICP_DECIMALS);
+      icpAmount = actualIcpReceived;
+      
+      addLog(`Successfully swapped ${kongAmount} KONG to ${actualIcpReceived} ICP`);
+      addLog(`Estimated T-Cycles: ${parseFloat(estimatedTCycles).toFixed(4)}`);
       
       // Save progress
       lastSuccessfulStep = processSteps.SWAP_KONG_TO_ICP;
@@ -233,15 +247,34 @@
     addLog("Creating miner canister...");
     
     try {
-      // Simulate canister creation
-      // In a real implementation, this would call the IC management canister
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Ensure icpAmount is properly converted to BigInt
+      const icpE8s = SwapService.toBigInt(icpAmount, ICP_DECIMALS);
+      addLog(`Creating canister with ${icpAmount} ICP (${estimatedTCycles}T cycles)`);
       
-      // Generate a random canister ID for demonstration
-      const randomId = Array.from({ length: 27 }, () => 
-        "0123456789abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 36)]
-      ).join("");
-      canisterId = `${randomId}-cai`;
+      // Get principal
+      if (!principal) {
+        throw new Error("Principal not available for canister creation");
+      }
+      
+      // Create a new canister using the createCanister service
+      const createArgs = {
+        amount: icpE8s,
+        controller: principal,
+        settings: {
+          controllers: [principal]
+        }
+      };
+      
+      addLog("Sending ICP to Cycles Minting Canister...");
+      const createCanisterResponse = await createCanister(createArgs);
+      
+      // Check if the response is valid before using it
+      if (!createCanisterResponse) {
+        throw new Error("Failed to create canister: No canister ID returned");
+      }
+      
+      // Extract the canister ID from the response
+      canisterId = createCanisterResponse.toText();
       
       addLog(`Successfully created canister with ID: ${canisterId}`);
       
@@ -251,6 +284,7 @@
       // Continue to next step
       await deployMinerAndContinue();
     } catch (error) {
+      console.error("Create canister error details:", error);
       handleError("Failed to create canister", error);
     }
   }
@@ -261,9 +295,16 @@
     addLog("Installing miner code...");
     
     try {
-      // Simulate WASM installation
-      // In a real implementation, this would call InstallService.installWasm
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Prepare init args for WASM installation - empty object to match the empty MinerInitArgs struct
+      const initArgs = {};
+      
+      // Install the WASM code using the InstallService
+      await InstallService.installWasm(
+        canisterId,
+        MINER_WASM_METADATA,
+        initArgs,
+        1024 * 1024 // 1MB chunk size
+      );
       
       addLog("Successfully installed miner code");
       
@@ -283,20 +324,12 @@
     addLog("Initializing miner with parameters...");
     
     try {
-      // Simulate miner initialization
-      // In a real implementation, this would call the miner canister's init method
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Import the miner IDL factory
+      const { idlFactory } = await import("$declarations/miner/miner.did.js");
       
-      // Set owner to current principal
-      if (principal) {
-        addLog(`Setting owner to ${principal.toText()}`);
-      }
-      
-      // Set miner type
-      const minerType = getMinerTypeName(minerParams.minerType);
-      addLog(`Setting miner type to ${minerType}`);
       
       // Add canister to user's cache
+      const minerType = getMinerTypeName(minerParams.minerType);
       canisterStore.addCanister({
         id: canisterId,
         createdAt: Date.now(),
@@ -305,6 +338,10 @@
         name: `${minerType} (${new Date().toLocaleDateString()})`,
         tags: ["miner"]
       });
+
+      // TODO ADD TO REGISTRY CANISTER
+      // get actor IDL from registry canister, staging or production
+      // staging is mine, prod is Gor/Jon
       
       addLog("Successfully initialized miner");
       addLog("Miner deployment completed successfully!");
@@ -349,11 +386,32 @@
   // Error handling
   function handleError(message: string, error: any) {
     console.error(message, error);
+    
+    // Extract more detailed error information
+    let detailedError = "";
+    if (error instanceof Error) {
+      detailedError = error.message;
+      // Check for nested error objects
+      if (error.cause) {
+        detailedError += ` - Cause: ${JSON.stringify(error.cause)}`;
+      }
+    } else if (typeof error === 'object') {
+      try {
+        detailedError = JSON.stringify(error, (key, value) => 
+          typeof value === 'bigint' ? value.toString() : value
+        );
+      } catch (e) {
+        detailedError = String(error);
+      }
+    } else {
+      detailedError = String(error);
+    }
+    
     errorMessage = message;
-    errorDetails = error instanceof Error ? error.message : String(error);
+    errorDetails = detailedError;
     currentStep = processSteps.ERROR;
     isProcessing = false;
-    addLog(`ERROR: ${message} - ${errorDetails}`);
+    addLog(`ERROR: ${message} - ${detailedError}`);
   }
 </script>
 
