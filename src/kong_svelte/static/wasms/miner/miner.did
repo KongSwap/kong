@@ -23,6 +23,9 @@ service : (record {}) -> {
   get_canister_id : () -> (principal) query;
   get_info : () -> (Result_1) query;
   get_mining_stats : () -> (opt MiningStats) query;
+  set_chunks_per_refresh : (nat64) -> ();
+  set_high_volatility_mode : (bool) -> ();
+  set_max_chunk_duration : (nat64) -> ();
   set_mining_speed : (nat8) -> (Result);
   set_template_refresh_interval : (nat64) -> (Result);
   start_mining : () -> (Result);
