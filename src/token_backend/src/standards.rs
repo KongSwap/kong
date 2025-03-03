@@ -7,55 +7,6 @@ use ic_stable_structures::{
 };
 use std::borrow::Cow;
 
-// ICRC-35 minimal handshake page content
-pub const ICRC35_PAGE: &str = r#"<!DOCTYPE html>
-<html>
-<head>
-    <title>ICRC-35 Handshake</title>
-    <meta charset="utf-8">
-    <script type="importmap">
-    {
-        "imports": {
-            "icrc35": "https://cdn.jsdelivr.net/npm/icrc35@latest/+esm"
-        }
-    }
-    </script>
-    <script type="module">
-        import { ICRC35Connection } from 'icrc35';
-        
-        async function initICRC35() {
-            try {
-                // Establish connection in child mode
-                const connection = await ICRC35Connection.establish({
-                    mode: 'child',
-                    peer: window.opener,
-                    connectionFilter: {
-                        kind: 'whitelist',
-                        list: [] // Add your allowed parent origins here
-                    }
-                });
-                
-                console.log('ICRC-35 connection established');
-                
-                // Add your request handlers here
-                connection.onRequest('example:method', async (request) => {
-                    console.log('Received request:', request);
-                    request.respond({ status: 'ok' });
-                });
-            } catch (error) {
-                console.error('ICRC-35 connection failed:', error);
-            }
-        }
-        
-        // Initialize when the page loads
-        window.addEventListener('load', initICRC35);
-    </script>
-</head>
-<body>
-    <div id="status">Establishing ICRC-35 connection...</div>
-</body>
-</html>"#;
-
 // ICRC-28 and ICRC-10 data structures
 #[derive(CandidType, Deserialize)]
 pub struct TrustedOriginsResponse {

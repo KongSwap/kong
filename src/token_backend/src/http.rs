@@ -95,26 +95,6 @@ fn generate_ii_alternative_origins() -> Vec<u8> {
     bytes
 }
 
-// Mark certification as needing update (call this when canister ID changes or assets change)
-pub fn mark_certification_needs_update() {
-    CERTIFICATION_NEEDS_UPDATE.with(|needs_update| {
-        *needs_update.borrow_mut() = true;
-    });
-    
-    // Clear caches to force regeneration
-    II_ORIGINS_CACHE.with(|cache| {
-        *cache.borrow_mut() = None;
-    });
-    
-    DEBUG_INFO_CACHE.with(|cache| {
-        *cache.borrow_mut() = None;
-    });
-    
-    DEBUG_HTML_CACHE.with(|cache| {
-        *cache.borrow_mut() = None;
-    });
-}
-
 pub fn init_asset_certification() {
     // Check if we need to update certification
     let needs_update = CERTIFICATION_NEEDS_UPDATE.with(|flag| *flag.borrow());
@@ -358,7 +338,7 @@ pub fn http_request(req: HttpRequest) -> HttpResponse {
 
 // CORS preflight handler
 #[ic_cdk::query]
-pub fn http_request_streaming_callback(token: String) -> HttpResponse {
+pub fn http_request_streaming_callback() -> HttpResponse {
     HttpResponse {
         body: ByteBuf::new(),
         headers: vec![],

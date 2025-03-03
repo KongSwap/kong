@@ -421,7 +421,7 @@ fn get_metrics() -> MetricsResult {
             .cloned()
     }) {
         Some(info) => info,
-        None => return MetricsResult::Err("Token not initialized".to_string()),
+        _ => return MetricsResult::Err("Token not initialized".to_string()),
     };
 
     let circulating_supply = CIRCULATING_SUPPLY_CELL.with(|supply| *supply.borrow().get());

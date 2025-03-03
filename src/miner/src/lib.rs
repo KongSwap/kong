@@ -9,7 +9,7 @@ use std::cell::RefCell;
 use hex;
 
 mod block_miner;
-use block_miner::{BlockMiner, MiningStats, Hash};
+use block_miner::{BlockMiner, MiningStats, Hash, MinerType};
 
 #[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
 pub struct BlockTemplate {
@@ -81,6 +81,7 @@ thread_local! {
     static START_NONCE: RefCell<u64> = RefCell::new(0);
     static LAST_BLOCK_FAILURE: RefCell<Option<u64>> = RefCell::new(None);
     static BLOCK_BACKOFF_DURATION: RefCell<u64> = RefCell::new(5_000_000_000); // Start with 5 seconds
+    static HEARTBEAT_COUNTER: RefCell<u32> = RefCell::new(0); // Counter for heartbeats
 }
 
 #[derive(CandidType, Serialize, Deserialize)]
@@ -90,7 +91,7 @@ struct MinerInitArgs {}
 fn init(_args: MinerInitArgs) {
     // Initialize block miner with default chunk size
     BLOCK_MINER.with(|miner| {
-        *miner.borrow_mut() = Some(BlockMiner::new(50_000)); // Start with Normal miner settings
+        *miner.borrow_mut() = Some(BlockMiner::new(MinerType::Lite)); // lite miner by default
     });
 }
 
@@ -247,7 +248,22 @@ async fn start_mining() -> Result<(), String> {
     let token_id_clone = token_id;
     ic_cdk::spawn(async move {
         while IS_MINING.with(|m| *m.borrow()) {
+            // Check heartbeat counter early to avoid unnecessary operations
+            if !should_mine_on_heartbeat() {
+                // Skip mining this iteration, add a small delay to avoid wasting resources
+                ic_cdk::println!("Skipping mining on heartbeat {}", HEARTBEAT_COUNTER.with(|c| *c.borrow()));
+                
+                // Sleep for a short time to avoid busy-waiting
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                
+                continue;
+            }
+            
+            // Log that we're mining on heartbeat 5
+            ic_cdk::println!("Mining on heartbeat 5");
+            
             // ALWAYS check difficulty before mining - no more "when we feel like it"
+            #[allow(unused_variables)]
             let current_difficulty = match call::<_, (u32,)>(token_id_clone, "get_mining_difficulty", ())
                 .await
             {
@@ -307,7 +323,7 @@ async fn start_mining() -> Result<(), String> {
                     }
                 };
 
-            if let Some(mut block) = block {
+            if let Some(block) = block {
                 // Store current block height
                 CURRENT_BLOCK_HEIGHT.with(|h| {
                     *h.borrow_mut() = block.height;
@@ -318,7 +334,7 @@ async fn start_mining() -> Result<(), String> {
                     Ok(nonce) => nonce,
                     Err(e) => {
                         ic_cdk::println!("Failed to generate nonce: {}", e);
-                        return;
+                        continue;
                     }
                 };
                 
@@ -326,189 +342,104 @@ async fn start_mining() -> Result<(), String> {
                     *n.borrow_mut() = initial_nonce;
                 });
                 
-                // Start mining
-                IS_MINING.with(|m| {
-                    *m.borrow_mut() = true;
-                });
-                
-                // Start mining loop in the background
-                let token_id_clone = token_id;
-                ic_cdk::spawn(async move {
-                    let mut current_nonce = initial_nonce;
-                    let start_time = ic_cdk::api::time();
-                    let mut hashes_processed = 0;
-                    
-                    while IS_MINING.with(|m| *m.borrow()) {
-                        // ALWAYS get a fresh template if difficulty changed - no exceptions!
-                        // This ensures target hash and difficulty stay in sync
-                        let needs_refresh = current_difficulty != block.difficulty || BLOCK_MINER.with(|m| {
-                            m.borrow().as_ref().map(|miner| miner.needs_template_refresh()).unwrap_or(true)
-                        });
-
-                        if needs_refresh {
-                            match call::<_, (Option<BlockTemplate>,)>(token_id_clone, "get_current_block", ())
-                                .await
-                            {
-                                Ok((Some(new_block),)) => {
-                                    // Reset template refresh counter
-                                    BLOCK_MINER.with(|m| {
-                                        if let Some(miner) = m.borrow_mut().as_mut() {
-                                            miner.reset_chunk_counter();
-                                        }
-                                    });
-
-                                    if new_block.height != block.height {
-                                        // New block, get new random nonce
-                                        if let Ok(new_nonce) = generate_unique_nonce_start().await {
-                                            current_nonce = new_nonce;
-                                        }
-                                        CURRENT_BLOCK_HEIGHT.with(|h| {
-                                            *h.borrow_mut() = new_block.height;
-                                        });
-                                        ic_cdk::println!("Mining new block {} with difficulty {}", new_block.height, new_block.difficulty);
-                                    } else if new_block.difficulty != block.difficulty {
-                                        ic_cdk::println!("Block {} difficulty changed: {} -> {}", 
-                                            new_block.height, 
-                                            block.difficulty, 
-                                            new_block.difficulty
-                                        );
-                                    }
-                                    block = new_block;
-                                },
-                                Ok((None,)) => {
-                                    ic_cdk::println!("No block available to mine");
-                                    // Let IC's DTS handle the scheduling
-                                    continue;
-                                },
-                                Err((code, msg)) => {
-                                    ic_cdk::println!("Error getting block: {} (code: {:?})", msg, code);
-                                    // Let IC's DTS handle the scheduling
-                                    continue;
-                                }
-                            }
-                        }
-                        
-                        // Try to mine the block - now we KNOW we have current difficulty
-                        let mining_result = BLOCK_MINER.with(|m| {
-                            if let Some(miner) = m.borrow_mut().as_mut() {
-                                miner.mine_block_chunk(
-                                    block.height,
-                                    block.prev_hash,
-                                    block.target,
-                                    current_nonce,
-                                    block.version,
-                                    block.merkle_root,
-                                    block.timestamp,
-                                    block.difficulty,
-                                )
-                            } else {
-                                None
-                            }
-                        });
-
-                        if let Some(result) = mining_result {
-                            // Convert hash to hex string for logging
-                            let hash_hex = hex::encode(result.solution_hash);
-                            ic_cdk::println!("Found solution for block {}: nonce={}, hash={}", 
-                                result.block_height, 
-                                result.nonce, 
-                                hash_hex
-                            );
-                            
-                            // Get token info to get ledger ID
-                            let token_info: Result<(Result<TokenInfo, String>,), _> = call(token_id_clone, "get_info", ()).await;
-                            
-                            match token_info {
-                                Ok((Ok(token_info),)) => {
-                                    if let Some(ledger_id) = token_info.ledger_id {
-                                        // Found a solution! Submit it
-                                        let current_chunk_size = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_current_chunk_size()).unwrap_or(1000));
-                                        match call_with_payment128::<_, (Result<bool, String>,)>(
-                                            token_id_clone,
-                                            "submit_solution",
-                                            (ledger_id, result.nonce, result.solution_hash, current_chunk_size),
-                                            SUBMISSION_CYCLES
-                                        ).await
-                                        {
-                                            Ok((Ok(true),)) => {
-                                                // Check if any cycles were refunded (shouldn't be in normal case)
-                                                let refunded = ic_cdk::api::call::msg_cycles_refunded();
-                                                if refunded > 0 {
-                                                    ic_cdk::println!("Warning: {} cycles were refunded from submission", refunded);
-                                                }
-                                                ic_cdk::println!("Solution accepted for block {}!", result.block_height);
-                                                // Get new random nonce after success
-                                                if let Ok(new_nonce) = generate_unique_nonce_start().await {
-                                                    current_nonce = new_nonce;
-                                                }
-                                            },
-                                            Ok((Ok(false),)) => {
-                                                ic_cdk::println!("Solution rejected for block {}", result.block_height);
-                                                // Use large increment to avoid collisions
-                                                let increment = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_current_chunk_size()).unwrap_or(1000)) * 997;
-                                                current_nonce = current_nonce.wrapping_add(increment);
-                                            },
-                                            Ok((Err(e),)) => {
-                                                let refunded = ic_cdk::api::call::msg_cycles_refunded();
-                                                ic_cdk::println!(
-                                                    "Error submitting solution: {} (refunded {} cycles)",
-                                                    e,
-                                                    refunded
-                                                );
-                                            },
-                                            Err((code, msg)) => {
-                                                let refunded = ic_cdk::api::call::msg_cycles_refunded();
-                                                ic_cdk::println!(
-                                                    "Error calling submit_solution: {} (code: {:?}, refunded {} cycles)",
-                                                    msg,
-                                                    code,
-                                                    refunded
-                                                );
-                                            }
-                                        }
-                                    } else {
-                                        ic_cdk::println!("Token has no ledger ID");
-                                    }
-                                },
-                                Ok((Err(e),)) => {
-                                    ic_cdk::println!("Token returned error: {}", e);
-                                },
-                                Err((code, msg)) => {
-                                    ic_cdk::println!("Error getting token info: {} (code: {:?})", msg, code);
-                                }
-                            }
-                        } else {
-                            // No solution found, increment by chunk_size * prime to avoid collisions
-                            let increment = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_current_chunk_size()).unwrap_or(1000)) * 997;
-                            current_nonce = current_nonce.wrapping_add(increment);
-                        }
-                        
-                        let current_chunk_size = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_current_chunk_size()).unwrap_or(1000));
-                        hashes_processed += current_chunk_size;
-                        if hashes_processed % 10_000_000 == 0 {
-                            let elapsed = (ic_cdk::api::time() - start_time) as f64 / 1_000_000_000.0;
-                            let hash_rate = hashes_processed as f64 / elapsed;
-                            
-                            // Get current miner type and speed
-                            let (miner_type, speed) = BLOCK_MINER.with(|m| {
-                                if let Some(miner) = m.borrow().as_ref() {
-                                    (miner.get_type(), miner.get_speed_percentage())
-                                } else {
-                                    (block_miner::MinerType::Normal, 100)
-                                }
-                            });
-                            
-                            ic_cdk::println!(
-                                "Mining stats: [{:?} @ {}%] {} MH/s | Block {} @ difficulty {}", 
-                                miner_type,
-                                speed,
-                                hash_rate / 1_000_000.0,
-                                block.height,
-                                block.difficulty
-                            );
-                        }
+                // Try to mine the block - now we KNOW we have current difficulty
+                let mining_result = BLOCK_MINER.with(|m| {
+                    if let Some(miner) = m.borrow_mut().as_mut() {
+                        miner.mine_block_chunk(
+                            block.height,
+                            block.prev_hash,
+                            block.target,
+                            initial_nonce,
+                            block.version,
+                            block.merkle_root,
+                            block.timestamp,
+                            block.difficulty,
+                        )
+                    } else {
+                        None
                     }
                 });
+
+                if let Some(result) = mining_result {
+                    // Convert hash to hex string for logging
+                    let hash_hex = hex::encode(result.solution_hash);
+                    ic_cdk::println!("Found solution for block {}: nonce={}, hash={}", 
+                        result.block_height, 
+                        result.nonce, 
+                        hash_hex
+                    );
+                    
+                    // Get token info to get ledger ID
+                    let token_info: Result<(Result<TokenInfo, String>,), _> = call(token_id_clone, "get_info", ()).await;
+                    
+                    match token_info {
+                        Ok((Ok(token_info),)) => {
+                            if let Some(ledger_id) = token_info.ledger_id {
+                                // Found a solution! Submit it
+                                let current_chunk_size = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_current_chunk_size()).unwrap_or(1000));
+                                match call_with_payment128::<_, (Result<bool, String>,)>(
+                                    token_id_clone,
+                                    "submit_solution",
+                                    (ledger_id, result.nonce, result.solution_hash, current_chunk_size),
+                                    SUBMISSION_CYCLES
+                                ).await
+                                {
+                                    Ok((Ok(true),)) => {
+                                        // Check if any cycles were refunded (shouldn't be in normal case)
+                                        let refunded = ic_cdk::api::call::msg_cycles_refunded();
+                                        if refunded > 0 {
+                                            ic_cdk::println!("Warning: {} cycles were refunded from submission", refunded);
+                                        }
+                                        ic_cdk::println!("Solution accepted for block {}!", result.block_height);
+                                        // Get new random nonce after success
+                                        if let Ok(new_nonce) = generate_unique_nonce_start().await {
+                                            // Update the START_NONCE thread-local instead of local variable
+                                            START_NONCE.with(|n| {
+                                                *n.borrow_mut() = new_nonce;
+                                            });
+                                        }
+                                        reset_heartbeat_counter();
+                                    },
+                                    Ok((Ok(false),)) => {
+                                        ic_cdk::println!("Solution rejected for block {}", result.block_height);
+                                        // Use large increment to avoid collisions
+                                        let increment = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_current_chunk_size()).unwrap_or(1000)) * 997;
+                                        // Update the START_NONCE thread-local instead of local variable
+                                        START_NONCE.with(|n| {
+                                            let current = *n.borrow();
+                                            *n.borrow_mut() = current.wrapping_add(increment);
+                                        });
+                                    },
+                                    Ok((Err(e),)) => {
+                                        let refunded = ic_cdk::api::call::msg_cycles_refunded();
+                                        ic_cdk::println!(
+                                            "Error submitting solution: {} (refunded {} cycles)",
+                                            e,
+                                            refunded
+                                        );
+                                    },
+                                    Err((code, msg)) => {
+                                        let refunded = ic_cdk::api::call::msg_cycles_refunded();
+                                        ic_cdk::println!(
+                                            "Error calling submit_solution: {} (code: {:?}, refunded {} cycles)",
+                                            msg,
+                                            code,
+                                            refunded
+                                        );
+                                    }
+                                }
+                            } else {
+                                ic_cdk::println!("Token has no ledger ID");
+                            }
+                        },
+                        Ok((Err(e),)) => {
+                            ic_cdk::println!("Token returned error: {}", e);
+                        },
+                        Err((code, msg)) => {
+                            ic_cdk::println!("Error getting token info: {} (code: {:?})", msg, code);
+                        }
+                    }
+                }
             }
         }
     });
@@ -710,6 +641,59 @@ fn reset_block_backoff() {
     });
     BLOCK_BACKOFF_DURATION.with(|duration| {
         *duration.borrow_mut() = 5_000_000_000; // Reset to 5 seconds
+    });
+}
+
+// Helper function to check if we should mine based on heartbeat counter
+fn should_mine_on_heartbeat() -> bool {
+    HEARTBEAT_COUNTER.with(|c| *c.borrow() == 5)
+}
+
+// Helper function to reset the heartbeat counter
+fn reset_heartbeat_counter() {
+    HEARTBEAT_COUNTER.with(|c| {
+        *c.borrow_mut() = 0;
+    });
+    ic_cdk::println!("Heartbeat counter reset to 0");
+}
+
+// Heartbeat function to increment counter
+#[ic_cdk::heartbeat]
+fn heartbeat() {
+    HEARTBEAT_COUNTER.with(|c| {
+        let current = *c.borrow();
+        *c.borrow_mut() = (current + 1) % 6; // 0-5, so we can check for == 5
+    });
+}
+
+/// Sets the maximum duration a chunk can mine before returning to check for updates
+#[ic_cdk::update]
+fn set_max_chunk_duration(seconds: u64) {
+    BLOCK_MINER.with(|m| {
+        if let Some(miner) = m.borrow_mut().as_mut() {
+            miner.set_max_chunk_duration(seconds);
+        }
+    });
+}
+
+/// Sets the number of chunks to process before forcing a template refresh
+#[ic_cdk::update]
+fn set_chunks_per_refresh(chunks: u64) {
+    BLOCK_MINER.with(|m| {
+        if let Some(miner) = m.borrow_mut().as_mut() {
+            miner.set_chunks_per_refresh(chunks);
+        }
+    });
+}
+
+/// Enables or disables high volatility mode, which makes the miner more responsive
+/// to difficulty changes by reducing chunk sizes
+#[ic_cdk::update]
+fn set_high_volatility_mode(enabled: bool) {
+    BLOCK_MINER.with(|m| {
+        if let Some(miner) = m.borrow_mut().as_mut() {
+            miner.enable_high_volatility_mode(enabled);
+        }
     });
 }
 
