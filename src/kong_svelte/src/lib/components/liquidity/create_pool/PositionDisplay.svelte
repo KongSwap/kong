@@ -3,13 +3,17 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { livePools } from "$lib/services/pools/poolStore";
   import { userPoolListStore } from "$lib/stores/userPoolListStore";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { auth } from "$lib/services/auth";
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
-  export let decimals: number = 8;
   export let layout: "vertical" | "horizontal" = "vertical";
+
+  // For debouncing token changes
+  let tokenChangeTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastToken0: string | null = null;
+  let lastToken1: string | null = null;
 
   // Get objects or null values for TokenImages component
   $: tokenObj0 = typeof token0 === 'object' ? token0 : null;
@@ -31,62 +35,101 @@
   $: hasPosition = !!userPool && userPool.id != null;
   $: hasTokens = !!token0Symbol && !!token1Symbol;
   
-  // Calculate user's percentage of the pool
-  $: userPoolPercentage = calculateUserPoolPercentage(pool, userPool, token0, token1);
+  // Calculate user's percentage of the pool - note we pass the minimum needed values
+  // to avoid unnecessary recalculations
+  $: userPoolPercentage = calculateUserPoolPercentage(
+    pool?.balance_0, 
+    pool?.balance_1, 
+    Number(userPool?.amount_0), 
+    Number(userPool?.amount_1), 
+    getTokenDecimals(token0, userPool?.token0, 0),
+    getTokenDecimals(token1, userPool?.token1, 1)
+  );
+  
+  // Helper function to get token decimals
+  function getTokenDecimals(
+    token: FE.Token | null | string, 
+    userPoolToken: any,
+    tokenIndex: number
+  ): number {
+    if (typeof token === 'object' && token?.decimals) {
+      return token.decimals;
+    } else if (userPoolToken?.decimals) {
+      return userPoolToken.decimals;
+    }
+    // Default values - most ICP tokens use 8, ckUSDT uses 6
+    return tokenIndex === 0 ? 8 : 6;
+  }
   
   // Initialize store when connected
   onMount(async () => {
     if ($auth.isConnected && token0Symbol && token1Symbol) {
-      await userPoolListStore.initialize();
+      await refreshUserPools();
     }
   });
   
-  // Re-initialize when tokens change
+  // Re-initialize when tokens change with debouncing
   $: if (token0Symbol && token1Symbol && $auth.isConnected) {
-    userPoolListStore.initialize();
+    // Only trigger refresh if tokens actually changed
+    if (token0Symbol !== lastToken0 || token1Symbol !== lastToken1) {
+      lastToken0 = token0Symbol;
+      lastToken1 = token1Symbol;
+      
+      // Clear any existing timer
+      if (tokenChangeTimer) {
+        clearTimeout(tokenChangeTimer);
+      }
+      
+      // Debounce the update to prevent rapid multiple calls
+      tokenChangeTimer = setTimeout(() => {
+        refreshUserPools();
+      }, 200); // 200ms debounce
+    }
   }
   
+  // Cleanup on component destroy
+  onDestroy(() => {
+    if (tokenChangeTimer) {
+      clearTimeout(tokenChangeTimer);
+    }
+  });
+  
+  // Function to refresh user pools - moved to a separate function for reuse
+  async function refreshUserPools() {
+    try {
+      await userPoolListStore.initialize();
+    } catch (error) {
+      console.error("Error refreshing user pools:", error);
+    }
+  }
+  
+  // Optimized calculation function with minimized parameters
   function calculateUserPoolPercentage(
-    pool: BE.Pool | undefined, 
-    userPool: any, 
-    token0: FE.Token | null | string, 
-    token1: FE.Token | null | string
+    poolBalance0: bigint | undefined,
+    poolBalance1: bigint | undefined,
+    userAmount0: number | undefined,
+    userAmount1: number | undefined,
+    token0Decimals: number,
+    token1Decimals: number
   ): string {
-    if (!pool || !userPool) {
+    if (!poolBalance0 || !poolBalance1 || !userAmount0 || !userAmount1) {
       return "0";
     }
     
     try {
-      // Safely get values and handle potential undefined/null
-      const userAmount0 = Number(userPool.amount_0 || 0);
-      const userAmount1 = Number(userPool.amount_1 || 0);
-      
-      // Get token decimals directly from the token objects if they are objects
-      // Otherwise fall back to userPool tokens or defaults
-      let token0Decimals = 8; // Default for most IC tokens
-      let token1Decimals = 8; // Default for ckUSDT
-      
-      if (typeof token0 === 'object' && token0?.decimals) {
-        token0Decimals = token0.decimals;
-      } else if (userPool.token0?.decimals) {
-        token0Decimals = userPool.token0.decimals;
-      }
-      
-      if (typeof token1 === 'object' && token1?.decimals) {
-        token1Decimals = token1.decimals;
-      } else if (userPool.token1?.decimals) {
-        token1Decimals = userPool.token1.decimals;
-      }
+      // Safely handle numeric values
+      const userAmount0Num = Number(userAmount0 || 0);
+      const userAmount1Num = Number(userAmount1 || 0);
       
       // Convert BigInt pool balances to numbers with appropriate decimal scaling
-      const poolBalance0 = Number(pool.balance_0) / Math.pow(10, token0Decimals);
-      const poolBalance1 = Number(pool.balance_1) / Math.pow(10, token1Decimals);
+      const poolBalance0Num = Number(poolBalance0) / Math.pow(10, token0Decimals);
+      const poolBalance1Num = Number(poolBalance1) / Math.pow(10, token1Decimals);
       
-      if (poolBalance0 === 0 || poolBalance1 === 0) return "0";
+      if (poolBalance0Num === 0 || poolBalance1Num === 0) return "0";
       
       // Calculate percentages based on both tokens
-      const percentage0 = (userAmount0 / poolBalance0) * 100;
-      const percentage1 = (userAmount1 / poolBalance1) * 100;
+      const percentage0 = (userAmount0Num / poolBalance0Num) * 100;
+      const percentage1 = (userAmount1Num / poolBalance1Num) * 100;
       
       // Use the average of both percentages (they should be very close)
       const averagePercentage = (percentage0 + percentage1) / 2;
@@ -138,7 +181,7 @@
                   LP Tokens
                 </div>
                 <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                  {Number(userPool?.balance)}
+                  {Number(userPool?.balance).toLocaleString(undefined, {maximumFractionDigits: 8})}
                 </div>
                 <div class="text-kong-text-primary/40 text-xs mt-1">
                   {userPoolPercentage}% of pool
@@ -152,7 +195,7 @@
                   {token0Symbol}
                 </div>
                 <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                  {Number(userPool?.amount_0)}
+                  {Number(userPool?.amount_0).toLocaleString(undefined, {maximumFractionDigits: 8})}
                 </div>
               </div>
 
@@ -163,7 +206,7 @@
                   {token1Symbol}
                 </div>
                 <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                  {Number(userPool?.amount_1)}
+                  {Number(userPool?.amount_1).toLocaleString(undefined, {maximumFractionDigits: 8})}
                 </div>
               </div>
             </div>
@@ -219,7 +262,7 @@
             <div
               class="text-kong-text-primary/90 text-lg font-medium tabular-nums"
             >
-              {Number(userPool?.balance)}
+              {Number(userPool?.balance).toLocaleString(undefined, {maximumFractionDigits: 8})}
             </div>
           </div>
 
@@ -240,7 +283,7 @@
                 <span
                   class="text-kong-text-primary/90 font-medium tabular-nums"
                 >
-                  {Number(userPool?.amount_0)}
+                  {Number(userPool?.amount_0).toLocaleString(undefined, {maximumFractionDigits: 8})}
                 </span>
               </div>
               <div class="h-px bg-white/5" />
@@ -254,7 +297,7 @@
                 <span
                   class="text-kong-text-primary/90 font-medium tabular-nums"
                 >
-                  {Number(userPool?.amount_1)}
+                  {Number(userPool?.amount_1).toLocaleString(undefined, {maximumFractionDigits: 8})}
                 </span>
               </div>
             </div>

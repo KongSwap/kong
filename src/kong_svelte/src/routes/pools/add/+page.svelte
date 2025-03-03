@@ -5,6 +5,10 @@
   import { PlusCircleIcon } from "lucide-svelte";
 </script>
 
+<svelte:head>
+  <title>Add Liquidity | Kong</title>
+</svelte:head>
+
 <div class="flex flex-col w-full h-full px-4 pb-4">
   <PageHeader
     title="Add Liquidity"
