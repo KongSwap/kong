@@ -8,6 +8,7 @@ export interface CanisterMetadata {
   createdAt: number;
   wasmType?: string;
   wasmVersion?: number;
+  hidden?: boolean;
 }
 
 const STORAGE_KEY = 'kong_canisters';
@@ -51,6 +52,14 @@ function createCanisterStore() {
         }
         return updatedCanisters;
       });
+    },
+    
+    hideCanister(id: string) {
+      this.updateCanister(id, { hidden: true });
+    },
+    
+    showCanister(id: string) {
+      this.updateCanister(id, { hidden: false });
     },
     
     removeCanister(id: string) {

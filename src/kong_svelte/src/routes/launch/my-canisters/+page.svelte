@@ -6,8 +6,10 @@
     import { InstallService, type WasmMetadata, agent, getICManagementActor } from '$lib/services/canister/install_wasm';
     import { idlFactory as icManagementIdlFactory } from '$lib/services/canister/ic-management.idl';
     import Canister from './Canister.svelte';
-    import KongAgent from './KongAgent.svelte';
+    import KongInterface from './KongInterface.svelte';
     import { goto } from '$app/navigation';
+    import KongInterfaceModal from './KongInterfaceModal.svelte';
+    import { fade, fly } from 'svelte/transition';
 
     // Available WASM types
     const AVAILABLE_WASMS: Record<string, WasmMetadata> = {
@@ -50,6 +52,36 @@
     let showAddModal = false;
     let addError = '';
     
+    // Filter state
+    let selectedFilter = 'miner'; // Default to showing miners
+    let showHidden = false;
+    let searchQuery = '';
+    
+    // Filtered canisters
+    $: filteredCanisters = canisters.filter(canister => {
+        // Filter by hidden status
+        if (!showHidden && canister.hidden) return false;
+        
+        // Filter by type
+        if (selectedFilter && selectedFilter !== 'all') {
+            if (canister.wasmType !== selectedFilter) return false;
+        }
+        
+        // Filter by search query
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            const name = (canister.name || '').toLowerCase();
+            const id = canister.id.toLowerCase();
+            const tags = canister.tags ? canister.tags.join(' ').toLowerCase() : '';
+            
+            if (!name.includes(query) && !id.includes(query) && !tags.includes(query)) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
     // Install WASM state
     let showInstallModal = false;
     let selectedCanisterId: string | null = null;
@@ -80,6 +112,12 @@
     let canisterStatuses: Record<string, CanisterStatus | null> = {};
     let loadingStatuses: Record<string, boolean> = {};
     let statusErrors: Record<string, string | null> = {};
+
+    // Animation for the hidden canisters button
+    let pulseHiddenButton = false;
+    
+    // Toggle the pulse animation every 3 seconds if there are hidden canisters
+    $: hiddenCanistersCount = canisters.filter(c => c.hidden).length;
 
     // Format helpers
     function formatDate(timestamp: number): string {
@@ -141,11 +179,23 @@
         newTags = '';
     }
 
-    function removeCanister(event: CustomEvent) {
+    function hideCanister(event: CustomEvent) {
         const id = event.detail.id;
-        if (confirm('Are you sure you want to remove this canister from your list? This will not delete the canister from the Internet Computer.')) {
-            canisterStore.removeCanister(id);
+        const canister = canisters.find(c => c.id === id);
+        
+        if (canister) {
+            if (canister.hidden) {
+                // If already hidden, show it
+                canisterStore.showCanister(id);
+            } else {
+                // If visible, hide it
+                canisterStore.hideCanister(id);
+            }
         }
+    }
+    
+    function toggleShowHidden() {
+        showHidden = !showHidden;
     }
 
     // Add custom canister
@@ -447,88 +497,198 @@
             });
         });
 
+        // Set up pulse animation for hidden canisters button
+        const pulseInterval = setInterval(() => {
+            if (!showHidden && hiddenCanistersCount > 0) {
+                pulseHiddenButton = true;
+                setTimeout(() => {
+                    pulseHiddenButton = false;
+                }, 1000);
+            }
+        }, 5000);
+
         return () => {
             unsubscribe();
             canisterUnsubscribe();
+            clearInterval(pulseInterval);
         };
     });
 </script>
 
-    <div class="container px-4 py-8 mx-auto">
-        <div class="flex items-center justify-between mb-8">
-            <h1 class="text-2xl font-bold text-white">My Canisters</h1>
-            <div class="flex gap-2">
-                <button 
-                    on:click={showAddCanisterModal}
-                    class="px-4 py-2 text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
-                >
-                    Add Existing Canister
-                </button>
-                <div class="relative group">
-                    <button 
-                        class="px-4 py-2 text-white transition-colors bg-purple-600 rounded-lg hover:bg-purple-700"
-                    >
-                        Create New Canister
-                    </button>
-                    <div class="absolute right-0 z-10 hidden w-48 mt-2 overflow-hidden transition-all duration-300 bg-gray-800 border border-gray-700 rounded-lg shadow-lg group-hover:block">
-                        <a 
-                            href="/launch/create-token" 
-                            class="block px-4 py-2 text-white hover:bg-purple-700"
-                        >
-                            Proof of Work Token
-                        </a>
-                        <a 
-                            href="/launch/create-miner" 
-                            class="block px-4 py-2 text-white hover:bg-purple-700"
-                        >
-                            Miner
-                        </a>
-                    </div>
-                </div>
+<style>
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(147, 51, 234, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(147, 51, 234, 0);
+        }
+    }
+    
+    .pulse {
+        animation: pulse 1.5s ease-out;
+    }
+</style>
+
+<div class="container px-4 py-8 mx-auto">
+    {#if !principal}
+        <div class="p-8 text-center bg-gray-800 bg-opacity-50 border border-gray-700 rounded-lg backdrop-blur-sm">
+            <p class="text-lg text-gray-300">Please connect your wallet to view your canisters.</p>
+        </div>
+    {:else if canisters.length === 0}
+        <div class="p-8 text-center bg-gray-800 bg-opacity-50 border border-gray-700 rounded-lg backdrop-blur-sm">
+            <p class="mb-4 text-lg text-gray-300">You haven't created any canisters yet.</p>
+            <div class="flex justify-center gap-4">
+                <a href="/launch/create-token" class="px-4 py-2 text-white transition-colors bg-purple-600 rounded-lg hover:bg-purple-700">
+                    Create Proof of Work Token
+                </a>
+                <a href="/launch/create-miner" class="px-4 py-2 text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700">
+                    Create Miner
+                </a>
             </div>
         </div>
-
-        {#if !principal}
-            <div class="p-8 text-center bg-gray-800 bg-opacity-50 border border-gray-700 rounded-lg backdrop-blur-sm">
-                <p class="text-lg text-gray-300">Please connect your wallet to view your canisters.</p>
-            </div>
-        {:else if canisters.length === 0}
-            <div class="p-8 text-center bg-gray-800 bg-opacity-50 border border-gray-700 rounded-lg backdrop-blur-sm">
-                <p class="mb-4 text-lg text-gray-300">You haven't created any canisters yet.</p>
-                <div class="flex justify-center gap-4">
-                    <a href="/launch/create-token" class="px-4 py-2 text-white transition-colors bg-purple-600 rounded-lg hover:bg-purple-700">
-                        Create Proof of Work Token
-                    </a>
-                    <a href="/launch/create-miner" class="px-4 py-2 text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700">
-                        Create Miner
-                    </a>
+    {:else}
+        <!-- Filter Controls -->
+        <div class="p-4 mb-6 border border-gray-700 rounded-lg bg-gray-800/50 backdrop-blur-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <!-- Type Filter -->
+                <div class="flex flex-wrap gap-2">
+                    <button 
+                        on:click={() => selectedFilter = 'all'}
+                        class="px-3 py-1.5 text-sm rounded-full transition-colors {selectedFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}"
+                    >
+                        All
+                    </button>
+                    <button 
+                        on:click={() => selectedFilter = 'miner'}
+                        class="px-3 py-1.5 text-sm rounded-full transition-colors {selectedFilter === 'miner' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}"
+                    >
+                        Miners
+                    </button>
+                    <button 
+                        on:click={() => selectedFilter = 'token_backend'}
+                        class="px-3 py-1.5 text-sm rounded-full transition-colors {selectedFilter === 'token_backend' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}"
+                    >
+                        Tokens
+                    </button>
+                    <button 
+                        on:click={() => selectedFilter = 'ledger'}
+                        class="px-3 py-1.5 text-sm rounded-full transition-colors {selectedFilter === 'ledger' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}"
+                    >
+                        Ledgers
+                    </button>
                 </div>
+                
+                <!-- Search, Hidden Toggle, and Add Existing Canister -->
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            bind:value={searchQuery} 
+                            placeholder="Search canisters..." 
+                            class="w-full px-3 py-2 pl-9 text-white bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <button 
+                        on:click={toggleShowHidden}
+                        class="px-3 py-2 text-sm transition-colors rounded-md {showHidden ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'} flex items-center {!showHidden && hiddenCanistersCount > 0 && pulseHiddenButton ? 'pulse' : ''}"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1">
+                            {#if showHidden}
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            {:else}
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            {/if}
+                        </svg>
+                        {showHidden ? 'Hide Hidden Canisters' : 'Show Hidden Canisters'}
+                        {#if !showHidden && canisters.filter(c => c.hidden).length > 0}
+                            <span class="ml-2 px-2 py-0.5 text-xs bg-purple-500 text-white rounded-full">
+                                {canisters.filter(c => c.hidden).length}
+                            </span>
+                        {/if}
+                    </button>
+                    
+                    <button 
+                        on:click={showAddCanisterModal}
+                        class="px-3 py-2 text-sm transition-colors rounded-md bg-indigo-600 text-white hover:bg-indigo-700 flex items-center"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-1">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Add Existing
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Stats -->
+            <div class="mt-4 text-sm text-gray-400">
+                Showing {filteredCanisters.length} of {canisters.length} canisters
+                {#if canisters.filter(c => c.hidden).length > 0}
+                    <span class="ml-2">
+                        (<span class="{!showHidden ? 'text-purple-400 font-medium' : ''}">{canisters.filter(c => c.hidden).length} hidden</span>)
+                        {#if !showHidden && canisters.filter(c => c.hidden).length > 0}
+                            <button 
+                                on:click={toggleShowHidden}
+                                class="ml-2 text-xs text-purple-400 hover:text-purple-300 underline"
+                            >
+                                Show hidden
+                            </button>
+                        {/if}
+                    </span>
+                {/if}
+            </div>
+        </div>
+        
+        {#if filteredCanisters.length === 0}
+            <div class="p-8 text-center bg-gray-800 bg-opacity-50 border border-gray-700 rounded-lg backdrop-blur-sm">
+                <p class="text-lg text-gray-300">No canisters match your current filters.</p>
+                {#if !showHidden && canisters.some(c => c.hidden)}
+                    <button 
+                        on:click={toggleShowHidden}
+                        class="px-4 py-2 mt-4 text-white transition-colors bg-purple-600 rounded-lg hover:bg-purple-700"
+                    >
+                        Show Hidden Canisters
+                    </button>
+                {/if}
             </div>
         {:else}
             <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {#each canisters as canister (canister.id)}
-                    <Canister 
-                        canister={canister}
-                        canisterStatus={canisterStatuses[canister.id]}
-                        statusError={statusErrors[canister.id]}
-                        loadingStatus={loadingStatuses[canister.id]}
-                        isEditing={editingCanister?.id === canister.id}
-                        newName={newName}
-                        newTags={newTags}
-                        hasUpgrade={hasNewerVersion(canister)}
-                        on:edit={startEdit}
-                        on:save={saveEdit}
-                        on:cancel={cancelEdit}
-                        on:remove={removeCanister}
-                        on:refresh-status={(e) => fetchCanisterStatus(e.detail.id)}
-                        on:install-wasm={openInstallModal}
-                        on:top-up={handleTopUp}
-                        on:open-kong-agent={openKongAgent}
-                    />
+                {#each filteredCanisters as canister (canister.id)}
+                    <div in:fly={{ y: 20, duration: 300, delay: 100 }} out:fade={{ duration: 200 }}>
+                        <Canister 
+                            canister={canister}
+                            canisterStatus={canisterStatuses[canister.id]}
+                            statusError={statusErrors[canister.id]}
+                            loadingStatus={loadingStatuses[canister.id]}
+                            isEditing={editingCanister?.id === canister.id}
+                            newName={newName}
+                            newTags={newTags}
+                            hasUpgrade={hasNewerVersion(canister)}
+                            on:edit={startEdit}
+                            on:save={saveEdit}
+                            on:cancel={cancelEdit}
+                            on:hide={hideCanister}
+                            on:refresh-status={(e) => fetchCanisterStatus(e.detail.id)}
+                            on:install-wasm={openInstallModal}
+                            on:top-up={handleTopUp}
+                            on:open-kong-agent={openKongAgent}
+                        />
+                    </div>
                 {/each}
             </div>
         {/if}
-    </div>
+    {/if}
+</div>
 
 <!-- Add Canister Modal -->
 {#if showAddModal}
@@ -661,9 +821,10 @@
 
 <!-- Kong Agent Chat Interface -->
 {#if showKongAgent && kongAgentCanisterId}
-    <KongAgent 
+    <KongInterfaceModal 
+        isOpen={showKongAgent}
+        onClose={closeKongAgent}
         canisterId={kongAgentCanisterId} 
         wasmType={kongAgentWasmType}
-        on:close={closeKongAgent}
     />
 {/if} 
