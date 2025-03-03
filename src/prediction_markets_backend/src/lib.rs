@@ -12,16 +12,18 @@ use crate::balance::balance::*;
 use crate::bet::bet::*;
 use crate::canister::*;
 use crate::category::market_category::*;
+use crate::delegation::*;
 use crate::market::market::*;
 use crate::nat::*;
 use crate::resolution::resolution::*;
 use crate::user::user::*;
 
-pub mod controllers;
 pub mod balance;
 pub mod bet;
 pub mod canister;
 pub mod category;
+pub mod controllers;
+pub mod delegation;
 pub mod market;
 pub mod nat;
 pub mod resolution;
@@ -33,13 +35,13 @@ const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";
 
 /// Called before canister upgrade to preserve state
 #[pre_upgrade]
-fn pre_upgrade_hook() {
+fn pre_upgrade() {
     // Serialization handled by stable structures
 }
 
 /// Called after canister upgrade to restore state
 #[post_upgrade]
-fn post_upgrade_hook() {
+fn post_upgrade() {
     // Deserialization handled by stable structures
 }
 

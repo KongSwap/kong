@@ -4,7 +4,7 @@ use crate::stable_memory::DB_UPDATE_MAP;
 pub fn insert(db_update: &StableDBUpdate) -> u64 {
     DB_UPDATE_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let db_update_id = map.last_key_value().map_or(0, |(k, _)| k.0 + 1);
+        let db_update_id = map.last_key_value().map_or(1, |(k, _)| k.0 + 1);
         let db_update = StableDBUpdate {
             db_update_id,
             ..db_update.clone()
