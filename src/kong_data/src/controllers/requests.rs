@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
+use crate::ic::logging::info_log;
 use crate::stable_db_update::db_update_map;
 use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
 use crate::stable_memory::REQUEST_MAP;
@@ -64,6 +65,7 @@ fn update_request(stable_request_json: String) -> Result<String, String> {
         map.insert(StableRequestId(request.request_id), request.clone());
     });
 
+    let request_id = request.request_id;
     // add to UpdateMap for archiving to database
     let ts = get_time();
     let update = StableDBUpdate {
@@ -71,7 +73,8 @@ fn update_request(stable_request_json: String) -> Result<String, String> {
         stable_memory: StableMemory::RequestMap(request),
         ts,
     };
-    db_update_map::insert(&update);
+    let db_update_id = db_update_map::insert(&update);
+    info_log(&format!("db_update_id={} as request_id={}", db_update_id, request_id));
 
     Ok("Request updated".to_string())
 }

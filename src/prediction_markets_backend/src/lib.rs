@@ -8,7 +8,6 @@
 use candid::Principal;
 use ic_cdk::{post_upgrade, pre_upgrade};
 
-use crate::balance::balance::*;
 use crate::bet::bet::*;
 use crate::canister::*;
 use crate::category::market_category::*;
@@ -18,7 +17,6 @@ use crate::nat::*;
 use crate::resolution::resolution::*;
 use crate::user::user::*;
 
-pub mod balance;
 pub mod bet;
 pub mod canister;
 pub mod category;

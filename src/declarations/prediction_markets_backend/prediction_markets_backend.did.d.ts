@@ -17,7 +17,6 @@ export type BetError = { 'MarketNotFound' : null } |
   { 'InvalidOutcome' : null } |
   { 'InsufficientBalance' : null } |
   { 'BalanceUpdateFailed' : null };
-export interface BetWithMarket { 'bet' : Bet, 'market' : Market }
 export interface Delegation {
   'created' : bigint,
   'targets_list_hash' : Uint8Array | number[],
@@ -39,10 +38,6 @@ export interface Distribution {
   'winnings' : bigint,
   'user' : Principal,
   'outcome_index' : bigint,
-}
-export interface GetFeeBalanceResult {
-  'balance' : bigint,
-  'admin_principal' : Principal,
 }
 export interface ICRC21ConsentMessageRequest {
   'method' : string,
@@ -154,11 +149,8 @@ export interface _SERVICE {
     ],
     Result
   >,
-  'get_all_bets' : ActorMethod<[bigint, bigint, boolean], Array<BetWithMarket>>,
   'get_all_categories' : ActorMethod<[], Array<string>>,
   'get_all_markets' : ActorMethod<[], Array<Market>>,
-  'get_balance' : ActorMethod<[Principal], bigint>,
-  'get_fee_balance' : ActorMethod<[], GetFeeBalanceResult>,
   'get_market' : ActorMethod<[bigint], [] | [Market]>,
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
   'get_markets_by_status' : ActorMethod<[], MarketsByStatus>,
