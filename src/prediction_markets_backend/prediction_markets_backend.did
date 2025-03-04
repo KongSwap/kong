@@ -15,7 +15,6 @@ type BetError = variant {
   InsufficientBalance;
   BalanceUpdateFailed;
 };
-type BetWithMarket = record { bet : Bet; market : Market };
 type Delegation = record {
   created : nat64;
   targets_list_hash : blob;
@@ -39,10 +38,6 @@ type Distribution = record {
   winnings : nat;
   user : principal;
   outcome_index : nat;
-};
-type GetFeeBalanceResult = record {
-  balance : nat;
-  admin_principal : principal;
 };
 type ICRC21ConsentMessageRequest = record {
   method : text;
@@ -145,11 +140,8 @@ service : {
       ResolutionMethod,
       MarketEndTime,
     ) -> (Result);
-  get_all_bets : (nat64, nat64, bool) -> (vec BetWithMarket) query;
   get_all_categories : () -> (vec text) query;
   get_all_markets : () -> (vec Market) query;
-  get_balance : (principal) -> (nat) query;
-  get_fee_balance : () -> (GetFeeBalanceResult) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
   get_markets_by_status : () -> (MarketsByStatus) query;

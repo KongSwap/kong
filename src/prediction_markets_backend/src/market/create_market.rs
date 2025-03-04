@@ -1,16 +1,12 @@
 use ic_cdk::update;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use super::market::*;
 
-use crate::controllers::admin::*;
 use crate::category::market_category::*;
+use crate::controllers::admin::*;
 use crate::nat::*;
 use crate::resolution::resolution::*;
 use crate::stable_memory::*;
-
-// Global atomic counter for generating unique market IDs
-static NEXT_ID: AtomicU64 = AtomicU64::new(0);
 
 /// Creates a new prediction market
 #[update]
@@ -49,7 +45,7 @@ fn create_market(
 
     let market_id = MARKETS.with(|markets| {
         let mut markets_ref = markets.borrow_mut();
-        let market_id = StorableNat::from(NEXT_ID.fetch_add(1, Ordering::Relaxed));
+        let market_id = StorableNat::from(markets_ref.last_key_value().map_or(0, |(k, _)| k.to_u64() + 1));
         let outcome_count = outcomes.len();
         markets_ref.insert(
             market_id.clone(),

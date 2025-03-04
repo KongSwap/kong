@@ -3,7 +3,6 @@ use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
-use crate::market::market::*;
 use crate::nat::*;
 
 /// Possible errors when placing a bet
@@ -29,12 +28,6 @@ pub struct Bet {
     #[serde(serialize_with = "serialize_nat", deserialize_with = "deserialize_nat")]
     pub outcome_index: StorableNat, // Index of the chosen outcome
     pub timestamp: Timestamp, // When the bet was placed
-}
-
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
-pub struct BetWithMarket {
-    pub bet: Bet,
-    pub market: Market,
 }
 
 /// Wrapper around Vec<Bet> that implements Storable trait for stable storage

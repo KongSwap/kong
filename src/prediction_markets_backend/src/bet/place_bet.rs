@@ -91,7 +91,7 @@ async fn place_bet(market_id: MarketId, outcome_index: StorableNat, amount: Stor
     });
 
     // Update market pool with bet amount (excluding fee)
-    market.total_pool = market.total_pool.clone() + bet_amount.clone();
+    market.total_pool += bet_amount.clone();
     market.outcome_pools[outcome_idx] = market.outcome_pools[outcome_idx].clone() + bet_amount.clone();
     market.outcome_percentages = market
         .outcome_pools

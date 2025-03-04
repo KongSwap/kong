@@ -1,3 +1,4 @@
+use candid::Nat;
 use ic_stable_structures::{storable::Bound, Storable};
 use num_traits::{CheckedAdd, CheckedMul, ToPrimitive, Zero};
 use serde::{Deserialize, Serialize};
@@ -7,7 +8,7 @@ use std::str::FromStr;
 
 // Wrapper around candid::Nat that implements Storable
 #[derive(candid::CandidType, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct StorableNat(pub candid::Nat);
+pub struct StorableNat(pub Nat);
 
 impl StorableNat {
     pub fn to_f64(&self) -> f64 {

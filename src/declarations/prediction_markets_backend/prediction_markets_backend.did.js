@@ -21,13 +21,6 @@ export const idlFactory = ({ IDL }) => {
     'Duration' : IDL.Nat,
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
-  const Bet = IDL.Record({
-    'market_id' : IDL.Nat,
-    'user' : IDL.Principal,
-    'timestamp' : IDL.Nat,
-    'amount' : IDL.Nat,
-    'outcome_index' : IDL.Nat,
-  });
   const MarketStatus = IDL.Variant({
     'Disputed' : IDL.Null,
     'Open' : IDL.Null,
@@ -52,10 +45,12 @@ export const idlFactory = ({ IDL }) => {
     'resolved_by' : IDL.Opt(IDL.Principal),
     'bet_counts' : IDL.Vec(IDL.Nat),
   });
-  const BetWithMarket = IDL.Record({ 'bet' : Bet, 'market' : Market });
-  const GetFeeBalanceResult = IDL.Record({
-    'balance' : IDL.Nat,
-    'admin_principal' : IDL.Principal,
+  const Bet = IDL.Record({
+    'market_id' : IDL.Nat,
+    'user' : IDL.Principal,
+    'timestamp' : IDL.Nat,
+    'amount' : IDL.Nat,
+    'outcome_index' : IDL.Nat,
   });
   const Distribution = IDL.Record({
     'bet_amount' : IDL.Nat,
@@ -168,15 +163,8 @@ export const idlFactory = ({ IDL }) => {
         [Result],
         [],
       ),
-    'get_all_bets' : IDL.Func(
-        [IDL.Nat64, IDL.Nat64, IDL.Bool],
-        [IDL.Vec(BetWithMarket)],
-        ['query'],
-      ),
     'get_all_categories' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
     'get_all_markets' : IDL.Func([], [IDL.Vec(Market)], ['query']),
-    'get_balance' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
-    'get_fee_balance' : IDL.Func([], [GetFeeBalanceResult], ['query']),
     'get_market' : IDL.Func([IDL.Nat], [IDL.Opt(Market)], ['query']),
     'get_market_bets' : IDL.Func([IDL.Nat], [IDL.Vec(Bet)], ['query']),
     'get_markets_by_status' : IDL.Func([], [MarketsByStatus], ['query']),

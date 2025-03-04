@@ -26,7 +26,7 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                 if let Some(market) = markets.get(&market_id) {
                     for bet in bet_store.0.iter() {
                         if bet.user == user {
-                            total_wagered = total_wagered.clone() + bet.amount.clone();
+                            total_wagered += bet.amount.clone();
 
                             match market.status {
                                 MarketStatus::Open => {
@@ -48,7 +48,7 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                                                 .iter()
                                                 .any(|n| candid::Nat::from(other_bet.outcome_index.clone()) == *n)
                                             {
-                                                total_winning_pool = total_winning_pool + other_bet.amount.clone();
+                                                total_winning_pool += other_bet.amount.clone();
                                             }
                                         }
 
@@ -58,7 +58,7 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                                             StorableNat::from(0u64)
                                         };
 
-                                        total_winnings = total_winnings.clone() + winnings.clone();
+                                        total_winnings += winnings.clone();
                                     }
 
                                     resolved_bets.push(UserBetInfo {
