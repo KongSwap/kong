@@ -75,9 +75,9 @@ async fn place_bet(market_id: MarketId, outcome_index: StorableNat, amount: Stor
     // Calculate house fee (NAT8 arithmetic)
     let (fee_amount, bet_amount) = if FEES_ENABLED {
         let fee = amount.clone() * HOUSE_FEE_RATE.clone() / 100_000_000u64;
-        (fee.clone(), amount.clone() - fee)
+        (fee.clone(), amount - fee)
     } else {
-        (StorableNat::from(0u64), amount.clone())
+        (StorableNat::from(0u64), amount)
     };
 
     // Update fee balance

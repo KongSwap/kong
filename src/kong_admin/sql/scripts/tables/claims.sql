@@ -13,3 +13,28 @@ CREATE TABLE claims (
     ts TIMESTAMP NOT NULL,
     raw_json JSONB NOT NULL
 );
+
+-- public.claims definition
+
+-- Drop table
+
+-- DROP TABLE public.claims;
+
+CREATE TABLE public.claims (
+	claim_id int8 NOT NULL,
+	user_id int4 NOT NULL,
+	token_id int4 NOT NULL,
+	status public."claim_status" NOT NULL,
+	amount float8 NOT NULL,
+	request_id int8 NULL,
+	to_address text NULL,
+	attempt_request_id _int8 NULL,
+	transfer_ids _int8 NULL,
+	ts timestamp NOT NULL,
+	raw_json jsonb NOT NULL,
+	"desc" text NULL,
+	CONSTRAINT claims_pkey PRIMARY KEY (claim_id),
+	CONSTRAINT claims_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(request_id),
+	CONSTRAINT claims_token_id_fkey FOREIGN KEY (token_id) REFERENCES public.tokens(token_id),
+	CONSTRAINT claims_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id)
+);
