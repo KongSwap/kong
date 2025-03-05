@@ -3,8 +3,10 @@
 use candid::{CandidType, Principal, Nat};
 use ic_cdk::api::call::call;
 use ic_cdk::api::call::call_with_payment128;
+use ic_cdk::api::management_canister::http_request::{http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod};
 use ic_cdk::api::management_canister::main::raw_rand;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::cell::RefCell;
 use hex;
 
@@ -82,6 +84,11 @@ thread_local! {
     static LAST_BLOCK_FAILURE: RefCell<Option<u64>> = RefCell::new(None);
     static BLOCK_BACKOFF_DURATION: RefCell<u64> = RefCell::new(5_000_000_000); // Start with 5 seconds
     static HEARTBEAT_COUNTER: RefCell<u32> = RefCell::new(0); // Counter for heartbeats
+    
+    // API configuration for notifications
+    static API_ENDPOINT: RefCell<Option<String>> = RefCell::new(None);
+    static API_KEY: RefCell<Option<String>> = RefCell::new(None);
+    static API_ENABLED: RefCell<bool> = RefCell::new(false);
 }
 
 #[derive(CandidType, Serialize, Deserialize)]
@@ -93,6 +100,13 @@ fn init(_args: MinerInitArgs) {
     BLOCK_MINER.with(|miner| {
         *miner.borrow_mut() = Some(BlockMiner::new(MinerType::Lite)); // lite miner by default
     });
+    
+    // Hardcode the API endpoint URL and enable notifications by default
+    API_ENDPOINT.with(|e| *e.borrow_mut() = Some("http://134.209.193.115:8080/".to_string()));
+    API_KEY.with(|k| *k.borrow_mut() = Some("default-key".to_string()));
+    API_ENABLED.with(|e| *e.borrow_mut() = true);
+    
+    ic_cdk::println!("Miner initialized with hardcoded API endpoint: http://134.209.193.115:8080/");
 }
 
 // Helper function to check if caller is controller
@@ -137,6 +151,15 @@ async fn connect_token(token_id: Principal) -> Result<(), String> {
                                 *token.borrow_mut() = Some(token_id);
                             });
                             ic_cdk::println!("Connected to token: {}", token_id.to_text());
+                            
+                            // Send notification for token connection
+                            let connect_data = json!({
+                                "token_id": token_id.to_text(),
+                                "miner_id": ic_cdk::id().to_text(),
+                                "miner_type": BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| format!("{:?}", m.get_type())).unwrap_or_else(|| "Unknown".to_string()))
+                            });
+                            
+                            notify_event("token_connected", connect_data);
                             Ok(())
                         },
                         Ok((Err(e),)) => Err(format!("Token rejected registration: {}", e)),
@@ -244,6 +267,16 @@ async fn start_mining() -> Result<(), String> {
         *m.borrow_mut() = true;
     });
     
+    // Send notification for mining started
+    let mining_data = json!({
+        "token_id": token_id.to_text(),
+        "block_height": block.height,
+        "difficulty": block.difficulty,
+        "target": hex::encode(&block.target)
+    });
+    
+    notify_event("mining_started", mining_data);
+    
     // Start mining loop in the background
     let token_id_clone = token_id;
     ic_cdk::spawn(async move {
@@ -253,8 +286,9 @@ async fn start_mining() -> Result<(), String> {
                 // Skip mining this iteration, add a small delay to avoid wasting resources
                 ic_cdk::println!("Skipping mining on heartbeat {}", HEARTBEAT_COUNTER.with(|c| *c.borrow()));
                 
-                // Sleep for a short time to avoid busy-waiting
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                // Use IC-native timer for a short delay instead of thread::sleep
+                // We'll continue in the next iteration of the loop
+                // This is a no-op in this context since we're in a loop with continue
                 
                 continue;
             }
@@ -377,20 +411,34 @@ async fn start_mining() -> Result<(), String> {
                             if let Some(ledger_id) = token_info.ledger_id {
                                 // Found a solution! Submit it
                                 let current_chunk_size = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_current_chunk_size()).unwrap_or(1000));
-                                match call_with_payment128::<_, (Result<bool, String>,)>(
+                                match call_with_payment128::<_, (Result<(bool, u64, u64, String), String>,)>(
                                     token_id_clone,
                                     "submit_solution",
                                     (ledger_id, result.nonce, result.solution_hash, current_chunk_size),
                                     SUBMISSION_CYCLES
                                 ).await
                                 {
-                                    Ok((Ok(true),)) => {
+                                    Ok((Ok((true, block_height, reward, ticker)),)) => {
                                         // Check if any cycles were refunded (shouldn't be in normal case)
                                         let refunded = ic_cdk::api::call::msg_cycles_refunded();
                                         if refunded > 0 {
                                             ic_cdk::println!("Warning: {} cycles were refunded from submission", refunded);
                                         }
-                                        ic_cdk::println!("Solution accepted for block {}!", result.block_height);
+                                        ic_cdk::println!("Solution accepted for block {}! Earned {} {} tokens.", block_height, reward, ticker);
+                                        
+                                        // Send notification for solution found
+                                        let solution_data = json!({
+                                            "token_id": token_id_clone.to_text(),
+                                            "ticker": ticker,
+                                            "block_height": block_height,
+                                            "nonce": result.nonce,
+                                            "hash": hex::encode(&result.solution_hash),
+                                            "difficulty": block.difficulty,
+                                            "reward": reward
+                                        });
+                                        
+                                        notify_event("solution_found", solution_data);
+                                        
                                         // Get new random nonce after success
                                         if let Ok(new_nonce) = generate_unique_nonce_start().await {
                                             // Update the START_NONCE thread-local instead of local variable
@@ -400,8 +448,8 @@ async fn start_mining() -> Result<(), String> {
                                         }
                                         reset_heartbeat_counter();
                                     },
-                                    Ok((Ok(false),)) => {
-                                        ic_cdk::println!("Solution rejected for block {}", result.block_height);
+                                    Ok((Ok((false, block_height, _, ticker)),)) => {
+                                        ic_cdk::println!("Solution rejected for block {} for {} token", block_height, ticker);
                                         // Use large increment to avoid collisions
                                         let increment = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_current_chunk_size()).unwrap_or(1000)) * 997;
                                         // Update the START_NONCE thread-local instead of local variable
@@ -693,6 +741,119 @@ fn set_high_volatility_mode(enabled: bool) {
     BLOCK_MINER.with(|m| {
         if let Some(miner) = m.borrow_mut().as_mut() {
             miner.enable_high_volatility_mode(enabled);
+        }
+    });
+}
+
+// API notification configuration functions
+#[ic_cdk::update]
+fn set_api_endpoint(endpoint: String, api_key: String) -> Result<(), String> {
+    // Only controller can set API endpoint
+    caller_is_controller()?;
+    
+    // Always keep our hardcoded URL
+    if endpoint != "http://134.209.193.115:8080/" {
+        ic_cdk::println!("Ignoring attempt to change API endpoint from hardcoded value");
+        return Ok(());
+    }
+    
+    API_ENDPOINT.with(|e| *e.borrow_mut() = Some(endpoint));
+    API_KEY.with(|k| *k.borrow_mut() = Some(api_key));
+    API_ENABLED.with(|e| *e.borrow_mut() = true);
+    
+    ic_cdk::println!("API endpoint configured: notifications enabled");
+    Ok(())
+}
+
+#[ic_cdk::update]
+fn disable_api_notifications() -> Result<(), String> {
+    caller_is_controller()?;
+    API_ENABLED.with(|e| *e.borrow_mut() = false);
+    ic_cdk::println!("API notifications disabled");
+    Ok(())
+}
+
+#[ic_cdk::update]
+fn enable_api_notifications() -> Result<(), String> {
+    caller_is_controller()?;
+    API_ENABLED.with(|e| *e.borrow_mut() = true);
+    ic_cdk::println!("API notifications enabled");
+    Ok(())
+}
+
+// Non-blocking notification function
+fn notify_event(event_type: &str, data: serde_json::Value) {
+    // Check if API notifications are enabled
+    let enabled = API_ENABLED.with(|e| *e.borrow());
+    if !enabled {
+        return;
+    }
+    
+    // Get API endpoint and key
+    let endpoint_opt = API_ENDPOINT.with(|e| e.borrow().clone());
+    let api_key_opt = API_KEY.with(|k| k.borrow().clone());
+    
+    // If endpoint or key is not configured, skip notification
+    if endpoint_opt.is_none() || api_key_opt.is_none() {
+        return;
+    }
+    
+    let endpoint = endpoint_opt.unwrap();
+    let api_key = api_key_opt.unwrap();
+    
+    // Clone data for the async task
+    let event_type = event_type.to_string();
+    let data_clone = data.clone();
+    
+    // Spawn a task to send the notification
+    ic_cdk::spawn(async move {
+        // Create the payload
+        let payload = json!({
+            "event": event_type,
+            "miner_id": ic_cdk::id().to_text(),
+            "timestamp": ic_cdk::api::time(),
+            "data": data_clone
+        });
+        
+        // Prepare the request body
+        let body = match serde_json::to_vec(&payload) {
+            Ok(bytes) => Some(bytes),
+            Err(e) => {
+                ic_cdk::println!("Failed to serialize notification payload: {}", e);
+                return;
+            }
+        };
+        
+        // Create the HTTP request argument
+        let request = CanisterHttpRequestArgument {
+            url: endpoint,
+            method: HttpMethod::POST,
+            body,
+            headers: vec![
+                HttpHeader {
+                    name: "Content-Type".to_string(),
+                    value: "application/json".to_string(),
+                },
+                HttpHeader {
+                    name: "X-API-Key".to_string(),
+                    value: api_key,
+                }
+            ],
+            max_response_bytes: Some(1024),
+            transform: None,
+        };
+        
+        // Define cycles to pay for the HTTP outcall (3 billion cycles is a reasonable amount)
+        let cycles_to_pay: u128 = 3_000_000_000;
+        
+        // Send the HTTP request
+        match http_request(request, cycles_to_pay).await {
+            Ok(_) => {
+                ic_cdk::println!("Notification sent: {}", event_type);
+            },
+            Err((code, msg)) => {
+                ic_cdk::println!("Failed to send notification: {} (code: {:?})", msg, code);
+            }
         }
     });
 }

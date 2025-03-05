@@ -177,12 +177,14 @@ service : (TokenInitArgs) -> {
   get_social_links : () -> (Result_4) query;
   get_total_cycles_earned : () -> (nat) query;
   http_request : (HttpRequest) -> (HttpResponse) query;
+  icrc1_version : () -> (text) query;
   icrc10_supported_standards : () -> (vec SupportedStandard) query;
   icrc21_consent_message : (ConsentMessageRequest) -> (
       ConsentMessageResponse,
     ) query;
   icrc28_trusted_origins : () -> (TrustedOriginsResponse) query;
   icrc34_delegate : (DelegationRequest) -> (Result_5);
+  mining_version : () -> (text) query;
   register_miner : () -> (Result);
   remove_social_link : (nat64) -> (Result);
   start_token : () -> (Result_6);

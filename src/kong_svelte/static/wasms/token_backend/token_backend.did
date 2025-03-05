@@ -125,6 +125,10 @@ type Result_3 = variant { Ok : TokenInfo; Err : text };
 type Result_4 = variant { Ok : vec SocialLink; Err : text };
 type Result_5 = variant { Ok : DelegationResponse; Err : DelegationError };
 type Result_6 = variant { Ok : principal; Err : text };
+type Result_7 = variant {
+  Ok : record { bool; nat64; nat64; text };
+  Err : text;
+};
 type SocialLink = record { url : text; platform : text };
 type SupportedStandard = record { url : text; name : text };
 type TokenInfo = record {
@@ -179,16 +183,18 @@ service : (TokenInitArgs) -> {
   http_request : (HttpRequest) -> (HttpResponse) query;
   http_request_streaming_callback : () -> (HttpResponse) query;
   icrc10_supported_standards : () -> (vec SupportedStandard) query;
+  icrc1_version : () -> (text) query;
   icrc21_consent_message : (ConsentMessageRequest) -> (
       ConsentMessageResponse,
     ) query;
   icrc28_trusted_origins : () -> (TrustedOriginsResponse) query;
   icrc34_delegate : (DelegationRequest) -> (Result_5);
+  mining_version : () -> (text) query;
   register_miner : () -> (Result);
   remove_social_link : (nat64) -> (Result);
   restore_mining_params : (nat64, nat32, nat64, nat64) -> (Result);
   start_token : () -> (Result_6);
-  submit_solution : (principal, nat64, blob, nat64) -> (Result_1);
+  submit_solution : (principal, nat64, blob, nat64) -> (Result_7);
   update_social_link : (nat64, text, text) -> (Result);
   whoami : () -> (principal) query;
 }

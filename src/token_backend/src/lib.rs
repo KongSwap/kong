@@ -907,6 +907,12 @@ fn remove_social_link(index: usize) -> Result<(), String> {
     })
 }
 
+/// Returns the version of the token canister implementation
+#[ic_cdk::query]
+fn icrc1_version() -> String {
+    "v1.0.0".to_string()
+}
+
 // Candid interface export
 ic_cdk::export_candid!();
 

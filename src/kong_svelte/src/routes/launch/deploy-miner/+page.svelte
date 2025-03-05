@@ -40,7 +40,7 @@
   let isProcessing = false;
   
   // Deployment data
-  let kongAmount = "0"; // Will be set dynamically based on miner type
+  let kongAmount = "250"; // FIXED TODO!
   let icpAmount = "0"; 
   let canisterId = "";
   let kongIcpRate = "0"; // Don't set a default rate, let the calculation handle it

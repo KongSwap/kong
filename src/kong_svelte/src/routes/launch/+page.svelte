@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { goto } from "$app/navigation";
+  import { wsConnected, wsEvents, notifications, connectWebSocket, disconnectWebSocket, canistersList } from "$lib/api/canisters";
   import { Plus, Search, SortDesc } from "lucide-svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenList from "$lib/components/launch/TokenList.svelte";
@@ -12,7 +12,24 @@
   let sortField: "date" | "name" | "principal" | "version" = "date";
   let sortDirection: "asc" | "desc" = "desc";
 
-  // Dummy data functions (replace with actual API calls later)
+  let tokens = [];
+  let miners = [];
+
+  onMount(async () => {
+    connectWebSocket();
+    try {
+      [tokens, miners] = await Promise.all([
+        get_token_backends(),
+        get_miners()
+      ]);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      loading = false;
+    }
+    return () => disconnectWebSocket();
+  });
+
   async function get_token_backends() {
     // Simulating API delay
     return [
@@ -75,22 +92,6 @@
     ];
   }
 
-  let tokens = [];
-  let miners = [];
-
-  onMount(async () => {
-    try {
-      [tokens, miners] = await Promise.all([
-        get_token_backends(),
-        get_miners()
-      ]);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      loading = false;
-    }
-  });
-
   function handleCreateNew() {
     goto(`/launch/${activeTab === "tokens" ? "create-token" : "create-miner"}`);
   }
@@ -134,7 +135,19 @@
   }));
 </script>
 
-<div class="min-h-screen px-4 text-kong-text-primary">
+<style>
+  /* Add flashing and dynamic styles here */
+  .flashing {
+    animation: flash 1s infinite alternate;
+  }
+
+  @keyframes flash {
+    from { background-color: #222; }
+    to { background-color: #444; }
+  }
+</style>
+
+<div class="min-h-screen px-4 text-kong-text-primary flashing">
   <div class="mx-auto max-w-7xl">
     <div class="flex flex-col gap-6 mb-8 text-center md:flex-row md:justify-between md:items-center">
       <div class="flex flex-col gap-2">

@@ -40,7 +40,7 @@
   let isProcessing = false;
   
   // Deployment data
-  let kongAmount = "390"; // Fixed amount for token deployment - 500 KONG
+  let kongAmount = "250"; // Fixed amount for token deployment - 500 KONG TODO: configure based on subnet
   let icpAmount = "0"; 
   let canisterId = "";
   let kongIcpRate = "0";

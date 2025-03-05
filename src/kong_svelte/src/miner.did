@@ -19,10 +19,13 @@ type Result_1 = variant { Ok : MinerInfo; Err : text };
 service : (record {}) -> {
   claim_rewards : () -> (Result);
   connect_token : (principal) -> (Result);
+  disable_api_notifications : () -> (Result);
   disconnect_token : () -> (Result);
+  enable_api_notifications : () -> (Result);
   get_canister_id : () -> (principal) query;
   get_info : () -> (Result_1) query;
   get_mining_stats : () -> (opt MiningStats) query;
+  set_api_endpoint : (text, text) -> (Result);
   set_chunks_per_refresh : (nat64) -> ();
   set_high_volatility_mode : (bool) -> ();
   set_max_chunk_duration : (nat64) -> ();

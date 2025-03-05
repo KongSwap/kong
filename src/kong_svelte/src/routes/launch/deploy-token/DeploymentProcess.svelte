@@ -9,6 +9,7 @@
   import type { WasmMetadata } from "$lib/services/canister/install_wasm";
   import { fetchICPtoXDRRates } from "$lib/services/canister/ic-api";
   import { createCanister } from "$lib/services/canister/create_canister";
+import { registerCanister } from "$lib/api/canisters";
   import { idlFactory } from "$declarations/token_backend/token_backend.did.js";
   import { canisterStore } from "$lib/stores/canisters";
   import { deploymentHistoryStore, type DeploymentHistoryEntry as StoreDeploymentHistoryEntry } from "$lib/stores/deploymentHistory";
@@ -450,6 +451,43 @@
       }
       
       canisterId = newCanisterId.toText();
+      
+      // Register the canister with the API
+      try {
+        const registerMessage = "Registering canister with API...";
+        if (lastLogMessage !== registerMessage) {
+          addLog(registerMessage);
+          lastLogMessage = registerMessage;
+        }
+        
+        const principal = await getPrincipal();
+        const registerResult = await registerCanister(
+          principal,
+          canisterId,
+          'token_backend'
+        );
+        
+        if (registerResult.success) {
+          const apiSuccessMessage = "Successfully registered canister with API";
+          if (lastLogMessage !== apiSuccessMessage) {
+            addLog(apiSuccessMessage);
+            lastLogMessage = apiSuccessMessage;
+          }
+        } else {
+          const apiWarningMessage = `Warning: Failed to register canister with API: ${registerResult.error}`;
+          if (lastLogMessage !== apiWarningMessage) {
+            addLog(apiWarningMessage);
+            lastLogMessage = apiWarningMessage;
+          }
+        }
+      } catch (apiError) {
+        const apiErrorMessage = `Warning: Error registering canister with API: ${apiError.message}`;
+        if (lastLogMessage !== apiErrorMessage) {
+          addLog(apiErrorMessage);
+          lastLogMessage = apiErrorMessage;
+        }
+      }
+      
       return newCanisterId;
     } catch (error) {
       const errorMsg = `Failed to create canister: ${error.message}`;

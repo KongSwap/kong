@@ -12,6 +12,7 @@
   import { fetchICPtoXDRRates } from "$lib/services/canister/ic-api";
   import { get } from "svelte/store";
   import { createCanister } from "$lib/services/canister/create_canister";
+import { registerCanister } from "$lib/api/canisters";
   
   // Props
   export let minerParams: any;
@@ -278,6 +279,26 @@
       
       addLog(`Successfully created canister with ID: ${canisterId}`);
       
+      // Register the canister with the API
+      try {
+        addLog("Registering canister with API...");
+        const registerResult = await registerCanister(
+          principal,
+          canisterId,
+          'miner'
+        );
+        
+        if (registerResult.success) {
+          addLog("Successfully registered canister with API");
+        } else {
+          addLog(`Warning: Failed to register canister with API: ${registerResult.error}`);
+          // Continue anyway since this is not critical
+        }
+      } catch (apiError) {
+        addLog(`Warning: Error registering canister with API: ${apiError.message}`);
+        // Continue anyway since this is not critical
+      }
+      
       // Save progress
       lastSuccessfulStep = processSteps.CREATE_CANISTER;
       
@@ -372,11 +393,11 @@
     
     // Set KONG amount based on miner type
     if ("Lite" in minerParams.minerType) {
-      kongAmount = "100";
+      kongAmount = "150";
     } else if ("Normal" in minerParams.minerType) {
-      kongAmount = "250";
+      kongAmount = "420";
     } else if ("Premium" in minerParams.minerType) {
-      kongAmount = "1000";
+      kongAmount = "42069";
     }
     
     console.log(`Miner type set: ${JSON.stringify(minerParams.minerType)}`);
