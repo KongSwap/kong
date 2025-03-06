@@ -7,6 +7,7 @@ import { loadBalances, currentUserBalancesStore } from "./tokens/tokenStore";
 import { userTokens } from "$lib/stores/userTokens";
 import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
+import { fetchCanisters, syncCanistersToLocalStore } from "$lib/api/canisters";
 
 // Constants
 const STORAGE_KEYS = {
@@ -96,6 +97,7 @@ function createAuthStore(pnp: PNP) {
         // Reset data and load fresh
         await Promise.all([
           loadBalances(owner, { forceRefresh: true }),
+          syncCanistersToLocalStore(),
         ]);
 
         // Initialize default tokens if needed

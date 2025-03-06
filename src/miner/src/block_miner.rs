@@ -63,26 +63,22 @@ pub struct BlockMiner {
 
 impl BlockMiner {
     pub fn new(miner_type: MinerType) -> Self {
-        // Base chunk sizes per tier
-        let base_chunk_size = match miner_type {
-            MinerType::Lite => 100,
-            MinerType::Normal => 500,
-            MinerType::Premium => 2000,
-        };
+        // Fixed chunk size of 10,000 hashes regardless of miner type
+        let base_chunk_size = 10000;
         
         Self {
             miner_type,
             base_chunk_size,
             speed_percentage: 100, // Default to 100%
             tier_multipliers: [1.0, 1.0, 1.0], // Default multipliers
-            chunks_per_refresh: 10, // Default to 10 chunks before refresh
+            chunks_per_refresh: 1, // Only do one chunk per refresh
             last_rate_limit: None,
             backoff_duration: 1_000_000_000, // 1 second initial backoff
             current_difficulty: 0, // Initialize to 0 to force first update
             // Initialize new fields
             difficulty_history: Vec::with_capacity(10),
             difficulty_volatility: 0.0,
-            max_chunk_duration_ns: 5_000_000_000, // 5 seconds max chunk duration
+            max_chunk_duration_ns: 2_000_000_000, // 2 seconds max chunk duration
             stats: MiningStats::default(),
         }
     }
@@ -121,45 +117,8 @@ impl BlockMiner {
 
     // Helper function to get actual chunk size based on percentage and tier
     pub fn get_current_chunk_size(&self) -> u64 {
-        let tier_multiplier = match self.miner_type {
-            MinerType::Lite => self.tier_multipliers[0],
-            MinerType::Normal => self.tier_multipliers[1],
-            MinerType::Premium => self.tier_multipliers[2],
-        };
-        
-        // Base calculation from percentage and tier
-        let base = (self.base_chunk_size as f64 * (self.speed_percentage as f64 / 100.0) * tier_multiplier) as u64;
-        
-        // Adjust for difficulty - smaller chunks for higher difficulty
-        let difficulty_factor = if self.current_difficulty > 0 {
-            // Scale inversely with difficulty, but keep it reasonable
-            // More difficult blocks get smaller chunks
-            let scale = 5_000_000.0; // Scaling factor to make the effect noticeable
-            1.0 / (1.0 + (self.current_difficulty as f64 / scale))
-        } else {
-            1.0
-        };
-        
-        // Adjust for volatility - even smaller chunks when difficulty is changing rapidly
-        let volatility_factor = if self.difficulty_volatility > 0.0 {
-            1.0 / (1.0 + (self.difficulty_volatility * 20.0))
-        } else {
-            1.0
-        };
-        
-        // Apply adjustments with minimum and maximum bounds
-        let adjusted = (base as f64 * difficulty_factor * volatility_factor) as u64;
-        
-        // Log if significant adjustment was made
-        if adjusted < base / 2 {
-            ic_cdk::println!(
-                "Chunk size reduced due to difficulty/volatility: {} -> {} (D: {}, V: {:.3})",
-                base, adjusted, self.current_difficulty, self.difficulty_volatility
-            );
-        }
-        
-        // Ensure we don't go below a reasonable minimum or above the base
-        adjusted.max(50).min(base)
+        // Always return exactly 10,000 hashes
+        10000
     }
 
     // Set tier multipliers
@@ -247,26 +206,22 @@ impl BlockMiner {
     ) -> Option<MiningResult> {
         let mut hasher = Sha256::new();
         let chunk_start_time = ic_cdk::api::time();
-        let current_chunk_size = self.get_current_chunk_size();
+        
+        // Always use exactly 10,000 hashes
+        let current_chunk_size = 10000;
 
         // Increment chunks processed counter
         self.stats.chunks_since_refresh += 1;
 
         // Simplified logging - only log once per chunk
-        ic_cdk::println!("[{:?} Miner @ {}%] Mining block {} - {} total hashes, {:.0} hash/s, chunks: {}/{}", 
+        ic_cdk::println!("[{:?} Miner] Mining block {} - {} total hashes, {:.0} hash/s, fixed 10k hashes", 
             self.miner_type,
-            self.speed_percentage,
             block_height, 
             self.stats.total_hashes,
-            self.stats.last_hash_rate,
-            self.stats.chunks_since_refresh,
-            self.chunks_per_refresh
+            self.stats.last_hash_rate
         );
         
-        // Using a counter to periodically check if we've exceeded max duration
-        let mut hashes_in_batch = 0;
-        const CHECK_FREQUENCY: u64 = 1000; // Check every 1000 hashes
-        
+        // No need for periodic checks since we're doing exactly 10k hashes
         for nonce in start_nonce..start_nonce + current_chunk_size {
             hasher.update(&version.to_le_bytes());
             hasher.update(&block_height.to_le_bytes());
@@ -280,30 +235,6 @@ impl BlockMiner {
             let hash: Hash = result.into();
             
             self.stats.total_hashes += 1;
-            hashes_in_batch += 1;
-            
-            // Check if we've exceeded max duration
-            if hashes_in_batch >= CHECK_FREQUENCY {
-                hashes_in_batch = 0;
-                let elapsed = ic_cdk::api::time() - chunk_start_time;
-                
-                if elapsed > self.max_chunk_duration_ns {
-                    ic_cdk::println!(
-                        "Chunk duration exceeded after {} hashes ({}s), returning to check for updates",
-                        self.stats.total_hashes - (start_nonce as u64),
-                        elapsed / 1_000_000_000
-                    );
-                    
-                    // Update hash rate before returning
-                    if elapsed >= 1_000_000 { // 1ms minimum to avoid division by zero
-                        let chunk_hash_rate = (self.stats.total_hashes - (start_nonce as u64)) as f64 / 
-                                             (elapsed as f64 / 1_000_000_000.0);
-                        self.stats.last_hash_rate = (self.stats.last_hash_rate * 0.9) + (chunk_hash_rate * 0.1);
-                    }
-                    
-                    return None; // Return to get fresh template
-                }
-            }
             
             if hash <= target {
                 self.stats.blocks_mined += 1;

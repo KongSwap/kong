@@ -10,6 +10,12 @@
   // Props
   export let canister: CanisterMetadata;
   export let canisterStatus: any = null;
+  export let statusError: string | null = null;
+  export let loadingStatus: boolean = false;
+  export let isEditing: boolean = false;
+  export let newName: string = '';
+  export let newTags: string = '';
+  export let hasUpgrade: boolean = false;
 
   // Event dispatcher
   const dispatch = createEventDispatcher();
@@ -18,13 +24,14 @@
   function getCanisterTypeColor(type: string | undefined): string {
     switch (type) {
       case 'miner':
-        return 'from-blue-500 to-blue-700';
+        return 'from-kong-accent-blue to-kong-accent-blue/70';
       case 'token_backend':
-        return 'from-purple-500 to-purple-700';
+      case 'token':
+        return 'from-kong-primary to-kong-primary/70';
       case 'ledger':
-        return 'from-green-500 to-green-700';
+        return 'from-kong-accent-green to-kong-accent-green/70';
       default:
-        return 'from-gray-500 to-gray-700';
+        return 'from-kong-text-secondary to-kong-text-secondary/50';
     }
   }
   
@@ -33,6 +40,7 @@
       case 'miner':
         return 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636';
       case 'token_backend':
+      case 'token':
         return 'M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125';
       case 'ledger':
         return 'M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z';
@@ -46,6 +54,7 @@
       case 'miner':
         return 'Miner';
       case 'token_backend':
+      case 'token':
         return 'Token Backend';
       case 'ledger':
         return 'Token Ledger';
@@ -119,21 +128,33 @@
 </script>
 
 <div 
-  class="relative overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700 hover:shadow-lg"
+  class="overflow-hidden transition-all duration-200 border rounded-xl bg-kong-bg-secondary/30 border-kong-border/30 backdrop-blur-sm hover:bg-kong-bg-secondary/50"
   transition:fade
 >
   <!-- Type indicator bar at top -->
   <div class="h-1.5 w-full bg-gradient-to-r {getCanisterTypeColor(canister.wasmType)}"></div>
   
+  <!-- Upgrade indicator (if available) -->
+  {#if hasUpgrade}
+    <div class="w-full bg-yellow-500/20 text-yellow-400 py-1 px-2 text-xs text-center font-medium">
+      <span class="flex items-center justify-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+        </svg>
+        WASM upgrade available
+      </span>
+    </div>
+  {/if}
+  
   <div class="p-4">
     <!-- Canister Name and Type -->
     <div class="flex items-start justify-between mb-3">
       <div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white truncate max-w-[200px]">
+        <h3 class="text-lg font-semibold text-kong-text-primary truncate max-w-[200px]">
           {canister.name || truncateMiddle(canister.id, 10)}
         </h3>
         <div class="flex items-center mt-1">
-          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-kong-bg-light/10 text-kong-text-secondary">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1">
               <path stroke-linecap="round" stroke-linejoin="round" d="{getCanisterTypeIcon(canister.wasmType)}" />
             </svg>
@@ -144,9 +165,21 @@
       
       <!-- Action Buttons -->
       <div class="flex space-x-1">
+        {#if hasUpgrade}
+          <button 
+            on:click={() => dispatch('install-wasm', { id: canister.id })}
+            class="p-1 text-yellow-400 rounded-full hover:text-yellow-300 hover:bg-kong-bg-light/10"
+            title="Upgrade Available"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15m0-3l-3-3m0 0l-3 3m3-3V15" />
+            </svg>
+          </button>
+        {/if}
+      
         <button 
           on:click={hideCanister} 
-          class="p-1 text-gray-500 rounded-full hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          class="p-1 text-kong-text-secondary rounded-full hover:text-kong-text-primary hover:bg-kong-bg-light/10"
           title="{canister.hidden ? 'Show Canister' : 'Hide Canister'}"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -162,7 +195,7 @@
         <!-- svelte-ignore a11y_consider_explicit_label -->
         <button 
           on:click={() => startEdit()} 
-          class="p-1 text-blue-500 rounded-full hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          class="p-1 text-kong-primary rounded-full hover:text-kong-primary/90 hover:bg-kong-bg-light/10"
           title="Edit Canister"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -174,14 +207,14 @@
     
     <!-- Canister ID -->
     <div class="mb-3">
-      <p class="font-mono text-xs text-gray-500 dark:text-gray-400">
+      <p class="font-mono text-xs text-kong-text-secondary">
         {truncateMiddle(canister.id, 16)}
       </p>
     </div>
     
     <!-- Cycles Balance -->
     <div class="mb-3">
-      <p class="flex items-center text-sm text-gray-700 dark:text-gray-300">
+      <p class="flex items-center text-sm text-kong-text-primary">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1 text-yellow-500">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -191,7 +224,7 @@
     
     <!-- Creation Date -->
     <div class="mb-3">
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <p class="text-xs text-kong-text-secondary">
         Created: {formatDate(new Date(canister.createdAt))}
       </p>
     </div>
@@ -199,7 +232,7 @@
     <!-- Top Up Button -->
     <button 
       on:click={() => topUpCanister()}
-      class="w-full px-4 py-2 mt-2 text-sm font-medium text-white transition-colors duration-200 bg-blue-500 rounded-md hover:bg-blue-600"
+      class="w-full px-4 py-2 mt-2 text-sm font-medium text-white transition-colors duration-200 bg-kong-accent-blue rounded-md hover:bg-kong-accent-blue/90"
     >
       Top Up
     </button>
@@ -207,7 +240,7 @@
     <!-- Interact Button -->
     <button 
       on:click={() => openKongAgent()}
-      class="w-full px-4 py-2 mt-2 mb-2 text-sm font-medium text-white transition-colors duration-200 bg-green-500 rounded-md hover:bg-green-600"
+      class="w-full px-4 py-2 mt-2 mb-2 text-sm font-medium text-white transition-colors duration-200 bg-kong-primary rounded-md hover:bg-kong-primary/90"
     >
       Interact
     </button>

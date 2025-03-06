@@ -142,19 +142,13 @@ impl Storable for StorableSolutions {
         if self.0.is_empty() {
             return Cow::Borrowed(&[]);
         }
-        let mut bytes = Vec::with_capacity(self.0.len() * 56);
+        let mut bytes = Vec::new();
         ciborium::ser::into_writer(&self.0, &mut bytes).expect("Failed to serialize solutions");
         Cow::Owned(bytes)
     }
 
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        if bytes.is_empty() {
-            return Self(Vec::new());
-        }
-        match bytes {
-            Cow::Borrowed(bytes) => Self(ciborium::de::from_reader(bytes).expect("Failed to deserialize solutions")),
-            Cow::Owned(bytes) => Self(ciborium::de::from_reader(bytes.as_slice()).expect("Failed to deserialize solutions")),
-        }
+        Self(ciborium::de::from_reader(bytes.as_ref()).expect("Failed to deserialize solutions"))
     }
 
     const BOUND: Bound = Bound::Bounded {
@@ -532,7 +526,7 @@ pub fn init_mining_params(initial_block_reward: u64, block_time_target: u64, hal
     });
 
     MINING_DIFFICULTY.with(|d| {
-        d.borrow_mut().set(16).expect("Failed to set mining difficulty");
+        d.borrow_mut().set(10).expect("Failed to set mining difficulty");
     });
 
     BLOCK_TIME_TARGET.with(|t| {
@@ -582,7 +576,7 @@ static ADJUSTMENT_CACHE: RefCell<Option<AdjustmentCache>> = RefCell::new(None);
 /// that are appropriately scaled for the given target time.
 fn get_adjustment_factors(target_time: u64) -> (u32, u32, f64, f64, f64) {
     // Base parameters calibrated for wide range (3s to 1hr blocks)
-    const BASE_MIN_DIFF: u32 = 12; // Higher minimum for fast block protection
+    const BASE_MIN_DIFF: u32 = 5; // Higher minimum for fast block protection
     const BASE_MAX_DIFF: u32 = 12_000; // Increased maximum ceiling
     const BASE_INCREASE: f64 = 1.15; // More conservative 15% max increase
     const BASE_DECREASE: f64 = 0.88; // More gradual 12% max decrease
@@ -714,8 +708,27 @@ fn adjust_difficulty_asert() -> u32 {
 
 #[ic_cdk::query]
 pub fn get_current_block() -> Option<BlockTemplate> {
-    // Simply return the current block template
-    CURRENT_BLOCK.with(|b| b.borrow().get().clone())
+    // Check if the ledger is deployed
+    let ledger_deployed = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some());
+    
+    // Check if genesis block has been generated
+    let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
+    
+    // Get the current block template
+    let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
+    
+    // If no block is available, log the reason
+    if current_block.is_none() {
+        if !ledger_deployed {
+            ic_cdk::println!("Warning: get_current_block called but ledger is not deployed yet");
+        } else if !genesis_generated {
+            ic_cdk::println!("Warning: get_current_block called but genesis block has not been generated yet");
+        } else {
+            ic_cdk::println!("Warning: get_current_block called but no block template is available");
+        }
+    }
+    
+    current_block
 }
 
 fn calculate_block_reward(block_height: u64) -> u64 {
@@ -897,14 +910,11 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
         }
     }
 
-    // Increment block height
-    let height = crate::increment_block_height();
-
     // Get previous block hash
     let prev_hash = LAST_BLOCK_HASH.with(|h| h.borrow().get().0);
 
     // Get current difficulty and adjust if needed
-    let old_difficulty = MINING_DIFFICULTY.with(|h| *h.borrow().get());
+    let old_difficulty = MINING_DIFFICULTY.with(|d| *d.borrow().get());
     let new_difficulty = adjust_difficulty_asert();
 
     // ALWAYS update difficulty to ensure consistency
@@ -913,16 +923,17 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
     });
 
     // Check if this will be the final block (next one would have zero reward)
-    let next_reward = calculate_block_reward(height + 1);
+    let next_height = height + 1;
+    let next_reward = calculate_block_reward(next_height);
     let is_final_block =
         next_reward == 0 || next_reward <= crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or(0, |info| info.transfer_fee));
 
     // Generate events for this block
-    let mut events = generate_events(height, old_difficulty, new_difficulty);
+    let mut events = generate_events(next_height, old_difficulty, new_difficulty);
 
     // Add special final block event if needed
     if is_final_block {
-        let supply = crate::CIRCULATING_SUPPLY.with(|s| *s.borrow());
+        let supply = crate::CIRCULATING_SUPPLY_CELL.with(|s| *s.borrow().get());
         let total = crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or(0, |info| info.total_supply));
         let percentage = if total > 0 { (supply as f64 / total as f64) * 100.0 } else { 0.0 };
 
@@ -930,18 +941,18 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
             event_type: EventType::SystemAnnouncement {
                 message: format!(
                     "This is the final mining block. Mining complete at height {}. Total supply: {}/{} ({:.2}%)",
-                    height, supply, total, percentage
+                    next_height, supply, total, percentage
                 ),
                 severity: "important".to_string(),
             },
             timestamp: ic_cdk::api::time() / 1_000_000_000,
-            block_height: height,
+            block_height: next_height,
         });
     }
 
     // Create new block template with IC-specific timestamp and VERIFIED difficulty
     let block = BlockTemplate::new(
-        height,
+        next_height,
         prev_hash,
         events,
         new_difficulty, // This will calculate target hash based on new_difficulty
@@ -959,6 +970,8 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
             b.borrow_mut().set(Some(fixed_block.clone())).expect("Failed to set current block");
         });
 
+        // Increment block height only after successful storage
+        crate::increment_block_height();
         Ok(fixed_block)
     } else {
         // Store as current block
@@ -966,6 +979,8 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
             b.borrow_mut().set(Some(block.clone())).expect("Failed to set current block");
         });
 
+        // Increment block height only after successful storage
+        crate::increment_block_height();
         Ok(block)
     }
 }
@@ -1056,6 +1071,11 @@ pub fn can_submit_solution() -> Result<bool, String> {
     })
 }
 
+#[ic_cdk::query]
+pub fn get_block_height() -> u64 {
+    BLOCK_HEIGHT.with(|h| *h.borrow().get())
+}
+
 #[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
 struct MinerStats {
     blocks_mined: u64,
@@ -1135,7 +1155,52 @@ fn update_miner_hashrate(miner: Principal, hashes_processed: u64) {
 const REQUIRED_SUBMISSION_CYCLES: u128 = 420_690; // Required cycles per submission
 
 #[ic_cdk::update]
-pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_hash: Hash, hashes_processed: u64) -> Result<(bool, u64, u64, String), String> {
+pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_nonce: u64, hashes_processed: u64) -> Result<(bool, u64, u64, String), String> {
+    // Generate hash from the nonce since we're now passing the nonce twice
+    let solution_hash = {
+        // Use nonce and solution_nonce to derive the hash
+        let mut data = [0u8; 16];
+        data[0..8].copy_from_slice(&nonce.to_le_bytes());
+        data[8..16].copy_from_slice(&solution_nonce.to_le_bytes());
+        
+        // Generate a deterministic hash from the nonces
+        let mut solution_hash = [0u8; 32];
+        for i in 0..4 {
+            let start = i * 8;
+            let mut chunk = u64::from_le_bytes([data[start], data[start+1], data[start+2], data[start+3], 
+                                              data[start % 16], data[(start+1) % 16], data[(start+2) % 16], data[(start+3) % 16]]);
+            chunk = chunk.wrapping_mul(0x9E3779B97F4A7C15);  // Prime multiplier for better distribution
+            let bytes = chunk.to_le_bytes();
+            for j in 0..8 {
+                solution_hash[i*8 + j] = bytes[j];
+            }
+        }
+        
+        solution_hash
+    };
+    
+    // Check if ledger is deployed
+    let stored_ledger_id = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().as_ref().map(|p| p.0));
+    
+    if stored_ledger_id.is_none() {
+        return Err("Mining not available: Ledger has not been deployed yet".to_string());
+    }
+    
+    // Verify the provided ledger ID matches the stored one
+    if stored_ledger_id != Some(ledger_id) {
+        return Err(format!(
+            "Invalid ledger ID. Expected: {}, Got: {}", 
+            stored_ledger_id.unwrap().to_text(), 
+            ledger_id.to_text()
+        ));
+    }
+    
+    // Check if genesis block has been generated
+    let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
+    if !genesis_generated {
+        return Err("Mining not available: Genesis block has not been generated yet".to_string());
+    }
+
     // Check if mining is complete first
     let current_height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
     let current_reward = calculate_block_reward(current_height);
@@ -1350,7 +1415,7 @@ pub fn get_mining_info() -> MiningInfo {
 /// Determines if mining is effectively complete based on current conditions
 fn is_mining_complete(current_reward: u64) -> bool {
     // Get current circulating supply
-    let supply = crate::CIRCULATING_SUPPLY.with(|s| *s.borrow());
+    let supply = crate::CIRCULATING_SUPPLY_CELL.with(|s| *s.borrow().get());
 
     // Get total supply from token info
     let total_supply = crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or(0, |info| info.total_supply));
@@ -1523,7 +1588,7 @@ pub fn initialize_memory() {
         ic_cdk::println!("Critical mining parameters were reset during upgrade. Restoring defaults.");
 
         // Default values (adjust these based on your token's requirements)
-        let default_difficulty = if difficulty == 0 { 16 } else { difficulty };
+        let default_difficulty = if difficulty == 0 { 10 } else { difficulty };
         let default_block_time = if block_time_target == 0 { 60 } else { block_time_target }; // 60 seconds
         let default_halving = if halving_interval == 0 { 210000 } else { halving_interval }; // 210,000 blocks
         let default_reward = if block_reward == 0 { 50 * 100000000 } else { block_reward }; // 50 tokens with 8 decimals
@@ -1540,18 +1605,37 @@ pub fn initialize_memory() {
         HALVING_INTERVAL.with(|h| {
             h.borrow_mut().set(default_halving).expect("Failed to restore halving interval");
         });
-
+        
         BLOCK_REWARD.with(|r| {
             r.borrow_mut().set(default_reward).expect("Failed to restore block reward");
         });
-
-        ic_cdk::println!(
-            "Mining parameters restored: difficulty={}, block_time={}, halving_interval={}, block_reward={}",
-            default_difficulty,
-            default_block_time,
-            default_halving,
-            default_reward
-        );
+    }
+    
+    // Check if current block is available
+    let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
+    let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
+    let ledger_deployed = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some());
+    
+    // Log the current state
+    ic_cdk::println!("Post-upgrade mining state: ledger_deployed={}, genesis_generated={}, current_block={}",
+        ledger_deployed,
+        genesis_generated,
+        current_block.is_some()
+    );
+    
+    // If ledger is deployed and genesis block is generated but no current block,
+    // we need to update the block template
+    if ledger_deployed && genesis_generated && current_block.is_none() {
+        ic_cdk::println!("Ledger is deployed and genesis block is generated, but no current block. Updating block template...");
+        update_block_template();
+        
+        // Check if block template was updated
+        let updated_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
+        if updated_block.is_some() {
+            ic_cdk::println!("Block template updated successfully after upgrade");
+        } else {
+            ic_cdk::println!("Warning: Failed to update block template after upgrade");
+        }
     }
 }
 
@@ -1605,6 +1689,8 @@ fn is_genesis_already_generated() -> Result<(), String> {
     Ok(())
 }
 
+// update
+#[ic_cdk::update]
 pub async fn create_genesis_block() -> Result<BlockTemplate, String> {
     // Check if caller is the controller
     let caller = ic_cdk::caller();
@@ -1673,4 +1759,39 @@ pub fn restore_mining_params(
     );
 
     Ok(())
+}
+
+#[ic_cdk::query]
+pub fn is_mining_ready() -> Result<bool, String> {
+    // Check if ledger is deployed
+    let ledger_deployed = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some());
+    if !ledger_deployed {
+        return Err("Mining not ready: Ledger has not been deployed yet".to_string());
+    }
+    
+    // Check if genesis block has been generated
+    let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
+    if !genesis_generated {
+        return Err("Mining not ready: Genesis block has not been generated yet".to_string());
+    }
+    
+    // Check if current block is available
+    let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
+    if current_block.is_none() {
+        return Err("Mining not ready: No block template available".to_string());
+    }
+    
+    // Check if mining is complete
+    let current_height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
+    let current_reward = calculate_block_reward(current_height);
+    if is_mining_complete(current_reward) {
+        return Err("Mining is complete. Token has reached its maximum supply or minimum reward threshold.".to_string());
+    }
+    
+    Ok(true)
+}
+
+#[ic_cdk::query]
+pub fn is_genesis_block_generated() -> bool {
+    GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get())
 }

@@ -219,15 +219,14 @@ fn heartbeat() {
         *counter += 1;
         *counter
     });
-    
+
+    if mining::update_block_template() {
+        ic_cdk::println!("Block template updated by heartbeat");
+    }
+
     // Clean up rate limits every 60 heartbeats (less frequently)
     if counter % 60 == 0 {
         security::cleanup_rate_limits();
-        
-        // Update block template every 60 heartbeats
-        if mining::update_block_template() {
-            ic_cdk::println!("Block template updated by heartbeat");
-        }
     }
 }
 
@@ -394,6 +393,20 @@ async fn start_token() -> Result<Principal, String> {
             .set(Some(StorablePrincipal(ledger_id)))
             .expect("Failed to set ledger ID");
     });
+    
+    // Automatically create the genesis block after ledger deployment
+    ic_cdk::println!("Ledger deployed successfully. Creating genesis block...");
+    match mining::create_genesis_block().await {
+        Ok(block) => {
+            ic_cdk::println!("Genesis block created successfully: height={}, difficulty={}", 
+                block.height, block.difficulty);
+        },
+        Err(e) => {
+            ic_cdk::println!("Warning: Failed to create genesis block: {}", e);
+            // We don't fail the token creation if genesis block creation fails
+            // The controller can try again later
+        }
+    }
     
     Ok(ledger_id)
 }

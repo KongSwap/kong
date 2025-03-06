@@ -120,11 +120,12 @@ type MiningInfo = record {
 };
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : bool; Err : text };
-type Result_2 = variant { Ok : TokenInfo; Err : text };
-type Result_3 = variant { Ok : vec SocialLink; Err : text };
-type Result_4 = variant { Ok : DelegationResponse; Err : DelegationError };
-type Result_5 = variant { Ok : principal; Err : text };
-type Result_6 = variant {
+type Result_2 = variant { Ok : BlockTemplate; Err : text };
+type Result_3 = variant { Ok : TokenInfo; Err : text };
+type Result_4 = variant { Ok : vec SocialLink; Err : text };
+type Result_5 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_6 = variant { Ok : principal; Err : text };
+type Result_7 = variant {
   Ok : record { bool; nat64; nat64; text };
   Err : text;
 };
@@ -163,14 +164,16 @@ service : (TokenInitArgs) -> {
   add_social_link : (text, text) -> (Result);
   can_submit_solution : () -> (Result_1) query;
   cleanup_expired_delegations : () -> (nat64);
+  create_genesis_block : () -> (Result_2);
   deregister_miner : () -> (Result);
   get_active_miners : () -> (vec principal) query;
   get_auth_status : () -> (bool) query;
   get_average_block_time : (opt nat32) -> (BlockTimeResult) query;
+  get_block_height : () -> (nat64) query;
   get_block_time_target : () -> (nat64) query;
   get_current_block : () -> (opt BlockTemplate) query;
   get_event_batches : (opt nat64) -> (vec EventBatch) query;
-  get_info : () -> (Result_2) query;
+  get_info : () -> (Result_3) query;
   get_metrics : () -> (MetricsResult) query;
   get_miner_leaderboard : (opt nat32) -> (vec MinerInfo) query;
   get_miner_stats : (principal) -> (opt MinerInfo) query;
@@ -179,7 +182,7 @@ service : (TokenInitArgs) -> {
   get_mining_info : () -> (MiningInfo) query;
   get_recent_events : (opt nat32) -> (vec Event) query;
   get_recent_events_from_batches : (opt nat32) -> (vec Event) query;
-  get_social_links : () -> (Result_3) query;
+  get_social_links : () -> (Result_4) query;
   get_total_cycles_earned : () -> (nat) query;
   http_request : (HttpRequest) -> (HttpResponse) query;
   http_request_streaming_callback : () -> (HttpResponse) query;
@@ -189,13 +192,15 @@ service : (TokenInitArgs) -> {
       ConsentMessageResponse,
     ) query;
   icrc28_trusted_origins : () -> (TrustedOriginsResponse) query;
-  icrc34_delegate : (DelegationRequest) -> (Result_4);
+  icrc34_delegate : (DelegationRequest) -> (Result_5);
+  is_genesis_block_generated : () -> (bool) query;
+  is_mining_ready : () -> (Result_1) query;
   mining_version : () -> (text) query;
   register_miner : () -> (Result);
   remove_social_link : (nat64) -> (Result);
   restore_mining_params : (nat64, nat32, nat64, nat64) -> (Result);
-  start_token : () -> (Result_5);
-  submit_solution : (principal, nat64, blob, nat64) -> (Result_6);
+  start_token : () -> (Result_6);
+  submit_solution : (principal, nat64, nat64, nat64) -> (Result_7);
   update_social_link : (nat64, text, text) -> (Result);
   whoami : () -> (principal) query;
 }

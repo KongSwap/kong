@@ -1,8 +1,9 @@
 /**
  * Utility functions for interacting with the canister registration API
  */
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import type { Principal } from '@dfinity/principal';
+import { canisterStore, type CanisterMetadata } from '../stores/canisters';
 
 // The API URL for canister registration
 // const CANISTER_API_URL = 'http://localhost:8080';
@@ -205,4 +206,85 @@ export async function fetchCanisters() {
     addWsEvent('api_error', `Error fetching canisters: ${error.message}`);
     return [];
   }
+}
+
+/**
+ * Sync API canisters with local canisterStore
+ * This ensures canister data is consistent across devices
+ */
+export async function syncCanistersToLocalStore(): Promise<void> {
+  try {
+    // Fetch the latest canisters from API
+    const apiCanisters = await fetchCanisters();
+    if (!apiCanisters || !Array.isArray(apiCanisters)) {
+      console.warn('Failed to fetch canisters from API for sync');
+      return;
+    }
+    
+    // Get current canisters from local store
+    const localCanisters = get(canisterStore);
+    
+    // Create a map of local canisters for quick lookup
+    const localCanistersMap = new Map<string, CanisterMetadata>();
+    localCanisters.forEach(canister => {
+      localCanistersMap.set(canister.id, canister);
+    });
+    
+    // Process API canisters and merge with local data
+    for (const apiCanister of apiCanisters) {
+      const canisterId = apiCanister.canister_id;
+      const existingCanister = localCanistersMap.get(canisterId);
+      
+      // Normalize canister type (handle case sensitivity)
+      const normalizedType = normalizeCanisterType(apiCanister.canister_type);
+      
+      // If canister exists locally, keep local metadata but update API fields
+      if (existingCanister) {
+        // Update type if needed (preserve other metadata like name, tags)
+        canisterStore.updateCanister(canisterId, {
+          wasmType: normalizedType
+        });
+      } else {
+        // If not in local store, add it
+        canisterStore.addCanister({
+          id: canisterId,
+          wasmType: normalizedType,
+          createdAt: apiCanister.created_at || Date.now()
+        });
+      }
+    }
+    
+    addWsEvent('store_sync', `Synced ${apiCanisters.length} canisters from API to local store`);
+  } catch (error) {
+    console.error('Error syncing canisters to local store:', error);
+    addWsEvent('api_error', `Error syncing canisters: ${error.message}`);
+  }
+}
+
+/**
+ * Normalize canister type to handle case sensitivity and naming differences
+ * @param type The canister type from the API
+ * @returns Normalized canister type for local store
+ */
+function normalizeCanisterType(type: string): string {
+  // Convert to lowercase for case-insensitive comparison
+  const lowerType = typeof type === 'string' ? type.toLowerCase() : '';
+  
+  // Handle different variations of token types
+  if (lowerType === 'token') {
+    return 'token_backend';
+  }
+  
+  // Handle different variations of miner types
+  if (lowerType === 'miner') {
+    return 'miner';
+  }
+  
+  // Handle different variations of ledger types
+  if (lowerType === 'ledger') {
+    return 'ledger';
+  }
+  
+  // Return the original type if no mapping is found
+  return type;
 }

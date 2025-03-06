@@ -30,7 +30,6 @@ export async function getICManagementActor() {
   // Try to get identity
   try {
     const pnp = getPnpInstance();
-    console.log("PNP provider:", pnp?.provider);
     
     // Try to extract identity from provider (found in the log)
     if (pnp?.provider?.authClient?._identity) {
@@ -48,22 +47,19 @@ export async function getICManagementActor() {
       });
       
       // Create management canister
-      icManagementActor = ICManagementCanister.create({ agent });
+      icManagementActor = ICManagementCanister.create({
+        agent,
+        canisterId: Principal.fromText(IC_MANAGEMENT_CANISTER_ID),
+      });
+      
       return icManagementActor;
     }
     
-    // If provider has agent, use it directly
-    if (pnp?.provider?.agent) {
-      console.log("Using provider agent directly");
-      const agent = pnp.provider.agent;
-      icManagementActor = ICManagementCanister.create({ agent });
-      return icManagementActor;
-    }
-  } catch (error) {
-    console.error("Error setting up management actor:", error);
+    return icManagementActor;
+  } catch (e) {
+    console.error("Failed to create IC Management actor:", e);
+    throw e;
   }
-  
-  throw new Error("Authentication required. Please log in to a wallet before using the management canister.");
 }
 
 export const agent = null; // This will be replaced by the agent created in getICManagementActor
