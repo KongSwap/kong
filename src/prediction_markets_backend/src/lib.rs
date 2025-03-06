@@ -6,12 +6,13 @@
 //! - Automatically distribute winnings to successful bettors
 
 use candid::Principal;
-use ic_cdk::{post_upgrade, pre_upgrade};
+use ic_cdk::{init, post_upgrade, pre_upgrade};
 
 use crate::bet::bet::*;
 use crate::canister::*;
 use crate::category::market_category::*;
 use crate::delegation::*;
+use crate::market::create_market::*;
 use crate::market::market::*;
 use crate::nat::*;
 use crate::resolution::resolution::*;
@@ -31,16 +32,21 @@ pub mod user;
 // Constants
 const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";
 
+#[init]
+fn init() {
+    MARKET_ID.store(max_market_id(), std::sync::atomic::Ordering::SeqCst);
+}
+
 /// Called before canister upgrade to preserve state
 #[pre_upgrade]
 fn pre_upgrade() {
-    // Serialization handled by stable structures
+    //
 }
 
 /// Called after canister upgrade to restore state
 #[post_upgrade]
 fn post_upgrade() {
-    // Deserialization handled by stable structures
+    MARKET_ID.store(max_market_id(), std::sync::atomic::Ordering::SeqCst);
 }
 
 // Export Candid interface

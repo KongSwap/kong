@@ -131,7 +131,7 @@ type UserHistory = record {
   active_bets : vec UserBetInfo;
   resolved_bets : vec UserBetInfo;
 };
-service : {
+service : () -> {
   create_market : (
       text,
       MarketCategory,
