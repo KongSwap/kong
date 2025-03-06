@@ -608,8 +608,9 @@ fn get_block_height() -> u64 {
 fn increment_block_height() -> u64 {
     BLOCK_HEIGHT.with(|h| {
         let current = *h.borrow().get();
-        h.borrow_mut().set(current + 1).expect("Failed to increment block height");
-        current + 1
+        let next = current + 1;
+        h.borrow_mut().set(next).expect("Failed to increment block height");
+        next
     })
 }
 

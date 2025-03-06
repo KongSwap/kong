@@ -19,6 +19,7 @@
   import ContentPanels from "$lib/components/launch/ContentPanels.svelte";
   import LaunchAnimations from "$lib/components/launch/LaunchAnimations.svelte";
   import Scroller from "$lib/components/common/Scroller.svelte";
+  import MiningNotifications from "$lib/components/launch/MiningNotifications.svelte";
   
   // Import utility functions
   import {
@@ -28,7 +29,8 @@
     updateStatsFromCanisters,
     sortItems,
     filterTokens,
-    filterMiners
+    filterMiners,
+    formatBalance
   } from "$lib/components/launch/LaunchUtils";
 
   let activeTab = "tokens";
@@ -44,6 +46,7 @@
   let uniqueUsers = new Set();
   let flashEvent = null;
   let lastNotificationTime = 0;
+  let miningEvents = [];
 
   // DEGEN MODE: Add fucking insane pulse effects
   let pulseStats = false;
@@ -53,20 +56,8 @@
 
   // Function to generate some initial events if none are present
   function generateInitialEvents() {
-    if (recentEvents.length === 0) {
-      const initialEvents = [
-        { text: "🚀 LAUNCHPAD INITIALIZED", timestamp: new Date() },
-        { text: "🔄 REGISTRY SYNCED", timestamp: new Date() },
-        { text: "👀 WATCHING FOR NEW DEPLOYMENTS", timestamp: new Date() }
-      ];
-      
-      // Add events with a slight delay between them
-      initialEvents.forEach((event, index) => {
-        setTimeout(() => {
-          recentEvents = [...recentEvents, event];
-        }, index * 800);
-      });
-    }
+    // No default messages - wait for real events
+    return;
   }
 
   // Metrics that actually make sense for a launchpad
@@ -81,12 +72,37 @@
 
   // MAXIMUM DEGEN: Create loud, obnoxious animations when new shit appears
   function triggerDegenEffects(eventType, data) {
-    // Set the flash event to trigger the animation
-    flashEvent = {
-      type: eventType,
-      data: data,
-      id: crypto.randomUUID(),
-    };
+    console.log(`Triggering effects for event type: ${eventType}`, data);
+    
+    // For mining events, we want to add to miningEvents but not show the full-screen flash
+    const isMiningEvent = eventType === 'mining' || 
+                          eventType === 'solution_found' || 
+                          eventType === 'token_connected' || 
+                          eventType === 'mining_started';
+    
+    // Add mining events to the miningEvents array for animations
+    if (isMiningEvent) {
+      // Make sure we're creating a new array to trigger reactivity
+      const newEvent = { 
+        type: eventType, 
+        data: data,
+        id: crypto.randomUUID(),
+        timestamp: new Date()
+      };
+      miningEvents = [...miningEvents, newEvent];
+      
+      // Log for debugging
+      console.log(`Added mining event: ${eventType}`, newEvent);
+    }
+    
+    // Set the flash event to trigger the animation (for non-mining events)
+    if (!isMiningEvent) {
+      flashEvent = {
+        type: eventType,
+        data: data,
+        id: crypto.randomUUID(),
+      };
+    }
 
     // Trigger appropriate pulses based on event type
     if (eventType.includes("token")) {
@@ -95,6 +111,14 @@
     } else if (eventType.includes("miner")) {
       pulseMiners = true;
       setTimeout(() => (pulseMiners = false), 3000);
+    } else if (isMiningEvent) {
+      // For mining events, pulse both miners and tokens but more subtly
+      pulseMiners = true;
+      pulseTokens = true;
+      setTimeout(() => {
+        pulseMiners = false;
+        pulseTokens = false;
+      }, 2000);
     }
 
     // Pulse the stats regardless
@@ -102,20 +126,25 @@
     setTimeout(() => (pulseStats = false), 2000);
 
     // NUCLEAR OPTION: Sometimes just go completely insane with the effects
-    if (Math.random() > 0.7) {
+    // But only for token and miner deployments, not for mining events
+    if (Math.random() > 0.7 && !isMiningEvent) {
       nukeEffect = true;
       setTimeout(() => (nukeEffect = false), 1500);
     }
 
     // Clear the flash event after animation completes
-    setTimeout(() => {
-      flashEvent = null;
-    }, 4000);
+    // Only for token and miner deployments, not for mining events
+    if (!isMiningEvent) {
+      setTimeout(() => {
+        flashEvent = null;
+      }, 4000);
+    }
   }
 
   let refreshInterval;
   let simulateEventsInterval;
   let lastEventTime = Date.now();
+  let cleanupInterval;
 
   onMount(() => {
     // Connect to WebSocket
@@ -217,11 +246,25 @@
         
         recentEvents = [
           ...recentEvents.slice(-9),
-          { text: randomEvent, timestamp: new Date() }
+          { 
+            text: randomEvent, 
+            timestamp: new Date(),
+            eventType: 'system_message',
+            originalData: null
+          }
         ];
         
         lastEventTime = now;
       }
+    }, 10000); // Check every 10 seconds
+    
+    // Cleanup old mining events to prevent memory leaks
+    cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      // Remove mining events older than 30 seconds
+      miningEvents = miningEvents.filter(event => {
+        return now - event.timestamp.getTime() < 30000;
+      });
     }, 10000); // Check every 10 seconds
 
     // Return cleanup function
@@ -231,11 +274,14 @@
       canistersUnsubscribe();
       clearInterval(refreshInterval);
       clearInterval(simulateEventsInterval);
+      clearInterval(cleanupInterval);
     };
   });
 
   onDestroy(() => {
     if (refreshInterval) clearInterval(refreshInterval);
+    if (simulateEventsInterval) clearInterval(simulateEventsInterval);
+    if (cleanupInterval) clearInterval(cleanupInterval);
   });
 
   $: filteredTokens = sortItems(filterTokens(tokens, searchQuery), sortField, sortDirection);
@@ -257,7 +303,12 @@
         // Keep more events (up to 10) for a more active feed
         recentEvents = [
           ...recentEvents.slice(-9),
-          { text: eventText, timestamp: event.timestamp || new Date() },
+          { 
+            text: eventText, 
+            timestamp: event.timestamp || new Date(),
+            originalData: event.data,
+            eventType: event.type
+          },
         ];
         
         // Log for debugging
@@ -302,6 +353,88 @@
       fetchCanisters();
     }
 
+    // Handle mining-related events
+    if (event.type === "solution_found") {
+      const now = Date.now();
+      // For mining events, we can allow more frequent notifications since they're less intrusive now
+      if (now - lastNotificationTime > 1000) {
+        lastNotificationTime = now;
+        
+        const ticker = event.data?.ticker || "TOKENS";
+        const reward = event.data?.reward || 0;
+        const decimals = event.data?.decimals || 8;
+        const hash = event.data?.hash?.substring(0, 8) || "unknown";
+        const tokenId = event.data?.token_id?.substring(0, 8) || "unknown";
+        
+        // Format the reward with the correct decimals
+        const formattedReward = formatBalance(reward.toString(), decimals);
+        
+        // No toast message for mining events - only animations
+        // toastStore.success(`MINED ${formattedReward} ${ticker}! HASH: ${hash}...`, {
+        //   title: "💎 BLOCK MINED 💎",
+        //   duration: 4000,
+        //   action: {
+        //     label: "View Token",
+        //     callback: () => {
+        //       window.location.href = `/launch/token/${event.data?.token_id}`;
+        //     }
+        //   }
+        // });
+        
+        // Trigger mining animations
+        triggerDegenEffects("solution_found", event.data);
+        
+        // Refresh canisters to update stats
+        fetchCanisters();
+      }
+    }
+    
+    if (event.type === "token_connected") {
+      const now = Date.now();
+      // For mining events, we can allow more frequent notifications
+      if (now - lastNotificationTime > 1000) {
+        lastNotificationTime = now;
+        
+        const minerId = event.data?.miner_id?.substring(0, 8) || "unknown";
+        const tokenId = event.data?.token_id?.substring(0, 8) || "unknown";
+        
+        // No toast message for mining events - only animations
+        // toastStore.info(`MINER ${minerId}... CONNECTED TO TOKEN ${tokenId}...`, {
+        //   title: "🔗 MINER CONNECTED",
+        //   duration: 3000,
+        // });
+        
+        // Trigger mining animations
+        triggerDegenEffects("token_connected", event.data);
+        
+        // Refresh canisters to update stats
+        fetchCanisters();
+      }
+    }
+    
+    if (event.type === "mining_started") {
+      const now = Date.now();
+      // For mining events, we can allow more frequent notifications
+      if (now - lastNotificationTime > 1000) {
+        lastNotificationTime = now;
+        
+        const minerId = event.data?.miner_id?.substring(0, 8) || "unknown";
+        const tokenId = event.data?.token_id?.substring(0, 8) || "unknown";
+        
+        // No toast message for mining events - only animations
+        // toastStore.info(`MINER ${minerId}... STARTED MINING FOR ${tokenId}...`, {
+        //   title: "⛏️ MINING STARTED",
+        //   duration: 3000,
+        // });
+        
+        // Trigger mining animations
+        triggerDegenEffects("mining", event.data);
+        
+        // Refresh canisters to update stats
+        fetchCanisters();
+      }
+    }
+
     if (event.type === "error") {
       toastStore.error(`${event.data || "Unknown error"}`, {
         title: "💀 LAUNCHPAD ERROR 💀",
@@ -312,6 +445,7 @@
 </script>
 
 <LaunchAnimations />
+<MiningNotifications {miningEvents} />
 
 <div class="min-h-screen h-screen flex flex-col text-white relative">
   <!-- NUCLEAR EFFECT OVERLAY -->

@@ -106,12 +106,12 @@ cp "$TOKEN_BACKEND_DIR/token_backend.did.d.ts" "$FRONTEND_BUILD_DIR/"
 INIT_ARGS='(record {
     name = "Floppa";
     ticker = "FLOPS";
-    total_supply = 21_000_000_0000_0000;
+    total_supply = 21_000_000_0000_0000; 
     logo = null;
     decimals = opt 8;
     transfer_fee = opt 10_000;
     archive_options = null;
-    initial_block_reward = 50;
+    initial_block_reward = 5000000000;
     block_time_target_seconds = 15;
     halving_interval = 1000;
 })'

@@ -8,12 +8,20 @@ export interface Toast {
     timestamp: number;
     timeoutId?: ReturnType<typeof setTimeout>;
     duration?: number;
+    action?: {
+        label: string;
+        callback: () => void;
+    };
 }
 
 export interface ToastOptions {
     title?: string;
     duration?: number;
     id?: string;
+    action?: {
+        label: string;
+        callback: () => void;
+    };
 }
 
 function createToastStore() {

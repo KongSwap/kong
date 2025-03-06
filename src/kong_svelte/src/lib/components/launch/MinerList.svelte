@@ -18,7 +18,7 @@
   function getRandomGradient() {
     const gradients = [
       "from-blue-600 to-cyan-600",
-      "from-green-600 to-teal-600",
+      "from-green-600 to-teal-600", 
       "from-indigo-600 to-blue-600",
       "from-purple-600 to-indigo-600",
       "from-cyan-600 to-blue-600",
@@ -36,10 +36,10 @@
   // Get a random animation class
   function getRandomAnimation() {
     const animations = [
-      "animate-pulse-fast", 
-      "animate-pulse-subtle", 
-      "animate-bounce", 
-      "animate-spin-slow", 
+      "animate-pulse-fast",
+      "animate-pulse-subtle",
+      "animate-bounce",
+      "animate-spin-slow",
       "animate-glow"
     ];
     return animations[Math.floor(Math.random() * animations.length)];
@@ -163,7 +163,7 @@
     </Panel>
   {:else if enhancedMiners.length === 0}
     <Panel>
-      <div class="py-8 text-center text-kong-text-primary/60">
+      <div class="text-center text-kong-text-primary/60">
         No miners found
       </div>
     </Panel>
@@ -174,7 +174,6 @@
           class="w-full text-left transition-all duration-300 rounded-lg hover:scale-[1.01] hover:shadow-glow relative overflow-hidden group"
           on:click={() => handleMinerClick(miner.principal.toString())}
         >
-          <!-- Background pattern -->
           <div class="absolute inset-0 opacity-5 z-0 group-hover:opacity-10 transition-opacity duration-300">
             <div class="absolute inset-0 grid grid-cols-10 grid-rows-10">
               {#each Array(100) as _, i}
@@ -185,11 +184,9 @@
             </div>
           </div>
           
-          <!-- Gradient overlay -->
           <div class={`absolute inset-0 bg-gradient-to-r ${miner.randomGradient} opacity-10 group-hover:opacity-20 transition-opacity duration-300 z-0`}></div>
           
-          <!-- Content -->
-          <div class="relative z-10 p-4">
+          <div class="relative z-10">
             <div class="flex items-center justify-between gap-4">
               <div class="flex items-center gap-4">
                 <div class={`relative flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r ${miner.randomGradient} text-white shadow-glow`}>
@@ -227,16 +224,15 @@
                     <p class="font-bold text-lg text-red-400">Inactive</p>
                   {/if}
                 </div>
-                <div class="bg-white/10 p-2 rounded-full group-hover:bg-white/20 transition-colors duration-300">
+                <div class="bg-white/10 rounded-full group-hover:bg-white/20 transition-colors duration-300">
                   <ArrowRight size={20} class="text-white" />
                 </div>
               </div>
             </div>
             
-            <!-- Additional miner info -->
             {#if miner.infoLoaded && miner.stats}
-              <div class="grid grid-cols-4 gap-4 pt-4 mt-4 border-t border-white/10">
-                <div class="bg-black/20 p-3 rounded-lg">
+              <div class="grid grid-cols-4 gap-4 mt-4 border-t border-white/10">
+                <div>
                   <p class="text-sm text-white/70 flex items-center gap-1">
                     <BarChart3 size={14} class="text-blue-400" /> Blocks Mined
                   </p>
@@ -245,7 +241,7 @@
                   </p>
                 </div>
                 
-                <div class="bg-black/20 p-3 rounded-lg">
+                <div>
                   <p class="text-sm text-white/70 flex items-center gap-1">
                     <Cpu size={14} class="text-purple-400" /> Total Hashes
                   </p>
@@ -258,7 +254,7 @@
                   </p>
                 </div>
                 
-                <div class="bg-black/20 p-3 rounded-lg">
+                <div>
                   <p class="text-sm text-white/70 flex items-center gap-1">
                     <Zap size={14} class="text-yellow-400" /> Total Rewards
                   </p>
@@ -271,7 +267,7 @@
                   </p>
                 </div>
                 
-                <div class="bg-black/20 p-3 rounded-lg">
+                <div>
                   <p class="text-sm text-white/70 flex items-center gap-1">
                     <Activity size={14} class="text-green-400" /> Connected Token
                   </p>

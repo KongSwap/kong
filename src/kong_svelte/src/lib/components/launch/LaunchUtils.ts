@@ -1,3 +1,8 @@
+import { formatBalance as formatBalanceUtil } from "$lib/utils/numberFormatUtils";
+
+// Export formatBalance for use in other components
+export const formatBalance = formatBalanceUtil;
+
 // Extract unique deployers for UNIQUE USER COUNT
 export function extractUniqueDeployers(canisters) {
   if (!canisters || !Array.isArray(canisters)) return new Set();
@@ -42,6 +47,15 @@ export function getEventText(event) {
       return `🔄 REGISTRY SYNCED WITH ${event.canistersList?.length || 0} CANISTERS`;
     case "error":
       return `⚠️ ERROR: ${typeof event.data === "string" ? event.data : "Unknown error"}`;
+    case "solution_found":
+      const rewardAmount = event.data?.reward || 0;
+      const decimals = event.data?.decimals || 8;
+      const formattedReward = formatBalance(rewardAmount.toString(), decimals);
+      return `💎 BLOCK MINED: ${event.data?.hash?.substring(0, 8)}... | REWARD: ${formattedReward} ${event.data?.ticker || 'TOKENS'}`;
+    case "token_connected":
+      return `🔗 MINER CONNECTED: ${event.data?.miner_id?.substring(0, 8)}... to ${event.data?.token_id?.substring(0, 8)}...`;
+    case "mining_started":
+      return `⛏️ MINING STARTED: ${event.data?.miner_id?.substring(0, 8)}... for ${event.data?.token_id?.substring(0, 8)}...`;
     default:
       if (event.type.includes("mining")) {
         return `⛏️ MINING ACTIVITY: ${JSON.stringify(event.data).substring(0, 30)}...`;

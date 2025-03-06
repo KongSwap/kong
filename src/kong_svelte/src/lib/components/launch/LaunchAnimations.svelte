@@ -20,6 +20,23 @@
     100% { transform: translateX(0); opacity: 1; }
   }
   
+  @keyframes float-up {
+    0% { transform: translateY(20px); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-50px); opacity: 0; }
+  }
+  
+  @keyframes sparkle {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.8; }
+  }
+  
+  @keyframes coin-spin {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
+  }
+  
   :global(.animate-pulse-fast) {
     animation: pulse-fast 0.8s ease-in-out infinite;
   }
@@ -34,5 +51,17 @@
   
   :global(.animate-slide-in) {
     animation: slide-in 0.3s ease-out forwards;
+  }
+  
+  :global(.animate-float-up) {
+    animation: float-up 3s ease-out forwards;
+  }
+  
+  :global(.animate-sparkle) {
+    animation: sparkle 1s ease-in-out infinite;
+  }
+  
+  :global(.animate-coin-spin) {
+    animation: coin-spin 1.5s linear infinite;
   }
 </style> 

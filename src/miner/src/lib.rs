@@ -632,7 +632,8 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                             "nonce": result.nonce,
                             "hash": hex::encode(&result.solution_hash),
                             "difficulty": difficulty,
-                            "reward": reward
+                            "reward": reward,
+                            "decimals": token_info.decimals
                         });
                         
                         notify_event("solution_found", solution_data);
@@ -797,9 +798,17 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
             }
         };
         
+        // The endpoint's URL path needs to be corrected
+        // in the future i dont wanna worry about / or no /
+        let full_url = if endpoint.ends_with("/") {
+            format!("{}miner-notifications", endpoint)
+        } else {
+            format!("{}/miner-notifications", endpoint)
+        };
+        
         // Create the HTTP request argument
         let request = CanisterHttpRequestArgument {
-            url: endpoint,
+            url: full_url,
             method: HttpMethod::POST,
             body,
             headers: vec![
@@ -821,8 +830,8 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
         
         // Send the HTTP request
         match http_request(request, cycles_to_pay).await {
-            Ok(_) => {
-                ic_cdk::println!("Notification sent: {}", event_type);
+            Ok((response,)) => {
+                ic_cdk::println!("Notification sent: {} - Status: {}", event_type, response.status);
             },
             Err((code, msg)) => {
                 ic_cdk::println!("Failed to send notification: {} (code: {:?})", msg, code);

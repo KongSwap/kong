@@ -23,6 +23,7 @@
   import { searchStore } from "$lib/stores/searchStore";
   import { keyboardShortcuts } from "$lib/services/keyboardShortcuts";
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
+  import { connectWebSocket } from "$lib/api/canisters";
   
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
@@ -60,6 +61,9 @@
       
       // Initialize keyboard shortcuts
       keyboardShortcuts.initialize();
+      
+      // Connect to WebSocket for canister events
+      connectWebSocket();
     }
     
     // Initialize the app

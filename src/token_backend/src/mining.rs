@@ -378,7 +378,6 @@ impl Storable for StorableI64 {
         debug_assert!(bytes.len() >= 8, "StorableI64 requires 8 bytes");
         Self(i64::from_le_bytes(bytes[0..8].try_into().unwrap()))
     }
-
     const BOUND: Bound = Bound::Bounded {
         max_size: 8,
         is_fixed_size: true,
@@ -389,135 +388,135 @@ impl Storable for StorableI64 {
 use lru::LruCache;
 use std::num::NonZeroUsize;
 thread_local! {
-static SOLUTION_CACHE: RefCell<LruCache<(u64, Hash), ()>> = RefCell::new(
-    LruCache::new(NonZeroUsize::new(1000).unwrap())
-);
+    static SOLUTION_CACHE: RefCell<LruCache<(u64, Hash), ()>> = RefCell::new(
+        LruCache::new(NonZeroUsize::new(1000).unwrap())
+    );
 }
 
 thread_local! {
-// Get memory manager from parent
-static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = RefCell::new(
-    MemoryManager::init(DefaultMemoryImpl::default())
-);
+    // Get memory manager from parent
+    static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = RefCell::new(
+        MemoryManager::init(DefaultMemoryImpl::default())
+    );
 
-// Mining state in stable memory
-static CURRENT_BLOCK: RefCell<StableCell<Option<BlockTemplate>, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(8))),
-        None,
-    ).expect("Failed to init CURRENT_BLOCK")
-);
+    // Mining state in stable memory
+    static CURRENT_BLOCK: RefCell<StableCell<Option<BlockTemplate>, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(8))),
+            None
+        ).expect("Failed to init CURRENT_BLOCK")
+    );
 
-static LAST_BLOCK_HASH: RefCell<StableCell<StorableHash, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(9))),
-        StorableHash([0; 32]),
-    ).expect("Failed to init LAST_BLOCK_HASH")
-);
+    static LAST_BLOCK_HASH: RefCell<StableCell<StorableHash, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(9))),
+            StorableHash([0; 32])
+        ).expect("Failed to init LAST_BLOCK_HASH")
+    );
 
-static BLOCK_HEIGHT: RefCell<StableCell<u64, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(10))),
-        0,
-    ).expect("Failed to init BLOCK_HEIGHT")
-);
+    static BLOCK_HEIGHT: RefCell<StableCell<u64, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(10))),
+            0
+        ).expect("Failed to init BLOCK_HEIGHT")
+    );
 
-static MINING_DIFFICULTY: RefCell<StableCell<u32, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(11))),
-        0,
-    ).expect("Failed to init MINING_DIFFICULTY")
-);
+    static MINING_DIFFICULTY: RefCell<StableCell<u32, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(11))),
+            0
+        ).expect("Failed to init MINING_DIFFICULTY")
+    );
 
-static BLOCK_REWARD: RefCell<StableCell<u64, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(12))),
-        0,
-    ).expect("Failed to init BLOCK_REWARD")
-);
+    static BLOCK_REWARD: RefCell<StableCell<u64, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(12))),
+            0
+        ).expect("Failed to init BLOCK_REWARD")
+    );
 
-static BLOCK_TIME_TARGET: RefCell<StableCell<u64, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(13))),
-        0,
-    ).expect("Failed to init BLOCK_TIME_TARGET")
-);
+    static BLOCK_TIME_TARGET: RefCell<StableCell<u64, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(13))),
+            0
+        ).expect("Failed to init BLOCK_TIME_TARGET")
+    );
 
-static BLOCK_TIMESTAMPS: RefCell<StableCell<StorableTimestamps, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(15))),
-        StorableTimestamps(Vec::new()),
-    ).expect("Failed to init BLOCK_TIMESTAMPS")
-);
+    static BLOCK_TIMESTAMPS: RefCell<StableCell<StorableTimestamps, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(15))),
+            StorableTimestamps(Vec::new())
+        ).expect("Failed to init BLOCK_TIMESTAMPS")
+    );
 
-static PROCESSED_SOLUTIONS: RefCell<StableCell<StorableSolutions, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(16))),
-        StorableSolutions(Vec::new()),
-    ).expect("Failed to init PROCESSED_SOLUTIONS")
-);
+    static PROCESSED_SOLUTIONS: RefCell<StableCell<StorableSolutions, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(16))),
+            StorableSolutions(Vec::new())
+        ).expect("Failed to init PROCESSED_SOLUTIONS")
+    );
 
-static SOLUTION_BLOOM_FILTER: RefCell<StableCell<BloomFilter, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(17))),
-        BloomFilter::new(),
-    ).expect("Failed to init SOLUTION_BLOOM_FILTER")
-);
+    static SOLUTION_BLOOM_FILTER: RefCell<StableCell<BloomFilter, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(17))),
+            BloomFilter::new()
+        ).expect("Failed to init SOLUTION_BLOOM_FILTER")
+    );
 
-static MINER_RATE_LIMITS: RefCell<StableCell<StorableRateLimits, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(18))),
-        StorableRateLimits(std::collections::HashMap::new()),
-    ).expect("Failed to init MINER_RATE_LIMITS")
-);
+    static MINER_RATE_LIMITS: RefCell<StableCell<StorableRateLimits, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(18))),
+            StorableRateLimits(std::collections::HashMap::new())
+        ).expect("Failed to init MINER_RATE_LIMITS")
+    );
 
-static EVENT_BATCHES: RefCell<StableCell<StorableEventBatches, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(19))),
-        StorableEventBatches(Vec::new()),
-    ).expect("Failed to init EVENT_BATCHES")
-);
+    static EVENT_BATCHES: RefCell<StableCell<StorableEventBatches, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(19))),
+            StorableEventBatches(Vec::new())
+        ).expect("Failed to init EVENT_BATCHES")
+    );
 
-// Add ASERT time offset tracking
-static ASERT_TIME_OFFSET: RefCell<StableCell<StorableI64, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(20))),
-        StorableI64(0),
-    ).expect("Failed to init ASERT_TIME_OFFSET")
-);
+    // Add ASERT time offset tracking
+    static ASERT_TIME_OFFSET: RefCell<StableCell<StorableI64, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(20))),
+            StorableI64(0)
+        ).expect("Failed to init ASERT_TIME_OFFSET")
+    );
 
-// Add total cycles tracking
-static TOTAL_CYCLES_EARNED: RefCell<StableCell<u128, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(21))),
-        0,
-    ).expect("Failed to init TOTAL_CYCLES_EARNED")
-);
+    // Add total cycles tracking
+    static TOTAL_CYCLES_EARNED: RefCell<StableCell<u128, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(21))),
+            0
+        ).expect("Failed to init TOTAL_CYCLES_EARNED")
+    );
 
-// Track consecutive slow blocks
-static CONSECUTIVE_SLOW_BLOCKS: RefCell<u32> = RefCell::new(0);
+    // Track consecutive slow blocks
+    static CONSECUTIVE_SLOW_BLOCKS: RefCell<u32> = RefCell::new(0);
 
-// Track consecutive fast blocks too
-static CONSECUTIVE_FAST_BLOCKS: RefCell<u32> = RefCell::new(0);
+    // Track consecutive fast blocks too
+    static CONSECUTIVE_FAST_BLOCKS: RefCell<u32> = RefCell::new(0);
 
-// Add heartbeat counter
-static HEARTBEAT_COUNTER: RefCell<u32> = RefCell::new(0);
+    // Add heartbeat counter
+    static HEARTBEAT_COUNTER: RefCell<u32> = RefCell::new(0);
 
-// Add halving interval
-static HALVING_INTERVAL: RefCell<StableCell<u64, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(14))),
-        0,
-    ).expect("Failed to init HALVING_INTERVAL")
-);
+    // Add halving interval
+    static HALVING_INTERVAL: RefCell<StableCell<u64, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(14))),
+            0
+        ).expect("Failed to init HALVING_INTERVAL")
+    );
 
-// Add a dedicated flag for tracking genesis block generation
-static GENESIS_BLOCK_GENERATED: RefCell<StableCell<bool, Memory>> = RefCell::new(
-    StableCell::init(
-        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(24))), // Use an available memory ID
-        false,
-    ).expect("Failed to init GENESIS_BLOCK_GENERATED")
-);
+    // Add a dedicated flag for tracking genesis block generation
+    static GENESIS_BLOCK_GENERATED: RefCell<StableCell<bool, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(24))), // Use an available memory ID
+            false
+        ).expect("Failed to init GENESIS_BLOCK_GENERATED")
+    );
 }
 
 pub fn init_mining_params(initial_block_reward: u64, block_time_target: u64, halving_interval: u64) {
@@ -710,13 +709,13 @@ fn adjust_difficulty_asert() -> u32 {
 pub fn get_current_block() -> Option<BlockTemplate> {
     // Check if the ledger is deployed
     let ledger_deployed = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some());
-    
+
     // Check if genesis block has been generated
     let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
-    
+
     // Get the current block template
     let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
-    
+
     // If no block is available, log the reason
     if current_block.is_none() {
         if !ledger_deployed {
@@ -727,7 +726,7 @@ pub fn get_current_block() -> Option<BlockTemplate> {
             ic_cdk::println!("Warning: get_current_block called but no block template is available");
         }
     }
-    
+
     current_block
 }
 
@@ -887,9 +886,12 @@ pub fn get_event_batches(start_height: Option<u64>) -> Vec<EventBatch> {
 pub async fn generate_new_block() -> Result<BlockTemplate, String> {
     // Get current block height and check security
     let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
+    
+    // Calculate the next height FIRST, BEFORE making the block
+    let next_height = height + 1;
 
     // Check if mining is complete first
-    let current_reward = calculate_block_reward(height);
+    let current_reward = calculate_block_reward(next_height);
     if is_mining_complete(current_reward) {
         return Err("Mining is complete. No new blocks can be generated.".to_string());
     }
@@ -923,10 +925,9 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
     });
 
     // Check if this will be the final block (next one would have zero reward)
-    let next_height = height + 1;
-    let next_reward = calculate_block_reward(next_height);
+    let next_reward = calculate_block_reward(next_height + 1);
     let is_final_block =
-        next_reward == 0 || next_reward <= crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or(0, |info| info.transfer_fee));
+        next_reward == 0 || next_reward <= crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or(0, |info| info.transfer_fee));
 
     // Generate events for this block
     let mut events = generate_events(next_height, old_difficulty, new_difficulty);
@@ -934,7 +935,7 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
     // Add special final block event if needed
     if is_final_block {
         let supply = crate::CIRCULATING_SUPPLY_CELL.with(|s| *s.borrow().get());
-        let total = crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or(0, |info| info.total_supply));
+        let total = crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or(0, |info| info.total_supply));
         let percentage = if total > 0 { (supply as f64 / total as f64) * 100.0 } else { 0.0 };
 
         events.push(Event {
@@ -950,12 +951,12 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
         });
     }
 
-    // Create new block template with IC-specific timestamp and VERIFIED difficulty
+    // Create new block template with NEXT height
     let block = BlockTemplate::new(
-        next_height,
+        next_height, // USE THE NEXT HEIGHT
         prev_hash,
         events,
-        new_difficulty, // This will calculate target hash based on new_difficulty
+        new_difficulty,
     );
 
     // Verify consistency
@@ -970,8 +971,11 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
             b.borrow_mut().set(Some(fixed_block.clone())).expect("Failed to set current block");
         });
 
-        // Increment block height only after successful storage
-        crate::increment_block_height();
+        // AFTER storing the block, actually update the counter to match
+        BLOCK_HEIGHT.with(|h| {
+            h.borrow_mut().set(next_height).expect("Failed to update block height");
+        });
+        
         Ok(fixed_block)
     } else {
         // Store as current block
@@ -979,8 +983,11 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
             b.borrow_mut().set(Some(block.clone())).expect("Failed to set current block");
         });
 
-        // Increment block height only after successful storage
-        crate::increment_block_height();
+        // AFTER storing the block, actually update the counter to match
+        BLOCK_HEIGHT.with(|h| {
+            h.borrow_mut().set(next_height).expect("Failed to update block height");
+        });
+        
         Ok(block)
     }
 }
@@ -1155,23 +1162,28 @@ fn update_miner_hashrate(miner: Principal, hashes_processed: u64) {
 const REQUIRED_SUBMISSION_CYCLES: u128 = 420_690; // Required cycles per submission
 
 #[ic_cdk::update]
-pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_hash: Hash, hashes_processed: u64) -> Result<(bool, u64, u64, String), String> {
+pub async fn submit_solution(
+    ledger_id: Principal,
+    nonce: u64,
+    solution_hash: Hash,
+    hashes_processed: u64,
+) -> Result<(bool, u64, u64, String), String> {
     // Check if ledger is deployed
     let stored_ledger_id = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().as_ref().map(|p| p.0));
-    
+
     if stored_ledger_id.is_none() {
         return Err("Mining not available: Ledger has not been deployed yet".to_string());
     }
-    
+
     // Verify the provided ledger ID matches the stored one
     if stored_ledger_id != Some(ledger_id) {
         return Err(format!(
-            "Invalid ledger ID. Expected: {}, Got: {}", 
-            stored_ledger_id.unwrap().to_text(), 
+            "Invalid ledger ID. Expected: {}, Got: {}",
+            stored_ledger_id.unwrap().to_text(),
             ledger_id.to_text()
         ));
     }
-    
+
     // Check if genesis block has been generated
     let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
     if !genesis_generated {
@@ -1217,6 +1229,9 @@ pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_hash: Ha
     // Get current block
     let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone().ok_or("No block template available".to_string()))?;
 
+    // Store the height of the block being mined
+    let mined_height = current_block.height;
+
     // Create solution object for checking
     let solution = StorableSolution {
         nonce,
@@ -1244,7 +1259,8 @@ pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_hash: Ha
 
         if already_processed {
             // Get token ticker
-            let ticker = crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or("UNKNOWN".to_string(), |info| info.ticker.clone()));
+            let ticker =
+                crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or("UNKNOWN".to_string(), |info| info.ticker.clone()));
             return Ok((true, current_block.height, 0, ticker)); // No new reward for already processed solutions
         }
     }
@@ -1252,7 +1268,7 @@ pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_hash: Ha
     // Verify solution
     if !current_block.verify_solution(nonce, solution_hash) {
         // Get token ticker
-        let ticker = crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or("UNKNOWN".to_string(), |info| info.ticker.clone()));
+        let ticker = crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or("UNKNOWN".to_string(), |info| info.ticker.clone()));
         return Ok((false, current_block.height, 0, ticker));
     }
 
@@ -1297,59 +1313,22 @@ pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_hash: Ha
     });
 
     // Step 2: Process reward if applicable
-    let reward = calculate_block_reward(current_block.height);
+    let reward = calculate_block_reward(mined_height);
     if reward > 0 {
         transfer_to_miner(ledger_id, caller, reward).await?;
         crate::update_circulating_supply(reward);
         crate::update_miner_stats(caller, reward);
     }
 
-    // Step 3: Clear current block
-    CURRENT_BLOCK.with(|b| {
-        b.borrow_mut().set(None).expect("Failed to clear current block");
-    });
-
-    // Step 4: Check if mining is complete after this block
-    if is_mining_complete(calculate_block_reward(current_block.height + 1)) {
-        // Create a special mining completion event
-        let current_time = ic_cdk::api::time() / 1_000_000_000; // Convert to seconds
-        let event = Event {
-            event_type: EventType::SystemAnnouncement {
-                message: format!(
-                    "Mining complete at block height {}. Maximum supply reached or minimum reward threshold hit.",
-                    current_block.height + 1
-                ),
-                severity: "info".to_string(),
-            },
-            timestamp: current_time,
-            block_height: current_block.height + 1,
-        };
-
-        // Add this event to the batch
-        add_event_to_batch(event.clone());
-
-        // Get token ticker
-        let ticker = crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or("UNKNOWN".to_string(), |info| info.ticker.clone()));
-        return Ok((true, current_block.height + 1, reward, ticker));
-    }
-
-    // Step 5: Generate new block with retry
-    let mut retries = 3;
-    while retries > 0 {
-        match generate_new_block().await {
-            Ok(_) => {
-                break;
-            }
-            Err(_e) if retries > 1 => {
-                retries -= 1;
-            }
-            Err(e) => return Err(format!("Failed to generate new block after retries: {}", e)),
+    // Step 5: Generate new block
+    match generate_new_block().await {
+        Ok(_) => {
+            // Get token ticker
+            let ticker = crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or("UNKNOWN".to_string(), |info| info.ticker.clone()));
+            Ok((true, mined_height, reward, ticker))
         }
+        Err(e) => Err(e)
     }
-
-    // Get token ticker
-    let ticker = crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or("UNKNOWN".to_string(), |info| info.ticker.clone()));
-    Ok((true, current_block.height + 1, reward, ticker))
 }
 
 #[ic_cdk::query]
@@ -1395,10 +1374,10 @@ fn is_mining_complete(current_reward: u64) -> bool {
     let supply = crate::CIRCULATING_SUPPLY_CELL.with(|s| *s.borrow().get());
 
     // Get total supply from token info
-    let total_supply = crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or(0, |info| info.total_supply));
+    let total_supply = crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or(0, |info| info.total_supply));
 
     // Get transfer fee
-    let transfer_fee = crate::TOKEN_INFO.with(|t| t.borrow().as_ref().map_or(0, |info| info.transfer_fee));
+    let transfer_fee = crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or(0, |info| info.transfer_fee));
 
     // Mining is complete if:
     // 1. Reward is zero or less than transfer fee (not economically viable)
@@ -1582,30 +1561,31 @@ pub fn initialize_memory() {
         HALVING_INTERVAL.with(|h| {
             h.borrow_mut().set(default_halving).expect("Failed to restore halving interval");
         });
-        
+
         BLOCK_REWARD.with(|r| {
             r.borrow_mut().set(default_reward).expect("Failed to restore block reward");
         });
     }
-    
+
     // Check if current block is available
     let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
     let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
     let ledger_deployed = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some());
-    
+
     // Log the current state
-    ic_cdk::println!("Post-upgrade mining state: ledger_deployed={}, genesis_generated={}, current_block={}",
+    ic_cdk::println!(
+        "Post-upgrade mining state: ledger_deployed={}, genesis_generated={}, current_block={}",
         ledger_deployed,
         genesis_generated,
         current_block.is_some()
     );
-    
+
     // If ledger is deployed and genesis block is generated but no current block,
     // we need to update the block template
     if ledger_deployed && genesis_generated && current_block.is_none() {
         ic_cdk::println!("Ledger is deployed and genesis block is generated, but no current block. Updating block template...");
         update_block_template();
-        
+
         // Check if block template was updated
         let updated_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
         if updated_block.is_some() {
@@ -1626,15 +1606,13 @@ fn calculate_heartbeat_interval() -> u64 {
     heartbeat_interval.max(1) // Final safety net
 }
 
-// Helper function to check if genesis block has already been generated
 fn is_genesis_already_generated() -> Result<(), String> {
-    // Check 1: Explicit genesis flag
-    let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
-    if genesis_generated {
-        return Err("Genesis block has already been generated according to explicit flag.".to_string());
+    let current_block_exists = CURRENT_BLOCK.with(|b| b.borrow().get().is_some());
+    if current_block_exists {
+        return Err("Genesis block has already been generated. A block template already exists.".to_string());
     }
-
-    // Check 2: Block height
+    
+    // Check block height - if greater than 0, we've clearly generated blocks
     let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
     if height > 0 {
         return Err(format!(
@@ -1643,26 +1621,6 @@ fn is_genesis_already_generated() -> Result<(), String> {
         ));
     }
 
-    // Check 3: Last block hash (should be all zeros for genesis)
-    let last_hash = LAST_BLOCK_HASH.with(|h| h.borrow().get().0);
-    let is_zero_hash = last_hash.iter().all(|&b| b == 0);
-    if !is_zero_hash {
-        return Err("Genesis block has already been generated. Last block hash is not zero.".to_string());
-    }
-
-    // Check 4: Circulating supply
-    let supply = crate::CIRCULATING_SUPPLY_CELL.with(|s| *s.borrow().get());
-    if supply > 0 {
-        return Err(format!("Genesis block has already been generated. Circulating supply is {}", supply));
-    }
-
-    // Check 5: Event log
-    let event_count = crate::EVENT_LOG.with(|log| log.borrow().len());
-    if event_count > 0 {
-        return Err(format!("Genesis block has already been generated. {} events have been logged", event_count));
-    }
-
-    // All checks passed, genesis block has not been generated
     Ok(())
 }
 
@@ -1682,16 +1640,16 @@ pub async fn create_genesis_block() -> Result<BlockTemplate, String> {
 
     // Generate the genesis block
     let result = generate_new_block().await;
-    
+
     // If successful, set the genesis flag
     if result.is_ok() {
         GENESIS_BLOCK_GENERATED.with(|g| {
             g.borrow_mut().set(true).expect("Failed to set genesis block generated flag");
         });
-        
+
         ic_cdk::println!("Genesis block successfully generated and flag set");
     }
-    
+
     result
 }
 
@@ -1745,26 +1703,26 @@ pub fn is_mining_ready() -> Result<bool, String> {
     if !ledger_deployed {
         return Err("Mining not ready: Ledger has not been deployed yet".to_string());
     }
-    
+
     // Check if genesis block has been generated
     let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
     if !genesis_generated {
         return Err("Mining not ready: Genesis block has not been generated yet".to_string());
     }
-    
+
     // Check if current block is available
     let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
     if current_block.is_none() {
         return Err("Mining not ready: No block template available".to_string());
     }
-    
+
     // Check if mining is complete
     let current_height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
     let current_reward = calculate_block_reward(current_height);
     if is_mining_complete(current_reward) {
         return Err("Mining is complete. Token has reached its maximum supply or minimum reward threshold.".to_string());
     }
-    
+
     Ok(true)
 }
 

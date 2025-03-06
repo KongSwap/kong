@@ -1,8 +1,11 @@
 <!-- PageWrapper.svelte -->
 <script lang="ts">
+  import { onMount } from 'svelte';
+  
   export let page: string;
   let mouseX = 0;
   let mouseY = 0;
+  let starsMounted = false;
   
   // Generate random positions for nebula gradients once
   const nebulaPositions = {
@@ -69,16 +72,29 @@
         const sizeFactor = baseSize / 2;
         const brightnessFactor = 0.3 + (Math.random() * 0.5) + (layer / layers * 0.2);
         
+        // Calculate initial and final positions for fly-in animation
+        const finalTop = Math.random() * 100;
+        const finalLeft = Math.random() * 100;
+        
+        // Determine initial position for fly-in effect
+        // Stars will fly in from outside the viewport
+        const initialOffsetDistance = 50 + Math.random() * 100; // 50-150% offset
+        const angle = Math.random() * Math.PI * 2; // Random angle in radians
+        
         stars.push({
           size: baseSize * layerFactor * 2, // Size scaled by layer
-          top: Math.random() * 100,
-          left: Math.random() * 100,
+          top: finalTop,
+          left: finalLeft,
+          initialTop: finalTop + Math.sin(angle) * initialOffsetDistance,
+          initialLeft: finalLeft + Math.cos(angle) * initialOffsetDistance,
           brightness: brightnessFactor * sizeFactor * 2.5,
           depth: layer,
           // Optimize by pre-calculating twinkle properties
           twinkle: Math.random() > 0.6, // 40% of stars twinkle
           twinkleSpeed: 2 + Math.random() * 4, // Random twinkle speed (2-6s)
-          twinkleAmount: 0.3 + Math.random() * 0.5 // Random twinkle intensity
+          twinkleAmount: 0.3 + Math.random() * 0.5, // Random twinkle intensity
+          // Add delay for staggered animation
+          delay: Math.random() * 1.5 // Random delay up to 1.5s
         });
       }
     }
@@ -90,16 +106,34 @@
   const stars = createStars(starCount, starLayers);
   
   // COSMIC UPGRADE: Create a small set of special stars (supergiants, colored stars)
-  const specialStars = Array(10).fill(0).map(() => ({
-    size: 2 + Math.random() * 2, // Larger special stars
-    top: Math.random() * 100,
-    left: Math.random() * 100,
-    depth: Math.floor(Math.random() * 2), // Keep in front layers for visibility
-    hue: Math.floor(Math.random() * 360), // Random color
-    brightness: 0.7 + Math.random() * 0.3,
-    pulse: Math.random() > 0.5, // Some stars pulse
-    pulseSpeed: 3 + Math.random() * 5 // Random pulse speed
-  }));
+  const specialStars = Array(10).fill(0).map(() => {
+    const finalTop = Math.random() * 100;
+    const finalLeft = Math.random() * 100;
+    const initialOffsetDistance = 100 + Math.random() * 150; // Larger offset for special stars
+    const angle = Math.random() * Math.PI * 2;
+    
+    return {
+      size: 2 + Math.random() * 2, // Larger special stars
+      top: finalTop,
+      left: finalLeft,
+      initialTop: finalTop + Math.sin(angle) * initialOffsetDistance,
+      initialLeft: finalLeft + Math.cos(angle) * initialOffsetDistance,
+      depth: Math.floor(Math.random() * 2), // Keep in front layers for visibility
+      hue: Math.floor(Math.random() * 360), // Random color
+      brightness: 0.7 + Math.random() * 0.3,
+      pulse: Math.random() > 0.5, // Some stars pulse
+      pulseSpeed: 3 + Math.random() * 5, // Random pulse speed
+      delay: 0.5 + Math.random() * 1 // Slightly delayed for dramatic effect
+    };
+  });
+  
+  // Set starsMounted to true after a short delay
+  onMount(() => {
+    // Small delay to ensure DOM is ready
+    setTimeout(() => {
+      starsMounted = true;
+    }, 100);
+  });
 </script>
 
 <svelte:window on:mousemove={handleMouseMove}/>
@@ -126,7 +160,7 @@
         "
       ></div>
       
-      <!-- COSMIC UPGRADE: Ultra-optimized 3D parallax stars -->
+      <!-- COSMIC UPGRADE: Ultra-optimized 3D parallax stars with fly-in animation -->
       <div class="stars-container">
         {#each Array(starLayers) as _, layer}
           <div 
@@ -138,36 +172,42 @@
           >
             {#each stars.filter(star => star.depth === layer) as star}
               <div 
-                class="star {star.twinkle ? 'twinkle' : ''}"
+                class="star {star.twinkle ? 'twinkle' : ''} {starsMounted ? 'fly-in' : ''}"
                 style="
                   --size: {star.size}px;
                   --top: {star.top}%;
                   --left: {star.left}%;
+                  --initial-top: {star.initialTop}%;
+                  --initial-left: {star.initialLeft}%;
                   --brightness: {star.brightness};
                   --depth: {layer};
                   --twinkle-speed: {star.twinkleSpeed}s;
                   --twinkle-amount: {star.twinkleAmount};
+                  --delay: {star.delay}s;
                 "
               ></div>
             {/each}
           </div>
         {/each}
         
-        <!-- COSMIC UPGRADE: Special stars layer (supergiants, colored stars) -->
+        <!-- COSMIC UPGRADE: Special stars layer (supergiants, colored stars) with fly-in -->
         <div 
           class="stars-layer special-stars-layer"
           style="transform: translate({mouseX * 0.1}px, {mouseY * 0.1}px);"
         >
           {#each specialStars as star}
             <div 
-              class="special-star {star.pulse ? 'pulse' : ''}"
+              class="special-star {star.pulse ? 'pulse' : ''} {starsMounted ? 'fly-in' : ''}"
               style="
                 --size: {star.size}px;
                 --top: {star.top}%;
                 --left: {star.left}%;
+                --initial-top: {star.initialTop}%;
+                --initial-left: {star.initialLeft}%;
                 --hue: {star.hue};
                 --brightness: {star.brightness};
                 --pulse-speed: {star.pulseSpeed}s;
+                --delay: {star.delay}s;
               "
             ></div>
           {/each}
@@ -357,17 +397,30 @@
     height: var(--size);
     background: white;
     border-radius: 50%;
+    top: var(--initial-top, var(--top));
+    left: var(--initial-left, var(--left));
+    opacity: 0; /* Start invisible for fly-in */
+    box-shadow: 0 0 calc(var(--size) * 0.8) rgba(255, 255, 255, 0.7); /* Optimized glow effect */
+    transform: translateZ(calc(var(--depth) * 20px)); /* 3D depth positioning */
+    will-change: opacity, top, left; /* Optimization: Hint for animation */
+    transition: none; /* No transition initially */
+  }
+
+  /* Fly-in animation for stars */
+  .star.fly-in {
     top: var(--top);
     left: var(--left);
     opacity: var(--brightness);
-    box-shadow: 0 0 calc(var(--size) * 0.8) rgba(255, 255, 255, 0.7); /* Optimized glow effect */
-    transform: translateZ(calc(var(--depth) * 20px)); /* 3D depth positioning */
-    will-change: opacity; /* Optimization: Hint for animation */
+    transition: 
+      top 1.5s cubic-bezier(0.23, 1, 0.32, 1) var(--delay),
+      left 1.5s cubic-bezier(0.23, 1, 0.32, 1) var(--delay),
+      opacity 1s ease-in var(--delay);
   }
 
   /* COSMIC UPGRADE: Optimized twinkle animation with custom properties */
   .star.twinkle {
     animation: twinkle var(--twinkle-speed) ease-in-out infinite;
+    animation-delay: calc(var(--delay) + 1s); /* Start twinkling after fly-in */
   }
 
   @keyframes twinkle {
@@ -381,20 +434,33 @@
     width: var(--size);
     height: var(--size);
     border-radius: 50%;
-    top: var(--top);
-    left: var(--left);
-    opacity: var(--brightness);
+    top: var(--initial-top, var(--top));
+    left: var(--initial-left, var(--left));
+    opacity: 0; /* Start invisible for fly-in */
     background: hsl(var(--hue), 100%, 80%);
     box-shadow: 
       0 0 calc(var(--size) * 0.5) hsl(var(--hue), 100%, 70%),
       0 0 calc(var(--size) * 1.2) hsl(var(--hue), 100%, 50%, 0.5);
     z-index: 10;
-    will-change: transform, opacity, box-shadow; /* Optimization hint */
+    will-change: transform, opacity, box-shadow, top, left; /* Optimization hint */
+    transition: none; /* No transition initially */
+  }
+
+  /* Fly-in animation for special stars */
+  .special-star.fly-in {
+    top: var(--top);
+    left: var(--left);
+    opacity: var(--brightness);
+    transition: 
+      top 2s cubic-bezier(0.19, 1, 0.22, 1) var(--delay),
+      left 2s cubic-bezier(0.19, 1, 0.22, 1) var(--delay),
+      opacity 1.5s ease-in var(--delay);
   }
 
   /* COSMIC UPGRADE: Pulsing animation for special stars */
   .special-star.pulse {
     animation: pulse var(--pulse-speed) ease-in-out infinite;
+    animation-delay: calc(var(--delay) + 1.5s); /* Start pulsing after fly-in */
   }
 
   @keyframes pulse {

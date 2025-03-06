@@ -12,16 +12,23 @@ MINER_NAME=$1
 # Check if there's a current block (token_backend doesnt generate a static genesis block yet TODO
 # genesis blocks are cool and idk how to make them epic but for now just call generate_block, something token_backend
 # also does when a solution is found etc)
-CURRENT_BLOCK=$(dfx canister call token_backend get_current_block)
+MAX_RETRIES=3
+RETRY_COUNT=0
 
-if [[ $CURRENT_BLOCK == "(null)" ]] || [[ $CURRENT_BLOCK == "(opt null)" ]]; then
-    echo "No block available. Generating new block..."
-    dfx canister call token_backend generate_new_block
-    if [ $? -ne 0 ]; then
-        echo "Failed to generate new block"
-        exit 1
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    CURRENT_BLOCK=$(dfx canister call token_backend get_current_block)
+
+    if [[ $CURRENT_BLOCK == "(null)" ]] || [[ $CURRENT_BLOCK == "(opt null)" ]]; then
+        echo "No block available. Retrying in 1 second..."
+        sleep 1
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+    else
+        break
     fi
-    echo "New block generated successfully"
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    echo "Failed to get block after $MAX_RETRIES retries. Starting mining anyway..."
 fi
 
 echo "Starting mining for $MINER_NAME..."

@@ -18,7 +18,13 @@
   export let repetitions = 8;
   
   // Allow customization of animation speed
-  export let animationDuration = 20; // seconds
+  export let animationDuration = 60;
+  
+  // Allow customization of position
+  export let position = "bottom";
+  
+  // Allow customization of positioning
+  export let isAbsolute = true;
   
   // Position class is no longer needed as we're fixing it to bottom
 </script>
