@@ -608,11 +608,11 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
         Ok((Ok(token_info),)) => {
             if let Some(ledger_id) = token_info.ledger_id {
                 // Found a solution! Submit it
-                let current_chunk_size = 10000; // Fixed chunk size
+                let hashes_processed: u64 = 10000;
                 match call_with_payment128::<_, (Result<(bool, u64, u64, String), String>,)>(
                     token_id,
                     "submit_solution",
-                    (ledger_id, result.nonce, result.nonce, current_chunk_size),
+                    (ledger_id, result.nonce, result.solution_hash, hashes_processed),
                     SUBMISSION_CYCLES
                 ).await
                 {

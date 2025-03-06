@@ -270,7 +270,7 @@ export const idlFactory = ({ IDL }) => {
     'remove_social_link' : IDL.Func([IDL.Nat64], [Result], []),
     'start_token' : IDL.Func([], [Result_6], []),
     'submit_solution' : IDL.Func(
-        [IDL.Principal, IDL.Nat64, IDL.Vec(IDL.Nat8), IDL.Nat64],
+        [IDL.Principal, IDL.Nat64, IDL.Nat64, IDL.Nat64],
         [
           IDL.Variant({
             'Ok' : IDL.Tuple(IDL.Bool, IDL.Nat64, IDL.Nat64, IDL.Text),

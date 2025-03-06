@@ -1155,30 +1155,7 @@ fn update_miner_hashrate(miner: Principal, hashes_processed: u64) {
 const REQUIRED_SUBMISSION_CYCLES: u128 = 420_690; // Required cycles per submission
 
 #[ic_cdk::update]
-pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_nonce: u64, hashes_processed: u64) -> Result<(bool, u64, u64, String), String> {
-    // Generate hash from the nonce since we're now passing the nonce twice
-    let solution_hash = {
-        // Use nonce and solution_nonce to derive the hash
-        let mut data = [0u8; 16];
-        data[0..8].copy_from_slice(&nonce.to_le_bytes());
-        data[8..16].copy_from_slice(&solution_nonce.to_le_bytes());
-        
-        // Generate a deterministic hash from the nonces
-        let mut solution_hash = [0u8; 32];
-        for i in 0..4 {
-            let start = i * 8;
-            let mut chunk = u64::from_le_bytes([data[start], data[start+1], data[start+2], data[start+3], 
-                                              data[start % 16], data[(start+1) % 16], data[(start+2) % 16], data[(start+3) % 16]]);
-            chunk = chunk.wrapping_mul(0x9E3779B97F4A7C15);  // Prime multiplier for better distribution
-            let bytes = chunk.to_le_bytes();
-            for j in 0..8 {
-                solution_hash[i*8 + j] = bytes[j];
-            }
-        }
-        
-        solution_hash
-    };
-    
+pub async fn submit_solution(ledger_id: Principal, nonce: u64, solution_hash: Hash, hashes_processed: u64) -> Result<(bool, u64, u64, String), String> {
     // Check if ledger is deployed
     let stored_ledger_id = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().as_ref().map(|p| p.0));
     

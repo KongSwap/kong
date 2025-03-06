@@ -208,7 +208,7 @@ impl BlockMiner {
         let chunk_start_time = ic_cdk::api::time();
         
         // Always use exactly 10,000 hashes
-        let current_chunk_size = 10000;
+        let current_chunk_size: u64 = 10000;
 
         // Increment chunks processed counter
         self.stats.chunks_since_refresh += 1;

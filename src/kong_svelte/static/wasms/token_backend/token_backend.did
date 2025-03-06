@@ -200,7 +200,7 @@ service : (TokenInitArgs) -> {
   remove_social_link : (nat64) -> (Result);
   restore_mining_params : (nat64, nat32, nat64, nat64) -> (Result);
   start_token : () -> (Result_6);
-  submit_solution : (principal, nat64, nat64, nat64) -> (Result_7);
+  submit_solution : (principal, nat64, blob, nat64) -> (Result_7);
   update_social_link : (nat64, text, text) -> (Result);
   whoami : () -> (principal) query;
 }

@@ -111,9 +111,9 @@ INIT_ARGS='(record {
     decimals = opt 8;
     transfer_fee = opt 10_000;
     archive_options = null;
-    initial_block_reward = 251881_0000_0000;
-    block_time_target_seconds = 5;
-    halving_interval = 1;
+    initial_block_reward = 50;
+    block_time_target_seconds = 15;
+    halving_interval = 1000;
 })'
 
 # Deploy with or without reinstall mode based on argument
