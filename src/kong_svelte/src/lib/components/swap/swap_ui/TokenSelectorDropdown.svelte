@@ -19,7 +19,7 @@
   import { debounce } from "$lib/utils/debounce";
   import TokenItem from "./TokenItem.svelte";
   import { virtualScroll } from "$lib/utils/virtualScroll";
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import AddNewTokenModal from "$lib/components/sidebar/AddNewTokenModal.svelte";
 
   const props = $props();
   const {
@@ -73,7 +73,10 @@
 
   // Add a state to track which tokens have had balance loading attempts
   let balanceLoadAttempts = $state(new Set<string>());
-
+  
+  // Add a state to control the visibility of the AddNewTokenModal
+  let isAddNewTokenModalOpen = $state(false);
+  
   type FilterType = "all" | "ck" | "favorites";
 
   // Define filter tabs constant
@@ -500,6 +503,20 @@
     onClose();
   }
 
+  // Handle when a custom token is added through the modal
+  function handleCustomTokenAdded(event: CustomEvent<FE.Token>) {
+    const newToken = event.detail;
+    
+    // Close the modal
+    isAddNewTokenModalOpen = false;
+    
+    // If the token was successfully added, select it
+    if (newToken && canSelectToken(newToken)) {
+      handleSelect(newToken);
+      onClose();
+    }
+  }
+
   function handleClickOutside(event: MouseEvent) {
     if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
       onClose();
@@ -793,15 +810,67 @@
                         </div>
                       {/each}
                     </div>
-                  {/if}
+                  </div>
+                {/if}
+                
+                <!-- API search results -->
+                {#if apiFilteredTokens.length > 0 || isSearching}
+                  <div class="token-section">
+                    <div class="token-section-header">
+                      <span>Available Tokens</span>
+                    </div>
+                    
+                    {#if isSearching}
+                      <div class="loading-indicator">
+                        <span class="loading-spinner"></span>
+                        <span>Searching...</span>
+                      </div>
+                    {:else}
+                      <div style="height: {apiFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
+                        {#each apiTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
+                          <div
+                            style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
+                          >
+                            <TokenItem
+                              {token}
+                              index={i}
+                              currentToken={currentToken}
+                              otherPanelToken={otherPanelToken}
+                              isApiToken={true}
+                              isFavorite={isFavoriteToken(token.canister_id)}
+                              enablingTokenId={enablingTokenId}
+                              blockedTokenIds={BLOCKED_TOKEN_IDS}
+                              onTokenClick={(e) => e.stopPropagation()}
+                              onFavoriteClick={(e) => handleFavoriteClick(e, token)}
+                              onEnableClick={(e) => handleEnableToken(e, token)}
+                            />
+                          </div>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
+                
+                <!-- Add New Token Button -->
+                <div class="add-token-button-container">
+                  <button 
+                    class="add-token-button"
+                    on:click={(e) => {
+                      e.stopPropagation();
+                      isAddNewTokenModalOpen = true;
+                    }}
+                  >
+                    <div class="add-icon">+</div>
+                    <span>Add New Token</span>
+                  </button>
                 </div>
-              {/if}
-
-              {#if filteredTokens.length === 0}
-                <div class="empty-state">
-                  <span>No tokens found</span>
-                </div>
-              {/if}
+                
+                {#if filteredTokens.length === 0}
+                  <div class="empty-state">
+                    <span>No tokens found</span>
+                  </div>
+                {/if}
+              </div>
             </div>
           </div>
         </div>
@@ -1021,4 +1090,32 @@
     pointer-events: none;
     z-index: 5;
   }
+  
+  /* Add Token Button Styles */
+  .add-token-button-container {
+    @apply px-2 py-3 mt-2;
+  }
+  
+  .add-token-button {
+    @apply w-full flex items-center justify-center gap-2 py-3 px-4 
+           bg-kong-bg-light/50 hover:bg-kong-bg-light/80
+           text-kong-text-primary font-medium rounded-lg
+           border border-kong-border/30 transition-all duration-200;
+  }
+  
+  .add-token-button:hover {
+    @apply border-kong-primary/40 bg-kong-primary/10;
+  }
+  
+  .add-icon {
+    @apply flex items-center justify-center w-5 h-5 rounded-full
+           bg-kong-primary/20 text-kong-primary font-bold;
+  }
 </style>
+
+<!-- Add New Token Modal -->
+<AddNewTokenModal 
+  isOpen={isAddNewTokenModalOpen}
+  onClose={() => isAddNewTokenModalOpen = false}
+  on:tokenAdded={handleCustomTokenAdded}
+/>

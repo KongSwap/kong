@@ -10,6 +10,22 @@ interface UserTokensState {
 
 const STORAGE_KEY = 'kong_user_tokens';
 
+// Helper function to safely convert BigInt values to strings for JSON serialization
+function safeStringify(value: any): any {
+  if (typeof value === 'bigint') {
+    return value.toString();
+  } else if (Array.isArray(value)) {
+    return value.map(safeStringify);
+  } else if (value !== null && typeof value === 'object') {
+    const result: Record<string, any> = {};
+    for (const key in value) {
+      result[key] = safeStringify(value[key]);
+    }
+    return result;
+  }
+  return value;
+}
+
 function createUserTokensStore() {
   // Initialize from localStorage if available
   const initialState: UserTokensState = browser
@@ -22,7 +38,9 @@ function createUserTokensStore() {
   // Helper function to update localStorage
   const updateStorage = (newState: UserTokensState) => {
     if (browser) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+      // Convert any BigInt values to strings before serializing
+      const safeState = safeStringify(newState);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(safeState));
     }
   };
 

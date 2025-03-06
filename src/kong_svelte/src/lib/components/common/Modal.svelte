@@ -208,7 +208,7 @@
 
       <div
         bind:this={modalElement}
-        class="relative will-change-transform max-w-full px-1 max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
+        class="relative will-change-transform max-w-full {isPadded ? 'px-4' : ''} max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
         style="width: {modalWidth}; z-index: {zIndex + 1};"
         on:mousedown={handleDragStart}
         on:mousemove={handleDragMove}
@@ -223,7 +223,6 @@
           {variant}
           width="100%"
           height="100%"
-          unpadded={!isPadded}
           className="flex flex-col overflow-hidden {className}"
         >
           <div
@@ -239,7 +238,7 @@
             <div class="drag-handle touch-pan-x"></div>
 
             <header
-              class="flex justify-between items-center flex-shrink-0 px-3 pb-4 pt-3"
+              class="flex justify-between items-center flex-shrink-0 pb-4"
             >
               <slot name="title">
                 {#if typeof title === "string"}

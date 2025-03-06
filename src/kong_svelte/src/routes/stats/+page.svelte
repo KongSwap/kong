@@ -324,7 +324,7 @@
     >
       <div class="flex flex-col h-full">
         <!-- Header -->
-        <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
+        <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10 backdrop-blur-md">
           <div
             class="hidden sm:flex items-center gap-3 py-1 border-b border-kong-border"
           >

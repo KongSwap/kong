@@ -1,10 +1,12 @@
 use super::stable_db_update::{StableDBUpdate, StableDBUpdateId};
+
+use crate::ic::logging::info_log;
 use crate::stable_memory::DB_UPDATE_MAP;
 
 pub fn insert(db_update: &StableDBUpdate) -> u64 {
     DB_UPDATE_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let db_update_id = map.last_key_value().map_or(0, |(k, _)| k.0 + 1);
+        let db_update_id = map.last_key_value().map_or_else(|| 1, |(k, _)| k.0 + 1);
         let db_update = StableDBUpdate {
             db_update_id,
             ..db_update.clone()
@@ -24,6 +26,11 @@ pub fn remove_old_updates(db_update_id: u64) {
                 remove_db_updates_ids.push(k);
             }
         }
+        info_log(&format!(
+            "removing db_update_ids <= {:?} of {}",
+            db_update_id,
+            map.last_key_value().map_or(0, |(k, _)| k.0)
+        ));
         for k in remove_db_updates_ids {
             map.remove(&k);
         }

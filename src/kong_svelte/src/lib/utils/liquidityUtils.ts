@@ -1,6 +1,7 @@
 import { BigNumber } from 'bignumber.js';
 import { get } from 'svelte/store';
 import { currentUserBalancesStore, tokenStore } from '$lib/stores/tokenStore';
+import { calculateLiquidityAmounts } from "$lib/api/pools";
 
 /**
  * Formats a display value based on token decimals
@@ -110,7 +111,7 @@ export function hasInsufficientBalance(
         const fee1Tokens = new BigNumber(token1.fee_fixed ?? '0')
             .dividedBy(new BigNumber(10).pow(token1.decimals));
 
-        // Compare deposit + fee to the user’s token balances
+        // Compare deposit + fee to the user's token balances
         const insufficientToken0 = deposit0.plus(fee0Tokens).isGreaterThan(balance0Tokens);
         const insufficientToken1 = deposit1.plus(fee1Tokens).isGreaterThan(balance1Tokens);
 
@@ -326,4 +327,301 @@ export function validateTokenSelect(
     }
 
     return { isValid: true, newToken: selectedToken };
+}
+
+/**
+ * Calculates token1 amount based on token0 amount and pool ratio
+ * @param amount0 Amount of token0
+ * @param token0 Token0 details
+ * @param token1 Token1 details
+ * @param pool Pool details
+ * @returns Calculated amount of token1
+ */
+export async function calculateToken1FromPoolRatio(
+  amount0: string,
+  token0: FE.Token,
+  token1: FE.Token,
+  pool: BE.Pool
+): Promise<string> {
+  try {
+    // Remove any commas from the input
+    const sanitizedAmount0 = amount0.replace(/,/g, '');
+    
+    if (!sanitizedAmount0) {
+      return "0";
+    }
+
+    const amount0BN = new BigNumber(sanitizedAmount0);
+    if (amount0BN.isNaN() || amount0BN.lte(0)) {
+      return "0";
+    }
+
+    // If pool is empty, we can't use the backend calculation
+    const balance0BN = new BigNumber(pool.balance_0.toString());
+    const balance1BN = new BigNumber(pool.balance_1.toString());
+    
+    if (balance0BN.lte(0) || balance1BN.lte(0)) {
+      return "0";
+    }
+    
+    // Convert to raw token amount (with decimals)
+    const amount0Raw = BigInt(
+      amount0BN.times(new BigNumber(10).pow(token0.decimals)).toFixed(0)
+    );
+    
+    // Use backend service to calculate the corresponding token1 amount
+    const result = await calculateLiquidityAmounts(
+      token0.symbol,
+      amount0Raw,
+      token1.symbol
+    );
+    
+    if (!result.Ok) {
+      throw new Error("Failed to calculate liquidity amounts");
+    }
+    
+    // Convert the result back to a human-readable format
+    const amount1BN = new BigNumber(result.Ok.amount_1.toString())
+      .dividedBy(new BigNumber(10).pow(token1.decimals));
+    
+    // Format to 6 decimal places for display
+    return amount1BN.toFixed(6);
+  } catch (error) {
+    console.error("Error calculating token1 from pool ratio:", error);
+    return "0";
+  }
+}
+
+/**
+ * Calculates token0 amount based on token1 amount and pool ratio
+ * @param amount1 Amount of token1
+ * @param token0 Token0 details
+ * @param token1 Token1 details
+ * @param pool Pool details
+ * @returns Calculated amount of token0
+ */
+export async function calculateToken0FromPoolRatio(
+  amount1: string,
+  token0: FE.Token,
+  token1: FE.Token,
+  pool: BE.Pool
+): Promise<string> {
+  try {
+    // Remove any commas from the input
+    const sanitizedAmount1 = amount1.replace(/,/g, '');
+    
+    if (!sanitizedAmount1) {
+      return "0";
+    }
+
+    const amount1BN = new BigNumber(sanitizedAmount1);
+    if (amount1BN.isNaN() || amount1BN.lte(0)) {
+      return "0";
+    }
+
+    // If pool is empty, we can't use the backend calculation
+    const balance0BN = new BigNumber(pool.balance_0.toString());
+    const balance1BN = new BigNumber(pool.balance_1.toString());
+    
+    if (balance0BN.lte(0) || balance1BN.lte(0)) {
+      return "0";
+    }
+    
+    // Since calculateLiquidityAmounts expects token0 amount as input,
+    // we first need to estimate token0 amount based on pool ratio
+    // Get raw balances from the pool
+    const amount1Raw = amount1BN.times(new BigNumber(10).pow(token1.decimals));
+    
+    // Calculate the initial estimate using the pool ratio
+    // amount0 = amount1 * (balance0 / balance1)
+    const estimatedAmount0Raw = amount1Raw.times(balance0BN).dividedBy(balance1BN);
+    
+    // Convert to raw token amount (with decimals)
+    const estimatedAmount0 = BigInt(estimatedAmount0Raw.toFixed(0));
+    
+    // Use backend service to calculate the corresponding token1 amount
+    const result = await calculateLiquidityAmounts(
+      token0.symbol,
+      estimatedAmount0,
+      token1.symbol
+    );
+    
+    if (!result.Ok) {
+      throw new Error("Failed to calculate liquidity amounts");
+    }
+    
+    // The backend might give us a different token1 amount than requested.
+    // We need to scale our token0 amount to match the requested token1 amount.
+    const resultAmount1BN = new BigNumber(result.Ok.amount_1.toString());
+    const requestedAmount1Raw = amount1BN.times(new BigNumber(10).pow(token1.decimals));
+    
+    // Scale factor = requested amount1 / result amount1
+    const scaleFactor = requestedAmount1Raw.dividedBy(resultAmount1BN);
+    
+    // Scale the token0 amount
+    const scaledAmount0BN = new BigNumber(result.Ok.amount_0.toString())
+      .times(scaleFactor)
+      .dividedBy(new BigNumber(10).pow(token0.decimals));
+    
+    // Format to 6 decimal places for display
+    return scaledAmount0BN.toFixed(6);
+  } catch (error) {
+    console.error("Error calculating token0 from pool ratio:", error);
+    return "0";
+  }
+}
+
+/**
+ * Calculates token1 amount based on token0 amount and price
+ * @param amount0 Amount of token0
+ * @param price Price of token0 in terms of token1
+ * @returns Calculated amount of token1
+ */
+export function calculateToken1FromPrice(
+  amount0: string,
+  price: string
+): string {
+  try {
+    // Remove any commas from inputs
+    const sanitizedAmount0 = amount0.replace(/,/g, '');
+    const sanitizedPrice = price.replace(/,/g, '');
+    
+    if (!sanitizedAmount0 || !sanitizedPrice) {
+      return "0";
+    }
+    
+    const amount0BN = new BigNumber(sanitizedAmount0);
+    const priceBN = new BigNumber(sanitizedPrice);
+    
+    if (amount0BN.isNaN() || priceBN.isNaN() || amount0BN.lte(0) || priceBN.lte(0)) {
+      return "0";
+    }
+    
+    // Calculate amount1 = amount0 * price using BigNumber
+    const amount1BN = amount0BN.times(priceBN);
+    return amount1BN.toString();
+  } catch (error) {
+    console.error("Error calculating token1 from price:", error);
+    return "0";
+  }
+}
+
+/**
+ * Calculates token0 amount based on token1 amount and price
+ * @param amount1 Amount of token1
+ * @param price Price of token0 in terms of token1
+ * @returns Calculated amount of token0
+ */
+export function calculateToken0FromPrice(
+  amount1: string,
+  price: string
+): string {
+  try {
+    // Remove any commas from inputs
+    const sanitizedAmount1 = amount1.replace(/,/g, '');
+    const sanitizedPrice = price.replace(/,/g, '');
+    
+    if (!sanitizedAmount1 || !sanitizedPrice) {
+      return "0";
+    }
+    
+    const amount1BN = new BigNumber(sanitizedAmount1);
+    const priceBN = new BigNumber(sanitizedPrice);
+    
+    if (amount1BN.isNaN() || priceBN.isNaN() || amount1BN.lte(0) || priceBN.lte(0)) {
+      return "0";
+    }
+    
+    // Calculate amount0 = amount1 / price using BigNumber
+    const amount0BN = amount1BN.dividedBy(priceBN);
+    return amount0BN.toString();
+  } catch (error) {
+    console.error("Error calculating token0 from price:", error);
+    return "0";
+  }
+}
+
+/**
+ * Calculates token amount based on percentage of balance
+ * @param token Token details
+ * @param balance Token balance in raw format
+ * @param percentage Percentage to calculate (0-100)
+ * @returns Calculated token amount
+ */
+export function calculateAmountFromPercentage(
+  token: FE.Token,
+  balance: string,
+  percentage: number
+): string {
+  try {
+    if (!token || !balance) return "0";
+    
+    const balanceValue = new BigNumber(balance).div(
+      new BigNumber(10).pow(token.decimals)
+    );
+    
+    if (!balanceValue.isFinite() || balanceValue.isLessThanOrEqualTo(0)) return "0";
+    
+    // If it's 100% (MAX), subtract both the token fee and transaction fee
+    const adjustedBalance =
+      percentage === 100
+        ? balanceValue.minus(new BigNumber(token.fee * 2))
+        : balanceValue.times(percentage).div(100);
+    
+    // Return the raw value without formatting (no commas)
+    return adjustedBalance.gt(0)
+      ? adjustedBalance.toFixed(token.decimals)
+      : "0";
+  } catch (error) {
+    console.error("Error calculating percentage amount:", error);
+    return "0";
+  }
+}
+
+/**
+ * Calculates USD value for a token amount
+ * @param amount Token amount
+ * @param token Token details
+ * @returns USD value as a formatted string
+ */
+export function calculateTokenUsdValue(
+  amount: string,
+  token: FE.Token | null
+): string {
+  // Find token to get its canister_id
+  if (!token?.canister_id || !amount || isNaN(parseFloat(amount))) {
+    return "0";
+  }
+
+  const price = token.metrics?.price;
+
+  if (!price) {
+    return "0";
+  }
+
+  // Calculate USD value
+  const usdValue = Number(amount) * Number(price);
+  return formatToNonZeroDecimal(usdValue);
+}
+
+/**
+ * Formats a number to non-zero decimal places
+ * @param value Number to format
+ * @returns Formatted string
+ */
+export function formatToNonZeroDecimal(value: number): string {
+  if (isNaN(value) || value === 0) return "0";
+  
+  if (value < 0.01) {
+    return value.toFixed(6);
+  } else if (value < 1) {
+    return value.toFixed(4);
+  } else if (value < 10000) {
+    return value.toFixed(2);
+  } else {
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
 }

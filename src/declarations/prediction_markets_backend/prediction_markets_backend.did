@@ -15,7 +15,6 @@ type BetError = variant {
   InsufficientBalance;
   BalanceUpdateFailed;
 };
-type BetWithMarket = record { bet : Bet; market : Market };
 type Delegation = record {
   created : nat64;
   targets_list_hash : blob;
@@ -39,10 +38,6 @@ type Distribution = record {
   winnings : nat;
   user : principal;
   outcome_index : nat;
-};
-type GetFeeBalanceResult = record {
-  balance : nat;
-  admin_principal : principal;
 };
 type ICRC21ConsentMessageRequest = record {
   method : text;
@@ -115,12 +110,11 @@ type ResolutionMethod = variant {
   Decentralized : record { quorum : nat };
   Admin;
 };
-type Result = variant { Ok; Err : text };
-type Result_1 = variant { Ok : nat; Err : text };
-type Result_2 = variant { Ok : DelegationResponse; Err : DelegationError };
-type Result_3 = variant { Ok; Err : DelegationError };
-type Result_4 = variant { Ok; Err : BetError };
-type Result_5 = variant { Ok; Err : ResolutionError };
+type Result = variant { Ok : nat; Err : text };
+type Result_1 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_2 = variant { Ok; Err : DelegationError };
+type Result_3 = variant { Ok; Err : BetError };
+type Result_4 = variant { Ok; Err : ResolutionError };
 type RevokeDelegationRequest = record { targets : vec principal };
 type UserBetInfo = record {
   outcome_text : text;
@@ -138,7 +132,6 @@ type UserHistory = record {
   resolved_bets : vec UserBetInfo;
 };
 service : {
-  add_admin : (principal) -> (Result);
   create_market : (
       text,
       MarketCategory,
@@ -146,13 +139,9 @@ service : {
       vec text,
       ResolutionMethod,
       MarketEndTime,
-    ) -> (Result_1);
-  get_admin_principals : () -> (vec principal) query;
-  get_all_bets : (nat64, nat64, bool) -> (vec BetWithMarket) query;
+    ) -> (Result);
   get_all_categories : () -> (vec text) query;
   get_all_markets : () -> (vec Market) query;
-  get_balance : (principal) -> (nat) query;
-  get_fee_balance : () -> (GetFeeBalanceResult) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
   get_markets_by_status : () -> (MarketsByStatus) query;
@@ -161,12 +150,10 @@ service : {
       ICRC21ConsentMessageResponse,
     ) query;
   icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
-  icrc_34_delegate : (DelegationRequest) -> (Result_2);
-  icrc_34_get_delegation : (DelegationRequest) -> (Result_2) query;
-  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_3);
-  is_admin : (principal) -> (bool) query;
-  place_bet : (nat, nat, nat) -> (Result_4);
-  remove_admin : (principal) -> (Result);
-  resolve_via_admin : (nat, vec nat) -> (Result_5);
-  resolve_via_oracle : (nat, vec nat, blob) -> (Result_5);
+  icrc_34_delegate : (DelegationRequest) -> (Result_1);
+  icrc_34_get_delegation : (DelegationRequest) -> (Result_1) query;
+  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_2);
+  place_bet : (nat, nat, nat) -> (Result_3);
+  resolve_via_admin : (nat, vec nat) -> (Result_4);
+  resolve_via_oracle : (nat, vec nat, blob) -> (Result_4);
 }

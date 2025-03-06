@@ -17,7 +17,6 @@ export type BetError = { 'MarketNotFound' : null } |
   { 'InvalidOutcome' : null } |
   { 'InsufficientBalance' : null } |
   { 'BalanceUpdateFailed' : null };
-export interface BetWithMarket { 'bet' : Bet, 'market' : Market }
 export interface Delegation {
   'created' : bigint,
   'targets_list_hash' : Uint8Array | number[],
@@ -39,10 +38,6 @@ export interface Distribution {
   'winnings' : bigint,
   'user' : Principal,
   'outcome_index' : bigint,
-}
-export interface GetFeeBalanceResult {
-  'balance' : bigint,
-  'admin_principal' : Principal,
 }
 export interface ICRC21ConsentMessageRequest {
   'method' : string,
@@ -116,17 +111,15 @@ export type ResolutionMethod = {
   } |
   { 'Decentralized' : { 'quorum' : bigint } } |
   { 'Admin' : null };
-export type Result = { 'Ok' : null } |
+export type Result = { 'Ok' : bigint } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : bigint } |
-  { 'Err' : string };
-export type Result_2 = { 'Ok' : DelegationResponse } |
+export type Result_1 = { 'Ok' : DelegationResponse } |
+  { 'Err' : DelegationError };
+export type Result_2 = { 'Ok' : null } |
   { 'Err' : DelegationError };
 export type Result_3 = { 'Ok' : null } |
-  { 'Err' : DelegationError };
-export type Result_4 = { 'Ok' : null } |
   { 'Err' : BetError };
-export type Result_5 = { 'Ok' : null } |
+export type Result_4 = { 'Ok' : null } |
   { 'Err' : ResolutionError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
 export interface UserBetInfo {
@@ -145,7 +138,6 @@ export interface UserHistory {
   'resolved_bets' : Array<UserBetInfo>,
 }
 export interface _SERVICE {
-  'add_admin' : ActorMethod<[Principal], Result>,
   'create_market' : ActorMethod<
     [
       string,
@@ -155,14 +147,10 @@ export interface _SERVICE {
       ResolutionMethod,
       MarketEndTime,
     ],
-    Result_1
+    Result
   >,
-  'get_admin_principals' : ActorMethod<[], Array<Principal>>,
-  'get_all_bets' : ActorMethod<[bigint, bigint, boolean], Array<BetWithMarket>>,
   'get_all_categories' : ActorMethod<[], Array<string>>,
   'get_all_markets' : ActorMethod<[], Array<Market>>,
-  'get_balance' : ActorMethod<[Principal], bigint>,
-  'get_fee_balance' : ActorMethod<[], GetFeeBalanceResult>,
   'get_market' : ActorMethod<[bigint], [] | [Market]>,
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
   'get_markets_by_status' : ActorMethod<[], MarketsByStatus>,
@@ -172,19 +160,17 @@ export interface _SERVICE {
     ICRC21ConsentMessageResponse
   >,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
-  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_2>,
-  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_2>,
+  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_1>,
+  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_1>,
   'icrc_34_revoke_delegation' : ActorMethod<
     [RevokeDelegationRequest],
-    Result_3
+    Result_2
   >,
-  'is_admin' : ActorMethod<[Principal], boolean>,
-  'place_bet' : ActorMethod<[bigint, bigint, bigint], Result_4>,
-  'remove_admin' : ActorMethod<[Principal], Result>,
-  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_5>,
+  'place_bet' : ActorMethod<[bigint, bigint, bigint], Result_3>,
+  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_4>,
   'resolve_via_oracle' : ActorMethod<
     [bigint, Array<bigint>, Uint8Array | number[]],
-    Result_5
+    Result_4
   >,
 }
 export declare const idlFactory: IDL.InterfaceFactory;

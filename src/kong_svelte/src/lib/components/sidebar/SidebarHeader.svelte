@@ -15,6 +15,7 @@
   import {
     loadBalances,
     portfolioValue,
+    isUpdatingPortfolio
   } from "$lib/stores/tokenStore";
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
@@ -64,6 +65,9 @@
       try {
         const currentWalletId = $auth?.account?.owner?.toString();
         if (currentWalletId) {
+          // Set the updating flag to true before starting updates
+          isUpdatingPortfolio.set(true);
+          
           // Load balances and pool data in parallel
           await Promise.all([
             // Load balances and update stores
@@ -72,6 +76,9 @@
             // Initialize pool data to ensure portfolio value is accurate
             currentUserPoolsStore.initialize()
           ]);
+          
+          // Both operations are now complete, set updating flag to false
+          isUpdatingPortfolio.set(false);
         }
       } finally {
         isRefreshing = false;
@@ -127,8 +134,10 @@
           direction: "bottom",
         }}
       >
-        {#if isRefreshing}
-          <Loader2 size={18} />
+        {#if isRefreshing || $isUpdatingPortfolio}
+          <span class="animate-spin mr-1">
+            <Loader2 size={18} />
+          </span>
         {:else}
           {formatUsdValue($portfolioValue || 0)}
         {/if}
@@ -137,12 +146,10 @@
       <button
         class="refresh-button text-gray-400 hover:text-white transition-colors !px-1 !py-2"
         on:click={() => handleReload(false)}
-        disabled={isRefreshing}
+        disabled={isRefreshing || $isUpdatingPortfolio}
         use:tooltip={{ text: "Refresh Portfolio", direction: "bottom" }}
       >
-        <span class:animate-spin={isRefreshing}>
           <RefreshCw size={18} />
-        </span>
       </button>
     </div>
 

@@ -17,36 +17,6 @@ export class PoolService {
   }
 
   /**
-   * Calculate required amounts for adding liquidity
-   */
-  public static async calculateLiquidityAmounts(
-    token0Symbol: string,
-    amount0: bigint,
-    token1Symbol: string,
-  ): Promise<any> {
-    try {
-      const actor = createAnonymousActorHelper(
-        KONG_BACKEND_CANISTER_ID,
-        canisterIDLs.kong_backend,
-      );
-      const result = await actor.add_liquidity_amounts(
-        "IC." + token0Symbol,
-        amount0,
-        "IC." + token1Symbol,
-      );
-
-      if (!result.Ok) {
-        throw new Error(result.Err || "Failed to calculate liquidity amounts");
-      }
-
-      return result;
-    } catch (error) {
-      console.error("Error calculating liquidity amounts:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Calculate amounts that would be received when removing liquidity
    */
   public static async calculateRemoveLiquidityAmounts(
@@ -83,14 +53,6 @@ export class PoolService {
       console.error("Error calculating removal amounts:", error);
       throw error;
     }
-  }
-
-  public static async addLiquidityAmounts(
-    token0Symbol: string,
-    amount0: bigint,
-    token1Symbol: string,
-  ): Promise<any> {
-    return this.calculateLiquidityAmounts(token0Symbol, amount0, token1Symbol);
   }
 
   /**
@@ -284,6 +246,31 @@ export class PoolService {
     } catch (error) {
       console.error("Error removing liquidity:", error);
       throw new Error(error.message || "Failed to remove liquidity");
+    }
+  }
+
+  static async getPool(token0: string, token1: string): Promise<BE.Pool | null> {
+    try {
+      const actor = createAnonymousActorHelper(
+        KONG_BACKEND_CANISTER_ID,
+        canisterIDLs.kong_backend
+      );
+      
+      // Use get_by_tokens instead of get_pool
+      const result = await actor.get_by_tokens("IC." + token0, "IC." + token1);
+      return result || null;
+    } catch (err) {
+      console.error("Error getting pool:", err);
+      return null;
+    }
+  }
+
+  static async approveTokens(token: FE.Token, amount: bigint) {
+    try {
+      await IcrcService.checkAndRequestIcrc2Allowances(token, amount);
+    } catch (error) {
+      console.error("Error approving tokens:", error);
+      throw new Error(`Failed to approve ${token.symbol}: ${error.message}`);
     }
   }
 

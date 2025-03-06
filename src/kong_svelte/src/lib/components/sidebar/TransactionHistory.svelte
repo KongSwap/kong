@@ -31,7 +31,7 @@
     }
   }
 
-  onMount(async () => {
+  onMount(() => {
     // Add debug logging for tokens
     const unsubscribe = tokensStore.subscribe(tokens => {
         console.log('TokensStore updated:', tokens.length);
@@ -48,8 +48,10 @@
 
     if (listContainer) {
         resizeObserver.observe(listContainer);
-        await loadTokens(); // Make sure tokens are loaded
-        loadTransactions(false);
+        // Load tokens and transactions without awaiting
+        loadTokens().then(() => {
+            loadTransactions(false);
+        });
     }
 
     return () => {
