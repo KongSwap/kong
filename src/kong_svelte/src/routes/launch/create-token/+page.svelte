@@ -2,7 +2,7 @@
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { ArrowLeft, AlertTriangle, HelpCircle, Rocket, Users, CreditCard, Zap, Link, Twitter, Github, Coffee } from "lucide-svelte";
+  import { ArrowLeft, AlertTriangle, HelpCircle, Rocket, Users, CreditCard, Zap, Link, Twitter, Github, Coffee, Check } from "lucide-svelte";
   import type { TokenInitArgs } from "$declarations/token_backend/token_backend.did";
   import type { Principal } from '@dfinity/principal';
   import TokenIdentity from "$lib/components/launch/token/TokenIdentity.svelte";
@@ -47,13 +47,61 @@
   let minedPercentage = "0%";
   let miningComplete = false;
 
-  let currentStep = 1;
+  // Chain selection
+  let selectedChain = "icp"; // Default to ICP chain
+  const supportedChains = [
+    { 
+      id: "icp", 
+      name: "Internet Computer", 
+      symbol: "ICP", 
+      color: "#29ABE2",
+      gradient: "from-[#29ABE2] to-[#522785]",
+      available: true, 
+      priority: 1,
+      description: "The Internet Computer blockchain allows canister smart contracts to serve web content directly to end users." 
+    },
+    { 
+      id: "btc", 
+      name: "Bitcoin", 
+      symbol: "BTC", 
+      color: "#F7931A",
+      gradient: "from-[#F7931A] to-[#FF7A00]",
+      available: false, 
+      priority: 3,
+      description: "Bitcoin (BTC) lets you use Bitcoin natively on the Internet Computer blockchain." 
+    },
+    { 
+      id: "eth", 
+      name: "Ethereum", 
+      symbol: "ETH", 
+      color: "#627EEA",
+      gradient: "from-[#627EEA] to-[#3C46D3]",
+      available: false, 
+      priority: 2,
+      description: "Ethereum (ETH) enables ETH to be used natively on Internet Computer canisters." 
+    },
+    { 
+      id: "sol", 
+      name: "Solana", 
+      symbol: "SOL", 
+      color: "#14F195",
+      gradient: "from-[#14F195] to-[#00C2FF]",
+      available: false, 
+      priority: 0,
+      description: "Solana (SOL) integration is currently in active development. Our team is working to enable direct SOL usage on Internet Computer canisters without wrapping." 
+    }
+  ];
+  // Sort chains by priority (lower number = higher priority)
+  const sortedChains = [...supportedChains].sort((a, b) => a.priority - b.priority);
+
+  let currentStep = 0; // Start with chain selection step
   let tokenSubStep = 1; // 1 for Identity, 2 for Economics
   let isSubmitting = false;
-  const totalSteps = 4;
+  const totalSteps = 5; // Increased by one for chain selection
   
   // Define the number of sub-steps for each step
   const subSteps = {
+    0: 1, // Chain selection has no sub-steps
     1: 2, // Token Basics now has 2 sub-steps (Identity and Economics)
     2: 1, // Mining Schedule has 1 sub-step (removed substeps)
     3: 1, // Community has no sub-steps
@@ -104,7 +152,11 @@
   }
 
   function nextStep() {
-    if (currentStep === 1) {
+    if (currentStep === 0) {
+      // Always move from chain selection to token basics
+      currentStep = 1;
+    }
+    else if (currentStep === 1) {
       // First check if we need to move to the next token sub-step
       if (tokenSubStep < subSteps[currentStep]) {
         tokenSubStep++;
@@ -124,6 +176,9 @@
       // For token sub-steps
       if (tokenSubStep > 1) {
         tokenSubStep--;
+      } else {
+        // Go back to chain selection
+        currentStep = 0;
       }
     }
     else if (currentStep === 2) {
@@ -149,15 +204,18 @@
 
     isSubmitting = true;
     try {
+      // Calculate the decimal multiplier (10^decimals)
+      const decimalMultiplier = 10n ** BigInt(decimals || 8);
+      
       // Format token parameters
       const tokenParameters = {
         name,
         ticker: symbol,
         decimals: decimals !== null && decimals !== undefined ? ([decimals] as [number]) : ([] as []),
-        total_supply: BigInt(totalSupply),
+        total_supply: BigInt(totalSupply) * decimalMultiplier, // Adjust by decimal multiplier
         transfer_fee: transferFee !== null && transferFee !== undefined ? ([BigInt(transferFee)] as [bigint]) : ([] as []),
         logo: logo ? ([logo] as [string]) : ([] as []),
-        initial_block_reward: BigInt(initialBlockReward),
+        initial_block_reward: BigInt(initialBlockReward) * decimalMultiplier, // Adjust by decimal multiplier
         block_time_target_seconds: BigInt(blockTimeTargetSeconds),
         halving_interval: BigInt(halvingInterval),
         social_links: socialLinks.length > 0 ? ([socialLinks.map(link => ({ platform: link.platform, url: link.url }))] as [Array<{platform: string, url: string}>]) : ([] as []),
@@ -202,11 +260,24 @@
       <div class="transition-all duration-200 border rounded-xl bg-kong-bg-secondary/50 border-kong-border/30 backdrop-blur-sm">
         <div class="space-y-3">
           <button 
+            class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 0 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
+            on:click={() => currentStep = 0}
+          >
+            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 0 ? 'bg-kong-primary text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
+              1
+            </div>
+            <div class="text-left">
+              <span class="block text-sm">Chain Selection</span>
+              <span class="text-xs opacity-70">Choose blockchain</span>
+            </div>
+          </button>
+
+          <button 
             class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 1 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
             on:click={() => currentStep = 1}
           >
-            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-kong-primary text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
-              1
+            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
+              2
             </div>
             <div class="text-left">
               <span class="block text-sm">Token Basics</span>
@@ -218,8 +289,8 @@
             class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 2 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
             on:click={() => currentStep = 2}
           >
-            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
-              2
+            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-kong-accent-green text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
+              3
             </div>
             <div class="text-left">
               <span class="block text-sm">Mining Schedule</span>
@@ -231,8 +302,8 @@
             class={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${currentStep === 3 ? 'bg-kong-primary/10 text-kong-primary font-medium border border-kong-primary/20' : 'hover:bg-kong-bg-light/10 text-kong-text-secondary'}`}
             on:click={() => currentStep = 3}
           >
-            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-kong-accent-green text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
-              3
+            <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-kong-accent-blue text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
+              4
             </div>
             <div class="text-left">
               <span class="block text-sm">Community</span>
@@ -245,7 +316,7 @@
             on:click={() => currentStep = 4}
           >
             <div class={`w-9 h-9 rounded-full flex items-center justify-center ${currentStep >= 4 ? 'bg-gradient-to-br from-kong-accent-green to-kong-accent-blue text-white' : 'bg-kong-bg-light/10 text-kong-text-secondary'}`}>
-              4
+              5
             </div>
             <div class="text-left">
               <span class="block text-sm">Review & Launch</span>
@@ -281,8 +352,128 @@
   <!-- Main content area -->
   <div class="pr-2 overflow-auto lg:col-span-9">
     <div class="w-full">
+      <!-- Step 0: Chain Selection -->
+      {#if currentStep === 0}
+        <div class="flex flex-col">
+          <Panel variant="solid" type="main" className="p-6 backdrop-blur-xl">
+            <div class="mb-8">
+              <h2 class="text-2xl font-bold text-kong-text-primary">Select Network</h2>
+              <p class="mt-2 text-kong-text-secondary">Choose which blockchain you want to deploy your token on</p>
+            </div>
+
+            <div class="grid gap-6 md:grid-cols-2">
+              {#each sortedChains as chain}
+                <div 
+                  class={`relative overflow-hidden p-0.5 rounded-xl transition-all duration-300 ${!chain.available ? 'opacity-70' : ''}`}
+                  style={`border: ${chain.available ? `2px solid ${chain.color}40` : 'none'}`}
+                >
+                  <div 
+                    class={`h-full p-5 rounded-[10px] backdrop-blur-sm border transition-all duration-300
+                    ${selectedChain === chain.id && chain.available 
+                      ? `border-2 border-${chain.color} bg-kong-bg-light/5` 
+                      : 'bg-kong-bg-light/5 border-kong-border/20'}
+                    ${!chain.available ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-kong-bg-light/10'}`}
+                    on:click={() => {
+                      if (chain.available) {
+                        selectedChain = chain.id;
+                      }
+                    }}
+                  >
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-4">
+                        <div class={`w-12 h-12 rounded-full flex items-center justify-center`}>
+                          <img 
+                            src={`/tokens/${chain.symbol}.svg`} 
+                            alt={chain.symbol} 
+                            class="w-9 h-9"
+                            on:error={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <div class="flex items-center gap-2">
+                            <h3 class="font-semibold text-lg text-kong-text-primary">{chain.name}</h3>
+                            {#if selectedChain === chain.id && chain.available}
+                              <div class="text-white bg-kong-primary p-0.5 rounded-full">
+                                <Check size={16} />
+                              </div>
+                            {/if}
+                          </div>
+                          <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-sm text-kong-text-secondary">{chain.symbol}</span>
+                            {#if chain.id === "sol"}
+                              <span class="text-xs bg-green-600/30 text-green-400 px-1.5 py-0.5 rounded-sm font-medium">PRIORITY</span>
+                            {/if}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {#if !chain.available}
+                        <div class="px-2 py-1 bg-kong-bg-dark/90 rounded-md text-xs font-medium text-kong-text-secondary border border-kong-border/20">
+                          Coming Soon
+                        </div>
+                      {/if}
+                    </div>
+                    
+                    <div class="mt-4 text-sm text-kong-text-secondary">
+                      <p>{chain.description}</p>
+                    </div>
+                    
+                    {#if chain.available}
+                      <div class="mt-3 inline-flex items-center gap-2 text-xs font-medium bg-kong-bg-dark/90 text-green-400 px-3 py-1.5 rounded-md border border-green-500/20">
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm shadow-green-500/30"></span>
+                        <span>Ready for deployment</span>
+                      </div>
+                    {:else if chain.id === "sol"}
+                      <div class="mt-3 inline-flex items-center gap-2 text-xs font-medium bg-green-500/15 text-green-400 px-3 py-1.5 rounded-md border border-green-500/20">
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-sm shadow-green-500/30"></span>
+                        <span>Development in progress</span>
+                      </div>
+                    {:else}
+                      <div class="mt-3 inline-flex items-center gap-2 text-xs font-medium bg-yellow-500/15 text-yellow-400 px-3 py-1.5 rounded-md border border-yellow-500/20">
+                        <span class="w-2.5 h-2.5 rounded-full bg-yellow-500 shadow-sm shadow-yellow-500/30"></span>
+                        <span>Coming in Launchpad v2</span>
+                      </div>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            </div>
+
+            <div class="mt-8 p-5 rounded-xl bg-gradient-to-br from-yellow-700/20 to-yellow-900/10 border border-yellow-700/30 backdrop-blur-sm">
+              <div class="flex items-start gap-4">
+                <div class="p-2 bg-yellow-500/10 rounded-lg text-yellow-400">
+                  <Rocket size={24} />
+                </div>
+                <div>
+                  <h3 class="text-base font-medium text-yellow-400">Launchpad V2 Coming Soon</h3>
+                  <p class="mt-1 text-sm text-yellow-300/90">
+                    Currently, tokens are only deployed on the Internet Computer as ICRC-1/2/3 standard tokens. Launchpad V2 will introduce multi-chain support for BTC, ETH, and SOL, with SOL development as our highest priority.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Panel>
+          
+          <div class="flex justify-between mt-6">
+            <button on:click={handleCancel} class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-gray-500 hover:bg-kong-gray-600 flex items-center gap-2">
+              <ArrowLeft size="20" />
+              Cancel
+            </button>
+            
+            <button 
+              on:click={nextStep} 
+              class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2"
+            >
+              Continue to Token Basics
+            </button>
+          </div>
+        </div>
+
       <!-- Step 1: Token Basics -->
-      {#if currentStep === 1}
+      {:else if currentStep === 1}
         <div class="flex flex-col">
 
           <!-- Reduced padding to match the mining section -->
@@ -400,6 +591,23 @@
               <div class="mb-6">
                 <h2 class="mb-4 text-lg font-semibold">Token Summary</h2>
                 <div class="grid grid-cols-2 gap-6">
+                  <!-- Blockchain Selection -->
+                  <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
+                    <h3 class="mb-3 text-base font-medium text-kong-text-primary">Blockchain</h3>
+                    <div class="space-y-2">
+                      <div class="flex justify-between">
+                        <span class="text-kong-text-secondary">Selected Chain:</span>
+                        <span class="font-medium">{supportedChains.find(c => c.id === selectedChain)?.name || "Internet Computer"}</span>
+                      </div>
+                      {#if selectedChain === "icp"}
+                        <div class="mt-3 p-2 bg-yellow-900/20 border border-yellow-700/20 rounded text-xs text-yellow-400">
+                          Launchpad V2 will support additional chains including BTC, ETH, and SOL.
+                        </div>
+                      {/if}
+                    </div>
+                    <button on:click={() => { currentStep = 0; }} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Blockchain</button>
+                  </div>
+                
                   <!-- Token details -->
                   <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
                     <h3 class="mb-3 text-base font-medium text-kong-text-primary">Token Identity</h3>
@@ -432,6 +640,10 @@
                         <span class="text-kong-text-secondary">Transfer Fee:</span>
                         <span class="font-medium">{transferFee} {symbol}</span>
                       </div>
+                      <div class="flex justify-between">
+                        <span class="text-kong-text-secondary">Total Supply:</span>
+                        <span class="font-medium">{totalSupply.toLocaleString()} {symbol}</span>
+                      </div>
                     </div>
                     <button on:click={() => { currentStep = 1; tokenSubStep = 2; }} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Token Economics</button>
                   </div>
@@ -450,8 +662,21 @@
                       </div>
                       <div class="flex justify-between">
                         <span class="text-kong-text-secondary">Halving Interval:</span>
-                        <span class="font-medium">Every {halvingInterval} blocks</span>
+                        <span class="font-medium">Every {halvingInterval.toLocaleString()} blocks</span>
                       </div>
+                      {#if circulationDays > 0}
+                        <div class="pt-2 mt-2 border-t border-kong-border/10">
+                          <div class="text-xs text-kong-text-secondary mb-1">Mining Projections:</div>
+                          <div class="flex justify-between text-sm">
+                            <span class="text-kong-text-secondary">Mining Duration:</span>
+                            <span class="font-medium">~{circulationDays.toLocaleString()} days</span>
+                          </div>
+                          <div class="flex justify-between text-sm">
+                            <span class="text-kong-text-secondary">Total Mined:</span>
+                            <span class="font-medium">{minedPercentage}</span>
+                          </div>
+                        </div>
+                      {/if}
                     </div>
                     <button on:click={() => { currentStep = 2; }} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Mining Schedule</button>
                   </div>
@@ -463,8 +688,8 @@
                       {#if socialLinks.length > 0}
                         {#each socialLinks as link}
                           <div class="flex justify-between">
-                            <span class="text-kong-text-secondary">{link.platform}:</span>
-                            <span class="font-medium truncate max-w-[150px]">{link.url}</span>
+                            <span class="text-kong-text-secondary capitalize">{link.platform}:</span>
+                            <span class="font-medium truncate max-w-[150px] text-kong-accent-blue">{link.url}</span>
                           </div>
                         {/each}
                       {:else}
@@ -472,19 +697,6 @@
                       {/if}
                     </div>
                     <button on:click={() => currentStep = 3} class="mt-4 text-sm text-kong-accent-blue hover:underline">Edit Community Links</button>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- User Agreement -->
-              <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
-                <h3 class="mb-3 text-base font-medium text-kong-text-primary">Terms & Conditions</h3>
-                <div class="space-y-4">
-                  <div class="flex items-start gap-2">
-                    <input type="checkbox" id="agreement" class="mt-1" />
-                    <label for="agreement" class="text-sm text-kong-text-secondary">
-                      I understand that I am creating a new token on the Internet Computer blockchain. I have the right to create this token and understand that once created, certain parameters cannot be changed.
-                    </label>
                   </div>
                 </div>
               </div>

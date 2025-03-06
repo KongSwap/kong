@@ -188,11 +188,12 @@ async fn disconnect_token() -> Result<(), String> {
     
     // If we were connected to a token, deregister from it
     if let Some(token_id) = token_id {
-        let deregister_result: Result<((),), (ic_cdk::api::call::RejectionCode, String)> = 
+        let deregister_result: Result<(Result<(), String>,), (ic_cdk::api::call::RejectionCode, String)> = 
             call(token_id, "deregister_miner", ()).await;
             
         match deregister_result {
-            Ok(_) => (),
+            Ok((Ok(()),)) => (),
+            Ok((Err(e),)) => return Err(format!("Token rejected deregistration: {}", e)),
             Err((code, msg)) => return Err(format!("Failed to deregister from token: {} (code: {:?})", msg, code))
         }
     }

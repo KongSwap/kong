@@ -10,6 +10,8 @@
     import { goto } from '$app/navigation';
     import KongInterfaceModal from './KongInterfaceModal.svelte';
     import { fade, fly } from 'svelte/transition';
+    import { registerCanister } from '$lib/api/canisters';
+    import { toastStore } from '$lib/stores/toastStore';
 
     // Available WASM types
     const AVAILABLE_WASMS: Record<string, WasmMetadata> = {
@@ -210,7 +212,7 @@
         showAddModal = false;
     }
     
-    function addCustomCanister() {
+    async function addCustomCanister() {
         try {
             // Validate canister ID
             const canisterId = newCanisterId.trim();
@@ -222,6 +224,26 @@
                 createdAt: Date.now(),
                 wasmType: newCanisterType || undefined // Include the selected type if provided
             });
+            
+            // Register the canister with the API
+            if (principal && newCanisterType) {
+                try {
+                    const registerResult = await registerCanister(
+                        principal,
+                        canisterId,
+                        newCanisterType === 'miner' ? 'miner' : 'token_backend'
+                    );
+                    
+                    if (registerResult.success) {
+                        toastStore.success('Canister registered successfully');
+                    } else {
+                        toastStore.error(`Failed to register canister: ${registerResult.error}`);
+                    }
+                } catch (registerError) {
+                    console.error('Error registering canister:', registerError);
+                    toastStore.error('Failed to register canister with API');
+                }
+            }
             
             // Close modal and fetch status
             closeAddModal();

@@ -142,6 +142,9 @@ struct TokenInfo {
     transfer_fee: u64,
     archive_options: Option<ArchiveOptions>,
     social_links: Option<Vec<SocialLink>>,
+    average_block_time: Option<f64>,
+    current_block_reward: u64,
+    current_block_height: u64,
 }
 
 #[derive(CandidType, Serialize, Deserialize)]
@@ -266,6 +269,9 @@ fn init(args: TokenInitArgs) {
             transfer_fee: args.transfer_fee.unwrap_or(1),
             archive_options: args.archive_options,
             social_links: args.social_links,
+            average_block_time: None,
+            current_block_reward: 0,
+            current_block_height: 0,
         })).expect("Failed to set token info");
     });
 
@@ -401,7 +407,23 @@ fn icrc_ledger_wasm() -> Vec<u8> {
 #[ic_cdk::query]
 fn get_info() -> Result<TokenInfo, String> {
     TOKEN_INFO_CELL.with(|info| {
-        info.borrow().get().as_ref().cloned().ok_or_else(|| "Token not initialized".to_string())
+        let mut token_info = info.borrow().get().as_ref().cloned().ok_or_else(|| "Token not initialized".to_string())?;
+        
+        // Get current block height
+        let block_height = get_block_height();
+        token_info.current_block_height = block_height;
+        
+        // Get mining info which includes current block reward
+        let mining_info = mining::get_mining_info();
+        token_info.current_block_reward = mining_info.current_block_reward;
+        
+        // Get average block time
+        token_info.average_block_time = match mining::get_average_block_time(None) {
+            mining::BlockTimeResult::Ok(avg_time) => Some(avg_time),
+            mining::BlockTimeResult::Err(_) => None,
+        };
+        
+        Ok(token_info)
     })
 }
 

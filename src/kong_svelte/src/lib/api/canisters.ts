@@ -2,12 +2,14 @@
  * Utility functions for interacting with the canister registration API
  */
 import { writable } from 'svelte/store';
+import type { Principal } from '@dfinity/principal';
 
 // The API URL for canister registration
-const CANISTER_API_URL = 'http://localhost:8080';
-const WEBSOCKET_URL = 'ws://localhost:8080/ws';
+// const CANISTER_API_URL = 'http://localhost:8080';
+// const WEBSOCKET_URL = 'ws://localhost:8080/ws';
+const CANISTER_API_URL = 'http://134.209.193.115:8080';
+const WEBSOCKET_URL = 'ws://134.209.193.115:8080/ws';
 
-// WebSocket connection and status
 let socket: WebSocket | null = null;
 export const wsConnected = writable(false);
 export const wsEvents = writable<{type: string, data: any, timestamp: Date}[]>([]);
@@ -130,18 +132,22 @@ export function disconnectWebSocket() {
 
 /**
  * Register a canister with the API
- * @param principal The principal ID of the user who created the canister
+ * @param principal The principal ID of the user who created the canister (string or Principal object)
  * @param canisterId The canister ID to register
  * @param canisterType The type of canister ('token_backend' or 'miner')
  * @returns A promise that resolves to the API response
  */
 export async function registerCanister(
-  principal: string,
+  principal: string | Principal,
   canisterId: string,
   canisterType: 'token_backend' | 'miner'
 ): Promise<any> {
   try {
     addWsEvent('api_call', `Registering canister ${canisterId} (${canisterType})`);
+    
+    // Convert principal to string if it's a Principal object
+    const principalStr = typeof principal === 'string' ? principal : 
+                         (principal && typeof principal.toText === 'function') ? principal.toText() : principal;
     
     const response = await fetch(`${CANISTER_API_URL}/canisters`, {
       method: 'POST',
@@ -149,7 +155,7 @@ export async function registerCanister(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        principal,
+        principal: principalStr,
         canister_id: canisterId,
         canister_type: canisterType,
         module_hash: null

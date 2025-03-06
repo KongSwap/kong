@@ -516,6 +516,14 @@ static HALVING_INTERVAL: RefCell<StableCell<u64, Memory>> = RefCell::new(
         0,
     ).expect("Failed to init HALVING_INTERVAL")
 );
+
+// Add a dedicated flag for tracking genesis block generation
+static GENESIS_BLOCK_GENERATED: RefCell<StableCell<bool, Memory>> = RefCell::new(
+    StableCell::init(
+        MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(24))), // Use an available memory ID
+        false,
+    ).expect("Failed to init GENESIS_BLOCK_GENERATED")
+);
 }
 
 pub fn init_mining_params(initial_block_reward: u64, block_time_target: u64, halving_interval: u64) {
@@ -1557,8 +1565,46 @@ fn calculate_heartbeat_interval() -> u64 {
     heartbeat_interval.max(1) // Final safety net
 }
 
-// Add a new function for creating the genesis block
-#[ic_cdk::update]
+// Helper function to check if genesis block has already been generated
+fn is_genesis_already_generated() -> Result<(), String> {
+    // Check 1: Explicit genesis flag
+    let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
+    if genesis_generated {
+        return Err("Genesis block has already been generated according to explicit flag.".to_string());
+    }
+
+    // Check 2: Block height
+    let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
+    if height > 0 {
+        return Err(format!(
+            "Genesis block has already been generated. Current block height is {}",
+            height
+        ));
+    }
+
+    // Check 3: Last block hash (should be all zeros for genesis)
+    let last_hash = LAST_BLOCK_HASH.with(|h| h.borrow().get().0);
+    let is_zero_hash = last_hash.iter().all(|&b| b == 0);
+    if !is_zero_hash {
+        return Err("Genesis block has already been generated. Last block hash is not zero.".to_string());
+    }
+
+    // Check 4: Circulating supply
+    let supply = crate::CIRCULATING_SUPPLY_CELL.with(|s| *s.borrow().get());
+    if supply > 0 {
+        return Err(format!("Genesis block has already been generated. Circulating supply is {}", supply));
+    }
+
+    // Check 5: Event log
+    let event_count = crate::EVENT_LOG.with(|log| log.borrow().len());
+    if event_count > 0 {
+        return Err(format!("Genesis block has already been generated. {} events have been logged", event_count));
+    }
+
+    // All checks passed, genesis block has not been generated
+    Ok(())
+}
+
 pub async fn create_genesis_block() -> Result<BlockTemplate, String> {
     // Check if caller is the controller
     let caller = ic_cdk::caller();
@@ -1568,18 +1614,22 @@ pub async fn create_genesis_block() -> Result<BlockTemplate, String> {
         return Err("Only the controller can create the genesis block".to_string());
     }
 
-    // Check if block height is 0 (genesis block hasn't been created yet)
-    let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
+    // Check if genesis block has already been generated using multiple verification methods
+    is_genesis_already_generated()?;
 
-    if height > 0 {
-        return Err(format!(
-            "Genesis block has already been generated. Current block height is {}",
-            height
-        ));
+    // Generate the genesis block
+    let result = generate_new_block().await;
+    
+    // If successful, set the genesis flag
+    if result.is_ok() {
+        GENESIS_BLOCK_GENERATED.with(|g| {
+            g.borrow_mut().set(true).expect("Failed to set genesis block generated flag");
+        });
+        
+        ic_cdk::println!("Genesis block successfully generated and flag set");
     }
-
-    // Call the internal generate_new_block function to create the genesis block
-    generate_new_block().await
+    
+    result
 }
 
 #[ic_cdk::update]

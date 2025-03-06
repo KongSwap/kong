@@ -279,26 +279,6 @@ import { registerCanister } from "$lib/api/canisters";
       
       addLog(`Successfully created canister with ID: ${canisterId}`);
       
-      // Register the canister with the API
-      try {
-        addLog("Registering canister with API...");
-        const registerResult = await registerCanister(
-          principal,
-          canisterId,
-          'miner'
-        );
-        
-        if (registerResult.success) {
-          addLog("Successfully registered canister with API");
-        } else {
-          addLog(`Warning: Failed to register canister with API: ${registerResult.error}`);
-          // Continue anyway since this is not critical
-        }
-      } catch (apiError) {
-        addLog(`Warning: Error registering canister with API: ${apiError.message}`);
-        // Continue anyway since this is not critical
-      }
-      
       // Save progress
       lastSuccessfulStep = processSteps.CREATE_CANISTER;
       
@@ -360,9 +340,51 @@ import { registerCanister } from "$lib/api/canisters";
         tags: ["miner"]
       });
 
-      // TODO ADD TO REGISTRY CANISTER
-      // get actor IDL from registry canister, staging or production
-      // staging is mine, prod is Gor/Jon
+      // Register the canister with the API after successful initialization
+      try {
+        addLog("Registering miner canister with API...");
+        const registerResult = await registerCanister(
+          principal,
+          canisterId,
+          'miner'
+        );
+        
+        if (registerResult.success) {
+          addLog("Successfully registered miner canister with API");
+        } else {
+          addLog(`Warning: Failed to register miner canister with API: ${registerResult.error}`);
+          // Continue anyway since this is not critical
+        }
+      } catch (apiError) {
+        addLog(`Warning: Error registering miner canister with API: ${apiError.message}`);
+        // Continue anyway since this is not critical
+      }
+      
+      // If a token ID was provided, try to connect the miner to it
+      if (minerParams.tokenCanisterId) {
+        try {
+          addLog(`Connecting miner to token ${minerParams.tokenCanisterId}...`);
+          
+          // Create an actor for the miner
+          const minerActor = await auth.getActor(canisterId, idlFactory, { requiresSigning: true });
+          
+          // Convert the token canister ID to a Principal
+          const tokenPrincipal = Principal.fromText(minerParams.tokenCanisterId);
+          
+          // Connect the miner to the token
+          const connectResult = await minerActor.connect_token(tokenPrincipal);
+          
+          if ('Ok' in connectResult) {
+            addLog("Successfully connected miner to token");
+          } else {
+            addLog(`Warning: Failed to connect miner to token: ${connectResult.Err}`);
+            // Continue anyway since this is not critical
+          }
+        } catch (connectError) {
+          addLog(`Warning: Error connecting miner to token: ${connectError.message}`);
+          // Continue anyway since this is not critical
+        }
+      }
       
       addLog("Successfully initialized miner");
       addLog("Miner deployment completed successfully!");

@@ -41,16 +41,64 @@
     }
   }
 
-  // Enhanced 3D star field with depth layers
-  const starCount = 80; // Increased for better effect
-  const starLayers = 3; // Create multiple depth layers
-  const stars = Array(starCount).fill(0).map(() => ({
-    size: 0.6 + Math.random() * 2.2, // Varied sizes
+  // COSMIC UPGRADE: Enhanced 3D star field with optimized rendering
+  const starCount = 200; // COSMIC UPGRADE: More stars for an immersive experience
+  const starLayers = 5; // COSMIC UPGRADE: More depth layers for better parallax
+
+  // COSMIC UPGRADE: Create star factory function for better performance
+  const createStars = (count: number, layers: number) => {
+    const stars = [];
+    
+    // Optimize by pre-computing layer assignments
+    const layerCounts = new Array(layers).fill(Math.floor(count / layers));
+    
+    // Distribute remaining stars
+    const remainder = count % layers;
+    for (let i = 0; i < remainder; i++) {
+      layerCounts[i]++;
+    }
+    
+    // Create stars for each layer
+    for (let layer = 0; layer < layers; layer++) {
+      for (let i = 0; i < layerCounts[layer]; i++) {
+        // Size scaling based on layer (farther stars are smaller)
+        const baseSize = 0.6 + (Math.random() * 0.8);
+        const layerFactor = 1 - (layer / layers * 0.5); // Deeper layers are smaller
+        
+        // Brightness based on size and layer
+        const sizeFactor = baseSize / 2;
+        const brightnessFactor = 0.3 + (Math.random() * 0.5) + (layer / layers * 0.2);
+        
+        stars.push({
+          size: baseSize * layerFactor * 2, // Size scaled by layer
+          top: Math.random() * 100,
+          left: Math.random() * 100,
+          brightness: brightnessFactor * sizeFactor * 2.5,
+          depth: layer,
+          // Optimize by pre-calculating twinkle properties
+          twinkle: Math.random() > 0.6, // 40% of stars twinkle
+          twinkleSpeed: 2 + Math.random() * 4, // Random twinkle speed (2-6s)
+          twinkleAmount: 0.3 + Math.random() * 0.5 // Random twinkle intensity
+        });
+      }
+    }
+    
+    return stars;
+  };
+
+  // COSMIC UPGRADE: Create stars with optimized distribution
+  const stars = createStars(starCount, starLayers);
+  
+  // COSMIC UPGRADE: Create a small set of special stars (supergiants, colored stars)
+  const specialStars = Array(10).fill(0).map(() => ({
+    size: 2 + Math.random() * 2, // Larger special stars
     top: Math.random() * 100,
     left: Math.random() * 100,
-    brightness: 0.4 + Math.random() * 0.6,
-    depth: Math.floor(Math.random() * starLayers), // Random depth layer
-    twinkle: Math.random() > 0.7 // Some stars will twinkle
+    depth: Math.floor(Math.random() * 2), // Keep in front layers for visibility
+    hue: Math.floor(Math.random() * 360), // Random color
+    brightness: 0.7 + Math.random() * 0.3,
+    pulse: Math.random() > 0.5, // Some stars pulse
+    pulseSpeed: 3 + Math.random() * 5 // Random pulse speed
   }));
 </script>
 
@@ -78,12 +126,15 @@
         "
       ></div>
       
-      <!-- Enhanced 3D parallax stars -->
+      <!-- COSMIC UPGRADE: Ultra-optimized 3D parallax stars -->
       <div class="stars-container">
-        {#each [0, 1, 2] as layer}
+        {#each Array(starLayers) as _, layer}
           <div 
             class="stars-layer"
-            style="transform: translate({mouseX * (0.05 + layer * 0.1)}px, {mouseY * (0.05 + layer * 0.1)}px)"
+            style="
+              transform: translate({mouseX * (0.05 + layer * 0.07)}px, {mouseY * (0.05 + layer * 0.07)}px);
+              z-index: {layer};
+            "
           >
             {#each stars.filter(star => star.depth === layer) as star}
               <div 
@@ -93,11 +144,34 @@
                   --top: {star.top}%;
                   --left: {star.left}%;
                   --brightness: {star.brightness};
-                  --depth: {layer};"
+                  --depth: {layer};
+                  --twinkle-speed: {star.twinkleSpeed}s;
+                  --twinkle-amount: {star.twinkleAmount};
+                "
               ></div>
             {/each}
           </div>
         {/each}
+        
+        <!-- COSMIC UPGRADE: Special stars layer (supergiants, colored stars) -->
+        <div 
+          class="stars-layer special-stars-layer"
+          style="transform: translate({mouseX * 0.1}px, {mouseY * 0.1}px);"
+        >
+          {#each specialStars as star}
+            <div 
+              class="special-star {star.pulse ? 'pulse' : ''}"
+              style="
+                --size: {star.size}px;
+                --top: {star.top}%;
+                --left: {star.left}%;
+                --hue: {star.hue};
+                --brightness: {star.brightness};
+                --pulse-speed: {star.pulseSpeed}s;
+              "
+            ></div>
+          {/each}
+        </div>
       </div>
 
       <!-- Add skyline with reduced animation -->
@@ -250,15 +324,13 @@
     z-index: 0;
   }
 
-  /* Removed animated grass blades */
-
   /* Hide grass and tree silhouettes in dark theme */
   :global(:root.dark) .grass-silhouette,
   :global(:root.dark) .tree-silhouette {
     display: none;
   }
 
-  /* Enhanced 3D stars styling */
+  /* COSMIC UPGRADE: Enhanced star styling with performance optimizations */
   .stars-container {
     position: absolute;
     inset: 0;
@@ -266,13 +338,17 @@
     opacity: 0;
     transition: opacity 0.5s ease;
     perspective: 1000px; /* Add perspective for 3D effect */
+    pointer-events: none; /* Optimization: Prevent mouse events */
+    contain: strict; /* Optimization: Tell browser to isolate this element */
   }
 
   .stars-layer {
     position: absolute;
     inset: 0;
-    will-change: transform; /* Optimize for GPU */
+    will-change: transform; /* Optimization: Inform browser about transform */
     transform-style: preserve-3d; /* Maintain 3D space */
+    backface-visibility: hidden; /* Optimization: Prevent repaints */
+    contain: layout style paint; /* Optimization: Limit update scope */
   }
 
   .star {
@@ -284,19 +360,56 @@
     top: var(--top);
     left: var(--left);
     opacity: var(--brightness);
-    box-shadow: 0 0 calc(var(--size) * 0.8) rgba(255, 255, 255, 0.8); /* Glow effect */
-    transform: translateZ(calc(var(--depth) * 50px)); /* 3D depth positioning */
+    box-shadow: 0 0 calc(var(--size) * 0.8) rgba(255, 255, 255, 0.7); /* Optimized glow effect */
+    transform: translateZ(calc(var(--depth) * 20px)); /* 3D depth positioning */
+    will-change: opacity; /* Optimization: Hint for animation */
   }
 
-  /* Twinkle animation for some stars */
+  /* COSMIC UPGRADE: Optimized twinkle animation with custom properties */
   .star.twinkle {
-    animation: twinkle 4s ease-in-out infinite;
-    animation-delay: calc(var(--top) * 100ms); /* Randomize animation timing */
+    animation: twinkle var(--twinkle-speed) ease-in-out infinite;
   }
 
   @keyframes twinkle {
     0%, 100% { opacity: var(--brightness); }
-    50% { opacity: calc(var(--brightness) * 0.3); }
+    50% { opacity: calc(var(--brightness) * var(--twinkle-amount)); }
+  }
+
+  /* COSMIC UPGRADE: Special stars styling */
+  .special-star {
+    position: absolute;
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    top: var(--top);
+    left: var(--left);
+    opacity: var(--brightness);
+    background: hsl(var(--hue), 100%, 80%);
+    box-shadow: 
+      0 0 calc(var(--size) * 0.5) hsl(var(--hue), 100%, 70%),
+      0 0 calc(var(--size) * 1.2) hsl(var(--hue), 100%, 50%, 0.5);
+    z-index: 10;
+    will-change: transform, opacity, box-shadow; /* Optimization hint */
+  }
+
+  /* COSMIC UPGRADE: Pulsing animation for special stars */
+  .special-star.pulse {
+    animation: pulse var(--pulse-speed) ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { 
+      transform: scale(1);
+      box-shadow: 
+        0 0 calc(var(--size) * 0.5) hsl(var(--hue), 100%, 70%),
+        0 0 calc(var(--size) * 1.2) hsl(var(--hue), 100%, 50%, 0.5);
+    }
+    50% { 
+      transform: scale(1.2);
+      box-shadow: 
+        0 0 calc(var(--size) * 0.8) hsl(var(--hue), 100%, 70%),
+        0 0 calc(var(--size) * 2) hsl(var(--hue), 100%, 50%, 0.7);
+    }
   }
 
   /* Show elements in dark mode */

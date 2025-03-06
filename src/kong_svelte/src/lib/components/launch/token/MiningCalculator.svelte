@@ -5,8 +5,6 @@
   export let halvingBlocks = 0;
   export let blockTimeSeconds = 0;
   export let maxSupply: number = 0;
-  // Set isDynamicSupply to false by default - we want manual control
-  let isDynamicSupply = false;
   export let decimals = 8;
   export let circulationDays = 0;
   export let totalMined = 0;
@@ -16,7 +14,7 @@
   export let name = "";
   export let transferFee = 0;
   export let miningComplete = false;
-  export let currentSubStep = 1; // This will be bound to the parent component
+  export let currentSubStep = 1; 
 
   // Track whether we're in preset view or custom view
   $: isCustomView = currentSubStep === 2;

@@ -9,6 +9,7 @@
     import DirectConnectTokenModal from './DirectConnectTokenModal.svelte';
     import Portal from 'svelte-portal';
     import { Principal } from '@dfinity/principal';
+    import FlashEvent from '$lib/components/launch/FlashEvent.svelte';
     
     import { idlFactory as minerIdlFactory } from '$declarations/miner/miner.did.js';
     import { idlFactory as tokenBackendIdlFactory } from '$declarations/token_backend/token_backend.did.js';
@@ -42,6 +43,7 @@
     let isChangingSpeed = false;
     let speedPercentage = 100;
     let showTransformModal = false;
+    let flashEvent = null;
   
     onMount(async () => {
       try {
@@ -117,6 +119,17 @@
           toastStore.success('Mining started successfully');
           isMining = true;
           await loadMinerInfo();
+          
+          // Show flash event
+          flashEvent = {
+            type: 'miner_started',
+            data: { canister_id: canisterId }
+          };
+          
+          // Hide flash event after 3 seconds
+          setTimeout(() => {
+            flashEvent = null;
+          }, 3000);
         } else {
           toastStore.error(`Failed to start mining: ${result.Err}`);
         }
@@ -166,6 +179,17 @@
         if ('Ok' in result) {
           toastStore.success('Token connected successfully');
           await loadMinerInfo();
+          
+          // Show flash event
+          flashEvent = {
+            type: 'token_connected',
+            data: { canister_id: tokenCanisterId }
+          };
+          
+          // Hide flash event after 3 seconds
+          setTimeout(() => {
+            flashEvent = null;
+          }, 3000);
         } else {
           toastStore.error(`Failed to connect token: ${result.Err}`);
         }
@@ -262,6 +286,17 @@
         if ('Ok' in result) {
           toastStore.success('Rewards claimed successfully');
           await loadMinerInfo();
+          
+          // Show flash event
+          flashEvent = {
+            type: 'rewards_claimed',
+            data: { canister_id: canisterId }
+          };
+          
+          // Hide flash event after 3 seconds
+          setTimeout(() => {
+            flashEvent = null;
+          }, 3000);
         } else {
           toastStore.error(`Failed to claim rewards: ${result.Err}`);
         }
@@ -636,4 +671,9 @@
     onClose={closeConnectTokenModal}
     on:connect={handleConnectToken}
   />
+{/if}
+
+<!-- Flash Event -->
+{#if flashEvent}
+  <FlashEvent {flashEvent} />
 {/if}

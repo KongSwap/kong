@@ -3,6 +3,8 @@
   import TextInput from "$lib/components/common/TextInput.svelte";
   import { toastStore } from "$lib/stores/toastStore";
   import { fade } from "svelte/transition";
+  import { canisterStore } from "$lib/stores/canisters";
+  import { get } from "svelte/store";
   
   // Props
   export let isOpen = false;
@@ -12,6 +14,8 @@
   let canisterId = "";
   let isSubmitting = false;
   let error = "";
+  let userTokens: Array<{ id: string, name: string, tags: string[] }> = [];
+  let selectedTokenId = "";
   
   const dispatch = createEventDispatcher<{
     connect: string;
@@ -33,10 +37,30 @@
   
   onMount(() => {
     document.addEventListener('keydown', handleKeydown);
+    
+    // Load user's tokens
+    const canisters = get(canisterStore);
+    userTokens = canisters
+      .filter(canister => canister.tags?.includes('token'))
+      .map(canister => ({
+        id: canister.id,
+        name: canister.name || canister.id,
+        tags: canister.tags || []
+      }));
+    
     return () => {
       document.removeEventListener('keydown', handleKeydown);
     };
   });
+  
+  // Update canisterId when a token is selected from the dropdown
+  function handleTokenSelect(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    if (select.value) {
+      canisterId = select.value;
+      error = ""; // Clear any previous errors
+    }
+  }
   
   function handleSubmit() {
     // Validate canister ID
@@ -97,7 +121,7 @@
       <!-- Body -->
       <div class="p-4 space-y-4">
         <p class="text-sm text-gray-300">
-          Enter the canister ID of the token's <span class="font-bold text-yellow-400">Proof of Work (PoW) canister</span> you want to connect to this miner. This is the token's mining canister, not the ledger/coin canister.
+          Connect this miner to a token to start mining. You need to enter the canister ID of the token's <span class="font-bold text-yellow-400">Proof of Work (PoW) canister</span>.
         </p>
         
         <div class="bg-gray-800 p-3 rounded-md border border-yellow-500/30">
@@ -105,9 +129,27 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>Important: You must connect to the token's PoW canister, not its ledger canister. The PoW canister is responsible for mining operations.</span>
+            <span>Important: You must connect to the token's PoW canister, not its ledger canister. For tokens created in the KONG DEX, the PoW canister is the same as the token's main canister ID.</span>
           </p>
         </div>
+        
+        <!-- Token Selection Dropdown -->
+        {#if userTokens.length > 0}
+          <div class="mb-2">
+            <label for="token-select" class="block mb-2 text-sm font-medium text-gray-300">Select from your tokens</label>
+            <select 
+              id="token-select" 
+              on:change={handleTokenSelect}
+              class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- Select a token --</option>
+              {#each userTokens as token}
+                <option value={token.id}>{token.name}</option>
+              {/each}
+            </select>
+            <p class="mt-1 text-xs text-gray-400">Or enter a canister ID manually below</p>
+          </div>
+        {/if}
         
         <TextInput
           id="token-canister-id"

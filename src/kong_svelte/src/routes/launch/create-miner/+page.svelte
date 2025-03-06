@@ -9,9 +9,26 @@
     MinerInitArgs,
   } from "$declarations/miner/miner.did.d";
   import { minerParams } from "$lib/stores/minerParams";
+  import { onMount } from "svelte";
+  import { canisterStore } from "$lib/stores/canisters";
+  import { get } from "svelte/store";
 
   let selectedType: MinerType = { Normal: null };
   let isSubmitting = false;
+  let selectedTokenId: string | undefined = undefined;
+  let userTokens: Array<{ id: string, name: string, tags: string[] }> = [];
+
+  // Load user's tokens on mount
+  onMount(() => {
+    const canisters = get(canisterStore);
+    userTokens = canisters
+      .filter(canister => canister.tags?.includes('token'))
+      .map(canister => ({
+        id: canister.id,
+        name: canister.name || canister.id,
+        tags: canister.tags || []
+      }));
+  });
 
   // Mining parameters
   let blockReward = 100;
@@ -105,9 +122,10 @@
     isSubmitting = true;
     try {
       // Store the selected miner type in the minerParams store
-      const initArgs: MinerInitArgs & { minerType: MinerType } = {
+      const initArgs = {
         owner: null, // Will be set by the backend
-        minerType: type
+        minerType: type,
+        tokenCanisterId: selectedTokenId
       };
       
       // Update the miner parameters store
@@ -144,6 +162,41 @@
       <p class="text-kong-text-primary/60">
         Select the type of miner that best suits your needs
       </p>
+    </div>
+
+    <!-- Token Selection -->
+    <div class="mb-8">
+      <Panel>
+        <div class="p-6">
+          <h2 class="mb-4 text-xl font-semibold">Connect to a Token (Optional)</h2>
+          <p class="mb-4 text-kong-text-primary/60">
+            You can automatically connect your miner to one of your tokens. This is optional and you can connect to a token later.
+          </p>
+          
+          {#if userTokens.length > 0}
+            <div class="mb-4">
+              <label for="token-select" class="block mb-2 text-sm font-medium">Select a Token</label>
+              <select 
+                id="token-select" 
+                bind:value={selectedTokenId}
+                class="w-full px-3 py-2 border rounded-lg bg-kong-bg-secondary border-kong-border focus:outline-none focus:ring-2 focus:ring-kong-primary"
+              >
+                <option value={undefined}>-- No token selected --</option>
+                {#each userTokens as token}
+                  <option value={token.id}>{token.name}</option>
+                {/each}
+              </select>
+            </div>
+            <p class="text-sm text-kong-text-primary/60">
+              Note: Your miner will be connected to the selected token's PoW canister, not its ledger canister.
+            </p>
+          {:else}
+            <p class="text-sm text-kong-warning">
+              You don't have any tokens yet. You can create a token first or connect your miner to a token later.
+            </p>
+          {/if}
+        </div>
+      </Panel>
     </div>
 
     <div class="grid gap-6 md:grid-cols-3">

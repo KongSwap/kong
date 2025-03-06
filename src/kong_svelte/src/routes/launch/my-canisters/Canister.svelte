@@ -203,5 +203,13 @@
     >
       Top Up
     </button>
+    
+    <!-- Interact Button -->
+    <button 
+      on:click={() => openKongAgent()}
+      class="w-full px-4 py-2 mt-2 mb-2 text-sm font-medium text-white transition-colors duration-200 bg-green-500 rounded-md hover:bg-green-600"
+    >
+      Interact
+    </button>
   </div>
 </div>

@@ -1,224 +1,396 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { wsConnected, wsEvents, notifications, connectWebSocket, disconnectWebSocket, canistersList } from "$lib/api/canisters";
-  import { Plus, Search, SortDesc } from "lucide-svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
-  import TokenList from "$lib/components/launch/TokenList.svelte";
-  import MinerList from "$lib/components/launch/MinerList.svelte";
+  import { onMount, onDestroy } from "svelte";
+  import {
+    wsConnected,
+    wsEvents,
+    notifications,
+    connectWebSocket,
+    disconnectWebSocket,
+    canistersList,
+    fetchCanisters,
+  } from "$lib/api/canisters";
+  import { toastStore } from "$lib/stores/toastStore";
+  
+  // Import our new components
+  import LaunchHeader from "$lib/components/launch/LaunchHeader.svelte";
+  import LiveActivityFeed from "$lib/components/launch/LiveActivityFeed.svelte";
+  import SearchAndFilter from "$lib/components/launch/SearchAndFilter.svelte";
+  import FlashEvent from "$lib/components/launch/FlashEvent.svelte";
+  import ContentPanels from "$lib/components/launch/ContentPanels.svelte";
+  import LaunchAnimations from "$lib/components/launch/LaunchAnimations.svelte";
+  import Scroller from "$lib/components/common/Scroller.svelte";
+  
+  // Import utility functions
+  import {
+    getEventText,
+    getCanisterName,
+    processCanisters,
+    updateStatsFromCanisters,
+    sortItems,
+    filterTokens,
+    filterMiners
+  } from "$lib/components/launch/LaunchUtils";
 
-  let activeTab: "tokens" | "miners" = "tokens";
+  let activeTab = "tokens";
   let searchQuery = "";
   let loading = true;
-  let sortField: "date" | "name" | "principal" | "version" = "date";
-  let sortDirection: "asc" | "desc" = "desc";
+  let sortField = "date";
+  let sortDirection = "desc";
 
   let tokens = [];
   let miners = [];
+  let recentEvents = [];
+  let rawCanisters = [];
+  let uniqueUsers = new Set();
+  let flashEvent = null;
+  let lastNotificationTime = 0;
 
-  onMount(async () => {
-    connectWebSocket();
-    try {
-      [tokens, miners] = await Promise.all([
-        get_token_backends(),
-        get_miners()
-      ]);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      loading = false;
+  // DEGEN MODE: Add fucking insane pulse effects
+  let pulseStats = false;
+  let pulseTokens = false;
+  let pulseMiners = false;
+  let nukeEffect = false;
+
+  // Function to generate some initial events if none are present
+  function generateInitialEvents() {
+    if (recentEvents.length === 0) {
+      const initialEvents = [
+        { text: "🚀 LAUNCHPAD INITIALIZED", timestamp: new Date() },
+        { text: "🔄 REGISTRY SYNCED", timestamp: new Date() },
+        { text: "👀 WATCHING FOR NEW DEPLOYMENTS", timestamp: new Date() }
+      ];
+      
+      // Add events with a slight delay between them
+      initialEvents.forEach((event, index) => {
+        setTimeout(() => {
+          recentEvents = [...recentEvents, event];
+        }, index * 800);
+      });
     }
-    return () => disconnectWebSocket();
+  }
+
+  // Metrics that actually make sense for a launchpad
+  let stats = {
+    totalDeployments: 0, // Total canisters deployed
+    uniqueDeployers: 0, // Unique principals who deployed shit
+    totalTokens: 0, // Total tokens
+    totalMiners: 0, // Total miners
+    activityScore: 0, // Bullshit score we can make up
+    lastDeployment: null, // When was the last deployment
+  };
+
+  // MAXIMUM DEGEN: Create loud, obnoxious animations when new shit appears
+  function triggerDegenEffects(eventType, data) {
+    // Set the flash event to trigger the animation
+    flashEvent = {
+      type: eventType,
+      data: data,
+      id: crypto.randomUUID(),
+    };
+
+    // Trigger appropriate pulses based on event type
+    if (eventType.includes("token")) {
+      pulseTokens = true;
+      setTimeout(() => (pulseTokens = false), 3000);
+    } else if (eventType.includes("miner")) {
+      pulseMiners = true;
+      setTimeout(() => (pulseMiners = false), 3000);
+    }
+
+    // Pulse the stats regardless
+    pulseStats = true;
+    setTimeout(() => (pulseStats = false), 2000);
+
+    // NUCLEAR OPTION: Sometimes just go completely insane with the effects
+    if (Math.random() > 0.7) {
+      nukeEffect = true;
+      setTimeout(() => (nukeEffect = false), 1500);
+    }
+
+    // Clear the flash event after animation completes
+    setTimeout(() => {
+      flashEvent = null;
+    }, 4000);
+  }
+
+  let refreshInterval;
+  let simulateEventsInterval;
+  let lastEventTime = Date.now();
+
+  onMount(() => {
+    // Connect to WebSocket
+    connectWebSocket();
+
+    // Generate initial events for the activity feed
+    generateInitialEvents();
+
+    // Initial data fetch WITH SOME DEGEN FLAIR
+    (async () => {
+      try {
+        // Show loading toast
+        toastStore.info("LOADING CANISTER DATA", {
+          title: "🚀 LAUNCHPAD INITIALIZING",
+          duration: 3000,
+        });
+
+        // Fetch canisters from API
+        const canisterData = await fetchCanisters();
+        const {
+          tokenList,
+          minerList,
+          rawCanisters: rawCanisterData,
+          deployerSet
+        } = processCanisters(canisterData);
+        tokens = tokenList;
+        miners = minerList;
+        rawCanisters = rawCanisterData;
+        uniqueUsers = deployerSet;
+        
+        // Update stats
+        stats = updateStatsFromCanisters(tokenList, minerList, deployerSet);
+
+        // Success toast
+        if (tokenList.length > 0 || minerList.length > 0) {
+          toastStore.success(
+            `LOADED ${tokenList.length} TOKENS & ${minerList.length} MINERS`,
+            {
+              title: "✅ LAUNCHPAD READY",
+              duration: 4000,
+            },
+          );
+        }
+      } catch (error) {
+        console.error("Error loading data:", error);
+        toastStore.error("FAILED TO LOAD CANISTER DATA", {
+          title: "💀 INITIALIZATION FAILED",
+          duration: 8000,
+        });
+      } finally {
+        loading = false;
+      }
+    })();
+
+    // Subscribe to WebSocket events
+    const eventsUnsubscribe = wsEvents.subscribe((events) => {
+      if (events.length > 0) {
+        // Process the most recent event
+        const latestEvent = events[events.length - 1];
+        processWsEvent(latestEvent);
+      }
+    });
+
+    // Subscribe to canister list updates
+    const canistersUnsubscribe = canistersList.subscribe((canisters) => {
+      const {
+        tokenList,
+        minerList,
+        rawCanisters: rawCanisterData,
+        deployerSet
+      } = processCanisters(canisters);
+      tokens = tokenList;
+      miners = minerList;
+      rawCanisters = rawCanisterData;
+      uniqueUsers = deployerSet;
+      
+      // Update stats
+      stats = updateStatsFromCanisters(tokenList, minerList, deployerSet);
+    });
+
+    // DEGEN MODE: Periodic refresh for MAXIMUM DATA FRESHNESS
+    refreshInterval = setInterval(() => {
+      fetchCanisters();
+    }, 30000); // Every 30 seconds
+    
+    // Simulate occasional events if no real events are coming in
+    simulateEventsInterval = setInterval(() => {
+      const now = Date.now();
+      // If no events for 20 seconds, simulate one
+      if (now - lastEventTime > 20000) {
+        const simulatedEvents = [
+          "🔍 SCANNING BLOCKCHAIN FOR NEW DEPLOYMENTS",
+          "🔄 REFRESHING CANISTER REGISTRY",
+          "👀 MONITORING NETWORK ACTIVITY",
+          "🛰️ SATELLITE FEED CONNECTED",
+          "🔐 SECURITY PROTOCOLS ACTIVE"
+        ];
+        const randomEvent = simulatedEvents[Math.floor(Math.random() * simulatedEvents.length)];
+        
+        recentEvents = [
+          ...recentEvents.slice(-9),
+          { text: randomEvent, timestamp: new Date() }
+        ];
+        
+        lastEventTime = now;
+      }
+    }, 10000); // Check every 10 seconds
+
+    // Return cleanup function
+    return () => {
+      disconnectWebSocket();
+      eventsUnsubscribe();
+      canistersUnsubscribe();
+      clearInterval(refreshInterval);
+      clearInterval(simulateEventsInterval);
+    };
   });
 
-  async function get_token_backends() {
-    // Simulating API delay
-    return [
-      {
-        decimals: 8,
-        ticker: "KONG",
-        transfer_fee: BigInt(1000),
-        logo: ["https://example.com/kong.png"],
-        name: "Kong Token",
-        ledger_id: [],
-        total_supply: BigInt(1000000000000),
-        principal: "rrkah-fqaaa-aaaaa-aaaaq-cai",
-        version: "d13c3f01a",
-        dateCreated: new Date("2023-09-01"),
-      },
-      {
-        decimals: 6,
-        ticker: "BANANA",
-        transfer_fee: BigInt(500),
-        logo: ["https://example.com/banana.png"],
-        name: "Banana Token",
-        ledger_id: [],
-        total_supply: BigInt(500000000000),
-        principal: "qsgjb-riaaa-aaaaa-aaaga-cai",
-        version: "c24d3f01b", 
-        dateCreated: new Date("2023-08-15"),
+  onDestroy(() => {
+    if (refreshInterval) clearInterval(refreshInterval);
+  });
+
+  $: filteredTokens = sortItems(filterTokens(tokens, searchQuery), sortField, sortDirection);
+  $: filteredMiners = sortItems(filterMiners(miners, searchQuery), sortField, sortDirection);
+
+  // Process WebSocket events to update the UI
+  function processWsEvent(event) {
+    // Update last event time
+    lastEventTime = Date.now();
+    
+    // Add event to recent events list
+    if (
+      event.type !== "connection" &&
+      event.type !== "api_call" &&
+      event.type !== "api_success"
+    ) {
+      const eventText = getEventText(event);
+      if (eventText) {
+        // Keep more events (up to 10) for a more active feed
+        recentEvents = [
+          ...recentEvents.slice(-9),
+          { text: eventText, timestamp: event.timestamp || new Date() },
+        ];
+        
+        // Log for debugging
+        console.log("Added event to activity feed:", eventText);
       }
-    ];
-  }
+    }
 
-  async function get_miners() {
-    // Simulating API delay
-    return [
-      {
-        owner: "2vxsx-fae",
-        current_token: [],
-        is_mining: true,
-        type: { Normal: null },
-        mining_stats: {
-          total_hashes: BigInt(1000000),
-          blocks_mined: BigInt(50),
-          total_rewards: BigInt(5000000),
-          last_hash_rate: 2500.5,
-          start_time: BigInt(Date.now() - 86400000),
-        },
-        principal: "aaaaa-aa",
-        version: "a13c3f01c",
-        dateCreated: new Date("2023-09-10"),
-      },
-      {
-        owner: "2vxsx-fae",
-        current_token: [],
-        is_mining: false,
-        type: { Premium: null },
-        mining_stats: null,
-        principal: "bbbbb-bb",
-        version: "b24d3f01d",
-        dateCreated: new Date("2023-08-20"),
+    // Handle specific types
+    if (event.type === "canister_registered") {
+      // DEGEN MODE: TOAST SPAM WHEN SHIT HAPPENS
+      const now = Date.now();
+      // Limit notifications to at most one every 2 seconds to avoid toast spam
+      if (now - lastNotificationTime > 2000) {
+        lastNotificationTime = now;
+
+        const eventType = event.data?.canister_type || "canister";
+        const name = getCanisterName(event.data);
+        const id = event.data?.canister_id?.substring(0, 8) || "unknown";
+
+        if (eventType.includes("token")) {
+          toastStore.success(`NEW TOKEN DEPLOYED: ${name || id}`, {
+            title: "🔥 TOKEN LAUNCH 🔥",
+            duration: 6000,
+          });
+          triggerDegenEffects("token", event.data);
+        } else if (eventType.includes("miner")) {
+          toastStore.info(`NEW MINER DEPLOYED: ${id}`, {
+            title: "⛏️ MINER LAUNCH ⛏️",
+            duration: 6000,
+          });
+          triggerDegenEffects("miner", event.data);
+        } else {
+          toastStore.info(`NEW DEPLOYMENT: ${id}`, {
+            title: "🚀 LAUNCH DETECTED 🚀",
+            duration: 4000,
+          });
+          triggerDegenEffects("deployment", event.data);
+        }
       }
-    ];
+
+      // Force a data refresh to get the new canister
+      fetchCanisters();
+    }
+
+    if (event.type === "error") {
+      toastStore.error(`${event.data || "Unknown error"}`, {
+        title: "💀 LAUNCHPAD ERROR 💀",
+        duration: 8000,
+      });
+    }
   }
-
-  function handleCreateNew() {
-    goto(`/launch/${activeTab === "tokens" ? "create-token" : "create-miner"}`);
-  }
-
-  function sortItems(items) {
-    return [...items].sort((a, b) => {
-      let comparison = 0;
-      switch (sortField) {
-        case "date":
-          comparison = a.dateCreated.getTime() - b.dateCreated.getTime();
-          break;
-        case "name":
-          comparison = (a.name || a.owner).localeCompare(b.name || b.owner);
-          break;
-        case "principal":
-          comparison = a.principal.localeCompare(b.principal);
-          break;
-        case "version":
-          comparison = a.version.localeCompare(b.version);
-          break;
-      }
-      return sortDirection === "desc" ? -comparison : comparison;
-    });
-  }
-
-  $: filteredTokens = sortItems(tokens.filter(token => {
-    const searchLower = searchQuery.toLowerCase();
-    return token.name.toLowerCase().includes(searchLower) ||
-           token.ticker.toLowerCase().includes(searchLower) ||
-           token.principal.toLowerCase().includes(searchLower) ||
-           token.version.toLowerCase().includes(searchLower) ||
-           token.dateCreated.toLocaleDateString().includes(searchLower);
-  }));
-
-  $: filteredMiners = sortItems(miners.filter(miner => {
-    const searchLower = searchQuery.toLowerCase();
-    return miner.owner.toLowerCase().includes(searchLower) ||
-           miner.principal.toLowerCase().includes(searchLower) ||
-           miner.version.toLowerCase().includes(searchLower) ||
-           miner.dateCreated.toLocaleDateString().includes(searchLower);
-  }));
 </script>
 
-<style>
-  /* Add flashing and dynamic styles here */
-  .flashing {
-    animation: flash 1s infinite alternate;
-  }
+<LaunchAnimations />
 
-  @keyframes flash {
-    from { background-color: #222; }
-    to { background-color: #444; }
-  }
-</style>
+<div class="min-h-screen h-screen flex flex-col text-white relative">
+  <!-- NUCLEAR EFFECT OVERLAY -->
+  {#if nukeEffect}
+    <div class="fixed inset-0 bg-yellow-500 opacity-30 z-50 animate-pulse pointer-events-none"></div>
+  {/if}
+  
+  <!-- HEADER SECTION -->
+  <LaunchHeader {stats} {pulseStats} />
+  
+  <!-- MAIN CONTENT -->
+  <main class="container mx-auto px-4 py-6 relative z-10 flex-grow">
+    <!-- FLASH EVENT NOTIFICATION -->
+    <FlashEvent {flashEvent} />
+    
+    <!-- SEARCH AND FILTER BAR -->
+    <SearchAndFilter 
+      bind:activeTab 
+      bind:searchQuery 
+      bind:sortField 
+      bind:sortDirection 
+      stats={{ totalTokens: stats.totalTokens, totalMiners: stats.totalMiners }} 
+    />
+    
+    <!-- LIVE ACTIVITY FEED -->
+    <LiveActivityFeed {recentEvents} />
+    
+    <!-- CONTENT PANELS -->
+    <ContentPanels 
+      {activeTab} 
+      {loading} 
+      {filteredTokens} 
+      {filteredMiners} 
+      {pulseTokens} 
+      {pulseMiners} 
+    />
+  </main>
 
-<div class="min-h-screen px-4 text-kong-text-primary flashing">
-  <div class="mx-auto max-w-7xl">
-    <div class="flex flex-col gap-6 mb-8 text-center md:flex-row md:justify-between md:items-center">
-      <div class="flex flex-col gap-2">
-        <h1 class="flex items-center justify-center gap-3 text-2xl font-bold md:justify-start drop-shadow-lg md:text-3xl text-kong-text-primary/80">
-          Launch
-        </h1>
-        <p class="text-sm text-kong-text-primary/60">
-          Launch your own token or miner on KongSwap
-        </p>
-      </div>
-      <button
-        on:click={handleCreateNew}
-        class="flex items-center justify-center gap-2 px-4 py-2 text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90"
-      >
-        <Plus size={20} />
-        Create New {activeTab === "tokens" ? "Token" : "Miner"}
-      </button>
-    </div>
-
-    <div class="mb-6">
-      <div class="flex gap-4 mb-4">
-        <button
-          class="px-4 py-2 rounded-lg {activeTab === 'tokens' ? 'bg-kong-primary text-white' : 'text-kong-text-primary/60 hover:text-kong-text-primary'}"
-          on:click={() => activeTab = "tokens"}
-        >
-          Tokens
-        </button>
-        <button
-          class="px-4 py-2 rounded-lg {activeTab === 'miners' ? 'bg-kong-primary text-white' : 'text-kong-text-primary/60 hover:text-kong-text-primary'}"
-          on:click={() => activeTab = "miners"}
-        >
-          Miners
-        </button>
-      </div>
-
-      <div class="flex gap-4 mb-4">
-        <div class="relative flex-1">
-          <input
-            type="text"
-            placeholder="Search by name, principal, version or date..."
-            bind:value={searchQuery}
-            class="w-full px-4 py-2 pl-10 border rounded-lg bg-kong-background-secondary border-kong-border focus:outline-none focus:border-kong-primary"
-          />
-          <Search size={20} class="absolute transform -translate-y-1/2 left-3 top-1/2 text-kong-text-primary/60" />
-        </div>
-
-        <select
-          bind:value={sortField}
-          class="px-4 py-2 border rounded-lg bg-kong-background-secondary border-kong-border focus:outline-none focus:border-kong-primary"
-        >
-          <option value="date">Date</option>
-          <option value="name">Name</option>
-          <option value="principal">Principal</option>
-          <option value="version">Version</option>
-        </select>
-
-        <button
-          on:click={() => sortDirection = sortDirection === "asc" ? "desc" : "asc"}
-          class="px-4 py-2 border rounded-lg bg-kong-background-secondary border-kong-border hover:bg-kong-background-secondary/80"
-        >
-          <SortDesc size={20} class="transform {sortDirection === 'asc' ? 'rotate-180' : ''}" />
-        </button>
-      </div>
-    </div>
-
-    <div class="grid gap-6">
-      {#if activeTab === "tokens"}
-        <TokenList tokens={filteredTokens} {loading} />
-      {:else}
-        <MinerList miners={filteredMiners} {loading} />
-      {/if}
-    </div>
+  <!-- SCROLLER AT BOTTOM OF VIEWPORT -->
+  <div class="w-full">
+    <Scroller isAbsolute={false} position="bottom" />
   </div>
 </div>
+
+<style>
+  /* DEGEN ANIMATIONS */
+  @keyframes pulse-fast {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  
+  @keyframes pulse-subtle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.9; }
+  }
+  
+  @keyframes slide-in-right {
+    0% { transform: translateX(100%); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  
+  @keyframes slide-in {
+    0% { transform: translateX(20px); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  
+  :global(.animate-pulse-fast) {
+    animation: pulse-fast 0.8s ease-in-out infinite;
+  }
+  
+  :global(.animate-pulse-subtle) {
+    animation: pulse-subtle 1.5s ease-in-out infinite;
+  }
+  
+  :global(.animate-slide-in-right) {
+    animation: slide-in-right 0.3s ease-out forwards;
+  }
+  
+  :global(.animate-slide-in) {
+    animation: slide-in 0.3s ease-out forwards;
+  }
+</style>

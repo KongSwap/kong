@@ -193,88 +193,89 @@
     }
 </script>
 
-<div class="max-w-3xl mx-auto">
-    <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-        <div class="p-6 border-b border-gray-700">
-            <h2 class="text-2xl font-bold text-white">Top Up Canister with KONG</h2>
-            <p class="mt-2 text-gray-400">Add cycles to your canister to keep it running on the Internet Computer</p>
+<div class="flex flex-col w-full">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-kong-text-primary">Top Up Canister with KONG</h2>
+        <p class="mt-2 text-kong-text-secondary">Add cycles to your canister to keep it running on the Internet Computer</p>
+    </div>
+    
+    <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+        <!-- Canister ID Input -->
+        <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
+            <label for="canisterId" class="block mb-2 text-sm font-medium text-kong-text-primary">
+                Canister ID
+            </label>
+            <div class="relative">
+                <input
+                    type="text"
+                    id="canisterId"
+                    bind:value={canisterIdInput}
+                    on:blur={validateCanisterId}
+                    class="w-full px-4 py-3 text-kong-text-primary {!!canisterId ? 'bg-kong-bg-dark font-medium' : 'bg-kong-bg-secondary'} border {!!canisterId ? 'border-kong-accent-blue' : 'border-kong-border'} rounded-md focus:outline-none focus:ring-2 focus:ring-kong-accent-blue"
+                    placeholder="Enter canister ID"
+                    readonly={!!canisterId}
+                />
+                {#if !!canisterId}
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <span class="text-kong-accent-blue">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                    </div>
+                {/if}
+            </div>
+            {#if canisterIdError}
+                <p class="mt-1 text-sm text-red-400">{canisterIdError}</p>
+            {/if}
+            {#if !!canisterId}
+                <p class="mt-1 text-xs text-green-400">Canister ID automatically filled from your request</p>
+            {/if}
         </div>
         
-        <form on:submit|preventDefault={handleSubmit} class="p-6 space-y-6">
-            <!-- Canister ID Input -->
-            <div>
-                <label for="canisterId" class="block mb-2 text-sm font-medium text-gray-300">
-                    Canister ID
-                </label>
-                <div class="relative">
-                    <input
-                        type="text"
-                        id="canisterId"
-                        bind:value={canisterIdInput}
-                        on:blur={validateCanisterId}
-                        class="w-full px-4 py-3 text-white {!!canisterId ? 'bg-gray-800 font-medium' : 'bg-gray-700'} border {!!canisterId ? 'border-blue-500' : 'border-gray-600'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter canister ID"
-                        readonly={!!canisterId}
-                    />
-                    {#if !!canisterId}
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                            <span class="text-blue-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                </svg>
-                            </span>
-                        </div>
-                    {/if}
+        <!-- KONG Amount Input -->
+        <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
+            <label for="kongAmount" class="block mb-2 text-sm font-medium text-kong-text-primary">
+                KONG Amount
+            </label>
+            <div class="relative">
+                <input
+                    type="number"
+                    id="kongAmount"
+                    bind:value={kongAmount}
+                    on:blur={validateAmount}
+                    min={MIN_KONG_AMOUNT}
+                    step="1"
+                    class="w-full px-4 py-3 text-kong-text-primary bg-kong-bg-secondary border border-kong-border rounded-md focus:outline-none focus:ring-2 focus:ring-kong-accent-blue"
+                    placeholder="Enter KONG amount"
+                />
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <span class="text-kong-text-secondary">KONG</span>
                 </div>
-                {#if canisterIdError}
-                    <p class="mt-1 text-sm text-red-400">{canisterIdError}</p>
-                {/if}
-                {#if !!canisterId}
-                    <p class="mt-1 text-xs text-green-400">Canister ID automatically filled from your request</p>
-                {/if}
             </div>
-            
-            <!-- KONG Amount Input -->
-            <div>
-                <label for="kongAmount" class="block mb-2 text-sm font-medium text-gray-300">
-                    KONG Amount
-                </label>
-                <div class="relative">
-                    <input
-                        type="number"
-                        id="kongAmount"
-                        bind:value={kongAmount}
-                        on:blur={validateAmount}
-                        min={MIN_KONG_AMOUNT}
-                        step="1"
-                        class="w-full px-4 py-3 text-white bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter KONG amount"
-                    />
-                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                        <span class="text-gray-400">KONG</span>
-                    </div>
-                </div>
-                {#if amountError}
-                    <p class="mt-1 text-sm text-red-400">{amountError}</p>
-                {/if}
-                <p class="mt-1 text-xs text-gray-500">Minimum: {MIN_KONG_AMOUNT} KONG</p>
+            {#if amountError}
+                <p class="mt-1 text-sm text-red-400">{amountError}</p>
+            {/if}
+            <p class="mt-1 text-xs text-kong-text-secondary">Minimum: {MIN_KONG_AMOUNT} KONG</p>
+        </div>
+        
+        <!-- Estimated Cycles Card -->
+        <div class="p-4 border rounded-lg bg-kong-bg-light/10 border-kong-border/20">
+            <h3 class="mb-3 text-base font-medium text-kong-text-primary">Estimated Cycles</h3>
+            <div class="flex items-center justify-between">
+                <span class="text-kong-text-secondary">Cycles to receive:</span>
+                <span class="text-xl font-semibold text-kong-text-primary">{formatCycles(estimatedCycles)}</span>
             </div>
-            
-            <!-- Estimated Cycles Card -->
-            <div class="bg-gray-700 rounded-lg p-5 border border-gray-600">
-                <div class="flex items-center justify-between">
-                    <span class="text-gray-300">Estimated Cycles:</span>
-                    <span class="text-xl font-semibold text-white">{formatCycles(estimatedCycles)}</span>
-                </div>
-                <p class="mt-2 text-xs text-gray-400">
-                    The actual amount of cycles may vary based on the current exchange rates.
-                </p>
-            </div>
-            
+            <p class="mt-2 text-xs text-kong-text-secondary">
+                The actual amount of cycles may vary based on the current exchange rates.
+            </p>
+        </div>
+        
+        <div class="flex justify-end pt-4">
             <!-- Submit Button -->
             <button
                 type="submit"
-                class="w-full px-4 py-3 text-white font-medium transition-colors bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="px-6 py-2.5 font-medium text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading || !$auth.isConnected}
             >
                 {#if isLoading}
@@ -289,24 +290,24 @@
                     Top Up Canister
                 {/if}
             </button>
-            
-            {#if !$auth.isConnected}
-                <div class="p-4 bg-yellow-900/30 border border-yellow-700/50 rounded-md">
-                    <p class="text-sm text-center text-yellow-400">
-                        You need to connect your wallet to top up a canister.
-                    </p>
-                </div>
-            {/if}
-        </form>
-        
-        <div class="p-6 bg-gray-750 border-t border-gray-700">
-            <h3 class="text-lg font-semibold text-white mb-2">About Canister Top-Up</h3>
-            <p class="text-sm text-gray-400 mb-2">
-                Topping up a canister adds cycles that are used to pay for computation, storage, and bandwidth on the Internet Computer.
-            </p>
-            <p class="text-sm text-gray-400">
-                Make sure you have enough KONG in your wallet before proceeding.
-            </p>
         </div>
+        
+        {#if !$auth.isConnected}
+            <div class="p-4 border rounded-lg bg-yellow-900/30 border-yellow-700/50">
+                <p class="text-sm text-center text-yellow-400">
+                    You need to connect your wallet to top up a canister.
+                </p>
+            </div>
+        {/if}
+    </form>
+    
+    <div class="mt-6 p-4 border rounded-lg bg-kong-bg-light/5 border-kong-border/10">
+        <h3 class="mb-2 text-base font-medium text-kong-text-primary">About Canister Top-Up</h3>
+        <p class="text-sm text-kong-text-secondary mb-2">
+            Topping up a canister adds cycles that are used to pay for computation, storage, and bandwidth on the Internet Computer.
+        </p>
+        <p class="text-sm text-kong-text-secondary">
+            Make sure you have enough KONG in your wallet before proceeding.
+        </p>
     </div>
-</div> 
+</div>

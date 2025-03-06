@@ -452,42 +452,6 @@ import { registerCanister } from "$lib/api/canisters";
       
       canisterId = newCanisterId.toText();
       
-      // Register the canister with the API
-      try {
-        const registerMessage = "Registering canister with API...";
-        if (lastLogMessage !== registerMessage) {
-          addLog(registerMessage);
-          lastLogMessage = registerMessage;
-        }
-        
-        const principal = await getPrincipal();
-        const registerResult = await registerCanister(
-          principal,
-          canisterId,
-          'token_backend'
-        );
-        
-        if (registerResult.success) {
-          const apiSuccessMessage = "Successfully registered canister with API";
-          if (lastLogMessage !== apiSuccessMessage) {
-            addLog(apiSuccessMessage);
-            lastLogMessage = apiSuccessMessage;
-          }
-        } else {
-          const apiWarningMessage = `Warning: Failed to register canister with API: ${registerResult.error}`;
-          if (lastLogMessage !== apiWarningMessage) {
-            addLog(apiWarningMessage);
-            lastLogMessage = apiWarningMessage;
-          }
-        }
-      } catch (apiError) {
-        const apiErrorMessage = `Warning: Error registering canister with API: ${apiError.message}`;
-        if (lastLogMessage !== apiErrorMessage) {
-          addLog(apiErrorMessage);
-          lastLogMessage = apiErrorMessage;
-        }
-      }
-      
       return newCanisterId;
     } catch (error) {
       const errorMsg = `Failed to create canister: ${error.message}`;
@@ -1089,6 +1053,42 @@ import { registerCanister } from "$lib/api/canisters";
       const isVerified = await verifyCanisterStatus(canisterPrincipal);
       if (!isVerified) {
         throw new Error("Token canister verification failed. The deployment might not be fully successful.");
+      }
+      
+      // Register the canister with the API after successful initialization
+      try {
+        const registerMessage = "Registering token canister with API...";
+        if (lastLogMessage !== registerMessage) {
+          addLog(registerMessage);
+          lastLogMessage = registerMessage;
+        }
+        
+        const principal = await getPrincipal();
+        const registerResult = await registerCanister(
+          principal,
+          canisterPrincipal.toString(),
+          'token_backend'
+        );
+        
+        if (registerResult.success) {
+          const apiSuccessMessage = "Successfully registered token canister with API";
+          if (lastLogMessage !== apiSuccessMessage) {
+            addLog(apiSuccessMessage);
+            lastLogMessage = apiSuccessMessage;
+          }
+        } else {
+          const apiWarningMessage = `Warning: Failed to register token canister with API: ${registerResult.error}`;
+          if (lastLogMessage !== apiWarningMessage) {
+            addLog(apiWarningMessage);
+            lastLogMessage = apiWarningMessage;
+          }
+        }
+      } catch (apiError) {
+        const apiErrorMessage = `Warning: Error registering token canister with API: ${apiError.message}`;
+        if (lastLogMessage !== apiErrorMessage) {
+          addLog(apiErrorMessage);
+          lastLogMessage = apiErrorMessage;
+        }
       }
       
       lastSuccessfulStep = processSteps.INITIALIZE_TOKEN;
