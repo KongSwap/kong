@@ -3,10 +3,10 @@ import { type PNP } from "@windoge98/plug-n-play";
 import { pnp, canisterIDLs as pnpCanisterIDLs, type CanisterType as PnpCanisterType } from "$lib/config/auth.config";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
-import { loadBalances, currentUserBalancesStore } from "$lib/stores/tokenStore";
-import { userTokens } from "$lib/stores/userTokens";
 import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
+import { fetchBalances } from "$lib/api/balances";
+import { currentUserBalancesStore } from "$lib/stores/balancesStore";
 
 // Constants
 const STORAGE_KEYS = {
@@ -93,15 +93,28 @@ function createAuthStore(pnp: PNP) {
         storage.set("LAST_WALLET", walletId);
         storage.set("WAS_CONNECTED", "true");
 
-        // Reset data and load fresh
-        await Promise.all([
-          loadBalances(owner, { forceRefresh: true }),
-        ]);
-
-        // Initialize default tokens if needed
-        if (Object.keys(get(userTokens).enabledTokens).length === 0) {
-          userTokens.enableTokens(await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS)));
-        }
+        // Load balances using the new API client
+        setTimeout(async () => {
+          try {
+            // Import userTokens dynamically to avoid circular dependency
+            const { userTokens } = await import("$lib/stores/userTokens");
+            const userTokensStore = get(userTokens);
+            
+            // Load balances using the API client
+            await fetchBalances(
+              userTokensStore.tokens,
+              owner,
+              true
+            );
+            
+            // Initialize default tokens if needed
+            if (Object.keys(userTokensStore.enabledTokens).length === 0) {
+              userTokens.enableTokens(await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS)));
+            }
+          } catch (error) {
+            console.error("Error loading balances:", error);
+          }
+        }, 0);
 
         return result;
       } catch (error) {

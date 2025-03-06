@@ -251,7 +251,7 @@
     }
 
     // Convert APY to daily rate and calculate linear projection
-    const apyDecimal = actualPool.rolling_24h_apy / 100; // rolling_24h_apy is already a number
+    const apyDecimal = Number(actualPool.rolling_24h_apy) / 100; // rolling_24h_apy is already a number
     const dailyRate = apyDecimal / 365;
     const earnings = parseFloat(pool.usd_balance) * dailyRate * timeframe;
 
@@ -318,7 +318,7 @@
             </div>
             <div class="stat-item">
               <span class="stat-label">APY</span>
-              <span class="stat-value">{actualPool?.rolling_24h_apy}%</span>
+              <span class="stat-value">{Number(actualPool?.rolling_24h_apy).toFixed(2)}%</span>
             </div>
           </div>
         </div>

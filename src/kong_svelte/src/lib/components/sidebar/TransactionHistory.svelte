@@ -7,7 +7,7 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { writable, derived } from "svelte/store";
-  import { fetchTokens } from '$lib/api/tokens';
+   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
 
   // Create a store for tokens
   const tokensStore = writable<FE.Token[]>([]);

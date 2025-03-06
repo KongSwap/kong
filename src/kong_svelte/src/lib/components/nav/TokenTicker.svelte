@@ -6,7 +6,7 @@
   import { fade } from "svelte/transition";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { onMount } from "svelte";
-  import { fetchTokens } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { tweened } from 'svelte/motion';
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
 

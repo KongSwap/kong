@@ -13,7 +13,7 @@
   import { kongDB } from "$lib/services/db";
   import { userTokens } from "$lib/stores/userTokens";
   import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
-  import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens/TokenApiClient";
   import TrollBox from "$lib/components/trollbox/TrollBox.svelte";
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";

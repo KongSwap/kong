@@ -28,7 +28,7 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { fetchTokens } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
 
   // Navigation state
   const activeSection = writable("pools");

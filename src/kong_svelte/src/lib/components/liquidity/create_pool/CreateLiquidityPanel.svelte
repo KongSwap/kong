@@ -103,10 +103,10 @@
         pool.address_1 === token1?.address,
     );
   }
-  $: token0Balance =
-    $currentUserBalancesStore[token0?.canister_id]?.in_tokens?.toString() || "0";
-  $: token1Balance =
-    $currentUserBalancesStore[token1?.canister_id]?.in_tokens?.toString() || "0";
+  $: token0Balance = $currentUserBalancesStore[token0?.canister_id] ?
+    $currentUserBalancesStore[token0?.canister_id]?.in_tokens?.toString() : "0";
+  $: token1Balance = $currentUserBalancesStore[token1?.canister_id] ?
+    $currentUserBalancesStore[token1?.canister_id]?.in_tokens?.toString() : "0";
 
   function handleTokenSelect(index: 0 | 1, token: FE.Token) {
     const otherToken = index === 0 ? token1 : token0;

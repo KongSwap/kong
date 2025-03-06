@@ -15,7 +15,7 @@
   import { userTokens } from "$lib/stores/userTokens";
   import { auth } from "$lib/services/auth";
   import { get } from "svelte/store";
-  import { fetchTokens } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { debounce } from "$lib/utils/debounce";
   import TokenItem from "./TokenItem.svelte";
   import { virtualScroll } from "$lib/utils/virtualScroll";
@@ -737,13 +737,11 @@
                           blockedTokenIds={BLOCKED_TOKEN_IDS}
                           balance={{
                             tokens: formatBalance(
-                              $currentUserBalancesStore[token.canister_id]
-                                .in_tokens,
+                              $currentUserBalancesStore[token.canister_id]?.in_tokens || 0n,
                               token.decimals,
                             ),
                             usd: formatUsdValue(
-                              $currentUserBalancesStore[token.canister_id]
-                                .in_usd,
+                              $currentUserBalancesStore[token.canister_id]?.in_usd || "0",
                             ),
                           }}
                           onTokenClick={(e) => handleTokenClick(e, token)}

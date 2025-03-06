@@ -23,6 +23,8 @@
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
   import { goto } from "$app/navigation";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+  import { userTokens } from "$lib/stores/userTokens";
+  import { get } from "svelte/store";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "history";
@@ -46,7 +48,7 @@
         if (currentWalletId) {
           // Load both tokens and pools in parallel on first load
           await Promise.all([
-            loadBalances(currentWalletId, { forceRefresh: true }),
+            loadBalances(get(userTokens).tokens, currentWalletId, true),
             currentUserPoolsStore.initialize()
           ]);
         }
@@ -65,7 +67,7 @@
           // Load balances and pool data in parallel
           await Promise.all([
             // Load balances and update stores
-            loadBalances(currentWalletId, { forceRefresh: true }),
+            loadBalances(get(userTokens).tokens, currentWalletId, true),
             
             // Initialize pool data to ensure portfolio value is accurate
             currentUserPoolsStore.initialize()

@@ -27,7 +27,7 @@
   import TokenCell from "$lib/components/stats/TokenCell.svelte";
   import PriceCell from "$lib/components/stats/PriceCell.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { fetchTokens } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { fetchPoolTotals } from "$lib/api/pools";
 
   const ITEMS_PER_PAGE = 50;
@@ -527,7 +527,6 @@
                           isFavorite={$favoriteTokenIds.includes(token.canister_id)}
                           trendClass={getTrendClass(token)}
                           showHotIcon={isTopVolume(token)}
-                          priceClass={getTrendClass(token)}
                         />
                       </button>
                     {/each}
@@ -572,26 +571,12 @@
     @apply h-full overflow-auto;
   }
 
-  th {
-    transition: background-color 0.2s;
-  }
-
-  th:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-
   button:disabled {
     @apply opacity-50 cursor-not-allowed;
   }
 
   .animate-pulse {
     @apply transition-opacity duration-300;
-  }
-
-  .loading-skeleton {
-    @apply bg-gradient-to-r from-kong-bg-dark via-kong-bg-dark/50 to-kong-bg-dark;
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
   }
 
   @keyframes loading {

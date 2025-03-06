@@ -10,7 +10,7 @@
   import { handleSearchKeyboard } from "$lib/utils/keyboardUtils";
   import { browser } from "$app/environment";
   import { writable, derived, get } from "svelte/store";
-  import { fetchTokens } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { debounce } from "$lib/utils/debounce";
   import { auth } from "$lib/services/auth";
   import { userTokens } from "$lib/stores/userTokens";
@@ -315,10 +315,9 @@
         // Load balance for the newly enabled token if user is connected
         const authStore = get(auth);
         if (authStore?.isConnected && authStore?.account?.owner) {
-          loadBalances(authStore.account.owner.toString(), { 
-            tokens: [token],
-            forceRefresh: true 
-          }).catch(e => console.error("Failed to load balances:", e));
+          const owner = authStore.account.owner.toString();
+          loadBalances([token], owner, true)
+            .catch(e => console.error("Failed to load balances:", e));
         }
       }
 

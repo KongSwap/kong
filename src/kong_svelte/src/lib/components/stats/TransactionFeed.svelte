@@ -4,7 +4,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { fetchTransactions } from "$lib/api/transactions";
   import TransactionRow from "./TransactionRow.svelte";
-  import { fetchTokens } from '$lib/api/tokens';
+   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { writable } from 'svelte/store';
   import { browser } from "$app/environment";
     import { formatUsdValue } from "$lib/utils/tokenFormatters";

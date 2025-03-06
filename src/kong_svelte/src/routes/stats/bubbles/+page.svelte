@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
-  import { fetchTokens } from '$lib/api/tokens';
+   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   
   let tokens = [];
   let bubblePositions: Array<{ x: number; y: number; vx: number; vy: number }> =
