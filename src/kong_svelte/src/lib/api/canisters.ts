@@ -134,16 +134,19 @@ export function disconnectWebSocket() {
  * Register a canister with the API
  * @param principal The principal ID of the user who created the canister (string or Principal object)
  * @param canisterId The canister ID to register
- * @param canisterType The type of canister ('token_backend' or 'miner')
+ * @param canisterType The type of canister ('token' or 'token_backend' or 'miner')
  * @returns A promise that resolves to the API response
  */
 export async function registerCanister(
   principal: string | Principal,
   canisterId: string,
-  canisterType: 'token_backend' | 'miner'
+  canisterType: 'token' | 'token_backend' | 'miner'
 ): Promise<any> {
   try {
-    addWsEvent('api_call', `Registering canister ${canisterId} (${canisterType})`);
+    // Map token_backend to token for backward compatibility
+    const apiCanisterType = canisterType === 'token_backend' ? 'token' : canisterType;
+    
+    addWsEvent('api_call', `Registering canister ${canisterId} (${apiCanisterType})`);
     
     // Convert principal to string if it's a Principal object
     const principalStr = typeof principal === 'string' ? principal : 
@@ -157,7 +160,7 @@ export async function registerCanister(
       body: JSON.stringify({
         principal: principalStr,
         canister_id: canisterId,
-        canister_type: canisterType,
+        canister_type: apiCanisterType,
         module_hash: null
       })
     });

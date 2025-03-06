@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { compressImage } from "$lib/utils/imageUtils";
+  import { toastStore } from "$lib/stores/toastStore";
+  
   // Basic token parameters
   export let name: string = "";
   export let symbol: string = "";
@@ -6,21 +9,39 @@
 
   // Logo file handling
   let logoPreview: string = logo; // Initialize from the logo prop
+  let isCompressing = false;
   
   // Make sure logoPreview stays in sync with logo when coming back to this step
   $: logoPreview = logo || logoPreview;
 
-  function handleLogoUpload(event: Event) {
+  async function handleLogoUpload(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        logoPreview = e.target?.result as string;
-        logo = logoPreview;
-      };
-      reader.readAsDataURL(file);
+      try {
+        isCompressing = true;
+        
+        // Check file size before compression
+        const fileSizeMB = file.size / (1024 * 1024);
+        console.log(`Original file size: ${fileSizeMB.toFixed(2)}MB`);
+        
+        // Compress the image
+        const compressedDataUrl = await compressImage(file, {
+          maxWidthOrHeight: 800,
+          maxSizeMB: 0.5, // 1MB max size
+          useWebWorker: true
+        });
+        
+        logoPreview = compressedDataUrl;
+        logo = compressedDataUrl;
+        
+        isCompressing = false;
+      } catch (error) {
+        console.error('Error processing image:', error);
+        toastStore.error('Failed to process image. Please try another file.');
+        isCompressing = false;
+      }
     }
   }
 </script>
@@ -149,7 +170,12 @@
           Token Logo
         </label>
         <label class="flex flex-col items-center justify-center w-full h-48 overflow-hidden transition-all duration-200 border-2 border-dashed cursor-pointer rounded-xl border-kong-border/30 hover:border-kong-primary/50 group">
-          {#if logoPreview}
+          {#if isCompressing}
+            <div class="flex flex-col items-center">
+              <div class="w-8 h-8 border-4 border-t-kong-primary rounded-full animate-spin"></div>
+              <span class="mt-3 text-xs text-kong-text-secondary/60">Compressing image...</span>
+            </div>
+          {:else if logoPreview}
             <div class="flex flex-col items-center">
               <div class="flex mb-3 space-x-6">
                 <!-- Round preview -->
@@ -179,7 +205,7 @@
                 </svg>
               </div>
               <span class="text-xs text-kong-text-secondary/60">Click to upload</span>
-              <span class="block text-xs text-kong-text-secondary/40">PNG, JPG (max 2MB)</span>
+              <span class="block text-xs text-kong-text-secondary/40">PNG, JPG (max 2MB, will be compressed)</span>
             </div>
           {/if}
           <input type="file" accept="image/*" on:change={handleLogoUpload} class="hidden" />

@@ -4,6 +4,7 @@
     import Modal from './Modal.svelte';
     import { toastStore } from "$lib/stores/toastStore";
     import { Principal } from "@dfinity/principal";
+    import { compressImage } from "$lib/utils/imageUtils";
 
     export let isOpen = false;
     export let onClose: () => void;
@@ -114,10 +115,22 @@
         if (!input.files?.length) return;
 
         try {
+            // Compress the image first for better performance
+            const compressedDataUrl = await compressImage(input.files[0], {
+                maxWidthOrHeight: 1024,
+                maxSizeMB: 0.5,
+                useWebWorker: true
+            });
+            
+            // Convert the data URL back to a file for scanning
+            const blob = await fetch(compressedDataUrl).then(r => r.blob());
+            const compressedFile = new File([blob], input.files[0].name, { type: blob.type });
+            
             if (!scanner) {
                 scanner = new Html5Qrcode("qr-reader");
             }
-            const result = await scanner.scanFile(input.files[0], true) as string;
+            
+            const result = await scanner.scanFile(compressedFile, true) as string;
             scannedData = result.trim();
             showConfirmation = true;
         } catch (err) {

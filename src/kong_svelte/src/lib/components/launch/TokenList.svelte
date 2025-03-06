@@ -161,9 +161,9 @@
     }
   }
 
-  function handleTokenClick(ledgerId) {
-    if (ledgerId) {
-      goto(`/token/${ledgerId}`);
+  function handleTokenClick(tokenPrincipal) {
+    if (tokenPrincipal) {
+      goto(`/launch/token/${tokenPrincipal}`);
     }
   }
 
@@ -209,7 +209,7 @@
       <Panel>
         <button
           class="w-full text-left transition-all duration-300 rounded-lg hover:scale-[1.01] hover:shadow-glow relative overflow-hidden group"
-          on:click={() => handleTokenClick(token.ledger_id?.[0])}
+          on:click={() => handleTokenClick(token.principal.toString())}
         >
           <!-- Background with logo pattern or gradient -->
           <div class="absolute inset-0 opacity-10 bg-repeat z-0 group-hover:opacity-20 transition-opacity duration-300"
@@ -229,7 +229,12 @@
                       src={Array.isArray(token.logo) ? token.logo[0] : token.logo}
                       alt={token.name}
                       class="w-16 h-16 rounded-full border-2 border-white/20 shadow-glow"
-                      on:error={(e) => {e.target.style.display = 'none'; e.target.nextElementSibling.style.display = 'flex';}}
+                      on:error={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none'; 
+                        const sibling = target.nextElementSibling as HTMLElement;
+                        if (sibling) sibling.style.display = 'flex';
+                      }}
                     />
                     <div class={`absolute -bottom-1 -right-1 w-6 h-6 flex items-center justify-center rounded-full bg-gradient-to-r ${token.randomGradient} text-white text-xs ${token.randomAnimation}`}>
                       {token.randomEmoji}

@@ -1067,7 +1067,7 @@ import { registerCanister } from "$lib/api/canisters";
         const registerResult = await registerCanister(
           principal,
           canisterPrincipal.toString(),
-          'token_backend'
+          'token'
         );
         
         if (registerResult.success) {

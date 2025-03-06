@@ -134,8 +134,10 @@
     }
   }
 
-  function handleMinerClick(owner) {
-    goto(`/miner/${owner}`);
+  function handleMinerClick(minerPrincipal) {
+    if (minerPrincipal) {
+      goto(`/launch/miner/${minerPrincipal}`);
+    }
   }
 
   // Modify reactive statement to prevent unnecessary reloads
@@ -170,7 +172,7 @@
       <Panel>
         <button
           class="w-full text-left transition-all duration-300 rounded-lg hover:scale-[1.01] hover:shadow-glow relative overflow-hidden group"
-          on:click={() => handleMinerClick(miner.owner)}
+          on:click={() => handleMinerClick(miner.principal.toString())}
         >
           <!-- Background pattern -->
           <div class="absolute inset-0 opacity-5 z-0 group-hover:opacity-10 transition-opacity duration-300">
