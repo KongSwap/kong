@@ -5,7 +5,7 @@
   import { Plus, Minus, ChevronDown, ChevronUp, Droplets } from "lucide-svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { onMount } from "svelte";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/services/auth";
   
   export let searchQuery = "";
@@ -15,13 +15,13 @@
   let showUserPoolModal = false;
 
   // Subscribe to the store
-  $: if (searchQuery !== $userPoolListStore.searchQuery) {
-    userPoolListStore.setSearchQuery(searchQuery);
+  $: if (searchQuery !== $currentUserPoolsStore.searchQuery) {
+    currentUserPoolsStore.setSearchQuery(searchQuery);
   }
 
   onMount(async () => {
     if ($auth.isConnected) {
-      await userPoolListStore.initialize();
+      await currentUserPoolsStore.initialize();
     }
   });
 
@@ -49,26 +49,26 @@
     showUserPoolModal = false;
     selectedPool = null;
     // Refresh the pools after liquidity is removed
-    userPoolListStore.initialize();
+    currentUserPoolsStore.initialize();
   }
 </script>
 
 <div class="mt-2">
-  {#if $userPoolListStore.loading}
+  {#if $currentUserPoolsStore.loading}
     <div class="loading-state" in:fade={{ duration: 300 }}>
       <div class="loading-animation">
         <Droplets size={32} class="animate-pulse text-kong-primary" />
       </div>
       <p class="loading-text">Loading your liquidity positions...</p>
     </div>
-  {:else if $userPoolListStore.error}
+  {:else if $currentUserPoolsStore.error}
     <div class="error-state" in:fade={{ duration: 300 }}>
       <svg xmlns="http://www.w3.org/2000/svg" class="error-icon" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
       </svg>
-      <p class="error-text">{$userPoolListStore.error}</p>
+      <p class="error-text">{$currentUserPoolsStore.error}</p>
     </div>
-  {:else if $userPoolListStore.filteredPools.length === 0 && !$userPoolListStore.loading}
+  {:else if $currentUserPoolsStore.filteredPools.length === 0 && !$currentUserPoolsStore.loading}
     <div class="empty-state" in:fade={{ duration: 300 }}>
       <div class="empty-icon-container">
         <Droplets size={40} class="empty-icon" />
@@ -87,8 +87,8 @@
     </div>
   {:else}
     <div class="pools-grid">
-      {#each $userPoolListStore.filteredPools as pool (pool.id)}
-        <div in:fly={{ y: 20, duration: 300, delay: 50 * $userPoolListStore.filteredPools.indexOf(pool) }}>
+      {#each $currentUserPoolsStore.filteredPools as pool (pool.id)}
+        <div in:fly={{ y: 20, duration: 300, delay: 50 * $currentUserPoolsStore.filteredPools.indexOf(pool) }}>
           <div
             class="pool-card {expandedPoolId === pool.id ? 'expanded' : ''}"
             on:click={() => handlePoolItemClick(pool)}

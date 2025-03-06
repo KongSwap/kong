@@ -19,6 +19,7 @@
   import { debounce } from "$lib/utils/debounce";
   import TokenItem from "./TokenItem.svelte";
   import { virtualScroll } from "$lib/utils/virtualScroll";
+  import { formatBalance } from "$lib/utils/numberFormatUtils";
   import AddNewTokenModal from "$lib/components/sidebar/AddNewTokenModal.svelte";
 
   const props = $props();
@@ -73,7 +74,7 @@
 
   // Add a state to track which tokens have had balance loading attempts
   let balanceLoadAttempts = $state(new Set<string>());
-  
+
   // Add a state to control the visibility of the AddNewTokenModal
   let isAddNewTokenModalOpen = $state(false);
   
@@ -372,7 +373,7 @@
   // Update balance functions to use TokenBalanceService with caching and error handling
   async function getTokenBalance(token: FE.Token): Promise<bigint> {
     try {
-      const balance = await loadBalance(token.canister_id, true);
+      const balance = await loadBalance(token.canister_id, auth, true);
       return balance.in_tokens;
     } catch (error) {
       console.warn(`Error getting balance for ${token.symbol}:`, error);
@@ -406,10 +407,7 @@
       const BATCH_SIZE = 10;
       for (let i = 0; i < unloadedTokens.length; i += BATCH_SIZE) {
         const batch = unloadedTokens.slice(i, i + BATCH_SIZE);
-        await loadBalances(principal, {
-          tokens: batch,
-          forceRefresh: false,
-        });
+        await loadBalances(batch, principal, false);
       }
     } catch (error) {
       console.warn("Error loading token balances:", error);
@@ -480,10 +478,7 @@
 
       if (principal && !balanceLoadAttempts.has(token.canister_id)) {
         balanceLoadAttempts.add(token.canister_id);
-        await loadBalances(principal, {
-          tokens: [token],
-          forceRefresh: false,
-        });
+        await loadBalances([token], principal, false);
       }
     } catch (error) {
       console.warn(`Error enabling token ${token.symbol}:`, error);
@@ -777,100 +772,57 @@
                   <div class="token-section-header">
                     <span>Available Tokens</span>
                   </div>
-
+                  
                   {#if isSearching}
                     <div class="loading-indicator">
                       <span class="loading-spinner"></span>
                       <span>Searching...</span>
                     </div>
                   {:else}
-                    <div
-                      style="height: {apiFilteredTokens.length *
-                        TOKEN_ITEM_HEIGHT}px; position: relative;"
-                    >
+                    <div style="height: {apiFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
                       {#each apiTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
                         <div
-                          style="position: absolute; top: {index *
-                            TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
+                          style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
                         >
                           <TokenItem
                             {token}
                             index={i}
-                            {currentToken}
-                            {otherPanelToken}
+                            currentToken={currentToken}
+                            otherPanelToken={otherPanelToken}
                             isApiToken={true}
                             isFavorite={isFavoriteToken(token.canister_id)}
-                            {enablingTokenId}
+                            enablingTokenId={enablingTokenId}
                             blockedTokenIds={BLOCKED_TOKEN_IDS}
                             onTokenClick={(e) => e.stopPropagation()}
-                            onFavoriteClick={(e) =>
-                              handleFavoriteClick(e, token)}
+                            onFavoriteClick={(e) => handleFavoriteClick(e, token)}
                             onEnableClick={(e) => handleEnableToken(e, token)}
                           />
                         </div>
                       {/each}
                     </div>
-                  </div>
-                {/if}
-                
-                <!-- API search results -->
-                {#if apiFilteredTokens.length > 0 || isSearching}
-                  <div class="token-section">
-                    <div class="token-section-header">
-                      <span>Available Tokens</span>
-                    </div>
-                    
-                    {#if isSearching}
-                      <div class="loading-indicator">
-                        <span class="loading-spinner"></span>
-                        <span>Searching...</span>
-                      </div>
-                    {:else}
-                      <div style="height: {apiFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
-                        {#each apiTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
-                          <div
-                            style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
-                          >
-                            <TokenItem
-                              {token}
-                              index={i}
-                              currentToken={currentToken}
-                              otherPanelToken={otherPanelToken}
-                              isApiToken={true}
-                              isFavorite={isFavoriteToken(token.canister_id)}
-                              enablingTokenId={enablingTokenId}
-                              blockedTokenIds={BLOCKED_TOKEN_IDS}
-                              onTokenClick={(e) => e.stopPropagation()}
-                              onFavoriteClick={(e) => handleFavoriteClick(e, token)}
-                              onEnableClick={(e) => handleEnableToken(e, token)}
-                            />
-                          </div>
-                        {/each}
-                      </div>
-                    {/if}
-                  </div>
-                {/if}
-                
-                <!-- Add New Token Button -->
-                <div class="add-token-button-container">
-                  <button 
-                    class="add-token-button"
-                    on:click={(e) => {
-                      e.stopPropagation();
-                      isAddNewTokenModalOpen = true;
-                    }}
-                  >
-                    <div class="add-icon">+</div>
-                    <span>Add New Token</span>
-                  </button>
+                  {/if}
                 </div>
-                
-                {#if filteredTokens.length === 0}
-                  <div class="empty-state">
-                    <span>No tokens found</span>
-                  </div>
-                {/if}
+              {/if}
+              
+              <!-- Add New Token Button -->
+              <div class="add-token-button-container">
+                <button 
+                  class="add-token-button"
+                  on:click={(e) => {
+                    e.stopPropagation();
+                    isAddNewTokenModalOpen = true;
+                  }}
+                >
+                  <div class="add-icon">+</div>
+                  <span>Add New Token</span>
+                </button>
               </div>
+              
+              {#if filteredTokens.length === 0}
+                <div class="empty-state">
+                  <span>No tokens found</span>
+                </div>
+              {/if}
             </div>
           </div>
         </div>

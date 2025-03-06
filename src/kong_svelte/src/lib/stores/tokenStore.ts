@@ -11,6 +11,9 @@ import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { fetchBalance, fetchBalances } from "$lib/api/balances";
 import { currentUserBalancesStore, getStoredBalances, updateStoredBalances } from "$lib/stores/balancesStore";
 
+// Create a writable store for tracking portfolio update status
+export const isUpdatingPortfolio = writable<boolean>(false);
+
 // Re-export the balances store
 export { currentUserBalancesStore } from "$lib/stores/balancesStore";
 

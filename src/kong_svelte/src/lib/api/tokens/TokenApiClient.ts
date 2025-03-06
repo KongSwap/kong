@@ -145,3 +145,17 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE
     throw error;
   }
 };
+
+/**
+ * Adds a new token by canister ID
+ */
+export const addToken = async (canisterId: string): Promise<any> => {
+  try {
+    // Make the API request using the base client
+    const data = await apiClient.post('/api/tokens/add', { canister_id: canisterId });
+    return data;
+  } catch (error) {
+    console.error('Error adding token:', error);
+    throw error;
+  }
+};

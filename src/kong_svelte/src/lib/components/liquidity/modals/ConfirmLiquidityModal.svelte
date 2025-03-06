@@ -9,7 +9,7 @@
   import { onDestroy } from "svelte";
   import { PoolService } from "$lib/services/pools/PoolService";
   import { toastStore } from "$lib/stores/toastStore";
-  import { loadBalance } from "$lib/services/tokens/tokenStore";
+  import { loadBalance } from "$lib/stores/tokenStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
 
   export let isCreatingPool: boolean = false;

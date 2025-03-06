@@ -1,16 +1,17 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { addToken, fetchTokenMetadata } from "$lib/api/tokens";
+  import { TokenService } from "$lib/services/tokens/TokenService";
   import { auth } from "$lib/services/auth";
-  import { loadBalances } from "$lib/services/tokens/tokenStore";
+  import { loadBalances } from "$lib/stores/tokenStore";
   import { userTokens } from "$lib/stores/userTokens";
   import { get } from "svelte/store";
   import { toastStore } from "$lib/stores/toastStore";
   import { debounce } from "$lib/utils/debounce";
   import { fade } from "svelte/transition";
-    import BigNumber from "bignumber.js";
-    import { tokenData } from "$lib/stores/tokenData";
+  import BigNumber from "bignumber.js";
+  import { tokenData } from "$lib/stores/tokenData";
+  import { canisterIDLs } from "$lib/config/auth.config";
 
   // Props
   const props = $props<{
@@ -114,7 +115,7 @@
     
     try {
       console.log("Fetching token metadata for:", canisterId);
-      const token = await fetchTokenMetadata(canisterId);
+      const token = await TokenService.fetchTokenMetadata(canisterId);
       console.log("Token metadata result:", token);
       
       if (token) {
@@ -207,17 +208,31 @@
     customTokenError = "";
     
     try {
-      // Always call the addToken API regardless of whether we have a preview token
-      console.log("Calling addToken API with:", formattedCanisterId);
+      // Extract the actual canister ID without the IC. prefix
+      const canisterId = formattedCanisterId.startsWith("IC.") 
+        ? formattedCanisterId.substring(3) 
+        : formattedCanisterId;
+      
+      console.log("Calling add_token canister function with:", canisterId);
       
       try {
-        const tokenReply = await addToken(formattedCanisterId);
-        console.log("addToken API response:", tokenReply);
-      } catch (apiError) {
-        console.error("Error calling addToken API:", apiError);
-        // Continue with the process even if the backend API call fails
+        // Call the add_token canister function directly
+        const kongBackendActor = auth.getActor(
+          process.env.CANISTER_ID_KONG_BACKEND,
+          canisterIDLs.kong_backend
+        );
+        
+        const addTokenResult = await kongBackendActor.add_token({ token: canisterId });
+        console.log("add_token canister response:", addTokenResult);
+        
+        if ('Err' in addTokenResult) {
+          throw new Error(`Failed to add token: ${addTokenResult.Err}`);
+        }
+      } catch (canisterError) {
+        console.error("Error calling add_token canister function:", canisterError);
+        // Continue with the process even if the canister call fails
         // This allows users to still add tokens to their local list
-        toastStore.warning(`Token added locally only. Backend registration failed: ${apiError.message}`);
+        toastStore.warning(`Token added locally only. Backend registration failed: ${canisterError.message}`);
       }
       
       // If we have a preview token, use it for the UI
@@ -239,10 +254,8 @@
       // Load balance for the newly enabled token if user is connected
       if (authStore?.account?.owner) {
         console.log("Loading balances for newly added token");
-        loadBalances(authStore.account.owner.toString(), { 
-          tokens: [tokenToAdd],
-          forceRefresh: true 
-        }).catch(e => console.error("Failed to load balances:", e));
+        loadBalances([tokenToAdd], authStore.account.owner.toString(), true)
+          .catch(e => console.error("Failed to load balances:", e));
       }
       
       // Dispatch event to parent
