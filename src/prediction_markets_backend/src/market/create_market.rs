@@ -1,4 +1,5 @@
 use ic_cdk::update;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use super::market::*;
 
@@ -7,6 +8,12 @@ use crate::controllers::admin::*;
 use crate::nat::*;
 use crate::resolution::resolution::*;
 use crate::stable_memory::*;
+
+pub static MARKET_ID: AtomicU64 = AtomicU64::new(0);
+
+pub fn max_market_id() -> u64 {
+    MARKETS.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.to_u64()))
+}
 
 /// Creates a new prediction market
 #[update]
@@ -43,11 +50,11 @@ fn create_market(
         return Err("End time must be at least 1 minute in the future".to_string());
     }
 
-    let market_id = MARKETS.with(|markets| {
-        let mut markets_ref = markets.borrow_mut();
-        let market_id = StorableNat::from(markets_ref.last_key_value().map_or(0, |(k, _)| k.to_u64() + 1));
+    let market_id = MARKETS.with(|m| {
+        let mut map = m.borrow_mut();
+        let market_id = StorableNat::from(MARKET_ID.fetch_add(1, Ordering::SeqCst) + 1);
         let outcome_count = outcomes.len();
-        markets_ref.insert(
+        map.insert(
             market_id.clone(),
             Market {
                 id: market_id.clone(),

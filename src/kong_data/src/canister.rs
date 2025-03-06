@@ -8,7 +8,7 @@ use super::{APP_NAME, APP_VERSION};
 
 use crate::ic::id::caller_principal_id;
 use crate::ic::logging::info_log;
-use crate::stable_db_update::db_update_map::{max_db_update_idx, DB_UPDATE_ID};
+use crate::stable_db_update::db_update_map::{max_db_update_id, DB_UPDATE_ID};
 use crate::stable_user::principal_id_map::create_principal_id_map;
 
 // list of query calls
@@ -16,11 +16,11 @@ use crate::stable_user::principal_id_map::create_principal_id_map;
 static QUERY_METHODS: [&str; 5] = ["icrc1_name", "icrc10_supported_standards", "tokens", "pools", "txs"];
 
 #[init]
-async fn init() {
+fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
 
     create_principal_id_map();
-    DB_UPDATE_ID.store(max_db_update_idx(), std::sync::atomic::Ordering::SeqCst);
+    DB_UPDATE_ID.store(max_db_update_id(), std::sync::atomic::Ordering::SeqCst);
 }
 
 #[pre_upgrade]
@@ -29,9 +29,9 @@ fn pre_upgrade() {
 }
 
 #[post_upgrade]
-async fn post_upgrade() {
+fn post_upgrade() {
     create_principal_id_map();
-    DB_UPDATE_ID.store(max_db_update_idx(), std::sync::atomic::Ordering::SeqCst);
+    DB_UPDATE_ID.store(max_db_update_id(), std::sync::atomic::Ordering::SeqCst);
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

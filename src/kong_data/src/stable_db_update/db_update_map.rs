@@ -5,7 +5,7 @@ use super::stable_db_update::{StableDBUpdate, StableDBUpdateId};
 
 pub static DB_UPDATE_ID: AtomicU64 = AtomicU64::new(0);
 
-pub fn max_db_update_idx() -> u64 {
+pub fn max_db_update_id() -> u64 {
     DB_UPDATE_MAP.with(|m| m.borrow().last_key_value().map_or(0, |(k, _)| k.0))
 }
 
