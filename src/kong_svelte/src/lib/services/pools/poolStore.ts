@@ -1,58 +1,67 @@
 import { derived, writable, type Readable, readable } from "svelte/store";
-import { PoolService } from "./PoolService";
 import { formatPoolData } from "$lib/utils/statsUtils";
-import { eventBus } from "$lib/services/tokens/eventBus";
-import { kongDB } from "../db";
-import { liveQuery } from "dexie";
 import { browser } from "$app/environment";
+import { fetchPools } from "$lib/api/pools";
 
 interface ExtendedPool extends BE.Pool {
   displayTvl?: number;
 }
 
-// Create a stable reference for pools data
-const stablePoolsStore = writable<ExtendedPool[]>([]);
+// Create a store for pools data
+const poolsStore = writable<ExtendedPool[]>([]);
 
 // Create a store for the search term
 export const poolSearchTerm = writable("");
 
-// Use the stable store for pools list to prevent unnecessary re-renders
+// Create a store for loading state
+export const isLoadingPools = writable(false);
+
+// Create a store for error state
+export const poolsError = writable<string | null>(null);
+
+// Create a store for last update timestamp
+export const lastPoolsUpdate = writable<number>(0);
+
+// Add a flag to track if a fetch is in progress
+let fetchInProgress = false;
+
+// Add a cache for pool data
+const poolCache: Record<string, { timestamp: number, pools: BE.Pool[] }> = {};
+const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes
+
+// Use the poolsStore for pools list
 export const poolsList: Readable<BE.Pool[]> = derived(
-  stablePoolsStore,
+  poolsStore,
   ($pools, set) => {
     set($pools);
   },
 );
 
-// Dexie's liveQuery for livePools
+// Create a readable store that automatically refreshes pools data
 export const livePools = readable<ExtendedPool[]>([], (set) => {
-  // Only run IndexedDB queries in the browser environment
+  // Only run in the browser environment
   if (!browser) {
     // Return a no-op unsubscribe function during SSR
     return () => {};
   }
 
-  const subscription = liveQuery(async () => {
-    const pools = await kongDB.pools.orderBy("timestamp").reverse().toArray();
+  // Initial load
+  loadPools().catch(err => console.error("[livePools] Initial load error:", err));
 
-    if (!pools?.length) {
-      return [];
-    }
+  // Set up interval for periodic refresh (every 60 seconds)
+  const intervalId = setInterval(() => {
+    loadPools().catch(err => console.error("[livePools] Refresh error:", err));
+  }, 60000);
 
-    return pools.map(
-      (pool) =>
-        ({
-          ...pool,
-          displayTvl: Number(pool.tvl) / 1e6,
-        }) as ExtendedPool,
-    );
-  }).subscribe({
-    next: (value) => set(value),
-    error: (err) => console.error("[livePools] Error:", err),
+  // Subscribe to the poolsStore to update the livePools store
+  const unsubscribe = poolsStore.subscribe(pools => {
+    set(pools);
   });
 
+  // Return cleanup function
   return () => {
-    subscription.unsubscribe();
+    clearInterval(intervalId);
+    unsubscribe();
   };
 });
 
@@ -82,25 +91,126 @@ export const filteredLivePools = derived(
 
 export const liveUserPools = writable<ExtendedPool[]>([]);
 
-export const loadPools = async () => {
+// Add a function to fetch pools for a specific canister with caching
+export const fetchPoolsForCanister = async (canisterId: string): Promise<BE.Pool[]> => {
+  if (!canisterId) return [];
+  
+  // Check cache first
+  const now = Date.now();
+  const cacheKey = `canister_${canisterId}`;
+  const cacheEntry = poolCache[cacheKey];
+  
+  if (cacheEntry && (now - cacheEntry.timestamp < CACHE_EXPIRATION)) {
+    console.log(`[PoolStore] Using cached pool data for ${canisterId}, age: ${(now - cacheEntry.timestamp) / 1000}s`);
+    return cacheEntry.pools;
+  }
+  
   try {
-    const poolsData = await PoolService.fetchPoolsData();
-    if (!poolsData?.pools) {
+    console.log(`[PoolStore] Fetching pools for canister ID: ${canisterId}`);
+    
+    // Use the fetchPools API function directly
+    const result = await fetchPools({
+      canisterIds: [canisterId],
+      limit: 100
+    });
+    
+    if (result?.pools) {
+      // Update cache
+      poolCache[cacheKey] = {
+        timestamp: now,
+        pools: result.pools
+      };
+      
+      return result.pools;
+    }
+    
+    return [];
+  } catch (error) {
+    console.error("[PoolStore] Error fetching pools for canister:", error);
+    return [];
+  }
+};
+
+export const loadPools = async () => {
+  // Prevent concurrent fetches
+  if (fetchInProgress) {
+    console.log("[PoolStore] Fetch already in progress, skipping duplicate request");
+    // Use a local variable to store the current value
+    let currentPools: ExtendedPool[] = [];
+    poolsStore.subscribe(value => {
+      currentPools = value;
+    })();
+    return currentPools;
+  }
+  
+  // Check if we have a recent cache
+  const now = Date.now();
+  let lastUpdateValue = 0;
+  lastPoolsUpdate.subscribe(value => {
+    lastUpdateValue = value;
+  })();
+  
+  if (lastUpdateValue && (now - lastUpdateValue < 30000)) { // 30 seconds cache
+    console.log("[PoolStore] Using cached pools data, age:", (now - lastUpdateValue) / 1000, "seconds");
+    // Use a local variable to store the current value
+    let currentPools: ExtendedPool[] = [];
+    poolsStore.subscribe(value => {
+      currentPools = value;
+    })();
+    return currentPools;
+  }
+  
+  try {
+    fetchInProgress = true;
+    isLoadingPools.set(true);
+    poolsError.set(null);
+    let page = 1;
+    let allPools: BE.Pool[] = [];
+    
+    // Initial request to get total pages
+    const initialResponse = await fetchPools({ limit: 100, page });
+    
+    if (!initialResponse?.pools) {
       throw new Error("Invalid pools data received");
+    }
+    
+    // Add first page of pools
+    allPools = [...initialResponse.pools];
+    
+    // Get total pages from response
+    const totalPages = initialResponse.total_pages || 1;
+    
+    // Fetch remaining pages if any
+    for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
+      const pageResponse = await fetchPools({ limit: 100, page: currentPage });
+      
+      if (pageResponse?.pools) {
+        allPools = [...allPools, ...pageResponse.pools];
+      }
     }
 
     // Process pools data with price validation
-    const pools = await formatPoolData(poolsData.pools);
+    const pools = await formatPoolData(allPools);
 
-    // Store in DB instead of cache
-    await kongDB.transaction("rw", [kongDB.pools], async () => {
-      await kongDB.pools.bulkPut(pools);
-    });
+    // Transform pools to include displayTvl
+    const transformedPools = pools.map(pool => ({
+      ...pool,
+      displayTvl: Number(pool.tvl) / 1e6,
+    })) as ExtendedPool[];
 
-    eventBus.emit("poolsUpdated", pools);
-    return pools;
+    // Update the store
+    poolsStore.set(transformedPools);
+    
+    // Update last update timestamp
+    lastPoolsUpdate.set(Date.now());
+    
+    return transformedPools;
   } catch (error) {
     console.error("[PoolStore] Error loading pools:", error);
+    poolsError.set(error instanceof Error ? error.message : "Unknown error");
     throw error;
+  } finally {
+    fetchInProgress = false;
+    isLoadingPools.set(false);
   }
 };

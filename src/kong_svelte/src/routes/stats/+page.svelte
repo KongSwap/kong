@@ -27,7 +27,7 @@
   import TokenCell from "$lib/components/stats/TokenCell.svelte";
   import PriceCell from "$lib/components/stats/PriceCell.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { fetchTokens } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { fetchPoolTotals } from "$lib/api/pools";
 
   const ITEMS_PER_PAGE = 50;
@@ -527,7 +527,6 @@
                           isFavorite={$favoriteTokenIds.includes(token.canister_id)}
                           trendClass={getTrendClass(token)}
                           showHotIcon={isTopVolume(token)}
-                          priceClass={getTrendClass(token)}
                         />
                       </button>
                     {/each}

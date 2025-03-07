@@ -4,6 +4,11 @@ declare global {
     in_usd: string;
   }
 
+  interface TokenBalances {
+    default: bigint;
+    subaccount?: bigint;
+  }
+
   interface UserPoolBalance {
     id: string;
     address_0?: string;
@@ -31,5 +36,6 @@ declare global {
     date: string;
   }
 }
+
 
 export {};

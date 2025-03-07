@@ -3,9 +3,9 @@
   import { AlertTriangle, CircleHelp, Clock, Coins } from "lucide-svelte";
   import { formatBalance, toFixed } from "$lib/utils/numberFormatUtils";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
-  import { currentUserBalancesStore } from "$lib/services/tokens/tokenStore";
+  import { currentUserBalancesStore } from "$lib/stores/tokenStore";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
-  import { calculateMaxAmount } from "$lib/utils/tokenValidationUtils";
+  import { calculateMaxAmount } from "$lib/utils/validators/tokenValidators";
 
   export let showBetModal: boolean;
   export let selectedMarket: any;

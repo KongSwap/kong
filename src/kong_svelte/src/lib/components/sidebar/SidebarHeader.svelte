@@ -15,15 +15,17 @@
   import {
     loadBalances,
     portfolioValue,
-    isUpdatingPortfolio,
-  } from "$lib/services/tokens/tokenStore";
+    isUpdatingPortfolio
+  } from "$lib/stores/tokenStore";
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { onDestroy, onMount } from "svelte";
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
   import { goto } from "$app/navigation";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+  import { userTokens } from "$lib/stores/userTokens";
+  import { get } from "svelte/store";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "history";
@@ -47,8 +49,8 @@
         if (currentWalletId) {
           // Load both tokens and pools in parallel on first load
           await Promise.all([
-            loadBalances(currentWalletId, { forceRefresh: true }),
-            userPoolListStore.initialize()
+            loadBalances(get(userTokens).tokens, currentWalletId, true),
+            currentUserPoolsStore.initialize()
           ]);
         }
       } finally {
@@ -69,10 +71,10 @@
           // Load balances and pool data in parallel
           await Promise.all([
             // Load balances and update stores
-            loadBalances(currentWalletId, { forceRefresh: true }),
+            loadBalances(get(userTokens).tokens, currentWalletId, true),
             
             // Initialize pool data to ensure portfolio value is accurate
-            userPoolListStore.initialize()
+            currentUserPoolsStore.initialize()
           ]);
           
           // Both operations are now complete, set updating flag to false

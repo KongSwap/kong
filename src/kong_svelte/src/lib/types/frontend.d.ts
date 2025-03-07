@@ -45,6 +45,17 @@ declare global {
       volumeRank?: number;
     }
 
+    interface TokenMetrics {
+      price: string;
+      volume_24h: string;
+      total_supply: string;
+      market_cap: string;
+      tvl: string;
+      updated_at: string;
+      price_change_24h: string;
+      previous_price: string;
+    }
+
     interface Transaction {
       mid_price: number;
       pay_amount: number;

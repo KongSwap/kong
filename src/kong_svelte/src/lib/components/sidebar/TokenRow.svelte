@@ -8,7 +8,7 @@
   } from "$lib/utils/tokenFormatters";
   import TokenDetails from "$lib/components/common/TokenDetails.svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
-  import { currentUserBalancesStore } from "$lib/services/tokens";
+  import { currentUserBalancesStore } from "$lib/stores/balancesStore";
   import {
     CKUSDT_CANISTER_ID,
     ICP_CANISTER_ID,

@@ -5,11 +5,11 @@
   import AmountInputs from "./AmountInputs.svelte";
   import InitialPriceInput from "./InitialPriceInput.svelte";
   import PoolWarning from "./PoolWarning.svelte";
-  import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
+  import { liquidityStore } from "$lib/stores/liquidityStore";
   import {
     loadBalances,
     currentUserBalancesStore,
-  } from "$lib/services/tokens/tokenStore";
+  } from "$lib/stores/tokenStore";
   import {
     validateTokenSelect,
     updateQueryParams,
@@ -36,8 +36,8 @@
   import PositionDisplay from "$lib/components/liquidity/create_pool/PositionDisplay.svelte";
   import { BigNumber } from "bignumber.js";
   import { userTokens } from "$lib/stores/userTokens";
-  import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens/index";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { calculateLiquidityAmounts } from "$lib/api/pools";
 
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
@@ -120,10 +120,10 @@
         pool.address_1 === token1?.address,
     );
   }
-  $: token0Balance =
-    $currentUserBalancesStore[token0?.canister_id]?.in_tokens?.toString() || "0";
-  $: token1Balance =
-    $currentUserBalancesStore[token1?.canister_id]?.in_tokens?.toString() || "0";
+  $: token0Balance = $currentUserBalancesStore[token0?.canister_id] ?
+    $currentUserBalancesStore[token0?.canister_id]?.in_tokens?.toString() : "0";
+  $: token1Balance = $currentUserBalancesStore[token1?.canister_id] ?
+    $currentUserBalancesStore[token1?.canister_id]?.in_tokens?.toString() : "0";
 
   function handleTokenSelect(index: 0 | 1, token: FE.Token) {
     const otherToken = index === 0 ? token1 : token0;
@@ -403,7 +403,7 @@
     onClose={() => {
       liquidityStore.resetAmounts();
       showConfirmModal = false;
-      userPoolListStore.initialize();
+      currentUserPoolsStore.initialize();
     }}
   />
 {/if}

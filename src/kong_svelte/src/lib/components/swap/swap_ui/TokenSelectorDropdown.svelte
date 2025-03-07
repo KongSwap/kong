@@ -1,6 +1,11 @@
 <script lang="ts">
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { onDestroy } from "svelte";
-  import { loadBalances, currentUserBalancesStore } from "$lib/services/tokens/tokenStore";
+  import {
+    loadBalances,
+    currentUserBalancesStore,
+    loadBalance,
+  } from "$lib/stores/tokenStore";
   import { scale, fade } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import { browser } from "$app/environment";
@@ -10,13 +15,11 @@
   import { userTokens } from "$lib/stores/userTokens";
   import { auth } from "$lib/services/auth";
   import { get } from "svelte/store";
-  import { fetchTokens } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { debounce } from "$lib/utils/debounce";
   import TokenItem from "./TokenItem.svelte";
-  import { TokenFilterService } from "$lib/services/tokens/tokenFilterService";
-  import { TokenBalanceService } from "$lib/services/tokens/tokenBalanceService";
-  import VirtualScroller from "$lib/components/common/VirtualScroller.svelte";
   import { virtualScroll } from "$lib/utils/virtualScroll";
+  import { formatBalance } from "$lib/utils/numberFormatUtils";
   import AddNewTokenModal from "$lib/components/sidebar/AddNewTokenModal.svelte";
 
   const props = $props();
@@ -33,7 +36,7 @@
 
   // Helper for extracting and validating token ID
   function getTokenId(token: any): string | null {
-    if (!token || typeof token !== 'object' || !('canister_id' in token)) {
+    if (!token || typeof token !== "object" || !("canister_id" in token)) {
       console.warn("Invalid token format:", token);
       return null;
     }
@@ -42,11 +45,10 @@
 
   // Make tokens reactive to userTokens store changes with better validation
   let tokens = $derived(
-    Object.values($userTokens.tokens)
-      .filter(token => {
-        const tokenId = getTokenId(token);
-        return tokenId && $userTokens.enabledTokens[tokenId];
-      }) as FE.Token[]
+    Object.values($userTokens.tokens).filter((token) => {
+      const tokenId = getTokenId(token);
+      return tokenId && $userTokens.enabledTokens[tokenId];
+    }) as FE.Token[],
   );
 
   const BLOCKED_TOKEN_IDS = [];
@@ -69,10 +71,10 @@
 
   // Add a state to track which token is being enabled
   let enablingTokenId = $state<string | null>(null);
-  
+
   // Add a state to track which tokens have had balance loading attempts
   let balanceLoadAttempts = $state(new Set<string>());
-  
+
   // Add a state to control the visibility of the AddNewTokenModal
   let isAddNewTokenModalOpen = $state(false);
   
@@ -82,7 +84,7 @@
   const FILTER_TABS = [
     { id: "all" as const, label: "All" },
     { id: "ck" as const, label: "CK" },
-    { id: "favorites" as const, label: "Favorites" }
+    { id: "favorites" as const, label: "Favorites" },
   ];
 
   function setStandardFilter(filter: FilterType) {
@@ -95,6 +97,53 @@
   let favoriteTokens = $state(new Map<string, boolean>());
   let favoritesLoaded = $state(false);
 
+  // Filter functions moved from TokenFilterService
+  function filterBySearchQuery(token: FE.Token, query: string): boolean {
+    if (!query) return true;
+    
+    const searchLower = query.toLowerCase();
+    return token.symbol.toLowerCase().includes(searchLower) ||
+           token.name.toLowerCase().includes(searchLower) ||
+           token.canister_id.toLowerCase().includes(searchLower);
+  }
+
+  function filterByStandardFilter(token: FE.Token, filter: "all" | "ck" | "favorites", favorites: Map<string, boolean>): boolean {
+    switch (filter) {
+      case "ck":
+        return token.symbol.toLowerCase().startsWith("ck");
+      case "favorites":
+        return favorites.get(token.canister_id) || false;
+      case "all":
+      default:
+        return true;
+    }
+  }
+
+  function filterByBalance(token: FE.Token, hideZeroBalances: boolean, balances: Record<string, { in_tokens: bigint }>): boolean {
+    if (!hideZeroBalances) return true;
+    
+    const balance = balances[token.canister_id]?.in_tokens;
+    return balance ? balance > BigInt(0) : false;
+  }
+
+  function sortTokens(a: FE.Token, b: FE.Token, sortColumn: string, sortDirection: string, favorites: Map<string, boolean>, balances: Record<string, { in_usd: string }>): number {
+    // Sort by favorites first
+    const aFavorite = favorites.get(a.canister_id) || false;
+    const bFavorite = favorites.get(b.canister_id) || false;
+    if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
+
+    // Then sort by value if that's selected
+    if (sortColumn === 'value') {
+      const aBalance = balances[a.canister_id]?.in_usd || "0";
+      const bBalance = balances[b.canister_id]?.in_usd || "0";
+      const aValue = Number(aBalance);
+      const bValue = Number(bBalance);
+      return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
+    }
+
+    return 0;
+  }
+
   // Create a function to handle all token filtering and sorting logic
   function getFilteredAndSortedTokens(
     allTokens: FE.Token[],
@@ -104,27 +153,33 @@
     favoriteTokens: Map<string, boolean>,
     sortColumn: string,
     sortDirection: string,
-    apiTokens: FE.Token[]
+    apiTokens: FE.Token[],
+    balances: Record<string, { in_tokens: bigint; in_usd: string }>
   ) {
-    return TokenFilterService.getFilteredAndSortedTokens(
-      allTokens,
-      searchQuery,
-      standardFilter,
-      hideZeroBalances,
-      favoriteTokens,
-      sortColumn,
-      sortDirection,
-      apiTokens,
-      $currentUserBalancesStore
-    );
+    return Array.from(new Map(
+      // Combine both sources and map by canister_id to deduplicate
+      [...allTokens, ...apiTokens].map(token => [token.canister_id, token])
+    ).values())
+      .filter((token) => {
+        if (!token?.canister_id || !token?.symbol || !token?.name) {
+          console.warn("Incomplete token data:", token);
+          return false;
+        }
+        
+        // Apply all filters
+        return filterBySearchQuery(token, searchQuery) && 
+               filterByStandardFilter(token, standardFilter, favoriteTokens) &&
+               filterByBalance(token, hideZeroBalances, balances);
+      })
+      .sort((a, b) => sortTokens(a, b, sortColumn, sortDirection, favoriteTokens, balances));
   }
 
   // Load favorites once on component mount
   async function loadFavorites() {
     if (!browser || favoritesLoaded) return;
-    
+
     await FavoriteService.loadFavorites();
-    
+
     const newFavorites = new Map<string, boolean>();
     const promises = baseFilteredTokens.map(async (token) => {
       const tokenId = getTokenId(token);
@@ -132,7 +187,7 @@
         newFavorites.set(tokenId, await FavoriteService.isFavorite(tokenId));
       }
     });
-    
+
     // Use Promise.all to load all favorites in parallel
     await Promise.all(promises);
     favoriteTokens = newFavorites;
@@ -145,29 +200,31 @@
 
   // Get filtered tokens before any UI filters (search, favorites, etc)
   let baseFilteredTokens = $derived(
-    browser ? tokens.filter((token) => {
-      const tokenId = getTokenId(token);
-      if (!tokenId) return false;
+    browser
+      ? tokens.filter((token) => {
+          const tokenId = getTokenId(token);
+          if (!tokenId) return false;
 
-      // Then check if we should restrict to secondary tokens
-      if (restrictToSecondaryTokens) {
-        return SECONDARY_TOKEN_IDS.includes(tokenId);
-      }
+          // Then check if we should restrict to secondary tokens
+          if (restrictToSecondaryTokens) {
+            return SECONDARY_TOKEN_IDS.includes(tokenId);
+          }
 
-      // Then check allowed canister IDs if provided
-      if (allowedCanisterIds.length > 0) {
-        return allowedCanisterIds.includes(tokenId);
-      }
+          // Then check allowed canister IDs if provided
+          if (allowedCanisterIds.length > 0) {
+            return allowedCanisterIds.includes(tokenId);
+          }
 
-      return true;
-    }) : []
+          return true;
+        })
+      : [],
   );
 
   // Get counts based on the base filtered tokens
   let allTokensCount = $derived(baseFilteredTokens.length);
   let ckTokensCount = $derived(
     baseFilteredTokens.filter((t) => t.symbol.toLowerCase().startsWith("ck"))
-      .length
+      .length,
   );
 
   // Create a memoized debounced search function
@@ -178,11 +235,12 @@
     }
 
     // Check if we already have items matching the search
-    const matchingLocalTokens = baseFilteredTokens.filter(token => 
-      (token.symbol.toLowerCase().includes(query.toLowerCase()) ||
-       token.name.toLowerCase().includes(query.toLowerCase()) ||
-       token.canister_id.toLowerCase().includes(query.toLowerCase())) &&
-      $userTokens.enabledTokens[token.canister_id]
+    const matchingLocalTokens = baseFilteredTokens.filter(
+      (token) =>
+        (token.symbol.toLowerCase().includes(query.toLowerCase()) ||
+          token.name.toLowerCase().includes(query.toLowerCase()) ||
+          token.canister_id.toLowerCase().includes(query.toLowerCase())) &&
+        $userTokens.enabledTokens[token.canister_id],
     );
 
     // If we have enough local matches, skip the API call
@@ -193,17 +251,17 @@
 
     isSearching = true;
     try {
-      const { tokens } = await fetchTokens({ 
+      const { tokens } = await fetchTokens({
         search: query,
-        limit: 20 // Limit API results to prevent overwhelming the UI
+        limit: 20, // Limit API results to prevent overwhelming the UI
       });
-      
+
       // Filter out tokens that are already enabled
-      apiSearchResults = tokens.filter(token => 
-        !$userTokens.enabledTokens[token.canister_id]
+      apiSearchResults = tokens.filter(
+        (token) => !$userTokens.enabledTokens[token.canister_id],
       );
     } catch (error) {
-      console.error('Error searching tokens:', error);
+      console.error("Error searching tokens:", error);
       apiSearchResults = [];
     } finally {
       isSearching = false;
@@ -222,25 +280,28 @@
 
   // Memoize filtered tokens to avoid recalculation
   let filteredTokens = $derived(
-    browser ? getFilteredAndSortedTokens(
-      baseFilteredTokens,
-      searchQuery,
-      standardFilter,
-      hideZeroBalances,
-      favoriteTokens,
-      sortColumn,
-      sortDirection,
-      apiSearchResults
-    ) : []
+    browser
+      ? getFilteredAndSortedTokens(
+          baseFilteredTokens,
+          searchQuery,
+          standardFilter,
+          hideZeroBalances,
+          favoriteTokens,
+          sortColumn,
+          sortDirection,
+          apiSearchResults,
+          $currentUserBalancesStore,
+        )
+      : [],
   );
 
   // Separate enabled tokens from API tokens for virtual scrolling
   let enabledFilteredTokens = $derived(
-    filteredTokens.filter(token => isTokenEnabled(token))
+    filteredTokens.filter((token) => isTokenEnabled(token)),
   );
-  
+
   let apiFilteredTokens = $derived(
-    filteredTokens.filter(token => isApiToken(token))
+    filteredTokens.filter((token) => isApiToken(token)),
   );
 
   // Virtual scrolling state for enabled tokens
@@ -250,8 +311,8 @@
       containerHeight,
       scrollTop,
       itemHeight: TOKEN_ITEM_HEIGHT,
-      buffer: 5
-    })
+      buffer: 5,
+    }),
   );
 
   // Virtual scrolling state for API tokens
@@ -261,8 +322,8 @@
       containerHeight,
       scrollTop,
       itemHeight: TOKEN_ITEM_HEIGHT,
-      buffer: 5
-    })
+      buffer: 5,
+    }),
   );
 
   const SECONDARY_TOKEN_IDS = [
@@ -286,13 +347,13 @@
     e.preventDefault();
     e.stopPropagation();
     const isFavorite = favoriteTokens.get(token.canister_id) || false;
-    
+
     if (isFavorite) {
       await FavoriteService.removeFavorite(token.canister_id);
     } else {
       await FavoriteService.addFavorite(token.canister_id);
     }
-    
+
     // Update the local state immediately
     favoriteTokens.set(token.canister_id, !isFavorite);
     favoriteTokens = new Map(favoriteTokens); // Trigger reactivity
@@ -300,61 +361,53 @@
 
   // Create tokens map once for TokenBalanceService
   let tokensMap = $derived(
-    tokens.reduce((acc, token) => {
-      acc[token.canister_id] = token;
-      return acc;
-    }, {} as Record<string, FE.Token>)
+    tokens.reduce(
+      (acc, token) => {
+        acc[token.canister_id] = token;
+        return acc;
+      },
+      {} as Record<string, FE.Token>,
+    ),
   );
 
   // Update balance functions to use TokenBalanceService with caching and error handling
-  function getTokenBalance(token: FE.Token): bigint {
+  async function getTokenBalance(token: FE.Token): Promise<bigint> {
     try {
-      return TokenBalanceService.getTokenBalance(token, $currentUserBalancesStore);
+      const balance = await loadBalance(token.canister_id, auth, true);
+      return balance.in_tokens;
     } catch (error) {
       console.warn(`Error getting balance for ${token.symbol}:`, error);
       return 0n;
     }
   }
 
-  function getTokenDisplayBalance(canisterId: string): { tokens: string; usd: string } {
-    try {
-      // Calculate and cache the result
-      const result = TokenBalanceService.getTokenDisplayBalance(canisterId, $currentUserBalancesStore, tokensMap);
-      return result;
-    } catch (error) {
-      // Return empty values on error
-      const emptyResult = { tokens: "0", usd: "$0.00" };
-      return emptyResult;
-    }
-  }
-
   // Optimized function to load balances in batch
-  async function loadTokenBalances(principal: string, tokensToLoad: FE.Token[]) {
+  async function loadTokenBalances(
+    principal: string,
+    tokensToLoad: FE.Token[],
+  ) {
     if (!browser || !principal || tokensToLoad.length === 0) return;
-    
+
     // Filter out tokens that we've already attempted to load
-    const unloadedTokens = tokensToLoad.filter(token => {
+    const unloadedTokens = tokensToLoad.filter((token) => {
       const canisterId = getTokenId(token);
       return canisterId && !balanceLoadAttempts.has(canisterId);
     });
-    
+
     if (unloadedTokens.length === 0) return;
-    
+
     // Mark these tokens as having had a load attempt
-    unloadedTokens.forEach(token => {
+    unloadedTokens.forEach((token) => {
       const canisterId = getTokenId(token);
       if (canisterId) balanceLoadAttempts.add(canisterId);
     });
-    
+
     try {
       // Load balances in batches to avoid overloading the network
       const BATCH_SIZE = 10;
       for (let i = 0; i < unloadedTokens.length; i += BATCH_SIZE) {
         const batch = unloadedTokens.slice(i, i + BATCH_SIZE);
-        await loadBalances(principal, { 
-          tokens: batch,
-          forceRefresh: false
-        });
+        await loadBalances(batch, principal, false);
       }
     } catch (error) {
       console.warn("Error loading token balances:", error);
@@ -363,10 +416,13 @@
 
   // Utility function to determine if a token is from API results and not yet enabled
   function isApiToken(token: FE.Token): boolean {
-    return apiSearchResults.includes(token) && !$userTokens.enabledTokens[token.canister_id];
+    return (
+      apiSearchResults.includes(token) &&
+      !$userTokens.enabledTokens[token.canister_id]
+    );
   }
 
-  // Helper for token selection 
+  // Helper for token selection
   function canSelectToken(token: FE.Token): boolean {
     // Can't select currently selected token on other panel
     if (otherPanelToken?.canister_id === token.canister_id) return false;
@@ -374,7 +430,7 @@
     if (BLOCKED_TOKEN_IDS.includes(token.canister_id)) return false;
     // Can't directly select non-enabled tokens from API
     if (isApiToken(token)) return false;
-    
+
     return true;
   }
 
@@ -384,8 +440,8 @@
         "BIL token is currently in read-only mode. Trading will resume when the ledger is stable.",
         {
           title: "Token Temporarily Unavailable",
-          duration: 8000
-        }
+          duration: 8000,
+        },
       );
       return;
     }
@@ -399,7 +455,7 @@
     const balance = getTokenBalance(token);
     onSelect({
       ...token,
-      balance
+      balance,
     });
     searchQuery = "";
   }
@@ -408,10 +464,10 @@
   async function handleEnableToken(e: MouseEvent, token: FE.Token) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Set loading state
     enablingTokenId = token.canister_id;
-    
+
     try {
       // Enable the token
       userTokens.enableToken(token);
@@ -419,13 +475,10 @@
       // Load balance for the newly enabled token if user is connected
       const authStore = get(auth);
       const principal = authStore?.account?.owner?.toString();
-      
+
       if (principal && !balanceLoadAttempts.has(token.canister_id)) {
         balanceLoadAttempts.add(token.canister_id);
-        await loadBalances(principal, { 
-          tokens: [token],
-          forceRefresh: false
-        });
+        await loadBalances([token], principal, false);
       }
     } catch (error) {
       console.warn(`Error enabling token ${token.symbol}:`, error);
@@ -474,17 +527,17 @@
   // Add a function to load balances for visible tokens
   function loadVisibleTokenBalances() {
     if (!browser) return;
-    
+
     const authStore = get(auth);
     const principal = authStore?.account?.owner?.toString();
     if (!principal) return;
-    
+
     // Get all currently visible tokens
     const visibleTokens = [
-      ...enabledTokensVirtualState.visible.map(v => v.item),
-      ...apiTokensVirtualState.visible.map(v => v.item)
+      ...enabledTokensVirtualState.visible.map((v) => v.item),
+      ...apiTokensVirtualState.visible.map((v) => v.item),
     ];
-    
+
     // Load balances for visible tokens
     void loadTokenBalances(principal, visibleTokens);
   }
@@ -501,7 +554,7 @@
   function handleScroll(e: Event) {
     const target = e.target as HTMLElement;
     scrollTop = target.scrollTop;
-    
+
     // Debounce balance loading during scroll to avoid too many requests
     clearTimeout(scrollDebounceTimer);
     scrollDebounceTimer = setTimeout(() => {
@@ -524,15 +577,15 @@
       // Only load balances if user is connected
       const authStore = get(auth);
       const principal = authStore?.account?.owner?.toString();
-      
+
       if (principal && tokens.length > 0) {
         // Load balances for visible tokens only, to reduce network requests
         void loadTokenBalances(principal, tokens);
       }
-      
+
       // Load favorites
       void loadFavorites();
-      
+
       setTimeout(() => {
         searchInput?.focus();
         window.addEventListener("click", handleClickOutside);
@@ -551,15 +604,21 @@
 
   onDestroy(cleanup);
 
-  let favoritesCount = $derived(Array.from(favoriteTokens.values()).filter(Boolean).length);
+  let favoritesCount = $derived(
+    Array.from(favoriteTokens.values()).filter(Boolean).length,
+  );
 
   // Get counts for the tabs
   function getTabCount(tabId: string): number {
-    switch(tabId) {
-      case "all": return allTokensCount;
-      case "ck": return ckTokensCount;
-      case "favorites": return favoritesCount;
-      default: return 0;
+    switch (tabId) {
+      case "all":
+        return allTokensCount;
+      case "ck":
+        return ckTokensCount;
+      case "favorites":
+        return favoritesCount;
+      default:
+        return 0;
     }
   }
 
@@ -570,106 +629,158 @@
 </script>
 
 {#if show}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div
+    class="modal-backdrop"
+    on:click|self={() => {
+      swapState.closeTokenSelector();
+      onClose();
+    }}
+    role="dialog"
+  >
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
-      class="modal-backdrop"
-      on:click|self={() => {
-        swapState.closeTokenSelector();
-        onClose();
+      class="dropdown-container {expandDirection} {isMobile ? 'mobile' : ''}"
+      bind:this={dropdownElement}
+      on:click|stopPropagation
+      transition:scale={{
+        duration: 200,
+        start: 0.95,
+        opacity: 0,
+        easing: cubicOut,
       }}
-      role="dialog"
     >
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div
-        class="dropdown-container {expandDirection} {isMobile ? 'mobile' : ''}"
-        bind:this={dropdownElement}
-        on:click|stopPropagation
-        transition:scale={{
-          duration: 200,
-          start: 0.95,
-          opacity: 0,
-          easing: cubicOut,
-        }}
-      >
-        <div class="modal-content">
-          <header class="modal-header">
-            <h2 class="modal-title">Tokens</h2>
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <button
-              class="close-button"
-              on:click={(e) => {
-                e.stopPropagation();
-                swapState.closeTokenSelector();
-                onClose();
-              }}
+      <div class="modal-content">
+        <header class="modal-header">
+          <h2 class="modal-title">Tokens</h2>
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <button
+            class="close-button"
+            on:click={(e) => {
+              e.stopPropagation();
+              swapState.closeTokenSelector();
+              onClose();
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </header>
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </header>
 
-          <div class="modal-body">
-            <div class="fixed-section">
-              <div class="search-section">
-                <div class="search-input-wrapper">
-                  <input
-                    bind:this={searchInput}
-                    bind:value={searchQuery}
-                    type="text"
-                    placeholder="Search by name, symbol, canister ID, or standard"
-                    class="search-input"
-                    on:click={(e) => e.stopPropagation()}
-                  />
-                </div>
-              </div>
-
-              <div class="pb-2 shadow-md z-20">
-                <div class="filter-buttons">
-                  {#each FILTER_TABS as tab}
-                    <!-- svelte-ignore a11y-click-events-have-key-events -->
-                    <button
-                      on:click={() => setStandardFilter(tab.id as FilterType)}
-                      class="filter-btn"
-                      class:active={standardFilter === tab.id}
-                      aria-label="Show {tab.label.toLowerCase()} tokens"
-                    >
-                      <span class="tab-label">{tab.label}</span>
-                      <span class="tab-count" class:has-items={getTabCount(tab.id) > 0}>
-                        {getTabCount(tab.id)}
-                      </span>
-                    </button>
-                  {/each}
-                </div>
-                  
+        <div class="modal-body">
+          <div class="fixed-section">
+            <div class="search-section">
+              <div class="search-input-wrapper">
+                <input
+                  bind:this={searchInput}
+                  bind:value={searchQuery}
+                  type="text"
+                  placeholder="Search by name, symbol, canister ID, or standard"
+                  class="search-input"
+                  on:click={(e) => e.stopPropagation()}
+                />
               </div>
             </div>
 
-            <div 
-              class="scrollable-section" 
-              bind:this={scrollContainer}
-              bind:clientHeight={containerHeight}
-              on:scroll={handleScroll}
-            >
-              <div class="tokens-container">
-                <!-- Local tokens -->
-                {#if enabledFilteredTokens.length > 0}
-                  <div class="token-section">
-                    <div style="height: {enabledFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
-                      {#each enabledTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
+            <div class="pb-2 shadow-md z-20">
+              <div class="filter-buttons">
+                {#each FILTER_TABS as tab}
+                  <!-- svelte-ignore a11y-click-events-have-key-events -->
+                  <button
+                    on:click={() => setStandardFilter(tab.id as FilterType)}
+                    class="filter-btn"
+                    class:active={standardFilter === tab.id}
+                    aria-label="Show {tab.label.toLowerCase()} tokens"
+                  >
+                    <span class="tab-label">{tab.label}</span>
+                    <span
+                      class="tab-count"
+                      class:has-items={getTabCount(tab.id) > 0}
+                    >
+                      {getTabCount(tab.id)}
+                    </span>
+                  </button>
+                {/each}
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="scrollable-section"
+            bind:this={scrollContainer}
+            bind:clientHeight={containerHeight}
+            on:scroll={handleScroll}
+          >
+            <div class="tokens-container">
+              <!-- Local tokens -->
+              {#if enabledFilteredTokens.length > 0}
+                <div class="token-section">
+                  <div
+                    style="height: {enabledFilteredTokens.length *
+                      TOKEN_ITEM_HEIGHT}px; position: relative;"
+                  >
+                    {#each enabledTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
+                      <div
+                        style="position: absolute; top: {index *
+                          TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
+                      >
+                        <TokenItem
+                          {token}
+                          index={i}
+                          {currentToken}
+                          {otherPanelToken}
+                          isApiToken={isApiToken(token)}
+                          isFavorite={isFavoriteToken(token.canister_id)}
+                          {enablingTokenId}
+                          blockedTokenIds={BLOCKED_TOKEN_IDS}
+                          balance={{
+                            tokens: formatBalance(
+                              $currentUserBalancesStore[token.canister_id]?.in_tokens || 0n,
+                              token.decimals,
+                            ),
+                            usd: formatUsdValue(
+                              $currentUserBalancesStore[token.canister_id]?.in_usd || "0",
+                            ),
+                          }}
+                          onTokenClick={(e) => handleTokenClick(e, token)}
+                          onFavoriteClick={(e) => handleFavoriteClick(e, token)}
+                          onEnableClick={(e) => handleEnableToken(e, token)}
+                        />
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+
+              <!-- API search results -->
+              {#if apiFilteredTokens.length > 0 || isSearching}
+                <div class="token-section">
+                  <div class="token-section-header">
+                    <span>Available Tokens</span>
+                  </div>
+                  
+                  {#if isSearching}
+                    <div class="loading-indicator">
+                      <span class="loading-spinner"></span>
+                      <span>Searching...</span>
+                    </div>
+                  {:else}
+                    <div style="height: {apiFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
+                      {#each apiTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
                         <div
                           style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
                         >
@@ -678,85 +789,48 @@
                             index={i}
                             currentToken={currentToken}
                             otherPanelToken={otherPanelToken}
-                            isApiToken={isApiToken(token)}
+                            isApiToken={true}
                             isFavorite={isFavoriteToken(token.canister_id)}
                             enablingTokenId={enablingTokenId}
                             blockedTokenIds={BLOCKED_TOKEN_IDS}
-                            balance={getTokenDisplayBalance(token.canister_id)}
-                            onTokenClick={(e) => handleTokenClick(e, token)}
+                            onTokenClick={(e) => e.stopPropagation()}
                             onFavoriteClick={(e) => handleFavoriteClick(e, token)}
                             onEnableClick={(e) => handleEnableToken(e, token)}
                           />
                         </div>
                       {/each}
                     </div>
-                  </div>
-                {/if}
-                
-                <!-- API search results -->
-                {#if apiFilteredTokens.length > 0 || isSearching}
-                  <div class="token-section">
-                    <div class="token-section-header">
-                      <span>Available Tokens</span>
-                    </div>
-                    
-                    {#if isSearching}
-                      <div class="loading-indicator">
-                        <span class="loading-spinner"></span>
-                        <span>Searching...</span>
-                      </div>
-                    {:else}
-                      <div style="height: {apiFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
-                        {#each apiTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
-                          <div
-                            style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
-                          >
-                            <TokenItem
-                              {token}
-                              index={i}
-                              currentToken={currentToken}
-                              otherPanelToken={otherPanelToken}
-                              isApiToken={true}
-                              isFavorite={isFavoriteToken(token.canister_id)}
-                              enablingTokenId={enablingTokenId}
-                              blockedTokenIds={BLOCKED_TOKEN_IDS}
-                              onTokenClick={(e) => e.stopPropagation()}
-                              onFavoriteClick={(e) => handleFavoriteClick(e, token)}
-                              onEnableClick={(e) => handleEnableToken(e, token)}
-                            />
-                          </div>
-                        {/each}
-                      </div>
-                    {/if}
-                  </div>
-                {/if}
-                
-                <!-- Add New Token Button -->
-                <div class="add-token-button-container">
-                  <button 
-                    class="add-token-button"
-                    on:click={(e) => {
-                      e.stopPropagation();
-                      isAddNewTokenModalOpen = true;
-                    }}
-                  >
-                    <div class="add-icon">+</div>
-                    <span>Add New Token</span>
-                  </button>
+                  {/if}
                 </div>
-                
-                {#if filteredTokens.length === 0}
-                  <div class="empty-state">
-                    <span>No tokens found</span>
-                  </div>
-                {/if}
+              {/if}
+              
+              <!-- Add New Token Button -->
+              <div class="add-token-button-container">
+                <button 
+                  class="add-token-button"
+                  on:click={(e) => {
+                    e.stopPropagation();
+                    isAddNewTokenModalOpen = true;
+                  }}
+                >
+                  <div class="add-icon">+</div>
+                  <span>Add New Token</span>
+                </button>
               </div>
+              
+              {#if filteredTokens.length === 0}
+                <div class="empty-state">
+                  <span>No tokens found</span>
+                </div>
+              {/if}
             </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
 {/if}
+
 <style scoped lang="postcss">
   .modal-backdrop {
     @apply fixed inset-0 bg-black/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto;

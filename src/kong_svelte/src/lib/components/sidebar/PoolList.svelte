@@ -1,20 +1,16 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
-  import { onMount, onDestroy, createEventDispatcher } from "svelte";
+  import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { ChevronRight, Search, X, ArrowUpDown } from "lucide-svelte";
+  import { ChevronRight, Search, X, ArrowUpDown, BarChart3, ChartPie } from "lucide-svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+  import { livePools } from "$lib/services/pools/poolStore";
   import { auth } from "$lib/services/auth";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
-
-  // --- Type Definitions ---
-  interface FilterPair {
-    token0?: string;
-    token1?: string;
-  }
 
   interface UserPoolBalance {
     symbol_0: string;
@@ -24,6 +20,8 @@
     name?: string;
     address_0: string;
     address_1: string;
+    amount_0: string;
+    amount_1: string;
   }
 
   interface ProcessedPool extends UserPoolBalance {
@@ -32,10 +30,6 @@
     token1?: FE.Token;
   }
 
-  // --- Props ---
-  export let filterPair: FilterPair = {};
-  export let filterToken = "";
-  export let initialSearch = "";
   export let pool: ProcessedPool | null = null;
 
   // --- Store ---
@@ -43,14 +37,35 @@
   let selectedPool: ProcessedPool | null = null;
   let showUserPoolModal = false;
   let UserPoolComponent: any;
+  
+  // Simple flag for initial load only
+  let hasCompletedInitialLoad = false;
+  
+  // Cache for pools
+  let cachedPools: ProcessedPool[] = [];
+  
+  // Update cache whenever we have valid data (not during loading)
+  $: if ($currentUserPoolsStore.filteredPools.length > 0 && !$currentUserPoolsStore.loading) {
+    cachedPools = [...$currentUserPoolsStore.filteredPools];
+  }
+  
+  // Always use cached pools after initial load if we have them
+  $: displayPools = (!hasCompletedInitialLoad) 
+    ? $currentUserPoolsStore.filteredPools 
+    : (cachedPools.length > 0 ? cachedPools : $currentUserPoolsStore.filteredPools);
+  
+  // Only show loading indicator on initial load
+  $: showLoadingIndicator = $currentUserPoolsStore.loading && !hasCompletedInitialLoad;
 
   // Initialize store and handle auth changes
   onMount(() => {
     const unsubscribe = auth.subscribe(($auth) => {
       if ($auth.isConnected) {
-        userPoolListStore.initialize();
+        loadUserPools();
       } else {
-        userPoolListStore.reset();
+        currentUserPoolsStore.reset();
+        hasCompletedInitialLoad = false;
+        cachedPools = []; // Clear cache when disconnected
       }
     });
 
@@ -58,6 +73,29 @@
       unsubscribe();
     };
   });
+  
+  // Function to load user pools - simpler now
+  async function loadUserPools() {
+    try {
+      await currentUserPoolsStore.initialize();
+      hasCompletedInitialLoad = true;
+    } catch (error) {
+      console.error("Error loading user pools:", error);
+    }
+  }
+  
+  // Function to refresh user pools without showing loading indicator
+  async function refreshUserPools() {
+    if (hasCompletedInitialLoad) {
+      try {
+        // Since refresh() doesn't exist, we can re-initialize the store 
+        // which effectively refreshes the data
+        await currentUserPoolsStore.initialize();
+      } catch (error) {
+        console.error("Error refreshing user pools:", error);
+      }
+    }
+  }
 
   // --- Event Handlers ---
   const handleAddLiquidity = () => {
@@ -76,15 +114,38 @@
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && $userPoolListStore.searchQuery) {
+    if (event.key === "Escape" && $currentUserPoolsStore.searchQuery) {
       event.preventDefault();
-      userPoolListStore.setSearchQuery("");
+      currentUserPoolsStore.setSearchQuery("");
       searchInput.focus();
     } else if (event.key === "/" && document.activeElement !== searchInput) {
       event.preventDefault();
       searchInput.focus();
     }
   };
+
+  // Get pool share percentage
+  function getPoolSharePercentage(pool: ProcessedPool): string {
+    const livePool = $livePools.find(
+      (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
+    );
+    
+    return calculateUserPoolPercentage(
+      livePool?.balance_0,
+      livePool?.balance_1,
+      pool.amount_0,
+      pool.amount_1
+    );
+  }
+
+  // Get APY for a pool
+  function getPoolApy(pool: ProcessedPool): string {
+    const livePool = $livePools.find(
+      (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
+    );
+    
+    return livePool?.rolling_24h_apy ? formatToNonZeroDecimal(livePool.rolling_24h_apy) : "0";
+  }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -99,7 +160,7 @@
             </div>
             <input
               bind:this={searchInput}
-              bind:value={$userPoolListStore.searchQuery}
+              bind:value={$currentUserPoolsStore.searchQuery}
               type="text"
               placeholder="Search pools by name or token..."
               class="search-input"
@@ -108,11 +169,11 @@
               autocapitalize="off"
               spellcheck="false"
             />
-            {#if $userPoolListStore.searchQuery}
+            {#if $currentUserPoolsStore.searchQuery}
               <button
                 class="clear-button"
                 on:click={() => {
-                  userPoolListStore.setSearchQuery("");
+                  currentUserPoolsStore.setSearchQuery("");
                   searchInput.focus();
                 }}
                 aria-label="Clear search"
@@ -124,13 +185,13 @@
 
           <button
             class="sort-toggle"
-            on:click={userPoolListStore.toggleSort}
-            aria-label={`Sort by value ${$userPoolListStore.sortDirection === "desc" ? "ascending" : "descending"}`}
+            on:click={currentUserPoolsStore.toggleSort}
+            aria-label={`Sort by value ${$currentUserPoolsStore.sortDirection === "desc" ? "ascending" : "descending"}`}
           >
             <span class="toggle-label">Value</span>
             <div
               class="sort-icon-wrapper"
-              class:ascending={$userPoolListStore.sortDirection === "asc"}
+              class:ascending={$currentUserPoolsStore.sortDirection === "asc"}
             >
               <ArrowUpDown size={14} />
             </div>
@@ -150,28 +211,28 @@
 
   <div class="pool-list-content rounded-b-lg">
     <div class="pool-list">
-      {#if $userPoolListStore.loading}
+      {#if showLoadingIndicator}
         <div class="empty-state" in:fade>
           <LoadingIndicator text="Loading positions..." />
         </div>
-      {:else if $userPoolListStore.error}
+      {:else if $currentUserPoolsStore.error}
         <div class="state-message error" in:fade>
-          <p>{$userPoolListStore.error}</p>
+          <p>{$currentUserPoolsStore.error}</p>
           <button
             class="retry-button"
-            on:click={() => userPoolListStore.initialize()}
+            on:click={() => refreshUserPools()}
           >
             Retry
           </button>
         </div>
-      {:else if $userPoolListStore.filteredPools.length === 0}
+      {:else if displayPools.length === 0}
         <div class="state-message" in:fade>
-          {#if $userPoolListStore.searchQuery && !pool}
-            <p>No pools found matching "{$userPoolListStore.searchQuery}"</p>
+          {#if $currentUserPoolsStore.searchQuery && !pool}
+            <p>No pools found matching "{$currentUserPoolsStore.searchQuery}"</p>
             <button
               class="clear-search-button"
               on:click={() => {
-                userPoolListStore.setSearchQuery("");
+                currentUserPoolsStore.setSearchQuery("");
                 searchInput.focus();
               }}
             >
@@ -187,18 +248,18 @@
           {/if}
         </div>
       {:else}
-        {#each $userPoolListStore.filteredPools as poolItem}
+        {#each displayPools as poolItem}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div
-            class="pool-item"
+            class="bg-kong-bg-dark/20 rounded-lg p-3 cursor-pointer hover:bg-kong-bg-dark/30 transition-all duration-200 border border-kong-border/40 hover:border-kong-accent-blue/30 hover:shadow-lg hover:shadow-kong-accent-blue/5 active:scale-[0.995] mb-1.5 last:mb-0"
             in:slide={{ duration: 200 }}
             on:click={() => handlePoolItemClick(poolItem)}
             role="button"
             tabindex="0"
           >
-            <div class="pool-content">
-              <div class="pool-left">
-                <div class="token-images-wrapper">
+            <div class="flex justify-between items-center w-full gap-4">
+              <div class="flex items-center gap-3">
+                <div class="flex-shrink-0">
                   <TokenImages
                     tokens={[
                       poolItem.token0,
@@ -208,31 +269,42 @@
                     overlap={true}
                   />
                 </div>
-                <div class="pool-info">
-                  <div class="pool-pair">
+                <div class="flex flex-col gap-1">
+                  <div class="text-sm font-medium text-kong-text-primary tracking-wide mb-0.5">
                     {poolItem.symbol_0}/{poolItem.symbol_1}
                   </div>
-                  <div class="pool-balance">
-                    {Number(poolItem.balance).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 8,
-                    })} LP
+                  <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-1 text-xs whitespace-nowrap text-kong-text-primary/80">
+                      <ChartPie size={14} />
+                      <span>{formatToNonZeroDecimal(getPoolSharePercentage(poolItem))}% share</span>
+                    </div>
+                    <div class="h-3 w-px bg-kong-border/40"></div>
+                    <div class="flex items-center gap-1 text-xs whitespace-nowrap text-kong-text-accent-green">
+                      <BarChart3 size={14} />
+                      <span>{formatToNonZeroDecimal(getPoolApy(poolItem))}% APY</span>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="pool-right">
-                <div class="value-info">
-                  <div class="usd-value">
+              <div class="flex items-center gap-3">
+                <div class="flex flex-col items-end">
+                  <div class="text-sm font-medium text-kong-text-primary tracking-wide">
                     ${formatToNonZeroDecimal(poolItem.usd_balance)}
                   </div>
                 </div>
-                <div class="view-details">
+                <div class="text-xs text-kong-text-secondary/60 flex items-center transition-colors group-hover:text-kong-text-secondary">
                   <ChevronRight size={18} class="details-arrow" />
                 </div>
               </div>
             </div>
           </div>
         {/each}
+      {/if}
+      
+      {#if $currentUserPoolsStore.loading && hasCompletedInitialLoad}
+        <div class="refresh-indicator">
+          <LoadingIndicator size={16} />
+        </div>
       {/if}
     </div>
   </div>
@@ -244,6 +316,7 @@
     pool={selectedPool}
     bind:showModal={showUserPoolModal}
     on:close={() => (showUserPoolModal = false)}
+    on:liquidityRemoved={() => refreshUserPools()}
   />
 {/if}
 
@@ -315,69 +388,9 @@
            active:scale-[0.96] shadow-lg shadow-kong-accent-blue/20 flex-shrink-0;
   }
 
-  .pool-item {
-    @apply bg-kong-bg-dark/20 rounded-lg p-4 cursor-pointer 
-           hover:bg-kong-bg-dark/30 transition-all duration-200
-           border border-kong-border/40 hover:border-kong-accent-blue/30
-           hover:shadow-lg hover:shadow-kong-accent-blue/5
-           active:scale-[0.995] mb-1.5 last:mb-0;
-  }
-
-  .pool-content {
-    @apply flex justify-between items-center w-full gap-4;
-  }
-
-  .pool-left {
-    @apply flex items-center gap-3.5;
-  }
-
-  .token-images-wrapper {
-    @apply flex-shrink-0;
-  }
-
-  .pool-info {
-    @apply flex flex-col gap-1;
-  }
-
-  .pool-pair {
-    @apply text-sm font-medium text-kong-text-primary tracking-wide;
-  }
-
-  .pool-balance {
-    @apply text-xs text-kong-text-secondary/80 font-medium tracking-wide;
-  }
-
-  .pool-right {
-    @apply flex items-center gap-3;
-  }
-
-  .value-info {
-    @apply flex flex-col items-end;
-  }
-
-  .usd-value {
-    @apply text-sm font-medium text-kong-text-primary tracking-wide;
-  }
-
-  .view-details {
-    @apply text-xs text-kong-text-secondary/60 flex items-center transition-colors
-           group-hover:text-kong-text-secondary;
-  }
-
-  .clear-search-button {
-    @apply px-4 py-2 bg-kong-bg-dark/40 text-kong-text-secondary text-xs font-medium rounded-lg
-           transition-all duration-200 hover:bg-kong-bg-dark/60 hover:text-kong-text-primary
-           border border-kong-border/40 hover:border-kong-accent-blue/30;
-  }
-
   .state-message {
     @apply flex flex-col items-center justify-center gap-4 min-h-[200px] 
            text-kong-text-secondary/80 text-sm p-6 text-center;
-  }
-
-  .loading-spinner {
-    @apply w-6 h-6 border-2 border-kong-accent-blue/30 border-t-kong-accent-blue
-           rounded-full animate-spin;
   }
 
   .error {
@@ -401,6 +414,11 @@
   .empty-state {
     @apply flex flex-col items-center justify-center gap-2
            min-h-[120px] text-kong-text-secondary text-xs;
+  }
+  
+  .refresh-indicator {
+    @apply fixed bottom-4 right-4 bg-kong-bg-dark/80 backdrop-blur-sm
+           rounded-full p-2 shadow-lg z-30;
   }
 </style>
 

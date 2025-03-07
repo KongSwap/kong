@@ -2,11 +2,12 @@
   import { createEventDispatcher } from "svelte";
   import { fade, fly } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { loadBalance } from "$lib/services/tokens/tokenStore";
+  import { loadBalance } from "$lib/stores/tokenStore";
   import { PoolService } from "$lib/services/pools";
   import { toastStore } from "$lib/stores/toastStore";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
-  import { calculateTokenUsdValue } from "$lib/utils/liquidityUtils";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+  import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
+  import { auth } from "$lib/services/auth";
 
   const dispatch = createEventDispatcher();
 
@@ -123,9 +124,9 @@
           isComplete = true;
           toastStore.success("Successfully removed liquidity from the pool");
           await Promise.all([
-            loadBalance(token0.canister_id, true),
-            loadBalance(token1.canister_id, true),
-            userPoolListStore.initialize(),
+            loadBalance(token0.canister_id, auth, true),
+            loadBalance(token1.canister_id, auth, true),
+            currentUserPoolsStore.initialize(),
           ]);
         } else if (requestStatus.reply?.Failed) {
           throw new Error(requestStatus.reply.Failed || "Transaction failed");
@@ -149,9 +150,9 @@
     } catch (err) {
       // Ensure we still refresh balances even on error
       await Promise.all([
-        userPoolListStore.initialize(),
-        loadBalance(token0.canister_id, true),
-        loadBalance(token1.canister_id, true),
+        currentUserPoolsStore.initialize(),
+        loadBalance(token0.canister_id, auth, true),
+        loadBalance(token1.canister_id, auth, true),
       ]);
       console.error("Error removing liquidity:", err);
       error = err.message;

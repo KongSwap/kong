@@ -7,34 +7,41 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
   try {
     const { page = 1, limit = 50, canisterIds, search = '' } = params || {};
     
-    // Build query string for pagination
-    const queryString = new URLSearchParams({
+    // Build query string for pagination and filters
+    const queryParams: Record<string, string> = {
       page: page.toString(),
       limit: limit.toString(),
-      search: search,
-      t: Date.now().toString() // Use valid parameter name
-    }).toString();
-
-    // Determine if we need to make a GET or POST request
-    const options: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      t: Date.now().toString() // Cache busting
     };
-
-    if (canisterIds && canisterIds.length > 0) {
-      options.method = 'POST';
-      options.body = JSON.stringify({ canister_ids: canisterIds });
-    } else {
-      options.method = 'GET';
+    
+    // Add search if provided
+    if (search) {
+      queryParams.search = search;
     }
+    
+    // Add canister_id if provided
+    if (canisterIds && canisterIds.length > 0) {
+      queryParams.canister_id = canisterIds[0];
+    }
+    
+    const queryString = new URLSearchParams(queryParams).toString();
 
+    // Strictly use GET method with no request body
+    console.log(`Requesting: GET ${API_URL}/api/pools?${queryString}`);
+    
     const response = await fetch(
       `${API_URL}/api/pools?${queryString}`,
-      options
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        }
+      }
     );
    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API error response: ${errorText}`);
       throw new Error(`Failed to fetch pools: ${response.status} ${response.statusText}`);
     }
 
@@ -43,6 +50,9 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
     if (!data || !data.items) {
       throw new Error("Invalid API response");
     }
+
+    // Log response for debugging
+    console.log(`API response received:`, data);
 
     // Helper function: Remove underscores and convert to a numeric value.
     const parseNumericString = (value: string | number): number => {

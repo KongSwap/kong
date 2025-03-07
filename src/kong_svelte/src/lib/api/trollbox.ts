@@ -1,6 +1,6 @@
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { TROLLBOX_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { canisterIDLs } from "$lib/services/pnp/PnpInitializer";
+import { canisterIDLs } from "$lib/config/auth.config";
 import { auth } from "$lib/services/auth";
 import { Principal } from "@dfinity/principal";
 import * as tokensApi from "$lib/api/tokens";
@@ -196,10 +196,7 @@ export async function isAdmin(): Promise<boolean> {
     }
     
     try {
-        const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
-            anon: false,
-            requiresSigning: false,
-        });
+        const actor = createAnonymousActorHelper(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox);
         
         // Call is_admin with principal as a string instead of a Principal object
         const result = await actor.is_admin(authState.account.owner.toString());

@@ -6,7 +6,7 @@
   import { fade } from "svelte/transition";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { onMount } from "svelte";
-  import { fetchTokens } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { tweened } from 'svelte/motion';
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
 
@@ -411,7 +411,7 @@
             quoteToken ?? hoveredToken :
             quoteToken ?? icpToken ?? hoveredToken  // Always try ckUSDT first, fallback to ICP
         }
-        price_change_24h={Number(hoveredToken.metrics?.price_change_24h || 0)}
+        price_change_24h={hoveredToken && hoveredToken.metrics ? Number(hoveredToken.metrics?.price_change_24h || 0) : 0}
         on:quoteTokenUsed={(event) => {
           actualQuoteToken = event.detail.symbol === "ckUSDT" ? "ckUSDT" : "ICP";
         }}

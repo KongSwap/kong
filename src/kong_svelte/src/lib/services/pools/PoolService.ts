@@ -1,73 +1,19 @@
 // services/PoolService.ts
 import { auth, requireWalletConnection } from "$lib/services/auth";
 import { IcrcService } from "../icrc/IcrcService";
-import { canisterIDLs } from "../pnp/PnpInitializer";
-import { PoolSerializer } from "./PoolSerializer";
+import { canisterIDLs } from "$lib/config/auth.config";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { toastStore } from "$lib/stores/toastStore";
-import { KONG_BACKEND_CANISTER_ID, KONG_DATA_PRINCIPAL } from "$lib/constants/canisterConstants";
+import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 
 export class PoolService {
   protected static instance: PoolService;
-  private static fetchPromise: Promise<UserPoolBalance[]> | null = null;
-  private static lastFetchTime = 0;
-  private static DEBOUNCE_TIME = 30000; // 30 seconds
 
   public static getInstance(): PoolService {
     if (!PoolService.instance) {
       PoolService.instance = new PoolService();
     }
     return PoolService.instance;
-  }
-
-  // Data Fetching
-  public static async fetchPoolsData(): Promise<BE.PoolResponse> {
-    try {
-      const actor = createAnonymousActorHelper(
-        KONG_DATA_PRINCIPAL,
-        canisterIDLs.kong_data,
-      );
-      const result = await actor.pools([]);
-      if (!result.Ok) {
-        throw new Error("Failed to fetch pools");
-      }
-
-      const serializedPools = PoolSerializer.serializePoolsResponse(result.Ok);
-      return serializedPools;
-    } catch (error) {
-      console.error("Error fetching pools:", error);
-      throw error;
-    }
-  }
-
-  // Pool Operations
-  public static async getPoolDetails(
-    poolId: string | number,
-  ): Promise<BE.Pool> {
-    try {
-      const actor = await auth.pnp.getActor(
-        KONG_BACKEND_CANISTER_ID,
-        canisterIDLs.kong_backend,
-      );
-
-      // Ensure we have a number for the pool ID
-      const numericPoolId =
-        typeof poolId === "string" ? parseInt(poolId) : poolId;
-      if (isNaN(numericPoolId)) {
-        throw new Error(`Invalid pool ID: ${poolId}`);
-      }
-
-      const pool = await actor.get_by_pool_id(numericPoolId);
-
-      if (!pool) {
-        throw new Error(`Pool ${poolId} not found`);
-      }
-
-      return pool;
-    } catch (error) {
-      console.error("[PoolService] Error fetching pool details:", error);
-      throw error;
-    }
   }
 
   /**

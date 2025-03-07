@@ -1,13 +1,16 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { writable } from "svelte/store";
-  import { KongDatafeed } from "$lib/services/tradingview/datafeed";
-  import { loadTradingViewLibrary } from "$lib/services/tradingview/widget";
-  import { getChartConfig } from "$lib/services/tradingview/config";
-  import { fetchChartData } from "$lib/services/indexer/api";
+  import { KongDatafeed } from "$lib/config/tradingview/datafeed.config";
+  import { loadTradingViewLibrary } from "$lib/config/tradingview/widget.config";
+  import { getChartConfig } from "$lib/config/tradingview/chart.config";
+  import { fetchChartData } from "$lib/api/transactions";
   import { livePools } from "$lib/services/pools/poolStore";
   import { debounce } from "lodash-es";
 
+  // Generate a unique ID for this chart instance
+  const chartInstanceId = Math.random().toString(36).substring(2, 15);
+  
   // Convert props to runes syntax
   const props = $props<{
     poolId?: number;
@@ -26,6 +29,12 @@
   let previousQuoteTokenId = $state<string | undefined>(undefined);
   let previousBaseTokenId = $state<string | undefined>(undefined);
   let chartWrapper: HTMLElement;
+  // Add a flag to track if data fetch is in progress
+  let isFetchingData = $state(false);
+  // Add a flag to track if chart initialization is in progress
+  let isInitializingChart = $state(false);
+  // Add a flag to track if component is mounted
+  let isMounted = $state(false);
 
   // Create a store for the chart
   const chartStore = writable<any>(null);
@@ -49,8 +58,37 @@
     }
   });
 
+  // Helper function to update price scale precision
+  const updatePriceScalePrecision = (widget: any, precision: number, minMove: number) => {
+    if (!widget || !widget.chart || !widget.chart()) return;
+    
+    try {
+      console.log(`[Chart ${chartInstanceId}] Updating price scale precision to ${precision} with minMove ${minMove}`);
+      
+      // Apply precision settings using the correct property paths
+      widget.applyOverrides({
+        "mainSeriesProperties.priceFormat.precision": precision,
+        "mainSeriesProperties.priceFormat.minMove": minMove
+      });
+      
+      // Force chart to redraw
+      setTimeout(() => {
+        try {
+          widget.chart().executeActionById("chartReset");
+        } catch (e) {
+          console.warn(`[Chart ${chartInstanceId}] Error resetting chart:`, e);
+        }
+      }, 100);
+    } catch (e) {
+      console.warn(`[Chart ${chartInstanceId}] Error updating price scale precision:`, e);
+    }
+  };
+
   // Watch for token or pool changes and reinitialize chart
   $effect(() => {
+    // Skip if not mounted yet
+    if (!isMounted) return;
+    
     const currentFromId = props.quoteToken?.canister_id;
     const currentToId = props.baseToken?.canister_id;
     const hasTokenChange =
@@ -63,27 +101,67 @@
       ((props.quoteToken && props.baseToken) || props.poolId) &&
       (!chart || (chart && hasTokenChange))
     ) {
+      console.log(`[Chart ${chartInstanceId}] Token or pool change detected: 
+        - Token change: ${hasTokenChange} (${previousQuoteTokenId} -> ${currentFromId}, ${previousBaseTokenId} -> ${currentToId})
+        - Pool change: ${hasPoolChange} (${selectedPoolId} -> ${props.poolId})
+      `);
+      
       previousQuoteTokenId = currentFromId;
       previousBaseTokenId = currentToId;
+      selectedPoolId = props.poolId;
 
       if (chart) {
+        console.log(`[Chart ${chartInstanceId}] Removing existing chart before reinitializing`);
         chart.remove();
         chartStore.set(null);
       }
+      
+      // Use debounced fetch to prevent multiple rapid fetches
       debouncedFetchData();
     }
   });
 
   onDestroy(() => {
+    console.log(`[Chart ${chartInstanceId}] Component being destroyed, cleaning up resources`);
+    
     if (updateTimeout) {
       clearTimeout(updateTimeout);
     }
     if (chart) {
       try {
-        chart.remove();
-        chartStore.set(null);
+        // Remove the error event listener first
+        window.removeEventListener('error', handleTradingViewError);
+        
+        // Safely remove the chart with proper cleanup
+        if (chart._ready && chart.chart) {
+          // First clear any active drawings or tools
+          try {
+            const chartObj = chart.chart();
+            if (chartObj) {
+              // Try to clear active drawings
+              chartObj.clearUndoHistory();
+            }
+          } catch (e) {
+            console.warn(`[Chart ${chartInstanceId}] Error clearing chart state:`, e);
+          }
+          
+          // Small delay to ensure chart is ready for removal
+          setTimeout(() => {
+            try {
+              chart.remove();
+            } catch (e) {
+              console.warn(`[Chart ${chartInstanceId}] Error during chart removal:`, e);
+            } finally {
+              chartStore.set(null);
+            }
+          }, 10);
+        } else {
+          chart.remove();
+          chartStore.set(null);
+        }
       } catch (e) {
-        console.warn("Error cleaning up chart:", e);
+        console.warn(`[Chart ${chartInstanceId}] Error cleaning up chart:`, e);
+        chartStore.set(null);
       }
     }
     debouncedFetchData.cancel();
@@ -99,13 +177,61 @@
   $effect(() => {
     if (chart?.datafeed && currentPrice) {
       chart.datafeed.updateCurrentPrice(currentPrice);
+      
+      // When price updates, also update precision if needed
+      const pool = $livePools.find(p => p.pool_id === selectedPoolId);
+      if (pool?.price) {
+        const getPrecision = (price: number) => {
+          // Adjust price based on token decimals
+          const adjustedPrice = price * Math.pow(10, pool.token1.decimals - pool.token0.decimals);
+          
+          if (adjustedPrice >= 1000) return 5;
+          if (adjustedPrice >= 1) return 8;
+          return 8;
+        };
+
+        const getMinMove = (price: number) => {
+          // Adjust price based on token decimals
+          const adjustedPrice = price * Math.pow(10, pool.token1.decimals - pool.token0.decimals);
+          
+          if (adjustedPrice >= 1000) return 0.00001;
+          if (adjustedPrice >= 1) return 0.0000001;
+          return 0.00000001;
+        };
+        
+        const precision = getPrecision(pool.price);
+        const minMove = getMinMove(pool.price);
+        
+        // Update price scale precision when price changes
+        updatePriceScalePrecision(chart, precision, minMove);
+      }
     }
   });
 
+  // Define the error handler function outside to be able to remove it later
+  const handleTradingViewError = (e) => {
+    if (e.message?.includes('split is not a function')) {
+      console.warn(`[Chart ${chartInstanceId}] Caught TradingView formatting error, will attempt to recover`);
+      // The error is related to price formatting, we can safely ignore it
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+  };
+
   const initChart = async () => {
+    // Prevent multiple initializations
+    if (isInitializingChart) {
+      console.log(`[Chart ${chartInstanceId}] Chart initialization already in progress, skipping`);
+      return;
+    }
+    
+    isInitializingChart = true;
+    
     if (!chartContainer || !props.quoteToken?.token_id || !props.baseToken?.token_id) {
-      console.log('Missing required props for chart initialization');
+      console.log(`[Chart ${chartInstanceId}] Missing required props for chart initialization`);
       isLoading = false;
+      isInitializingChart = false;
       return;
     }
 
@@ -129,20 +255,26 @@
     };
 
     try {
+      console.log(`[Chart ${chartInstanceId}] Starting chart initialization`);
+      
       const dimensions: { width: number; height: number } = await checkDimensions() as { width: number; height: number };
       await loadTradingViewLibrary();
       const isMobile = window.innerWidth < 768;
       
       // Get current price from poolStore
-      const currentPrice = $livePools.find(p => p.pool_id === selectedPoolId)?.price || 1000;
+      const pool = $livePools.find(p => p.pool_id === selectedPoolId);
+      const currentPrice = pool?.price || 1000;
 
-      // Pass current price to datafeed
+      // Pass current price and token decimals to datafeed
       const datafeed = new KongDatafeed(
         props.quoteToken.token_id, 
         props.baseToken.token_id,
-        currentPrice
+        currentPrice,
+        props.quoteToken.decimals || 8,
+        props.baseToken.decimals || 8
       );
 
+      // Force higher precision based on price
       const chartConfig = getChartConfig({
         symbol: props.symbol || `${props.baseToken.symbol}/${props.quoteToken.symbol}`,
         datafeed,
@@ -150,8 +282,15 @@
         containerWidth: dimensions.width,
         containerHeight: dimensions.height,
         isMobile,
+        currentPrice,
         theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+        quoteTokenDecimals: props.quoteToken.decimals || 8,
+        baseTokenDecimals: props.baseToken.decimals || 8
       });
+
+      // Add global error handler for TradingView errors
+      window.removeEventListener('error', handleTradingViewError); // Remove any existing handler
+      window.addEventListener('error', handleTradingViewError, true);
 
       const widget = new window.TradingView.widget(chartConfig);
       
@@ -159,19 +298,37 @@
       widget.datafeed = datafeed;
 
       widget.onChartReady(() => {
+        console.log(`[Chart ${chartInstanceId}] Chart is ready`);
         widget._ready = true;
         chartStore.set(widget);
         isLoading = false;
         hasNoData = false;
+        isInitializingChart = false;
+        
+        // Force price scale update after chart is ready
+        setTimeout(() => {
+          try {
+            // Get the precision and minMove from the chart config
+            const configPrecision = chartConfig.overrides["mainSeriesProperties.priceAxisProperties.precision"];
+            const configMinMove = chartConfig.overrides["mainSeriesProperties.priceAxisProperties.minMove"];
+            
+            // Update the price scale precision
+            updatePriceScalePrecision(widget, configPrecision || 8, configMinMove || 0.00000001);
+          } catch (e) {
+            console.warn(`[Chart ${chartInstanceId}] Error updating price scale:`, e);
+          }
+        }, 500);
       });
 
       widget.onError = (error: string) => {
-        console.error("Error creating chart:", error);
+        console.error(`[Chart ${chartInstanceId}] Error creating chart:`, error);
         isLoading = false;
+        isInitializingChart = false;
       };
     } catch (error) {
-      console.error("Failed to initialize chart:", error);
+      console.error(`[Chart ${chartInstanceId}] Failed to initialize chart:`, error);
       isLoading = false;
+      isInitializingChart = false;
     }
   };
 
@@ -211,13 +368,21 @@
       selectedPoolId = undefined;
       return null;
     } catch (error) {
-      console.error("Failed to get pool info:", error);
+      console.error(`[Chart ${chartInstanceId}] Failed to get pool info:`, error);
       selectedPoolId = undefined;
       return null;
     }
   }
 
   const debouncedFetchData = debounce(async () => {
+    // Prevent multiple fetches
+    if (isFetchingData) {
+      console.log(`[Chart ${chartInstanceId}] Data fetch already in progress, skipping`);
+      return;
+    }
+    
+    isFetchingData = true;
+    
     try {
       isLoading = true;
       hasNoData = false;
@@ -230,6 +395,7 @@
       if (!bestPool?.pool_id) {
         hasNoData = true;
         isLoading = false;
+        isFetchingData = false;
         return;
       }
 
@@ -240,6 +406,8 @@
       const payTokenId = props.quoteToken?.token_id || 1;
       const receiveTokenId = props.baseToken?.token_id || 10;
 
+      console.log(`[Chart ${chartInstanceId}] Fetching chart data for ${payTokenId}/${receiveTokenId} from ${startTime} to ${now}`);
+      
       const candleData = await fetchChartData(
         payTokenId,
         receiveTokenId,
@@ -249,19 +417,21 @@
       );
 
       if (candleData.length === 0) {
+        console.log(`[Chart ${chartInstanceId}] No candle data received`);
         hasNoData = true;
         if (chart) {
           chart.remove();
           chartStore.set(null);
         }
       } else {
+        console.log(`[Chart ${chartInstanceId}] Received ${candleData.length} candles`);
         hasNoData = false;
         if (!chart) {
           await initChart();
         }
       }
     } catch (error) {
-      console.error("Failed to fetch chart data:", error);
+      console.error(`[Chart ${chartInstanceId}] Failed to fetch chart data:`, error);
       hasNoData = true;
       if (chart) {
         chart.remove();
@@ -269,6 +439,7 @@
       }
     } finally {
       isLoading = false;
+      isFetchingData = false;
     }
   }, 300);
 
@@ -276,19 +447,26 @@
   let resizeObserver: ResizeObserver;
 
   onMount(() => {
+    console.log(`[Chart ${chartInstanceId}] Component mounted`);
+    isMounted = true;
+    
     // Initial data fetch when component mounts
     if ((props.quoteToken && props.baseToken) || props.poolId) {
+      console.log(`[Chart ${chartInstanceId}] Component mounted, triggering initial data fetch`);
+      // Set initial pool ID
+      selectedPoolId = props.poolId;
+      // Trigger data fetch
       debouncedFetchData();
     }
 
-
     return () => {
+      console.log(`[Chart ${chartInstanceId}] Component unmounting`);
       if (chart) {
         try {
           chart.remove();
           chartStore.set(null);
         } catch (e) {
-          console.warn("Error cleaning up chart:", e);
+          console.warn(`[Chart ${chartInstanceId}] Error cleaning up chart:`, e);
         }
       }
       debouncedFetchData.cancel();

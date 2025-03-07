@@ -20,7 +20,7 @@
     Search,
   } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
-  import { loadBalances } from "$lib/services/tokens";
+  import { loadBalances } from "$lib/stores/tokenStore";
   import { tooltip } from "$lib/actions/tooltip";
   import { page } from "$app/stores";
   import Sidebar from "$lib/components/sidebar/Sidebar.svelte";

@@ -17,6 +17,7 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
   const url = new URL(`${API_URL}/api/users`);
   if (principal_id) {
     url.searchParams.set('principal_id', principal_id);
+    url.searchParams.set('limit', '40');
   }
   
   const response = await fetch(url.toString());

@@ -1,7 +1,7 @@
 import { toastStore } from "$lib/stores/toastStore";
 import { swapStatusStore } from "./swapStore";
 import { get } from "svelte/store";
-import { loadBalances } from "$lib/services/tokens/tokenStore";
+import { loadBalances } from "$lib/stores/tokenStore";
 import { auth } from "$lib/services/auth";
 import { SwapService } from "./SwapService";
 import { swapState } from "./SwapStateService";
@@ -145,10 +145,11 @@ export class SwapMonitor {
               }
 
               try {
-                await loadBalances(walletId.toString(), {
-                  tokens: [payToken, receiveToken],
-                  forceRefresh: true,
-                });
+                await loadBalances(
+                  [payToken, receiveToken],
+                  walletId.toString(),
+                  true
+                );
               } catch (error) {
                 console.error("Error updating balances:", error);
               }

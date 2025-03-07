@@ -52,7 +52,7 @@
       // Dynamically import the dialog component when needed
       if (!plugDialog) {
         const module = await import(
-          "$lib/components/wallet/PlugMobileDialog.svelte"
+          "$lib/components/sidebar/PlugMobileDialog.svelte"
         );
         plugDialog = module.default;
       }
