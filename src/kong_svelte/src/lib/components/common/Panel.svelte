@@ -52,7 +52,7 @@
   </div>
 {/if}
 
-<style lang="postcss">
+<style lang="postcss" scoped>
 .panel {
   @apply relative text-kong-text-primary flex flex-col min-h-0;
 }
