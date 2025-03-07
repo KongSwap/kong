@@ -188,7 +188,10 @@ export default {
   plugins: [
     typography,
     plugin(({ addVariant }) => {
-      addVariant('light', ':root:not(.dark) &')
+      addVariant('light', ':root:not(.dark):not(.plain-black) &')
+    }),
+    plugin(({ addVariant }) => {
+      addVariant('plain-black', ':root.plain-black &')
     }),
     plugin(({ addUtilities }) => {
       addUtilities({

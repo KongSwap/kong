@@ -1,8 +1,12 @@
 <!-- PageWrapper.svelte -->
 <script lang="ts">
+  import { browser } from '$app/environment';
+  
   export let page: string;
+  export let theme: string = "auto"; // Add theme prop with default "auto"
   let mouseX = 0;
   let mouseY = 0;
+  let isPlainBlack = false;
   
   // Generate random positions for nebula gradients
   const nebulaPositions = {
@@ -26,11 +30,18 @@
 
   // Add reactive declaration for competition page background
   $: isCompetition = page && page.includes('/competition/kong-madness');
+  
+  // Safe check for plain-black theme that works with SSR
+  $: if (browser) {
+    isPlainBlack = document.documentElement.classList.contains('plain-black');
+  }
 
   function handleMouseMove(e: MouseEvent) {
-    // Reduce the movement amount for subtler effect
-    mouseX = (e.clientX / window.innerWidth - 1) * 20;
-    mouseY = (e.clientY / window.innerHeight - 1) * 20;
+    if (browser) {
+      // Reduce the movement amount for subtler effect
+      mouseX = (e.clientX / window.innerWidth - 1) * 20;
+      mouseY = (e.clientY / window.innerHeight - 1) * 20;
+    }
   }
 </script>
 
@@ -43,6 +54,7 @@
   {:else}
     <div class="background-container">
       <div class="dark-gradient"></div>
+      <div class="plain-black-background"></div>
       <div 
         class="nebula-effect"
         style="
@@ -133,8 +145,22 @@
     transition: opacity 0.3s ease;
   }
 
+  /* Plain black background */
+  .plain-black-background {
+    position: absolute;
+    inset: 0;
+    background: #000000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
   /* Show dark gradient only in dark mode */
   :global(:root.dark) .dark-gradient {
+    opacity: 1;
+  }
+
+  /* Show plain black background only in plain-black mode */
+  :global(:root.plain-black) .plain-black-background {
     opacity: 1;
   }
 
@@ -174,13 +200,13 @@
     transition: opacity 0.3s ease, transform 0.2s ease-out;
   }
 
-  /* Show nebula only in dark mode */
-  :global(:root.dark) .nebula-effect {
+  /* Show nebula only in dark mode, hide in plain-black */
+  :global(:root.dark:not(.plain-black)) .nebula-effect {
     opacity: 0.15;
   }
 
   /* Light theme sky gradient */
-  :global(:root:not(.dark)) .background-container::before {
+  :global(:root:not(.dark):not(.plain-black)) .background-container::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -204,7 +230,7 @@
   }
 
   /* Tree silhouette for light theme */
-  :global(:root:not(.dark)) .tree-silhouette {
+  :global(:root:not(.dark):not(.plain-black)) .tree-silhouette {
     position: fixed;
     bottom: 2rem;
     right: 10%;
@@ -219,7 +245,7 @@
   }
 
   /* Grass silhouette for light theme */
-  :global(:root:not(.dark)) .grass-silhouette {
+  :global(:root:not(.dark):not(.plain-black)) .grass-silhouette {
     position: fixed;
     bottom: 0;
     left: 0;
@@ -233,7 +259,7 @@
   }
 
   /* Add some grass blades */
-  :global(:root:not(.dark)) .grass-silhouette::after {
+  :global(:root:not(.dark):not(.plain-black)) .grass-silhouette::after {
     content: '';
     position: absolute;
     bottom: 40px;
@@ -255,9 +281,11 @@
     }
   }
 
-  /* Hide grass and tree silhouettes in dark theme */
+  /* Hide grass and tree silhouettes in dark theme and plain-black theme */
   :global(:root.dark) .grass-silhouette,
-  :global(:root.dark) .tree-silhouette {
+  :global(:root.dark) .tree-silhouette,
+  :global(:root.plain-black) .grass-silhouette,
+  :global(:root.plain-black) .tree-silhouette {
     display: none;
   }
 
@@ -302,14 +330,29 @@
     transition: transform 0.2s ease-out;
   }
 
-  /* Show elements in dark mode */
-  :global(:root.dark) .stars,
-  :global(:root.dark) .skyline-wrapper {
+  /* Show elements in dark mode but not in plain-black */
+  :global(:root.dark:not(.plain-black)) .stars,
+  :global(:root.dark:not(.plain-black)) .skyline-wrapper {
     opacity: 0.8;
   }
 
+  /* Show stars in plain-black mode with higher opacity */
+  :global(:root.plain-black) .stars {
+    opacity: 1;
+  }
+
+  /* Hide skyline in plain-black mode */
+  :global(:root.plain-black) .skyline-wrapper {
+    display: none;
+  }
+
+  /* Hide stars in plain-black mode */
+  :global(:root.plain-black) .stars {
+    display: none;
+  }
+
   /* Increase nebula opacity in dark mode */
-  :global(:root.dark) .nebula-effect {
+  :global(:root.dark:not(.plain-black)) .nebula-effect {
     opacity: 0.3;
   }
 </style>

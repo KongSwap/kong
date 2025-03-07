@@ -15,6 +15,7 @@
   let isMobile = false;
   let isCustomSlippage = false;
   let previousAuthState = { isConnected: false, principalId: null };
+  let isThemeDropdownOpen = false; // Track dropdown state
 
   // Predefined slippage values for quick selection
   const quickSlippageValues = [1, 2, 3, 5];
@@ -88,8 +89,12 @@
     handleResize();
     if (browser) {
       window.addEventListener('resize', handleResize);
+      window.addEventListener('click', handleClickOutside);
       initializeSlippageFromStorage();
-      return () => window.removeEventListener('resize', handleResize);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('click', handleClickOutside);
+      }
     }
   });
 
@@ -206,8 +211,33 @@
     }
   }
 
-  function handleThemeToggle() {
-    themeStore.toggleTheme();
+  // Update to set a specific theme instead of toggling
+  function setTheme(theme: 'light' | 'dark' | 'plain-black') {
+    themeStore.setTheme(theme);
+    isThemeDropdownOpen = false; // Close dropdown after selection
+  }
+
+  // Toggle dropdown visibility
+  function toggleThemeDropdown() {
+    isThemeDropdownOpen = !isThemeDropdownOpen;
+  }
+
+  // Close dropdown when clicking outside
+  function handleClickOutside(event: MouseEvent) {
+    const dropdown = document.getElementById('theme-dropdown');
+    if (dropdown && !dropdown.contains(event.target as Node)) {
+      isThemeDropdownOpen = false;
+    }
+  }
+
+  // Get display name for current theme
+  function getThemeDisplayName(theme: string): string {
+    switch (theme) {
+      case 'light': return 'Light';
+      case 'dark': return 'Dark';
+      case 'plain-black': return 'Plain Black';
+      default: return 'Unknown';
+    }
   }
 </script>
 
@@ -268,19 +298,56 @@
         <div class="setting-item">
           <div class="setting-label">
             <span>Theme</span>
-            <span class="text-kong-text-secondary text-sm">{$themeStore === 'dark' ? 'Dark' : 'Light'}</span>
+            <span class="text-kong-text-secondary text-sm">{getThemeDisplayName($themeStore)}</span>
           </div>
-          <button
-            class="theme-toggle"
-            on:click={handleThemeToggle}
-            aria-label="Toggle theme"
-          >
-            {#if $themeStore === 'dark'}
-              <Moon class="w-5 h-5 text-kong-primary" />
-            {:else}
-              <Sun class="w-5 h-5 text-kong-primary" />
+          <div class="relative" id="theme-dropdown">
+            <button
+              class="theme-toggle flex items-center gap-2"
+              on:click={toggleThemeDropdown}
+              aria-label="Select theme"
+              aria-haspopup="true"
+              aria-expanded={isThemeDropdownOpen}
+            >
+              <span class="text-sm mr-1">Select</span>
+              {#if $themeStore === 'dark'}
+                <Moon class="w-5 h-5 text-kong-primary" />
+              {:else if $themeStore === 'plain-black'}
+                <div class="dark-square">
+                  <div class="dark-square-inner"></div>
+                </div>
+              {:else}
+                <Sun class="w-5 h-5 text-kong-primary" />
+              {/if}
+            </button>
+            
+            {#if isThemeDropdownOpen}
+              <div class="theme-dropdown">
+                <button 
+                  class="theme-option {$themeStore === 'light' ? 'active' : ''}" 
+                  on:click={() => setTheme('light')}
+                >
+                  <Sun class="w-4 h-4" />
+                  <span>Light</span>
+                </button>
+                <button 
+                  class="theme-option {$themeStore === 'dark' ? 'active' : ''}" 
+                  on:click={() => setTheme('dark')}
+                >
+                  <Moon class="w-4 h-4" />
+                  <span>Dark</span>
+                </button>
+                <button 
+                  class="theme-option {$themeStore === 'plain-black' ? 'active' : ''}" 
+                  on:click={() => setTheme('plain-black')}
+                >
+                  <div class="dark-square-small">
+                    <div class="dark-square-inner-small"></div>
+                  </div>
+                  <span>Plain Black</span>
+                </button>
+              </div>
             {/if}
-          </button>
+          </div>
         </div>
       </div>
 
@@ -337,6 +404,10 @@
 </div>
 
 <style lang="postcss" scoped>
+  :root {
+    --kong-primary-rgb: rgb(var(--primary, 0 149 235));
+  }
+
   .content {
     @apply space-y-6;
   }
@@ -386,6 +457,108 @@
 
   .theme-toggle {
     @apply p-2 rounded-lg bg-kong-bg-dark/40 hover:bg-kong-bg-dark/60 transition-colors;
+  }
+
+  .dark-square {
+    @apply w-5 h-5 bg-black border border-kong-border-light rounded-sm relative overflow-hidden flex items-center justify-center;
+  }
+
+  .dark-square-small {
+    @apply w-4 h-4 bg-black border border-kong-border-light rounded-sm relative overflow-hidden flex items-center justify-center;
+  }
+  
+  .dark-square-inner, .dark-square-inner-small {
+    position: absolute;
+    width: 70%;
+    height: 1px;
+    background: linear-gradient(to right, 
+      rgba(0,0,0,0),
+      var(--kong-primary-rgb),
+      rgba(0,0,0,0)
+    );
+  }
+
+  .dark-square::after, .dark-square-small::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+      circle at center,
+      rgba(0, 149, 235, 0.15) 0%,
+      transparent 70%
+    );
+  }
+  
+  .dark-square-inner-small {
+    height: 1px;
+    width: 60%;
+  }
+
+  .theme-dropdown {
+    @apply absolute right-0 mt-2 py-2 w-40 bg-kong-bg-dark border border-kong-border rounded-lg z-50;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    animation: fadeIn 0.15s ease-out forwards;
+  }
+
+  .theme-option {
+    @apply flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-kong-text-primary transition-colors;
+  }
+
+  .theme-option.active {
+    @apply font-medium;
+  }
+
+  /* Light theme dropdown adjustments */
+  :global(:root:not(.dark):not(.plain-black)) .theme-dropdown {
+    @apply bg-white border-gray-200;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  :global(:root:not(.dark):not(.plain-black)) .theme-option {
+    @apply text-gray-700 hover:bg-gray-100;
+  }
+
+  :global(:root:not(.dark):not(.plain-black)) .theme-option.active {
+    @apply bg-blue-50 text-blue-600;
+  }
+
+  /* Dark theme dropdown adjustments */
+  :global(:root.dark) .theme-dropdown {
+    @apply bg-kong-bg-dark border-kong-border;
+  }
+
+  :global(:root.dark) .theme-option:hover {
+    @apply bg-kong-bg-light/40;
+  }
+
+  :global(:root.dark) .theme-option.active {
+    @apply bg-kong-bg-light/40 text-kong-primary;
+  }
+
+  /* Plain black theme dropdown adjustments */
+  :global(:root.plain-black) .theme-dropdown {
+    @apply bg-black border-gray-800;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+
+  :global(:root.plain-black) .theme-option {
+    @apply text-gray-200;
+  }
+
+  :global(:root.plain-black) .theme-option:hover {
+    @apply bg-gray-900;
+  }
+
+  :global(:root.plain-black) .theme-option.active {
+    @apply bg-gray-900 text-kong-primary border-l-2 border-kong-primary;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .slider-section {

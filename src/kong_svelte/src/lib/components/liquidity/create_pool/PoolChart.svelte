@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import Panel from "$lib/components/common/Panel.svelte";
   import { liquidityStore } from "$lib/stores/liquidityStore";
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { livePools } from "$lib/services/pools/poolStore";
   import { BarChart3, RefreshCw } from "lucide-svelte";
   import { fetchPoolBalanceHistory } from "$lib/api/pools";
@@ -14,45 +13,63 @@
   // Theme detection
   let isDarkMode = false;
   
-  onMount(async () => {
-    try {
-      // Dynamic import for client-side only
-      Chart = (await import('chart.js/auto')).default;
-      isChartAvailable = true;
-      
-      // Detect current theme
-      isDarkMode = document.documentElement.classList.contains('dark');
-      
-      // Watch for theme changes
-      const observer = new MutationObserver(() => {
-        const newDarkMode = document.documentElement.classList.contains('dark');
-        if (newDarkMode !== isDarkMode) {
-          isDarkMode = newDarkMode;
-          // Update charts if the theme changes
-          if (balanceHistory && balanceHistory.length > 0) {
-            initOrUpdateBalanceChart();
-            initOrUpdateTVLChart();
+  onMount(() => {
+    // Declare observer in outer scope so cleanup can access it
+    let observer;
+    
+    // This immediately-invoked async function handles the async operations
+    (async () => {
+      try {
+        // Dynamic import for client-side only
+        Chart = (await import('chart.js/auto')).default;
+        isChartAvailable = true;
+        
+        // Detect current theme
+        isDarkMode = document.documentElement.classList.contains('dark');
+        
+        // Watch for theme changes
+        observer = new MutationObserver(() => {
+          const newDarkMode = document.documentElement.classList.contains('dark');
+          if (newDarkMode !== isDarkMode) {
+            isDarkMode = newDarkMode;
+            // Update charts if the theme changes
+            if (balanceHistory && balanceHistory.length > 0) {
+              initOrUpdateBalanceChart();
+              initOrUpdateTVLChart();
+            }
           }
+        });
+        
+        observer.observe(document.documentElement, { 
+          attributes: true,
+          attributeFilter: ['class']
+        });
+        
+        // Initial fetch if a pool is already selected
+        if (currentPool) {
+          fetchBalanceHistoryData();
         }
-      });
-      
-      observer.observe(document.documentElement, { 
-        attributes: true,
-        attributeFilter: ['class']
-      });
-      
-      // Initial fetch if a pool is already selected
-      if (currentPool) {
-        fetchBalanceHistoryData();
+      } catch (error) {
+        console.error('Failed to load Chart.js:', error);
+        isChartAvailable = false;
+      }
+    })();
+    
+    // Return a cleanup function directly (not in a Promise)
+    return () => {
+      // Disconnect the observer if it exists
+      if (observer) {
+        observer.disconnect();
       }
       
-      return () => {
-        observer.disconnect();
-      };
-    } catch (error) {
-      console.error('Failed to load Chart.js:', error);
-      isChartAvailable = false;
-    }
+      // Clean up charts if they exist
+      if (balanceChartInstance) {
+        balanceChartInstance.destroy();
+      }
+      if (tvlChartInstance) {
+        tvlChartInstance.destroy();
+      }
+    };
   });
 
   // Get the pool based on selected tokens
@@ -74,6 +91,11 @@
   // Track token pair to avoid unnecessary refreshes
   let previousToken0Id = null;
   let previousToken1Id = null;
+  
+  // Watch for changes in livePools to ensure we have data after page refresh
+  $: if ($livePools.length > 0 && currentPool && !balanceHistory.length && isChartAvailable) {
+    fetchBalanceHistoryData();
+  }
   
   // Only refresh chart when the pool or token pair changes, not on every amount change
   $: if (currentPool && isChartAvailable) {
@@ -231,7 +253,12 @@
     // Check if token values are significantly different in scale
     const token0Max = Math.max(...token0Data);
     const token1Max = Math.max(...token1Data);
-    const needsDualAxis = token0Max > token1Max * 3 || token1Max > token0Max * 3;
+    
+    // Use a larger threshold (10x difference) to determine when to use dual axes
+    // This better handles cases with extreme differences like in the sample data
+    const needsDualAxis = token0Max > token1Max * 10 || token1Max > token0Max * 10;
+    
+    console.log('Token balance scales:', { token0Max, token1Max, needsDualAxis });
     
     // Create theme-aware gradients
     const token0Gradient = ctx.createLinearGradient(0, 0, 0, 250);
@@ -279,7 +306,7 @@
             pointBorderWidth: 1.5,
             tension: 0.3, // Smoother curves
             fill: true,
-            yAxisID: needsDualAxis && token0Max > token1Max * 3 ? 'y' : 'y'
+            yAxisID: needsDualAxis ? 'y' : 'y'
           },
           {
             label: $liquidityStore.token1?.symbol || 'Token 1',
@@ -303,7 +330,7 @@
             pointBorderWidth: 1.5,
             tension: 0.3, // Smoother curves
             fill: true,
-            yAxisID: needsDualAxis && token1Max > token0Max * 3 ? 'y1' : 'y'
+            yAxisID: needsDualAxis ? 'y1' : 'y'
           },
           // Highlight significant change points
           {
@@ -334,10 +361,22 @@
             position: 'left',
             beginAtZero: false,
             grid: {
-              display: false,
+              display: true,
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
             },
             ticks: {
-              display: false
+              display: true,
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)',
+              callback: function(value) {
+                if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+                return value;
+              }
+            },
+            title: {
+              display: true,
+              text: $liquidityStore.token0?.symbol || 'Token 0',
+              color: token0Color
             }
           },
           y1: {
@@ -349,7 +388,18 @@
               display: false,
             },
             ticks: {
-              display: false
+              display: true,
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)',
+              callback: function(value) {
+                if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+                return value;
+              }
+            },
+            title: {
+              display: true,
+              text: $liquidityStore.token1?.symbol || 'Token 1',
+              color: token1Color
             }
           },
           x: {
@@ -357,7 +407,16 @@
               display: false,
             },
             ticks: {
-              display: false
+              display: true,
+              maxRotation: 0,
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)',
+              callback: function(value, index, values) {
+                // Only show a few dates to avoid crowding
+                if (values.length <= 5 || index === 0 || index === values.length - 1 || index % Math.ceil(values.length / 5) === 0) {
+                  return this.getLabelForValue(value);
+                }
+                return '';
+              }
             }
           }
         },
@@ -568,10 +627,22 @@
           y: {
             beginAtZero: false,
             grid: {
-              display: false,
+              display: true,
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
             },
             ticks: {
-              display: false
+              display: true,
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)',
+              callback: function(value) {
+                if (value >= 1000000) return '$' + (value / 1000000).toFixed(1) + 'M';
+                if (value >= 1000) return '$' + (value / 1000).toFixed(1) + 'K';
+                return '$' + value;
+              }
+            },
+            title: {
+              display: true,
+              text: 'TVL (USD)',
+              color: tvlColor
             }
           },
           x: {
@@ -579,7 +650,16 @@
               display: false,
             },
             ticks: {
-              display: false
+              display: true,
+              maxRotation: 0,
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)',
+              callback: function(value, index, values) {
+                // Only show a few dates to avoid crowding
+                if (values.length <= 5 || index === 0 || index === values.length - 1 || index % Math.ceil(values.length / 5) === 0) {
+                  return this.getLabelForValue(value);
+                }
+                return '';
+              }
             }
           }
         },
@@ -681,7 +761,16 @@
         TVL History
         <div class="flex items-center gap-2">
           <div class="text-kong-text-primary/90">
-            ${currentPool?.tvl ? formatBalance(currentPool.tvl, 6, 2) : '0.00'}
+            {#if typeof currentPool?.tvl === 'number'}
+              {(currentPool.tvl as number).toLocaleString(undefined, {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}
+            {:else}
+              $0.00
+            {/if}
           </div>
           <button 
             class="refresh-btn"
@@ -724,11 +813,19 @@
         <div class="text-kong-text-primary/90 flex items-center gap-2">
           {#if currentPool && $liquidityStore.token0 && $liquidityStore.token1}
             <div class="flex items-center gap-1">
-              <span>{formatBalance(currentPool.balance_0, $liquidityStore.token0.decimals, 2)}</span>
+              <span>{typeof currentPool.balance_0 === 'number' ? 
+                (currentPool.balance_0 as number).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                }) : '0.00'}</span>
               <span class="text-kong-text-accent-green/80 text-sm mt-1">{$liquidityStore.token0.symbol}</span>
             </div>
             <div class="flex items-center gap-1">
-              <span>{formatBalance(currentPool.balance_1, $liquidityStore.token1.decimals, 2)}</span>
+              <span>{typeof currentPool.balance_1 === 'number' ? 
+                (currentPool.balance_1 as number).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                }) : '0.00'}</span>
               <span class="text-kong-primary/80 text-sm mt-1">{$liquidityStore.token1.symbol}</span>
             </div>
           {:else}
