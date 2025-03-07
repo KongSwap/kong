@@ -3,42 +3,6 @@
 
 import { BaseSerializer } from './BaseSerializer';
 
-/**
- * Safely converts a value to string
- * @param value - The value to convert
- * @returns string value or empty string if conversion fails
- */
-function toString(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  
-  try {
-    return String(value);
-  } catch (error) {
-    console.error('Error converting to string:', error);
-    return '';
-  }
-}
-
-/**
- * Safely formats a token amount by removing underscores and adjusting for decimals
- * @param amount - The amount to format
- * @param decimals - The number of decimals for the token
- * @returns Formatted amount as string
- */
-function formatTokenAmount(amount: unknown, decimals: number): string {
-  if (amount === null || amount === undefined) return '0';
-  
-  try {
-    const cleanAmount = toString(amount).replace(/_/g, '');
-    if (!cleanAmount) return '0';
-    
-    return (Number(cleanAmount) / Math.pow(10, decimals)).toString();
-  } catch (error) {
-    console.error('Error formatting token amount:', error);
-    return '0';
-  }
-}
-
 export class TransactionSerializer extends BaseSerializer {
   /**
    * Serializes the response from user transactions API
