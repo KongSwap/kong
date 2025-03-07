@@ -77,7 +77,7 @@
           <div class="token-info">
             <span class="token-name">{pool.symbol_0}</span>
             <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_0)}>
-              {formatLargeNumber(pool.amount_0)}
+              {formatToNonZeroDecimal(pool.amount_0)}
             </span>
           </div>
           <span class="usd-value"
@@ -91,7 +91,7 @@
           <div class="token-info">
             <span class="token-name">{pool.symbol_1}</span>
             <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_1)}>
-              {formatLargeNumber(pool.amount_1)}
+              {formatToNonZeroDecimal(pool.amount_1)}
             </span>
           </div>
           <span class="usd-value"
