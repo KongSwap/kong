@@ -94,7 +94,7 @@
     try {
       const [usersResponse, tokensResponse] = await Promise.all([
         fetchUsers(searchQuery),
-        fetchTokens({ canister_id: searchQuery })
+        fetchTokens({ search: searchQuery })
       ]);
 
       const userResults: SearchResult[] = usersResponse.items.map(item => ({
