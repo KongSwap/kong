@@ -44,13 +44,16 @@
   const DEFAULT_TOKEN = "ICP";
   const SECONDARY_TOKEN_IDS = [ICP_CANISTER_ID, CKUSDT_CANISTER_ID];
 
+  // State variables
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
   let pool: BE.Pool | null = null;
   let poolExists: boolean | null = null;
-
-  // Track if initial load has happened
+  let token0Balance: string = "0";
+  let token1Balance: string = "0";
   let initialLoadComplete = false;
+  let authInitialized = false;
+  let showConfirmModal = false;
 
   // Helper to safely convert value to BigNumber
   function toBigNumber(value: any): BigNumber {
@@ -63,67 +66,101 @@
     }
   }
 
-  // Initial token loading from URL or defaults
-  onMount(() => {
-    if ($userTokens.tokens.length > 0) {
-      loadInitialTokens();
-      loadBalances($userTokens.tokens, $auth.account.owner, true);
+  // Consolidated function to handle loading balances and updating the store
+  async function loadBalancesAndUpdateStore(tokensToLoad, owner, forceRefresh = true) {
+    try {
+      const balances = await loadBalances(tokensToLoad, owner, forceRefresh);
+      const currentBalances = { ...$currentUserBalancesStore, ...balances };
+      currentUserBalancesStore.set(currentBalances);
+      
+      // Update local token balance variables
+      updateLocalTokenBalances(currentBalances);
+      return balances;
+    } catch (err) {
+      console.error("Error loading balances:", err);
+      return {};
     }
-  });
-
-  // Watch for userTokens.tokens to be available
-  $: if ($userTokens.tokens.length > 0 && !initialLoadComplete) {
-    loadInitialTokens();
   }
 
+  // Helper to update local token balance variables
+  function updateLocalTokenBalances(balances) {
+    if (token0?.canister_id) {
+      token0Balance = balances[token0.canister_id]?.in_tokens?.toString() || "0";
+    }
+    if (token1?.canister_id) {
+      token1Balance = balances[token1.canister_id]?.in_tokens?.toString() || "0";
+    }
+  }
+
+  // Load initial tokens from URL or defaults
   async function loadInitialTokens() {
     const urlToken0 = $page.url.searchParams.get("token0");
     const urlToken1 = $page.url.searchParams.get("token1");
 
     const tokensFromUrl = await fetchTokensByCanisterId([urlToken0, urlToken1]);
-    const token0FromUrl = tokensFromUrl.find((token) => token.canister_id === urlToken0);
-    const token1FromUrl = tokensFromUrl.find((token) => token.canister_id === urlToken1);
+    const token0FromUrl = tokensFromUrl.find(token => token.canister_id === urlToken0);
+    const token1FromUrl = tokensFromUrl.find(token => token.canister_id === urlToken1);
 
-    const defaultToken0 = $userTokens.tokens.find(
-      (token) => token.canister_id === ICP_CANISTER_ID,
-    );
-    const defaultToken1 = $userTokens.tokens.find(
-      (token) => token.canister_id === CKUSDT_CANISTER_ID,
-    );
+    const defaultToken0 = $userTokens.tokens.find(token => token.canister_id === ICP_CANISTER_ID);
+    const defaultToken1 = $userTokens.tokens.find(token => token.canister_id === CKUSDT_CANISTER_ID);
 
     liquidityStore.setToken(0, token0FromUrl || defaultToken0 || null);
     liquidityStore.setToken(1, token1FromUrl || defaultToken1 || null);
-
     initialLoadComplete = true;
   }
 
-  // Token updates
+  // Component lifecycle management
+  onMount(() => {
+    const unsubscribe = auth.subscribe(authState => {
+      if (authState.isInitialized && !authInitialized) {
+        authInitialized = true;
+        if ($userTokens.tokens.length > 0) {
+          loadInitialTokens();
+          if (authState.account?.owner) {
+            loadBalancesAndUpdateStore(
+              $userTokens.tokens, 
+              authState.account.owner.toString(), 
+              true
+            );
+          }
+        }
+      }
+    });
+    return unsubscribe;
+  });
+
+  // Reactive statements for managing component state
+  $: if ($userTokens.tokens.length > 0 && !initialLoadComplete) loadInitialTokens();
+
+  $: if ($auth?.isInitialized && $auth?.account?.owner && $userTokens.tokens.length > 0) {
+    loadBalancesAndUpdateStore($userTokens.tokens, $auth.account.owner.toString(), true);
+  }
+
+  // Token updates and balance loading
   $: {
     token0 = $liquidityStore.token0;
     token1 = $liquidityStore.token1;
-    // Only load balances if both tokens are set and valid
-    if (token0?.canister_id && token1?.canister_id && $auth.account?.owner) {
-      loadBalances(
-        [token0, token1],
-        $auth.account.owner.toString(),
-        true
-      );
+    
+    // Update pool existence
+    poolExists = token0 && token1 ? doesPoolExist(token0, token1, $livePools) : null;
+    
+    // Load token-specific balances
+    if (token0?.canister_id && token1?.canister_id && $auth?.isInitialized && $auth?.account?.owner) {
+      loadBalancesAndUpdateStore([token0, token1], $auth.account.owner.toString(), true);
     }
+    
+    // Update local balance variables from store
+    updateLocalTokenBalances($currentUserBalancesStore);
   }
-  $: poolExists =
-    token0 && token1 ? doesPoolExist(token0, token1, $livePools) : null;
+
+  // Find matching pool
   $: if (poolExists) {
     pool = $livePools.find(
-      (pool) =>
-        pool.address_0 === token0?.address &&
-        pool.address_1 === token1?.address,
+      pool => pool.address_0 === token0?.address && pool.address_1 === token1?.address
     );
   }
-  $: token0Balance = $currentUserBalancesStore[token0?.canister_id] ?
-    $currentUserBalancesStore[token0?.canister_id]?.in_tokens?.toString() : "0";
-  $: token1Balance = $currentUserBalancesStore[token1?.canister_id] ?
-    $currentUserBalancesStore[token1?.canister_id]?.in_tokens?.toString() : "0";
 
+  // Token selection handler
   function handleTokenSelect(index: 0 | 1, token: FE.Token) {
     const otherToken = index === 0 ? token1 : token0;
     const result = validateTokenSelect(
@@ -131,7 +168,7 @@
       otherToken,
       ALLOWED_TOKEN_SYMBOLS,
       DEFAULT_TOKEN,
-      $userTokens.tokens,
+      $userTokens.tokens
     );
 
     if (!result.isValid) {
@@ -139,19 +176,14 @@
       return;
     }
 
-    // Update store
-    if (index === 0) {
-      liquidityStore.setToken(0, result.newToken);
-    } else {
-      liquidityStore.setToken(1, result.newToken);
-    }
-
-    // Update URL after store update
+    // Update store and URL
+    liquidityStore.setToken(index, result.newToken);
     const newToken0 = index === 0 ? result.newToken : $liquidityStore.token0;
     const newToken1 = index === 1 ? result.newToken : $liquidityStore.token1;
     updateQueryParams(newToken0?.canister_id, newToken1?.canister_id);
   }
 
+  // Handle price input changes
   function handlePriceChange(value: string) {
     if (poolExists === false || pool?.balance_0 === 0n) {
       liquidityStore.setInitialPrice(value);
@@ -160,42 +192,27 @@
     }
   }
 
+  // Handle amount input changes
   async function handleAmountChange(index: 0 | 1, value: string) {
-    // Sanitize input: remove any commas from the input value
+    // Sanitize input
     const sanitizedValue = value.replace(/,/g, '');
-    
-    // Always update the input value in the store
     liquidityStore.setAmount(index, sanitizedValue);
     
     // For new pools or pools with zero balance
     if (poolExists === false || (poolExists === true && pool?.balance_0 === 0n)) {
-      // Calculate the other amount based on the initial price
       if (index === 0 && $liquidityStore.initialPrice) {
-        const amount1 = calculateToken1FromPrice(
-          sanitizedValue,
-          $liquidityStore.initialPrice
-        );
-        liquidityStore.setAmount(1, amount1 || "0");
+        liquidityStore.setAmount(1, calculateToken1FromPrice(sanitizedValue, $liquidityStore.initialPrice) || "0");
       } else if (index === 1 && $liquidityStore.initialPrice) {
-        // Calculate amount0 from amount1 and price
-        const amount0 = calculateToken0FromPrice(
-          sanitizedValue,
-          $liquidityStore.initialPrice
-        );
-        liquidityStore.setAmount(0, amount0);
+        liquidityStore.setAmount(0, calculateToken0FromPrice(sanitizedValue, $liquidityStore.initialPrice));
       }
     } 
     // For existing pools with non-zero balance
     else if (poolExists === true && pool && token0 && token1) {
       try {
         if (index === 0) {
-          // Calculate amount1 based on pool ratio when token0 amount changes
-          const amount1 = await calculateToken1FromPoolRatio(sanitizedValue, token0, token1, pool);
-          liquidityStore.setAmount(1, amount1);
+          liquidityStore.setAmount(1, await calculateToken1FromPoolRatio(sanitizedValue, token0, token1, pool));
         } else {
-          // Calculate amount0 based on pool ratio when token1 amount changes
-          const amount0 = await calculateToken0FromPoolRatio(sanitizedValue, token0, token1, pool);
-          liquidityStore.setAmount(0, amount0);
+          liquidityStore.setAmount(0, await calculateToken0FromPoolRatio(sanitizedValue, token0, token1, pool));
         }
       } catch (error) {
         console.error("Error calculating liquidity amounts:", error);
@@ -204,74 +221,11 @@
     }
   }
 
-  let showConfirmModal = false;
-
-  async function handleCreatePool() {
-    if (!token0 || !token1) return;
-
-    try {
-      const amount0 = parseTokenAmount(
-        $liquidityStore.amount0,
-        token0.decimals,
-      );
-      const amount1 = parseTokenAmount(
-        $liquidityStore.amount1,
-        token1.decimals,
-      );
-
-      if (!amount0 || !amount1) {
-        throw new Error("Invalid amounts");
-      }
-
-      showConfirmModal = true;
-    } catch (error) {
-      console.error("Error creating pool:", error);
-      toastStore.error(error.message || "Failed to create pool");
-    }
-  }
-
-  async function handleAddLiquidity() {
-    if (!token0 || !token1) return;
-
-    try {
-      const amount0 = parseTokenAmount(
-        $liquidityStore.amount0,
-        token0.decimals,
-      );
-      if (!amount0) {
-        throw new Error("Invalid amount for " + token0.symbol);
-      }
-
-      if (poolExists === true && pool?.balance_0 !== 0n) {
-        const result = await calculateLiquidityAmounts(
-          token0.symbol,
-          amount0,
-          token1.symbol,
-        );
-        if (!result.Ok) {
-          throw new Error("Failed to calculate liquidity amounts");
-        }
-
-        // Update store with calculated amount using BigNumber
-        const calculatedAmount = toBigNumber(result.Ok.amount_1)
-          .div(new BigNumber(10).pow(token1.decimals))
-          .toString();
-        
-        liquidityStore.setAmount(1, calculatedAmount);
-      }
-      showConfirmModal = true;
-    } catch (error) {
-      console.error("Error adding liquidity:", error);
-      toastStore.error(error.message || "Failed to add liquidity");
-    }
-  }
-
+  // Handle percentage click to set token amount based on percentage of balance
   function handlePercentageClick(percentage: number) {
     if (!token0 || !token0Balance) return;
     try {
-      // Calculate amount based on percentage using BigNumber
       const amount = calculateAmountFromPercentage(token0, token0Balance, percentage);
-      // Pass the amount to handleAmountChange which now sanitizes inputs
       handleAmountChange(0, amount);
     } catch (error) {
       console.error("Error calculating percentage amount:", error);
@@ -282,13 +236,48 @@
   function handleToken1PercentageClick(percentage: number) {
     if (!token1 || !token1Balance) return;
     try {
-      // Calculate amount based on percentage using BigNumber
       const amount = calculateAmountFromPercentage(token1, token1Balance, percentage);
-      // Pass the amount to handleAmountChange which now sanitizes inputs
       handleAmountChange(1, amount);
     } catch (error) {
       console.error("Error calculating percentage amount:", error);
       toastStore.error("Failed to calculate amount");
+    }
+  }
+
+  // Actions to create pool or add liquidity
+  async function handleCreatePool() {
+    if (!token0 || !token1) return;
+    try {
+      const amount0 = parseTokenAmount($liquidityStore.amount0, token0.decimals);
+      const amount1 = parseTokenAmount($liquidityStore.amount1, token1.decimals);
+      if (!amount0 || !amount1) throw new Error("Invalid amounts");
+      showConfirmModal = true;
+    } catch (error) {
+      console.error("Error creating pool:", error);
+      toastStore.error(error.message || "Failed to create pool");
+    }
+  }
+
+  async function handleAddLiquidity() {
+    if (!token0 || !token1) return;
+    try {
+      const amount0 = parseTokenAmount($liquidityStore.amount0, token0.decimals);
+      if (!amount0) throw new Error("Invalid amount for " + token0.symbol);
+
+      if (poolExists === true && pool?.balance_0 !== 0n) {
+        const result = await calculateLiquidityAmounts(token0.symbol, amount0, token1.symbol);
+        if (!result.Ok) throw new Error("Failed to calculate liquidity amounts");
+        
+        const calculatedAmount = toBigNumber(result.Ok.amount_1)
+          .div(new BigNumber(10).pow(token1.decimals))
+          .toString();
+        
+        liquidityStore.setAmount(1, calculatedAmount);
+      }
+      showConfirmModal = true;
+    } catch (error) {
+      console.error("Error adding liquidity:", error);
+      toastStore.error(error.message || "Failed to add liquidity");
     }
   }
 
