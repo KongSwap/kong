@@ -78,9 +78,10 @@ export function getChartConfig(params: {
     locale: 'en',
     fullscreen: false,
     autosize: autosize ?? true,
-    theme: theme,
+    theme: theme === 'plain-black' ? 'dark' : theme,
     timezone: 'Etc/UTC',
-    toolbar_bg: 'rgba(0,0,0,0)',
+    toolbar_bg: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
+    top_toolbar_bg: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
     loading_screen: { 
       backgroundColor: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
       foregroundColor: "#00A1FA"
@@ -136,6 +137,10 @@ export function getChartConfig(params: {
       "paneProperties.backgroundType": "solid",
       "paneProperties.vertGridProperties.color": theme === 'plain-black' ? '#111111' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
       "paneProperties.horzGridProperties.color": theme === 'plain-black' ? '#111111' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      
+      // Text colors for toolbar elements
+      "scalesProperties.textColor": theme === 'plain-black' ? '#CCCCCC' : theme === 'dark' ? '#9BA1B0' : '#4B5563',
+      "scalesProperties.lineColor": theme === 'plain-black' ? '#222222' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
       
       // Time scale
       "timeScale.rightOffset": 5,

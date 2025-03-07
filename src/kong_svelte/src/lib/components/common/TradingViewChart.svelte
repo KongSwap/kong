@@ -478,9 +478,9 @@
   });
 </script>
 
-<div class="chart-wrapper h-full" bind:this={chartWrapper}>
+<div class="chart-wrapper h-full {document.documentElement.classList.contains('plain-black') ? 'chart-theme-plain-black' : document.documentElement.classList.contains('dark') ? 'chart-theme-dark' : 'chart-theme-light'}" bind:this={chartWrapper}>
   <div
-    class="chart-container h-full w-full relative"
+    class="chart-container h-full w-full relative {document.documentElement.classList.contains('plain-black') ? 'plain-black-chart' : ''}"
     bind:this={chartContainer}
   >
     {#if hasNoData}
@@ -703,6 +703,30 @@
     background-color: transparent !important;
   }
 
+  /* Ensure toolbar background is black in plain-black theme */
+  :global(.plain-black) :global(.layout__area--top),
+  :global(.plain-black) :global(.layout__area--left) {
+    background-color: #000000 !important;
+  }
+
+  /* Force toolbar elements in plain-black theme to have correct styling */
+  :global(.plain-black) :global(.group-wWM3zP_M-),
+  :global(.plain-black) :global(.container-wWM3zP_M-),
+  :global(.plain-black) :global(.inner-2JyOhh7Z-),
+  :global(.plain-black) :global(.wrap-3tiHesTk-) {
+    background-color: #000000 !important;
+  }
+
+  /* Force text colors in plain-black theme */
+  :global(.plain-black) :global(.button-2ioYhFEY-),
+  :global(.plain-black) :global(.button-1VVj8kLG-),
+  :global(.plain-black) :global(.button-2pZNJ24z-),
+  :global(.plain-black) :global(.tv-control-checkbox__wrapper),
+  :global(.plain-black) :global(.apply-common-tooltip),
+  :global(.plain-black) :global(.intervalButton-YkKRnFNC) {
+    color: #CCCCCC !important;
+  }
+
   /* Style toolbar buttons */
   :global(.button-2ioYhFEY-),
   :global(.button-1VVj8kLG-),
@@ -735,6 +759,19 @@
     --tv-color-toolbar-button-background-active: #333333;
     --tv-color-toolbar-button-text: #CCCCCC;
     --tv-color-toolbar-button-text-hover: #FFFFFF;
+  }
+
+  /* Special styles for plain-black-chart */
+  :global(.plain-black-chart) :global(.chart-markup-table),
+  :global(.plain-black-chart) :global(.tv-lightweight-charts),
+  :global(.plain-black-chart) :global(.layout__area--center) {
+    color: #CCCCCC !important;
+  }
+
+  :global(.plain-black-chart) :global(.layout__area--top),
+  :global(.plain-black-chart) :global(.layout__area--left) {
+    background-color: #000000 !important;
+    border-color: #222222 !important;
   }
 
   :global(.light) {
