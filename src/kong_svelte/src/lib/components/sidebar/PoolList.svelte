@@ -279,7 +279,7 @@
                       <span>{formatToNonZeroDecimal(getPoolSharePercentage(poolItem))}% share</span>
                     </div>
                     <div class="h-3 w-px bg-kong-border/40"></div>
-                    <div class="flex items-center gap-1 text-xs whitespace-nowrap text-kong-accent-green">
+                    <div class="flex items-center gap-1 text-xs whitespace-nowrap text-kong-text-accent-green">
                       <BarChart3 size={14} />
                       <span>{formatToNonZeroDecimal(getPoolApy(poolItem))}% APY</span>
                     </div>

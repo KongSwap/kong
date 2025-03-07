@@ -235,7 +235,7 @@
                       >
                     </div>
                     <div class="h-3 w-px bg-white/10"></div>
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-1 text-kong-text-accent-green">
                       <BarChart3 size={14} />
                       <span class="stat-value accent"
                         >{getPoolApy(pool)}% APY</span
@@ -376,7 +376,7 @@
   }
 
   .stat-value.accent {
-    @apply text-kong-accent-green;
+    @apply text-kong-text-accent-green;
   }
 
   .pool-value {
