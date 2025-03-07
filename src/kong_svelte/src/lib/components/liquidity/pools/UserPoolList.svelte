@@ -1,11 +1,13 @@
 <script lang="ts">
   import { fade, slide, fly } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { Plus, Minus, ChevronDown, ChevronUp, Droplets } from "lucide-svelte";
+  import { formatToNonZeroDecimal, formatLargeNumber, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
+  import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
+  import { Plus, Minus, ChevronDown, ChevronUp, Droplets, BarChart3 } from "lucide-svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { onMount } from "svelte";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+  import { livePools } from "$lib/services/pools/poolStore";
   import { auth } from "$lib/services/auth";
   
   export let searchQuery = "";
@@ -13,6 +15,25 @@
   let expandedPoolId: string | null = null;
   let selectedPool: any = null;
   let showUserPoolModal = false;
+  
+  // Simple flag for initial load only
+  let hasCompletedInitialLoad = false;
+  
+  // Cache for pools
+  let cachedPools: any[] = [];
+  
+  // Update cache whenever we have valid data (not during loading)
+  $: if ($currentUserPoolsStore.filteredPools.length > 0 && !$currentUserPoolsStore.loading) {
+    cachedPools = [...$currentUserPoolsStore.filteredPools];
+  }
+  
+  // Always use cached pools after initial load if we have them
+  $: displayPools = (!hasCompletedInitialLoad) 
+    ? $currentUserPoolsStore.filteredPools 
+    : (cachedPools.length > 0 ? cachedPools : $currentUserPoolsStore.filteredPools);
+  
+  // Only show loading indicator on initial load
+  $: showLoadingIndicator = $currentUserPoolsStore.loading && !hasCompletedInitialLoad;
 
   // Subscribe to the store
   $: if (searchQuery !== $currentUserPoolsStore.searchQuery) {
@@ -21,9 +42,32 @@
 
   onMount(async () => {
     if ($auth.isConnected) {
-      await currentUserPoolsStore.initialize();
+      await loadUserPools();
     }
   });
+  
+  // Function to load user pools - simpler now
+  async function loadUserPools() {
+    try {
+      await currentUserPoolsStore.initialize();
+      hasCompletedInitialLoad = true;
+    } catch (error) {
+      console.error("Error loading user pools:", error);
+    }
+  }
+  
+  // Function to refresh pools without showing loading indicator
+  async function refreshUserPools() {
+    if (hasCompletedInitialLoad) {
+      try {
+        // Since refresh() doesn't exist, we can re-initialize the store 
+        // after initial load is complete
+        await currentUserPoolsStore.initialize();
+      } catch (error) {
+        console.error("Error refreshing user pools:", error);
+      }
+    }
+  }
 
   function handlePoolItemClick(pool: any) {
     if (expandedPoolId === pool.id) {
@@ -49,12 +93,35 @@
     showUserPoolModal = false;
     selectedPool = null;
     // Refresh the pools after liquidity is removed
-    currentUserPoolsStore.initialize();
+    refreshUserPools();
+  }
+
+  // Get pool share percentage
+  function getPoolSharePercentage(pool: any): string {
+    const livePool = $livePools.find(
+      (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
+    );
+    
+    return calculateUserPoolPercentage(
+      livePool?.balance_0,
+      livePool?.balance_1,
+      pool.amount_0,
+      pool.amount_1
+    );
+  }
+
+  // Get APY for a pool
+  function getPoolApy(pool: any): string {
+    const livePool = $livePools.find(
+      (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
+    );
+    
+    return livePool?.rolling_24h_apy ? formatToNonZeroDecimal(livePool.rolling_24h_apy) : "0";
   }
 </script>
 
 <div class="mt-2">
-  {#if $currentUserPoolsStore.loading}
+  {#if showLoadingIndicator}
     <div class="loading-state" in:fade={{ duration: 300 }}>
       <div class="loading-animation">
         <Droplets size={32} class="animate-pulse text-kong-primary" />
@@ -67,8 +134,14 @@
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
       </svg>
       <p class="error-text">{$currentUserPoolsStore.error}</p>
+      <button
+        class="retry-button"
+        on:click={() => refreshUserPools()}
+      >
+        Retry
+      </button>
     </div>
-  {:else if $currentUserPoolsStore.filteredPools.length === 0 && !$currentUserPoolsStore.loading}
+  {:else if displayPools.length === 0}
     <div class="empty-state" in:fade={{ duration: 300 }}>
       <div class="empty-icon-container">
         <Droplets size={40} class="empty-icon" />
@@ -87,8 +160,8 @@
     </div>
   {:else}
     <div class="pools-grid">
-      {#each $currentUserPoolsStore.filteredPools as pool (pool.id)}
-        <div in:fly={{ y: 20, duration: 300, delay: 50 * $currentUserPoolsStore.filteredPools.indexOf(pool) }}>
+      {#each displayPools as pool (pool.id)}
+        <div in:fly={{ y: 20, duration: 300, delay: 50 * displayPools.indexOf(pool) }}>
           <div
             class="pool-card {expandedPoolId === pool.id ? 'expanded' : ''}"
             on:click={() => handlePoolItemClick(pool)}
@@ -109,12 +182,19 @@
                   <h3 class="pool-name">
                     {pool.symbol_0}/{pool.symbol_1}
                   </h3>
-                  <div class="pool-balance">
-                    <span class="lp-amount">{Number(pool.balance).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 8,
-                    })}</span>
-                    <span class="lp-label">LP Tokens</span>
+                  <div class="pool-stats">
+                    <div class="pool-stat">
+                      <span class="stat-value">{formatLargeNumber(pool.balance)}</span>
+                      <span class="stat-label">LP Tokens</span>
+                    </div>
+                    <div class="pool-stat">
+                      <span class="stat-value">{getPoolSharePercentage(pool)}%</span>
+                      <span class="stat-label">Pool Share</span>
+                    </div>
+                    <div class="pool-stat">
+                      <span class="stat-value accent">{getPoolApy(pool)}%</span>
+                      <span class="stat-label">APY</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -151,13 +231,12 @@
                         />
                         <div class="token-text">
                           <p class="token-symbol">{tokenInfo.symbol}</p>
-                          <p class="token-amount">{Number(tokenInfo.amount).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 6,
-                          })}</p>
+                          <p class="token-amount truncate" title={formatToNonZeroDecimal(tokenInfo.amount)}>
+                            {formatLargeNumber(tokenInfo.amount)}
+                          </p>
                         </div>
                       </div>
-                      <div class="token-value">${formatToNonZeroDecimal(Number(tokenInfo.amount) * ((tokenInfo.token as any)?.price_usd || 1.5))}</div>
+                      <div class="token-value">${calculateTokenUsdValue(tokenInfo.amount, tokenInfo.token)}</div>
                     </div>
                   {/each}
                 </div>
@@ -187,6 +266,14 @@
           </div>
         </div>
       {/each}
+    </div>
+  {/if}
+  
+  {#if $currentUserPoolsStore.loading && hasCompletedInitialLoad}
+    <div class="refresh-indicator">
+      <div class="loading-animation">
+        <Droplets size={18} class="animate-pulse text-kong-primary" />
+      </div>
     </div>
   {/if}
 </div>
@@ -232,18 +319,26 @@
   }
 
   .pool-name {
-    @apply text-lg font-semibold text-kong-text-primary mb-1;
+    @apply text-lg font-semibold text-kong-text-primary mb-2;
   }
 
-  .pool-balance {
-    @apply flex items-center gap-1.5;
+  .pool-stats {
+    @apply flex items-center gap-4;
   }
 
-  .lp-amount {
+  .pool-stat {
+    @apply flex flex-col;
+  }
+
+  .stat-value {
     @apply text-sm font-medium text-kong-text-primary/90;
   }
 
-  .lp-label {
+  .stat-value.accent {
+    @apply text-kong-accent-green;
+  }
+
+  .stat-label {
     @apply text-xs text-kong-text-primary/50;
   }
 
@@ -283,7 +378,7 @@
   }
 
   .token-text {
-    @apply flex flex-col;
+    @apply flex flex-col min-w-0 max-w-[70%];
   }
 
   .token-symbol {
@@ -291,7 +386,11 @@
   }
 
   .token-amount {
-    @apply text-xs text-kong-text-primary/60;
+    @apply text-xs text-kong-text-primary/60 overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
+  .truncate {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
   }
 
   .token-value {
@@ -343,6 +442,13 @@
   .error-text {
     @apply text-base font-medium;
   }
+  
+  .retry-button {
+    @apply px-4 py-2 bg-kong-bg-dark/40 text-kong-text-secondary text-xs font-medium rounded-lg
+           transition-all duration-200 hover:bg-kong-bg-dark/60 hover:text-kong-text-primary
+           border border-kong-border/40 hover:border-kong-accent-blue/30
+           active:scale-[0.98];
+  }
 
   /* Empty State */
   .empty-state {
@@ -369,5 +475,10 @@
     @apply mt-4 flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg
            bg-kong-primary text-white font-medium
            hover:bg-kong-primary-hover transition-all duration-200;
+  }
+  
+  .refresh-indicator {
+    @apply fixed bottom-4 right-4 bg-white/10 backdrop-blur-md
+           rounded-full p-2 shadow-lg z-30 border border-white/20;
   }
 </style>

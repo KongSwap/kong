@@ -51,10 +51,7 @@
         liquidityStore.setToken(1, token1);
         
         // Load token balances
-        loadBalances(auth.pnp.account?.owner?.toString(), {
-          tokens: [token0, token1],
-          forceRefresh: true,
-        });
+        loadBalances([token0, token1], auth.pnp.account?.owner?.toString(), true);
       }
     } catch (e) {
       console.error("Error fetching token data by canister id:", e);

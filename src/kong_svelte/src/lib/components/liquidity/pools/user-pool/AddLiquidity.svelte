@@ -5,7 +5,7 @@
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import { currentUserBalancesStore } from "$lib/stores/tokenStore";
   import { liquidityStore } from "$lib/stores/liquidityStore";
-  import { calculateTokenUsdValue } from "$lib/utils/liquidityUtils";
+  import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import TokenInput from "./TokenInput.svelte";
   import { calculateLiquidityAmounts } from "$lib/api/pools";
 

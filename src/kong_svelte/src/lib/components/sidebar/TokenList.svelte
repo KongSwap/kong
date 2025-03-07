@@ -1,7 +1,8 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { currentUserBalancesStore, loadBalances } from "$lib/stores/tokenStore";
+  import { currentUserBalancesStore } from "$lib/stores/balancesStore";
+  import { loadBalances } from "$lib/stores/tokenStore";
   import { onMount } from "svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { Search, Plus } from "lucide-svelte";
@@ -257,7 +258,59 @@
 
   onMount(async () => {
     await FavoriteService.loadFavorites();
+    
+    // Load balances for all tokens when component mounts
+    const authStore = get(auth);
+    if (authStore?.isConnected && authStore?.account?.owner) {
+      const owner = authStore.account.owner.toString();
+      const tokens = get(userTokenList);
+      if (tokens.length > 0) {
+        try {
+          const balances = await loadBalances(tokens, owner, false);
+          
+          // Update the balances store with the fetched balances
+          const currentBalances = get(currentUserBalancesStore);
+          const updatedBalances = { ...currentBalances };
+          
+          // Add new balances to the store
+          Object.entries(balances).forEach(([canisterId, balance]) => {
+            updatedBalances[canisterId] = balance;
+          });
+          
+          // Update the store
+          currentUserBalancesStore.set(updatedBalances);
+        } catch (e) {
+          console.error("Failed to load balances on mount:", e);
+        }
+      }
+    }
+    
     isInitialLoad = false;
+  });
+
+  // Effect to reload balances when auth or token list changes
+  $effect(() => {
+    const authStore = get(auth);
+    const tokens = get(userTokenList);
+    
+    if (authStore?.isConnected && authStore?.account?.owner && tokens.length > 0) {
+      const owner = authStore.account.owner.toString();
+      loadBalances(tokens, owner, false)
+        .then(balances => {
+          // Update the balances store with the fetched balances
+          const currentBalances = get(currentUserBalancesStore);
+          const updatedBalances = { ...currentBalances };
+          
+          // Add new balances to the store
+          Object.entries(balances).forEach(([canisterId, balance]) => {
+            updatedBalances[canisterId] = balance;
+          });
+          
+          // Update the store
+          currentUserBalancesStore.set(updatedBalances);
+        })
+        .catch(e => console.error("Failed to load balances on update:", e));
+    }
   });
 
   // Handle keyboard shortcuts
@@ -321,6 +374,19 @@
         if (authStore?.isConnected && authStore?.account?.owner) {
           const owner = authStore.account.owner.toString();
           loadBalances([token], owner, true)
+            .then(balances => {
+              // Update the balances store with the fetched balances
+              const currentBalances = get(currentUserBalancesStore);
+              const updatedBalances = { ...currentBalances };
+              
+              // Add new balances to the store
+              Object.entries(balances).forEach(([canisterId, balance]) => {
+                updatedBalances[canisterId] = balance;
+              });
+              
+              // Update the store
+              currentUserBalancesStore.set(updatedBalances);
+            })
             .catch(e => console.error("Failed to load balances:", e));
         }
       }

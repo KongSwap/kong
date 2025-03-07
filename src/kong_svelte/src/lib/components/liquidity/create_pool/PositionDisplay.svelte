@@ -6,6 +6,7 @@
   import { onMount, onDestroy } from "svelte";
   import { auth } from "$lib/services/auth";
   import { BigNumber } from "bignumber.js";
+  import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
@@ -36,15 +37,12 @@
   $: hasPosition = !!userPool && userPool.id != null;
   $: hasTokens = !!token0Symbol && !!token1Symbol;
   
-  // Calculate user's percentage of the pool - note we pass the minimum needed values
-  // to avoid unnecessary recalculations
+  // Calculate user's percentage of the pool using the imported function
   $: userPoolPercentage = calculateUserPoolPercentage(
     pool?.balance_0, 
     pool?.balance_1, 
     userPool?.amount_0, 
-    userPool?.amount_1, 
-    getTokenDecimals(token0, userPool?.token0, 0),
-    getTokenDecimals(token1, userPool?.token1, 1)
+    userPool?.amount_1
   );
   
   // Helper function to get token decimals
@@ -120,48 +118,6 @@
     if (!value) return "0";
     const bn = typeof value === 'object' && 'toFormat' in value ? value : toBigNumber(value);
     return bn.toFormat(8, BigNumber.ROUND_DOWN);
-  }
-  
-  // Optimized calculation function with minimized parameters using BigNumber
-  function calculateUserPoolPercentage(
-    poolBalance0: bigint | undefined,
-    poolBalance1: bigint | undefined,
-    userAmount0: string | number | undefined,
-    userAmount1: string | number | undefined,
-    token0Decimals: number,
-    token1Decimals: number
-  ): string {
-    if (!poolBalance0 || !poolBalance1 || !userAmount0 || !userAmount1) {
-      return "0";
-    }
-    
-    try {
-      // Convert values to BigNumber with proper scaling
-      const userAmount0BN = toBigNumber(userAmount0);
-      const userAmount1BN = toBigNumber(userAmount1);
-      
-      // Convert BigInt pool balances to BigNumber with appropriate decimal scaling
-      const divisor0 = new BigNumber(10).pow(token0Decimals);
-      const divisor1 = new BigNumber(10).pow(token1Decimals);
-      
-      const poolBalance0BN = toBigNumber(poolBalance0).div(divisor0);
-      const poolBalance1BN = toBigNumber(poolBalance1).div(divisor1);
-      
-      if (poolBalance0BN.isZero() || poolBalance1BN.isZero()) return "0";
-      
-      // Calculate percentages based on both tokens
-      const percentage0 = userAmount0BN.div(poolBalance0BN).times(100);
-      const percentage1 = userAmount1BN.div(poolBalance1BN).times(100);
-      
-      // Use the average of both percentages (they should be very close)
-      const averagePercentage = percentage0.plus(percentage1).div(2);
-      
-      // Format to 2 decimal places
-      return averagePercentage.toFixed(2);
-    } catch (error) {
-      console.error("Error calculating pool percentage:", error);
-      return "0";
-    }
   }
 </script>
 
@@ -329,10 +285,3 @@
     {/if}
   </Panel>
 {/if}
-
-# Create seafile user
-sudo useradd -m -s /bin/bash seafile
-sudo passwd seafile  # Set a password for the user
-
-# Give ownership of the seafile directory to the seafile user
-sudo chown -R seafile:seafile /root/seafile  # Adjust path if needed

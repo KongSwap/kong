@@ -1,8 +1,9 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatToNonZeroDecimal, formatLargeNumber, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { livePools } from "$lib/services/pools/poolStore";
+  import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
 
   export let pool: any;
   export let token0: any;
@@ -13,6 +14,14 @@
     return p.address_0 === pool.address_0 && p.address_1 === pool.address_1;
   });
 
+  // Calculate user's percentage of the pool
+  $: poolSharePercentage = calculateUserPoolPercentage(
+    actualPool?.balance_0,
+    actualPool?.balance_1,
+    pool?.amount_0,
+    pool?.amount_1
+  );
+
   // Calculate earnings based on APY
   function calculateEarnings(timeframe: number): string {
     // Use APY from the actual pool
@@ -21,29 +30,11 @@
     }
 
     // Convert APY to daily rate and calculate linear projection
-    const apyDecimal = actualPool.rolling_24h_apy / 100; // rolling_24h_apy is already a number
+    const apyDecimal = Number(actualPool.rolling_24h_apy) / 100; // Ensure it's a number
     const dailyRate = apyDecimal / 365;
     const earnings = parseFloat(pool.usd_balance) * dailyRate * timeframe;
 
     return formatToNonZeroDecimal(earnings);
-  }
-
-  // Calculate USD value for tokens using proper price lookup
-  function calculateTokenUsdValue(amount: string, token: any): string {
-    // Find token to get its canister_id
-    if (!token?.canister_id || !amount) {
-      return "0";
-    }
-
-    const price = token.metrics.price;
-
-    if (!price) {
-      return "0";
-    }
-
-    // Calculate USD value
-    const usdValue = Number(amount) * Number(price);
-    return formatToNonZeroDecimal(usdValue);
   }
 </script>
 
@@ -59,8 +50,20 @@
       <div class="stat-item">
         <span class="stat-label">APY</span>
         <span class="stat-value accent"
-          >{actualPool?.rolling_24h_apy}%</span
+          >{formatToNonZeroDecimal(actualPool?.rolling_24h_apy)}%</span
         >
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-item">
+        <span class="stat-label">Pool Share</span>
+        <span class="stat-value highlight">{poolSharePercentage}%</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">LP Tokens</span>
+        <span class="stat-value highlight truncate" title={formatToNonZeroDecimal(pool.balance)}>
+          {formatLargeNumber(pool.balance)}
+        </span>
       </div>
     </div>
   </div>
@@ -73,11 +76,8 @@
         <div class="token-details">
           <div class="token-info">
             <span class="token-name">{pool.symbol_0}</span>
-            <span class="token-amount">
-              {Number(pool.amount_0).toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 6,
-              })}
+            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_0)}>
+              {formatLargeNumber(pool.amount_0)}
             </span>
           </div>
           <span class="usd-value"
@@ -90,11 +90,8 @@
         <div class="token-details">
           <div class="token-info">
             <span class="token-name">{pool.symbol_1}</span>
-            <span class="token-amount">
-              {Number(pool.amount_1).toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 6,
-              })}
+            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_1)}>
+              {formatLargeNumber(pool.amount_1)}
             </span>
           </div>
           <span class="usd-value"
@@ -110,9 +107,9 @@
     <div class="earnings-grid">
       {#each [{ label: "Daily", days: 1 }, { label: "Weekly", days: 7 }, { label: "Monthly", days: 30 }, { label: "Yearly", days: 365 }] as period}
         <div class="earnings-card">
-          <span class="earnings-value"
-            >${calculateEarnings(period.days)}</span
-          >
+          <span class="earnings-value truncate" title={calculateEarnings(period.days)}>
+            ${formatLargeNumber(calculateEarnings(period.days))}
+          </span>
           <span class="earnings-label">{period.label}</span>
         </div>
       {/each}
@@ -130,6 +127,10 @@
     @apply grid grid-cols-2 divide-x divide-kong-border/10;
   }
 
+  .stats-row:not(:last-child) {
+    @apply border-b border-kong-border/10;
+  }
+
   .stat-item {
     @apply flex flex-col gap-0.5 p-3 items-center justify-center transition-all duration-200
            hover:bg-white/5;
@@ -140,7 +141,7 @@
   }
 
   .stat-value {
-    @apply text-lg font-medium tabular-nums;
+    @apply text-lg font-medium tabular-nums max-w-full;
   }
 
   .stat-value.highlight {
@@ -170,11 +171,11 @@
   }
 
   .token-details {
-    @apply flex items-center justify-between flex-1;
+    @apply flex items-center justify-between flex-1 min-w-0;
   }
 
   .token-info {
-    @apply flex flex-col;
+    @apply flex flex-col min-w-0 max-w-[70%];
   }
 
   .token-name {
@@ -183,6 +184,10 @@
 
   .token-amount {
     @apply text-sm font-medium text-kong-text-primary;
+  }
+
+  .truncate {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
   }
 
   .usd-value {
@@ -208,6 +213,6 @@
   }
 
   .earnings-value {
-    @apply text-sm font-medium text-kong-text-accent-green;
+    @apply text-sm font-medium text-kong-text-accent-green max-w-full;
   }
 </style> 

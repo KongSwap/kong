@@ -12,7 +12,6 @@ import {
   calculateUsdRatio,
   formatLargeNumber,
   processLiquidityInput,
-  calculateUsdValue,
   findPool,
   validateLiquidityForm,
   getPoolForTokenPair,
@@ -20,9 +19,9 @@ import {
   calculateToken1FromPrice,
   calculateToken0FromPrice,
   calculateAmountFromPercentage,
-  calculateTokenUsdValue,
   formatToNonZeroDecimal
 } from '$lib/utils/liquidityUtils';
+import { calculateTokenUsdValue } from '../numberFormatUtils';
 
 // Updated mock tokenStore with bigger balances in microtokens
 vi.mock('$lib/stores/tokenStore', () => {
@@ -133,14 +132,6 @@ describe('processLiquidityInput', () => {
     expect(processLiquidityInput('123.456789', 4)).toBe('123.4567');
     expect(processLiquidityInput('00123', 2)).toBe('123');
     expect(processLiquidityInput('abc', 2, '0')).toBe('0');
-  });
-});
-
-describe('calculateUsdValue', () => {
-  it('should calculate USD values correctly', () => {
-    expect(calculateUsdValue('1', '50000')).toBe(50000);
-    expect(calculateUsdValue('1.5', '1000')).toBe(1500);
-    expect(calculateUsdValue('0', '1000')).toBe(0);
   });
 });
 
@@ -282,15 +273,6 @@ describe('processLiquidityInput', () => {
     expect(processLiquidityInput('1,234.56', 2)).toBe('1234.56');
     expect(processLiquidityInput('1_000_000', 2)).toBe('1000000');
     expect(processLiquidityInput('0000123', 2)).toBe('123');
-  });
-});
-
-describe('calculateUsdValue', () => {
-  it('should handle various number formats', () => {
-    expect(calculateUsdValue('1,000', '1.5')).toBe(1500);
-    expect(calculateUsdValue('1_000_000', '2')).toBe(2000000);
-    expect(calculateUsdValue('0.5', '2000')).toBe(1000);
-    expect(calculateUsdValue('0', '1000')).toBe(0);
   });
 });
 

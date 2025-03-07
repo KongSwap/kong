@@ -145,10 +145,11 @@ export class SwapMonitor {
               }
 
               try {
-                await loadBalances(walletId.toString(), {
-                  tokens: [payToken, receiveToken],
-                  forceRefresh: true,
-                });
+                await loadBalances(
+                  [payToken, receiveToken],
+                  walletId.toString(),
+                  true
+                );
               } catch (error) {
                 console.error("Error updating balances:", error);
               }

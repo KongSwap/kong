@@ -11,6 +11,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { loadBalance } from "$lib/stores/tokenStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+  import { auth } from "$lib/services/auth";
 
   export let isCreatingPool: boolean = false;
   export let show: boolean;
@@ -81,8 +82,8 @@
           
           // Reload balances and pool list after successful pool creation
           await Promise.all([
-            loadBalance(token0.canister_id, true),
-            loadBalance(token1.canister_id, true),
+            loadBalance(token0.canister_id, auth, true),
+            loadBalance(token1.canister_id, auth, true),
             currentUserPoolsStore.initialize(),
           ]);
           
@@ -113,8 +114,8 @@
           
           // Reload balances and pool list after successful liquidity addition
           await Promise.all([
-            loadBalance(token0.canister_id, true),
-            loadBalance(token1.canister_id, true),
+            loadBalance(token0.canister_id, auth, true),
+            loadBalance(token1.canister_id, auth, true),
             currentUserPoolsStore.initialize(),
           ]);
           

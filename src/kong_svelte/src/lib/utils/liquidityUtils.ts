@@ -231,17 +231,6 @@ export function processLiquidityInput(
 }
 
 /**
- * Calculates USD value from token amount and price
- */
-export function calculateUsdValue(
-    amount: string,
-    tokenPrice: string | number
-): number {
-    const cleanAmount = amount.replace(/[,_]/g, '');
-    return new BigNumber(cleanAmount).times(new BigNumber(tokenPrice)).toNumber();
-}
-
-/**
  * Validates if a pool exists for the given token pair
  */
 export function findPool(
@@ -579,32 +568,6 @@ export function calculateAmountFromPercentage(
 }
 
 /**
- * Calculates USD value for a token amount
- * @param amount Token amount
- * @param token Token details
- * @returns USD value as a formatted string
- */
-export function calculateTokenUsdValue(
-  amount: string,
-  token: FE.Token | null
-): string {
-  // Find token to get its canister_id
-  if (!token?.canister_id || !amount || isNaN(parseFloat(amount))) {
-    return "0";
-  }
-
-  const price = token.metrics?.price;
-
-  if (!price) {
-    return "0";
-  }
-
-  // Calculate USD value
-  const usdValue = Number(amount) * Number(price);
-  return formatToNonZeroDecimal(usdValue);
-}
-
-/**
  * Formats a number to non-zero decimal places
  * @param value Number to format
  * @returns Formatted string
@@ -623,5 +586,41 @@ export function formatToNonZeroDecimal(value: number): string {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
+  }
+}
+
+// Optimized calculation function with minimized parameters using BigNumber
+export function calculateUserPoolPercentage(
+  poolBalance0: bigint | undefined,
+  poolBalance1: bigint | undefined,
+  userAmount0: string | number | undefined,
+  userAmount1: string | number | undefined,
+): string {
+  if (!poolBalance0 || !poolBalance1 || !userAmount0 || !userAmount1) {
+    return "0";
+  }
+  
+  try {
+    // Convert values to BigNumber with proper scaling
+    const userAmount0BN = new BigNumber(userAmount0);
+    const userAmount1BN = new BigNumber(userAmount1);
+    
+    const poolBalance0BN = new BigNumber(poolBalance0.toString());
+    const poolBalance1BN = new BigNumber(poolBalance1.toString());
+    
+    if (poolBalance0BN.isZero() || poolBalance1BN.isZero()) return "0";
+    
+    // Calculate percentages based on both tokens
+    const percentage0 = userAmount0BN.div(poolBalance0BN).times(100);
+    const percentage1 = userAmount1BN.div(poolBalance1BN).times(100);
+    
+    // Use the average of both percentages (they should be very close)
+    const averagePercentage = percentage0.plus(percentage1).div(2);
+    
+    // Format to 2 decimal places
+    return formatToNonZeroDecimal(averagePercentage.toNumber());
+  } catch (error) {
+    console.error("Error calculating pool percentage:", error);
+    return "0";
   }
 }
