@@ -8,39 +8,44 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   
-  // Get the pool based on selected tokens
-  $: currentPool = $liquidityStore.token0 && $liquidityStore.token1 
-    ? $livePools.find(p => 
-        (p.address_0 === $liquidityStore.token0?.canister_id && p.address_1 === $liquidityStore.token1?.canister_id) ||
-        (p.address_1 === $liquidityStore.token0?.canister_id && p.address_0 === $liquidityStore.token1?.canister_id)
-      )
-    : null;
-    
-  let balanceHistory: PoolBalanceHistoryItem[] = [];
-  let isLoading = false;
-  let errorMessage = '';
+  // State variables
+  let balanceHistory = $state<PoolBalanceHistoryItem[]>([]);
+  let isLoading = $state(false);
+  let errorMessage = $state('');
+  let previousToken0Id = $state<string | null>(null);
+  let previousToken1Id = $state<string | null>(null);
   
-  // Track token pair to avoid unnecessary refreshes
-  let previousToken0Id = null;
-  let previousToken1Id = null;
+  // Get the pool based on selected tokens
+  let currentPool = $derived(
+    $liquidityStore.token0 && $liquidityStore.token1 
+      ? $livePools.find(p => 
+          (p.address_0 === $liquidityStore.token0?.canister_id && p.address_1 === $liquidityStore.token1?.canister_id) ||
+          (p.address_1 === $liquidityStore.token0?.canister_id && p.address_0 === $liquidityStore.token1?.canister_id)
+        )
+      : null
+  );
   
   // Watch for changes in livePools to ensure we have data after page refresh
-  $: if ($livePools.length > 0 && currentPool && !balanceHistory.length) {
-    fetchBalanceHistoryData();
-  }
-  
-  // Only refresh chart when the pool or token pair changes, not on every amount change
-  $: if (currentPool) {
-    const token0Id = $liquidityStore.token0?.canister_id || null;
-    const token1Id = $liquidityStore.token1?.canister_id || null;
-    
-    // Only fetch new data if tokens have changed
-    if (token0Id !== previousToken0Id || token1Id !== previousToken1Id) {
-      previousToken0Id = token0Id;
-      previousToken1Id = token1Id;
+  $effect(() => {
+    if ($livePools.length > 0 && currentPool && !balanceHistory.length) {
       fetchBalanceHistoryData();
     }
-  }
+  });
+  
+  // Only refresh chart when the pool or token pair changes, not on every amount change
+  $effect(() => {
+    if (currentPool) {
+      const token0Id = $liquidityStore.token0?.canister_id || null;
+      const token1Id = $liquidityStore.token1?.canister_id || null;
+      
+      // Only fetch new data if tokens have changed
+      if (token0Id !== previousToken0Id || token1Id !== previousToken1Id) {
+        previousToken0Id = token0Id;
+        previousToken1Id = token1Id;
+        fetchBalanceHistoryData();
+      }
+    }
+  });
   
   // Format number with commas and decimal places
   function formatNumber(num: number | bigint | undefined | null, decimals: number = 2): string {
@@ -177,17 +182,17 @@
   {/if}
 
   <TVLHistoryChart 
-    {balanceHistory}
-    {isLoading}
-    {errorMessage}
-    {currentPool}
-    {fetchBalanceHistoryData}
+    balanceHistory={balanceHistory}
+    isLoading={isLoading}
+    errorMessage={errorMessage}
+    currentPool={currentPool}
+    fetchBalanceHistoryData={fetchBalanceHistoryData}
   />
 
   <PoolBalanceChart
-    {balanceHistory}
-    {isLoading}
-    {errorMessage}
-    {currentPool}
+    balanceHistory={balanceHistory}
+    isLoading={isLoading}
+    errorMessage={errorMessage}
+    currentPool={currentPool}
   />
 </div> 
