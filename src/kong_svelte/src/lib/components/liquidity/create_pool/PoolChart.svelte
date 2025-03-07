@@ -870,7 +870,7 @@
   }
 
   .chart-title {
-    @apply text-lg font-medium text-kong-text-primary/90;
+    @apply text-sm uppercase font-medium text-kong-text-primary/90;
   }
 
   .chart-container {

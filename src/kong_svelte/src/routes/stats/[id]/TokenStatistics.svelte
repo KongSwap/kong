@@ -116,10 +116,7 @@
   });
 
   // Derived formatted values
-  const formattedPrice = $derived(Number(activeToken?.metrics?.price).toLocaleString(undefined, {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2
-  }));
+  const formattedPrice = $derived(formatToNonZeroDecimal(activeToken?.metrics?.price));
   const formattedPriceChange24h = $derived(Number(activeToken?.metrics?.price_change_24h) || 0);
 </script>
 

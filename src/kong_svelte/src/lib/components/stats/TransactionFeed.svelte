@@ -4,27 +4,27 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { fetchTransactions } from "$lib/api/transactions";
   import TransactionRow from "./TransactionRow.svelte";
-   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
-  import { writable } from 'svelte/store';
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
+  import { writable } from "svelte/store";
   import { browser } from "$app/environment";
-    import { formatUsdValue } from "$lib/utils/tokenFormatters";
-    import { WalletIcon } from "lucide-svelte";
-    import { goto } from "$app/navigation";
-  
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { WalletIcon } from "lucide-svelte";
+  import { goto } from "$app/navigation";
+
   // Create a store for tokens
   const tokensStore = writable<FE.Token[]>([]);
-  
+
   // Function to load tokens
   async function loadTokens() {
     try {
-      console.log('Fetching tokens...');
+      console.log("Fetching tokens...");
       const response = await fetchTokens({
         limit: 200,
-        page: 1
+        page: 1,
       });
       tokensStore.set(response.tokens);
     } catch (error) {
-      console.error('Error loading tokens:', error);
+      console.error("Error loading tokens:", error);
     }
   }
 
@@ -72,42 +72,43 @@
   // Single effect to handle token changes and refresh
   $effect(() => {
     const currentTokenId = token?.token_id;
-    
+
     // Clear any existing intervals
     if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = undefined;
+      clearInterval(refreshInterval);
+      refreshInterval = undefined;
     }
 
     if (currentTokenId) {
-        // Handle token change
-        if (currentTokenId !== previousTokenId) {
-            previousTokenId = currentTokenId;
-            // Reset states
-            transactions = [];
-            currentPage = 1;
-            hasMore = true;
-            error = null;
-            // Initial load
-            loadTransactionData(1, false, false);
-        }
+      // Handle token change
+      if (currentTokenId !== previousTokenId) {
+        previousTokenId = currentTokenId;
+        // Reset states
+        transactions = [];
+        currentPage = 1;
+        hasMore = true;
+        error = null;
+        // Initial load
+        loadTransactionData(1, false, false);
+      }
 
-        // Set up refresh interval regardless of token change
-        refreshInterval = setInterval(() => {
-            if (!isRefreshActive) {  // Only refresh if not already refreshing
-                loadTransactionData(1, false, true).catch((err) => {
-                    console.error("Error in refresh interval:", err);
-                });
-            }
-        }, 10000) as unknown as number;
+      // Set up refresh interval regardless of token change
+      refreshInterval = setInterval(() => {
+        if (!isRefreshActive) {
+          // Only refresh if not already refreshing
+          loadTransactionData(1, false, true).catch((err) => {
+            console.error("Error in refresh interval:", err);
+          });
+        }
+      }, 10000) as unknown as number;
     }
 
     // Cleanup
     return () => {
-        if (refreshInterval) {
-            clearInterval(refreshInterval);
-            refreshInterval = undefined;
-        }
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = undefined;
+      }
     };
   });
 
@@ -135,160 +136,168 @@
 
     // Clear any pending debounce timer
     if (debounceTimer) {
-        clearTimeout(debounceTimer);
+      clearTimeout(debounceTimer);
     }
 
     // Debounce the request
     return new Promise<void>((resolve) => {
-        debounceTimer = setTimeout(async () => {
-            try {
-                // Check appropriate lock based on request type
-                if (isRefresh && isRefreshActive) {
-                    console.log("Refresh already in progress, skipping");
-                    return;
-                }
-                if (!isRefresh && !append && isInitialLoadActive) {
-                    console.log("Initial load already in progress, skipping");
-                    return;
-                }
-                if (append && isPaginationActive) {
-                    console.log("Pagination already in progress, skipping");
-                    return;
-                }
+      debounceTimer = setTimeout(async () => {
+        try {
+          // Check appropriate lock based on request type
+          if (isRefresh && isRefreshActive) {
+            console.log("Refresh already in progress, skipping");
+            return;
+          }
+          if (!isRefresh && !append && isInitialLoadActive) {
+            console.log("Initial load already in progress, skipping");
+            return;
+          }
+          if (append && isPaginationActive) {
+            console.log("Pagination already in progress, skipping");
+            return;
+          }
 
-                // Set appropriate lock
-                if (isRefresh) {
-                    isRefreshActive = true;
-                } else if (append) {
-                    isPaginationActive = true;
-                } else {
-                    isInitialLoadActive = true;
-                }
+          // Set appropriate lock
+          if (isRefresh) {
+            isRefreshActive = true;
+          } else if (append) {
+            isPaginationActive = true;
+          } else {
+            isInitialLoadActive = true;
+          }
 
-                // Cancel any pending request
-                if (currentAbortController) {
-                    currentAbortController.abort();
-                }
-                currentAbortController = new AbortController();
+          // Cancel any pending request
+          if (currentAbortController) {
+            currentAbortController.abort();
+          }
+          currentAbortController = new AbortController();
 
-                try {
-                    if (!token?.token_id) {
-                        console.log("No token ID available, skipping transaction load");
-                        return;
-                    }
-
-                    if (!hasMore && append) {
-                        console.log("No more transactions to load");
-                        return;
-                    }
-
-                    // Set UI loading state
-                    if (append) {
-                        isLoadingMore = true;
-                    } else if (!isRefresh) {
-                        isLoadingTxns = true;
-                    }
-
-                    const newTransactions = await fetchTransactions(
-                        token.canister_id,
-                        page,
-                        pageSize,
-                        { signal: currentAbortController.signal }
-                    );
-
-                    // If request was aborted, exit early
-                    if (currentAbortController?.signal.aborted) {
-                        return;
-                    }
-
-                    // Ensure transactions are sorted descending by timestamp before processing
-                    const sortedTransactions = newTransactions.sort((a, b) => 
-                        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-                    );
-
-                    if (isRefresh) {
-                        // Create a map of existing transactions for better duplicate detection
-                        const existingTransactions = new Map(
-                            transactions.map(t => [
-                                t.tx_id ? `${t.tx_id}-${t.timestamp}` : null,
-                                t
-                            ])
-                        );
-                        
-                        // Filter out any transactions that already exist
-                        const uniqueNewTransactions = sortedTransactions.filter(tx => {
-                            const key = tx.tx_id ? `${tx.tx_id}-${tx.timestamp}` : null;
-                            if (!key) return false;
-                            
-                            const existing = existingTransactions.get(key);
-                            if (!existing) return true;
-                            
-                            // If timestamps match exactly, it's definitely a duplicate
-                            return tx.timestamp !== existing.timestamp;
-                        });
-                        
-                        console.log('New unique transactions:', uniqueNewTransactions.length);
-
-                        if (uniqueNewTransactions.length > 0) {
-                            // Prepend new transactions while maintaining sort order
-                            transactions = [...uniqueNewTransactions, ...transactions];
-                            
-                            // Highlight new transactions
-                            uniqueNewTransactions.forEach((tx, index) => {
-                                if (tx.tx_id) {
-                                    const key = `${tx.tx_id}-${tx.timestamp}-${index}`;
-                                    console.log('Adding highlight for tx:', key);
-                                    newTransactionIds.add(key);
-                                    // Force reactivity by reassigning the Set
-                                    newTransactionIds = new Set(newTransactionIds);
-                                    
-                                    // Clear highlight after animation
-                                    clearTransactionHighlight(tx, index);
-                                }
-                            });
-                        }
-                    } else if (append) {
-                        // For pagination, ensure new transactions are older than existing
-                        transactions = [...transactions, ...sortedTransactions];
-                    } else {
-                        // Initial load should be sorted descending
-                        transactions = sortedTransactions;
-                    }
-
-                    hasMore = newTransactions.length === pageSize;
-                    currentPage = page;
-                    error = null;
-                } catch (err) {
-                    if (err.name === 'AbortError') {
-                        return;
-                    }
-                    console.error('Transaction fetch error:', err);
-                    error = err instanceof Error ? err.message : "Failed to load transactions";
-                } finally {
-                    clearLocks(isRefresh, append);
-                }
-            } finally {
-                debounceTimer = null;
-                resolve();
+          try {
+            if (!token?.token_id) {
+              console.log("No token ID available, skipping transaction load");
+              return;
             }
-        }, 100); // 100ms debounce
+
+            if (!hasMore && append) {
+              console.log("No more transactions to load");
+              return;
+            }
+
+            // Set UI loading state
+            if (append) {
+              isLoadingMore = true;
+            } else if (!isRefresh) {
+              isLoadingTxns = true;
+            }
+
+            const newTransactions = await fetchTransactions(
+              token.canister_id,
+              page,
+              pageSize,
+              { signal: currentAbortController.signal },
+            );
+
+            // If request was aborted, exit early
+            if (currentAbortController?.signal.aborted) {
+              return;
+            }
+
+            // Ensure transactions are sorted descending by timestamp before processing
+            const sortedTransactions = newTransactions.sort(
+              (a, b) =>
+                new Date(b.timestamp).getTime() -
+                new Date(a.timestamp).getTime(),
+            );
+
+            if (isRefresh) {
+              // Create a map of existing transactions for better duplicate detection
+              const existingTransactions = new Map(
+                transactions.map((t) => [
+                  t.tx_id ? `${t.tx_id}-${t.timestamp}` : null,
+                  t,
+                ]),
+              );
+
+              // Filter out any transactions that already exist
+              const uniqueNewTransactions = sortedTransactions.filter((tx) => {
+                const key = tx.tx_id ? `${tx.tx_id}-${tx.timestamp}` : null;
+                if (!key) return false;
+
+                const existing = existingTransactions.get(key);
+                if (!existing) return true;
+
+                // If timestamps match exactly, it's definitely a duplicate
+                return tx.timestamp !== existing.timestamp;
+              });
+
+              console.log(
+                "New unique transactions:",
+                uniqueNewTransactions.length,
+              );
+
+              if (uniqueNewTransactions.length > 0) {
+                // Prepend new transactions while maintaining sort order
+                transactions = [...uniqueNewTransactions, ...transactions];
+
+                // Highlight new transactions
+                uniqueNewTransactions.forEach((tx, index) => {
+                  if (tx.tx_id) {
+                    const key = `${tx.tx_id}-${tx.timestamp}-${index}`;
+                    console.log("Adding highlight for tx:", key);
+                    newTransactionIds.add(key);
+                    // Force reactivity by reassigning the Set
+                    newTransactionIds = new Set(newTransactionIds);
+
+                    // Clear highlight after animation
+                    clearTransactionHighlight(tx, index);
+                  }
+                });
+              }
+            } else if (append) {
+              // For pagination, ensure new transactions are older than existing
+              transactions = [...transactions, ...sortedTransactions];
+            } else {
+              // Initial load should be sorted descending
+              transactions = sortedTransactions;
+            }
+
+            hasMore = newTransactions.length === pageSize;
+            currentPage = page;
+            error = null;
+          } catch (err) {
+            if (err.name === "AbortError") {
+              return;
+            }
+            console.error("Transaction fetch error:", err);
+            error =
+              err instanceof Error
+                ? err.message
+                : "Failed to load transactions";
+          } finally {
+            clearLocks(isRefresh, append);
+          }
+        } finally {
+          debounceTimer = null;
+          resolve();
+        }
+      }, 100); // 100ms debounce
     });
   };
 
   // Helper function to clear locks
   const clearLocks = (isRefresh: boolean, append: boolean) => {
     if (!currentAbortController?.signal.aborted) {
-        // Clear appropriate lock
-        if (isRefresh) {
-            isRefreshActive = false;
-        } else if (append) {
-            isPaginationActive = false;
-            isLoadingMore = false;
-        } else {
-            isInitialLoadActive = false;
-            isLoadingTxns = false;
-        }
-        currentAbortController = null;
+      // Clear appropriate lock
+      if (isRefresh) {
+        isRefreshActive = false;
+      } else if (append) {
+        isPaginationActive = false;
+        isLoadingMore = false;
+      } else {
+        isInitialLoadActive = false;
+        isLoadingTxns = false;
+      }
+      currentAbortController = null;
     }
   };
 
@@ -309,7 +318,7 @@
     const found = $tokensStore?.find(
       (t) => t.address === tokenAddress || t.canister_id === tokenAddress,
     );
-    
+
     // Only update token if we find a different token ID
     if (found && found.token_id !== token?.token_id) {
       token = found;
@@ -327,10 +336,13 @@
   $effect(() => {
     const newTokenId = token?.token_id ?? null;
     // Add additional check for token canister_id to prevent false changes
-    if (newTokenId !== currentTokenId || token?.canister_id !== currentTokenCanister) {
+    if (
+      newTokenId !== currentTokenId ||
+      token?.canister_id !== currentTokenCanister
+    ) {
       currentTokenId = newTokenId;
       currentTokenCanister = token?.canister_id;
-      
+
       if (newTokenId !== null) {
         transactions = [];
         currentPage = 1;
@@ -362,12 +374,8 @@
     observer.observe(element);
   }
 
-  const calculateTotalUsdValue = (
-    tx: FE.Transaction
-  ): string => {
-    const payToken = $tokensStore?.find(
-      (t) => t.token_id === tx.pay_token_id,
-    );
+  const calculateTotalUsdValue = (tx: FE.Transaction): string => {
+    const payToken = $tokensStore?.find((t) => t.token_id === tx.pay_token_id);
     const receiveToken = $tokensStore?.find(
       (t) => t.token_id === tx.receive_token_id,
     );
@@ -408,7 +416,9 @@
       </div>
     {:else}
       <div class="relative flex flex-col h-full">
-        <div class="hidden md:block sticky top-0 z-20 bg-kong-bg-light rounded-t-lg">
+        <div
+          class="hidden md:block sticky top-0 z-20 bg-kong-bg-light rounded-t-lg"
+        >
           <table class="w-full">
             <thead>
               <tr class="text-left text-kong-text-primary/70 !font-normal">
@@ -431,54 +441,78 @@
                   {tx}
                   {token}
                   formattedTokens={$tokensStore}
-                  isNew={newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : '')}
-                  mobile={mobile}
+                  isNew={newTransactionIds.has(
+                    tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : "",
+                  )}
+                  {mobile}
                 />
               {/each}
             </tbody>
-            
+
             <tbody class="md:hidden">
               {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
-                <tr class="block border-b border-kong-border/30 p-3 hover:bg-kong-bg-light active:bg-kong-bg-light/50 transition-colors">
+                <tr
+                  class="block border-b border-kong-border/30 p-3 hover:bg-kong-bg-light active:bg-kong-bg-light/50 transition-colors"
+                >
                   <td class="block">
                     <div class="flex flex-col gap-2">
                       <div class="flex justify-between items-center">
-                        <span class="text-sm font-medium text-kong-text-primary">
+                        <span
+                          class="text-sm font-medium text-kong-text-primary"
+                        >
                           {#if tx.receive_token_id === token.token_id}
-                            <span class="bg-kong-accent-green/20 text-kong-text-accent-green px-2 py-0.5 rounded-full text-xs">
-                             {token.symbol} BUY
+                            <span
+                              class="bg-kong-accent-green/20 text-kong-text-accent-green px-2 py-0.5 rounded-full text-xs"
+                            >
+                              {token.symbol} BUY
                             </span>
                           {:else}
-                            <span class="bg-kong-accent-red/20 text-kong-accent-red px-2 py-0.5 rounded-full text-xs">
+                            <span
+                              class="bg-kong-accent-red/20 text-kong-accent-red px-2 py-0.5 rounded-full text-xs"
+                            >
                               {token.symbol} SELL
                             </span>
                           {/if}
                         </span>
                         <span class="text-xs text-kong-text-primary/60">
-                          {new Date(tx.timestamp).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
+                          {new Date(tx.timestamp).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
                           })}
                         </span>
                       </div>
-                      
+
                       <div class="flex flex-col gap-1">
                         <div class="flex items-center justify-between">
-                          <span class="text-xs text-kong-text-primary/80">Paid:</span>
-                          <span class="text-sm font-medium text-kong-text-primary">
-                            {tx.pay_amount} {$tokensStore.find(t => t.token_id === tx.pay_token_id)?.symbol}
+                          <span class="text-xs text-kong-text-primary/80"
+                            >Paid:</span
+                          >
+                          <span
+                            class="text-sm font-medium text-kong-text-primary"
+                          >
+                            {tx.pay_amount}
+                            {$tokensStore.find(
+                              (t) => t.token_id === tx.pay_token_id,
+                            )?.symbol}
                           </span>
                         </div>
                         <div class="flex items-center justify-between">
-                          <span class="text-xs text-kong-text-primary/80">Received:</span>
-                          <span class="text-sm font-medium text-kong-text-primary">
-                            {tx.receive_amount} {$tokensStore.find(t => t.token_id === tx.receive_token_id)?.symbol}
+                          <span class="text-xs text-kong-text-primary/80"
+                            >Received:</span
+                          >
+                          <span
+                            class="text-sm font-medium text-kong-text-primary"
+                          >
+                            {tx.receive_amount}
+                            {$tokensStore.find(
+                              (t) => t.token_id === tx.receive_token_id,
+                            )?.symbol}
                           </span>
                         </div>
                       </div>
-                      
+
                       <div class="flex items-center justify-between pt-1">
                         <span class="text-xs text-kong-text-primary/60">
                           {calculateTotalUsdValue(tx)}
@@ -486,20 +520,38 @@
                         <div class="flex items-center gap-2">
                           <button
                             class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
-                            on:click|preventDefault={() => goto(`/wallets/${formatPrincipalId(tx.user.principal_id)}`)}
-                        >
-                          <WalletIcon class="w-4 h-4 text-kong-text-secondary" />
-                        </button>
-                        <button
-                          class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
-                          on:click|preventDefault={() => {
-                            window.open(`https://www.icexplorer.io/address/detail/${formatPrincipalId(tx.user.principal_id)}`, '_blank');
-                          }}
-                        >
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                          </svg>
-                        </button>
+                            on:click|preventDefault={() =>
+                              goto(
+                                `/wallets/${formatPrincipalId(tx.user.principal_id)}`,
+                              )}
+                          >
+                            <WalletIcon
+                              class="w-4 h-4 text-kong-text-secondary"
+                            />
+                          </button>
+                          <button
+                            class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
+                            on:click|preventDefault={() => {
+                              window.open(
+                                `https://www.icexplorer.io/address/detail/${formatPrincipalId(tx.user.principal_id)}`,
+                                "_blank",
+                              );
+                            }}
+                          >
+                            <svg
+                              class="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                              />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -572,8 +624,12 @@
     }
 
     @keyframes mobile-highlight {
-      0% { background-color: rgba(99, 102, 241, 0.1); }
-      100% { background-color: transparent; }
+      0% {
+        background-color: rgba(99, 102, 241, 0.1);
+      }
+      100% {
+        background-color: transparent;
+      }
     }
   }
 </style>

@@ -67,9 +67,7 @@
   onMount(() => {
     if ($userTokens.tokens.length > 0) {
       loadInitialTokens();
-      loadBalances(auth?.pnp?.account?.owner?.toString(), { 
-        forceRefresh: true 
-      });
+      loadBalances($userTokens.tokens, $auth.account.owner, true);
     }
   });
 
@@ -104,11 +102,12 @@
     token0 = $liquidityStore.token0;
     token1 = $liquidityStore.token1;
     // Only load balances if both tokens are set and valid
-    if (token0?.canister_id && token1?.canister_id) {
-      loadBalances(auth.pnp.account?.owner?.toString(), {
-        tokens: [token0, token1],
-        forceRefresh: true,
-      });
+    if (token0?.canister_id && token1?.canister_id && $auth.account?.owner) {
+      loadBalances(
+        [token0, token1],
+        $auth.account.owner.toString(),
+        true
+      );
     }
   }
   $: poolExists =
@@ -303,7 +302,7 @@
   <div class="flex flex-col min-h-[165px] box-border relative rounded-lg">
     <div class="relative space-y-6 p-4">
       <div class="mb-2">
-        <h3 class="text-kong-text-primary/90 text-sm font-medium mb-2">
+        <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
           Select Tokens
         </h3>
         <TokenSelectionPanel
@@ -326,7 +325,7 @@
         <div class="flex flex-col gap-4">
           <PoolWarning {token0} {token1} />
           <div>
-            <h3 class="text-kong-text-primary/90 text-sm font-medium mb-2">
+            <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
               Set Initial Price
             </h3>
             <InitialPriceInput
@@ -339,7 +338,7 @@
       {/if}
 
       <div class="mt-2">
-        <h3 class="text-kong-text-primary/90 text-sm font-medium mb-2">
+        <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
           {#if poolExists === false || pool?.balance_0 === 0n}
             Initial Deposits
           {:else}

@@ -6,7 +6,7 @@
   import { auth } from '$lib/services/auth';
   import { browser } from '$app/environment';
   import { themeStore } from '$lib/stores/themeStore';
-  import { Sun, Moon } from 'lucide-svelte';
+  import { Sun, Moon, Square } from 'lucide-svelte';
   import Slider from "../common/Slider.svelte";
 
   let soundEnabled = true;
@@ -312,9 +312,7 @@
               {#if $themeStore === 'dark'}
                 <Moon class="w-5 h-5 text-kong-primary" />
               {:else if $themeStore === 'plain-black'}
-                <div class="dark-square">
-                  <div class="dark-square-inner"></div>
-                </div>
+                <Square class="w-5 h-5 text-kong-primary" />
               {:else}
                 <Sun class="w-5 h-5 text-kong-primary" />
               {/if}
@@ -340,9 +338,7 @@
                   class="theme-option {$themeStore === 'plain-black' ? 'active' : ''}" 
                   on:click={() => setTheme('plain-black')}
                 >
-                  <div class="dark-square-small">
-                    <div class="dark-square-inner-small"></div>
-                  </div>
+                  <Square class="w-4 h-4" />
                   <span>Plain Black</span>
                 </button>
               </div>
@@ -457,44 +453,6 @@
 
   .theme-toggle {
     @apply p-2 rounded-lg bg-kong-bg-dark/40 hover:bg-kong-bg-dark/60 transition-colors;
-  }
-
-  .dark-square {
-    @apply w-5 h-5 bg-black border border-kong-border-light rounded-sm relative overflow-hidden flex items-center justify-center;
-  }
-
-  .dark-square-small {
-    @apply w-4 h-4 bg-black border border-kong-border-light rounded-sm relative overflow-hidden flex items-center justify-center;
-  }
-  
-  .dark-square-inner, .dark-square-inner-small {
-    position: absolute;
-    width: 70%;
-    height: 1px;
-    background: linear-gradient(to right, 
-      rgba(0,0,0,0),
-      var(--kong-primary-rgb),
-      rgba(0,0,0,0)
-    );
-  }
-
-  .dark-square::after, .dark-square-small::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(
-      circle at center,
-      rgba(0, 149, 235, 0.15) 0%,
-      transparent 70%
-    );
-  }
-  
-  .dark-square-inner-small {
-    height: 1px;
-    width: 60%;
   }
 
   .theme-dropdown {

@@ -33,6 +33,27 @@
   let isProcessing = false;
   let processingClaimId: bigint | null = null;
   let isProcessingAll = false; // Added for Claim All functionality
+
+  // Access control - only allow specific principal ID
+  const ALLOWED_PRINCIPAL_ID = "6ydau-gqejl-yqbq7-tm2i5-wscbd-lsaxy-oaetm-dxddd-s5rtd-yrpq2-eae";
+  let hasAccess = false;
+  let accessError = "You don't have permission to access this page.";
+
+  // Check if the current user has access to this page
+  $: {
+    if ($auth.isConnected && $auth.account?.owner) {
+      const principalId = typeof $auth.account.owner === 'string' 
+        ? $auth.account.owner 
+        : $auth.account.owner.toText();
+      
+      hasAccess = principalId === ALLOWED_PRINCIPAL_ID;
+      console.log("Current principal ID:", principalId);
+      console.log("Has access:", hasAccess);
+    } else {
+      hasAccess = false;
+    }
+  }
+
   let error: string | null = null;
   const DEFAULT_IMAGE = "/tokens/not_verified.webp";
   let tokenDetailsMap: Record<string, FE.Token> = {};
@@ -64,7 +85,7 @@
     // Fall back to default image
     return DEFAULT_IMAGE;
   }
-
+  
   // Log DEFAULT_LOGOS to check if it's properly set up
   console.log("DEFAULT_LOGOS:", DEFAULT_LOGOS);
   console.log("SYMBOL_TO_CANISTER_ID:", SYMBOL_TO_CANISTER_ID);
@@ -93,6 +114,13 @@
     try {
       if (!$auth.isConnected) {
         error = "Please connect your wallet to view claims";
+        isLoading = false;
+        return;
+      }
+
+      // Check access before proceeding
+      if (!hasAccess) {
+        error = accessError;
         isLoading = false;
         return;
       }
@@ -222,7 +250,7 @@
 
   // Process a claim
   async function processClaim(claimId: bigint) {
-    if (isProcessing) return;
+    if (isProcessing || !hasAccess) return;
     
     isProcessing = true;
     processingClaimId = claimId;
@@ -253,7 +281,7 @@
 
   // Process all claims
   async function processAllClaims() {
-    if (isProcessingAll || isProcessing || claims.length === 0) return;
+    if (isProcessingAll || isProcessing || claims.length === 0 || !hasAccess) return;
     
     isProcessingAll = true;
     
@@ -328,7 +356,7 @@
         View and process your claimable tokens
       </p>
     </div>
-    {#if $auth.isConnected && !isLoading && !error && claims.length > 0}
+    {#if $auth.isConnected && !isLoading && !error && claims.length > 0 && hasAccess}
       <div class="flex space-x-3">
         <!-- Claim All button -->
         <ButtonV2 
@@ -375,6 +403,14 @@
       <div class="p-6 text-center">
         <p class="mb-4">Please connect your wallet to view your claims</p>
         <ButtonV2 theme="accent-blue" on:click={() => auth.initialize()}>Connect Wallet</ButtonV2>
+      </div>
+    </Panel>
+  {:else if !hasAccess}
+    <Panel variant="solid" type="main">
+      <div class="p-6 text-center">
+        <p class="text-red-500 mb-4">{accessError}</p>
+        <p class="text-sm text-gray-500 mb-4">This page is restricted to authorized users only.</p>
+        <ButtonV2 theme="secondary" on:click={() => auth.disconnect()}>Disconnect</ButtonV2>
       </div>
     </Panel>
   {:else if isLoading}
