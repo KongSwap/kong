@@ -77,11 +77,11 @@
 }
 
 .panel.transparent {
-  @apply bg-kong-bg-dark/60;
-  backdrop-filter: blur(22px);
+  @apply bg-kong-bg-dark/40;
+  backdrop-filter: blur(12px);
   @apply border border-kong-border/50;
   @apply shadow-sm dark:shadow-[0_4px_12px_rgba(0,0,0,0.16)];
-  @apply light:bg-kong-bg-dark/95 light:border-kong-border;
+  @apply light:bg-kong-bg-dark/90 light:border-kong-border;
 }
 
 
@@ -136,15 +136,15 @@
 :global(:root.plain-black) .panel.transparent {
   box-shadow: none;
   @apply border-white/0 border;
-  background: linear-gradient(135deg, rgba(40, 40, 40, 0.4) 0%, rgba(20, 20, 20, 0.2) 100%);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(135deg, rgba(40, 40, 40, 0.25) 0%, rgba(20, 20, 20, 0.15) 100%);
+  backdrop-filter: blur(8px);
 }
 
 :global(:root.plain-black) .panel.transparent:hover,
 :global(:root.plain-black) .panel.transparent:has(.panel:hover) {
   box-shadow: none;
   @apply border-white/10 border;
-  background: linear-gradient(135deg, rgba(50, 50, 50, 0.5) 0%, rgba(25, 25, 25, 0.3) 100%);
+  background: linear-gradient(135deg, rgba(50, 50, 50, 0.3) 0%, rgba(25, 25, 25, 0.2) 100%);
 }
 
 /* Add a subtle gradient overlay for transparent panels in plain-black theme */
@@ -153,7 +153,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.15);
   pointer-events: none;
 }
 

@@ -401,9 +401,9 @@
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
     {#if $activeSection === "pools"}
       <Panel className="flex-1 {$isMobile ? '' : '!p-0'}" variant="transparent">
-        <div class="overflow-hidden flex flex-col h-full">
+        <div class="overflow-hidden flex flex-col h-full rounded-lg">
           <!-- Header with full-width search and "My Pools" button -->
-          <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md rounded-t-xl">
+          <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md rounded-t-lg">
             <div class="flex flex-col gap-3 sm:gap-0">
               <!-- Mobile-only buttons -->
               <div class="sm:hidden space-y-2">

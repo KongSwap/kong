@@ -20,9 +20,11 @@
 
 <style scoped>
   .flash-green {
-    color: var(--kong-accent-green);
+    color: rgb(var(--text-accent-green));
+    font-weight: 500;
   }
   .flash-red {
-    color: var(--kong-accent-red);
+    color: rgb(var(--text-accent-red));
+    font-weight: 500;
   }
 </style>

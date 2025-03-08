@@ -13,14 +13,55 @@
   import { userTokens } from "$lib/stores/userTokens";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
 
-  let WalletProviderComponent: any;
-  let TokenListComponent: any;
-  let PoolListComponent: any;
-  let TransactionHistoryComponent: any;
+  // Define props
+  const { onClose } = $props<{ onClose: () => void }>();
 
-  // Keep track of component loading promises
-  let loadingPromises: Promise<any>[] = [];
+  // State management using runes - using let for mutable state
+  let activeTab = $state<"tokens" | "pools" | "history">("tokens");
+  let isExpanded = $state(false);
 
+  // Dynamic component references - using let for mutable state
+  let WalletProviderComponent = $state<any>(null);
+  let TokenListComponent = $state<any>(null);
+  let PoolListComponent = $state<any>(null);
+  let TransactionHistoryComponent = $state<any>(null);
+
+  // Track loading promises - using let for mutable state
+  let loadingPromises = $state<Promise<any>[]>([]);
+
+  // Update isExpanded when sidebarStore changes
+  $effect(() => {
+    // Correctly subscribe to the store value
+    const unsubscribe = sidebarStore.subscribe((state) => {
+      isExpanded = state.isExpanded;
+    });
+    
+    return unsubscribe; // Clean up subscription when effect is re-run or component is destroyed
+  });
+
+  // Initialize from localStorage when mounted
+  $effect(() => {
+    if (browser) {
+      const savedTab = localStorage.getItem("sidebarActiveTab") as "tokens" | "pools" | "history";
+      if (savedTab) {
+        activeTab = savedTab;
+      }
+    }
+    
+    // Cleanup when component is destroyed (similar to onDestroy)
+    return () => {
+      // Clear component references
+      WalletProviderComponent = null;
+      TokenListComponent = null;
+      PoolListComponent = null;
+      TransactionHistoryComponent = null;
+
+      // Cancel any pending loads
+      loadingPromises = [];
+    };
+  });
+
+  // Component loading utility functions 
   async function loadComponent(importFn: () => Promise<any>) {
     const promise = importFn();
     loadingPromises = [...loadingPromises, promise];
@@ -56,37 +97,7 @@
     );
   }
 
-  // Cleanup function
-  onDestroy(() => {
-    // Clear component references
-    WalletProviderComponent = null;
-    TokenListComponent = null;
-    PoolListComponent = null;
-    TransactionHistoryComponent = null;
-
-    // Cancel any pending loads
-    loadingPromises = [];
-  });
-
-  export let onClose: () => void;
-
-  let activeTab: "tokens" | "pools" | "history" = "tokens";
-  let isExpanded = false;
-
-  sidebarStore.subscribe((state) => {
-    isExpanded = state.isExpanded;
-  });
-
-  onMount(() => {
-    if (browser) {
-      activeTab =
-        (localStorage.getItem("sidebarActiveTab") as
-          | "tokens"
-          | "pools"
-          | "history") || "tokens";
-    }
-  });
-
+  // UI interaction functions
   function handleClose() {
     sidebarStore.collapse();
   }
