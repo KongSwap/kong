@@ -1,4 +1,5 @@
 import { API_URL } from "$lib/api/index";
+import { browser } from "$app/environment";
 
 /**
  * Base API client with common functionality for all API clients
@@ -7,7 +8,7 @@ export class ApiClient {
   protected baseUrl: string;
 
   constructor(baseUrl: string = API_URL) {
-    this.baseUrl = baseUrl;
+    this.baseUrl = baseUrl || "";
   }
 
   /**
@@ -34,6 +35,11 @@ export class ApiClient {
     params: Record<string, string> = {}, 
     additionalHeaders: Record<string, string> = {}
   ): Promise<T> {
+    // Check if we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+    
     // Build query string
     const queryString = new URLSearchParams(params).toString();
     const url = `${this.baseUrl}${endpoint}${queryString ? `?${queryString}` : ''}`;
@@ -53,6 +59,11 @@ export class ApiClient {
     body: any, 
     additionalHeaders: Record<string, string> = {}
   ): Promise<T> {
+    // Check if we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+    
     const url = `${this.baseUrl}${endpoint}`;
     
     // Create request options
@@ -71,6 +82,11 @@ export class ApiClient {
     body: any, 
     additionalHeaders: Record<string, string> = {}
   ): Promise<T> {
+    // Check if we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+    
     const url = `${this.baseUrl}${endpoint}`;
     
     // Create request options
@@ -88,6 +104,11 @@ export class ApiClient {
     endpoint: string, 
     additionalHeaders: Record<string, string> = {}
   ): Promise<T> {
+    // Check if we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+    
     const url = `${this.baseUrl}${endpoint}`;
     
     // Create request options
