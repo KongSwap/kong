@@ -33,6 +33,7 @@
   import MobileNavGroup from "./MobileNavGroup.svelte";
   import MobileMenuItem from "./MobileMenuItem.svelte";
   import { searchStore } from "$lib/stores/searchStore";
+  import { userTokens } from "$lib/stores/userTokens";
 
   let showSettings = false;
   let isMobile = false;
@@ -108,7 +109,7 @@
 
   async function claimTokens() {
     await TokenService.faucetClaim();
-    await loadBalances($auth.account.owner, { forceRefresh: true });
+    await loadBalances($userTokens.tokens, $auth.account.owner, true);
   }
 
   const earnOptions = [

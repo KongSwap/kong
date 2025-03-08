@@ -283,7 +283,11 @@
         containerHeight: dimensions.height,
         isMobile,
         currentPrice,
-        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+        theme: document.documentElement.classList.contains('plain-black') 
+          ? 'plain-black' 
+          : document.documentElement.classList.contains('dark') 
+            ? 'dark' 
+            : 'light',
         quoteTokenDecimals: props.quoteToken.decimals || 8,
         baseTokenDecimals: props.baseToken.decimals || 8
       });
@@ -474,9 +478,9 @@
   });
 </script>
 
-<div class="chart-wrapper h-full" bind:this={chartWrapper}>
+<div class="chart-wrapper h-full {document.documentElement.classList.contains('plain-black') ? 'chart-theme-plain-black' : document.documentElement.classList.contains('dark') ? 'chart-theme-dark' : 'chart-theme-light'}" bind:this={chartWrapper}>
   <div
-    class="chart-container h-full w-full relative"
+    class="chart-container h-full w-full relative {document.documentElement.classList.contains('plain-black') ? 'plain-black-chart' : ''}"
     bind:this={chartContainer}
   >
     {#if hasNoData}
@@ -629,6 +633,17 @@
     --tv-color-toolbar-divider-background: theme('colors.kong.border');
   }
 
+  :global(.chart-theme-plain-black) {
+    --tv-color-platform-background: transparent;
+    --tv-color-pane-background: transparent;
+    --tv-color-toolbar-button-background-hover: #222222;
+    --tv-color-toolbar-button-background-expanded: #333333;
+    --tv-color-toolbar-button-background-active: #333333;
+    --tv-color-toolbar-button-text: #CCCCCC;
+    --tv-color-toolbar-button-text-hover: #FFFFFF;
+    --tv-color-toolbar-divider-background: #222222;
+  }
+
   :global(.chart-theme-light) {
     --tv-color-platform-background: transparent;
     --tv-color-pane-background: transparent;
@@ -688,6 +703,30 @@
     background-color: transparent !important;
   }
 
+  /* Ensure toolbar background is black in plain-black theme */
+  :global(.plain-black) :global(.layout__area--top),
+  :global(.plain-black) :global(.layout__area--left) {
+    background-color: #000000 !important;
+  }
+
+  /* Force toolbar elements in plain-black theme to have correct styling */
+  :global(.plain-black) :global(.group-wWM3zP_M-),
+  :global(.plain-black) :global(.container-wWM3zP_M-),
+  :global(.plain-black) :global(.inner-2JyOhh7Z-),
+  :global(.plain-black) :global(.wrap-3tiHesTk-) {
+    background-color: #000000 !important;
+  }
+
+  /* Force text colors in plain-black theme */
+  :global(.plain-black) :global(.button-2ioYhFEY-),
+  :global(.plain-black) :global(.button-1VVj8kLG-),
+  :global(.plain-black) :global(.button-2pZNJ24z-),
+  :global(.plain-black) :global(.tv-control-checkbox__wrapper),
+  :global(.plain-black) :global(.apply-common-tooltip),
+  :global(.plain-black) :global(.intervalButton-YkKRnFNC) {
+    color: #CCCCCC !important;
+  }
+
   /* Style toolbar buttons */
   :global(.button-2ioYhFEY-),
   :global(.button-1VVj8kLG-),
@@ -713,6 +752,26 @@
     --tv-color-toolbar-button-background-active: theme('colors.kong.border-light');
     --tv-color-toolbar-button-text: theme('colors.kong.text.primary');
     --tv-color-toolbar-button-text-hover: theme('colors.kong.text.primary');
+  }
+
+  :global(.plain-black) {
+    --tv-color-toolbar-button-background-hover: #222222;
+    --tv-color-toolbar-button-background-active: #333333;
+    --tv-color-toolbar-button-text: #CCCCCC;
+    --tv-color-toolbar-button-text-hover: #FFFFFF;
+  }
+
+  /* Special styles for plain-black-chart */
+  :global(.plain-black-chart) :global(.chart-markup-table),
+  :global(.plain-black-chart) :global(.tv-lightweight-charts),
+  :global(.plain-black-chart) :global(.layout__area--center) {
+    color: #CCCCCC !important;
+  }
+
+  :global(.plain-black-chart) :global(.layout__area--top),
+  :global(.plain-black-chart) :global(.layout__area--left) {
+    background-color: #000000 !important;
+    border-color: #222222 !important;
   }
 
   :global(.light) {

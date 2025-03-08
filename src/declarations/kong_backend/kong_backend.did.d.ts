@@ -94,6 +94,33 @@ export interface CheckPoolsReply {
 }
 export type CheckPoolsResult = { 'Ok' : Array<CheckPoolsReply> } |
   { 'Err' : string };
+export interface ClaimReply {
+  'ts' : bigint,
+  'fee' : bigint,
+  'status' : string,
+  'claim_id' : bigint,
+  'transfer_ids' : Array<TransferIdReply>,
+  'desc' : string,
+  'chain' : string,
+  'to_address' : string,
+  'amount' : bigint,
+  'symbol' : string,
+}
+export type ClaimResult = { 'Ok' : ClaimReply } |
+  { 'Err' : string };
+export interface ClaimsReply {
+  'ts' : bigint,
+  'fee' : bigint,
+  'status' : string,
+  'claim_id' : bigint,
+  'desc' : string,
+  'chain' : string,
+  'to_address' : string,
+  'amount' : bigint,
+  'symbol' : string,
+}
+export type ClaimsResult = { 'Ok' : Array<ClaimsReply> } |
+  { 'Err' : string };
 export interface ExpectedBalance {
   'balance' : bigint,
   'pool_balances' : Array<PoolExpectedBalance>,
@@ -454,6 +481,8 @@ export interface _SERVICE {
   'add_pool' : ActorMethod<[AddPoolArgs], AddPoolResult>,
   'add_token' : ActorMethod<[AddTokenArgs], AddTokenResult>,
   'check_pools' : ActorMethod<[], CheckPoolsResult>,
+  'claim' : ActorMethod<[bigint], ClaimResult>,
+  'claims' : ActorMethod<[string], ClaimsResult>,
   'get_user' : ActorMethod<[], UserResult>,
   'icrc10_supported_standards' : ActorMethod<
     [],
@@ -484,7 +513,6 @@ export interface _SERVICE {
   'swap_amounts' : ActorMethod<[string, bigint, string], SwapAmountsResult>,
   'swap_async' : ActorMethod<[SwapArgs], SwapAsyncResult>,
   'tokens' : ActorMethod<[[] | [string]], TokensResult>,
-  'txs' : ActorMethod<[[] | [string]], TxsResult>,
   'update_token' : ActorMethod<[UpdateTokenArgs], UpdateTokenResult>,
   'user_balances' : ActorMethod<[string], UserBalancesResult>,
   'validate_add_liquidity' : ActorMethod<[], ValidateAddLiquidityResult>,

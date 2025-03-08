@@ -322,9 +322,9 @@
       className="content-panel flex-1 !p-0"
       height="100%"
     >
-      <div class="flex flex-col h-full">
+      <div class="flex flex-col h-full !rounded-lg">
         <!-- Header -->
-        <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10 backdrop-blur-md">
+        <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10 backdrop-blur-md rounded-t-lg">
           <div
             class="hidden sm:flex items-center gap-3 py-1 border-b border-kong-border"
           >
@@ -397,7 +397,7 @@
           </div>
         {:else}
           <div
-            class="flex-1 custom-scrollbar {isMobile
+            class="flex-1 rounded-lg custom-scrollbar {isMobile
               ? 'h-[calc(100vh-8rem)]'
               : 'h-[calc(100vh-1rem)]'}"
           >
@@ -534,7 +534,7 @@
                 </div>
 
                 <!-- Mobile Pagination -->
-                <div class="sticky bottom-0 left-0 right-0 flex items-center justify-between px-4 py-2 border-t border-kong-border backdrop-blur-md">
+                <div class="sticky bottom-0 left-0 right-0 flex items-center justify-between px-4 py-2 border-t border-kong-border backdrop-blur-md !rounded-b-lg">
                   <button
                     class="px-3 py-1 rounded text-sm {$currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
                     on:click={() => currentPage.set($currentPage - 1)}

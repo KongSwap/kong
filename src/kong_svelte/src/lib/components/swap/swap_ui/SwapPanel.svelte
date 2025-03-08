@@ -364,7 +364,9 @@
 <Panel
   variant="transparent"
   width="auto"
+  type="main"
   className="max-w-xl !rounded-xl !p-4 !h-full"
+  isSwapPanel={true}
 >
   <div
     class="flex flex-col min-h-[165px] max-h-[220px] box-border relative rounded-lg"

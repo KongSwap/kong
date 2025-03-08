@@ -12,7 +12,7 @@ export function getPrincipalColor(principalId: string): string {
   const hue = Math.abs(hash % 360);
   
   // Check if we're in dark mode
-  const isDarkMode = document.documentElement.classList.contains('dark');
+  const isDarkMode = document.documentElement.classList.contains('dark') || document.documentElement.classList.contains('plain-black');
   
   if (isDarkMode) {
     // Dark mode: More saturated, darker colors

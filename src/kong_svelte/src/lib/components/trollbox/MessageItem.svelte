@@ -251,14 +251,14 @@
       <img
         src={`https://api.dicebear.com/7.x/notionists-neutral/svg?seed=${message.principal.toText()}&size=20`}
         alt="avatar"
-        class="w-8 h-8 rounded-full bg-kong-pm-dark mb-0.5"
+        class="w-8 h-8 rounded-full bg-kong-dark mb-0.5"
       />
     {/if}
     
     <div class="{
       isCurrentUser 
         ? 'bg-kong-accent-purple/25 text-white rounded-t-md rounded-bl-md rounded-br-sm' 
-        : 'bg-kong-pm-dark text-kong-text-primary rounded-t-md rounded-br-md rounded-bl-sm'
+        : 'bg-kong-dark text-kong-text-primary rounded-t-md rounded-br-md rounded-bl-sm'
       } px-3 py-2 relative group"
     >
       <!-- Add data-debug-content attribute for troubleshooting if needed -->
@@ -296,7 +296,7 @@
           
           {#if showBanOptions}
             <div 
-              class="absolute z-10 {isCurrentUser ? 'left-0' : 'right-0'} top-[-42px] bg-kong-pm-dark border border-kong-primary/20 rounded-md shadow-lg p-2 min-w-[150px]"
+              class="absolute z-10 {isCurrentUser ? 'left-0' : 'right-0'} top-[-42px] bg-kong-dark border border-kong-primary/20 rounded-md shadow-lg p-2 min-w-[150px]"
               transition:fade={{ duration: 150 }}
             >
               {#if isBanned}
