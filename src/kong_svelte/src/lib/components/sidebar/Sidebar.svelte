@@ -144,6 +144,7 @@
             height="100%"
             variant="solid"
             className="sidebar-panel !bg-kong-bg-dark !py-0"
+            isSidebar={true}
           >
             <div
               class="grid grid-rows-auto-1fr-auto flex-1 min-h-full overflow-hidden !rounded-b-lg"

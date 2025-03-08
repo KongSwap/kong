@@ -211,11 +211,25 @@
         "token_1_balance",
       );
 
-      // Combine both token changes into a single dataset
-      const significantChangePoints = [
-        ...token0Changes,
-        ...token1Changes,
-      ].filter((v, i, a) => a.findIndex((t) => t.x === v.x) === i);
+      // Combine both token changes into a single dataset, removing duplicates
+      const significantChangePoints = [...token0Changes, ...token1Changes]
+        .filter((v, i, a) => a.findIndex((t) => t.x === v.x) === i)
+        // Ensure the points are properly positioned on the chart
+        .map(point => {
+          // Find the corresponding data point in the original dataset
+          const dataIndex = props.balanceHistory.findIndex(item => item.date === point.x);
+          if (dataIndex >= 0) {
+            // Use the token with the larger value to ensure visibility
+            const token0Value = props.balanceHistory[dataIndex].token_0_balance;
+            const token1Value = props.balanceHistory[dataIndex].token_1_balance;
+            return {
+              x: point.x,
+              y: Math.max(token0Value, token1Value),
+              change: point.change
+            };
+          }
+          return point;
+        });
 
       balanceChartInstance.data.datasets[2].data = significantChangePoints;
 
@@ -253,9 +267,24 @@
     );
 
     // Combine both token changes into a single dataset, removing duplicates
-    const significantChangePoints = [...token0Changes, ...token1Changes].filter(
-      (v, i, a) => a.findIndex((t) => t.x === v.x) === i,
-    );
+    const significantChangePoints = [...token0Changes, ...token1Changes]
+      .filter((v, i, a) => a.findIndex((t) => t.x === v.x) === i)
+      // Ensure the points are properly positioned on the chart
+      .map(point => {
+        // Find the corresponding data point in the original dataset
+        const dataIndex = props.balanceHistory.findIndex(item => item.date === point.x);
+        if (dataIndex >= 0) {
+          // Use the token with the larger value to ensure visibility
+          const token0Value = token0Data[dataIndex];
+          const token1Value = token1Data[dataIndex];
+          return {
+            x: point.x,
+            y: Math.max(token0Value, token1Value),
+            change: point.change
+          };
+        }
+        return point;
+      });
 
     // Check if token values are significantly different in scale
     const token0Max = Math.max(...token0Data);
@@ -308,10 +337,53 @@
       },
     });
 
+    // Ensure x-axis dates are not displayed
+    if (!chartOptions.scales) {
+      chartOptions.scales = {};
+    }
+    
+    chartOptions.scales.x = {
+      ...chartOptions.scales.x,
+      grid: {
+        display: false,
+      },
+      ticks: {
+        display: false, // Explicitly hide x-axis ticks
+      }
+    };
+
+    chartOptions.scales.y = {
+      ...chartOptions.scales.y,
+      ticks: {
+        display: false, // Explicitly hide y-axis ticks
+      }
+    };
+
+    // Make sure no axis labels are displayed
+    if (!chartOptions.plugins) {
+      chartOptions.plugins = {};
+    }
+
+    // Ensure no axis titles are displayed
+    chartOptions.plugins = {
+      ...chartOptions.plugins,
+      title: {
+        display: false
+      }
+    };
+
     // Extend the common options with dual-axis specific settings if needed
     if (needsDualAxis) {
       // Fix the type issue with scales by creating a proper configuration
       const scalesConfig = {
+        x: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            display: false, // Explicitly hide x-axis ticks
+          }
+        },
         y: {
           type: "linear" as const,
           display: true,
@@ -319,19 +391,16 @@
           beginAtZero: false,
           grid: {
             display: true,
+            drawBorder: false,
           },
           ticks: {
+            display: false, // Hide y-axis ticks
             color: colors.tickColor,
             callback: function (value: number) {
               if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
               if (value >= 1000) return (value / 1000).toFixed(1) + "K";
               return value.toString();
             },
-          },
-          title: {
-            display: false,
-            text: $liquidityStore.token0?.symbol || "Token 0",
-            color: colors.token0Color,
           },
         },
         y1: {
@@ -341,20 +410,16 @@
           beginAtZero: false,
           grid: {
             display: false,
+            drawBorder: false,
           },
           ticks: {
-            display: false,
+            display: false, // Hide y1-axis ticks
             color: colors.tickColor,
             callback: function (value: number) {
               if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
               if (value >= 1000) return (value / 1000).toFixed(1) + "K";
               return value.toString();
             },
-          },
-          title: {
-            display: false,
-            text: $liquidityStore.token1?.symbol || "Token 1",
-            color: colors.token1Color,
           },
         },
       };
@@ -365,11 +430,11 @@
     balanceChartInstance = new Chart(ctx, {
       type: "line",
       data: {
-        labels: labels,
+        labels: props.balanceHistory.map(entry => entry.date),
         datasets: [
           {
             label: $liquidityStore.token0?.symbol || "Token 0",
-            data: token0Data,
+            data: props.balanceHistory.map(entry => entry.token_0_balance),
             borderColor: colors.token0Color,
             backgroundColor: token0Gradient,
             borderWidth: 2,
@@ -384,7 +449,7 @@
           },
           {
             label: $liquidityStore.token1?.symbol || "Token 1",
-            data: token1Data,
+            data: props.balanceHistory.map(entry => entry.token_1_balance),
             borderColor: colors.token1Color,
             backgroundColor: token1Gradient,
             borderWidth: 2,
@@ -409,10 +474,66 @@
             pointBorderColor: colors.pointBorderColor,
             pointBorderWidth: 1.5,
             showLine: false,
+            yAxisID: needsDualAxis ? "y" : "y",
+            order: 0,
+            clip: false
           },
         ],
       },
-      options: chartOptions,
+      options: {
+        ...chartOptions,
+        // Ensure all axis labels are hidden
+        scales: {
+          ...chartOptions.scales,
+          x: {
+            ...chartOptions.scales.x,
+            display: true,
+            grid: {
+              display: false,
+              drawBorder: false,
+            },
+            ticks: {
+              display: false,
+            },
+            border: {
+              display: false,
+            }
+          },
+          y: {
+            ...chartOptions.scales.y,
+            display: true,
+            grid: {
+              display: true,
+              drawBorder: false,
+            },
+            ticks: {
+              display: false,
+            },
+            border: {
+              display: false,
+            }
+          }
+        },
+        // Ensure the chart area includes all data points
+        layout: {
+          padding: {
+            top: 10,
+            right: 10,
+            bottom: 10,
+            left: 10
+          }
+        },
+        // Disable clipping of the chart area to allow points to be drawn outside
+        plugins: {
+          ...chartOptions.plugins,
+          tooltip: {
+            ...chartOptions.plugins?.tooltip,
+            // Ensure tooltips are displayed for all points
+            intersect: false,
+            mode: 'index'
+          }
+        }
+      },
     });
 
     // Reset the update flags
