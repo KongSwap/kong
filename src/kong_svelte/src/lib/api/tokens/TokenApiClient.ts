@@ -8,25 +8,11 @@ import type {
   TokensByCanisterResponse,
   RawTokenData
 } from './types';
-import { TokenService } from '$lib/services/tokens/TokenService';
-import { updateBalancesInStore } from '$lib/stores/balancesStore';
-import { get } from 'svelte/store';
 
 // Create a single instance of the base API client for HTTP operations
 import { ApiClient } from '../base/ApiClient';
+import { API_URL } from '../index';
 
-// Define API_URL directly to avoid circular dependency
-function getIndexerUrl() {
-  if (typeof process !== 'undefined' && process.env.DFX_NETWORK === "local") {
-    return "http://localhost:8080";
-  } else if (typeof process !== 'undefined' && process.env.DFX_NETWORK === "staging") {
-    return 'https://clownfish-app-2dvg3.ondigitalocean.app';
-  } else {
-    return "https://api.kongswap.io";
-  }
-}
-
-const API_URL = getIndexerUrl();
 const apiClient = new ApiClient(API_URL);
 
 /**

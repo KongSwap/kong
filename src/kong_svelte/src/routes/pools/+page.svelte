@@ -46,7 +46,7 @@
   let pagination = { totalItems: 0, totalPages: 0, currentPage: 1, limit: 50 };
   let isLoading = writable<boolean>(false);
   let liveUserPools = writable<BE.Pool[]>([]);
-  const mobileSortColumn = writable("rolling_24h_volume");
+  const mobileSortColumn = writable("tvl");
   const mobileSortDirection = writable<"asc" | "desc">("desc");
 
   let cleanup: () => void;
@@ -747,7 +747,7 @@
                       totalItems={pagination.totalItems}
                       currentPage={pagination.currentPage}
                       defaultSort={{
-                        column: "rolling_24h_volume",
+                        column: "tvl",
                         direction: "desc",
                       }}
                       onPageChange={handlePageChange}
