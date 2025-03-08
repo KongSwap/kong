@@ -8,7 +8,7 @@ export * from './base';
 export * from './tokens';
 
 function getIndexerUrl() {
-  if (process.env.DFX_NETWORK === "ic") {
+  if (process.env.DFX_NETWORK === "local") {
       return "http://localhost:8080";
   } else if (process.env.DFX_NETWORK === "staging") {
       return 'https://clownfish-app-2dvg3.ondigitalocean.app';
