@@ -544,6 +544,32 @@ type SwapReply = record {
 type SwapResult = variant { Ok : SwapReply; Err : text };
 type SwapAsyncResult = variant { Ok : nat64; Err : text };
 
+type ClaimsReply = record {
+    claim_id : nat64;
+    status : text;
+    chain : text;
+    symbol : text;
+    amount : nat;
+    fee : nat;
+    to_address : text;
+    desc : text;
+    ts : nat64;
+};
+type ClaimsResult = variant { Ok : vec ClaimsReply; Err : text };
+type ClaimReply = record {
+    claim_id : nat64;
+    status : text;
+    chain : text;
+    symbol : text;
+    amount : nat;
+    fee : nat;
+    to_address : text;
+    desc : text;
+    transfer_ids : vec TransferIdReply;
+    ts : nat64;
+};
+type ClaimResult = variant { Ok : ClaimReply; Err : text };
+
 type SendArgs = record {
     token : text;
     amount : nat;
@@ -577,10 +603,8 @@ service : {
     get_user : () -> (UserResult) query;
     // user_balances(principal_id) - return user's LP balances
     user_balances : (text) -> (UserBalancesResult) query;
-    // requests(opt request_id) - return specific request or most recent requests
+    // requests(opt request_id) - return specific request_id
     requests : (opt nat64) -> (RequestsResult) query;
-    // txs(opt principal_id) - return transactions filtered by principal id
-    txs : (opt text) -> (TxsResult) query;
 
     // add a new token
     add_token : (AddTokenArgs) -> (AddTokenResult);
@@ -635,6 +659,11 @@ service : {
     // asnychronous version of swap()
     // request_id will be returned by swap_async() and poll requests(request_id) to get updated status
     swap_async : (SwapArgs) -> (SwapAsyncResult);
+
+    // claims(principal_id) - return list of claims for user
+    claims : (text) -> (ClaimsResult) query;
+    // claim(claim_id) - claim claim_id
+    claim : (nat64) -> (ClaimResult);
 
     // send LP tokens to another user
     send : (SendArgs) -> (SendResult);

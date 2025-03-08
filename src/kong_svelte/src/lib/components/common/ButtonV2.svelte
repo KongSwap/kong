@@ -10,6 +10,15 @@
   export let disabled: boolean = false;
   export let className: string = "";
   export let element: HTMLButtonElement | null = null;
+  // Add new prop for animation iterations (1 = once, 0 or negative = infinite)
+  export let animationIterations: number = 1;
+  
+  // Add state for tracking if animations have played
+  import { onMount } from 'svelte';
+  let hasAnimated = false;
+  
+  // Compute animation iteration count for CSS
+  $: animationCount = animationIterations <= 0 ? 'infinite' : animationIterations.toString();
 
   // Theme-based styles
   const baseThemeClasses = {
@@ -95,6 +104,19 @@
     transparent: transparentThemeClasses[theme],
     shine: shineThemeClasses[theme],
   };
+  
+  // Function to handle animation end
+  function handleAnimationEnd() {
+    // Only set hasAnimated to true if we're not using infinite animations
+    if (animationIterations > 0) {
+      hasAnimated = true;
+    }
+  }
+  
+  // Reset animation state when component mounts
+  onMount(() => {
+    hasAnimated = false;
+  });
 </script>
 
 <button
@@ -114,11 +136,11 @@
     {/if}
   </div>
 
-  {#if variant === "shine" && !isDisabled}
+  {#if variant === "shine" && !isDisabled && (!hasAnimated || animationIterations <= 0)}
     <div class="absolute inset-0 overflow-hidden">
-      <div class="shine-effect"></div>
+      <div class="shine-effect" style="animation-iteration-count: {animationCount};" on:animationend={handleAnimationEnd}></div>
     </div>
-    <div class="ready-glow"></div>
+    <div class="ready-glow" style="animation-iteration-count: {animationCount};"></div>
   {/if}
 </button>
 
@@ -137,7 +159,7 @@
     );
     transform: skewX(-20deg);
     pointer-events: none;
-    animation: shine 3s infinite;
+    animation: shine 3s; /* Removed fixed iteration count */
   }
 
   .ready-glow {
@@ -152,7 +174,7 @@
     opacity: 0;
     filter: blur(8px);
     transition: opacity 0.3s ease;
-    animation: pulse-glow 2s ease-in-out infinite;
+    animation: pulse-glow 2s ease-in-out; /* Removed fixed iteration count */
   }
 
   @keyframes shine {

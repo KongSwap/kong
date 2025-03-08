@@ -47,10 +47,10 @@ body {
   --surface-dark: 17 21 35;          /* #111523 */
   --surface-light: 24 28 42;         /* #181C2A */
   color-scheme: dark light; /* Dark first */
-  --pm-dark: 23 25 35;
-  --pm-border: 40 44 58;
-  --pm-accent: 111 93 251;          /* #6F5DFB - Same as accent-purple */
-  --pm-text-secondary: 158 164 186;
+  --pm-dark: 23 25 35;               /* #171923 */
+  --pm-border: 40 44 58;             /* #282C3A */
+  --pm-accent: 111 93 251;           /* #6F5DFB - Same as accent-purple */
+  --pm-text-secondary: 158 164 186;  /* #9EA4BA */
 }
 
 /* Light theme overrides */
@@ -86,6 +86,7 @@ body {
   --pm-border: 229 231 235;
   --pm-accent: 111 93 251;          /* #6F5DFB - Same as accent-purple */
   --pm-text-secondary: 107 114 128;
+  --hover-bg-light: var(--bg-light);  /* Use same as bg-light by default in light theme */
 }
 
 /* Dark theme overrides (more neutral navy background) */
@@ -96,15 +97,17 @@ body {
   --primary-hover: 0 134 211;      /* #0086D3 - Darker variant */
   --secondary: 34 211 238;         /* #22D3EE */
   --secondary-hover: 14 165 233;   /* #0EA5E9 */
-  --accent-blue: 0 149 235;        /* #0095EB - Kong's brand blue */
-  --accent-red: 234 67 53;        /* #EA4335 - Google red */
-  --accent-green: 0 180 115;       /* #00b473 */
-  --accent-green-hover: 0 160 105;
-  --accent-blue-hover: 0 134 211;  /* #0086D3 - Darker variant */
-  --accent-red-hover: 217 48 37;  /* #D93025 - Darker Google red */
+  --accent-blue: 0 167 255;        /* #00A7FF - Brighter blue */
+  --accent-red: 255 69 69;         /* #FF4545 - Vibrant red */
+  --accent-green: 5 236 134;       /* #05EC86 - Vibrant green */
+  --accent-green-hover: 4 206 117; /* #04CE75 */
+  --accent-blue-hover: 0 144 220;  /* #0090DC */
+  --accent-red-hover: 235 55 55;   /* #EB3737 */
   --text-primary: 255 255 255;     /* #FFFFFF */
-  --text-secondary: 155 161 176;   /* #9BA1B0 */
+  --text-secondary: 176 182 197;   /* #B0B6C5 - Brighter secondary text */
   --text-disabled: 107 114 128;    /* #6B7280 */
+  --text-accent-green: 5 236 134;  /* #05EC86 - Same as accent-green */
+  --text-accent-red: 255 69 69;    /* #FF4545 - Same as accent-red */
   --border: 28 32 46;              /* #1C202E */
   --border-light: 35 39 53;        /* #232735 */
   --logo-brightness: 1;
@@ -112,10 +115,48 @@ body {
   --logo-hover-brightness: 0.9;
   --surface-dark: 17 21 35;          /* #111523 */
   --surface-light: 24 28 42;         /* #181C2A */
+  --pm-dark: 23 25 35;               /* #171923 */
+  --pm-border: 40 44 58;             /* #282C3A */
+  --pm-accent: 111 93 251;           /* #6F5DFB - Same as accent-purple */
+  --pm-text-secondary: 158 164 186;  /* #9EA4BA */
+  --hover-bg-light: var(--bg-light);  /* Use same as bg-light by default in dark theme */
+}
+
+/* Plain black theme overrides (completely black background with dark theme colors) */
+:root.plain-black {
+  --bg-dark: 0 0 0;                /* #000000 - Pure black */
+  --bg-light: 18 18 18;            /* #121212 - Very dark gray */
+  --hover-bg-light: 30 30 30;      /* #1E1E1E - Slightly lighter for more prominent hover */
+  --primary: 0 149 235;            /* #0095EB - Kong's brand blue */
+  --primary-hover: 0 134 211;      /* #0086D3 - Darker variant */
+  --secondary: 34 211 238;         /* #22D3EE */
+  --secondary-hover: 14 165 233;   /* #0EA5E9 */
+  --accent-blue: 0 167 255;        /* #00A7FF - Brighter blue */
+  --accent-red: 255 69 69;         /* #FF4545 - Vibrant red */
+  --accent-green: 5 236 134;       /* #05EC86 - Vibrant green */
+  --accent-green-hover: 4 206 117; /* #04CE75 */
+  --accent-blue-hover: 0 144 220;  /* #0090DC */
+  --accent-red-hover: 235 55 55;   /* #EB3737 */
+  --text-primary: 255 255 255;     /* #FFFFFF */
+  --text-secondary: 205 211 226;   /* #9BA1B0 */
+  --text-disabled: 107 114 128;    /* #6B7280 */
+  --text-accent-green: 5 236 134;  /* #05EC86 - Same as accent-green */
+  --text-accent-red: 255 69 69;    /* #FF4545 - Same as accent-red */
+  --border: 28 28 28;              /* #1C1C1C */
+  --border-light: 38 38 38;        /* #262626 */
+  --logo-brightness: 1;
+  --logo-invert: 0;
+  --logo-hover-brightness: 0.9;
+  --surface-dark: 10 10 10;          /* #0A0A0A */
+  --surface-light: 18 18 18;         /* #121212 */
+  --pm-dark: 23 25 35;               /* #171923 */
+  --pm-border: 40 44 58;             /* #282C3A */
+  --pm-accent: 111 93 251;           /* #6F5DFB - Same as accent-purple */
+  --pm-text-secondary: 158 164 186;  /* #9EA4BA */
 }
 
 /* Update the gradient for light theme with more muted blue tones */
-:root:not(.dark) .page-wrapper::before {
+:root:not(.dark):not(.plain-black) .page-wrapper::before {
   content: '';
   position: fixed;
   inset: 0;

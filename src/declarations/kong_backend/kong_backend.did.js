@@ -141,6 +141,34 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : IDL.Vec(CheckPoolsReply),
     'Err' : IDL.Text,
   });
+  const ClaimReply = IDL.Record({
+    'ts' : IDL.Nat64,
+    'fee' : IDL.Nat,
+    'status' : IDL.Text,
+    'claim_id' : IDL.Nat64,
+    'transfer_ids' : IDL.Vec(TransferIdReply),
+    'desc' : IDL.Text,
+    'chain' : IDL.Text,
+    'to_address' : IDL.Text,
+    'amount' : IDL.Nat,
+    'symbol' : IDL.Text,
+  });
+  const ClaimResult = IDL.Variant({ 'Ok' : ClaimReply, 'Err' : IDL.Text });
+  const ClaimsReply = IDL.Record({
+    'ts' : IDL.Nat64,
+    'fee' : IDL.Nat,
+    'status' : IDL.Text,
+    'claim_id' : IDL.Nat64,
+    'desc' : IDL.Text,
+    'chain' : IDL.Text,
+    'to_address' : IDL.Text,
+    'amount' : IDL.Nat,
+    'symbol' : IDL.Text,
+  });
+  const ClaimsResult = IDL.Variant({
+    'Ok' : IDL.Vec(ClaimsReply),
+    'Err' : IDL.Text,
+  });
   const UserReply = IDL.Record({
     'account_id' : IDL.Text,
     'fee_level_expires_at' : IDL.Opt(IDL.Nat64),
@@ -423,13 +451,6 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : IDL.Vec(TokenReply),
     'Err' : IDL.Text,
   });
-  const TxsReply = IDL.Variant({
-    'AddLiquidity' : AddLiquidityReply,
-    'Swap' : SwapReply,
-    'AddPool' : AddPoolReply,
-    'RemoveLiquidity' : RemoveLiquidityReply,
-  });
-  const TxsResult = IDL.Variant({ 'Ok' : IDL.Vec(TxsReply), 'Err' : IDL.Text });
   const UpdateTokenArgs = IDL.Record({ 'token' : IDL.Text });
   const UpdateTokenReply = IDL.Variant({ 'IC' : ICTokenReply });
   const UpdateTokenResult = IDL.Variant({
@@ -481,6 +502,8 @@ export const idlFactory = ({ IDL }) => {
     'add_pool' : IDL.Func([AddPoolArgs], [AddPoolResult], []),
     'add_token' : IDL.Func([AddTokenArgs], [AddTokenResult], []),
     'check_pools' : IDL.Func([], [CheckPoolsResult], []),
+    'claim' : IDL.Func([IDL.Nat64], [ClaimResult], []),
+    'claims' : IDL.Func([IDL.Text], [ClaimsResult], ['query']),
     'get_user' : IDL.Func([], [UserResult], ['query']),
     'icrc10_supported_standards' : IDL.Func(
         [],
@@ -520,7 +543,6 @@ export const idlFactory = ({ IDL }) => {
       ),
     'swap_async' : IDL.Func([SwapArgs], [SwapAsyncResult], []),
     'tokens' : IDL.Func([IDL.Opt(IDL.Text)], [TokensResult], ['query']),
-    'txs' : IDL.Func([IDL.Opt(IDL.Text)], [TxsResult], ['query']),
     'update_token' : IDL.Func([UpdateTokenArgs], [UpdateTokenResult], []),
     'user_balances' : IDL.Func([IDL.Text], [UserBalancesResult], ['query']),
     'validate_add_liquidity' : IDL.Func([], [ValidateAddLiquidityResult], []),

@@ -48,21 +48,21 @@ export function getChartConfig(params: {
 
   const customTheme = {
     chart: {
-      backgroundColor: theme === 'dark' ? '#000000' : '#FFFFFF',
+      backgroundColor: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
       layout: {
         background: { 
           type: "solid",
-          color: theme === 'dark' ? '#000000' : '#FFFFFF'
+          color: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF'
         },
-        textColor: theme === 'dark' ? '#9BA1B0' : '#4B5563',
+        textColor: theme === 'plain-black' ? '#CCCCCC' : theme === 'dark' ? '#9BA1B0' : '#4B5563',
       },
       topToolbar: {
-        backgroundColor: theme === 'dark' ? '#000000' : '#FFFFFF',
-        borderColor: theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+        backgroundColor: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
+        borderColor: theme === 'plain-black' ? '#222222' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
       },
       leftToolbar: {
-        backgroundColor: theme === 'dark' ? '#000000' : '#FFFFFF',
-        borderColor: theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+        backgroundColor: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
+        borderColor: theme === 'plain-black' ? '#222222' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
       }
     },
   };
@@ -78,11 +78,12 @@ export function getChartConfig(params: {
     locale: 'en',
     fullscreen: false,
     autosize: autosize ?? true,
-    theme: theme,
+    theme: theme === 'plain-black' ? 'dark' : theme,
     timezone: 'Etc/UTC',
-    toolbar_bg: 'rgba(0,0,0,0)',
+    toolbar_bg: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
+    top_toolbar_bg: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
     loading_screen: { 
-      backgroundColor: theme === 'dark' ? '#000000' : '#FFFFFF',
+      backgroundColor: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
       foregroundColor: "#00A1FA"
     },
     numeric_formatting: { decimal_sign: '.' },
@@ -132,10 +133,14 @@ export function getChartConfig(params: {
       "mainSeriesProperties.candleStyle.wickDownColor": "#d11b1b",
       
       // Chart background and grid
-      "paneProperties.background": theme === 'dark' ? '#000000' : '#FFFFFF',
+      "paneProperties.background": theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
       "paneProperties.backgroundType": "solid",
-      "paneProperties.vertGridProperties.color": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
-      "paneProperties.horzGridProperties.color": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      "paneProperties.vertGridProperties.color": theme === 'plain-black' ? '#111111' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      "paneProperties.horzGridProperties.color": theme === 'plain-black' ? '#111111' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      
+      // Text colors for toolbar elements
+      "scalesProperties.textColor": theme === 'plain-black' ? '#CCCCCC' : theme === 'dark' ? '#9BA1B0' : '#4B5563',
+      "scalesProperties.lineColor": theme === 'plain-black' ? '#222222' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
       
       // Time scale
       "timeScale.rightOffset": 5,
@@ -143,9 +148,9 @@ export function getChartConfig(params: {
       "timeScale.minBarSpacing": 4,
       "timeScale.rightBarStaysOnScroll": true,
       "timeScale.borderVisible": true,
-      "timeScale.borderColor": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
-      "timeScale.backgroundColor": theme === 'dark' ? '#000000' : '#FFFFFF',
-      "timeScale.textColor": theme === 'dark' ? '#9BA1B0' : '#4B5563',
+      "timeScale.borderColor": theme === 'plain-black' ? '#222222' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      "timeScale.backgroundColor": theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
+      "timeScale.textColor": theme === 'plain-black' ? '#CCCCCC' : theme === 'dark' ? '#9BA1B0' : '#4B5563',
       
       // Volume
       "volumePaneSize": "medium",
@@ -175,11 +180,11 @@ export function getChartConfig(params: {
         "mainSeriesProperties.candleStyle.wickDownColor": "#d11b1b",
         
         // Grid settings
-        "paneProperties.vertGridProperties.color": "rgba(255, 255, 255, 0.03)",
-        "paneProperties.horzGridProperties.color": "rgba(255, 255, 255, 0.03)",
+        "paneProperties.vertGridProperties.color": theme === 'plain-black' ? "rgba(255, 255, 255, 0.02)" : "rgba(255, 255, 255, 0.03)",
+        "paneProperties.horzGridProperties.color": theme === 'plain-black' ? "rgba(255, 255, 255, 0.02)" : "rgba(255, 255, 255, 0.03)",
         
         // Crosshair settings
-        "crosshairProperties.color": "#9BA1B0",
+        "crosshairProperties.color": theme === 'plain-black' ? "#CCCCCC" : "#9BA1B0",
         "crosshairProperties.width": 0.5,
         "crosshairProperties.style": 2,
       } : {}),
@@ -187,7 +192,7 @@ export function getChartConfig(params: {
     studies_overrides: {
       "volume.volume.color.0": "#d11b1b",
       "volume.volume.color.1": "#00cc81",
-      "volume.volume.transparency": theme === 'dark' ? 50 : 65,
+      "volume.volume.transparency": theme === 'plain-black' ? 40 : theme === 'dark' ? 50 : 65,
       "volume.volume.color": "#00A1FA",
       "volume.volume.linewidth": 2
     }

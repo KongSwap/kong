@@ -1,0 +1,626 @@
+<script lang="ts">
+  import Panel from "$lib/components/common/Panel.svelte";
+  import { BarChart3 } from "lucide-svelte";
+  import {
+    initializeChart,
+    cleanupChart,
+    getChartThemeColors,
+    formatNumber,
+    createChartGradient,
+    getCommonChartOptions,
+    calculateSignificantChanges,
+    type PoolBalanceHistoryItem,
+  } from "./chartUtils";
+  import type { Chart as ChartJS } from "chart.js/auto";
+  import { liquidityStore } from "$lib/stores/liquidityStore";
+
+  // Props
+  const props = $props<{
+    balanceHistory: PoolBalanceHistoryItem[];
+    isLoading: boolean;
+    errorMessage: string;
+    currentPool: any;
+  }>();
+
+  // State variables using runes
+  let Chart = $state<any>(null);
+  let isChartAvailable = $state(false);
+  let isDarkMode = $state(false);
+  let observer = $state<MutationObserver | null>(null);
+  let balanceChartCanvas = $state<HTMLCanvasElement | null>(null);
+  let balanceChartInstance = $state<ChartJS | null>(null);
+  let processedTooltipData = $state<Record<number, string>>({});
+  let shouldUpdateChart = $state(false);
+  let shouldUpdateLabels = $state(false);
+
+  // Effect to initialize chart when component mounts
+  $effect(() => {
+    // Initialize chart asynchronously
+    initChartAsync();
+
+    // Cleanup on component destruction
+    return () => {
+      cleanupChart(balanceChartInstance, observer);
+    };
+  });
+
+  // Separate async initialization
+  async function initChartAsync() {
+    // Initialize chart components
+    const {
+      Chart: ChartJS,
+      isChartAvailable: chartAvailable,
+      isDarkMode: darkMode,
+      observer: themeObserver,
+    } = await initializeChart();
+
+    Chart = ChartJS;
+    isChartAvailable = chartAvailable;
+    isDarkMode = darkMode;
+    observer = themeObserver;
+
+    // Set up theme change observer
+    if (observer) {
+      observer.disconnect();
+      observer = new MutationObserver(() => {
+        const newDarkMode = document.documentElement.classList.contains("dark");
+        if (newDarkMode !== isDarkMode) {
+          isDarkMode = newDarkMode;
+          // Update chart if the theme changes
+          if (props.balanceHistory && props.balanceHistory.length > 0) {
+            shouldUpdateChart = true;
+          }
+        }
+      });
+
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+    }
+
+    // Initial chart creation if data exists
+    if (props.balanceHistory && props.balanceHistory.length > 0) {
+      prepareTooltipData();
+      initOrUpdateBalanceChart();
+    }
+  }
+
+  // Pre-process tooltip data to avoid expensive calculations on hover
+  function prepareTooltipData() {
+    processedTooltipData = {};
+
+    props.balanceHistory.forEach((dayData, index) => {
+      if (index === 0) return; // Skip first day for change calculations
+
+      const prevDay = props.balanceHistory[index - 1];
+      const token0Change = dayData.token_0_balance - prevDay.token_0_balance;
+      const token1Change = dayData.token_1_balance - prevDay.token_1_balance;
+      const lpChange = dayData.lp_token_supply - prevDay.lp_token_supply;
+
+      let tooltipInfo = `Day Index: ${dayData.day_index}\n`;
+      tooltipInfo += `LP Token Supply: ${formatNumber(dayData.lp_token_supply)}`;
+
+      if (
+        Math.abs(token0Change) > 0.0001 ||
+        Math.abs(token1Change) > 0.0001 ||
+        Math.abs(lpChange) > 0.0001
+      ) {
+        tooltipInfo += "\n\nChanges from previous day:";
+
+        if (Math.abs(token0Change) > 0.0001) {
+          const percentChange = (token0Change / prevDay.token_0_balance) * 100;
+          tooltipInfo += `\nToken 0: ${token0Change > 0 ? "+" : ""}${formatNumber(token0Change)} (${percentChange > 0 ? "+" : ""}${percentChange.toFixed(2)}%)`;
+        }
+
+        if (Math.abs(token1Change) > 0.0001) {
+          const percentChange = (token1Change / prevDay.token_1_balance) * 100;
+          tooltipInfo += `\nToken 1: ${token1Change > 0 ? "+" : ""}${formatNumber(token1Change)} (${percentChange > 0 ? "+" : ""}${percentChange.toFixed(2)}%)`;
+        }
+
+        if (Math.abs(lpChange) > 0.0001) {
+          const percentChange = (lpChange / prevDay.lp_token_supply) * 100;
+          tooltipInfo += `\nLP Supply: ${lpChange > 0 ? "+" : ""}${formatNumber(lpChange)} (${percentChange > 0 ? "+" : ""}${percentChange.toFixed(2)}%)`;
+        }
+      }
+
+      processedTooltipData[index] = tooltipInfo;
+    });
+  }
+
+  // Watch for token selection changes
+  $effect(() => {
+    const token0Symbol = $liquidityStore.token0?.symbol;
+    const token1Symbol = $liquidityStore.token1?.symbol;
+
+    if ((token0Symbol || token1Symbol) && balanceChartInstance) {
+      shouldUpdateLabels = true;
+    }
+  });
+
+  // Watch for balance history changes
+  $effect(() => {
+    const balanceHistoryLength = props.balanceHistory?.length || 0;
+    if (balanceHistoryLength > 0) {
+      shouldUpdateChart = true;
+    }
+  });
+
+  // Effect to handle chart updates
+  $effect(() => {
+    if (shouldUpdateLabels && balanceChartInstance) {
+      // Just update the labels without recreating the chart
+      balanceChartInstance.data.datasets[0].label =
+        $liquidityStore.token0?.symbol || "Token 0";
+      balanceChartInstance.data.datasets[1].label =
+        $liquidityStore.token1?.symbol || "Token 1";
+      balanceChartInstance.update("none"); // Minimal animation
+      shouldUpdateLabels = false;
+    }
+  });
+
+  // Separate effect to handle full chart updates
+  $effect(() => {
+    if (shouldUpdateChart && isChartAvailable && Chart) {
+      prepareTooltipData();
+      initOrUpdateBalanceChart();
+    }
+  });
+
+  function initOrUpdateBalanceChart(shouldReinitialize = true) {
+    if (
+      !balanceChartCanvas ||
+      !props.balanceHistory ||
+      props.balanceHistory.length === 0 ||
+      !isChartAvailable ||
+      !Chart
+    )
+      return;
+
+    // If we're just updating labels but not recreating the entire chart
+    if (!shouldReinitialize && balanceChartInstance) {
+      balanceChartInstance.data.datasets[0].label =
+        $liquidityStore.token0?.symbol || "Token 0";
+      balanceChartInstance.data.datasets[1].label =
+        $liquidityStore.token1?.symbol || "Token 1";
+      balanceChartInstance.update("none"); // Minimal animation
+      shouldUpdateLabels = false;
+      return;
+    }
+
+    // If the chart exists and we're updating data but not labels
+    if (balanceChartInstance && shouldReinitialize && props.balanceHistory) {
+      // Update data without recreating the chart
+      balanceChartInstance.data.labels = props.balanceHistory.map(
+        (entry) => entry.date,
+      );
+      balanceChartInstance.data.datasets[0].data = props.balanceHistory.map(
+        (entry) => entry.token_0_balance,
+      );
+      balanceChartInstance.data.datasets[1].data = props.balanceHistory.map(
+        (entry) => entry.token_1_balance,
+      );
+
+      // Update significant change points more efficiently
+      const token0Changes = calculateSignificantChanges(
+        props.balanceHistory,
+        "token_0_balance",
+      );
+      const token1Changes = calculateSignificantChanges(
+        props.balanceHistory,
+        "token_1_balance",
+      );
+
+      // Combine both token changes into a single dataset, removing duplicates
+      const significantChangePoints = [...token0Changes, ...token1Changes]
+        .filter((v, i, a) => a.findIndex((t) => t.x === v.x) === i)
+        // Ensure the points are properly positioned on the chart
+        .map(point => {
+          // Find the corresponding data point in the original dataset
+          const dataIndex = props.balanceHistory.findIndex(item => item.date === point.x);
+          if (dataIndex >= 0) {
+            // Use the token with the larger value to ensure visibility
+            const token0Value = props.balanceHistory[dataIndex].token_0_balance;
+            const token1Value = props.balanceHistory[dataIndex].token_1_balance;
+            return {
+              x: point.x,
+              y: Math.max(token0Value, token1Value),
+              change: point.change
+            };
+          }
+          return point;
+        });
+
+      balanceChartInstance.data.datasets[2].data = significantChangePoints;
+
+      balanceChartInstance.update("none"); // Minimal animation
+      shouldUpdateChart = false;
+      return;
+    }
+
+    // Clean up existing chart instance if it exists
+    if (balanceChartInstance) {
+      balanceChartInstance.destroy();
+    }
+
+    const ctx = balanceChartCanvas.getContext("2d");
+
+    // Format dates for chart labels - dates are in YYYY-MM-DD format
+    const labels = props.balanceHistory.map((entry) => entry.date);
+
+    // Get the values directly from the API response
+    const token0Data = props.balanceHistory.map(
+      (entry) => entry.token_0_balance,
+    );
+    const token1Data = props.balanceHistory.map(
+      (entry) => entry.token_1_balance,
+    );
+
+    // Find days with significant balance changes using the shared utility
+    const token0Changes = calculateSignificantChanges(
+      props.balanceHistory,
+      "token_0_balance",
+    );
+    const token1Changes = calculateSignificantChanges(
+      props.balanceHistory,
+      "token_1_balance",
+    );
+
+    // Combine both token changes into a single dataset, removing duplicates
+    const significantChangePoints = [...token0Changes, ...token1Changes]
+      .filter((v, i, a) => a.findIndex((t) => t.x === v.x) === i)
+      // Ensure the points are properly positioned on the chart
+      .map(point => {
+        // Find the corresponding data point in the original dataset
+        const dataIndex = props.balanceHistory.findIndex(item => item.date === point.x);
+        if (dataIndex >= 0) {
+          // Use the token with the larger value to ensure visibility
+          const token0Value = token0Data[dataIndex];
+          const token1Value = token1Data[dataIndex];
+          return {
+            x: point.x,
+            y: Math.max(token0Value, token1Value),
+            change: point.change
+          };
+        }
+        return point;
+      });
+
+    // Check if token values are significantly different in scale
+    const token0Max = Math.max(...token0Data);
+    const token1Max = Math.max(...token1Data);
+
+    // Use a larger threshold (10x difference) to determine when to use dual axes
+    const needsDualAxis =
+      token0Max > token1Max * 10 || token1Max > token0Max * 10;
+
+    // Get theme colors
+    const colors = getChartThemeColors(isDarkMode);
+
+    // Create theme-aware gradients using the shared utility
+    const token0Gradient = createChartGradient(
+      ctx,
+      isDarkMode,
+      colors.token0Color,
+    );
+    const token1Gradient = createChartGradient(
+      ctx,
+      isDarkMode,
+      colors.token1Color,
+    );
+
+    // Get common chart options and extend with pool-specific settings
+    const chartOptions = getCommonChartOptions(isDarkMode, {
+      callbacks: {
+        label: function (context) {
+          let label = context.dataset.label || "";
+          if (label) {
+            label += ": ";
+          }
+
+          // Special handling for significant change markers
+          if (label.includes("Significant Changes")) {
+            return "Significant balance change";
+          }
+
+          if (context.parsed.y !== null) {
+            // Format large numbers with commas for better readability
+            label += formatNumber(context.parsed.y);
+          }
+          return label;
+        },
+        afterBody: function (context) {
+          const index = context[0].dataIndex;
+          // Use pre-processed tooltip data instead of calculating on hover
+          return processedTooltipData[index] || "";
+        },
+      },
+    });
+
+    // Ensure x-axis dates are not displayed
+    if (!chartOptions.scales) {
+      chartOptions.scales = {};
+    }
+    
+    chartOptions.scales.x = {
+      ...chartOptions.scales.x,
+      grid: {
+        display: false,
+      },
+      ticks: {
+        display: false, // Explicitly hide x-axis ticks
+      }
+    };
+
+    chartOptions.scales.y = {
+      ...chartOptions.scales.y,
+      ticks: {
+        display: false, // Explicitly hide y-axis ticks
+      }
+    };
+
+    // Make sure no axis labels are displayed
+    if (!chartOptions.plugins) {
+      chartOptions.plugins = {};
+    }
+
+    // Ensure no axis titles are displayed
+    chartOptions.plugins = {
+      ...chartOptions.plugins,
+      title: {
+        display: false
+      }
+    };
+
+    // Extend the common options with dual-axis specific settings if needed
+    if (needsDualAxis) {
+      // Fix the type issue with scales by creating a proper configuration
+      const scalesConfig = {
+        x: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            display: false, // Explicitly hide x-axis ticks
+          }
+        },
+        y: {
+          type: "linear" as const,
+          display: true,
+          position: "left" as const,
+          beginAtZero: false,
+          grid: {
+            display: true,
+            drawBorder: false,
+          },
+          ticks: {
+            display: false, // Hide y-axis ticks
+            color: colors.tickColor,
+            callback: function (value: number) {
+              if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
+              if (value >= 1000) return (value / 1000).toFixed(1) + "K";
+              return value.toString();
+            },
+          },
+        },
+        y1: {
+          type: "linear" as const,
+          display: true,
+          position: "right" as const,
+          beginAtZero: false,
+          grid: {
+            display: false,
+            drawBorder: false,
+          },
+          ticks: {
+            display: false, // Hide y1-axis ticks
+            color: colors.tickColor,
+            callback: function (value: number) {
+              if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
+              if (value >= 1000) return (value / 1000).toFixed(1) + "K";
+              return value.toString();
+            },
+          },
+        },
+      };
+
+      chartOptions.scales = scalesConfig;
+    }
+
+    balanceChartInstance = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: props.balanceHistory.map(entry => entry.date),
+        datasets: [
+          {
+            label: $liquidityStore.token0?.symbol || "Token 0",
+            data: props.balanceHistory.map(entry => entry.token_0_balance),
+            borderColor: colors.token0Color,
+            backgroundColor: token0Gradient,
+            borderWidth: 2,
+            pointRadius: 2,
+            pointHoverRadius: 5,
+            pointBackgroundColor: colors.token0Color,
+            pointBorderColor: colors.pointBorderColor,
+            pointBorderWidth: 1.5,
+            tension: 0.3,
+            fill: true,
+            yAxisID: needsDualAxis ? "y" : "y",
+          },
+          {
+            label: $liquidityStore.token1?.symbol || "Token 1",
+            data: props.balanceHistory.map(entry => entry.token_1_balance),
+            borderColor: colors.token1Color,
+            backgroundColor: token1Gradient,
+            borderWidth: 2,
+            pointRadius: 2,
+            pointHoverRadius: 5,
+            pointBackgroundColor: colors.token1Color,
+            pointBorderColor: colors.pointBorderColor,
+            pointBorderWidth: 1.5,
+            tension: 0.3,
+            fill: true,
+            yAxisID: needsDualAxis ? "y1" : "y",
+          },
+          // Highlight significant change points
+          {
+            label: "Significant Changes",
+            data: significantChangePoints,
+            borderColor: colors.changePointColor,
+            backgroundColor: colors.changePointColor,
+            borderWidth: 0,
+            pointRadius: 6,
+            pointStyle: "rectRot",
+            pointBorderColor: colors.pointBorderColor,
+            pointBorderWidth: 1.5,
+            showLine: false,
+            yAxisID: needsDualAxis ? "y" : "y",
+            order: 0,
+            clip: false
+          },
+        ],
+      },
+      options: {
+        ...chartOptions,
+        // Ensure all axis labels are hidden
+        scales: {
+          ...chartOptions.scales,
+          x: {
+            ...chartOptions.scales.x,
+            display: true,
+            grid: {
+              display: false,
+              drawBorder: false,
+            },
+            ticks: {
+              display: false,
+            },
+            border: {
+              display: false,
+            }
+          },
+          y: {
+            ...chartOptions.scales.y,
+            display: true,
+            grid: {
+              display: true,
+              drawBorder: false,
+            },
+            ticks: {
+              display: false,
+            },
+            border: {
+              display: false,
+            }
+          }
+        },
+        // Ensure the chart area includes all data points
+        layout: {
+          padding: {
+            top: 10,
+            right: 10,
+            bottom: 10,
+            left: 10
+          }
+        },
+        // Disable clipping of the chart area to allow points to be drawn outside
+        plugins: {
+          ...chartOptions.plugins,
+          tooltip: {
+            ...chartOptions.plugins?.tooltip,
+            // Ensure tooltips are displayed for all points
+            intersect: false,
+            mode: 'index'
+          }
+        }
+      },
+    });
+
+    // Reset the update flags
+    shouldUpdateChart = false;
+    shouldUpdateLabels = false;
+  }
+</script>
+
+<Panel variant="transparent" className="!p-0 !overflow-visible">
+  <div class="flex flex-col">
+    <h3 class="chart-title flex items-start justify-between py-3 px-5">
+      Pool Balance
+      <div class="text-kong-text-primary/90 flex items-center gap-2">
+        {#if props.currentPool && $liquidityStore.token0 && $liquidityStore.token1}
+          <div class="flex items-center gap-1">
+            <span
+              >{typeof props.currentPool.balance_0 === "number"
+                ? formatNumber(props.currentPool.balance_0)
+                : "0.00"}</span
+            >
+            <span class="text-kong-primary/80 text-sm mt-1"
+              >{$liquidityStore.token0.symbol}</span
+            >
+          </div>
+          <div class="flex items-center gap-1">
+            <span
+              >{typeof props.currentPool.balance_1 === "number"
+                ? formatNumber(props.currentPool.balance_1)
+                : "0.00"}</span
+            >
+            <span class="text-kong-text-accent-green/80 text-sm mt-1"
+              >{$liquidityStore.token1.symbol}</span
+            >
+          </div>
+        {:else}
+          <div class="flex items-center gap-1">
+            <span>0.00</span>
+            <span class="text-kong-text-accent-green/80 text-sm mt-1"
+              >{$liquidityStore.token0?.symbol || "-"}</span
+            >
+          </div>
+          <div class="flex items-center gap-1">
+            <span>0.00</span>
+            <span class="text-kong-primary/80 text-sm mt-1"
+              >{$liquidityStore.token1?.symbol || "-"}</span
+            >
+          </div>
+        {/if}
+      </div>
+    </h3>
+    <div class="chart-container w-full" style="height: 220px;">
+      {#if props.balanceHistory && props.balanceHistory.length > 0 && isChartAvailable}
+        <canvas bind:this={balanceChartCanvas}></canvas>
+      {:else}
+        <div class="coming-soon">
+          <BarChart3 class="mb-3 w-8 h-8" />
+          {#if props.isLoading}
+            Loading chart data...
+          {:else if props.errorMessage}
+            {props.errorMessage}
+          {:else if !isChartAvailable}
+            Charts unavailable - Could not load Chart.js
+          {:else if props.currentPool}
+            No chart data available
+          {:else}
+            Charts Coming Soon
+          {/if}
+        </div>
+      {/if}
+    </div>
+  </div>
+</Panel>
+
+<style lang="postcss">
+  .chart-title {
+    @apply text-sm uppercase font-medium text-kong-text-primary/90;
+  }
+
+  .chart-container {
+    @apply relative m-0 overflow-visible transition-all duration-300;
+  }
+
+  .chart-container canvas {
+    @apply rounded-lg transition-all duration-300;
+  }
+
+  .coming-soon {
+    @apply w-full h-full flex flex-col items-center justify-center text-kong-text-primary/60 text-lg font-medium;
+  }
+</style>

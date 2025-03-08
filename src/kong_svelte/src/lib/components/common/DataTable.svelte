@@ -234,10 +234,10 @@
       <tbody>
         {#each displayData as row (row[rowKey])}
           <tr
-            class="h-[44px] border-b border-kong-border/50 hover:bg-kong-bg-light/30 transition-colors duration-200 
+            class="h-[44px] border-b border-kong-border/50 hover:bg-kong-hover-bg-light/60 transition-colors duration-200 
               {onRowClick ? 'cursor-pointer' : ''} 
               {rowFlashStates.get(row[rowKey])?.class || ''} 
-              {isKongRow?.(row) ? 'bg-kong-primary/5 hover:bg-kong-primary/10 border-kong-primary/20' : ''}"
+              {isKongRow?.(row) ? 'bg-kong-primary/5 hover:bg-kong-primary/15 border-kong-primary/20' : ''}"
             on:click={() => onRowClick?.(row)}
           >
             {#each columns as column (column.key)}

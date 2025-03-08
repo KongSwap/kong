@@ -35,6 +35,7 @@ export default {
         kong: {
           "bg-dark": "rgb(var(--bg-dark) / <alpha-value>)",
           "bg-light": "rgb(var(--bg-light) / <alpha-value>)",
+          "hover-bg-light": "rgb(var(--hover-bg-light) / <alpha-value>)",
           primary: "rgb(var(--primary) / <alpha-value>)",
           "primary-hover": "rgb(var(--primary-hover) / <alpha-value>)",
           secondary: "rgb(var(--secondary) / <alpha-value>)",
@@ -188,7 +189,10 @@ export default {
   plugins: [
     typography,
     plugin(({ addVariant }) => {
-      addVariant('light', ':root:not(.dark) &')
+      addVariant('light', ':root:not(.dark):not(.plain-black) &')
+    }),
+    plugin(({ addVariant }) => {
+      addVariant('plain-black', ':root.plain-black &')
     }),
     plugin(({ addUtilities }) => {
       addUtilities({

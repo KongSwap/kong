@@ -1,122 +1,241 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
-  import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
   import Panel from "$lib/components/common/Panel.svelte";
   import { auth } from "$lib/services/auth";
   import { tick } from "svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
-  import ButtonV2 from "../common/ButtonV2.svelte";
   import { fly } from 'svelte/transition';
-  import { Coins } from "lucide-svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
 
-  let WalletProviderComponent: any;
-  let TokenListComponent: any;
-  let PoolListComponent: any;
-  let TransactionHistoryComponent: any;
+  // Define props
+  const { onClose } = $props<{ onClose: () => void }>();
 
-  // Keep track of component loading promises
-  let loadingPromises: Promise<any>[] = [];
+  // State management using runes - using let for mutable state
+  let activeTab = $state<"tokens" | "pools" | "history">("tokens");
+  let isExpanded = $state(false);
 
-  async function loadComponent(importFn: () => Promise<any>) {
-    const promise = importFn();
-    loadingPromises = [...loadingPromises, promise];
+  // Dynamic component references - using let for mutable state
+  let WalletProviderComponent = $state<any>(null);
+  let TokenListComponent = $state<any>(null);
+  let PoolListComponent = $state<any>(null);
+  let TransactionHistoryComponent = $state<any>(null);
+
+  // Track component loading states
+  let componentsLoading = $state({
+    wallet: false,
+    tokens: false,
+    pools: false,
+    history: false
+  });
+
+  // Update isExpanded when sidebarStore changes
+  $effect(() => {
+    // Correctly subscribe to the store value using the $ syntax
+    isExpanded = $sidebarStore.isExpanded;
+  });
+
+  // Initialize from localStorage when mounted
+  $effect(() => {
+    if (browser) {
+      const savedTab = localStorage.getItem("sidebarActiveTab") as "tokens" | "pools" | "history";
+      if (savedTab) {
+        activeTab = savedTab;
+      }
+    }
+  });
+  
+  // Handle cleanup when component is destroyed
+  $effect.root(() => {
+    return () => {
+      // Clear component references
+      WalletProviderComponent = null;
+      TokenListComponent = null;
+      PoolListComponent = null;
+      TransactionHistoryComponent = null;
+    };
+  });
+
+  // Add a flag to track initial render
+  let isInitialRender = $state(true);
+
+  // Track whether sidebar is open to avoid re-renders caused by isOpen changes
+  let isOpen = $state(false);
+
+  // Track sidebar open state safely
+  $effect(() => {
+    isOpen = $sidebarStore.isOpen;
+    
+    // Only load components if the sidebar is open
+    if ($sidebarStore.isOpen && !isInitialRender) {
+      // Defer component loading slightly to improve performance on open
+      setTimeout(() => {
+        if (!$auth.isConnected) {
+          loadWalletProvider();
+        } else {
+          // Preload the active component
+          switch (activeTab) {
+            case "tokens": loadTokenList(); break;
+            case "pools": loadPoolList(); break;
+            case "history": loadTransactionHistory(); break;
+          }
+        }
+      }, 50);
+    }
+    
+    isInitialRender = false;
+  });
+
+  // Add a new effect to handle tab changes
+  $effect(() => {
+    // Only proceed if sidebar is open and user is connected
+    if (!isOpen || !$auth.isConnected) return;
+    
+    // Load component based on active tab
+    switch (activeTab) {
+      case "tokens": loadTokenList(); break;
+      case "pools": loadPoolList(); break;
+      case "history": loadTransactionHistory(); break;
+    }
+  });
+
+  // Component loading utility functions 
+  async function loadComponent<T>(
+    importFn: () => Promise<any>, 
+    key: keyof typeof componentsLoading
+  ): Promise<T> {
+    // Prevent duplicate loads
+    if (componentsLoading[key]) return Promise.resolve(null) as Promise<T>;
+    
+    // Create a local copy of the loading state to avoid reactivity issues
+    const newLoadingState = { ...componentsLoading, [key]: true };
+    componentsLoading = newLoadingState;
+    
     try {
-      const module = await promise;
+      const module = await importFn();
       return module.default;
+    } catch (error) {
+      console.error(`Failed to load component: ${key}`, error);
+      return null as T;
     } finally {
-      loadingPromises = loadingPromises.filter(p => p !== promise);
+      // Only update if we haven't already changed to another state
+      if (componentsLoading[key]) {
+        componentsLoading = { ...componentsLoading, [key]: false };
+      }
     }
   }
-
+  
+  // Change component loading functions to reduce reactivity
   async function loadWalletProvider() {
-    WalletProviderComponent = await loadComponent(() => 
-      import("$lib/components/sidebar/WalletProvider.svelte")
-    );
+    if (WalletProviderComponent || componentsLoading.wallet) return;
+    
+    try {
+      WalletProviderComponent = await loadComponent(
+        () => import("$lib/components/sidebar/WalletProvider.svelte"),
+        'wallet'
+      );
+    } catch (e) {
+      console.error("Failed to load wallet provider", e);
+    }
   }
 
   async function loadTokenList() {
-    TokenListComponent = await loadComponent(() => 
-      import("$lib/components/sidebar/TokenList.svelte")
-    );
+    if (TokenListComponent || componentsLoading.tokens) return;
+    
+    try {
+      TokenListComponent = await loadComponent(
+        () => import("$lib/components/sidebar/TokenList.svelte"),
+        'tokens'
+      );
+    } catch (e) {
+      console.error("Failed to load token list", e);
+    }
   }
 
   async function loadPoolList() {
-    PoolListComponent = await loadComponent(() => 
-      import("$lib/components/sidebar/PoolList.svelte")
-    );
+    if (PoolListComponent || componentsLoading.pools) return;
+    
+    try {
+      PoolListComponent = await loadComponent(
+        () => import("$lib/components/sidebar/PoolList.svelte"),
+        'pools'
+      );
+    } catch (e) {
+      console.error("Failed to load pool list", e);
+    }
   }
 
   async function loadTransactionHistory() {
-    TransactionHistoryComponent = await loadComponent(() => 
-      import("$lib/components/sidebar/TransactionHistory.svelte")
-    );
+    if (TransactionHistoryComponent || componentsLoading.history) return;
+    
+    try {
+      TransactionHistoryComponent = await loadComponent(
+        () => import("$lib/components/sidebar/TransactionHistory.svelte"),
+        'history'
+      );
+    } catch (e) {
+      console.error("Failed to load transaction history", e);
+    }
   }
 
-  // Cleanup function
-  onDestroy(() => {
-    // Clear component references
-    WalletProviderComponent = null;
-    TokenListComponent = null;
-    PoolListComponent = null;
-    TransactionHistoryComponent = null;
-
-    // Cancel any pending loads
-    loadingPromises = [];
-  });
-
-  export let onClose: () => void;
-
-  let activeTab: "tokens" | "pools" | "history" = "tokens";
-  let isExpanded = false;
-
-  sidebarStore.subscribe((state) => {
-    isExpanded = state.isExpanded;
-  });
-
-  onMount(() => {
-    if (browser) {
-      activeTab =
-        (localStorage.getItem("sidebarActiveTab") as
-          | "tokens"
-          | "pools"
-          | "history") || "tokens";
-    }
-  });
-
+  // Modify the UI interaction function to be more efficient
   function handleClose() {
+    // Use a more direct approach
     sidebarStore.collapse();
   }
 
   function setActiveTab(tab: "tokens" | "pools" | "history") {
+    if (activeTab === tab) return; // Prevent unnecessary updates
+    
+    // Set the active tab
     activeTab = tab;
+    
+    // Save to localStorage if browser is available
     if (browser) {
       localStorage.setItem("sidebarActiveTab", tab);
+    }
+    
+    // Explicitly trigger component loading for the new tab
+    if ($auth.isConnected) {
+      switch (tab) {
+        case "tokens": 
+          // Use setTimeout to break potential reactive loop
+          setTimeout(() => loadTokenList(), 0); 
+          break;
+        case "pools": 
+          setTimeout(() => loadPoolList(), 0);
+          break;
+        case "history": 
+          setTimeout(() => loadTransactionHistory(), 0);
+          break;
+      }
     }
   }
 </script>
 
-{#key $sidebarStore.isOpen}
+{#if isOpen}
   <div class="fixed inset-0 w-full h-screen md:static md:w-auto md:h-auto">
     <div
       class="fixed inset-0 bg-black/40 backdrop-blur-sm cursor-zoom-out pointer-events-auto md:hidden"
-      in:fade|local={{ duration: 200 }}
-      out:fade|local={{ duration: 200 }}
+      in:fade|local={{ duration: 150, delay: 50 }}
+      out:fade|local={{ duration: 150 }}
       on:click={handleClose}
       role="button"
       tabindex="-1"
       aria-label="Close sidebar"
     />
     {#if !$auth.isConnected}
-      {#await loadWalletProvider()}
+      {#if componentsLoading.wallet}
         <div class="fixed inset-0 z-[2] flex items-center justify-center text-kong-text-primary">
           <LoadingIndicator text="Loading wallet provider..." />
         </div>
-      {:then}
-        {#if WalletProviderComponent}
+      {:else}
+        <!-- Trigger loading when rendered -->
+        {#if !WalletProviderComponent}
+          {void loadWalletProvider()}
+        {:else if WalletProviderComponent}
           <svelte:component
             this={WalletProviderComponent}
             on:login={async () => {
@@ -125,7 +244,7 @@
             }}
           />
         {/if}
-      {/await}
+      {/if}
     {:else}
       <div
         class="fixed inset-0 z-[2] isolate pointer-events-none"
@@ -136,14 +255,15 @@
           class={`fixed right-0 top-0 bottom-0 w-full md:right-4 md:top-4 md:bottom-4 md:w-[527px] grid transform-gpu backface-hidden pointer-events-auto perspective-1000 ${
             isExpanded ? "inset-0 w-auto" : ""
           }`}
-          in:fly={{ x: 20, duration: 200 }}
-          out:fly={{ x: 20, duration: 200 }}
+          in:fly|local={{ x: 20, duration: 150, delay: 50 }}
+          out:fly|local={{ x: 20, duration: 150 }}
         >
           <Panel
             width="100%"
             height="100%"
             variant="solid"
             className="sidebar-panel !bg-kong-bg-dark !py-0"
+            isSidebar={true}
           >
             <div
               class="grid grid-rows-auto-1fr-auto flex-1 min-h-full overflow-hidden !rounded-b-lg"
@@ -159,35 +279,29 @@
                   class="flex flex-col flex-1 h-full rounded-lg bg-kong-bg-light !rounded-t-none border-l border-b border-r border-kong-border"
                 >
                   {#if activeTab === "tokens"}
-                    {#await loadTokenList()}
+                    {#if componentsLoading.tokens}
                       <div class="flex flex-col justify-center items-center h-[calc(100vh-180px)] md:h-[calc(100vh-220px)]">
                         <LoadingIndicator text="Loading tokens..." />
                       </div>
-                    {:then}
-                      {#if TokenListComponent}
-                        <svelte:component this={TokenListComponent} tokens={$userTokens.tokens} />
-                      {/if}
-                    {/await}
+                    {:else if TokenListComponent}
+                      <svelte:component this={TokenListComponent} tokens={$userTokens.tokens} />
+                    {/if}
                   {:else if activeTab === "pools"}
-                    {#await loadPoolList()}
+                    {#if componentsLoading.pools}
                       <div class="flex flex-col justify-center items-center h-[calc(100vh-180px)] md:h-[calc(100vh-220px)]">
                         <LoadingIndicator text="Loading pools..." />
                       </div>
-                    {:then}
-                      {#if PoolListComponent}
-                        <svelte:component this={PoolListComponent} on:close={handleClose} />
-                      {/if}
-                    {/await}
+                    {:else if PoolListComponent}
+                      <svelte:component this={PoolListComponent} on:close={handleClose} />
+                    {/if}
                   {:else if activeTab === "history"}
-                    {#await loadTransactionHistory()}
+                    {#if componentsLoading.history}
                       <div class="flex flex-col justify-center items-center h-[calc(100vh-180px)] md:h-[calc(100vh-220px)]">
                         <LoadingIndicator text="Loading transactions..." />
                       </div>
-                    {:then}
-                      {#if TransactionHistoryComponent}
-                        <svelte:component this={TransactionHistoryComponent} />
-                      {/if}
-                    {/await}
+                    {:else if TransactionHistoryComponent}
+                      <svelte:component this={TransactionHistoryComponent} />
+                    {/if}
                   {/if}
                 </div>
               </main>
@@ -206,7 +320,7 @@
       </div>
     {/if}
   </div>
-{/key}
+{/if}
 
 <style scoped lang="postcss">
   :global(.wallet-modal) {
