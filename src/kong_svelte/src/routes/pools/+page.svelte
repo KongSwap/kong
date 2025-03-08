@@ -807,9 +807,7 @@
   </div>
 </section>
 
-{#if $auth.isConnected && browser}
-  <!-- Existing content -->
-{:else}
+{#if $isLoading}
   <div class="loading-state flex flex-col items-center justify-center h-64 gap-4">
     <div class="loading-animation">
       <Droplets size={32} class="animate-pulse text-kong-primary" />
