@@ -1,13 +1,14 @@
 import { API_URL } from "./index";
+import { browser } from "$app/environment";
 
-interface LeaderboardEntry {
+export interface LeaderboardEntry {
   user_id: number;
   principal_id: string;
-  volume: number;
-  // Additional fields might be present in the actual API response
+  total_volume_usd: number;
+  swap_count: number;
 }
 
-interface VolumeLeaderboardResponse {
+export interface VolumeLeaderboardResponse {
   items: LeaderboardEntry[];
   period: string;
   limit: number;
@@ -22,7 +23,11 @@ interface VolumeLeaderboardResponse {
 export async function fetchVolumeLeaderboard(
   period: 'day' | 'week' | 'month' = 'day',
   limit: number = 10
-): Promise<VolumeLeaderboardResponse> {
+): Promise<LeaderboardEntry[] | VolumeLeaderboardResponse> {
+  if (!browser) {
+    throw new Error("API calls can only be made in the browser");
+  }
+  
   const url = new URL(`${API_URL}/api/leaderboard/volume`);
   url.searchParams.set('period', period);
   url.searchParams.set('limit', limit.toString());

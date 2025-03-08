@@ -12,14 +12,25 @@ import type {
 // Create a single instance of the base API client for HTTP operations
 import { ApiClient } from '../base/ApiClient';
 import { API_URL } from '../index';
+import { browser } from '$app/environment';
 
-const apiClient = new ApiClient(API_URL);
+// Lazy initialization of API client to prevent SSR issues
+const getApiClient = () => {
+  return new ApiClient(API_URL);
+};
 
 /**
  * Fetches tokens with optional filtering and pagination
  */
 export const fetchTokens = async (params?: TokensParams): Promise<ProcessedTokensResponse> => {
   try {
+    // Ensure we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+    
+    const apiClient = getApiClient();
+    
     // Convert params to string values for URLSearchParams
     const queryParams: Record<string, string> = {};
     if (params) {
@@ -75,6 +86,13 @@ export const fetchTokens = async (params?: TokensParams): Promise<ProcessedToken
  */
 export const fetchAllTokens = async (params?: Omit<TokensParams, 'page' | 'limit'>): Promise<FE.Token[]> => {
   try {
+    // Ensure we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+    
+    const apiClient = getApiClient();
+
     // First request to get total count and pages
     const initialResponse = await fetchTokens({
       ...params,
@@ -115,19 +133,26 @@ export const fetchAllTokens = async (params?: Omit<TokensParams, 'page' | 'limit
  * Fetches tokens by canister IDs
  */
 export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE.Token[]> => {
-  // Validate input
-  const validCanisterIds = canisterIds.filter(id => typeof id === 'string');
-  
-  if (validCanisterIds.length === 0) {
-    return [];
-  }
-  
-  // Prepare request body
-  const requestBody: TokensByCanisterRequest = {
-    canister_ids: validCanisterIds
-  };
-  
   try {
+    // Ensure we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+    
+    const apiClient = getApiClient();
+    
+    // Validate input
+    const validCanisterIds = canisterIds.filter(id => typeof id === 'string');
+    
+    if (validCanisterIds.length === 0) {
+      return [];
+    }
+    
+    // Prepare request body
+    const requestBody: TokensByCanisterRequest = {
+      canister_ids: validCanisterIds
+    };
+    
     // Make the API request using the base client
     const data = await apiClient.post<TokensByCanisterResponse | RawTokenData[]>(
       '/api/tokens/by_canister', 
@@ -150,6 +175,13 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE
  */
 export const addToken = async (canisterId: string): Promise<any> => {
   try {
+    // Ensure we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+    
+    const apiClient = getApiClient();
+    
     // Make the API request using the base client
     const data = await apiClient.post('/api/tokens/add', { canister_id: canisterId });
     return data;
