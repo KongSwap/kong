@@ -16,13 +16,6 @@ const STORAGE_KEYS = {
   CONNECTION_RETRY_COUNT: "connectionRetryCount"
 } as const;
 
-// Configuration
-const CONFIG = {
-  MAX_RETRIES: 3,
-  RETRY_DELAY: 2000,
-  CONNECTION_TIMEOUT: 30000, // 30 seconds
-} as const;
-
 // Create stores with initial states
 export const selectedWalletId = writable<string | null>(null);
 export const isConnected = writable<boolean>(false);
