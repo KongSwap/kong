@@ -45,7 +45,6 @@
         size: Math.random() * 20 + 10, // Random size 10-30px
         speed: Math.random() * 3 + 2, // Random speed
         rotation: Math.random() * 360, // Random initial rotation
-        emoji: Math.random() > 0.5 ? '💰' : '💎', // Randomly choose emoji
       };
       
       coins = [...coins, newCoin];
@@ -102,9 +101,7 @@
     class="fixed z-30 pointer-events-none animate-coin-float"
     style="left: {coin.x}vw; bottom: {-coin.y}vh; font-size: {coin.size}px; animation-duration: {coin.speed}s; transform: rotate({coin.rotation}deg);"
   >
-    <div class="animate-coin-spin">
-      {coin.emoji}
-    </div>
+    <div class="animate-coin-spin bg-blue-500 w-4 h-4 rounded-full"></div>
   </div>
 {/each}
 
@@ -118,53 +115,31 @@
     on:click={() => navigateToToken(bubble.tokenId)}
   >
     <div class="animate-float-up">
-      <div class="bg-gradient-to-r from-pink-600 to-purple-600 rounded-lg p-4 border-2 border-pink-400 shadow-[0_0_30px_5px_rgba(236,72,153,0.5)] animate-pulse-subtle">
+      <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-4 border border-blue-500 shadow-lg animate-pulse-subtle">
         <div class="flex flex-col items-center gap-2 text-center">
-          <div class="text-4xl animate-bounce">
-            💎
-          </div>
           <div>
             <p class="font-bold text-lg text-white uppercase tracking-wider">
-              BLOCK MINED!
+              BLOCK MINED
             </p>
-            <p class="text-sm font-medium text-pink-200">
+            <p class="text-sm font-medium text-blue-200">
               {bubble.reward} {bubble.ticker}
             </p>
-            <p class="text-xs font-medium text-pink-200/80">
+            <p class="text-xs font-medium text-blue-200/80">
               HASH: {bubble.hash}...
             </p>
           </div>
-          
-          <!-- Small LFG text -->
-          <p class="text-xl font-black text-yellow-300 animate-pulse mt-1">🔥 LFG 🔥</p>
         </div>
       </div>
       
-      <!-- Trailing particles -->
+      <!-- Small trailing animation -->
       <div class="absolute -z-10 bottom-0 left-1/2 transform -translate-x-1/2">
-        {#each Array(5) as _, i}
-          <div 
-            class="absolute text-sm animate-particle" 
-            style="animation-delay: {i * 0.2}s; left: {(i - 2) * 10}px;">
-            {['✨', '💫', '⭐', '🔥', '💥'][i % 5]}
-          </div>
-        {/each}
+        <div class="w-2 h-10 bg-gradient-to-t from-blue-500 to-transparent opacity-50"></div>
       </div>
     </div>
   </div>
 {/each}
 
-<!-- Sparkles that appear randomly -->
-<div class="fixed inset-0 z-20 pointer-events-none overflow-hidden">
-  {#each Array(10) as _, i}
-    <div 
-      class="absolute text-yellow-300 animate-sparkle opacity-70"
-      style="left: {Math.random() * 100}vw; top: {Math.random() * 100}vh; font-size: {Math.random() * 10 + 10}px; animation-delay: {Math.random() * 5}s; animation-duration: {Math.random() * 2 + 1}s;"
-    >
-      ✨
-    </div>
-  {/each}
-</div>
+<!-- Removed sparkles -->
 
 <style>
   @keyframes coin-float {

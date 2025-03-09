@@ -42,20 +42,20 @@
     });
   });
   
-  // Helper function to get emoji for event type
-  function getEventEmoji(eventType) {
-    if (eventType.includes('token')) return '💰';
-    if (eventType.includes('miner')) return '⛏️';
-    if (eventType === 'mining') return '💎';
-    return '🚀';
+  // Helper function to get icon for event type
+  function getEventIcon(eventType) {
+    if (eventType.includes('token')) return 'TOKEN';
+    if (eventType.includes('miner')) return 'MINER';
+    if (eventType === 'mining') return 'BLOCK';
+    return 'DEPLOY';
   }
   
   // Helper function to get title for event type
   function getEventTitle(eventType) {
-    if (eventType.includes('token')) return 'NEW TOKEN!';
-    if (eventType.includes('miner')) return 'NEW MINER!';
-    if (eventType === 'mining') return 'BLOCK MINED!';
-    return 'NEW DEPLOYMENT!';
+    if (eventType.includes('token')) return 'NEW TOKEN';
+    if (eventType.includes('miner')) return 'NEW MINER';
+    if (eventType === 'mining') return 'BLOCK MINED';
+    return 'NEW DEPLOYMENT';
   }
   
   // Helper function to get details for event
@@ -79,98 +79,48 @@
     style="bottom: {Math.random() * 30 + 20}vh; left: {event.position}vw; transform: scale({event.scale}) rotate({event.rotation}deg);"
   >
     <div class="animate-float-up">
-      <div class="bg-gradient-to-r from-pink-600 to-purple-600 rounded-lg p-4 border-2 border-pink-400 shadow-[0_0_30px_5px_rgba(236,72,153,0.5)] animate-pulse-subtle">
+      <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-4 border border-blue-500 shadow-lg animate-pulse-subtle">
         <div class="flex flex-col items-center gap-2 text-center">
-          <div class="text-4xl animate-bounce">
-            {getEventEmoji(event.type)}
-          </div>
           <div>
             <p class="font-bold text-lg text-white uppercase tracking-wider">
               {getEventTitle(event.type)}
             </p>
-            <p class="text-sm font-medium text-pink-200">
+            <p class="text-sm font-medium text-blue-200">
               {getEventDetails(event)}
             </p>
           </div>
-          
-          <!-- Small LFG text -->
-          <p class="text-xl font-black text-yellow-300 animate-pulse mt-1">🔥 LFG 🔥</p>
         </div>
       </div>
       
-      <!-- Trailing particles -->
+      <!-- Small trailing animation -->
       <div class="absolute -z-10 bottom-0 left-1/2 transform -translate-x-1/2">
-        {#each Array(5) as _, i}
-          <div 
-            class="absolute text-sm animate-particle" 
-            style="animation-delay: {i * 0.2}s; left: {(i - 2) * 10}px;">
-            {['✨', '💫', '⭐', '🔥', '💥'][i % 5]}
-          </div>
-        {/each}
+        <div class="w-2 h-10 bg-gradient-to-t from-blue-500 to-transparent opacity-50"></div>
       </div>
     </div>
   </div>
 {/each}
 
-<!-- Keep the full-screen effect only for token and miner deployments, not for mining events -->
+<!-- Simplified notification for token and miner deployments -->
 {#if flashEvent && (flashEvent.type.includes('token') || flashEvent.type.includes('miner')) && !flashEvent.type.includes('mining')}
   <div class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-    <!-- Full screen overlay with pulsing background -->
-    <div class="absolute inset-0 bg-black/40 animate-pulse-fast"></div>
+    <!-- Light overlay -->
+    <div class="absolute inset-0 bg-black/20"></div>
     
-    <!-- Explosion effect -->
-    <div class="absolute inset-0 bg-gradient-to-r from-pink-600/30 via-transparent to-purple-600/30 animate-pulse-fast"></div>
-    
-    <!-- Starburst effect -->
-    <div class="absolute inset-0 flex items-center justify-center">
-      <div class="w-screen h-screen bg-[radial-gradient(circle,_var(--tw-gradient-stops))] from-pink-500/70 via-transparent to-transparent animate-ping"></div>
-    </div>
-    
-    <!-- Main content explosion with shake effect -->
-    <div class="relative w-5/6 md:w-3/4 lg:w-2/3 xl:w-1/2 transform scale-100 animate-[ping_0.5s_ease-in-out_1] z-50 animate-shake">
-      <div class="bg-gradient-to-r from-pink-600 to-purple-600 rounded-lg p-8 border-4 border-pink-400 shadow-[0_0_100px_20px_rgba(236,72,153,0.7)] animate-pulse-fast">
-        <div class="flex flex-col items-center gap-6 text-center">
-          <div class="text-9xl animate-[bounce_0.5s_infinite]">
-            {flashEvent.type.includes('token') ? '💰' : '⛏️'}
-          </div>
+    <!-- Main content -->
+    <div class="relative w-5/6 md:w-3/4 lg:w-2/3 xl:w-1/2 z-50">
+      <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6 border border-blue-500 shadow-lg">
+        <div class="flex flex-col items-center gap-4 text-center">
           <div>
-            <p class="font-extrabold text-5xl text-white mb-4 animate-[pulse_0.3s_ease-in-out_infinite] uppercase tracking-wider animate-shake-text">
-              {flashEvent.type.includes('token') ? 'NEW TOKEN LAUNCHED!' : 'NEW MINER DEPLOYED!'}
+            <p class="font-bold text-2xl text-white mb-2 uppercase tracking-wider">
+              {flashEvent.type.includes('token') ? 'NEW TOKEN DEPLOYED' : 'NEW MINER DEPLOYED'}
             </p>
-            <p class="text-2xl font-bold text-pink-200 animate-[pulse_0.5s_ease-in-out_infinite]">
+            <p class="text-xl font-medium text-blue-200">
               {flashEvent.data?.canister_id ? `ID: ${flashEvent.data.canister_id.substring(0, 8)}...` : ''}
             </p>
           </div>
-          
-          <!-- Ultra Flashing LFG text -->
-          <p class="text-7xl font-black text-yellow-300 animate-[pulse_0.15s_ease-in-out_infinite] mt-4 animate-shake-intense">LFG!!! 🔥🔥🔥</p>
         </div>
       </div>
     </div>
-    
-    <!-- More floating emojis -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      {#each Array(40) as _, i}
-        <div 
-          class="absolute text-4xl animate-float" 
-          style="left: {Math.random() * 100}vw; top: {Math.random() * 100}vh; animation-delay: {Math.random() * 2}s; animation-duration: {2 + Math.random() * 3}s">
-          {['🚀', '💰', '💎', '🔥', '⛏️', '🤑', '💸', '🦈', '🌊', '💯', '🏆'][Math.floor(Math.random() * 11)]}
-        </div>
-      {/each}
-    </div>
-    
-    <!-- Laser beams -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      {#each Array(10) as _, i}
-        <div 
-          class="absolute h-1 w-full bg-gradient-to-r from-transparent via-pink-500 to-transparent animate-laser" 
-          style="top: {Math.random() * 100}vh; animation-delay: {Math.random() * 1}s; transform: rotate({Math.random() * 10 - 5}deg);">
-        </div>
-      {/each}
-    </div>
-    
-    <!-- Glitch overlay -->
-    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-purple-500/10 to-transparent animate-glitch pointer-events-none"></div>
   </div>
 {/if}
 

@@ -5,7 +5,7 @@
   export let page: string;
   let mouseX = 0;
   let mouseY = 0;
-  let starsMounted = false;
+  // No longer need starsMounted variable for static stars
   
   // Generate random positions for nebula gradients once
   const nebulaPositions = {
@@ -44,9 +44,9 @@
     }
   }
 
-  // COSMIC UPGRADE: Enhanced 3D star field with optimized rendering
-  const starCount = 200; // COSMIC UPGRADE: More stars for an immersive experience
-  const starLayers = 5; // COSMIC UPGRADE: More depth layers for better parallax
+  // Return to original star field with static stars (no falling animation)
+  const starCount = 200; // Original star count 
+  const starLayers = 5; // Original layer count for better parallax
 
   // COSMIC UPGRADE: Create star factory function for better performance
   const createStars = (count: number, layers: number) => {
@@ -61,7 +61,7 @@
       layerCounts[i]++;
     }
     
-    // Create stars for each layer
+    // Create static stars for each layer (no falling animation)
     for (let layer = 0; layer < layers; layer++) {
       for (let i = 0; i < layerCounts[layer]; i++) {
         // Size scaling based on layer (farther stars are smaller)
@@ -72,29 +72,22 @@
         const sizeFactor = baseSize / 2;
         const brightnessFactor = 0.3 + (Math.random() * 0.5) + (layer / layers * 0.2);
         
-        // Calculate initial and final positions for fly-in animation
-        const finalTop = Math.random() * 100;
-        const finalLeft = Math.random() * 100;
-        
-        // Determine initial position for fly-in effect
-        // Stars will fly in from outside the viewport
-        const initialOffsetDistance = 50 + Math.random() * 100; // 50-150% offset
-        const angle = Math.random() * Math.PI * 2; // Random angle in radians
+        // Static position - stars don't move vertically
+        const top = Math.random() * 100;
+        const left = Math.random() * 100;
         
         stars.push({
           size: baseSize * layerFactor * 2, // Size scaled by layer
-          top: finalTop,
-          left: finalLeft,
-          initialTop: finalTop + Math.sin(angle) * initialOffsetDistance,
-          initialLeft: finalLeft + Math.cos(angle) * initialOffsetDistance,
+          top: top, // Static position
+          left: left, // Static position
           brightness: brightnessFactor * sizeFactor * 2.5,
           depth: layer,
           // Optimize by pre-calculating twinkle properties
           twinkle: Math.random() > 0.6, // 40% of stars twinkle
           twinkleSpeed: 2 + Math.random() * 4, // Random twinkle speed (2-6s)
           twinkleAmount: 0.3 + Math.random() * 0.5, // Random twinkle intensity
-          // Add delay for staggered animation
-          delay: Math.random() * 1.5 // Random delay up to 1.5s
+          // No animation delay needed for static stars
+          delay: 0
         });
       }
     }
@@ -105,34 +98,47 @@
   // COSMIC UPGRADE: Create stars with optimized distribution
   const stars = createStars(starCount, starLayers);
   
-  // COSMIC UPGRADE: Create a small set of special stars (supergiants, colored stars)
+  // Return to original special stars count, but no falling animation
   const specialStars = Array(10).fill(0).map(() => {
-    const finalTop = Math.random() * 100;
-    const finalLeft = Math.random() * 100;
-    const initialOffsetDistance = 100 + Math.random() * 150; // Larger offset for special stars
-    const angle = Math.random() * Math.PI * 2;
+    // Static position for special stars
+    const top = Math.random() * 100;
+    const left = Math.random() * 100;
+    
+    // Create more interesting color distribution - focus on blues, whites, and golds
+    let hue;
+    const colorType = Math.random();
+    if (colorType < 0.4) {
+      // Blue/cyan stars (180-240)
+      hue = 180 + Math.random() * 60;
+    } else if (colorType < 0.7) {
+      // Gold/yellow stars (40-60)
+      hue = 40 + Math.random() * 20;
+    } else if (colorType < 0.9) {
+      // White stars (represented by very low saturation in CSS)
+      hue = 0; // Actual hue doesn't matter for white
+    } else {
+      // Occasional red/orange stars (0-30)
+      hue = Math.random() * 30;
+    }
     
     return {
       size: 2 + Math.random() * 2, // Larger special stars
-      top: finalTop,
-      left: finalLeft,
-      initialTop: finalTop + Math.sin(angle) * initialOffsetDistance,
-      initialLeft: finalLeft + Math.cos(angle) * initialOffsetDistance,
+      top: top, // Static position
+      left: left, // Static position
       depth: Math.floor(Math.random() * 2), // Keep in front layers for visibility
-      hue: Math.floor(Math.random() * 360), // Random color
+      hue: hue,
+      // Special stars with white option
+      isWhite: colorType >= 0.7 && colorType < 0.9,
       brightness: 0.7 + Math.random() * 0.3,
-      pulse: Math.random() > 0.5, // Some stars pulse
+      pulse: Math.random() > 0.4, // Most special stars pulse
       pulseSpeed: 3 + Math.random() * 5, // Random pulse speed
-      delay: 0.5 + Math.random() * 1 // Slightly delayed for dramatic effect
+      delay: 0 // No animation delay needed for static stars
     };
   });
   
-  // Set starsMounted to true after a short delay
+  // No need for starsMounted variable or setup since stars are static
   onMount(() => {
-    // Small delay to ensure DOM is ready
-    setTimeout(() => {
-      starsMounted = true;
-    }, 100);
+    // Nothing special to do on mount
   });
 </script>
 
@@ -172,18 +178,15 @@
           >
             {#each stars.filter(star => star.depth === layer) as star}
               <div 
-                class="star {star.twinkle ? 'twinkle' : ''} {starsMounted ? 'fly-in' : ''}"
+                class="star {star.twinkle ? 'twinkle' : ''}"
                 style="
                   --size: {star.size}px;
                   --top: {star.top}%;
                   --left: {star.left}%;
-                  --initial-top: {star.initialTop}%;
-                  --initial-left: {star.initialLeft}%;
                   --brightness: {star.brightness};
                   --depth: {layer};
                   --twinkle-speed: {star.twinkleSpeed}s;
                   --twinkle-amount: {star.twinkleAmount};
-                  --delay: {star.delay}s;
                 "
               ></div>
             {/each}
@@ -197,17 +200,15 @@
         >
           {#each specialStars as star}
             <div 
-              class="special-star {star.pulse ? 'pulse' : ''} {starsMounted ? 'fly-in' : ''}"
+              class="special-star {star.pulse ? 'pulse' : ''}"
               style="
                 --size: {star.size}px;
                 --top: {star.top}%;
                 --left: {star.left}%;
-                --initial-top: {star.initialTop}%;
-                --initial-left: {star.initialLeft}%;
                 --hue: {star.hue};
+                --isWhite: {star.isWhite ? '0%' : '100%'};
                 --brightness: {star.brightness};
                 --pulse-speed: {star.pulseSpeed}s;
-                --delay: {star.delay}s;
               "
             ></div>
           {/each}
@@ -397,30 +398,17 @@
     height: var(--size);
     background: white;
     border-radius: 50%;
-    top: var(--initial-top, var(--top));
-    left: var(--initial-left, var(--left));
-    opacity: 0; /* Start invisible for fly-in */
-    box-shadow: 0 0 calc(var(--size) * 0.8) rgba(255, 255, 255, 0.7); /* Optimized glow effect */
-    transform: translateZ(calc(var(--depth) * 20px)); /* 3D depth positioning */
-    will-change: opacity, top, left; /* Optimization: Hint for animation */
-    transition: none; /* No transition initially */
-  }
-
-  /* Fly-in animation for stars */
-  .star.fly-in {
     top: var(--top);
     left: var(--left);
     opacity: var(--brightness);
-    transition: 
-      top 1.5s cubic-bezier(0.23, 1, 0.32, 1) var(--delay),
-      left 1.5s cubic-bezier(0.23, 1, 0.32, 1) var(--delay),
-      opacity 1s ease-in var(--delay);
+    box-shadow: 0 0 calc(var(--size) * 0.8) rgba(255, 255, 255, 0.7); /* Original glow effect */
+    transform: translateZ(calc(var(--depth) * 20px)); /* Original 3D depth */
+    will-change: transform; /* Only transform will change with mouse movement */
   }
 
-  /* COSMIC UPGRADE: Optimized twinkle animation with custom properties */
+  /* Original twinkle animation */
   .star.twinkle {
     animation: twinkle var(--twinkle-speed) ease-in-out infinite;
-    animation-delay: calc(var(--delay) + 1s); /* Start twinkling after fly-in */
   }
 
   @keyframes twinkle {
@@ -428,53 +416,40 @@
     50% { opacity: calc(var(--brightness) * var(--twinkle-amount)); }
   }
 
-  /* COSMIC UPGRADE: Special stars styling */
+  /* Original special stars styling - static with no animation */
   .special-star {
     position: absolute;
     width: var(--size);
     height: var(--size);
     border-radius: 50%;
-    top: var(--initial-top, var(--top));
-    left: var(--initial-left, var(--left));
-    opacity: 0; /* Start invisible for fly-in */
-    background: hsl(var(--hue), 100%, 80%);
-    box-shadow: 
-      0 0 calc(var(--size) * 0.5) hsl(var(--hue), 100%, 70%),
-      0 0 calc(var(--size) * 1.2) hsl(var(--hue), 100%, 50%, 0.5);
-    z-index: 10;
-    will-change: transform, opacity, box-shadow, top, left; /* Optimization hint */
-    transition: none; /* No transition initially */
-  }
-
-  /* Fly-in animation for special stars */
-  .special-star.fly-in {
     top: var(--top);
     left: var(--left);
     opacity: var(--brightness);
-    transition: 
-      top 2s cubic-bezier(0.19, 1, 0.22, 1) var(--delay),
-      left 2s cubic-bezier(0.19, 1, 0.22, 1) var(--delay),
-      opacity 1.5s ease-in var(--delay);
+    background: hsl(var(--hue), var(--isWhite, 100%), 80%);
+    box-shadow: 
+      0 0 calc(var(--size) * 0.5) hsl(var(--hue), var(--isWhite, 100%), 70%),
+      0 0 calc(var(--size) * 1.2) hsl(var(--hue), var(--isWhite, 100%), 50%, 0.5);
+    z-index: 10;
+    will-change: transform; /* Only transform will change with mouse movement */
   }
 
-  /* COSMIC UPGRADE: Pulsing animation for special stars */
+  /* Original pulsing animation for special stars */
   .special-star.pulse {
     animation: pulse var(--pulse-speed) ease-in-out infinite;
-    animation-delay: calc(var(--delay) + 1.5s); /* Start pulsing after fly-in */
   }
 
   @keyframes pulse {
     0%, 100% { 
       transform: scale(1);
       box-shadow: 
-        0 0 calc(var(--size) * 0.5) hsl(var(--hue), 100%, 70%),
-        0 0 calc(var(--size) * 1.2) hsl(var(--hue), 100%, 50%, 0.5);
+        0 0 calc(var(--size) * 0.5) hsl(var(--hue), var(--isWhite, 100%), 70%),
+        0 0 calc(var(--size) * 1.2) hsl(var(--hue), var(--isWhite, 100%), 50%, 0.5);
     }
     50% { 
       transform: scale(1.2);
       box-shadow: 
-        0 0 calc(var(--size) * 0.8) hsl(var(--hue), 100%, 70%),
-        0 0 calc(var(--size) * 2) hsl(var(--hue), 100%, 50%, 0.7);
+        0 0 calc(var(--size) * 0.8) hsl(var(--hue), var(--isWhite, 100%), 70%),
+        0 0 calc(var(--size) * 2) hsl(var(--hue), var(--isWhite, 100%), 50%, 0.7);
     }
   }
 

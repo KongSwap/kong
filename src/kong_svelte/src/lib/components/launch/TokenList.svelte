@@ -28,10 +28,10 @@
     return gradients[Math.floor(Math.random() * gradients.length)];
   }
 
-  // Generate a random emoji for tokens
-  function getRandomEmoji() {
-    const emojis = ["💰", "🚀", "💎", "🔥", "⚡", "🌊", "🦈", "💸", "🤑", "🏆"];
-    return emojis[Math.floor(Math.random() * emojis.length)];
+  // Generate a random icon for tokens
+  function getRandomIcon() {
+    const icons = ["star", "bolt", "circle", "triangle", "square", "diamond", "check", "hash"];
+    return icons[Math.floor(Math.random() * icons.length)];
   }
 
   // Get a random animation class
@@ -99,7 +99,7 @@
           averageBlockTime: null,
           // Preserve existing random elements or generate new ones if they don't exist
           randomGradient: token.randomGradient || getRandomGradient(),
-          randomEmoji: token.randomEmoji || getRandomEmoji(),
+          randomIcon: token.randomIcon || getRandomIcon(),
           randomAnimation: token.randomAnimation || getRandomAnimation(),
           socialLinks: info.Ok.social_links?.[0] || []
         };
@@ -121,7 +121,7 @@
         miningInfo: null,
         averageBlockTime: null,
         randomGradient: token.randomGradient || getRandomGradient(),
-        randomEmoji: token.randomEmoji || getRandomEmoji(),
+        randomIcon: token.randomIcon || getRandomIcon(),
         randomAnimation: token.randomAnimation || getRandomAnimation()
       };
     } catch (error) {
@@ -132,7 +132,7 @@
         miningInfo: null,
         averageBlockTime: null,
         randomGradient: token.randomGradient || getRandomGradient(),
-        randomEmoji: token.randomEmoji || getRandomEmoji(),
+        randomIcon: token.randomIcon || getRandomIcon(),
         randomAnimation: token.randomAnimation || getRandomAnimation()
       };
     }
@@ -153,7 +153,7 @@
         miningInfo: null,
         averageBlockTime: null,
         randomGradient: token.randomGradient || getRandomGradient(),
-        randomEmoji: token.randomEmoji || getRandomEmoji(),
+        randomIcon: token.randomIcon || getRandomIcon(),
         randomAnimation: token.randomAnimation || getRandomAnimation()
       }));
     } finally {
@@ -237,13 +237,13 @@
                       }}
                     />
                     <div class={`absolute -bottom-1 -right-1 w-6 h-6 flex items-center justify-center rounded-full bg-gradient-to-r ${token.randomGradient} text-white text-xs ${token.randomAnimation}`}>
-                      {token.randomEmoji}
+                      <span class="text-xs font-bold">{token.ticker[0]}</span>
                     </div>
                     <!-- Fallback if image fails to load -->
                     <div class={`hidden relative items-center justify-center w-16 h-16 text-3xl font-bold rounded-full bg-gradient-to-r ${token.randomGradient} text-white shadow-glow`}>
                       {token.ticker[0]}
                       <div class={`absolute -bottom-1 -right-1 w-6 h-6 flex items-center justify-center rounded-full bg-white text-xs ${token.randomAnimation}`} style={`color: var(--tw-gradient-to);`}>
-                        {token.randomEmoji}
+                        <span class="text-xs font-bold">{token.ticker[0]}</span>
                       </div>
                     </div>
                   </div>
@@ -251,14 +251,13 @@
                   <div class={`relative flex items-center justify-center w-16 h-16 text-3xl font-bold rounded-full bg-gradient-to-r ${token.randomGradient} text-white shadow-glow`}>
                     {token.ticker[0]}
                     <div class={`absolute -bottom-1 -right-1 w-6 h-6 flex items-center justify-center rounded-full bg-white text-xs ${token.randomAnimation}`} style={`color: var(--tw-gradient-to);`}>
-                      {token.randomEmoji}
+                      <span class="text-xs font-bold">{token.ticker[0]}</span>
                     </div>
                   </div>
                 {/if}
                 <div>
                   <h3 class="text-xl font-extrabold flex items-center gap-2">
                     {token.name}
-                    <Sparkles size={16} class={`text-yellow-400 ${token.randomAnimation}`} />
                   </h3>
                   <p class="text-sm font-bold text-white/70 flex items-center gap-1">
                     ${token.ticker}
@@ -277,7 +276,6 @@
                   <p class="font-bold text-lg flex items-center gap-1">
                     {formatBalance(token.total_supply, token.decimals)} 
                     <span class="text-white/90">{token.ticker}</span>
-                    <Flame size={16} class="text-orange-400 animate-pulse" />
                   </p>
                 </div>
                 <div class="bg-white/10 p-2 rounded-full group-hover:bg-white/20 transition-colors duration-300">

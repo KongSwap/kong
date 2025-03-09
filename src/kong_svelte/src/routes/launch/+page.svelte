@@ -48,7 +48,7 @@
   let lastNotificationTime = 0;
   let miningEvents = [];
 
-  // DEGEN MODE: Add fucking insane pulse effects
+  // Add subtle animation effects
   let pulseStats = false;
   let pulseTokens = false;
   let pulseMiners = false;
@@ -330,19 +330,19 @@
 
         if (eventType.includes("token")) {
           toastStore.success(`NEW TOKEN DEPLOYED: ${name || id}`, {
-            title: "🔥 TOKEN LAUNCH 🔥",
+            title: "TOKEN LAUNCH",
             duration: 6000,
           });
           triggerDegenEffects("token", event.data);
         } else if (eventType.includes("miner")) {
           toastStore.info(`NEW MINER DEPLOYED: ${id}`, {
-            title: "⛏️ MINER LAUNCH ⛏️",
+            title: "MINER LAUNCH",
             duration: 6000,
           });
           triggerDegenEffects("miner", event.data);
         } else {
           toastStore.info(`NEW DEPLOYMENT: ${id}`, {
-            title: "🚀 LAUNCH DETECTED 🚀",
+            title: "LAUNCH DETECTED",
             duration: 4000,
           });
           triggerDegenEffects("deployment", event.data);
@@ -448,9 +448,9 @@
 <MiningNotifications {miningEvents} />
 
 <div class="min-h-screen h-screen flex flex-col text-white relative">
-  <!-- NUCLEAR EFFECT OVERLAY -->
+  <!-- Subtle highlight effect overlay -->
   {#if nukeEffect}
-    <div class="fixed inset-0 bg-yellow-500 opacity-30 z-50 animate-pulse pointer-events-none"></div>
+    <div class="fixed inset-0 bg-blue-500 opacity-10 z-50 animate-pulse pointer-events-none"></div>
   {/if}
   
   <!-- HEADER SECTION -->
