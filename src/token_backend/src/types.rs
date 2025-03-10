@@ -130,3 +130,63 @@ pub struct MiningInfo {
     pub next_halving_interval: u64,
     pub mining_complete: bool,
 } 
+
+// New comprehensive types for enhanced queries
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct TokenAllInfo {
+    // Basic token info
+    pub name: String,
+    pub ticker: String,
+    pub total_supply: u64,
+    pub ledger_id: Option<Principal>,
+    pub logo: Option<String>,
+    pub decimals: u8,
+    pub transfer_fee: u64,
+    pub social_links: Option<Vec<SocialLink>>,
+    
+    // Block statistics
+    pub average_block_time: Option<f64>,
+    pub formatted_block_time: Option<String>,
+    pub block_time_rating: Option<String>,
+    
+    // Supply metrics
+    pub circulating_supply: u64,
+    pub mining_progress_percentage: String,
+    
+    // Block rewards
+    pub current_block_reward: u64,
+    pub formatted_block_reward: String,
+    
+    // Token IDs
+    pub principal: Principal,
+    pub current_block_height: u64,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct TokenEverything {
+    // All info from TokenAllInfo
+    pub all_info: TokenAllInfo,
+    
+    // Mining statistics
+    pub active_miners_count: usize,
+    pub mining_difficulty: u32,
+    pub block_time_target: u64,
+    
+    // Recent activity
+    pub recent_events: Vec<crate::block_templates::Event>,
+    
+    // Additional metrics
+    pub mining_completion_estimate: Option<String>,
+}
+
+#[derive(CandidType, Serialize, Deserialize)]
+pub enum AllInfoResult {
+    Ok(TokenAllInfo),
+    Err(String),
+}
+
+#[derive(CandidType, Serialize, Deserialize)]
+pub enum EverythingResult {
+    Ok(TokenEverything),
+    Err(String),
+} 

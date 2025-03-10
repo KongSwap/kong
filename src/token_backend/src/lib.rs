@@ -604,15 +604,15 @@ fn get_block_height() -> u64 {
     BLOCK_HEIGHT.with(|h| *h.borrow().get())
 }
 
-// Helper function to increment block height
-fn increment_block_height() -> u64 {
-    BLOCK_HEIGHT.with(|h| {
-        let current = *h.borrow().get();
-        let next = current + 1;
-        h.borrow_mut().set(next).expect("Failed to increment block height");
-        next
-    })
-}
+// Helper/Reference function to increment block height
+// fn increment_block_height() -> u64 {
+//     BLOCK_HEIGHT.with(|h| {
+//         let current = *h.borrow().get();
+//         let next = current + 1;
+//         h.borrow_mut().set(next).expect("Failed to increment block height");
+//         next
+//     })
+// }
 
 // Helper function to log events with proper block height handling
 fn log_event(mut event: Event) {
@@ -985,4 +985,183 @@ fn post_upgrade() {
         difficulty, block_time);
     ic_cdk::println!("Post-upgrade: Mining info: {:?}", mining_info);
     ic_cdk::println!("Post-upgrade: Asset certification and mining memory re-initialized");
+}
+
+// Helper function to format block time
+fn format_block_time(seconds: f64) -> String {
+    if seconds.is_nan() || seconds <= 0.0 {
+        return "N/A".to_string();
+    }
+    format!("{:.2}s", seconds)
+}
+
+// Helper function to get block time rating
+fn get_block_time_rating(seconds: f64) -> String {
+    if seconds.is_nan() {
+        return "Unknown".to_string();
+    }
+    
+    if seconds < 15.0 {
+        "Fast".to_string()
+    } else if seconds < 30.0 {
+        "Medium".to_string()
+    } else {
+        "Slow".to_string()
+    }
+}
+
+// Helper function to format mining progress percentage
+fn format_mining_progress(circulating: u64, total: u64) -> String {
+    if total == 0 {
+        return "0%".to_string();
+    }
+    let percentage = (circulating as f64 / total as f64) * 100.0;
+    format!("{:.2}%", percentage)
+}
+
+// Helper function to format block reward
+fn format_block_reward(reward: u64, decimals: u8, ticker: &str) -> String {
+    if decimals == 0 {
+        return format!("{} {}", reward, ticker);
+    }
+    
+    let divisor = 10u64.pow(decimals as u32);
+    let whole_part = reward / divisor;
+    let fractional_part = reward % divisor;
+    
+    if fractional_part == 0 {
+        format!("{} {}", whole_part, ticker)
+    } else {
+        let fractional_str = format!("{:0width$}", fractional_part, width = decimals as usize);
+        format!("{}.{} {}", whole_part, fractional_str, ticker)
+    }
+}
+
+// New comprehensive query that returns all token info in one call
+#[ic_cdk::query]
+fn get_all_info() -> AllInfoResult {
+    // Get basic token info
+    let token_info = match get_info() {
+        Ok(info) => info,
+        Err(e) => return AllInfoResult::Err(e),
+    };
+    
+    // Get metrics
+    let metrics = match get_metrics() {
+        MetricsResult::Ok(m) => m,
+        MetricsResult::Err(e) => return AllInfoResult::Err(e),
+    };
+    
+    // Get mining info
+    let mining_info = mining::get_mining_info();
+    
+    // Get block height
+    let block_height = get_block_height();
+    
+    // Get average block time
+    let avg_block_time = match mining::get_average_block_time(None) {
+        mining::BlockTimeResult::Ok(time) => Some(time),
+        mining::BlockTimeResult::Err(_) => None,
+    };
+    
+    // Format block time and get rating
+    let formatted_block_time = avg_block_time.map(format_block_time);
+    let block_time_rating = avg_block_time.map(get_block_time_rating);
+    
+    // Calculate mining progress
+    let mining_progress = format_mining_progress(metrics.circulating_supply, metrics.total_supply);
+    
+    // Format block reward
+    let formatted_reward = format_block_reward(
+        mining_info.current_block_reward, 
+        token_info.decimals, 
+        &token_info.ticker
+    );
+    
+    // Get canister ID
+    let principal = ic_cdk::id();
+    
+    AllInfoResult::Ok(TokenAllInfo {
+        // Basic token info
+        name: token_info.name,
+        ticker: token_info.ticker,
+        total_supply: token_info.total_supply,
+        ledger_id: token_info.ledger_id,
+        logo: token_info.logo,
+        decimals: token_info.decimals,
+        transfer_fee: token_info.transfer_fee,
+        social_links: token_info.social_links,
+        
+        // Block statistics
+        average_block_time: avg_block_time,
+        formatted_block_time,
+        block_time_rating,
+        
+        // Supply metrics
+        circulating_supply: metrics.circulating_supply,
+        mining_progress_percentage: mining_progress,
+        
+        // Block rewards
+        current_block_reward: mining_info.current_block_reward,
+        formatted_block_reward: formatted_reward,
+        
+        // Token IDs
+        principal,
+        current_block_height: block_height,
+    })
+}
+
+// Super comprehensive query that returns everything about the token
+#[ic_cdk::query]
+fn get_everything() -> EverythingResult {
+    // Get all info first
+    let all_info = match get_all_info() {
+        AllInfoResult::Ok(info) => info,
+        AllInfoResult::Err(e) => return EverythingResult::Err(e),
+    };
+    
+    // Get active miners count - use the re-exported function
+    let active_miners = get_active_miners();
+    
+    // Get mining difficulty
+    let mining_difficulty = mining::get_mining_difficulty();
+    
+    // Get recent events (last 10)
+    let recent_events = get_recent_events(Some(10));
+    
+    // Get block time target
+    let block_time_target = mining::get_block_time_target();
+    
+    // Calculate mining completion estimate
+    let mining_completion_estimate = if all_info.mining_progress_percentage == "100.00%" {
+        Some("Mining complete".to_string())
+    } else if all_info.average_block_time.is_some() && all_info.average_block_time.unwrap() > 0.0 {
+        let remaining_supply = all_info.total_supply - all_info.circulating_supply;
+        let blocks_remaining = remaining_supply / all_info.current_block_reward;
+        let time_remaining_seconds = blocks_remaining as f64 * all_info.average_block_time.unwrap();
+        
+        // Convert to days/hours/minutes
+        let days = (time_remaining_seconds / 86400.0) as u64;
+        let hours = ((time_remaining_seconds % 86400.0) / 3600.0) as u64;
+        let minutes = ((time_remaining_seconds % 3600.0) / 60.0) as u64;
+        
+        if days > 0 {
+            Some(format!("~{} days, {} hours remaining", days, hours))
+        } else if hours > 0 {
+            Some(format!("~{} hours, {} minutes remaining", hours, minutes))
+        } else {
+            Some(format!("~{} minutes remaining", minutes))
+        }
+    } else {
+        None
+    };
+    
+    EverythingResult::Ok(TokenEverything {
+        all_info,
+        active_miners_count: active_miners.len(),
+        mining_difficulty,
+        block_time_target,
+        recent_events,
+        mining_completion_estimate,
+    })
 }

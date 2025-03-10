@@ -147,10 +147,6 @@
     loadAllMinerInfo();
   }
 
-  // Remove the onMount call since the reactive statement will handle initial load
-  onMount(() => {
-    // Initial load will be handled by the reactive statement
-  });
 </script>
 
 <div class="space-y-2">

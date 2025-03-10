@@ -8,10 +8,11 @@ use ic_cdk::api::management_canister::main::raw_rand;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::cell::RefCell;
+use std::collections::VecDeque;
 use hex;
 
 mod block_miner;
-use block_miner::{BlockMiner, MiningStats, Hash, MinerType, MiningResult};
+use block_miner::{BlockMiner, MiningStats, Hash, MiningResult};
 
 #[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
 pub struct BlockTemplate {
@@ -89,6 +90,30 @@ thread_local! {
     static API_ENDPOINT: RefCell<Option<String>> = RefCell::new(None);
     static API_KEY: RefCell<Option<String>> = RefCell::new(None);
     static API_ENABLED: RefCell<bool> = RefCell::new(false);
+    
+    // Cycle tracking
+    static CYCLE_MEASUREMENTS: RefCell<VecDeque<CycleMeasurement>> = RefCell::new(VecDeque::new());
+    static LAST_CYCLE_CHECK: RefCell<u64> = RefCell::new(0); // Timestamp of last cycle check
+    
+    // Add a new thread_local to track when we can mine again after a failure
+    static NEXT_MINING_ATTEMPT: RefCell<u64> = RefCell::new(0); // Timestamp when we can try mining again
+}
+
+// Cycle measurement struct
+#[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
+struct CycleMeasurement {
+    timestamp: u64,
+    balance: u128,
+}
+
+// Cycle usage statistics
+#[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
+struct CycleUsageStats {
+    current_balance: u128,
+    measurements: Vec<CycleMeasurement>,
+    usage_last_15min: Option<u128>,
+    usage_rate_per_hour: Option<f64>,
+    estimated_remaining_time: Option<String>,
 }
 
 #[derive(CandidType, Serialize, Deserialize)]
@@ -98,7 +123,7 @@ struct MinerInitArgs {}
 fn init(_args: MinerInitArgs) {
     // Initialize block miner with default chunk size
     BLOCK_MINER.with(|miner| {
-        *miner.borrow_mut() = Some(BlockMiner::new(MinerType::Lite)); // lite miner by default
+        *miner.borrow_mut() = Some(BlockMiner::new()); // Initialize with default settings
     });
     
     // Hardcode the API endpoint URL and enable notifications by default
@@ -156,7 +181,7 @@ async fn connect_token(token_id: Principal) -> Result<(), String> {
                             let connect_data = json!({
                                 "token_id": token_id.to_text(),
                                 "miner_id": ic_cdk::id().to_text(),
-                                "miner_type": BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| format!("{:?}", m.get_type())).unwrap_or_else(|| "Unknown".to_string()))
+                                "chunk_size": BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_chunk_size()).unwrap_or(1000))
                             });
                             
                             notify_event("token_connected", connect_data);
@@ -242,7 +267,7 @@ async fn start_mining() -> Result<(), String> {
     BLOCK_MINER.with(|m| {
         if m.borrow().is_none() {
             ic_cdk::println!("Initializing miner on demand for start_mining");
-            *m.borrow_mut() = Some(BlockMiner::new(MinerType::Lite));
+            *m.borrow_mut() = Some(BlockMiner::new());
         }
     });
     
@@ -292,9 +317,9 @@ fn get_info() -> Result<MinerInfo, String> {
     Ok(MinerInfo {
         current_token: CURRENT_TOKEN.with(|t| t.borrow().clone()),
         is_mining: IS_MINING.with(|m| *m.borrow()),
-        miner_type: BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_type()).unwrap_or(block_miner::MinerType::Normal)),
         speed_percentage: BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_speed_percentage()).unwrap_or(100)),
         chunks_per_refresh: BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_chunks_per_refresh()).unwrap_or(5)),
+        chunk_size: BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_chunk_size()).unwrap_or(1000)),
     })
 }
 
@@ -302,9 +327,9 @@ fn get_info() -> Result<MinerInfo, String> {
 struct MinerInfo {
     current_token: Option<Principal>,
     is_mining: bool,
-    miner_type: block_miner::MinerType,
     speed_percentage: u8,
     chunks_per_refresh: u64,
+    chunk_size: u64,
 }
 
 // Import TokenInfo struct for verification
@@ -405,7 +430,7 @@ fn set_mining_speed(percentage: u8) -> Result<(), String> {
         // Initialize the miner if it doesn't exist
         if m.borrow().is_none() {
             ic_cdk::println!("Initializing miner on demand for set_mining_speed");
-            *m.borrow_mut() = Some(BlockMiner::new(MinerType::Lite));
+            *m.borrow_mut() = Some(BlockMiner::new());
         }
         
         // Now we can safely unwrap as we've ensured it exists
@@ -427,7 +452,7 @@ fn set_template_refresh_interval(chunks: u64) -> Result<(), String> {
         // Initialize the miner if it doesn't exist
         if m.borrow().is_none() {
             ic_cdk::println!("Initializing miner on demand for set_template_refresh_interval");
-            *m.borrow_mut() = Some(BlockMiner::new(MinerType::Lite));
+            *m.borrow_mut() = Some(BlockMiner::new());
         }
         
         // Now we can safely unwrap as we've ensured it exists
@@ -461,13 +486,17 @@ fn handle_block_retrieval_failure() {
             
             *last.borrow_mut() = Some(now);
             
-            // Log and sleep
-            ic_cdk::println!(
-                "Block retrieval failed - backing off for {:.1} seconds",
-                *duration.borrow() as f64 / 1_000_000_000.0
-            );
+            // Set the next mining attempt timestamp instead of sleeping
+            let backoff_duration = *duration.borrow();
+            NEXT_MINING_ATTEMPT.with(|next| {
+                *next.borrow_mut() = now + backoff_duration;
+            });
             
-            std::thread::sleep(std::time::Duration::from_nanos(*duration.borrow()));
+            ic_cdk::println!(
+                "Block retrieval failed - backing off for {:.1} seconds until timestamp {}",
+                backoff_duration as f64 / 1_000_000_000.0,
+                now + backoff_duration
+            );
         });
     });
 }
@@ -478,6 +507,10 @@ fn reset_block_backoff() {
     });
     BLOCK_BACKOFF_DURATION.with(|duration| {
         *duration.borrow_mut() = 5_000_000_000; // Reset to 5 seconds
+    });
+    // Also reset the next mining attempt timestamp
+    NEXT_MINING_ATTEMPT.with(|next| {
+        *next.borrow_mut() = 0; // 0 means we can mine immediately
     });
 }
 
@@ -496,7 +529,44 @@ fn reset_heartbeat_counter() {
 // Heartbeat function to increment counter and perform mining
 #[ic_cdk::heartbeat]
 async fn heartbeat() {
-    // Increment heartbeat counter
+    // Check if it's time to measure cycles (every 5 minutes)
+    let now = ic_cdk::api::time();
+    let five_minutes_ns: u64 = 5 * 60 * 1_000_000_000;
+    
+    let should_check_cycles = LAST_CYCLE_CHECK.with(|last| {
+        let last_check = *last.borrow();
+        if last_check == 0 || now - last_check >= five_minutes_ns {
+            *last.borrow_mut() = now;
+            true
+        } else {
+            false
+        }
+    });
+    
+    if should_check_cycles {
+        // Record current cycle balance
+        let balance = ic_cdk::api::canister_balance128();
+        
+        CYCLE_MEASUREMENTS.with(|measurements| {
+            let mut m = measurements.borrow_mut();
+            
+            // Add new measurement
+            m.push_back(CycleMeasurement {
+                timestamp: now,
+                balance,
+            });
+            
+            // Keep only measurements from the last 100 minutes (20 measurements at 5-minute intervals)
+            let cutoff = now.saturating_sub(100 * 60 * 1_000_000_000);
+            while !m.is_empty() && m.front().unwrap().timestamp < cutoff {
+                m.pop_front();
+            }
+            
+            ic_cdk::println!("Recorded cycle balance: {} cycles at timestamp {}", balance, now);
+        });
+    }
+    
+    // Increment heartbeat counter for mining
     let current_counter = HEARTBEAT_COUNTER.with(|c| {
         let current = *c.borrow();
         *c.borrow_mut() = (current + 1) % 6; // 0-5, so we can check for == 5
@@ -508,20 +578,31 @@ async fn heartbeat() {
         return;
     }
     
-    ic_cdk::println!("Mining on heartbeat 5 - fixed 10k hashes");
+    // Check if we're in a backoff period
+    let can_mine = NEXT_MINING_ATTEMPT.with(|next| {
+        let next_attempt = *next.borrow();
+        next_attempt == 0 || now >= next_attempt
+    });
+    
+    if !can_mine {
+        ic_cdk::println!("Still in backoff period, skipping mining attempt");
+        return;
+    }
+    
+    ic_cdk::println!("Mining on heartbeat 5");
     
     // Initialize the miner if it doesn't exist
     BLOCK_MINER.with(|m| {
         if m.borrow().is_none() {
             ic_cdk::println!("Initializing miner on demand for heartbeat");
-            *m.borrow_mut() = Some(BlockMiner::new(MinerType::Lite));
+            *m.borrow_mut() = Some(BlockMiner::new());
         }
     });
     
     // Get token ID
     let token_id = match CURRENT_TOKEN.with(|t| t.borrow().clone()) {
         Some(id) => id,
-        None => {
+        _ => {
             ic_cdk::println!("No token connected, cannot mine");
             return;
         }
@@ -566,7 +647,7 @@ async fn heartbeat() {
             *n.borrow_mut() = initial_nonce;
         });
         
-        // Try to mine the block with exactly 10k hashes
+        // Try to mine the block with the configured chunk size
         let mining_result = BLOCK_MINER.with(|m| {
             if let Some(miner) = m.borrow_mut().as_mut() {
                 miner.mine_block_chunk(
@@ -593,7 +674,7 @@ async fn heartbeat() {
                 hash_hex
             );
             
-            // Submit the solution - now passing the nonce twice
+            // Submit the solution
             submit_solution(token_id, result, block.difficulty).await;
         }
     }
@@ -608,7 +689,7 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
         Ok((Ok(token_info),)) => {
             if let Some(ledger_id) = token_info.ledger_id {
                 // Found a solution! Submit it
-                let hashes_processed: u64 = 10000;
+                let hashes_processed: u64 = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_chunk_size()).unwrap_or(1000));
                 match call_with_payment128::<_, (Result<(bool, u64, u64, String), String>,)>(
                     token_id,
                     "submit_solution",
@@ -649,8 +730,9 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                     },
                     Ok((Ok((false, block_height, _, ticker)),)) => {
                         ic_cdk::println!("Solution rejected for block {} for {} token", block_height, ticker);
-                        // Use large increment to avoid collisions
-                        let increment = 10000 * 997;
+                        // Use chunk size for increment to avoid collisions
+                        let chunk_size = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_chunk_size()).unwrap_or(1000));
+                        let increment = chunk_size * 997;
                         // Update the START_NONCE thread-local instead of local variable
                         START_NONCE.with(|n| {
                             let current = *n.borrow();
@@ -704,17 +786,6 @@ fn set_chunks_per_refresh(chunks: u64) {
     BLOCK_MINER.with(|m| {
         if let Some(miner) = m.borrow_mut().as_mut() {
             miner.set_chunks_per_refresh(chunks);
-        }
-    });
-}
-
-/// Enables or disables high volatility mode, which makes the miner more responsive
-/// to difficulty changes by reducing chunk sizes
-#[ic_cdk::update]
-fn set_high_volatility_mode(enabled: bool) {
-    BLOCK_MINER.with(|m| {
-        if let Some(miner) = m.borrow_mut().as_mut() {
-            miner.enable_high_volatility_mode(enabled);
         }
     });
 }
@@ -838,6 +909,110 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
             }
         }
     });
+}
+
+// Add new function to set chunk size
+#[ic_cdk::update]
+fn set_chunk_size(size: u64) -> Result<(), String> {
+    // Only controller can set chunk size
+    caller_is_controller()?;
+    
+    BLOCK_MINER.with(|m| {
+        // Initialize the miner if it doesn't exist
+        if m.borrow().is_none() {
+            ic_cdk::println!("Initializing miner on demand for set_chunk_size");
+            *m.borrow_mut() = Some(BlockMiner::new());
+        }
+        
+        // Now we can safely unwrap as we've ensured it exists
+        if let Some(miner) = m.borrow_mut().as_mut() {
+            miner.set_chunk_size(size)
+        } else {
+            // This should never happen now, but keeping as a fallback
+            Err("Miner not initialized".to_string())
+        }
+    })
+}
+
+// Query to get cycle usage statistics
+#[ic_cdk::query]
+fn get_cycle_usage() -> CycleUsageStats {
+    let current_balance = ic_cdk::api::canister_balance128();
+    
+    CYCLE_MEASUREMENTS.with(|measurements| {
+        let m = measurements.borrow();
+        let measurements_vec: Vec<CycleMeasurement> = m.iter().cloned().collect();
+        
+        // Calculate usage over the last 15 minutes
+        let now = ic_cdk::api::time();
+        let fifteen_min_ago = now.saturating_sub(15 * 60 * 1_000_000_000);
+        
+        let usage_last_15min = if measurements_vec.len() >= 2 {
+            // Find the closest measurement to 15 minutes ago
+            let mut closest_older = None;
+            for measurement in measurements_vec.iter() {
+                if measurement.timestamp <= fifteen_min_ago {
+                    closest_older = Some(measurement);
+                } else {
+                    break;
+                }
+            }
+            
+            // Calculate usage if we have a measurement from before 15 minutes ago
+            closest_older.map(|older| {
+                if older.balance > current_balance {
+                    older.balance - current_balance
+                } else {
+                    0 // Handle case where cycles might have been added
+                }
+            })
+        } else {
+            None
+        };
+        
+        // Calculate hourly usage rate
+        let usage_rate_per_hour = if measurements_vec.len() >= 2 {
+            let oldest = measurements_vec.first().unwrap();
+            let newest = measurements_vec.last().unwrap();
+            
+            let time_diff_hours = (newest.timestamp - oldest.timestamp) as f64 / (60.0 * 60.0 * 1_000_000_000.0);
+            
+            if time_diff_hours > 0.0 && oldest.balance > newest.balance {
+                Some((oldest.balance - newest.balance) as f64 / time_diff_hours)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        
+        // Estimate remaining time based on usage rate
+        let estimated_remaining_time = usage_rate_per_hour.map(|rate| {
+            if rate > 0.0 {
+                let hours_remaining = current_balance as f64 / rate;
+                
+                if hours_remaining < 1.0 {
+                    format!("{:.1} minutes", hours_remaining * 60.0)
+                } else if hours_remaining < 24.0 {
+                    format!("{:.1} hours", hours_remaining)
+                } else if hours_remaining < 24.0 * 30.0 {
+                    format!("{:.1} days", hours_remaining / 24.0)
+                } else {
+                    format!("{:.1} months", hours_remaining / (24.0 * 30.0))
+                }
+            } else {
+                "Unknown (no usage detected)".to_string()
+            }
+        });
+        
+        CycleUsageStats {
+            current_balance,
+            measurements: measurements_vec,
+            usage_last_15min,
+            usage_rate_per_hour,
+            estimated_remaining_time,
+        }
+    })
 }
 
 // Candid interface export

@@ -2,16 +2,26 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
+export interface CycleMeasurement {
+  'timestamp': bigint,
+  'balance': bigint,
+}
+
+export interface CycleUsageStats {
+  'current_balance': bigint,
+  'measurements': Array<CycleMeasurement>,
+  'usage_last_15min': [] | [bigint],
+  'usage_rate_per_hour': [] | [number],
+  'estimated_remaining_time': [] | [string],
+}
+
 export interface MinerInfo {
   'speed_percentage' : number,
   'current_token' : [] | [Principal],
   'chunks_per_refresh' : bigint,
-  'miner_type' : MinerType,
+  'chunk_size' : bigint,
   'is_mining' : boolean,
 }
-export type MinerType = { 'Premium' : null } |
-  { 'Lite' : null } |
-  { 'Normal' : null };
 export interface MiningStats {
   'total_hashes' : bigint,
   'blocks_mined' : bigint,
@@ -28,14 +38,21 @@ export interface _SERVICE {
   'claim_rewards' : ActorMethod<[], Result>,
   'connect_token' : ActorMethod<[Principal], Result>,
   'disconnect_token' : ActorMethod<[], Result>,
+  'disable_api_notifications' : ActorMethod<[], Result>,
+  'enable_api_notifications' : ActorMethod<[], Result>,
   'get_canister_id' : ActorMethod<[], Principal>,
+  'get_cycle_usage' : ActorMethod<[], CycleUsageStats>,
   'get_info' : ActorMethod<[], Result_1>,
   'get_mining_stats' : ActorMethod<[], [] | [MiningStats]>,
+  'set_api_endpoint' : ActorMethod<[string, string], Result>,
+  'set_chunk_size' : ActorMethod<[bigint], Result>,
+  'set_chunks_per_refresh' : ActorMethod<[bigint], undefined>,
+  'set_high_volatility_mode' : ActorMethod<[boolean], undefined>,
+  'set_max_chunk_duration' : ActorMethod<[bigint], undefined>,
   'set_mining_speed' : ActorMethod<[number], Result>,
   'set_template_refresh_interval' : ActorMethod<[bigint], Result>,
   'start_mining' : ActorMethod<[], Result>,
   'stop_mining' : ActorMethod<[], Result>,
-  'transform_miner' : ActorMethod<[MinerType], Result>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

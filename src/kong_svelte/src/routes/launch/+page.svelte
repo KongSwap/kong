@@ -1,9 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import {
-    wsConnected,
     wsEvents,
-    notifications,
     connectWebSocket,
     disconnectWebSocket,
     canistersList,
@@ -12,13 +10,11 @@
   import { toastStore } from "$lib/stores/toastStore";
   
   // Import our new components
-  import LaunchHeader from "$lib/components/launch/LaunchHeader.svelte";
   import LiveActivityFeed from "$lib/components/launch/LiveActivityFeed.svelte";
   import SearchAndFilter from "$lib/components/launch/SearchAndFilter.svelte";
   import FlashEvent from "$lib/components/launch/FlashEvent.svelte";
   import ContentPanels from "$lib/components/launch/ContentPanels.svelte";
   import LaunchAnimations from "$lib/components/launch/LaunchAnimations.svelte";
-  import Scroller from "$lib/components/common/Scroller.svelte";
   import MiningNotifications from "$lib/components/launch/MiningNotifications.svelte";
   
   // Import utility functions
@@ -225,38 +221,9 @@
       stats = updateStatsFromCanisters(tokenList, minerList, deployerSet);
     });
 
-    // DEGEN MODE: Periodic refresh for MAXIMUM DATA FRESHNESS
     refreshInterval = setInterval(() => {
       fetchCanisters();
-    }, 30000); // Every 30 seconds
-    
-    // Simulate occasional events if no real events are coming in
-    simulateEventsInterval = setInterval(() => {
-      const now = Date.now();
-      // If no events for 20 seconds, simulate one
-      if (now - lastEventTime > 20000) {
-        const simulatedEvents = [
-          "🔍 SCANNING BLOCKCHAIN FOR NEW DEPLOYMENTS",
-          "🔄 REFRESHING CANISTER REGISTRY",
-          "👀 MONITORING NETWORK ACTIVITY",
-          "🛰️ SATELLITE FEED CONNECTED",
-          "🔐 SECURITY PROTOCOLS ACTIVE"
-        ];
-        const randomEvent = simulatedEvents[Math.floor(Math.random() * simulatedEvents.length)];
-        
-        recentEvents = [
-          ...recentEvents.slice(-9),
-          { 
-            text: randomEvent, 
-            timestamp: new Date(),
-            eventType: 'system_message',
-            originalData: null
-          }
-        ];
-        
-        lastEventTime = now;
-      }
-    }, 10000); // Check every 10 seconds
+    }, 120000); // Every 2 minutes
     
     // Cleanup old mining events to prevent memory leaks
     cleanupInterval = setInterval(() => {

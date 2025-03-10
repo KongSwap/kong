@@ -57,15 +57,7 @@
   
   <!-- MINERS PANEL -->
   <div class={`${activeTab === 'miners' ? 'block' : 'hidden'} ${pulseMiners ? 'animate-pulse-subtle' : ''}`}>
-    <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl p-4 mb-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xl font-bold flex items-center gap-2">
-          <span class="text-lg">⛏️</span>
-          <span class="text-white">MINERS</span>
-          <span class="text-sm bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded-full">{filteredMiners.length}</span>
-        </h2>
-      </div>
-    </div>
+
     
     <div class="overflow-x-auto">
       {#if filteredMiners.length === 0 && !loading}

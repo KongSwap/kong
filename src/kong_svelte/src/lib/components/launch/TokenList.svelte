@@ -11,7 +11,7 @@
   export let tokens = [];
   export let loading = false;
 
-  // Enhanced token data with info from get_info and get_metrics
+  // Enhanced token data with info from get_all_info
   let enhancedTokens = [];
   let loadingTokenInfo = true;
 
@@ -40,57 +40,31 @@
     return animations[Math.floor(Math.random() * animations.length)];
   }
 
-  // Helper function to format block time
-  function formatBlockTime(seconds) {
-    if (!seconds) return "N/A";
-    
-    return seconds.toFixed(2) + "s";
-  }
-
-  // Helper function to format block reward
-  function formatBlockReward(reward, decimals, ticker) {
-    if (!reward) return "0";
-    try {
-      const formattedValue = formatBalance(reward, decimals);
-      return `${formattedValue} ${ticker}`;
-    } catch (error) {
-      console.error("Error formatting block reward:", error);
-      return `${reward} ${ticker}`;
-    }
-  }
-
-  // Format circulation percentage
-  function formatCirculationPercentage(circulating, total) {
-    if (!circulating || !total || total === 0) return "0%";
-    const percentage = (Number(circulating) / Number(total)) * 100;
-    return percentage.toFixed(2) + "%";
-  }
-
-  // Get token info from canister - enhanced version with block time and metrics
+  // Get token info from canister - using the new get_all_info function
   async function getTokenInfo(token) {
     try {
       // Create actor - anonymous for public data
       const actor = auth.getActor(token.principal, tokenIdlFactory, { anon: true });
       
-      // Fetch all data in parallel for maximum efficiency
-      const [infoResult, blockTimeResult, metricsResult] = await Promise.all([
-        actor.get_info().catch(() => ({ Err: "Failed to fetch info" })),
-        actor.get_average_block_time([15]).catch(() => ({ Err: "Failed to fetch block time" })),
-        actor.get_metrics().catch(() => ({ Err: "Failed to fetch metrics" }))
-      ]);
+      // Use the new comprehensive get_all_info function
+      const allInfoResult = await actor.get_all_info().catch(() => ({ Err: "Failed to fetch token info" }));
       
-      // Process basic info
-      const info = infoResult?.Ok || null;
+      if (allInfoResult.Err) {
+        console.error("Error fetching token info:", allInfoResult.Err);
+        // Return basic token with random visuals on error
+        return {
+          ...token,
+          infoLoaded: false,
+          randomGradient: token.randomGradient || getRandomGradient(),
+          randomIcon: token.randomIcon || getRandomIcon(),
+          randomAnimation: token.randomAnimation || getRandomAnimation(),
+          name: token.name || "Unknown Token",
+          ticker: token.ticker || "???"
+        };
+      }
       
-      // Process block time
-      const blockTime = blockTimeResult?.Ok || null;
-      
-      // Process metrics
-      const metrics = metricsResult?.Ok || null;
-      
-      // Calculate mining progress percentage if metrics available
-      const miningProgress = metrics ? 
-        formatCirculationPercentage(metrics.circulating_supply, metrics.total_supply) : null;
+      // Extract the comprehensive token info
+      const allInfo = allInfoResult.Ok;
       
       // Generate random visual elements if not already present
       const randomGradient = token.randomGradient || getRandomGradient();
@@ -100,23 +74,24 @@
       // Construct the enhanced token object
       const tokenInfo = {
         ...token,
-        ...(info || {}),
-        infoLoaded: !!info,
-        averageBlockTime: blockTime,
-        metrics: metrics,
-        miningProgress,
+        ...allInfo,
+        infoLoaded: true,
         randomGradient,
         randomIcon,
         randomAnimation,
-        name: info?.name || token.name || "Unknown Token",
-        ticker: info?.ticker || token.ticker || "???"
+        // Use pre-formatted values from get_all_info
+        averageBlockTime: allInfo.average_block_time,
+        formattedBlockTime: allInfo.formatted_block_time,
+        blockTimeRating: allInfo.block_time_rating,
+        miningProgress: allInfo.mining_progress_percentage,
+        formattedBlockReward: allInfo.formatted_block_reward
       };
       
       // Process logo - support both string and array formats
-      if (info?.logo && typeof info.logo === 'string') {
-        tokenInfo.logo = [info.logo];
-      } else if (info?.logo && info.logo.length > 0) {
-        tokenInfo.logo = info.logo;
+      if (allInfo.logo && typeof allInfo.logo === 'string') {
+        tokenInfo.logo = [allInfo.logo];
+      } else if (allInfo.logo) {
+        tokenInfo.logo = [allInfo.logo];
       }
       
       return tokenInfo;
@@ -126,13 +101,9 @@
       return {
         ...token,
         infoLoaded: false,
-        averageBlockTime: null,
-        metrics: null,
-        miningProgress: null,
         randomGradient: token.randomGradient || getRandomGradient(),
         randomIcon: token.randomIcon || getRandomIcon(),
         randomAnimation: token.randomAnimation || getRandomAnimation(),
-        // Ensure name and ticker have default values to prevent null reference errors
         name: token.name || "Unknown Token",
         ticker: token.ticker || "???"
       };
@@ -151,13 +122,9 @@
       enhancedTokens = tokens.map(token => ({
         ...token,
         infoLoaded: false,
-        averageBlockTime: null,
-        metrics: null,
-        miningProgress: null,
         randomGradient: token.randomGradient || getRandomGradient(),
         randomIcon: token.randomIcon || getRandomIcon(),
         randomAnimation: token.randomAnimation || getRandomAnimation(),
-        // Ensure name and ticker have default values to prevent null reference errors
         name: token.name || "Unknown Token",
         ticker: token.ticker || "???"
       }));
@@ -306,10 +273,10 @@
                     {:else}
                       {token.name}
                     {/if}
-                    {#if token.averageBlockTime}
+                    {#if token.formattedBlockTime}
                       <span class="text-xs font-normal px-1.5 py-0.5 rounded bg-green-900/30 text-green-400">
                         <span class="flex items-center gap-1">
-                          <Clock size={10} /> {formatBlockTime(token.averageBlockTime)}
+                          <Clock size={10} /> {token.formattedBlockTime}
                         </span>
                       </span>
                     {/if}
@@ -399,20 +366,20 @@
               </div>
               
               <!-- Block time section - simplified -->
-              {#if token.averageBlockTime}
+              {#if token.formattedBlockTime}
                 <Panel variant="transparent" type="secondary" className="mt-3 relative overflow-hidden bg-black/10" unpadded={false}>
                   <div class="flex items-center justify-between py-1">
                     <p class="text-sm font-medium flex items-center gap-2">
                       <Activity size={14} class="text-green-400" /> 
-                      Block Time: <span class="font-bold">{formatBlockTime(token.averageBlockTime)}</span>
+                      Block Time: <span class="font-bold">{token.formattedBlockTime}</span>
                       
                       <!-- Block time indicator -->
                       <span class="block-time-indicator" style={`--speed: ${Math.min(5, token.averageBlockTime / 3)}s`}></span>
                     </p>
                     
                     <!-- Block time rating -->
-                    <span class="text-xs font-medium px-2 py-0.5 rounded {token.averageBlockTime < 15 ? 'bg-green-900/30 text-green-400' : token.averageBlockTime < 30 ? 'bg-yellow-900/30 text-yellow-400' : 'bg-orange-900/30 text-orange-400'}">
-                      {token.averageBlockTime < 15 ? 'Fast' : token.averageBlockTime < 30 ? 'Medium' : 'Slow'}
+                    <span class="text-xs font-medium px-2 py-0.5 rounded {token.blockTimeRating === 'Fast' ? 'bg-green-900/30 text-green-400' : token.blockTimeRating === 'Medium' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-orange-900/30 text-orange-400'}">
+                      {token.blockTimeRating || 'Unknown'}
                     </span>
                   </div>
                 </Panel>
