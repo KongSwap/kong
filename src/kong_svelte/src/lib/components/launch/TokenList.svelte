@@ -108,9 +108,8 @@
         randomGradient,
         randomIcon,
         randomAnimation,
-        // Ensure name and ticker have default values to prevent null reference errors
-        name: token.name || info?.name || "Unknown Token",
-        ticker: token.ticker || info?.ticker || "???"
+        name: info?.name || token.name || "Unknown Token",
+        ticker: info?.ticker || token.ticker || "???"
       };
       
       // Process logo - support both string and array formats
@@ -302,7 +301,11 @@
                 {/if}
                 <div>
                   <h3 class="text-xl font-extrabold flex items-center gap-2">
-                    {token.name}
+                    {#if !token.infoLoaded && loadingTokenInfo}
+                      <span class="animate-pulse">Loading token...</span>
+                    {:else}
+                      {token.name}
+                    {/if}
                     {#if token.averageBlockTime}
                       <span class="text-xs font-normal px-1.5 py-0.5 rounded bg-green-900/30 text-green-400">
                         <span class="flex items-center gap-1">
