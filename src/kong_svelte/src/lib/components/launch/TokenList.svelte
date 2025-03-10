@@ -2,7 +2,7 @@
   import { goto } from "$app/navigation";
   import Panel from "$lib/components/common/Panel.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import { ArrowRight, Sparkles, Zap, Flame, Rocket, Copy, Check, Clock, Target, Award, Hourglass, Activity, BarChart3 } from "lucide-svelte";
+  import { ArrowRight, Rocket, Copy, Clock, Target, Activity } from "lucide-svelte";
   import { onMount } from "svelte";
   import { auth } from "$lib/services/auth";
   import { idlFactory as tokenIdlFactory } from "../../../../../../src/declarations/token_backend/token_backend.did.js";
