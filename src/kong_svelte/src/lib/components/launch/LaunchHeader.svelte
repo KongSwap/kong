@@ -31,14 +31,13 @@
   
   function formatNumber(num) {
     if (num === 0) return "0";
-    if (num < 10) return num.toFixed(2);
-    if (num < 1000) return Math.floor(num);
-    return Math.floor(num).toLocaleString();
+    // For all numbers, round to integers and format with commas if needed
+    return Math.round(num).toLocaleString();
   }
 </script>
 
-<header class="relative z-10 border-b border-blue-500/20">
-  <div class="w-full px-6 py-4">
+<header class="relative z-10 mb-6">
+  <div class="container mx-auto px-4 py-4">
     <div class="flex flex-col md:flex-row justify-between items-center gap-4">
       
       {#if isMobile}
@@ -56,10 +55,12 @@
         </button>
       {/if}
       
-      <div class={`grid grid-cols-1 md:grid-cols-4 gap-3 w-full ${isMobile && !isExpanded ? 'hidden' : ''}`}>
+      <div class={`grid grid-cols-1 md:grid-cols-4 gap-4 w-full ${isMobile && !isExpanded ? 'hidden' : ''}`}>
         <!-- TOTAL CANISTERS -->
-        <div class="stat-card border-purple-500/20">
-          <Zap class="stat-icon text-purple-400" />
+        <div class="stat-card from-green-600/20 to-green-400/10 border-green-500/30 group">
+          <div class="stat-icon-bg bg-green-400/10 group-hover:bg-green-400/20">
+            <Zap class="stat-icon text-green-400" />
+          </div>
           <div class="stat-content">
             <span class="stat-label">TOTAL CANISTERS</span>
             <span class="stat-value">{formatNumber(stats.totalDeployments)}</span>
@@ -67,8 +68,10 @@
         </div>
 
         <!-- ACTIVE USERS -->
-        <div class="stat-card border-blue-500/20">
-          <Users class="stat-icon text-blue-400" />
+        <div class="stat-card from-blue-600/20 to-blue-400/10 border-blue-500/30 group">
+          <div class="stat-icon-bg bg-blue-400/10 group-hover:bg-blue-400/20">
+            <Users class="stat-icon text-blue-400" />
+          </div>
           <div class="stat-content">
             <span class="stat-label">ACTIVE USERS</span>
             <span class="stat-value">{formatNumber(stats.uniqueDeployers)}</span>
@@ -76,8 +79,10 @@
         </div>
 
         <!-- TOTAL TOKENS -->
-        <div class="stat-card border-red-500/20">
-          <Flame class="stat-icon text-red-400" />
+        <div class="stat-card from-green-600/20 to-green-400/10 border-green-500/30 group">
+          <div class="stat-icon-bg bg-green-400/10 group-hover:bg-green-400/20">
+            <Flame class="stat-icon text-green-400" />
+          </div>
           <div class="stat-content">
             <span class="stat-label">TOTAL TOKENS</span>
             <span class="stat-value">{formatNumber(stats.totalTokens)}</span>
@@ -85,8 +90,10 @@
         </div>
 
         <!-- TOTAL MINERS -->
-        <div class="stat-card border-indigo-500/20">
-          <Users class="stat-icon text-indigo-400" />
+        <div class="stat-card from-blue-600/20 to-blue-400/10 border-blue-500/30 group">
+          <div class="stat-icon-bg bg-blue-400/10 group-hover:bg-blue-400/20">
+            <Users class="stat-icon text-blue-400" />
+          </div>
           <div class="stat-content">
             <span class="stat-label">TOTAL MINERS</span>
             <span class="stat-value">{formatNumber(stats.totalMiners)}</span>
@@ -99,12 +106,16 @@
 
 <style>
   .stat-card {
-    @apply relative flex items-center gap-3 p-4 rounded-lg border;
+    @apply relative flex items-center gap-3 p-4 rounded-lg border bg-kong-bg-dark/60 backdrop-blur-md bg-gradient-to-r;
     transition: all 0.2s ease;
   }
 
   .stat-card:hover {
-    @apply transform -translate-y-1 shadow-lg shadow-blue-500/10;
+    @apply transform -translate-y-1 shadow-lg shadow-blue-500/10 border-opacity-40;
+  }
+
+  .stat-icon-bg {
+    @apply rounded-full p-2 transition-all duration-200;
   }
 
   .stat-icon {

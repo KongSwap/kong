@@ -157,10 +157,10 @@
     (async () => {
       try {
         // Show loading toast
-        toastStore.info("LOADING CANISTER DATA", {
-          title: "🚀 LAUNCHPAD INITIALIZING",
-          duration: 3000,
-        });
+        // toastStore.info("LOADING CANISTER DATA", {
+        //   title: "🚀 LAUNCHPAD INITIALIZING",
+        //   duration: 3000,
+        // });
 
         // Fetch canisters from API
         const canisterData = await fetchCanisters();
@@ -179,15 +179,15 @@
         stats = updateStatsFromCanisters(tokenList, minerList, deployerSet);
 
         // Success toast
-        if (tokenList.length > 0 || minerList.length > 0) {
-          toastStore.success(
-            `LOADED ${tokenList.length} TOKENS & ${minerList.length} MINERS`,
-            {
-              title: "✅ LAUNCHPAD READY",
-              duration: 4000,
-            },
-          );
-        }
+        // if (tokenList.length > 0 || minerList.length > 0) {
+        //   toastStore.success(
+        //     `LOADED ${tokenList.length} TOKENS & ${minerList.length} MINERS`,
+        //     {
+        //       title: "✅ LAUNCHPAD READY",
+        //       duration: 4000,
+        //     },
+        //   );
+        // }
       } catch (error) {
         console.error("Error loading data:", error);
         toastStore.error("FAILED TO LOAD CANISTER DATA", {
@@ -454,7 +454,7 @@
   {/if}
   
   <!-- HEADER SECTION -->
-  <LaunchHeader {stats} {pulseStats} />
+  <!-- <LaunchHeader {stats} {pulseStats} /> -->
   
   <!-- MAIN CONTENT -->
   <main class="container mx-auto px-4 py-6 relative z-10 flex-grow">
@@ -486,7 +486,7 @@
 
   <!-- SCROLLER AT BOTTOM OF VIEWPORT -->
   <div class="w-full">
-    <Scroller isAbsolute={false} position="bottom" />
+    <!-- <Scroller isAbsolute={false} position="bottom" /> -->
   </div>
 </div>
 

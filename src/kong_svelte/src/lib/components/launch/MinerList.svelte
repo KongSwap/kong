@@ -153,127 +153,127 @@
   });
 </script>
 
-<div class="grid gap-4">
+<div class="space-y-2">
   {#if loading || loadingMinerInfo}
-    <Panel>
+    <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl p-3">
       <div class="flex flex-col gap-4 animate-pulse">
         <div class="w-1/4 h-6 rounded bg-kong-background-secondary"></div>
         <div class="w-1/2 h-4 rounded bg-kong-background-secondary"></div>
       </div>
-    </Panel>
+    </div>
   {:else if enhancedMiners.length === 0}
-    <Panel>
-      <div class="text-center text-kong-text-primary/60">
+    <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl p-3">
+      <div class="py-4 text-center text-kong-text-primary/60">
         No miners found
       </div>
-    </Panel>
+    </div>
   {:else}
     {#each enhancedMiners as miner}
-      <Panel>
+      <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl hover:border-blue-500/30 transition-all duration-200">
         <button
-          class="w-full text-left transition-all duration-300 rounded-lg hover:scale-[1.01] hover:shadow-glow relative overflow-hidden group"
+          class="w-full text-left relative overflow-hidden group rounded-xl"
           on:click={() => handleMinerClick(miner.principal.toString())}
         >
           <div class="absolute inset-0 opacity-5 z-0 group-hover:opacity-10 transition-opacity duration-300">
-            <div class="absolute inset-0 grid grid-cols-10 grid-rows-10">
-              {#each Array(100) as _, i}
-                <div class={`border border-white/5 flex items-center justify-center text-xs ${i % 7 === 0 ? miner.randomAnimation : ''}`}>
-                  {i % 13 === 0 ? miner.randomEmoji : ''}
+            <div class="absolute inset-0 grid grid-cols-15 grid-rows-8">
+              {#each Array(80) as _, i}
+                <div class={`border border-white/5 flex items-center justify-center text-xs ${i % 9 === 0 ? miner.randomAnimation : ''}`}>
+                  {i % 17 === 0 ? miner.randomEmoji : ''}
                 </div>
               {/each}
             </div>
           </div>
           
-          <div class={`absolute inset-0 bg-gradient-to-r ${miner.randomGradient} opacity-10 group-hover:opacity-20 transition-opacity duration-300 z-0`}></div>
+          <div class={`absolute inset-0 bg-gradient-to-r from-blue-900/30 to-blue-600/10 opacity-10 group-hover:opacity-20 transition-opacity duration-300 z-0`}></div>
           
-          <div class="relative z-10">
+          <div class="relative z-10 p-3">
             <div class="flex items-center justify-between gap-4">
-              <div class="flex items-center gap-4">
-                <div class={`relative flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r ${miner.randomGradient} text-white shadow-glow`}>
-                  <Pickaxe size={32} class={`${miner.infoLoaded && miner.info.is_mining ? 'animate-pulse' : ''}`} />
-                  <div class={`absolute -bottom-1 -right-1 w-6 h-6 flex items-center justify-center rounded-full bg-white text-xs ${miner.randomAnimation}`} style={`color: var(--tw-gradient-to);`}>
+              <div class="flex items-center gap-3">
+                <div class={`relative flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 text-white shadow-glow`}>
+                  <Pickaxe size={20} class={`${miner.infoLoaded && miner.info.is_mining ? 'animate-pulse' : ''}`} />
+                  <div class={`absolute -bottom-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full bg-white text-xs ${miner.randomAnimation}`} style={`color: #3b82f6;`}>
                     {miner.randomEmoji}
                   </div>
                 </div>
                 <div>
-                  <h3 class="text-xl font-extrabold flex items-center gap-2">
+                  <h3 class="text-lg font-extrabold flex items-center gap-2">
                     {miner.infoLoaded ? getMinerTypeDisplay(miner.info.miner_type) : getMinerTypeDisplay(miner.type)} Miner
-                    <span class={`px-2 py-0.5 text-xs rounded-full ${miner.infoLoaded && miner.info.is_mining ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    <span class={`px-2 py-0.5 text-xs rounded-full ${miner.infoLoaded && miner.info.is_mining ? 'bg-blue-500/20 text-blue-400' : 'bg-red-500/20 text-red-400'}`}>
                       {miner.infoLoaded && miner.info.is_mining ? 'ACTIVE' : 'INACTIVE'}
                     </span>
                   </h3>
                   <p class="text-sm font-bold text-white/70 flex items-center gap-1">
                     ID: {miner.principal.toString().slice(0, 10)}...
-                    <span class="px-1.5 py-0.5 text-xs rounded bg-white/10 ml-1">
-                      {miner.infoLoaded ? `Speed: ${miner.info.speed_percentage}%` : 'Unknown speed'}
+                    <span class="px-1.5 py-0.5 text-xs rounded bg-blue-900/20 text-blue-400 ml-1">
+                      {miner.infoLoaded ? `${miner.info.speed_percentage}%` : 'Unknown'}
                     </span>
                   </p>
                 </div>
               </div>
-              <div class="flex items-center gap-8">
+              <div class="flex items-center gap-3">
                 <div class="text-right">
                   {#if miner.infoLoaded && miner.info.is_mining && miner.stats}
-                    <p class="text-sm text-white/70 flex items-center gap-1">
-                      <Bolt size={14} class="text-yellow-400" /> Hash Rate
+                    <p class="text-xs text-white/70 flex items-center gap-1">
+                      <Bolt size={12} class="text-blue-400" /> Hash Rate
                     </p>
-                    <p class="font-bold text-lg text-green-400">
+                    <p class="font-bold text-sm text-blue-400">
                       {formatHashRate(miner.stats.last_hash_rate)}
                     </p>
                   {:else}
-                    <p class="text-sm text-white/70">Status</p>
-                    <p class="font-bold text-lg text-red-400">Inactive</p>
+                    <p class="text-xs text-white/70">Status</p>
+                    <p class="font-bold text-sm text-red-400">Inactive</p>
                   {/if}
                 </div>
-                <div class="bg-white/10 rounded-full group-hover:bg-white/20 transition-colors duration-300">
-                  <ArrowRight size={20} class="text-white" />
+                <div class="bg-blue-900/20 p-1.5 rounded-full group-hover:bg-blue-800/30 transition-colors duration-300">
+                  <ArrowRight size={16} class="text-blue-400" />
                 </div>
               </div>
             </div>
             
             {#if miner.infoLoaded && miner.stats}
-              <div class="grid grid-cols-4 gap-4 mt-4 border-t border-white/10">
-                <div>
-                  <p class="text-sm text-white/70 flex items-center gap-1">
-                    <BarChart3 size={14} class="text-blue-400" /> Blocks Mined
+              <div class="grid grid-cols-4 gap-2 mt-2 pt-2 border-t border-blue-900/30">
+                <div class="bg-black/10 px-2 py-1.5 rounded-lg">
+                  <p class="text-xs text-white/70 flex items-center gap-1">
+                    <BarChart3 size={12} class="text-blue-400" /> Blocks
                   </p>
-                  <p class="font-bold">
+                  <p class="font-bold text-xs">
                     {miner.stats.blocks_mined.toString()}
                   </p>
                 </div>
                 
-                <div>
-                  <p class="text-sm text-white/70 flex items-center gap-1">
-                    <Cpu size={14} class="text-purple-400" /> Total Hashes
+                <div class="bg-black/10 px-2 py-1.5 rounded-lg">
+                  <p class="text-xs text-white/70 flex items-center gap-1">
+                    <Cpu size={12} class="text-blue-400" /> Hashes
                   </p>
-                  <p class="font-bold">
+                  <p class="font-bold text-xs">
                     {Number(miner.stats.total_hashes) > 1000000 
-                      ? `${(Number(miner.stats.total_hashes) / 1000000).toFixed(2)}M` 
+                      ? `${(Number(miner.stats.total_hashes) / 1000000).toFixed(1)}M` 
                       : Number(miner.stats.total_hashes) > 1000 
-                        ? `${(Number(miner.stats.total_hashes) / 1000).toFixed(2)}K` 
+                        ? `${(Number(miner.stats.total_hashes) / 1000).toFixed(1)}K` 
                         : miner.stats.total_hashes.toString()}
                   </p>
                 </div>
                 
-                <div>
-                  <p class="text-sm text-white/70 flex items-center gap-1">
-                    <Zap size={14} class="text-yellow-400" /> Total Rewards
+                <div class="bg-black/10 px-2 py-1.5 rounded-lg">
+                  <p class="text-xs text-white/70 flex items-center gap-1">
+                    <Zap size={12} class="text-blue-400" /> Rewards
                   </p>
-                  <p class="font-bold">
+                  <p class="font-bold text-xs">
                     {Number(miner.stats.total_rewards) > 1000000 
-                      ? `${(Number(miner.stats.total_rewards) / 1000000).toFixed(2)}M` 
+                      ? `${(Number(miner.stats.total_rewards) / 1000000).toFixed(1)}M` 
                       : Number(miner.stats.total_rewards) > 1000 
-                        ? `${(Number(miner.stats.total_rewards) / 1000).toFixed(2)}K` 
+                        ? `${(Number(miner.stats.total_rewards) / 1000).toFixed(1)}K` 
                         : miner.stats.total_rewards.toString()}
                   </p>
                 </div>
                 
-                <div>
-                  <p class="text-sm text-white/70 flex items-center gap-1">
-                    <Activity size={14} class="text-green-400" /> Connected Token
+                <div class="bg-black/10 px-2 py-1.5 rounded-lg">
+                  <p class="text-xs text-white/70 flex items-center gap-1">
+                    <Activity size={12} class="text-blue-400" /> Token
                   </p>
-                  <p class="font-bold truncate">
+                  <p class="font-bold text-xs truncate">
                     {miner.info.current_token?.[0] 
-                      ? miner.info.current_token[0].toString().substring(0, 10) + '...' 
+                      ? miner.info.current_token[0].toString().substring(0, 8) + '...' 
                       : 'None'}
                   </p>
                 </div>
@@ -281,7 +281,7 @@
             {/if}
           </div>
         </button>
-      </Panel>
+      </div>
     {/each}
   {/if}
 </div>

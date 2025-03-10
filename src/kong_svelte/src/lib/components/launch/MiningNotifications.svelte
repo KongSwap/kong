@@ -7,52 +7,15 @@
   export let miningEvents = [];
   
   // State
-  let coins = [];
-  let coinInterval;
   let bubbles = [];
   
-  // Create random floating coins and bubbles when mining events occur
+  // Create bubbles when mining events occur
   $: if (miningEvents.length > 0) {
     const latestEvent = miningEvents[miningEvents.length - 1];
-    // Add some coins when mining events happen
-    addRandomCoins(5 + Math.floor(Math.random() * 8));
     
     // Add a bubble notification for mining events
     if (latestEvent.type === 'solution_found') {
       addMiningBubble(latestEvent);
-    }
-  }
-  
-  onMount(() => {
-    // Periodically add a few coins for ambient effect
-    coinInterval = setInterval(() => {
-      if (Math.random() > 0.7) {
-        addRandomCoins(1);
-      }
-    }, 5000);
-  });
-  
-  onDestroy(() => {
-    if (coinInterval) clearInterval(coinInterval);
-  });
-  
-  function addRandomCoins(count) {
-    for (let i = 0; i < count; i++) {
-      const newCoin = {
-        id: crypto.randomUUID(),
-        x: Math.random() * 100, // Random position 0-100% across screen
-        y: 100 + Math.random() * 20, // Start below the screen
-        size: Math.random() * 20 + 10, // Random size 10-30px
-        speed: Math.random() * 3 + 2, // Random speed
-        rotation: Math.random() * 360, // Random initial rotation
-      };
-      
-      coins = [...coins, newCoin];
-      
-      // Remove coin after animation completes
-      setTimeout(() => {
-        coins = coins.filter(c => c.id !== newCoin.id);
-      }, 10000);
     }
   }
   
@@ -93,18 +56,6 @@
   }
 </script>
 
-<!-- Floating coins -->
-{#each coins as coin (coin.id)}
-  <div 
-    in:fade={{ duration: 500 }}
-    out:fade={{ duration: 500 }}
-    class="fixed z-30 pointer-events-none animate-coin-float"
-    style="left: {coin.x}vw; bottom: {-coin.y}vh; font-size: {coin.size}px; animation-duration: {coin.speed}s; transform: rotate({coin.rotation}deg);"
-  >
-    <div class="animate-coin-spin bg-blue-500 w-4 h-4 rounded-full"></div>
-  </div>
-{/each}
-
 <!-- Mining event bubbles -->
 {#each bubbles as bubble (bubble.id)}
   <div 
@@ -139,27 +90,7 @@
   </div>
 {/each}
 
-<!-- Removed sparkles -->
-
 <style>
-  @keyframes coin-float {
-    0% { transform: translateY(0) rotate(0deg); }
-    100% { transform: translateY(-120vh) rotate(20deg); }
-  }
-  
-  .animate-coin-float {
-    animation: coin-float 10s linear forwards;
-  }
-  
-  @keyframes coin-spin {
-    0% { transform: rotateY(0deg); }
-    100% { transform: rotateY(360deg); }
-  }
-  
-  .animate-coin-spin {
-    animation: coin-spin 1.5s linear infinite;
-  }
-  
   @keyframes float-up {
     0% { transform: translateY(0); opacity: 0.7; }
     80% { opacity: 1; }
@@ -170,15 +101,6 @@
     animation: float-up 6s ease-out forwards;
   }
   
-  @keyframes particle {
-    0% { transform: translateY(0) scale(1); opacity: 1; }
-    100% { transform: translateY(20px) scale(0.5); opacity: 0; }
-  }
-  
-  .animate-particle {
-    animation: particle 1.5s ease-out infinite;
-  }
-  
   @keyframes pulse-subtle {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.9; }
@@ -186,14 +108,5 @@
   
   .animate-pulse-subtle {
     animation: pulse-subtle 1.5s ease-in-out infinite;
-  }
-  
-  @keyframes sparkle {
-    0%, 100% { transform: scale(1); opacity: 0.7; }
-    50% { transform: scale(1.5); opacity: 1; }
-  }
-  
-  .animate-sparkle {
-    animation: sparkle 2s ease-in-out infinite;
   }
 </style> 
