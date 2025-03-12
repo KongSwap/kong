@@ -1,16 +1,11 @@
-type CycleMeasurement = record {
-  timestamp : nat64;
-  balance : nat;
-};
-
+type CycleMeasurement = record { balance : nat; timestamp : nat64 };
 type CycleUsageStats = record {
   current_balance : nat;
-  measurements : vec CycleMeasurement;
   usage_last_15min : opt nat;
-  usage_rate_per_hour : opt float64;
+  measurements : vec CycleMeasurement;
   estimated_remaining_time : opt text;
+  usage_rate_per_hour : opt float64;
 };
-
 type MinerInfo = record {
   speed_percentage : nat8;
   current_token : opt principal;
@@ -18,7 +13,6 @@ type MinerInfo = record {
   chunk_size : nat64;
   is_mining : bool;
 };
-
 type MiningStats = record {
   total_hashes : nat64;
   blocks_mined : nat64;
@@ -27,10 +21,8 @@ type MiningStats = record {
   last_hash_rate : float64;
   start_time : nat64;
 };
-
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : MinerInfo; Err : text };
-
 service : (record {}) -> {
   claim_rewards : () -> (Result);
   connect_token : (principal) -> (Result);
@@ -43,7 +35,7 @@ service : (record {}) -> {
   get_mining_stats : () -> (opt MiningStats) query;
   set_api_endpoint : (text, text) -> (Result);
   set_chunk_size : (nat64) -> (Result);
-  set_high_volatility_mode : (bool) -> ();
+  set_chunks_per_refresh : (nat64) -> ();
   set_max_chunk_duration : (nat64) -> ();
   set_mining_speed : (nat8) -> (Result);
   set_template_refresh_interval : (nat64) -> (Result);

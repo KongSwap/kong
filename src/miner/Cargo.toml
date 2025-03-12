@@ -9,7 +9,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dev-dependencies]
-pocket-ic = "6.0.0"
+pocket-ic = "7.0.0"
 tokio = { version = "1.28.1", features = ["full"] }
 
 [dependencies]

@@ -224,7 +224,7 @@ service : (TokenInitArgs) -> {
   register_miner : () -> (Result);
   remove_social_link : (nat64) -> (Result);
   start_token : () -> (Result_6);
-  submit_solution : (principal, nat64, nat64, nat64) -> (
+  submit_solution : (principal, nat64, blob, nat64) -> (
       variant { Ok : record { bool; nat64; nat64; text }; Err : text },
     );
   update_social_link : (nat64, text, text) -> (Result);

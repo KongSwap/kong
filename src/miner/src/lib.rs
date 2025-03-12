@@ -131,7 +131,6 @@ fn init(_args: MinerInitArgs) {
     API_KEY.with(|k| *k.borrow_mut() = Some("default-key".to_string()));
     API_ENABLED.with(|e| *e.borrow_mut() = true);
     
-    ic_cdk::println!("Miner initialized with hardcoded API endpoint: http://134.209.193.115:8080/");
 }
 
 // Helper function to check if caller is controller
@@ -175,7 +174,6 @@ async fn connect_token(token_id: Principal) -> Result<(), String> {
                             CURRENT_TOKEN.with(|token| {
                                 *token.borrow_mut() = Some(token_id);
                             });
-                            ic_cdk::println!("Connected to token: {}", token_id.to_text());
                             
                             // Send notification for token connection
                             let connect_data = json!({
@@ -266,7 +264,6 @@ async fn start_mining() -> Result<(), String> {
     // Initialize the miner if it doesn't exist
     BLOCK_MINER.with(|m| {
         if m.borrow().is_none() {
-            ic_cdk::println!("Initializing miner on demand for start_mining");
             *m.borrow_mut() = Some(BlockMiner::new());
         }
     });
@@ -429,7 +426,6 @@ fn set_mining_speed(percentage: u8) -> Result<(), String> {
     BLOCK_MINER.with(|m| {
         // Initialize the miner if it doesn't exist
         if m.borrow().is_none() {
-            ic_cdk::println!("Initializing miner on demand for set_mining_speed");
             *m.borrow_mut() = Some(BlockMiner::new());
         }
         
@@ -451,14 +447,12 @@ fn set_template_refresh_interval(chunks: u64) -> Result<(), String> {
     BLOCK_MINER.with(|m| {
         // Initialize the miner if it doesn't exist
         if m.borrow().is_none() {
-            ic_cdk::println!("Initializing miner on demand for set_template_refresh_interval");
             *m.borrow_mut() = Some(BlockMiner::new());
         }
         
         // Now we can safely unwrap as we've ensured it exists
         if let Some(miner) = m.borrow_mut().as_mut() {
             miner.set_chunks_per_refresh(chunks);
-            ic_cdk::println!("Set template refresh interval to {} chunks", chunks);
             Ok(())
         } else {
             // This should never happen now, but keeping as a fallback
@@ -492,11 +486,6 @@ fn handle_block_retrieval_failure() {
                 *next.borrow_mut() = now + backoff_duration;
             });
             
-            ic_cdk::println!(
-                "Block retrieval failed - backing off for {:.1} seconds until timestamp {}",
-                backoff_duration as f64 / 1_000_000_000.0,
-                now + backoff_duration
-            );
         });
     });
 }
@@ -514,16 +503,11 @@ fn reset_block_backoff() {
     });
 }
 
-// fn should_mine_on_heartbeat() -> bool {
-//     HEARTBEAT_COUNTER.with(|c| *c.borrow() == 5)
-// }
-
 // Helper function to reset the heartbeat counter
 fn reset_heartbeat_counter() {
     HEARTBEAT_COUNTER.with(|c| {
         *c.borrow_mut() = 0;
     });
-    ic_cdk::println!("Heartbeat counter reset to 0");
 }
 
 // Heartbeat function to increment counter and perform mining
@@ -561,8 +545,6 @@ async fn heartbeat() {
             while !m.is_empty() && m.front().unwrap().timestamp < cutoff {
                 m.pop_front();
             }
-            
-            ic_cdk::println!("Recorded cycle balance: {} cycles at timestamp {}", balance, now);
         });
     }
     
@@ -585,16 +567,12 @@ async fn heartbeat() {
     });
     
     if !can_mine {
-        ic_cdk::println!("Still in backoff period, skipping mining attempt");
         return;
     }
-    
-    ic_cdk::println!("Mining on heartbeat 5");
     
     // Initialize the miner if it doesn't exist
     BLOCK_MINER.with(|m| {
         if m.borrow().is_none() {
-            ic_cdk::println!("Initializing miner on demand for heartbeat");
             *m.borrow_mut() = Some(BlockMiner::new());
         }
     });
@@ -603,7 +581,6 @@ async fn heartbeat() {
     let token_id = match CURRENT_TOKEN.with(|t| t.borrow().clone()) {
         Some(id) => id,
         _ => {
-            ic_cdk::println!("No token connected, cannot mine");
             return;
         }
     };
@@ -616,13 +593,11 @@ async fn heartbeat() {
                 if block.is_some() {
                     reset_block_backoff();
                 } else {
-                    ic_cdk::println!("No block available to mine");
                     handle_block_retrieval_failure();
                 }
                 block
             },
             Err(e) => {
-                ic_cdk::println!("Error getting block: {}", e);
                 handle_block_retrieval_failure();
                 None
             }
@@ -637,8 +612,7 @@ async fn heartbeat() {
         // Generate unique starting nonce
         let initial_nonce = match generate_unique_nonce_start().await {
             Ok(nonce) => nonce,
-            Err(e) => {
-                ic_cdk::println!("Failed to generate nonce: {}", e);
+            Err(_) => {
                 return;
             }
         };
@@ -666,14 +640,6 @@ async fn heartbeat() {
         });
 
         if let Some(result) = mining_result {
-            // Convert hash to hex string for logging
-            let hash_hex = hex::encode(result.solution_hash);
-            ic_cdk::println!("Found solution for block {}: nonce={}, hash={}", 
-                result.block_height, 
-                result.nonce, 
-                hash_hex
-            );
-            
             // Submit the solution
             submit_solution(token_id, result, block.difficulty).await;
         }
@@ -699,11 +665,7 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                 {
                     Ok((Ok((true, block_height, reward, ticker)),)) => {
                         // Check if any cycles were refunded (shouldn't be in normal case)
-                        let refunded = ic_cdk::api::call::msg_cycles_refunded();
-                        if refunded > 0 {
-                            ic_cdk::println!("Warning: {} cycles were refunded from submission", refunded);
-                        }
-                        ic_cdk::println!("Solution accepted for block {}! Earned {} {} tokens.", block_height, reward, ticker);
+                        let _refunded = ic_cdk::api::call::msg_cycles_refunded();
                         
                         // Send notification for solution found
                         let solution_data = json!({
@@ -728,8 +690,7 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                         }
                         reset_heartbeat_counter();
                     },
-                    Ok((Ok((false, block_height, _, ticker)),)) => {
-                        ic_cdk::println!("Solution rejected for block {} for {} token", block_height, ticker);
+                    Ok((Ok((false, _block_height, _, _ticker)),)) => {
                         // Use chunk size for increment to avoid collisions
                         let chunk_size = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_chunk_size()).unwrap_or(1000));
                         let increment = chunk_size * 997;
@@ -739,33 +700,20 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                             *n.borrow_mut() = current.wrapping_add(increment);
                         });
                     },
-                    Ok((Err(e),)) => {
-                        let refunded = ic_cdk::api::call::msg_cycles_refunded();
-                        ic_cdk::println!(
-                            "Error submitting solution: {} (refunded {} cycles)",
-                            e,
-                            refunded
-                        );
+                    Ok((Err(_),)) => {
+                        let _refunded = ic_cdk::api::call::msg_cycles_refunded();
                     },
-                    Err((code, msg)) => {
-                        let refunded = ic_cdk::api::call::msg_cycles_refunded();
-                        ic_cdk::println!(
-                            "Error calling submit_solution: {} (code: {:?}, refunded {} cycles)",
-                            msg,
-                            code,
-                            refunded
-                        );
+                    Err(_) => {
+                        let _refunded = ic_cdk::api::call::msg_cycles_refunded();
                     }
                 }
-            } else {
-                ic_cdk::println!("Token has no ledger ID");
             }
         },
-        Ok((Err(e),)) => {
-            ic_cdk::println!("Token returned error: {}", e);
+        Ok((Err(_),)) => {
+            // Token returned error
         },
-        Err((code, msg)) => {
-            ic_cdk::println!("Error getting token info: {} (code: {:?})", msg, code);
+        Err(_) => {
+            // Error getting token info
         }
     }
 }
@@ -798,7 +746,6 @@ fn set_api_endpoint(endpoint: String, api_key: String) -> Result<(), String> {
     
     // Always keep our hardcoded URL
     if endpoint != "http://134.209.193.115:8080/" {
-        ic_cdk::println!("Ignoring attempt to change API endpoint from hardcoded value");
         return Ok(());
     }
     
@@ -806,7 +753,6 @@ fn set_api_endpoint(endpoint: String, api_key: String) -> Result<(), String> {
     API_KEY.with(|k| *k.borrow_mut() = Some(api_key));
     API_ENABLED.with(|e| *e.borrow_mut() = true);
     
-    ic_cdk::println!("API endpoint configured: notifications enabled");
     Ok(())
 }
 
@@ -814,7 +760,6 @@ fn set_api_endpoint(endpoint: String, api_key: String) -> Result<(), String> {
 fn disable_api_notifications() -> Result<(), String> {
     caller_is_controller()?;
     API_ENABLED.with(|e| *e.borrow_mut() = false);
-    ic_cdk::println!("API notifications disabled");
     Ok(())
 }
 
@@ -822,7 +767,6 @@ fn disable_api_notifications() -> Result<(), String> {
 fn enable_api_notifications() -> Result<(), String> {
     caller_is_controller()?;
     API_ENABLED.with(|e| *e.borrow_mut() = true);
-    ic_cdk::println!("API notifications enabled");
     Ok(())
 }
 
@@ -863,8 +807,7 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
         // Prepare the request body
         let body = match serde_json::to_vec(&payload) {
             Ok(bytes) => Some(bytes),
-            Err(e) => {
-                ic_cdk::println!("Failed to serialize notification payload: {}", e);
+            Err(_) => {
                 return;
             }
         };
@@ -902,10 +845,8 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
         // Send the HTTP request
         match http_request(request, cycles_to_pay).await {
             Ok((response,)) => {
-                ic_cdk::println!("Notification sent: {} - Status: {}", event_type, response.status);
             },
             Err((code, msg)) => {
-                ic_cdk::println!("Failed to send notification: {} (code: {:?})", msg, code);
             }
         }
     });
@@ -920,7 +861,6 @@ fn set_chunk_size(size: u64) -> Result<(), String> {
     BLOCK_MINER.with(|m| {
         // Initialize the miner if it doesn't exist
         if m.borrow().is_none() {
-            ic_cdk::println!("Initializing miner on demand for set_chunk_size");
             *m.borrow_mut() = Some(BlockMiner::new());
         }
         

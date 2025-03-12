@@ -669,6 +669,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94c970b525906eb37d3940083aa65b95e481fc1857d467d13374e1d925cfc163"
 
 [[package]]
+name = "flate2"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11faaf5a5236997af9848be0bef4db95824b1d534ebc64d0f0c6cf3e67bd38dc"
+dependencies = [
+ "crc32fast",
+ "miniz_oxide",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1057,8 +1067,8 @@ dependencies = [
  "hex",
  "http",
  "http-body",
- "ic-certification 3.0.2",
- "ic-transport-types 0.39.3",
+ "ic-certification",
+ "ic-transport-types",
  "ic-verify-bls-signature",
  "k256",
  "leb128",
@@ -1126,18 +1136,6 @@ dependencies = [
 
 [[package]]
 name = "ic-certification"
-version = "2.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e64ee3d8b6e81b51f245716d3e0badb63c283c00f3c9fb5d5219afc30b5bf821"
-dependencies = [
- "hex",
- "serde",
- "serde_bytes",
- "sha2 0.10.8",
-]
-
-[[package]]
-name = "ic-certification"
 version = "3.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9eae40f26fcac9c141cad54d9aa5f423efffde78ac371057c53d275ebbcad443"
@@ -1185,30 +1183,13 @@ dependencies = [
 
 [[package]]
 name = "ic-transport-types"
-version = "0.37.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "875dc4704780383112e8e8b5063a1b98de114321d0c7d3e7f635dcf360a57fba"
-dependencies = [
- "candid",
- "hex",
- "ic-certification 2.6.0",
- "leb128",
- "serde",
- "serde_bytes",
- "serde_repr",
- "sha2 0.10.8",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "ic-transport-types"
 version = "0.39.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "979ee7bee5a67150a4c090fb012c93c294a528b4a867bad9a15cc6d01cb4227f"
 dependencies = [
  "candid",
  "hex",
- "ic-certification 3.0.2",
+ "ic-certification",
  "leb128",
  "serde",
  "serde_bytes",
@@ -1780,9 +1761,9 @@ dependencies = [
 
 [[package]]
 name = "miniz_oxide"
-version = "0.8.3"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8402cab7aefae129c6977bb0ff1b8fd9a04eb5b51efc50a70bea51cda0c7924"
+checksum = "8e3e04debbb59698c15bacbb6d93584a8c0ca9cc3213cb423d31f760d8843ce5"
 dependencies = [
  "adler2",
 ]
@@ -2089,15 +2070,17 @@ checksum = "953ec861398dccce10c670dfeaf3ec4911ca479e9c02154b3a215178c5f566f2"
 
 [[package]]
 name = "pocket-ic"
-version = "6.0.0"
+version = "7.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "124a2380ca6f557adf8b02517cbfd2f564113230e14cda6f6aadd3dfe156293c"
+checksum = "ccd672d6b262731dccae40cb561e4c578709ea9987fbf649377d51077bf16db3"
 dependencies = [
+ "backoff",
  "base64 0.13.1",
  "candid",
+ "flate2",
  "hex",
- "ic-certification 2.6.0",
- "ic-transport-types 0.37.1",
+ "ic-certification",
+ "ic-transport-types",
  "reqwest",
  "schemars",
  "serde",
@@ -2108,7 +2091,7 @@ dependencies = [
  "slog",
  "strum 0.26.3",
  "strum_macros 0.26.4",
- "thiserror 1.0.69",
+ "thiserror 2.0.11",
  "tokio",
  "tracing",
  "tracing-appender",
@@ -3360,6 +3343,7 @@ dependencies = [
  "sharded-slab",
  "smallvec",
  "thread_local",
+ "time",
  "tracing",
  "tracing-core",
  "tracing-log",

@@ -35,7 +35,7 @@ This will:
 
 To scale miners:
 ```bash
-# Deploy 3 miners
+# Deploy 3 miners (u need to have miner, miner1, miner2 in dfx.json)
 sh scripts/launchpad/start.sh 3
 ```
 
