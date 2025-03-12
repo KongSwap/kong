@@ -9,7 +9,7 @@ export const idlFactory = ({ IDL }) => {
     'speed_percentage' : IDL.Nat8,
     'current_token' : IDL.Opt(IDL.Principal),
     'chunks_per_refresh' : IDL.Nat64,
-    'miner_type' : MinerType,
+    'chunk_size' : IDL.Nat64,
     'is_mining' : IDL.Bool,
   });
   const Result_1 = IDL.Variant({ 'Ok' : MinerInfo, 'Err' : IDL.Text });

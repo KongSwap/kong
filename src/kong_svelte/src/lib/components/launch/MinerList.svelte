@@ -83,12 +83,20 @@
       const statsResult = await actor.get_mining_stats();
       
       if (result.Ok) {
+        // Handle the case where miner_type is missing in the response
+        const minerInfo = result.Ok;
+        // Default to Normal type if miner_type is missing
+        const minerType = minerInfo.miner_type || { Normal: null };
+        
         return {
           ...miner,
-          info: result.Ok,
+          info: {
+            ...minerInfo,
+            miner_type: minerType // Ensure miner_type is always present
+          },
           stats: statsResult[0] || null,
           infoLoaded: true,
-          randomGradient: miner.randomGradient || getMinerTypeGradient(result.Ok.miner_type),
+          randomGradient: miner.randomGradient || getMinerTypeGradient(minerType),
           randomEmoji: miner.randomEmoji || getRandomEmoji(),
           randomAnimation: miner.randomAnimation || getRandomAnimation()
         };

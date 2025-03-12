@@ -89,7 +89,13 @@
         // Get miner info
         const infoResult = await actor.get_info();
         if ('Ok' in infoResult) {
-          minerInfo = infoResult.Ok;
+          // Handle the case where miner_type is missing in the response
+          const rawMinerInfo = infoResult.Ok;
+          // Default to Normal type if miner_type is missing
+          minerInfo = {
+            ...rawMinerInfo,
+            miner_type: rawMinerInfo.miner_type || { Normal: null }
+          };
           // Extract mining status from minerInfo
           isMining = minerInfo.is_mining;
           // Extract speed percentage from minerInfo

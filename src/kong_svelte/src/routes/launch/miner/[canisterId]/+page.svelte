@@ -163,7 +163,13 @@
       
       // Process miner info
       if (infoResult.Ok) {
-        minerInfo = infoResult.Ok;
+        // Handle the case where miner_type is missing in the response
+        const rawMinerInfo = infoResult.Ok;
+        // Default to Normal type if miner_type is missing
+        minerInfo = {
+          ...rawMinerInfo,
+          miner_type: rawMinerInfo.miner_type || { Normal: null }
+        };
         console.log('Miner info:', minerInfo);
       } else if (infoResult.Err) {
         error = `Error fetching miner info: ${infoResult.Err}`;
