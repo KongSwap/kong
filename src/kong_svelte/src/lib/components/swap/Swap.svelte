@@ -98,10 +98,7 @@
 
     if ($swapState.payToken && $swapState.payAmount && $swapState.payAmount !== "0") {
       try {
-        const balance = await loadBalances($auth.account.owner, {
-          tokens: [$swapState.payToken],
-          forceRefresh: true,
-        });
+        const balance = await loadBalances([$swapState.payToken], $auth.account.owner, true);
         if (balance && balance[$swapState.payToken.canister_id]) {
           const balanceData = balance[$swapState.payToken.canister_id];
           const decimals = Number($swapState.payToken.decimals);
@@ -128,10 +125,7 @@
       }
     } else {
       // If no pay amount used, just refresh balances for logging purposes
-      loadBalances($auth.account.owner, {
-        tokens: [$swapState.payToken, $swapState.receiveToken],
-        forceRefresh: true,
-      })
+      loadBalances([$swapState.payToken, $swapState.receiveToken], $auth.account.owner, true);
     }
   }
 
