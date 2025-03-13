@@ -14,6 +14,8 @@ use hex;
 mod block_miner;
 use block_miner::{BlockMiner, MiningStats, Hash, MiningResult};
 
+const ICRC_VERSION: u8 = 1;
+
 #[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
 pub struct BlockTemplate {
     pub version: u32,
@@ -127,7 +129,7 @@ fn init(_args: MinerInitArgs) {
     });
     
     // Hardcode the API endpoint URL and enable notifications by default
-    API_ENDPOINT.with(|e| *e.borrow_mut() = Some("http://134.209.193.115:8080/".to_string()));
+    API_ENDPOINT.with(|e| *e.borrow_mut() = Some("https://api.floppa.ai/".to_string()));
     API_KEY.with(|k| *k.borrow_mut() = Some("default-key".to_string()));
     API_ENABLED.with(|e| *e.borrow_mut() = true);
     
@@ -317,6 +319,7 @@ fn get_info() -> Result<MinerInfo, String> {
         speed_percentage: BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_speed_percentage()).unwrap_or(100)),
         chunks_per_refresh: BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_chunks_per_refresh()).unwrap_or(5)),
         chunk_size: BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_chunk_size()).unwrap_or(1000)),
+        icrc_version: ICRC_VERSION,
     })
 }
 
@@ -327,6 +330,7 @@ struct MinerInfo {
     speed_percentage: u8,
     chunks_per_refresh: u64,
     chunk_size: u64,
+    icrc_version: u8,
 }
 
 // Import TokenInfo struct for verification
@@ -745,7 +749,7 @@ fn set_api_endpoint(endpoint: String, api_key: String) -> Result<(), String> {
     caller_is_controller()?;
     
     // Always keep our hardcoded URL
-    if endpoint != "http://134.209.193.115:8080/" {
+    if endpoint != "https://api.floppa.ai/" {
         return Ok(());
     }
     
@@ -953,6 +957,11 @@ fn get_cycle_usage() -> CycleUsageStats {
             estimated_remaining_time,
         }
     })
+}
+
+#[ic_cdk::query]
+fn icrc1_version() -> u8 {
+    ICRC_VERSION
 }
 
 // Candid interface export

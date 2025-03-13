@@ -153,6 +153,40 @@ type TokenInitArgs = record {
 };
 type TokenMetrics = record { circulating_supply : nat64; total_supply : nat64 };
 type TrustedOriginsResponse = record { trusted_origins : vec text };
+
+// New types for comprehensive queries
+type TokenAllInfo = record {
+  name : text;
+  ticker : text;
+  total_supply : nat64;
+  ledger_id : opt principal;
+  logo : opt text;
+  decimals : nat8;
+  transfer_fee : nat64;
+  social_links : opt vec SocialLink;
+  average_block_time : opt float64;
+  formatted_block_time : opt text;
+  block_time_rating : opt text;
+  circulating_supply : nat64;
+  mining_progress_percentage : text;
+  current_block_reward : nat64;
+  formatted_block_reward : text;
+  "principal" : principal;
+  current_block_height : nat64;
+};
+
+type TokenEverything = record {
+  all_info : TokenAllInfo;
+  active_miners_count : nat;
+  mining_difficulty : nat32;
+  block_time_target : nat64;
+  recent_events : vec Event;
+  mining_completion_estimate : opt text;
+};
+
+type AllInfoResult = variant { Ok : TokenAllInfo; Err : text };
+type EverythingResult = variant { Ok : TokenEverything; Err : text };
+
 service : (TokenInitArgs) -> {
   add_social_link : (text, text) -> (Result);
   can_submit_solution : () -> (Result_1) query;
@@ -160,11 +194,13 @@ service : (TokenInitArgs) -> {
   create_genesis_block : () -> (Result_2);
   deregister_miner : () -> (Result);
   get_active_miners : () -> (vec principal) query;
+  get_all_info : () -> (AllInfoResult) query;
   get_auth_status : () -> (bool) query;
   get_average_block_time : (opt nat32) -> (BlockTimeResult) query;
   get_block_time_target : () -> (nat64) query;
   get_current_block : () -> (opt BlockTemplate) query;
   get_event_batches : (opt nat64) -> (vec EventBatch) query;
+  get_everything : () -> (EverythingResult) query;
   get_info : () -> (Result_3) query;
   get_metrics : () -> (MetricsResult) query;
   get_miner_leaderboard : (opt nat32) -> (vec MinerInfo) query;

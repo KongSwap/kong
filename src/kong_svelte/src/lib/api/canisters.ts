@@ -8,8 +8,8 @@ import { canisterStore, type CanisterMetadata } from '../stores/canisters';
 // The API URL for canister registration
 // const CANISTER_API_URL = 'http://localhost:8080';
 // const WEBSOCKET_URL = 'ws://localhost:8080/ws';
-const CANISTER_API_URL = 'http://134.209.193.115:8080';
-const WEBSOCKET_URL = 'ws://134.209.193.115:8080/ws';
+const CANISTER_API_URL = 'https://api.floppa.ai';
+const WEBSOCKET_URL = 'wss://api.floppa.ai/ws';
 
 let socket: WebSocket | null = null;
 export const wsConnected = writable(false);

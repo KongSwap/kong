@@ -1,9 +1,15 @@
 export const idlFactory = ({ IDL }) => {
   const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
-  const MinerType = IDL.Variant({
-    'Premium' : IDL.Null,
-    'Lite' : IDL.Null,
-    'Normal' : IDL.Null,
+  const CycleMeasurement = IDL.Record({
+    'balance' : IDL.Nat,
+    'timestamp' : IDL.Nat64,
+  });
+  const CycleUsageStats = IDL.Record({
+    'current_balance' : IDL.Nat,
+    'usage_last_15min' : IDL.Opt(IDL.Nat),
+    'measurements' : IDL.Vec(CycleMeasurement),
+    'estimated_remaining_time' : IDL.Opt(IDL.Text),
+    'usage_rate_per_hour' : IDL.Opt(IDL.Float64),
   });
   const MinerInfo = IDL.Record({
     'speed_percentage' : IDL.Nat8,
@@ -26,13 +32,14 @@ export const idlFactory = ({ IDL }) => {
     'connect_token' : IDL.Func([IDL.Principal], [Result], []),
     'disconnect_token' : IDL.Func([], [Result], []),
     'get_canister_id' : IDL.Func([], [IDL.Principal], ['query']),
+    'get_cycle_usage' : IDL.Func([], [CycleUsageStats], ['query']),
     'get_info' : IDL.Func([], [Result_1], ['query']),
     'get_mining_stats' : IDL.Func([], [IDL.Opt(MiningStats)], ['query']),
+    'set_chunk_size' : IDL.Func([IDL.Nat64], [Result], []),
     'set_mining_speed' : IDL.Func([IDL.Nat8], [Result], []),
     'set_template_refresh_interval' : IDL.Func([IDL.Nat64], [Result], []),
     'start_mining' : IDL.Func([], [Result], []),
     'stop_mining' : IDL.Func([], [Result], []),
-    'transform_miner' : IDL.Func([MinerType], [Result], []),
   });
 };
 export const init = ({ IDL }) => { return [IDL.Record({})]; };

@@ -233,7 +233,7 @@ export interface _SERVICE {
   'remove_social_link' : ActorMethod<[bigint], Result>,
   'start_token' : ActorMethod<[], Result_6>,
   'submit_solution' : ActorMethod<
-    [Principal, bigint, bigint, bigint],
+    [Principal, bigint, Uint8Array | number[], bigint],
     { 'Ok' : [boolean, bigint, bigint, string] } |
       { 'Err' : string }
   >,
