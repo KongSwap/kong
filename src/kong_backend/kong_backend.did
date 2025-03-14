@@ -549,6 +549,7 @@ type ClaimsReply = record {
     status : text;
     chain : text;
     symbol : text;
+    canister_id : opt text;
     amount : nat;
     fee : nat;
     to_address : text;
@@ -561,6 +562,7 @@ type ClaimReply = record {
     status : text;
     chain : text;
     symbol : text;
+    canister_id : opt text;
     amount : nat;
     fee : nat;
     to_address : text;

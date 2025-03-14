@@ -110,13 +110,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let kong_data = KongData::new(&agent).await;
             let delay_secs = settings.db_updates_delay_secs.unwrap_or(60);
             // loop forever and update database
+            let mut last_db_update_id = None;
             loop {
-                if let Err(err) = get_db_updates(&kong_data, &db_client, &mut tokens_map, &mut pools_map).await {
-                    eprintln!("{}", err);
-                    if db_client.is_closed() {
-                        db_client = connect_db(&settings).await?;
+                match get_db_updates(last_db_update_id, &kong_data, &db_client, &mut tokens_map, &mut pools_map).await {
+                    Ok(db_update_id) => last_db_update_id = Some(db_update_id),
+                    Err(err) => {
+                        eprintln!("{}", err);
+                        if db_client.is_closed() {
+                            db_client = connect_db(&settings).await?;
+                        }
                     }
                 }
+
                 thread::sleep(Duration::from_secs(delay_secs));
             }
         }

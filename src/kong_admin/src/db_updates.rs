@@ -16,19 +16,25 @@ use crate::users::insert_user_on_database;
 use super::kong_data::KongData;
 
 pub async fn get_db_updates(
+    last_db_update_id: Option<u64>,
     kong_data: &KongData,
     db_client: &Client,
     tokens_map: &mut BTreeMap<u32, u8>,
     pools_map: &mut BTreeMap<u32, (u32, u32)>,
 ) -> Result<u64, Box<dyn std::error::Error>> {
+    // start from last_db_update_id + 1 as last_db_update is already processed
+    let db_update_id = last_db_update_id.map(|id| id + 1);
+    let json = kong_data.backup_db_updates(db_update_id).await?;
+    let db_updates: Vec<StableDBUpdate> = serde_json::from_str(&json)?;
+    if db_updates.is_empty() {
+        return Ok(last_db_update_id.unwrap_or(0));
+    }
+
     let current_time = Local::now();
     let formatted_time = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
-    println!("\n--- DB updates @ {} ---", formatted_time);
+    println!("\n--- processing db_update_id={:?} @ {} ---", db_update_id, formatted_time);
 
-    let json = kong_data.backup_db_updates().await?;
-    let db_updates: Vec<StableDBUpdate> = serde_json::from_str(&json)?;
-
-    let mut last_update_id = 0;
+    let mut last_update_id = last_db_update_id.unwrap_or(0);
     for db_update in db_updates.iter() {
         last_update_id = db_update.db_update_id;
         let stable_memory = &db_update.stable_memory;
@@ -71,11 +77,11 @@ pub async fn get_db_updates(
         }
     }
 
-    println!("--- DB updates {} records updated ---", db_updates.len());
-
-    if last_update_id > 0 {
-        _ = kong_data.remove_db_updates(last_update_id).await?;
-    }
+    println!(
+        "--- processed db_update_id={} - {} records updated ---",
+        last_update_id,
+        db_updates.len()
+    );
 
     Ok(last_update_id)
 }
