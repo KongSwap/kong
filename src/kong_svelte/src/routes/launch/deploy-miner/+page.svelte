@@ -1,12 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { browser } from "$app/environment";
   import { writable } from "svelte/store";
   import { ArrowLeft, AlertTriangle } from "lucide-svelte";
   import { minerParams } from "$lib/stores/minerParams";
   import { auth } from "$lib/services/auth";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
   
   // Import components
   import DeploymentSteps from "./DeploymentSteps.svelte";
@@ -40,12 +38,16 @@
   let isProcessing = false;
   
   // Deployment data
-  let kongAmount = "250"; // FIXED TODO!
+  let kongAmount = "100"; // Fixed price for all miner types
   let icpAmount = "0"; 
   let canisterId = "";
   let kongIcpRate = "0"; // Don't set a default rate, let the calculation handle it
   let estimatedTCycles = "0";
   let actualIcpReceived = "0";
+  
+  // Subnet selection
+  let selectedSubnetType = "";
+  let selectedSubnetId = "";
   
   // Step display information
   const stepInfo = [
@@ -86,16 +88,24 @@
   
   // Initialize on mount
   onMount(async () => {
-    // Get miner parameters from store
+    // Get miner parameters from store or set defaults if not available
     currentMinerParams = $minerParams;
     if (!currentMinerParams) {
-      goto("/launch/create-miner");
-      return;
+      // Define MinerType locally to fix linter errors
+      type MinerType = { Lite: null } | { Normal: null } | { Premium: null };
+      
+      // Set default miner parameters
+      const defaultParams = {
+        owner: null, // Will be set by the backend
+        minerType: { Normal: null } as MinerType,
+        tokenCanisterId: undefined // No token by default
+      };
+      
+      // Update the store
+      minerParams.set(defaultParams);
+      currentMinerParams = defaultParams;
     }
       
-    // Hide sidebar during deployment
-    sidebarStore.collapse();
-    
     // Check wallet connection
     if (!auth.pnp?.isWalletConnected()) {
       errorMessage = "Please connect your wallet to continue";
@@ -112,7 +122,7 @@
 
 <div class="deployment-container">
   <header class="deployment-header">
-    <button class="back-button" on:click={() => goto("/launch/create-miner")}>
+    <button class="back-button" on:click={() => goto("/launch")}>
       <ArrowLeft size={20} />
       <span>Back</span>
     </button>
@@ -146,6 +156,8 @@
     bind:estimatedTCycles
     {actualIcpReceived}
     {IC_DASHBOARD_BASE_URL}
+    bind:selectedSubnetType
+    bind:selectedSubnetId
   />
   
   <DeploymentSteps
@@ -175,6 +187,8 @@
     bind:actualIcpReceived
     bind:estimatedTCycles
     bind:kongIcpRate
+    {selectedSubnetType}
+    {selectedSubnetId}
     processSteps={PROCESS_STEPS}
   />
   

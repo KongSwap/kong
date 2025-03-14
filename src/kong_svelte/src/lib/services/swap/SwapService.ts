@@ -747,4 +747,261 @@ export class SwapService {
       throw enhancedError;
     }
   }
+
+  /**
+   * Gets KONG to TCYCLES swap quote
+   */
+  public static async getKongToTCyclesQuote(
+    kongAmountE8s: bigint,
+    kongDecimals: number,
+    tcyclesDecimals: number,
+  ): Promise<{ receiveAmount: string; slippage: number }> {
+    try {
+      console.log("Getting KONG to TCYCLES swap quote");
+      const actor = await auth.getActor(
+        KONG_BACKEND_CANISTER_ID,
+        canisterIDLs.kong_backend,
+        { anon: true }
+      );
+      
+      // Use the TCYCLES ledger canister ID for the target token
+      const TCYCLES_LEDGER_CANISTER_ID = "um5iw-rqaaa-aaaaq-qaaba-cai";
+      
+      const quote = await actor.swap_amounts(
+        "KONG",
+        kongAmountE8s,
+        "IC." + TCYCLES_LEDGER_CANISTER_ID,
+      );
+
+      if ("Ok" in quote) {
+        return {
+          receiveAmount: this.fromBigInt(quote.Ok.receive_amount, tcyclesDecimals),
+          slippage: quote.Ok.slippage,
+        };
+      }
+
+      throw new Error(quote.Err || "Failed to get swap quote");
+    } catch (error) {
+      console.error("Error getting KONG/TCYCLES quote:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Executes KONG to TCYCLES swap with proper approval
+   */
+  public static async swapKongToTCycles(
+    kongAmountE8s: bigint,
+    maxSlippage: number = 2.0,
+  ): Promise<bigint> {
+    try {
+      console.log('[SwapService][swapKongToTCycles] Starting swap with params:', {
+        kongAmount: kongAmountE8s.toString(),
+        maxSlippage
+      });
+      
+      // Get the principal from wallet - try multiple methods for better compatibility
+      let principal = auth.pnp.activeWallet?.principal;
+      
+      // Fallback to account owner if activeWallet principal is not available
+      if (!principal && auth.pnp?.account?.owner) {
+        principal = auth.pnp.account.owner;
+      }
+      
+      if (!principal) {
+        throw new Error("Please connect your wallet to continue");
+      }
+      
+      // Convert principal to proper format if needed
+      const principalObj = typeof principal === 'string' 
+        ? Principal.fromText(principal) 
+        : principal;
+      
+      // First get Kong actor to approve the swap
+      console.log('[SwapService][swapKongToTCycles] Getting Kong actor...');
+      const kongActor = await auth.getActor(
+        KONG_CANISTER_ID,
+        canisterIDLs.icrc2,
+        { anon: false }
+      );
+      
+      // Get name using anonymous actor for read operations
+      const anonKongActor = await auth.getActor(
+        KONG_CANISTER_ID,
+        canisterIDLs.icrc2,
+        { anon: true }
+      );
+      
+      console.log('[SwapService][swapKongToTCycles] Kong actor obtained with identity');
+
+      // Check KONG balance before approval
+      try {
+        const balance = await anonKongActor.icrc1_balance_of({
+          owner: principalObj,
+          subaccount: []
+        });
+        console.log('[SwapService][swapKongToTCycles] Current KONG balance:', {
+          balance: balance.toString(),
+          requiredAmount: kongAmountE8s.toString()
+        });
+      } catch (balanceError) {
+        console.error('[SwapService][swapKongToTCycles] Failed to fetch KONG balance:', balanceError);
+      }
+
+      console.log('[SwapService][swapKongToTCycles] Getting backend actor...');
+      // Use auth.getActor consistently here too
+      const backendActor = await auth.getActor(
+        KONG_BACKEND_CANISTER_ID,
+        canisterIDLs.kong_backend,
+        { anon: false }
+      );
+      
+      // Get backend principal directly from canister ID
+      console.log('[SwapService][swapKongToTCycles] Creating backend principal from:', KONG_BACKEND_CANISTER_ID);
+      const backendPrincipal = Principal.fromText(KONG_BACKEND_CANISTER_ID);
+      
+      // Add 10% buffer to approval amount
+      const approveAmount = kongAmountE8s * BigInt(110) / BigInt(100);
+      console.log('[SwapService][swapKongToTCycles] Calculated approval amount:', {
+        original: kongAmountE8s.toString(),
+        withBuffer: approveAmount.toString(),
+        bufferPercent: '10%'
+      });
+      
+      // Check current allowance before approval
+      try {
+        const currentAllowance = await anonKongActor.icrc2_allowance({
+          account: {
+            owner: principalObj,
+            subaccount: []
+          },
+          spender: {
+            owner: backendPrincipal,
+            subaccount: []
+          }
+        });
+        console.log('[SwapService][swapKongToTCycles] Current allowance:', currentAllowance);
+      } catch (allowanceError) {
+        console.error('[SwapService][swapKongToTCycles] Failed to fetch current allowance:', allowanceError);
+      }
+      
+      // Approve Kong backend to spend tokens
+      const approveArgs = {
+        spender: {
+          owner: backendPrincipal,
+          subaccount: [],
+        },
+        amount: approveAmount,
+        fee: [BigInt(10000)],
+        memo: [],
+        from_subaccount: [],
+        created_at_time: [],
+        expected_allowance: [],
+        expires_at: [],
+      };
+
+      console.log('[SwapService][swapKongToTCycles] Calling icrc2_approve...');
+      
+      // Add a timeout promise to handle potential channel closure
+      const approvePromise = kongActor.icrc2_approve(approveArgs);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Approval timed out - please try again")), 60000);
+      });
+      
+      // Race the approval against the timeout
+      const approveResult = await Promise.race([approvePromise, timeoutPromise])
+        .catch(error => {
+          // Check if this is a channel closure error
+          if (error.message && (
+              error.message.includes("Channel was closed") || 
+              error.message.includes("No Agent could be found")
+            )) {
+            console.error('[SwapService][swapKongToTCycles] Channel closed during approval:', error);
+            throw new Error("Wallet connection was interrupted. Please try again and keep the wallet window open until the transaction completes.");
+          }
+          throw error;
+        });
+      
+      console.log('[SwapService][swapKongToTCycles] Approve result:', approveResult);
+
+      if ("Err" in approveResult) {
+        console.error('[SwapService][swapKongToTCycles] Approval failed:', {
+          error: approveResult.Err,
+          args: approveArgs,
+          identity: principalObj.toString(),
+          backendPrincipal: backendPrincipal.toString()
+        });
+        throw new Error(typeof approveResult.Err === 'string' ? approveResult.Err : 'Failed to approve Kong backend');
+      }
+
+      console.log('[SwapService][swapKongToTCycles] Approval successful, constructing swap args...');
+
+      // TCYCLES ledger canister ID
+      const TCYCLES_LEDGER_CANISTER_ID = "um5iw-rqaaa-aaaaq-qaaba-cai";
+      
+      // Execute the swap
+      const swapArgs = {
+        pay_token: "KONG",
+        pay_amount: kongAmountE8s,
+        receive_token: "IC." + TCYCLES_LEDGER_CANISTER_ID,
+        receive_amount: [],
+        max_slippage: [maxSlippage],
+        receive_address: [],
+        referred_by: [],
+        pay_tx_id: [],
+      };
+
+      // Create a safe serializer function for BigInt values
+      const safeStringifyWithBigInt = (obj: any) => {
+        return JSON.stringify(obj, (_, value) =>
+          typeof value === 'bigint' ? value.toString() : value
+        );
+      };
+
+      console.log('[SwapService][swapKongToTCycles] Swap args:', safeStringifyWithBigInt(swapArgs));
+
+      console.log('[SwapService][swapKongToTCycles] Executing swap...');
+      const result = await backendActor.swap(swapArgs);
+      console.log('[SwapService][swapKongToTCycles] Swap result:', safeStringifyWithBigInt(result));
+
+      if ("Ok" in result) {
+        console.log('[SwapService][swapKongToTCycles] Swap successful, receive amount:', result.Ok.receive_amount.toString());
+        return result.Ok.receive_amount;
+      }
+
+      console.error('[SwapService][swapKongToTCycles] Swap failed:', result.Err);
+      throw new Error(typeof result.Err === 'string' ? result.Err : 'Swap failed');
+    } catch (error) {
+      console.error("[SwapService][swapKongToTCycles] Error executing KONG/TCYCLES swap:", {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        type: error?.constructor?.name
+      });
+      
+      // Create more user-friendly error message
+      let userMessage = "Failed to swap KONG to TCYCLES";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("Wallet not connected")) {
+          userMessage = "Please connect your wallet to continue";
+        } else if (error.message.includes("Channel was closed") || 
+                  error.message.includes("No Agent could be found")) {
+          userMessage = "Wallet connection was interrupted. Please try again and keep the wallet window open";
+        } else if (error.message.includes("Insufficient balance")) {
+          userMessage = "Insufficient KONG balance for this swap";
+        } else if (error.message.includes("serialization")) {
+          userMessage = "Error processing response from wallet. Please try again";
+        } else {
+          userMessage = error.message;
+        }
+      }
+      
+      const enhancedError = new Error(userMessage);
+      if (error instanceof Error) {
+        enhancedError.stack = error.stack;
+      }
+      throw enhancedError;
+    }
+  }
 }

@@ -1,246 +1,178 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import Panel from "$lib/components/common/Panel.svelte";
-  import {
-    ArrowLeft,
-  } from "lucide-svelte";
-  import type {
-    MinerType,
-    MinerInitArgs,
-  } from "$declarations/miner/miner.did.d";
-  import { minerParams } from "$lib/stores/minerParams";
   import { onMount } from "svelte";
-  import { canisterStore } from "$lib/stores/canisters";
-  import { get } from "svelte/store";
+  import { minerParams } from "$lib/stores/minerParams";
+  import { TCyclesService } from "$lib/services/canister/tcycles-service";
+  import { ArrowLeft, ArrowRight, Calculator, Coins } from "lucide-svelte";
+  import { writable } from "svelte/store";
 
-  let selectedType: MinerType = { Normal: null };
-  let isSubmitting = false;
-  let selectedTokenId: string | undefined = undefined;
-  let userTokens: Array<{ id: string, name: string, tags: string[] }> = [];
+  // Define MinerType locally to fix linter errors
+  type MinerType = { Lite: null } | { Normal: null } | { Premium: null };
+  
+  // Track state
+  let loading = true;
+  let comparing = false;
+  let error = "";
+  let comparisonData: {
+    kongViaIcp: string;
+    kongViaTCycles: string;
+    difference: string;
+    differencePercent: string;
+    cheaperPath: 'icp' | 'tcycles';
+  } | null = null;
+  let showDetails = false;
 
-  // Load user's tokens on mount
-  onMount(() => {
-    const canisters = get(canisterStore);
-    userTokens = canisters
-      .filter(canister => canister.tags?.includes('token'))
-      .map(canister => ({
-        id: canister.id,
-        name: canister.name || canister.id,
-        tags: canister.tags || []
-      }));
-  });
-
-  // Mining parameters
-  let blockReward = 100;
-  let halvingBlocks = 100000;
-  let blockTimeSeconds = 30;
-  let maxSupply = 1000000;
-
-  // Social links
-  type SocialLink = {
-    platform: string;
-    url: string;
-  };
-
-  let socialLinks: SocialLink[] = [
-    { platform: "Twitter", url: "" },
-    { platform: "Discord", url: "" },
-    { platform: "Telegram", url: "" },
-  ];
-
-  function addSocialLink() {
-    socialLinks = [...socialLinks, { platform: "", url: "" }];
+  // Initialize parameters
+  function initMinerParams() {
+    // Store the hardcoded Normal miner type in the minerParams store
+    const initArgs = {
+      owner: null, // Will be set by the backend
+      minerType: { Normal: null } as MinerType,
+      tokenCanisterId: undefined // No token by default
+    };
+    
+    // Update the miner parameters store
+    minerParams.set(initArgs);
+    return initArgs;
   }
-
-  function removeSocialLink(index: number) {
-    socialLinks = socialLinks.filter((_, i) => i !== index);
-  }
-
-  function calculateCirculationTime() {
-    const blocksToMineAll = maxSupply / blockReward;
-    const halvings = Math.floor(Math.log2(blocksToMineAll / halvingBlocks));
-    let remainingBlocks = blocksToMineAll;
-    let currentReward = blockReward;
-    let totalTime = 0;
-
-    for (let i = 0; i <= halvings; i++) {
-      const blocksInThisPhase = Math.min(remainingBlocks, halvingBlocks);
-      totalTime += blocksInThisPhase * blockTimeSeconds;
-      remainingBlocks -= blocksInThisPhase;
-      currentReward /= 2;
-    }
-
-    const days = Math.floor(totalTime / (24 * 60 * 60));
-    const years = (days / 365).toFixed(2);
-    return { days, years };
-  }
-
-  $: circulationTime = calculateCirculationTime();
-
-  const minerTypes: {
-    type: MinerType;
-    name: string;
-    description: string;
-    features: string[];
-  }[] = [
-    {
-      type: { Lite: null },
-      name: "Lite Miner",
-      description: "Perfect for beginners",
-      features: [
-        "Basic mining capabilities",
-        "Single token mining",
-        "Standard hash rate",
-      ],
-    },
-    {
-      type: { Normal: null },
-      name: "Normal Miner",
-      description: "Balanced performance",
-      features: [
-        "Enhanced mining capabilities",
-        "Multi-token support",
-        "Improved hash rate",
-        "Priority support",
-      ],
-    },
-    {
-      type: { Premium: null },
-      name: "Premium Miner",
-      description: "Maximum performance",
-      features: [
-        "Advanced mining capabilities",
-        "Unlimited token support",
-        "Maximum hash rate",
-        "Priority support",
-        "Early access to new features",
-      ],
-    },
-  ];
-
-  async function handleSubmit(type: MinerType) {
-    isSubmitting = true;
+  
+  // Get comparison data
+  async function getPriceComparison() {
+    comparing = true;
     try {
-      // Store the selected miner type in the minerParams store
-      const initArgs = {
-        owner: null, // Will be set by the backend
-        minerType: type,
-        tokenCanisterId: selectedTokenId
-      };
-      
-      // Update the miner parameters store
-      minerParams.set(initArgs);
-      
-      // Navigate to the miner deployment page
-      goto("/launch/deploy-miner");
-    } catch (error) {
-      console.error("Error preparing miner deployment:", error);
+      comparisonData = await TCyclesService.calculateKongForCanister();
+      console.log("Price comparison data:", comparisonData);
+    } catch (e) {
+      console.error("Error getting price comparison:", e);
+      error = "Failed to get price comparison. You can still proceed with either option.";
     } finally {
-      isSubmitting = false;
+      comparing = false;
+    }
+  }
+  
+  // Choose a deployment path
+  function choosePath(path: 'icp' | 'tcycles') {
+    if (path === 'icp') {
+      goto("/launch/deploy-miner");
+    } else {
+      goto("/launch/deploy-miner-tcycles");
     }
   }
 
-  function handleCancel() {
-    goto("/launch");
-  }
+  // On mount, initialize parameters and get comparison
+  onMount(async () => {
+    initMinerParams();
+    await getPriceComparison();
+    loading = false;
+  });
 </script>
 
-<div class="min-h-screen px-4 py-8 text-kong-text-primary">
-  <div class="mx-auto max-w-7xl">
-    <div class="mb-8">
-      <button
-        on:click={handleCancel}
-        class="flex items-center gap-2 text-kong-text-primary/60 hover:text-kong-text-primary"
-      >
-        <ArrowLeft size={20} />
+<div class="flex flex-col items-center justify-center min-h-screen p-6">
+  <div class="bg-[#1a1a1a] border border-gray-800 rounded-lg p-6 max-w-xl w-full shadow-xl">
+    <h1 class="text-2xl font-bold mb-4 text-center">Miner Deployment Options</h1>
+    
+    {#if loading || comparing}
+      <div class="flex flex-col items-center justify-center py-8">
+        <div class="w-12 h-12 border-4 border-t-blue-500 border-b-transparent border-l-transparent border-r-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-kong-text-primary/60">{comparing ? 'Comparing prices...' : 'Preparing deployment options...'}</p>
+      </div>
+    {:else if error}
+      <div class="bg-red-900/20 border border-red-900 rounded p-4 mb-6">
+        <p class="text-red-300">{error}</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <button 
+          class="bg-blue-800 hover:bg-blue-700 text-white p-4 rounded-lg transition-colors flex items-center justify-center gap-3"
+          on:click={() => choosePath('tcycles')}>
+          <Coins size={20} />
+          Deploy with TCycles
+        </button>
+        <button 
+          class="bg-blue-800 hover:bg-blue-700 text-white p-4 rounded-lg transition-colors flex items-center justify-center gap-3"
+          on:click={() => choosePath('icp')}>
+          <Coins size={20} />
+          Deploy with ICP
+        </button>
+      </div>
+    {:else if comparisonData}
+      <div class="mb-6 p-4 bg-blue-900/20 border border-blue-900 rounded">
+        <p class="text-blue-300 mb-2">We found a better price option for you!</p>
+        <p class="text-kong-text-primary/80">Choose your preferred deployment method below. The {comparisonData.cheaperPath === 'tcycles' ? 'TCycles' : 'ICP'} path is currently cheaper.</p>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <button 
+          class={`p-4 rounded-lg transition-colors flex flex-col items-center justify-center ${comparisonData.cheaperPath === 'tcycles' ? 'bg-green-800 hover:bg-green-700 ring-2 ring-green-500' : 'bg-blue-800 hover:bg-blue-700'}`}
+          on:click={() => choosePath('tcycles')}>
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <Coins size={20} />
+            <span class="font-bold">TCycles Path</span>
+          </div>
+          <div class="text-sm opacity-80">Cost: {comparisonData.kongViaTCycles} KONG</div>
+          {#if comparisonData.cheaperPath === 'tcycles'}
+            <div class="text-xs mt-2 px-2 py-1 bg-green-700 rounded-full text-white">Cheaper by {comparisonData.differencePercent}%</div>
+          {/if}
+        </button>
+        
+        <button 
+          class={`p-4 rounded-lg transition-colors flex flex-col items-center justify-center ${comparisonData.cheaperPath === 'icp' ? 'bg-green-800 hover:bg-green-700 ring-2 ring-green-500' : 'bg-blue-800 hover:bg-blue-700'}`}
+          on:click={() => choosePath('icp')}>
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <Coins size={20} />
+            <span class="font-bold">ICP Path</span>
+          </div>
+          <div class="text-sm opacity-80">Cost: {comparisonData.kongViaIcp} KONG</div>
+          {#if comparisonData.cheaperPath === 'icp'}
+            <div class="text-xs mt-2 px-2 py-1 bg-green-700 rounded-full text-white">Cheaper by {comparisonData.differencePercent}%</div>
+          {/if}
+        </button>
+      </div>
+      
+      <div class="mt-4">
+        <button 
+          class="text-blue-400 text-sm flex items-center justify-center w-full"
+          on:click={() => showDetails = !showDetails}>
+          {showDetails ? 'Hide' : 'Show'} price details
+          <ArrowRight size={16} class={`ml-1 transition-transform ${showDetails ? 'rotate-90' : ''}`} />
+        </button>
+        
+        {#if showDetails}
+          <div class="mt-2 p-3 bg-gray-900 rounded text-sm">
+            <div class="mb-1"><span class="opacity-70">TCycles path cost:</span> {comparisonData.kongViaTCycles} KONG</div>
+            <div class="mb-1"><span class="opacity-70">ICP path cost:</span> {comparisonData.kongViaIcp} KONG</div>
+            <div class="mb-1"><span class="opacity-70">Difference:</span> {comparisonData.difference} KONG ({comparisonData.differencePercent}%)</div>
+            <div class="mt-3 text-xs opacity-70">
+              Prices may vary based on current market rates. The TCycles path uses pre-minted cycles, while the ICP path converts KONG→ICP→Cycles.
+            </div>
+          </div>
+        {/if}
+      </div>
+    {:else}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <button 
+          class="bg-blue-800 hover:bg-blue-700 text-white p-4 rounded-lg transition-colors flex items-center justify-center gap-3"
+          on:click={() => choosePath('tcycles')}>
+          <Coins size={20} />
+          Deploy with TCycles
+        </button>
+        <button 
+          class="bg-blue-800 hover:bg-blue-700 text-white p-4 rounded-lg transition-colors flex items-center justify-center gap-3"
+          on:click={() => choosePath('icp')}>
+          <Coins size={20} />
+          Deploy with ICP
+        </button>
+      </div>
+    {/if}
+    
+    <div class="mt-6 flex justify-center">
+      <button class="text-kong-text-primary/60 hover:text-kong-text-primary flex items-center" on:click={() => goto("/launch")}>
+        <ArrowLeft size={16} class="mr-1" />
         Back to Launch
       </button>
     </div>
-
-    <div class="mb-8 text-center">
-      <h1 class="mb-2 text-2xl font-bold">Choose Your Miner Type</h1>
-      <p class="text-kong-text-primary/60">
-        Select the type of miner that best suits your needs
-      </p>
-    </div>
-
-    <!-- Token Selection -->
-    <div class="mb-8">
-      <Panel>
-        <div class="p-6">
-          <h2 class="mb-4 text-xl font-semibold">Connect to a Token (Optional)</h2>
-          <p class="mb-4 text-kong-text-primary/60">
-            You can automatically connect your miner to one of your tokens. This is optional and you can connect to a token later.
-          </p>
-          
-          {#if userTokens.length > 0}
-            <div class="mb-4">
-              <label for="token-select" class="block mb-2 text-sm font-medium">Select a Token</label>
-              <select 
-                id="token-select" 
-                bind:value={selectedTokenId}
-                class="w-full px-3 py-2 border rounded-lg bg-kong-bg-secondary border-kong-border focus:outline-none focus:ring-2 focus:ring-kong-primary"
-              >
-                <option value={undefined}>-- No token selected --</option>
-                {#each userTokens as token}
-                  <option value={token.id}>{token.name}</option>
-                {/each}
-              </select>
-            </div>
-            <p class="text-sm text-kong-text-primary/60">
-              Note: Your miner will be connected to the selected token's PoW canister, not its ledger canister.
-            </p>
-          {:else}
-            <p class="text-sm text-kong-warning">
-              You don't have any tokens yet. You can create a token first or connect your miner to a token later.
-            </p>
-          {/if}
-        </div>
-      </Panel>
-    </div>
-
-    <div class="grid gap-6 md:grid-cols-3">
-      {#each minerTypes as { type, name, description, features }}
-        <Panel>
-          <div class="flex flex-col h-full p-6">
-            <div class="flex-1">
-              <h2 class="mb-2 text-xl font-semibold">{name}</h2>
-              <p class="mb-6 text-kong-text-primary/60">{description}</p>
-
-              <ul class="space-y-3">
-                {#each features as feature}
-                  <li class="flex items-center gap-2 text-sm">
-                    <svg
-                      class="w-5 h-5 text-kong-success"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    {feature}
-                  </li>
-                {/each}
-              </ul>
-            </div>
-
-            <div class="pt-6 mt-6 border-t border-kong-border">
-              <button
-                on:click={() => handleSubmit(type)}
-                disabled={isSubmitting}
-                class="w-full px-4 py-2 text-white transition-colors rounded-lg bg-kong-primary hover:bg-kong-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "Creating..." : `Create ${name}`}
-              </button>
-            </div>
-          </div>
-        </Panel>
-      {/each}
-    </div>
   </div>
 </div>
+
+<style>
+  /* Add any additional styles here */
+</style>

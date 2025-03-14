@@ -14,7 +14,7 @@ use hex;
 mod block_miner;
 use block_miner::{BlockMiner, MiningStats, Hash, MiningResult};
 
-const ICRC_VERSION: u8 = 1;
+const ICRC_VERSION: u16 = 2;
 
 #[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
 pub struct BlockTemplate {
@@ -251,7 +251,7 @@ async fn generate_unique_nonce_start() -> Result<u64, String> {
 }
 
 // Constants for cycle payments
-const SUBMISSION_CYCLES: u128 = 420_690; // Must match token_backend's requirement
+const SUBMISSION_CYCLES: u128 = 1_000_000_000; // 1 billion cycles
 
 #[ic_cdk::update]
 async fn start_mining() -> Result<(), String> {
@@ -330,7 +330,7 @@ struct MinerInfo {
     speed_percentage: u8,
     chunks_per_refresh: u64,
     chunk_size: u64,
-    icrc_version: u8,
+    icrc_version: u16,
 }
 
 // Import TokenInfo struct for verification
@@ -601,7 +601,7 @@ async fn heartbeat() {
                 }
                 block
             },
-            Err(e) => {
+            Err(_) => {
                 handle_block_retrieval_failure();
                 None
             }
@@ -843,14 +843,16 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
             transform: None,
         };
         
-        // Define cycles to pay for the HTTP outcall (3 billion cycles is a reasonable amount)
-        let cycles_to_pay: u128 = 3_000_000_000;
+        // Define cycles to pay for the HTTP outcall (500 million cycles is a reasonable amount)
+        // whats overspend gets refunded better safe than sorry
+        let cycles_to_pay: u128 = 500_000_000;
         
         // Send the HTTP request
         match http_request(request, cycles_to_pay).await {
-            Ok((response,)) => {
+            // we dont really care about the response hence why it is within a spawn, to the void it goes
+            Ok((_response,)) => {
             },
-            Err((code, msg)) => {
+            Err((_code, _msg)) => {
             }
         }
     });
@@ -960,7 +962,7 @@ fn get_cycle_usage() -> CycleUsageStats {
 }
 
 #[ic_cdk::query]
-fn icrc1_version() -> u8 {
+fn icrc1_version() -> u16 {
     ICRC_VERSION
 }
 

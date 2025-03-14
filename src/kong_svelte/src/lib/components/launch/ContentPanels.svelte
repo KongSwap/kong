@@ -14,6 +14,10 @@
   function handleCreateNew() {
     goto(`/launch/${activeTab === "tokens" ? "create-token" : "create-miner"}`);
   }
+
+  function handleCreateWithTCycles() {
+    goto('/launch/deploy-miner-tcycles');
+  }
 </script>
 
 <!-- CONTENT PANELS -->
@@ -68,13 +72,22 @@
             </div>
             <p class="text-xl font-bold mb-2 text-white">NO MINERS FOUND</p>
             <p class="text-gray-400 mb-6 max-w-md mx-auto">DEPLOY A MINER TO START MINING TOKENS.</p>
-            <button 
-              on:click={handleCreateNew}
-              class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 text-white"
-            >
-              <Plus class="h-4 w-4" />
-              DEPLOY MINER
-            </button>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+              <button 
+                on:click={handleCreateNew}
+                class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 text-white"
+              >
+                <Plus class="h-4 w-4" />
+                DEPLOY MINER (ICP)
+              </button>
+              <button 
+                on:click={handleCreateWithTCycles}
+                class="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 rounded-lg font-medium hover:bg-purple-700 transition-all duration-200 text-white"
+              >
+                <Plus class="h-4 w-4" />
+                DEPLOY MINER (TCYCLES)
+              </button>
+            </div>
           </div>
         </div>
       {:else}

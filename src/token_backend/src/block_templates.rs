@@ -28,6 +28,13 @@ pub enum EventType {
         blocks_mined: u64,
     },
     
+    BlockMined {
+        miner: Principal,
+        reward: u64,
+        nonce: u64,
+        hash: Hash,
+    },
+    
     // Competition/Game events
     LeaderboardUpdate {
         miner: Principal,

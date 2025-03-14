@@ -1161,6 +1161,21 @@ fn update_miner_hashrate(miner: Principal, hashes_processed: u64) {
 // Constants for cycle management
 const REQUIRED_SUBMISSION_CYCLES: u128 = 420_690; // Required cycles per submission
 
+// Add a function to create a BlockMined event
+fn create_block_mined_event(miner: Principal, reward: u64, nonce: u64, hash: Hash, height: u64) -> Event {
+    let current_time = ic_cdk::api::time() / 1_000_000_000; // Convert to seconds
+    Event {
+        event_type: EventType::BlockMined {
+            miner,
+            reward,
+            nonce,
+            hash,
+        },
+        timestamp: current_time,
+        block_height: height,
+    }
+}
+
 #[ic_cdk::update]
 pub async fn submit_solution(
     ledger_id: Principal,
@@ -1318,6 +1333,14 @@ pub async fn submit_solution(
         transfer_to_miner(ledger_id, caller, reward).await?;
         crate::update_circulating_supply(reward);
         crate::update_miner_stats(caller, reward);
+        
+        // Add a BlockMined event
+        let block_mined_event = create_block_mined_event(caller, reward, nonce, solution_hash, mined_height);
+        
+        // Add to event batches
+        if should_add_event_to_batch(mined_height) {
+            add_event_to_batch(block_mined_event.clone());
+        }
     }
 
     // Step 5: Generate new block
@@ -1430,7 +1453,7 @@ pub fn update_block_template() -> bool {
             HEARTBEAT_COUNTER.with(|counter| {
                 let mut count = counter.borrow_mut();
                 *count += 1;
-                if *count >= 10 {
+                if *count >= 5 { // Reduced from 10 to 5 for faster response
                     should_decrease = true;
                     *count = 0;
                 }
@@ -1439,9 +1462,9 @@ pub fn update_block_template() -> bool {
 
         let current_diff = MINING_DIFFICULTY.with(|d| *d.borrow().get());
 
-        // If we've hit 10 heartbeats, decrease difficulty by 1
-        if should_decrease && current_diff > 16 {
-            let new_diff = current_diff - (current_diff * 5 / 100);
+        // If we've hit the required heartbeats, decrease difficulty more aggressively
+        if should_decrease && current_diff > 5 { // Changed from 16 to 5 to allow lower difficulty
+            let new_diff = current_diff - (current_diff * 15 / 100); // Increased from 5% to 15% for more aggressive reduction
             MINING_DIFFICULTY.with(|d| {
                 d.borrow_mut().set(new_diff).expect("Failed to update difficulty");
             });

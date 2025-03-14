@@ -148,6 +148,14 @@
     }
   }
 
+  function handleCreateMiner() {
+    goto('/launch/create-miner');
+  }
+  
+  function handleCreateMinerWithTCycles() {
+    goto('/launch/deploy-miner-tcycles');
+  }
+
   // Modify reactive statement to prevent unnecessary reloads
   let prevMinersLength = 0;
   $: if (miners && miners.length > 0 && miners.length !== prevMinersLength) {
@@ -158,6 +166,32 @@
 </script>
 
 <div class="space-y-2">
+  <!-- Deploy New Miner Buttons -->
+  <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl p-4 mb-4">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div>
+        <h3 class="text-lg font-bold">Deploy a New Miner</h3>
+        <p class="text-sm text-white/70">Choose your preferred deployment method</p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button 
+          on:click={handleCreateMiner}
+          class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 text-white"
+        >
+          <Pickaxe size={16} />
+          Deploy with ICP
+        </button>
+        <button 
+          on:click={handleCreateMinerWithTCycles}
+          class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 rounded-lg font-medium hover:bg-purple-700 transition-all duration-200 text-white"
+        >
+          <Zap size={16} />
+          Deploy with TCYCLES
+        </button>
+      </div>
+    </div>
+  </div>
+
   {#if loading || loadingMinerInfo}
     <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl p-3">
       <div class="flex flex-col gap-4 animate-pulse">

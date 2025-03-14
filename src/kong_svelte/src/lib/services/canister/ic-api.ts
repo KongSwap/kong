@@ -1,3 +1,7 @@
+import { Principal } from '@dfinity/principal';
+import { auth } from '$lib/services/auth';
+import { idlFactory as cmcIdlFactory } from '$lib/services/canister/cmc.idl';
+
 // IC API service for fetching network data
 // This service provides a comprehensive interface to the Internet Computer Dashboard API v3
 // Documentation: https://ic-api.internetcomputer.org/api/v3/swagger
@@ -645,4 +649,62 @@ Subnet ${details.subnet_id} Summary:
 - Best suited for: ${details.deployment_recommendations?.suitable_for.join(', ')}
 ${details.deployment_recommendations?.cautions.length ? '- Cautions: ' + details.deployment_recommendations.cautions.join(', ') : ''}
 `.trim();
+}
+
+// Fetch subnet types from the Cycles Minting Canister
+export async function fetchSubnetTypesFromCMC(): Promise<Map<string, Principal[]>> {
+  try {
+    // CMC canister ID
+    const CMC_CANISTER_ID = "rkp4c-7iaaa-aaaaa-aaaca-cai";
+    
+    // Create an actor for the CMC
+    const cmcActor = await auth.getActor(
+      CMC_CANISTER_ID,
+      cmcIdlFactory,
+      { requiresSigning: false } // Read-only query
+    );
+    
+    // Call the get_subnet_types_to_subnets method
+    const response = await cmcActor.get_subnet_types_to_subnets();
+    console.log("Raw CMC subnet types response:", response);
+    
+    // Convert the response to a Map for easier access
+    const subnetTypesMap = new Map<string, Principal[]>();
+    
+    if (response && response.data && Array.isArray(response.data)) {
+      response.data.forEach(([type, subnets]) => {
+        console.log(`Processing subnet type: ${type} with ${subnets.length} subnets`);
+        subnetTypesMap.set(type, subnets);
+      });
+    }
+    
+    return subnetTypesMap;
+  } catch (error) {
+    console.error('Error fetching subnet types from CMC:', error);
+    throw new ICAPIError('Failed to fetch subnet types from CMC');
+  }
+}
+
+// Fetch default subnets from the Cycles Minting Canister
+export async function fetchDefaultSubnets(): Promise<Principal[]> {
+  try {
+    // CMC canister ID
+    const CMC_CANISTER_ID = "rkp4c-7iaaa-aaaaa-aaaca-cai";
+    
+    // Create an actor for the CMC
+    const cmcActor = await auth.getActor(
+      CMC_CANISTER_ID,
+      cmcIdlFactory,
+      { requiresSigning: false } // Read-only query
+    );
+    
+    // Call the get_default_subnets method
+    const subnets = await cmcActor.get_default_subnets();
+    console.log("Default subnets from CMC:", subnets.map(s => s.toText()));
+    
+    return subnets;
+  } catch (error) {
+    console.error('Error fetching default subnets from CMC:', error);
+    throw new ICAPIError('Failed to fetch default subnets from CMC');
+  }
 }

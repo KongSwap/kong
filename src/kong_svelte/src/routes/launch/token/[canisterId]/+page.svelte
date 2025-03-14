@@ -31,6 +31,11 @@
   let activeTab = 'overview';
   let copiedId = '';
   
+  // Reset to overview tab if mining tab is selected (since we removed it)
+  $: if (activeTab === 'mining') {
+    activeTab = 'overview';
+  }
+  
   // Go back to token list
   function goBack() {
     goto('/launch');
@@ -87,6 +92,14 @@
           color: 'text-orange-400',
           description: `Block reward halved at height ${data.block_height}`,
           bgColor: 'bg-orange-900/20'
+        };
+      case 'BlockMined':
+        return {
+          title: 'Block Mined',
+          icon: Cpu,
+          color: 'text-green-400',
+          description: `Miner ${data.miner.toString().substring(0, 10)}... received ${formatBalance(data.reward, tokenInfo?.decimals || 0)} ${tokenInfo?.ticker || ''}`,
+          bgColor: 'bg-green-900/20'
         };
       case 'SystemAnnouncement':
         return {
@@ -152,42 +165,42 @@
     error = null;
     
     try {
-      // Create actor using auth service with anon option
-      const actor = auth.getActor(canisterId, idlFactory, { anon: true });
+      // Create an anonymous actor to interact with the token backend
+      const actor = await auth.getActor(canisterId, idlFactory);
       
-      // Fetch all data in parallel for better performance
+      // Make parallel calls to get all the data we need
       const [
-        infoResult, 
-        miningResult, 
-        metricsResult, 
-        eventsResult, 
+        tokenInfoResult,
+        miningInfoResult,
+        metricsResult,
+        eventsResult,
         minersResult,
         blockTimeResult,
         leaderboardResult
       ] = await Promise.all([
-        actor.get_info().catch(err => ({ Err: `Error fetching token info: ${err}` })),
-        actor.get_mining_info().catch(err => ({ Err: `Error fetching mining info: ${err}` })),
-        actor.get_metrics().catch(err => ({ Err: `Error fetching metrics: ${err}` })),
-        actor.get_recent_events([20]).catch(err => ({ Err: `Error fetching events: ${err}` })),
-        actor.get_active_miners().catch(err => ({ Err: `Error fetching miners: ${err}` })),
-        actor.get_average_block_time([15]).catch(err => ({ Err: `Error fetching block time: ${err}` })),
-        actor.get_miner_leaderboard([10]).catch(err => ({ Err: `Error fetching leaderboard: ${err}` }))
+        actor.get_info(),
+        actor.get_mining_info(),
+        actor.get_metrics(),
+        actor.get_recent_events_from_batches([]),
+        actor.get_active_miners(),
+        actor.get_average_block_time([]),
+        actor.get_miner_leaderboard([])
       ]);
       
       // Process basic token info
-      if (infoResult.Ok) {
-        tokenInfo = infoResult.Ok;
+      if (tokenInfoResult.Ok) {
+        tokenInfo = tokenInfoResult.Ok;
         console.log('Token info:', tokenInfo);
-      } else if (infoResult.Err) {
-        console.warn(`Warning: ${infoResult.Err}`);
+      } else if (tokenInfoResult.Err) {
+        console.warn(`Warning: ${tokenInfoResult.Err}`);
       }
       
       // Process mining info
-      if (miningResult.Ok) {
-        miningInfo = miningResult.Ok;
+      if (miningInfoResult.Ok) {
+        miningInfo = miningInfoResult.Ok;
         console.log('Mining info:', miningInfo);
-      } else if (miningResult.Err) {
-        console.warn(`Warning: ${miningResult.Err}`);
+      } else if (miningInfoResult.Err) {
+        console.warn(`Warning: ${miningInfoResult.Err}`);
       }
       
       // Process metrics
@@ -429,12 +442,6 @@
       >
         Overview
       </button>
-      <button 
-        class={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'mining' ? 'bg-green-900/30 text-green-400' : 'hover:bg-black/20'}`}
-        on:click={() => activeTab = 'mining'}
-      >
-        Mining
-      </button>
       {#if events && events.length > 0}
         <button 
           class={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'events' ? 'bg-green-900/30 text-green-400' : 'hover:bg-black/20'}`}
@@ -503,67 +510,10 @@
                 </div>
               </div>
             {/if}
-            
-            <div class="bg-black/20 p-4 rounded-lg">
-              <p class="text-sm text-white/70 flex items-center gap-1 mb-1">
-                <Hash size={14} class="text-blue-400" /> Total Supply
-              </p>
-              <p class="font-bold">
-                {formatBalance(tokenInfo.total_supply, tokenInfo.decimals)} {tokenInfo.ticker}
-              </p>
-            </div>
-            
-            <div class="bg-black/20 p-4 rounded-lg">
-              <p class="text-sm text-white/70 flex items-center gap-1 mb-1">
-                <Zap size={14} class="text-blue-400" /> Transfer Fee
-              </p>
-              <p class="font-bold">
-                {formatBalance(tokenInfo.transfer_fee, tokenInfo.decimals)} {tokenInfo.ticker}
-              </p>
-            </div>
           </div>
         </Panel>
         
-        <!-- Recent Events -->
-        {#if events && events.length > 0}
-          <Panel className="lg:col-span-3">
-            <div class="flex justify-between items-center mb-4">
-              <h3 class="text-xl font-bold">Recent Events</h3>
-              <button 
-                class="text-sm text-green-400 flex items-center gap-1"
-                on:click={() => activeTab = 'events'}
-              >
-                View All <ChevronRight size={14} />
-              </button>
-            </div>
-            
-            <div class="space-y-2">
-              {#each events.slice(0, 3) as event}
-                {@const formattedEvent = formatEventType(event)}
-                {#if formattedEvent}
-                  <div class={`p-3 rounded-lg ${formattedEvent.bgColor}`}>
-                    <div class="flex items-start gap-3">
-                      <div class={`p-2 rounded-full bg-black/20 ${formattedEvent.color}`}>
-                        <svelte:component this={formattedEvent.icon} size={16} />
-                      </div>
-                      <div>
-                        <p class="font-bold">{formattedEvent.title}</p>
-                        <p class="text-sm text-white/70">{formattedEvent.description}</p>
-                        <p class="text-xs text-white/50 mt-1">
-                          Block: {event.block_height.toLocaleString()} • {formatDate(new Date(Number(event.timestamp) / 1000000))}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                {/if}
-              {/each}
-            </div>
-          </Panel>
-        {/if}
-      </div>
-    {:else if activeTab === 'mining'}
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Mining Stats -->
+        <!-- Mining Information -->
         {#if miningInfo}
           <Panel className="lg:col-span-3">
             <h3 class="text-xl font-bold mb-4">Mining Information</h3>
@@ -659,6 +609,67 @@
             {/if}
           </Panel>
         {/if}
+        
+        <!-- Token Economics -->
+        <Panel className="lg:col-span-2">
+          <h3 class="text-xl font-bold mb-4">Token Economics</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-black/20 p-4 rounded-lg">
+              <p class="text-sm text-white/70 flex items-center gap-1 mb-1">
+                <Hash size={14} class="text-blue-400" /> Total Supply
+              </p>
+              <p class="font-bold">
+                {formatBalance(tokenInfo.total_supply, tokenInfo.decimals)} {tokenInfo.ticker}
+              </p>
+            </div>
+            
+            <div class="bg-black/20 p-4 rounded-lg">
+              <p class="text-sm text-white/70 flex items-center gap-1 mb-1">
+                <Zap size={14} class="text-blue-400" /> Transfer Fee
+              </p>
+              <p class="font-bold">
+                {formatBalance(tokenInfo.transfer_fee, tokenInfo.decimals)} {tokenInfo.ticker}
+              </p>
+            </div>
+          </div>
+        </Panel>
+        
+        <!-- Recent Events -->
+        {#if events && events.length > 0}
+          <Panel className="lg:col-span-3">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xl font-bold">Recent Events</h3>
+              <button 
+                class="text-sm text-green-400 flex items-center gap-1"
+                on:click={() => activeTab = 'events'}
+              >
+                View All <ChevronRight size={14} />
+              </button>
+            </div>
+            
+            <div class="space-y-2">
+              {#each events.slice(0, 3) as event}
+                {@const formattedEvent = formatEventType(event)}
+                {#if formattedEvent}
+                  <div class={`p-3 rounded-lg ${formattedEvent.bgColor}`}>
+                    <div class="flex items-start gap-3">
+                      <div class={`p-2 rounded-full bg-black/20 ${formattedEvent.color}`}>
+                        <svelte:component this={formattedEvent.icon} size={16} />
+                      </div>
+                      <div>
+                        <p class="font-bold">{formattedEvent.title}</p>
+                        <p class="text-sm text-white/70">{formattedEvent.description}</p>
+                        <p class="text-xs text-white/50 mt-1">
+                          Block: {event.block_height.toLocaleString()} • {formatDate(new Date(Number(event.timestamp) * 1000))}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                {/if}
+              {/each}
+            </div>
+          </Panel>
+        {/if}
       </div>
     {:else if activeTab === 'events' && events && events.length > 0}
       <Panel>
@@ -676,7 +687,7 @@
                     <p class="font-bold">{formattedEvent.title}</p>
                     <p class="text-sm text-white/70">{formattedEvent.description}</p>
                     <p class="text-xs text-white/50 mt-1">
-                      Block: {event.block_height.toLocaleString()} • {formatDate(new Date(Number(event.timestamp) / 1000000))}
+                      Block: {event.block_height.toLocaleString()} • {formatDate(new Date(Number(event.timestamp) * 1000))}
                     </p>
                   </div>
                 </div>

@@ -6,13 +6,11 @@
   import { Principal } from "@dfinity/principal";
   import { IDL } from "@dfinity/candid";
   import { InstallService, type WasmMetadata } from "$lib/services/canister/install_wasm";
-  // import { kongSwapService } from "$lib/services/kong_swap";
   import { createEventDispatcher } from "svelte";
   import { SwapService } from "$lib/services/swap/SwapService";
-  import { fetchICPtoXDRRates } from "$lib/services/canister/ic-api";
+  import { TCyclesService } from "$lib/services/canister/tcycles-service";
   import { get } from "svelte/store";
-  import { createCanister } from "$lib/services/canister/create_canister";
-import { registerCanister } from "$lib/api/canisters";
+  import { registerCanister } from "$lib/api/canisters";
   
   // Props
   export let minerParams: any;
@@ -23,16 +21,16 @@ import { registerCanister } from "$lib/api/canisters";
   export let errorDetails: string;
   export let isProcessing: boolean;
   export let kongAmount: string;
-  export let icpAmount: string;
+  export let tcyclesAmount: string;
   export let canisterId: string;
-  export let actualIcpReceived: string;
+  export let actualTCyclesReceived: string;
   export let estimatedTCycles: string;
-  export let kongIcpRate: string;
+  export let kongTCyclesRate: string;
   export let selectedSubnetType: string;
   export let selectedSubnetId: string;
   export let processSteps: {
     PREPARING: number;
-    SWAP_KONG_TO_ICP: number;
+    SWAP_KONG_TO_TCYCLES: number;
     CREATE_CANISTER: number;
     DEPLOY_MINER: number;
     INITIALIZE_MINER: number;
@@ -50,7 +48,7 @@ import { registerCanister } from "$lib/api/canisters";
   
   // Constants for conversion
   const KONG_DECIMALS = 8;
-  const ICP_DECIMALS = 8;
+  const TCYCLES_DECIMALS = 12; // 1 TCycle = 1e12 cycles
   
   // Local state
   let principal: Principal | null = null;
@@ -62,7 +60,7 @@ import { registerCanister } from "$lib/api/canisters";
   // Initialize on mount
   onMount(() => {
     if (auth.pnp?.isWalletConnected()) {
-      // Get the account from the auth store instead of using getConnectedAccount
+      // Get the account from the auth store
       const authState = get(auth);
       if (authState.account?.owner) {
         principal = Principal.fromText(authState.account.owner.toText());
@@ -70,14 +68,16 @@ import { registerCanister } from "$lib/api/canisters";
     }
     
     // Set initial KONG amount based on miner type
-    setTimeout(() => {
-      setKongAmountForMinerType();
+    setTimeout(async () => {
+      await setKongAmountForMinerType();
     }, 0);
   });
   
   // Watch for changes in minerParams
   $: if (minerParams) {
-    setKongAmountForMinerType();
+    (async () => {
+      await setKongAmountForMinerType();
+    })();
   }
   
   // Add a reactive statement to recalculate T-Cycles when kongAmount changes
@@ -93,43 +93,47 @@ import { registerCanister } from "$lib/api/canisters";
     try {
       console.log("Calculating estimated T-Cycles from KONG amount:", kongAmount);
       
-      // Step 1: KONG to ICP calculation (no actual swap yet)
+      if (!kongAmount || parseFloat(kongAmount) <= 0) {
+        console.warn("Invalid KONG amount for T-Cycles calculation:", kongAmount);
+        return 0;
+      }
+      
+      // Get KONG to TCYCLES quote
       const kongE8s = SwapService.toBigInt(kongAmount, KONG_DECIMALS);
-      const quoteResult = await SwapService.getKongToIcpQuote(kongE8s, KONG_DECIMALS, ICP_DECIMALS);
-      icpAmount = quoteResult.receiveAmount;
-      console.log("ICP amount calculated:", icpAmount);
+      console.log("KONG amount in E8s:", kongE8s.toString());
       
-      // Step 2: ICP to XDR conversion
-      const xdrRatesResponse = await fetchICPtoXDRRates();
-      console.log("XDR rates response:", xdrRatesResponse);
+      const quoteResult = await SwapService.getKongToTCyclesQuote(kongE8s, KONG_DECIMALS, TCYCLES_DECIMALS);
+      console.log("TCYCLES quote result:", quoteResult);
       
-      // Extract the rate value from the response
-      const xdrRateValue = getXDRRate(xdrRatesResponse.icp_xdr_conversion_rates);
+      // The receiveAmount is already in T-Cycles format (not raw cycles)
+      tcyclesAmount = quoteResult.receiveAmount;
+      console.log("TCYCLES amount calculated:", tcyclesAmount);
       
-      // XDR rate is in 10,000ths, so divide by 10,000 to get the actual rate
-      const xdrPerIcp = xdrRateValue / 10000;
-      console.log(`XDR rate: 1 ICP = ${xdrPerIcp} XDR`);
-      
-      // Calculate the XDR amount - ensure we're using proper number conversion
-      const icpValue = parseFloat(icpAmount);
-      const xdrAmount = icpValue * xdrPerIcp;
-      
-      // Step 3: XDR to T-Cycles (1 XDR = 1T cycles)
-      const tCycles = xdrAmount;
+      // Parse the T-Cycles value directly (no need to divide by 1e12 again)
+      const tcyclesValue = parseFloat(tcyclesAmount);
+      console.log("T-Cycles value:", tcyclesValue);
       
       // Ensure we're setting a string value with 2 decimal places
-      const formattedTCycles = tCycles.toFixed(2);
-      console.log(`Calculated T-Cycles: ${formattedTCycles}`);
+      const formattedTCycles = tcyclesValue.toFixed(2);
+      console.log(`Calculated T-Cycles (formatted): ${formattedTCycles}`);
       
       // Set the values
       estimatedTCycles = formattedTCycles;
       
-      // Set the KONG to ICP rate for reference
-      kongIcpRate = (icpValue / parseFloat(kongAmount)).toFixed(6);
+      // Set the KONG to TCYCLES rate for reference (T-Cycles per KONG)
+      const rate = tcyclesValue / parseFloat(kongAmount);
+      console.log("T-Cycles per KONG rate:", rate);
       
-      return tCycles;
+      // Format with 6 decimal places
+      kongTCyclesRate = rate.toFixed(6);
+      console.log("Formatted T-Cycles rate:", kongTCyclesRate);
+      
+      return tcyclesValue;
     } catch (error) {
       console.error("Error calculating T-Cycles:", error);
+      // Set default values in case of error
+      estimatedTCycles = "0";
+      kongTCyclesRate = "0";
       return 0;
     }
   }
@@ -149,12 +153,12 @@ import { registerCanister } from "$lib/api/canisters";
     }
     
     // Start the deployment process
-    addLog("Starting miner deployment process...");
+    addLog("Starting miner deployment process using TCYCLES...");
     isProcessing = true;
     
     try {
-      // Step 1: Swap KONG to ICP
-      await swapKongToIcpAndContinue();
+      // Step 1: Swap KONG to TCYCLES
+      await swapKongToTCyclesAndContinue();
     } catch (error) {
       handleError("Failed to start deployment", error);
     }
@@ -170,9 +174,9 @@ import { registerCanister } from "$lib/api/canisters";
       // Determine which step to retry from
       switch (lastSuccessfulStep) {
         case processSteps.PREPARING:
-          await swapKongToIcpAndContinue();
+          await swapKongToTCyclesAndContinue();
           break;
-        case processSteps.SWAP_KONG_TO_ICP:
+        case processSteps.SWAP_KONG_TO_TCYCLES:
           await createCanisterAndContinue();
           break;
         case processSteps.CREATE_CANISTER:
@@ -190,27 +194,10 @@ import { registerCanister } from "$lib/api/canisters";
     }
   }
   
-  // Helper function to get the most recent XDR rate from the API response
-  function getXDRRate(ratesArray: [number, number][]): number {
-    if (!ratesArray || !Array.isArray(ratesArray) || ratesArray.length === 0) {
-      console.error("Invalid XDR rates array:", ratesArray);
-      throw new Error("Invalid XDR rates data");
-    }
-    
-    // Sort by timestamp (first element in inner array) to get most recent
-    const sortedRates = [...ratesArray].sort((a, b) => b[0] - a[0]);
-    
-    // The rate is the second element in the inner array
-    const latestRate = sortedRates[0][1];
-    console.log("Latest XDR rate value:", latestRate);
-    
-    return latestRate;
-  }
-  
-  // Step 1: Swap KONG to ICP
-  async function swapKongToIcpAndContinue() {
-    currentStep = processSteps.SWAP_KONG_TO_ICP;
-    addLog(`Swapping ${kongAmount} KONG to ICP...`);
+  // Step 1: Swap KONG to TCYCLES
+  async function swapKongToTCyclesAndContinue() {
+    currentStep = processSteps.SWAP_KONG_TO_TCYCLES;
+    addLog(`Swapping ${kongAmount} KONG to TCYCLES...`);
     
     try {
       // Recalculate if needed to get the latest rates
@@ -218,80 +205,87 @@ import { registerCanister } from "$lib/api/canisters";
         await calculateEstimatedTCycles();
       }
       
-      // Perform the actual KONG to ICP swap
+      // Perform the actual KONG to TCYCLES swap
       const kongE8s = SwapService.toBigInt(kongAmount, KONG_DECIMALS);
       
-      addLog(`Initiating swap of ${kongAmount} KONG to ICP...`);
-      const swapResult = await SwapService.swapKongToIcp(
+      addLog(`Initiating swap of ${kongAmount} KONG to TCYCLES...`);
+      const swapResult = await SwapService.swapKongToTCycles(
         kongE8s,
         2.0 // Default max slippage of 2%
       );
       
-      // Update with actual received ICP amount
-      actualIcpReceived = SwapService.fromBigInt(swapResult, ICP_DECIMALS);
-      icpAmount = actualIcpReceived;
+      // Update with actual received TCYCLES amount
+      // SwapService.fromBigInt converts from raw cycles to T-Cycles format
+      actualTCyclesReceived = SwapService.fromBigInt(swapResult, TCYCLES_DECIMALS);
+      tcyclesAmount = actualTCyclesReceived;
       
-      addLog(`Successfully swapped ${kongAmount} KONG to ${actualIcpReceived} ICP`);
-      addLog(`Estimated T-Cycles: ${parseFloat(estimatedTCycles).toFixed(4)}`);
+      // The value is already in T-Cycles format, no need to divide by 1e12 again
+      const tcyclesValue = parseFloat(actualTCyclesReceived);
+      const formattedTCycles = tcyclesValue.toFixed(2);
+      
+      addLog(`Successfully swapped ${kongAmount} KONG to ${formattedTCycles} T-Cycles`);
       
       // Save progress
-      lastSuccessfulStep = processSteps.SWAP_KONG_TO_ICP;
+      lastSuccessfulStep = processSteps.SWAP_KONG_TO_TCYCLES;
       
       // Continue to next step
       await createCanisterAndContinue();
     } catch (error) {
-      handleError("Failed to swap KONG to ICP", error);
+      handleError("Failed to swap KONG to TCYCLES", error);
     }
   }
   
-  // Step 2: Create Canister
+  // Step 2: Create Canister using TCYCLES
   async function createCanisterAndContinue() {
     currentStep = processSteps.CREATE_CANISTER;
-    addLog("Creating miner canister...");
+    addLog("Creating miner canister using TCYCLES...");
     
     try {
-      // Ensure icpAmount is properly converted to BigInt
-      const icpE8s = SwapService.toBigInt(icpAmount, ICP_DECIMALS);
+      // Convert tcyclesAmount to bigint (in cycles)
+      // Since tcyclesAmount is in T-Cycles format, we need to convert it to raw cycles
+      // This means multiplying by 1e12 (which SwapService.toBigInt does with TCYCLES_DECIMALS)
+      const cyclesAmount = SwapService.toBigInt(tcyclesAmount, TCYCLES_DECIMALS);
+      console.log("Converting T-Cycles to raw cycles for canister creation:", {
+        tcyclesAmount,
+        rawCycles: cyclesAmount.toString()
+      });
       
       // Log subnet selection if available
       if (selectedSubnetId) {
         addLog(`Creating canister on subnet ${selectedSubnetId} (${selectedSubnetType || 'Unknown type'})`);
       }
       
-      addLog(`Creating canister with ${icpAmount} ICP (${estimatedTCycles}T cycles)`);
+      // Format T-Cycles for display (already in T-Cycles format)
+      const tcyclesValue = parseFloat(tcyclesAmount);
+      const formattedTCycles = tcyclesValue.toFixed(2);
+      
+      addLog(`Creating canister with ${formattedTCycles} T-Cycles`);
       
       // Get principal
       if (!principal) {
         throw new Error("Principal not available for canister creation");
       }
       
-      // Create a new canister using the createCanister service
-      const createArgs: any = {
-        amount: icpE8s,
-        controller: principal,
-        settings: {
-          controllers: [principal]
-        }
+      // Create options object for TCyclesService.createCanister
+      const options: any = {
+        controllers: [principal]
       };
       
       // Add subnet selection if available
       if (selectedSubnetId) {
         console.log(`Using subnet ID for deployment: ${selectedSubnetId}`);
-        createArgs.subnet_id = selectedSubnetId;
+        options.subnetId = selectedSubnetId;
+      } else if (selectedSubnetType) {
+        console.log(`Using subnet type for deployment: ${selectedSubnetType}`);
+        options.subnetType = selectedSubnetType;
       }
       
-      addLog("Sending ICP to Cycles Minting Canister...");
-      console.log("Create canister args:", JSON.stringify(createArgs, (key, value) => 
-        typeof value === 'bigint' ? value.toString() : value));
-      const createCanisterResponse = await createCanister(createArgs);
-      
-      // Check if the response is valid before using it
-      if (!createCanisterResponse) {
-        throw new Error("Failed to create canister: No canister ID returned");
-      }
+      // Create a new canister using the TCyclesService
+      addLog("Sending TCYCLES to create canister...");
+      const canisterPrincipal = await TCyclesService.createCanister(cyclesAmount, options);
       
       // Extract the canister ID from the response
-      canisterId = createCanisterResponse.toText();
+      canisterId = canisterPrincipal.toText();
       
       addLog(`Successfully created canister with ID: ${canisterId}`);
       
@@ -343,7 +337,6 @@ import { registerCanister } from "$lib/api/canisters";
     try {
       // Import the miner IDL factory
       const { idlFactory } = await import("$declarations/miner/miner.did.js");
-      
       
       // Add canister to user's cache
       const minerType = getMinerTypeName(minerParams.minerType);
@@ -426,14 +419,27 @@ import { registerCanister } from "$lib/api/canisters";
   }
   
   // Set KONG amount based on miner type
-  export function setKongAmountForMinerType() {
+  export async function setKongAmountForMinerType() {
     if (!minerParams || !minerParams.minerType) return;
     
-    // Always set KONG amount to 100 regardless of miner type
-    kongAmount = "100";
-    
-    console.log(`Miner type set: ${JSON.stringify(minerParams.minerType)}`);
-    console.log(`KONG amount: ${kongAmount}`);
+    try {
+      // Calculate how much KONG is needed for 1T cycles
+      const comparisonData = await TCyclesService.calculateKongForCanister();
+      
+      // Set KONG amount to the amount needed for 1T cycles via TCYCLES path
+      // This ensures the user will get approximately 1T cycles
+      kongAmount = comparisonData.kongViaTCycles;
+      
+      console.log(`Miner type set: ${JSON.stringify(minerParams.minerType)}`);
+      console.log(`KONG amount set to get 1T cycles: ${kongAmount}`);
+      
+      // Recalculate the estimated T-Cycles based on the new KONG amount
+      await calculateEstimatedTCycles();
+    } catch (error) {
+      console.error("Error setting KONG amount:", error);
+      // Fallback to default amount
+      kongAmount = "100";
+    }
   }
   
   // Error handling

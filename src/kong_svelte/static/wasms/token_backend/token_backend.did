@@ -68,6 +68,12 @@ type EventType = variant {
     blocks_mined : nat64;
     achievement : text;
   };
+  BlockMined : record {
+    miner : principal;
+    reward : nat64;
+    hash : blob;
+    nonce : nat64;
+  };
   LeaderboardUpdate : record {
     miner : principal;
     total_mined : nat64;

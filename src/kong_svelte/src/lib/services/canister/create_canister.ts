@@ -58,17 +58,21 @@ export async function createCanister(args) {
     };
     
     // Prepare subnet selection if subnet_id is provided
-    // TODO! allow user to enter subnet_id here, we can call cmc
-    // cmc returns all available subnets that are deployable
-    // then use api to figure out specs of each subnet
-    // 13 nodes == 500 billion cycles, kong subnet is 1500 billion cycles to create etc
     let subnet_selection = [];
     if (args.subnet_id) {
-      subnet_selection = [{
-        Subnet: {
-          subnet: Principal.fromText(args.subnet_id)
-        }
-      }];
+      console.log('Using subnet ID for subnet selection:', args.subnet_id);
+      try {
+        const subnetPrincipal = Principal.fromText(args.subnet_id);
+        subnet_selection = [{
+          Subnet: {
+            subnet: subnetPrincipal
+          }
+        }];
+        console.log('Subnet selection created successfully:', subnet_selection);
+      } catch (error) {
+        console.error('Error creating subnet selection:', error);
+        throw new Error(`Invalid subnet ID: ${args.subnet_id}`);
+      }
     }
     
     // Format notify args
@@ -80,7 +84,7 @@ export async function createCanister(args) {
       settings: [completeSettings]
     };
     
-    // Use a custom replacer function to handle BigInt values
+    // Log the complete notify args for debugging
     console.log('Notify args:', JSON.stringify(notifyArgs, (key, value) => 
       typeof value === 'bigint' ? value.toString() : value));
     
