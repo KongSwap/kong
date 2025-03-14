@@ -77,6 +77,18 @@
   // Add a state to control the visibility of the AddNewTokenModal
   let isAddNewTokenModalOpen = $state(false);
   
+  // Add a set to track which tokens have had their balances loaded
+  let loadedBalances = $state(new Set<string>());
+  
+  // Update the loadedBalances set when the currentUserBalancesStore changes
+  $effect(() => {
+    if ($currentUserBalancesStore) {
+      Object.keys($currentUserBalancesStore).forEach(tokenId => {
+        loadedBalances.add(tokenId);
+      });
+    }
+  });
+  
   type FilterType = "all" | "ck" | "favorites";
 
   // Define filter tabs constant
@@ -411,11 +423,7 @@
       userTokens.enableToken(token);
     }
 
-    const balance = getTokenBalance(token);
-    onSelect({
-      ...token,
-      balance,
-    });
+    onSelect(token);
     searchQuery = "";
   }
 
@@ -430,17 +438,33 @@
     try {
       // Enable the token
       userTokens.enableToken(token);
+      console.log(`Enabling token: ${token.symbol} (${token.canister_id})`);
 
-      // Load balance for the newly enabled token if user is connected
-      const authStore = get(auth);
-      const principal = authStore?.account?.owner?.toString();
-
-      if (principal && !balanceLoadAttempts.has(token.canister_id)) {
+      // Check if token was already in balance attempts to avoid duplicate attempts
+      if (!balanceLoadAttempts.has(token.canister_id)) {
         balanceLoadAttempts.add(token.canister_id);
         
-        // Use centralized balance refreshing
-        await refreshSingleBalance(token, principal, false);
-        console.log('Updated balance store after enabling token:', token.symbol);
+        // Load balance for the newly enabled token if user is connected
+        const authStore = get(auth);
+        const principal = authStore?.account?.owner?.toString();
+
+        if (principal) {          
+          // Use centralized balance refreshing with a slight delay to ensure token is registered
+          setTimeout(async () => {
+            try {
+              await refreshSingleBalance(token, principal, false);
+              console.log(`Updated balance for newly enabled token: ${token.symbol}`);
+            } catch (err) {
+              console.warn(`Failed to load balance for ${token.symbol} after enabling:`, err);
+            }
+          }, 200);
+        }
+      }
+      
+      // If this is an API token being enabled, select it after enabling
+      if (isApiToken(token) && canSelectToken(token)) {
+        handleSelect(token);
+        onClose();
       }
     } catch (error) {
       console.warn(`Error enabling token ${token.symbol}:`, error);
@@ -450,11 +474,25 @@
     }
   }
 
-  // Update the handleTokenClick function to use the canSelectToken helper
+  // Update the handleTokenClick function to properly handle selection flow
   function handleTokenClick(e: MouseEvent | TouchEvent, token: FE.Token) {
     e.stopPropagation();
 
+    // Handle API tokens differently - they need to be enabled first
+    if (isApiToken(token)) {
+      // For API tokens, we delegate to handleEnableToken which will handle the full flow
+      if (e instanceof MouseEvent) {
+        handleEnableToken(e, token);
+      }
+      return;
+    }
+
     if (!canSelectToken(token)) return;
+
+    // For already enabled tokens, load balance if needed before selecting
+    if ($auth.account?.owner && !$currentUserBalancesStore[token.canister_id]) {
+      void refreshSingleBalance(token, $auth.account.owner.toString(), false);
+    }
 
     handleSelect(token);
     onClose();
@@ -486,7 +524,8 @@
     }
   }
 
-  // Add a function to load balances for visible tokens
+  // Add a function to load balances for visible tokens with debouncing
+  let loadBalancesDebounceTimer: ReturnType<typeof setTimeout>;
   function loadVisibleTokenBalances() {
     if (!browser) return;
 
@@ -494,14 +533,36 @@
     const principal = authStore?.account?.owner?.toString();
     if (!principal) return;
 
-    // Get all currently visible tokens
-    const visibleTokens = [
-      ...enabledTokensVirtualState.visible.map((v) => v.item),
-      ...apiTokensVirtualState.visible.map((v) => v.item),
-    ];
+    // Clear previous debounce timer
+    clearTimeout(loadBalancesDebounceTimer);
+    
+    // Set a new debounce timer
+    loadBalancesDebounceTimer = setTimeout(() => {
+      // Get all currently visible tokens
+      const visibleTokens = [
+        ...enabledTokensVirtualState.visible.map((v) => v.item),
+        ...apiTokensVirtualState.visible.map((v) => v.item),
+      ];
 
-    // Load balances for visible tokens
-    void loadBalances(visibleTokens, principal, true);
+      // Filter tokens that need balance loading to avoid unnecessary requests
+      const tokensNeedingBalances = visibleTokens.filter(
+        token => token.canister_id && 
+                !$currentUserBalancesStore[token.canister_id] && 
+                !loadedBalances.has(token.canister_id)
+      );
+      
+      if (tokensNeedingBalances.length > 0) {
+        console.log(`Loading balances for ${tokensNeedingBalances.length} visible tokens`);
+        
+        // Mark these tokens as having their balances loaded
+        tokensNeedingBalances.forEach(token => {
+          loadedBalances.add(token.canister_id);
+        });
+        
+        // Load balances for these tokens
+        void loadBalances(tokensNeedingBalances, principal, true);
+      }
+    }, 200); // 200ms debounce
   }
 
   // Add an effect to load balances when visible tokens change
@@ -531,6 +592,7 @@
   onDestroy(() => {
     cleanup();
     clearTimeout(scrollDebounceTimer);
+    clearTimeout(loadBalancesDebounceTimer);
   });
 
   // Focus search input when dropdown opens
@@ -540,9 +602,37 @@
       const authStore = get(auth);
       const principal = authStore?.account?.owner?.toString();
 
-      if (principal && tokens.length > 0) {
-        // Load balances for visible tokens only, to reduce network requests
-        void loadBalances(tokens, principal, true);
+      if (principal) {
+        // Load balances for visible tokens first, to reduce initial loading time
+        setTimeout(() => {
+          if (show) { // Check if dropdown is still open
+            loadVisibleTokenBalances();
+            
+            // Then load all token balances with a delay to avoid overwhelming the system
+            setTimeout(() => {
+              if (show && tokens.length > 0) { // Double-check dropdown is still open
+                // Filter tokens that don't have balances loaded yet
+                const tokensNeedingBalances = tokens.filter(
+                  token => token.canister_id && 
+                          !$currentUserBalancesStore[token.canister_id] && 
+                          !loadedBalances.has(token.canister_id)
+                );
+                
+                if (tokensNeedingBalances.length > 0) {
+                  console.log(`Loading balances for ${tokensNeedingBalances.length} remaining tokens with delay`);
+                  
+                  // Mark these tokens as having their balances loaded
+                  tokensNeedingBalances.forEach(token => {
+                    loadedBalances.add(token.canister_id);
+                  });
+                  
+                  // Load balances for these tokens
+                  void loadBalances(tokensNeedingBalances, principal, false);
+                }
+              }
+            }, 500);
+          }
+        }, 0);
       }
 
       // Load favorites
@@ -716,13 +806,18 @@
                           {enablingTokenId}
                           blockedTokenIds={BLOCKED_TOKEN_IDS}
                           balance={{
-                            tokens: formatBalance(
-                              $currentUserBalancesStore[token.canister_id]?.in_tokens || 0n,
-                              token.decimals || 8
-                            ),
-                            usd: formatUsdValue(
-                              $currentUserBalancesStore[token.canister_id]?.in_usd || "0"
-                            )
+                            loading: !$currentUserBalancesStore[token.canister_id],
+                            tokens: $currentUserBalancesStore[token.canister_id]
+                              ? formatBalance(
+                                $currentUserBalancesStore[token.canister_id]?.in_tokens || 0n,
+                                token.decimals || 8
+                              )
+                              : "0",
+                            usd: $currentUserBalancesStore[token.canister_id]
+                              ? formatUsdValue(
+                                $currentUserBalancesStore[token.canister_id]?.in_usd || "0"
+                              )
+                              : "$0.00"
                           }}
                           onTokenClick={(e) => handleTokenClick(e, token)}
                           onFavoriteClick={(e) => handleFavoriteClick(e, token)}
@@ -761,6 +856,20 @@
                             isFavorite={isFavoriteToken(token.canister_id)}
                             enablingTokenId={enablingTokenId}
                             blockedTokenIds={BLOCKED_TOKEN_IDS}
+                            balance={{
+                              loading: !$currentUserBalancesStore[token.canister_id],
+                              tokens: $currentUserBalancesStore[token.canister_id]
+                                ? formatBalance(
+                                  $currentUserBalancesStore[token.canister_id]?.in_tokens || 0n,
+                                  token.decimals || 8
+                                )
+                                : "0",
+                              usd: $currentUserBalancesStore[token.canister_id]
+                                ? formatUsdValue(
+                                  $currentUserBalancesStore[token.canister_id]?.in_usd || "0"
+                                )
+                                : "$0.00"
+                            }}
                             onTokenClick={(e) => e.stopPropagation()}
                             onFavoriteClick={(e) => handleFavoriteClick(e, token)}
                             onEnableClick={(e) => handleEnableToken(e, token)}

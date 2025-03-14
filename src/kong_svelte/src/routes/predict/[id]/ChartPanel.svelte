@@ -1,28 +1,50 @@
-<script lang="ts">
+<script lang="ts" runes>
+  import { createEventDispatcher } from "svelte";
   import BetLineChart from "./BetLineChart.svelte";
   import ChanceLineChart from "./ChanceLineChart.svelte";
-  import { crossfade } from "svelte/transition";
 
-  export let market: any;
-  export let marketBets: any[];
-  export let selectedChartTab: string;
-  
-  export function setSelectedChartTab(tab: string) {
-    selectedChartTab = tab;
+  const props = $props<{
+    market: any;
+    marketBets: any[];
+    selectedChartTab: string;
+  }>();
+
+  // Function to notify parent of events
+  const dispatch = createEventDispatcher<{
+    tabChange: string;
+  }>();
+
+  // Function to handle tab selection
+  function selectTab(tab: string) {
+    if (tab !== props.selectedChartTab) {
+      dispatch("tabChange", tab);
+    }
   }
 
-  const [send, receive] = crossfade({
-    duration: 300,
-    fallback(node, params) {
-      return {
-        duration: 300,
-        css: (t) => `
-          opacity: ${t};
-          transform: scale(${0.8 + 0.2 * t});
-        `,
-      };
-    },
+  // Track error states for charts
+  let betChartError = $state(false);
+  let chanceChartError = $state(false);
+  let marketBetsSnapshot = $state<any[]>([]);
+
+  // When marketBets changes, update the snapshot and reset chart errors
+  $effect(() => {
+    if (props.marketBets) {
+      // Create a new array to break any reactivity issues
+      marketBetsSnapshot = [...props.marketBets];
+      // Reset error states when data changes
+      betChartError = false;
+      chanceChartError = false;
+    }
   });
+
+  // Error handler functions
+  function handleBetChartError() {
+    betChartError = true;
+  }
+
+  function handleChanceChartError() {
+    chanceChartError = true;
+  }
 </script>
 
 <div class="flex flex-col gap-3 sm:gap-4">
@@ -30,112 +52,79 @@
     class="flex gap-2 sm:gap-4 border-b border-kong-border overflow-x-auto scrollbar-none"
   >
     <button
-      on:click={() => selectedChartTab = "betHistory"}
-      class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {selectedChartTab ===
-      'betHistory'
+      on:click={() => selectTab("percentageChance")}
+      class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
+      'percentageChance'
         ? 'text-kong-text-accent-green font-medium'
         : 'text-kong-text-secondary hover:text-kong-text-primary'}"
     >
-      <span class="text-sm sm:text-base">Bet History</span>
-      {#if selectedChartTab === "betHistory"}
+      <span class="text-sm sm:text-base">Percentage Chance</span>
+      {#if props.selectedChartTab === "percentageChance"}
         <div
           class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-accent-green rounded-t-full"
         ></div>
       {/if}
     </button>
     <button
-      on:click={() => selectedChartTab = "percentageChance"}
-      class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {selectedChartTab ===
-      'percentageChance'
+      on:click={() => selectTab("betHistory")}
+      class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
+      'betHistory'
         ? 'text-kong-text-accent-green font-medium'
         : 'text-kong-text-secondary hover:text-kong-text-primary'}"
     >
-      <span class="text-sm sm:text-base">Percentage Chance</span>
-      {#if selectedChartTab === "percentageChance"}
+      <span class="text-sm sm:text-base">Bet History</span>
+      {#if props.selectedChartTab === "betHistory"}
         <div
           class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-accent-green rounded-t-full"
         ></div>
       {/if}
     </button>
   </div>
-  <div class="h-[300px]">
-    {#if selectedChartTab === "betHistory"}
-      {#if marketBets.length === 0}
-        <div
-          in:receive={{ key: "empty-bet-history" }}
-          out:send={{ key: "empty-bet-history" }}
-          class="h-full flex flex-col items-center justify-center text-center px-4"
-        >
+
+  <div class="chart-container relative">
+    {#if props.market && marketBetsSnapshot.length > 0}
+      {#if props.selectedChartTab === "betHistory"}
+        {#if betChartError}
           <div
-            class="w-16 h-16 mb-4 rounded-full bg-kong-bg-dark/50 flex items-center justify-center"
+            class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-8 h-8 text-kong-text-secondary"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M3 3v18h18"></path>
-              <path d="m19 9-5 5-4-4-3 3"></path>
-            </svg>
+            <p class="text-kong-text-secondary">
+              Unable to display bet history chart
+            </p>
           </div>
-          <h3 class="text-kong-text-secondary/80 font-medium mb-1">
-            No bet history yet
-          </h3>
-          <p class="text-sm text-kong-text-secondary/60">
-            Place the first bet to start tracking market activity
-          </p>
-        </div>
-      {:else}
-        <div
-          in:receive={{ key: "bet-history" }}
-          out:send={{ key: "bet-history" }}
-        >
-          <BetLineChart {market} {marketBets} />
-        </div>
-      {/if}
-    {:else if marketBets.length === 0}
-      <div
-        in:receive={{ key: "empty-percentage" }}
-        out:send={{ key: "empty-percentage" }}
-        class="h-full flex flex-col items-center justify-center text-center px-4"
-      >
-        <div
-          class="w-16 h-16 mb-4 rounded-full bg-kong-bg-dark/50 flex items-center justify-center"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-8 h-8 text-kong-text-secondary"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+        {:else}
+          <div class="chart-wrapper">
+            <BetLineChart
+              market={props.market}
+              marketBets={marketBetsSnapshot}
+              on:error={handleBetChartError}
+            />
+          </div>
+        {/if}
+      {:else if props.selectedChartTab === "percentageChance"}
+        {#if chanceChartError}
+          <div
+            class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
           >
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-            <line x1="9" y1="9" x2="9.01" y2="9"></line>
-            <line x1="15" y1="9" x2="15.01" y2="9"></line>
-          </svg>
-        </div>
-        <h3 class="text-kong-text-secondary/80 font-medium mb-1">
-          No percentage data yet
-        </h3>
-        <p class="text-sm text-kong-text-secondary/60">
-          Bet activity will reveal market sentiment
-        </p>
-      </div>
+            <p class="text-kong-text-secondary">
+              Unable to display percentage chance chart
+            </p>
+          </div>
+        {:else}
+          <div class="chart-wrapper">
+            <ChanceLineChart
+              market={props.market}
+              marketBets={marketBetsSnapshot}
+              on:error={handleChanceChartError}
+            />
+          </div>
+        {/if}
+      {/if}
     {:else}
       <div
-        in:receive={{ key: "percentage-chart" }}
-        out:send={{ key: "percentage-chart" }}
+        class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
       >
-        <ChanceLineChart {market} {marketBets} />
+        <p class="text-kong-text-secondary">No chart data available</p>
       </div>
     {/if}
   </div>
@@ -148,4 +137,14 @@
       display: none;
     }
   }
-</style> 
+
+  .chart-container {
+    height: 300px;
+    width: 100%;
+  }
+
+  .chart-wrapper {
+    height: 100%;
+    width: 100%;
+  }
+</style>

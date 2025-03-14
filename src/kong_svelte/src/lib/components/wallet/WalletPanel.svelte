@@ -166,18 +166,30 @@
   // Refresh balances
   function refreshBalances(forceRefresh = true) {
     isRefreshing = true;
+    isLoadingBalances = true;
     
     // Update last refreshed timestamp to trigger reactive updates
     lastRefreshed = Date.now();
     
-    // In a real implementation, this would do actual data fetching
-    // For now, we're relying on the child components to handle the actual refresh
-    // when they detect the lastRefreshed timestamp has changed
-    
-    // Simulate the refresh action completing
-    setTimeout(() => {
-      isRefreshing = false;
-    }, 500);
+    // Load balances for the current wallet ID if available
+    if (walletId && $userTokens?.tokens?.length > 0) {
+      loadBalances($userTokens.tokens, walletId, forceRefresh)
+        .then(() => {
+          isLoadingBalances = false;
+          isRefreshing = false;
+        })
+        .catch((err) => {
+          console.error("Error refreshing balances:", err);
+          isLoadingBalances = false;
+          isRefreshing = false;
+        });
+    } else {
+      // If no wallet ID or tokens, just end the loading state after a brief delay
+      setTimeout(() => {
+        isLoadingBalances = false;
+        isRefreshing = false;
+      }, 500);
+    }
   }
 
   // Handle token added by the user
@@ -216,6 +228,10 @@
     // Get the current wallet ID
     if ($auth?.account?.owner) {
       walletId = $auth.account.owner.toString();
+      
+      // Set loading state and trigger balance refresh when component mounts
+      isLoadingBalances = true;
+      refreshBalances(true);
     }
   });
 </script>

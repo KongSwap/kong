@@ -131,13 +131,13 @@
 
 <div class="mb-8">
   {#if markets.length === 0}
-    <div class="text-center py-6 text-kong-pm-text-secondary">
+    <div class="text-center py-6 text-kong-text-secondary">
       No markets in this category
     </div>
   {:else}
     <div class="relative pb-3">
       <h2
-        class="text-sm uppercase text-kong-text-primary items-center font-medium flex gap-2"
+        class="text-sm text-kong-text-primary items-center font-medium flex gap-2"
       >
         <div
           class="bg-gradient-to-l h-3 rounded-r-lg to-transparent px-3 py-0.5 w-[20px] {getGradientClass(
@@ -175,13 +175,13 @@
                       class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-sm mb-3"
                     >
                       <span
-                        class="py-0.5 bg-kong-pm-accent/10 text-kong-pm-accent rounded text-xs font-medium"
+                        class="py-0.5 bg-kong-accent/10 text-kong-accent rounded text-xs font-medium"
                       >
                         {formatCategory(market.category)}
                       </span>
                       {#if showEndTime}
                         <span
-                          class="flex items-center gap-1 text-kong-pm-text-secondary text-xs whitespace-nowrap"
+                          class="flex items-center gap-1 text-kong-text-secondary text-xs whitespace-nowrap"
                         >
                           <Calendar class="w-3 h-3" />
                           <CountdownTimer endTime={market.end_time} />
@@ -259,7 +259,7 @@
                         class="text-right flex items-center gap-1 sm:gap-2 flex-shrink-0"
                       >
                         <div
-                          class="text-kong-pm-accent font-bold text-xs sm:text-sm whitespace-nowrap"
+                          class="text-kong-accent font-bold text-xs sm:text-sm whitespace-nowrap"
                         >
                           {calculatePercentage(
                             market.outcome_pools[i],
@@ -270,7 +270,7 @@
                           ).toFixed(1)}%
                         </div>
                         <div
-                          class="text-xs text-kong-pm-text-secondary hidden sm:block"
+                          class="text-xs text-kong-text-secondary hidden sm:block"
                         >
                           {formatBalance(market.outcome_pools[i], 8)}
                         </div>
@@ -286,7 +286,7 @@
 
             <!-- Card Footer -->
             {#if !isResolved && title !== "Pending Resolution"}
-              <div class="pt-1.5 sm:pt-2 border-t border-kong-pm-border">
+              <div class="pt-1.5 sm:pt-2 border-t border-kong-border">
                 <div class="flex items-center justify-center">
                   <button
                     class="w-full flex items-center justify-center py-1.5 sm:py-2 border shadow-sm border-kong-accent-green/50 hover:bg-kong-accent-green/10 text-kong-text-accent-green rounded font-medium transition-all text-xs sm:text-sm"
@@ -298,7 +298,7 @@
                 </div>
               </div>
             {:else if title === "Pending Resolution"}
-              <div class="pt-2 border-t border-kong-pm-border">
+              <div class="pt-2 border-t border-kong-border">
                 {#if isUserAdmin}
                   <button
                     class="w-full flex items-center justify-center py-1.5 sm:py-2 border shadow-sm border-kong-accent-green/50 hover:bg-kong-accent-green/10 text-kong-text-accent-green rounded font-medium transition-all text-xs sm:text-sm"
@@ -308,14 +308,14 @@
                     Resolve Market
                   </button>
                 {:else}
-                  <div class="text-center text-xs text-kong-pm-text-secondary">
+                  <div class="text-center text-xs text-kong-text-secondary">
                     Awaiting resolution
                   </div>
                 {/if}
               </div>
             {:else}
-              <div class="pt-2 border-t border-kong-pm-border">
-                <div class="text-center text-xs text-kong-pm-text-secondary">
+              <div class="pt-2 border-t border-kong-border">
+                <div class="text-center text-xs text-kong-text-secondary">
                   Resolved on {new Date(
                     Number(market.end_time) / 1_000_000,
                   ).toLocaleDateString()}
@@ -336,20 +336,20 @@
             >
               <div class="flex-1 flex items-center justify-center py-8">
                 <div class="text-center">
-                  <div class="text-kong-pm-text-secondary mb-2">
+                  <div class="text-kong-text-secondary mb-2">
                     <Plus class="w-6 h-6 mx-auto mb-2 opacity-50" />
                     Want to create your own market?
                   </div>
-                  <p class="text-xs text-kong-pm-text-secondary/70">
+                  <p class="text-xs text-kong-text-secondary/70">
                     Coming soon: Create and manage<br />your own prediction
                     markets
                   </p>
                 </div>
               </div>
 
-              <div class="mt-3 pt-2 border-t border-kong-pm-border">
+              <div class="mt-3 pt-2 border-t border-kong-border">
                 <div
-                  class="w-full py-2 text-center text-kong-pm-text-secondary/50 text-xs"
+                  class="w-full py-2 text-center text-kong-text-secondary/50 text-xs"
                 >
                   Stay tuned
                 </div>

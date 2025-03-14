@@ -12,8 +12,12 @@
     TimeScale,
     TimeSeriesScale
   } from 'chart.js';
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import 'chartjs-adapter-date-fns';
+
+  // Create event dispatcher for error events
+  const dispatch = createEventDispatcher<{ error: string }>();
 
   // Register required Chart.js components
   Chart.register(
@@ -34,9 +38,13 @@
 
   let chartCanvas: HTMLCanvasElement;
   let chart: Chart | null = null;
+  let chartInitialized = false;
 
   // Safely convert BigInt to Number, handling potential precision loss
   function safeConvertBigInt(value: any): number {
+    // Handle undefined or null
+    if (value === undefined || value === null) return 0;
+    
     // If it's a BigInt
     if (typeof value === 'bigint') {
       // Convert to string first to avoid precision issues with very large values
@@ -52,31 +60,25 @@
   }
 
   function createDailyBetChart() {
-    if (!chartCanvas || !market || !marketBets.length) {
-      console.log('Skipping chart creation - missing required data');
+    if (!chartCanvas || !market || !marketBets || !marketBets.length || chartInitialized) {
       return;
     }
 
-    // Destroy existing chart if it exists
-    if (chart) {
-      console.log('Destroying existing chart');
-      chart.destroy();
-    }
-
     try {
-      console.log('Creating daily bet amount chart');
+      // Make a local copy of the bets to avoid reactivity issues
+      const betsToProcess = [...marketBets];
       
       // Filter valid bets that have timestamp and amount
-      const validBets = marketBets.filter(bet => {
-        return bet && bet.timestamp && bet.hasOwnProperty('amount');
+      const validBets = betsToProcess.filter(bet => {
+        return bet && 
+               bet.hasOwnProperty('timestamp') && 
+               bet.hasOwnProperty('amount');
       });
 
       if (validBets.length === 0) {
-        console.log("No valid bets found with amounts");
+        console.log("No valid bets found with amounts for chart");
         return;
       }
-
-      console.log(`Processing ${validBets.length} bets for chart`);
       
       // Normalize timestamps and extract amounts
       const processedBets = validBets.map(bet => {
@@ -119,7 +121,10 @@
         a.date.getTime() - b.date.getTime()
       );
       
-      console.log('Daily bet amounts:', dailyBetsArray);
+      if (dailyBetsArray.length === 0) {
+        console.log("No daily bet data available after processing");
+        return;
+      }
       
       // Create data points for the chart
       const dataPoints = dailyBetsArray.map(daily => ({
@@ -133,7 +138,7 @@
         return;
       }
 
-      // Determine the appropriate time unit (should be 'day' for daily data)
+      // Determine the appropriate time unit
       const startTimeMs = dataPoints[0]?.x.getTime() || Date.now();
       const endTimeMs = dataPoints[dataPoints.length - 1]?.x.getTime() || Date.now();
       const timeUnit = determineTimeUnit(startTimeMs, endTimeMs);
@@ -159,9 +164,12 @@
             x: {
               type: "time",
               time: {
-                unit: 'day',
+                unit: timeUnit,
                 displayFormats: {
+                  hour: "HH:mm",
                   day: "MMM d",
+                  month: "MMM yyyy",
+                  year: "yyyy"
                 },
               },
               title: {
@@ -186,8 +194,18 @@
               callbacks: {
                 label: function(context) {
                   const yValue = context.raw as any;
-                  const amount = typeof yValue === 'object' && yValue !== null ? 
-                    Number(yValue.y) : Number(yValue);
+                  // Ensure amount is a number before calling toFixed()
+                  let amount: number;
+                  if (typeof yValue === 'object' && yValue !== null) {
+                    amount = Number(yValue.y);
+                  } else {
+                    amount = Number(yValue);
+                  }
+                  
+                  if (isNaN(amount)) {
+                    return `Amount: 0 KONG`;
+                  }
+                  
                   return `Amount: ${amount.toFixed(2)} KONG`;
                 },
               },
@@ -197,39 +215,59 @@
             },
           },
         },
-      } as any); // Type assertion to resolve TypeScript errors
+      } as any);
+      
+      // Mark chart as initialized to prevent duplicate initializations
+      chartInitialized = true;
     } catch (error) {
-      console.error('Failed to create chart:', error);
+      console.error('Failed to create bet history chart:', error);
+      // Dispatch error event to parent
+      dispatch('error', error instanceof Error ? error.message : 'Failed to create chart');
     }
   }
-
-  // Watch for changes in market or bets
-  $: if (market && marketBets && marketBets.length > 0) {
-    setTimeout(() => {
-      createDailyBetChart();
-    }, 0);
-  }
-
+  
   onMount(() => {
-    // Add window resize handler
+    // Add window resize handler with proper debouncing
+    let resizeTimeout: ReturnType<typeof setTimeout>;
+    
     const handleResize = () => {
-      if (chart) {
-        createDailyBetChart();
-      }
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (chart) {
+          try {
+            // Clean up existing chart before recreating
+            chart.destroy();
+            chart = null;
+            chartInitialized = false;
+            // Recreate chart
+            createDailyBetChart();
+          } catch (error) {
+            console.error('Error during chart resize:', error);
+            dispatch('error', 'Failed to update chart on resize');
+          }
+        }
+      }, 250); // 250ms debounce
     };
+    
     window.addEventListener('resize', handleResize);
 
-    // Create chart on mount if data is available
-    if (market && marketBets && marketBets.length > 0) {
-      setTimeout(() => {
+    // Create chart with a slight delay to ensure DOM is ready
+    setTimeout(() => {
+      try {
         createDailyBetChart();
-      }, 100); // Slightly longer delay to ensure DOM is ready
-    }
+      } catch (error) {
+        console.error('Error during initial chart creation:', error);
+        dispatch('error', 'Failed to create chart');
+      }
+    }, 100);
 
+    // Cleanup function
     return () => {
       window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimeout);
       if (chart) {
         chart.destroy();
+        chart = null;
       }
     };
   });
@@ -237,18 +275,18 @@
   onDestroy(() => {
     if (chart) {
       chart.destroy();
+      chart = null;
     }
   });
 
   // Helper function to determine the appropriate time unit based on the data range
-  function determineTimeUnit(startTimeMs: number, endTimeMs: number): 'second' | 'minute' | 'hour' | 'day' | 'month' | 'year' {
+  function determineTimeUnit(startTimeMs: number, endTimeMs: number): 'hour' | 'day' | 'month' | 'year' {
     const rangeMs = endTimeMs - startTimeMs;
+    const dayMs = 24 * 60 * 60 * 1000;
     
-    if (rangeMs < 1000 * 60 * 5) return 'second'; // Less than 5 minutes: seconds
-    if (rangeMs < 1000 * 60 * 60 * 2) return 'minute'; // Less than 2 hours: minutes
-    if (rangeMs < 1000 * 60 * 60 * 24 * 2) return 'hour'; // Less than 2 days: hours
-    if (rangeMs < 1000 * 60 * 60 * 24 * 30) return 'day'; // Less than a month: days
-    if (rangeMs < 1000 * 60 * 60 * 24 * 30 * 6) return 'month'; // Less than 6 months: months
+    if (rangeMs < dayMs * 2) return 'hour'; // Less than 2 days: hours
+    if (rangeMs < dayMs * 30) return 'day'; // Less than a month: days
+    if (rangeMs < dayMs * 180) return 'month'; // Less than 6 months: months
     return 'year'; // More than 6 months: years
   }
 </script>

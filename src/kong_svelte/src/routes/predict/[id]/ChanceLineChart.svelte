@@ -1,17 +1,24 @@
 <script lang="ts">
   import Chart from 'chart.js/auto';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import 'chartjs-adapter-date-fns';
-  import type { ChartConfiguration, ChartData, ScatterDataPoint } from 'chart.js';
+  import type { ChartConfiguration } from 'chart.js';
+
+  // Create event dispatcher for error events
+  const dispatch = createEventDispatcher<{ error: string }>();
 
   export let market: any;
   export let marketBets: any[] = [];
 
   let chartCanvas: HTMLCanvasElement;
   let chart: Chart | null = null;
+  let chartInitialized = false;
 
   // Safely convert BigInt to Number, handling potential precision loss
   function safeConvertBigInt(value: any): number {
+    // Handle undefined or null
+    if (value === undefined || value === null) return 0;
+    
     // If it's a BigInt
     if (typeof value === 'bigint') {
       // Convert to string first to avoid precision issues with very large values
@@ -23,6 +30,8 @@
 
   // Convert nanosecond timestamps to milliseconds if needed
   function normalizeTimestamp(timestamp: any): number {
+    if (timestamp === undefined || timestamp === null) return 0;
+    
     const numValue = safeConvertBigInt(timestamp);
     // If timestamp is in nanoseconds (too large for a reasonable date)
     if (numValue > 1e15) {
@@ -43,19 +52,24 @@
   }
 
   function createChanceChart() {
-    if (!chartCanvas || !market || marketBets.length === 0) {
-      console.log('Missing required market or betting data for ChanceLineChart');
+    if (!chartCanvas || !market || !marketBets || marketBets.length === 0 || chartInitialized) {
       return;
     }
 
     try {
-      console.log('Creating chance line chart with', marketBets.length, 'bets');
+      // Create local copy to avoid reactivity issues
+      const betsToProcess = [...marketBets];
       
       const outcomes: string[] = market.outcomes || [];
       const numOutcomes = outcomes.length;
+      
+      if (numOutcomes === 0) {
+        console.error("No outcomes found in market data");
+        return;
+      }
 
       // Normalize all timestamps first
-      const normalizedBets = marketBets.map(bet => ({
+      const normalizedBets = betsToProcess.map(bet => ({
         ...bet,
         normalizedTime: normalizeTimestamp(bet.timestamp)
       }));
@@ -75,12 +89,8 @@
       // Convert market end time
       const marketEndTimeMs = normalizeTimestamp(market.end_time);
       
-      console.log(`Time range: ${new Date(minTimeMs).toISOString()} to ${new Date(maxTimeMs).toISOString()}`);
-      console.log(`Market end time: ${new Date(marketEndTimeMs).toISOString()}`);
-      
       // Choose appropriate time unit based on data range
       const timeUnit = determineTimeUnit(minTimeMs, Math.max(maxTimeMs, marketEndTimeMs));
-      console.log(`Using time unit: ${timeUnit}`);
       
       // Use appropriate interval based on time unit
       const aggregationIntervalMs = (() => {
@@ -115,7 +125,7 @@
       const startTime = Math.floor(minTimeMs / aggregationIntervalMs) * aggregationIntervalMs;
       const endTime = Math.min(
         Math.ceil(maxTimeMs / aggregationIntervalMs) * aggregationIntervalMs,
-        marketEndTimeMs // Don't go beyond market end time
+        marketEndTimeMs || Infinity // Don't go beyond market end time if available
       );
       
       // Cap the time range to avoid "too far apart" errors
@@ -130,6 +140,8 @@
 
       // Sum bet amounts into buckets
       for (const bet of sortedBets) {
+        if (!bet || bet.normalizedTime === undefined || bet.normalizedTime === null) continue;
+        
         const bucketTime = Math.floor(bet.normalizedTime / aggregationIntervalMs) * aggregationIntervalMs;
         if (buckets.has(bucketTime)) {
           const outcomeIndex = safeConvertBigInt(bet.outcome_index);
@@ -172,7 +184,7 @@
       }
 
       // Add final point at market end time if needed
-      if (cappedEndTime < marketEndTimeMs && cappedEndTime < endTime) {
+      if (marketEndTimeMs && cappedEndTime < marketEndTimeMs && cappedEndTime < endTime) {
         for (let i = 0; i < numOutcomes; i++) {
           const lastPoints = datasets[i].data;
           if (lastPoints.length > 0) {
@@ -184,6 +196,7 @@
 
       if (chart) {
         chart.destroy();
+        chart = null;
       }
 
       // Define chart configuration with explicit type
@@ -250,30 +263,64 @@
       };
 
       chart = new Chart(chartCanvas, config as any);
+      chartInitialized = true;
     } catch (error) {
       console.error('Failed to create chance chart:', error);
+      // Dispatch error event to parent
+      dispatch('error', error instanceof Error ? error.message : 'Failed to create chart');
     }
   }
 
   onMount(() => {
-    if (market && marketBets.length > 0) {
-      setTimeout(() => {
-        createChanceChart();
-      }, 100);
-    }
+    // Add window resize handler with proper debouncing
+    let resizeTimeout: ReturnType<typeof setTimeout>;
     
-    window.addEventListener('resize', createChanceChart);
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (chart) {
+          try {
+            chart.destroy();
+            chart = null;
+            chartInitialized = false;
+            createChanceChart();
+          } catch (error) {
+            console.error('Error during chart resize:', error);
+            dispatch('error', 'Failed to update chart on resize');
+          }
+        }
+      }, 250); // 250ms debounce
+    };
+    
+    window.addEventListener('resize', handleResize);
+
+    // Create chart with a slight delay to ensure DOM is ready
+    setTimeout(() => {
+      try {
+        createChanceChart();
+      } catch (error) {
+        console.error('Error during initial chart creation:', error);
+        dispatch('error', 'Failed to create chart');
+      }
+    }, 100);
+
+    // Cleanup function
     return () => {
-      window.removeEventListener('resize', createChanceChart);
-      if (chart) chart.destroy();
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimeout);
+      if (chart) {
+        chart.destroy();
+        chart = null;
+      }
     };
   });
 
-  $: if (market && marketBets.length > 0) {
-    setTimeout(() => {
-      createChanceChart();
-    }, 0);
-  }
+  onDestroy(() => {
+    if (chart) {
+      chart.destroy();
+      chart = null;
+    }
+  });
 </script>
 
 <div class="h-[300px]">

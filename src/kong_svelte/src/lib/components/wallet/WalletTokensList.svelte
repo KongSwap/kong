@@ -155,8 +155,9 @@
 
   // Effect to load balances when walletId changes or on forceRefresh
   $effect(() => {
-    if (walletId && (forceRefresh || Date.now() - lastRefreshed > 60000)) {
-      loadUserBalances(true);
+    if (walletId) {
+      // Always load balances on initial component mount or when explicitly requested
+      loadUserBalances(forceRefresh);
     }
   });
 </script>

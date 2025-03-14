@@ -1,3 +1,4 @@
+<!-- TODO: Add the rules -->
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { onMount, onDestroy } from "svelte";
@@ -10,21 +11,10 @@
   import { formatBalance, toScaledAmount } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
   import {
-    TrendingUp,
-    Clock,
-    Users,
-    BarChart3,
-    AlertTriangle,
-    Dices,
-    CircleHelp,
     ArrowLeft,
   } from "lucide-svelte";
-  import BetLineChart from "./BetLineChart.svelte";
-  import ChanceLineChart from "./ChanceLineChart.svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  import MarketStatCard from "./MarketStatCard.svelte";
-  import OutcomeProgressBar from "./OutcomeProgressBar.svelte";
   import RecentBets from "../RecentBets.svelte";
   import { slide, fade, crossfade } from "svelte/transition";
   import BetModal from "../BetModal.svelte";
@@ -46,12 +36,23 @@
   let isApprovingAllowance = false;
   let timeLeftInterval: ReturnType<typeof setInterval>;
   let timeLeft: string = "";
+  
+  // Add an error state for charts
+  let chartError: boolean = false;
+
+  // Reference to the ChartPanel component
+  let chartPanel: typeof ChartPanel;
 
   // Betting state
   let showBetModal = false;
   let betAmount = 0;
   let selectedOutcome: number | null = null;
-  let selectedChartTab: string = "betHistory";
+  let selectedChartTab: string = "percentageChance";
+
+  // Handle chart tab changes
+  function handleChartTabChange(event: CustomEvent<string>) {
+    selectedChartTab = event.detail;
+  }
 
   const [send, receive] = crossfade({
     duration: 300,
@@ -96,10 +97,26 @@
     try {
       loadingBets = true;
       const allBets = await getMarketBets(Number($page.params.id));
-      console.log("Loaded market bets:", allBets);
-      marketBets = allBets;
+      
+      // Create a completely new array with deep copies to avoid any reference issues
+      // Make sure to process BigInt values to prevent reactivity issues
+      marketBets = allBets.map(bet => {
+        const newBet = {...bet};
+        
+        // Process every property that might be a BigInt
+        for (const key in newBet) {
+          if (typeof newBet[key] === 'bigint') {
+            newBet[key] = Number(newBet[key].toString());
+          }
+        }
+        
+        return newBet;
+      });
+      
     } catch (e) {
       console.error("Failed to load market bets:", e);
+      // Set an empty array on error to avoid undefined issues
+      marketBets = [];
     } finally {
       loadingBets = false;
     }
@@ -110,7 +127,14 @@
       const marketId = Number($page.params.id);
       const marketData = await getMarket(marketId);
       market = marketData[0];
-      await loadMarketBets();
+      
+      try {
+        await loadMarketBets();
+      } catch (betError) {
+        console.error("Error loading bets:", betError);
+        // Continue with the rest of the page even if bets fail to load
+        marketBets = [];
+      }
 
       // Start countdown timer
       updateTimeLeft();
@@ -191,7 +215,11 @@
         message: `You bet ${amount} KONG on ${market.outcomes[outcomeIndex]}`,
         type: "success",
       });
-      await loadMarketBets();
+      
+      // Reload bets with a small delay to allow backend to update
+      setTimeout(async () => {
+        await loadMarketBets();
+      }, 500);
     } catch (e) {
       console.error("Bet error:", e);
       betError = e instanceof Error ? e.message : "Failed to place bet";
@@ -284,10 +312,13 @@
               isMarketResolved={isMarketResolved} 
               isPendingResolution={isPendingResolution} 
             />
+            
+            <!-- Re-enable the simplified ChartPanel -->
             <ChartPanel 
-              {market}
-              {marketBets}
-              bind:selectedChartTab={selectedChartTab}
+              market={market}
+              marketBets={marketBets}
+              selectedChartTab={selectedChartTab}
+              on:tabChange={handleChartTabChange}
             />
           </Panel>
 
@@ -317,7 +348,7 @@
             marketEndTime={market.end_time}
           />
 
-          <!-- Recent Bets Panel -->
+          <!-- Restore the simplified RecentBets -->
           <RecentBets
             bets={marketBets}
             outcomes={market?.outcomes}
