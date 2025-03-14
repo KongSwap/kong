@@ -1,203 +1,256 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { fetchVolumeLeaderboard } from '$lib/api/leaderboard';
-  import type { LeaderboardEntry } from '$lib/api/leaderboard';
   import { browser } from '$app/environment';
-  import { auth } from '$lib/services/auth';
-  import { goto } from '$app/navigation';
+  import Panel from '$lib/components/common/Panel.svelte';
+  import { Trophy, BarChart3, Crown } from 'lucide-svelte';
   
-  type Period = 'day' | 'week' | 'month';
+  // Import the components
+  import LeaderboardTraderCard from '$lib/components/stats/LeaderboardTraderCard.svelte';
+  import LoadingState from '$lib/components/common/LoadingState.svelte';
+  import ErrorState from '$lib/components/common/ErrorState.svelte';
+  import EmptyState from '$lib/components/common/EmptyState.svelte';
   
-  let leaderboardData: LeaderboardEntry[] = [];
+  // Import utility functions
+  import { formatVolume, formatNumber } from '$lib/utils/formatters';
   
-  let isLoading = true;
-  let error: string | null = null;
-  let selectedPeriod: Period = 'day';
-  let hasAccess = false;
-  const ALLOWED_PRINCIPAL = '6ydau-gqejl-yqbq7-tm2i5-wscbd-lsaxy-oaetm-dxddd-s5rtd-yrpq2-eae';
+  // Import the store
+  import { 
+    leaderboardStore, 
+    isLoading, 
+    error, 
+    leaderboardData, 
+    totalVolume, 
+    totalTraders 
+  } from '$lib/stores/leaderboardStore';
+  import type { Period } from '$lib/types';
   
-  async function loadLeaderboard(period: Period) {
-    if (!browser) return; // Prevent SSR calls
-    
-    isLoading = true;
-    error = null;
-    
-    try {
-      if (!period) {
-        throw new Error("Period not specified");
-      }
-      
-      const response = await fetchVolumeLeaderboard(period);
-      
-      if (Array.isArray(response)) {
-        leaderboardData = response;
-      } else if (response && response.items) {
-        leaderboardData = response.items;
-      } else {
-        throw new Error("Invalid response format");
-      }
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to load leaderboard';
-      console.error('Error loading leaderboard:', err);
-      leaderboardData = [];
-    } finally {
-      isLoading = false;
-    }
-  }
-  
-  function formatVolume(volume: number): string {
-    if (volume >= 1_000_000) {
-      return `$${(volume / 1_000_000).toFixed(2)}M`;
-    } else if (volume >= 1_000) {
-      return `$${(volume / 1_000).toFixed(2)}K`;
-    } else {
-      return `$${volume.toFixed(2)}`;
-    }
-  }
-  
-  function formatPrincipalId(id: string): string {
-    if (id.length <= 10) return id;
-    return `${id.substring(0, 6)}...${id.substring(id.length - 4)}`;
-  }
-  
+  // Handle period change
   function handlePeriodChange(period: Period) {
-    selectedPeriod = period;
-    loadLeaderboard(period);
+    leaderboardStore.setPeriod(period);
   }
   
-  function checkAccess() {
-    if (!browser) return;
-    
-    if ($auth.isConnected && $auth.account && $auth.account.owner) {
-      const currentPrincipal = $auth.account.owner.toString();
-      hasAccess = currentPrincipal === ALLOWED_PRINCIPAL;
-    } else {
-      hasAccess = false;
-    }
+  // Toggle row expansion
+  function toggleRowExpansion(index: number) {
+    leaderboardStore.toggleRowExpansion(index);
   }
   
-  // Check access when auth status changes
-  $: if ($auth) {
-    checkAccess();
-  }
+  // Subscribe to the store to get all state
+  $: selectedPeriod = $leaderboardStore.selectedPeriod;
+  $: expandedRowIndex = $leaderboardStore.expandedRowIndex;
+  $: tradedTokens = $leaderboardStore.tradedTokens;
+  $: loadingTokens = $leaderboardStore.loadingTokens;
+  $: tokenErrors = $leaderboardStore.tokenErrors;
+  $: userDetails = $leaderboardStore.userDetails;
+  $: loadingUserDetails = $leaderboardStore.loadingUserDetails;
+  $: userDetailsErrors = $leaderboardStore.userDetailsErrors;
   
   onMount(() => {
-    checkAccess();
-    if (hasAccess) {
-      loadLeaderboard(selectedPeriod);
+    if (browser) {
+      leaderboardStore.loadLeaderboard(selectedPeriod);
     }
   });
 </script>
 
-<div class="container mx-auto px-4 py-8">
-  {#if !$auth.isConnected}
-    <div class="bg-kong-surface-dark rounded-xl overflow-hidden shadow-lg p-8 text-center">
-      <h1 class="text-xl md:text-2xl font-bold text-kong-text-primary mb-4">Authentication Required</h1>
-      <p class="text-kong-text-secondary mb-6">Please connect your wallet to access this page</p>
+<svelte:head>
+  <title>Trading Leaderboard - KongSwap</title>
+</svelte:head>
+
+<h1 class="text-3xl font-semibold text-kong-text-primary text-center">Volume Leaderboard</h1>
+ 
+<div class="max-w-[1300px] mx-auto pt-6">
+  <!-- Period Selector -->
+  <div class="flex justify-center">
+    <div class="inline-flex p-1 bg-kong-surface-dark rounded-lg shadow-md border border-kong-border overflow-hidden">
       <button 
-        class="px-4 py-2 bg-kong-primary hover:bg-kong-primary-hover rounded-md text-white text-sm transition-colors"
-        on:click={() => auth.initialize()}
+        class="px-6 py-2 rounded-md text-sm font-medium transition-all {selectedPeriod === 'day' ? 'bg-kong-primary text-white shadow-lg' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        on:click={() => handlePeriodChange('day')}
       >
-        Connect Wallet
+        Day
+      </button>
+      <button 
+        class="px-6 py-2 rounded-md text-sm font-medium transition-all {selectedPeriod === 'week' ? 'bg-kong-primary text-white shadow-lg' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        on:click={() => handlePeriodChange('week')}
+      >
+        Week
+      </button>
+      <button 
+        class="px-6 py-2 rounded-md text-sm font-medium transition-all {selectedPeriod === 'month' ? 'bg-kong-primary text-white shadow-lg' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        on:click={() => handlePeriodChange('month')}
+      >
+        Month
       </button>
     </div>
-  {:else if !hasAccess}
-    <div class="bg-kong-surface-dark rounded-xl overflow-hidden shadow-lg p-8 text-center">
-      <h1 class="text-xl md:text-2xl font-bold text-kong-text-primary mb-4">Access Denied</h1>
-      <p class="text-kong-text-secondary mb-6">You do not have permission to view this page</p>
-    </div>
-  {:else}
-    <header class="mb-8">
-      <h1 class="text-2xl md:text-3xl font-bold text-kong-text-primary mb-2">Trading Volume Leaderboard</h1>
-      <p class="text-kong-text-secondary">Top traders ranked by trading volume</p>
-    </header>
-    
-    <div class="mb-6">
-      <div class="inline-flex p-1 bg-kong-surface-dark rounded-lg">
-        <button 
-          class="px-4 py-2 rounded-md text-sm transition-all {selectedPeriod === 'day' ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-          on:click={() => handlePeriodChange('day')}
-        >
-          Day
-        </button>
-        <button 
-          class="px-4 py-2 rounded-md text-sm transition-all {selectedPeriod === 'week' ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-          on:click={() => handlePeriodChange('week')}
-        >
-          Week
-        </button>
-        <button 
-          class="px-4 py-2 rounded-md text-sm transition-all {selectedPeriod === 'month' ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-          on:click={() => handlePeriodChange('month')}
-        >
-          Month
-        </button>
-      </div>
-    </div>
-    
-    <div class="bg-kong-surface-dark rounded-xl overflow-hidden shadow-lg">
-      {#if isLoading}
-        <div class="p-8 flex justify-center items-center">
-          <div class="animate-pulse flex space-x-2">
-            <div class="w-2 h-2 bg-kong-primary rounded-full"></div>
-            <div class="w-2 h-2 bg-kong-primary rounded-full"></div>
-            <div class="w-2 h-2 bg-kong-primary rounded-full"></div>
+  </div>
+  
+  <div class="rounded-xl overflow-hidden">
+    {#if $isLoading}
+      <LoadingState message="Loading leaderboard data..." size="large" />
+    {:else if $error}
+      <ErrorState message={$error} size="large" retryHandler={() => leaderboardStore.loadLeaderboard(selectedPeriod)} />
+    {:else if $leaderboardData.length === 0}
+      <EmptyState 
+        message="No data available for this period" 
+        subMessage="Try selecting a different time period" 
+        icon={BarChart3} 
+        size="large"
+      />
+    {:else}
+      <div class="py-6 mb-4">
+        <!-- Stats Summary Banner (optional) -->
+        <div class="mb-8 flex justify-center">
+          <div class="flex bg-kong-surface-dark rounded-lg p-3 border border-kong-border text-kong-text-secondary text-sm">
+            <div class="px-4 flex items-center border-r border-kong-border">
+              <span class="mr-2">Total Volume:</span>
+              <span class="font-medium text-kong-accent-green">{formatVolume($totalVolume)}</span>
+            </div>
+            <div class="px-4 flex items-center">
+              <span class="mr-2">Traders:</span>
+              <span class="font-medium">{formatNumber($totalTraders)}</span>
+            </div>
           </div>
         </div>
-      {:else if error}
-        <div class="p-8 text-center">
-          <p class="text-kong-accent-red">{error}</p>
-          <button 
-            class="mt-4 px-4 py-2 bg-kong-primary hover:bg-kong-primary-hover rounded-md text-white text-sm transition-colors"
-            on:click={() => loadLeaderboard(selectedPeriod)}
-          >
-            Try Again
-          </button>
+      
+        <!-- Top 3 winners section heading -->
+        <div class="flex items-center justify-center mb-8">
+          <div class="h-px bg-kong-border flex-grow"></div>
+          <div class="px-4 text-kong-text-primary font-medium flex items-center">
+            <Trophy class="w-5 h-5 mr-2 text-yellow-400" />
+            <span>Top Traders</span>
+          </div>
+          <div class="h-px bg-kong-border flex-grow"></div>
         </div>
-      {:else if leaderboardData.length === 0}
-        <div class="p-8 text-center text-kong-text-secondary">
-          No data available for this period
-        </div>
-      {:else}
-        <table class="w-full table-auto">
-          <thead class="bg-kong-surface-light">
-            <tr>
-              <th class="px-6 py-4 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Rank</th>
-              <th class="px-6 py-4 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider">User</th>
-              <th class="px-6 py-4 text-right text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Trading Volume</th>
-              <th class="px-6 py-4 text-right text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Swaps</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-kong-border">
-            {#each leaderboardData as user, index}
-              <tr class="transition-colors hover:bg-kong-bg-light">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <span class="{index < 3 ? 'font-bold' : ''} {index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-kong-text-primary'}">
-                      #{index + 1}
-                    </span>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-kong-text-primary">
-                    {formatPrincipalId(user.principal_id)}
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right">
-                  <div class="text-sm font-medium text-kong-accent-green">
-                    {formatVolume(user.total_volume_usd)}
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right">
-                  <div class="text-sm text-kong-text-secondary">
-                    {user.swap_count}
-                  </div>
-                </td>
-              </tr>
+        
+        <!-- Champion (Rank #1) -->
+        {#if $leaderboardData.length > 0}
+          <div class="mb-12 flex justify-center">
+            <LeaderboardTraderCard
+              user={$leaderboardData[0]}
+              rank={1}
+              expanded={expandedRowIndex === 0}
+              tradedTokens={tradedTokens[0]}
+              loadingTokens={loadingTokens[0] || false}
+              tokenError={tokenErrors[0] || null}
+              userDetails={userDetails[0]}
+              loadingUserDetails={loadingUserDetails[0] || false}
+              width="500px"
+              on:click={() => toggleRowExpansion(0)}
+            />
+          </div>
+        {/if}
+
+        <!-- Runners-up (Ranks #2-3) -->
+        {#if $leaderboardData.length > 2}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12 justify-items-center">
+            {#each $leaderboardData.slice(1, 3) as user, sliceIndex}
+              {@const index = sliceIndex + 1}
+              <LeaderboardTraderCard
+                user={user}
+                rank={index + 1}
+                expanded={expandedRowIndex === index}
+                tradedTokens={tradedTokens[index]}
+                loadingTokens={loadingTokens[index] || false}
+                tokenError={tokenErrors[index] || null}
+                userDetails={userDetails[index]}
+                loadingUserDetails={loadingUserDetails[index] || false}
+                width="500px"
+                on:click={() => toggleRowExpansion(index)}
+              />
             {/each}
-          </tbody>
-        </table>
-      {/if}
-    </div>
-  {/if}
+          </div>
+        {/if}
+
+        <!-- Other traders (Rank #4 and below) -->
+        {#if $leaderboardData.length > 3}
+          <div class="flex items-center justify-center mb-6 mt-10">
+            <div class="h-px bg-kong-border flex-grow"></div>
+            <div class="px-4 text-kong-text-primary font-medium flex items-center">
+              <BarChart3 class="w-5 h-5 mr-2 text-kong-text-secondary" />
+              <span>Other Top Traders</span>
+            </div>
+            <div class="h-px bg-kong-border flex-grow"></div>
+          </div>
+          
+          <Panel 
+            variant="transparent" 
+            type="secondary" 
+            width="100%" 
+            height="auto" 
+            className="overflow-hidden border border-kong-border shadow-lg animate-fadeIn animation-delay-500" 
+            unpadded={true}
+          >
+            <table class="w-full table-auto">
+              <thead class="bg-kong-surface-light border-b border-kong-border">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider w-16">Rank</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Trader</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Volume</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Swaps</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-kong-border">
+                {#each $leaderboardData.slice(3) as user, sliceIndex}
+                  {@const index = sliceIndex + 3}
+                  <LeaderboardTraderCard
+                    user={user}
+                    rank={index + 1}
+                    expanded={expandedRowIndex === index}
+                    tradedTokens={tradedTokens[index]}
+                    loadingTokens={loadingTokens[index] || false}
+                    tokenError={tokenErrors[index] || null}
+                    userDetails={userDetails[index]}
+                    loadingUserDetails={loadingUserDetails[index] || false}
+                    on:click={() => toggleRowExpansion(index)}
+                  />
+                {/each}
+              </tbody>
+            </table>
+          </Panel>
+        {/if}
+      </div>
+    {/if}
+  </div>
 </div>
+
+<style>
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animation-delay-150 {
+    animation-delay: 150ms;
+  }
+  
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .shadow-inner-white {
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Add glow effect for top traders */
+  :global(.border-yellow-400) {
+    box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
+  }
+  
+  :global(.border-amber-600) {
+    box-shadow: 0 0 12px rgba(217, 119, 6, 0.25);
+  }
+  
+  :global(.border-gray-300) {
+    box-shadow: 0 0 12px rgba(209, 213, 219, 0.25);
+  }
+</style>

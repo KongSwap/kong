@@ -51,14 +51,14 @@
   }
 </script>
 
-<div class="p-2.5 border-t border-kong-pm-border bg-kong-surface-dark">
+<div class="p-2.5 bg-kong-bg-dark relative">
   {#if isConnected}
     <div class="flex gap-2 relative">
       <!-- Emoji button -->
       <button
         bind:this={emojiButton}
         on:click={toggleEmojiPicker}
-        class="shrink-0 p-2 text-kong-pm-text-secondary hover:text-kong-text-primary transition-colors rounded-full"
+        class="shrink-0 p-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-full"
       >
         <Smile class="w-5 h-5" />
       </button>
@@ -69,14 +69,14 @@
         bind:value={messageInput}
         on:keypress={handleKeyPress}
         placeholder="Message..."
-        class="flex-1 min-w-0 bg-kong-pm-dark text-kong-text-primary text-sm rounded-full px-3.5 py-2 border border-kong-pm-border focus:outline-none focus:border-kong-pm-accent transition-colors"
+        class="flex-1 min-w-0 bg-kong-bg-light text-kong-text-primary text-sm rounded-full px-3.5 py-2 border border-kong-border focus:outline-none focus:border-kong-accent-blue transition-colors"
       />
       
       <!-- Send button - only show when there's text -->
       {#if messageInput.trim()}
         <button
           on:click={handleSubmit}
-          class="shrink-0 p-2 rounded-full bg-kong-accent-purple text-white transition-opacity hover:opacity-90 flex items-center justify-center"
+          class="shrink-0 p-2 rounded-full bg-kong-primary text-white transition-opacity hover:opacity-90 flex items-center justify-center"
           transition:fade={{ duration: 100 }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -100,7 +100,7 @@
       {/if}
     </div>
   {:else}
-    <div class="text-center text-sm text-kong-pm-text-secondary py-2.5 border border-dashed border-kong-pm-border/30 rounded-md">
+    <div class="text-center text-sm text-kong-text-secondary py-2.5 border border-dashed border-kong-border/30 rounded-md">
       Connect your wallet to chat
     </div>
   {/if}

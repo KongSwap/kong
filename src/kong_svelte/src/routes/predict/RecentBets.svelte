@@ -70,7 +70,7 @@
 
 <Panel variant={panelVariant} className={className} unpadded>
   <div class="sticky top-4">
-    <h2 class="text-sm uppercase font-medium px-4">{title}</h2>
+    <h2 class="text-sm font-medium px-4 pt-4">{title}</h2>
     <div class="max-h-[{maxHeight}] overflow-y-auto scrollbar-thin relative">
       {#if bets.length > 0}
         {#each bets as bet}

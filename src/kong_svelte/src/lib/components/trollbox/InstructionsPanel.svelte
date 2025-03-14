@@ -14,7 +14,7 @@
   out:fade={{ duration: 150 }}
 >
   <div class="flex items-start gap-2">
-    <Info class="w-4 h-4 text-kong-accent-purple shrink-0 mt-0.5" />
+    <Info class="w-4 h-4 text-kong-primary shrink-0 mt-0.5" />
     
     <div class="flex-1">
       <div class="flex items-center justify-between mb-2">
@@ -33,12 +33,12 @@
       </p>
       
       <div class="bg-kong-pm-dark p-2 rounded-sm text-xs font-mono mb-2 overflow-x-auto">
-        <span class="text-kong-accent-blue">/</span><span class="text-kong-accent-purple">price</span> <span class="text-kong-text-primary">canister-id</span>
+        <span class="text-kong-accent-blue">/</span><span class="text-kong-primary">price</span> <span class="text-kong-text-primary">canister-id</span>
       </div>
       
       <p class="text-xs text-kong-text-primary mb-1">Example:</p>
       <div class="bg-kong-pm-dark p-2 rounded-sm text-xs font-mono mb-2 overflow-x-auto">
-        Check out <span class="text-kong-accent-blue">/</span><span class="text-kong-accent-purple">price</span> <span class="text-kong-text-primary">ryjl3-tyaaa-aaaaa-aaaba-cai</span>
+        Check out <span class="text-kong-accent-blue">/</span><span class="text-kong-primary">price</span> <span class="text-kong-text-primary">ryjl3-tyaaa-aaaaa-aaaba-cai</span>
       </div>
       
       <p class="text-xs text-kong-text-primary mb-1">Displays as:</p>

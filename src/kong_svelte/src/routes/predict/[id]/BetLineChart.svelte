@@ -5,6 +5,7 @@
     LinearScale,
     PointElement,
     LineElement,
+    BarElement,
     Title,
     Tooltip,
     Legend,
@@ -20,6 +21,7 @@
     LinearScale,
     PointElement,
     LineElement,
+    BarElement,
     Title,
     Tooltip,
     Legend,
@@ -33,7 +35,23 @@
   let chartCanvas: HTMLCanvasElement;
   let chart: Chart | null = null;
 
-  function createBetHistoryChart() {
+  // Safely convert BigInt to Number, handling potential precision loss
+  function safeConvertBigInt(value: any): number {
+    // If it's a BigInt
+    if (typeof value === 'bigint') {
+      // Convert to string first to avoid precision issues with very large values
+      return Number(value.toString());
+    }
+    // If it's already a number or something else, try to convert it
+    return Number(value);
+  }
+
+  // Format a date to YYYY-MM-DD string (for grouping by day)
+  function formatDateToDay(date: Date): string {
+    return date.toISOString().split('T')[0];
+  }
+
+  function createDailyBetChart() {
     if (!chartCanvas || !market || !marketBets.length) {
       console.log('Skipping chart creation - missing required data');
       return;
@@ -45,218 +63,150 @@
       chart.destroy();
     }
 
-    // Get all unique timestamps and sort them
-    const allTimestamps = [...new Set(marketBets.map(bet => Number(bet.timestamp)))].sort((a, b) => a - b);
-    
-    // Group timestamps into 15-minute intervals
-    const intervalMs = 15 * 60 * 1000; // 15 minutes in milliseconds
-    const groupedData: Map<number, { amounts: number[], timestamp: number }> = new Map();
-
-    // Get start and end times
-    const startTime = Math.floor((allTimestamps[0] / 1e6) / intervalMs) * intervalMs;
-    const marketEndTimeMs = Number(market.end_time) / 1e6;
-    const endTime = Math.min(
-      Math.ceil((allTimestamps[allTimestamps.length - 1] / 1e6) / intervalMs) * intervalMs,
-      Math.ceil(marketEndTimeMs / intervalMs) * intervalMs
-    );
-
-    // Create all intervals between start and end
-    for (let intervalStart = startTime; intervalStart <= endTime; intervalStart += intervalMs) {
-      groupedData.set(intervalStart, { 
-        amounts: new Array(market.outcomes.length).fill(0), 
-        timestamp: intervalStart * 1e6 
-      });
-    }
-
-    // Group bets into their respective intervals
-    for (const timestamp of allTimestamps) {
-      const timeMs = timestamp / 1e6;
-      const intervalStart = Math.floor(timeMs / intervalMs) * intervalMs;
-      const interval = groupedData.get(intervalStart)!;
-      
-      // Sum bet amounts for each outcome in this interval
-      marketBets
-        .filter(bet => Number(bet.timestamp) === timestamp)
-        .forEach(bet => {
-          interval.amounts[Number(bet.outcome_index)] += Number(bet.amount);
-        });
-    }
-
-    // Sort intervals by timestamp
-    const sortedIntervals = Array.from(groupedData.entries()).sort(([a], [b]) => a - b);
-
-    // Process bet data by outcome with cumulative amounts
-    const datasets = market.outcomes.map((outcome, index) => {
-      let cumulative = 0;
-      const data = [];
-
-      // Add initial zero point
-      data.push({
-        x: new Date(startTime),
-        y: 0,
-        betAmount: 0,
-        cumulative: 0
-      });
-
-      // Process each interval
-      for (const [intervalStart, { amounts }] of sortedIntervals) {
-        // Add to cumulative
-        cumulative += amounts[index];
-
-        // Always add a point with the current cumulative amount
-        data.push({
-          x: new Date(intervalStart),
-          y: Number(formatBalance(cumulative, 8)),
-          betAmount: amounts[index],
-          cumulative: cumulative
-        });
-      }
-
-      // Add final point at market end time with latest cumulative amount
-      const lastPoint = data[data.length - 1];
-      if (lastPoint && lastPoint.x.getTime() < marketEndTimeMs) {
-        data.push({
-          x: new Date(marketEndTimeMs),
-          y: lastPoint.y,
-          betAmount: 0,
-          cumulative: lastPoint.cumulative
-        });
-      }
-
-      return {
-        label: outcome,
-        data: data,
-        borderColor: index === 0 ? '#22c55e' : '#6366f1',
-        backgroundColor: index === 0 ? '#22c55e20' : '#6366f120',
-        fill: true,
-        tension: 0.4,
-        pointRadius: (ctx) => {
-          const point = ctx.raw as any;
-          return point.betAmount > 0 ? 4 : 0;
-        },
-        pointHoverRadius: 6,
-        pointBackgroundColor: index === 0 ? '#22c55e' : '#6366f1',
-        pointBorderColor: '#1e293b',
-        pointBorderWidth: 2,
-        pointHoverBackgroundColor: index === 0 ? '#22c55e' : '#6366f1',
-        pointHoverBorderColor: '#ffffff',
-        pointHoverBorderWidth: 2,
-        borderWidth: 2,
-        hoverBorderWidth: 3,
-        cubicInterpolationMode: 'monotone',
-      };
-    });
-
-    console.log('Final datasets:', datasets);
-
-    const config = {
-      type: 'line' as const,
-      data: {
-        datasets
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        defaults: {
-          font: {
-            family: '"Exo 2", sans-serif'
-          }
-        },
-        animation: {
-          duration: 750,
-          easing: 'easeInOutQuart' as const
-        },
-        hover: {
-          mode: 'index' as const,
-          intersect: false
-        },
-        interaction: {
-          mode: 'index' as const,
-          intersect: false
-        },
-        scales: {
-          x: {
-            type: 'time' as const,
-            time: {
-              unit: 'minute' as const,
-              stepSize: 15,
-              displayFormats: {
-                minute: 'MMM d, HH:mm'
-              }
-            },
-            grid: { display: false },
-            display: false
-          },
-          y: {
-            type: 'linear' as const,
-            position: 'right' as const,
-            beginAtZero: true,
-            title: {
-              display: false
-            },
-            grid: {
-              color: '#1e293b40'
-            },
-            ticks: {
-              color: '#94a3b8',
-              callback: function(value) {
-                return value.toLocaleString() + ' KONG';
-              }
-            }
-          }
-        },
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            enabled: true,
-            mode: 'index' as const,
-            intersect: false,
-            position: 'nearest' as const,
-            backgroundColor: '#1e293b',
-            titleColor: '#94a3b8',
-            bodyColor: '#e2e8f0',
-            borderColor: '#334155',
-            borderWidth: 1,
-            padding: 12,
-            displayColors: true,
-            itemSort: (a, b) => b.raw.y - a.raw.y,
-            callbacks: {
-              title: (items) => {
-                const date = new Date(items[0].parsed.x);
-                return date.toLocaleString();
-              },
-              label: (item) => {
-                const dataset = item.dataset.data[item.dataIndex] as any;
-                const betAmount = Number(formatBalance(dataset.betAmount || 0, 8));
-                const cumulative = Number(formatBalance(dataset.cumulative || dataset.y, 8));
-                
-                return [
-                  `${item.dataset.label}:`,
-                  `  • New Bet: ${betAmount.toLocaleString()} KONG`,
-                  `  • Total Pool: ${cumulative.toLocaleString()} KONG`
-                ];
-              }
-            }
-          }
-        }
-      }
-    };
-
     try {
-      console.log('Creating new chart with config:', config);
-      chart = new Chart(chartCanvas, config);
-      console.log('Chart created successfully');
+      console.log('Creating daily bet amount chart');
+      
+      // Filter valid bets that have timestamp and amount
+      const validBets = marketBets.filter(bet => {
+        return bet && bet.timestamp && bet.hasOwnProperty('amount');
+      });
+
+      if (validBets.length === 0) {
+        console.log("No valid bets found with amounts");
+        return;
+      }
+
+      console.log(`Processing ${validBets.length} bets for chart`);
+      
+      // Normalize timestamps and extract amounts
+      const processedBets = validBets.map(bet => {
+        // Safe conversion from BigInt to Number
+        const rawTimestamp = safeConvertBigInt(bet.timestamp);
+        const betAmount = safeConvertBigInt(bet.amount);
+        
+        // Determine if timestamp is in nanoseconds (too large for a reasonable date)
+        let normalizedTimestamp = rawTimestamp;
+        if (normalizedTimestamp > 1e15) { // If timestamp is too large (likely nanoseconds)
+          normalizedTimestamp = Math.floor(normalizedTimestamp / 1e6);
+        }
+        
+        // Create a Date object and get the day string
+        const betDate = new Date(normalizedTimestamp);
+        const betDay = formatDateToDay(betDate);
+        
+        return {
+          date: betDate,
+          day: betDay,
+          amount: betAmount
+        };
+      });
+      
+      // Group bets by day and sum amounts
+      const dailyBets = processedBets.reduce((acc, bet) => {
+        if (!acc[bet.day]) {
+          acc[bet.day] = {
+            day: bet.day,
+            date: bet.date,
+            totalAmount: 0
+          };
+        }
+        acc[bet.day].totalAmount += bet.amount;
+        return acc;
+      }, {} as Record<string, { day: string, date: Date, totalAmount: number }>);
+      
+      // Convert to array and sort by date
+      const dailyBetsArray = Object.values(dailyBets).sort((a, b) => 
+        a.date.getTime() - b.date.getTime()
+      );
+      
+      console.log('Daily bet amounts:', dailyBetsArray);
+      
+      // Create data points for the chart
+      const dataPoints = dailyBetsArray.map(daily => ({
+        x: daily.date,
+        y: daily.totalAmount / 100000000 // Convert from token units (assumed 8 decimals)
+      }));
+      
+      const ctx = chartCanvas.getContext("2d");
+      if (!ctx) {
+        console.error('Failed to get canvas context');
+        return;
+      }
+
+      // Determine the appropriate time unit (should be 'day' for daily data)
+      const startTimeMs = dataPoints[0]?.x.getTime() || Date.now();
+      const endTimeMs = dataPoints[dataPoints.length - 1]?.x.getTime() || Date.now();
+      const timeUnit = determineTimeUnit(startTimeMs, endTimeMs);
+      
+      // Create chart with type assertion to satisfy TypeScript
+      chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          datasets: [
+            {
+              label: "Daily Bet Amount",
+              data: dataPoints,
+              backgroundColor: "rgba(54, 162, 235, 0.7)",
+              borderColor: "rgba(54, 162, 235, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: "time",
+              time: {
+                unit: 'day',
+                displayFormats: {
+                  day: "MMM d",
+                },
+              },
+              title: {
+                display: true,
+                text: "Date",
+              },
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Amount (KONG)",
+              },
+              ticks: {
+                callback: function(value) {
+                  return value.toFixed(2) + " KONG";
+                },
+              },
+            },
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const yValue = context.raw as any;
+                  const amount = typeof yValue === 'object' && yValue !== null ? 
+                    Number(yValue.y) : Number(yValue);
+                  return `Amount: ${amount.toFixed(2)} KONG`;
+                },
+              },
+            },
+            legend: {
+              display: true,
+            },
+          },
+        },
+      } as any); // Type assertion to resolve TypeScript errors
     } catch (error) {
       console.error('Failed to create chart:', error);
     }
   }
 
   // Watch for changes in market or bets
-  $: if (market && marketBets) {
+  $: if (market && marketBets && marketBets.length > 0) {
     setTimeout(() => {
-      createBetHistoryChart();
+      createDailyBetChart();
     }, 0);
   }
 
@@ -264,10 +214,17 @@
     // Add window resize handler
     const handleResize = () => {
       if (chart) {
-        createBetHistoryChart();
+        createDailyBetChart();
       }
     };
     window.addEventListener('resize', handleResize);
+
+    // Create chart on mount if data is available
+    if (market && marketBets && marketBets.length > 0) {
+      setTimeout(() => {
+        createDailyBetChart();
+      }, 100); // Slightly longer delay to ensure DOM is ready
+    }
 
     return () => {
       window.removeEventListener('resize', handleResize);
@@ -282,6 +239,18 @@
       chart.destroy();
     }
   });
+
+  // Helper function to determine the appropriate time unit based on the data range
+  function determineTimeUnit(startTimeMs: number, endTimeMs: number): 'second' | 'minute' | 'hour' | 'day' | 'month' | 'year' {
+    const rangeMs = endTimeMs - startTimeMs;
+    
+    if (rangeMs < 1000 * 60 * 5) return 'second'; // Less than 5 minutes: seconds
+    if (rangeMs < 1000 * 60 * 60 * 2) return 'minute'; // Less than 2 hours: minutes
+    if (rangeMs < 1000 * 60 * 60 * 24 * 2) return 'hour'; // Less than 2 days: hours
+    if (rangeMs < 1000 * 60 * 60 * 24 * 30) return 'day'; // Less than a month: days
+    if (rangeMs < 1000 * 60 * 60 * 24 * 30 * 6) return 'month'; // Less than 6 months: months
+    return 'year'; // More than 6 months: years
+  }
 </script>
 
 <div class="h-[300px]">

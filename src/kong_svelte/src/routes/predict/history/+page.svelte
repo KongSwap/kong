@@ -158,107 +158,98 @@
         </Panel>
       </div>
 
-      <!-- Active Bets -->
-      {#if history.active_bets.length > 0}
+      <!-- Combined Bets Table -->
+      {#if (history && (history.active_bets.length > 0 || (history.resolved_bets && history.resolved_bets.length > 0)))}
         <div class="mb-8">
-          <h2 class="text-xl font-bold mb-4">Active Bets</h2>
-          <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {#each history.active_bets as bet}
-              <Panel className="!rounded group hover:bg-kong-bg-dark/10 transition-all duration-200 flex flex-col">
-                <div class="">
-                  <div class="flex flex-col gap-4">
-                    <div>
-                      <button
-                        class="text-sm sm:text-base line-clamp-2 font-medium mb-2 text-kong-text-primary text-left group-hover:text-kong-text-accent-green transition-colors relative min-h-[2.5rem] sm:min-h-[3rem] w-full"
-                        title={bet.market.question}
-                        on:click={() => goto(`/predict/${bet.market.id}`)}
-                      >
-                        <span class="block pr-3">{bet.market.question}</span>
-                        <ArrowUpRight
-                          class="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity absolute top-0 right-0"
-                        />
-                      </button>
-                      <div class="flex flex-wrap gap-2 items-center">
-                        <span class="text-sm px-3 py-1 rounded-full bg-kong-bg-dark">
+          <h2 class="text-xl font-bold mb-4">Betting History</h2>
+          <Panel className="!rounded overflow-x-auto">
+            <table class="w-full min-w-full">
+              <thead>
+                <tr class="border-b border-kong-bg-dark text-left">
+                  <th class="p-4 text-kong-text-secondary font-medium">Market</th>
+                  <th class="p-4 text-kong-text-secondary font-medium">Outcome</th>
+                  <th class="p-4 text-kong-text-secondary font-medium">Status</th>
+                  <th class="p-4 text-kong-text-secondary font-medium text-right">Bet Amount</th>
+                  <th class="p-4 text-kong-text-secondary font-medium text-right">Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#if history.active_bets.length > 0}
+                  {#each history.active_bets as bet}
+                    <tr class="border-b border-kong-bg-dark hover:bg-kong-bg-dark/10 transition-colors">
+                      <td class="p-4">
+                        <button
+                          class="text-sm sm:text-base line-clamp-2 font-medium text-kong-text-primary text-left hover:text-kong-text-accent-green transition-colors flex items-center gap-1 max-w-md"
+                          title={bet.market.question}
+                          on:click={() => goto(`/predict/${bet.market.id}`)}
+                        >
+                          <span class="block">{bet.market.question}</span>
+                          <ArrowUpRight class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                        </button>
+                      </td>
+                      <td class="p-4">
+                        <span class="text-sm px-3 py-1 rounded-full bg-kong-bg-dark inline-block">
                           {bet.outcome_text}
                         </span>
+                      </td>
+                      <td class="p-4">
                         <span class="text-sm font-medium text-yellow-400">
                           Pending
                         </span>
-                      </div>
-                    </div>
-                    <div class="flex justify-between items-end pt-2 border-t border-kong-bg-dark">
-                      <div class="text-sm text-kong-text-secondary">
-                        Bet Amount
-                        <div class="text-base font-medium text-kong-text-primary">
-                          {formatBalance(bet.bet_amount, 8, 2)} KONG
-                        </div>
-                      </div>
-                      <div class="text-sm text-kong-text-secondary text-right">
-                        Potential Win
-                        <div class="text-base font-medium text-kong-accent-green">
-                          {formatBalance(calculatePotentialWin(bet), 8, 2)} KONG
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Panel>
-            {/each}
-          </div>
-        </div>
-      {/if}
+                      </td>
+                      <td class="p-4 text-right font-medium">
+                        {formatBalance(bet.bet_amount, 8, 2)} KONG
+                      </td>
+                      <td class="p-4 text-right font-medium text-kong-accent-green">
+                        <span class="text-sm text-kong-text-secondary block">Potential Win</span>
+                        {formatBalance(calculatePotentialWin(bet), 8, 2)} KONG
+                      </td>
+                    </tr>
+                  {/each}
+                {/if}
 
-      <!-- Resolved Bets -->
-      {#if history.resolved_bets && history.resolved_bets.length > 0}
-        <div>
-          <h2 class="text-xl font-bold mb-4">Resolved Bets</h2>
-          <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {#each history.resolved_bets as bet}
-              <Panel className="!rounded group hover:bg-kong-bg-dark/10 transition-all duration-200 flex flex-col">
-                <div class="p-4">
-                  <div class="flex flex-col gap-4">
-                    <div>
-                      <button
-                        class="text-sm sm:text-base line-clamp-2 font-medium mb-2 text-kong-text-primary text-left group-hover:text-kong-text-accent-green transition-colors relative min-h-[2.5rem] sm:min-h-[3rem] w-full"
-                        title={bet.market.question}
-                        on:click={() => goto(`/predict/${bet.market.id}`)}
-                      >
-                        <span class="block pr-3">{bet.market.question}</span>
-                        <ArrowUpRight
-                          class="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity absolute top-0 right-0"
-                        />
-                      </button>
-                      <div class="flex flex-wrap gap-2 items-center">
-                        <span class="text-sm px-3 py-1 rounded-full bg-kong-bg-dark">
+                {#if history.resolved_bets && history.resolved_bets.length > 0}
+                  {#each history.resolved_bets as bet}
+                    <tr class="border-b border-kong-bg-dark hover:bg-kong-bg-dark/10 transition-colors">
+                      <td class="p-4">
+                        <button
+                          class="text-sm sm:text-base line-clamp-2 font-medium text-kong-text-primary text-left hover:text-kong-text-accent-green transition-colors flex items-center gap-1 max-w-md"
+                          title={bet.market.question}
+                          on:click={() => goto(`/predict/${bet.market.id}`)}
+                        >
+                          <span class="block">{bet.market.question}</span>
+                          <ArrowUpRight class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                        </button>
+                      </td>
+                      <td class="p-4">
+                        <span class="text-sm px-3 py-1 rounded-full bg-kong-bg-dark inline-block">
                           {bet.outcome_text}
                         </span>
+                      </td>
+                      <td class="p-4">
                         <span class="text-sm font-medium {getOutcomeStatus(bet).color}">
                           {getOutcomeStatus(bet).text}
                         </span>
-                      </div>
-                    </div>
-                    <div class="flex justify-between items-end pt-2 border-t border-kong-bg-dark">
-                      <div class="text-sm text-kong-text-secondary">
-                        Bet Amount
-                        <div class="text-base font-medium text-kong-text-primary">
-                          {formatBalance(bet.bet_amount, 8, 2)} KONG
-                        </div>
-                      </div>
-                      {#if bet.winnings && bet.winnings.length > 0}
-                        <div class="text-sm text-kong-text-secondary text-right">
-                          Won
-                          <div class="text-base font-medium text-kong-accent-green">
+                      </td>
+                      <td class="p-4 text-right font-medium">
+                        {formatBalance(bet.bet_amount, 8, 2)} KONG
+                      </td>
+                      <td class="p-4 text-right font-medium">
+                        <span class="text-sm text-kong-text-secondary block">Winnings</span>
+                        {#if bet.winnings && bet.winnings.length > 0}
+                          <span class="text-kong-accent-green">
                             {formatBalance(bet.winnings[0], 8, 2)} KONG
-                          </div>
-                        </div>
-                      {/if}
-                    </div>
-                  </div>
-                </div>
-              </Panel>
-            {/each}
-          </div>
+                          </span>
+                        {:else}
+                          <span class="text-kong-text-secondary">-</span>
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                {/if}
+              </tbody>
+            </table>
+          </Panel>
         </div>
       {/if}
     {/if}

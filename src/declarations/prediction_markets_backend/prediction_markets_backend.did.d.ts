@@ -166,6 +166,7 @@ export interface _SERVICE {
     [RevokeDelegationRequest],
     Result_2
   >,
+  'is_admin' : ActorMethod<[Principal], boolean>,
   'place_bet' : ActorMethod<[bigint, bigint, bigint], Result_3>,
   'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_4>,
   'resolve_via_oracle' : ActorMethod<

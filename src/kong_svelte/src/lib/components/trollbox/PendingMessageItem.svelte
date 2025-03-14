@@ -75,7 +75,7 @@
             ${canisterId.slice(0, 5).toUpperCase()}
           </span>
           <span class="flex items-center gap-0.5">
-            <span class="w-2 h-2 rounded-full border border-kong-pm-text-secondary/40 border-t-transparent animate-spin ml-1"></span>
+            <span class="w-2 h-2 rounded-full border border-kong-text-secondary/40 border-t-transparent animate-spin ml-1"></span>
           </span>
         </span>`;
       }
@@ -102,7 +102,7 @@
         ? "text-kong-text-accent-green" 
         : direction === "down" 
           ? "text-kong-text-accent-red" 
-          : "text-kong-pm-text-secondary";
+          : "text-kong-text-secondary";
       
       const formattedChange = priceChange.startsWith("-") ? priceChange : `+${priceChange}`;
       
@@ -127,12 +127,12 @@
 
 <div class="flex flex-col items-end" transition:fade={{ duration: 150 }}>
   <div class="flex items-end gap-1.5 max-w-[85%]">
-    <div class="bg-kong-accent-purple/10 text-white rounded-t-md rounded-bl-md rounded-br-sm px-3 py-2 opacity-70 relative">
+    <div class="bg-kong-primary/10 text-white rounded-t-md rounded-bl-md rounded-br-sm px-3 py-2 opacity-70 relative">
       <p class="text-sm break-words leading-relaxed">{@html processedMessage}</p>
       
-      <div class="flex items-center gap-1 text-xs text-kong-pm-text-secondary mt-0.5">
+      <div class="flex items-center gap-1 text-xs text-kong-text-secondary mt-0.5">
         <span class="opacity-70">Sending</span>
-        <span class="w-2 h-2 rounded-full border border-kong-pm-text-secondary/40 border-t-transparent animate-spin"></span>
+        <span class="w-2 h-2 rounded-full border border-kong-text-secondary/40 border-t-transparent animate-spin"></span>
         <span class="ml-0.5 whitespace-nowrap">{timeString}</span>
       </div>
     </div>

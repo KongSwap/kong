@@ -2,6 +2,9 @@
   import { ArrowUp, ArrowDown, ArrowUpDown, Flame, TrendingUp, Wallet } from "lucide-svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { onMount } from "svelte";
+  import { themeStore } from "$lib/stores/themeStore";
+  import { getThemeById } from "$lib/themes/themeRegistry";
+  import type { ThemeColors } from "$lib/themes/baseTheme";
 
   const {
     data = [],
@@ -42,6 +45,19 @@
   let sortColumn = $state(defaultSort.column || '');
   let sortDirection = $state<'asc' | 'desc'>(defaultSort.direction || 'desc');
   let totalPages = $derived(Math.max(1, Math.ceil(totalItems / itemsPerPage)));
+
+  // Theme-related properties - use functions to compute values on demand
+  function getCurrentTheme() {
+    return getThemeById($themeStore);
+  }
+
+  function getThemeColors(): ThemeColors {
+    return getCurrentTheme().colors as ThemeColors;
+  }
+
+  function isTableTransparent(): boolean {
+    return getThemeColors().statsTableTransparent === true;
+  }
 
   // Column map for optimized lookups
   let columnMap = $state(new Map());
@@ -231,10 +247,10 @@
           {/each}
         </tr>
       </thead>
-      <tbody>
+      <tbody class={isTableTransparent() ? 'transparent-tbody' : 'solid-tbody'}>
         {#each displayData as row (row[rowKey])}
           <tr
-            class="h-[44px] border-b border-kong-border/50 hover:bg-kong-hover-bg-light/60 transition-colors duration-200 
+            class="h-[44px] border-b border-kong-border/50 hover:bg-kong-hover-bg-light transition-colors duration-200 
               {onRowClick ? 'cursor-pointer' : ''} 
               {rowFlashStates.get(row[rowKey])?.class || ''} 
               {isKongRow?.(row) ? 'bg-kong-primary/5 hover:bg-kong-primary/15 border-kong-primary/20' : ''}"
@@ -348,6 +364,19 @@
   th {
     position: relative;
     background-color: var(--kong-bg-dark);
+  }
+  
+  /* Table background styling based on theme */
+  .transparent-tbody tr {
+    background-color: transparent;
+  }
+  
+  .solid-tbody tr {
+    background-color: var(--kong-bg-dark);
+  }
+  
+  .solid-tbody tr:nth-child(even) {
+    background-color: var(--kong-bg-light);
   }
   
   .flash-green {

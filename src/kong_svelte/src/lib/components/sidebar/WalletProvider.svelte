@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { walletsList } from '@windoge98/plug-n-play';
-  import { createEventDispatcher, onDestroy } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import { auth, selectedWalletId } from "$lib/services/auth";
   import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { browser } from "$app/environment";
 
   interface WalletInfo {
     id: string;
@@ -27,7 +27,29 @@
   let plugDialog: any;
   let dialogOpen = false;
   let abortController = new AbortController();
-  let isOpen = true
+  let isOnMobile = false;
+  let filteredWallets = walletList;
+  
+  export let isOpen = false;
+
+  function closeModal() {
+    isOpen = false;
+    dispatch('close');
+  }
+
+  onMount(() => {
+    // Only run browser-specific code after component is mounted
+    if (browser) {
+      isOnMobile = isMobileBrowser();
+      updateFilteredWallets();
+    }
+  });
+
+  function updateFilteredWallets() {
+    if (browser) {
+      filteredWallets = isPlugAvailable() ? walletList : walletList.filter(w => w.id !== 'plug');
+    }
+  }
 
   onDestroy(() => {
     // Clean up any pending connection state
@@ -37,12 +59,8 @@
     }
   });
 
-  const isOnMobile = isMobileBrowser();
-
-  // Filter out Plug wallet on mobile unless it's a PWA
-
   async function handleConnect(walletId: string) {
-    if (!walletId || connecting) return;
+    if (!walletId || connecting || !browser) return;
 
     // Reset abort controller for new connection attempt
     abortController = new AbortController();
@@ -77,7 +95,10 @@
       await auth.connect(walletId);
       clearTimeout(timeoutId);
       
-      if ($auth.isConnected) dispatch("login");
+      if ($auth.isConnected) {
+        dispatch("login");
+        closeModal();
+      }
     } catch (error) {
       if (!abortController.signal.aborted) {
         console.error("Failed to connect wallet:", error);
@@ -89,19 +110,15 @@
       connecting = false;
     }
   }
-
-  $: filteredWallets = isPlugAvailable() ? walletList : walletList.filter(w => w.id !== 'plug');
 </script>
 
 <Modal
   {isOpen}
   title="Connect Wallet"
-  onClose={() => {
-    sidebarStore.collapse();
-  }}
+  onClose={closeModal}
   width="440px"
   height="auto"
-  variant="transparent"
+  variant="solid"
   closeOnEscape={!connecting}
   closeOnClickOutside={!connecting}
 >

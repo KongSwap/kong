@@ -29,10 +29,22 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { fetchPoolTotals } from "$lib/api/pools";
+  import { themeStore } from "$lib/stores/themeStore";
+  import { getThemeById } from "$lib/themes/themeRegistry";
+  import type { ThemeColors } from "$lib/themes/baseTheme";
 
   const ITEMS_PER_PAGE = 50;
   const REFRESH_INTERVAL = 10000;
   const SEARCH_DEBOUNCE = 300; // 300ms debounce for search
+  
+  // Get current theme - using state to track theme changes
+  let currentThemeId = $state($themeStore);
+
+  // Use computed values for theme-related properties
+  $effect(() => {
+    // This effect only runs when themeStore changes
+    currentThemeId = $themeStore;
+  });
   
   // Initialize stores with loading state
   const tokenData = writable<FE.Token[]>([]);
@@ -50,6 +62,15 @@
     total_fees_24h: 0
   });
 
+  // Compute theme properties when needed instead of storing in state
+  function getCurrentThemeColors(): ThemeColors {
+    return getThemeById(currentThemeId).colors as ThemeColors;
+  }
+
+  function isTableTransparent(): boolean {
+    return getCurrentThemeColors().statsTableTransparent === true;
+  }
+  
   // Track price changes for flash animations
   function updatePriceFlash(token: FE.Token) {
     const currentPrice = Number(token.metrics?.price || 0);
@@ -119,18 +140,20 @@
 
   // Debounce the search term
   let searchTimeout: ReturnType<typeof setTimeout>;
-  $: {
+  
+  // We need to convert this reactive statement to use $effect for runes mode
+  $effect(() => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
       debouncedSearchTerm.set($searchTerm);
     }, SEARCH_DEBOUNCE);
-  }
+  });
 
   // Refresh data periodically
   let refreshInterval: ReturnType<typeof setInterval>;
 
   // Single reactive statement to handle all refresh triggers
-  $: if (browser) {
+  $effect(() => {
     // Clear any existing interval
     if (refreshInterval) {
       clearInterval(refreshInterval);
@@ -138,32 +161,36 @@
     }
 
     // Initial load or navigation to /stats
-    if ($page.url.pathname === '/stats') {
+    if (browser && $page.url.pathname === '/stats') {
       refreshData(true); // Initial load should show loading
       refreshInterval = setInterval(() => refreshData(false), REFRESH_INTERVAL);
     }
-  }
+  });
 
   // Handle page/search changes
-  $: if (browser && ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
-    const isPageChangeEvent = $isPageChange;
-    refreshData(isPageChangeEvent);
-    if (isPageChangeEvent) {
-      isPageChange.set(false);
+  $effect(() => {
+    if (browser && ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
+      const isPageChangeEvent = $isPageChange;
+      refreshData(isPageChangeEvent);
+      if (isPageChangeEvent) {
+        isPageChange.set(false);
+      }
     }
-  }
+  });
 
   // Keep URL updates in a separate reactive statement
-  $: if (browser && ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('page', $currentPage.toString());
-    if ($debouncedSearchTerm) {
-      url.searchParams.set('search', $debouncedSearchTerm);
-    } else {
-      url.searchParams.delete('search');
+  $effect(() => {
+    if (browser && ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('page', $currentPage.toString());
+      if ($debouncedSearchTerm) {
+        url.searchParams.set('search', $debouncedSearchTerm);
+      } else {
+        url.searchParams.delete('search');
+      }
+      goto(url.toString(), { replaceState: true, keepFocus: true });
     }
-    goto(url.toString(), { replaceState: true, keepFocus: true });
-  }
+  });
 
   // Cleanup interval on component destroy
   onDestroy(() => {
@@ -200,26 +227,30 @@
   const sortDirection = writable<"asc" | "desc">("desc");
 
   // Reset to page 1 when search term changes
-  $: if ($debouncedSearchTerm !== undefined) {
-    currentPage.set(1);
-  }
+  $effect(() => {
+    if ($debouncedSearchTerm !== undefined) {
+      currentPage.set(1);
+    }
+  });
 
   // Favorites state - needs to be a store since it's shared with other components
   const favoriteTokenIds = writable<string[]>([]);
   const favoriteCount = writable<number>(0);
 
   // Update favorite tokens when auth changes
-  $: if ($auth.isConnected) {
-    FavoriteService.getFavoriteCount().then((count) => {
-      favoriteCount.set(count);
-    });
-    FavoriteService.loadFavorites().then((favorites) => {
-      favoriteTokenIds.set(favorites);
-    });
-  } else {
-    favoriteTokenIds.set([]);
-    favoriteCount.set(0);
-  }
+  $effect(() => {
+    if ($auth.isConnected) {
+      FavoriteService.getFavoriteCount().then((count) => {
+        favoriteCount.set(count);
+      });
+      FavoriteService.loadFavorites().then((favorites) => {
+        favoriteTokenIds.set(favorites);
+      });
+    } else {
+      favoriteTokenIds.set([]);
+      favoriteCount.set(0);
+    }
+  });
 
   // Filtered tokens store - only apply favorites filter here
   const filteredTokens = derived<[
@@ -317,7 +348,7 @@
     class="z-10 flex flex-col lg:flex-row w-full mx-auto gap-4 max-w-[1300px] h-[calc(100vh-15rem)]"
   >
     <Panel
-      variant="transparent"
+      variant={isTableTransparent() ? "transparent" : "solid"}
       type="main"
       className="content-panel flex-1 !p-0"
       height="100%"

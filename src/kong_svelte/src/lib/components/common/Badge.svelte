@@ -38,10 +38,10 @@
 
   // Size styles
   const sizeStyles = {
-    xs: "text-xs px-1 py-0.5",
-    sm: "text-xs px-1.5 py-0.5",
-    md: "text-sm px-2 py-1",
-    lg: "text-sm px-2.5 py-1.5"
+    xs: "text-xs px-1 py-0.5 px-2",
+    sm: "text-xs px-1.5 py-0.5 px-2",
+    md: "text-sm px-2 py-1 px-2",
+    lg: "text-sm px-2.5 py-1.5 px-2"
   };
 
   // Computed classes
@@ -58,7 +58,7 @@
 
 <span 
   class={badgeClasses}
-  use:tooltip={tooltipText ? { text: tooltipText, direction: tooltipDirection } : null}
+  use:tooltip={tooltipText ? { text: tooltipText, direction: tooltipDirection } : undefined}
 >
   {#if icon}<span class="inline-block">{icon}</span>{/if}
   <slot></slot>

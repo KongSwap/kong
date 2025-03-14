@@ -151,7 +151,7 @@
   }
 
   // Improved component lifecycle management
-  onMount(async () => {
+  onMount(() => {
     isLoading = true;
     
     const unsubscribe = auth.subscribe(async authState => {

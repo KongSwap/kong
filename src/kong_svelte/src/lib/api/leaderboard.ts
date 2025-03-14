@@ -1,11 +1,13 @@
 import { API_URL } from "./index";
 import { browser } from "$app/environment";
+import { UserSerializer } from "../serializers/UserSerializer";
 
 export interface LeaderboardEntry {
   user_id: number;
   principal_id: string;
   total_volume_usd: number;
   swap_count: number;
+  traded_token_canister_ids?: string[];
 }
 
 export interface VolumeLeaderboardResponse {
@@ -38,5 +40,17 @@ export async function fetchVolumeLeaderboard(
     throw new Error(`Failed to fetch leaderboard: ${response.statusText}`);
   }
   
-  return response.json();
+  const rawData = await response.json();
+  
+  // Process the response with UserSerializer to clean principal IDs
+  if (Array.isArray(rawData)) {
+    return UserSerializer.serializeUsers(rawData) as LeaderboardEntry[];
+  } else if (rawData && typeof rawData === 'object' && Array.isArray(rawData.items)) {
+    return {
+      ...rawData,
+      items: UserSerializer.serializeUsers(rawData.items) as LeaderboardEntry[]
+    };
+  }
+  
+  return rawData;
 }

@@ -3,6 +3,7 @@
   import { fade, slide } from "svelte/transition";
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
+  import { notificationsStore } from "$lib/stores/notificationsStore";
   import { onMount, onDestroy } from "svelte";
   import {
     Droplet,
@@ -18,6 +19,9 @@
     PiggyBank,
     TrendingUpDown,
     Search,
+    Trophy,
+    Palette,
+    Bell,
   } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/stores/tokenStore";
@@ -34,6 +38,48 @@
   import MobileMenuItem from "./MobileMenuItem.svelte";
   import { searchStore } from "$lib/stores/searchStore";
   import { userTokens } from "$lib/stores/userTokens";
+  import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
+  import { getThemeById } from "$lib/themes/themeRegistry";
+  import { writable } from 'svelte/store';
+  import NavbarButton from "./NavbarButton.svelte";
+  import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
+
+  // Get current theme details including colorScheme
+  $: currentTheme = browser && $themeStore ? getThemeById($themeStore) : null;
+  $: shouldInvertLogo = currentTheme?.colors?.logoInvert === 1;
+  $: isWin98Theme = browser && $themeStore === 'win98light';
+  
+  // Get button theme variables for current theme
+  $: buttonBg = currentTheme?.colors?.buttonBg;
+  $: buttonHoverBg = currentTheme?.colors?.buttonHoverBg;
+  $: buttonText = currentTheme?.colors?.buttonText;
+  $: buttonBorder = currentTheme?.colors?.buttonBorder;
+  $: buttonBorderColor = currentTheme?.colors?.buttonBorderColor;
+  $: buttonShadow = currentTheme?.colors?.buttonShadow;
+  
+  // Get primary button theme variables
+  $: primaryButtonBg = currentTheme?.colors?.primaryButtonBg;
+  $: primaryButtonHoverBg = currentTheme?.colors?.primaryButtonHoverBg;
+  $: primaryButtonText = currentTheme?.colors?.primaryButtonText;
+  $: primaryButtonBorder = currentTheme?.colors?.primaryButtonBorder;
+  $: primaryButtonBorderColor = currentTheme?.colors?.primaryButtonBorderColor;
+  
+  // Reactively update logo when theme changes
+  $: if (browser && $themeStore) {
+    // Small delay to ensure CSS variables are updated
+    setTimeout(updateLogoSrc, 50);
+  }
+
+  // Create a writable store for the logo source
+  const logoSrcStore = writable('/titles/logo-white-wide.png');
+  
+  // Update the logo when theme changes
+  function updateLogoSrc() {
+    if (browser) {
+      const cssLogoPath = getComputedStyle(document.documentElement).getPropertyValue('--logo-path').trim();
+      logoSrcStore.set(cssLogoPath || '/titles/logo-white-wide.png');
+    }
+  }
 
   let showSettings = false;
   let isMobile = false;
@@ -41,13 +87,31 @@
   let navOpen = false;
   let closeTimeout: ReturnType<typeof setTimeout>;
   let activeDropdown: "swap" | "earn" | "stats" | null = null;
+  let showWalletSidebar = false;
+  let showWalletProvider = false;
+  let walletSidebarActiveTab: "notifications" | "chat" | "wallet" = "notifications";
+
+  // Toggle wallet sidebar
+  function toggleWalletSidebar(tab: "notifications" | "chat" | "wallet" = "notifications") {
+    walletSidebarActiveTab = tab;
+    showWalletSidebar = !showWalletSidebar;
+  }
+
+  // Close wallet sidebar
+  function closeWalletSidebar() {
+    showWalletSidebar = false;
+  }
+
+  function closeWalletProvider() {
+    showWalletProvider = false;
+  }
 
   // Filter tabs based on DFX_NETWORK
   const allTabs = ["swap", "predict", "earn", "stats"] as const;
   $: tabs =
     process.env.DFX_NETWORK !== "ic"
       ? allTabs
-      : allTabs.filter((tab) => tab !== "predict");
+      : allTabs;
 
   const dataOptions = [
     {
@@ -64,6 +128,13 @@
       icon: ChartScatter,
       comingSoon: false,
     },
+    {
+      label: "Leaderboards",
+      description: "View trading leaderboards",
+      path: "/stats/leaderboard",
+      icon: Trophy,
+      comingSoon: false,
+    },
   ];
 
   function handleOpenSettings() {
@@ -71,7 +142,17 @@
   }
 
   function handleConnect() {
-    sidebarStore.toggleOpen();
+    // If user is not authenticated, show the wallet provider
+    if (!$auth.isConnected) {
+      showWalletProvider = true;
+      return;
+    }
+    
+    // Otherwise, show the wallet sidebar
+    // If there are unread notifications, open the notifications tab first
+    // Otherwise, open the wallet tab
+    const activeTab = $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
+    toggleWalletSidebar(activeTab);
   }
 
   function checkMobile() {
@@ -79,14 +160,24 @@
   }
 
   onMount(() => {
+    // Initially set logo src
+    updateLogoSrc();
+    
+    // Subscribe to theme changes
+    const unsubscribe = themeStore.subscribe(() => {
+      // Add a small delay to ensure CSS variables are updated
+      setTimeout(updateLogoSrc, 50);
+    });
+    
     checkMobile();
     window.addEventListener("resize", checkMobile);
-  });
-
-  onDestroy(() => {
-    if (browser) {
-      window.removeEventListener("resize", checkMobile);
-    }
+    
+    return () => {
+      unsubscribe();
+      if (browser) {
+        window.removeEventListener("resize", checkMobile);
+      }
+    };
   });
 
   function onTabChange(tab: "swap" | "earn" | "stats" | "predict") {
@@ -101,7 +192,7 @@
 
     try {
       await navigator.clipboard.writeText(text);
-      toastStore.success("Principal ID copied");
+      toastStore.info("Principal ID copied");
     } catch (err) {
       toastStore.error("Failed to copy Principal ID");
     }
@@ -200,7 +291,7 @@
           class="h-[34px] w-[34px] flex items-center justify-center"
           on:click={() => (navOpen = !navOpen)}
         >
-          <Menu size={20} color={$themeStore === "dark" ? "white" : "black"} />
+          <Menu size={20} color={shouldInvertLogo ? "black" : "white"} />
         </button>
       {:else}
         <button
@@ -208,10 +299,10 @@
           on:click={() => goto("/swap")}
         >
           <img
-            src="/titles/logo-white-wide.png"
+            src={$logoSrcStore}
             alt="Kong Logo"
-            class="h-[30px] transition-all duration-200"
-            class:light-logo={$themeStore === "light"}
+            class="h-[30px] transition-all duration-200 navbar-logo"
+            class:light-logo={shouldInvertLogo}
             on:error={handleImageError}
           />
           <span
@@ -282,10 +373,10 @@
           on:click={() => goto("/")}
         >
           <img
-            src="/titles/logo-white-wide.png"
+            src={$logoSrcStore}
             alt="Kong Logo"
-            class="h-6 transition-all duration-200"
-            class:light-logo={$themeStore === "light"}
+            class="h-6 transition-all duration-200 navbar-logo"
+            class:light-logo={shouldInvertLogo}
             on:error={handleImageError}
           />
           <span
@@ -300,66 +391,108 @@
 
     <div class="flex items-center gap-1.5">
       {#if !isMobile}
-        <button
-          class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
-          on:click={handleOpenSettings}
-          use:tooltip={{ text: "Settings", direction: "bottom" }}
-        >
-          <SettingsIcon size={18} />
-        </button>
+        <NavbarButton
+          icon={SettingsIcon}
+          onClick={() => goto("/settings")}
+          tooltipText="Settings"
+          useThemeBorder={isWin98Theme}
+          customBgColor={buttonBg}
+          customHoverBgColor={buttonHoverBg}
+          customTextColor={buttonText}
+          customBorderStyle={buttonBorder}
+          customBorderColor={buttonBorderColor}
+          customShadow={buttonShadow}
+        />
 
-        <button
-          class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
-          on:click={handleOpenSearch}
-          use:tooltip={{ text: "Search", direction: "bottom" }}
-        >
-          <Search size={18} />
-        </button>
-        
+        <NavbarButton
+          icon={Search}
+          onClick={handleOpenSearch}
+          tooltipText="Search"
+          useThemeBorder={isWin98Theme}
+          customBgColor={buttonBg}
+          customHoverBgColor={buttonHoverBg}
+          customTextColor={buttonText}
+          customBorderStyle={buttonBorder}
+          customBorderColor={buttonBorderColor}
+          customShadow={buttonShadow}
+        />
+
+
         {#if $auth.isConnected}
           {#if process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging"}
-            <button
-              class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
-              on:click={claimTokens}
-              use:tooltip={{ text: "Claim test tokens", direction: "bottom" }}
-            >
-              <Droplet size={18} />
-            </button>
+            <NavbarButton
+              icon={Droplet}
+              onClick={claimTokens}
+              tooltipText="Claim test tokens"
+              useThemeBorder={isWin98Theme}
+              customBgColor={buttonBg}
+              customHoverBgColor={buttonHoverBg}
+              customTextColor={buttonText}
+              customBorderStyle={buttonBorder}
+              customBorderColor={buttonBorderColor}
+              customShadow={buttonShadow}
+            />
           {/if}
 
-          <button
-            class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
-            on:click={() => copyToClipboard(auth.pnp?.account?.owner)}
-            use:tooltip={{ text: "Copy Principal ID", direction: "bottom" }}
-          >
-            <Copy size={18} />
-            <span>PID</span>
-          </button>
+          <NavbarButton
+            icon={Copy}
+            label="PID"
+            onClick={() => copyToClipboard(auth.pnp?.account?.owner)}
+            tooltipText="Copy Principal ID"
+            useThemeBorder={isWin98Theme}
+            customBgColor={buttonBg}
+            customHoverBgColor={buttonHoverBg}
+            customTextColor={buttonText}
+            customBorderStyle={buttonBorder}
+            customBorderColor={buttonBorderColor}
+            customShadow={buttonShadow}
+          />
         {/if}
 
-        <button
-          class="h-[34px] px-3.5 flex items-center gap-1.5 rounded-md text-sm font-semibold text-kong-text-primary/95 bg-kong-primary/40 border border-kong-primary/80 transition-all duration-150 hover:bg-kong-primary/60 hover:border-kong-primary/90"
-          class:selected={$sidebarStore.isOpen}
-          on:click={handleConnect}
-        >
-          <Wallet size={18} />
-          <span>{$auth.isConnected ? "Wallet" : "Connect"}</span>
-        </button>
+        <NavbarButton
+          icon={Wallet}
+          label={$auth.isConnected ? null : "Connect"}
+          onClick={handleConnect}
+          isSelected={showWalletSidebar && walletSidebarActiveTab === "wallet"}
+          variant="primary"
+          useThemeBorder={isWin98Theme}
+          customBgColor={primaryButtonBg}
+          customHoverBgColor={primaryButtonHoverBg}
+          customTextColor={primaryButtonText}
+          customBorderStyle={primaryButtonBorder}
+          customBorderColor={primaryButtonBorderColor}
+          isWalletButton={true}
+          badgeCount={$notificationsStore.unreadCount}
+        />
       {:else}
-        <button
-          class="h-[34px] w-[34px] flex items-center justify-center rounded-md text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40"
-          on:click={handleOpenSearch}
-        >
-          <Search size={18} />
-        </button>
-        
-        <button
-          class="h-[34px] w-[34px] flex items-center justify-center rounded-md text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40"
-          class:selected={$sidebarStore.isOpen}
-          on:click={handleConnect}
-        >
-          <Wallet size={18} />
-        </button>
+        <NavbarButton
+          icon={Search}
+          onClick={handleOpenSearch}
+          variant="mobile"
+          useThemeBorder={isWin98Theme}
+          customBgColor={buttonBg}
+          customHoverBgColor={buttonHoverBg}
+          customTextColor={buttonText}
+          customBorderStyle={buttonBorder}
+          customBorderColor={buttonBorderColor}
+          customShadow={buttonShadow}
+        />
+
+        <NavbarButton
+          icon={Wallet}
+          onClick={handleConnect}
+          isSelected={showWalletSidebar && walletSidebarActiveTab === "wallet"}
+          variant="mobile"
+          useThemeBorder={isWin98Theme}
+          customBgColor={buttonBg}
+          customHoverBgColor={buttonHoverBg}
+          customTextColor={buttonText}
+          customBorderStyle={buttonBorder}
+          customBorderColor={buttonBorderColor}
+          customShadow={buttonShadow}
+          isWalletButton={true}
+          badgeCount={$notificationsStore.unreadCount}
+        />
       {/if}
     </div>
   </div>
@@ -374,10 +507,10 @@
     >
       <div class="mobile-menu-header">
         <img
-          src="/titles/logo-white-wide.png"
+          src={$logoSrcStore}
           alt="Kong Logo"
-          class="logo-wide"
-          class:light-logo={$themeStore === "light"}
+          class="logo-wide navbar-logo"
+          class:light-logo={shouldInvertLogo}
         />
         <button class="mobile-close-btn" on:click={() => (navOpen = false)}>
           <X size={16} />
@@ -410,23 +543,21 @@
             onClose={() => (navOpen = false)}
           />
 
-          {#if process.env.DFX_NETWORK === "ic"}
-            <MobileNavGroup
-              title="PREDICT"
-              options={[
-                {
-                  label: "Prediction Markets",
-                  description: "Trade on future outcomes",
-                  path: "/predict",
-                  icon: TrendingUpDown,
-                  comingSoon: false,
-                },
-              ]}
-              {activeTab}
-              {onTabChange}
-              onClose={() => (navOpen = false)}
-            />
-          {/if}
+          <MobileNavGroup
+            title="PREDICT"
+            options={[
+              {
+                label: "Prediction Markets",
+                description: "Trade on future outcomes",
+                path: "/predict",
+                icon: TrendingUpDown,
+                comingSoon: false,
+              },
+            ]}
+            {activeTab}
+            {onTabChange}
+            onClose={() => (navOpen = false)}
+          />
         </div>
 
         <div class="mobile-nav-section">
@@ -435,7 +566,7 @@
             label="Settings"
             icon={SettingsIcon}
             onClick={() => {
-              handleOpenSettings();
+              goto("/settings");
               navOpen = false;
             }}
             iconBackground="bg-kong-text-primary/10"
@@ -476,20 +607,41 @@
               iconBackground="bg-kong-text-primary/10"
             />
           {/if}
+
+          <MobileMenuItem
+            label="Notifications"
+            icon={Bell}
+            onClick={() => {
+              toggleWalletSidebar("notifications");
+              navOpen = false;
+            }}
+            iconBackground="bg-kong-text-primary/10"
+            badgeCount={$notificationsStore.unreadCount}
+          />
         </div>
       </nav>
 
       <div class="mobile-menu-footer">
-        <button
-          class="mobile-wallet-btn"
-          on:click={() => {
+        <NavbarButton
+          icon={Wallet}
+          label={$auth.isConnected ? "Wallet" : "Connect Wallet"}
+          onClick={() => {
             handleConnect();
             navOpen = false;
           }}
-        >
-          <Wallet size={20} />
-          <span>{$auth.isConnected ? "Wallet" : "Connect Wallet"}</span>
-        </button>
+          isSelected={showWalletSidebar && walletSidebarActiveTab === "wallet"}
+          variant="primary"
+          iconSize={20}
+          class="mobile-wallet-btn"
+          useThemeBorder={isWin98Theme}
+          customBgColor={primaryButtonBg}
+          customHoverBgColor={primaryButtonHoverBg}
+          customTextColor={primaryButtonText}
+          customBorderStyle={primaryButtonBorder}
+          customBorderColor={primaryButtonBorderColor}
+          isWalletButton={true}
+          badgeCount={$notificationsStore.unreadCount}
+        />
       </div>
     </div>
   </div>
@@ -516,6 +668,11 @@
     />
     <Sidebar onClose={() => sidebarStore.close()} />
   </div>
+{/if}
+
+<WalletSidebar isOpen={showWalletSidebar} activeTab={walletSidebarActiveTab} onClose={closeWalletSidebar} />
+{#if browser}
+  <WalletProvider isOpen={showWalletProvider} on:close={closeWalletProvider} />
 {/if}
 
 <style scoped lang="postcss">
@@ -574,7 +731,7 @@
 
   /* Logo styles */
   .light-logo {
-    @apply invert brightness-[0.8] transition-all duration-200;
+    @apply invert brightness-[var(--logo-brightness,0.8)] transition-all duration-200;
   }
 
   .mobile-menu-header .logo-wide {
@@ -582,7 +739,7 @@
   }
 
   .mobile-menu-header .logo-wide.light-logo {
-    @apply invert brightness-[0.2];
+    @apply invert brightness-[var(--logo-brightness,0.2)];
   }
 
   /* Basic nav link for predict tab */
@@ -597,5 +754,14 @@
   .nav-link.active {
     @apply text-kong-primary;
     text-shadow: 0 0px 30px theme(colors.kong.primary);
+  }
+
+  /* Notification badge */
+  .notification-badge {
+    @apply absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center;
+  }
+
+  .notification-badge-mobile {
+    @apply -top-1 -right-1;
   }
 </style>

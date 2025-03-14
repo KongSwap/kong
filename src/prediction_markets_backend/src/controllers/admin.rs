@@ -1,6 +1,7 @@
 use candid::Principal;
 use std::cell::RefCell;
 use std::collections::HashSet;
+use ic_cdk::query;
 
 const DEFAULT_ADMIN_PRINCIPALS: [&str; 5] = [
     "4jxje-hbmra-4otqc-6hor3-cpwlh-sqymk-6h4ef-42sqn-o3ip5-s3mxk-uae",
@@ -27,6 +28,7 @@ thread_local! {
 }
 
 /// Checks if a principal is an admin
+#[query]
 pub fn is_admin(principal: Principal) -> bool {
     ADMIN_PRINCIPALS.with(|admins| admins.borrow().contains(&principal))
 }

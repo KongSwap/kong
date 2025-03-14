@@ -16,8 +16,12 @@
   });
 </script>
 
+<svelte:head>
+  <title>Swap - KongSwap</title>
+</svelte:head>
+
 <section class="w-full overflow-x-hidden">
-  <div class="p-2 md:p-0 w-full flex justify-center">
+  <div class="p-2 md:p-0 w-full flex justify-center min-h-[calc(100vh-36rem)] items-center">
     {#if currentMode === "normal"}
       <Swap {currentMode} on:modeChange={handleModeChange} />
     {:else}

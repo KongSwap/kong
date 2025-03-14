@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
-  import { Trash2, Loader2, Check, XCircle, TrendingUp, BarChart2, Ban, UserCheck } from 'lucide-svelte';
+  import { Trash2, Loader2, Check, XCircle, Ban, UserCheck } from 'lucide-svelte';
   import type { Message } from '$lib/api/trollbox';
   import { auth } from '$lib/services/auth';
   import { fetchTokensByCanisterId } from '$lib/api/tokens';
@@ -121,7 +121,7 @@
       
       // Fallback token display when data is not available
       if (!token) {
-        return `<span class="bg-kong-primary/20 rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-xs" data-canister-id="${canisterId}" onclick="(function(e) { e.stopPropagation(); const href = '/stats/${canisterId}'; window.dispatchEvent(new CustomEvent('token-link-click', {detail: {href: href}})); return false; })(event)">
+        return `<span class="bg-kong-primary text-kong-text-on-primary rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-xs" data-canister-id="${canisterId}" onclick="(function(e) { e.stopPropagation(); const href = '/stats/${canisterId}'; window.dispatchEvent(new CustomEvent('token-link-click', {detail: {href: href}})); return false; })(event)">
           <span class="flex items-center gap-0.5">
             <img 
               src="${DEFAULT_IMAGE}" 
@@ -132,7 +132,7 @@
             ${canisterId.slice(0, 5).toUpperCase()}
           </span>
           <span class="flex items-center gap-0.5">
-            <span class="w-2 h-2 rounded-full border border-kong-pm-text-secondary/40 border-t-transparent animate-spin ml-1"></span>
+            <span class="w-2 h-2 rounded-full border border-kong-text-secondary/40 border-t-transparent animate-spin ml-1"></span>
           </span>
         </span>`;
       }
@@ -159,11 +159,11 @@
         ? "text-kong-text-accent-green" 
         : direction === "down" 
           ? "text-kong-text-accent-red" 
-          : "text-kong-pm-text-secondary";
+          : "text-kong-text-on-primary";
       
       const formattedChange = priceChange.startsWith("-") ? priceChange : `+${priceChange}`;
       
-      return `<a href="/stats/${canisterId}" class="token-link local-generated" data-canister-id="${canisterId}" onclick="(function(e) { e.preventDefault(); e.stopPropagation(); const href = '/stats/${canisterId}'; window.dispatchEvent(new CustomEvent('token-link-click', {detail: {href: href}})); return false; })(event)"><span class="bg-kong-primary/20 rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-sm">
+      return `<a href="/stats/${canisterId}" class="token-link local-generated" data-canister-id="${canisterId}" onclick="(function(e) { e.preventDefault(); e.stopPropagation(); const href = '/stats/${canisterId}'; window.dispatchEvent(new CustomEvent('token-link-click', {detail: {href: href}})); return false; })(event)"><span class="bg-kong-primary/80 text-kong-text-on-primary rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-sm">
         <span class="flex items-center gap-0.5">
           <img 
             src="${logoUrl}" 
@@ -241,23 +241,24 @@
   data-message-id="{message.id.toString()}"
 >
   {#if !isCurrentUser}
-    <div class="flex items-center gap-1.5 mb-0.5 ml-7">
-      <span class="text-xs font-medium text-kong-accent-purple">{message.principal.toText().slice(0, 10)}</span>
+    <div class="flex items-center gap-1.5 mb-0.5 ml-7 cursor-pointer" on:click={() => goto(`/wallets/${message.principal.toText()}`)}>
+      <span class="text-xs font-medium text-kong-primary">{message.principal.toText().slice(0, 10)}</span>
     </div>
   {/if}
   
-  <div class="flex items-end gap-1.5 max-w-[85%]">
+  <div class="flex {isCurrentUser ? 'items-end' : 'items-center'} gap-1.5 max-w-[85%]">
     {#if !isCurrentUser}
       <img
+        on:click={() => goto(`/wallets/${message.principal.toText()}`)}
         src={`https://api.dicebear.com/7.x/notionists-neutral/svg?seed=${message.principal.toText()}&size=20`}
         alt="avatar"
-        class="w-8 h-8 rounded-full bg-kong-dark mb-0.5"
+        class="w-8 h-8 rounded-full bg-kong-dark cursor-pointer"
       />
     {/if}
     
     <div class="{
       isCurrentUser 
-        ? 'bg-kong-accent-purple/25 text-white rounded-t-md rounded-bl-md rounded-br-sm' 
+        ? 'bg-kong-primary text-kong-text-on-primary rounded-t-md rounded-bl-md rounded-br-sm' 
         : 'bg-kong-dark text-kong-text-primary rounded-t-md rounded-br-md rounded-bl-sm'
       } px-3 py-2 relative group"
     >
@@ -268,7 +269,7 @@
         {@html processedMessage}
       </p>
       
-      <span class="text-xs text-kong-pm-text-secondary {isCurrentUser ? 'ml-1.5' : 'mr-1.5'} whitespace-nowrap inline-block">
+      <span class="text-xs text-kong-text-primary {isCurrentUser ? 'ml-1.5 text-white' : 'mr-1.5'} whitespace-nowrap inline-block">
         {timeString}
       </span>
       
@@ -320,7 +321,7 @@
                           name="banDuration" 
                           value={duration.value} 
                           bind:group={selectedBanDays}
-                          class="accent-kong-accent-purple"
+                          class="accent-kong-primary"
                         />
                         <span class="text-xs text-kong-text-primary">{duration.label}</span>
                       </label>

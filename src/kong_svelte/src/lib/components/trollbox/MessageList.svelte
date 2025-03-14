@@ -33,26 +33,26 @@
 <div 
   bind:this={chatContainer}
   on:scroll={onScroll}
-  class="flex-1 overflow-y-auto p-3 space-y-2.5 scrollbar-custom relative bg-kong-surface-dark"
+  class="h-full overflow-y-auto p-3 space-y-2.5 scrollbar-custom relative bg-kong-bg-dark"
 >
   {#if showInstructions}
     <InstructionsPanel onHide={onToggleInstructions} />
   {/if}
 
   {#if isLoadingMore}
-    <div class="text-center text-kong-pm-text-secondary py-2 flex items-center justify-center gap-2 text-sm" transition:fade>
-      <div class="w-3.5 h-3.5 rounded-full border border-kong-pm-text-secondary border-t-transparent animate-spin"></div>
+    <div class="text-center text-kong-text-secondary py-2 flex items-center justify-center gap-2 text-sm" transition:fade>
+      <div class="w-3.5 h-3.5 rounded-full border border-kong-text-secondary border-t-transparent animate-spin"></div>
       <span>Loading older messages...</span>
     </div>
   {:else if !hasMoreMessages && messages.length > 0}
-    <div class="text-center text-kong-pm-text-secondary py-1.5 text-xs" transition:fade>
+    <div class="text-center text-kong-text-secondary py-1.5 text-xs" transition:fade>
       No more messages
     </div>
   {/if}
 
   {#if isLoading && !messages.length}
-    <div class="text-center text-kong-pm-text-secondary flex items-center justify-center gap-2 py-4 text-sm">
-      <div class="w-4 h-4 rounded-full border border-kong-pm-text-secondary border-t-transparent animate-spin"></div>
+    <div class="text-center text-kong-text-secondary flex items-center justify-center gap-2 py-4 text-sm">
+      <div class="w-4 h-4 rounded-full border border-kong-text-secondary border-t-transparent animate-spin"></div>
       <span>Loading messages...</span>
     </div>
   {/if}
@@ -88,11 +88,11 @@
   }
 
   .scrollbar-custom::-webkit-scrollbar-thumb {
-    background: rgb(var(--pm-border));
+    background: rgb(var(--border));
     border-radius: 4px;
   }
 
   .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--pm-text-secondary));
+    background: rgb(var(--text-secondary));
   }
 </style> 

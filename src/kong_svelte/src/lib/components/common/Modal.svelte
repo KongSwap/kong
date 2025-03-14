@@ -6,12 +6,9 @@
   import { cubicOut } from "svelte/easing";
   import Portal from "svelte-portal";
   import Toast from "./Toast.svelte";
-  import { createEventDispatcher } from "svelte";
   import { tick } from "svelte";
   import { X } from "lucide-svelte";
   import { modalStack } from "$lib/stores/modalStore";
-
-  const dispatch = createEventDispatcher();
 
   export let isOpen = false;
   export let modalKey = Math.random().toString(36).substr(2, 9);
@@ -138,7 +135,6 @@
     });
     isOpen = false;
     onClose();
-    dispatch("close");
   }
 
   function handleBackdropClick(event: MouseEvent) {

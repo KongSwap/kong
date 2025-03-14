@@ -6,24 +6,39 @@
   import { ArrowRight, Check, AlertTriangle } from "lucide-svelte";
   import { fly, fade } from 'svelte/transition';
 
-  // Props
-  export let isOpen = false;
-  export let onClose: () => void;
-  export let onConfirm: () => void;
-  export let amount: string;
-  export let token: FE.Token;
-  export let tokenFee: bigint;
-  export let isValidating = false;
-  export let toPrincipal: string;
+  // Props type definition
+  type TransferConfirmationModalProps = {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+    amount: string;
+    token: FE.Token;
+    tokenFee: bigint;
+    isValidating?: boolean;
+    toPrincipal: string;
+  };
 
-  // Memoized computed values using stores or let variables
-  let receiverAmount: string;
-  let totalAmount: string;
-  let formattedFee: string;
-  let usdValue: string = "0.00";
-  let truncatedAddress: string;
+  // Destructure props with defaults
+  let { 
+    isOpen = false,
+    onClose = () => {},
+    onConfirm = () => {},
+    amount,
+    token,
+    tokenFee,
+    isValidating = false,
+    toPrincipal
+  }: TransferConfirmationModalProps = $props();
 
-  $: {
+  // Derived values using Svelte 5 syntax
+  let receiverAmount = $state<string>("");
+  let totalAmount = $state<string>("");
+  let formattedFee = $state<string>("");
+  let usdValue = $state<string>("0.00");
+  let truncatedAddress = $state<string>("");
+  
+  // Compute derived values when inputs change
+  $effect(() => {
     try {
       receiverAmount = new BigNumber(amount).toString();
       totalAmount = new BigNumber(amount)
@@ -48,10 +63,10 @@
       totalAmount = amount;
       formattedFee = '0';
     }
-  }
+  });
 
-  // Animation timing
-  let showSuccess = false;
+  // Animation state
+  let showSuccess = $state(false);
   
   function handleConfirm() {
     showSuccess = true;

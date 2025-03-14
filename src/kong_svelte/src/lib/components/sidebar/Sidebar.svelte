@@ -88,6 +88,13 @@
     isInitialRender = false;
   });
 
+  // Effect to handle wallet provider loading when not connected
+  $effect(() => {
+    if (isOpen && !$auth.isConnected && !WalletProviderComponent && !componentsLoading.wallet) {
+      loadWalletProvider();
+    }
+  });
+
   // Add a new effect to handle tab changes
   $effect(() => {
     // Only proceed if sidebar is open and user is connected
@@ -109,11 +116,10 @@
     // Prevent duplicate loads
     if (componentsLoading[key]) return Promise.resolve(null) as Promise<T>;
     
-    // Create a local copy of the loading state to avoid reactivity issues
-    const newLoadingState = { ...componentsLoading, [key]: true };
-    componentsLoading = newLoadingState;
-    
     try {
+      // Set loading state first, separately from async operation
+      componentsLoading = { ...componentsLoading, [key]: true };
+      
       const module = await importFn();
       return module.default;
     } catch (error) {
@@ -121,9 +127,7 @@
       return null as T;
     } finally {
       // Only update if we haven't already changed to another state
-      if (componentsLoading[key]) {
-        componentsLoading = { ...componentsLoading, [key]: false };
-      }
+      componentsLoading = { ...componentsLoading, [key]: false };
     }
   }
   
@@ -132,10 +136,11 @@
     if (WalletProviderComponent || componentsLoading.wallet) return;
     
     try {
-      WalletProviderComponent = await loadComponent(
+      const component = await loadComponent(
         () => import("$lib/components/sidebar/WalletProvider.svelte"),
         'wallet'
       );
+      WalletProviderComponent = component;
     } catch (e) {
       console.error("Failed to load wallet provider", e);
     }
@@ -145,10 +150,11 @@
     if (TokenListComponent || componentsLoading.tokens) return;
     
     try {
-      TokenListComponent = await loadComponent(
+      const component = await loadComponent(
         () => import("$lib/components/sidebar/TokenList.svelte"),
         'tokens'
       );
+      TokenListComponent = component;
     } catch (e) {
       console.error("Failed to load token list", e);
     }
@@ -158,10 +164,11 @@
     if (PoolListComponent || componentsLoading.pools) return;
     
     try {
-      PoolListComponent = await loadComponent(
+      const component = await loadComponent(
         () => import("$lib/components/sidebar/PoolList.svelte"),
         'pools'
       );
+      PoolListComponent = component;
     } catch (e) {
       console.error("Failed to load pool list", e);
     }
@@ -171,10 +178,11 @@
     if (TransactionHistoryComponent || componentsLoading.history) return;
     
     try {
-      TransactionHistoryComponent = await loadComponent(
+      const component = await loadComponent(
         () => import("$lib/components/sidebar/TransactionHistory.svelte"),
         'history'
       );
+      TransactionHistoryComponent = component;
     } catch (e) {
       console.error("Failed to load transaction history", e);
     }
@@ -231,19 +239,14 @@
         <div class="fixed inset-0 z-[2] flex items-center justify-center text-kong-text-primary">
           <LoadingIndicator text="Loading wallet provider..." />
         </div>
-      {:else}
-        <!-- Trigger loading when rendered -->
-        {#if !WalletProviderComponent}
-          {void loadWalletProvider()}
-        {:else if WalletProviderComponent}
-          <svelte:component
-            this={WalletProviderComponent}
-            on:login={async () => {
-              await tick();
-              setActiveTab("tokens");
-            }}
-          />
-        {/if}
+      {:else if WalletProviderComponent}
+        <svelte:component
+          this={WalletProviderComponent}
+          on:login={async () => {
+            await tick();
+            setActiveTab("tokens");
+          }}
+        />
       {/if}
     {:else}
       <div

@@ -64,32 +64,41 @@
       
       // Store previous bets before updating
       previousBets = [...recentBets];
-      recentBets = await getAllBets(0, 5);
-
-      // Minimum loading time of 500ms to prevent flash
-      const elapsed = Date.now() - startTime;
-      if (elapsed < 500) {
-        await new Promise(resolve => setTimeout(resolve, 500 - elapsed));
+      
+      try {
+        recentBets = await getAllBets(0, 5);
+        
+        // Minimum loading time of 500ms to prevent flash
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 500) {
+          await new Promise(resolve => setTimeout(resolve, 500 - elapsed));
+        }
+        
+        // Only identify new bets if it's not the initial load
+        if (!isInitialLoad) {
+          newBetIds = new Set(
+            recentBets
+              .filter(
+                (newBet) =>
+                  !previousBets.some(
+                    (oldBet) =>
+                      getBetId(oldBet) === getBetId(newBet)
+                  ),
+              )
+              .map(getBetId)
+          );
+        } else {
+          isInitialLoad = false;
+        }
+      } catch (error) {
+        console.error("Error fetching bets data:", error);
+        toastStore.add({
+          title: "Error Loading Bets",
+          message: "Could not load recent bets. Please try again later.",
+          type: "error",
+        });
+        recentBets = [];
       }
-
-      // Only identify new bets if it's not the initial load
-      if (!isInitialLoad) {
-        newBetIds = new Set(
-          recentBets
-            .filter(
-              (newBet) =>
-                !previousBets.some(
-                  (oldBet) =>
-                    getBetId(oldBet) === getBetId(newBet)
-                ),
-            )
-            .map(getBetId)
-        );
-      } else {
-        isInitialLoad = false;
-      }
-    } catch (e) {
-      console.error("Failed to load recent bets:", e);
     } finally {
       loadingBets = false;
     }
@@ -293,7 +302,7 @@
           {#if isUserAdmin}
             <button
               on:click={() => goto('/predict/create')}
-              class="w-full p-3 bg-kong-accent-green hover:bg-kong-accent-green-hover text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+              class="w-full p-3 bg-kong-primary hover:bg-kong-primary-hover text-kong-text-on-primary rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
             >
               <Plus class="w-3.5 h-3.5" />
               Create Market

@@ -153,6 +153,7 @@ service : () -> {
   icrc_34_delegate : (DelegationRequest) -> (Result_1);
   icrc_34_get_delegation : (DelegationRequest) -> (Result_1) query;
   icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_2);
+  is_admin : (principal) -> (bool) query;
   place_bet : (nat, nat, nat) -> (Result_3);
   resolve_via_admin : (nat, vec nat) -> (Result_4);
   resolve_via_oracle : (nat, vec nat, blob) -> (Result_4);

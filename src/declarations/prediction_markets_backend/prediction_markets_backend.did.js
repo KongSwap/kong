@@ -190,6 +190,7 @@ export const idlFactory = ({ IDL }) => {
         [Result_2],
         [],
       ),
+    'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     'place_bet' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [Result_3], []),
     'resolve_via_admin' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [Result_4], []),
     'resolve_via_oracle' : IDL.Func(

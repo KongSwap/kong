@@ -2,10 +2,9 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { onDestroy } from "svelte";
   import {
-    loadBalances,
     currentUserBalancesStore,
-    loadBalance,
   } from "$lib/stores/tokenStore";
+  import { loadBalances, refreshBalances, refreshSingleBalance } from "$lib/stores/balancesStore";
   import { scale, fade } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import { browser } from "$app/environment";
@@ -373,53 +372,13 @@
   // Update balance functions to use TokenBalanceService with caching and error handling
   async function getTokenBalance(token: FE.Token): Promise<bigint> {
     try {
-      const balance = await loadBalance(token.canister_id, auth, true);
-      return balance.in_tokens;
+      // Use the centralized balanceStore function
+      const balance = await loadBalances([token], $auth.account?.owner, true);
+      return balance[token.canister_id]?.in_tokens || 0n;
     } catch (error) {
       console.warn(`Error getting balance for ${token.symbol}:`, error);
       return 0n;
     }
-  }
-
-  // Optimized function to load balances in batch
-  async function loadTokenBalances(
-    principal: string,
-    tokensToLoad: FE.Token[],
-  ) {
-    if (!browser || !principal || tokensToLoad.length === 0) return;
-
-    // Filter out tokens that we've already attempted to load
-    const unloadedTokens = tokensToLoad.filter((token) => {
-      const canisterId = getTokenId(token);
-      return canisterId && !balanceLoadAttempts.has(canisterId);
-    });
-
-    if (unloadedTokens.length === 0) return;
-
-    // Mark these tokens as having had a load attempt
-    unloadedTokens.forEach((token) => {
-      const canisterId = getTokenId(token);
-      if (canisterId) balanceLoadAttempts.add(canisterId);
-    });
-
-    try {
-      // Load balances in batches to avoid overloading the network
-      const BATCH_SIZE = 10;
-      for (let i = 0; i < unloadedTokens.length; i += BATCH_SIZE) {
-        const batch = unloadedTokens.slice(i, i + BATCH_SIZE);
-        await loadBalances(batch, principal, false);
-      }
-    } catch (error) {
-      console.warn("Error loading token balances:", error);
-    }
-  }
-
-  // Utility function to determine if a token is from API results and not yet enabled
-  function isApiToken(token: FE.Token): boolean {
-    return (
-      apiSearchResults.includes(token) &&
-      !$userTokens.enabledTokens[token.canister_id]
-    );
   }
 
   // Helper for token selection
@@ -478,7 +437,10 @@
 
       if (principal && !balanceLoadAttempts.has(token.canister_id)) {
         balanceLoadAttempts.add(token.canister_id);
-        await loadBalances([token], principal, false);
+        
+        // Use centralized balance refreshing
+        await refreshSingleBalance(token, principal, false);
+        console.log('Updated balance store after enabling token:', token.symbol);
       }
     } catch (error) {
       console.warn(`Error enabling token ${token.symbol}:`, error);
@@ -539,7 +501,7 @@
     ];
 
     // Load balances for visible tokens
-    void loadTokenBalances(principal, visibleTokens);
+    void loadBalances(visibleTokens, principal, true);
   }
 
   // Add an effect to load balances when visible tokens change
@@ -580,7 +542,7 @@
 
       if (principal && tokens.length > 0) {
         // Load balances for visible tokens only, to reduce network requests
-        void loadTokenBalances(principal, tokens);
+        void loadBalances(tokens, principal, true);
       }
 
       // Load favorites
@@ -625,6 +587,12 @@
   // Remove the template string function
   function isTokenEnabled(token: FE.Token): boolean {
     return !isApiToken(token) || $userTokens.enabledTokens[token.canister_id];
+  }
+
+  // Define the isApiToken function to check if a token is from API results
+  function isApiToken(token: FE.Token): boolean {
+    // A token is considered from API if it's not already enabled in the user's tokens
+    return !!token && !$userTokens.enabledTokens[token.canister_id];
   }
 </script>
 
@@ -750,11 +718,11 @@
                           balance={{
                             tokens: formatBalance(
                               $currentUserBalancesStore[token.canister_id]?.in_tokens || 0n,
-                              token.decimals,
+                              token.decimals || 8
                             ),
                             usd: formatUsdValue(
-                              $currentUserBalancesStore[token.canister_id]?.in_usd || "0",
-                            ),
+                              $currentUserBalancesStore[token.canister_id]?.in_usd || "0"
+                            )
                           }}
                           onTokenClick={(e) => handleTokenClick(e, token)}
                           onFavoriteClick={(e) => handleFavoriteClick(e, token)}
@@ -837,8 +805,12 @@
   }
 
   .dropdown-container {
-    @apply relative bg-kong-bg-dark border border-kong-border rounded-xl shadow-lg transition-all duration-200 overflow-hidden;
+    @apply relative border transition-all duration-200 overflow-hidden;
     @apply w-[420px] h-[min(600px,85vh)];
+    background: var(--token-selector-bg, theme('colors.kong.bg-dark'));
+    border: var(--token-selector-border, 1px solid theme('colors.kong.border'));
+    border-radius: var(--token-selector-roundness, theme('borderRadius.xl'));
+    box-shadow: var(--token-selector-shadow, theme('boxShadow.lg'));
   }
 
   .dropdown-container.mobile {
@@ -853,7 +825,8 @@
   }
 
   .modal-header {
-    @apply px-4 py-3 bg-kong-bg-dark flex justify-between items-center;
+    @apply px-4 py-3 flex justify-between items-center;
+    background: var(--token-selector-header-bg, theme('colors.kong.bg-dark'));
   }
 
   .modal-title {
@@ -916,7 +889,8 @@
   }
 
   .search-input {
-    @apply flex-1 bg-kong-bg-light border-none text-kong-text-primary text-base rounded-md px-4 py-3;
+    @apply flex-1 border-none text-kong-text-primary text-base rounded-md px-4 py-3;
+    background: var(--token-selector-search-bg, theme('colors.kong.bg-light'));
   }
 
   .search-input::placeholder {
@@ -946,7 +920,8 @@
   }
 
   .filter-btn.active {
-    @apply text-kong-primary bg-kong-primary/20;
+    @apply text-white font-semibold;
+    background: var(--token-selector-item-active-bg, theme('colors.kong.primary'));
   }
 
   .tab-label {
@@ -987,8 +962,9 @@
 
   .token-section-header {
     @apply p-2 text-sm font-medium text-kong-text-secondary;
-    @apply bg-kong-bg-light/50 rounded-lg border border-kong-border/10;
+    @apply rounded-lg border border-kong-border/10;
     @apply backdrop-blur-sm mx-2 my-2;
+    background: var(--token-selector-item-bg, theme('colors.kong.bg-light/50'));
   }
 
   .loading-indicator {
@@ -1050,18 +1026,21 @@
   
   .add-token-button {
     @apply w-full flex items-center justify-center gap-2 py-3 px-4 
-           bg-kong-bg-light/50 hover:bg-kong-bg-light/80
+           hover:bg-kong-bg-light/80
            text-kong-text-primary font-medium rounded-lg
            border border-kong-border/30 transition-all duration-200;
+    background: var(--token-selector-item-bg, theme('colors.kong.bg-light/50'));
   }
   
   .add-token-button:hover {
-    @apply border-kong-primary/40 bg-kong-primary/10;
+    @apply border-kong-primary/40;
+    background: var(--token-selector-item-hover-bg, theme('colors.kong.primary/10'));
   }
   
   .add-icon {
     @apply flex items-center justify-center w-5 h-5 rounded-full
-           bg-kong-primary/20 text-kong-primary font-bold;
+           text-kong-primary font-bold;
+    background: var(--token-selector-item-active-bg, theme('colors.kong.primary/20'));
   }
 </style>
 

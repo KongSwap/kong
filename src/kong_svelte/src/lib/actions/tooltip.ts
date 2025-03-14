@@ -25,6 +25,8 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
    * @returns {boolean} - True if tooltip should be shown, false otherwise.
    */
   const shouldShowTooltip = (): boolean => {
+    if (!options) return false;
+    
     if (options.html) {
       return true;
     }
