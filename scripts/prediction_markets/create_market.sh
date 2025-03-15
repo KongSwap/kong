@@ -55,23 +55,23 @@
 # )'
 
 
-dfx canister call prediction_markets_backend create_market '(
-  "Will Trump create Bitcoin reserve in first 100 days?",
-  variant { Crypto },
-  "Market will resolve as a YES if US Government holds Bitcoin in its reserves at any point until April 29,2025 11:59 PM ET",
-  vec { "Yes"; "No" },
-  variant { Admin },
-  variant { Duration = 3601 }
-)'
-
 # dfx canister call prediction_markets_backend create_market '(
-#   "Will BTC reach 100k in 2025?",
+#   "Will Trump create Bitcoin reserve in first 100 days?",
 #   variant { Crypto },
-#   "Market closes in 30 days",
+#   "Market will resolve as a YES if US Government holds Bitcoin in its reserves at any point until April 29,2025 11:59 PM ET",
 #   vec { "Yes"; "No" },
 #   variant { Admin },
-#   variant { Duration = 180 }
+#   variant { Duration = 3601 }
 # )'
+
+dfx canister call prediction_markets_backend create_market '(
+  "Will BTC reach 100k in 2025?",
+  variant { Crypto },
+  "Market closes in 30 days",
+  vec { "Yes"; "No" },
+  variant { Admin },
+  variant { Duration = 180 }
+)'
 
 # dfx canister call prediction_markets_backend create_market '(
 #   "Will BTC reach 100k in 2025?",
