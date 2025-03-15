@@ -39,14 +39,6 @@ type Distribution = record {
   user : principal;
   outcome_index : nat;
 };
-type GetAllMarketsArgs = record { start : nat; length : nat };
-type GetAllMarketsResult = record { markets : vec Market; total_count : nat };
-type GetMarketsByStatusResult = record {
-  total_active : nat;
-  total_resolved : nat;
-  total_expired_unresolved : nat;
-  markets_by_status : MarketsByStatus;
-};
 type ICRC21ConsentMessageRequest = record {
   method : text;
   canister : principal;
@@ -149,12 +141,10 @@ service : () -> {
       MarketEndTime,
     ) -> (Result);
   get_all_categories : () -> (vec text) query;
-  get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
+  get_all_markets : () -> (vec Market) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
-  get_markets_by_status : (GetAllMarketsArgs) -> (
-      GetMarketsByStatusResult,
-    ) query;
+  get_markets_by_status : () -> (MarketsByStatus) query;
   get_user_history : (principal) -> (UserHistory) query;
   icrc21_canister_call_consent_message : (ICRC21ConsentMessageRequest) -> (
       ICRC21ConsentMessageResponse,

@@ -21,10 +21,6 @@ export const idlFactory = ({ IDL }) => {
     'Duration' : IDL.Nat,
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
-  const GetAllMarketsArgs = IDL.Record({
-    'start' : IDL.Nat,
-    'length' : IDL.Nat,
-  });
   const MarketStatus = IDL.Variant({
     'Disputed' : IDL.Null,
     'Open' : IDL.Null,
@@ -48,10 +44,6 @@ export const idlFactory = ({ IDL }) => {
     'rules' : IDL.Text,
     'resolved_by' : IDL.Opt(IDL.Principal),
     'bet_counts' : IDL.Vec(IDL.Nat),
-  });
-  const GetAllMarketsResult = IDL.Record({
-    'markets' : IDL.Vec(Market),
-    'total_count' : IDL.Nat,
   });
   const Bet = IDL.Record({
     'market_id' : IDL.Nat,
@@ -81,12 +73,6 @@ export const idlFactory = ({ IDL }) => {
     'resolved' : IDL.Vec(MarketResult),
     'active' : IDL.Vec(Market),
     'expired_unresolved' : IDL.Vec(Market),
-  });
-  const GetMarketsByStatusResult = IDL.Record({
-    'total_active' : IDL.Nat,
-    'total_resolved' : IDL.Nat,
-    'total_expired_unresolved' : IDL.Nat,
-    'markets_by_status' : MarketsByStatus,
   });
   const UserBetInfo = IDL.Record({
     'outcome_text' : IDL.Text,
@@ -178,18 +164,10 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'get_all_categories' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
-    'get_all_markets' : IDL.Func(
-        [GetAllMarketsArgs],
-        [GetAllMarketsResult],
-        ['query'],
-      ),
+    'get_all_markets' : IDL.Func([], [IDL.Vec(Market)], ['query']),
     'get_market' : IDL.Func([IDL.Nat], [IDL.Opt(Market)], ['query']),
     'get_market_bets' : IDL.Func([IDL.Nat], [IDL.Vec(Bet)], ['query']),
-    'get_markets_by_status' : IDL.Func(
-        [GetAllMarketsArgs],
-        [GetMarketsByStatusResult],
-        ['query'],
-      ),
+    'get_markets_by_status' : IDL.Func([], [MarketsByStatus], ['query']),
     'get_user_history' : IDL.Func([IDL.Principal], [UserHistory], ['query']),
     'icrc21_canister_call_consent_message' : IDL.Func(
         [ICRC21ConsentMessageRequest],
