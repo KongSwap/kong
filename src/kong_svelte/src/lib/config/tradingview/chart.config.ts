@@ -20,7 +20,6 @@ export function getChartConfig(params: {
     isMobile, 
     autosize,
     currentPrice = 1000,
-    theme = 'dark',
     quoteTokenDecimals = 8,
     baseTokenDecimals = 8
   } = params;
@@ -46,28 +45,31 @@ export function getChartConfig(params: {
   const precision = getPrecision(currentPrice);
   const minMove = getMinMove(currentPrice);
 
-  const customTheme = {
-    chart: {
-      backgroundColor: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
-      layout: {
-        background: { 
-          type: "solid",
-          color: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF'
-        },
-        textColor: theme === 'plain-black' ? '#CCCCCC' : theme === 'dark' ? '#9BA1B0' : '#4B5563',
-      },
-      topToolbar: {
-        backgroundColor: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
-        borderColor: theme === 'plain-black' ? '#222222' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
-      },
-      leftToolbar: {
-        backgroundColor: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
-        borderColor: theme === 'plain-black' ? '#222222' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
-      }
-    },
+  // Get computed CSS values from the document
+  const getThemeColor = (cssVar: string, fallback: string): string => {
+    if (typeof window === 'undefined') return fallback;
+    return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || fallback;
   };
 
-  return {
+  // Get RGB values and convert to hex
+  const rgbToHex = (rgbVar: string, fallback: string): string => {
+    const rgb = getThemeColor(rgbVar, '').split(' ').map(Number);
+    if (rgb.length === 3 && !rgb.some(isNaN)) {
+      return `#${rgb.map(x => x.toString(16).padStart(2, '0')).join('')}`;
+    }
+    return fallback;
+  };
+
+  // Core theme colors
+  const bgDarkColor = rgbToHex('--bg-dark', '#000000');
+  const borderColor = rgbToHex('--border', '#333333');
+  const textSecondaryColor = rgbToHex('--text-secondary', '#AAAAAA');
+  const accentBlueColor = rgbToHex('--accent-blue', '#00A7FF');
+  const accentGreenColor = rgbToHex('--accent-green', '#05EC86');
+  const accentRedColor = rgbToHex('--accent-red', '#FF4545');
+
+  // Build the config object
+  const config = {
     symbol,
     datafeed,
     interval: '60',
@@ -78,13 +80,11 @@ export function getChartConfig(params: {
     locale: 'en',
     fullscreen: false,
     autosize: autosize ?? true,
-    theme: theme === 'plain-black' ? 'dark' : theme,
+    backgroundColor: bgDarkColor,
     timezone: 'Etc/UTC',
-    toolbar_bg: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
-    top_toolbar_bg: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
     loading_screen: { 
-      backgroundColor: theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
-      foregroundColor: "#00A1FA"
+      backgroundColor: bgDarkColor,
+      foregroundColor: accentBlueColor
     },
     numeric_formatting: { decimal_sign: '.' },
     disabled_features: [
@@ -121,80 +121,41 @@ export function getChartConfig(params: {
       'support_multicharts',
       'legend_widget'
     ],
-    custom_css_url: '../../tradingview-chart.css',
+    // Use absolute path to make sure the CSS file is found
     overrides: {
-      ...customTheme,
-      // Chart styling
-      "mainSeriesProperties.candleStyle.upColor": "#00cc81",
-      "mainSeriesProperties.candleStyle.downColor": "#d11b1b",
-      "mainSeriesProperties.candleStyle.borderUpColor": "#00cc81",
-      "mainSeriesProperties.candleStyle.borderDownColor": "#d11b1b",
-      "mainSeriesProperties.candleStyle.wickUpColor": "#00cc81",
-      "mainSeriesProperties.candleStyle.wickDownColor": "#d11b1b",
+      // Main chart style
+      "mainSeriesProperties.style": 1, // 1 = Candles
+      "mainSeriesProperties.candleStyle.upColor": accentGreenColor,
+      "mainSeriesProperties.candleStyle.downColor": accentRedColor,
+      "mainSeriesProperties.candleStyle.drawWick": true,
+      "mainSeriesProperties.candleStyle.drawBorder": true,
+      "mainSeriesProperties.candleStyle.borderUpColor": accentGreenColor,
+      "mainSeriesProperties.candleStyle.borderDownColor": accentRedColor,
+      "mainSeriesProperties.candleStyle.wickUpColor": accentGreenColor,
+      "mainSeriesProperties.candleStyle.wickDownColor": accentRedColor,
       
       // Chart background and grid
-      "paneProperties.background": theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
-      "paneProperties.backgroundType": "solid",
-      "paneProperties.vertGridProperties.color": theme === 'plain-black' ? '#111111' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
-      "paneProperties.horzGridProperties.color": theme === 'plain-black' ? '#111111' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      "paneProperties.background": bgDarkColor,
+      "paneProperties.vertGridProperties.color": borderColor,
+      "paneProperties.horzGridProperties.color": borderColor,
+      "paneProperties.crossHairProperties.color": accentBlueColor,
       
-      // Text colors for toolbar elements
-      "scalesProperties.textColor": theme === 'plain-black' ? '#CCCCCC' : theme === 'dark' ? '#9BA1B0' : '#4B5563',
-      "scalesProperties.lineColor": theme === 'plain-black' ? '#222222' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      // Scale (Y axis)
+      "scalesProperties.backgroundColor": bgDarkColor,
+      "scalesProperties.lineColor": borderColor,
+      "scalesProperties.textColor": textSecondaryColor,
       
-      // Time scale
-      "timeScale.rightOffset": 5,
-      "timeScale.barSpacing": 6,
-      "timeScale.minBarSpacing": 4,
-      "timeScale.rightBarStaysOnScroll": true,
-      "timeScale.borderVisible": true,
-      "timeScale.borderColor": theme === 'plain-black' ? '#222222' : theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
-      "timeScale.backgroundColor": theme === 'plain-black' ? '#000000' : theme === 'dark' ? '#000000' : '#FFFFFF',
-      "timeScale.textColor": theme === 'plain-black' ? '#CCCCCC' : theme === 'dark' ? '#9BA1B0' : '#4B5563',
-      
-      // Volume
+      // Volume indicator
       "volumePaneSize": "medium",
       
-      ...(isMobile ? {
-        "paneProperties.topMargin": 8,
-        "paneProperties.bottomMargin": 8,
-        
-        // Mobile-specific settings
-        "timeScale.fontSize": 11,
-        "timeScale.rightOffset": 3,
-        "timeScale.leftOffset": 3,
-        
-        // Other mobile-specific settings
-        "paneProperties.legendProperties.showLegend": true,
-        "paneProperties.legendProperties.showStudyArguments": false,
-        "paneProperties.legendProperties.showStudyTitles": true,
-        "paneProperties.legendProperties.fontSize": 11,
-        "volumePaneSize": "tiny",
-        
-        // Candle style settings
-        "mainSeriesProperties.candleStyle.drawWick": true,
-        "mainSeriesProperties.candleStyle.drawBorder": true,
-        "mainSeriesProperties.candleStyle.borderUpColor": "#00cc81",
-        "mainSeriesProperties.candleStyle.borderDownColor": "#d11b1b",
-        "mainSeriesProperties.candleStyle.wickUpColor": "#00cc81",
-        "mainSeriesProperties.candleStyle.wickDownColor": "#d11b1b",
-        
-        // Grid settings
-        "paneProperties.vertGridProperties.color": theme === 'plain-black' ? "rgba(255, 255, 255, 0.02)" : "rgba(255, 255, 255, 0.03)",
-        "paneProperties.horzGridProperties.color": theme === 'plain-black' ? "rgba(255, 255, 255, 0.02)" : "rgba(255, 255, 255, 0.03)",
-        
-        // Crosshair settings
-        "crosshairProperties.color": theme === 'plain-black' ? "#CCCCCC" : "#9BA1B0",
-        "crosshairProperties.width": 0.5,
-        "crosshairProperties.style": 2,
-      } : {}),
-    },
-    studies_overrides: {
-      "volume.volume.color.0": "#d11b1b",
-      "volume.volume.color.1": "#00cc81",
-      "volume.volume.transparency": theme === 'plain-black' ? 40 : theme === 'dark' ? 50 : 65,
-      "volume.volume.color": "#00A1FA",
-      "volume.volume.linewidth": 2
+      // Time scale (X axis)
+      "timeScale.rightOffset": 5,
+      "timeScale.borderColor": borderColor,
+      "timeScale.backgroundColor": bgDarkColor,
+      "timeScale.textColor": textSecondaryColor,
+      "timeScale.lineColor": borderColor,
     }
   };
+
+  return config;
 } 

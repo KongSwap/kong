@@ -181,7 +181,7 @@
             try {
                 // First phase: Approve allowance
                 isApprovingAllowance = true;
-                const result = await placeBet(kongToken, 0, outcomeIndex, betAmountNat);
+                await placeBet(kongToken, 0, outcomeIndex, betAmountNat.toString());
                 isApprovingAllowance = false;
 
                 // Update UI state after successful bet
@@ -237,6 +237,8 @@
 </script>
 
 <svelte:head>
+    <title>Kong Madness - KongSwap</title>
+    <meta name="description" content="Kong Madness is a tournament where the token with the highest volume wins the matchup." />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Teko:wght@700&display=swap" rel="stylesheet">
 </svelte:head>

@@ -225,12 +225,43 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
     PREDICTION_MARKETS_CANISTER_ID,
     canisterIDLs.prediction_markets_backend,
   );
-  const bets = await actor.get_all_bets(
-    BigInt(fromIndex),
-    BigInt(toIndex),
-    true,
-  );
-  return bets;
+  
+  // The current implementation is incorrect as get_all_markets doesn't accept arguments
+  // We need to get all markets first and then extract the bets from them
+  const marketsByStatus = await actor.get_markets_by_status();
+  
+  // Combine bets from all markets
+  const allBets: any[] = [];
+  
+  // Process active markets
+  if (marketsByStatus.active && marketsByStatus.active.length > 0) {
+    for (const market of marketsByStatus.active) {
+      try {
+        const marketBets = await actor.get_market_bets(market.id);
+        allBets.push(...marketBets);
+      } catch (e) {
+        console.error(`Failed to get bets for market ${market.id}:`, e);
+      }
+    }
+  }
+  
+  // Process expired unresolved markets
+  if (marketsByStatus.expired_unresolved && marketsByStatus.expired_unresolved.length > 0) {
+    for (const market of marketsByStatus.expired_unresolved) {
+      try {
+        const marketBets = await actor.get_market_bets(market.id);
+        allBets.push(...marketBets);
+      } catch (e) {
+        console.error(`Failed to get bets for market ${market.id}:`, e);
+      }
+    }
+  }
+  
+  // Sort bets by timestamp (newest first)
+  allBets.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+  
+  // Return the requested slice
+  return allBets.slice(fromIndex, toIndex);
 }
 
 export async function getAllCategories() {

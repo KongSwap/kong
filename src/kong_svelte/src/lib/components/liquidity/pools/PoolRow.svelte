@@ -1,60 +1,88 @@
 <script lang="ts">
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
-  import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
-  import { derived, get } from "svelte/store";
-  import { Flame, TrendingUp, Wallet, PiggyBank } from "lucide-svelte";
+  import { Flame, TrendingUp, PiggyBank } from "lucide-svelte";
   import { livePools } from "$lib/services/pools/poolStore";
   import { tooltip } from "$lib/actions/tooltip";
 
-  export let row: any;
+  // Define proper types for the pool data
+  type Token = FE.Token;
 
-  $: pool = {
+  type Pool = {
+    pool_id: string;
+    token0: Token;
+    token1: Token;
+    tvl: number | bigint;
+    rolling_24h_volume: number | bigint;
+    rolling_24h_apy: number;
+  };
+
+  let { row } = $props<{
+    row: Pool;
+  }>();
+
+  // Normalize numeric values once
+  let pool = $derived({
     ...row,
     tvl: Number.isInteger(row.tvl) ? BigInt(row.tvl) : row.tvl,
     rolling_24h_volume: Number.isInteger(row.rolling_24h_volume) ? BigInt(row.rolling_24h_volume) : row.rolling_24h_volume,
     displayTvl: Number(row.tvl) / 1e6
-  };
+  });
 
-  $: isKongPool = pool.token0?.canister_id === KONG_CANISTER_ID || pool.token1?.canister_id === KONG_CANISTER_ID;
+  let tokens = $derived([pool.token0, pool.token1].filter(Boolean) as Token[]);
 
-  $: tokens = [pool.token0, pool.token1].filter(Boolean);
+  let isKongPool = $derived(
+    pool.token0?.canister_id === KONG_CANISTER_ID || 
+    pool.token1?.canister_id === KONG_CANISTER_ID
+  );
 
-  $: isTopVolume = Number(pool.rolling_24h_volume) > 0 && [...$livePools]
-    .sort((a, b) => Number(b.rolling_24h_volume) - Number(a.rolling_24h_volume))
-    .slice(0, 5)
-    .map(p => p.pool_id)
-    .includes(pool.pool_id);
+  // Calculate top pools metrics
+  let topPoolsInfo = $derived({
+    isTopVolume: Number(pool.rolling_24h_volume) > 0 && 
+      [...$livePools].sort((a, b) => Number(b.rolling_24h_volume) - Number(a.rolling_24h_volume))
+        .slice(0, 5)
+        .some(p => p.pool_id === pool.pool_id),
+    isTopTVL: Number(pool.tvl) > 0 && 
+      [...$livePools].sort((a, b) => Number(b.tvl) - Number(a.tvl))
+        .slice(0, 5)
+        .some(p => p.pool_id === pool.pool_id),
+    isTopAPY: Number(pool.rolling_24h_apy) > 0 && 
+      [...$livePools].sort((a, b) => Number(b.rolling_24h_apy) - Number(a.rolling_24h_apy))
+        .slice(0, 5)
+        .some(p => p.pool_id === pool.pool_id)
+  });
 
-  $: isTopTVL = Number(pool.tvl) > 0 && [...$livePools]
-    .sort((a, b) => Number(b.tvl) - Number(a.tvl))
-    .slice(0, 5)
-    .map(p => p.pool_id)
-    .includes(pool.pool_id);
+  let { isTopVolume, isTopTVL, isTopAPY } = $derived(topPoolsInfo);
 
-  $: isTopAPY = Number(pool.rolling_24h_apy) > 0 && [...$livePools]
-    .sort((a, b) => Number(b.rolling_24h_apy) - Number(a.rolling_24h_apy))
-    .slice(0, 5)
-    .map(p => p.pool_id)
-    .includes(pool.pool_id);
+  let isMobile = $state(false);
+  let showDetailsButton = $state(true);
 
-  let isMobile = false;
-  let showDetailsButton = true;
+  // Debounce the resize handler
+  function debounce<T extends (...args: any[]) => void>(
+    fn: T,
+    delay: number
+  ): (...args: Parameters<T>) => void {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return (...args: Parameters<T>) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => fn(...args), delay);
+    };
+  }
 
-  type Cleanup = () => void;
-
-  onMount((): Cleanup => {
+  onMount(() => {
     const checkMobile = () => {
       isMobile = window.innerWidth < 768;
       showDetailsButton = window.innerWidth >= 1150;
     };
 
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
+    const debouncedCheckMobile = debounce(checkMobile, 250);
+
+    checkMobile(); // Initial check
+    window.addEventListener("resize", debouncedCheckMobile);
 
     return () => {
-      window.removeEventListener("resize", checkMobile);
+      window.removeEventListener("resize", debouncedCheckMobile);
     };
   });
 </script>
@@ -96,7 +124,7 @@
   </div>
 {:else}
   <!-- Mobile view (simplified card) -->
-  <div class="mobile-pool-card">
+  <div class="mobile-pool-card {isKongPool ? 'bg-kong-primary/5 hover:bg-kong-primary/15 border-kong-primary/20' : ''}">
     <div class="card-header">
       <div class="token-info">
         <TokenImages

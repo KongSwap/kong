@@ -95,7 +95,8 @@
 </script>
 
 <svelte:head>
-  <title>Wallet data for {principal} - KongSwap</title>
+  <title>Wallet Data - KongSwap</title>
+  <meta name="description" content="View wallet data and portfolio distributions" />
 </svelte:head>
 
 <div class="container mx-auto max-w-[1300px] text-kong-text-primary my-4 px-4">

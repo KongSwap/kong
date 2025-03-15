@@ -1,6 +1,6 @@
 import { writable, derived, type Readable } from 'svelte/store';
 import type { Writable } from 'svelte/store';
-import { fromTokenDecimals, currentUserBalancesStore } from '$lib/stores/tokenStore';
+import { fromTokenDecimals } from '$lib/stores/tokenStore';
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
 import { KONG_LEDGER_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
@@ -88,16 +88,21 @@ function createSwapStore(): SwapStore {
   // Create a store for the swap state
   const swapStore = { subscribe };
 
+  // Create a local balances store to avoid import issues
+  const localBalancesStore = writable<Record<string, FE.TokenBalance>>({});
+  
+  // Create a derived store using the local balances store
   const isInputExceedingBalance = derived(
-    [currentUserBalancesStore, swapStore],
-    ([$currentUserBalancesStore, $swapState]) => {
-      // Check if currentUserBalancesStore is null or undefined
-      if (!$currentUserBalancesStore || !$swapState.payToken || !$swapState.payAmount) {
+    [localBalancesStore, swapStore],
+    ([$balances, $swapState]) => {
+      // Check if necessary values are present
+      if (!$balances || !$swapState?.payToken || !$swapState?.payAmount) {
         return false;
       }
       
-      const balance = $currentUserBalancesStore[$swapState.payToken.canister_id] || BigInt(0);
-      const payAmountBN = new BigNumber($swapState.payAmount);
+      // Safely access properties with optional chaining
+      const balance = $balances[$swapState.payToken.canister_id] ?? BigInt(0);
+      const payAmountBN = new BigNumber($swapState.payAmount || '0');
       const payAmountInTokens = fromTokenDecimals(payAmountBN, $swapState.payToken.decimals);
       return Number(payAmountInTokens) > Number(balance);
     }

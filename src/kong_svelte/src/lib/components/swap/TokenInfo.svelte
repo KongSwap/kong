@@ -1,18 +1,9 @@
 <script lang="ts">
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { toastStore } from "$lib/stores/toastStore";
+  import { copyToClipboard } from "$lib/utils/clipboard";
 
   export let token: FE.Token | null = null;
-
-  async function copyToClipboard(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      toastStore.success("Canister ID copied to clipboard");
-    } catch (err) {
-      toastStore.error("Failed to copy to clipboard");
-    }
-  }
 </script>
 
 <Panel variant="transparent" type="main" className="token-info-panel">

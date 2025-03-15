@@ -1,0 +1,158 @@
+/* TradingView Chart Custom CSS */
+
+/* 
+ * This CSS works in conjunction with the custom_css_properties set in the widget configuration 
+ * and the dynamic updates via setCSSCustomProperty
+ */
+
+:root, .theme-dark {
+  /* Default fallback colors - these will be overridden by custom_css_properties */
+  --tv-color-platform-background: var(--bg-dark);
+  --tv-color-pane-background: var(--bg-dark) ;
+  --tv-color-toolbar-button-background-hover: var(--bg-light);
+  --tv-color-toolbar-button-background-expanded: var(--border);
+  --tv-color-toolbar-button-background-active: var(--border-light);
+  --tv-color-toolbar-button-background-active-hover: #2A2E39;
+  --tv-color-toolbar-button-text: #787B86;
+  --tv-color-toolbar-button-text-hover: #D1D4DC;
+  --tv-color-toolbar-button-text-active: #D1D4DC;
+  --tv-color-toolbar-button-text-active-hover: #D1D4DC;
+  --tv-color-item-active-text: #D1D4DC;
+  --tv-color-toolbar-toggle-button-background-active: #00A7FF;
+  --tv-color-toolbar-toggle-button-background-active-hover: #00A7FF;
+  --tv-color-toolbar-divider-background: #2A2E39;
+  --tv-color-popup-background: #2A2E39;
+  --tv-color-popup-element-text: #D1D4DC;
+  --tv-color-popup-element-text-hover: #FFFFFF;
+  --tv-color-popup-element-background-hover: #3C4049;
+  --tv-color-popup-element-divider-background: #3C4049;
+  --tv-color-popup-element-secondary-text: #787B86;
+  --tv-color-buy-button: #05EC86;
+  --tv-color-sell-button: #FF4545;
+}
+
+/* Chart main areas */
+.chart-page {
+  background-color: var(--tv-color-platform-background) !important;
+}
+
+.chart-container {
+  background-color: var(--tv-color-pane-background) !important;
+  border: none !important;
+}
+
+/* Chart panels and layout */
+.layout__area--top {
+  background-color: var(--tv-color-pane-background) !important;
+  border-bottom-color: var(--tv-color-toolbar-divider-background) !important;
+}
+
+.chart-controls-bar {
+  border-color: var(--tv-color-toolbar-divider-background) !important;
+  background-color: var(--tv-color-pane-background) !important;
+}
+
+/* Toolbar and buttons */
+.group-wWM3zP_M {
+  background-color: var(--tv-color-pane-background) !important;
+}
+
+.button-2ioYhFEY {
+  color: var(--tv-color-toolbar-button-text) !important;
+}
+
+.button-2ioYhFEY:hover {
+  background-color: var(--tv-color-toolbar-button-background-hover) !important;
+  color: var(--tv-color-toolbar-button-text-hover) !important;
+}
+
+.button-2ioYhFEY.isActive-2mI1-NUL {
+  background-color: var(--tv-color-toolbar-button-background-active) !important;
+  color: var(--tv-color-toolbar-button-text-active) !important;
+}
+
+/* Sidebar and tools */
+.tv-side-toolbar .tools-group .button {
+  background-color: var(--tv-color-pane-background) !important;
+  border-color: var(--tv-color-toolbar-divider-background) !important;
+}
+
+.tv-side-toolbar .tools-group .button:hover {
+  background-color: var(--tv-color-toolbar-button-background-hover) !important;
+}
+
+.tv-side-toolbar .tools-group .button svg path {
+  fill: var(--tv-color-toolbar-button-text) !important;
+}
+
+.tv-side-toolbar .tools-group .button:hover svg path {
+  fill: var(--tv-color-toolbar-button-text-hover) !important;
+}
+
+/* Elements to hide */
+.tv-side-toolbar__footer,
+.header-chart-panel .left .header-group-properties,
+.chart-controls-bar-buttons .control-bar-wrapper,
+.drawing-favorite-drawer-container {
+  display: none !important;
+}
+
+/* Dialogs and popups */
+.tv-dialog {
+  background-color: var(--tv-color-popup-background) !important;
+  border-color: var(--tv-color-toolbar-divider-background) !important;
+}
+
+.tv-dialog__title {
+  color: var(--tv-color-popup-element-text) !important;
+}
+
+.tv-dialog__close {
+  color: var(--tv-color-popup-element-secondary-text) !important;
+}
+
+.tv-floating-toolbar,
+.context-menu,
+.menuWrap-g78rwseC {
+  border-color: var(--tv-color-toolbar-divider-background) !important;
+  background-color: var(--tv-color-popup-background) !important;
+}
+
+/* Chart elements */
+.chart-markup-table.pane {
+  border-color: var(--tv-color-toolbar-divider-background) !important;
+  background-color: var(--tv-color-pane-background) !important;
+}
+
+.chart-markup-table.pane .chart-markup-table.pane {
+  background: transparent !important;
+}
+
+/* Buy/Sell button styling */
+.button-buy, 
+[data-name="buy"], 
+[data-name="buy-market"] {
+  background-color: var(--tv-color-buy-button) !important;
+  color: #FFFFFF !important;
+}
+
+.button-sell, 
+[data-name="sell"], 
+[data-name="sell-market"] {
+  background-color: var(--tv-color-sell-button) !important;
+  color: #FFFFFF !important;
+}
+
+/* Chart text elements */
+.chart-markup-table .chart-markup-table,
+.chart-page .chart-container .tv-close-panel {
+  color: var(--tv-color-popup-element-text) !important;
+}
+
+/* Crosshair styling */
+.chart-container .pane-legend-line > * {
+  color: var(--tv-color-popup-element-text) !important;
+}
+
+/* Make sure iframe loads the CSS correctly */
+@import url("tradingview-chart.css");

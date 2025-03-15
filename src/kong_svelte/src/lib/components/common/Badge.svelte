@@ -22,9 +22,19 @@
     icon = null,      // optional icon to display before text
     pill = true,      // whether to use pill shape (rounded-full) or slightly rounded (rounded)
     tooltip: tooltipText = null, // optional tooltip text
-    tooltipDirection = "top", // tooltip direction: top, bottom, left, right
-    class: className = "" // additional classes
-  } = $props();
+    tooltipDirection = "top" as const, // tooltip direction: top, bottom, left, right
+    class: className = "", // additional classes
+    children = () => null
+  } = $props<{
+    variant?: "blue" | "green" | "red" | "yellow" | "purple" | "gray";
+    size?: "xs" | "sm" | "md" | "lg";
+    icon?: string | null;
+    pill?: boolean;
+    tooltip?: string | null;
+    tooltipDirection?: "top" | "bottom" | "left" | "right";
+    class?: string;
+    children?: () => any;
+  }>();
 
   // Computed styles based on variant
   const variantStyles = {
@@ -38,10 +48,10 @@
 
   // Size styles
   const sizeStyles = {
-    xs: "text-xs px-1 py-0.5",
-    sm: "text-xs px-1.5 py-0.5",
-    md: "text-sm px-2 py-1",
-    lg: "text-sm px-2.5 py-1.5"
+    xs: "text-xs px-1 py-0.5 px-2",
+    sm: "text-xs px-1.5 py-0.5 px-2",
+    md: "text-sm px-2 py-1 px-2",
+    lg: "text-sm px-2.5 py-1.5 px-2"
   };
 
   // Computed classes
@@ -58,8 +68,8 @@
 
 <span 
   class={badgeClasses}
-  use:tooltip={tooltipText ? { text: tooltipText, direction: tooltipDirection } : null}
+  use:tooltip={tooltipText ? { text: tooltipText, direction: tooltipDirection } : undefined}
 >
   {#if icon}<span class="inline-block">{icon}</span>{/if}
-  <slot></slot>
+  {@render children()}
 </span> 

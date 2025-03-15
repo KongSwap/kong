@@ -69,7 +69,7 @@ export class SwapMonitor {
                   toastStore.success(`Swap completed successfully`);
                   swapState.setShowSuccessModal(true);
                 } else if (status === "Success") {
-                  toastStore.success(`Balances updated!`);
+                  toastStore.info(`Balances updated!`);
                 } else if (status.toLowerCase().includes("failed")) {
                   toastStore.dismiss(toastId);
                   toastStore.error(`${status}`);

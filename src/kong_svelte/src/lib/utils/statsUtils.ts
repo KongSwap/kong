@@ -36,3 +36,91 @@ export function getPoolPriceUsd(pool: BE.Pool): number {
   let poolPrice = new BigNumber((balance1.plus(lpFee1)).div(balance0.plus(lpFee0)));
   return poolPrice.toNumber();
 }
+
+/**
+ * Calculate price precision and movement values based on price
+ */
+export function calculatePricePrecision(price: number, quoteDecimals: number, baseDecimals: number) {
+  const adjustedPrice = price * Math.pow(10, baseDecimals - quoteDecimals);
+  
+  // Determine precision and minMove based on price
+  const precision = adjustedPrice >= 1000 ? 5 : 8;
+  const minMove = adjustedPrice >= 1000 ? 0.00001 : 
+                  adjustedPrice >= 1 ? 0.0000001 : 0.00000001;
+  
+  return { precision, minMove };
+}
+
+/**
+ * Updates TradingView widget price scale precision
+ */
+export function updateTradingViewPriceScale(widget: any, pool: BE.Pool) {
+  if (!widget?.chart || !widget.chart() || !pool?.price) return;
+  
+  try {
+    const { precision, minMove } = calculatePricePrecision(
+      pool.price, 
+      pool.token0.decimals, 
+      pool.token1.decimals
+    );
+    
+    widget.applyOverrides({
+      "mainSeriesProperties.priceFormat.precision": precision,
+      "mainSeriesProperties.priceFormat.minMove": minMove
+    });
+    
+    // Force chart to redraw
+    setTimeout(() => {
+      try {
+        widget.chart().executeActionById("chartReset");
+      } catch (e) {
+        console.warn("[Chart] Error resetting chart:", e);
+      }
+    }, 100);
+  } catch (e) {
+    console.warn("[Chart] Error updating price scale:", e);
+  }
+}
+
+/**
+ * Find the best pool for a given token pair
+ */
+export function findBestPoolForTokens(
+  quoteToken: FE.Token | undefined, 
+  baseToken: FE.Token | undefined, 
+  pools: BE.Pool[], 
+  currentPoolId?: number
+): { pool_id: number } | null {
+  if (!quoteToken || !baseToken) {
+    return currentPoolId ? { pool_id: currentPoolId } : null;
+  }
+
+  try {
+    const qId = quoteToken.canister_id;
+    const bId = baseToken.canister_id;
+    
+    // First look for direct pool
+    const directPool = pools.find(p => 
+      (p.address_0 === qId && p.address_1 === bId) || 
+      (p.address_1 === qId && p.address_0 === bId)
+    );
+    
+    if (directPool) {
+      return { pool_id: Number(directPool.pool_id) };
+    }
+
+    // Then try related pool
+    const relatedPool = pools.find(p => 
+      [p.address_0, p.address_1].some(addr => addr === qId || addr === bId)
+    );
+
+    if (relatedPool) {
+      return { pool_id: Number(relatedPool.pool_id) };
+    }
+
+    return null;
+  } catch (error) {
+    console.error("[Chart] Failed to get pool info:", error);
+    return null;
+  }
+}

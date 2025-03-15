@@ -355,8 +355,8 @@
   }
 
   .warning-message {
-    @apply p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 
-           text-yellow-500 text-xs backdrop-blur-sm flex items-center gap-2;
+    @apply p-3 rounded-lg bg-kong-accent-yellow/10 border border-kong-accent-yellow/20 
+           text-kong-accent-yellow text-xs backdrop-blur-sm flex items-center gap-2;
   }
 
   .error-icon,

@@ -51,9 +51,6 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
       throw new Error("Invalid API response");
     }
 
-    // Log response for debugging
-    console.log(`API response received:`, data);
-
     // Helper function: Remove underscores and convert to a numeric value.
     const parseNumericString = (value: string | number): number => {
       if (typeof value === 'number') {

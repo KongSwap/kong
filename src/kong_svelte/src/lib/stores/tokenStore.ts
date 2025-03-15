@@ -1,21 +1,34 @@
 // src/kong_svelte/src/lib/stores/tokenStore.ts
 import { derived, writable, get } from "svelte/store";
-import { TokenService } from "$lib/services/tokens/TokenService";
 import BigNumber from "bignumber.js";
-// Import from auth.ts but only for types
 import type { AuthStore } from "$lib/services/auth";
 import type { TokenState } from "$lib/services/tokens/types";
 import { userTokens } from "$lib/stores/userTokens";
 import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+import { 
+  currentUserBalancesStore, 
+  loadBalance, 
+  loadBalances, 
+  updateStoredBalances 
+} from "$lib/stores/balancesStore";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
-import { fetchBalance, fetchBalances } from "$lib/api/balances";
-import { currentUserBalancesStore, getStoredBalances, updateStoredBalances } from "$lib/stores/balancesStore";
 
 // Create a writable store for tracking portfolio update status
 export const isUpdatingPortfolio = writable<boolean>(false);
 
-// Re-export the balances store
-export { currentUserBalancesStore } from "$lib/stores/balancesStore";
+// Re-export important functions for backward compatibility
+export { 
+  updateStoredBalances,
+  loadBalance,
+  loadBalances,
+  currentUserBalancesStore
+};
+
+// Create a fallback empty store for balances in case the imported one is not available
+const fallbackBalancesStore = writable<Record<string, FE.TokenBalance>>({});
+
+// Make sure we have a valid store for currentUserBalancesStore
+const safeBalancesStore = currentUserBalancesStore || fallbackBalancesStore;
 
 function createTokenStore() {
   const initialState: TokenState = {
@@ -49,23 +62,18 @@ function createTokenStore() {
 
 export const tokenStore = createTokenStore();
 
-// Function to get wallet ID safely without circular dependency
-const getCurrentWalletId = (auth: AuthStore): string => {
-  try {
-    const wallet = get(auth);
-    return wallet?.account?.owner?.toString() || "anonymous";
-  } catch (error) {
-    console.warn("Error getting wallet ID:", error);
-    return "anonymous";
-  }
-};
-
-// Update the portfolioValue derived store
+// Update the portfolioValue derived store with safe stores
 export const portfolioValue = derived(
-  [userTokens, currentUserPoolsStore, currentUserBalancesStore],
+  [userTokens, currentUserPoolsStore, safeBalancesStore],
   ([$userTokens, $currentUserPoolsStore, $storedBalances]) => {
-    // Calculate token values
+    // Make sure all stores are initialized before accessing properties
+    if (!$userTokens || !$storedBalances) {
+      return 0;
+    }
+
+    // Calculate token values with proper null checking
     const tokenValue = ($userTokens.tokens || []).reduce((acc, token) => {
+      if (!token || !token.canister_id) return acc;
       const balance = $storedBalances[token.canister_id]?.in_usd;
       if (balance && balance !== "0") {
         return acc + Number(balance);
@@ -87,60 +95,6 @@ export const portfolioValue = derived(
     });
   },
 );
-
-// Wrapper for loadBalance that uses the API client
-export const loadBalance = async (
-  canisterId: string, 
-  auth: AuthStore,
-  forceRefresh = false
-): Promise<FE.TokenBalance> => {
-  // Helper function for default/empty balance
-  const emptyBalance = (): FE.TokenBalance => ({
-    in_tokens: BigInt(0),
-    in_usd: "0",
-  });
-
-  const authStore = get(auth);
-  if(!authStore.isConnected) {
-    return emptyBalance();
-  }
-
-  const owner = getCurrentWalletId(auth);
-  const userTokensStore = get(userTokens);
-
-  // Check database first if not forcing refresh
-  if (!forceRefresh) {
-    const existingBalance = get(currentUserBalancesStore)[canisterId];
-
-    if (existingBalance) {
-      // Update currentUserBalancesStore
-      await updateStoredBalances(owner);
-      return {
-        in_tokens: existingBalance.in_tokens,
-        in_usd: existingBalance.in_usd,
-      };
-    }
-  }
-
-  // Find the token
-  const token = userTokensStore.tokens.find(t => t.canister_id === canisterId);
-  if (!token) {
-    console.warn(`Token not found for canister ID: ${canisterId}`);
-    return emptyBalance();
-  }
-
-  // Use the balances API to load the balance
-  try {
-    tokenStore.addPendingRequest(canisterId);
-    const balance = await fetchBalance(token, owner, forceRefresh);
-    tokenStore.removePendingRequest(canisterId);
-    return balance;
-  } catch (error) {
-    console.error("Error loading balance:", error);
-    tokenStore.removePendingRequest(canisterId);
-    return emptyBalance();
-  }
-};
 
 export const getTokenDecimals = async (canisterId: string) => {
   const token = get(userTokens).tokens.find(t => t.canister_id === canisterId) || await fetchTokensByCanisterId([canisterId])[0];
@@ -167,6 +121,3 @@ export const fromTokenDecimals = (
     return BigInt(0);
   }
 };
-
-// Re-export loadBalances for backward compatibility
-export { fetchBalances as loadBalances } from "$lib/api/balances";

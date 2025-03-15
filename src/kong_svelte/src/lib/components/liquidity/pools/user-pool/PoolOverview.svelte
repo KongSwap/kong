@@ -38,7 +38,7 @@
   }
 </script>
 
-<div in:fade={{ duration: 200 }}>
+<div in:fade={{ duration: 100 }}>
   <div class="stats-card">
     <div class="stats-row">
       <div class="stat-item">
@@ -119,7 +119,7 @@
 
 <style lang="postcss">
   .stats-card {
-    @apply mb-3 rounded-lg bg-kong-bg-light/50 backdrop-blur-sm 
+    @apply mb-3 rounded-lg bg-kong-bg-light/50
            border border-kong-border/10 overflow-hidden;
   }
 
@@ -132,8 +132,10 @@
   }
 
   .stat-item {
-    @apply flex flex-col gap-0.5 p-3 items-center justify-center transition-all duration-200
+    @apply flex flex-col gap-0.5 p-3 items-center justify-center 
            hover:bg-white/5;
+    transition-property: background-color;
+    transition-duration: 200ms;
   }
 
   .stat-label {
@@ -161,13 +163,15 @@
   }
 
   .token-card {
-    @apply rounded-lg bg-kong-bg-light/50 backdrop-blur-sm 
+    @apply rounded-lg bg-kong-bg-light/50
            border border-kong-border/10 overflow-hidden;
   }
 
   .token-row {
-    @apply flex items-center gap-3 p-3 transition-all duration-200 
+    @apply flex items-center gap-3 p-3
            hover:bg-white/5 border-b border-kong-border/10 last:border-b-0;
+    transition-property: background-color;
+    transition-duration: 200ms;
   }
 
   .token-details {
@@ -203,9 +207,11 @@
   }
 
   .earnings-card {
-    @apply p-3 rounded-lg bg-kong-bg-light/50 backdrop-blur-sm
+    @apply p-3 rounded-lg bg-kong-bg-light/50
            border border-kong-border/10 flex flex-col items-center gap-0.5 
-           transition-all duration-200 hover:bg-white/5;
+           hover:bg-white/5;
+    transition-property: background-color;
+    transition-duration: 200ms;
   }
 
   .earnings-label {

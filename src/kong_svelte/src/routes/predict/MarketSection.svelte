@@ -34,6 +34,63 @@
     }
   });
 
+  // Helper function to check if an outcome is a winner
+  function isWinningOutcome(market: any, outcomeIndex: number): boolean {
+    if (!isResolved) return false;
+
+    try {
+      // Case 1: Direct winning_outcomes array at the top level (MarketResult format)
+      if (market.winning_outcomes) {
+        return market.winning_outcomes.some(
+          (winningIndex: any) => Number(winningIndex) === outcomeIndex,
+        );
+      }
+
+      // Case 2: Market within MarketResult
+      if (market.market) {
+        // Case 2.1: If market has status with Closed variant containing winner array
+        if (market.market.status && typeof market.market.status === "object") {
+          const status = market.market.status;
+
+          if ("Closed" in status && Array.isArray(status.Closed)) {
+            return status.Closed.some(
+              (winningIndex: any) => Number(winningIndex) === outcomeIndex,
+            );
+          }
+        }
+
+        // Case 2.2: If market has winning_outcomes property
+        if (market.market.winning_outcomes) {
+          return market.market.winning_outcomes.some(
+            (winningIndex: any) => Number(winningIndex) === outcomeIndex,
+          );
+        }
+      }
+
+      // Case 3: Status directly on the market object
+      if (market.status && typeof market.status === "object") {
+        if ("Closed" in market.status && Array.isArray(market.status.Closed)) {
+          return market.status.Closed.some(
+            (winningIndex: any) => Number(winningIndex) === outcomeIndex,
+          );
+        }
+      }
+
+      // Log error for debugging if none of the expected formats are found
+      if (outcomeIndex === 0) {
+        console.warn(
+          "Could not determine winning outcome. Market structure:",
+          market,
+        );
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error in isWinningOutcome:", error, market);
+      return false;
+    }
+  }
+
   function openResolutionModal(market: any) {
     selectedMarket = market;
     showResolutionModal = true;
@@ -68,19 +125,19 @@
 <AdminResolutionModal
   isOpen={showResolutionModal}
   market={selectedMarket}
-  on:close={() => showResolutionModal = false}
+  on:close={() => (showResolutionModal = false)}
   on:resolved={handleResolved}
 />
 
 <div class="mb-8">
   {#if markets.length === 0}
-    <div class="text-center py-6 text-kong-pm-text-secondary">
+    <div class="text-center py-6 text-kong-text-secondary">
       No markets in this category
     </div>
   {:else}
     <div class="relative pb-3">
       <h2
-        class="text-sm uppercase text-kong-text-primary items-center font-medium flex gap-2"
+        class="text-sm text-kong-text-primary items-center font-medium flex gap-2"
       >
         <div
           class="bg-gradient-to-l h-3 rounded-r-lg to-transparent px-3 py-0.5 w-[20px] {getGradientClass(
@@ -91,55 +148,52 @@
       </h2>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+    <div
+      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6"
+    >
       {#each markets as market (market.id)}
         <Panel
-          variant="transparent"
+          variant="solid"
           className="relative {getBgClass(statusColor)} {isResolved
-            ? 'opacity-70 hover:opacity-100'
+            ? 'opacity-100'
             : ''} group hover:bg-kong-bg-dark/10 transition-all duration-200 flex flex-col min-h-[200px] sm:min-h-[220px]"
         >
-          {#if isResolved}
-            <div class="absolute top-2 right-2">
-              <span
-                class="px-2 py-0.5 bg-kong-accent-green/20 text-kong-text-accent-green text-xs rounded-full"
-              >
-                Resolved
-              </span>
-            </div>
-          {/if}
-
           <!-- Header section -->
-          <div class="flex-initial">
-            <div class="flex justify-between items-start mb-2 sm:mb-3">
-              <div class="flex-1">
+          <div class="flex flex-col">
+            <div class="flex items-start">
+              <div class="w-full">
                 <button
-                  class="text-sm sm:text-base line-clamp-2 font-medium mb-1 sm:mb-1.5 text-kong-text-primary text-left group-hover:text-kong-text-accent-green transition-colors relative min-h-[2.5rem] sm:min-h-[3rem] w-full"
+                  class="text-sm sm:text-base line-clamp-2 flex justify-between font-medium text-kong-text-primary text-left group-hover:text-kong-primary transition-colors relative min-h-[2.5rem] sm:min-h-[2rem] w-full"
                   title={market.question}
                   on:click={() => {
                     goto(`/predict/${market.id}`);
                   }}
                 >
-                  <span class="block pr-3">{market.question}</span>
+                  <div class="flex flex-col">
+                    <span class="block pr-3 pb-1">{market.question}</span>
+                    <div
+                      class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-sm mb-3"
+                    >
+                      <span
+                        class="py-0.5 bg-kong-accent/10 text-kong-accent rounded text-xs font-medium"
+                      >
+                        {formatCategory(market.category)}
+                      </span>
+                      {#if showEndTime}
+                        <span
+                          class="flex items-center gap-1 text-kong-text-secondary text-xs whitespace-nowrap"
+                        >
+                          <Calendar class="w-3 h-3" />
+                          <CountdownTimer endTime={market.end_time} />
+                        </span>
+                      {/if}
+                    </div>
+                  </div>
+
                   <ArrowUpRight
                     class="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity absolute top-0 right-0"
                   />
                 </button>
-                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-sm">
-                  <span
-                    class="px-1.5 py-0.5 bg-kong-pm-accent/10 text-kong-pm-accent rounded text-xs font-medium"
-                  >
-                    {formatCategory(market.category)}
-                  </span>
-                  {#if showEndTime}
-                    <span
-                      class="flex items-center gap-1 text-kong-pm-text-secondary text-xs whitespace-nowrap"
-                    >
-                      <Calendar class="w-3 h-3" />
-                      <CountdownTimer endTime={market.end_time} />
-                    </span>
-                  {/if}
-                </div>
               </div>
             </div>
           </div>
@@ -148,12 +202,17 @@
           <div class="flex-1 flex flex-col">
             <div class="space-y-1.5 sm:space-y-2 mb-2 sm:mb-3">
               {#each market.outcomes as outcome, i}
-                <div class="relative group/outcome rounded {title !==
-                      'Pending Resolution' && !isResolved
-                      ? 'hover:bg-kong-surface-light/40 cursor-pointer'
-                      : ''}">
+                <div
+                  class="relative group/outcome rounded {title !==
+                    'Pending Resolution' && !isResolved
+                    ? 'hover:bg-kong-surface-light/40 cursor-pointer'
+                    : ''}"
+                >
                   <button
-                    class="h-8 sm:h-10 hover:bg-white/10 rounded p-1.5 transition-colors relative w-full"
+                    class="h-8 sm:h-10 hover:bg-white/10 rounded p-1.5 transition-colors relative w-full {isResolved &&
+                    isWinningOutcome(market, i)
+                      ? 'border-2 border-kong-accent-green/30 bg-kong-accent-green/5 shadow-[0_0_5px_rgba(0,203,160,0.3)]'
+                      : ''}"
                     on:click={() =>
                       title !== "Pending Resolution" &&
                       !isResolved &&
@@ -173,12 +232,35 @@
                       class="relative flex justify-between items-center h-full gap-2"
                     >
                       <div class="flex items-center gap-2 min-w-0">
-                        <span class="font-medium text-kong-text-primary text-xs sm:text-sm truncate"
+                        <span
+                          class="font-medium text-kong-text-primary text-xs sm:text-sm truncate"
                           >{outcome}</span
                         >
+                        {#if isResolved && isWinningOutcome(market, i)}
+                          <span
+                            class="text-xs font-medium bg-kong-accent-green/20 text-kong-text-accent-green px-2 py-0.5 rounded-full whitespace-nowrap flex items-center"
+                          >
+                            <svg
+                              class="w-3 h-3 mr-1"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            Winner
+                          </span>
+                        {/if}
                       </div>
-                      <div class="text-right flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                        <div class="text-kong-pm-accent font-bold text-xs sm:text-sm whitespace-nowrap">
+                      <div
+                        class="text-right flex items-center gap-1 sm:gap-2 flex-shrink-0"
+                      >
+                        <div
+                          class="text-kong-accent font-bold text-xs sm:text-sm whitespace-nowrap"
+                        >
                           {calculatePercentage(
                             market.outcome_pools[i],
                             market.outcome_pools.reduce(
@@ -187,7 +269,9 @@
                             ),
                           ).toFixed(1)}%
                         </div>
-                        <div class="text-xs text-kong-pm-text-secondary hidden sm:block">
+                        <div
+                          class="text-xs text-kong-text-secondary hidden sm:block"
+                        >
                           {formatBalance(market.outcome_pools[i], 8)}
                         </div>
                       </div>
@@ -202,7 +286,7 @@
 
             <!-- Card Footer -->
             {#if !isResolved && title !== "Pending Resolution"}
-              <div class="pt-1.5 sm:pt-2 border-t border-kong-pm-border">
+              <div class="pt-1.5 sm:pt-2 border-t border-kong-border">
                 <div class="flex items-center justify-center">
                   <button
                     class="w-full flex items-center justify-center py-1.5 sm:py-2 border shadow-sm border-kong-accent-green/50 hover:bg-kong-accent-green/10 text-kong-text-accent-green rounded font-medium transition-all text-xs sm:text-sm"
@@ -214,7 +298,7 @@
                 </div>
               </div>
             {:else if title === "Pending Resolution"}
-              <div class="pt-2 border-t border-kong-pm-border">
+              <div class="pt-2 border-t border-kong-border">
                 {#if isUserAdmin}
                   <button
                     class="w-full flex items-center justify-center py-1.5 sm:py-2 border shadow-sm border-kong-accent-green/50 hover:bg-kong-accent-green/10 text-kong-text-accent-green rounded font-medium transition-all text-xs sm:text-sm"
@@ -224,14 +308,14 @@
                     Resolve Market
                   </button>
                 {:else}
-                  <div class="text-center text-xs text-kong-pm-text-secondary">
+                  <div class="text-center text-xs text-kong-text-secondary">
                     Awaiting resolution
                   </div>
                 {/if}
               </div>
             {:else}
-              <div class="pt-2 border-t border-kong-pm-border">
-                <div class="text-center text-xs text-kong-pm-text-secondary">
+              <div class="pt-2 border-t border-kong-border">
+                <div class="text-center text-xs text-kong-text-secondary">
                   Resolved on {new Date(
                     Number(market.end_time) / 1_000_000,
                   ).toLocaleDateString()}
@@ -247,25 +331,25 @@
         {#each Array(3 - (markets.length % 3)) as _}
           <div class="hidden lg:block">
             <Panel
-              variant="transparent"
+              variant="solid"
               className="relative opacity-60 hover:opacity-100 border border-dashed border-kong-border/30 flex flex-col transition-all duration-200 hover:border-kong-accent-green/30"
             >
               <div class="flex-1 flex items-center justify-center py-8">
                 <div class="text-center">
-                  <div class="text-kong-pm-text-secondary mb-2">
+                  <div class="text-kong-text-secondary mb-2">
                     <Plus class="w-6 h-6 mx-auto mb-2 opacity-50" />
                     Want to create your own market?
                   </div>
-                  <p class="text-xs text-kong-pm-text-secondary/70">
+                  <p class="text-xs text-kong-text-secondary/70">
                     Coming soon: Create and manage<br />your own prediction
                     markets
                   </p>
                 </div>
               </div>
 
-              <div class="mt-3 pt-2 border-t border-kong-pm-border">
+              <div class="mt-3 pt-2 border-t border-kong-border">
                 <div
-                  class="w-full py-2 text-center text-kong-pm-text-secondary/50 text-xs"
+                  class="w-full py-2 text-center text-kong-text-secondary/50 text-xs"
                 >
                   Stay tuned
                 </div>

@@ -14,7 +14,7 @@
     isFavorite: boolean;
     enablingTokenId: string | null;
     blockedTokenIds: string[];
-    balance?: { tokens: string; usd: string };
+    balance?: { tokens: string; usd: string; loading?: boolean };
     onTokenClick: (e: MouseEvent | TouchEvent) => void;
     onFavoriteClick: (e: MouseEvent) => void;
     onEnableClick: (e: MouseEvent) => void;
@@ -82,10 +82,16 @@
     {:else if props.balance}
       <!-- Balance display for enabled tokens -->
       <span class="flex flex-col text-right token-balance">
-        {props.balance.tokens}
-        <span class="text-xs token-balance-label">
-          {props.balance.usd}
-        </span>
+        {#if props.balance.loading}
+          <div class="balance-loading-indicator">
+            <div class="balance-spinner"></div>
+          </div>
+        {:else}
+          {props.balance.tokens}
+          <span class="text-xs token-balance-label">
+            {props.balance.usd}
+          </span>
+        {/if}
       </span>
       <!-- Selected indicator -->
       {#if props.currentToken?.canister_id === props.token.canister_id}
@@ -258,5 +264,18 @@
 
   .token-item.not-enabled:hover {
     @apply opacity-100;
+  }
+
+  .balance-loading-indicator {
+    @apply flex items-center justify-center;
+    min-width: 60px;
+    min-height: 24px;
+  }
+
+  .balance-spinner {
+    @apply w-3 h-3;
+    @apply border-2 border-white/10 border-t-white/60;
+    @apply rounded-full;
+    animation: spin 0.6s linear infinite;
   }
 </style> 
