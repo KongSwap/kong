@@ -117,7 +117,7 @@
   </div>
 {:else if errorMessage}
   <div class="p-4 bg-kong-bg-light rounded border border-kong-border">
-    <p class="text-red-500">{errorMessage}</p>
+    <p class="text-kong-accent-red">{errorMessage}</p>
     <button 
       class="mt-2 px-3 py-1 bg-kong-bg-light text-kong-text-primary rounded hover:bg-kong-hover-bg-light"
       on:click={() => {

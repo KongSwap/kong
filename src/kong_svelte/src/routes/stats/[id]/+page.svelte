@@ -3,7 +3,7 @@
   import { onDestroy, onMount } from "svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { livePools, fetchPoolsForCanister } from "$lib/services/pools/poolStore";
+  import { fetchPoolsForCanister } from "$lib/services/pools/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import { goto } from "$app/navigation";
@@ -36,7 +36,6 @@
   // Add loading state for pools
   let isPoolsLoading = $state(false);
   // Add a flag to prevent concurrent fetches
-  let fetchInProgress = $state(false);
 
   // Add back the necessary state variables at the top
   let token = $state<FE.Token | undefined>(undefined);

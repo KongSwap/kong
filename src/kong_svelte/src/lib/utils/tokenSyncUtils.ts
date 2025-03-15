@@ -19,18 +19,26 @@ const ESSENTIAL_TOKEN_IDS = [
 ].filter(Boolean); // Filter out any undefined values
 
 /**
- * Synchronizes user tokens based on their actual balances.
- * Fetches all available tokens, checks balances, and updates the userTokens store:
- * - Adds tokens with non-zero balances
- * - Removes tokens with zero balances (except for essential tokens like CKUSDT and ICP)
+ * Analyzes user tokens based on their actual balances.
+ * Fetches all available tokens, checks balances, and returns candidates for addition/removal:
+ * - Tokens with non-zero balances that aren't in the user's list (candidates for addition)
+ * - Tokens with zero balances that are in the user's list (candidates for removal)
+ * - Essential tokens are always kept, regardless of balance
  * 
  * @param principalId - The user's principal ID
- * @returns {Promise<{added: number, removed: number}>} - Stats about tokens added and removed
+ * @returns {Promise<{tokensToAdd: FE.Token[], tokensToRemove: string[], stats: {added: number, removed: number}}>} 
+ *          - Lists of tokens to add/remove and stats
  */
-export async function syncTokens(principalId: string | Principal): Promise<{added: number, removed: number}> {
+export async function syncTokens(
+  principalId: string | Principal
+): Promise<{
+  tokensToAdd: FE.Token[],
+  tokensToRemove: string[],
+  stats: {added: number, removed: number}
+}> {
   if (!principalId) {
     console.warn("Cannot sync tokens: Missing principal ID");
-    return { added: 0, removed: 0 };
+    return { tokensToAdd: [], tokensToRemove: [], stats: { added: 0, removed: 0 } };
   }
 
   const principal = typeof principalId === "string" 
@@ -42,7 +50,7 @@ export async function syncTokens(principalId: string | Principal): Promise<{adde
     const allTokens = await fetchAllTokens();
     if (!allTokens || allTokens.length === 0) {
       console.warn("No tokens returned from API");
-      return { added: 0, removed: 0 };
+      return { tokensToAdd: [], tokensToRemove: [], stats: { added: 0, removed: 0 } };
     }
 
     // Get current user tokens state
@@ -55,9 +63,9 @@ export async function syncTokens(principalId: string | Principal): Promise<{adde
     // Track essential tokens found in the token list
     const essentialTokensFound = new Map<string, FE.Token>();
     
-    // Track changes
-    let tokensAdded = 0;
-    let tokensRemoved = 0;
+    // Arrays to track tokens that would be added or removed
+    const tokensToAdd: FE.Token[] = [];
+    const tokensToRemove: string[] = [];
     
     // First, identify essential tokens in the all tokens list
     for (const token of allTokens) {
@@ -107,38 +115,69 @@ export async function syncTokens(principalId: string | Principal): Promise<{adde
       }
     }
     
-    // Now handle token updates based on our complete map of tokens with balances
+    // Now collect tokens that could be added or removed
     
-    // 1. Add tokens that have balances but aren't in the user's list
+    // 1. Find tokens that have balances but aren't in the user's list
     for (const [canisterId, token] of shouldBeEnabled.entries()) {
       if (!currentTokenIds.has(canisterId)) {
-        userTokens.enableToken(token);
-        tokensAdded++;
+        tokensToAdd.push(token);
       }
     }
     
-    // 2. Remove tokens that are in the user's list but don't have balances
+    // 2. Find tokens that are in the user's list but don't have balances
     // (except for essential tokens like CKUSDT and ICP)
     for (const canisterId of currentTokenIds) {
       if (!shouldBeEnabled.has(canisterId) && !ESSENTIAL_TOKEN_IDS.includes(canisterId)) {
-        userTokens.disableToken(canisterId);
-        tokensRemoved++;
+        tokensToRemove.push(canisterId);
       }
     }
     
-    // 3. Make sure essential tokens are added even if they weren't in the user's list
-    // and weren't found in the balance check
+    // 3. Add essential tokens that weren't found in the balance check
     for (const tokenId of ESSENTIAL_TOKEN_IDS) {
       const token = essentialTokensFound.get(tokenId);
       if (token && !currentTokenIds.has(tokenId) && !shouldBeEnabled.has(tokenId)) {
-        userTokens.enableToken(token);
-        tokensAdded++;
+        tokensToAdd.push(token);
       }
     }
     
-    return { added: tokensAdded, removed: tokensRemoved };
+    return { 
+      tokensToAdd, 
+      tokensToRemove,
+      stats: { 
+        added: tokensToAdd.length, 
+        removed: tokensToRemove.length 
+      } 
+    };
   } catch (error) {
-    console.error("Error syncing tokens:", error);
-    return { added: 0, removed: 0 };
+    console.error("Error analyzing tokens:", error);
+    return { tokensToAdd: [], tokensToRemove: [], stats: { added: 0, removed: 0 } };
   }
+}
+
+/**
+ * Actually applies the token changes after user confirmation
+ * @param tokensToAdd Tokens to add to user's list
+ * @param tokensToRemove Canister IDs of tokens to remove
+ * @returns Stats about tokens added and removed
+ */
+export async function applyTokenChanges(
+  tokensToAdd: FE.Token[],
+  tokensToRemove: string[]
+): Promise<{added: number, removed: number}> {
+  let tokensAdded = 0;
+  let tokensRemoved = 0;
+  
+  // Add new tokens
+  for (const token of tokensToAdd) {
+    userTokens.enableToken(token);
+    tokensAdded++;
+  }
+  
+  // Remove tokens
+  for (const canisterId of tokensToRemove) {
+    userTokens.disableToken(canisterId);
+    tokensRemoved++;
+  }
+  
+  return { added: tokensAdded, removed: tokensRemoved };
 } 

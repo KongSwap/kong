@@ -78,8 +78,10 @@
         liquidityPools: $currentUserPoolsStore?.filteredPools || [],
         isLoading: isLoadingBalances || $currentUserPoolsStore?.loading,
         onRefresh: () => {
-          refreshBalances(true);
-          currentUserPoolsStore.initialize();
+          // Only refresh if data hasn't been loaded yet
+          if (!$currentUserPoolsStore?.filteredPools?.length) {
+            currentUserPoolsStore.initialize();
+          }
         }
       })
     },
@@ -137,23 +139,44 @@
   const userAddresses = $derived([]);
 
   // Calculate total portfolio value from all sources
-  const totalPortfolioValue = $derived(
-    calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || [])
-  );
+  let lastKnownPortfolioValue = $state(0);
+  let totalPortfolioValue = $state(0);
+  
+  // Update total portfolio value whenever stores change
+  $effect(() => {
+    const calculated = calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
+    
+    // Only update last known value if calculated is greater than 0
+    if (calculated > 0) {
+      lastKnownPortfolioValue = calculated;
+      totalPortfolioValue = calculated;
+    } else if (lastKnownPortfolioValue > 0) {
+      // Use last known good value if current calculation is zero
+      totalPortfolioValue = lastKnownPortfolioValue;
+    } else {
+      totalPortfolioValue = calculated;
+    }
+  });
 
   // Helper function to calculate total portfolio value
   function calculateTotalPortfolioValue(balances: any, pools: any[]): number {
     const tokensValue = Object.values(balances || {})
       .reduce((acc: number, balance: any) => {
-        if (balance && typeof balance.in_usd === 'string') {
-          return acc + Number(balance.in_usd);
+        if (balance && balance.in_usd) {
+          // Safely convert to number, handling non-numeric strings
+          const numValue = parseFloat(balance.in_usd);
+          return acc + (isNaN(numValue) ? 0 : numValue);
         }
         return acc;
       }, 0);
     
-    const poolsValue = pools.reduce((acc, pool: any) => {
-      // Convert any usd_balance to a number, handling undefined/nulls
-      const usdBalance = pool.usd_balance ? Number(pool.usd_balance) : 0;
+    const poolsValue = (pools || []).reduce((acc, pool: any) => {
+      // Safely convert usd_balance to number, handling all edge cases
+      let usdBalance = 0;
+      if (pool && pool.usd_balance) {
+        usdBalance = parseFloat(pool.usd_balance);
+        if (isNaN(usdBalance)) usdBalance = 0;
+      }
       return acc + usdBalance;
     }, 0);
     
@@ -183,6 +206,15 @@
         .then(() => {
           isLoadingBalances = false;
           isRefreshing = false;
+          
+          // Manually recalculate portfolio value after balances are loaded
+          setTimeout(() => {
+            const calculated = calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
+            if (calculated > 0) {
+              lastKnownPortfolioValue = calculated;
+              totalPortfolioValue = calculated;
+            }
+          }, 100);
         })
         .catch((err) => {
           console.error("Error refreshing balances:", err);
@@ -241,6 +273,15 @@
       // Set loading state and trigger balance refresh when component mounts
       isLoadingBalances = true;
       refreshBalances(true);
+      
+      // Calculate initial portfolio value after a small delay to allow data loading
+      setTimeout(() => {
+        const calculated = calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
+        if (calculated > 0) {
+          lastKnownPortfolioValue = calculated;
+          totalPortfolioValue = calculated;
+        }
+      }, 1000);
     }
   });
 </script>
@@ -292,7 +333,7 @@
       {#if isLoadingBalances && Object.keys($currentUserBalancesStore || {}).length === 0}
         <span class="opacity-50">Loading...</span>
       {:else}
-        ${totalPortfolioValue.toLocaleString(undefined, {
+        ${(isNaN(totalPortfolioValue) ? 0 : totalPortfolioValue).toLocaleString(undefined, {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}
@@ -308,7 +349,10 @@
         class="flex-1 py-2.5 px-2 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors relative {activeSection === tab.id
           ? 'text-kong-primary'
           : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-        on:click={() => (activeSection = tab.id as WalletSection)}
+        on:click={() => {
+          activeSection = tab.id as WalletSection;
+          // Don't trigger a balance refresh when switching tabs
+        }}
       >
         <Icon size={14} />
         <span>{tab.label}</span>

@@ -55,12 +55,12 @@
                   <Dices size={12} class="sm:w-4 sm:h-4" />
                   <span
                     class={outcomePercentages[i] >= 75
-                      ? "text-emerald-500"
+                      ? "text-kong-accent-green"
                       : outcomePercentages[i] >= 50
-                        ? "text-kong-text-accent-green"
+                        ? "text-kong-accent-green"
                         : outcomePercentages[i] >= 25
-                          ? "text-yellow-500"
-                          : "text-red-500"}
+                          ? "text-kong-accent-yellow"
+                          : "text-kong-accent-red"}
                   >
                     {calculateOdds(outcomePercentages[i])} payout
                   </span>

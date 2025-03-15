@@ -121,7 +121,7 @@
 </script>
 
 <Panel variant="transparent" type="main" className="p-6">
-  <div class="flex flex-col gap-8">
+  <div class="flex flex-col gap-6">
     <!-- Price Section -->
     <div>
       <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2"
@@ -133,7 +133,7 @@
         }}><InfoIcon size={16} /> 
       </span>
       </div>
-      <div class="flex flex-col gap-2">
+      <div class="flex items-center gap-2">
         <div 
           class="text-[32px] font-medium text-kong-text-primary"
           class:flash-green-text={priceFlash === 'up'}
@@ -142,9 +142,9 @@
           ${formattedPrice}
         </div>
         {#if formattedPriceChange24h}
-          <div class="text-sm">
+          <div class="text-xs font-bold flex flex-col">
             <span
-              class={formattedPriceChange24h > 0 ? "text-green-400" : "text-red-400"}
+              class={formattedPriceChange24h > 0 ? "text-kong-accent-green" : "text-kong-accent-red"}
             >
               {formattedPriceChange24h > 0 ? "+" : ""}{formattedPriceChange24h.toFixed(2)}%
             </span>
@@ -155,50 +155,37 @@
     </div>
     
     <!-- Market Stats -->
-    <div class="flex flex-col divide-y divide-kong-border/30">
+    <div class="flex flex-col divide-y divide-kong-border/30 gap-6">
+            <!-- 24h Volume -->
+            <div class="flex flex-col">
+              <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">24h Volume</div>
+              <div class="text-xl font-medium text-kong-text-primary">
+                ${formatToNonZeroDecimal(volume24h)}
+              </div>
+            </div>
+      
+            
       <!-- Market Cap -->
-      <div class="flex flex-col py-4">
+      <div class="flex flex-col">
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Market Cap</div>
         <div class="text-xl font-medium text-kong-text-primary">
           {formatUsdValue(marketCap)}
         </div>
-        <div class="text-sm text-kong-text-primary/40 mt-1">
-          Rank #{marketCapRank !== null ? marketCapRank : "N/A"}
-        </div>
-      </div>
-      
-      <!-- 24h Volume -->
-      <div class="flex flex-col py-4">
-        <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">24h Volume</div>
-        <div class="text-xl font-medium text-kong-text-primary">
-          {formatUsdValue(volume24h)}
-        </div>
-        <div class="text-sm text-kong-text-primary/40 mt-1">
-          {activeToken.metrics.volume_24h
-            ? `${calculateVolumePercentage(Number(activeToken.metrics.volume_24h), Number(activeToken.metrics.market_cap))} of mcap`
-            : "No volume data"}
-        </div>
       </div>
       
       <!-- Total Supply -->
-      <div class="flex flex-col py-4">
+      <div class="flex flex-col">
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Total Supply</div>
         <div class="text-xl font-medium text-kong-text-primary">
-          {formatToNonZeroDecimal(totalSupplyTweened)}
-        </div>
-        <div class="text-sm text-kong-text-primary/40 mt-1">
-          {activeToken?.symbol || ""} tokens
+          {formatToNonZeroDecimal(totalSupplyTweened)} {activeToken?.symbol || ""}
         </div>
       </div>
 
       <!-- Circulating Supply -->
-      <div class="flex flex-col py-4">
+      <div class="flex flex-col">
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Circulating Supply</div>
         <div class="text-xl font-medium text-kong-text-primary">
-          {formatToNonZeroDecimal(circulatingSupplyTweened)}
-        </div>
-        <div class="text-sm text-kong-text-primary/40 mt-1">
-          {activeToken?.symbol || ""} tokens
+          {formatToNonZeroDecimal(circulatingSupplyTweened)} {activeToken?.symbol || ""}
         </div>
       </div>
     </div>

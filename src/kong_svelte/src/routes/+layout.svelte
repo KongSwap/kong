@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { fade } from 'svelte/transition';
   import "../app.css";
   import { page } from "$app/state";
   import Navbar from "$lib/components/nav/Navbar.svelte";
@@ -152,7 +153,7 @@
       <Navbar />
     </div>
     <main class="flex flex-col items-center w-full">
-      <div class="w-full h-full">
+      <div class="w-full h-full" transition:fade>
         {@render children?.()}
       </div>
     </main>

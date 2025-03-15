@@ -55,13 +55,13 @@
       on:click={() => selectTab("percentageChance")}
       class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
       'percentageChance'
-        ? 'text-kong-text-accent-green font-medium'
+        ? 'text-kong-primary font-medium'
         : 'text-kong-text-secondary hover:text-kong-text-primary'}"
     >
       <span class="text-sm sm:text-base">Percentage Chance</span>
       {#if props.selectedChartTab === "percentageChance"}
         <div
-          class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-accent-green rounded-t-full"
+          class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-primary rounded-t-full"
         ></div>
       {/if}
     </button>
@@ -69,13 +69,13 @@
       on:click={() => selectTab("betHistory")}
       class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
       'betHistory'
-        ? 'text-kong-text-accent-green font-medium'
+        ? 'text-kong-primary font-medium'
         : 'text-kong-text-secondary hover:text-kong-text-primary'}"
     >
       <span class="text-sm sm:text-base">Bet History</span>
       {#if props.selectedChartTab === "betHistory"}
         <div
-          class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-accent-green rounded-t-full"
+          class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-primary rounded-t-full"
         ></div>
       {/if}
     </button>

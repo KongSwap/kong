@@ -55,7 +55,7 @@
     <div class="text-right shrink-0 ml-2">
       <div class="text-xs text-kong-text-secondary mb-1">Created</div>
       <div class="text-sm font-medium">{timestamp.date}</div>
-      <div class="text-xs text-gray-500">{timestamp.time}</div>
+      <div class="text-xs text-kong-text-secondary">{timestamp.time}</div>
     </div>
   </div>
   

@@ -5,7 +5,7 @@
   import TokenDropdown from "./TokenDropdown.svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import { currentUserBalancesStore, loadBalances } from "$lib/stores/balancesStore";
-  import { syncTokens } from "$lib/utils/tokenSyncUtils";
+  import { syncTokens, applyTokenChanges } from "$lib/utils/tokenSyncUtils";
   import { fade } from "svelte/transition";
   import Modal from "$lib/components/common/Modal.svelte";
   import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
@@ -81,6 +81,11 @@
   let showSyncResultModal = $state(false);
   let showAddTokenModal = $state(false);
   let showManageTokensModal = $state(false);
+  let showSyncConfirmModal = $state(false);
+  let tokenSyncCandidates = $state<{tokensToAdd: FE.Token[], tokensToRemove: string[]}>({
+    tokensToAdd: [],
+    tokensToRemove: []
+  });
 
   // Load user balances function
   async function loadUserBalances(forceRefresh = false) {
@@ -122,7 +127,40 @@
     showSyncStatus = false;
     
     try {
-      syncStatus = await syncTokens(walletId);
+      // Get token candidates instead of automatically applying changes
+      const syncResults = await syncTokens(walletId);
+      tokenSyncCandidates = {
+        tokensToAdd: syncResults.tokensToAdd,
+        tokensToRemove: syncResults.tokensToRemove
+      };
+      
+      // Only show confirmation if there are changes to make
+      if (syncResults.stats.added > 0 || syncResults.stats.removed > 0) {
+        showSyncConfirmModal = true;
+      } else {
+        // No changes needed, just show a status notification
+        syncStatus = { added: 0, removed: 0 };
+        showSyncStatus = true;
+        setTimeout(() => {
+          showSyncStatus = false;
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("Error analyzing tokens:", error);
+      syncStatus = { added: 0, removed: 0 };
+      showSyncResultModal = true;
+    } finally {
+      isSyncing = false;
+    }
+  }
+
+  // Apply token changes after user confirmation
+  async function confirmAndApplyTokenChanges() {
+    try {
+      syncStatus = await applyTokenChanges(
+        tokenSyncCandidates.tokensToAdd,
+        tokenSyncCandidates.tokensToRemove
+      );
       
       // Show small inline indicator for immediate feedback
       showSyncStatus = true;
@@ -130,7 +168,8 @@
         showSyncStatus = false;
       }, 3000);
       
-      // Open the modal with detailed results
+      // Close the confirmation modal and open the results modal
+      showSyncConfirmModal = false;
       showSyncResultModal = true;
       
       // Refresh balances to reflect the changes
@@ -138,12 +177,16 @@
         await loadUserBalances(true);
       }
     } catch (error) {
-      console.error("Error syncing tokens:", error);
+      console.error("Error applying token changes:", error);
       syncStatus = { added: 0, removed: 0 };
       showSyncResultModal = true;
-    } finally {
-      isSyncing = false;
     }
+  }
+
+  // Cancel the sync operation
+  function cancelSync() {
+    tokenSyncCandidates = { tokensToAdd: [], tokensToRemove: [] };
+    showSyncConfirmModal = false;
   }
 
   // Close the sync result modal
@@ -413,6 +456,76 @@
       </div>
     </div>
   {/if}
+  
+  <!-- Sync Confirmation Modal -->
+  <Modal
+    isOpen={showSyncConfirmModal}
+    title="Confirm Token Sync"
+    onClose={cancelSync}
+    width="450px"
+  >
+    <div class="p-4">
+      <div class="mb-6">
+        <p class="text-sm text-kong-text-secondary mb-4">
+          The following changes will be made to your token list:
+        </p>
+        
+        {#if tokenSyncCandidates.tokensToAdd.length > 0}
+          <div class="mb-4">
+            <h4 class="text-sm font-medium mb-2 flex items-center gap-2">
+              <Plus size={16} class="text-kong-accent-green" />
+              <span>{tokenSyncCandidates.tokensToAdd.length} token{tokenSyncCandidates.tokensToAdd.length !== 1 ? 's' : ''} to add:</span>
+            </h4>
+            <div class="bg-kong-bg-light/10 p-3 rounded-md text-sm max-h-40 overflow-y-auto">
+              <ul class="space-y-2">
+                {#each tokenSyncCandidates.tokensToAdd as token}
+                  <li class="flex items-center gap-2">
+                    <TokenImages
+                      tokens={[token]}
+                      size={18}
+                      showSymbolFallback={true}
+                    />
+                    <span>{token.name} ({token.symbol})</span>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          </div>
+        {/if}
+        
+        {#if tokenSyncCandidates.tokensToRemove.length > 0}
+          <div>
+            <h4 class="text-sm font-medium mb-2 flex items-center gap-2">
+              <Minus size={16} class="text-kong-accent-red" />
+              <span>{tokenSyncCandidates.tokensToRemove.length} token{tokenSyncCandidates.tokensToRemove.length !== 1 ? 's' : ''} to remove:</span>
+            </h4>
+            <div class="bg-kong-bg-light/10 p-3 rounded-md text-sm max-h-40 overflow-y-auto">
+              <ul class="space-y-2">
+                {#each tokenSyncCandidates.tokensToRemove as canisterId}
+                  <li>{canisterId}</li>
+                {/each}
+              </ul>
+            </div>
+          </div>
+        {/if}
+      </div>
+      
+      <div class="flex justify-end gap-3">
+        <button
+          class="px-4 py-2 bg-kong-bg-light/20 text-kong-text-primary rounded-md hover:bg-kong-bg-light/30 transition-colors"
+          on:click={cancelSync}
+        >
+          Cancel
+        </button>
+        <button
+          class="px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
+          on:click={confirmAndApplyTokenChanges}
+        >
+          Apply Changes
+        </button>
+      </div>
+    </div>
+  </Modal>
   
   <!-- Sync Results Modal -->
   <Modal

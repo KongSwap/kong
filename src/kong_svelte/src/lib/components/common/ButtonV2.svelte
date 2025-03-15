@@ -51,7 +51,7 @@
   const solidThemeClasses = {
     primary: "bg-kong-primary hover:bg-kong-primary-hover",
     secondary: "bg-white/5 hover:bg-white/10",
-    success: "bg-kong-success hover:bg-green-500",
+    success: "bg-kong-accent-green hover:bg-kong-accent-green-hover",
     error: "bg-red-600 hover:bg-red-700",
     warning: "bg-kong-warning hover:bg-yellow-500",
     "accent-green": "bg-kong-accent-green hover:bg-kong-accent-green-hover",

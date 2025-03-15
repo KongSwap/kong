@@ -328,9 +328,9 @@
         />
       
         <div class="risk-labels max-w-[400px] ml-4">
-          <span class="text-green-500">Safe (0.1-2%)</span>
-          <span class="text-yellow-500">Caution (2-5%)</span>
-          <span class="text-red-500">Risky (5%+)</span>
+          <span class="text-kong-accent-green">Safe (0.1-2%)</span>
+          <span class="text-kong-accent-yellow">Caution (2-5%)</span>
+          <span class="text-kong-accent-red">Risky (5%+)</span>
         </div>
       </div>
 

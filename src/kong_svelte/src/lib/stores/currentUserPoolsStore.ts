@@ -60,6 +60,14 @@ function createCurrentUserPoolsStore() {
     },
 
     initialize: async () => {
+      // Get current state to check if we already have data
+      const currentState = get({ subscribe });
+      
+      // If we already have processed pools and we're not in a loading state, skip initialization
+      if (currentState.processedPools.length > 0 && !currentState.loading) {
+        return;
+      }
+      
       // Reset state first
       set(initialState);
       update(s => ({ ...s, loading: true }));
