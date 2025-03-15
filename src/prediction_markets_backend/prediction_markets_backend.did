@@ -149,10 +149,12 @@ service : () -> {
       MarketEndTime,
     ) -> (Result);
   get_all_categories : () -> (vec text) query;
-  get_all_markets : (record {start: nat; length: nat}) -> (record {markets: vec Market; total_count: nat}) query;
+  get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
-  get_markets_by_status : (record {start: nat; length: nat}) -> (record {markets_by_status: MarketsByStatus; total_active: nat; total_expired_unresolved: nat; total_resolved: nat}) query;
+  get_markets_by_status : (GetAllMarketsArgs) -> (
+      GetMarketsByStatusResult,
+    ) query;
   get_user_history : (principal) -> (UserHistory) query;
   icrc21_canister_call_consent_message : (ICRC21ConsentMessageRequest) -> (
       ICRC21ConsentMessageResponse,
