@@ -139,7 +139,7 @@
 
     <!-- Date -->
     <td class="px-4 py-2 w-[120px]">
-      <span class="text-slate-400 text-sm whitespace-nowrap">
+      <span class="text-kong-text-secondary text-sm whitespace-nowrap">
         {formatTimestamp(tx.timestamp.toString())}
       </span>
     </td>
@@ -152,7 +152,7 @@
           href={`https://www.icexplorer.io/address/detail/${formatPrincipalId(tx.user.principal_id)}`}
           target="_blank"
           rel="noopener noreferrer"
-          class="text-blue-400/70 hover:text-blue-300"
+          class="text-kong-text-primary hover:text-kong-text-primary/80"
           title="View transaction"
           aria-label="View transaction details"
         >

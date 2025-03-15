@@ -74,16 +74,17 @@
   use:tooltip={tooltipProps}
   aria-label={tooltipText || label || "Button"}
 >
-  <svelte:component this={icon} size={iconSize} />
+  <div class="relative">
+    <svelte:component this={icon} size={iconSize} />
+    {#if badgeCount > 0}
+      <span class="notification-badge" class:notification-badge-mobile={variant === "mobile"}>
+        {badgeCount}
+      </span>
+    {/if}
+  </div>
   
   {#if label && variant !== "mobile"}
     <span>{label}</span>
-  {/if}
-  
-  {#if badgeCount > 0}
-    <span class="notification-badge" class:notification-badge-mobile={variant === "mobile"}>
-      {badgeCount}
-    </span>
   {/if}
   
   <slot /><!-- Additional content like dropdowns -->
@@ -180,11 +181,11 @@
   }
   
   .notification-badge {
-    @apply absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center;
+    @apply absolute -top-3 -left-3 w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10;
   }
 
   .notification-badge-mobile {
-    @apply -top-1 -right-1;
+    @apply -top-2 -left-2;
   }
   
   /* Special style for mobile wallet button */

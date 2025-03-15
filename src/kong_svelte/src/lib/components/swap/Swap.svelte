@@ -59,9 +59,6 @@
     title: string;
   }
 
-  // Props
-  let { currentMode } = $props<{ currentMode: "normal" | "pro" }>();
-
   const PANELS: PanelConfig[] = [
     { id: "pay", type: "pay", title: "You Pay" },
     { id: "receive", type: "receive", title: "You Receive" },
@@ -76,7 +73,6 @@
   let isProcessing = false;
   let isInitialized = false;
   let currentSwapId: string | null = null;
-  let previousMode = currentMode;
   let isQuoteLoading = false;
   let showSettings = false;
   let insufficientFunds = false;
@@ -483,13 +479,6 @@
     }
   });
 
-  // Add this to the reactive statements section
-  $effect(() => {
-    if (currentMode !== previousMode) {
-      resetSwapState();
-    }
-  });
-
   // Add this function to handle resetting state
   function resetSwapState() {
     // Cancel any pending quote updates
@@ -609,7 +598,7 @@
     <div class="relative flex flex-col gap-1 min-h-[240px]">
       <!-- Doge image peeking only for Win98 theme -->
       {#if theme.id === 'win98light'}
-        <div class="absolute -top-24 right-0 z-0 transform translate-x-1/4 select-none pointer-events-none">
+        <div class="absolute -top-[4.8rem] right-5 z-1 transform translate-x-1/4 select-none pointer-events-none">
           <img 
             src="/images/layingdoge.png" 
             alt="Doge peeking" 

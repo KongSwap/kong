@@ -1,24 +1,39 @@
 <script lang="ts">
-  export let label: string | undefined = undefined;
-  export let type: "button" | "submit" | "reset" = "button";
-  export let theme: "primary" | "secondary" | "success" | "error" | "warning" | "accent-green" | "accent-blue" | "muted" = "primary";
-  export let variant: "solid" | "outline" | "transparent" | "shine" = "solid";
-  export let size: "xs" | "sm" | "md" | "lg" = "md";
-  export let isDisabled: boolean = false;
-  export let fullWidth: boolean = false;
-  export let uppercase: boolean = false;
-  export let disabled: boolean = false;
-  export let className: string = "";
-  export let element: HTMLButtonElement | null = null;
-  // Add new prop for animation iterations (1 = once, 0 or negative = infinite)
-  export let animationIterations: number = 1;
-  
-  // Add state for tracking if animations have played
   import { onMount } from 'svelte';
-  let hasAnimated = false;
+
+  let {
+    label = undefined,
+    type = "button",
+    theme = "primary",
+    variant = "solid",
+    size = "md",
+    isDisabled = false,
+    fullWidth = false,
+    uppercase = false,
+    disabled = false,
+    className = "",
+    element = null,
+    animationIterations = 1
+  } = $props<{
+    label?: string;
+    type?: "button" | "submit" | "reset";
+    theme?: "primary" | "secondary" | "success" | "error" | "warning" | "accent-green" | "accent-blue" | "muted";
+    variant?: "solid" | "outline" | "transparent" | "shine";
+    size?: "xs" | "sm" | "md" | "lg";
+    isDisabled?: boolean;
+    fullWidth?: boolean;
+    uppercase?: boolean;
+    disabled?: boolean;
+    className?: string;
+    element?: HTMLButtonElement | null;
+    animationIterations?: number;
+  }>();
+  
+  // Convert state to runes
+  let hasAnimated = $state(false);
   
   // Compute animation iteration count for CSS
-  $: animationCount = animationIterations <= 0 ? 'infinite' : animationIterations.toString();
+  let animationCount = $derived(animationIterations <= 0 ? 'infinite' : animationIterations.toString());
 
   // Theme-based styles
   const baseThemeClasses = {
@@ -27,7 +42,7 @@
     success: "text-kong-success",
     error: "text-white",
     warning: "text-kong-warning",
-    "accent-green": "text-white",
+    "accent-green": "text-black",
     "accent-blue": "text-kong-white",
     "accent-red": "text-kong-white",
     muted: "text-kong-text-inverse/60",
@@ -69,7 +84,6 @@
     muted: "bg-transparent text-white/50 hover:bg-white/5",
   };
 
-  // Size-based styles
   const sizeClasses = {
     xs: "px-2 py-1 text-xs",
     sm: "px-3 py-1 text-sm",
@@ -77,7 +91,6 @@
     lg: "px-6 py-3 text-base",
   };
 
-  // Add shine variant styles
   const shineThemeClasses = {
     primary: `
       relative overflow-hidden
@@ -97,7 +110,6 @@
     muted: "bg-gradient-to-r from-white/10 to-white/20",
   };
 
-  // Determine final button classes
   const variantClasses = {
     solid: solidThemeClasses[theme],
     outline: outlineThemeClasses[theme],
@@ -105,15 +117,12 @@
     shine: shineThemeClasses[theme],
   };
   
-  // Function to handle animation end
   function handleAnimationEnd() {
-    // Only set hasAnimated to true if we're not using infinite animations
     if (animationIterations > 0) {
       hasAnimated = true;
     }
   }
   
-  // Reset animation state when component mounts
   onMount(() => {
     hasAnimated = false;
   });

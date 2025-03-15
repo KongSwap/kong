@@ -25,7 +25,6 @@
   } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/stores/tokenStore";
-  import { tooltip } from "$lib/actions/tooltip";
   import { page } from "$app/stores";
   import Sidebar from "$lib/components/sidebar/Sidebar.svelte";
   import { browser } from "$app/environment";
@@ -192,7 +191,7 @@
 
     try {
       await navigator.clipboard.writeText(text);
-      toastStore.info("Principal ID copied");
+      toastStore.success("Principal ID copied");
     } catch (err) {
       toastStore.error("Failed to copy Principal ID");
     }
@@ -209,6 +208,13 @@
       description: "Provide liquidity to earn trading fees and rewards",
       path: "/pools",
       icon: Coins,
+      comingSoon: false,
+    },
+    {
+      label: "Airdrop Claims",
+      description: "Claim your airdrop tokens",
+      path: "/airdrop-claims",
+      icon: Award,
       comingSoon: false,
     },
     {
@@ -715,10 +721,6 @@
 
   .mobile-menu-footer {
     @apply p-0;
-  }
-
-  .mobile-wallet-btn {
-    @apply w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
   }
 
   .sidebar-portal {
