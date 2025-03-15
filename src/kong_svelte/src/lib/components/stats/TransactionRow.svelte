@@ -4,8 +4,8 @@
   import { formatTimestamp } from "$lib/utils/dateFormatters";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { getPrincipalColor } from "$lib/utils/principalColorUtils";
-  import { toastStore } from "$lib/stores/toastStore";
   import { goto } from "$app/navigation";
+  import { copyToClipboard } from "$lib/utils/clipboard";
 
   export let tx: FE.Transaction;
   export let token: FE.Token;
@@ -54,34 +54,6 @@
     // Use the higher value
     return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
   };
-
-  // Update copy function to show toast
-  async function copyToClipboard(text: string, event: MouseEvent) {
-    event.stopPropagation();
-    console.log('Attempting to copy wallet address:', text);
-    if (!walletAddress) {
-      console.error('Wallet address is empty!');
-      toastStore.error('Wallet address is empty', { title: 'Copy failed' });
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      const target = event.target as HTMLElement;
-      target.classList.add('copied');
-      setTimeout(() => {
-        target.classList.remove('copied');
-      }, 1000);
-      toastStore.success('Wallet ID copied to clipboard', {
-        duration: 2000,
-        title: 'Copied!'
-      });
-    } catch (err) {
-      console.error('Failed to copy:', err);
-      toastStore.error('Failed to copy wallet ID', {
-        title: 'Error'
-      });
-    }
-  }
 </script>
 
 <tr
@@ -183,7 +155,7 @@
         <span
           class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary cursor-pointer hover:opacity-80 relative group"
           style="background-color: {getPrincipalColor(walletAddress)};"
-          on:click={(e) => copyToClipboard(walletAddress, e)}
+          on:click={() => copyToClipboard(walletAddress)}
         >
           {walletAddress.slice(0, 8)}
           <span class="copy-tooltip">Copy ID</span>

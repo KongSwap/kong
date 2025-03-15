@@ -13,8 +13,8 @@ export const synthwaveTheme: ThemeDefinition = {
   id: 'synthwave',
   name: 'Synthwave Sunset',
   colorScheme: 'dark',
-  author: 'Kong Team',
-  authorLink: 'https://kongswap.io',
+  author: 'Shill Gates',
+  authorLink: 'https://windoge98.com',
   colors: {
     // Background colors - deep purple
     bgDark: '#16004A',      // Deep purple

@@ -19,7 +19,8 @@
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
-  import { truncateAddress, copyToClipboard } from "$lib/utils/address";
+  import { truncateAddress } from "$lib/utils/address";
+  import { copyToClipboard } from "$lib/utils/clipboard";
   import WalletTokensList from "$lib/components/wallet/WalletTokensList.svelte";
   import WalletPoolsList from "$lib/components/wallet/WalletPoolsList.svelte";
   import WalletAddressesList from "$lib/components/wallet/WalletAddressesList.svelte";
@@ -151,7 +152,8 @@
       }, 0);
     
     const poolsValue = pools.reduce((acc, pool: any) => {
-      const usdBalance = typeof pool.usd_balance === 'string' ? Number(pool.usd_balance) : 0;
+      // Convert any usd_balance to a number, handling undefined/nulls
+      const usdBalance = pool.usd_balance ? Number(pool.usd_balance) : 0;
       return acc + usdBalance;
     }, 0);
     

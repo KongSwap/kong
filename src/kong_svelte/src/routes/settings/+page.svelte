@@ -475,7 +475,7 @@
   </section>
   
   <!-- Theme Creator Section -->
-  <section>
+  <!-- <section>
     <Panel variant="solid" type="main" className="mb-8">
       <h2 class="text-2xl font-bold text-kong-text-primary mb-6">Create Custom Theme</h2>
       
@@ -521,7 +521,7 @@ themeStore.registerAndApplyTheme(myCustomTheme);
         </pre>
       </div>
     </Panel>
-  </section>
+  </section> -->
 </div>
 
 <style lang="postcss">

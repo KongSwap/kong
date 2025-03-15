@@ -211,6 +211,11 @@ function getTokenAliases(symbol: string): string {
 
 function filterPools(pools: ProcessedPool[], query: string): ProcessedPool[] {
   return pools.filter(poolItem => {
+    // If there's no search query, include all pools with any balance
+    if (!query) {
+      return Number(poolItem.usd_balance) > 0;
+    }
+    // Otherwise filter by both search and balance
     const matchesSearch = poolItem.searchableText.includes(query.toLowerCase());
     const hasBalance = Number(poolItem.usd_balance) > 0;
     return matchesSearch && hasBalance;

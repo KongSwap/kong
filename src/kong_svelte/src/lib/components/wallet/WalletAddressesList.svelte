@@ -4,6 +4,7 @@
   import { onMount, afterUpdate } from 'svelte';
   import { auth } from "$lib/services/auth";
     import { uint8ArrayToHexString } from '@dfinity/utils';
+    import { toastStore } from '$lib/stores/toastStore';
   
   // Props for the component
   export let userAddresses: Array<{
@@ -99,7 +100,7 @@
         copiedAddressId = null;
       }, 2000);
     }
-    // TODO: Add toast notification for copied address
+    toastStore.info("Address copied to clipboard");
   }
   
   // Truncate address for display

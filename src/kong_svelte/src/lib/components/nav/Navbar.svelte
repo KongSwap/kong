@@ -2,9 +2,8 @@
   import { auth } from "$lib/services/auth";
   import { fade, slide } from "svelte/transition";
   import { goto } from "$app/navigation";
-  import { toastStore } from "$lib/stores/toastStore";
   import { notificationsStore } from "$lib/stores/notificationsStore";
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import {
     Droplet,
     Settings as SettingsIcon,
@@ -37,6 +36,7 @@
   import { writable } from 'svelte/store';
   import NavbarButton from "./NavbarButton.svelte";
   import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
+  import { copyToClipboard } from "$lib/utils/clipboard";
 
   // Get current theme details including colorScheme
   $: currentTheme = browser && $themeStore ? getThemeById($themeStore) : null;
@@ -176,20 +176,6 @@
 
   function onTabChange(tab: "swap" | "earn" | "stats" | "predict") {
     activeTab = tab;
-  }
-
-  async function copyToClipboard(text: string | undefined) {
-    if (!text) {
-      toastStore.error("No Principal ID available");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(text);
-      toastStore.success("Principal ID copied");
-    } catch (err) {
-      toastStore.error("Failed to copy Principal ID");
-    }
   }
 
   async function claimTokens() {
@@ -438,7 +424,7 @@
           <NavbarButton
             icon={Copy}
             label="PID"
-            onClick={() => copyToClipboard(auth.pnp?.account?.owner)}
+            onClick={() => copyToClipboard($auth?.account?.owner)}
             tooltipText="Copy Principal ID"
             useThemeBorder={isWin98Theme}
             customBgColor={buttonBg}
@@ -602,7 +588,7 @@
               label="Copy Principal ID"
               icon={Copy}
               onClick={() => {
-                copyToClipboard(auth.pnp?.account?.owner);
+                copyToClipboard($auth?.account?.owner);
                 navOpen = false;
               }}
               iconBackground="bg-kong-text-primary/10"
@@ -695,14 +681,6 @@
     @apply p-0;
   }
 
-  .sidebar-portal {
-    @apply fixed inset-0 z-[100] isolate;
-  }
-
-  .sidebar-backdrop {
-    @apply fixed inset-0 bg-black/20 backdrop-blur-[4px];
-  }
-
   /* Logo styles */
   .light-logo {
     @apply invert brightness-[var(--logo-brightness,0.8)] transition-all duration-200;
@@ -728,14 +706,5 @@
   .nav-link.active {
     @apply text-kong-primary;
     text-shadow: 0 0px 30px theme(colors.kong.primary);
-  }
-
-  /* Notification badge */
-  .notification-badge {
-    @apply absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center;
-  }
-
-  .notification-badge-mobile {
-    @apply -top-1 -right-1;
   }
 </style>

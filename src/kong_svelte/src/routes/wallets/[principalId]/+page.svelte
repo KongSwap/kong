@@ -20,7 +20,6 @@
     TrendingUp,
     ExternalLink,
   } from "lucide-svelte";
-  import { toastStore } from "$lib/stores/toastStore";
   import { onDestroy } from "svelte";
 
   // Get props passed from layout
@@ -129,12 +128,6 @@
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-  }
-
-  // Copy principal ID to clipboard
-  function copyToClipboard() {
-    navigator.clipboard.writeText(page.params.principalId);
-    toastStore.success("Copied to clipboard");
   }
 
   // Tooltip text for whale indicator

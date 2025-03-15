@@ -155,9 +155,9 @@
     </div>
     
     <!-- Market Stats -->
-    <div class="grid grid-cols-2 gap-6">
+    <div class="flex flex-col divide-y divide-kong-border/30">
       <!-- Market Cap -->
-      <div>
+      <div class="flex flex-col py-4">
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Market Cap</div>
         <div class="text-xl font-medium text-kong-text-primary">
           {formatUsdValue(marketCap)}
@@ -168,7 +168,7 @@
       </div>
       
       <!-- 24h Volume -->
-      <div>
+      <div class="flex flex-col py-4">
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">24h Volume</div>
         <div class="text-xl font-medium text-kong-text-primary">
           {formatUsdValue(volume24h)}
@@ -181,7 +181,7 @@
       </div>
       
       <!-- Total Supply -->
-      <div>
+      <div class="flex flex-col py-4">
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Total Supply</div>
         <div class="text-xl font-medium text-kong-text-primary">
           {formatToNonZeroDecimal(totalSupplyTweened)}
@@ -191,8 +191,8 @@
         </div>
       </div>
 
-      <!-- Circl Supply -->
-      <div>
+      <!-- Circulating Supply -->
+      <div class="flex flex-col py-4">
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Circulating Supply</div>
         <div class="text-xl font-medium text-kong-text-primary">
           {formatToNonZeroDecimal(circulatingSupplyTweened)}

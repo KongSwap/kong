@@ -10,12 +10,3 @@ export function truncateAddress(address: string): string {
   }
   return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
 }
-
-/**
- * Copies text to clipboard.
- * 
- * @param text Text to copy to clipboard
- */
-export function copyToClipboard(text: string): void {
-  navigator.clipboard.writeText(text);
-} 
