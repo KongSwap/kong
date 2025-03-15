@@ -39,6 +39,17 @@ export interface Distribution {
   'user' : Principal,
   'outcome_index' : bigint,
 }
+export interface GetAllMarketsArgs { 'start' : bigint, 'length' : bigint }
+export interface GetAllMarketsResult {
+  'markets' : Array<Market>,
+  'total_count' : bigint,
+}
+export interface GetMarketsByStatusResult {
+  'total_active' : bigint,
+  'total_resolved' : bigint,
+  'total_expired_unresolved' : bigint,
+  'markets_by_status' : MarketsByStatus,
+}
 export interface ICRC21ConsentMessageRequest {
   'method' : string,
   'canister' : Principal,
@@ -150,10 +161,13 @@ export interface _SERVICE {
     Result
   >,
   'get_all_categories' : ActorMethod<[], Array<string>>,
-  'get_all_markets' : ActorMethod<[], Array<Market>>,
+  'get_all_markets' : ActorMethod<[GetAllMarketsArgs], GetAllMarketsResult>,
   'get_market' : ActorMethod<[bigint], [] | [Market]>,
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
-  'get_markets_by_status' : ActorMethod<[], MarketsByStatus>,
+  'get_markets_by_status' : ActorMethod<
+    [GetAllMarketsArgs],
+    GetMarketsByStatusResult
+  >,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ICRC21ConsentMessageRequest],
