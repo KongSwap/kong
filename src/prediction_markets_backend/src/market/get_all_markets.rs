@@ -9,7 +9,7 @@ use crate::stable_memory::*;
 #[query]
 pub fn get_all_markets() -> Vec<Market> {
     MARKETS.with(|markets| {
-        markets
+        let mut markets_vec: Vec<Market> = markets
             .borrow()
             .iter()
             .map(|(market_id, market)| {
@@ -61,6 +61,11 @@ pub fn get_all_markets() -> Vec<Market> {
 
                 market
             })
-            .collect()
+            .collect();
+        
+        // Sort markets by created_at timestamp, newest first
+        markets_vec.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        
+        markets_vec
     })
 }

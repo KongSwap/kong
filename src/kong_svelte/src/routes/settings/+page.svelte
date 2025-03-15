@@ -9,7 +9,7 @@
   import { toastStore } from '$lib/stores/toastStore';
   import { auth } from '$lib/services/auth';
   import { browser } from '$app/environment';
-  import { Sun, Moon, Square, Settings as SettingsIcon, ArrowLeft } from 'lucide-svelte';
+  import { Settings as SettingsIcon, ArrowLeft } from 'lucide-svelte';
   import PageHeader from '$lib/components/common/PageHeader.svelte';
   import Panel from '$lib/components/common/Panel.svelte';
   
@@ -278,7 +278,12 @@
   }
 </script>
 
-<div class="page-content p-4 md:p-8 max-w-6xl mx-auto">
+<svelte:head>
+  <title>Settings - KongSwap</title>
+  <meta name="description" content="Customize Kong's appearance and behavior" />
+</svelte:head>
+
+<div class="page-content max-w-6xl mx-auto">
   <!-- Back button -->
   <div class="mb-4">
     <button

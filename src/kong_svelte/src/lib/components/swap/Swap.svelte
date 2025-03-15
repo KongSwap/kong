@@ -21,8 +21,6 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { livePools } from "$lib/services/pools/poolStore";
-  import Settings from "$lib/components/settings/Settings.svelte";
-  import Modal from "$lib/components/common/Modal.svelte";
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import { browser } from "$app/environment";
@@ -752,18 +750,6 @@
       resetSwapState();
     }}
   />
-{/if}
-
-{#if showSettings}
-  <Modal
-    isOpen={true}
-    title="Settings"
-    height="auto"
-    variant="transparent"
-    on:close={() => (showSettings = false)}
-  >
-    <Settings on:close={() => (showSettings = false)} />
-  </Modal>
 {/if}
 
 <style scoped lang="postcss">

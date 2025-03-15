@@ -16,6 +16,7 @@
     currentUserBalancesStore,
     loadBalances,
   } from "$lib/stores/balancesStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
   import { truncateAddress, copyToClipboard } from "$lib/utils/address";
@@ -73,9 +74,12 @@
     pools: {
       component: WalletPoolsList,
       props: () => ({
-        liquidityPools: fallbackLiquidityPools,
-        isLoading: isLoadingBalances,
-        onRefresh: () => refreshBalances(true)
+        liquidityPools: $currentUserPoolsStore?.filteredPools || [],
+        isLoading: isLoadingBalances || $currentUserPoolsStore?.loading,
+        onRefresh: () => {
+          refreshBalances(true);
+          currentUserPoolsStore.initialize();
+        }
       })
     },
     history: {
@@ -127,16 +131,13 @@
     }
   });
 
-  // Liquidity pools data (now legacy/fallback data)
-  const fallbackLiquidityPools = [];
-
   // User addresses data - Now we don't need this, our WalletAddressesList will get the data directly from auth
   // We keep it for backward compatibility
   const userAddresses = $derived([]);
 
   // Calculate total portfolio value from all sources
   const totalPortfolioValue = $derived(
-    calculateTotalPortfolioValue($currentUserBalancesStore, fallbackLiquidityPools)
+    calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || [])
   );
 
   // Helper function to calculate total portfolio value
@@ -149,7 +150,10 @@
         return acc;
       }, 0);
     
-    const poolsValue = pools.reduce((acc, pool: any) => acc + pool.value, 0);
+    const poolsValue = pools.reduce((acc, pool: any) => {
+      const usdBalance = typeof pool.usd_balance === 'string' ? Number(pool.usd_balance) : 0;
+      return acc + usdBalance;
+    }, 0);
     
     return tokensValue + poolsValue;
   }
@@ -224,6 +228,9 @@
   onMount(() => {
     // User tokens might not be loaded yet
     userTokens.refreshTokenData();
+    
+    // Initialize pool data
+    currentUserPoolsStore.initialize();
 
     // Get the current wallet ID
     if ($auth?.account?.owner) {
@@ -245,16 +252,18 @@
     <div class="flex justify-between items-center mb-2">
       <div class="text-sm text-kong-text-secondary flex items-center gap-2">
         Total Portfolio Value
-        <button
-          class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all {isRefreshing
-            ? 'animate-spin'
-            : ''}"
-          on:click={() => refreshBalances(true)}
-          disabled={isRefreshing}
-          use:tooltip={{ text: "Refresh balance data", direction: "bottom" }}
-        >
-          <RefreshCw size={12} />
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all {isRefreshing
+              ? 'animate-spin'
+              : ''}"
+            on:click={() => refreshBalances(true)}
+            disabled={isRefreshing}
+            use:tooltip={{ text: "Refresh balance data", direction: "bottom" }}
+          >
+            <RefreshCw size={12} />
+          </button>
+        </div>
       </div>
       {#if $auth?.account?.owner}
         <div

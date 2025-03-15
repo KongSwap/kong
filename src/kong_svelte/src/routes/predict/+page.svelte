@@ -192,6 +192,11 @@
   }
 </script>
 
+<svelte:head>
+  <title>Prediction Markets - KongSwap</title>
+  <meta name="description" content="Predict the future and earn rewards" />
+</svelte:head>
+
 <div class="min-h-screen text-kong-text-primary px-4">
   <div class="max-w-7xl mx-auto">
     <div class="text-center mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-6">

@@ -4,7 +4,7 @@ import { getThemeById, generateThemeVariables, getAllThemes } from '../themes/th
 import type { ThemeDefinition } from '../themes/baseTheme';
 
 // Define theme ID type based on available themes
-export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'win98light';
+export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'win98light' | 'synthwave';
 
 function createThemeStore() {
   const { subscribe, set } = writable<ThemeId>('dark');

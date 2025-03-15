@@ -5,28 +5,28 @@
   import { DEFAULT_LOGOS } from "$lib/services/tokens";
   import { onMount } from 'svelte';
   
-  export let pending: { message: string; created_at: bigint; id: string };
-  export let avatar: string;
-  
-  // Pending messages are always from the current user
-  $: isCurrentUser = true;
-  
-  // Format timestamp
-  $: timeString = new Date(Number(pending.created_at / BigInt(1000000))).toLocaleTimeString([], { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  });
-  
+  let {
+    pending,  // { message: string; created_at: bigint; id: string }
+    avatar,   // string
+  } = $props<{
+    pending: { message: string; created_at: bigint; id: string };
+    avatar: string;
+  }>();
+
+  // Constants
   const DEFAULT_IMAGE = '/tokens/not_verified.webp';
   
-  // Map to store token data once fetched
-  let tokenCache = new Map();
-  
-  // Process message to add token icons if it contains token info
-  $: processedMessage = processMessageContent(pending.message);
+  // State
+  let tokenCache = $state(new Map());
+  let processedMessage = $derived(processMessageContent(pending.message));
+  let isCurrentUser = $derived(true); // Pending messages are always from current user
+  let timeString = $derived(new Date(Number(pending.created_at / BigInt(1000000))).toLocaleTimeString([], { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  }));
 
   // Extract canister IDs from message for token lookups
-  function extractCanisterIds(content) {
+  function extractCanisterIds(content: string) {
     const matches = [];
     const tokenRegex = /\/price\s+([a-zA-Z0-9-]+)/g;
     let match;
@@ -47,15 +47,13 @@
         tokens.forEach(token => {
           tokenCache.set(token.canister_id, token);
         });
-        // Force update
-        processedMessage = processMessageContent(pending.message);
       } catch (error) {
         console.error('Error fetching token data:', error);
       }
     }
   });
 
-  function processMessageContent(content) {
+  function processMessageContent(content: string) {
     // Changed to match Telegram-style commands: /price canister-id
     const tokenRegex = /\/price\s+([a-zA-Z0-9-]+)/g;
     

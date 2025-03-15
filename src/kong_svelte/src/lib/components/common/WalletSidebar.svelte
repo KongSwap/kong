@@ -15,7 +15,7 @@
   import { auth } from "$lib/services/auth";
 
   // TrollBox imports
-  import TrollboxPanel from "$lib/components/trollbox/TrollboxPanel.svelte";
+  import TrollboxPanel from "$lib/components/wallet/trollbox/TrollboxPanel.svelte";
   import WalletPanel from "$lib/components/wallet/WalletPanel.svelte";
   import NotificationsPanel from "$lib/components/notifications/NotificationsPanel.svelte";
 

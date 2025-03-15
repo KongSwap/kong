@@ -126,6 +126,7 @@
     try {
       const marketId = Number($page.params.id);
       const marketData = await getMarket(marketId);
+      console.log(marketData);
       market = marketData[0];
       
       try {
@@ -259,6 +260,11 @@
   $: isPendingResolution =
     !isMarketResolved && marketEndTime && marketEndTime < Date.now();
 </script>
+
+<svelte:head> 
+  <title>{market?.question} - KongSwap</title>
+  <meta name="description" content="{market?.question}" />
+</svelte:head>
 
 <div class="min-h-screen text-kong-text-primary px-2 sm:px-4">
   <div class="max-w-6xl mx-auto">

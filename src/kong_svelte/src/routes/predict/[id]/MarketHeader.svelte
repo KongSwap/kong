@@ -46,4 +46,10 @@
       {/if}
     </div>
   </div>
+  {#if market.rules && market.rules.length > 0}
+    <div class="mt-4 p-3 bg-kong-bg-light/10 rounded border border-kong-border/10">
+      <h2 class="text-sm font-medium text-kong-text-primary mb-2">Market Rules</h2>
+      <p class="text-sm text-kong-text-secondary whitespace-pre-wrap">{market.rules}</p>
+    </div>
+  {/if}
 </div> 

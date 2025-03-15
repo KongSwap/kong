@@ -12,7 +12,7 @@
     uppercase = false,
     disabled = false,
     className = "",
-    element = null,
+    element = $bindable(null),
     animationIterations = 1
   } = $props<{
     label?: string;
@@ -42,7 +42,7 @@
     success: "text-kong-success",
     error: "text-white",
     warning: "text-kong-warning",
-    "accent-green": "text-black",
+    "accent-green": "text-kong-text-on-primary",
     "accent-blue": "text-kong-white",
     "accent-red": "text-kong-white",
     muted: "text-kong-text-inverse/60",

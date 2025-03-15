@@ -1,6 +1,6 @@
 <!-- TrollboxPanel.svelte -->
 <script lang="ts">
-  import { X as IconClose, MessagesSquare } from "lucide-svelte";
+  import { MessagesSquare } from "lucide-svelte";
   import { fade, slide } from "svelte/transition";
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
@@ -8,9 +8,9 @@
   import { auth } from "$lib/services/auth";
   
   // TrollBox imports
-  import { trollboxStore } from "$lib/components/trollbox/trollboxStore";
-  import MessageList from "$lib/components/trollbox/MessageList.svelte";
-  import MessageInput from "$lib/components/trollbox/MessageInput.svelte";
+  import { trollboxStore } from "$lib/components/wallet/trollbox/trollboxStore";
+  import MessageList from "$lib/components/wallet/trollbox/MessageList.svelte";
+  import MessageInput from "$lib/components/wallet/trollbox/MessageInput.svelte";
 
   // Props type definition
   type TrollboxPanelProps = {
@@ -31,7 +31,6 @@
   let confirmingMessageIds = $state<Set<bigint>>(new Set());
   let errorMessage = $state('');
   let showInstructions = $state(false);
-  let showRefreshPrompt = $state(false);
   let documentHidden = $state(false);
   
   // Expose trollbox store values using $derived instead of $:

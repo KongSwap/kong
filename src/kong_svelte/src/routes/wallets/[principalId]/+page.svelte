@@ -150,6 +150,7 @@
 
 <svelte:head>
   <title>Wallet Overview for {page.params.principalId} - KongSwap</title>
+  <meta name="description" content="View your wallet overview and portfolio distribution" />
 </svelte:head>
 
 <div class="space-y-2">

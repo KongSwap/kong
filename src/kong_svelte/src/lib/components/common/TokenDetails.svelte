@@ -1,7 +1,7 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import SendTokens from "$lib/components/sidebar/SendTokens.svelte";
-  import TransferConfirmationModal from "$lib/components/sidebar/TransferConfirmationModal.svelte";
+  import TransferConfirmationModal from "$lib/components/wallet/TransferConfirmationModal.svelte";
   import { createEventDispatcher } from "svelte";
 
   export let token: FE.Token;

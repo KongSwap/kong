@@ -71,6 +71,11 @@
   }
 </script>
 
+<svelte:head>
+  <title>Prediction History - KongSwap</title>
+  <meta name="description" content="View your past predictions and outcomes" />
+</svelte:head>
+
 <div class="min-h-screen text-kong-text-primary px-4">
   <div class="max-w-6xl mx-auto">
     <button

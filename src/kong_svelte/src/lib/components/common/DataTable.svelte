@@ -253,7 +253,7 @@
             class="h-[44px] border-b border-kong-border/50 hover:bg-kong-hover-bg-light transition-colors duration-200 
               {onRowClick ? 'cursor-pointer' : ''} 
               {rowFlashStates.get(row[rowKey])?.class || ''} 
-              {isKongRow?.(row) ? 'bg-kong-primary/5 hover:bg-kong-primary/15 border-kong-primary/20' : ''}"
+              {isKongRow?.(row) ? '!bg-kong-primary/15 hover:bg-kong-primary/30 border-kong-primary/30' : ''}"
             on:click={() => onRowClick?.(row)}
           >
             {#each columns as column (column.key)}

@@ -244,6 +244,7 @@
       }
 
       // Create market
+      console.log("Creating market... rules:", rules);
       const result = await createMarket({
         question,
         category: { [category]: null },
@@ -274,6 +275,11 @@
   // Add this to the script section
   $: questionError = question.length > 200 ? "Question must be less than 200 characters" : "";
 </script>
+
+<svelte:head>
+  <title>Create a Prediction Market - KongSwap</title>
+  <meta name="description" content="Create a prediction market on KongSwap" />
+</svelte:head>
 
 <div class="min-h-screen text-kong-text-primary">
   {#if !$auth.isConnected && !isUserAdmin}

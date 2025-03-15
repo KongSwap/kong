@@ -20,17 +20,12 @@
     TrendingUpDown,
     Search,
     Trophy,
-    Palette,
     Bell,
   } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { page } from "$app/stores";
-  import Sidebar from "$lib/components/sidebar/Sidebar.svelte";
   import { browser } from "$app/environment";
-  import Settings from "$lib/components/settings/Settings.svelte";
-  import Modal from "$lib/components/common/Modal.svelte";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
   import { themeStore } from "$lib/stores/themeStore";
   import NavOption from "./NavOption.svelte";
   import MobileNavGroup from "./MobileNavGroup.svelte";
@@ -41,7 +36,7 @@
   import { getThemeById } from "$lib/themes/themeRegistry";
   import { writable } from 'svelte/store';
   import NavbarButton from "./NavbarButton.svelte";
-  import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
+  import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
 
   // Get current theme details including colorScheme
   $: currentTheme = browser && $themeStore ? getThemeById($themeStore) : null;
@@ -650,29 +645,6 @@
         />
       </div>
     </div>
-  </div>
-{/if}
-
-{#if showSettings}
-  <Modal
-    isOpen={true}
-    title="Settings"
-    height="auto"
-    variant="transparent"
-    on:close={() => (showSettings = false)}
-  >
-    <Settings on:close={() => (showSettings = false)} />
-  </Modal>
-{/if}
-
-{#if $sidebarStore.isOpen}
-  <div class="sidebar-portal">
-    <div
-      class="sidebar-backdrop"
-      transition:fade={{ duration: 150 }}
-      on:click={() => sidebarStore.close()}
-    />
-    <Sidebar onClose={() => sidebarStore.close()} />
   </div>
 {/if}
 

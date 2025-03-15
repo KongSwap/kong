@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import TransferConfirmationModal from "$lib/components/sidebar/TransferConfirmationModal.svelte";
+  import TransferConfirmationModal from "$lib/components/wallet/TransferConfirmationModal.svelte";
   import { 
     ArrowRight, 
     Clipboard, 

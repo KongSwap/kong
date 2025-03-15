@@ -5,6 +5,7 @@ import { win98Theme } from './win98Theme';
 import { plainBlackTheme } from './plainBlackTheme';
 import { nordTheme } from './nordTheme';
 import { lightTheme } from './lightTheme';
+import { synthwaveTheme } from './synthwaveTheme';
 
 // Collection of all available themes
 const themes: ThemeDefinition[] = [
@@ -13,6 +14,7 @@ const themes: ThemeDefinition[] = [
   win98Theme,     // Windows 98 light theme
   plainBlackTheme, // Plain black theme
   nordTheme,       // Nord-inspired theme
+  synthwaveTheme,  // Synthwave sunset theme
 ];
 
 /**

@@ -8,38 +8,33 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   
-  export let message: Message;
-  export let isUserAdmin: boolean = false;
-  export let isDeleting: boolean = false;
-  export let isConfirming: boolean = false;
-  export let onRequestDelete: (id: bigint) => void;
-  export let onCancelDelete: (id: bigint) => void;
-  export let onConfirmDelete: (id: bigint) => void;
-  export let onBanUser: (principal: import('@dfinity/principal').Principal, days: number) => void;
-  export let onUnbanUser: (principal: import('@dfinity/principal').Principal) => void;
-  export let bannedUsers: Map<string, bigint> = new Map();
+  // Props
+  let {
+    message,
+    isUserAdmin = false,
+    isDeleting = false,
+    isConfirming = false,
+    onRequestDelete,
+    onCancelDelete,
+    onConfirmDelete,
+    onBanUser,
+    onUnbanUser,
+    bannedUsers = new Map<string, bigint>(),
+  } = $props<{
+    message: Message;
+    isUserAdmin?: boolean;
+    isDeleting?: boolean;
+    isConfirming?: boolean;
+    onRequestDelete: (id: bigint) => void;
+    onCancelDelete: (id: bigint) => void;
+    onConfirmDelete: (id: bigint) => void;
+    onBanUser: (principal: import('@dfinity/principal').Principal, days: number) => void;
+    onUnbanUser: (principal: import('@dfinity/principal').Principal) => void;
+    bannedUsers?: Map<string, bigint>;
+  }>();
 
-  // Check if this message is from the current user
-  $: isCurrentUser = $auth.isConnected && $auth.account.owner.toString() === message.principal.toText();
-  
-  // Check if this user is banned
-  $: isBanned = bannedUsers.has(message.principal.toText());
-  $: banTimeLeft = isBanned ? bannedUsers.get(message.principal.toText()) : null;
-  
-  // Format timestamp
-  $: timeString = new Date(Number(message.created_at / BigInt(1000000))).toLocaleTimeString([], { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  });
-
-  // Format ban time remaining
-  $: banTimeString = banTimeLeft ? formatBanTime(banTimeLeft) : '';
-
-  // Variables for ban dropdown
-  let showBanOptions = false;
-  let selectedBanDays = 1;
-  
-  // Ban duration options
+  // Constants
+  const DEFAULT_IMAGE = '/tokens/not_verified.webp';
   const banDurations = [
     { value: 1, label: '1 day' },
     { value: 3, label: '3 days' },
@@ -47,18 +42,28 @@
     { value: 30, label: '30 days' }
   ];
 
-  const DEFAULT_IMAGE = '/tokens/not_verified.webp';
+  // State
+  let tokenCache = $state<Map<string, any>>(new Map());
+  let showBanOptions = $state(false);
+  let selectedBanDays = $state(1);
+  let tokenLinkClickHandler = $state<((event: CustomEvent) => void) | undefined>(undefined);
+  let isLoadingTokens = $state(false);
 
-  // Map to store token data once fetched
-  let tokenCache = new Map();
-  
-  // Process message to add token icons if it contains token info
-  $: processedMessage = processMessageContent(message.message);
+  // Derived values
+  let isCurrentUser = $derived($auth.isConnected && $auth.account.owner.toString() === message.principal.toText());
+  let isBanned = $derived(bannedUsers.has(message.principal.toText()));
+  let banTimeLeft = $derived(isBanned ? bannedUsers.get(message.principal.toText()) : null);
+  let timeString = $derived(new Date(Number(message.created_at / BigInt(1000000))).toLocaleTimeString([], { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  }));
+  let banTimeString = $derived(banTimeLeft ? formatBanTime(banTimeLeft) : '');
+  let processedMessage = $derived(processMessageContent(message.message));
 
   // Extract canister IDs from message for token lookups
-  function extractCanisterIds(content) {
+  function extractCanisterIds(content: string) {
     const matches = [];
-    const tokenRegex = /\/price\s+([a-zA-Z0-9-]+)/g;
+    const tokenRegex = /(?:^|\s)\/price\s+([a-zA-Z0-9-]+)(?:\s|$)/g;
     let match;
     
     while ((match = tokenRegex.exec(content)) !== null) {
@@ -68,23 +73,23 @@
     return matches;
   }
 
-  // Token link click event handler
-  let tokenLinkClickHandler: (event: CustomEvent) => void;
-
   // Initialize token data
   onMount(async () => {
     // Fetch token data
     const canisterIds = extractCanisterIds(message.message);
     if (canisterIds.length > 0) {
       try {
+        isLoadingTokens = true;
         const tokens = await fetchTokensByCanisterId(canisterIds);
+        const newCache = new Map(tokenCache);
         tokens.forEach(token => {
-          tokenCache.set(token.canister_id, token);
+          newCache.set(token.canister_id, token);
         });
-        // Force update
-        processedMessage = processMessageContent(message.message);
+        tokenCache = newCache; // Trigger reactivity by assigning new Map
       } catch (error) {
         console.error('Error fetching token data:', error);
+      } finally {
+        isLoadingTokens = false;
       }
     }
     
@@ -106,22 +111,31 @@
     }
   });
 
-  function processMessageContent(content) {
+  function processMessageContent(content: string) {
     // First check if the content already contains HTML for token links (from the API)
     if (content.includes('class="token-link"')) {
       // Content already has processed token links, don't double-process
       return content;
     }
     
-    // Process Telegram-style commands: /price canister-id
-    const tokenRegex = /\/price\s+([a-zA-Z0-9-]+)/g;
+    // Updated regex to better match price commands
+    const tokenRegex = /(?:^|\s)\/price\s+([a-zA-Z0-9-]+)(?:\s|$)/g;
+    let lastIndex = 0;
+    let result = '';
     
-    return content.replace(tokenRegex, (match, canisterId) => {
+    // Process each match while preserving non-matching text
+    let match;
+    while ((match = tokenRegex.exec(content)) !== null) {
+      // Add text before the match
+      result += content.slice(lastIndex, match.index);
+      lastIndex = match.index + match[0].length;
+      
+      const canisterId = match[1];
       const token = tokenCache.get(canisterId);
       
-      // Fallback token display when data is not available
-      if (!token) {
-        return `<span class="bg-kong-primary text-kong-text-on-primary rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-xs" data-canister-id="${canisterId}" onclick="(function(e) { e.stopPropagation(); const href = '/stats/${canisterId}'; window.dispatchEvent(new CustomEvent('token-link-click', {detail: {href: href}})); return false; })(event)">
+      // Fallback token display when data is not available or still loading
+      if (!token || isLoadingTokens) {
+        result += `<span class="bg-kong-primary/20 text-kong-text-on-primary rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-xs" data-canister-id="${canisterId}">
           <span class="flex items-center gap-0.5">
             <img 
               src="${DEFAULT_IMAGE}" 
@@ -135,6 +149,7 @@
             <span class="w-2 h-2 rounded-full border border-kong-text-secondary/40 border-t-transparent animate-spin ml-1"></span>
           </span>
         </span>`;
+        continue;
       }
       
       // Get token logo URL or fallback
@@ -144,9 +159,9 @@
       const price = token.metrics?.price ? parseFloat(token.metrics.price).toFixed(2) : "?.??";
       const priceChange = token.metrics?.price_change_24h ? parseFloat(token.metrics.price_change_24h).toFixed(3) : "0.00";
       const direction = !token.metrics?.price_change_24h ? "neutral" 
-                        : parseFloat(token.metrics.price_change_24h) > 0 ? "up" 
-                        : parseFloat(token.metrics.price_change_24h) < 0 ? "down" 
-                        : "neutral";
+                      : parseFloat(token.metrics.price_change_24h) > 0 ? "up" 
+                      : parseFloat(token.metrics.price_change_24h) < 0 ? "down" 
+                      : "neutral";
       
       // Choose arrow and color based on price direction
       const arrowIcon = direction === "up" 
@@ -163,7 +178,7 @@
       
       const formattedChange = priceChange.startsWith("-") ? priceChange : `+${priceChange}`;
       
-      return `<a href="/stats/${canisterId}" class="token-link local-generated" data-canister-id="${canisterId}" onclick="(function(e) { e.preventDefault(); e.stopPropagation(); const href = '/stats/${canisterId}'; window.dispatchEvent(new CustomEvent('token-link-click', {detail: {href: href}})); return false; })(event)"><span class="bg-kong-primary/80 text-kong-text-on-primary rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-sm">
+      result += `<a href="/stats/${canisterId}" class="token-link local-generated" data-canister-id="${canisterId}" onclick="(function(e) { e.preventDefault(); e.stopPropagation(); const href = '/stats/${canisterId}'; window.dispatchEvent(new CustomEvent('token-link-click', {detail: {href: href}})); return false; })(event)"><span class="bg-kong-primary/80 text-kong-text-on-primary rounded px-1.5 py-0.5 inline-flex items-center gap-1 border border-kong-primary/20 align-text-bottom mx-0.5 text-sm">
         <span class="flex items-center gap-0.5">
           <img 
             src="${logoUrl}" 
@@ -178,7 +193,11 @@
           <span class="${priceChangeClass} flex items-center gap-0.5">(${formattedChange}%)${arrowIcon}</span>
         </span>
       </span></a>`;
-    });
+    }
+    
+    // Add any remaining text after the last match
+    result += content.slice(lastIndex);
+    return result;
   }
 
   function formatBanTime(seconds: bigint): string {

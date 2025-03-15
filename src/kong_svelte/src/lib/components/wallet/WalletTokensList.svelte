@@ -1,10 +1,15 @@
 <script lang="ts">
 	import { formatToNonZeroDecimal, formatBalance } from '$lib/utils/numberFormatUtils';
-  import { Coins, Loader2, RefreshCw } from "lucide-svelte";
+  import { Coins, Loader2, RefreshCw, Shuffle, Check, AlertCircle, Plus, Minus, Upload, Settings } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenDropdown from "./TokenDropdown.svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import { currentUserBalancesStore, loadBalances } from "$lib/stores/balancesStore";
+  import { syncTokens } from "$lib/utils/tokenSyncUtils";
+  import { fade } from "svelte/transition";
+  import Modal from "$lib/components/common/Modal.svelte";
+  import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
+  import ManageTokensModal from "$lib/components/wallet/ManageTokensModal.svelte";
 
   // Define props using the $props syntax
   type TokenBalance = {
@@ -70,6 +75,12 @@
   let isLoadingBalances = $state(false);
   let balanceLoadError = $state<string | null>(null);
   let lastRefreshed = $state(Date.now());
+  let isSyncing = $state(false);
+  let syncStatus = $state<{added: number, removed: number} | null>(null);
+  let showSyncStatus = $state(false);
+  let showSyncResultModal = $state(false);
+  let showAddTokenModal = $state(false);
+  let showManageTokensModal = $state(false);
 
   // Load user balances function
   async function loadUserBalances(forceRefresh = false) {
@@ -100,6 +111,75 @@
     } finally {
       isLoadingBalances = false;
     }
+  }
+
+  // Sync tokens based on actual balances
+  async function handleSyncTokens() {
+    if (!walletId || isSyncing) return;
+    
+    isSyncing = true;
+    syncStatus = null;
+    showSyncStatus = false;
+    
+    try {
+      syncStatus = await syncTokens(walletId);
+      
+      // Show small inline indicator for immediate feedback
+      showSyncStatus = true;
+      setTimeout(() => {
+        showSyncStatus = false;
+      }, 3000);
+      
+      // Open the modal with detailed results
+      showSyncResultModal = true;
+      
+      // Refresh balances to reflect the changes
+      if (syncStatus.added > 0 || syncStatus.removed > 0) {
+        await loadUserBalances(true);
+      }
+    } catch (error) {
+      console.error("Error syncing tokens:", error);
+      syncStatus = { added: 0, removed: 0 };
+      showSyncResultModal = true;
+    } finally {
+      isSyncing = false;
+    }
+  }
+
+  // Close the sync result modal
+  function closeSyncResultModal() {
+    showSyncResultModal = false;
+  }
+
+  // Open the add token modal
+  function openAddTokenModal() {
+    showAddTokenModal = true;
+  }
+
+  // Close the add token modal
+  function closeAddTokenModal() {
+    showAddTokenModal = false;
+  }
+  
+  // Open the manage tokens modal
+  function openManageTokensModal() {
+    showManageTokensModal = true;
+  }
+
+  // Close the manage tokens modal
+  function closeManageTokensModal() {
+    showManageTokensModal = false;
+    // Refresh balances after managing tokens
+    loadUserBalances(true);
+  }
+
+  // Handle when a new token is added
+  function handleNewTokenAdded(event: CustomEvent<FE.Token>) {
+    const newToken = event.detail;
+    // Call the onTokenAdded callback from props
+    onTokenAdded(newToken);
+    // Load balances to show the new token
+    loadUserBalances(true);
   }
 
   // Format currency with 2 decimal places
@@ -175,7 +255,33 @@
       </div>
     {/if}
     
-    <button 
+    <div class="flex gap-2">    
+      <button 
+        class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-light/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        on:click={handleSyncTokens}
+        disabled={isSyncing || isLoading || isLoadingBalances}
+      >
+        <Shuffle size={12} class={isSyncing ? 'animate-spin' : ''} />
+        <span>Sync</span>
+      </button>
+      
+      {#if showSyncStatus && syncStatus}
+        <div 
+          class="text-xs text-kong-text-secondary flex items-center"
+          transition:fade={{ duration: 200 }}
+        >
+          {#if syncStatus.added > 0 || syncStatus.removed > 0}
+            <span class="text-kong-accent-green">
+              {syncStatus.added > 0 ? `+${syncStatus.added}` : ""}
+              {syncStatus.added > 0 && syncStatus.removed > 0 ? "/" : ""}
+              {syncStatus.removed > 0 ? `-${syncStatus.removed}` : ""}
+            </span>
+          {:else}
+            <span class="text-kong-text-secondary/60">No changes</span>
+          {/if}
+        </div>
+      {/if}
+      <button 
       class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-light/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       on:click={handleRefresh}
       disabled={isLoading || isLoadingBalances}
@@ -183,6 +289,7 @@
       <RefreshCw size={12} class={isLoading || isLoadingBalances ? 'animate-spin' : ''} />
       <span>Refresh</span>
     </button>
+    </div>
   </div>
 
   {#if balanceLoadError}
@@ -269,6 +376,25 @@
           </div>
         </div>
       {/each}
+      
+      <!-- Token Management Buttons -->
+      <div class="p-4 flex justify-center gap-3">
+        <button
+          class="flex items-center gap-2 py-2 px-4 bg-kong-bg-light/10 hover:bg-kong-bg-light/20 text-kong-text-primary rounded-md transition-colors"
+          on:click={openAddTokenModal}
+        >
+          <Upload size={16} />
+          <span>Import Token</span>
+        </button>
+        
+        <button
+          class="flex items-center gap-2 py-2 px-4 bg-kong-bg-light/10 hover:bg-kong-bg-light/20 text-kong-text-primary rounded-md transition-colors"
+          on:click={openManageTokensModal}
+        >
+          <Settings size={16} />
+          <span>Manage Tokens</span>
+        </button>
+      </div>
     </div>
   {/if}
   
@@ -287,4 +413,94 @@
       </div>
     </div>
   {/if}
+  
+  <!-- Sync Results Modal -->
+  <Modal
+    isOpen={showSyncResultModal}
+    title="Token Sync Results"
+    onClose={closeSyncResultModal}
+    width="400px"
+  >
+    <div class="p-4">
+      {#if syncStatus}
+        <div class="mb-6 text-center">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-kong-bg-light/20 mb-3">
+            {#if syncStatus.added > 0 || syncStatus.removed > 0}
+              <Check size={28} class="text-kong-accent-green" />
+            {:else}
+              <Shuffle size={28} class="text-kong-primary" />
+            {/if}
+          </div>
+          
+          <h3 class="text-lg font-medium mb-1">
+            {#if syncStatus.added > 0 || syncStatus.removed > 0}
+              Tokens updated successfully
+            {:else}
+              No changes needed
+            {/if}
+          </h3>
+          
+          <p class="text-sm text-kong-text-secondary">
+            {#if syncStatus.added > 0 || syncStatus.removed > 0}
+              Your token list has been synchronized with your balances
+            {:else}
+              Your token list is already in sync with your balances
+            {/if}
+          </p>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-kong-bg-light/10 p-4 rounded-lg text-center">
+            <div class="flex items-center justify-center gap-2 mb-2">
+              <Plus size={16} class="text-kong-accent-green" />
+              <span class="text-lg font-medium">{syncStatus.added}</span>
+            </div>
+            <div class="text-sm text-kong-text-secondary">
+              Token{syncStatus.added !== 1 ? 's' : ''} Added
+            </div>
+          </div>
+          
+          <div class="bg-kong-bg-light/10 p-4 rounded-lg text-center">
+            <div class="flex items-center justify-center gap-2 mb-2">
+              <Minus size={16} class="text-kong-accent-red" />
+              <span class="text-lg font-medium">{syncStatus.removed}</span>
+            </div>
+            <div class="text-sm text-kong-text-secondary">
+              Token{syncStatus.removed !== 1 ? 's' : ''} Removed
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-6 text-center">
+          <button
+            class="px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
+            on:click={closeSyncResultModal}
+          >
+            Close
+          </button>
+        </div>
+      {:else}
+        <div class="text-center py-8">
+          <AlertCircle size={32} class="text-kong-accent-red mx-auto mb-3" />
+          <h3 class="text-lg text-kong-accent-red font-medium mb-2">Sync Failed</h3>
+          <p class="text-sm text-kong-text-secondary">
+            There was an error synchronizing your tokens. Please try again later.
+          </p>
+        </div>
+      {/if}
+    </div>
+  </Modal>
+  
+  <!-- Add Token Modal -->
+  <AddNewTokenModal 
+    isOpen={showAddTokenModal} 
+    onClose={closeAddTokenModal}
+    on:tokenAdded={handleNewTokenAdded}
+  />
+  
+  <!-- Manage Tokens Modal -->
+  <ManageTokensModal
+    isOpen={showManageTokensModal}
+    onClose={closeManageTokensModal}
+  />
 </div>

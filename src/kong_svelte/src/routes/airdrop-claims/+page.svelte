@@ -83,10 +83,15 @@
   $: $auth.isConnected ? fetchClaims() : null;
 </script>
 
+<svelte:head>
+  <title>Airdrop Claims - KongSwap</title>
+  <meta name="description" content="View and process your claimable airdrop tokens" />
+</svelte:head>
+
 <div class="container mx-auto pb-4 py-4">
   <PageHeader 
     title="Airdrop Claims"
-    description="View and process your claimable tokens"
+    description="View and process your claimable airdrop tokens"
     icon={Award}
   />
   

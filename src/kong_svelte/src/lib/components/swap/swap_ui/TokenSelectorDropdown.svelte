@@ -19,7 +19,7 @@
   import TokenItem from "./TokenItem.svelte";
   import { virtualScroll } from "$lib/utils/virtualScroll";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import AddNewTokenModal from "$lib/components/sidebar/AddNewTokenModal.svelte";
+  import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
 
   const props = $props();
   const {
