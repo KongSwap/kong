@@ -5,13 +5,39 @@ use super::market::*;
 use crate::nat::*;
 use crate::stable_memory::*;
 
-/// Gets all markets with detailed betting statistics
+use candid::CandidType;
+use serde::Deserialize;
+
+#[derive(CandidType, Deserialize)]
+pub struct GetAllMarketsArgs {
+    pub start: StorableNat,
+    pub length: StorableNat,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetAllMarketsResult {
+    pub markets: Vec<Market>,
+    pub total_count: StorableNat,
+}
+
+/// Gets all markets with detailed betting statistics, with pagination support
 #[query]
-pub fn get_all_markets() -> Vec<Market> {
+pub fn get_all_markets(args: GetAllMarketsArgs) -> GetAllMarketsResult {
     MARKETS.with(|markets| {
-        markets
-            .borrow()
-            .iter()
+        let markets_ref = markets.borrow();
+        let total_count = StorableNat::from(markets_ref.len() as u64);
+        
+        // Convert to Vec for pagination
+        let all_markets: Vec<(MarketId, Market)> = markets_ref.iter().collect();
+        
+        // Apply pagination
+        let start_idx = args.start.to_u64() as usize;
+        let length = args.length.to_u64() as usize;
+        
+        let paginated_markets = all_markets
+            .into_iter()
+            .skip(start_idx)
+            .take(length)
             .map(|(market_id, market)| {
                 let mut market = market.clone();
 
@@ -56,11 +82,15 @@ pub fn get_all_markets() -> Vec<Market> {
                     })
                     .collect();
 
-                // Clear rules as they're not relevant in this context
-                market.rules = String::new();
+                // Keep market rules in the response
 
                 market
             })
-            .collect()
+            .collect();
+            
+        GetAllMarketsResult {
+            markets: paginated_markets,
+            total_count,
+        }
     })
 }
