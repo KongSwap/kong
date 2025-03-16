@@ -532,7 +532,7 @@
                           </p>
                         </div>
                       </div>
-                    </Panel>e
+                    </Panel>
                   {:else}
                     <Panel variant="transparent" type="secondary" className="relative overflow-hidden bg-black/10" unpadded={false}>
                       <div class="py-1">
