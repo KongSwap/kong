@@ -67,7 +67,7 @@
   });
 </script>
 
-<div class="flex flex-col items-center justify-center min-h-screen p-6">
+<div class="flex flex-col items-center justify-center">
   <div class="bg-[#1a1a1a] border border-gray-800 rounded-lg p-6 max-w-xl w-full shadow-xl">
     <h1 class="text-2xl font-bold mb-4 text-center">Miner Deployment Options</h1>
     
@@ -174,5 +174,4 @@
 </div>
 
 <style>
-  /* Add any additional styles here */
 </style>

@@ -61,11 +61,7 @@
     stiffness: 0.15,
     damping: 0.8
   });
-  
-  $effect(() => {
-    progressSpring.set(progressWidth);
-  });
-  
+
   // Particle control for completed steps
   function createParticles(node: HTMLElement) {
     return {
