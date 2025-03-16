@@ -17,6 +17,27 @@ export type BetError = { 'MarketNotFound' : null } |
   { 'InvalidOutcome' : null } |
   { 'InsufficientBalance' : null } |
   { 'BalanceUpdateFailed' : null };
+export interface ConsentInfo {
+  'metadata' : ConsentMessageMetadata,
+  'consent_message' : ConsentMessage,
+}
+export type ConsentMessage = {
+    'LineDisplayMessage' : { 'pages' : Array<LineDisplayPage> }
+  } |
+  { 'GenericDisplayMessage' : string };
+export interface ConsentMessageMetadata {
+  'utc_offset_minutes' : [] | [number],
+  'language' : string,
+}
+export interface ConsentMessageRequest {
+  'arg' : Uint8Array | number[],
+  'method' : string,
+  'user_preferences' : ConsentMessageSpec,
+}
+export interface ConsentMessageSpec {
+  'metadata' : ConsentMessageMetadata,
+  'device_spec' : [] | [DisplayMessageType],
+}
 export interface Delegation {
   'created' : bigint,
   'targets_list_hash' : Uint8Array | number[],
@@ -33,12 +54,20 @@ export interface DelegationRequest {
   'expiration' : [] | [bigint],
 }
 export interface DelegationResponse { 'delegations' : Array<Delegation> }
+export type DisplayMessageType = { 'GenericDisplay' : null } |
+  {
+    'LineDisplay' : {
+      'characters_per_line' : number,
+      'lines_per_page' : number,
+    }
+  };
 export interface Distribution {
   'bet_amount' : bigint,
   'winnings' : bigint,
   'user' : Principal,
   'outcome_index' : bigint,
 }
+export interface ErrorInfo { 'description' : string }
 export interface GetAllMarketsArgs { 'start' : bigint, 'length' : bigint }
 export interface GetAllMarketsResult {
   'markets' : Array<Market>,
@@ -50,14 +79,10 @@ export interface GetMarketsByStatusResult {
   'total_expired_unresolved' : bigint,
   'markets_by_status' : MarketsByStatus,
 }
-export interface ICRC21ConsentMessageRequest {
-  'method' : string,
-  'canister' : Principal,
-}
-export interface ICRC21ConsentMessageResponse { 'consent_message' : string }
 export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
+export interface LineDisplayPage { 'lines' : Array<string> }
 export interface Market {
   'id' : bigint,
   'bet_count_percentages' : Array<number>,
@@ -124,13 +149,15 @@ export type ResolutionMethod = {
   { 'Admin' : null };
 export type Result = { 'Ok' : bigint } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : DelegationResponse } |
-  { 'Err' : DelegationError };
-export type Result_2 = { 'Ok' : null } |
+export type Result_1 = { 'Ok' : ConsentInfo } |
+  { 'Err' : ErrorInfo };
+export type Result_2 = { 'Ok' : DelegationResponse } |
   { 'Err' : DelegationError };
 export type Result_3 = { 'Ok' : null } |
-  { 'Err' : BetError };
+  { 'Err' : DelegationError };
 export type Result_4 = { 'Ok' : null } |
+  { 'Err' : BetError };
+export type Result_5 = { 'Ok' : null } |
   { 'Err' : ResolutionError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
 export interface UserBetInfo {
@@ -170,22 +197,22 @@ export interface _SERVICE {
   >,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
   'icrc21_canister_call_consent_message' : ActorMethod<
-    [ICRC21ConsentMessageRequest],
-    ICRC21ConsentMessageResponse
+    [ConsentMessageRequest],
+    Result_1
   >,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
-  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_1>,
-  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_1>,
+  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_2>,
+  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_2>,
   'icrc_34_revoke_delegation' : ActorMethod<
     [RevokeDelegationRequest],
-    Result_2
+    Result_3
   >,
   'is_admin' : ActorMethod<[Principal], boolean>,
-  'place_bet' : ActorMethod<[bigint, bigint, bigint], Result_3>,
-  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_4>,
+  'place_bet' : ActorMethod<[bigint, bigint, bigint], Result_4>,
+  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_5>,
   'resolve_via_oracle' : ActorMethod<
     [bigint, Array<bigint>, Uint8Array | number[]],
-    Result_4
+    Result_5
   >,
 }
 export declare const idlFactory: IDL.InterfaceFactory;

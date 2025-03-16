@@ -105,7 +105,7 @@
   $: tabs =
     process.env.DFX_NETWORK !== "ic"
       ? allTabs
-      : allTabs;
+      : allTabs
 
   const dataOptions = [
     {

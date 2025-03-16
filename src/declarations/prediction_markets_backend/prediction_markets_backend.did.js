@@ -103,13 +103,37 @@ export const idlFactory = ({ IDL }) => {
     'active_bets' : IDL.Vec(UserBetInfo),
     'resolved_bets' : IDL.Vec(UserBetInfo),
   });
-  const ICRC21ConsentMessageRequest = IDL.Record({
+  const ConsentMessageMetadata = IDL.Record({
+    'utc_offset_minutes' : IDL.Opt(IDL.Int16),
+    'language' : IDL.Text,
+  });
+  const DisplayMessageType = IDL.Variant({
+    'GenericDisplay' : IDL.Null,
+    'LineDisplay' : IDL.Record({
+      'characters_per_line' : IDL.Nat16,
+      'lines_per_page' : IDL.Nat16,
+    }),
+  });
+  const ConsentMessageSpec = IDL.Record({
+    'metadata' : ConsentMessageMetadata,
+    'device_spec' : IDL.Opt(DisplayMessageType),
+  });
+  const ConsentMessageRequest = IDL.Record({
+    'arg' : IDL.Vec(IDL.Nat8),
     'method' : IDL.Text,
-    'canister' : IDL.Principal,
+    'user_preferences' : ConsentMessageSpec,
   });
-  const ICRC21ConsentMessageResponse = IDL.Record({
-    'consent_message' : IDL.Text,
+  const LineDisplayPage = IDL.Record({ 'lines' : IDL.Vec(IDL.Text) });
+  const ConsentMessage = IDL.Variant({
+    'LineDisplayMessage' : IDL.Record({ 'pages' : IDL.Vec(LineDisplayPage) }),
+    'GenericDisplayMessage' : IDL.Text,
   });
+  const ConsentInfo = IDL.Record({
+    'metadata' : ConsentMessageMetadata,
+    'consent_message' : ConsentMessage,
+  });
+  const ErrorInfo = IDL.Record({ 'description' : IDL.Text });
+  const Result_1 = IDL.Variant({ 'Ok' : ConsentInfo, 'Err' : ErrorInfo });
   const Icrc28TrustedOriginsResponse = IDL.Record({
     'trusted_origins' : IDL.Vec(IDL.Text),
   });
@@ -133,14 +157,14 @@ export const idlFactory = ({ IDL }) => {
     'StorageError' : IDL.Text,
     'Expired' : IDL.Null,
   });
-  const Result_1 = IDL.Variant({
+  const Result_2 = IDL.Variant({
     'Ok' : DelegationResponse,
     'Err' : DelegationError,
   });
   const RevokeDelegationRequest = IDL.Record({
     'targets' : IDL.Vec(IDL.Principal),
   });
-  const Result_2 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
+  const Result_3 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
   const BetError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
     'MarketClosed' : IDL.Null,
@@ -151,7 +175,7 @@ export const idlFactory = ({ IDL }) => {
     'InsufficientBalance' : IDL.Null,
     'BalanceUpdateFailed' : IDL.Null,
   });
-  const Result_3 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
+  const Result_4 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
   const ResolutionError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
     'MarketStillOpen' : IDL.Null,
@@ -163,7 +187,7 @@ export const idlFactory = ({ IDL }) => {
     'UpdateFailed' : IDL.Null,
     'PayoutFailed' : IDL.Null,
   });
-  const Result_4 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ResolutionError });
+  const Result_5 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ResolutionError });
   return IDL.Service({
     'create_market' : IDL.Func(
         [
@@ -192,8 +216,8 @@ export const idlFactory = ({ IDL }) => {
       ),
     'get_user_history' : IDL.Func([IDL.Principal], [UserHistory], ['query']),
     'icrc21_canister_call_consent_message' : IDL.Func(
-        [ICRC21ConsentMessageRequest],
-        [ICRC21ConsentMessageResponse],
+        [ConsentMessageRequest],
+        [Result_1],
         ['query'],
       ),
     'icrc28_trusted_origins' : IDL.Func(
@@ -201,23 +225,23 @@ export const idlFactory = ({ IDL }) => {
         [Icrc28TrustedOriginsResponse],
         ['query'],
       ),
-    'icrc_34_delegate' : IDL.Func([DelegationRequest], [Result_1], []),
+    'icrc_34_delegate' : IDL.Func([DelegationRequest], [Result_2], []),
     'icrc_34_get_delegation' : IDL.Func(
         [DelegationRequest],
-        [Result_1],
+        [Result_2],
         ['query'],
       ),
     'icrc_34_revoke_delegation' : IDL.Func(
         [RevokeDelegationRequest],
-        [Result_2],
+        [Result_3],
         [],
       ),
     'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
-    'place_bet' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [Result_3], []),
-    'resolve_via_admin' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [Result_4], []),
+    'place_bet' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [Result_4], []),
+    'resolve_via_admin' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [Result_5], []),
     'resolve_via_oracle' : IDL.Func(
         [IDL.Nat, IDL.Vec(IDL.Nat), IDL.Vec(IDL.Nat8)],
-        [Result_4],
+        [Result_5],
         [],
       ),
   });

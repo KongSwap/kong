@@ -34,18 +34,21 @@ function createMarketStore() {
         ]);
 
         const nowNs = BigInt(Date.now()) * BigInt(1_000_000);
+        
+        // Extract markets array from the result
+        const markets = allMarketsResult.markets || [];
 
         update(state => ({
           ...state,
           categories: ['All', ...categoriesResult],
           marketsByStatus: {
-            active: allMarketsResult.filter(
+            active: markets.filter(
               market => 'Open' in market.status && BigInt(market.end_time) > nowNs
             ),
-            expired_unresolved: allMarketsResult.filter(
+            expired_unresolved: markets.filter(
               market => 'Open' in market.status && BigInt(market.end_time) <= nowNs
             ),
-            resolved: allMarketsResult.filter(
+            resolved: markets.filter(
               market => 'Closed' in market.status
             )
           },
@@ -75,24 +78,31 @@ function createMarketStore() {
       try {
         const allMarketsResult = await getAllMarkets();
         const nowNs = BigInt(Date.now()) * BigInt(1_000_000);
+        
+        // Extract markets array from the result
+        const markets = allMarketsResult.markets || [];
 
         update(state => ({
           ...state,
           marketsByStatus: {
-            active: allMarketsResult.filter(
+            active: markets.filter(
               market => 'Open' in market.status && BigInt(market.end_time) > nowNs
             ),
-            expired_unresolved: allMarketsResult.filter(
+            expired_unresolved: markets.filter(
               market => 'Open' in market.status && BigInt(market.end_time) <= nowNs
             ),
-            resolved: allMarketsResult.filter(
+            resolved: markets.filter(
               market => 'Closed' in market.status
             )
           }
         }));
       } catch (error) {
         console.error('Failed to refresh markets:', error);
-        toastStore.error('Failed to refresh markets');
+        toastStore.add({
+          title: "Error",
+          message: "Failed to refresh markets",
+          type: "error"
+        });
       }
     },
 

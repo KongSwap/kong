@@ -173,14 +173,13 @@
                 },
               },
               title: {
-                display: true,
-                text: "Date",
+                display: false
               },
+              display: true
             },
             y: {
               title: {
-                display: true,
-                text: "Amount (KONG)",
+                display: false
               },
               ticks: {
                 callback: function(value) {

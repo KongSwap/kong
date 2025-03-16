@@ -1,6 +1,9 @@
-use candid::{CandidType, Deserialize, Principal};
+use candid::{CandidType, Deserialize, Principal, decode_one};
 use ic_cdk::{caller, query, update};
 use std::time::{SystemTime, UNIX_EPOCH};
+use icrc_ledger_types::icrc21::errors::ErrorInfo;
+use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
+use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 
 use super::delegation::*;
 use super::stable_memory::*;
@@ -33,14 +36,36 @@ pub struct ICRC21ConsentMessageResponse {
 /// Generates a consent message for ICRC-21 canister calls
 /// This follows the specification from https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-21/icrc_21_consent_msg.md
 #[query]
-pub fn icrc21_canister_call_consent_message(request: ICRC21ConsentMessageRequest) -> ICRC21ConsentMessageResponse {
+pub fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageRequest) -> Result<ConsentInfo, ErrorInfo> {
     let caller_principal = caller();
-    let consent_message = format!(
-        "By signing this message, I confirm that I want to call the '{}' method on the '{}' canister on behalf of principal '{}'.",
-        request.method, request.canister, caller_principal
-    );
+    
+    let consent_message = match consent_msg_request.method.as_str() {
+        "create_message" => {
+            let message = decode_one::<String>(&consent_msg_request.arg)
+                .map_err(|e| ErrorInfo { 
+                    description: format!("Failed to decode message: {}", e) 
+                })?;
 
-    ICRC21ConsentMessageResponse { consent_message }
+            ConsentMessage::GenericDisplayMessage(format!(
+                "# Approve KongSwap Prediction Markets Message\n\nMessage: {}\n\nFrom: {}",
+                message,
+                caller_principal
+            ))
+        },
+        // Add other method matches here as needed
+        _ => ConsentMessage::GenericDisplayMessage(
+            format!("Approve KongSwap Prediction Markets to execute {}?", 
+                consent_msg_request.method,
+            )
+        ),
+    };
+
+    let metadata = ConsentMessageMetadata {
+        language: "en".to_string(),
+        utc_offset_minutes: None,
+    };
+
+    Ok(ConsentInfo { metadata, consent_message })
 }
 
 /// Returns current delegations for the caller that match the requested targets

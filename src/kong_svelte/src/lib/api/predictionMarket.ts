@@ -21,7 +21,7 @@ export async function getAllMarkets() {
     PREDICTION_MARKETS_CANISTER_ID,
     canisterIDLs.prediction_markets_backend,
   );
-  const markets = await actor.get_all_markets();
+  const markets = await actor.get_all_markets({ start: 0, length: 100 });
   return markets;
 }
 
@@ -30,7 +30,7 @@ export async function getMarketsByStatus() {
     PREDICTION_MARKETS_CANISTER_ID,
     canisterIDLs.prediction_markets_backend,
   );
-  const marketsByStatus = await actor.get_markets_by_status();
+  const marketsByStatus = await actor.get_markets_by_status({ start: 0, length: 100 });
   return marketsByStatus;
 }
 
@@ -226,16 +226,15 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
     canisterIDLs.prediction_markets_backend,
   );
   
-  // The current implementation is incorrect as get_all_markets doesn't accept arguments
-  // We need to get all markets first and then extract the bets from them
-  const marketsByStatus = await actor.get_markets_by_status();
+  // The backend API expects start and length parameters
+  const marketsByStatus = await actor.get_markets_by_status({ start: 0, length: 100 });
   
   // Combine bets from all markets
   const allBets: any[] = [];
   
   // Process active markets
-  if (marketsByStatus.active && marketsByStatus.active.length > 0) {
-    for (const market of marketsByStatus.active) {
+  if (marketsByStatus.markets_by_status.active && marketsByStatus.markets_by_status.active.length > 0) {
+    for (const market of marketsByStatus.markets_by_status.active) {
       try {
         const marketBets = await actor.get_market_bets(market.id);
         allBets.push(...marketBets);
@@ -246,8 +245,8 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
   }
   
   // Process expired unresolved markets
-  if (marketsByStatus.expired_unresolved && marketsByStatus.expired_unresolved.length > 0) {
-    for (const market of marketsByStatus.expired_unresolved) {
+  if (marketsByStatus.markets_by_status.expired_unresolved && marketsByStatus.markets_by_status.expired_unresolved.length > 0) {
+    for (const market of marketsByStatus.markets_by_status.expired_unresolved) {
       try {
         const marketBets = await actor.get_market_bets(market.id);
         allBets.push(...marketBets);

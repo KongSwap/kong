@@ -1,6 +1,6 @@
 <script lang="ts" runes>
   import { createEventDispatcher } from "svelte";
-  import BetLineChart from "./BetLineChart.svelte";
+  import BetBarChart from "./BetBarChart.svelte";
   import ChanceLineChart from "./ChanceLineChart.svelte";
 
   const props = $props<{
@@ -94,7 +94,7 @@
           </div>
         {:else}
           <div class="chart-wrapper">
-            <BetLineChart
+            <BetBarChart
               market={props.market}
               marketBets={marketBetsSnapshot}
               on:error={handleBetChartError}
