@@ -6,6 +6,7 @@ import { toastStore } from '../stores/toastStore';
 import { DEFAULT_LOGOS } from './tokens';
 import { fetchTokensByCanisterId } from '../api/tokens/TokenApiClient';
 import { get } from 'svelte/store';
+import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
 
 // Create a mapping from token symbols to canister IDs
 const SYMBOL_TO_CANISTER_ID: Record<string, string> = {
@@ -28,7 +29,7 @@ export class ClaimsService {
         return { claims: [], error: "Please connect your wallet to view claims" };
       }
 
-      const actor = auth.getActor(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend);
+      const actor = createAnonymousActorHelper(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend);
       const principalId = authState.account?.owner?.toString();
       
       if (!principalId) {

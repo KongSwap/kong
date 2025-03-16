@@ -220,8 +220,8 @@
         endTimeSpec = { Duration: BigInt(durationInSeconds) };
       } else {
         const endDate = new Date(`${specificDate}T${specificTime}`);
-        // Convert to nanoseconds
-        endTimeSpec = { SpecificDate: BigInt(endDate.getTime() * 1_000_000) };
+        // Convert to seconds instead of nanoseconds
+        endTimeSpec = { SpecificDate: BigInt(Math.floor(endDate.getTime() / 1000)) };
       }
 
       // Prepare resolution method
