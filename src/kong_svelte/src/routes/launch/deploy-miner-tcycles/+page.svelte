@@ -9,7 +9,6 @@
   // Import components
   import Panel from "$lib/components/common/Panel.svelte";
   import DeploymentSteps from "../deploy-miner/DeploymentSteps.svelte";
-  import DeploymentLog from "../deploy-miner/DeploymentLog.svelte";
   import TCyclesMinerParameters from "../deploy-miner/TCyclesMinerParameters.svelte";
   import TCyclesDeploymentProcess from "../deploy-miner/TCyclesDeploymentProcess.svelte";
   
@@ -62,12 +61,12 @@
   ];
   
   // Component references
-  let deploymentLogComponent: DeploymentLog;
   let deploymentProcessComponent: TCyclesDeploymentProcess;
   
-  // Function to add a log entry
+  // Function to add a log entry (keeping for compatibility with TCyclesDeploymentProcess)
   function addLog(message: string) {
-    deploymentLogComponent?.addLog(message);
+    // We're not displaying logs, but keeping this function for compatibility
+    console.log("Deployment log:", message);
   }
   
   // Function to start deployment
@@ -96,18 +95,13 @@
       console.log("Miner params loaded:", currentMinerParams);
     });
     
-    // Check if user is connected
-    if (!auth.pnp?.isWalletConnected()) {
-      addLog("Please connect your wallet to continue");
-    }
-    
     return () => {
       unsubscribe();
     };
   });
 </script>
 
-<div class="max-w-5xl mx-auto px-4 py-8">
+<div class="max-w-4xl mx-auto px-4 py-8">
   <div class="flex items-center mb-6">
     <button 
       class="flex items-center gap-2 text-gray-400 hover:text-white transition-colors duration-200" 
@@ -142,76 +136,65 @@
     </Panel>
   {/if}
   
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2">
-      <Panel variant="solid" className="mb-6">
-        <TCyclesMinerParameters
-          minerParams={currentMinerParams}
-          {kongAmount}
-          {tcyclesAmount}
-          {canisterId}
-          {kongTCyclesRate}
-          bind:estimatedTCycles
-          {actualTCyclesReceived}
-          {IC_DASHBOARD_BASE_URL}
-          bind:selectedSubnetType
-          bind:selectedSubnetId
-        />
-      </Panel>
-      
-      <Panel variant="solid" className="mb-6">
-        <DeploymentSteps
-          {currentStep}
-          steps={stepInfo}
-          processSteps={PROCESS_STEPS}
-          {isProcessing}
-        />
-      </Panel>
-      
-      {#if currentStep === PROCESS_STEPS.PREPARING}
-        <Panel variant="solid" className="mb-6 border-blue-500/30 bg-blue-950/20">
-          <div class="flex gap-4">
-            <Info class="text-blue-400 flex-shrink-0" size={24} />
-            <div>
-              <h3 class="text-lg font-semibold text-blue-400 mb-2">Using TCYCLES for Canister Creation</h3>
-              <p class="text-gray-300 mb-3">
-                This page uses the TCYCLES ledger for canister creation, which can be more efficient than the traditional ICP path.
-                TCYCLES are pre-minted cycles that can be used directly to create and top up canisters.
-              </p>
-              <p class="text-gray-300 mb-2">
-                Benefits of using TCYCLES:
-              </p>
-              <ul class="list-disc pl-5 mb-4 text-gray-300 space-y-1">
-                <li>Potentially lower cost compared to minting new cycles via ICP</li>
-                <li>Faster canister creation process</li>
-              </ul>
-              
-              <button 
-                class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
-                on:click={startDeployment}
-                disabled={isProcessing || !currentMinerParams}
-              >
-                {#if isProcessing}
-                  <div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
-                {/if}
-                Start Deployment with TCYCLES
-              </button>
-            </div>
-          </div>
-        </Panel>
-      {/if}
-    </div>
-    
-    <div class="lg:col-span-1">
-      <Panel variant="solid" className="h-full">
-        <h3 class="text-lg font-semibold mb-4">Deployment Log</h3>
-        <DeploymentLog
-          bind:this={deploymentLogComponent}
-          logStore={deploymentLog}
-        />
-      </Panel>
-    </div>
-  </div>
+  <!-- Deployment Progress Panel - Moved to top -->
+  <Panel variant="solid" className="mb-6">
+    <DeploymentSteps
+      {currentStep}
+      steps={stepInfo}
+      processSteps={PROCESS_STEPS}
+      {isProcessing}
+    />
+  </Panel>
+  
+  <!-- Start Deployment Panel - Only shown in PREPARING state -->
+  {#if currentStep === PROCESS_STEPS.PREPARING}
+    <Panel variant="solid" className="mb-6 border-blue-500/30 bg-blue-950/20">
+      <div class="flex gap-4">
+        <Info class="text-blue-400 flex-shrink-0" size={24} />
+        <div class="flex-1">
+          <h3 class="text-lg font-semibold text-blue-400 mb-2">Using TCYCLES for Canister Creation</h3>
+          <p class="text-gray-300 mb-3">
+            This page uses the TCYCLES ledger for canister creation, which can be more efficient than the traditional ICP path.
+            TCYCLES are pre-minted cycles that can be used directly to create and top up canisters.
+          </p>
+          <p class="text-gray-300 mb-2">
+            Benefits of using TCYCLES:
+          </p>
+          <ul class="list-disc pl-5 mb-4 text-gray-300 space-y-1">
+            <li>Potentially lower cost compared to minting new cycles via ICP</li>
+            <li>Faster canister creation process</li>
+          </ul>
+          
+          <button 
+            class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+            on:click={startDeployment}
+            disabled={isProcessing || !currentMinerParams}
+          >
+            {#if isProcessing}
+              <div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+            {/if}
+            Start Deployment with TCYCLES
+          </button>
+        </div>
+      </div>
+    </Panel>
+  {/if}
+  
+  <!-- Miner Parameters Panel -->
+  <Panel variant="solid" className="mb-6">
+    <TCyclesMinerParameters
+      minerParams={currentMinerParams}
+      {kongAmount}
+      {tcyclesAmount}
+      {canisterId}
+      {kongTCyclesRate}
+      bind:estimatedTCycles
+      {actualTCyclesReceived}
+      {IC_DASHBOARD_BASE_URL}
+      bind:selectedSubnetType
+      bind:selectedSubnetId
+    />
+  </Panel>
   
   <TCyclesDeploymentProcess
     bind:this={deploymentProcessComponent}
@@ -232,4 +215,4 @@
     {selectedSubnetId}
     processSteps={PROCESS_STEPS}
   />
-</div> 
+</div>

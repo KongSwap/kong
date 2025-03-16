@@ -195,90 +195,87 @@
         {/if}
       </div>
     </div>
-    
-    <!-- Subnet Selection -->
-    <div class="parameter-item subnet-item">
-      <div class="parameter-label">Subnet Selection</div>
-      <div class="parameter-value">
-        <select 
-          class="subnet-select" 
-          bind:value={selectedSubnetId}
-          disabled={isLoadingSubnets}
-          on:change={() => {
-            if (selectedSubnetId) {
-              const selected = availableSubnets.find(s => s.id === selectedSubnetId);
-              if (selected) {
-                selectedSubnetType = selected.type;
-              }
-            } else {
-              // If empty selection (let IC decide), clear the subnet type too
-              selectedSubnetType = "";
+  </div>
+  
+  <!-- Subnet Selection - Full Width -->
+  <div class="subnet-selection">
+    <div class="parameter-label">Subnet Selection</div>
+    <div class="parameter-value">
+      <select 
+        class="subnet-select" 
+        bind:value={selectedSubnetId}
+        disabled={isLoadingSubnets}
+        on:change={() => {
+          if (selectedSubnetId) {
+            const selected = availableSubnets.find(s => s.id === selectedSubnetId);
+            if (selected) {
+              selectedSubnetType = selected.type;
             }
-          }}
-        >
-          <option value="">Let Internet Computer decide the most optimal subnet</option>
-          {#if isLoadingSubnets}
-            <option value="" disabled>Loading subnets...</option>
-          {:else if availableSubnets.length === 0 && !isLoadingSubnets}
-            <option value="" disabled>No subnets available</option>
-          {:else}
-            {#each availableSubnets as subnet}
-              <option value={subnet.id}>
-                {subnet.displayName} ({subnet.type}, {subnet.nodeCount} nodes)
-              </option>
-            {/each}
-          {/if}
-        </select>
-        
-        {#if selectedSubnetId}
-          <div class="subnet-info">
-            <span class="subnet-id">ID: {selectedSubnetId}</span>
-            {#if selectedSubnetType}
-              <span class="subnet-type">Type: {selectedSubnetType}</span>
-            {/if}
-          </div>
+          } else {
+            // If empty selection (let IC decide), clear the subnet type too
+            selectedSubnetType = "";
+          }
+        }}
+      >
+        <option value="">Let Internet Computer decide the most optimal subnet</option>
+        {#if isLoadingSubnets}
+          <option value="" disabled>Loading subnets...</option>
+        {:else if availableSubnets.length === 0 && !isLoadingSubnets}
+          <option value="" disabled>No subnets available</option>
         {:else}
-          <div class="subnet-info optimal-note">
-            <span class="subnet-optimal">The Internet Computer will select the optimal subnet for your canister</span>
-          </div>
+          {#each availableSubnets as subnet}
+            <option value={subnet.id}>
+              {subnet.displayName} ({subnet.type}, {subnet.nodeCount} nodes)
+            </option>
+          {/each}
         {/if}
-        
-        {#if subnetError}
-          <div class="subnet-error">{subnetError}</div>
-        {/if}
+      </select>
+      
+      {#if selectedSubnetId}
+        <div class="subnet-info">
+          <span class="subnet-id">ID: {selectedSubnetId}</span>
+          {#if selectedSubnetType}
+            <span class="subnet-type">Type: {selectedSubnetType}</span>
+          {/if}
+        </div>
+      {:else}
+        <div class="subnet-info optimal-note">
+          <span class="subnet-optimal">The Internet Computer will select the optimal subnet for your canister</span>
+        </div>
+      {/if}
+      
+      {#if subnetError}
+        <div class="subnet-error">{subnetError}</div>
+      {/if}
+    </div>
+  </div>
+  
+  <!-- Canister ID (only shown when available) -->
+  {#if canisterId}
+    <div class="canister-section">
+      <div class="parameter-label">Canister ID</div>
+      <div class="parameter-value">
+        <a 
+          href={`${IC_DASHBOARD_BASE_URL}${canisterId}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          class="canister-link"
+        >
+          {canisterId}
+          <svg class="external-link-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
       </div>
     </div>
-    
-    <!-- Canister ID (only shown when available) -->
-    {#if canisterId}
-      <div class="parameter-item canister-item">
-        <div class="parameter-label">Canister ID</div>
-        <div class="parameter-value">
-          <a 
-            href={`${IC_DASHBOARD_BASE_URL}${canisterId}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            class="canister-link"
-          >
-            {canisterId}
-            <svg class="external-link-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-              <polyline points="15 3 21 3 21 9"></polyline>
-              <line x1="10" y1="14" x2="21" y2="3"></line>
-            </svg>
-          </a>
-        </div>
-      </div>
-    {/if}
-  </div>
+  {/if}
 </div>
 
 <style>
   .miner-parameters {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
+    width: 100%;
   }
   
   .parameters-title {
@@ -289,19 +286,27 @@
   
   .parameters-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  @media (max-width: 768px) {
+    .parameters-grid {
+      grid-template-columns: 1fr;
+    }
   }
   
   .parameter-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+    padding: 1rem;
   }
   
   .parameter-label {
     font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.5rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -309,7 +314,7 @@
   
   .parameter-value {
     font-size: 1rem;
-    color: white;
+    font-weight: 500;
   }
   
   .rate-info {
@@ -318,36 +323,36 @@
     margin-top: 0.25rem;
   }
   
-  .loading-spinner {
-    display: inline-block;
-    width: 1rem;
-    height: 1rem;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 1s linear infinite;
-    margin-right: 0.5rem;
+  .comparison-item {
+    grid-column: span 2;
+  }
+  
+  @media (max-width: 768px) {
+    .comparison-item {
+      grid-column: span 1;
+    }
   }
   
   .comparison-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    display: grid;
+    gap: 0.5rem;
   }
   
   .comparison-row {
     display: flex;
     justify-content: space-between;
-    font-size: 0.875rem;
+    align-items: center;
   }
   
   .savings {
     margin-top: 0.5rem;
-    font-weight: bold;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   .savings-value {
-    color: #4ade80;
+    color: #10b981;
+    font-weight: 600;
   }
   
   .note {
@@ -356,56 +361,9 @@
     color: rgba(255, 255, 255, 0.5);
   }
   
-  .subnet-select {
-    width: 100%;
-    background-color: rgba(0, 0, 0, 0.2);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 0.25rem;
-    padding: 0.5rem;
-    font-size: 0.875rem;
-  }
-  
-  .subnet-info {
-    margin-top: 0.5rem;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.6);
-  }
-  
-  .subnet-id, .subnet-type {
-    display: block;
-    margin-bottom: 0.25rem;
-    word-break: break-all;
-  }
-  
-  .subnet-optimal {
-    color: #60a5fa;
-    font-style: italic;
-  }
-  
-  .subnet-error {
-    margin-top: 0.5rem;
-    color: #f87171;
-    font-size: 0.75rem;
-  }
-  
-  .canister-link {
-    color: #60a5fa;
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-family: monospace;
-    word-break: break-all;
-  }
-  
-  .external-link-icon {
-    flex-shrink: 0;
-  }
-  
   .tooltip {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
     cursor: help;
   }
   
@@ -413,9 +371,9 @@
     visibility: hidden;
     width: 200px;
     background-color: rgba(0, 0, 0, 0.8);
-    color: white;
+    color: #fff;
     text-align: center;
-    border-radius: 0.25rem;
+    border-radius: 6px;
     padding: 0.5rem;
     position: absolute;
     z-index: 1;
@@ -433,7 +391,102 @@
     opacity: 1;
   }
   
+  .loading-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+    margin-right: 0.5rem;
+  }
+  
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* Subnet Selection Styles - Full Width */
+  .subnet-selection {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+    width: 100%;
+  }
+  
+  .subnet-select {
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+  }
+  
+  .subnet-select:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  }
+  
+  .subnet-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 0.5rem;
+  }
+  
+  .subnet-id, .subnet-type {
+    font-family: monospace;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: inline-block;
+  }
+  
+  .subnet-optimal {
+    color: #60a5fa;
+    font-style: italic;
+  }
+  
+  .subnet-error {
+    color: #ef4444;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  /* Canister ID Section */
+  .canister-section {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+    width: 100%;
+  }
+  
+  .canister-link {
+    color: #60a5fa;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-family: monospace;
+    word-break: break-all;
+  }
+  
+  .external-link-icon {
+    flex-shrink: 0;
   }
 </style> 
