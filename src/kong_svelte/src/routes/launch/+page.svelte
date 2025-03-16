@@ -414,7 +414,7 @@
 <LaunchAnimations />
 <MiningNotifications {miningEvents} />
 
-<div class="min-h-screen h-screen flex flex-col text-white relative">
+<div class="flex flex-col text-white relative max-w-[1300px] mx-auto">
   <!-- Subtle highlight effect overlay -->
   {#if nukeEffect}
     <div class="fixed inset-0 bg-blue-500 opacity-10 z-50 animate-pulse pointer-events-none"></div>
@@ -429,16 +429,16 @@
     <FlashEvent {flashEvent} />
     
     <!-- SEARCH AND FILTER BAR -->
-    <SearchAndFilter 
+    <!-- <SearchAndFilter 
       bind:activeTab 
       bind:searchQuery 
       bind:sortField 
       bind:sortDirection 
       stats={{ totalTokens: stats.totalTokens, totalMiners: stats.totalMiners }} 
-    />
+    /> -->
     
     <!-- LIVE ACTIVITY FEED -->
-    <LiveActivityFeed {recentEvents} />
+    <!-- <LiveActivityFeed {recentEvents} /> -->
     
     <!-- CONTENT PANELS -->
     <ContentPanels 

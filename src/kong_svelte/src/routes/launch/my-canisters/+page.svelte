@@ -630,6 +630,8 @@
 
     <!-- Main content area -->
     <div class="lg:col-span-9">
+        <h1 class="text-2xl font-bold mb-6">My Canisters</h1>
+        
         {#if !principal}
             <div class="p-8 text-center transition-all duration-200 border rounded-xl bg-kong-bg-secondary/30 border-kong-border/30 backdrop-blur-sm">
                 <p class="text-lg text-kong-text-primary">Please connect your wallet to view your canisters.</p>
@@ -648,7 +650,7 @@
             </div>
         {:else}
             <!-- Filter Controls -->
-            <div class="mb-6 transition-all duration-200 border rounded-xl bg-kong-bg-secondary/50 border-kong-border/30 backdrop-blur-sm">
+            <div class="mb-6 transition-all duration-200 border rounded-xl bg-kong-bg-secondary/30 border-kong-border/30 backdrop-blur-sm">
                 <div class="p-4">
                     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <!-- Type Filter -->
@@ -727,67 +729,67 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Stats -->
-                <div class="px-4 py-2 border-t border-kong-border/20">
-                    <div class="text-sm text-kong-text-secondary">
-                        Showing {filteredCanisters.length} of {canisters.length} canisters
-                        {#if canisters.filter(c => c.hidden).length > 0}
-                            <span class="ml-2">
-                                (<span class="{!showHidden ? 'text-kong-primary font-medium' : ''}">{canisters.filter(c => c.hidden).length} hidden</span>)
-                                {#if !showHidden && canisters.filter(c => c.hidden).length > 0}
-                                    <button 
-                                        on:click={toggleShowHidden}
-                                        class="ml-2 text-xs text-kong-primary hover:text-kong-primary/90 underline"
-                                    >
-                                        Show hidden
-                                    </button>
-                                {/if}
-                            </span>
-                        {/if}
+                    
+                    <!-- Stats -->
+                    <div class="px-4 py-2 border-t border-kong-border/20">
+                        <div class="text-sm text-kong-text-secondary">
+                            Showing {filteredCanisters.length} of {canisters.length} canisters
+                            {#if canisters.filter(c => c.hidden).length > 0}
+                                <span class="ml-2">
+                                    (<span class="{!showHidden ? 'text-kong-primary font-medium' : ''}">{canisters.filter(c => c.hidden).length} hidden</span>)
+                                    {#if !showHidden && canisters.filter(c => c.hidden).length > 0}
+                                        <button 
+                                            on:click={toggleShowHidden}
+                                            class="ml-2 text-xs text-kong-primary hover:text-kong-primary/90 underline"
+                                        >
+                                            Show hidden
+                                        </button>
+                                    {/if}
+                                </span>
+                            {/if}
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            {#if filteredCanisters.length === 0}
-                <div class="p-8 text-center transition-all duration-200 border rounded-xl bg-kong-bg-secondary/30 border-kong-border/30 backdrop-blur-sm">
-                    <p class="text-lg text-kong-text-primary">No canisters match your current filters.</p>
-                    {#if !showHidden && canisters.some(c => c.hidden)}
-                        <button 
-                            on:click={toggleShowHidden}
-                            class="px-4 py-2 mt-4 text-white transition-colors bg-kong-primary rounded-lg hover:bg-kong-primary/90"
-                        >
-                            Show Hidden Canisters
-                        </button>
-                    {/if}
-                </div>
-            {:else}
-                <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {#each filteredCanisters as canister (canister.id)}
-                        <div in:fly={{ y: 20, duration: 300, delay: 100 }} out:fade={{ duration: 200 }}>
-                            <Canister 
-                                canister={canister}
-                                canisterStatus={canisterStatuses[canister.id]}
-                                statusError={statusErrors[canister.id]}
-                                loadingStatus={loadingStatuses[canister.id]}
-                                isEditing={editingCanister?.id === canister.id}
-                                newName={newName}
-                                newTags={newTags}
-                                hasUpgrade={hasNewerVersion(canister)}
-                                on:edit={startEdit}
-                                on:save={saveEdit}
-                                on:cancel={cancelEdit}
-                                on:hide={hideCanister}
-                                on:refresh-status={(e) => fetchCanisterStatus(e.detail.id)}
-                                on:install-wasm={openInstallModal}
-                                on:top-up={handleTopUp}
-                                on:open-kong-agent={openKongAgent}
-                            />
-                        </div>
-                    {/each}
-                </div>
+                
+                {#if filteredCanisters.length === 0}
+                    <div class="p-8 text-center transition-all duration-200 border rounded-xl bg-kong-bg-secondary/30 border-kong-border/30 backdrop-blur-sm">
+                        <p class="text-lg text-kong-text-primary">No canisters match your current filters.</p>
+                        {#if !showHidden && canisters.some(c => c.hidden)}
+                            <button 
+                                on:click={toggleShowHidden}
+                                class="px-4 py-2 mt-4 text-white transition-colors bg-kong-primary rounded-lg hover:bg-kong-primary/90"
+                            >
+                                Show Hidden Canisters
+                            </button>
+                        {/if}
+                    </div>
+                {:else}
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {#each filteredCanisters as canister (canister.id)}
+                            <div in:fly={{ y: 20, duration: 300, delay: 100 }} out:fade={{ duration: 200 }}>
+                                <Canister 
+                                    canister={canister}
+                                    canisterStatus={canisterStatuses[canister.id]}
+                                    statusError={statusErrors[canister.id]}
+                                    loadingStatus={loadingStatuses[canister.id]}
+                                    isEditing={editingCanister?.id === canister.id}
+                                    newName={newName}
+                                    newTags={newTags}
+                                    hasUpgrade={hasNewerVersion(canister)}
+                                    on:edit={startEdit}
+                                    on:save={saveEdit}
+                                    on:cancel={cancelEdit}
+                                    on:hide={hideCanister}
+                                    on:refresh-status={(e) => fetchCanisterStatus(e.detail.id)}
+                                    on:install-wasm={openInstallModal}
+                                    on:top-up={handleTopUp}
+                                    on:open-kong-agent={openKongAgent}
+                                />
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
             {/if}
-        {/if}
     </div>
 </div>
 

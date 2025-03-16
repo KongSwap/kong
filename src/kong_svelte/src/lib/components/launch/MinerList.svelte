@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { ArrowRight, Activity, Cpu, Pickaxe, Zap, Bolt, BarChart3 } from "lucide-svelte";
+  import { ArrowRight, Activity, Cpu, Pickaxe, Zap, Bolt, BarChart3, Search, SortAsc, SortDesc, Plus } from "lucide-svelte";
   import { onMount } from "svelte";
   import { auth } from "$lib/services/auth";
   import { idlFactory as minerIdlFactory } from "../../../../../../src/declarations/miner/miner.did.js";
@@ -12,7 +12,13 @@
 
   // Enhanced miner data with info from get_info
   let enhancedMiners = [];
+  let filteredMiners = [];
   let loadingMinerInfo = true;
+  
+  // Search and sort functionality
+  let searchQuery = "";
+  let sortField = "status";
+  let sortDirection = "desc";
 
   // Generate a random gradient for miners
   function getRandomGradient() {
@@ -75,6 +81,11 @@
     return `${hashRate.toFixed(2)} H/s`;
   }
 
+  // Handle deploy miner button click
+  function handleDeployMiner() {
+    goto('/launch/create-miner');
+  }
+
   // Get miner info from canister
   async function getMinerInfo(miner) {
     try {
@@ -100,16 +111,18 @@
           randomEmoji: miner.randomEmoji || getRandomEmoji(),
           randomAnimation: miner.randomAnimation || getRandomAnimation()
         };
+      } else {
+        console.error("Error fetching miner info:", result.Err);
+        return {
+          ...miner,
+          infoLoaded: false,
+          randomGradient: miner.randomGradient || getRandomGradient(),
+          randomEmoji: miner.randomEmoji || getRandomEmoji(),
+          randomAnimation: miner.randomAnimation || getRandomAnimation()
+        };
       }
-      return {
-        ...miner,
-        infoLoaded: false,
-        randomGradient: miner.randomGradient || getRandomGradient(),
-        randomEmoji: miner.randomEmoji || getRandomEmoji(),
-        randomAnimation: miner.randomAnimation || getRandomAnimation()
-      };
     } catch (error) {
-      console.error(`Error fetching miner info for ${miner.principal}:`, error);
+      console.error("Error fetching miner info:", error);
       return {
         ...miner,
         infoLoaded: false,
@@ -126,10 +139,9 @@
     try {
       const promises = miners.map(miner => getMinerInfo(miner));
       enhancedMiners = await Promise.all(promises);
-      console.log("Enhanced miners:", enhancedMiners);
+      applySearchAndSort(); // Apply initial filtering and sorting
     } catch (error) {
       console.error("Error loading miner info:", error);
-      toastStore.error("Failed to load miner info");
       enhancedMiners = miners.map(miner => ({
         ...miner,
         infoLoaded: false,
@@ -137,23 +149,76 @@
         randomEmoji: miner.randomEmoji || getRandomEmoji(),
         randomAnimation: miner.randomAnimation || getRandomAnimation()
       }));
+      applySearchAndSort(); // Apply initial filtering and sorting
     } finally {
       loadingMinerInfo = false;
     }
   }
 
-  function handleMinerClick(minerPrincipal) {
-    if (minerPrincipal) {
-      goto(`/launch/miner/${minerPrincipal}`);
+  // Search and sort functionality
+  function applySearchAndSort() {
+    // First apply search filter
+    let results = enhancedMiners;
+    
+    if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase().trim();
+      results = enhancedMiners.filter(miner => {
+        // Convert both name and ID to lowercase for case-insensitive search
+        const minerId = miner.principal.toString().toLowerCase();
+        const minerType = miner.infoLoaded ? 
+          getMinerTypeDisplay(miner.info.miner_type).toLowerCase() : 
+          getMinerTypeDisplay(miner.type).toLowerCase();
+        
+        return (
+          minerId.includes(query) ||
+          minerType.includes(query)
+        );
+      });
     }
+    
+    // Then apply sorting
+    results.sort((a, b) => {
+      let valueA, valueB;
+      
+      switch (sortField) {
+        case "status":
+          valueA = a.infoLoaded && a.info.is_mining ? 1 : 0;
+          valueB = b.infoLoaded && b.info.is_mining ? 1 : 0;
+          break;
+        case "hashRate":
+          valueA = a.infoLoaded && a.stats ? a.stats.last_hash_rate : 0;
+          valueB = b.infoLoaded && b.stats ? b.stats.last_hash_rate : 0;
+          break;
+        default:
+          valueA = a.infoLoaded && a.info.is_mining ? 1 : 0;
+          valueB = b.infoLoaded && b.info.is_mining ? 1 : 0;
+      }
+      
+      // Handle numeric comparison
+      return sortDirection === 'asc' 
+        ? valueA - valueB 
+        : valueB - valueA;
+    });
+    
+    filteredMiners = results;
   }
 
-  function handleCreateMiner() {
-    goto('/launch/create-miner');
+  function toggleSort(field) {
+    if (sortField === field) {
+      // Toggle direction if same field
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      // New field, default to ascending
+      sortField = field;
+      sortDirection = 'asc';
+    }
+    applySearchAndSort();
   }
-  
-  function handleCreateMinerWithTCycles() {
-    goto('/launch/deploy-miner-tcycles');
+
+  function handleMinerClick(minerId) {
+    if (minerId) {
+      goto(`/launch/miner/${minerId}`);
+    }
   }
 
   // Modify reactive statement to prevent unnecessary reloads
@@ -163,40 +228,96 @@
     loadAllMinerInfo();
   }
 
+  // Add this reactive statement to make search reactive
+  $: if (searchQuery !== undefined) {
+    // Only apply if miners are loaded
+    if (enhancedMiners.length > 0) {
+      applySearchAndSort();
+    }
+  }
+
+  // Keep the existing reactive statements
+  $: if (enhancedMiners.length > 0) {
+    applySearchAndSort();
+  }
+
+  onMount(() => {
+    // Initial load will be handled by the reactive statement
+  });
 </script>
 
-<div class="space-y-2">
-  <!-- Deploy New Miner Buttons -->
-  <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl p-4 mb-4">
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div>
-        <h3 class="text-lg font-bold">Deploy a New Miner</h3>
-        <p class="text-sm text-white/70">Choose your preferred deployment method</p>
+<div class="space-y-3 py-2">
+  <!-- Search and sort controls -->
+  {#if !loading && !loadingMinerInfo && enhancedMiners.length > 0}
+    <Panel variant="transparent" type="main" className="search-panel bg-transparent">
+      <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+        <div class="relative flex-grow">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search size={16} class="text-blue-400/70" />
+          </div>
+          <input 
+            type="text" 
+            bind:value={searchQuery}
+            placeholder="Search by ID or type..." 
+            class="w-full pl-10 pr-4 py-2.5 bg-transparent backdrop-blur-sm rounded-lg border border-blue-500/20 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30 text-sm"
+          />
+        </div>
+        
+        <!-- Sort controls -->
+        <div class="flex gap-2 flex-wrap">
+          <button 
+            class={`px-3 py-1.5 text-xs rounded-lg border transition-colors duration-200 flex items-center gap-1 ${sortField === 'status' ? 'bg-blue-900/30 border-blue-500/30 text-blue-400' : 'bg-kong-background-secondary/80 backdrop-blur-sm border-kong-background-tertiary text-kong-text-primary/70'}`}
+            on:click={() => toggleSort('status')}
+          >
+            Status
+            {#if sortField === 'status'}
+              {#if sortDirection === 'asc'}
+                <SortAsc size={12} />
+              {:else}
+                <SortDesc size={12} />
+              {/if}
+            {/if}
+          </button>
+          
+          <button 
+            class={`px-3 py-1.5 text-xs rounded-lg border transition-colors duration-200 flex items-center gap-1 ${sortField === 'hashRate' ? 'bg-blue-900/30 border-blue-500/30 text-blue-400' : 'bg-kong-background-secondary/80 backdrop-blur-sm border-kong-background-tertiary text-kong-text-primary/70'}`}
+            on:click={() => toggleSort('hashRate')}
+          >
+            Hash Rate
+            {#if sortField === 'hashRate'}
+              {#if sortDirection === 'asc'}
+                <SortAsc size={12} />
+              {:else}
+                <SortDesc size={12} />
+              {/if}
+            {/if}
+          </button>
+          
+          <!-- Deploy Miner Button -->
+          <button 
+            class="px-3 py-1.5 text-xs rounded-lg border transition-colors duration-200 flex items-center gap-1 bg-blue-600 hover:bg-blue-700 border-blue-500/30 text-white"
+            on:click={handleDeployMiner}
+          >
+            <Plus size={12} />
+            DEPLOY MINER
+          </button>
+        </div>
       </div>
-      <div class="flex flex-col sm:flex-row gap-3">
-        <button 
-          on:click={handleCreateMiner}
-          class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 text-white"
-        >
-          <Pickaxe size={16} />
-          Deploy with ICP
-        </button>
-        <button 
-          on:click={handleCreateMinerWithTCycles}
-          class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 rounded-lg font-medium hover:bg-purple-700 transition-all duration-200 text-white"
-        >
-          <Zap size={16} />
-          Deploy with TCYCLES
-        </button>
-      </div>
-    </div>
-  </div>
+      
+      <!-- Search results count -->
+      {#if searchQuery.trim() !== ""}
+        <div class="mt-2 text-xs text-blue-400/70">
+          Found {filteredMiners.length} {filteredMiners.length === 1 ? 'miner' : 'miners'} matching "{searchQuery}"
+        </div>
+      {/if}
+    </Panel>
+  {/if}
 
   {#if loading || loadingMinerInfo}
     <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl p-3">
       <div class="flex flex-col gap-4 animate-pulse">
-        <div class="w-1/4 h-6 rounded bg-kong-background-secondary"></div>
-        <div class="w-1/2 h-4 rounded bg-kong-background-secondary"></div>
+        <div class="w-1/4 h-6 rounded bg-kong-bg-light/10"></div>
+        <div class="w-1/2 h-4 rounded bg-kong-bg-light/10"></div>
       </div>
     </div>
   {:else if enhancedMiners.length === 0}
@@ -205,8 +326,14 @@
         No miners found
       </div>
     </div>
+  {:else if filteredMiners.length === 0}
+    <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl p-3">
+      <div class="py-4 text-center text-kong-text-primary/60">
+        No miners match your search
+      </div>
+    </div>
   {:else}
-    {#each enhancedMiners as miner}
+    {#each filteredMiners as miner}
       <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl hover:border-blue-500/30 transition-all duration-200">
         <button
           class="w-full text-left relative overflow-hidden group rounded-xl"
@@ -331,12 +458,12 @@
   }
   
   @keyframes glow {
-    0%, 100% { filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.7)); }
-    50% { filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.9)); }
+    0%, 100% { filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.5)); }
+    50% { filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.8)); }
   }
   
   :global(.animate-spin-slow) {
-    animation: spin-slow 3s linear infinite;
+    animation: spin-slow 4s linear infinite;
   }
   
   :global(.animate-glow) {
@@ -344,6 +471,6 @@
   }
   
   :global(.shadow-glow) {
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
   }
 </style>

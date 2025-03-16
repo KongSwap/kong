@@ -1055,7 +1055,93 @@ import { registerCanister } from "$lib/api/canisters";
         throw new Error("Token canister verification failed. The deployment might not be fully successful.");
       }
       
-      // Register the canister with the API after successful initialization
+      // Call start_token to initialize the ledger canister
+      try {
+        const startTokenMessage = "Starting token and creating ledger canister...";
+        if (lastLogMessage !== startTokenMessage) {
+          addLog(startTokenMessage);
+          lastLogMessage = startTokenMessage;
+        }
+        
+        // Make sure we have a valid token actor
+        if (!tokenActor) {
+          tokenActor = await createTokenActor(canisterPrincipal);
+        }
+        
+        // Call start_token
+        const startResult = await tokenActor.start_token();
+        
+        if ('Ok' in startResult) {
+          const ledgerId = startResult.Ok;
+          const successMessage = `Token started successfully! Ledger canister created with ID: ${ledgerId.toText()}`;
+          if (lastLogMessage !== successMessage) {
+            addLog(successMessage);
+            lastLogMessage = successMessage;
+          }
+          
+          // Register the ledger canister with the API
+          try {
+            const registerLedgerMessage = "Registering ledger canister with API...";
+            if (lastLogMessage !== registerLedgerMessage) {
+              addLog(registerLedgerMessage);
+              lastLogMessage = registerLedgerMessage;
+            }
+            
+            const principal = await getPrincipal();
+            const registerLedgerResult = await registerCanister(
+              principal,
+              ledgerId.toText(),
+              'ledger' // Using 'token' type as that's what the API expects for ledgers
+            );
+            
+            if (registerLedgerResult.success) {
+              const apiLedgerSuccessMessage = "Successfully registered ledger canister with API";
+              if (lastLogMessage !== apiLedgerSuccessMessage) {
+                addLog(apiLedgerSuccessMessage);
+                lastLogMessage = apiLedgerSuccessMessage;
+              }
+              
+              // Also add the ledger canister to the user's local canister store
+              canisterStore.addCanister({
+                id: ledgerId.toText(),
+                name: `${tokenParams.name} Ledger`,
+                tags: ["ledger", tokenParams.ticker, "icrc1"],
+                createdAt: Date.now(),
+                wasmType: "icrc_ledger"
+              });
+            } else {
+              const apiLedgerWarningMessage = `Warning: Failed to register ledger canister with API: ${registerLedgerResult.error}`;
+              if (lastLogMessage !== apiLedgerWarningMessage) {
+                addLog(apiLedgerWarningMessage);
+                lastLogMessage = apiLedgerWarningMessage;
+              }
+            }
+          } catch (apiLedgerError) {
+            const apiLedgerErrorMessage = `Warning: Error registering ledger canister with API: ${apiLedgerError.message}`;
+            if (lastLogMessage !== apiLedgerErrorMessage) {
+              addLog(apiLedgerErrorMessage);
+              lastLogMessage = apiLedgerErrorMessage;
+            }
+          }
+        } else {
+          const warningMessage = `Warning: Failed to start token: ${startResult.Err}. You can start it manually later.`;
+          if (lastLogMessage !== warningMessage) {
+            addLog(warningMessage);
+            lastLogMessage = warningMessage;
+          }
+          // Don't throw error here, as the token deployment is still considered successful
+          // The user can start the token manually later
+        }
+      } catch (startError) {
+        const startErrorMessage = `Warning: Error starting token: ${startError.message}. You can start it manually later.`;
+        if (lastLogMessage !== startErrorMessage) {
+          addLog(startErrorMessage);
+          lastLogMessage = startErrorMessage;
+        }
+        // Don't throw error here, as the token deployment is still considered successful
+      }
+      
+      // Register the token canister with the API
       try {
         const registerMessage = "Registering token canister with API...";
         if (lastLogMessage !== registerMessage) {

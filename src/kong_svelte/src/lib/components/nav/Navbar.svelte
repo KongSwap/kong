@@ -53,9 +53,9 @@
 
   const launchOptions = [
     {
-      label: 'Create Token',
-      description: 'Launch your own token on Kong',
-      path: '/launch/create-token',
+      label: 'Launchpad',
+      description: 'View and manage launchpad tokens',
+      path: '/launch',
       icon: Coins,
       comingSoon: false
     },
@@ -71,13 +71,6 @@
       description: 'Manage your deployed canisters',
       path: '/launch/my-canisters',
       icon: Joystick,
-      comingSoon: false
-    },
-    {
-      label: 'Top Up Canister',
-      description: 'Add cycles to your canisters',
-      path: '/launch/top-up',
-      icon: Droplet,
       comingSoon: false
     }
   ];

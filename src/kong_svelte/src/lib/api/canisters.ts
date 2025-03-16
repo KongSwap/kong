@@ -135,13 +135,13 @@ export function disconnectWebSocket() {
  * Register a canister with the API
  * @param principal The principal ID of the user who created the canister (string or Principal object)
  * @param canisterId The canister ID to register
- * @param canisterType The type of canister ('token' or 'token_backend' or 'miner')
+ * @param canisterType The type of canister ('token/token_backend' or 'miner' or 'ledger')
  * @returns A promise that resolves to the API response
  */
 export async function registerCanister(
   principal: string | Principal,
   canisterId: string,
-  canisterType: 'token' | 'token_backend' | 'miner'
+  canisterType: 'token' | 'token_backend' | 'miner' | 'ledger'
 ): Promise<any> {
   try {
     // Map token_backend to token for backward compatibility

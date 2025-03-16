@@ -393,12 +393,6 @@
               </div>
             </div>
             <div class="p-2 rounded bg-gray-800">
-              <div class="text-xs text-gray-400">Miner Type</div>
-              <div class="text-sm font-medium text-blue-400">
-                {minerInfo.miner_type ? Object.keys(minerInfo.miner_type)[0] : 'Unknown'}
-              </div>
-            </div>
-            <div class="p-2 rounded bg-gray-800">
               <div class="text-xs text-gray-400">Speed</div>
               <div class="text-sm font-medium text-purple-400">
                 {minerInfo.speed_percentage ?? 0}%
