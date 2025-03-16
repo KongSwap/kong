@@ -2,26 +2,22 @@
     import { onMount } from 'svelte';
     import { Principal } from '@dfinity/principal';
     import { toastStore } from '$lib/stores/toastStore';
-    import { formatICP, icpToE8s } from '$lib/utils/icp';
     import { formatCycles } from '$lib/utils/cycles';
-    import { topUpCanister, calculateCyclesFromIcp } from '$lib/services/canister/top_up_canister';
     import { auth } from '$lib/services/auth';
     import { SwapService } from '$lib/services/swap/SwapService';
-    import { fetchICPtoXDRRates } from '$lib/services/canister/ic-api';
+    import { TCyclesService } from '$lib/services/canister/tcycles-service';
 
     export let canisterId: string | null = null;
 
     // Constants
     const KONG_DECIMALS = 8;
-    const ICP_DECIMALS = 8;
     const MIN_KONG_AMOUNT = 10;
 
-    let kongAmount = MIN_KONG_AMOUNT; // Default amount - changed from 390 to MIN_KONG_AMOUNT (10)
-    let icpAmount = "0";
+    let kongAmount = MIN_KONG_AMOUNT; // Default amount
     let estimatedCycles: bigint = BigInt(0);
     let isLoading = false;
     let canisterIdInput = '';
-    let kongIcpRate = "0";
+    let kongTCyclesRate = "0";
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     
     // Validation
@@ -38,7 +34,7 @@
     }
 
     onMount(async () => {
-        console.log("TopUp component mounted with canisterId:", canisterId);
+        console.log("TopUpTCycles component mounted with canisterId:", canisterId);
         
         if (canisterId) {
             canisterIdInput = canisterId;
@@ -101,54 +97,26 @@
                 return;
             }
             
-            // Step 1: KONG to ICP calculation (no actual swap yet)
+            // Use the SwapService to get a quote for KONG to TCycles
             const kongE8s = SwapService.toBigInt(kongAmount.toString(), KONG_DECIMALS);
-            const quoteResult = await SwapService.getKongToIcpQuote(kongE8s, KONG_DECIMALS, ICP_DECIMALS);
-            icpAmount = quoteResult.receiveAmount;
+            const TCYCLES_DECIMALS = 12; // TCycles have 12 decimals (1 TCycle = 1 trillion cycles)
+            const quoteResult = await SwapService.getKongToTCyclesQuote(kongE8s, KONG_DECIMALS, TCYCLES_DECIMALS);
             
-            // Step 2: ICP to XDR conversion
-            const xdrRatesResponse = await fetchICPtoXDRRates();
+            // Convert the receive amount to bigint for display
+            const tcyclesAmount = SwapService.toBigInt(quoteResult.receiveAmount, TCYCLES_DECIMALS);
             
-            // Extract the rate value from the response
-            const xdrRateValue = getXDRRate(xdrRatesResponse.icp_xdr_conversion_rates);
+            // Set the estimated cycles (1 TCycle = 1 trillion cycles)
+            estimatedCycles = tcyclesAmount;
             
-            // XDR rate is in 10,000ths, so divide by 10,000 to get the actual rate
-            const xdrPerIcp = xdrRateValue / 10000;
+            // Set the KONG to TCycles rate for reference
+            const tcyclesValue = parseFloat(quoteResult.receiveAmount);
+            kongTCyclesRate = (tcyclesValue / kongAmount).toFixed(6);
             
-            // Calculate the XDR amount
-            const icpValue = parseFloat(icpAmount);
-            const xdrAmount = icpValue * xdrPerIcp;
-            
-            // Step 3: XDR to T-Cycles (1 XDR = 1T cycles)
-            const tCycles = xdrAmount;
-            
-            // Convert to bigint for display
-            estimatedCycles = BigInt(Math.floor(tCycles * 1_000_000_000_000));
-            
-            // Set the KONG to ICP rate for reference
-            kongIcpRate = (icpValue / kongAmount).toFixed(6);
         } catch (error) {
             console.error('Error calculating cycles:', error);
             // Fallback to simple calculation if the service call fails
             toastStore.error(`Error calculating cycles: ${error.message}`);
         }
-    }
-
-    // Helper function to get the most recent XDR rate from the API response
-    function getXDRRate(ratesArray: [number, number][]): number {
-        if (!ratesArray || !Array.isArray(ratesArray) || ratesArray.length === 0) {
-            console.error("Invalid XDR rates array:", ratesArray);
-            throw new Error("Invalid XDR rates data");
-        }
-        
-        // Sort by timestamp (first element in inner array) to get most recent
-        const sortedRates = [...ratesArray].sort((a, b) => b[0] - a[0]);
-        
-        // The rate is the second element in the inner array
-        const latestRate = sortedRates[0][1];
-        console.log("Latest XDR rate value:", latestRate);
-        
-        return latestRate;
     }
 
     async function handleSubmit() {
@@ -161,20 +129,21 @@
             // Inform user that the process is starting
             toastStore.info(`Starting top-up process for canister ${canisterIdInput}...`);
             
-            // Step 1: Swap KONG to ICP (but don't mention ICP to the user)
-            toastStore.info(`Converting ${kongAmount} KONG to cycles...`);
+            // Step 1: Swap KONG to TCycles
+            toastStore.info(`Converting ${kongAmount} KONG to TCycles...`);
             const kongE8s = SwapService.toBigInt(kongAmount.toString(), KONG_DECIMALS);
-            const icpE8s = await SwapService.swapKongToIcp(kongE8s);
             
-            // Don't show the intermediate ICP conversion message
-            const icpReceived = SwapService.fromBigInt(icpE8s, ICP_DECIMALS);
+            // Swap KONG to TCycles (this is a placeholder - you'll need to implement this in SwapService)
+            const tcyclesAmount = await SwapService.swapKongToTCycles(kongE8s);
             
-            // Step 2: Use the received ICP to top up the canister
+            // Step 2: Use the received TCycles to top up the canister
             toastStore.info(`Adding cycles to canister ${canisterIdInput}...`);
-            await topUpCanister({
-                canister_id: canisterIdInput,
-                amount: icpE8s
-            });
+            
+            // Convert canisterId to Principal
+            const canisterPrincipal = Principal.fromText(canisterIdInput);
+            
+            // Top up the canister using TCyclesService
+            const blockIndex = await TCyclesService.topUpCanister(canisterPrincipal, tcyclesAmount);
             
             // Final success message
             toastStore.success(`Successfully topped up canister with ${formatCycles(estimatedCycles)} cycles`);
@@ -297,12 +266,12 @@
     </form>
     
     <div class="mt-6 p-4 border rounded-lg bg-kong-bg-light/5 border-kong-border/10">
-        <h3 class="mb-2 text-base font-medium text-kong-text-primary">About Canister Top-Up</h3>
+        <h3 class="mb-2 text-base font-medium text-kong-text-primary">About TCycles Top-Up</h3>
         <p class="text-sm text-kong-text-secondary mb-2">
-            Topping up a canister adds cycles that are used to pay for computation, storage, and bandwidth on the Internet Computer.
+            This method uses the TCycles ledger to top up your canister, which can be more efficient than the traditional ICP path.
         </p>
         <p class="text-sm text-kong-text-secondary">
             Make sure you have enough KONG in your wallet before proceeding.
         </p>
     </div>
-</div>
+</div> 

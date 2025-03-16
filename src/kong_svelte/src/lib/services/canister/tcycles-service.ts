@@ -119,7 +119,9 @@ export class TCyclesService {
       // Prepare the withdraw arguments
       const withdrawArgs = {
         to: canisterPrincipal,
-        amount: cyclesAmount
+        amount: cyclesAmount,
+        from_subaccount: [], // Add the required from_subaccount field as an empty optional array
+        created_at_time: [] // Add the optional created_at_time field as an empty optional array
       };
       
       // Log the arguments for debugging
