@@ -140,7 +140,12 @@ interface SubnetsResponse {
 }
 
 // API configuration
-const IC_API_BASE_URL = 'https://ic0.app/api/v3';
+const IC_API_BASE_URL = 'https://ic-api.internetcomputer.org/api/v3';
+const IC_API_FALLBACK_URLS = [
+  'https://ic-api.internetcomputer.org/api/v3',
+  'https://icp0.io/api/v3',
+  'https://ic0.app/api/v3'
+];
 
 // Custom error class for API errors
 class ICAPIError extends Error {
@@ -165,46 +170,63 @@ function validateResponse<T>(data: any, endpoint: string): T {
 
 // Helper function to handle API responses with enhanced error handling
 async function fetchFromIC<T>(endpoint: string): Promise<T> {
-  const url = `${IC_API_BASE_URL}${endpoint}`;
-
-  try {
-    console.log(`Fetching from IC API: ${url}`);
-    const response = await fetch(url);
+  // Try each base URL in order until one works
+  let lastError: Error | null = null;
+  
+  // First try: Direct fetch with CORS
+  for (const baseUrl of IC_API_FALLBACK_URLS) {
+    const url = `${baseUrl}${endpoint}`;
     
-    if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
+    try {
+      console.log(`Fetching from IC API (${baseUrl}): ${endpoint}`);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        },
+        mode: 'cors'
+      });
       
-      switch (response.status) {
-        case 404:
-          errorMessage = `Resource not found: ${endpoint}`;
-          break;
-        case 429:
-          errorMessage = 'Rate limit exceeded';
-          break;
-        case 500:
-          errorMessage = 'Internal server error';
-          break;
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        
+        switch (response.status) {
+          case 404:
+            errorMessage = `Resource not found: ${endpoint}`;
+            break;
+          case 429:
+            errorMessage = 'Rate limit exceeded';
+            break;
+          case 500:
+            errorMessage = 'Internal server error';
+            break;
+        }
+        
+        throw new ICAPIError(errorMessage, response.status, endpoint);
       }
       
-      throw new ICAPIError(errorMessage, response.status, endpoint);
+      const data = await response.json();
+      const validatedData = validateResponse<T>(data, endpoint);
+  
+      console.log(`IC API response for ${endpoint}:`, validatedData);
+      return validatedData;
+    } catch (error) {
+      console.warn(`Error fetching from ${baseUrl}${endpoint}:`, error);
+      lastError = error;
+      // Continue to the next URL
     }
-    
-    const data = await response.json();
-    const validatedData = validateResponse<T>(data, endpoint);
-
-    console.log(`IC API response for ${endpoint}:`, validatedData);
-    return validatedData;
-  } catch (error) {
-    if (error instanceof ICAPIError) {
-      throw error;
-    }
-    console.error(`Error fetching from IC API (${endpoint}):`, error);
-    throw new ICAPIError(
-      `Failed to fetch data: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      undefined,
-      endpoint
-    );
   }
+  
+  // If we get here, all URLs failed
+  if (lastError instanceof ICAPIError) {
+    throw lastError;
+  }
+  
+  throw new ICAPIError(
+    `Failed to fetch data from all API endpoints: ${lastError?.message || 'Unknown error'}`,
+    undefined,
+    endpoint
+  );
 }
 
 // Fetch list of all subnets

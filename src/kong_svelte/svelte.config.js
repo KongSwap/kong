@@ -78,7 +78,9 @@ const config = {
           'https://*.google-analytics.com',
           'https://cdn.jsdelivr.net',
           'https://api.floppa.ai',
-          'wss://api.floppa.ai'
+          'wss://api.floppa.ai',
+          'https://ic-api.internetcomputer.org',
+          'https://*.internetcomputer.org'
         ],
       }
     }
