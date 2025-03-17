@@ -66,7 +66,6 @@
     amount: string;
     token: any;
     tokenFee: bigint;
-    isValidating: boolean;
     toPrincipal: string;
   } | null>(null);
 
@@ -114,6 +113,12 @@
   // Load user balances
   async function loadBalances() {
     try {
+      // Safety check to ensure token is still valid
+      if (!token || !token.symbol) {
+        console.debug("Token not available for balance loading");
+        return;
+      }
+      
       if (token.symbol === "ICP" && auth.pnp?.account?.subaccount) {
         const subaccountResult = await IcrcService.getIcrc1Balance(
           token,
@@ -209,7 +214,6 @@
       amount,
       token,
       tokenFee,
-      isValidating,
       toPrincipal: recipientAddress,
     };
 
@@ -257,31 +261,49 @@
 
       toastStore.info(`Sending ${amount} ${token.symbol}...`);
 
-      const fromSubaccount =
-        selectedAccount === "subaccount"
-          ? auth.pnp?.account?.subaccount
-          : undefined;
+      // Ensure auth is properly initialized
+      if (!auth.pnp?.account?.owner) {
+        throw new Error("Authentication not initialized");
+      }
+
+      // Prepare from subaccount
+      let fromSubaccount;
+      if (selectedAccount === "subaccount" && auth.pnp?.account?.subaccount) {
+        // Ensure subaccount is properly formatted as Uint8Array for the IcrcService
+        fromSubaccount = new Uint8Array(auth.pnp.account.subaccount);
+      }
 
       const result = await IcrcService.transfer(
         token,
         recipientAddress,
         amountBigInt,
         {
-          fee: BigInt(token.fee_fixed),
-          fromSubaccount: fromSubaccount
-            ? Array.from(fromSubaccount)
-            : undefined,
+          fee: token.fee_fixed ? BigInt(token.fee_fixed) : tokenFee,
+          fromSubaccount: fromSubaccount ? Array.from(fromSubaccount) : undefined,
         }
       );
 
       if (result?.Ok) {
         const txId = result.Ok.toString();
-        toastStore.success(`Successfully sent ${token.symbol}`);
-        onSuccess(txId);
+        
+        // Update local state first
         recipientAddress = "";
         amount = "";
+        
+        // Try to update balances before closing the modal
+        try {
+          await loadBalances();
+        } catch (balanceError) {
+          console.error("Failed to refresh balances:", balanceError);
+          // Continue with success flow even if balance refresh fails
+        }
+        
+        // Show success message and trigger callbacks
+        toastStore.success(`Successfully sent ${token.symbol}`);
+        onSuccess(txId);
+        
+        // Close modal last
         onClose();
-        await loadBalances();
       } else if (result?.Err) {
         const errMsg =
           typeof result.Err === "object"
@@ -289,8 +311,10 @@
             : String(result.Err);
         errorMessage = `Transfer failed: ${errMsg}`;
         toastStore.error(errorMessage);
+        console.error("Transfer error details:", result.Err);
       }
     } catch (err) {
+      console.error("Transfer error:", err);
       errorMessage = err.message || "Transfer failed";
       toastStore.error(errorMessage);
     } finally {
@@ -312,10 +336,8 @@
   $effect(() => {
     if (recipientAddress) {
       addressValidation = validateAddress(recipientAddress, token.symbol, token.name);
-      errorMessage = addressValidation.errorMessage;
     } else {
       addressValidation = { isValid: false, errorMessage: "", addressType: null };
-      if (!amount) errorMessage = "";
     }
   });
 
@@ -324,10 +346,19 @@
     if (amount) {
       const currentBalance = selectedAccount === "main" ? balances.default : balances.subaccount || BigInt(0);
       amountValidation = validateTokenAmount(amount, currentBalance, token.decimals, tokenFee);
-      if (!addressValidation.errorMessage) errorMessage = amountValidation.errorMessage;
     } else {
       amountValidation = { isValid: false, errorMessage: "" };
-      if (!addressValidation.errorMessage) errorMessage = "";
+    }
+  });
+
+  // Update error message based on validations (separate effect to avoid circular dependencies)
+  $effect(() => {
+    if (addressValidation.errorMessage) {
+      errorMessage = addressValidation.errorMessage;
+    } else if (amountValidation.errorMessage) {
+      errorMessage = amountValidation.errorMessage;
+    } else {
+      errorMessage = "";
     }
   });
 
@@ -558,7 +589,7 @@
     amount={transferDetails.amount}
     token={transferDetails.token}
     tokenFee={transferDetails.tokenFee}
-    isValidating={transferDetails.isValidating}
+    isValidating={isValidating}
     toPrincipal={transferDetails.toPrincipal}
   />
 {/if}
