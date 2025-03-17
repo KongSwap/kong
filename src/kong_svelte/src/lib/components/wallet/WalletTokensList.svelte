@@ -313,8 +313,8 @@
         on:click={handleSyncTokens}
         disabled={isSyncing || isLoading || isLoadingBalances}
       >
-        <Shuffle size={12} class={isSyncing ? 'animate-spin' : ''} />
-        <span>Sync</span>
+        <Shuffle size={12} class={isSyncing ? 'text-kong-primary animate-glow' : ''} />
+        <span class={isSyncing ? 'text-kong-primary' : ''}>{isSyncing ? 'Syncing...' : 'Sync'}</span>
       </button>
       
       {#if showSyncStatus && syncStatus}

@@ -1,11 +1,11 @@
 <!-- ThemeCreator.svelte - A component for creating custom themes -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { ThemeDefinition } from '../themes/baseTheme';
-  import { baseTheme } from '../themes/baseTheme';
-  import { themeStore, type ThemeId } from '../stores/themeStore';
-  import { getAllThemes } from '../themes/themeRegistry';
-  import Slider from './common/Slider.svelte';
+  import type { ThemeDefinition } from '$lib/themes/baseTheme';
+  import { baseTheme } from '$lib/themes/baseTheme';
+  import { themeStore, type ThemeId } from '$lib/stores/themeStore';
+  import { getAllThemes } from '$lib/themes/themeRegistry';
+  import Slider from '$lib/components/common/Slider.svelte';
 
   // Theme ID for the new theme
   let themeId = '';

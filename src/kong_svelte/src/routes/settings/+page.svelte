@@ -12,11 +12,12 @@
   import { Settings as SettingsIcon, ArrowLeft } from 'lucide-svelte';
   import PageHeader from '$lib/components/common/PageHeader.svelte';
   import Panel from '$lib/components/common/Panel.svelte';
+  import type { ComponentType } from 'svelte';
   
   let themes: ThemeDefinition[] = [];
   let currentThemeId = '';
   let showThemeCreator = false;
-  let ThemeCreator: typeof import('$lib/components/ThemeCreator.svelte').default | undefined;
+  let ThemeCreator: ComponentType<any> | undefined;
   let soundEnabled = true;
   let slippageValue: number = 2.0;
   let slippageInputValue = '2.0';
@@ -39,7 +40,7 @@
     });
     
     // Dynamically import the ThemeCreator component
-    import('$lib/components/ThemeCreator.svelte')
+    import('./ThemeCreator.svelte')
       .then(module => {
         ThemeCreator = module.default;
         showThemeCreator = true;

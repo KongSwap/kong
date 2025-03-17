@@ -147,6 +147,7 @@ export default {
         "zoom-in": "zoom-in 200ms ease-out",
         "zoom-out": "zoom-out 200ms ease-in",
         'shine': 'shine 2s infinite linear',
+        'glow': 'glow 2s ease-in-out infinite',
       },
       scale: {
         '98': '0.98',
@@ -203,6 +204,23 @@ export default {
         shine: {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(50%)' }
+        },
+        glow: {
+          '0%': { 
+            filter: 'drop-shadow(0 0 2px rgb(var(--primary) / 0.5)) brightness(0.95)', 
+            opacity: '0.8',
+            transform: 'scale(0.98)'
+          },
+          '50%': { 
+            filter: 'drop-shadow(0 0 5px rgb(var(--primary) / 0.9)) brightness(1.1)', 
+            opacity: '1',
+            transform: 'scale(1.02)'
+          },
+          '100%': { 
+            filter: 'drop-shadow(0 0 2px rgb(var(--primary) / 0.5)) brightness(0.95)', 
+            opacity: '0.8',
+            transform: 'scale(0.98)'
+          }
         },
       },
     },
