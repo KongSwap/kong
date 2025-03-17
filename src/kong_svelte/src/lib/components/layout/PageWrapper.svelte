@@ -1,12 +1,15 @@
 <!-- PageWrapper.svelte -->
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { themeStore } from '$lib/stores/themeStore';
+  import { getThemeById } from '$lib/themes/themeRegistry';
+  import type { ThemeDefinition } from '$lib/themes/baseTheme';
+  import { onMount } from 'svelte';
   
   export let page: string;
-  export let theme: string = "auto"; // Add theme prop with default "auto"
-  let mouseX = 0;
-  let mouseY = 0;
-  let isPlainBlack = false;
+  let currentTheme: ThemeDefinition;
+  let starsContainer: HTMLDivElement;
+  let backgroundLoaded = false;
   
   // Generate random positions for nebula gradients
   const nebulaPositions = {
@@ -31,21 +34,123 @@
   // Add reactive declaration for competition page background
   $: isCompetition = page && page.includes('/competition/kong-madness');
   
-  // Safe check for plain-black theme that works with SSR
-  $: if (browser) {
-    isPlainBlack = document.documentElement.classList.contains('plain-black');
-  }
-
-  function handleMouseMove(e: MouseEvent) {
-    if (browser) {
-      // Reduce the movement amount for subtler effect
-      mouseX = (e.clientX / window.innerWidth - 1) * 20;
-      mouseY = (e.clientY / window.innerHeight - 1) * 20;
+  // Determine if theme has pattern background that should fill the screen
+  $: hasPatternBg = currentTheme?.colors.backgroundType === 'pattern';
+  
+  // Subscribe to theme changes
+  $: if (browser && $themeStore) {
+    currentTheme = getThemeById($themeStore);
+    // Preload background image if it exists
+    if (currentTheme?.colors.backgroundType === 'pattern' && currentTheme?.colors.backgroundImage) {
+      preloadBackgroundImage(currentTheme.colors.backgroundImage);
     }
   }
-</script>
 
-<svelte:window on:mousemove={handleMouseMove}/>
+  // Function to preload background image
+  function preloadBackgroundImage(imageUrl: string) {
+    backgroundLoaded = false;
+    const img = new Image();
+    img.onload = () => {
+      backgroundLoaded = true;
+    };
+    img.src = imageUrl;
+  }
+  
+  // Helper function to determine if a theme feature is enabled
+  function isEnabled(feature: 'enableNebula' | 'enableStars' | 'enableSkyline'): boolean {
+    return currentTheme?.colors[feature] === true;
+  }
+  
+  // Helper to get the background based on theme type
+  function getBackgroundStyle(): string {
+    if (!currentTheme) return '';
+    
+    const colors = currentTheme.colors;
+    
+    switch (colors.backgroundType) {
+      case 'gradient':
+        return colors.backgroundGradient || '';
+      case 'solid':
+        return colors.backgroundSolid || '';
+      case 'pattern':
+        // Pattern type is now handled with pattern-background div
+        return ''; 
+      default:
+        return '';
+    }
+  }
+
+  // Generate stars dynamically - Now using more efficient approach
+  function generateStars() {
+    if (!browser || !starsContainer || !currentTheme) return;
+    
+    // Clear existing stars
+    starsContainer.innerHTML = '';
+    
+    // Create a document fragment for better performance
+    const fragment = document.createDocumentFragment();
+    
+    // Determine how many stars to generate based on screen size
+    // Reduced density by quarter from original (from 2000 to 8000 pixels per star)
+    const starCount = Math.floor((window.innerWidth * window.innerHeight) / 8000);
+    
+    for (let i = 0; i < starCount; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      
+      // Random positioning
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.top = `${Math.random() * 100}%`;
+      
+      // Randomize star size (0.5px - 2px)
+      const size = 0.5 + Math.random() * 1.5;
+      star.style.width = `${size}px`;
+      star.style.height = `${size}px`;
+      
+      // Randomize opacity (50% - 100%)
+      star.style.opacity = (0.5 + Math.random() * 0.5).toString();
+      
+      // Add slight animation with random delay for twinkling effect
+      star.style.animation = `twinkle ${3 + Math.random() * 4}s linear infinite`;
+      star.style.animationDelay = `${Math.random() * 5}s`;
+      
+      fragment.appendChild(star);
+    }
+    
+    // Add all stars at once for better performance
+    starsContainer.appendChild(fragment);
+  }
+  
+  // Generate stars when theme changes or on mount
+  $: if (browser && currentTheme && isEnabled('enableStars')) {
+    // Wait for the next tick to ensure the DOM is updated
+    setTimeout(generateStars, 0);
+  }
+  
+  onMount(() => {
+    if (browser && currentTheme && isEnabled('enableStars')) {
+      generateStars();
+    }
+    
+    // Regenerate stars on window resize with debounce
+    let resizeTimer: number;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        if (isEnabled('enableStars')) {
+          generateStars();
+        }
+      }, 150); // Debounce the resize event to avoid multiple regenerations
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimer);
+    };
+  });
+</script>
 
 <div class="page-wrapper">
   <!-- Updated background based on page type -->
@@ -53,59 +158,70 @@
     <div class="background-container custom"></div>
   {:else}
     <div class="background-container">
-      <div class="dark-gradient"></div>
-      <div class="plain-black-background"></div>
+      <!-- Solid/gradient background -->
       <div 
-        class="nebula-effect"
-        style="
-          transform: translate({mouseX * 0.5}px, {mouseY * 0.5}px);
-          --blue-x: {nebulaPositions.blue.x}%;
-          --blue-y: {nebulaPositions.blue.y}%;
-          --purple1-x: {nebulaPositions.purple1.x}%;
-          --purple1-y: {nebulaPositions.purple1.y}%;
-          --purple2-x: {nebulaPositions.purple2.x}%;
-          --purple2-y: {nebulaPositions.purple2.y}%;
-          --purple3-x: {nebulaPositions.purple3.x}%;
-          --purple3-y: {nebulaPositions.purple3.y}%;
-        "
+        class="theme-background" 
+        style={`background: ${getBackgroundStyle()}`}
       ></div>
       
-      <!-- Add stars -->
-      <div 
-        class="stars"
-        style="transform: translate({mouseX * 0.2}px, {mouseY * 0.2}px)"
-      >
-        {#each Array(200) as _, i}
-          <div 
-            class="star"
-            style="
-              --size: {0.8 + Math.random() * 1.8}px;
-              --top: {Math.random() * 100}%;
-              --left: {Math.random() * 100}%;
-              --brightness: {0.5 + Math.random() * 0.5};"
-          ></div>
-        {/each}
-      </div>
+      <!-- Pattern background image - now with fade-in animation -->
+      {#if hasPatternBg && currentTheme?.colors.backgroundImage}
+        <div 
+          class="pattern-background"
+          class:loaded={backgroundLoaded}
+          style={`
+            background-image: url(${currentTheme.colors.backgroundImage}); 
+            opacity: ${currentTheme.colors.backgroundOpacity ?? 1};
+            background-size: ${currentTheme.colors.backgroundSize || 'cover'};
+            background-position: ${currentTheme.colors.backgroundPosition || 'center center'};
+            background-repeat: ${currentTheme.colors.backgroundRepeat || 'no-repeat'};
+            width: ${currentTheme.colors.backgroundWidth || '100%'};
+            height: ${currentTheme.colors.backgroundHeight || '100%'};
+            top: ${currentTheme.colors.backgroundTop || '0'};
+            left: ${currentTheme.colors.backgroundLeft || '0'};
+            right: ${currentTheme.colors.backgroundRight || 'auto'};
+            bottom: ${currentTheme.colors.backgroundBottom || 'auto'};
+          `}
+        ></div>
+      {/if}
+      
+      <!-- Nebula effect -->
+      {#if currentTheme && isEnabled('enableNebula')}
+        <div 
+          class="nebula" 
+          style="
+            opacity: {currentTheme.colors.nebulaOpacity || 0.3};
+            --blue-x: {nebulaPositions.blue.x}%;
+            --blue-y: {nebulaPositions.blue.y}%;
+            --purple1-x: {nebulaPositions.purple1.x}%;
+            --purple1-y: {nebulaPositions.purple1.y}%;
+            --purple2-x: {nebulaPositions.purple2.x}%;
+            --purple2-y: {nebulaPositions.purple2.y}%;
+            --purple3-x: {nebulaPositions.purple3.x}%;
+            --purple3-y: {nebulaPositions.purple3.y}%;
+          "
+        ></div>
+      {/if}
+      
+      <!-- Stars - using dynamic generation -->
+      {#if currentTheme && isEnabled('enableStars')}
+        <div 
+          bind:this={starsContainer}
+          class="stars"
+          style="
+            opacity: {currentTheme.colors.starsOpacity || 0.8};
+          "
+        ></div>
+      {/if}
 
-      <!-- Add skyline -->
-      <div class="skyline-wrapper">
-        <img 
-          src="/backgrounds/skyline.svg" 
-          alt="Skyline" 
-          class="skyline"
-        />
-      </div>
+      <!-- Skyline -->
+      {#if currentTheme && isEnabled('enableSkyline')}
+        <div class="skyline"></div>
+      {/if}
     </div>
   {/if}
   
-  <div class="ticker-wrapper">
-    <slot />
-  </div>
-  <div class="content-wrapper">
-    <!-- Rest of the content -->
-  </div>
-  <div class="grass-silhouette" />
-  <div class="tree-silhouette" />
+  <slot />
 </div>
 
 <style lang="postcss">
@@ -132,45 +248,41 @@
     overflow: hidden;
   }
 
-  /* Dark theme gradient */
-  .dark-gradient {
+  /* Theme background */
+  .theme-background {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      180deg,
-      rgb(2, 6, 23) 0%,
-      rgb(10, 15, 35) 100%
-    );
+    opacity: var(--background-opacity, 1);
+    transition: opacity 0.3s ease, background 0.3s ease;
+    background-size: 100% 100% !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+    z-index: -10;
+  }
+
+  /* Pattern background styling with fade in */
+  .pattern-background {
+    position: fixed;
+    pointer-events: none;
+    z-index: -2;
+    transition: opacity 0.4s ease-in;
     opacity: 0;
-    transition: opacity 0.3s ease;
   }
-
-  /* Plain black background */
-  .plain-black-background {
-    position: absolute;
-    inset: 0;
-    background: #000000;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  /* Show dark gradient only in dark mode */
-  :global(:root.dark) .dark-gradient {
-    opacity: 1;
-  }
-
-  /* Show plain black background only in plain-black mode */
-  :global(:root.plain-black) .plain-black-background {
-    opacity: 1;
+  
+  .pattern-background.loaded {
+    opacity: var(--background-opacity, 1);
   }
 
   /* Nebula effect */
-  .nebula-effect {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    filter: blur(100px);
-    transform: translateY(-20%);
+  .nebula {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100vh;
+    pointer-events: none;
+    z-index: -3;
+    filter: blur(120px);
     background: 
       radial-gradient(
         circle at var(--blue-x) var(--blue-y),
@@ -191,168 +303,41 @@
         circle at var(--purple3-x) var(--purple3-y),
         rgba(88, 28, 135, 0.5),
         transparent 55%
-      ),
-      radial-gradient(
-        circle at 50% 50%,
-        rgba(15, 23, 42, 0.2),
-        transparent 70%
       );
-    transition: opacity 0.3s ease, transform 0.2s ease-out;
+    opacity: 0;
+    animation: fadeIn 0.5s ease-in forwards;
   }
 
-  /* Show nebula only in dark mode, hide in plain-black */
-  :global(:root.dark:not(.plain-black)) .nebula-effect {
-    opacity: 0.15;
+  @keyframes fadeIn {
+    to { opacity: var(--nebula-opacity, 0.3); }
   }
 
-  /* Light theme sky gradient */
-  :global(:root:not(.dark):not(.plain-black)) .background-container::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      180deg, 
-      rgb(181, 218, 255) 0%,
-      rgb(165, 199, 236) 85%,
-      rgb(204, 221, 237) 100%
-    );
-  }
-
-  .ticker-wrapper {
-    @apply w-full;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-  }
-
-  .content-wrapper {
-    @apply flex-1;
-  }
-
-  /* Tree silhouette for light theme */
-  :global(:root:not(.dark):not(.plain-black)) .tree-silhouette {
-    position: fixed;
-    bottom: 2rem;
-    right: 10%;
-    width: 200px;
-    height: 300px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 160' preserveAspectRatio='none'%3E%3Cpath fill='%23436B35' d='M45,160 L55,160 L52,60 C52,60 45,50 50,30 C55,10 48,0 50,0 C52,0 45,10 50,30 C55,50 48,60 48,60 L45,160'/%3E%3Cpath fill='%235A8C47' d='M20,80 C20,40 50,20 50,20 C50,20 80,40 80,80 C80,120 50,110 50,110 C50,110 20,120 20,80 Z'/%3E%3Cpath fill='%236EA358' d='M30,60 C30,30 50,10 50,10 C50,10 70,30 70,60 C70,90 50,85 50,85 C50,85 30,90 30,60 Z'/%3E%3C/svg%3E");
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: bottom;
-    pointer-events: none;
-    z-index: 1;
-  }
-
-  /* Grass silhouette for light theme */
-  :global(:root:not(.dark):not(.plain-black)) .grass-silhouette {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 180px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320' preserveAspectRatio='none'%3E%3Cpath fill='%2392C584' fill-opacity='0.2' d='M0,160 C120,160 180,110 240,110 C300,110 360,160 420,160 C480,160 540,110 600,110 C660,110 720,160 780,160 C840,160 900,110 960,110 C1020,110 1080,160 1140,160 C1200,160 1260,110 1320,110 C1380,110 1440,160 1440,160 L1440,320 L0,320 Z'/%3E%3Cpath fill='%2375B465' fill-opacity='0.3' d='M0,180 C60,180 120,140 180,140 C240,140 300,180 360,180 C420,180 480,140 540,140 C600,140 660,180 720,180 C780,180 840,140 900,140 C960,140 1020,180 1080,180 C1140,180 1200,140 1260,140 C1320,140 1380,180 1440,180 L1440,320 L0,320 Z'/%3E%3Cpath fill='%235AA349' fill-opacity='0.4' d='M0,220 C40,220 60,200 120,200 C180,200 240,220 300,220 C360,220 420,200 480,200 C540,200 600,220 660,220 C720,220 780,200 840,200 C900,200 960,220 1020,220 C1080,220 1140,200 1200,200 C1260,200 1320,220 1380,220 C1410,220 1430,200 1440,200 L1440,320 L0,320 Z'/%3E%3Cpath fill='%23508B3F' fill-opacity='0.5' d='M0,240 C30,240 45,230 90,230 C135,230 180,240 225,240 C270,240 315,230 360,230 C405,230 450,240 495,240 C540,240 585,230 630,230 C675,230 720,240 765,240 C810,240 855,230 900,230 C945,230 990,240 1035,240 C1080,240 1125,230 1170,230 C1215,230 1260,240 1305,240 C1350,240 1395,230 1440,230 L1440,320 L0,320 Z'/%3E%3C/svg%3E");
-    background-size: cover;
-    background-position: center;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* Add some grass blades */
-  :global(:root:not(.dark):not(.plain-black)) .grass-silhouette::after {
-    content: '';
-    position: absolute;
-    bottom: 40px;
-    left: 0;
-    right: 0;
-    height: 60px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 100'%3E%3Cg fill='%23508B3F' fill-opacity='0.3'%3E%3Cpath d='M0,50 L10,0 L20,50 L30,10 L40,50 L50,0 L60,50 L70,20 L80,50 L90,0 L100,50'/%3E%3C/g%3E%3C/svg%3E");
-    background-size: 100px 100%;
-    background-repeat: repeat-x;
-    animation: sway 8s ease-in-out infinite alternate;
-  }
-
-  @keyframes sway {
-    from {
-      transform: translateX(-10px) scaleY(0.95);
-    }
-    to {
-      transform: translateX(10px) scaleY(1.05);
-    }
-  }
-
-  /* Hide grass and tree silhouettes in dark theme and plain-black theme */
-  :global(:root.dark) .grass-silhouette,
-  :global(:root.dark) .tree-silhouette,
-  :global(:root.plain-black) .grass-silhouette,
-  :global(:root.plain-black) .tree-silhouette {
-    display: none;
-  }
-
-  /* Stars styling */
+  /* Stars container */
   .stars {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    opacity: 0;
-    transition: opacity 0.3s ease, transform 0.2s ease-out;
-  }
-
-  .star {
-    position: absolute;
-    width: var(--size);
-    height: var(--size);
-    background: white;
-    border-radius: 50%;
-    top: var(--top);
-    left: var(--left);
-    opacity: var(--brightness);
-    box-shadow: 0 0 2px white;
-  }
-
-  /* Skyline styling */
-  .skyline-wrapper {
-    position: absolute;
-    bottom: 0;
+    position: fixed;
+    top: 0;
     left: 0;
-    width: 100%;
-    height: 30vh;
-    z-index: 2;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: -2; /* Higher than background but below nebula */
   }
 
-  .skyline {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: bottom;
-    transition: transform 0.2s ease-out;
+  /* Individual star styling */
+  :global(.star) {
+    position: absolute;
+    background-color: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 2px 1px rgba(255, 255, 255, 0.4);
   }
 
-  /* Show elements in dark mode but not in plain-black */
-  :global(:root.dark:not(.plain-black)) .stars,
-  :global(:root.dark:not(.plain-black)) .skyline-wrapper {
-    opacity: 0.8;
-  }
-
-  /* Show stars in plain-black mode with higher opacity */
-  :global(:root.plain-black) .stars {
-    opacity: 1;
-  }
-
-  /* Hide skyline in plain-black mode */
-  :global(:root.plain-black) .skyline-wrapper {
-    display: none;
-  }
-
-  /* Hide stars in plain-black mode */
-  :global(:root.plain-black) .stars {
-    display: none;
-  }
-
-  /* Increase nebula opacity in dark mode */
-  :global(:root.dark:not(.plain-black)) .nebula-effect {
-    opacity: 0.3;
+  /* Twinkle animation for stars */
+  @keyframes twinkle {
+    0%, 100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
   }
 </style>

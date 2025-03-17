@@ -1,6 +1,6 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
-  import { AlertTriangle, CircleHelp, Clock, Coins } from "lucide-svelte";
+  import { AlertTriangle, Coins, ArrowLeft } from "lucide-svelte";
   import { formatBalance, toFixed } from "$lib/utils/numberFormatUtils";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
   import { currentUserBalancesStore } from "$lib/stores/tokenStore";
@@ -21,6 +21,14 @@
 
   let kongBalance = 0;
   let maxAmount = 0;
+  let modalId = Math.random().toString(36).substr(2, 9);
+  let step = 1; // Track which step of the flow we're on: 1 = input, 2 = confirmation
+  
+  // Reset modal state when it's opened
+  $: if (showBetModal) {
+    modalId = Math.random().toString(36).substr(2, 9);
+    step = 1;
+  }
 
   // Subscribe to the currentUserBalancesStore to get KONG balance
   $: {
@@ -31,6 +39,10 @@
       // Calculate max amount considering the token fee
       maxAmount = calculateMaxAmount(rawBalance, 8, BigInt(10000));
     }
+  }
+
+  function handleClose() {
+    onClose();
   }
 
   function setPercentage(percentage: number) {
@@ -97,6 +109,16 @@
 
     return (otherOutcomesPool / outcomePool + 1).toFixed(2);
   }
+  
+  function goToNextStep() {
+    if (selectedOutcome !== null && betAmount > 0) {
+      step = 2;
+    }
+  }
+  
+  function goBack() {
+    step = 1;
+  }
 
   $: potentialWin =
     selectedOutcome !== null
@@ -107,193 +129,178 @@
 <Modal
   isOpen={showBetModal}
   variant="transparent"
-  on:close={onClose}
+  on:close={handleClose}
+  modalKey={modalId}
   title={selectedMarket?.question || "Place Your Bet"}
   width="min(95vw, 500px)"
   className="!rounded max-h-[90vh] flex flex-col"
 >
   {#if selectedMarket}
-    <div class="px-3 pb-3 sm:px-4 space-y-2 sm:space-y-4 flex-1 overflow-y-auto">
-      <!-- Market Stats Section -->
-      <div class="grid grid-cols-2 gap-3 sm:gap-4">
-        <div class="bg-kong-bg-light/50 rounded p-2.5 sm:p-3 flex items-center gap-2">
-          <Coins class="w-4 h-4 text-kong-text-secondary" />
-          <div>
-            <div class="text-xs text-kong-text-secondary">Total Pool</div>
-            <div class="text-sm sm:text-base font-medium">{formatBalance(selectedMarket.total_pool, 8)} KONG</div>
+    <!-- Step 1: Input Bet Amount -->
+    {#if step === 1}
+      <div class="px-3 pb-3 sm:px-4 space-y-3 sm:space-y-5 flex-1 overflow-y-auto">
+        <!-- Simplified Betting Summary Section -->
+        {#if selectedOutcome !== null}
+          <div class="bg-kong-accent-green/10 border-2 border-kong-accent-green p-4 rounded relative">
+            <span class="font-bold text-base sm:text-lg">
+              {selectedMarket.outcomes[selectedOutcome]}
+            </span>
+            <div class="mt-2 text-kong-text-secondary text-sm">
+              <p>You are betting on this outcome.</p>
+            </div>
           </div>
-        </div>
-        <div class="bg-kong-bg-light/50 rounded p-2.5 sm:p-3 flex items-center gap-2">
-          <Clock class="w-4 h-4 text-kong-text-secondary" />
-          <div>
-            <div class="text-xs text-kong-text-secondary">Time Remaining</div>
-            <div class="text-sm sm:text-base font-medium"><CountdownTimer endTime={selectedMarket.end_time} /></div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Outcomes Selection Section -->
-      <div class="space-y-2 sm:space-y-3">
-        {#each selectedMarket.outcomes as outcome, i}
-          <button
-            class={`w-full p-3 sm:p-4 rounded text-left relative transition-all ${selectedOutcome === i ? "bg-kong-accent-green/10 border-2 border-kong-accent-green" : "bg-kong-bg-light/50 border border-kong-border hover:border-kong-accent-green/50"}`}
-            on:click={() => onOutcomeSelect(i)}
-          >
-            <div
-              class="absolute top-0 left-0 h-full bg-kong-text-accent-green/20 rounded transition-all z-0"
-              style:width={`${calculatePercentage(
-                selectedMarket.outcome_pools[i],
-                selectedMarket.outcome_pools.reduce(
-                  (acc, pool) => acc + Number(pool || 0),
-                  0,
-                ),
-              ).toFixed(1)}%`}
-            ></div>
-            <div class="relative flex justify-between items-center z-10">
-              <div class="flex flex-col flex-1 min-w-0">
-                <span class="font-medium text-sm sm:text-base truncate">{outcome}</span>
-                <div class="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-kong-text-secondary mt-1">
-                  <div class="flex items-center gap-1 min-w-0">
-                    <Coins class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                    <span class="truncate">{formatBalance(selectedMarket.outcome_pools[i], 8)} KONG</span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex flex-col items-end justify-center ml-3">
-                <span class="text-kong-text-accent-green font-medium text-sm sm:text-base whitespace-nowrap">
-                  {calculatePercentage(
-                    selectedMarket.outcome_pools[i],
-                    selectedMarket.outcome_pools.reduce(
-                      (acc, pool) => acc + Number(pool || 0),
-                      0,
-                    ),
-                  ).toFixed(1)}%
-                </span>
-                <span class="text-xs sm:text-sm text-kong-text-secondary whitespace-nowrap">
-                  {calculateOdds(i)}x payout
-                </span>
+          <!-- Bet Amount Input -->
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <h4 class="text-sm font-medium text-kong-text-secondary">Bet Amount</h4>
+              <div class="flex items-center gap-2 text-xs sm:text-sm text-kong-text-secondary">
+                <Coins class="w-3 h-3 sm:w-4 sm:h-4" />
+                <span>Balance: <span class="font-medium">{kongBalance.toFixed(8)} KONG</span></span>
               </div>
             </div>
-          </button>
-        {/each}
+            <input
+              type="number"
+              bind:value={betAmount}
+              min="0"
+              max={maxAmount}
+              step="0.1"
+              class="w-full p-2.5 sm:p-3 bg-kong-bg-light rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
+              placeholder="Enter amount"
+            />
+            <div class="grid grid-cols-4 gap-1.5 sm:gap-2 mb-4">
+              <button
+                class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
+                on:click={() => setPercentage(25)}
+                disabled={maxAmount <= 0}
+              >
+                25%
+              </button>
+              <button
+                class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
+                on:click={() => setPercentage(50)}
+                disabled={maxAmount <= 0}
+              >
+                50%
+              </button>
+              <button
+                class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
+                on:click={() => setPercentage(75)}
+                disabled={maxAmount <= 0}
+              >
+                75%
+              </button>
+              <button
+                class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
+                on:click={() => setPercentage(100)}
+                disabled={maxAmount <= 0}
+              >
+                MAX
+              </button>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Error Message -->
+        {#if betError}
+          <div
+            class="p-2.5 sm:p-3 bg-kong-accent-red/20 border border-kong-accent-red/40 rounded text-kong-text-accent-red flex items-center gap-2"
+          >
+            <AlertTriangle class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <span class="text-sm">{betError}</span>
+          </div>
+        {/if}
       </div>
 
-      <!-- Bet Amount Section -->
-      <div>
-        <div class="flex sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-2 sm:mb-3">
-          <h4 class="text-sm font-medium text-kong-text-secondary">Bet Amount</h4>
-          <div class="flex items-center gap-2 text-xs sm:text-sm text-kong-text-secondary">
-            <Coins class="w-3 h-3 sm:w-4 sm:h-4" />
-            <span>Balance: <span class="font-medium">{kongBalance.toFixed(8)} KONG</span></span>
-          </div>
-        </div>
-        <input
-          type="number"
-          bind:value={betAmount}
-          min="0"
-          max={maxAmount}
-          step="0.1"
-          class="w-full p-2.5 sm:p-3 bg-kong-bg-light rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
-          placeholder="Enter amount"
-        />
-        <div class="grid grid-cols-4 gap-1.5 sm:gap-2">
+      <!-- Action Buttons for Step 1 -->
+      <div class="p-3 sm:px-4 bg-kong-bg mt-auto">
+        <div class="flex gap-2 sm:gap-3">
           <button
-            class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
-            on:click={() => setPercentage(25)}
-            disabled={maxAmount <= 0}
+            class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-kong-bg-light text-kong-text-primary rounded font-bold hover:bg-kong-bg-light/70 transition-all text-sm sm:text-base"
+            on:click={handleClose}
           >
-            25%
+            Cancel
           </button>
           <button
-            class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
-            on:click={() => setPercentage(50)}
-            disabled={maxAmount <= 0}
+            class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-kong-accent-green text-kong-bg-dark rounded font-bold hover:bg-kong-accent-green-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+            on:click={goToNextStep}
+            disabled={selectedOutcome === null || !betAmount}
           >
-            50%
-          </button>
-          <button
-            class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
-            on:click={() => setPercentage(75)}
-            disabled={maxAmount <= 0}
-          >
-            75%
-          </button>
-          <button
-            class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
-            on:click={() => setPercentage(100)}
-            disabled={maxAmount <= 0}
-          >
-            MAX
+            Next
           </button>
         </div>
       </div>
-
-      <!-- Potential Win Section -->
-      {#if selectedOutcome !== null && betAmount > 0}
-        <div class="bg-kong-bg-light/50 rounded p-3 sm:p-4">
-          <div class="space-y-2">
-            <div class="flex justify-between items-center text-sm">
-              <span class="text-kong-text-secondary">Selected Outcome</span>
-              <span class="font-medium truncate ml-4">{selectedMarket.outcomes[selectedOutcome]}</span>
-            </div>
-            <div class="flex justify-between items-center text-sm">
-              <span class="text-kong-text-secondary">Bet Amount</span>
-              <span class="font-medium">{betAmount} KONG</span>
-            </div>
-            <div class="flex justify-between items-center text-sm">
-              <span class="text-kong-text-secondary">Potential Win</span>
-              <span class="text-kong-text-accent-green font-medium">
-                {formatBalance(potentialWin, 8)} KONG
-              </span>
-            </div>
+    
+    <!-- Step 2: Confirmation Screen -->
+    {:else if step === 2}
+      <div class="px-3 pb-3 sm:px-4 flex-1 overflow-y-auto">
+        <div class="py-6 flex flex-col items-center">
+          <!-- Confirmation Message -->
+          <div class="bg-kong-accent-green/10 border-2 border-kong-accent-green p-5 rounded-lg w-full max-w-md mt-3">
+            <h3 class="text-center text-lg font-medium mb-4">Confirm Your Bet</h3>
+            
+            <p class="text-center text-base leading-relaxed">
+              You are betting <span class="font-bold">{betAmount} KONG</span> on the outcome 
+              <span class="font-bold">{selectedMarket.outcomes[selectedOutcome]}</span>. 
+              The market ends in <span class="font-bold"><CountdownTimer endTime={selectedMarket.end_time} /></span>.
+            </p>
+            
+            <p class="text-center text-base leading-relaxed mt-4">
+              If the market resolves to this outcome, you will receive 
+              <span class="text-kong-text-accent-green font-bold">{formatBalance(potentialWin, 8)} KONG</span> 
+              based on the current pool size.
+            </p>
           </div>
-          <div class="mt-2 text-xs text-kong-text-secondary/60 text-center">
-            *Estimated based on current pool distribution
+          
+          <!-- Warning or additional info can go here -->
+          <div class="mt-4 text-sm text-kong-text-secondary text-center max-w-md">
+            <p>Once confirmed, your bet cannot be changed or canceled.</p>
           </div>
         </div>
-      {/if}
-
-      <!-- Error Message -->
-      {#if betError}
-        <div
-          class="p-2.5 sm:p-3 bg-kong-accent-red/20 border border-kong-accent-red/40 rounded text-kong-text-accent-red flex items-center gap-2"
-        >
-          <AlertTriangle class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-          <span class="text-sm">{betError}</span>
-        </div>
-      {/if}
-    </div>
-
-    <!-- Action Buttons - Now in a separate div outside the scrollable content -->
-    <div class="p-3 sm:px-4 border-t border-kong-border bg-kong-bg mt-auto">
-      <div class="flex gap-2 sm:gap-3">
-        <button
-          class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-kong-bg-light text-kong-text-primary rounded font-bold hover:bg-kong-bg-dark transition-all text-sm sm:text-base"
-          on:click={onClose}
-          disabled={isBetting}
-        >
-          Cancel
-        </button>
-        <button
-          class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-kong-accent-green text-white rounded font-bold hover:bg-kong-accent-green-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
-          on:click={() => onBet(betAmount)}
-          disabled={isBetting || selectedOutcome === null || !betAmount}
-        >
-          {#if isBetting}
-            <div
-              class="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
-            ></div>
-            {#if isApprovingAllowance}
-              Approving...
+        
+        <!-- Error Message -->
+        {#if betError}
+          <div
+            class="p-2.5 sm:p-3 bg-kong-accent-red/20 border border-kong-accent-red/40 rounded text-kong-text-accent-red flex items-center gap-2 mt-3"
+          >
+            <AlertTriangle class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <span class="text-sm">{betError}</span>
+          </div>
+        {/if}
+      </div>
+      
+      <!-- Action Buttons for Step 2 -->
+      <div class="p-3 sm:px-4 bg-kong-bg mt-auto">
+        <div class="flex gap-2 sm:gap-3">
+          <button
+            class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-kong-bg-light text-kong-text-primary rounded font-bold hover:bg-kong-bg-light/70 transition-all text-sm sm:text-base flex items-center justify-center"
+            on:click={goBack}
+            disabled={isBetting}
+          >
+            <ArrowLeft class="w-4 h-4 mr-1" />
+            Back
+          </button>
+          <button
+            class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-kong-accent-green text-kong-bg-dark rounded font-bold hover:bg-kong-accent-green-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+            on:click={() => onBet(betAmount)}
+            disabled={isBetting}
+          >
+            {#if isBetting}
+              <div
+                class="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
+              ></div>
+              {#if isApprovingAllowance}
+                Approving...
+              {:else}
+                Placing...
+              {/if}
             {:else}
-              Placing...
+              Confirm
             {/if}
-          {:else}
-            Confirm Bet
-          {/if}
-        </button>
+          </button>
+        </div>
       </div>
-    </div>
+    {/if}
   {/if}
 </Modal>
 

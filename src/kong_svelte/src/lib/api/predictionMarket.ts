@@ -16,12 +16,35 @@ export async function getMarket(marketId: number) {
   return market;
 }
 
-export async function getAllMarkets() {
+export async function getAllMarkets(options: {
+  start?: number;
+  length?: number;
+  statusFilter?: 'Open' | 'Closed' | 'Disputed';
+  sortOption?: {
+    type: 'CreatedAt' | 'TotalPool';
+    direction: 'Ascending' | 'Descending';
+  };
+} = {}) {
   const actor = createAnonymousActorHelper(
     PREDICTION_MARKETS_CANISTER_ID,
     canisterIDLs.prediction_markets_backend,
   );
-  const markets = await actor.get_all_markets();
+  
+  const args = {
+    start: options.start ?? 0,
+    length: options.length ?? 100,
+    status_filter: options.statusFilter 
+      ? options.statusFilter === 'Closed'
+        ? [{ Closed: [] }]  // For Closed, we need an empty array, not null
+        : [{ [options.statusFilter]: null }]
+      : [],
+    sort_option: options.sortOption 
+      ? [{ [options.sortOption.type]: { [options.sortOption.direction]: null } }]
+      : [], // Default sorting (newest first) will be applied by the backend
+  };
+  
+  console.log('getAllMarkets args:', JSON.stringify(args, null, 2));
+  const markets = await actor.get_all_markets(args);
   return markets;
 }
 
@@ -30,7 +53,7 @@ export async function getMarketsByStatus() {
     PREDICTION_MARKETS_CANISTER_ID,
     canisterIDLs.prediction_markets_backend,
   );
-  const marketsByStatus = await actor.get_markets_by_status();
+  const marketsByStatus = await actor.get_markets_by_status({ start: 0, length: 100 });
   return marketsByStatus;
 }
 
@@ -225,12 +248,42 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
     PREDICTION_MARKETS_CANISTER_ID,
     canisterIDLs.prediction_markets_backend,
   );
-  const bets = await actor.get_all_bets(
-    BigInt(fromIndex),
-    BigInt(toIndex),
-    true,
-  );
-  return bets;
+  
+  // The backend API expects start and length parameters
+  const marketsByStatus = await actor.get_markets_by_status({ start: 0, length: 100 });
+  
+  // Combine bets from all markets
+  const allBets: any[] = [];
+  
+  // Process active markets
+  if (marketsByStatus.markets_by_status.active && marketsByStatus.markets_by_status.active.length > 0) {
+    for (const market of marketsByStatus.markets_by_status.active) {
+      try {
+        const marketBets = await actor.get_market_bets(market.id);
+        allBets.push(...marketBets);
+      } catch (e) {
+        console.error(`Failed to get bets for market ${market.id}:`, e);
+      }
+    }
+  }
+  
+  // Process expired unresolved markets
+  if (marketsByStatus.markets_by_status.expired_unresolved && marketsByStatus.markets_by_status.expired_unresolved.length > 0) {
+    for (const market of marketsByStatus.markets_by_status.expired_unresolved) {
+      try {
+        const marketBets = await actor.get_market_bets(market.id);
+        allBets.push(...marketBets);
+      } catch (e) {
+        console.error(`Failed to get bets for market ${market.id}:`, e);
+      }
+    }
+  }
+  
+  // Sort bets by timestamp (newest first)
+  allBets.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+  
+  // Return the requested slice
+  return allBets.slice(fromIndex, toIndex);
 }
 
 export async function getAllCategories() {

@@ -16,6 +16,8 @@
   let error: string | null = null;
   let categories: string[] = [];
   let isCheckingAdmin = true;
+  let loadingCategories = true;
+  let categoryError: string | null = null;
 
   // Form data
   let question = "";
@@ -57,7 +59,29 @@
   }
 
   // Load state from URL on mount
-  onMount(() => {
+  onMount(async () => {
+    try {
+      // Fetch all available categories
+      const fetchedCategories = await getAllCategories();
+      categories = Array.isArray(fetchedCategories) ? fetchedCategories : ["Other"];
+      
+      // If category array is empty, add "Other"
+      if (categories.length === 0) {
+        categories = ["Other"];
+      }
+      
+      // Ensure "Other" is always available as a fallback
+      if (!categories.includes("Other")) {
+        categories.push("Other");
+      }
+    } catch (e) {
+      console.error("Failed to load categories:", e);
+      categories = ["Other"]; // Default fallback
+      categoryError = "Failed to load categories. Using default.";
+    } finally {
+      loadingCategories = false;
+    }
+
     const params = new URLSearchParams(window.location.search);
     
     // Only restore state if we have parameters
@@ -196,8 +220,8 @@
         endTimeSpec = { Duration: BigInt(durationInSeconds) };
       } else {
         const endDate = new Date(`${specificDate}T${specificTime}`);
-        // Convert to nanoseconds
-        endTimeSpec = { SpecificDate: BigInt(endDate.getTime() * 1_000_000) };
+        // Convert to seconds instead of nanoseconds
+        endTimeSpec = { SpecificDate: BigInt(Math.floor(endDate.getTime() / 1000)) };
       }
 
       // Prepare resolution method
@@ -220,6 +244,7 @@
       }
 
       // Create market
+      console.log("Creating market... rules:", rules);
       const result = await createMarket({
         question,
         category: { [category]: null },
@@ -250,6 +275,11 @@
   // Add this to the script section
   $: questionError = question.length > 200 ? "Question must be less than 200 characters" : "";
 </script>
+
+<svelte:head>
+  <title>Create a Prediction Market - KongSwap</title>
+  <meta name="description" content="Create a prediction market on KongSwap" />
+</svelte:head>
 
 <div class="min-h-screen text-kong-text-primary">
   {#if !$auth.isConnected && !isUserAdmin}
@@ -353,19 +383,32 @@
                     Category
                   </label>
                   <div class="relative">
-                    <select
-                      id="category"
-                      bind:value={category}
-                      class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
-                    >
-                      {#each categories as cat}
-                        <option value={cat}>{cat}</option>
-                      {/each}
-                    </select>
-                    <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-kong-text-secondary">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
+                    {#if loadingCategories}
+                      <div class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-secondary flex items-center justify-between">
+                        <span>Loading categories...</span>
+                        <div class="w-5 h-5 border-2 border-kong-text-secondary border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    {:else}
+                      <select
+                        id="category"
+                        bind:value={category}
+                        class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
+                      >
+                        {#each categories as cat}
+                          <option value={cat}>{cat}</option>
+                        {/each}
+                      </select>
+                      <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-kong-text-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                      </div>
+                    {/if}
                   </div>
+                  {#if categoryError}
+                    <p class="text-sm text-kong-text-accent-red flex items-center gap-2 mt-2">
+                      <AlertTriangle size={16} />
+                      {categoryError}
+                    </p>
+                  {/if}
                 </div>
 
                 <!-- Resolution Method -->

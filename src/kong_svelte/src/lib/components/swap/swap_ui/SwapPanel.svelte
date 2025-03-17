@@ -12,7 +12,26 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
   import { onMount } from "svelte";
-    import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { themeStore } from "$lib/stores/themeStore";
+  import { getThemeById } from "$lib/themes/themeRegistry";
+  
+  // Theme-specific styling data - use $derived to eliminate race conditions
+  let theme = $derived(getThemeById($themeStore));
+  let swapPanelRoundness = $derived(theme.colors.swapPanelRoundness || 'rounded-lg');
+  let swapPanelBorder = $derived(theme.colors.swapPanelBorder || '1px solid rgba(255, 255, 255, 0.1)');
+  let swapPanelShadow = $derived(theme.colors.swapPanelShadow || '0 8px 32px rgba(0, 0, 0, 0.32)');
+  let swapPanelBorderStyle = $derived(theme.colors.swapPanelBorderStyle || 'default');
+  let inputsRounded = $derived(theme.colors.swapPanelInputsRounded !== false);
+  let transparentPanel = $derived(theme.colors.transparentSwapPanel !== false);
+  let isWin95Border = $derived(swapPanelBorderStyle === 'win95');
+  
+  // Create CSS variables for the theme-specific styling - derive directly from other derived values
+  let swapPanelStyle = $derived(`
+    --swap-panel-border: ${swapPanelBorder};
+    --swap-panel-shadow: ${swapPanelShadow};
+  `);
+
   // Props with proper TypeScript types
   let {
     title,
@@ -55,8 +74,6 @@
   let calculatedUsdValue = $state(0);
   let previousValue = $state("0");
   let isMobile = $state(false);
-  let lastBalanceCheck = $state<Record<string, number>>({});
-  const DEBOUNCE_DELAY = 1000; // 1 second between balance checks
 
   // Derived state using runes
   let tokenInfo = $state<FE.Token | null>(null);
@@ -362,14 +379,16 @@
 </script>
 
 <Panel
-  variant="transparent"
+  variant={transparentPanel ? "transparent" : "solid"}
   width="auto"
   type="main"
-  className="max-w-xl !rounded-xl !p-4 !h-full"
+  className="max-w-xl !p-4 !h-full swap-panel-wrapper {isWin95Border ? 'win95-panel' : ''}"
+  roundness={swapPanelRoundness}
   isSwapPanel={true}
 >
   <div
-    class="flex flex-col min-h-[165px] max-h-[220px] box-border relative rounded-lg"
+    class="flex flex-col min-h-[165px] max-h-[220px] box-border relative swap-panel-content"
+    style={swapPanelStyle}
   >
     <header>
       <div class="flex items-center justify-between gap-4 min-h-[1rem] mb-5">
@@ -432,6 +451,7 @@
             placeholder="0.00"
             class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary placeholder:text-kong-text-primary"
             class:opacity-0={isLoading && panelType === "receive"}
+            class:input-rounded={inputsRounded}
             value={formattedDisplayAmount}
             on:input={handleInput}
             on:focus={() => (inputFocused = true)}
@@ -442,7 +462,8 @@
         </div>
         <div class="token-selector-wrapper relative">
           <button
-            class="token-selector-button"
+            class="token-selector-button {isWin95Border ? 'win95-button' : ''}"
+            class:button-rounded={inputsRounded && !isWin95Border}
             on:click|stopPropagation={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
               const position = {
@@ -534,12 +555,21 @@
               class:clickable={title === "You Pay" && !disabled}
               on:click={handleMaxClick}
             >
-              {formatTokenBalance(
-                $currentUserBalancesStore[token.canister_id]?.in_tokens.toString() ||
-                  "0",
-                token.decimals,
-              )}
-              {token.symbol}
+              {#if token && token.canister_id && $currentUserBalancesStore}
+                {#if $currentUserBalancesStore[token.canister_id]}
+                  {formatTokenBalance(
+                    ($currentUserBalancesStore[token.canister_id]?.in_tokens || 0).toString(),
+                    token.decimals || DEFAULT_DECIMALS
+                  )}
+                  {token.symbol || ''}
+                {:else}
+                  <!-- Log what's happening for debugging -->
+                  {console.log('Balance not found for token:', token.symbol, 'canister:', token.canister_id, 'balances store:', Object.keys($currentUserBalancesStore))}
+                  0 {token.symbol || ''}
+                {/if}
+              {:else}
+                Loading...
+              {/if}
             </button>
           </div>
         {/if}
@@ -557,6 +587,15 @@
     color: #ef4444;
   }
 
+  /* Conditional border-radius for inputs based on theme setting */
+  .input-rounded {
+    border-radius: 0.375rem;
+  }
+  
+  .button-rounded {
+    border-radius: 0.75rem;
+  }
+
   @media (max-width: 420px) {
     input {
       font-size: 1.88rem;
@@ -567,7 +606,7 @@
       font-size: 0.7rem;
     }
   }
-
+  
   .token-selector-wrapper {
     position: relative;
   }
@@ -578,7 +617,6 @@
     align-items: center;
     justify-content: space-between;
     background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 0.75rem;
     padding: 0.75rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: background-color 150ms;
@@ -672,7 +710,7 @@
     @apply font-semibold text-sm;
     @apply text-kong-text-primary/70 hover:text-kong-text-primary/90;
     @apply bg-kong-primary/40 hover:bg-kong-primary/60;
-    @apply px-4 py-0.5 rounded-lg;
+    @apply px-4 py-0.5;
     @apply border border-kong-primary/80;
     @apply cursor-pointer;
     @apply transition-all duration-200 ease-in-out;
@@ -683,5 +721,47 @@
       font-size: 0.75rem;
       padding: 0.375rem 0.75rem;
     }
+  }
+  
+  /* Win95 panel styles */
+  :global(.win95-panel) {
+    position: relative;
+    border: none !important;
+    box-shadow: none !important;
+    background-color: #C3C3C3 !important;
+  }
+  
+  :global(.win95-panel::before) {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px solid;
+    border-color: #FFFFFF #808080 #808080 #FFFFFF;
+    pointer-events: none;
+  }
+  
+  :global(.win95-panel::after) {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid;
+    border-color: #DFDFDF #404040 #404040 #DFDFDF;
+    pointer-events: none;
+  }
+  
+  /* Win95 button style */
+  .win95-button {
+    background-color: #C3C3C3 !important;
+    border: none !important;
+    position: relative;
+    border-radius: 0 !important;
+    box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #808080, inset 2px 2px 0 #DFDFDF, inset -2px -2px 0 #404040 !important;
+    padding: 4px 8px !important;
+  }
+  
+  .win95-button:active {
+    box-shadow: inset -1px -1px 0 #FFFFFF, inset 1px 1px 0 #808080, inset -2px -2px 0 #DFDFDF, inset 2px 2px 0 #404040 !important;
+    padding-top: 5px !important;
+    padding-left: 9px !important;
   }
 </style>

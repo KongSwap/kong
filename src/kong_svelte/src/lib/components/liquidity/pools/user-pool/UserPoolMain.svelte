@@ -86,10 +86,10 @@
     showModal = false;
     dispatch("liquidityRemoved");
   }}
-  variant="transparent"
+  variant="solid"
   width="min(420px, 95vw)"
   height="auto"
-  className="!flex !flex-col !rounded-xl !overflow-hidden !max-h-[90vh]"
+  className="!flex !flex-col !max-h-[90vh]"
   isPadded={false}
 >
   <div slot="title" class="modal-header">

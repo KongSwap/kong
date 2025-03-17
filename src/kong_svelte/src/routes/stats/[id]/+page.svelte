@@ -3,7 +3,7 @@
   import { onDestroy, onMount } from "svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { livePools, fetchPoolsForCanister } from "$lib/services/pools/poolStore";
+  import { fetchPoolsForCanister } from "$lib/services/pools/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import { goto } from "$app/navigation";
@@ -36,7 +36,6 @@
   // Add loading state for pools
   let isPoolsLoading = $state(false);
   // Add a flag to prevent concurrent fetches
-  let fetchInProgress = $state(false);
 
   // Add back the necessary state variables at the top
   let token = $state<FE.Token | undefined>(undefined);
@@ -396,7 +395,6 @@
   {:else}
     <div class="flex flex-col max-w-[1300px] mx-auto gap-4">
       <!-- Token Header - Non-fixed with border radius -->
-      <Panel variant="transparent">
         <div class="flex flex-col gap-4">
           <!-- Token info row -->
           <div class="flex items-center justify-between">
@@ -406,7 +404,7 @@
                 title="Back"
                 aria-label="Back"
                 on:click={() => goto("/stats")}
-                class="flex min-h-[40px] md:min-h-[48px] flex-col items-center justify-center gap-2 px-2.5 text-sm bg-kong-bg-secondary hover:bg-kong-bg-secondary/80 text-kong-text-primary/70 rounded-lg transition-colors duration-200 w-fit"
+                class="flex min-h-[40px] md:min-h-[48px] flex-col items-center justify-center gap-2 pr-2.5 text-sm bg-kong-bg-secondary hover:bg-kong-bg-secondary/80 text-kong-text-primary/70 rounded-lg transition-colors duration-200 w-fit"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -491,7 +489,6 @@
             </div>
           {/if}
         </div>
-      </Panel>
 
       <!-- Tab Content -->
       {#if activeTab === "overview"}

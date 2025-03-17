@@ -1,19 +1,25 @@
 import { get, writable } from "svelte/store";
 import { type PNP } from "@windoge98/plug-n-play";
-import { pnp, canisterIDLs as pnpCanisterIDLs, type CanisterType as PnpCanisterType } from "$lib/config/auth.config";
+import {
+  pnp,
+  canisterIDLs as pnpCanisterIDLs,
+  type CanisterType as PnpCanisterType,
+} from "$lib/config/auth.config";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
 import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { fetchBalances } from "$lib/api/balances";
 import { currentUserBalancesStore } from "$lib/stores/balancesStore";
+import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+import { userTokens } from "$lib/stores/userTokens";
 
 // Constants
 const STORAGE_KEYS = {
   LAST_WALLET: "kongSelectedWallet",
   AUTO_CONNECT_ATTEMPTED: "kongAutoConnectAttempted",
   WAS_CONNECTED: "wasConnected",
-  CONNECTION_RETRY_COUNT: "connectionRetryCount"
+  CONNECTION_RETRY_COUNT: "connectionRetryCount",
 } as const;
 
 // Create stores with initial states
@@ -36,9 +42,13 @@ function createAuthStore(pnp: PNP) {
 
   // Simplified storage operations
   const storage = {
-    get: (key: keyof typeof STORAGE_KEYS) => browser ? localStorage.getItem(STORAGE_KEYS[key]) : null,
-    set: (key: keyof typeof STORAGE_KEYS, value: string) => browser && localStorage.setItem(STORAGE_KEYS[key], value),
-    clear: () => browser && Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k))
+    get: (key: keyof typeof STORAGE_KEYS) =>
+      browser ? localStorage.getItem(STORAGE_KEYS[key]) : null,
+    set: (key: keyof typeof STORAGE_KEYS, value: string) =>
+      browser && localStorage.setItem(STORAGE_KEYS[key], value),
+    clear: () =>
+      browser &&
+      Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k)),
   };
 
   const storeObj = {
@@ -48,13 +58,15 @@ function createAuthStore(pnp: PNP) {
     async initialize() {
       if (!browser) return;
       console.log("Initializing auth");
-      
+
       const lastWallet = storage.get("LAST_WALLET");
       if (!lastWallet || lastWallet === "plug") return;
 
-      const hasAttempted = sessionStorage.getItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED);
+      const hasAttempted = sessionStorage.getItem(
+        STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED,
+      );
       const wasConnected = storage.get("WAS_CONNECTED");
-      
+
       if (hasAttempted && !wasConnected) {
         return;
       }
@@ -74,12 +86,12 @@ function createAuthStore(pnp: PNP) {
       try {
         connectionError.set(null);
         const result = await pnp.connect(walletId);
-        
+
         if (!result?.owner) throw new Error("Invalid connection result");
-        
+
         const owner = result.owner.toString();
         set({ isConnected: true, account: result, isInitialized: true });
-        
+
         // Update state and storage
         selectedWalletId.set(walletId);
         isConnected.set(true);
@@ -91,19 +103,21 @@ function createAuthStore(pnp: PNP) {
           try {
             // Import userTokens dynamically to avoid circular dependency
             const { userTokens } = await import("$lib/stores/userTokens");
+            
+            // Set current principal in userTokens store
+            userTokens.setPrincipal(owner);
+            
             const userTokensStore = get(userTokens);
-            
-            // Load balances using the API client
-            await fetchBalances(
-              userTokensStore.tokens,
-              owner,
-              true
-            );
-            
-            // Initialize default tokens if needed
-            if (Object.keys(userTokensStore.enabledTokens).length === 0) {
-              userTokens.enableTokens(await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS)));
+
+            // Initialize default tokens if needed - only if this principal has no saved tokens
+            if (Object.keys(userTokensStore.enabledTokens).length === 0 && !userTokens.hasSavedTokens(owner)) {
+              userTokens.enableTokens(
+                await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS)),
+              );
             }
+
+            // Load balances using the API client
+            await fetchBalances(userTokensStore.tokens, owner, true);
           } catch (error) {
             console.error("Error loading balances:", error);
           }
@@ -123,6 +137,13 @@ function createAuthStore(pnp: PNP) {
       isConnected.set(false);
       connectionError.set(null);
       currentUserBalancesStore.set({});
+      currentUserPoolsStore.reset();
+      
+      // Set principal to null but don't reset tokens
+      const { userTokens } = await import("$lib/stores/userTokens");
+      userTokens.setPrincipal(null);
+      
+      // Clear other storage but keep token data
       storage.clear();
     },
 
@@ -144,7 +165,7 @@ function createAuthStore(pnp: PNP) {
       }
 
       if (!pnp.isWalletConnected()) {
-        throw new Error('Anonymous user');
+        throw new Error("Anonymous user");
       }
 
       return pnp.getActor(canisterId, idl, options);

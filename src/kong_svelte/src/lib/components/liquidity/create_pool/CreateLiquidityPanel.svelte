@@ -54,6 +54,7 @@
   let initialLoadComplete = false;
   let authInitialized = false;
   let showConfirmModal = false;
+  let isLoading = true; // Add loading state to prevent rendering before data is ready
 
   // Helper to safely convert value to BigNumber
   const toBigNumber = (value: any): BigNumber => {
@@ -76,87 +77,148 @@
     }
   };
 
-  // Consolidated function to handle loading balances and updating the store
+  // Improved function to handle loading balances and updating the store
   async function loadBalancesAndUpdateStore(tokens, owner, forceRefresh = true) {
-    const balances = await safeExec(
-      () => loadBalances(tokens, owner, forceRefresh),
-      "Error loading balances"
-    ) || {};
-    
-    const currentBalances = { ...$currentUserBalancesStore, ...balances };
-    currentUserBalancesStore.set(currentBalances);
-    
-    // Update local token balance variables
-    token0?.canister_id && (token0Balance = currentBalances[token0.canister_id]?.in_tokens?.toString() || "0");
-    token1?.canister_id && (token1Balance = currentBalances[token1.canister_id]?.in_tokens?.toString() || "0");
-    
-    return balances;
+    try {
+      const balances = await safeExec(
+        () => loadBalances(tokens, owner, forceRefresh),
+        "Error loading balances"
+      ) || {};
+      
+      const currentBalances = { ...$currentUserBalancesStore, ...balances };
+      currentUserBalancesStore.set(currentBalances);
+      
+      // Update local token balance variables safely
+      if (token0?.canister_id) {
+        token0Balance = currentBalances[token0.canister_id]?.in_tokens?.toString() || "0";
+      }
+      
+      if (token1?.canister_id) {
+        token1Balance = currentBalances[token1.canister_id]?.in_tokens?.toString() || "0";
+      }
+      
+      return balances;
+    } catch (error) {
+      console.error("Error loading balances:", error);
+      return {};
+    }
   }
 
-  // Load initial tokens from URL or defaults
+  // Improved function to load initial tokens from URL or defaults
   async function loadInitialTokens() {
-    const urlToken0 = $page.url.searchParams.get("token0");
-    const urlToken1 = $page.url.searchParams.get("token1");
-    const tokensFromUrl = await fetchTokensByCanisterId([urlToken0, urlToken1]);
-    
-    liquidityStore.setToken(0, 
-      tokensFromUrl.find(token => token.canister_id === urlToken0) || 
-      $userTokens.tokens.find(token => token.canister_id === ICP_CANISTER_ID) || 
-      null
-    );
-    
-    liquidityStore.setToken(1, 
-      tokensFromUrl.find(token => token.canister_id === urlToken1) || 
-      $userTokens.tokens.find(token => token.canister_id === CKUSDT_CANISTER_ID) || 
-      null
-    );
-    
-    initialLoadComplete = true;
+    try {
+      isLoading = true;
+      const urlToken0 = $page.url.searchParams.get("token0");
+      const urlToken1 = $page.url.searchParams.get("token1");
+      
+      // Only fetch tokens if we have valid IDs
+      const tokensToFetch = [];
+      if (urlToken0) tokensToFetch.push(urlToken0);
+      if (urlToken1) tokensToFetch.push(urlToken1);
+      
+      // Only make the API call if we have tokens to fetch
+      const tokensFromUrl = tokensToFetch.length > 0 
+        ? await fetchTokensByCanisterId(tokensToFetch)
+        : [];
+      
+      // Get default tokens as fallbacks
+      const defaultToken0 = $userTokens.tokens.find(token => token.canister_id === ICP_CANISTER_ID) || null;
+      const defaultToken1 = $userTokens.tokens.find(token => token.canister_id === CKUSDT_CANISTER_ID) || null;
+      
+      // Set tokens with proper fallbacks
+      liquidityStore.setToken(0, 
+        tokensFromUrl.find(token => token.canister_id === urlToken0) || 
+        defaultToken0
+      );
+      
+      liquidityStore.setToken(1, 
+        tokensFromUrl.find(token => token.canister_id === urlToken1) || 
+        defaultToken1
+      );
+      
+      initialLoadComplete = true;
+    } catch (error) {
+      console.error("Error loading initial tokens:", error);
+      // Set default tokens if error occurs
+      const defaultToken0 = $userTokens.tokens.find(token => token.canister_id === ICP_CANISTER_ID) || null;
+      const defaultToken1 = $userTokens.tokens.find(token => token.canister_id === CKUSDT_CANISTER_ID) || null;
+      
+      liquidityStore.setToken(0, defaultToken0);
+      liquidityStore.setToken(1, defaultToken1);
+    } finally {
+      isLoading = false;
+    }
   }
 
-  // Component lifecycle management
+  // Improved component lifecycle management
   onMount(() => {
-    const unsubscribe = auth.subscribe(authState => {
+    isLoading = true;
+    
+    const unsubscribe = auth.subscribe(async authState => {
       if (authState.isInitialized && !authInitialized) {
         authInitialized = true;
+        
+        // Wait for user tokens to be available
         if ($userTokens.tokens.length > 0) {
-          loadInitialTokens();
-          authState.account?.owner && loadBalancesAndUpdateStore(
-            $userTokens.tokens, 
-            authState.account.owner.toString(), 
-            true
-          );
+          await loadInitialTokens();
+          
+          if (authState.account?.owner) {
+            await loadBalancesAndUpdateStore(
+              $userTokens.tokens, 
+              authState.account.owner.toString(), 
+              true
+            );
+          }
         }
+        
+        isLoading = false;
       }
     });
+    
     return unsubscribe;
   });
 
-  // Reactive statements for managing component state
-  $: $userTokens.tokens.length > 0 && !initialLoadComplete && loadInitialTokens();
+  // Simplified and more robust reactive statements
+  $: if ($userTokens.tokens.length > 0 && !initialLoadComplete && !isLoading) {
+    loadInitialTokens();
+  }
   
-  $: $auth?.isInitialized && $auth?.account?.owner && $userTokens.tokens.length > 0 &&
-     loadBalancesAndUpdateStore($userTokens.tokens, $auth.account.owner.toString(), true);
+  $: if ($auth?.isInitialized && $auth?.account?.owner && $userTokens.tokens.length > 0 && !isLoading) {
+    loadBalancesAndUpdateStore($userTokens.tokens, $auth.account.owner.toString(), true);
+  }
   
+  // Use effect instead of reactive blocks for complex logic
   $: {
-    // Update tokens and related state
-    token0 = $liquidityStore.token0;
-    token1 = $liquidityStore.token1;
-    poolExists = token0 && token1 ? doesPoolExist(token0, token1, $livePools) : null;
-    
-    // Find matching pool
-    pool = poolExists ? $livePools.find(p => 
-      p.address_0 === token0?.address && 
-      p.address_1 === token1?.address
-    ) : null;
-    
-    // Load token-specific balances
-    token0?.canister_id && token1?.canister_id && $auth?.isInitialized && $auth?.account?.owner &&
-      loadBalancesAndUpdateStore([token0, token1], $auth.account.owner.toString(), true);
-    
-    // Update local balance variables from store
-    token0?.canister_id && (token0Balance = $currentUserBalancesStore[token0.canister_id]?.in_tokens?.toString() || "0");
-    token1?.canister_id && (token1Balance = $currentUserBalancesStore[token1.canister_id]?.in_tokens?.toString() || "0");
+    if (!isLoading) {
+      // Update tokens safely
+      token0 = $liquidityStore.token0;
+      token1 = $liquidityStore.token1;
+      
+      // Only check poolExists if both tokens are available
+      if (token0 && token1) {
+        poolExists = doesPoolExist(token0, token1, $livePools);
+        
+        // Only find pool if poolExists is true
+        pool = poolExists ? $livePools.find(p => 
+          p.address_0 === token0?.address && 
+          p.address_1 === token1?.address
+        ) : null;
+        
+        // Only load balances if both tokens are available
+        if (token0?.canister_id && token1?.canister_id && $auth?.isInitialized && $auth?.account?.owner) {
+          loadBalancesAndUpdateStore([token0, token1], $auth.account.owner.toString(), true);
+        }
+        
+        // Update local balance variables safely
+        if (token0?.canister_id) {
+          token0Balance = $currentUserBalancesStore[token0.canister_id]?.in_tokens?.toString() || "0";
+        }
+        
+        if (token1?.canister_id) {
+          token1Balance = $currentUserBalancesStore[token1.canister_id]?.in_tokens?.toString() || "0";
+        }
+      }
+    }
   }
 
   // Token selection handler
@@ -271,84 +333,90 @@
 
 <Panel variant="transparent" width="auto" className="!p-0">
   <div class="flex flex-col min-h-[165px] box-border relative rounded-lg">
-    <div class="relative space-y-6 p-4">
-      <div class="mb-2">
-        <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
-          Select Tokens
-        </h3>
-        <TokenSelectionPanel
-          {token0}
-          {token1}
-          onTokenSelect={handleTokenSelect}
-          secondaryTokenIds={SECONDARY_TOKEN_IDS}
-        />
+    {#if isLoading}
+      <div class="flex items-center justify-center h-64">
+        <div class="spinner w-10 h-10 border-4 border-t-4 border-t-kong-primary rounded-full animate-spin"></div>
       </div>
+    {:else}
+      <div class="relative space-y-6 p-4">
+        <div class="mb-2">
+          <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
+            Select Tokens
+          </h3>
+          <TokenSelectionPanel
+            {token0}
+            {token1}
+            onTokenSelect={handleTokenSelect}
+            secondaryTokenIds={SECONDARY_TOKEN_IDS}
+          />
+        </div>
 
-      {#if token0 && token1}
-        <PositionDisplay
-          token0={$liquidityStore.token0}
-          token1={$liquidityStore.token1}
-          layout="horizontal"
-        />
-      {/if}
+        {#if token0 && token1}
+          <PositionDisplay
+            token0={$liquidityStore.token0}
+            token1={$liquidityStore.token1}
+            layout="horizontal"
+          />
+        {/if}
 
-      {#if token0 && token1 && (poolExists === false || pool?.balance_0 === 0n)}
-        <div class="flex flex-col gap-4">
-          <PoolWarning {token0} {token1} />
-          <div>
+        {#if token0 && token1 && (poolExists === false || (pool && pool.balance_0 === 0n))}
+          <div class="flex flex-col gap-4">
+            <PoolWarning {token0} {token1} />
+            <div>
+              <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
+                Set Initial Price
+              </h3>
+              <InitialPriceInput
+                {token0}
+                {token1}
+                onPriceChange={handlePriceChange}
+              />
+            </div>
+          </div>
+        {/if}
+
+        {#if token0 && token1}
+          <div class="mt-2">
             <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
-              Set Initial Price
+              {#if poolExists === false || (pool && pool.balance_0 === 0n)}
+                Initial Deposits
+              {:else}
+                Deposit Amounts
+              {/if}
             </h3>
-            <InitialPriceInput
+            <AmountInputs
               {token0}
               {token1}
-              onPriceChange={handlePriceChange}
+              amount0={$liquidityStore.amount0}
+              amount1={$liquidityStore.amount1}
+              {token0Balance}
+              {token1Balance}
+              onAmountChange={handleAmountChange}
+              onPercentageClick={handlePercentageClick(0)}
+              onToken1PercentageClick={handlePercentageClick(1)}
             />
           </div>
-        </div>
-      {/if}
 
-      <div class="mt-2">
-        <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
-          {#if poolExists === false || pool?.balance_0 === 0n}
-            Initial Deposits
-          {:else}
-            Deposit Amounts
-          {/if}
-        </h3>
-        <AmountInputs
-          {token0}
-          {token1}
-          amount0={$liquidityStore.amount0}
-          amount1={$liquidityStore.amount1}
-          {token0Balance}
-          {token1Balance}
-          onAmountChange={handleAmountChange}
-          onPercentageClick={handlePercentageClick(0)}
-          onToken1PercentageClick={handlePercentageClick(1)}
-        />
+          <div class="mt-6">
+            <ButtonV2
+              variant="solid"
+              theme="accent-green"
+              size="lg"
+              fullWidth={true}
+              on:click={poolExists === false ? handleCreatePool : handleAddLiquidity}
+              isDisabled={!$liquidityStore.amount0 || !$liquidityStore.amount1 || 
+                          (poolExists === false && !$liquidityStore.initialPrice)}
+            >
+              {poolExists === false ? 'Create Pool' : 'Add Liquidity'}
+            </ButtonV2>
+          </div>
+        {:else}
+          <div class="text-center text-kong-text-primary/70 py-8">
+            Select both tokens to create a new liquidity pool
+          </div>
+        {/if}
       </div>
-
-      {#if token0 && token1}
-        <div class="mt-6">
-          <ButtonV2
-            variant="solid"
-            theme="accent-green"
-            size="lg"
-            fullWidth={true}
-            on:click={poolExists === false ? handleCreatePool : handleAddLiquidity}
-            isDisabled={!$liquidityStore.amount0 || !$liquidityStore.amount1 || 
-                        (poolExists === false && !$liquidityStore.initialPrice)}
-          >
-            {poolExists === false ? 'Create Pool' : 'Add Liquidity'}
-          </ButtonV2>
-        </div>
-      {:else}
-        <div class="text-center text-kong-text-primary/70 py-8">
-          Select both tokens to create a new liquidity pool
-        </div>
-      {/if}
-    </div>
+    {/if}
   </div>
 </Panel>
 
@@ -363,3 +431,14 @@
     }}
   />
 {/if}
+
+<style>
+  .spinner {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
