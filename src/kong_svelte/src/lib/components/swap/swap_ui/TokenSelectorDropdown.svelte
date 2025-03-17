@@ -890,7 +890,7 @@
                     isAddNewTokenModalOpen = true;
                   }}
                 >
-                  <div class="add-icon">+</div>
+                  <div class="add-icon !text-kong-text-on-primary">+</div>
                   <span>Add New Token</span>
                 </button>
               </div>
@@ -910,7 +910,7 @@
 
 <style scoped lang="postcss">
   .modal-backdrop {
-    @apply fixed inset-0 bg-black/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto;
+    @apply fixed inset-0 bg-kong-bg-dark/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto;
   }
 
   .dropdown-container {
@@ -976,12 +976,12 @@
   }
 
   .scrollable-section::-webkit-scrollbar-track {
-    background: rgba(26, 29, 46, 0.4);
+    background: theme('colors.kong.bg-dark/40');
     border-radius: 0.25rem;
   }
 
   .scrollable-section::-webkit-scrollbar-thumb {
-    background: #e9e9f0;
+    background: theme('colors.kong.text-secondary');
     border-radius: 0.25rem;
   }
 
@@ -1088,7 +1088,7 @@
 
   .loading-spinner {
     @apply w-4 h-4;
-    @apply border-2 border-white/20 border-t-white;
+    @apply border-2 border-kong-text-primary/20 border-t-kong-text-primary;
     @apply rounded-full;
     animation: spin 0.6s linear infinite;
   }
@@ -1148,7 +1148,7 @@
   
   .add-icon {
     @apply flex items-center justify-center w-5 h-5 rounded-full
-           text-kong-primary font-bold;
+           text-kong-text-on-primary font-bold;
     background: var(--token-selector-item-active-bg, theme('colors.kong.primary/20'));
   }
 </style>

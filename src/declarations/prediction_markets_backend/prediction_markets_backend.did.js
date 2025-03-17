@@ -21,14 +21,24 @@ export const idlFactory = ({ IDL }) => {
     'Duration' : IDL.Nat,
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
-  const GetAllMarketsArgs = IDL.Record({
-    'start' : IDL.Nat,
-    'length' : IDL.Nat,
-  });
   const MarketStatus = IDL.Variant({
     'Disputed' : IDL.Null,
     'Open' : IDL.Null,
     'Closed' : IDL.Vec(IDL.Nat),
+  });
+  const SortDirection = IDL.Variant({
+    'Descending' : IDL.Null,
+    'Ascending' : IDL.Null,
+  });
+  const SortOption = IDL.Variant({
+    'TotalPool' : SortDirection,
+    'CreatedAt' : SortDirection,
+  });
+  const GetAllMarketsArgs = IDL.Record({
+    'status_filter' : IDL.Opt(MarketStatus),
+    'start' : IDL.Nat,
+    'length' : IDL.Nat,
+    'sort_option' : IDL.Opt(SortOption),
   });
   const Market = IDL.Record({
     'id' : IDL.Nat,
@@ -59,6 +69,10 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : IDL.Nat,
     'amount' : IDL.Nat,
     'outcome_index' : IDL.Nat,
+  });
+  const GetMarketsByStatusArgs = IDL.Record({
+    'start' : IDL.Nat,
+    'length' : IDL.Nat,
   });
   const Distribution = IDL.Record({
     'bet_amount' : IDL.Nat,
@@ -210,7 +224,7 @@ export const idlFactory = ({ IDL }) => {
     'get_market' : IDL.Func([IDL.Nat], [IDL.Opt(Market)], ['query']),
     'get_market_bets' : IDL.Func([IDL.Nat], [IDL.Vec(Bet)], ['query']),
     'get_markets_by_status' : IDL.Func(
-        [GetAllMarketsArgs],
+        [GetMarketsByStatusArgs],
         [GetMarketsByStatusResult],
         ['query'],
       ),

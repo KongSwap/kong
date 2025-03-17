@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { LayoutGrid, ChartPie, BarChart3, RefreshCw } from 'lucide-svelte';
   import Badge from "$lib/components/common/Badge.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
@@ -10,49 +9,45 @@
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
 
-  // Legacy props for backward compatibility - can be removed once fully migrated 
-  export let liquidityPools: Array<{
-    id: string;
-    token0: { symbol: string; icon: string };
-    token1: { symbol: string; icon: string };
-    value: number;
-    share: number;
-    apr: number;
-    chain: string;
-  }> = [];
-  
-  export let isLoading: boolean = false;
-  
-  // Optional callback function for refreshing data
-  export let onRefresh: (() => void) | undefined = undefined;
+  // Props
+  const {
+    // Legacy props for backward compatibility - can be removed once fully migrated 
+    liquidityPools = [],
+    isLoading = false,
+    // Optional callback function for refreshing data
+    onRefresh = undefined,
+  } = $props<{
+    liquidityPools?: Array<{
+      id: string;
+      token0: { symbol: string; icon: string };
+      token1: { symbol: string; icon: string };
+      value: number;
+      share: number;
+      apr: number;
+      chain: string;
+    }>;
+    isLoading?: boolean;
+    onRefresh?: (() => void) | undefined;
+  }>();
   
   // State for user pools from store
-  let hasCompletedInitialLoad = false;
-  let errorMessage: string | null = null;
+  let hasCompletedInitialLoad = $state(false);
+  let errorMessage = $state<string | null>(null);
   
   // State for the UserPool modal
-  let selectedPool: any = null;
-  let showUserPoolModal = false;
+  let selectedPool = $state<any>(null);
+  let showUserPoolModal = $state(false);
   
   // Initialize store and handle auth changes
-  onMount(() => {
-    const unsubscribe = auth.subscribe(($auth) => {
-      if ($auth.isConnected) {
-        loadUserPools();
-      } else {
-        currentUserPoolsStore.reset();
-        hasCompletedInitialLoad = false;
-      }
-    });
-
-    // Load pools on mount if already authenticated
+  $effect(() => {
     if ($auth.isConnected) {
       loadUserPools();
+    } else {
+      currentUserPoolsStore.reset();
+      hasCompletedInitialLoad = false;
     }
-
-    return () => {
-      unsubscribe();
-    };
+    
+    // No need for unsubscribe in runes, as $effect cleanup happens automatically
   });
   
   // Function to load user pools
@@ -138,10 +133,10 @@
   }
   
   // Determine the loading state
-  $: isLoadingPools = $currentUserPoolsStore.loading && !hasCompletedInitialLoad;
+  const isLoadingPools = $derived($currentUserPoolsStore.loading && !hasCompletedInitialLoad);
   
   // Determine if we should use store data or legacy data
-  $: usingStoreData = $auth.isConnected && $currentUserPoolsStore.filteredPools.length > 0;
+  const usingStoreData = $derived($auth.isConnected && $currentUserPoolsStore.filteredPools.length > 0);
 </script>
 
 <div class="py-3">

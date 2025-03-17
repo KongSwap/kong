@@ -5,10 +5,11 @@
   import ButtonV2 from '$lib/components/common/ButtonV2.svelte';
   import LoadingIndicator from '$lib/components/common/LoadingIndicator.svelte';
   import Panel from '$lib/components/common/Panel.svelte';
-  import ClaimCard from '$lib/components/claims/ClaimCard.svelte';
+  import ClaimCard from './ClaimCard.svelte';
   import PageHeader from '$lib/components/common/PageHeader.svelte';
   import { Loader2, Award } from "lucide-svelte";
   import type { Claim } from '$lib/types/claims';
+    import { goto } from '$app/navigation';
   
   // State
   let claims = $state<Claim[]>([]);
@@ -59,6 +60,7 @@
   }
 
   onMount(() => {
+    goto('/swap')
     fetchClaims();
   });
   
@@ -91,19 +93,17 @@
           isDisabled={isProcessingAll || isProcessing}
           className="w-full sm:w-auto"
         >
-          {() => (
-            <div class="flex items-center justify-center">
-              {#if isProcessingAll}
-                <Loader2 class="animate-spin mr-2" size={16} />
-                <span>Processing...</span>
-              {:else}
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Claim All
-              {/if}
-            </div>
-          )}
+          <div class="flex items-center justify-center">
+            {#if isProcessingAll}
+              <Loader2 class="animate-spin mr-2" size={16} />
+              <span>Processing...</span>
+            {:else}
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Claim All
+            {/if}
+          </div>
         </ButtonV2>
         
         <!-- Refresh button -->
@@ -115,14 +115,12 @@
           isDisabled={isLoading || isProcessingAll}
           className="w-full sm:w-auto"
         >
-          {() => (
-            <div class="flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refresh
-            </div>
-          )}
+          <div class="flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </div>
         </ButtonV2>
       </div>
     </div>
@@ -130,14 +128,12 @@
 
   {#if !$auth.isConnected}
     <Panel variant="solid" type="main" className="max-w-lg mx-auto mt-4">
-      {() => (
-        <div class="p-6 text-center">
-          <p class="mb-4">Please connect your wallet to view your claims</p>
-          <ButtonV2 theme="accent-blue" on:click={() => auth.initialize()}>
-            {() => "Connect Wallet"}
-          </ButtonV2>
-        </div>
-      )}
+      <div class="p-6 text-center">
+        <p class="mb-4">Please connect your wallet to view your claims</p>
+        <ButtonV2 theme="accent-blue" on:click={() => auth.initialize()}>
+          Connect Wallet
+        </ButtonV2>
+      </div>
     </Panel>
   {:else if isLoading}
     <div class="flex justify-center items-center py-12">
@@ -145,22 +141,18 @@
     </div>
   {:else if error}
     <Panel variant="solid" type="main" className="max-w-lg mx-auto mt-4">
-      {() => (
-        <div class="p-6 text-center">
-          <p class="text-red-500 mb-4">{error}</p>
-          <ButtonV2 theme="primary" on:click={fetchClaims}>
-            {() => "Try Again"}
-          </ButtonV2>
-        </div>
-      )}
+      <div class="p-6 text-center">
+        <p class="text-red-500 mb-4">{error}</p>
+        <ButtonV2 theme="primary" on:click={fetchClaims}>
+          Try Again
+        </ButtonV2>
+      </div>
     </Panel>
   {:else if claims.length === 0}
     <Panel variant="solid" type="main" className="max-w-lg mx-auto mt-4">
-      {() => (
-        <div class="p-6 text-center">
-          <p>You don't have any claimable tokens at the moment</p>
-        </div>
-      )}
+      <div class="p-6 text-center">
+        <p>You don't have any claimable tokens at the moment</p>
+      </div>
     </Panel>
   {:else}
     <div class="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 animate-fade-in">
@@ -170,15 +162,13 @@
           type="main" 
           className="h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 backdrop-blur-sm"
         >
-          {() => (
-            <ClaimCard
-              claim={claim}
-              isProcessing={isProcessing}
-              isProcessingAll={isProcessingAll}
-              processingClaimId={processingClaimId}
-              onProcess={processClaim}
-            />
-          )}
+          <ClaimCard
+            claim={claim}
+            isProcessing={isProcessing}
+            isProcessingAll={isProcessingAll}
+            processingClaimId={processingClaimId}
+            onProcess={processClaim}
+          />
         </Panel>
       {/each}
     </div>

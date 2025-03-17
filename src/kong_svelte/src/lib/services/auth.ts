@@ -7,6 +7,8 @@ import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { fetchBalances } from "$lib/api/balances";
 import { currentUserBalancesStore } from "$lib/stores/balancesStore";
+import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+import { userTokens } from "$lib/stores/userTokens";
 
 // Constants
 const STORAGE_KEYS = {
@@ -123,6 +125,8 @@ function createAuthStore(pnp: PNP) {
       isConnected.set(false);
       connectionError.set(null);
       currentUserBalancesStore.set({});
+      currentUserPoolsStore.reset();
+      userTokens.reset();
       storage.clear();
     },
 

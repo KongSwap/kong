@@ -112,12 +112,10 @@
       
         <!-- Top 3 winners section heading -->
         <div class="flex items-center justify-center mb-8">
-          <div class="h-px bg-kong-border flex-grow"></div>
           <div class="px-4 text-kong-text-primary font-medium flex items-center">
             <Trophy class="w-5 h-5 mr-2 text-yellow-400" />
             <span>Top Traders</span>
           </div>
-          <div class="h-px bg-kong-border flex-grow"></div>
         </div>
         
         <!-- Champion (Rank #1) -->
@@ -161,13 +159,11 @@
 
         <!-- Other traders (Rank #4 and below) -->
         {#if $leaderboardData.length > 3}
-          <div class="flex items-center justify-center mb-6 mt-10">
-            <div class="h-px bg-kong-border flex-grow"></div>
-            <div class="px-4 text-kong-text-primary font-medium flex items-center">
+          <div class="flex items-center mb-2 mt-10">
+            <div class="pl-1 text-kong-text-primary font-medium flex items-center">
               <BarChart3 class="w-5 h-5 mr-2 text-kong-text-secondary" />
               <span>Other Top Traders</span>
             </div>
-            <div class="h-px bg-kong-border flex-grow"></div>
           </div>
           
           <Panel 
@@ -212,33 +208,9 @@
 </div>
 
 <style>
-  .animate-fadeIn {
-    animation: fadeIn 0.4s ease-in-out;
-  }
-
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
-  }
-  
-  .animation-delay-150 {
-    animation-delay: 150ms;
-  }
-  
-  .animation-delay-300 {
-    animation-delay: 300ms;
-  }
-  
-  .animation-delay-500 {
-    animation-delay: 500ms;
-  }
-  
-  .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  
-  .shadow-inner-white {
-    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
   }
   
   /* Add glow effect for top traders */

@@ -195,11 +195,12 @@
       aria-modal="true"
       aria-labelledby="modal-title"
       style="z-index: {zIndex};"
-      transition:fade={{ duration: 150, easing: cubicOut }}
     >
       <div
         class="fixed inset-0 bg-black/60 backdrop-blur-md"
         on:click={handleBackdropClick}
+        style="z-index: {zIndex};"
+        transition:fade={{ duration: 120, easing: cubicOut }}
       />
 
       <div
@@ -214,9 +215,10 @@
         on:touchmove={handleDragMove}
         on:touchend={handleDragEnd}
         on:click|stopPropagation
+        transition:fade={{ duration: 150, delay: 100, easing: cubicOut }}
       >
         <Panel
-          {variant}
+          variant="solid"
           width="100%"
           height="100%"
           className="flex flex-col overflow-hidden {className}"
@@ -247,7 +249,7 @@
                 {/if}
               </slot>
               <button
-                class="pt-2 pb-1 !flex !items-center !justify-end hover:text-kong-accent-red !border-0 !shadow-none group relative"
+                class="!flex !self-start justify-end hover:text-kong-accent-red !border-0 !shadow-none group relative"
                 on:click={(e) => handleClose(e)}
                 aria-label="Close modal"
               >

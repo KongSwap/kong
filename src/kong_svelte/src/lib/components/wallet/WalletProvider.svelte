@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { walletsList } from '@windoge98/plug-n-play';
-  import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import { auth, selectedWalletId } from "$lib/services/auth";
   import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
@@ -22,22 +21,31 @@
     description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined
   }));
 
-  const dispatch = createEventDispatcher();
-  let connecting = false;
-  let plugDialog: any;
-  let dialogOpen = false;
-  let abortController = new AbortController();
-  let isOnMobile = false;
-  let filteredWallets = walletList;
+  // Props
+  const { 
+    isOpen = false,
+    onClose = () => {},
+    onLogin = () => {}
+  } = $props<{ 
+    isOpen?: boolean; 
+    onClose?: () => void;
+    onLogin?: () => void;
+  }>();
   
-  export let isOpen = false;
-
+  // State
+  let connecting = $state(false);
+  let plugDialog = $state<any>(null);
+  let dialogOpen = $state(false);
+  let abortController = $state(new AbortController());
+  let isOnMobile = $state(false);
+  let filteredWallets = $state(walletList);
+  
   function closeModal() {
-    isOpen = false;
-    dispatch('close');
+    onClose();
   }
 
-  onMount(() => {
+  // Initialize on mount
+  $effect(() => {
     // Only run browser-specific code after component is mounted
     if (browser) {
       isOnMobile = isMobileBrowser();
@@ -51,11 +59,15 @@
     }
   }
 
-  onDestroy(() => {
-    // Clean up any pending connection state
-    if (connecting) {
-      connecting = false;
-      abortController.abort();
+  // Cleanup on destroy
+  $effect(() => {
+    // This cleanup will run when the component is destroyed
+    return () => {
+      // Clean up any pending connection state
+      if (connecting) {
+        connecting = false;
+        abortController.abort();
+      }
     }
   });
 
@@ -96,7 +108,7 @@
       clearTimeout(timeoutId);
       
       if ($auth.isConnected) {
-        dispatch("login");
+        onLogin();
         closeModal();
       }
     } catch (error) {

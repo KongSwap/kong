@@ -105,7 +105,7 @@
   $: tabs =
     process.env.DFX_NETWORK !== "ic"
       ? allTabs
-      : allTabs
+      : allTabs.filter(t => t !== "predict")
 
   const dataOptions = [
     {
@@ -191,13 +191,13 @@
       icon: Coins,
       comingSoon: false,
     },
-    {
-      label: "Airdrop Claims",
-      description: "Claim your airdrop tokens",
-      path: "/airdrop-claims",
-      icon: Award,
-      comingSoon: false,
-    },
+    // {
+    //   label: "Airdrop Claims",
+    //   description: "Claim your airdrop tokens",
+    //   path: "/airdrop-claims",
+    //   icon: Award,
+    //   comingSoon: false,
+    // },
     {
       label: "Staking",
       description: "Stake your tokens to earn yield and governance rights",
@@ -636,7 +636,13 @@
 
 <WalletSidebar isOpen={showWalletSidebar} activeTab={walletSidebarActiveTab} onClose={closeWalletSidebar} />
 {#if browser}
-  <WalletProvider isOpen={showWalletProvider} on:close={closeWalletProvider} />
+  <WalletProvider 
+    isOpen={showWalletProvider}
+    onClose={closeWalletProvider}
+    onLogin={() => {
+      // Handle login if needed
+    }}
+  />
 {/if}
 
 <style scoped lang="postcss">

@@ -60,6 +60,11 @@ function createUserTokensStore() {
 
   return {
     subscribe,
+    reset: () => {
+      const newState = { enabledTokens: {}, tokens: [] };
+      set(newState);
+      updateStorage(newState);
+    },
     enableToken: (token: FE.Token) => {
       update(state => {
         // First check if token already exists in the tokens array

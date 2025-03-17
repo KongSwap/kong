@@ -68,11 +68,17 @@ export interface Distribution {
   'outcome_index' : bigint,
 }
 export interface ErrorInfo { 'description' : string }
-export interface GetAllMarketsArgs { 'start' : bigint, 'length' : bigint }
+export interface GetAllMarketsArgs {
+  'status_filter' : [] | [MarketStatus],
+  'start' : bigint,
+  'length' : bigint,
+  'sort_option' : [] | [SortOption],
+}
 export interface GetAllMarketsResult {
   'markets' : Array<Market>,
   'total_count' : bigint,
 }
+export interface GetMarketsByStatusArgs { 'start' : bigint, 'length' : bigint }
 export interface GetMarketsByStatusResult {
   'total_active' : bigint,
   'total_resolved' : bigint,
@@ -160,6 +166,10 @@ export type Result_4 = { 'Ok' : null } |
 export type Result_5 = { 'Ok' : null } |
   { 'Err' : ResolutionError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
+export type SortDirection = { 'Descending' : null } |
+  { 'Ascending' : null };
+export type SortOption = { 'TotalPool' : SortDirection } |
+  { 'CreatedAt' : SortDirection };
 export interface UserBetInfo {
   'outcome_text' : string,
   'bet_amount' : bigint,
@@ -192,7 +202,7 @@ export interface _SERVICE {
   'get_market' : ActorMethod<[bigint], [] | [Market]>,
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
   'get_markets_by_status' : ActorMethod<
-    [GetAllMarketsArgs],
+    [GetMarketsByStatusArgs],
     GetMarketsByStatusResult
   >,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,

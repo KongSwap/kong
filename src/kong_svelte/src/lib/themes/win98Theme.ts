@@ -129,7 +129,7 @@ export const win98Theme: ThemeDefinition = {
     
     // Background configuration
     backgroundType: 'pattern',
-    backgroundImage: '/backgrounds/cloudbg.jpeg', // Windoge splash image in backgrounds directory
+    backgroundImage: '/backgrounds/cloudbg.jpg', // Windoge splash image in backgrounds directory
     backgroundOpacity: 1.0, // Full opacity
     
     // Enhanced background configuration for Windows 98 sky

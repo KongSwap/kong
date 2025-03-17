@@ -16,12 +16,35 @@ export async function getMarket(marketId: number) {
   return market;
 }
 
-export async function getAllMarkets() {
+export async function getAllMarkets(options: {
+  start?: number;
+  length?: number;
+  statusFilter?: 'Open' | 'Closed' | 'Disputed';
+  sortOption?: {
+    type: 'CreatedAt' | 'TotalPool';
+    direction: 'Ascending' | 'Descending';
+  };
+} = {}) {
   const actor = createAnonymousActorHelper(
     PREDICTION_MARKETS_CANISTER_ID,
     canisterIDLs.prediction_markets_backend,
   );
-  const markets = await actor.get_all_markets({ start: 0, length: 100 });
+  
+  const args = {
+    start: options.start ?? 0,
+    length: options.length ?? 100,
+    status_filter: options.statusFilter 
+      ? options.statusFilter === 'Closed'
+        ? [{ Closed: [] }]  // For Closed, we need an empty array, not null
+        : [{ [options.statusFilter]: null }]
+      : [],
+    sort_option: options.sortOption 
+      ? [{ [options.sortOption.type]: { [options.sortOption.direction]: null } }]
+      : [], // Default sorting (newest first) will be applied by the backend
+  };
+  
+  console.log('getAllMarkets args:', JSON.stringify(args, null, 2));
+  const markets = await actor.get_all_markets(args);
   return markets;
 }
 

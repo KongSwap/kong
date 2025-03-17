@@ -1,7 +1,11 @@
 <script lang="ts">
-  import Panel from "$lib/components/common/Panel.svelte";
+    import { goto } from "$app/navigation";
 
   let { children } = $props<{ children: any }>();
+
+  $effect(() => {
+    goto("/swap");
+  });
 </script>
 
 <svelte:head>

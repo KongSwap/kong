@@ -156,8 +156,8 @@
     top: 50%;
     transform: translateY(-50%);
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.5);
-    background-color: rgb(37, 41, 62);
+    color: theme('colors.kong.text-secondary');
+    background-color: theme('colors.kong.bg-light');
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
   }
@@ -193,18 +193,18 @@
     @apply text-kong-text-secondary;
     padding: 0.25rem;
     border-radius: 0.375rem;
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: theme('colors.kong.bg-light/10');
     transition: all 0.2s;
   }
 
   .favorite-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
+    background-color: theme('colors.kong.bg-light/20');
+    color: theme('colors.kong.accent-yellow');
   }
 
   .favorite-button.active {
-    color: #fde047;
-    background-color: rgba(253, 224, 71, 0.1);
+    color: theme('colors.kong.accent-yellow');
+    background-color: theme('colors.kong.bg-light');
   }
 
   .token-symbol {
@@ -226,8 +226,8 @@
   }
 
   .selected-indicator {
-    @apply text-kong-accent-green;
-    background: rgba(74, 222, 128, 0.1);
+    @apply text-kong-text-on-primary;
+    background: theme('colors.kong.accent-green/10');
     border-radius: 50%;
     padding: 4px;
     display: flex;
@@ -246,7 +246,7 @@
 
   .button-spinner {
     @apply w-4 h-4;
-    @apply border-2 border-white/20 border-t-white;
+    @apply border-2 border-kong-text-primary/20 border-t-kong-text-primary;
     @apply rounded-full;
     animation: spin 0.6s linear infinite;
     margin: 0 auto;
@@ -274,7 +274,7 @@
 
   .balance-spinner {
     @apply w-3 h-3;
-    @apply border-2 border-white/10 border-t-white/60;
+    @apply border-2 border-kong-text-primary/10 border-t-kong-text-primary/60;
     @apply rounded-full;
     animation: spin 0.6s linear infinite;
   }
