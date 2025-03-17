@@ -19,7 +19,7 @@
     name: wallet.name === "Oisy Wallet" ? "OISY Wallet" : wallet.name,
     icon: wallet.icon,
     description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined,
-    recommended: wallet.id === 'plug' // Mark Plug as recommended
+    recommended: wallet.id === 'oisy' // Mark Plug as recommended
   }));
 
   // Props
