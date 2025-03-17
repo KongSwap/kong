@@ -172,6 +172,12 @@
             View on IC Dashboard
           </a>
         </div>
+        <div class="param-row">
+          <span class="param-label">My Canisters:</span>
+          <a href="/launch/my-canisters" class="dashboard-link">
+            View in My Canisters
+          </a>
+        </div>
       </div>
     {/if}
   {:else}

@@ -5,6 +5,8 @@
   import { ArrowLeft, AlertTriangle } from "lucide-svelte";
   import { minerParams } from "$lib/stores/minerParams";
   import { auth } from "$lib/services/auth";
+  import { TCyclesService } from "$lib/services/canister/tcycles-service";
+  import { SwapService } from "$lib/services/swap/SwapService";
   
   // Import components
   import DeploymentSteps from "./DeploymentSteps.svelte";
@@ -63,6 +65,10 @@
   let deploymentLogComponent: DeploymentLog;
   let deploymentProcessComponent: DeploymentProcess;
   
+  // Add a new variable to store the fee
+  let tcyclesFee = "0";
+  const TCYCLES_DECIMALS = 12;
+  
   // Function to add a log entry
   function addLog(message: string) {
     deploymentLogComponent?.addLog(message);
@@ -111,6 +117,14 @@
       errorMessage = "Please connect your wallet to continue";
       currentStep = PROCESS_STEPS.ERROR;
       return;
+    }
+    
+    // Get the fee for canister creation
+    try {
+      const fee = await TCyclesService.getFee();
+      tcyclesFee = SwapService.fromBigInt(fee, TCYCLES_DECIMALS);
+    } catch (error) {
+      console.error("Error fetching TCycles fee:", error);
     }
   });
   
@@ -186,6 +200,7 @@
     {selectedSubnetType}
     {selectedSubnetId}
     processSteps={PROCESS_STEPS}
+    on:complete={() => goto("/launch/my-canisters")}
   />
   
   {#if currentStep === PROCESS_STEPS.PREPARING}

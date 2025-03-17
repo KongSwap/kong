@@ -429,8 +429,7 @@ import { registerCanister } from "$lib/api/canisters";
   export function setKongAmountForMinerType() {
     if (!minerParams || !minerParams.minerType) return;
     
-    // Always set KONG amount to 100 regardless of miner type
-    kongAmount = "100";
+    kongAmount = "150";
     
     console.log(`Miner type set: ${JSON.stringify(minerParams.minerType)}`);
     console.log(`KONG amount: ${kongAmount}`);

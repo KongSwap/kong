@@ -11,6 +11,7 @@
   import { TCyclesService } from "$lib/services/canister/tcycles-service";
   import { get } from "svelte/store";
   import { registerCanister } from "$lib/api/canisters";
+  import { BigNumber } from "bignumber.js";
   
   // Props
   export let minerParams: any;
@@ -88,53 +89,46 @@
     }
   }
   
-  // Function to calculate estimated T-Cycles from KONG amount
+  // Calculate estimated TCYCLES from KONG amount
   async function calculateEstimatedTCycles() {
     try {
-      console.log("Calculating estimated T-Cycles from KONG amount:", kongAmount);
+      // Get the fee for canister creation
+      const fee = await TCyclesService.getFee();
       
-      if (!kongAmount || parseFloat(kongAmount) <= 0) {
-        console.warn("Invalid KONG amount for T-Cycles calculation:", kongAmount);
-        return 0;
+      // Get the KONG to TCYCLES quote
+      const kongE8s = SwapService.toBigInt(kongAmount, KONG_DECIMALS);
+      const quote = await SwapService.getKongToTCyclesQuote(
+        kongE8s,
+        KONG_DECIMALS,
+        TCYCLES_DECIMALS
+      );
+      
+      // Store the estimated TCYCLES amount
+      estimatedTCycles = quote.receiveAmount;
+      
+      // Calculate and store the KONG to TCYCLES rate
+      const kongBN = new BigNumber(kongAmount);
+      const tcyclesBN = new BigNumber(estimatedTCycles);
+      
+      if (kongBN.isGreaterThan(0) && tcyclesBN.isGreaterThan(0)) {
+        kongTCyclesRate = tcyclesBN.dividedBy(kongBN).toString();
+      } else {
+        kongTCyclesRate = "0";
       }
       
-      // Get KONG to TCYCLES quote
-      const kongE8s = SwapService.toBigInt(kongAmount, KONG_DECIMALS);
-      console.log("KONG amount in E8s:", kongE8s.toString());
+      // Check if the estimated amount is enough for canister creation including fee
+      const estimatedCycles = SwapService.toBigInt(estimatedTCycles, TCYCLES_DECIMALS);
+      const formattedFee = SwapService.fromBigInt(fee, TCYCLES_DECIMALS);
       
-      const quoteResult = await SwapService.getKongToTCyclesQuote(kongE8s, KONG_DECIMALS, TCYCLES_DECIMALS);
-      console.log("TCYCLES quote result:", quoteResult);
+      if (estimatedCycles <= fee) {
+        addLog(`Warning: Estimated amount (${estimatedTCycles} T-Cycles) is less than or equal to the fee (${formattedFee} T-Cycles)`);
+        addLog(`You need more T-Cycles to create a canister. Consider increasing the KONG amount.`);
+      }
       
-      // The receiveAmount is already in T-Cycles format (not raw cycles)
-      tcyclesAmount = quoteResult.receiveAmount;
-      console.log("TCYCLES amount calculated:", tcyclesAmount);
-      
-      // Parse the T-Cycles value directly (no need to divide by 1e12 again)
-      const tcyclesValue = parseFloat(tcyclesAmount);
-      console.log("T-Cycles value:", tcyclesValue);
-      
-      // Ensure we're setting a string value with 2 decimal places
-      const formattedTCycles = tcyclesValue.toFixed(2);
-      console.log(`Calculated T-Cycles (formatted): ${formattedTCycles}`);
-      
-      // Set the values
-      estimatedTCycles = formattedTCycles;
-      
-      // Set the KONG to TCYCLES rate for reference (T-Cycles per KONG)
-      const rate = tcyclesValue / parseFloat(kongAmount);
-      console.log("T-Cycles per KONG rate:", rate);
-      
-      // Format with 6 decimal places
-      kongTCyclesRate = rate.toFixed(6);
-      console.log("Formatted T-Cycles rate:", kongTCyclesRate);
-      
-      return tcyclesValue;
+      return estimatedTCycles;
     } catch (error) {
-      console.error("Error calculating T-Cycles:", error);
-      // Set default values in case of error
-      estimatedTCycles = "0";
-      kongTCyclesRate = "0";
-      return 0;
+      console.error("Error calculating estimated TCYCLES:", error);
+      return "0";
     }
   }
   
@@ -200,6 +194,11 @@
     addLog(`Swapping ${kongAmount} KONG to TCYCLES...`);
     
     try {
+      // Get the fee for canister creation
+      const fee = await TCyclesService.getFee();
+      const formattedFee = SwapService.fromBigInt(fee, TCYCLES_DECIMALS);
+      addLog(`Canister creation fee: ${formattedFee} T-Cycles`);
+      
       // Recalculate if needed to get the latest rates
       if (!estimatedTCycles || estimatedTCycles === "0") {
         await calculateEstimatedTCycles();
@@ -225,6 +224,13 @@
       
       addLog(`Successfully swapped ${kongAmount} KONG to ${formattedTCycles} T-Cycles`);
       
+      // Check if the received amount is enough for canister creation including fee
+      const receivedCycles = SwapService.toBigInt(actualTCyclesReceived, TCYCLES_DECIMALS);
+      if (receivedCycles <= fee) {
+        addLog(`Warning: Received amount (${formattedTCycles} T-Cycles) is less than or equal to the fee (${formattedFee} T-Cycles)`);
+        addLog(`You need more T-Cycles to create a canister. Consider increasing the KONG amount.`);
+      }
+      
       // Save progress
       lastSuccessfulStep = processSteps.SWAP_KONG_TO_TCYCLES;
       
@@ -249,6 +255,23 @@
         tcyclesAmount,
         rawCycles: cyclesAmount.toString()
       });
+      
+      // Get the current balance and fee
+      const currentBalance = await TCyclesService.getBalance();
+      const fee = await TCyclesService.getFee();
+      
+      // Check if there's enough balance for the fee
+      if (currentBalance < cyclesAmount + fee) {
+        const formattedBalance = SwapService.fromBigInt(currentBalance, TCYCLES_DECIMALS);
+        const formattedFee = SwapService.fromBigInt(fee, TCYCLES_DECIMALS);
+        const formattedTotal = SwapService.fromBigInt(cyclesAmount + fee, TCYCLES_DECIMALS);
+        
+        addLog(`Insufficient balance for canister creation with fee.`);
+        addLog(`Available: ${formattedBalance} T-Cycles`);
+        addLog(`Required: ${formattedTotal} T-Cycles (${tcyclesAmount} + ${formattedFee} fee)`);
+        
+        throw new Error(`Insufficient cycles balance. Available: ${currentBalance.toString()} cycles. Required: ${(cyclesAmount + fee).toString()} cycles (including fee)`);
+      }
       
       // Log subnet selection if available
       if (selectedSubnetId) {
