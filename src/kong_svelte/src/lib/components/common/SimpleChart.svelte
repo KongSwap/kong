@@ -11,7 +11,7 @@
   } from 'chart.js';
   import 'chartjs-adapter-date-fns';
   import { enUS } from 'date-fns/locale';
-  import { fetchChartData, type CandleData } from '$lib/services/indexer/api';
+  import { fetchChartData, type CandleData } from '$lib/api/transactions';
 
   // Register required components
   Chart.register(

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
+  import { liquidityStore } from "$lib/stores/liquidityStore";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
 </script>
 

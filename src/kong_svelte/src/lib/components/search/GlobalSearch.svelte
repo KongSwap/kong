@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fetchUsers } from '$lib/api/users';
-  import { fetchTokens } from '$lib/api/tokens';
+   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { onMount, createEventDispatcher } from 'svelte';
   import Modal from '$lib/components/common/Modal.svelte';
   import { goto } from '$app/navigation';
@@ -94,7 +94,7 @@
     try {
       const [usersResponse, tokensResponse] = await Promise.all([
         fetchUsers(searchQuery),
-        fetchTokens({ canister_id: searchQuery })
+        fetchTokens({ search: searchQuery })
       ]);
 
       const userResults: SearchResult[] = usersResponse.items.map(item => ({

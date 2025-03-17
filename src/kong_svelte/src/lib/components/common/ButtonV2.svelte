@@ -1,15 +1,39 @@
 <script lang="ts">
-  export let label: string | undefined = undefined;
-  export let type: "button" | "submit" | "reset" = "button";
-  export let theme: "primary" | "secondary" | "success" | "error" | "warning" | "accent-green" | "accent-blue" | "muted" = "primary";
-  export let variant: "solid" | "outline" | "transparent" | "shine" = "solid";
-  export let size: "xs" | "sm" | "md" | "lg" = "md";
-  export let isDisabled: boolean = false;
-  export let fullWidth: boolean = false;
-  export let uppercase: boolean = false;
-  export let disabled: boolean = false;
-  export let className: string = "";
-  export let element: HTMLButtonElement | null = null;
+  import { onMount } from 'svelte';
+
+  let {
+    label = undefined,
+    type = "button",
+    theme = "primary",
+    variant = "solid",
+    size = "md",
+    isDisabled = false,
+    fullWidth = false,
+    uppercase = false,
+    disabled = false,
+    className = "",
+    element = $bindable(null),
+    animationIterations = 1
+  } = $props<{
+    label?: string;
+    type?: "button" | "submit" | "reset";
+    theme?: "primary" | "secondary" | "success" | "error" | "warning" | "accent-green" | "accent-blue" | "muted";
+    variant?: "solid" | "outline" | "transparent" | "shine";
+    size?: "xs" | "sm" | "md" | "lg";
+    isDisabled?: boolean;
+    fullWidth?: boolean;
+    uppercase?: boolean;
+    disabled?: boolean;
+    className?: string;
+    element?: HTMLButtonElement | null;
+    animationIterations?: number;
+  }>();
+  
+  // Convert state to runes
+  let hasAnimated = $state(false);
+  
+  // Compute animation iteration count for CSS
+  let animationCount = $derived(animationIterations <= 0 ? 'infinite' : animationIterations.toString());
 
   // Theme-based styles
   const baseThemeClasses = {
@@ -18,7 +42,7 @@
     success: "text-kong-success",
     error: "text-white",
     warning: "text-kong-warning",
-    "accent-green": "text-white",
+    "accent-green": "text-kong-text-on-primary",
     "accent-blue": "text-kong-white",
     "accent-red": "text-kong-white",
     muted: "text-kong-text-inverse/60",
@@ -27,7 +51,7 @@
   const solidThemeClasses = {
     primary: "bg-kong-primary hover:bg-kong-primary-hover",
     secondary: "bg-white/5 hover:bg-white/10",
-    success: "bg-kong-success hover:bg-green-500",
+    success: "bg-kong-accent-green hover:bg-kong-accent-green-hover",
     error: "bg-red-600 hover:bg-red-700",
     warning: "bg-kong-warning hover:bg-yellow-500",
     "accent-green": "bg-kong-accent-green hover:bg-kong-accent-green-hover",
@@ -60,7 +84,6 @@
     muted: "bg-transparent text-white/50 hover:bg-white/5",
   };
 
-  // Size-based styles
   const sizeClasses = {
     xs: "px-2 py-1 text-xs",
     sm: "px-3 py-1 text-sm",
@@ -68,7 +91,6 @@
     lg: "px-6 py-3 text-base",
   };
 
-  // Add shine variant styles
   const shineThemeClasses = {
     primary: `
       relative overflow-hidden
@@ -88,13 +110,22 @@
     muted: "bg-gradient-to-r from-white/10 to-white/20",
   };
 
-  // Determine final button classes
   const variantClasses = {
     solid: solidThemeClasses[theme],
     outline: outlineThemeClasses[theme],
     transparent: transparentThemeClasses[theme],
     shine: shineThemeClasses[theme],
   };
+  
+  function handleAnimationEnd() {
+    if (animationIterations > 0) {
+      hasAnimated = true;
+    }
+  }
+  
+  onMount(() => {
+    hasAnimated = false;
+  });
 </script>
 
 <button
@@ -114,11 +145,11 @@
     {/if}
   </div>
 
-  {#if variant === "shine" && !isDisabled}
+  {#if variant === "shine" && !isDisabled && (!hasAnimated || animationIterations <= 0)}
     <div class="absolute inset-0 overflow-hidden">
-      <div class="shine-effect"></div>
+      <div class="shine-effect" style="animation-iteration-count: {animationCount};" on:animationend={handleAnimationEnd}></div>
     </div>
-    <div class="ready-glow"></div>
+    <div class="ready-glow" style="animation-iteration-count: {animationCount};"></div>
   {/if}
 </button>
 
@@ -137,7 +168,7 @@
     );
     transform: skewX(-20deg);
     pointer-events: none;
-    animation: shine 3s infinite;
+    animation: shine 3s; /* Removed fixed iteration count */
   }
 
   .ready-glow {
@@ -152,7 +183,7 @@
     opacity: 0;
     filter: blur(8px);
     transition: opacity 0.3s ease;
-    animation: pulse-glow 2s ease-in-out infinite;
+    animation: pulse-glow 2s ease-in-out; /* Removed fixed iteration count */
   }
 
   @keyframes shine {

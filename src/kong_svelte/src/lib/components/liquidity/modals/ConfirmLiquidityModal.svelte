@@ -1,7 +1,7 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
+  import { liquidityStore } from "$lib/stores/liquidityStore";
   import {
     formatToNonZeroDecimal,
     parseTokenAmount,
@@ -9,9 +9,9 @@
   import { onDestroy } from "svelte";
   import { PoolService } from "$lib/services/pools/PoolService";
   import { toastStore } from "$lib/stores/toastStore";
+  import { loadBalance } from "$lib/stores/tokenStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/services/auth";
-  import { loadBalance } from "$lib/services/tokens/tokenStore";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
 
   export let isCreatingPool: boolean = false;
   export let show: boolean;
@@ -82,9 +82,9 @@
           
           // Reload balances and pool list after successful pool creation
           await Promise.all([
-            loadBalance(token0.canister_id, true),
-            loadBalance(token1.canister_id, true),
-            userPoolListStore.initialize(),
+            loadBalance(token0.canister_id, auth, true),
+            loadBalance(token1.canister_id, auth, true),
+            currentUserPoolsStore.initialize(),
           ]);
           
           onClose();
@@ -114,9 +114,9 @@
           
           // Reload balances and pool list after successful liquidity addition
           await Promise.all([
-            loadBalance(token0.canister_id, true),
-            loadBalance(token1.canister_id, true),
-            userPoolListStore.initialize(),
+            loadBalance(token0.canister_id, auth, true),
+            loadBalance(token1.canister_id, auth, true),
+            currentUserPoolsStore.initialize(),
           ]);
           
           onClose();

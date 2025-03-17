@@ -12,7 +12,7 @@ interface TokenWithMetadata {
  */
 export async function sortTokens(
   tokens: FE.Token[],
-  tokenBalances: Record<string, { in_usd: string, in_tokens: string }>,
+  tokenBalances: Record<string, { in_usd: string, in_tokens: string | bigint }>,
   favoriteService: typeof FavoriteService,
   sortDirection: 'asc' | 'desc' = 'desc'
 ): Promise<FE.Token[]> {
@@ -21,7 +21,7 @@ export async function sortTokens(
       token,
       isFavorite: await favoriteService.isFavorite(token.canister_id),
       usdValue: tokenBalances[token.canister_id]?.in_usd || '0',
-      tokenBalance: tokenBalances[token.canister_id]?.in_tokens || '0'
+      tokenBalance: tokenBalances[token.canister_id]?.in_tokens?.toString() || '0'
     }))
   );
 

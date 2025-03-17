@@ -1,29 +1,90 @@
 <script lang="ts">
   import { fade, slide, fly } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { Plus, Minus, ChevronDown, ChevronUp, Droplets } from "lucide-svelte";
+  import {
+    formatToNonZeroDecimal,
+    calculateTokenUsdValue,
+  } from "$lib/utils/numberFormatUtils";
+  import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
+  import {
+    Plus,
+    Minus,
+    ChevronDown,
+    ChevronUp,
+    Droplets,
+    BarChart3,
+    ChartPie,
+  } from "lucide-svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { onMount } from "svelte";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
+  import { livePools } from "$lib/services/pools/poolStore";
   import { auth } from "$lib/services/auth";
-  
+
   export let searchQuery = "";
 
   let expandedPoolId: string | null = null;
   let selectedPool: any = null;
   let showUserPoolModal = false;
 
+  // Simple flag for initial load only
+  let hasCompletedInitialLoad = false;
+
+  // Cache for pools
+  let cachedPools: any[] = [];
+
+  // Update cache whenever we have valid data (not during loading)
+  $: if (
+    $currentUserPoolsStore.filteredPools.length > 0 &&
+    !$currentUserPoolsStore.loading
+  ) {
+    cachedPools = [...$currentUserPoolsStore.filteredPools];
+  }
+
+  // Always use cached pools after initial load if we have them
+  $: displayPools = !hasCompletedInitialLoad
+    ? $currentUserPoolsStore.filteredPools
+    : cachedPools.length > 0
+      ? cachedPools
+      : $currentUserPoolsStore.filteredPools;
+
+  // Only show loading indicator on initial load
+  $: showLoadingIndicator =
+    $currentUserPoolsStore.loading && !hasCompletedInitialLoad;
+
   // Subscribe to the store
-  $: if (searchQuery !== $userPoolListStore.searchQuery) {
-    userPoolListStore.setSearchQuery(searchQuery);
+  $: if (searchQuery !== $currentUserPoolsStore.searchQuery) {
+    currentUserPoolsStore.setSearchQuery(searchQuery);
   }
 
   onMount(async () => {
     if ($auth.isConnected) {
-      await userPoolListStore.initialize();
+      await loadUserPools();
     }
   });
+
+  // Function to load user pools - simpler now
+  async function loadUserPools() {
+    try {
+      await currentUserPoolsStore.initialize();
+      hasCompletedInitialLoad = true;
+    } catch (error) {
+      console.error("Error loading user pools:", error);
+    }
+  }
+
+  // Function to refresh pools without showing loading indicator
+  async function refreshUserPools() {
+    if (hasCompletedInitialLoad) {
+      try {
+        // Since refresh() doesn't exist, we can re-initialize the store
+        // after initial load is complete
+        await currentUserPoolsStore.initialize();
+      } catch (error) {
+        console.error("Error refreshing user pools:", error);
+      }
+    }
+  }
 
   function handlePoolItemClick(pool: any) {
     if (expandedPoolId === pool.id) {
@@ -49,36 +110,80 @@
     showUserPoolModal = false;
     selectedPool = null;
     // Refresh the pools after liquidity is removed
-    userPoolListStore.initialize();
+    refreshUserPools();
+  }
+
+  // Get pool share percentage
+  function getPoolSharePercentage(pool: any): string {
+    const livePool = $livePools.find(
+      (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1,
+    );
+
+    return calculateUserPoolPercentage(
+      livePool?.balance_0,
+      livePool?.balance_1,
+      pool.amount_0,
+      pool.amount_1,
+    );
+  }
+
+  // Get APY for a pool
+  function getPoolApy(pool: any): string {
+    const livePool = $livePools.find(
+      (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1,
+    );
+
+    return livePool?.rolling_24h_apy
+      ? formatToNonZeroDecimal(livePool.rolling_24h_apy)
+      : "0";
   }
 </script>
 
 <div class="mt-2">
-  {#if $userPoolListStore.loading}
+  {#if showLoadingIndicator}
     <div class="loading-state" in:fade={{ duration: 300 }}>
       <div class="loading-animation">
         <Droplets size={32} class="animate-pulse text-kong-primary" />
       </div>
       <p class="loading-text">Loading your liquidity positions...</p>
     </div>
-  {:else if $userPoolListStore.error}
+  {:else if $currentUserPoolsStore.error}
     <div class="error-state" in:fade={{ duration: 300 }}>
-      <svg xmlns="http://www.w3.org/2000/svg" class="error-icon" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="error-icon"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
+        <path
+          fill-rule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+          clip-rule="evenodd"
+        />
       </svg>
-      <p class="error-text">{$userPoolListStore.error}</p>
+      <p class="error-text">{$currentUserPoolsStore.error}</p>
+      <button class="retry-button" on:click={() => refreshUserPools()}>
+        Retry
+      </button>
     </div>
-  {:else if $userPoolListStore.filteredPools.length === 0 && !$userPoolListStore.loading}
+  {:else if displayPools.length === 0}
     <div class="empty-state" in:fade={{ duration: 300 }}>
       <div class="empty-icon-container">
         <Droplets size={40} class="empty-icon" />
       </div>
       {#if searchQuery}
-        <p class="empty-text">No pools found matching "<span class="search-term">{searchQuery}</span>"</p>
-        <p class="empty-subtext">Try a different search term or check your active positions</p>
+        <p class="empty-text">
+          No pools found matching "<span class="search-term">{searchQuery}</span
+          >"
+        </p>
+        <p class="empty-subtext">
+          Try a different search term or check your active positions
+        </p>
       {:else}
         <p class="empty-text">No active liquidity positions</p>
-        <p class="empty-subtext">Add liquidity to a pool to start earning fees</p>
+        <p class="empty-subtext">
+          Add liquidity to a pool to start earning fees
+        </p>
         <a href="/pools/add" class="empty-action-button">
           <Plus size={16} />
           <span>Add Liquidity</span>
@@ -87,8 +192,14 @@
     </div>
   {:else}
     <div class="pools-grid">
-      {#each $userPoolListStore.filteredPools as pool (pool.id)}
-        <div in:fly={{ y: 20, duration: 300, delay: 50 * $userPoolListStore.filteredPools.indexOf(pool) }}>
+      {#each displayPools as pool (pool.id)}
+        <div
+          in:fly={{
+            y: 20,
+            duration: 300,
+            delay: 50 * displayPools.indexOf(pool),
+          }}
+        >
           <div
             class="pool-card {expandedPoolId === pool.id ? 'expanded' : ''}"
             on:click={() => handlePoolItemClick(pool)}
@@ -99,34 +210,44 @@
             <!-- Card Header -->
             <div class="pool-card-header">
               <div class="pool-info">
-                <div class="token-images">
-                  <TokenImages
-                    tokens={[pool.token0, pool.token1]}
-                    size={40}
-                  />
-                </div>
-                <div class="pool-details">
-                  <h3 class="pool-name">
-                    {pool.symbol_0}/{pool.symbol_1}
-                  </h3>
-                  <div class="pool-balance">
-                    <span class="lp-amount">{Number(pool.balance).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 8,
-                    })}</span>
-                    <span class="lp-label">LP Tokens</span>
-                  </div>
-                </div>
-              </div>
-              <div class="pool-value">
-                <div class="usd-value">${formatToNonZeroDecimal(pool.usd_balance)}</div>
-                <button class="expand-button" aria-label="Toggle pool details">
+                <button
+                  class="absolute bottom-0 right-0 text-kong-text-primary/60"
+                  aria-label="Toggle pool details"
+                >
                   {#if expandedPoolId === pool.id}
                     <ChevronUp size={18} />
                   {:else}
                     <ChevronDown size={18} />
                   {/if}
                 </button>
+                <div class="token-images">
+                  <TokenImages tokens={[pool.token0, pool.token1]} size={40} />
+                </div>
+                <div class="pool-details">
+                  <h3 class="pool-name">
+                    {pool.symbol_0}/{pool.symbol_1}
+                  </h3>
+                  <div class="pool-stats">
+                    <div class="flex items-center gap-1">
+                      <ChartPie size={14} />
+                      <span class="stat-value"
+                        >{getPoolSharePercentage(pool)}% share</span
+                      >
+                    </div>
+                    <div class="h-3 w-px bg-white/10"></div>
+                    <div class="flex items-center gap-1 text-kong-text-accent-green">
+                      <BarChart3 size={14} />
+                      <span class="stat-value accent"
+                        >{getPoolApy(pool)}% APY</span
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div class="pool-value">
+                  <div class="usd-value">
+                    ${formatToNonZeroDecimal(pool.usd_balance)}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -139,25 +260,26 @@
                 <!-- Token Details -->
                 <div class="token-details">
                   <h4 class="section-title">Your Tokens</h4>
-                  {#each [
-                    { id: "token0", symbol: pool.symbol_0, amount: pool.amount_0, token: pool.token0 },
-                    { id: "token1", symbol: pool.symbol_1, amount: pool.amount_1, token: pool.token1 }
-                  ] as tokenInfo (tokenInfo.id)}
+                  {#each [{ id: "token0", symbol: pool.symbol_0, amount: pool.amount_0, token: pool.token0 }, { id: "token1", symbol: pool.symbol_1, amount: pool.amount_1, token: pool.token1 }] as tokenInfo (tokenInfo.id)}
                     <div class="token-card">
                       <div class="token-info">
-                        <TokenImages
-                          tokens={[tokenInfo.token]}
-                          size={28}
-                        />
+                        <TokenImages tokens={[tokenInfo.token]} size={28} />
                         <div class="token-text">
                           <p class="token-symbol">{tokenInfo.symbol}</p>
-                          <p class="token-amount">{Number(tokenInfo.amount).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 6,
-                          })}</p>
+                          <p
+                            class="token-amount truncate"
+                            title={formatToNonZeroDecimal(tokenInfo.amount)}
+                          >
+                            {formatToNonZeroDecimal(tokenInfo.amount)}
+                          </p>
                         </div>
                       </div>
-                      <div class="token-value">${formatToNonZeroDecimal(Number(tokenInfo.amount) * ((tokenInfo.token as any)?.price_usd || 1.5))}</div>
+                      <div class="token-value">
+                        ${calculateTokenUsdValue(
+                          tokenInfo.amount,
+                          tokenInfo.token,
+                        )}
+                      </div>
                     </div>
                   {/each}
                 </div>
@@ -167,26 +289,36 @@
                   <!-- Remove LP Button -->
                   <button
                     class="action-button remove-button"
-                    on:click|stopPropagation={(e) => handleRemoveLiquidity(pool, e)}
+                    on:click|stopPropagation={(e) =>
+                      handleRemoveLiquidity(pool, e)}
                   >
                     <Minus size={16} />
                     <span>Remove Liquidity</span>
                   </button>
 
-                     <!-- Add LP Button -->
-                     <button
-                     class="action-button add-button"
-                     on:click|stopPropagation={(e) => handleAddLiquidity(pool, e)}
-                   >
-                     <Plus size={16} />
-                     <span>Add Liquidity</span>
-                   </button>
+                  <!-- Add LP Button -->
+                  <button
+                    class="action-button add-button"
+                    on:click|stopPropagation={(e) =>
+                      handleAddLiquidity(pool, e)}
+                  >
+                    <Plus size={16} />
+                    <span>Add Liquidity</span>
+                  </button>
                 </div>
               </div>
             {/if}
           </div>
         </div>
       {/each}
+    </div>
+  {/if}
+
+  {#if $currentUserPoolsStore.loading && hasCompletedInitialLoad}
+    <div class="refresh-indicator">
+      <div class="loading-animation">
+        <Droplets size={18} class="animate-pulse text-kong-primary" />
+      </div>
     </div>
   {/if}
 </div>
@@ -216,11 +348,11 @@
   }
 
   .pool-card-header {
-    @apply flex items-center justify-between;
+    @apply flex items-center justify-center relative;
   }
 
   .pool-info {
-    @apply flex items-center gap-4;
+    @apply flex flex-col justify-center items-center gap-4 w-full;
   }
 
   .token-images {
@@ -232,23 +364,23 @@
   }
 
   .pool-name {
-    @apply text-lg font-semibold text-kong-text-primary mb-1;
+    @apply text-lg justify-center flex tracking-wide font-semibold text-kong-text-primary mb-2;
   }
 
-  .pool-balance {
-    @apply flex items-center gap-1.5;
+  .pool-stats {
+    @apply flex justify-center items-center gap-2 text-xs text-kong-text-primary/80;
   }
 
-  .lp-amount {
-    @apply text-sm font-medium text-kong-text-primary/90;
+  .stat-value {
+    @apply font-medium;
   }
 
-  .lp-label {
-    @apply text-xs text-kong-text-primary/50;
+  .stat-value.accent {
+    @apply text-kong-text-accent-green;
   }
 
   .pool-value {
-    @apply flex flex-col items-end gap-1;
+    @apply flex items-end gap-1;
   }
 
   .usd-value {
@@ -283,7 +415,7 @@
   }
 
   .token-text {
-    @apply flex flex-col;
+    @apply flex flex-col min-w-0 max-w-[70%];
   }
 
   .token-symbol {
@@ -291,7 +423,11 @@
   }
 
   .token-amount {
-    @apply text-xs text-kong-text-primary/60;
+    @apply text-xs text-kong-text-primary/60 overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
+  .truncate {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
   }
 
   .token-value {
@@ -344,6 +480,13 @@
     @apply text-base font-medium;
   }
 
+  .retry-button {
+    @apply px-4 py-2 bg-kong-bg-dark/40 text-kong-text-secondary text-xs font-medium rounded-lg
+           transition-all duration-200 hover:bg-kong-bg-dark/60 hover:text-kong-text-primary
+           border border-kong-border/40 hover:border-kong-accent-blue/30
+           active:scale-[0.98];
+  }
+
   /* Empty State */
   .empty-state {
     @apply flex flex-col items-center justify-center h-64 gap-4 text-center;
@@ -369,5 +512,10 @@
     @apply mt-4 flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg
            bg-kong-primary text-white font-medium
            hover:bg-kong-primary-hover transition-all duration-200;
+  }
+
+  .refresh-indicator {
+    @apply fixed bottom-4 right-4 bg-white/10 backdrop-blur-md
+           rounded-full p-2 shadow-lg z-30 border border-white/20;
   }
 </style>

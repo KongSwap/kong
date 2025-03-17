@@ -6,7 +6,7 @@
   import { fade } from "svelte/transition";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { onMount } from "svelte";
-  import { fetchTokens } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { tweened } from 'svelte/motion';
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
 
@@ -285,7 +285,7 @@
 
 <div
   bind:this={tickerElement}
-  class="w-full overflow-hidden border-b border-kong-text-primary/10 text-sm bg-kong-bg-dark/80 shadow-lg h-8 flex items-center"
+  class="w-full overflow-hidden text-sm token-ticker-bg token-ticker-border shadow-lg h-8 flex items-center"
 >
   <div class="ticker-container h-full flex items-center">
     <div
@@ -411,7 +411,7 @@
             quoteToken ?? hoveredToken :
             quoteToken ?? icpToken ?? hoveredToken  // Always try ckUSDT first, fallback to ICP
         }
-        price_change_24h={Number(hoveredToken.metrics?.price_change_24h || 0)}
+        price_change_24h={hoveredToken && hoveredToken.metrics ? Number(hoveredToken.metrics?.price_change_24h || 0) : 0}
         on:quoteTokenUsed={(event) => {
           actualQuoteToken = event.detail.symbol === "ckUSDT" ? "ckUSDT" : "ICP";
         }}
@@ -421,6 +421,32 @@
 {/if}
 
 <style scoped lang="postcss">
+  /* Add token ticker background class */
+  :global(.token-ticker-bg) {
+    background-color: rgb(var(--bg-dark) / calc(var(--token-ticker-bg-opacity, 80) / 100));
+  }
+
+  /* Token ticker border styles */
+  :global(.token-ticker-border) {
+    /* Default border style */
+    border-bottom: var(--token-ticker-border, 1px solid rgba(255, 255, 255, 0.1));
+  }
+
+  /* Windows 95 style border */
+  :global([style*="--token-ticker-border-style: win95"] .token-ticker-border) {
+    border: none;
+    box-shadow: inset 1px 1px 0px #FFFFFF, 
+                inset -1px -1px 0px #808080, 
+                inset 2px 2px 0px #DFDFDF, 
+                inset -2px -2px 0px #404040;
+  }
+
+  /* No border style */
+  :global([style*="--token-ticker-border-style: none"] .token-ticker-border) {
+    border: none;
+    box-shadow: none;
+  }
+
   .ticker-container {
     width: 100%;
     overflow: hidden;
@@ -532,7 +558,7 @@
   }
 
   .negative {
-    @apply text-kong-accent-red;
+    @apply text-kong-text-accent-red;
   }
 
   .neutral {

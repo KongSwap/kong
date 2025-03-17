@@ -4,8 +4,7 @@
   export let onClick: () => void;
   export let isActive = false;
   export let iconBackground = "bg-kong-text-primary/5";
-  export let comingSoon = false;
-  export let description = "";
+  export let badgeCount = 0;
 </script>
 
 <button
@@ -14,8 +13,11 @@
   class:disabled={comingSoon}
   on:click={onClick}
 >
-  <div class="mobile-nav-btn-icon {iconBackground}">
+  <div class="mobile-nav-btn-icon {iconBackground} relative">
     <svelte:component this={icon} size={18} />
+    {#if badgeCount > 0}
+      <div class="badge">{badgeCount}</div>
+    {/if}
   </div>
   <div class="mobile-nav-btn-content">
     <div class="flex flex-col items-start">
@@ -47,8 +49,8 @@
   .mobile-nav-btn-content {
     @apply flex items-center justify-between flex-1;
   }
-
-  .coming-soon-badge {
-    @apply text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide;
+  
+  .badge {
+    @apply absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center;
   }
 </style> 

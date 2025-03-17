@@ -18,7 +18,6 @@
 	export let token: StatsToken;
 	export let isConnected: boolean;
 	export let isFavorite: boolean;
-	export let priceClass: string;
 	export let trendClass: string;
 	export let showHotIcon = false;
 

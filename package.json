@@ -25,8 +25,8 @@
     "@dfinity/cmc": "^5.0.2",
     "@dfinity/ic-management": "^6.0.5",
     "@dfinity/identity": "2.3.0",
-    "@dfinity/ledger-icp": "2.6.9",
-    "@dfinity/nns": "8.3.0",
+    "@dfinity/ledger-icp": "2.6.10",
+    "@dfinity/nns": "8.3.1",
     "@dfinity/principal": "2.3.0",
     "@dfinity/utils": "2.10.1",
     "pako": "^2.1.0"

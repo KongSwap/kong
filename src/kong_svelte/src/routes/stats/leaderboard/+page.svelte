@@ -1,0 +1,229 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
+  import Panel from '$lib/components/common/Panel.svelte';
+  import { Trophy, BarChart3, Users, TrendingUp, Activity } from 'lucide-svelte';
+  
+  // Import the components
+  import LeaderboardTraderCard from '$lib/components/stats/LeaderboardTraderCard.svelte';
+  import LoadingState from '$lib/components/common/LoadingState.svelte';
+  import ErrorState from '$lib/components/common/ErrorState.svelte';
+  import EmptyState from '$lib/components/common/EmptyState.svelte';
+  import PageHeader from '$lib/components/common/PageHeader.svelte';
+  
+  // Import utility functions
+  import { formatVolume, formatNumber } from '$lib/utils/formatters';
+  
+  // Import the store
+  import { 
+    leaderboardStore, 
+    isLoading, 
+    error, 
+    leaderboardData, 
+    totalVolume, 
+    totalTraders 
+  } from '$lib/stores/leaderboardStore';
+  import type { Period } from '$lib/types';
+  
+  // Handle period change
+  function handlePeriodChange(period: Period) {
+    leaderboardStore.setPeriod(period);
+  }
+  
+  // Toggle row expansion
+  function toggleRowExpansion(index: number) {
+    leaderboardStore.toggleRowExpansion(index);
+  }
+  
+  // Subscribe to the store to get all state
+  $: selectedPeriod = $leaderboardStore.selectedPeriod;
+  $: expandedRowIndex = $leaderboardStore.expandedRowIndex;
+  $: tradedTokens = $leaderboardStore.tradedTokens;
+  $: loadingTokens = $leaderboardStore.loadingTokens;
+  $: tokenErrors = $leaderboardStore.tokenErrors;
+  $: userDetails = $leaderboardStore.userDetails;
+  $: loadingUserDetails = $leaderboardStore.loadingUserDetails;
+  
+  onMount(() => {
+    if (browser) {
+      leaderboardStore.loadLeaderboard(selectedPeriod);
+    }
+  });
+</script>
+
+<svelte:head>
+  <title>Trading Leaderboard - KongSwap</title>
+</svelte:head>
+
+<PageHeader
+  title="Volume Leaderboard"
+  description="Discover the top traders on KongSwap by trading volume. Leading traders are ranked based on their total trading activity."
+  icon={Trophy}
+  stats={[
+    { label: "Total Volume", value: $isLoading ? "Loading..." : formatVolume($totalVolume), icon: TrendingUp },
+    { label: "Active Traders", value: $isLoading ? "Loading..." : formatNumber($totalTraders), icon: Users },
+    { label: "Time Period", value: selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1), icon: Activity }
+  ]}
+/>
+
+<div class="max-w-[1300px] mx-auto pt-4">
+  <!-- Period Selector - Redesigned -->
+  <div class="flex justify-end mb-8 px-4">
+    <div class="inline-flex p-0.5 bg-kong-bg-dark rounded-lg shadow-sm border border-kong-border overflow-hidden">
+      <button 
+        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'day' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        on:click={() => handlePeriodChange('day')}
+        aria-label="Show daily leaderboard"
+      >
+        <Activity class="w-3.5 h-3.5" />
+        <span>Day</span>
+      </button>
+      <button 
+        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'week' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        on:click={() => handlePeriodChange('week')}
+        aria-label="Show weekly leaderboard"
+      >
+        <Activity class="w-3.5 h-3.5" />
+        <span>Week</span>
+      </button>
+      <button 
+        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'month' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        on:click={() => handlePeriodChange('month')}
+        aria-label="Show monthly leaderboard"
+      >
+        <Activity class="w-3.5 h-3.5" />
+        <span>Month</span>
+      </button>
+    </div>
+  </div>
+  
+  <div class="rounded-xl overflow-hidden px-4">
+    {#if $isLoading}
+      <LoadingState message="Loading leaderboard data..." size="large" />
+    {:else if $error}
+      <ErrorState message={$error} size="large" retryHandler={() => leaderboardStore.loadLeaderboard(selectedPeriod)} />
+    {:else if $leaderboardData.length === 0}
+      <EmptyState 
+        message="No data available for this period" 
+        subMessage="Try selecting a different time period" 
+        icon={BarChart3} 
+        size="large"
+      />
+    {:else}
+      <div class="pb-6 mb-4">
+        <!-- Top 3 winners section heading -->
+        <div class="flex items-center justify-center mb-8">
+          <div class="px-4 text-kong-text-primary font-medium flex items-center">
+            <Trophy class="w-5 h-5 mr-2 text-yellow-400" />
+            <span>Top Traders</span>
+          </div>
+        </div>
+        
+        <!-- Champion (Rank #1) -->
+        {#if $leaderboardData.length > 0}
+          <div class="mb-12 flex justify-center">
+            <LeaderboardTraderCard
+              user={$leaderboardData[0]}
+              rank={1}
+              expanded={expandedRowIndex === 0}
+              tradedTokens={tradedTokens[0]}
+              loadingTokens={loadingTokens[0] || false}
+              tokenError={tokenErrors[0] || null}
+              userDetails={userDetails[0]}
+              loadingUserDetails={loadingUserDetails[0] || false}
+              width="500px"
+              onClick={() => toggleRowExpansion(0)}
+            />
+          </div>
+        {/if}
+
+        <!-- Runners-up (Ranks #2-3) -->
+        {#if $leaderboardData.length > 2}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12 justify-items-center">
+            {#each $leaderboardData.slice(1, 3) as user, sliceIndex}
+              {@const index = sliceIndex + 1}
+              <LeaderboardTraderCard
+                user={user}
+                rank={index + 1}
+                expanded={expandedRowIndex === index}
+                tradedTokens={tradedTokens[index]}
+                loadingTokens={loadingTokens[index] || false}
+                tokenError={tokenErrors[index] || null}
+                userDetails={userDetails[index]}
+                loadingUserDetails={loadingUserDetails[index] || false}
+                width="500px"
+                onClick={() => toggleRowExpansion(index)}
+              />
+            {/each}
+          </div>
+        {/if}
+
+        <!-- Other traders (Rank #4 and below) -->
+        {#if $leaderboardData.length > 3}
+          <div class="flex items-center mb-2 mt-10">
+            <div class="pl-1 text-kong-text-primary font-medium flex items-center">
+              <BarChart3 class="w-5 h-5 mr-2 text-kong-text-secondary" />
+              <span>Other Top Traders</span>
+            </div>
+          </div>
+          
+          <Panel 
+            variant="transparent" 
+            type="secondary" 
+            width="100%" 
+            height="auto" 
+            className="overflow-hidden border border-kong-border shadow-lg animate-fadeIn animation-delay-500" 
+            unpadded={true}
+          >
+            <table class="w-full table-auto">
+              <thead class="bg-kong-surface-light border-b border-kong-border">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider w-16">Rank</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Trader</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Volume</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Swaps</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-kong-border">
+                {#each $leaderboardData.slice(3) as user, sliceIndex}
+                  {@const index = sliceIndex + 3}
+                  <LeaderboardTraderCard
+                    user={user}
+                    rank={index + 1}
+                    expanded={expandedRowIndex === index}
+                    tradedTokens={tradedTokens[index]}
+                    loadingTokens={loadingTokens[index] || false}
+                    tokenError={tokenErrors[index] || null}
+                    userDetails={userDetails[index]}
+                    loadingUserDetails={loadingUserDetails[index] || false}
+                    onClick={() => toggleRowExpansion(index)}
+                  />
+                {/each}
+              </tbody>
+            </table>
+          </Panel>
+        {/if}
+      </div>
+    {/if}
+  </div>
+</div>
+
+<style>
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* Add glow effect for top traders */
+  :global(.border-yellow-400) {
+    box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
+  }
+  
+  :global(.border-amber-600) {
+    box-shadow: 0 0 12px rgba(217, 119, 6, 0.25);
+  }
+  
+  :global(.border-gray-300) {
+    box-shadow: 0 0 12px rgba(209, 213, 219, 0.25);
+  }
+</style>

@@ -1,6 +1,5 @@
 // src/lib/services/swap/SwapService.ts
 import { toastStore } from "$lib/stores/toastStore";
-import { get } from "svelte/store";
 import { Principal } from "@dfinity/principal";
 import BigNumber from "bignumber.js";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
@@ -9,7 +8,6 @@ import { auth, canisterIDLs } from "$lib/services/auth";
 import { KONG_BACKEND_CANISTER_ID, KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { requireWalletConnection } from "$lib/services/auth";
 import { SwapMonitor } from "./SwapMonitor";
-import { userTokens } from "$lib/stores/userTokens";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { getWalletIdentity } from "$lib/utils/wallet";
 
@@ -245,7 +243,7 @@ export class SwapService {
     pay_tx_id?: { BlockIndex: number }[];
   }): Promise<BE.SwapAsyncResponse> {
     try {
-      const actor = await auth.pnp.getActor(
+      const actor = auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
         {
@@ -306,10 +304,7 @@ export class SwapService {
       }
 
       requireWalletConnection();
-      const tokens = await fetchTokensByCanisterId([params.payToken.canister_id, params.receiveToken.canister_id]);
-      const payToken = tokens.find(
-        (t) => t.canister_id === params.payToken.canister_id,
-      );
+      const payToken = params.payToken
 
       if (!payToken) {
         console.error("Pay token not found:", params.payToken);
@@ -321,9 +316,7 @@ export class SwapService {
         payToken.decimals,
       );
 
-      const receiveToken = tokens.find(
-        (t) => t.canister_id === params.receiveToken.canister_id,
-      );
+      const receiveToken = params.receiveToken
 
       if (!receiveToken) {
         console.error("Receive token not found:", params.receiveToken);

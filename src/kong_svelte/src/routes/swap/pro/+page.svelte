@@ -29,4 +29,9 @@
   }
 </script>
 
+<svelte:head>
+  <title>Pro Swap - KongSwap</title>
+</svelte:head>
+
+
 <SwapPro initialFromToken={fromToken} initialToToken={toToken} currentMode="pro" /> 

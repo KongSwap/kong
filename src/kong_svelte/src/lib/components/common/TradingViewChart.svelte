@@ -1,313 +1,499 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { writable } from "svelte/store";
-  import { KongDatafeed } from "$lib/services/tradingview/datafeed";
-  import { loadTradingViewLibrary } from "$lib/services/tradingview/widget";
-  import { getChartConfig } from "$lib/services/tradingview/config";
-  import { fetchChartData } from "$lib/services/indexer/api";
+  import { KongDatafeed } from "$lib/config/tradingview/datafeed.config";
+  import { loadTradingViewLibrary } from "$lib/config/tradingview/widget.config";
+  import { getChartConfig } from "$lib/config/tradingview/chart.config";
+  import { fetchChartData } from "$lib/api/transactions";
   import { livePools } from "$lib/services/pools/poolStore";
   import { debounce } from "lodash-es";
+  import { themeStore } from "$lib/stores/themeStore";
+  import { updateTradingViewPriceScale, findBestPoolForTokens } from "$lib/utils/statsUtils";
 
-  // Convert props to runes syntax
+  // Props
   const props = $props<{
     poolId?: number;
     symbol?: string;
     quoteToken: FE.Token;
     baseToken: FE.Token;
   }>();
-
-  // Local state
+  
+  // DOM elements and chart state
   let chartContainer: HTMLElement;
-  let isLoading = $state(true);
-  let hasNoData = $state(false);
-  let selectedPoolId: number | undefined = $state(undefined);
-  let updateTimeout: NodeJS.Timeout;
-  let routingPath = $state<string[]>([]);
-  let previousQuoteTokenId = $state<string | undefined>(undefined);
-  let previousBaseTokenId = $state<string | undefined>(undefined);
   let chartWrapper: HTMLElement;
-
-  // Create a store for the chart
   const chartStore = writable<any>(null);
-
-  // Subscribe to store changes to update our local variable
   let chart: any;
-  chartStore.subscribe((value) => {
-    chart = value;
+  chartStore.subscribe(value => chart = value);
+  
+  // Component state
+  let state = $state({
+    isLoading: true,
+    hasNoData: false,
+    isMounted: false,
+    isFetchingData: false,
+    isInitializingChart: false,
+    selectedPoolId: props.poolId,
+    currentTheme: $themeStore,
+    currentPrice: 0,
+    selectedPool: undefined as BE.Pool | undefined,
+    routingPath: [] as string[],
+    previousTokenIds: {
+      quote: undefined as string | undefined,
+      base: undefined as string | undefined
+    },
+    pools: [] as BE.Pool[]
   });
+  
+  // Error handler for TradingView errors
+  const handleTradingViewError = (e: ErrorEvent) => {
+    if (e.message?.includes('split is not a function')) {
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+  };
 
-  // Watch for pool store changes and type the pools array
-  const pools = $derived(($livePools || []) as BE.Pool[]);
+  // Function to update TradingView CSS variables when theme changes
+  const updateTradingViewTheme = () => {
+    if (!chart || !chart.setCSSCustomProperty) return;
+    
+    // Get computed CSS values from the document
+    const getThemeColor = (cssVar: string, fallback: string): string => {
+      if (typeof window === 'undefined') return fallback;
+      return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || fallback;
+    };
 
-  // Update selected pool and routing path when pools or selectedPoolId changes
-  const selectedPool = $derived(pools.find((p) => Number(p.pool_id) === selectedPoolId) as BE.Pool | undefined);
+    // Get RGB values and convert to hex
+    const rgbToHex = (rgbVar: string, fallback: string): string => {
+      const rgb = getThemeColor(rgbVar, '').split(' ').map(Number);
+      if (rgb.length === 3 && !rgb.some(isNaN)) {
+        return `#${rgb.map(x => x.toString(16).padStart(2, '0')).join('')}`;
+      }
+      return fallback;
+    };
 
-  // Update routing path when selected pool changes
+    // Core theme colors
+    const bgDarkColor = rgbToHex('--bg-dark', '#000000');
+    const bgLightColor = rgbToHex('--bg-light', '#111111');
+    const borderColor = rgbToHex('--border', '#333333');
+    const borderLightColor = rgbToHex('--border-light', '#444444');
+    const textPrimaryColor = rgbToHex('--text-primary', '#FFFFFF');
+    const textSecondaryColor = rgbToHex('--text-secondary', '#AAAAAA');
+    const accentBlueColor = rgbToHex('--accent-blue', '#00A7FF');
+    const accentGreenColor = rgbToHex('--accent-green', '#05EC86');
+    const accentRedColor = rgbToHex('--accent-red', '#FF4545');
+
+    // Update TradingView CSS custom properties
+    try {
+      chart.setCSSCustomProperty('--tv-color-platform-background', bgLightColor);
+      chart.setCSSCustomProperty('--tv-color-pane-background', bgDarkColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-button-background-hover', bgLightColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-button-background-expanded', borderColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-button-background-active', borderLightColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-button-background-active-hover', borderLightColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-button-text', textSecondaryColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-button-text-hover', textPrimaryColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-button-text-active', textPrimaryColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-button-text-active-hover', textPrimaryColor);
+      chart.setCSSCustomProperty('--tv-color-item-active-text', textPrimaryColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-toggle-button-background-active', accentBlueColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-toggle-button-background-active-hover', accentBlueColor);
+      chart.setCSSCustomProperty('--tv-color-toolbar-divider-background', borderColor);
+      chart.setCSSCustomProperty('--tv-color-popup-background', bgLightColor);
+      chart.setCSSCustomProperty('--tv-color-popup-element-text', textSecondaryColor);
+      chart.setCSSCustomProperty('--tv-color-popup-element-text-hover', textPrimaryColor);
+      chart.setCSSCustomProperty('--tv-color-popup-element-background-hover', borderColor);
+      chart.setCSSCustomProperty('--tv-color-popup-element-divider-background', borderColor);
+      chart.setCSSCustomProperty('--tv-color-popup-element-secondary-text', textSecondaryColor);
+      chart.setCSSCustomProperty('--tv-color-buy-button', accentGreenColor);
+      chart.setCSSCustomProperty('--tv-color-sell-button', accentRedColor);
+      chart.setCSSCustomProperty('--themed-color-buy-btn-chart', accentGreenColor);
+      chart.setCSSCustomProperty('--themed-color-sell-btn-chart', accentRedColor);
+    } catch (e) {
+      console.warn('[Chart] Error updating CSS properties:', e);
+    }
+  };
+
+  // Effects
   $effect(() => {
-    if (selectedPool) {
-      routingPath = [selectedPool.symbol_0, selectedPool.symbol_1];
+    state.pools = ($livePools || []) as BE.Pool[];
+  });
+  
+  $effect(() => {
+    state.currentTheme = $themeStore;
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', state.currentTheme);
+      document.body.setAttribute('data-theme', state.currentTheme);
+      
+      // Update TradingView theme when our theme changes
+      if (chart && chart._ready) {
+        updateTradingViewTheme();
+      }
     }
   });
-
-  // Watch for token or pool changes and reinitialize chart
+  
+  // Update selected pool and routing path
   $effect(() => {
-    const currentFromId = props.quoteToken?.canister_id;
-    const currentToId = props.baseToken?.canister_id;
-    const hasTokenChange =
-      currentFromId !== previousQuoteTokenId ||
-      currentToId !== previousBaseTokenId;
-    const hasPoolChange = props.poolId !== selectedPoolId;
+    state.selectedPool = state.pools.find(p => Number(p.pool_id) === state.selectedPoolId);
+    state.routingPath = state.selectedPool ? [state.selectedPool.symbol_0, state.selectedPool.symbol_1] : [];
+  });
+  
+  // Update price from selected pool
+  $effect(() => {
+    const pool = $livePools.find(p => p.pool_id === state.selectedPoolId);
+    state.currentPrice = pool?.price || 0;
+    
+    // Also update chart price when current price changes
+    if (chart?.datafeed && state.currentPrice) {
+      chart.datafeed.updateCurrentPrice(state.currentPrice);
+      pool?.price && updateTradingViewPriceScale(chart, pool);
+    }
+  });
+  
+  // Reinitialize chart on token/pool changes
+  $effect(() => {
+    if (!state.isMounted) return;
+    
+    const currentQuoteId = props.quoteToken?.canister_id;
+    const currentBaseId = props.baseToken?.canister_id;
+    const hasTokenChange = 
+      currentQuoteId !== state.previousTokenIds.quote || 
+      currentBaseId !== state.previousTokenIds.base;
+    const hasPoolChange = props.poolId !== state.selectedPoolId;
 
-    if (
-      (hasTokenChange || hasPoolChange) &&
-      ((props.quoteToken && props.baseToken) || props.poolId) &&
-      (!chart || (chart && hasTokenChange))
-    ) {
-      previousQuoteTokenId = currentFromId;
-      previousBaseTokenId = currentToId;
+    if ((hasTokenChange || hasPoolChange) && 
+        ((props.quoteToken && props.baseToken) || props.poolId) &&
+        (!chart || (chart && hasTokenChange))) {
+      
+      state.previousTokenIds = { quote: currentQuoteId, base: currentBaseId };
+      state.selectedPoolId = props.poolId;
 
       if (chart) {
         chart.remove();
         chartStore.set(null);
       }
+      
       debouncedFetchData();
     }
   });
 
-  onDestroy(() => {
-    if (updateTimeout) {
-      clearTimeout(updateTimeout);
-    }
-    if (chart) {
-      try {
-        chart.remove();
-        chartStore.set(null);
-      } catch (e) {
-        console.warn("Error cleaning up chart:", e);
-      }
-    }
-    debouncedFetchData.cancel();
-  });
+  // Get dimensions for chart
+  const checkDimensions = () => 
+    new Promise<{width: number, height: number}>((resolve) => {
+      const check = () => {
+        chartWrapper?.offsetHeight; // Force reflow
+        const width = chartWrapper?.clientWidth;
+        const height = chartWrapper?.clientHeight;
+        
+        width && height ? resolve({ width, height }) : requestAnimationFrame(check);
+      };
+      check();
+    });
 
-  // Add the derived currentPrice
-  const currentPrice = $derived(() => {
-    const pool = $livePools.find(p => p.pool_id === selectedPoolId);
-    return pool?.price || 1000;
-  });
-
-  // Add the price update effect
-  $effect(() => {
-    if (chart?.datafeed && currentPrice) {
-      chart.datafeed.updateCurrentPrice(currentPrice);
-    }
-  });
-
+  // Initialize chart
   const initChart = async () => {
-    if (!chartContainer || !props.quoteToken?.token_id || !props.baseToken?.token_id) {
-      console.log('Missing required props for chart initialization');
-      isLoading = false;
+    if (state.isInitializingChart || !chartContainer || 
+        !props.quoteToken?.token_id || !props.baseToken?.token_id) {
+      state.isLoading = false;
+      state.isInitializingChart = false;
       return;
     }
-
-    // Wait for next tick and check dimensions
-    const checkDimensions = () => {
-      return new Promise((resolve) => {
-        const check = () => {
-          // Force a reflow to ensure dimensions are calculated
-          chartWrapper?.offsetHeight;
-          const width = chartWrapper?.clientWidth;
-          const height = chartWrapper?.clientHeight;
-          
-          if (width && height) {
-            resolve({ width, height });
-          } else {
-            requestAnimationFrame(check);
-          }
-        };
-        check();
-      });
-    };
-
+    
+    state.isInitializingChart = true;
+    
     try {
-      const dimensions: { width: number; height: number } = await checkDimensions() as { width: number; height: number };
+      const dimensions = await checkDimensions();
       await loadTradingViewLibrary();
-      const isMobile = window.innerWidth < 768;
       
-      // Get current price from poolStore
-      const currentPrice = $livePools.find(p => p.pool_id === selectedPoolId)?.price || 1000;
+      // Get current price and configure chart
+      const pool = $livePools.find(p => p.pool_id === state.selectedPoolId);
+      const price = pool?.price || 1000;
+      const quoteDecimals = props.quoteToken.decimals || 8;
+      const baseDecimals = props.baseToken.decimals || 8;
 
-      // Pass current price to datafeed
+      // Create datafeed
       const datafeed = new KongDatafeed(
         props.quoteToken.token_id, 
         props.baseToken.token_id,
-        currentPrice
+        price, quoteDecimals, baseDecimals
       );
 
-      const chartConfig = getChartConfig({
+      // Add error handler and create widget
+      window.removeEventListener('error', handleTradingViewError);
+      window.addEventListener('error', handleTradingViewError, true);
+
+      const widget = new window.TradingView.widget(getChartConfig({
         symbol: props.symbol || `${props.baseToken.symbol}/${props.quoteToken.symbol}`,
         datafeed,
         container: chartContainer,
         containerWidth: dimensions.width,
         containerHeight: dimensions.height,
-        isMobile,
-        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
-      });
-
-      const widget = new window.TradingView.widget(chartConfig);
+        isMobile: window.innerWidth < 768,
+        currentPrice: price,
+        theme: state.currentTheme,
+        quoteTokenDecimals: quoteDecimals,
+        baseTokenDecimals: baseDecimals
+      }));
       
-      // Store datafeed reference
       widget.datafeed = datafeed;
 
       widget.onChartReady(() => {
         widget._ready = true;
         chartStore.set(widget);
-        isLoading = false;
-        hasNoData = false;
+        state.isLoading = false;
+        state.hasNoData = false;
+        state.isInitializingChart = false;
+
+        // Update price scale after chart is ready
+        setTimeout(() => {
+          pool && updateTradingViewPriceScale(widget, pool);
+          // Also update theme CSS properties once chart is ready
+          updateTradingViewTheme();
+        }, 500);
       });
 
-      widget.onError = (error: string) => {
-        console.error("Error creating chart:", error);
-        isLoading = false;
+      widget.onError = () => {
+        state.isLoading = state.isInitializingChart = false;
       };
     } catch (error) {
-      console.error("Failed to initialize chart:", error);
-      isLoading = false;
+      console.error("[Chart] Failed to initialize:", error);
+      state.isLoading = state.isInitializingChart = false;
     }
   };
 
-  // Get the best pool for the token pair
-  async function getBestPool() {
-    if (!props.quoteToken || !props.baseToken) {
-      return selectedPoolId ? { pool_id: selectedPoolId } : null;
-    }
-
-    try {
-      const directPool = pools.find(
-        (p) =>
-          (p.address_0 === props.quoteToken.canister_id &&
-            p.address_1 === props.baseToken.canister_id) ||
-          (p.address_1 === props.quoteToken.canister_id &&
-            p.address_0 === props.baseToken.canister_id),
-      );
-
-      if (directPool) {
-        selectedPoolId = Number(directPool.pool_id);
-        return { pool_id: selectedPoolId };
-      }
-
-      const relatedPool = pools.find(
-        (p) =>
-          p.address_0 === props.quoteToken.canister_id ||
-          p.address_1 === props.quoteToken.canister_id ||
-          p.address_0 === props.baseToken.canister_id ||
-          p.address_1 === props.baseToken.canister_id,
-      );
-
-      if (relatedPool) {
-        selectedPoolId = Number(relatedPool.pool_id);
-        return { pool_id: selectedPoolId };
-      }
-
-      selectedPoolId = undefined;
-      return null;
-    } catch (error) {
-      console.error("Failed to get pool info:", error);
-      selectedPoolId = undefined;
-      return null;
-    }
-  }
-
+  // Fetch chart data
   const debouncedFetchData = debounce(async () => {
+    if (state.isFetchingData) return;
+    state.isFetchingData = true;
+    console.log("[Chart] Starting data fetch process", {
+      quoteToken: props.quoteToken?.symbol,
+      baseToken: props.baseToken?.symbol,
+      poolId: state.selectedPoolId,
+      poolsAvailable: state.pools.length
+    });
+    
     try {
-      isLoading = true;
-      hasNoData = false;
+      state.isLoading = true;
+      state.hasNoData = false;
 
-      const bestPool =
-        props.quoteToken && props.baseToken
-          ? await getBestPool()
-          : { pool_id: selectedPoolId };
+      // Make sure we have pools data before trying to find the best pool
+      if (state.pools.length === 0) {
+        // Wait briefly for pools to load if they're empty
+        if ($livePools.length === 0) {
+          console.log("[Chart] Waiting for pools data to be available...");
+          await new Promise(resolve => setTimeout(resolve, 500));
+          // Update pools from store after waiting
+          state.pools = ($livePools || []) as BE.Pool[];
+        } else {
+          state.pools = ($livePools || []) as BE.Pool[];
+        }
+        console.log("[Chart] Pools loaded:", state.pools.length);
+      }
+
+      // Get best pool
+      let bestPool: { pool_id: number } | null = null;
+      
+      if (props.quoteToken && props.baseToken) {
+        console.log("[Chart] Finding best pool for tokens", {
+          quoteToken: props.quoteToken.symbol,
+          baseToken: props.baseToken.symbol
+        });
+        
+        bestPool = findBestPoolForTokens(
+          props.quoteToken, 
+          props.baseToken, 
+          state.pools, 
+          state.selectedPoolId
+        );
+        
+        if (bestPool?.pool_id) {
+          console.log("[Chart] Best pool found:", bestPool.pool_id);
+          state.selectedPoolId = bestPool.pool_id;
+        }
+      } else if (state.selectedPoolId) {
+        console.log("[Chart] Using selected pool:", state.selectedPoolId);
+        bestPool = { pool_id: state.selectedPoolId };
+      }
 
       if (!bestPool?.pool_id) {
-        hasNoData = true;
-        isLoading = false;
+        console.warn("[Chart] No valid pool found for tokens", {
+          quoteToken: props.quoteToken?.token_id,
+          baseToken: props.baseToken?.token_id,
+          availablePools: state.pools.length
+        });
+        state.hasNoData = true;
+        state.isLoading = false;
+        state.isFetchingData = false;
         return;
       }
 
-      selectedPoolId = bestPool.pool_id;
+      // Fetch candle data
+      state.selectedPoolId = bestPool.pool_id;
       const now = Math.floor(Date.now() / 1000);
-      const startTime = now - 90 * 24 * 60 * 60;
-
-      const payTokenId = props.quoteToken?.token_id || 1;
-      const receiveTokenId = props.baseToken?.token_id || 10;
-
+      const startTime = now - 90 * 24 * 60 * 60; // 90 days
+      
+      console.log("[Chart] Fetching candle data for pool", {
+        poolId: bestPool.pool_id,
+        quoteTokenId: props.quoteToken?.token_id || 1,
+        baseTokenId: props.baseToken?.token_id || 10,
+        startTime: new Date(startTime * 1000).toISOString(),
+        endTime: new Date(now * 1000).toISOString()
+      });
+      
       const candleData = await fetchChartData(
-        payTokenId,
-        receiveTokenId,
-        startTime,
-        now,
-        "60",
+        props.quoteToken?.token_id || 1,
+        props.baseToken?.token_id || 10,
+        startTime, now, "60" // 1 hour candles
       );
 
-      if (candleData.length === 0) {
-        hasNoData = true;
-        if (chart) {
+      // Handle no data case
+      if (!candleData || candleData.length === 0) {
+        console.warn("[Chart] No candle data returned for pool", bestPool.pool_id);
+        state.hasNoData = true;
+        if (chart?.remove) {
           chart.remove();
           chartStore.set(null);
         }
       } else {
-        hasNoData = false;
+        console.log(`[Chart] Received ${candleData.length} candles of data`);
+        state.hasNoData = false;
         if (!chart) {
           await initChart();
         }
       }
     } catch (error) {
-      console.error("Failed to fetch chart data:", error);
-      hasNoData = true;
-      if (chart) {
+      console.error("[Chart] Failed to fetch data:", error);
+      state.hasNoData = true;
+      if (chart?.remove) {
         chart.remove();
         chartStore.set(null);
       }
     } finally {
-      isLoading = false;
+      state.isLoading = false;
+      state.isFetchingData = false;
     }
   }, 300);
 
-  let initObserver: ResizeObserver;
-  let resizeObserver: ResizeObserver;
-
+  // Lifecycle hooks
   onMount(() => {
-    // Initial data fetch when component mounts
-    if ((props.quoteToken && props.baseToken) || props.poolId) {
-      debouncedFetchData();
+    state.isMounted = true;
+    
+    let themeObserver: MutationObserver | undefined;
+    
+    // Set up a MutationObserver to watch for theme changes on the document element
+    if (typeof window !== 'undefined') {
+      themeObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && 
+              (mutation.attributeName === 'data-theme' || 
+               mutation.attributeName === 'class')) {
+            // Theme changed externally, update chart theme
+            if (chart && chart._ready) {
+              updateTradingViewTheme();
+            }
+          }
+        });
+      });
+      
+      // Start observing the document element for attribute changes
+      themeObserver.observe(document.documentElement, { 
+        attributes: true, 
+        attributeFilter: ['data-theme', 'class'] 
+      });
     }
-
-
+    
+    // Function to ensure pools are loaded
+    const ensurePoolsLoaded = async () => {
+      // Ensure we have initial data and wait for pools to load if needed
+      if (state.pools.length === 0 && $livePools.length === 0) {
+        // Wait for pools data to be available 
+        await new Promise<boolean>(resolve => {
+          const unsubscribe = livePools.subscribe(pools => {
+            if (pools && pools.length > 0) {
+              state.pools = pools as BE.Pool[];
+              unsubscribe();
+              resolve(true);
+            }
+          });
+          
+          // Also set a timeout in case pools never load
+          setTimeout(() => {
+            unsubscribe();
+            resolve(false);
+          }, 5000);
+        });
+      } else {
+        state.pools = ($livePools || []) as BE.Pool[];
+      }
+    };
+    
+    // Initialize the chart with data
+    const initializeChart = async () => {
+      await ensurePoolsLoaded();
+      
+      if ((props.quoteToken && props.baseToken) || props.poolId) {
+        state.selectedPoolId = props.poolId;
+        debouncedFetchData();
+      }
+    };
+    
+    // Call initialization
+    initializeChart();
+    
+    // Cleanup function
     return () => {
-      if (chart) {
+      if (themeObserver) {
+        themeObserver.disconnect();
+      }
+    };
+  });
+
+  onDestroy(() => {
+    if (!chart) return;
+    
+    try {
+      window.removeEventListener('error', handleTradingViewError);
+      
+      if (chart._ready && chart.chart) {
         try {
+          const chartObj = chart.chart();
+          if (chartObj?.clearUndoHistory) {
+            chartObj.clearUndoHistory();
+          }
+          
+          setTimeout(() => {
+            try { 
+              chart.remove(); 
+            } catch (e) { 
+              console.warn("[Chart] Error during removal:", e); 
+            } finally { 
+              chartStore.set(null); 
+            }
+          }, 10);
+        } catch (e) {
           chart.remove();
           chartStore.set(null);
-        } catch (e) {
-          console.warn("Error cleaning up chart:", e);
         }
+      } else {
+        chart.remove();
+        chartStore.set(null);
       }
-      debouncedFetchData.cancel();
-    };
+    } catch (e) {
+      console.warn("[Chart] Error during cleanup:", e);
+      chartStore.set(null);
+    }
+    
+    debouncedFetchData.cancel();
   });
 </script>
 
 <div class="chart-wrapper h-full" bind:this={chartWrapper}>
-  <div
-    class="chart-container h-full w-full relative"
-    bind:this={chartContainer}
-  >
-    {#if hasNoData}
-      <div
-        class="absolute inset-0 bg-transparent flex flex-col items-center justify-center p-4 text-center"
-      >
+  <div class="chart-container h-full w-full relative" bind:this={chartContainer}>
+    {#if state.hasNoData}
+      <div class="absolute inset-0 bg-transparent flex flex-col items-center justify-center p-4 text-center">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="h-12 w-12 mb-3 text-gray-500"
+          class="h-12 w-12 mb-3 text-kong-text-secondary"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -319,19 +505,17 @@
             d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
           />
         </svg>
-        <p class="text-lg font-medium text-gray-400">
+        <p class="text-lg font-medium text-kong-text-secondary">
           No Trading Data Available
         </p>
-        <p class="text-sm text-gray-500 mt-1">
+        <p class="text-sm text-kong-text-disabled mt-1">
           This trading pair hasn't had any trading activity yet.
         </p>
       </div>
-    {:else if isLoading}
-      <div
-        class="absolute inset-0 bg-transparent flex items-center justify-center"
-      >
+    {:else if state.isLoading}
+      <div class="absolute inset-0 bg-transparent flex items-center justify-center">
         <svg
-          class="animate-spin h-8 w-8 text-blue-500"
+          class="animate-spin h-8 w-8 text-kong-primary"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -351,18 +535,15 @@
           ></path>
         </svg>
       </div>
-    {:else if routingPath.length > 1}
-      <div
-        class="absolute top-0 left-0 p-2 bg-black bg-opacity-50 text-white text-sm rounded m-2"
-      >
-        Note: Showing chart for {routingPath[0]} → {routingPath[1]} pool
+    {:else if state.routingPath.length > 1}
+      <div class="absolute top-0 left-0 p-2 bg-kong-bg-dark bg-opacity-50 text-kong-text-primary text-sm rounded m-2">
+        Note: Showing chart for {state.routingPath[0]} → {state.routingPath[1]} pool
       </div>
     {/if}
   </div>
 </div>
 
 <style scoped lang="postcss">
-
   .chart-wrapper {
     position: relative;
     width: 100%;
@@ -383,99 +564,6 @@
     height: 100% !important;
   }
 
-  :global(.layout__area--top) {
-    background: transparent !important;
-  }
-
-  :global(.layout__area--left) {
-    background: transparent !important;
-  }
-
-  :global(.tools-group),
-  :global(.button-2ioYhFEY-),
-  :global(.button-1VVj8kLG-),
-  :global(.toggleButton-3zv4iS2j-),
-  :global(.button-2pZNJ24z-) {
-    background-color: transparent !important;
-  }
-
-  :global(.tools-group:hover),
-  :global(.button-2ioYhFEY-:hover),
-  :global(.button-1VVj8kLG-:hover),
-  :global(.toggleButton-3zv4iS2j-:hover),
-  :global(.button-2pZNJ24z-:hover) {
-    background-color: theme('colors.kong.border') !important;
-  }
-
-  :global(.tools-group.active),
-  :global(.button-2ioYhFEY-.active),
-  :global(.button-1VVj8kLG-.active),
-  :global(.toggleButton-3zv4iS2j-.isActive-3zv4iS2j-),
-  :global(.button-2pZNJ24z-.active) {
-    background-color: theme('colors.kong.border-light') !important;
-  }
-
-  :global(.group-2JyOhh7Z-),
-  :global(.inner-2JyOhh7Z-) {
-    border: none !important;
-    background-color: transparent !important;
-  }
-
-  :global(#drawing-toolbar) {
-    background: red !important;
-  }
-
-  :global(.tradingview-widget-container) {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-  }
-
-  :global(.tv-lightweight-charts) {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    font-family: inherit !important;
-  }
-
-  :global(.chart-theme-dark) {
-    --tv-color-platform-background: transparent;
-    --tv-color-pane-background: transparent;
-    --tv-color-toolbar-button-background-hover: theme('colors.kong.border');
-    --tv-color-toolbar-button-background-expanded: theme('colors.kong.border-light');
-    --tv-color-toolbar-button-background-active: theme('colors.kong.border-light');
-    --tv-color-toolbar-button-text: theme('colors.kong.text.primary');
-    --tv-color-toolbar-button-text-hover: theme('colors.kong.text.primary');
-    --tv-color-toolbar-divider-background: theme('colors.kong.border');
-  }
-
-  :global(.chart-theme-light) {
-    --tv-color-platform-background: transparent;
-    --tv-color-pane-background: transparent;
-    --tv-color-toolbar-button-background-hover: rgba(0, 0, 0, 0.1);
-    --tv-color-toolbar-button-background-expanded: rgba(0, 0, 0, 0.1);
-    --tv-color-toolbar-button-background-active: rgba(0, 0, 0, 0.1);
-    --tv-color-toolbar-button-text: theme('colors.kong.text.primary');
-    --tv-color-toolbar-button-text-hover: theme('colors.kong.text.primary');
-    --tv-color-toolbar-divider-background: rgba(0, 0, 0, 0.1);
-  }
-
-  :global(.tradingview-widget-container) {
-    --tv-color-platform-background: transparent !important;
-  }
-
-  /* Override TradingView's default styles for better theme integration */
-  :global(.layout__area--top),
-  :global(.layout__area--left) {
-    background: transparent !important;
-  }
-
-  :global(.chart-container) {
-    background: transparent !important;
-  }
-
   /* Update loading and no-data states to use theme colors */
   .chart-wrapper :global(.loading-indicator) {
     @apply text-kong-text-primary;
@@ -483,64 +571,5 @@
 
   .chart-wrapper :global(.no-data-message) {
     @apply text-kong-text-secondary;
-  }
-
-  :global(.chart-theme-dark),
-  :global(.chart-theme-light) {
-    --tv-color-platform-background: transparent;
-    --tv-color-pane-background: transparent;
-  }
-
-  /* Make chart background transparent */
-  :global(.chart-container),
-  :global(.tv-lightweight-charts),
-  :global(.layout__area--center),
-  :global(.chart-markup-table),
-  :global(.chart-container-border),
-  :global(.chart-gui-wrapper),
-  :global(.layout__area--center),
-  :global(.chart-markup-table),
-  :global(.pane-legend-line.main) {
-    background-color: transparent !important;
-  }
-
-  /* Override specific TradingView elements */
-  :global(.group-wWM3zP_M-),
-  :global(.container-wWM3zP_M-) {
-    background-color: transparent !important;
-  }
-
-  /* Style toolbar buttons */
-  :global(.button-2ioYhFEY-),
-  :global(.button-1VVj8kLG-),
-  :global(.button-2pZNJ24z-) {
-    background-color: transparent !important;
-  }
-
-  :global(.button-2ioYhFEY-:hover),
-  :global(.button-1VVj8kLG-:hover),
-  :global(.button-2pZNJ24z-:hover) {
-    background-color: theme('colors.kong.border') !important;
-  }
-
-  :global(.button-2ioYhFEY-.active),
-  :global(.button-1VVj8kLG-.active),
-  :global(.button-2pZNJ24z-.active) {
-    background-color: theme('colors.kong.border-light') !important;
-  }
-
-  /* Additional theme-specific styles */
-  :global(.dark) {
-    --tv-color-toolbar-button-background-hover: theme('colors.kong.border');
-    --tv-color-toolbar-button-background-active: theme('colors.kong.border-light');
-    --tv-color-toolbar-button-text: theme('colors.kong.text.primary');
-    --tv-color-toolbar-button-text-hover: theme('colors.kong.text.primary');
-  }
-
-  :global(.light) {
-    --tv-color-toolbar-button-background-hover: rgba(0, 0, 0, 0.1);
-    --tv-color-toolbar-button-background-active: rgba(0, 0, 0, 0.2);
-    --tv-color-toolbar-button-text: theme('colors.kong.text.primary');
-    --tv-color-toolbar-button-text-hover: theme('colors.kong.text.primary');
   }
 </style>

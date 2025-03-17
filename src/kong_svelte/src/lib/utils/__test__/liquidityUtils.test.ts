@@ -12,22 +12,19 @@ import {
   calculateUsdRatio,
   formatLargeNumber,
   processLiquidityInput,
-  calculateUsdValue,
   findPool,
   validateLiquidityForm,
   getPoolForTokenPair,
   validateTokenSelect,
-  calculateToken1FromPoolRatio,
-  calculateToken0FromPoolRatio,
   calculateToken1FromPrice,
   calculateToken0FromPrice,
   calculateAmountFromPercentage,
-  calculateTokenUsdValue,
   formatToNonZeroDecimal
 } from '$lib/utils/liquidityUtils';
+import { calculateTokenUsdValue } from '../numberFormatUtils';
 
 // Updated mock tokenStore with bigger balances in microtokens
-vi.mock('$lib/services/tokens/tokenStore', () => {
+vi.mock('$lib/stores/tokenStore', () => {
   const storeValue = {
     balances: {
       'token0-id': { in_tokens: '200000000000' },
@@ -135,14 +132,6 @@ describe('processLiquidityInput', () => {
     expect(processLiquidityInput('123.456789', 4)).toBe('123.4567');
     expect(processLiquidityInput('00123', 2)).toBe('123');
     expect(processLiquidityInput('abc', 2, '0')).toBe('0');
-  });
-});
-
-describe('calculateUsdValue', () => {
-  it('should calculate USD values correctly', () => {
-    expect(calculateUsdValue('1', '50000')).toBe(50000);
-    expect(calculateUsdValue('1.5', '1000')).toBe(1500);
-    expect(calculateUsdValue('0', '1000')).toBe(0);
   });
 });
 
@@ -287,15 +276,6 @@ describe('processLiquidityInput', () => {
   });
 });
 
-describe('calculateUsdValue', () => {
-  it('should handle various number formats', () => {
-    expect(calculateUsdValue('1,000', '1.5')).toBe(1500);
-    expect(calculateUsdValue('1_000_000', '2')).toBe(2000000);
-    expect(calculateUsdValue('0.5', '2000')).toBe(1000);
-    expect(calculateUsdValue('0', '1000')).toBe(0);
-  });
-});
-
 describe('formatLargeNumber', () => {
   it('should format numbers with different decimal places', () => {
     expect(formatLargeNumber('1234567890', 3)).toBe('1,234.568');
@@ -369,73 +349,6 @@ describe('validateTokenSelect', () => {
     const result5 = validateTokenSelect(icp, null, allowedTokens, 'ICP', tokens);
     expect(result5.isValid).toBe(true);
     expect(result5.newToken).toBe(icp);
-  });
-});
-
-describe('calculateToken1FromPoolRatio', () => {
-  it('should calculate token1 amount based on token0 amount and pool ratio', async () => {
-    const token0 = { decimals: 6 } as FE.Token;
-    const token1 = { decimals: 6 } as FE.Token;
-    const pool = { 
-      balance_0: '1000000000', // 1000 tokens
-      balance_1: '5000000000'  // 5000 tokens
-    } as unknown as BE.Pool;
-    
-    // 1 token0 should give 5 token1 based on pool ratio
-    expect(await calculateToken1FromPoolRatio('1', token0, token1, pool)).toBe('5.000000');
-    expect(await calculateToken1FromPoolRatio('10', token0, token1, pool)).toBe('50.000000');
-    expect(await calculateToken1FromPoolRatio('0', token0, token1, pool)).toBe('0');
-    
-    // Test with different decimals
-    const token0Dec8 = { decimals: 8 } as FE.Token;
-    const token1Dec4 = { decimals: 4 } as FE.Token;
-    expect(await calculateToken1FromPoolRatio('1', token0Dec8, token1Dec4, pool)).toBe('50000.000000');
-  });
-  
-  it('should handle edge cases', async () => {
-    const token0 = { decimals: 6 } as FE.Token;
-    const token1 = { decimals: 6 } as FE.Token;
-    
-    // Empty pool
-    const emptyPool = { 
-      balance_0: '0', 
-      balance_1: '0' 
-    } as unknown as BE.Pool;
-    expect(await calculateToken1FromPoolRatio('1', token0, token1, emptyPool)).toBe('0');
-    
-    // Invalid input
-    expect(await calculateToken1FromPoolRatio('invalid', token0, token1, {} as unknown as BE.Pool)).toBe('0');
-  });
-});
-
-describe('calculateToken0FromPoolRatio', () => {
-  it('should calculate token0 amount based on token1 amount and pool ratio', async () => {
-    const token0 = { decimals: 6 } as FE.Token;
-    const token1 = { decimals: 6 } as FE.Token;
-    const pool = { 
-      balance_0: '1000000000', // 1000 tokens
-      balance_1: '5000000000'  // 5000 tokens
-    } as unknown as BE.Pool;
-    
-    // 5 token1 should give 1 token0 based on pool ratio
-    expect(await calculateToken0FromPoolRatio('5', token0, token1, pool)).toBe('1.000000');
-    expect(await calculateToken0FromPoolRatio('50', token0, token1, pool)).toBe('10.000000');
-    expect(await calculateToken0FromPoolRatio('0', token0, token1, pool)).toBe('0');
-  });
-  
-  it('should handle edge cases', async () => {
-    const token0 = { decimals: 6 } as FE.Token;
-    const token1 = { decimals: 6 } as FE.Token;
-    
-    // Empty pool
-    const emptyPool = { 
-      balance_0: '0', 
-      balance_1: '0' 
-    } as unknown as BE.Pool;
-    expect(await calculateToken0FromPoolRatio('1', token0, token1, emptyPool)).toBe('0');
-    
-    // Invalid input
-    expect(await calculateToken0FromPoolRatio('invalid', token0, token1, {} as unknown as BE.Pool)).toBe('0');
   });
 });
 

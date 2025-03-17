@@ -16,8 +16,6 @@ interface VersionInfo {
 // Extend Dexie to include the database schema
 export class KongDB extends Dexie {
   favorite_tokens!: Table<FavoriteToken & { id?: number }>;
-  settings!: Table<Settings, string>;
-  pools!: Table<BE.Pool, string>;
   allowances!: Table<FE.AllowanceData, string>;
   previous_version!: Table<VersionInfo>;
   private initPromise: Promise<void> | null = null;
@@ -28,18 +26,14 @@ export class KongDB extends Dexie {
 
     // Define the schema for each version
     const schema = {
-      pools: "id, address_0, address_1, timestamp",
       favorite_tokens: "++id, wallet_id, canister_id, timestamp, [wallet_id+canister_id]",
-      settings: "principal_id, timestamp",
       allowances: "[address+wallet_address], wallet_address, timestamp",
       previous_version: "version",
     };
 
     // First, delete all tables in previous version
     this.version(CURRENT_VERSION - 1).stores({
-      pools: null,
       favorite_tokens: null,
-      settings: null,
       allowances: null,
       previous_version: null,
     });
@@ -73,9 +67,7 @@ export class KongDB extends Dexie {
     });
 
     // Initialize all tables
-    this.pools = this.table("pools");
     this.favorite_tokens = this.table("favorite_tokens");
-    this.settings = this.table("settings");
     this.allowances = this.table("allowances");
     this.previous_version = this.table("previous_version");
   }
@@ -209,12 +201,3 @@ export class KongDB extends Dexie {
 // Initialize the database instance
 export const kongDB = new KongDB();
 
-// Apply the same pattern to other hooks
-kongDB.pools.hook.creating.subscribe((primKey, obj, transaction) => {
-  obj.timestamp = Date.now();
-});
-
-kongDB.pools.hook.updating.subscribe((modifications, primKey, obj, transaction) => {
-  modifications.timestamp = Date.now();
-  return modifications;
-});

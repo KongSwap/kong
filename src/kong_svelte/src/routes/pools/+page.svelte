@@ -26,9 +26,12 @@
   import { page } from "$app/stores";
   import UserPoolList from "$lib/components/liquidity/pools/UserPoolList.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { userPoolListStore } from "$lib/stores/userPoolListStore";
+  import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { fetchTokens } from "$lib/api/tokens";
+  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
+  import { themeStore } from "$lib/stores/themeStore";
+  import { getThemeById } from "$lib/themes/themeRegistry";
+  import type { ThemeColors } from "$lib/themes/baseTheme";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -43,11 +46,32 @@
   let poolSearchTerm = writable("");
   let searchDebounceTimer: NodeJS.Timeout;
   let livePools = writable<BE.Pool[]>([]);
-  let pagination = { totalItems: 0, totalPages: 0, currentPage: 1, limit: 50 };
+  const totalItems = writable<number>(0);
+  const totalPages = writable<number>(0);
+  const currentPage = writable<number>(pageQuery);
+  const itemsPerPage = writable<number>(50);
   let isLoading = writable<boolean>(false);
   let liveUserPools = writable<BE.Pool[]>([]);
-  const mobileSortColumn = writable("rolling_24h_volume");
+  const mobileSortColumn = writable("tvl");
   const mobileSortDirection = writable<"asc" | "desc">("desc");
+
+  // Theme-related properties
+  let currentThemeId = $state($themeStore);
+  
+  // Subscribe to theme changes
+  $effect(() => {
+    // This effect only runs when themeStore changes
+    currentThemeId = $themeStore;
+  });
+  
+  // Compute theme properties when needed
+  function getCurrentThemeColors(): ThemeColors {
+    return getThemeById(currentThemeId).colors as ThemeColors;
+  }
+
+  function isTableTransparent(): boolean {
+    return getCurrentThemeColors().statsTableTransparent === true;
+  }
 
   let cleanup: () => void;
 
@@ -142,7 +166,7 @@
         const nextPage = mobilePage + 1;
         const result = await fetchPools({
           page: nextPage,
-          limit: pagination.limit,
+          limit: $itemsPerPage,
           search: searchTerm,
         });
         $livePools = [...$livePools, ...(result.pools || [])];
@@ -157,9 +181,11 @@
   }
 
   // Subscribe to auth changes and fetch user pools when authenticated
-  $: if ($auth.isConnected && browser) {
-    fetchUserPools();
-  }
+  $effect(() => {
+    if ($auth.isConnected && browser) {
+      fetchUserPools();
+    }
+  });
 
   // Add new state variable with other state variables
   let poolTotals = writable({
@@ -178,7 +204,7 @@
     Promise.all([
       fetchPools({
         page: pageQuery,
-        limit: pagination.limit,
+        limit: $itemsPerPage,
         search: searchQuery,
       }),
       fetchPoolTotals(),
@@ -186,10 +212,10 @@
       .then(([poolsResult, totalsResult]) => {
         const poolsArray = poolsResult.pools ? poolsResult.pools : [];
         livePools.set(poolsArray);
-        pagination.totalItems = poolsResult.total_count;
-        pagination.totalPages = poolsResult.total_pages;
-        pagination.currentPage = poolsResult.page;
-        pagination.limit = poolsResult.limit;
+        totalItems.set(poolsResult.total_count);
+        totalPages.set(poolsResult.total_pages);
+        currentPage.set(poolsResult.page);
+        itemsPerPage.set(poolsResult.limit);
         mobilePage = 1;
         mobileTotalPages = poolsResult.total_pages;
 
@@ -217,45 +243,47 @@
   });
 
   // Update the reactive statement with debounce
-  $: if (browser) {
-    clearTimeout(urlChangeDebounceTimer);
-    urlChangeDebounceTimer = setTimeout(() => {
-      const newSearch = $page.url.searchParams.get("search") || "";
-      const newPage = parseInt($page.url.searchParams.get("page") || "1");
+  $effect(() => {
+    if (browser) {
+      clearTimeout(urlChangeDebounceTimer);
+      urlChangeDebounceTimer = setTimeout(() => {
+        const newSearch = $page.url.searchParams.get("search") || "";
+        const newPage = parseInt($page.url.searchParams.get("page") || "1");
 
-      // Only update if the values have actually changed
-      if (newSearch !== searchTerm || newPage !== pagination.currentPage) {
-        searchTerm = newSearch;
-        searchInput = newSearch;
-        pagination.currentPage = newPage;
+        // Only update if the values have actually changed
+        if (newSearch !== searchTerm || newPage !== $currentPage) {
+          searchTerm = newSearch;
+          searchInput = newSearch;
+          currentPage.set(newPage);
 
-        // Fetch pools with new parameters
-        isLoading.set(true);
-        fetchPools({
-          page: newPage,
-          limit: pagination.limit,
-          search: newSearch,
-        })
-          .then((result) => {
-            const poolsArray = result.pools ? result.pools : [];
-            livePools.set(poolsArray);
-            pagination.totalItems = result.total_count;
-            pagination.totalPages = result.total_pages;
-            pagination.currentPage = result.page;
-            pagination.limit = result.limit;
-            mobilePage = 1;
-            mobileTotalPages = result.total_pages;
+          // Fetch pools with new parameters
+          isLoading.set(true);
+          fetchPools({
+            page: newPage,
+            limit: $itemsPerPage,
+            search: newSearch,
           })
-          .catch((error) => {
-            console.error("Error fetching pools:", error);
-            livePools.set([]);
-          })
-          .finally(() => {
-            isLoading.set(false);
-          });
-      }
-    }, 350); // 350ms debounce
-  }
+            .then((result) => {
+              const poolsArray = result.pools ? result.pools : [];
+              livePools.set(poolsArray);
+              totalItems.set(result.total_count);
+              totalPages.set(result.total_pages);
+              currentPage.set(result.page);
+              itemsPerPage.set(result.limit);
+              mobilePage = 1;
+              mobileTotalPages = result.total_pages;
+            })
+            .catch((error) => {
+              console.error("Error fetching pools:", error);
+              livePools.set([]);
+            })
+            .finally(() => {
+              isLoading.set(false);
+            });
+        }
+      }, 350); // 350ms debounce
+    }
+  });
 
   function handleSearch() {
     clearTimeout(searchDebounceTimer);
@@ -275,14 +303,14 @@
         try {
           const result = await fetchPools({
             page: 1,
-            limit: pagination.limit,
+            limit: $itemsPerPage,
             search: searchValue,
           });
           livePools.set(result.pools || []);
-          pagination.totalItems = result.total_count;
-          pagination.totalPages = result.total_pages;
-          pagination.currentPage = result.page;
-          pagination.limit = result.limit;
+          totalItems.set(result.total_count);
+          totalPages.set(result.total_pages);
+          currentPage.set(result.page);
+          itemsPerPage.set(result.limit);
           mobilePage = 1;
           mobileTotalPages = result.total_pages;
         } catch (error) {
@@ -299,9 +327,11 @@
     $isMobile = window.innerWidth < 768;
   };
 
-  $: if (browser) {
-    checkMobile();
-  }
+  $effect(() => {
+    if (browser) {
+      checkMobile();
+    }
+  });
 
   onDestroy(() => {
     cleanup?.();
@@ -316,10 +346,10 @@
   async function fetchUserPools() {
     isLoading.set(true);
     try {
-      await userPoolListStore.initialize();
+      await currentUserPoolsStore.initialize();
 
       // Casting liveUserPools to any to call set
-      $liveUserPools = $userPoolListStore.filteredPools as unknown as BE.Pool[];
+      $liveUserPools = $currentUserPoolsStore.filteredPools as unknown as BE.Pool[];
     } catch (error) {
       console.error("Error fetching user pools:", error);
       $liveUserPools = [];
@@ -339,14 +369,14 @@
 
       const result = await fetchPools({
         page,
-        limit: pagination.limit,
+        limit: $itemsPerPage,
         search: searchTerm,
       });
       livePools.set(result.pools || []);
-      pagination.totalItems = result.total_count;
-      pagination.totalPages = result.total_pages;
-      pagination.currentPage = result.page;
-      pagination.limit = result.limit;
+      totalItems.set(result.total_count);
+      totalPages.set(result.total_pages);
+      currentPage.set(result.page);
+      itemsPerPage.set(result.limit);
     } catch (error) {
       console.error("Error fetching pools:", error);
     } finally {
@@ -400,10 +430,13 @@
 <section class="flex flex-col w-full h-[calc(100vh-13.8rem)] px-2 pb-4 mt-4">
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
     {#if $activeSection === "pools"}
-      <Panel className="flex-1 {$isMobile ? '' : '!p-0'}" variant="transparent">
-        <div class="overflow-hidden flex flex-col h-full">
+      <Panel 
+        className="flex-1 {$isMobile ? '' : '!p-0'}" 
+        variant={isTableTransparent() ? "transparent" : "solid"}
+      >
+        <div class="overflow-hidden flex flex-col h-full rounded-lg">
           <!-- Header with full-width search and "My Pools" button -->
-          <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md rounded-t-xl">
+          <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md rounded-t-lg">
             <div class="flex flex-col gap-3 sm:gap-0">
               <!-- Mobile-only buttons -->
               <div class="sm:hidden space-y-2">
@@ -743,11 +776,11 @@
                             `${Number(row.rolling_24h_apy).toFixed(2)}%`,
                         },
                       ]}
-                      itemsPerPage={pagination.limit}
-                      totalItems={pagination.totalItems}
-                      currentPage={pagination.currentPage}
+                      itemsPerPage={$itemsPerPage}
+                      totalItems={$totalItems}
+                      currentPage={$currentPage}
                       defaultSort={{
-                        column: "rolling_24h_volume",
+                        column: "tvl",
                         direction: "desc",
                       }}
                       onPageChange={handlePageChange}
@@ -807,9 +840,7 @@
   </div>
 </section>
 
-{#if $auth.isConnected && browser}
-  <!-- Existing content -->
-{:else}
+{#if $isLoading}
   <div class="loading-state flex flex-col items-center justify-center h-64 gap-4">
     <div class="loading-animation">
       <Droplets size={32} class="animate-pulse text-kong-primary" />

@@ -1,37 +1,47 @@
 import { API_URL } from "$lib/api/index";
+import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
+import {canisterIDLs } from "$lib/services/auth";
 
 export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total_count: number, total_pages: number, page: number, limit: number}> => {
   try {
     const { page = 1, limit = 50, canisterIds, search = '' } = params || {};
     
-    // Build query string for pagination
-    const queryString = new URLSearchParams({
+    // Build query string for pagination and filters
+    const queryParams: Record<string, string> = {
       page: page.toString(),
       limit: limit.toString(),
-      search: search,
-      t: Date.now().toString() // Use valid parameter name
-    }).toString();
-
-    // Determine if we need to make a GET or POST request
-    const options: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      t: Date.now().toString() // Cache busting
     };
-
-    if (canisterIds && canisterIds.length > 0) {
-      options.method = 'POST';
-      options.body = JSON.stringify({ canister_ids: canisterIds });
-    } else {
-      options.method = 'GET';
+    
+    // Add search if provided
+    if (search) {
+      queryParams.search = search;
     }
+    
+    // Add canister_id if provided
+    if (canisterIds && canisterIds.length > 0) {
+      queryParams.canister_id = canisterIds[0];
+    }
+    
+    const queryString = new URLSearchParams(queryParams).toString();
 
+    // Strictly use GET method with no request body
+    console.log(`Requesting: GET ${API_URL}/api/pools?${queryString}`);
+    
     const response = await fetch(
       `${API_URL}/api/pools?${queryString}`,
-      options
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        }
+      }
     );
    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API error response: ${errorText}`);
       throw new Error(`Failed to fetch pools: ${response.status} ${response.statusText}`);
     }
 
@@ -161,3 +171,34 @@ export const fetchPoolTotals = async (): Promise<{total_volume_24h: number, tota
     throw error;
   }
 }
+
+
+  /**
+   * Calculate required amounts for adding liquidity
+   */
+  export async function calculateLiquidityAmounts(
+    token0Symbol: string,
+    amount0: bigint,
+    token1Symbol: string,
+  ): Promise<any> {
+    try {
+      const actor = createAnonymousActorHelper(
+        KONG_BACKEND_CANISTER_ID,
+        canisterIDLs.kong_backend,
+      );
+      const result = await actor.add_liquidity_amounts(
+        "IC." + token0Symbol,
+        amount0,
+        "IC." + token1Symbol,
+      );
+
+      if (!result.Ok) {
+        throw new Error(result.Err || "Failed to calculate liquidity amounts");
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Error calculating liquidity amounts:", error);
+      throw error;
+    }
+  }

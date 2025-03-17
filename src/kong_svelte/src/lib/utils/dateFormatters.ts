@@ -6,8 +6,28 @@ export function formatTimestamp(timestamp: string): string {
   }
 
   try {
-    // Ensure we're parsing as UTC by appending Z if not present
-    const txDate = new Date(timestamp.endsWith('Z') ? timestamp : timestamp + 'Z');
+    let txDate: Date;
+    
+    // Check if the timestamp is a Unix timestamp (milliseconds)
+    if (/^\d{13}$/.test(timestamp)) {
+      txDate = new Date(parseInt(timestamp));
+    } else {
+      // Handle ISO string format
+      txDate = new Date(timestamp.endsWith('Z') ? timestamp : timestamp + 'Z');
+    }
+    
+    // Validate that we have a valid date
+    if (isNaN(txDate.getTime())) {
+      console.warn("Invalid date value received:", timestamp);
+      return "N/A";
+    }
+
+    // Check if the date is in the future
+    const now = new Date();
+    if (txDate > now) {
+      console.warn("Future timestamp detected, using current time:", timestamp);
+      txDate = now;
+    }
     
     // Format in local timezone with date and time
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -21,7 +41,7 @@ export function formatTimestamp(timestamp: string): string {
 
     return formatter.format(txDate);
   } catch (e) {
-    console.error("Error formatting timestamp:", e);
+    console.error("Error formatting timestamp:", e, "Input:", timestamp);
     return "N/A";
   }
 } 

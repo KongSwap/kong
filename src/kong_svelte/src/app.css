@@ -1,121 +1,57 @@
 @import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&family=Space+Grotesk:wght@300..700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&display=swap');
 @import "./styles/stats.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Set a more neutral, professional default font and tidy up the body styling. */
+/* Base styles for body */
 body {
-  @apply bg-kong-bg-dark transition-colors duration-200;
-  /* Consider using a professional default like Inter or Space Grotesk */
-  font-family: "Exo 2", sans-serif;
-  color: var(--text-primary);
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-position: center;
-  min-height: 100vh;
+  font-family: var(--font-family, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  @apply bg-kong-bg-dark text-kong-text-primary overflow-x-hidden;
 }
 
-/* Update the root styles to default to dark theme values */
+/* Base variable definitions - these will be dynamic based on theme */
 :root {
-  /* Dark theme values */
-  --bg-dark: 13 17 31;             /* #0D111F - Deep navy */
-  --bg-light: 20 24 38;            /* #141826 - Lighter navy */
-  --primary: 0 149 235;            /* #0095EB - Kong's brand blue */
-  --primary-hover: 0 134 211;      /* #0086D3 - Darker variant */
-  --secondary: 34 211 238;         /* #22D3EE */
-  --secondary-hover: 14 165 233;   /* #0EA5E9 */
-  --accent-blue: 0 149 235;        /* #0095EB - Kong's brand blue */
-  --accent-red: 234 67 53;        /* #EA4335 - Google red */
-  --accent-green: 0 180 115;       /* #00b473 */
-  --accent-green-hover: 0 160 105;
-  --accent-blue-hover: 0 134 211;  /* #0086D3 - Darker variant */
-  --accent-red-hover: 217 48 37;  /* #D93025 - Darker Google red */
-  --accent-yellow: 255 193 7;     /* #FFC107 - Material Yellow */
-  --accent-yellow-hover: 255 167 38; /* #FFA726 - Darker yellow */
-  --text-primary: 255 255 255;     /* #FFFFFF */
-  --text-secondary: 155 161 176;   /* #9BA1B0 */
-  --text-disabled: 107 114 128;    /* #6B7280 */
-  --border: 28 32 46;              /* #1C202E */
-  --border-light: 35 39 53;        /* #232735 */
-  --logo-brightness: 1;
-  --logo-invert: 0;
-  --logo-hover-brightness: 0.9;
-  --accent-purple: 111 93 251;       /* #6F5DFB - Vibrant purple */
-  --accent-cyan: 34 211 238;         /* #22D3EE */
-  --surface-dark: 17 21 35;          /* #111523 */
-  --surface-light: 24 28 42;         /* #181C2A */
+  /* Default CSS variables - will be overridden by dynamic theme styles */
   color-scheme: dark light; /* Dark first */
-  --pm-dark: 23 25 35;
-  --pm-border: 40 44 58;
-  --pm-accent: 111 93 251;          /* #6F5DFB - Same as accent-purple */
-  --pm-text-secondary: 158 164 186;
+  
+  /* Logo default properties */
+  --logo-invert: 0; /* 0 = no inversion, 1 = invert */
+  --logo-brightness: 1; /* Default brightness */
+  --logo-hover-brightness: 0.9; /* Default hover brightness */
+  
+  /* Token ticker default properties */
+  --token-ticker-bg: #111523;
+  --token-ticker-text: #FFFFFF;
+  --token-ticker-border: 1px solid rgba(255, 255, 255, 0.1);
+  --token-ticker-border-style: default; /* can be 'default', 'win95', or 'none' */
+  --token-ticker-roundness: rounded-lg;
+  --token-ticker-hover-bg: #232735;
+  --token-ticker-shadow: 0 8px 32px rgba(0, 0, 0, 0.32);
+  --token-ticker-up-color: #05EC86;
+  --token-ticker-down-color: #FF4545;
+  --token-ticker-bg-opacity: 80; /* Default opacity 80% */
 }
 
-/* Light theme overrides */
-:root:not(.dark) {
-  --bg-dark: 216 237 248;          /* #E2EDF8 */
-  --bg-light: 235 244 252;         /* #EBF4FC */
-  --primary: 0 149 235;            /* #0095EB - Kong's brand blue */
-  --primary-hover: 0 134 211;      /* #0086D3 - Darker variant */
-  --secondary: 8 145 178;          /* #0891B2 (unchanged) */
-  --secondary-hover: 14 116 144;   /* #0E7490 (unchanged) */
-  --accent-blue: 0 149 235;        /* #0095EB - Kong's brand blue */
-  --accent-red: 220 38 38;         /* #DC2626 - Strong red for visibility */
-  --accent-green: 16 185 129;      /* #10B981 - Emerald for better contrast */
-  --accent-yellow: 245 158 11;     /* #F59E0B - Amber for better visibility */
-  --accent-green-hover: 4 120 87;  /* #047857 - Darker emerald */
-  --accent-blue-hover: 0 134 211;  /* #0086D3 - Darker variant */
-  --accent-red-hover: 185 28 28;   /* #B91C1C - Darker red */
-  --text-primary: 15 23 42;        /* #0F172A - Darker blue-gray */
-  --text-secondary: 51 65 85;      /* #334155 - Mid blue-gray */
-  --text-disabled: 148 163 184;    /* #94A3B8 - Light blue-gray */
-  --border: 214 226 240;          /* #D6E2F0 - Muted blue border */
-  --border-light: 235 244 252;    /* #EBF4FC - Lighter muted border */
-  --logo-brightness: 0.75;
-  --logo-invert: 1;
-  --logo-hover-brightness: 0.65;
-  --chart-text-color: #334155;    /* Darker blue-gray for better contrast */
-  --accent-purple: 111 93 251;       /* #6F5DFB - Keeping consistent in light theme */
-  --accent-cyan: 8 145 178;          /* #0891B2 */
-  --surface-dark: 225 230 240;       /* #E1E6F0 */
-  --surface-light: 240 245 252;      /* #F0F5FC */
-  color-scheme: light dark; /* Helps with system transitions */
-  --pm-dark: 245 245 245;
-  --pm-border: 229 231 235;
-  --pm-accent: 111 93 251;          /* #6F5DFB - Same as accent-purple */
-  --pm-text-secondary: 107 114 128;
-}
-
-/* Dark theme overrides (more neutral navy background) */
-:root.dark {
-  --bg-dark: 13 17 31;             /* #0D111F - Deep navy */
-  --bg-light: 20 24 38;            /* #141826 - Lighter navy */
-  --primary: 0 149 235;            /* #0095EB - Kong's brand blue */
-  --primary-hover: 0 134 211;      /* #0086D3 - Darker variant */
-  --secondary: 34 211 238;         /* #22D3EE */
-  --secondary-hover: 14 165 233;   /* #0EA5E9 */
-  --accent-blue: 0 149 235;        /* #0095EB - Kong's brand blue */
-  --accent-red: 234 67 53;        /* #EA4335 - Google red */
-  --accent-green: 0 180 115;       /* #00b473 */
-  --accent-green-hover: 0 160 105;
-  --accent-blue-hover: 0 134 211;  /* #0086D3 - Darker variant */
-  --accent-red-hover: 217 48 37;  /* #D93025 - Darker Google red */
-  --text-primary: 255 255 255;     /* #FFFFFF */
-  --text-secondary: 155 161 176;   /* #9BA1B0 */
-  --text-disabled: 107 114 128;    /* #6B7280 */
-  --border: 28 32 46;              /* #1C202E */
-  --border-light: 35 39 53;        /* #232735 */
-  --logo-brightness: 1;
-  --logo-invert: 0;
-  --logo-hover-brightness: 0.9;
-  --surface-dark: 17 21 35;          /* #111523 */
-  --surface-light: 24 28 42;         /* #181C2A */
+/* Page wrapper for background effects */
+.page-wrapper {
+  min-height: 100vh;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
 }
 
 /* Update the gradient for light theme with more muted blue tones */
-:root:not(.dark) .page-wrapper::before {
+:root:not(.dark):not(.plain-black):not(.nord) .page-wrapper::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -129,8 +65,8 @@ body {
   z-index: -1;
 }
 
-/* Make the nebula effect more muted */
-:root:not(.dark) .nebula {
+/* Make the nebula effect more muted in light theme */
+:root:not(.dark):not(.plain-black):not(.nord) .nebula {
   opacity: 0.06;
   filter: blur(100px);
   background: radial-gradient(
@@ -141,22 +77,23 @@ body {
   transform: translateY(-20%);
 }
 
-/* Slightly stronger shadow for better depth */
-:root:not(.dark) .content-wrapper {
-  position: relative;
-  z-index: 1;
-  box-shadow: 0 -5px 15px rgba(37, 99, 235, 0.03);  /* Blue-tinted shadow */
-}
-
-/* Add this to your CSS */
+/* Hide content until theme is loaded to prevent FOUC */
 html:not([data-theme-ready]) {
   visibility: hidden;
 }
 
+/* Disable image dragging */
 img {
   -webkit-user-drag: none;
   -khtml-user-drag: none;
   -moz-user-drag: none;
   -o-user-drag: none;
   user-drag: none;
+}
+
+/* Ensure navbar logos size properly */
+.navbar-logo {
+  max-height: 100%;
+  width: auto;
+  object-fit: contain;
 }

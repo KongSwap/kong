@@ -15,7 +15,27 @@ type BetError = variant {
   InsufficientBalance;
   BalanceUpdateFailed;
 };
-type BetWithMarket = record { bet : Bet; market : Market };
+type ConsentInfo = record {
+  metadata : ConsentMessageMetadata;
+  consent_message : ConsentMessage;
+};
+type ConsentMessage = variant {
+  LineDisplayMessage : record { pages : vec LineDisplayPage };
+  GenericDisplayMessage : text;
+};
+type ConsentMessageMetadata = record {
+  utc_offset_minutes : opt int16;
+  language : text;
+};
+type ConsentMessageRequest = record {
+  arg : blob;
+  method : text;
+  user_preferences : ConsentMessageSpec;
+};
+type ConsentMessageSpec = record {
+  metadata : ConsentMessageMetadata;
+  device_spec : opt DisplayMessageType;
+};
 type Delegation = record {
   created : nat64;
   targets_list_hash : blob;
@@ -34,22 +54,33 @@ type DelegationRequest = record {
   expiration : opt nat64;
 };
 type DelegationResponse = record { delegations : vec Delegation };
+type DisplayMessageType = variant {
+  GenericDisplay;
+  LineDisplay : record { characters_per_line : nat16; lines_per_page : nat16 };
+};
 type Distribution = record {
   bet_amount : nat;
   winnings : nat;
   user : principal;
   outcome_index : nat;
 };
-type GetFeeBalanceResult = record {
-  balance : nat;
-  admin_principal : principal;
+type ErrorInfo = record { description : text };
+type GetAllMarketsArgs = record {
+  status_filter : opt MarketStatus;
+  start : nat;
+  length : nat;
+  sort_option : opt SortOption;
 };
-type ICRC21ConsentMessageRequest = record {
-  method : text;
-  canister : principal;
+type GetAllMarketsResult = record { markets : vec Market; total_count : nat };
+type GetMarketsByStatusArgs = record { start : nat; length : nat };
+type GetMarketsByStatusResult = record {
+  total_active : nat;
+  total_resolved : nat;
+  total_expired_unresolved : nat;
+  markets_by_status : MarketsByStatus;
 };
-type ICRC21ConsentMessageResponse = record { consent_message : text };
 type Icrc28TrustedOriginsResponse = record { trusted_origins : vec text };
+type LineDisplayPage = record { lines : vec text };
 type Market = record {
   id : nat;
   bet_count_percentages : vec float64;
@@ -115,13 +146,18 @@ type ResolutionMethod = variant {
   Decentralized : record { quorum : nat };
   Admin;
 };
-type Result = variant { Ok; Err : text };
-type Result_1 = variant { Ok : nat; Err : text };
+type Result = variant { Ok : nat; Err : text };
+type Result_1 = variant { Ok : ConsentInfo; Err : ErrorInfo };
 type Result_2 = variant { Ok : DelegationResponse; Err : DelegationError };
 type Result_3 = variant { Ok; Err : DelegationError };
 type Result_4 = variant { Ok; Err : BetError };
 type Result_5 = variant { Ok; Err : ResolutionError };
 type RevokeDelegationRequest = record { targets : vec principal };
+type SortDirection = variant { Descending; Ascending };
+type SortOption = variant {
+  TotalPool : SortDirection;
+  CreatedAt : SortDirection;
+};
 type UserBetInfo = record {
   outcome_text : text;
   bet_amount : nat;
@@ -137,8 +173,7 @@ type UserHistory = record {
   active_bets : vec UserBetInfo;
   resolved_bets : vec UserBetInfo;
 };
-service : {
-  add_admin : (principal) -> (Result);
+service : () -> {
   create_market : (
       text,
       MarketCategory,
@@ -146,19 +181,17 @@ service : {
       vec text,
       ResolutionMethod,
       MarketEndTime,
-    ) -> (Result_1);
-  get_admin_principals : () -> (vec principal) query;
-  get_all_bets : (nat64, nat64, bool) -> (vec BetWithMarket) query;
+    ) -> (Result);
   get_all_categories : () -> (vec text) query;
-  get_all_markets : () -> (vec Market) query;
-  get_balance : (principal) -> (nat) query;
-  get_fee_balance : () -> (GetFeeBalanceResult) query;
+  get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
-  get_markets_by_status : () -> (MarketsByStatus) query;
+  get_markets_by_status : (GetMarketsByStatusArgs) -> (
+      GetMarketsByStatusResult,
+    ) query;
   get_user_history : (principal) -> (UserHistory) query;
-  icrc21_canister_call_consent_message : (ICRC21ConsentMessageRequest) -> (
-      ICRC21ConsentMessageResponse,
+  icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
+      Result_1,
     ) query;
   icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
   icrc_34_delegate : (DelegationRequest) -> (Result_2);
@@ -166,7 +199,6 @@ service : {
   icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_3);
   is_admin : (principal) -> (bool) query;
   place_bet : (nat, nat, nat) -> (Result_4);
-  remove_admin : (principal) -> (Result);
   resolve_via_admin : (nat, vec nat) -> (Result_5);
   resolve_via_oracle : (nat, vec nat, blob) -> (Result_5);
 }

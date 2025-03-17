@@ -1,5 +1,5 @@
 import { auth } from "$lib/services/auth";
-import { canisterIDLs } from "$lib/services/pnp/PnpInitializer";
+import { canisterIDLs } from "$lib/config/auth.config";
 import { Principal } from "@dfinity/principal";
 import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "../tokens/allowanceStore";
@@ -16,9 +16,7 @@ const enum ErrorType {
 }
 
 export class IcrcService {
-  private static readonly MAX_RETRIES = 5;
-  private static readonly INITIAL_DELAY = 1000;
-  private static readonly MAX_CONCURRENT_REQUESTS = 3;
+  private static readonly MAX_CONCURRENT_REQUESTS = 5;
 
   private static classifyError(error: any): ErrorType {
     if (!error) return ErrorType.UNKNOWN;

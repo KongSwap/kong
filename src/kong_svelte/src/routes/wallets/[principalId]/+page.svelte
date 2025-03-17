@@ -12,7 +12,6 @@
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import LoadingEllipsis from "$lib/components/common/LoadingEllipsis.svelte";
   import {
-    Copy,
     Wallet,
     ArrowRight,
     Coins,
@@ -21,7 +20,6 @@
     TrendingUp,
     ExternalLink,
   } from "lucide-svelte";
-  import { toastStore } from "$lib/stores/toastStore";
   import { onDestroy } from "svelte";
 
   // Get props passed from layout
@@ -34,7 +32,7 @@
   let isLoading = $derived(initialDataLoading ?? $walletDataStore.isLoading);
   let loadingError = $derived(initError ?? $walletDataStore.error);
   let totalValue = $state<number>(0);
-  
+
   // Track the current principal ID to detect changes
   let currentPrincipalId = $state(page.params.principalId);
 
@@ -61,21 +59,23 @@
       totalValue = 0;
     }
   });
-  
+
   // Reset data when principal ID changes
   $effect(() => {
     if (page.params.principalId !== currentPrincipalId) {
-      console.log(`Principal ID changed from ${currentPrincipalId} to ${page.params.principalId}`);
-      
+      console.log(
+        `Principal ID changed from ${currentPrincipalId} to ${page.params.principalId}`,
+      );
+
       // Force a complete reset of the wallet data
       WalletDataService.reset();
-      
+
       // Reset the total value and UI state
       totalValue = 0;
-      
+
       // Update the current principal ID
       currentPrincipalId = page.params.principalId;
-      
+
       // Re-initialize wallet data for the new principal
       WalletDataService.initializeWallet(page.params.principalId);
     }
@@ -130,12 +130,6 @@
     });
   }
 
-  // Copy principal ID to clipboard
-  function copyToClipboard() {
-    navigator.clipboard.writeText(page.params.principalId);
-    toastStore.success("Copied to clipboard");
-  }
-
   // Tooltip text for whale indicator
   const whaleTooltipText = `This wallet holds at least ${WHALE_THRESHOLD}% of the token's total supply, making it a significant holder ("whale").`;
 
@@ -149,12 +143,13 @@
 
 <svelte:head>
   <title>Wallet Overview for {page.params.principalId} - KongSwap</title>
+  <meta name="description" content="View your wallet overview and portfolio distribution" />
 </svelte:head>
 
-<div class="space-y-6">
+<div class="space-y-2">
   <!-- Wallet Overview Header Panel -->
   <Panel>
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-2">
       <h3 class="text-sm uppercase font-medium text-kong-text-primary">
         Wallet Overview
       </h3>
@@ -165,13 +160,8 @@
 
     {#if isLoading}
       <div class="flex flex-col gap-4">
-        <!-- Principal ID Skeleton -->
-        <div class="flex items-center gap-2">
-          <div class="h-6 w-64 animate-pulse rounded"></div>
-        </div>
-
         <!-- Stats Cards with Loading Ellipsis -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- Total Value Card -->
           <div class="rounded-lg p-4">
             <div
@@ -238,22 +228,6 @@
       </div>
     {:else}
       <div class="flex flex-col gap-6">
-        <!-- Principal ID with Copy Button -->
-        <div class="flex items-center gap-2 px-4 py-3 rounded-lg">
-          <div
-            class="flex-1 text-sm font-mono text-kong-text-secondary overflow-hidden text-ellipsis"
-          >
-            {page.params.principalId}
-          </div>
-          <button
-            class="p-1.5 rounded-md hover:bg-kong-bg-dark/80 transition-colors text-kong-text-secondary hover:text-kong-primary flex items-center gap-1"
-            on:click={copyToClipboard}
-            title="Copy to clipboard"
-          >
-            <Copy size={16} />
-          </button>
-        </div>
-
         <!-- Asset Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- Total Value Card -->
@@ -319,10 +293,10 @@
                     <TokenImages tokens={[token]} size={20} />
                     <div class="text-xl font-medium">{token.symbol}</div>
                     {#if isWhale}
-                      <Badge 
-                        variant="blue" 
-                        icon="🐋" 
-                        size="sm" 
+                      <Badge
+                        variant="blue"
+                        icon="🐋"
+                        size="sm"
                         tooltip={whaleTooltipText}
                       >
                         {formatSupplyPercentage(whalePercentage)}
@@ -446,115 +420,129 @@
             </div>
           {/if}
         </div>
-        <div class="w-full md:w-1/2 flex items-center justify-center mb-6 md:mb-0 order-1 md:order-2">
+        <div
+          class="w-full md:w-1/2 flex items-center justify-center mb-6 md:mb-0 order-1 md:order-2"
+        >
           <!-- SVG Pie Chart - Responsive container -->
           {#key `${page.params.principalId}-${$walletDataStore.lastUpdated}-${totalValue}`}
-          <div class="relative w-full max-w-[280px] md:max-w-[320px] aspect-square">
-            <svg viewBox="0 0 100 100" class="w-full h-full">
-              <!-- Calculate and create pie slices based on token distribution -->
-              {#if Object.entries($walletDataStore.balances).length > 0 && totalValue > 0 && $walletDataStore.currentWallet === page.params.principalId}
-                {@const sortedBalances = Object.entries(
-                  $walletDataStore.balances,
-                ).sort(
-                  (a, b) =>
-                    Number(b[1]?.in_usd || 0) - Number(a[1]?.in_usd || 0),
-                )}
+            <div
+              class="relative w-full max-w-[280px] md:max-w-[320px] aspect-square"
+            >
+              <svg viewBox="0 0 100 100" class="w-full h-full">
+                <!-- Calculate and create pie slices based on token distribution -->
+                {#if Object.entries($walletDataStore.balances).length > 0 && totalValue > 0 && $walletDataStore.currentWallet === page.params.principalId}
+                  {@const sortedBalances = Object.entries(
+                    $walletDataStore.balances,
+                  ).sort(
+                    (a, b) =>
+                      Number(b[1]?.in_usd || 0) - Number(a[1]?.in_usd || 0),
+                  )}
 
-                {@const topFive = sortedBalances.slice(0, 5)}
-                {@const others = sortedBalances.slice(5)}
+                  {@const topFive = sortedBalances.slice(0, 5)}
+                  {@const others = sortedBalances.slice(5)}
 
-                {@const colors = [
-                  "#3B82F6",
-                  "#10B981",
-                  "#F59E0B",
-                  "#EF4444",
-                  "#8B5CF6",
-                  "#6B7280",
-                ]}
+                  {@const colors = [
+                    "#3B82F6",
+                    "#10B981",
+                    "#F59E0B",
+                    "#EF4444",
+                    "#8B5CF6",
+                    "#6B7280",
+                  ]}
 
-                <!-- Create SVG pie slices -->
-                {#if totalValue > 0}
-                  {@const slices = [
-                    ...topFive.map(([canisterId, balance], i) => ({
-                      value: Number(balance?.in_usd || 0),
-                      color: colors[i],
-                      percentage:
-                        (Number(balance?.in_usd || 0) / totalValue) * 100,
-                    })),
-                    ...(others.length > 0
-                      ? [
-                          {
-                            value: others.reduce(
-                              (sum, [_, balance]) =>
-                                sum + Number(balance?.in_usd || 0),
-                              0,
-                            ),
-                            color: colors[5],
-                            percentage:
-                              (others.reduce(
+                  <!-- Create SVG pie slices -->
+                  {#if totalValue > 0}
+                    {@const slices = [
+                      ...topFive.map(([canisterId, balance], i) => ({
+                        value: Number(balance?.in_usd || 0),
+                        color: colors[i],
+                        percentage:
+                          (Number(balance?.in_usd || 0) / totalValue) * 100,
+                      })),
+                      ...(others.length > 0
+                        ? [
+                            {
+                              value: others.reduce(
                                 (sum, [_, balance]) =>
                                   sum + Number(balance?.in_usd || 0),
                                 0,
-                              ) /
-                                totalValue) *
-                              100,
-                          },
-                        ]
-                      : []),
-                  ]}
-                  
-                  <!-- Normalize percentages to ensure they add up to exactly 100% -->
-                  {@const totalPercentage = slices.reduce((sum, slice) => sum + slice.percentage, 0)}
-                  {@const normalizedSlices = slices.map((slice, i) => ({
-                    ...slice,
-                    percentage: i === slices.length - 1 
-                      ? 100 - slices.slice(0, -1).reduce((sum, s) => sum + s.percentage, 0)
-                      : slice.percentage
-                  }))}
+                              ),
+                              color: colors[5],
+                              percentage:
+                                (others.reduce(
+                                  (sum, [_, balance]) =>
+                                    sum + Number(balance?.in_usd || 0),
+                                  0,
+                                ) /
+                                  totalValue) *
+                                100,
+                            },
+                          ]
+                        : []),
+                    ]}
 
-                  <!-- Draw the slices -->
-                  {@const cumulativePercentage = [0]}
-                  {#each normalizedSlices as slice, i (i)}
-                    {@const startAngle = (cumulativePercentage[i] / 100) * 360}
-                    {@const endAngle =
-                      ((cumulativePercentage[i] + slice.percentage) / 100) *
-                      360}
-                    {@const startRad = ((startAngle - 90) * Math.PI) / 180}
-                    {@const endRad = ((endAngle - 90) * Math.PI) / 180}
-
-                    {@const x1 = 50 + 40 * Math.cos(startRad)}
-                    {@const y1 = 50 + 40 * Math.sin(startRad)}
-                    {@const x2 = 50 + 40 * Math.cos(endRad)}
-                    {@const y2 = 50 + 40 * Math.sin(endRad)}
-
-                    {@const largeArcFlag = slice.percentage > 50 ? 1 : 0}
-
-                    <path
-                      d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
-                      fill={slice.color}
-                      class="hover:opacity-90 transition-opacity cursor-pointer"
-                    />
-
-                    {cumulativePercentage.push(
-                      cumulativePercentage[i] + slice.percentage,
+                    <!-- Normalize percentages to ensure they add up to exactly 100% -->
+                    {@const totalPercentage = slices.reduce(
+                      (sum, slice) => sum + slice.percentage,
+                      0,
                     )}
-                  {/each}
+                    {@const normalizedSlices = slices.map((slice, i) => ({
+                      ...slice,
+                      percentage:
+                        i === slices.length - 1
+                          ? 100 -
+                            slices
+                              .slice(0, -1)
+                              .reduce((sum, s) => sum + s.percentage, 0)
+                          : slice.percentage,
+                    }))}
 
-                  <!-- Center circle for total value -->
-                  <circle cx="50" cy="50" r="25" fill="#1E1E1E" />
+                    <!-- Draw the slices -->
+                    {@const cumulativePercentage = [0]}
+                    {#each normalizedSlices as slice, i (i)}
+                      {@const startAngle =
+                        (cumulativePercentage[i] / 100) * 360}
+                      {@const endAngle =
+                        ((cumulativePercentage[i] + slice.percentage) / 100) *
+                        360}
+                      {@const startRad = ((startAngle - 90) * Math.PI) / 180}
+                      {@const endRad = ((endAngle - 90) * Math.PI) / 180}
+
+                      {@const x1 = 50 + 40 * Math.cos(startRad)}
+                      {@const y1 = 50 + 40 * Math.sin(startRad)}
+                      {@const x2 = 50 + 40 * Math.cos(endRad)}
+                      {@const y2 = 50 + 40 * Math.sin(endRad)}
+
+                      {@const largeArcFlag = slice.percentage > 50 ? 1 : 0}
+
+                      <path
+                        d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
+                        fill={slice.color}
+                        class="hover:opacity-90 transition-opacity cursor-pointer"
+                      />
+
+                      {cumulativePercentage.push(
+                        cumulativePercentage[i] + slice.percentage,
+                      )}
+                    {/each}
+
+                    <!-- Center circle for total value -->
+                    <circle cx="50" cy="50" r="25" fill="#1E1E1E" />
+                  {/if}
                 {/if}
-              {/if}
-            </svg>
-            <!-- Overlay text in the center -->
-            <div class="absolute inset-0 flex items-center justify-center">
-              <div class="text-center">
-                <div class="text-xl font-bold">
-                  ${formatToNonZeroDecimal(totalValue)}
+              </svg>
+              <!-- Overlay text in the center -->
+              <div class="absolute inset-0 flex items-center justify-center">
+                <div class="text-center">
+                  <div class="text-xl font-bold">
+                    ${formatToNonZeroDecimal(totalValue)}
+                  </div>
+                  <div class="text-xs text-kong-text-secondary">
+                    Total Value
+                  </div>
                 </div>
-                <div class="text-xs text-kong-text-secondary">Total Value</div>
               </div>
             </div>
-          </div>
           {/key}
         </div>
       </div>
@@ -624,10 +612,10 @@
                               {token.symbol}
                             </div>
                             {#if isWhale}
-                              <Badge 
-                                variant="blue" 
-                                icon="🐋" 
-                                size="xs" 
+                              <Badge
+                                variant="blue"
+                                icon="🐋"
+                                size="xs"
                                 tooltip={whaleTooltipText}
                               >
                                 {formatSupplyPercentage(whalePercentage)}

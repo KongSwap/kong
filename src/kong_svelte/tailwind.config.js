@@ -35,6 +35,7 @@ export default {
         kong: {
           "bg-dark": "rgb(var(--bg-dark) / <alpha-value>)",
           "bg-light": "rgb(var(--bg-light) / <alpha-value>)",
+          "hover-bg-light": "rgb(var(--hover-bg-light) / <alpha-value>)",
           primary: "rgb(var(--primary) / <alpha-value>)",
           "primary-hover": "rgb(var(--primary-hover) / <alpha-value>)",
           secondary: "rgb(var(--secondary) / <alpha-value>)",
@@ -49,9 +50,12 @@ export default {
           "text-primary": "rgb(var(--text-primary) / <alpha-value>)",
           "text-secondary": "rgb(var(--text-secondary) / <alpha-value>)",
           "text-disabled": "rgb(var(--text-disabled) / <alpha-value>)",
-          "text-accent-green": "#00cba0",
-          "text-accent-blue": "#0095EB",
-          "text-accent-red": "#ff3b3b",
+          "text-light": "rgb(var(--text-light) / <alpha-value>)",
+          "text-dark": "rgb(var(--text-dark) / <alpha-value>)",
+          "text-on-primary": "rgb(var(--text-on-primary) / <alpha-value>)",
+          "text-accent-green": "rgb(var(--text-accent-green, 0 203 160) / <alpha-value>)",
+          "text-accent-blue": "rgb(var(--text-accent-blue, 0 149 235) / <alpha-value>)",
+          "text-accent-red": "rgb(var(--text-accent-red, 255 59 59) / <alpha-value>)",
           border: "rgb(var(--border) / <alpha-value>)",
           "border-light": "rgb(var(--border-light) / <alpha-value>)",
           success: "#18b092",
@@ -70,10 +74,28 @@ export default {
           "accent-cyan": "rgb(var(--accent-cyan) / <alpha-value>)",
           "surface-dark": "rgb(var(--surface-dark) / <alpha-value>)",
           "surface-light": "rgb(var(--surface-light) / <alpha-value>)",
-          'pm-dark': 'rgb(var(--pm-dark) / <alpha-value>)',
-          'pm-border': 'rgb(var(--pm-border) / <alpha-value>)',
-          'pm-accent': 'rgb(var(--pm-accent) / <alpha-value>)',
-          'pm-text-secondary': 'rgb(var(--pm-text-secondary) / <alpha-value>)',
+          
+          // Token selector dropdown colors
+          "token-selector-bg": "var(--token-selector-bg)",
+          "token-selector-header-bg": "var(--token-selector-header-bg)",
+          "token-selector-item-bg": "var(--token-selector-item-bg)",
+          "token-selector-item-hover-bg": "var(--token-selector-item-hover-bg)",
+          "token-selector-item-active-bg": "var(--token-selector-item-active-bg)",
+          "token-selector-search-bg": "var(--token-selector-search-bg)",
+          "token-selector-border": "var(--token-selector-border)",
+          "token-selector-shadow": "var(--token-selector-shadow)",
+          
+          // Toast notification colors
+          "toast-bg": "var(--toast-bg)",
+          "toast-success-border": "var(--toast-success-border)",
+          "toast-error-border": "var(--toast-error-border)",
+          "toast-warning-border": "var(--toast-warning-border)",
+          "toast-info-border": "var(--toast-info-border)",
+          "toast-success-gradient": "var(--toast-success-gradient)",
+          "toast-error-gradient": "var(--toast-error-gradient)",
+          "toast-warning-gradient": "var(--toast-warning-gradient)",
+          "toast-info-gradient": "var(--toast-info-gradient)",
+          "toast-shadow": "var(--toast-shadow)",
         },
       },
       scrollbar: {
@@ -125,6 +147,7 @@ export default {
         "zoom-in": "zoom-in 200ms ease-out",
         "zoom-out": "zoom-out 200ms ease-in",
         'shine': 'shine 2s infinite linear',
+        'glow': 'glow 2s ease-in-out infinite',
       },
       scale: {
         '98': '0.98',
@@ -182,13 +205,33 @@ export default {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(50%)' }
         },
+        glow: {
+          '0%': { 
+            filter: 'drop-shadow(0 0 2px rgb(var(--primary) / 0.5)) brightness(0.95)', 
+            opacity: '0.8',
+            transform: 'scale(0.98)'
+          },
+          '50%': { 
+            filter: 'drop-shadow(0 0 5px rgb(var(--primary) / 0.9)) brightness(1.1)', 
+            opacity: '1',
+            transform: 'scale(1.02)'
+          },
+          '100%': { 
+            filter: 'drop-shadow(0 0 2px rgb(var(--primary) / 0.5)) brightness(0.95)', 
+            opacity: '0.8',
+            transform: 'scale(0.98)'
+          }
+        },
       },
     },
   },
   plugins: [
     typography,
     plugin(({ addVariant }) => {
-      addVariant('light', ':root:not(.dark) &')
+      addVariant('light', ':root:not(.dark):not(.plain-black) &')
+    }),
+    plugin(({ addVariant }) => {
+      addVariant('plain-black', ':root.plain-black &')
     }),
     plugin(({ addUtilities }) => {
       addUtilities({

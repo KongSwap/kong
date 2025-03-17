@@ -3,11 +3,11 @@
   import { fade, fly } from "svelte/transition";
   import { BigNumber } from "bignumber.js";
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
-  import { currentUserBalancesStore } from "$lib/services/tokens/tokenStore";
-  import { PoolService } from "$lib/services/pools";
-  import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
-  import { calculateTokenUsdValue } from "$lib/utils/liquidityUtils";
+  import { currentUserBalancesStore } from "$lib/stores/tokenStore";
+  import { liquidityStore } from "$lib/stores/liquidityStore";
+  import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import TokenInput from "./TokenInput.svelte";
+  import { calculateLiquidityAmounts } from "$lib/api/pools";
 
   const dispatch = createEventDispatcher();
 
@@ -23,35 +23,43 @@
   let isAddingLiquidity = false;
   let isCalculatingAdd = false;
   let addError: string | null = null;
-  
+
   // Debounce timers
   let debounceTimer0: ReturnType<typeof setTimeout> | null = null;
   let debounceTimer1: ReturnType<typeof setTimeout> | null = null;
   const DEBOUNCE_DELAY = 500; // 750ms debounce delay
 
   // Get token balances
-  $: token0Balance = token0?.canister_id 
-    ? $currentUserBalancesStore[token0.canister_id]?.in_tokens?.toString() || "0"
+  $: token0Balance = token0?.canister_id
+    ? $currentUserBalancesStore[token0.canister_id]?.in_tokens?.toString() ||
+      "0"
     : "0";
   $: token1Balance = token1?.canister_id
-    ? $currentUserBalancesStore[token1.canister_id]?.in_tokens?.toString() || "0"
+    ? $currentUserBalancesStore[token1.canister_id]?.in_tokens?.toString() ||
+      "0"
     : "0";
-  
+
   // Parse token balances for UI display and button enabling
-  $: parsedToken0Balance = token0 && token0Balance ? 
-    new BigNumber(token0Balance).div(new BigNumber(10).pow(token0.decimals)) : 
-    new BigNumber(0);
-  $: parsedToken1Balance = token1 && token1Balance ? 
-    new BigNumber(token1Balance).div(new BigNumber(10).pow(token1.decimals)) : 
-    new BigNumber(0);
+  $: parsedToken0Balance =
+    token0 && token0Balance
+      ? new BigNumber(token0Balance).div(new BigNumber(10).pow(token0.decimals))
+      : new BigNumber(0);
+  $: parsedToken1Balance =
+    token1 && token1Balance
+      ? new BigNumber(token1Balance).div(new BigNumber(10).pow(token1.decimals))
+      : new BigNumber(0);
 
   // Add reactive variables to check if amounts exceed balances
-  $: isToken0Exceeding = token0 && addAmount0 && !isNaN(parseFloat(addAmount0)) ? 
-    new BigNumber(addAmount0).gt(parsedToken0Balance) : false;
-  $: isToken1Exceeding = token1 && addAmount1 && !isNaN(parseFloat(addAmount1)) ? 
-    new BigNumber(addAmount1).gt(parsedToken1Balance) : false;
+  $: isToken0Exceeding =
+    token0 && addAmount0 && !isNaN(parseFloat(addAmount0))
+      ? new BigNumber(addAmount0).gt(parsedToken0Balance)
+      : false;
+  $: isToken1Exceeding =
+    token1 && addAmount1 && !isNaN(parseFloat(addAmount1))
+      ? new BigNumber(addAmount1).gt(parsedToken1Balance)
+      : false;
   $: isAnyTokenExceeding = isToken0Exceeding || isToken1Exceeding;
-  
+
   // Generate appropriate error message based on which token exceeds balance
   $: balanceErrorMessage = (() => {
     if (isToken0Exceeding && isToken1Exceeding) {
@@ -90,17 +98,17 @@
     if (index === 0) {
       addAmount0 = value;
       liquidityStore.setAmount(0, value);
-      
+
       // Calculate token1 amount based on pool ratio
       if (value && !isNaN(parseFloat(value)) && parseFloat(value) > 0) {
         try {
           addError = null;
           isCalculatingAdd = true;
-          
+
           const amount0 = parseTokenAmount(value, token0.decimals);
           if (!amount0) return;
 
-          const result = await PoolService.calculateLiquidityAmounts(
+          const result = await calculateLiquidityAmounts(
             token0.canister_id,
             amount0,
             token1.canister_id,
@@ -111,7 +119,7 @@
             const amount1Display = (
               Number(result.Ok.amount_1) / Math.pow(10, token1.decimals)
             ).toString();
-            
+
             addAmount1 = amount1Display;
             liquidityStore.setAmount(1, amount1Display);
             displayValue1 = amount1Display;
@@ -131,18 +139,18 @@
       // Handle token1 input
       addAmount1 = value;
       liquidityStore.setAmount(1, value);
-      
+
       // Calculate token0 amount based on pool ratio
       if (value && !isNaN(parseFloat(value)) && parseFloat(value) > 0) {
         try {
           addError = null;
           isCalculatingAdd = true;
-          
+
           const amount1 = parseTokenAmount(value, token1.decimals);
           if (!amount1) return;
 
           // Use the pool service to calculate the corresponding token0 amount
-          const result = await PoolService.calculateLiquidityAmounts(
+          const result = await calculateLiquidityAmounts(
             token1.canister_id,
             amount1,
             token0.canister_id,
@@ -154,7 +162,7 @@
             const amount0Display = (
               Number(result.Ok.amount_0) / Math.pow(10, token0.decimals)
             ).toString();
-            
+
             addAmount0 = amount0Display;
             liquidityStore.setAmount(0, amount0Display);
             displayValue0 = amount0Display;
@@ -186,14 +194,14 @@
 
     try {
       addError = null;
-      
+
       const amount0 = parseTokenAmount(addAmount0, token0.decimals);
       const amount1 = parseTokenAmount(addAmount1, token1.decimals);
-      
+
       if (!amount0 || !amount1) {
         throw new Error("Invalid amounts");
       }
-      
+
       dispatch("showConfirmModal");
     } catch (err) {
       console.error("Error preparing to add liquidity:", err);
@@ -203,7 +211,7 @@
 </script>
 
 <div in:fade={{ duration: 200 }} class="add-liquidity-container">
-  <TokenInput 
+  <TokenInput
     token={token0}
     tokenBalance={token0Balance}
     bind:displayValue={displayValue0}
@@ -213,11 +221,11 @@
     decimals={token0?.decimals || 8}
     parsedBalance={parsedToken0Balance}
     on:valueChange={(e) => handleAddAmountChangeDebounced(0, e.detail)}
-    on:error={(e) => addError = e.detail}
+    on:error={(e) => (addError = e.detail)}
   />
 
   <div class="mt-3">
-    <TokenInput 
+    <TokenInput
       token={token1}
       tokenBalance={token1Balance}
       bind:displayValue={displayValue1}
@@ -227,7 +235,7 @@
       decimals={token1?.decimals || 8}
       parsedBalance={parsedToken1Balance}
       on:valueChange={(e) => handleAddAmountChangeDebounced(1, e.detail)}
-      on:error={(e) => addError = e.detail}
+      on:error={(e) => (addError = e.detail)}
     />
   </div>
 
@@ -235,12 +243,16 @@
     <div class="summary-container mt-3">
       <div class="summary-row">
         <span>Rate</span>
-        <span class="summary-value">1 {token0?.symbol} = {Number(addAmount1) / Number(addAmount0)} {token1?.symbol}</span>
+        <span class="summary-value"
+          >1 {token0?.symbol} = {Number(addAmount1) / Number(addAmount0)}
+          {token1?.symbol}</span
+        >
       </div>
       <div class="summary-row">
         <span>Value</span>
         <span class="summary-value">
-          ${Number(calculateTokenUsdValue(addAmount0, token0)) + Number(calculateTokenUsdValue(addAmount1, token1))}
+          ${Number(calculateTokenUsdValue(addAmount0, token0)) +
+            Number(calculateTokenUsdValue(addAmount1, token1))}
         </span>
       </div>
     </div>
@@ -265,7 +277,10 @@
   {/if}
 
   {#if balanceErrorMessage}
-    <div class="warning-message mt-3 animate-pulse-slow" in:fly={{ y: 10, duration: 200 }}>
+    <div
+      class="warning-message mt-3 animate-pulse-slow"
+      in:fly={{ y: 10, duration: 200 }}
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class="warning-icon"
@@ -286,8 +301,8 @@
     <div class="action-buttons">
       {#if isAnyTokenExceeding}
         <!-- Custom insufficient balance button -->
-        <button 
-          class="insufficient-balance-button action-button" 
+        <button
+          class="insufficient-balance-button action-button"
           disabled={true}
         >
           <span>Insufficient Balance</span>
@@ -296,7 +311,10 @@
         <button
           on:click={handleAddLiquidity}
           class="action-button add-button"
-          disabled={!addAmount0 || !addAmount1 || isAddingLiquidity || isCalculatingAdd}
+          disabled={!addAmount0 ||
+            !addAmount1 ||
+            isAddingLiquidity ||
+            isCalculatingAdd}
         >
           {#if isAddingLiquidity}
             <div class="loading-spinner"></div>
@@ -337,11 +355,12 @@
   }
 
   .warning-message {
-    @apply p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 
-           text-yellow-500 text-xs backdrop-blur-sm flex items-center gap-2;
+    @apply p-3 rounded-lg bg-kong-accent-yellow/10 border border-kong-accent-yellow/20 
+           text-kong-accent-yellow text-xs backdrop-blur-sm flex items-center gap-2;
   }
 
-  .error-icon, .warning-icon {
+  .error-icon,
+  .warning-icon {
     @apply w-4 h-4 flex-shrink-0;
   }
 
@@ -374,4 +393,4 @@
     @apply w-full h-10 flex items-center justify-center;
     @apply cursor-not-allowed opacity-80;
   }
-</style> 
+</style>

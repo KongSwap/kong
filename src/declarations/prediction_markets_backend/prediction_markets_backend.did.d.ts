@@ -17,7 +17,27 @@ export type BetError = { 'MarketNotFound' : null } |
   { 'InvalidOutcome' : null } |
   { 'InsufficientBalance' : null } |
   { 'BalanceUpdateFailed' : null };
-export interface BetWithMarket { 'bet' : Bet, 'market' : Market }
+export interface ConsentInfo {
+  'metadata' : ConsentMessageMetadata,
+  'consent_message' : ConsentMessage,
+}
+export type ConsentMessage = {
+    'LineDisplayMessage' : { 'pages' : Array<LineDisplayPage> }
+  } |
+  { 'GenericDisplayMessage' : string };
+export interface ConsentMessageMetadata {
+  'utc_offset_minutes' : [] | [number],
+  'language' : string,
+}
+export interface ConsentMessageRequest {
+  'arg' : Uint8Array | number[],
+  'method' : string,
+  'user_preferences' : ConsentMessageSpec,
+}
+export interface ConsentMessageSpec {
+  'metadata' : ConsentMessageMetadata,
+  'device_spec' : [] | [DisplayMessageType],
+}
 export interface Delegation {
   'created' : bigint,
   'targets_list_hash' : Uint8Array | number[],
@@ -34,24 +54,41 @@ export interface DelegationRequest {
   'expiration' : [] | [bigint],
 }
 export interface DelegationResponse { 'delegations' : Array<Delegation> }
+export type DisplayMessageType = { 'GenericDisplay' : null } |
+  {
+    'LineDisplay' : {
+      'characters_per_line' : number,
+      'lines_per_page' : number,
+    }
+  };
 export interface Distribution {
   'bet_amount' : bigint,
   'winnings' : bigint,
   'user' : Principal,
   'outcome_index' : bigint,
 }
-export interface GetFeeBalanceResult {
-  'balance' : bigint,
-  'admin_principal' : Principal,
+export interface ErrorInfo { 'description' : string }
+export interface GetAllMarketsArgs {
+  'status_filter' : [] | [MarketStatus],
+  'start' : bigint,
+  'length' : bigint,
+  'sort_option' : [] | [SortOption],
 }
-export interface ICRC21ConsentMessageRequest {
-  'method' : string,
-  'canister' : Principal,
+export interface GetAllMarketsResult {
+  'markets' : Array<Market>,
+  'total_count' : bigint,
 }
-export interface ICRC21ConsentMessageResponse { 'consent_message' : string }
+export interface GetMarketsByStatusArgs { 'start' : bigint, 'length' : bigint }
+export interface GetMarketsByStatusResult {
+  'total_active' : bigint,
+  'total_resolved' : bigint,
+  'total_expired_unresolved' : bigint,
+  'markets_by_status' : MarketsByStatus,
+}
 export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
+export interface LineDisplayPage { 'lines' : Array<string> }
 export interface Market {
   'id' : bigint,
   'bet_count_percentages' : Array<number>,
@@ -116,10 +153,10 @@ export type ResolutionMethod = {
   } |
   { 'Decentralized' : { 'quorum' : bigint } } |
   { 'Admin' : null };
-export type Result = { 'Ok' : null } |
+export type Result = { 'Ok' : bigint } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : bigint } |
-  { 'Err' : string };
+export type Result_1 = { 'Ok' : ConsentInfo } |
+  { 'Err' : ErrorInfo };
 export type Result_2 = { 'Ok' : DelegationResponse } |
   { 'Err' : DelegationError };
 export type Result_3 = { 'Ok' : null } |
@@ -129,6 +166,10 @@ export type Result_4 = { 'Ok' : null } |
 export type Result_5 = { 'Ok' : null } |
   { 'Err' : ResolutionError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
+export type SortDirection = { 'Descending' : null } |
+  { 'Ascending' : null };
+export type SortOption = { 'TotalPool' : SortDirection } |
+  { 'CreatedAt' : SortDirection };
 export interface UserBetInfo {
   'outcome_text' : string,
   'bet_amount' : bigint,
@@ -145,7 +186,6 @@ export interface UserHistory {
   'resolved_bets' : Array<UserBetInfo>,
 }
 export interface _SERVICE {
-  'add_admin' : ActorMethod<[Principal], Result>,
   'create_market' : ActorMethod<
     [
       string,
@@ -155,21 +195,20 @@ export interface _SERVICE {
       ResolutionMethod,
       MarketEndTime,
     ],
-    Result_1
+    Result
   >,
-  'get_admin_principals' : ActorMethod<[], Array<Principal>>,
-  'get_all_bets' : ActorMethod<[bigint, bigint, boolean], Array<BetWithMarket>>,
   'get_all_categories' : ActorMethod<[], Array<string>>,
-  'get_all_markets' : ActorMethod<[], Array<Market>>,
-  'get_balance' : ActorMethod<[Principal], bigint>,
-  'get_fee_balance' : ActorMethod<[], GetFeeBalanceResult>,
+  'get_all_markets' : ActorMethod<[GetAllMarketsArgs], GetAllMarketsResult>,
   'get_market' : ActorMethod<[bigint], [] | [Market]>,
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
-  'get_markets_by_status' : ActorMethod<[], MarketsByStatus>,
+  'get_markets_by_status' : ActorMethod<
+    [GetMarketsByStatusArgs],
+    GetMarketsByStatusResult
+  >,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
   'icrc21_canister_call_consent_message' : ActorMethod<
-    [ICRC21ConsentMessageRequest],
-    ICRC21ConsentMessageResponse
+    [ConsentMessageRequest],
+    Result_1
   >,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
   'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_2>,
@@ -180,7 +219,6 @@ export interface _SERVICE {
   >,
   'is_admin' : ActorMethod<[Principal], boolean>,
   'place_bet' : ActorMethod<[bigint, bigint, bigint], Result_4>,
-  'remove_admin' : ActorMethod<[Principal], Result>,
   'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_5>,
   'resolve_via_oracle' : ActorMethod<
     [bigint, Array<bigint>, Uint8Array | number[]],

@@ -1,52 +1,65 @@
-<script lang="ts">
+<script lang="ts" runes>
   import Panel from "$lib/components/common/Panel.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { goto } from "$app/navigation";
   import { fade } from 'svelte/transition';
+  import { onDestroy, onMount } from 'svelte';
 
-  export let bets: any[] = [];
-  export let outcomes: string[] | null = null;
-  export let title: string = "Recent Bets";
-  export let maxHeight: string = "300px";
-  export let showOutcomes: boolean = true;
-  export let className: string = "";
-  export let panelVariant: "transparent" | "solid" = "transparent";
-  export let loading: boolean = false;
+  const props = $props<{
+    bets?: any[];
+    outcomes?: string[] | null;
+    title?: string;
+    maxHeight?: string;
+    showOutcomes?: boolean;
+    className?: string;
+    panelVariant?: "transparent" | "solid";
+    loading?: boolean;
+  }>();
 
-  let localNewBetIds: Set<string> = new Set();
-  let seenBetIds: Set<string> = new Set();
-  let hasInitialLoad = false;
+  // Set default values for props in non-reactive way
+  let bets = $state(props.bets ?? []);
+  let outcomes = $state(props.outcomes ?? null);
+  let title = $state(props.title ?? "Recent Bets");
+  let maxHeight = $state(props.maxHeight ?? "300px");
+  let showOutcomes = $state(props.showOutcomes ?? true);
+  let className = $state(props.className ?? "");
+  let panelVariant = $state(props.panelVariant ?? "transparent");
+  let loading = $state(props.loading ?? false);
 
-  $: (() => {
-    if (!bets.length) return;
-    
-    const currentBetIds = new Set(
-      bets.map(bet => {
-        const betData = getBetData(bet);
-        return `${betData.timestamp}-${betData.user}`;
-      })
-    );
+  // Store visible bets to avoid animation flashes
+  let visibleBets = $state<any[]>([]);
 
-    if (!hasInitialLoad) {
-      seenBetIds = new Set(currentBetIds);
-      hasInitialLoad = true;
-      return;
+  // Simple state for animation
+  let animatingBetIds = $state<Set<string>>(new Set());
+  
+  // Helper function to convert any value to string safely
+  function safeToString(value: any): string {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'bigint') return value.toString();
+    return String(value);
+  }
+  
+  // Helper to get unique ID for a bet
+  function getBetId(bet: any): string {
+    const data = getBetData(bet);
+    return `${safeToString(data.timestamp)}-${safeToString(data.user)}`;
+  }
+
+  // Process bets on component mount and when they change
+  onMount(() => {
+    // Initial setup
+    if (bets && bets.length) {
+      visibleBets = [...bets];
     }
-
-    const newIds = new Set([...currentBetIds].filter(id => !seenBetIds.has(id)));
-
-    newIds.forEach(id => {
-      localNewBetIds.add(id);
-      seenBetIds.add(id);
-      setTimeout(() => {
-        localNewBetIds.delete(id);
-        localNewBetIds = new Set(localNewBetIds);
-      }, 1000);
-    });
-
-    // Update seen IDs with all current bets
-    seenBetIds = new Set([...seenBetIds, ...currentBetIds]);
-  })();
+  });
+  
+  // Only update when props.bets changes
+  $effect(() => {
+    if (!props.bets) return;
+    
+    // Use a simple approach to just set the visibleBets directly
+    visibleBets = [...props.bets];
+  });
 
   function getBetData(bet: any) {
     if (bet.bet && bet.market) {
@@ -70,15 +83,14 @@
 
 <Panel variant={panelVariant} className={className} unpadded>
   <div class="sticky top-4">
-    <h2 class="text-sm uppercase font-medium px-4">{title}</h2>
+    <h2 class="text-sm font-medium px-4 pt-4">{title}</h2>
     <div class="max-h-[{maxHeight}] overflow-y-auto scrollbar-thin relative">
-      {#if bets.length > 0}
-        {#each bets as bet}
+      {#if visibleBets.length > 0}
+        {#each visibleBets as bet}
           {@const betData = getBetData(bet)}
-          {@const betId = `${betData.timestamp}-${betData.user}`}
+          {@const betId = getBetId(bet)}
           <div
             class="flex p-4 flex-col py-3 border-b border-kong-border/50 last:border-0 hover:bg-kong-bg-dark/30 transition-colors group rounded-md"
-            class:flash={localNewBetIds.has(betId)}
           >
             <div class="flex items-center justify-between">
               {#if showOutcomes && outcomes}
@@ -155,28 +167,6 @@
 </Panel>
 
 <style lang="postcss" scoped>
-  @keyframes flash {
-    0% {
-      background-color: rgb(34, 197, 94);
-      transform: scale(1);
-    }
-    50% {
-      background-color: rgba(34, 197, 94, 0.2);
-      transform: scale(0.98);
-    }
-    100% {
-      background-color: transparent;
-      transform: scale(1);
-    }
-  }
-
-  .flash {
-    animation: flash 1s ease-out;
-    position: relative;
-    z-index: 1;
-    margin: 1px 0;
-  }
-
   .scrollbar-thin {
     overflow-y: auto !important;
     padding: 1px;

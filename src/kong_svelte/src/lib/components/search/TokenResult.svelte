@@ -2,6 +2,7 @@
   import { fade } from 'svelte/transition';
   import { Coins, ArrowRight } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
+  import { getPriceChangeClass } from '$lib/utils/statsUtils';
 
   export let tokens: FE.Token[] = [];
   export let selectedIndex = -1;
@@ -24,12 +25,6 @@
     if (!change) return '0.00%';
     const numericChange = typeof change === 'string' ? parseFloat(change) : change;
     return `${numericChange >= 0 ? '+' : ''}${numericChange.toFixed(2)}%`;
-  }
-
-  function getPriceChangeClass(change: number | string | undefined): string {
-    if (!change) return '';
-    const numericChange = typeof change === 'string' ? parseFloat(change) : change;
-    return numericChange >= 0 ? 'text-kong-accent-green' : 'text-kong-accent-red';
   }
 
   function handleSelect(token: FE.Token) {

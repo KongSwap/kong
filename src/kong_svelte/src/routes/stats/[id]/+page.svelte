@@ -3,7 +3,7 @@
   import { onDestroy, onMount } from "svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { livePools } from "$lib/services/pools/poolStore";
+  import { fetchPoolsForCanister } from "$lib/services/pools/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import { goto } from "$app/navigation";
@@ -22,18 +22,67 @@
     ChevronDown,
   } from "lucide-svelte";
   import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
-  import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
+  // @ts-ignore - This component doesn't have a default export but works in Svelte
+  import TokenStatistics from "./TokenStatistics.svelte";
   import { GOVERNANCE_CANISTER_IDS } from "$lib/services/sns/snsService";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { toastStore } from "$lib/stores/toastStore";
   import { tokenData } from "$lib/stores/tokenData";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { afterNavigate } from "$app/navigation";
 
   // Add loading state for token lookup
   let isTokenLoading = $state(true);
+  // Add loading state for pools
+  let isPoolsLoading = $state(false);
+  // Add a flag to prevent concurrent fetches
 
   // Add back the necessary state variables at the top
   let token = $state<FE.Token | undefined>(undefined);
-  let refreshInterval: number;
+  let refreshInterval: NodeJS.Timeout;
+  
+  // Add back the isChartDataReady state and effect
+  let isChartDataReady = $state(false);
+  let chartInstance = $state<number>(0);
+  let chartMounted = $state(false);
+  
+  // Add a function to force chart reinitialization
+  const forceChartReinit = () => {
+    console.log('Forcing chart reinitialization');
+    isChartDataReady = false;
+    setTimeout(() => {
+      chartInstance++;
+      chartMounted = true;
+    }, 100);
+  };
+  
+  // Listen for navigation events - this is the ONLY place we should reset state on navigation
+  afterNavigate(({ from, to }) => {
+    // Check if we're navigating between different token pages
+    const fromId = from?.params?.id;
+    const toId = to?.params?.id;
+    
+    if (fromId && toId && fromId !== toId) {
+      console.log(`Navigation between token pages: ${fromId} -> ${toId}`);
+      
+      // Force a complete reset of the chart state
+      setTimeout(() => {
+        console.log('Forcing chart reset after navigation');
+        isChartDataReady = false;
+        chartInstance = 0;
+        chartMounted = false;
+        
+        // Reset pool selection state
+        hasManualSelection = false;
+        initialPoolSet = false;
+        selectedPool = undefined;
+        relevantPools = [];
+        
+        // Force token reload by setting loading state
+        isTokenLoading = true;
+      }, 0);
+    }
+  });
 
   // Derived values
   let ckusdtToken = $state<FE.Token | undefined>(undefined);
@@ -53,16 +102,145 @@
   });
 
   // Update the token lookup effect
-  $effect(() => {
-    // React to both tokenData and page params changes
-    const data = $tokenData;
-    const pageId = $page.params.id;
+  $effect.root(() => {
+    const fetchToken = async () => {
+      try {
+        const pageId = $page.params.id;
+        if (!pageId) return;
+        
+        // Start loading
+        isTokenLoading = true;
+        
+        // Reset chart state on token change
+        isChartDataReady = false;
+        chartInstance = 0;
+        
+        console.log(`Fetching token data for ID: ${pageId}`);
+        
+        // First try direct API fetch for the specific token
+        const fetchedTokens = await fetchTokensByCanisterId([pageId]);
+        if (fetchedTokens && fetchedTokens.length > 0) {
+          token = fetchedTokens[0];
+          isTokenLoading = false;
+          return;
+        }
+        
+        // If direct fetch doesn't return a token, check the store data
+        const data = $tokenData;
+        if (data?.length > 0) {
+          // Try to find by canister_id first, then by address as fallback
+          const foundToken = data.find((t) => t.canister_id === pageId) || 
+                         data.find((t) => t.address === pageId);
+          if (foundToken) {
+            token = foundToken;
+            isTokenLoading = false;
+            return;
+          }
+        }
+        
+        // If we got here, token wasn't found
+        isTokenLoading = false;
+      } catch (error) {
+        console.error("Error fetching token:", error);
+        isTokenLoading = false;
+      }
+    };
+    
+    fetchToken();
+    
+    // Set up refresh interval for token data
+    refreshInterval = setInterval(async () => {
+      if (!token?.canister_id) return;
+      try {
+        const updatedTokens = await fetchTokensByCanisterId([token.canister_id]);
+        if (updatedTokens && updatedTokens.length > 0) {
+          token = updatedTokens[0];
+        }
+      } catch (error) {
+        console.error("Error refreshing token data:", error);
+      }
+    }, 60000); // Refresh every minute
+    
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  });
 
-    if (data?.length > 0) {
-      token = data.find((t) => t.canister_id === pageId);
-      isTokenLoading = false;
+  // Add $effect to trigger pool loading when token changes
+  $effect(() => {
+    if (token?.canister_id) {
+      console.log(`Token changed to ${token.symbol} (${token.canister_id}), fetching pools...`);
+      // Reset selection state when token changes
+      hasManualSelection = false;
+      initialPoolSet = false;
+      selectedPool = undefined;
+      
+      // Set loading state
+      isPoolsLoading = true;
+      
+      // Use the centralized pool fetching function from poolStore
+      fetchPoolsForCanister(token.canister_id).then(pools => {
+        isPoolsLoading = false;
+        console.log(`Received ${pools.length} pools for ${token.symbol}`);
+        
+        // Filter pools with TVL > 0
+        const poolsWithTvl = pools.filter(p => Number(p.tvl) > 0);
+        console.log(`After filtering for TVL > 0: ${poolsWithTvl.length} pools`);
+        
+        // Sort by volume
+        relevantPools = poolsWithTvl.sort((a, b) => 
+          Number(b.volume_24h || 0) - Number(a.volume_24h || 0)
+        );
+          
+        // Auto-select a pool if we have pools and haven't manually selected one
+        if (!hasManualSelection && relevantPools.length > 0) {
+          // For CKUSDT, prioritize the CKUSDC/CKUSDT pool if it exists and has TVL
+          if (token.canister_id === CKUSDT_CANISTER_ID) {
+            console.log('Looking for CKUSDC/CKUSDT pool...');
+            const ckusdcPool = relevantPools.find((p) => {
+              const isCorrectPair =
+                (p.address_0 === CKUSDC_CANISTER_ID &&
+                  p.address_1 === CKUSDT_CANISTER_ID) ||
+                (p.address_0 === CKUSDT_CANISTER_ID &&
+                  p.address_1 === CKUSDC_CANISTER_ID);
+              const hasTVL = Number(p.tvl) > 0;
+              return isCorrectPair && hasTVL;
+            });
+
+            if (ckusdcPool) {
+              console.log('Found CKUSDC/CKUSDT pool, selecting it');
+              selectedPool = ckusdcPool;
+              initialPoolSet = true;
+              return;
+            }
+          }
+          
+          // Otherwise select the pool with highest TVL
+          console.log('Selecting pool with highest TVL...');
+          const highestTvlPool = [...relevantPools].sort((a, b) => {
+            const tvlDiff = Number(b.tvl) - Number(a.tvl);
+            if (tvlDiff !== 0) return tvlDiff;
+            return Number(b.volume_24h || 0) - Number(a.volume_24h || 0);
+          })[0];
+          
+          if (highestTvlPool) {
+            console.log(`Selected pool #${highestTvlPool.pool_id} with TVL ${highestTvlPool.tvl}`);
+            selectedPool = highestTvlPool;
+            initialPoolSet = true;
+          } else {
+            console.log('No pools with TVL found for selection');
+          }
+        } else if (relevantPools.length === 0) {
+          console.log('No relevant pools found for this token');
+        }
+      }).catch(error => {
+        isPoolsLoading = false;
+        console.error("Error fetching pools:", error);
+      });
     } else {
-      isTokenLoading = true;
+      relevantPools = [];
     }
   });
 
@@ -70,62 +248,6 @@
   let selectedPool = $state<BE.Pool | undefined>(undefined);
   let hasManualSelection = $state(false);
   let initialPoolSet = $state(false);
-
-  $effect(() => {
-    if (!token?.canister_id || !$livePools) return;
-    if (hasManualSelection) return;
-    if (initialPoolSet) return;
-
-    // Get all pools containing this token with TVL
-    const relevantPools = $livePools.filter((p) => {
-      const hasToken =
-        p.address_0 === token.canister_id || p.address_1 === token.canister_id;
-      const hasTVL = Number(p.tvl) > 0;
-      return hasToken && hasTVL; // Only filter by TVL initially
-    });
-
-    // For CKUSDT, prioritize the CKUSDC/CKUSDT pool if it exists and has TVL
-    if (token.canister_id === CKUSDT_CANISTER_ID) {
-      const ckusdcPool = $livePools.find((p) => {
-        const isCorrectPair =
-          (p.address_0 === CKUSDC_CANISTER_ID &&
-            p.address_1 === CKUSDT_CANISTER_ID) ||
-          (p.address_0 === CKUSDT_CANISTER_ID &&
-            p.address_1 === CKUSDC_CANISTER_ID);
-        const hasTVL = Number(p.tvl) > 0;
-        return isCorrectPair && hasTVL;
-      });
-
-      if (ckusdcPool) {
-        selectedPool = {
-          ...ckusdcPool,
-          pool_id: String(ckusdcPool.pool_id),
-          tvl: String(ckusdcPool.tvl),
-          lp_token_supply: String(ckusdcPool.lp_token_supply),
-        } as unknown as BE.Pool;
-        initialPoolSet = true;
-        return;
-      }
-    }
-
-    // Sort first by TVL, then by volume as secondary criteria
-    const sortedPools = relevantPools.sort((a, b) => {
-      const tvlDiff = Number(b.tvl) - Number(a.tvl);
-      if (tvlDiff !== 0) return tvlDiff;
-      return Number(b.volume_24h || 0) - Number(a.volume_24h || 0);
-    });
-
-    const highestTvlPool = sortedPools[0];
-    if (highestTvlPool) {
-      selectedPool = {
-        ...highestTvlPool,
-        pool_id: String(highestTvlPool.pool_id),
-        tvl: String(highestTvlPool.tvl),
-        lp_token_supply: String(highestTvlPool.lp_token_supply),
-      } as unknown as BE.Pool;
-      initialPoolSet = true;
-    }
-  });
 
   let observer: IntersectionObserver;
 
@@ -158,10 +280,46 @@
     marketCapRank = rank !== -1 ? rank + 1 : null;
   });
 
-  // Add back the isChartDataReady state and effect
-  let isChartDataReady = $state(false);
+  // Update the chart data ready effect to be more robust
   $effect(() => {
-    isChartDataReady = Boolean(selectedPool && token);
+    // Only evaluate readiness if we have the basic requirements
+    if (!token || !selectedPool) {
+      if (isChartDataReady) {
+        console.log('Chart data no longer ready - missing token or selectedPool');
+        isChartDataReady = false;
+      }
+      return;
+    }
+    
+    // Ensure we have both token and selectedPool, and that selectedPool is fully populated with token data
+    const dataReady = Boolean(
+      selectedPool.pool_id &&
+      (selectedPool.symbol_0 || selectedPool.token0?.symbol) && 
+      (selectedPool.symbol_1 || selectedPool.token1?.symbol)
+    );
+    
+    // Only update if the state is changing to avoid unnecessary renders
+    if (dataReady !== isChartDataReady) {
+      console.log(`Chart data ready state changing: ${isChartDataReady} -> ${dataReady}`);
+      
+      if (dataReady) {
+        // Force a re-render of the chart component by incrementing the instance counter
+        chartInstance++;
+        chartMounted = true;
+        console.log('Chart is ready to load with data:', {
+          hasToken: Boolean(token),
+          hasPool: Boolean(selectedPool),
+          poolId: selectedPool?.pool_id,
+          symbol0: selectedPool?.symbol_0 || selectedPool?.token0?.symbol,
+          symbol1: selectedPool?.symbol_1 || selectedPool?.token1?.symbol,
+          isReady: dataReady,
+          chartInstance
+        });
+      }
+      
+      // Update the state after logging
+      isChartDataReady = dataReady;
+    }
   });
 
   // Add tab state
@@ -169,24 +327,6 @@
     "overview",
   );
   let relevantPools = $state<BE.Pool[]>([]);
-
-  // Update relevantPools when poolStore changes
-  $effect(() => {
-    if (!token?.canister_id || !$livePools) {
-      relevantPools = [];
-      return;
-    }
-
-    relevantPools = $livePools
-      .filter((p) => {
-        const hasToken =
-          p.address_0 === token.canister_id ||
-          p.address_1 === token.canister_id;
-        const hasTVL = Number(p.tvl) > 0;
-        return hasToken && hasTVL;
-      })
-      .sort((a, b) => Number(b.volume_24h || 0) - Number(a.volume_24h || 0));
-  });
 
   let showDropdown = $state(false);
   let mobileButtonRef = $state<HTMLButtonElement | null>(null);
@@ -219,6 +359,16 @@
       document.removeEventListener("touchend", handleClickOutside);
     };
   });
+
+  // Add an onMount handler to ensure chart initialization on page load
+  onMount(() => {
+    console.log('Page mounted, checking chart initialization');
+    // If we already have token and pool data but chart isn't mounted, force initialization
+    if (token && selectedPool && !chartMounted) {
+      console.log('Data available but chart not mounted, forcing initialization');
+      setTimeout(forceChartReinit, 500);
+    }
+  });
 </script>
 
 <svelte:head> 
@@ -245,7 +395,6 @@
   {:else}
     <div class="flex flex-col max-w-[1300px] mx-auto gap-4">
       <!-- Token Header - Non-fixed with border radius -->
-      <Panel variant="transparent">
         <div class="flex flex-col gap-4">
           <!-- Token info row -->
           <div class="flex items-center justify-between">
@@ -255,7 +404,7 @@
                 title="Back"
                 aria-label="Back"
                 on:click={() => goto("/stats")}
-                class="flex min-h-[40px] md:min-h-[48px] flex-col items-center justify-center gap-2 px-2.5 text-sm bg-kong-bg-secondary hover:bg-kong-bg-secondary/80 text-kong-text-primary/70 rounded-lg transition-colors duration-200 w-fit"
+                class="flex min-h-[40px] md:min-h-[48px] flex-col items-center justify-center gap-2 pr-2.5 text-sm bg-kong-bg-secondary hover:bg-kong-bg-secondary/80 text-kong-text-primary/70 rounded-lg transition-colors duration-200 w-fit"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -340,7 +489,6 @@
             </div>
           {/if}
         </div>
-      </Panel>
 
       <!-- Tab Content -->
       {#if activeTab === "overview"}
@@ -360,15 +508,10 @@
                 {token}
                 formattedTokens={$tokenData}
                 {relevantPools}
+                isLoading={isPoolsLoading}
                 onPoolSelect={(pool) => {
                   hasManualSelection = true;
-                  selectedPool = {
-                    ...pool,
-                    pool_id: String(pool.pool_id),
-                    tvl: String(pool.tvl),
-                    lp_token_supply: String(pool.lp_token_supply),
-                    volume_24h: String(pool.volume_24h || "0"),
-                  } as unknown as BE.Pool;
+                  selectedPool = pool;
                 }}
               />
               <!-- Add Action Buttons for mobile -->
@@ -454,7 +597,7 @@
               <!-- Token Statistics -->
               <TokenStatistics
                 {token}
-                marketCapRank={token?.metrics?.market_cap_rank}
+                marketCapRank={token?.metrics?.market_cap_rank ?? null}
               />
 
               <!-- Chart Panel -->
@@ -465,30 +608,47 @@
               >
                 <div class="h-[450px] min-h-[400px] w-full">
                   {#if isChartDataReady}
-                    <TradingViewChart
-                      poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
-                      symbol={token && selectedPool
-                        ? `${token.symbol}/${
-                            selectedPool.address_0 === token.canister_id
-                              ? $tokenData?.find(
-                                  (t) =>
-                                    t.canister_id === selectedPool.address_1,
-                                )?.symbol
-                              : $tokenData?.find(
-                                  (t) =>
-                                    t.canister_id === selectedPool.address_0,
-                                )?.symbol
-                          }`
-                        : ""}
-                      quoteToken={selectedPool?.address_0 === token?.canister_id
-                        ? $tokenData?.find(
-                            (t) => t.canister_id === selectedPool?.address_1,
-                          )
-                        : $tokenData?.find(
-                            (t) => t.canister_id === selectedPool?.address_0,
-                          )}
-                      baseToken={token}
-                    />
+                    {#key chartInstance}
+                      <div class="h-full w-full" id="mobile-chart-container">
+                        <TradingViewChart
+                          poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
+                          symbol={token && selectedPool
+                            ? `${token.symbol}/${
+                                selectedPool.address_0 === token.canister_id
+                                  ? (selectedPool.token1?.symbol || 
+                                     selectedPool.symbol_1 || 
+                                     $tokenData?.find(t => t.canister_id === selectedPool.address_1)?.symbol || 
+                                     'Unknown')
+                                  : (selectedPool.token0?.symbol || 
+                                     selectedPool.symbol_0 || 
+                                     $tokenData?.find(t => t.canister_id === selectedPool.address_0)?.symbol || 
+                                     'Unknown')
+                              }`
+                            : ""}
+                          quoteToken={selectedPool?.address_0 === token?.canister_id
+                            ? (selectedPool.token1 || 
+                               $tokenData?.find(t => t.canister_id === selectedPool.address_1) || 
+                               { 
+                                 canister_id: selectedPool.address_1,
+                                 symbol: selectedPool.symbol_1,
+                                 name: selectedPool.symbol_1 || 'Unknown',
+                                 address: selectedPool.address_1,
+                                 token_id: 999999  // Add token_id as required by TradingViewChart
+                               } as FE.Token)
+                            : (selectedPool.token0 || 
+                               $tokenData?.find(t => t.canister_id === selectedPool.address_0) || 
+                               {
+                                 canister_id: selectedPool.address_0,
+                                 symbol: selectedPool.symbol_0,
+                                 name: selectedPool.symbol_0 || 'Unknown',
+                                 address: selectedPool.address_0,
+                                 token_id: 999999  // Add token_id as required by TradingViewChart
+                               } as FE.Token)
+                          }
+                          baseToken={token}
+                        />
+                      </div>
+                    {/key}
                   {:else}
                     <div class="flex items-center justify-center h-full">
                       <div class="loader"></div>
@@ -515,31 +675,47 @@
                 >
                   <div class="h-[450px] min-h-[400px] w-full">
                     {#if isChartDataReady}
-                      <TradingViewChart
-                        poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
-                        symbol={token && selectedPool
-                          ? `${token.symbol}/${
-                              selectedPool.address_0 === token.canister_id
-                                ? $tokenData?.find(
-                                    (t) =>
-                                      t.canister_id === selectedPool.address_1,
-                                  )?.symbol
-                                : $tokenData?.find(
-                                    (t) =>
-                                      t.canister_id === selectedPool.address_0,
-                                  )?.symbol
-                            }`
-                          : ""}
-                        quoteToken={selectedPool?.address_0 ===
-                        token?.canister_id
-                          ? $tokenData?.find(
-                              (t) => t.canister_id === selectedPool?.address_1,
-                            )
-                          : $tokenData?.find(
-                              (t) => t.canister_id === selectedPool?.address_0,
-                            )}
-                        baseToken={token}
-                      />
+                      {#key chartInstance}
+                        <div class="h-full w-full" id="desktop-chart-container">
+                          <TradingViewChart
+                            poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
+                            symbol={token && selectedPool
+                              ? `${token.symbol}/${
+                                  selectedPool.address_0 === token.canister_id
+                                    ? (selectedPool.token1?.symbol || 
+                                       selectedPool.symbol_1 || 
+                                       $tokenData?.find(t => t.canister_id === selectedPool.address_1)?.symbol || 
+                                       'Unknown')
+                                    : (selectedPool.token0?.symbol || 
+                                       selectedPool.symbol_0 || 
+                                       $tokenData?.find(t => t.canister_id === selectedPool.address_0)?.symbol || 
+                                       'Unknown')
+                              }`
+                              : ""}
+                            quoteToken={selectedPool?.address_0 === token?.canister_id
+                              ? (selectedPool.token1 || 
+                                 $tokenData?.find(t => t.canister_id === selectedPool.address_1) || 
+                                 { 
+                                   canister_id: selectedPool.address_1,
+                                   symbol: selectedPool.symbol_1,
+                                   name: selectedPool.symbol_1 || 'Unknown',
+                                   address: selectedPool.address_1,
+                                   token_id: 999999  // Add token_id as required by TradingViewChart
+                                 } as FE.Token)
+                              : (selectedPool.token0 || 
+                                 $tokenData?.find(t => t.canister_id === selectedPool.address_0) || 
+                                 {
+                                   canister_id: selectedPool.address_0,
+                                   symbol: selectedPool.symbol_0,
+                                   name: selectedPool.symbol_0 || 'Unknown',
+                                   address: selectedPool.address_0,
+                                   token_id: 999999  // Add token_id as required by TradingViewChart
+                                 } as FE.Token)
+                            }
+                            baseToken={token}
+                          />
+                        </div>
+                      {/key}
                     {:else}
                       <div class="flex items-center justify-center h-full">
                         <div class="loader"></div>
@@ -561,15 +737,10 @@
                   {token}
                   formattedTokens={$tokenData}
                   {relevantPools}
+                  isLoading={isPoolsLoading}
                   onPoolSelect={(pool) => {
                     hasManualSelection = true;
-                    selectedPool = {
-                      ...pool,
-                      pool_id: String(pool.pool_id),
-                      tvl: String(pool.tvl),
-                      lp_token_supply: String(pool.lp_token_supply),
-                      volume_24h: String(pool.volume_24h || "0"),
-                    } as unknown as BE.Pool;
+                    selectedPool = pool;
                   }}
                 />
                 <!-- Action Buttons - Shown on all layouts -->
@@ -654,7 +825,10 @@
                     {/if}
                   </div>
                 </div>
-                <TokenStatistics {token} {marketCapRank} />
+                <TokenStatistics
+                  {token}
+                  marketCapRank={token?.metrics?.market_cap_rank ?? null}
+                />
               </div>
             </div>
           </div>
@@ -705,7 +879,10 @@
                   </a>
                 </div>
               </Panel>
-              <TokenStatistics {token} {marketCapRank} />
+              <TokenStatistics
+                {token}
+                marketCapRank={token?.metrics?.market_cap_rank ?? null}
+              />
             </div>
           </div>
         </div>

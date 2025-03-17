@@ -89,12 +89,4 @@
   .favorite-button {
     @apply flex items-center justify-center w-6 h-6 rounded-lg hover:bg-white/10 transition-colors duration-200;
   }
-
-  .favorite-button:hover .star-icon {
-    @apply text-yellow-400;
-  }
-
-  .favorite-button.active:hover .star-icon {
-    @apply text-yellow-600;
-  }
 </style> 

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
-  import { fetchTokens } from '$lib/api/tokens';
+   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   
   let tokens = [];
   let bubblePositions: Array<{ x: number; y: number; vx: number; vy: number }> =
@@ -82,10 +82,10 @@
       typeof changePercent === "string"
         ? parseFloat(changePercent)
         : changePercent;
-    if (!numericValue) return "#999";
+    if (!numericValue) return "rgb(var(--text-secondary) / 0.8)";
     return numericValue >= 0
-      ? "rgba(65, 184, 131, 0.8)"
-      : "rgba(219, 50, 54, 0.8)";
+      ? "rgb(var(--accent-green) / 0.8)"
+      : "rgb(var(--accent-red) / 0.8)";
   }
 
   function initializePositions() {
@@ -328,6 +328,12 @@
       {@const bubbleSize = calcBubbleSize(token?.metrics?.price_change_24h)}
       {@const logoSize = calcLogoSize(bubbleSize)}
       {@const fontSize = calcFontSize(bubbleSize)}
+      {@const bubbleColor = getBubbleColor(token?.metrics?.price_change_24h)}
+      {@const hoverColor = bubbleColor.includes('accent-green')
+        ? "rgb(var(--accent-green-hover) / 0.8)"
+        : bubbleColor.includes('accent-red')
+          ? "rgb(var(--accent-red-hover) / 0.8)"
+          : "rgb(var(--text-primary) / 0.8)"}
       <div
         class="bubble-hitbox"
         on:click={() => {
@@ -347,7 +353,8 @@
           style="
             width: 100%;
             height: 100%;
-            background-color: {getBubbleColor(token?.metrics?.price_change_24h)};
+            background-color: {bubbleColor};
+            --hover-color: {hoverColor};
           "
         >
           <div class="token-label">
@@ -423,6 +430,7 @@
 
   .bubble-hitbox:hover .bubble {
     transform: scale(1.1);
+    background-color: var(--hover-color) !important;
   }
 
   .token-label {
@@ -471,6 +479,7 @@
 
     .bubble:active {
       transform: scale(1.05); /* Use active state instead of hover */
+      background-color: var(--hover-color) !important;
     }
   }
 

@@ -7,23 +7,20 @@
   import { fade } from "svelte/transition";
   import { onMount, onDestroy } from "svelte";
   import { get } from "svelte/store";
-  import { page } from "$app/stores";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { auth } from "$lib/services/auth";
   import {
     getTokenDecimals,
-    loadBalances,
-  } from "$lib/services/tokens/tokenStore";
-  import { settingsStore } from "$lib/services/settings/settingsStore";
+    currentUserBalancesStore
+  } from "$lib/stores/tokenStore";
+  import { settingsStore } from "$lib/stores/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { livePools } from "$lib/services/pools/poolStore";
-  import Settings from "$lib/components/settings/Settings.svelte";
-  import Modal from "$lib/components/common/Modal.svelte";
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import { browser } from "$app/environment";
@@ -31,7 +28,27 @@
   import { tick } from "svelte";
   import { SwapUrlService } from "$lib/services/swap/SwapUrlService";
   import { SwapButtonService } from "$lib/services/swap/SwapButtonService";
+  import { 
+    refreshBalances, 
+  } from "$lib/stores/balancesStore";
+  import { themeStore } from "$lib/stores/themeStore";
+  import { getThemeById } from "$lib/themes/themeRegistry";
+  import SwapButton from "./swap_ui/SwapButton.svelte";
+  import SwitchTokensButton from "./swap_ui/SwitchTokensButton.svelte";
 
+  // Theme-specific styling data
+  let theme = $derived(getThemeById($themeStore));
+  
+  // Swap button theme colors
+  let primaryStart = $derived(theme.colors.primary || 'rgba(55, 114, 255, 0.95)');
+  let primaryEnd = $derived(theme.colors.secondary || 'rgba(111, 66, 193, 0.95)');
+  let errorStart = $derived('rgba(239, 68, 68, 0.9)'); // Fallback for error color
+  let errorEnd = $derived('rgba(239, 68, 68, 0.8)'); // Fallback for errorDark color
+  let processingStart = $derived('#3772ff'); // Fallback for info color
+  let processingEnd = $derived('#4580ff'); // Fallback for infoLight color
+  let buttonBorder = $derived(theme.colors.borderLight || 'rgba(255, 255, 255, 0.12)');
+  let glowEffect = $derived('rgba(255, 255, 255, 0.2)'); // Fallback for highlight color
+  
   // Types
   type PanelType = "pay" | "receive";
   interface PanelConfig {
@@ -39,9 +56,6 @@
     type: PanelType;
     title: string;
   }
-
-  // Props
-  export let currentMode: "normal" | "pro";
 
   const PANELS: PanelConfig[] = [
     { id: "pay", type: "pay", title: "You Pay" },
@@ -57,12 +71,9 @@
   let isProcessing = false;
   let isInitialized = false;
   let currentSwapId: string | null = null;
-  let previousMode = currentMode;
-  let rotationCount = 0;
   let isQuoteLoading = false;
   let showSettings = false;
   let insufficientFunds = false;
-  let reverseDebounce = false;
   let hasValidPool = false;
   let skipNextUrlInitialization = false;
   let currentBalance: string | null = null;
@@ -87,79 +98,27 @@
     return { top, left };
   }
 
-  // -------------------------------------------------------------------------
-  // Consolidated balance refresh function
-  async function refreshBalances() {
-    if (!$auth.account?.owner || (!$swapState.payToken && !$swapState.receiveToken)) {
-      return;
-    }
-
-    // Reset any previous error when tokens change
-    swapState.update(s => ({ ...s, error: null }));
-
-    if ($swapState.payToken && $swapState.payAmount && $swapState.payAmount !== "0") {
-      try {
-        const balance = await loadBalances($auth.account.owner, {
-          tokens: [$swapState.payToken],
-          forceRefresh: true,
-        });
-        if (balance && balance[$swapState.payToken.canister_id]) {
-          const balanceData = balance[$swapState.payToken.canister_id];
-          const decimals = Number($swapState.payToken.decimals);
-          const rawBalance = balanceData.in_tokens.toString();
-          const adjustedBalance = Number(rawBalance) / Math.pow(10, decimals);
-          currentBalance = adjustedBalance.toString();
-          console.log('Balance comparison:', {
-            payAmount: $swapState.payAmount,
-            rawBalance,
-            adjustedBalance,
-            decimals
-          });
-          insufficientFunds = Number($swapState.payAmount) > adjustedBalance;
-          console.log('Updated insufficient funds:', insufficientFunds);
-        } else {
-          console.log('No balance data available');
-          currentBalance = null;
-          insufficientFunds = false;
-        }
-      } catch (error) {
-        console.error('Error loading balance:', error);
-        currentBalance = null;
-        insufficientFunds = false;
-      }
-    } else {
-      // If no pay amount used, just refresh balances for logging purposes
-      loadBalances($auth.account.owner, {
-        tokens: [$swapState.payToken, $swapState.receiveToken],
-        forceRefresh: true,
-      })
-    }
-  }
-
-  // Reactive statement to call refreshBalances when token or amount changes
-  $: {
+  // Reactive statement to call refreshTokenBalances when token or amount changes
+  $effect(() => {
     if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
-      refreshBalances();
+      console.log('Token or auth state changed, refreshing balances');
+      refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, false);
     } else {
+      console.log('Resetting balance states - missing auth or tokens');
       currentBalance = null;
       insufficientFunds = false;
     }
-  }
-  // -------------------------------------------------------------------------
+  });
 
-  $: buttonText = SwapButtonService.getButtonText(
-    $swapState,
-    $settingsStore,
-    isQuoteLoading,
-    insufficientFunds,
-    $auth
+  let buttonText = $derived(
+    (!$swapState.payAmount || $swapState.payAmount === "0") ? "Enter Amount" : 
+    insufficientFunds ? "Insufficient Balance" :
+    SwapButtonService.getButtonText($swapState, $settingsStore, isQuoteLoading, insufficientFunds, $auth)
   );
 
-  $: buttonDisabled = SwapButtonService.isButtonDisabled(
-    $swapState,
-    insufficientFunds,
-    isQuoteLoading,
-    $auth
+  let buttonDisabled = $derived(
+    !$swapState.payAmount || $swapState.payAmount === "0" || 
+    SwapButtonService.isButtonDisabled($swapState, insufficientFunds, isQuoteLoading, $auth)
   );
 
   // Replace initializeFromUrl with:
@@ -201,12 +160,22 @@
       }
       isInitialized = true;
       console.log('Initialization complete');
+      
+      // Add a delayed balance refresh after initialization
+      setTimeout(() => {
+        if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
+          console.log('Running delayed balance refresh after initialization');
+          refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, false);
+        }
+      }, 1500); // 1.5 second delay
     }
   });
 
-  $: if ($auth.isConnected) {
-    settingsStore.initializeStore();
-  }
+  $effect(() => {
+    if ($auth.isConnected) {
+      settingsStore.initializeStore();
+    }
+  });
 
   // Modify the poolExists function to add more debugging
   function poolExists(
@@ -393,9 +362,7 @@
 
   // Modify handleReverseTokens to avoid referencing $swapState mid-update
   async function handleReverseTokens() {
-    if (!isInitialized || $swapState.isProcessing || reverseDebounce) return;
-    reverseDebounce = true;
-    setTimeout(() => (reverseDebounce = false), 500);
+    if (!isInitialized || $swapState.isProcessing) return;
 
     const currentPayToken = $swapState.payToken;
     const currentReceiveToken = $swapState.receiveToken;
@@ -403,7 +370,6 @@
     const tempReceiveAmount = $swapState.receiveAmount;
     if (!currentPayToken || !currentReceiveToken) return;
 
-    rotationCount++;
     swapState.update((s) => ({
       ...s,
       payToken: currentReceiveToken,
@@ -412,7 +378,7 @@
     }));
 
     await tick();
-    await refreshBalances();
+    await refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, false);
 
     // Update amounts and quote
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
@@ -492,7 +458,7 @@
   let previousPayToken = null;
   let previousReceiveToken = null;
 
-  $: {
+  $effect(() => {
     // Only update quote if relevant values have actually changed
     if (
       $swapState.payToken &&
@@ -509,12 +475,7 @@
 
       updateSwapQuote();
     }
-  }
-
-  // Add this to the reactive statements section
-  $: if (currentMode !== previousMode) {
-    resetSwapState();
-  }
+  });
 
   // Add this function to handle resetting state
   function resetSwapState() {
@@ -546,20 +507,106 @@
   }
 
   // Add a reactive statement to check pool existence
-  $: {
+  $effect(() => {
     hasValidPool = poolExists($swapState.payToken, $swapState.receiveToken);
-  }
+  });
 
   // Add this near your other lifecycle hooks
   onDestroy(() => {
     resetSwapState();
   });
+
+  // Add monitor for balance updates
+  $effect(() => {
+    if ($currentUserBalancesStore) {
+      console.log('Balance store updated:', Object.keys($currentUserBalancesStore).length, 'tokens with balances');
+      
+      // If pay token exists, log its balance
+      if ($swapState.payToken?.canister_id && $currentUserBalancesStore[$swapState.payToken.canister_id]) {
+        console.log('Pay token balance:', {
+          token: $swapState.payToken.symbol,
+          balance: $currentUserBalancesStore[$swapState.payToken.canister_id].in_tokens.toString()
+        });
+      }
+      
+      // If receive token exists, log its balance
+      if ($swapState.receiveToken?.canister_id && $currentUserBalancesStore[$swapState.receiveToken.canister_id]) {
+        console.log('Receive token balance:', {
+          token: $swapState.receiveToken.symbol,
+          balance: $currentUserBalancesStore[$swapState.receiveToken.canister_id].in_tokens.toString()
+        });
+      }
+    }
+  });
+
+  // Add effect to check if user has sufficient balance
+  $effect(() => {
+    const checkBalance = async () => {
+      if ($auth.account?.owner && $swapState.payToken?.canister_id && $swapState.payAmount && $swapState.payAmount !== "0") {
+        // Check if we have balance data for this token
+        if ($currentUserBalancesStore && $currentUserBalancesStore[$swapState.payToken.canister_id]) {
+          try {
+            // Convert payAmount to a number that can be compared with the BigInt
+            const payAmount = parseFloat($swapState.payAmount);
+            
+            // Get the BigInt balance and convert to number for comparison
+            const balanceBigInt = $currentUserBalancesStore[$swapState.payToken.canister_id].in_tokens;
+            
+            // Get token decimals (this is async)
+            const decimals = await getTokenDecimals($swapState.payToken.canister_id);
+            const divisor = Math.pow(10, Number(decimals) || 8);
+            const balanceAsNumber = Number(balanceBigInt) / divisor;
+            
+            // Update insufficient funds flag
+            insufficientFunds = payAmount > balanceAsNumber;
+            
+            // Save the current balance for display
+            currentBalance = balanceAsNumber.toString();
+            
+            console.log('Balance check:', {
+              token: $swapState.payToken.symbol,
+              requestedAmount: payAmount,
+              availableBalance: balanceAsNumber,
+              insufficientFunds,
+              balanceBigInt: balanceBigInt.toString(),
+              decimals
+            });
+          } catch (error) {
+            console.error('Error calculating balance:', error);
+            insufficientFunds = false;
+          }
+        } else {
+          // If we don't have balance data yet, refresh balances
+          refreshBalances([$swapState.payToken], $auth.account.owner, false);
+          insufficientFunds = false; // Reset until we have data
+        }
+      } else {
+        // Reset insufficient funds flag when no amount is entered
+        insufficientFunds = false;
+      }
+    };
+    
+    // Execute the async function
+    checkBalance();
+  });
 </script>
 
-<div class="swap-container" in:fade={{ duration: 420 }}>
-  <div class="panels-container">
-    <div class="panels-wrapper">
-      <div class="panel">
+<div class="relative flex flex-col" in:fade={{ duration: 420 }}>
+  <div class="relative flex flex-col gap-2 mb-2">
+    <div class="relative flex flex-col gap-1 min-h-[240px]">
+      <!-- Doge image peeking only for Win98 theme -->
+      {#if theme.id === 'win98light'}
+        <div class="absolute -top-[4.8rem] right-5 z-1 transform translate-x-1/4 select-none pointer-events-none">
+          <img 
+            src="/images/layingdoge.png" 
+            alt="Doge peeking" 
+            class="w-48 h-48 object-contain"
+            style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"
+          />
+        </div>
+      {/if}
+      
+      <div class="relative z-10">
         <SwapPanel
           title={PANELS[0].title}
           token={$swapState.payToken}
@@ -574,35 +621,12 @@
         />
       </div>
 
-      <button
-        class="switch-button"
-        class:disabled={isProcessing}
-        style="--rotation-count: {rotationCount}"
-        on:click={handleReverseTokens}
-        disabled={isProcessing}
-        aria-label="Switch tokens position"
-      >
-        <div class="switch-button-inner">
-          <svg
-            class="switch-icon"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M7.5 3.5L4.5 6.5L7.5 9.5M4.5 6.5H16.5C18.71 6.5 20.5 8.29 20.5 10.5C20.5 11.48 20.14 12.37 19.55 13.05M16.5 20.5L19.5 17.5L16.5 14.5M19.5 17.5H7.5C5.29 17.5 3.5 15.71 3.5 13.5C3.5 12.52 3.86 11.63 4.45 10.95"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </div>
-      </button>
+      <SwitchTokensButton 
+        isDisabled={isProcessing}
+        onSwitch={handleReverseTokens}
+      />
 
-      <div class="panel">
+      <div class="relative z-10">
         <SwapPanel
           title={PANELS[1].title}
           token={$swapState.receiveToken}
@@ -619,31 +643,28 @@
       </div>
     </div>
 
-    <div class="swap-footer">
-      <button
-        class="swap-button"
-        class:error={$swapState.error ||
-          $swapState.swapSlippage > $settingsStore.max_slippage ||
-          insufficientFunds}
-        class:processing={$swapState.isProcessing || isQuoteLoading}
-        class:ready={!$swapState.error &&
-          $swapState.swapSlippage <= $settingsStore.max_slippage &&
-          !insufficientFunds &&
-          !isQuoteLoading}
-        class:shine-animation={buttonText === "SWAP"}
-        on:click={handleButtonAction}
+    <div class="mt-1">
+      <SwapButton 
+        text={buttonText}
+        isError={!!$swapState.error || $swapState.swapSlippage > $settingsStore.max_slippage || insufficientFunds}
+        isProcessing={$swapState.isProcessing}
+        isLoading={isQuoteLoading}
+        isReady={!($swapState.error || $swapState.swapSlippage > $settingsStore.max_slippage || insufficientFunds) && !($swapState.isProcessing || isQuoteLoading)}
+        showShineAnimation={buttonText === "SWAP"}
         disabled={buttonDisabled}
-      >
-        <div class="button-content">
-          {#if $swapState.isProcessing || isQuoteLoading}
-            <div class="loading-spinner" />
-          {/if}
-          <span class="swap-button-text">{buttonText}</span>
-        </div>
-        <div class="button-glow" />
-        <div class="shine-effect" />
-        <div class="ready-glow" />
-      </button>
+        onClick={handleButtonAction}
+        primaryGradientStart={primaryStart}
+        primaryGradientEnd={primaryEnd}
+        errorGradientStart={errorStart}
+        errorGradientEnd={errorEnd}
+        processingGradientStart={processingStart}
+        processingGradientEnd={processingEnd}
+        borderColor={buttonBorder}
+        glowColor={glowEffect}
+        shine={glowEffect}
+        readyGlowStart={primaryStart}
+        readyGlowEnd={primaryEnd}
+      />
     </div>
   </div>
 </div>
@@ -731,399 +752,6 @@
   />
 {/if}
 
-{#if showSettings}
-  <Modal
-    isOpen={true}
-    title="Settings"
-    height="auto"
-    variant="transparent"
-    on:close={() => (showSettings = false)}
-  >
-    <Settings on:close={() => (showSettings = false)} />
-  </Modal>
-{/if}
-
 <style scoped lang="postcss">
-  .swap-container {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .button-content {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .swap-button {
-    @apply relative overflow-hidden;
-    @apply w-full py-4 px-6 rounded-lg;
-    @apply transition-all duration-200 ease-out;
-    @apply disabled:opacity-50 disabled:cursor-not-allowed;
-    margin-top: 4px;
-    background: linear-gradient(
-      135deg,
-      rgba(55, 114, 255, 0.95) 0%,
-      rgba(111, 66, 193, 0.95) 100%
-    );
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 2px 6px rgba(55, 114, 255, 0.2);
-    transform: translateY(0);
-    min-height: 64px;
-  }
-
-  .swap-button:hover:not(:disabled) {
-    background: linear-gradient(
-      135deg,
-      rgba(75, 124, 255, 1) 0%,
-      rgba(131, 86, 213, 1) 100%
-    );
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
-    box-shadow:
-      0 4px 12px rgba(55, 114, 255, 0.3),
-      0 0 0 1px rgba(255, 255, 255, 0.1);
-  }
-
-  .swap-button:active:not(:disabled) {
-    transform: translateY(0);
-    background: linear-gradient(
-      135deg,
-      rgba(45, 104, 255, 1) 0%,
-      rgba(91, 46, 173, 1) 100%
-    );
-    box-shadow: 0 2px 4px rgba(55, 114, 255, 0.2);
-    transition-duration: 0.1s;
-  }
-
-  .switch-icon {
-    transition: all 0.2s ease;
-    opacity: 0.9;
-    width: 24px;
-    height: 24px;
-    color: currentColor;
-  }
-
-  .panels-container {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .panels-wrapper {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-height: 240px;
-  }
-
-  .panel {
-    position: relative;
-    z-index: 1;
-  }
-
-  /* Add subtle bounce animation for the emoji */
-  @keyframes subtle-bounce {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-2px);
-    }
-  }
-
-  .swap-button-text {
-    @apply text-white font-semibold;
-    font-size: 24px !important; /* Using !important to ensure it takes precedence */
-    letter-spacing: 0.01em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 140px;
-    text-align: center;
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-  }
-
-  .swap-button.error {
-    background: linear-gradient(
-      135deg,
-      rgba(239, 68, 68, 0.9) 0%,
-      rgba(239, 68, 68, 0.8) 100%
-    );
-    box-shadow: none;
-  }
-
-  .swap-button.error:hover:not(:disabled) {
-    background: linear-gradient(
-      135deg,
-      rgba(239, 68, 68, 1) 0%,
-      rgba(239, 68, 68, 0.9) 100%
-    );
-    box-shadow: none;
-  }
-
-  .swap-button.processing {
-    background: linear-gradient(135deg, #3772ff 0%, #4580ff 100%);
-    cursor: wait;
-    opacity: 0.8;
-  }
-
-  .button-content {
-    @apply relative z-10 flex items-center justify-center gap-2;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
-
-  .loading-spinner {
-    width: 22px;
-    height: 22px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  .button-glow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(
-      circle at var(--x, 50%) var(--y, 50%),
-      rgba(255, 255, 255, 0.2),
-      rgba(255, 255, 255, 0) 70%
-    );
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  .swap-button:hover .button-glow {
-    opacity: 1;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  /* Add a subtle pulse animation for processing state */
-  @keyframes pulse {
-    0% {
-      opacity: 0.8;
-    }
-    50% {
-      opacity: 0.6;
-    }
-    100% {
-      opacity: 0.8;
-    }
-  }
-
-  .swap-button.processing {
-    animation: pulse 2s infinite ease-in-out;
-  }
-
-  .switch-button {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 10;
-    cursor: pointer;
-    padding: 0;
-    margin: 0;
-    width: 44px;
-    height: 44px;
-    border: none;
-    border-radius: 50%;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    background: #1c2333;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .switch-button:hover:not(.disabled) {
-    background: #252b3d;
-    transform: translate(-50%, -50%) scale(1.1);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-    border-color: rgba(255, 255, 255, 0.15);
-  }
-
-  .switch-button:active:not(.disabled) {
-    transform: translate(-50%, -50%) scale(0.95);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  .switch-button.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: #1c2333;
-  }
-  .switch-button-inner {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: rotate(calc(-180deg * var(--rotation-count)));
-  }
-
-  .switch-icon {
-    transition: all 0.2s ease;
-    opacity: 0.9;
-    width: 24px;
-    height: 24px;
-    color: currentColor;
-  }
-
-  .switch-button:hover:not(.disabled) .switch-icon {
-    transform: scale(1.1);
-    opacity: 1;
-  }
-
-  .panels-container {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .panels-wrapper {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-height: 240px;
-  }
-
-  .panel {
-    position: relative;
-    z-index: 1;
-  }
-
-  /* Add subtle bounce animation for the emoji */
-  @keyframes subtle-bounce {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-2px);
-    }
-  }
-
-  .swap-button-text {
-    @apply text-white font-semibold;
-    font-size: 24px !important; /* Using !important to ensure it takes precedence */
-    letter-spacing: 0.01em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 140px;
-    text-align: center;
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-  }
-
-  .swap-button.error {
-    background: linear-gradient(
-      135deg,
-      rgba(239, 68, 68, 0.9) 0%,
-      rgba(239, 68, 68, 0.8) 100%
-    );
-    box-shadow: none;
-  }
-
-  .shine-effect {
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 50%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.2),
-      transparent
-    );
-    transform: skewX(-20deg);
-    pointer-events: none;
-  }
-
-  .shine-animation .shine-effect {
-    animation: shine 3s infinite;
-  }
-
-  @keyframes shine {
-    0%,
-    100% {
-      left: -100%;
-    }
-    35%,
-    65% {
-      left: 200%;
-    }
-  }
-
-  .swap-button:hover:not(:disabled) {
-    background: linear-gradient(
-      135deg,
-      rgba(75, 124, 255, 1) 0%,
-      rgba(131, 86, 213, 1) 100%
-    );
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
-    box-shadow:
-      0 4px 12px rgba(55, 114, 255, 0.3),
-      0 0 0 1px rgba(255, 255, 255, 0.1);
-  }
-
-  .ready-glow {
-    position: absolute;
-    inset: -2px;
-    border-radius: 18px;
-    background: linear-gradient(
-      135deg,
-      rgba(55, 114, 255, 0.5),
-      rgba(111, 66, 193, 0.5)
-    );
-    opacity: 0;
-    filter: blur(8px);
-    transition: opacity 0.3s ease;
-  }
-
-  .shine-animation .ready-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-
-  @keyframes float-arrow {
-    0%,
-    100% {
-      transform: translateX(0);
-    }
-    50% {
-      transform: translateX(3px);
-    }
-  }
-
-  @keyframes pulse-glow {
-    0%,
-    100% {
-      opacity: 0;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.5;
-      transform: scale(1.02);
-    }
-  }
+  /* No animation classes needed here anymore since they're now in the SwapButton component */
 </style>

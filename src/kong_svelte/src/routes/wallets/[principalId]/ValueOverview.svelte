@@ -1,10 +1,10 @@
 <script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
   import LoadingEllipsis from "$lib/components/common/LoadingEllipsis.svelte";
-  import type { PortfolioHistory } from "$lib/services/portfolio/portfolioHistory";
+  import type { PortfolioHistory } from "$lib/utils/portfolio/portfolioHistory";
   import { WalletDataService, walletDataStore } from "$lib/services/wallet";
-  import { getPortfolioHistory } from "$lib/services/portfolio/portfolioHistory";
-  import { calculatePerformanceMetrics } from "$lib/services/portfolio/performanceMetrics";
+  import { getPortfolioHistory } from "$lib/utils/portfolio/portfolioHistory";
+  import { calculatePerformanceMetrics } from "$lib/utils/portfolio/performanceMetrics";
   import { walletPoolListStore } from "$lib/stores/walletPoolListStore";
 
   let { isLoading, error, principal } = $props<{

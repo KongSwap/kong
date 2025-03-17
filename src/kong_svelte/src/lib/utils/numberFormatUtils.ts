@@ -92,6 +92,59 @@ export const formatToNonZeroDecimal = (input: number | string): string => {
 };
 
 /**
+ * Formats large numbers with appropriate abbreviations (K, M, B).
+ * Examples:
+ *  - 1500 -> "1.50K"
+ *  - 1500000 -> "1.50M"
+ *  - 1500000000 -> "1.50B"
+ * 
+ * @param value The number to format (string or number)
+ * @returns Formatted string with appropriate abbreviation
+ */
+export function formatLargeNumber(value: string | number): string {
+  if (!value) return "0";
+  
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  
+  if (isNaN(num)) return "0";
+  
+  // Format based on size
+  if (num >= 1_000_000_000) {
+    return (num / 1_000_000_000).toFixed(2) + "B";
+  } else if (num >= 1_000_000) {
+    return (num / 1_000_000).toFixed(2) + "M";
+  } else if (num >= 1_000) {
+    return (num / 1_000).toFixed(2) + "K";
+  } else {
+    return formatToNonZeroDecimal(num);
+  }
+}
+
+/**
+ * Calculates the USD value of a token amount based on its price.
+ * 
+ * @param amount The token amount as a string
+ * @param token The token object containing price information
+ * @returns Formatted USD value as a string
+ */
+export function calculateTokenUsdValue(amount: string, token: any): string {
+  // Check for valid inputs
+  if (!token?.metrics?.price || !amount) {
+    return "0";
+  }
+
+  const price = token.metrics.price;
+  
+  if (!price) {
+    return "0";
+  }
+
+  // Calculate USD value
+  const usdValue = Number(amount) * Number(price);
+  return formatToNonZeroDecimal(usdValue);
+}
+
+/**
  * Parses a token amount (string, number, bigint, or BigNumber) into a bigint,
  * always using BigNumber for all numeric operations.
  *

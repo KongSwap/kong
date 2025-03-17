@@ -1,7 +1,7 @@
 import { toastStore } from "$lib/stores/toastStore";
 import { swapStatusStore } from "./swapStore";
 import { get } from "svelte/store";
-import { loadBalances } from "$lib/services/tokens/tokenStore";
+import { loadBalances } from "$lib/stores/tokenStore";
 import { auth } from "$lib/services/auth";
 import { SwapService } from "./SwapService";
 import { swapState } from "./SwapStateService";
@@ -66,10 +66,13 @@ export class SwapMonitor {
                 
                 if (status.toLowerCase() === "swap success") {
                   toastStore.dismiss(toastId);
-                  toastStore.success(`Swap completed successfully`);
+                  const state = get(swapState);
+                  const token0 = state.payToken;
+                  const token1 = state.receiveToken;
+                  toastStore.success(`Swap of  ${token0?.symbol} for ${token1?.symbol} completed successfully`);
                   swapState.setShowSuccessModal(true);
                 } else if (status === "Success") {
-                  toastStore.success(`Balances updated!`);
+                  toastStore.info(`Balances updated!`);
                 } else if (status.toLowerCase().includes("failed")) {
                   toastStore.dismiss(toastId);
                   toastStore.error(`${status}`);
@@ -145,10 +148,11 @@ export class SwapMonitor {
               }
 
               try {
-                await loadBalances(walletId.toString(), {
-                  tokens: [payToken, receiveToken],
-                  forceRefresh: true,
-                });
+                await loadBalances(
+                  [payToken, receiveToken],
+                  walletId.toString(),
+                  true
+                );
               } catch (error) {
                 console.error("Error updating balances:", error);
               }
