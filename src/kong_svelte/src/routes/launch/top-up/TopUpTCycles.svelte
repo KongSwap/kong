@@ -11,6 +11,7 @@
 
     // Constants
     const KONG_DECIMALS = 8;
+    const TCYCLES_DECIMALS = 12; // TCycles have 12 decimals (1 TCycle = 1 trillion cycles)
     const MIN_KONG_AMOUNT = 10;
 
     let kongAmount = MIN_KONG_AMOUNT; // Default amount
@@ -19,6 +20,8 @@
     let canisterIdInput = '';
     let kongTCyclesRate = "0";
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let fee: bigint = BigInt(0);
+    let formattedFee = "0";
     
     // Validation
     let canisterIdError = '';
@@ -40,6 +43,15 @@
             canisterIdInput = canisterId;
             console.log("Setting canisterIdInput to:", canisterIdInput);
             validateCanisterId();
+        }
+        
+        // Get the fee for TCycles operations
+        try {
+            fee = await TCyclesService.getFee();
+            formattedFee = SwapService.fromBigInt(fee, TCYCLES_DECIMALS);
+            console.log("TCycles fee:", formattedFee, "T-Cycles");
+        } catch (error) {
+            console.error("Error getting TCycles fee:", error);
         }
         
         // Calculate estimated cycles on mount
@@ -99,7 +111,6 @@
             
             // Use the SwapService to get a quote for KONG to TCycles
             const kongE8s = SwapService.toBigInt(kongAmount.toString(), KONG_DECIMALS);
-            const TCYCLES_DECIMALS = 12; // TCycles have 12 decimals (1 TCycle = 1 trillion cycles)
             const quoteResult = await SwapService.getKongToTCyclesQuote(kongE8s, KONG_DECIMALS, TCYCLES_DECIMALS);
             
             // Convert the receive amount to bigint for display
@@ -137,7 +148,7 @@
             const tcyclesAmount = await SwapService.swapKongToTCycles(kongE8s);
             
             // Step 2: Use the received TCycles to top up the canister
-            toastStore.info(`Adding cycles to canister ${canisterIdInput}...`);
+            toastStore.info(`Adding cycles to canister ${canisterIdInput} (fee: ${formattedFee} T-Cycles)...`);
             
             // Convert canisterId to Principal
             const canisterPrincipal = Principal.fromText(canisterIdInput);
@@ -146,7 +157,8 @@
             const blockIndex = await TCyclesService.topUpCanister(canisterPrincipal, tcyclesAmount);
             
             // Final success message
-            toastStore.success(`Successfully topped up canister with ${formatCycles(estimatedCycles)} cycles`);
+            const netCycles = tcyclesAmount - fee;
+            toastStore.success(`Successfully topped up canister with ${formatCycles(netCycles)} cycles (after ${formattedFee} T-Cycles fee)`);
         } catch (error) {
             console.error('Top up error:', error);
             toastStore.error(`An error occurred: ${error.message || 'Unknown error'}`);
@@ -230,8 +242,12 @@
                 <span class="text-kong-text-secondary">Cycles to receive:</span>
                 <span class="text-xl font-semibold text-kong-text-primary">{formatCycles(estimatedCycles)}</span>
             </div>
+            <div class="flex items-center justify-between mt-2">
+                <span class="text-kong-text-secondary">Transaction fee:</span>
+                <span class="text-sm font-medium text-kong-text-primary">{formattedFee} T-Cycles</span>
+            </div>
             <p class="mt-2 text-xs text-kong-text-secondary">
-                The actual amount of cycles may vary based on the current exchange rates.
+                The actual amount of cycles may vary based on the current exchange rates. A fee of {formattedFee} T-Cycles will be deducted from your balance for the transaction.
             </p>
         </div>
         

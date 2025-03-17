@@ -116,6 +116,22 @@ export class TCyclesService {
         ? Principal.fromText(canisterId) 
         : canisterId;
       
+      // Get the current balance and fee
+      const currentBalance = await TCyclesService.getBalance();
+      const fee = await TCyclesService.getFee();
+      
+      // Check if there's enough balance for the top-up including fee
+      if (currentBalance < cyclesAmount + fee) {
+        const formattedBalance = SwapService.fromBigInt(currentBalance, 12); // 12 decimals for TCycles
+        const formattedFee = SwapService.fromBigInt(fee, 12);
+        const formattedTotal = SwapService.fromBigInt(cyclesAmount + fee, 12);
+        
+        const errorMessage = `Insufficient cycles balance. Available: ${formattedBalance} T-Cycles. Required: ${formattedTotal} T-Cycles (${SwapService.fromBigInt(cyclesAmount, 12)} + ${formattedFee} fee)`;
+        console.error(errorMessage);
+        toastStore.error(errorMessage);
+        throw new Error(errorMessage);
+      }
+      
       // Prepare the withdraw arguments
       const withdrawArgs = {
         to: canisterPrincipal,

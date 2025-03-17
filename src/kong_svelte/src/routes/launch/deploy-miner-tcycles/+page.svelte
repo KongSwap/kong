@@ -297,7 +297,7 @@
         </p>
         <div class="flex flex-wrap justify-center gap-4">
           <a 
-            href="/my-canisters" 
+            href="/launch/my-canisters" 
             class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2"
           >
             <Cpu size={18} />
