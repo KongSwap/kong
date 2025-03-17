@@ -508,8 +508,8 @@
             if ($auth.isConnected && $auth.account?.owner) {
                 principal = Principal.fromText($auth.account.owner.toText());
                 
-                // When principal changes, sync canisters from API
-                syncCanistersToLocalStore().catch(error => {
+                // When principal changes, sync canisters from API and filter by current user
+                syncCanistersToLocalStore(principal.toText()).catch(error => {
                     console.error("Failed to sync canisters:", error);
                     toastStore.error("Failed to load canisters from API");
                 });

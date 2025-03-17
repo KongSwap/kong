@@ -56,6 +56,32 @@ const config = {
         );
       },
     },
+    csp: {
+      directives: {
+        'connect-src': [
+          'self',
+          'blob:',
+          'http://localhost:*',
+          'https://seashell-app-tva2e.ondigitalocean.app',
+          'https://icp0.io',
+          'https://*.icp0.io',
+          'https://icp-api.io',
+          'https://ic0.app',
+          'https://kongswap.io',
+          'https://www.kongswap.i',
+          'https://oisy.com',
+          'https://beta.oisy.com',
+          'https://api.kongswap.io',
+          'https://api.coincap.io',
+          'https://o4508554870325248.ingest.us.sentry.io',
+          'https://www.google-analytics.com',
+          'https://*.google-analytics.com',
+          'https://cdn.jsdelivr.net',
+          'https://api.floppa.ai',
+          'wss://api.floppa.ai'
+        ],
+      }
+    }
   },
   preprocess: vitePreprocess({
     typescript: true,

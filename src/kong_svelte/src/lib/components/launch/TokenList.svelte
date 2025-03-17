@@ -52,58 +52,183 @@
       // Create actor - anonymous for public data
       const actor = auth.getActor(token.principal, tokenIdlFactory, { anon: true });
       
-      // Use the new comprehensive get_all_info function
-      const allInfoResult = await actor.get_all_info().catch(() => ({ Err: "Failed to fetch token info" }));
-      
-      if (allInfoResult.Err) {
-        console.error("Error fetching token info:", allInfoResult.Err);
-        // Return basic token with random visuals on error
-        return {
-          ...token,
-          infoLoaded: false,
-          randomGradient: token.randomGradient || getRandomGradient(),
-          randomIcon: token.randomIcon || getRandomIcon(),
-          randomAnimation: token.randomAnimation || getRandomAnimation(),
-          name: token.name || "Unknown Token",
-          ticker: token.ticker || "???"
-        };
-      }
-      
-      // Extract the comprehensive token info
-      const allInfo = allInfoResult.Ok;
-      
-      // Generate random visual elements if not already present
-      const randomGradient = token.randomGradient || getRandomGradient();
-      const randomIcon = token.randomIcon || getRandomIcon();
-      const randomAnimation = token.randomAnimation || getRandomAnimation();
-      
-      // Construct the enhanced token object
-      const tokenInfo = {
+      let tokenInfo = {
         ...token,
-        ...allInfo,
         infoLoaded: true,
-        randomGradient,
-        randomIcon,
-        randomAnimation,
-        // Use pre-formatted values from get_all_info
-        averageBlockTime: allInfo.average_block_time,
-        formattedBlockTime: allInfo.formatted_block_time,
-        blockTimeRating: allInfo.block_time_rating,
-        miningProgress: allInfo.mining_progress_percentage,
-        formattedBlockReward: allInfo.formatted_block_reward
+        randomGradient: token.randomGradient || getRandomGradient(),
+        randomIcon: token.randomIcon || getRandomIcon(),
+        randomAnimation: token.randomAnimation || getRandomAnimation(),
       };
       
-      // Process logo - support both string and array formats
-      if (allInfo.logo && typeof allInfo.logo === 'string') {
-        tokenInfo.logo = [allInfo.logo];
-      } else if (allInfo.logo) {
-        tokenInfo.logo = [allInfo.logo];
+      // Try to use get_all_info first, if available
+      try {
+        if (typeof actor.get_all_info === 'function') {
+          const allInfoResult = await actor.get_all_info();
+          
+          if (allInfoResult.Err) {
+            console.error("Error fetching token info:", allInfoResult.Err);
+            return getFallbackTokenInfo(token);
+          }
+          
+          // Extract the comprehensive token info
+          const allInfo = allInfoResult.Ok;
+          
+          // Construct the enhanced token object
+          tokenInfo = {
+            ...tokenInfo,
+            ...allInfo,
+            // Use pre-formatted values from get_all_info
+            averageBlockTime: allInfo.average_block_time,
+            formattedBlockTime: allInfo.formatted_block_time,
+            blockTimeRating: allInfo.block_time_rating,
+            miningProgress: allInfo.mining_progress_percentage,
+            formattedBlockReward: allInfo.formatted_block_reward
+          };
+          
+          // Process logo - support both string and array formats
+          if (allInfo.logo && typeof allInfo.logo === 'string') {
+            tokenInfo.logo = [allInfo.logo];
+          } else if (allInfo.logo) {
+            tokenInfo.logo = [allInfo.logo];
+          }
+          
+          return tokenInfo;
+        } else {
+          // If get_all_info is not available, use individual method calls
+          return await getFallbackTokenInfo(token, actor);
+        }
+      } catch (error) {
+        console.error("Error with get_all_info, falling back to individual calls:", error);
+        return await getFallbackTokenInfo(token, actor);
+      }
+    } catch (error) {
+      console.error("Error fetching token info:", error);
+      // Return basic token with random visuals on error
+      return getFallbackTokenInfo(token);
+    }
+  }
+
+  // Fallback method to get token info using individual calls
+  async function getFallbackTokenInfo(token, actor = null) {
+    try {
+      // If actor wasn't passed, create it
+      if (!actor) {
+        actor = auth.getActor(token.principal, tokenIdlFactory, { anon: true });
+      }
+      
+      // Basic token info with random visuals
+      let tokenInfo = {
+        ...token,
+        infoLoaded: true,
+        randomGradient: token.randomGradient || getRandomGradient(),
+        randomIcon: token.randomIcon || getRandomIcon(),
+        randomAnimation: token.randomAnimation || getRandomAnimation(),
+      };
+      
+      // Get token info using the get_info method
+      try {
+        const infoResult = await actor.get_info();
+        
+        if (!infoResult.Err) {
+          const info = infoResult.Ok;
+          
+          // Map the fields from the token info to our expected format
+          tokenInfo = {
+            ...tokenInfo,
+            name: info.name,
+            ticker: info.ticker,
+            decimals: info.decimals,
+            total_supply: info.total_supply,
+            logo: info.logo ? [info.logo] : undefined,
+            ledger_id: info.ledger_id ? [info.ledger_id] : undefined,
+            current_block_height: info.current_block_height,
+            current_block_reward: info.current_block_reward
+          };
+          
+          // Get average block time if available
+          if (info.average_block_time) {
+            const blockTimeSeconds = Number(info.average_block_time);
+            tokenInfo.averageBlockTime = blockTimeSeconds;
+            
+            // Format block time
+            if (blockTimeSeconds < 60) {
+              tokenInfo.formattedBlockTime = `${blockTimeSeconds.toFixed(1)}s`;
+            } else {
+              const minutes = Math.floor(blockTimeSeconds / 60);
+              const seconds = Math.round(blockTimeSeconds % 60);
+              tokenInfo.formattedBlockTime = `${minutes}m ${seconds}s`;
+            }
+          }
+          
+          // Get social links if available
+          if (info.social_links) {
+            tokenInfo.social_links = info.social_links;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not get token info:", e);
+      }
+      
+      // Try to get mining info
+      try {
+        const miningInfoResult = await actor.get_mining_info();
+        if (miningInfoResult) {
+          tokenInfo.miningInfo = miningInfoResult;
+          
+          // Calculate mining progress
+          if (tokenInfo.total_supply && tokenInfo.current_block_height && tokenInfo.current_block_reward) {
+            const minedAmount = tokenInfo.current_block_height * tokenInfo.current_block_reward;
+            const progressPercentage = (minedAmount / tokenInfo.total_supply) * 100;
+            tokenInfo.miningProgress = progressPercentage.toFixed(2);
+          }
+          
+          // Format block reward
+          if (tokenInfo.current_block_reward) {
+            tokenInfo.formattedBlockReward = formatBalance(tokenInfo.current_block_reward, tokenInfo.decimals || 8);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not get mining info:", e);
+      }
+      
+      // Try to get block time using the correct method signature
+      try {
+        const blockTimeResult = await actor.get_average_block_time([]);
+        if (blockTimeResult.Ok) {
+          const blockTimeSeconds = Number(blockTimeResult.Ok);
+          tokenInfo.averageBlockTime = blockTimeSeconds;
+          
+          // Format block time
+          if (blockTimeSeconds < 60) {
+            tokenInfo.formattedBlockTime = `${blockTimeSeconds.toFixed(1)}s`;
+          } else {
+            const minutes = Math.floor(blockTimeSeconds / 60);
+            const seconds = Math.round(blockTimeSeconds % 60);
+            tokenInfo.formattedBlockTime = `${minutes}m ${seconds}s`;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not get block time:", e);
+      }
+      
+      // Try to get metrics for circulation info
+      try {
+        const metricsResult = await actor.get_metrics();
+        if (metricsResult.Ok) {
+          const metrics = metricsResult.Ok;
+          if (metrics.total_supply && metrics.circulating_supply) {
+            const progressPercentage = (metrics.circulating_supply / metrics.total_supply) * 100;
+            tokenInfo.miningProgress = progressPercentage.toFixed(2);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not get metrics:", e);
       }
       
       return tokenInfo;
     } catch (error) {
-      console.error("Error fetching token info:", error);
-      // Return basic token with random visuals on error
+      console.error("Error in fallback token info:", error);
+      // Return minimal token info on complete failure
       return {
         ...token,
         infoLoaded: false,
@@ -256,7 +381,6 @@
   }
 
   onMount(() => {
-    // Initial load will be handled by the reactive statement
   });
 </script>
 
@@ -419,7 +543,7 @@
                     <div class={`relative flex items-center justify-center w-12 h-12 text-2xl font-bold rounded-full bg-gradient-to-r from-orange-600 to-orange-400 text-white shadow-glow`}>
                       {token.ticker[0]}
                       <div class={`absolute -bottom-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full bg-white ${token.randomAnimation}`}>
-                        <img src="../../../../../../scripts/ledger_logos/ICP.png" class="w-3 h-3 object-contain" alt="ICP Chain" />
+                        <img src="tokens/ICP.svg" class="w-3 h-3 object-contain" alt="ICP Chain" />
                       </div>
                     </div>
                   {/if}

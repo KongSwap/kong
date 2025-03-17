@@ -211,8 +211,9 @@ export async function fetchCanisters() {
 /**
  * Sync API canisters with local canisterStore
  * This ensures canister data is consistent across devices
+ * @param userPrincipal Optional principal ID to filter canisters by owner
  */
-export async function syncCanistersToLocalStore(): Promise<void> {
+export async function syncCanistersToLocalStore(userPrincipal?: string): Promise<void> {
   try {
     // Fetch the latest canisters from API
     const apiCanisters = await fetchCanisters();
@@ -220,6 +221,13 @@ export async function syncCanistersToLocalStore(): Promise<void> {
       console.warn('Failed to fetch canisters from API for sync');
       return;
     }
+    
+    // Filter canisters by user principal if provided
+    const filteredCanisters = userPrincipal 
+      ? apiCanisters.filter(canister => canister.principal === userPrincipal)
+      : apiCanisters;
+    
+    console.log(`Filtered ${apiCanisters.length} canisters to ${filteredCanisters.length} for principal ${userPrincipal}`);
     
     // Get current canisters from local store
     const localCanisters = get(canisterStore);
@@ -231,7 +239,7 @@ export async function syncCanistersToLocalStore(): Promise<void> {
     });
     
     // Process API canisters and merge with local data
-    for (const apiCanister of apiCanisters) {
+    for (const apiCanister of filteredCanisters) {
       const canisterId = apiCanister.canister_id;
       const existingCanister = localCanistersMap.get(canisterId);
       
@@ -249,12 +257,24 @@ export async function syncCanistersToLocalStore(): Promise<void> {
         canisterStore.addCanister({
           id: canisterId,
           wasmType: normalizedType,
-          createdAt: apiCanister.created_at || Date.now()
+          createdAt: apiCanister.created_at ? apiCanister.created_at * 1000 : Date.now() // Convert to milliseconds if timestamp is provided
         });
       }
     }
     
-    addWsEvent('store_sync', `Synced ${apiCanisters.length} canisters from API to local store`);
+    // If filtering by principal, remove canisters that don't belong to the user
+    if (userPrincipal) {
+      const filteredCanisterIds = new Set(filteredCanisters.map(c => c.canister_id));
+      
+      localCanisters.forEach(canister => {
+        // If a canister in local store isn't in the filtered list, remove it
+        if (!filteredCanisterIds.has(canister.id)) {
+          canisterStore.removeCanister(canister.id);
+        }
+      });
+    }
+    
+    addWsEvent('store_sync', `Synced ${filteredCanisters.length} canisters from API to local store`);
   } catch (error) {
     console.error('Error syncing canisters to local store:', error);
     addWsEvent('api_error', `Error syncing canisters: ${error.message}`);

@@ -140,7 +140,7 @@ interface SubnetsResponse {
 }
 
 // API configuration
-const IC_API_BASE_URL = 'https://ic-api.internetcomputer.org/api/v3';
+const IC_API_BASE_URL = 'https://ic0.app/api/v3';
 
 // Custom error class for API errors
 class ICAPIError extends Error {
