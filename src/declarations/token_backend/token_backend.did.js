@@ -87,54 +87,25 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : IDL.Nat64,
   });
   const Result_2 = IDL.Variant({ 'Ok' : BlockTemplate, 'Err' : IDL.Text });
-  const TokenAllInfo = IDL.Record({
-    'principal' : IDL.Principal,
-    'decimals' : IDL.Nat8,
-    'ticker' : IDL.Text,
-    'average_block_time' : IDL.Opt(IDL.Float64),
-    'transfer_fee' : IDL.Nat64,
-    'logo' : IDL.Opt(IDL.Text),
-    'name' : IDL.Text,
-    'block_time_rating' : IDL.Opt(IDL.Text),
-    'formatted_block_time' : IDL.Opt(IDL.Text),
-    'ledger_id' : IDL.Opt(IDL.Principal),
-    'circulating_supply' : IDL.Nat64,
-    'formatted_block_reward' : IDL.Text,
-    'total_supply' : IDL.Nat64,
-    'mining_progress_percentage' : IDL.Text,
-    'current_block_height' : IDL.Nat64,
-    'social_links' : IDL.Opt(IDL.Vec(SocialLink)),
-    'current_block_reward' : IDL.Nat64,
-  });
-  const AllInfoResult = IDL.Variant({ 'Ok' : TokenAllInfo, 'Err' : IDL.Text });
   const BlockTimeResult = IDL.Variant({ 'Ok' : IDL.Float64, 'Err' : IDL.Text });
   const EventBatch = IDL.Record({
     'events' : IDL.Vec(Event),
     'timestamp' : IDL.Nat64,
     'block_height' : IDL.Nat64,
   });
-  const TokenEverything = IDL.Record({
-    'mining_completion_estimate' : IDL.Opt(IDL.Text),
-    'block_time_target' : IDL.Nat64,
-    'recent_events' : IDL.Vec(Event),
-    'all_info' : TokenAllInfo,
-    'active_miners_count' : IDL.Nat,
-    'mining_difficulty' : IDL.Nat32,
-  });
-  const EverythingResult = IDL.Variant({
-    'Ok' : TokenEverything,
-    'Err' : IDL.Text,
-  });
   const TokenInfo = IDL.Record({
     'decimals' : IDL.Nat8,
     'ticker' : IDL.Text,
+    'average_block_time' : IDL.Opt(IDL.Float64),
     'transfer_fee' : IDL.Nat64,
     'logo' : IDL.Opt(IDL.Text),
     'name' : IDL.Text,
     'ledger_id' : IDL.Opt(IDL.Principal),
     'archive_options' : IDL.Opt(ArchiveOptions),
     'total_supply' : IDL.Nat64,
+    'current_block_height' : IDL.Nat64,
     'social_links' : IDL.Opt(IDL.Vec(SocialLink)),
+    'current_block_reward' : IDL.Nat64,
   });
   const Result_3 = IDL.Variant({ 'Ok' : TokenInfo, 'Err' : IDL.Text });
   const TokenMetrics = IDL.Record({
@@ -238,6 +209,10 @@ export const idlFactory = ({ IDL }) => {
     'Err' : DelegationError,
   });
   const Result_6 = IDL.Variant({ 'Ok' : IDL.Principal, 'Err' : IDL.Text });
+  const Result_7 = IDL.Variant({
+    'Ok' : IDL.Tuple(IDL.Bool, IDL.Nat64, IDL.Nat64, IDL.Text),
+    'Err' : IDL.Text,
+  });
   return IDL.Service({
     'add_social_link' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
     'can_submit_solution' : IDL.Func([], [Result_1], ['query']),
@@ -245,13 +220,13 @@ export const idlFactory = ({ IDL }) => {
     'create_genesis_block' : IDL.Func([], [Result_2], []),
     'deregister_miner' : IDL.Func([], [Result], []),
     'get_active_miners' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
-    'get_all_info' : IDL.Func([], [AllInfoResult], ['query']),
     'get_auth_status' : IDL.Func([], [IDL.Bool], ['query']),
     'get_average_block_time' : IDL.Func(
         [IDL.Opt(IDL.Nat32)],
         [BlockTimeResult],
         ['query'],
       ),
+    'get_block_height' : IDL.Func([], [IDL.Nat64], ['query']),
     'get_block_time_target' : IDL.Func([], [IDL.Nat64], ['query']),
     'get_current_block' : IDL.Func([], [IDL.Opt(BlockTemplate)], ['query']),
     'get_event_batches' : IDL.Func(
@@ -259,7 +234,6 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(EventBatch)],
         ['query'],
       ),
-    'get_everything' : IDL.Func([], [EverythingResult], ['query']),
     'get_info' : IDL.Func([], [Result_3], ['query']),
     'get_metrics' : IDL.Func([], [MetricsResult], ['query']),
     'get_miner_leaderboard' : IDL.Func(
@@ -288,6 +262,7 @@ export const idlFactory = ({ IDL }) => {
     'get_social_links' : IDL.Func([], [Result_4], ['query']),
     'get_total_cycles_earned' : IDL.Func([], [IDL.Nat], ['query']),
     'http_request' : IDL.Func([HttpRequest], [HttpResponse], ['query']),
+    'http_request_streaming_callback' : IDL.Func([], [HttpResponse], ['query']),
     'icrc10_supported_standards' : IDL.Func(
         [],
         [IDL.Vec(SupportedStandard)],
@@ -305,18 +280,20 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'icrc34_delegate' : IDL.Func([DelegationRequest], [Result_5], []),
+    'is_genesis_block_generated' : IDL.Func([], [IDL.Bool], ['query']),
+    'is_mining_ready' : IDL.Func([], [Result_1], ['query']),
     'mining_version' : IDL.Func([], [IDL.Text], ['query']),
     'register_miner' : IDL.Func([], [Result], []),
     'remove_social_link' : IDL.Func([IDL.Nat64], [Result], []),
+    'restore_mining_params' : IDL.Func(
+        [IDL.Nat64, IDL.Nat32, IDL.Nat64, IDL.Nat64],
+        [Result],
+        [],
+      ),
     'start_token' : IDL.Func([], [Result_6], []),
     'submit_solution' : IDL.Func(
         [IDL.Principal, IDL.Nat64, IDL.Vec(IDL.Nat8), IDL.Nat64],
-        [
-          IDL.Variant({
-            'Ok' : IDL.Tuple(IDL.Bool, IDL.Nat64, IDL.Nat64, IDL.Text),
-            'Err' : IDL.Text,
-          }),
-        ],
+        [Result_7],
         [],
       ),
     'update_social_link' : IDL.Func(

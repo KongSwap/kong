@@ -131,18 +131,25 @@ type Result_3 = variant { Ok : TokenInfo; Err : text };
 type Result_4 = variant { Ok : vec SocialLink; Err : text };
 type Result_5 = variant { Ok : DelegationResponse; Err : DelegationError };
 type Result_6 = variant { Ok : principal; Err : text };
+type Result_7 = variant {
+  Ok : record { bool; nat64; nat64; text };
+  Err : text;
+};
 type SocialLink = record { url : text; platform : text };
 type SupportedStandard = record { url : text; name : text };
 type TokenInfo = record {
   decimals : nat8;
   ticker : text;
+  average_block_time : opt float64;
   transfer_fee : nat64;
   logo : opt text;
   name : text;
   ledger_id : opt principal;
   archive_options : opt ArchiveOptions;
   total_supply : nat64;
+  current_block_height : nat64;
   social_links : opt vec SocialLink;
+  current_block_reward : nat64;
 };
 type TokenInitArgs = record {
   decimals : opt nat8;
@@ -159,40 +166,6 @@ type TokenInitArgs = record {
 };
 type TokenMetrics = record { circulating_supply : nat64; total_supply : nat64 };
 type TrustedOriginsResponse = record { trusted_origins : vec text };
-
-// New types for comprehensive queries
-type TokenAllInfo = record {
-  name : text;
-  ticker : text;
-  total_supply : nat64;
-  ledger_id : opt principal;
-  logo : opt text;
-  decimals : nat8;
-  transfer_fee : nat64;
-  social_links : opt vec SocialLink;
-  average_block_time : opt float64;
-  formatted_block_time : opt text;
-  block_time_rating : opt text;
-  circulating_supply : nat64;
-  mining_progress_percentage : text;
-  current_block_reward : nat64;
-  formatted_block_reward : text;
-  "principal" : principal;
-  current_block_height : nat64;
-};
-
-type TokenEverything = record {
-  all_info : TokenAllInfo;
-  active_miners_count : nat;
-  mining_difficulty : nat32;
-  block_time_target : nat64;
-  recent_events : vec Event;
-  mining_completion_estimate : opt text;
-};
-
-type AllInfoResult = variant { Ok : TokenAllInfo; Err : text };
-type EverythingResult = variant { Ok : TokenEverything; Err : text };
-
 service : (TokenInitArgs) -> {
   add_social_link : (text, text) -> (Result);
   can_submit_solution : () -> (Result_1) query;
@@ -200,13 +173,12 @@ service : (TokenInitArgs) -> {
   create_genesis_block : () -> (Result_2);
   deregister_miner : () -> (Result);
   get_active_miners : () -> (vec principal) query;
-  get_all_info : () -> (AllInfoResult) query;
   get_auth_status : () -> (bool) query;
   get_average_block_time : (opt nat32) -> (BlockTimeResult) query;
+  get_block_height : () -> (nat64) query;
   get_block_time_target : () -> (nat64) query;
   get_current_block : () -> (opt BlockTemplate) query;
   get_event_batches : (opt nat64) -> (vec EventBatch) query;
-  get_everything : () -> (EverythingResult) query;
   get_info : () -> (Result_3) query;
   get_metrics : () -> (MetricsResult) query;
   get_miner_leaderboard : (opt nat32) -> (vec MinerInfo) query;
@@ -219,20 +191,22 @@ service : (TokenInitArgs) -> {
   get_social_links : () -> (Result_4) query;
   get_total_cycles_earned : () -> (nat) query;
   http_request : (HttpRequest) -> (HttpResponse) query;
-  icrc1_version : () -> (text) query;
+  http_request_streaming_callback : () -> (HttpResponse) query;
   icrc10_supported_standards : () -> (vec SupportedStandard) query;
+  icrc1_version : () -> (text) query;
   icrc21_consent_message : (ConsentMessageRequest) -> (
       ConsentMessageResponse,
     ) query;
   icrc28_trusted_origins : () -> (TrustedOriginsResponse) query;
   icrc34_delegate : (DelegationRequest) -> (Result_5);
+  is_genesis_block_generated : () -> (bool) query;
+  is_mining_ready : () -> (Result_1) query;
   mining_version : () -> (text) query;
   register_miner : () -> (Result);
   remove_social_link : (nat64) -> (Result);
+  restore_mining_params : (nat64, nat32, nat64, nat64) -> (Result);
   start_token : () -> (Result_6);
-  submit_solution : (principal, nat64, blob, nat64) -> (
-      variant { Ok : record { bool; nat64; nat64; text }; Err : text },
-    );
+  submit_solution : (principal, nat64, blob, nat64) -> (Result_7);
   update_social_link : (nat64, text, text) -> (Result);
   whoami : () -> (principal) query;
 }

@@ -6,6 +6,12 @@ type CycleUsageStats = record {
   estimated_remaining_time : opt text;
   usage_rate_per_hour : opt float64;
 };
+type HttpHeader = record { value : text; name : text };
+type HttpResponse = record {
+  status : nat;
+  body : blob;
+  headers : vec HttpHeader;
+};
 type MinerInfo = record {
   speed_percentage : nat8;
   icrc_version : nat16;
@@ -23,17 +29,23 @@ type MiningStats = record {
   start_time : nat64;
 };
 type Result = variant { Ok; Err : text };
-type Result_1 = variant { Ok : MinerInfo; Err : text };
+type Result_1 = variant { Ok : vec record { principal; Result }; Err : text };
+type Result_2 = variant { Ok : MinerInfo; Err : text };
+type TransformArgs = record { context : blob; response : HttpResponse };
 service : (record {}) -> {
+  check_api_config : () -> (bool, opt text) query;
+  claim_all_rewards : () -> (Result_1);
   claim_rewards : () -> (Result);
+  claim_token_rewards : (principal) -> (Result);
   connect_token : (principal) -> (Result);
   disable_api_notifications : () -> (Result);
   disconnect_token : () -> (Result);
   enable_api_notifications : () -> (Result);
   get_canister_id : () -> (principal) query;
   get_cycle_usage : () -> (CycleUsageStats) query;
-  get_info : () -> (Result_1) query;
+  get_info : () -> (Result_2) query;
   get_mining_stats : () -> (opt MiningStats) query;
+  get_token_rewards : () -> (vec record { principal; nat64 }) query;
   icrc1_version : () -> (nat16) query;
   set_api_endpoint : (text, text) -> (Result);
   set_chunk_size : (nat64) -> (Result);
@@ -43,4 +55,5 @@ service : (record {}) -> {
   set_template_refresh_interval : (nat64) -> (Result);
   start_mining : () -> (Result);
   stop_mining : () -> (Result);
+  transform_http_response : (TransformArgs) -> (HttpResponse) query;
 }

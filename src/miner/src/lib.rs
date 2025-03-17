@@ -1,18 +1,20 @@
 // src/miner/src/lib.rs
 
-use candid::{CandidType, Principal, Nat};
+use candid::{CandidType, Nat, Principal};
+use hex;
 use ic_cdk::api::call::call;
 use ic_cdk::api::call::call_with_payment128;
-use ic_cdk::api::management_canister::http_request::{http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod};
-use ic_cdk::api::management_canister::main::raw_rand;
+use ic_cdk::api::management_canister::http_request::{
+    http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse, TransformArgs, TransformContext,
+};
+use ic_cdk::api::management_canister::main::{raw_rand, CanisterIdRecord};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::cell::RefCell;
-use std::collections::VecDeque;
-use hex;
+use std::collections::{HashMap, VecDeque};
 
 mod block_miner;
-use block_miner::{BlockMiner, MiningStats, Hash, MiningResult};
+use block_miner::{BlockMiner, Hash, MiningResult, MiningStats};
 
 const ICRC_VERSION: u16 = 2;
 
@@ -74,7 +76,14 @@ enum EventType {
         miner: Principal,
         name: String,
         description: String,
-    }
+    },
+}
+
+// Structure to track token-specific rewards
+#[derive(Debug, Clone, CandidType, Serialize, Deserialize, Default)]
+struct TokenRewards {
+    // Map of token ID to reward amount
+    rewards: HashMap<Principal, u64>,
 }
 
 // Store miner state
@@ -87,18 +96,21 @@ thread_local! {
     static LAST_BLOCK_FAILURE: RefCell<Option<u64>> = RefCell::new(None);
     static BLOCK_BACKOFF_DURATION: RefCell<u64> = RefCell::new(5_000_000_000); // Start with 5 seconds
     static HEARTBEAT_COUNTER: RefCell<u32> = RefCell::new(0); // Counter for heartbeats
-    
+
     // API configuration for notifications
     static API_ENDPOINT: RefCell<Option<String>> = RefCell::new(None);
     static API_KEY: RefCell<Option<String>> = RefCell::new(None);
     static API_ENABLED: RefCell<bool> = RefCell::new(false);
-    
+
     // Cycle tracking
     static CYCLE_MEASUREMENTS: RefCell<VecDeque<CycleMeasurement>> = RefCell::new(VecDeque::new());
     static LAST_CYCLE_CHECK: RefCell<u64> = RefCell::new(0); // Timestamp of last cycle check
-    
+
     // Add a new thread_local to track when we can mine again after a failure
     static NEXT_MINING_ATTEMPT: RefCell<u64> = RefCell::new(0); // Timestamp when we can try mining again
+
+    // Add a new thread_local to track token-specific rewards
+    static TOKEN_REWARDS: RefCell<TokenRewards> = RefCell::new(TokenRewards::default());
 }
 
 // Cycle measurement struct
@@ -127,12 +139,11 @@ fn init(_args: MinerInitArgs) {
     BLOCK_MINER.with(|miner| {
         *miner.borrow_mut() = Some(BlockMiner::new()); // Initialize with default settings
     });
-    
+
     // Hardcode the API endpoint URL and enable notifications by default
     API_ENDPOINT.with(|e| *e.borrow_mut() = Some("https://api.floppa.ai/".to_string()));
     API_KEY.with(|k| *k.borrow_mut() = Some("default-key".to_string()));
     API_ENABLED.with(|e| *e.borrow_mut() = true);
-    
 }
 
 // Helper function to check if caller is controller
@@ -154,47 +165,47 @@ fn get_canister_id() -> Principal {
 async fn connect_token(token_id: Principal) -> Result<(), String> {
     // Only controller can connect to tokens
     caller_is_controller()?;
-    
+
     // Verify token exists and is valid by calling get_info
     // Note: token's get_info returns Result<TokenInfo, String>
     let result: Result<(Result<TokenInfo, String>,), _> = call(token_id, "get_info", ())
         .await
         .map_err(|(code, msg)| format!("Failed to call token: {} (code: {:?})", msg, code));
-    
+
     // Handle nested Result types
     match result {
         Ok((inner_result,)) => {
             match inner_result {
                 Ok(_token_info) => {
                     // Token info verified, now register with token backend
-                    let register_result: Result<(Result<(), String>,), (ic_cdk::api::call::RejectionCode, String)> = 
+                    let register_result: Result<(Result<(), String>,), (ic_cdk::api::call::RejectionCode, String)> =
                         call(token_id, "register_miner", ()).await;
-                    
+
                     match register_result {
                         Ok((Ok(()),)) => {
                             // Successfully registered, now connect
                             CURRENT_TOKEN.with(|token| {
                                 *token.borrow_mut() = Some(token_id);
                             });
-                            
+
                             // Send notification for token connection
                             let connect_data = json!({
                                 "token_id": token_id.to_text(),
                                 "miner_id": ic_cdk::id().to_text(),
                                 "chunk_size": BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_chunk_size()).unwrap_or(1000))
                             });
-                            
+
                             notify_event("token_connected", connect_data);
                             Ok(())
-                        },
+                        }
                         Ok((Err(e),)) => Err(format!("Token rejected registration: {}", e)),
-                        Err((code, msg)) => Err(format!("Failed to register with token: {} (code: {:?})", msg, code))
+                        Err((code, msg)) => Err(format!("Failed to register with token: {} (code: {:?})", msg, code)),
                     }
-                },
-                Err(e) => Err(format!("Token returned error: {}", e))
+                }
+                Err(e) => Err(format!("Token returned error: {}", e)),
             }
-        },
-        Err(e) => Err(e)
+        }
+        Err(e) => Err(e),
     }
 }
 
@@ -202,42 +213,41 @@ async fn connect_token(token_id: Principal) -> Result<(), String> {
 async fn disconnect_token() -> Result<(), String> {
     // Only controller can disconnect
     caller_is_controller()?;
-    
+
     // Stop mining if active
     if IS_MINING.with(|m| *m.borrow()) {
         stop_mining()?;
     }
-    
+
     // Get current token before disconnecting
     let token_id = CURRENT_TOKEN.with(|t| t.borrow().clone());
-    
+
     // If we were connected to a token, deregister from it
     if let Some(token_id) = token_id {
-        let deregister_result: Result<(Result<(), String>,), (ic_cdk::api::call::RejectionCode, String)> = 
+        let deregister_result: Result<(Result<(), String>,), (ic_cdk::api::call::RejectionCode, String)> =
             call(token_id, "deregister_miner", ()).await;
-            
+
         match deregister_result {
             Ok((Ok(()),)) => (),
             Ok((Err(e),)) => return Err(format!("Token rejected deregistration: {}", e)),
-            Err((code, msg)) => return Err(format!("Failed to deregister from token: {} (code: {:?})", msg, code))
+            Err((code, msg)) => return Err(format!("Failed to deregister from token: {} (code: {:?})", msg, code)),
         }
     }
-    
+
     CURRENT_TOKEN.with(|token| {
         *token.borrow_mut() = None;
     });
-    
+
     Ok(())
 }
 
 async fn generate_unique_nonce_start() -> Result<u64, String> {
     // Get random bytes for additional entropy
-    let (random_bytes,) = raw_rand().await
-        .map_err(|e| format!("Failed to get random bytes: {:?}", e))?;
-    
+    let (random_bytes,) = raw_rand().await.map_err(|e| format!("Failed to get random bytes: {:?}", e))?;
+
     let miner_id = ic_cdk::id();
     let miner_id_bytes = miner_id.as_slice();
-    
+
     // Combine miner ID and random bytes
     let mut unique_bytes = [0u8; 8];
     for (i, byte) in miner_id_bytes.iter().take(4).enumerate() {
@@ -246,7 +256,7 @@ async fn generate_unique_nonce_start() -> Result<u64, String> {
     for (i, byte) in random_bytes.iter().take(4).enumerate() {
         unique_bytes[i + 4] = *byte;
     }
-    
+
     Ok(u64::from_le_bytes(unique_bytes))
 }
 
@@ -257,37 +267,35 @@ const SUBMISSION_CYCLES: u128 = 1_000_000_000; // 1 billion cycles
 async fn start_mining() -> Result<(), String> {
     // Only controller can start mining
     caller_is_controller()?;
-    
+
     // Verify we have a token to mine
-    let token_id = CURRENT_TOKEN.with(|t| {
-        t.borrow().clone().ok_or("No token connected".to_string())
-    })?;
-    
+    let token_id = CURRENT_TOKEN.with(|t| t.borrow().clone().ok_or("No token connected".to_string()))?;
+
     // Initialize the miner if it doesn't exist
     BLOCK_MINER.with(|m| {
         if m.borrow().is_none() {
             *m.borrow_mut() = Some(BlockMiner::new());
         }
     });
-    
+
     // Set mining flag to true - this is a lightweight operation
     IS_MINING.with(|m| {
         *m.borrow_mut() = true;
     });
-    
+
     // Reset heartbeat counter
     HEARTBEAT_COUNTER.with(|c| {
         *c.borrow_mut() = 0;
     });
-    
+
     // Send notification for mining started (with minimal data)
     let mining_data = json!({
         "token_id": token_id.to_text(),
         "miner_id": ic_cdk::id().to_text(),
     });
-    
+
     notify_event("mining_started", mining_data);
-    
+
     // Return immediately - the heartbeat will handle the actual mining
     Ok(())
 }
@@ -296,19 +304,17 @@ async fn start_mining() -> Result<(), String> {
 fn stop_mining() -> Result<(), String> {
     // Only controller can stop mining
     caller_is_controller()?;
-    
+
     IS_MINING.with(|m| {
         *m.borrow_mut() = false;
     });
-    
+
     Ok(())
 }
 
 #[ic_cdk::query]
 fn get_mining_stats() -> Option<MiningStats> {
-    BLOCK_MINER.with(|m| {
-        m.borrow().as_ref().map(|miner| miner.get_stats())
-    })
+    BLOCK_MINER.with(|m| m.borrow().as_ref().map(|miner| miner.get_stats()))
 }
 
 #[ic_cdk::query]
@@ -363,57 +369,18 @@ struct TokenInfo {
 async fn claim_rewards() -> Result<(), String> {
     // Only controller can claim rewards
     caller_is_controller()?;
-    
+
     // Get current token
-    let token_id = CURRENT_TOKEN.with(|t| {
-        t.borrow().clone().ok_or("No token connected".to_string())
-    })?;
-    
+    let token_id = CURRENT_TOKEN.with(|t| t.borrow().clone().ok_or("No token connected".to_string()))?;
+
     // Get token info to verify ledger exists
     let (token_info,): (TokenInfo,) = call(token_id, "get_info", ())
         .await
         .map_err(|(code, msg)| format!("Failed to get token info: {} (code: {:?})", msg, code))?;
-    
+
     if let Some(ledger_id) = token_info.ledger_id {
-        // Get miner stats to check if there are any rewards
-        let stats = get_mining_stats()
-            .ok_or("No mining stats available".to_string())?;
-        
-        if stats.total_rewards > 0 {
-            // Transfer rewards to controller
-            let transfer_args = icrc_ledger_types::icrc1::transfer::TransferArg {
-                from_subaccount: None,
-                to: {
-                    let owner = ic_cdk::id();
-                    icrc_ledger_types::icrc1::account::Account { owner, subaccount: None }
-                },
-                fee: None,
-                memo: None,
-                created_at_time: None,
-                amount: Nat::from(stats.total_rewards),
-            };
-            
-            // Call ledger to transfer rewards
-            let result: Result<(Result<Nat, String>,), _> = call(ledger_id, "icrc1_transfer", (transfer_args,))
-                .await
-                .map_err(|(code, msg)| format!("Transfer failed: {} (code: {:?})", msg, code));
-            
-            match result {
-                Ok((Ok(_block_height),)) => {
-                    // Reset rewards counter
-                    BLOCK_MINER.with(|m| {
-                        if let Some(miner) = m.borrow_mut().as_mut() {
-                            miner.get_stats_mut().total_rewards = 0;
-                        }
-                    });
-                    Ok(())
-                },
-                Ok((Err(e),)) => Err(format!("Transfer rejected: {}", e)),
-                Err(e) => Err(e)
-            }
-        } else {
-            Err("No rewards available to claim".to_string())
-        }
+        // Use the auto transfer function to transfer rewards to the controller
+        auto_transfer_rewards_to_controller(token_id, ledger_id).await
     } else {
         Err("Token has no ledger".to_string())
     }
@@ -422,17 +389,17 @@ async fn claim_rewards() -> Result<(), String> {
 #[ic_cdk::update]
 fn set_mining_speed(percentage: u8) -> Result<(), String> {
     caller_is_controller()?;
-    
+
     if percentage < 1 || percentage > 100 {
         return Err("Speed percentage must be between 1 and 100".to_string());
     }
-    
+
     BLOCK_MINER.with(|m| {
         // Initialize the miner if it doesn't exist
         if m.borrow().is_none() {
             *m.borrow_mut() = Some(BlockMiner::new());
         }
-        
+
         // Now we can safely unwrap as we've ensured it exists
         if let Some(miner) = m.borrow_mut().as_mut() {
             miner.set_speed_percentage(percentage);
@@ -447,13 +414,13 @@ fn set_mining_speed(percentage: u8) -> Result<(), String> {
 #[ic_cdk::update]
 fn set_template_refresh_interval(chunks: u64) -> Result<(), String> {
     caller_is_controller()?;
-    
+
     BLOCK_MINER.with(|m| {
         // Initialize the miner if it doesn't exist
         if m.borrow().is_none() {
             *m.borrow_mut() = Some(BlockMiner::new());
         }
-        
+
         // Now we can safely unwrap as we've ensured it exists
         if let Some(miner) = m.borrow_mut().as_mut() {
             miner.set_chunks_per_refresh(chunks);
@@ -467,12 +434,13 @@ fn set_template_refresh_interval(chunks: u64) -> Result<(), String> {
 
 fn handle_block_retrieval_failure() {
     let now = ic_cdk::api::time();
-    
+
     LAST_BLOCK_FAILURE.with(|last| {
         BLOCK_BACKOFF_DURATION.with(|duration| {
             // If we failed recently (within 60 seconds), increase backoff
             if let Some(last_failure) = *last.borrow() {
-                if now - last_failure < 60_000_000_000 { // 60 seconds
+                if now - last_failure < 60_000_000_000 {
+                    // 60 seconds
                     // Double the backoff duration, cap at 30 seconds
                     let new_duration = (*duration.borrow() * 2).min(30_000_000_000);
                     *duration.borrow_mut() = new_duration;
@@ -481,15 +449,14 @@ fn handle_block_retrieval_failure() {
                     *duration.borrow_mut() = 5_000_000_000; // Reset to 5 seconds
                 }
             }
-            
+
             *last.borrow_mut() = Some(now);
-            
+
             // Set the next mining attempt timestamp instead of sleeping
             let backoff_duration = *duration.borrow();
             NEXT_MINING_ATTEMPT.with(|next| {
                 *next.borrow_mut() = now + backoff_duration;
             });
-            
         });
     });
 }
@@ -520,7 +487,7 @@ async fn heartbeat() {
     // Check if it's time to measure cycles (every 5 minutes)
     let now = ic_cdk::api::time();
     let five_minutes_ns: u64 = 5 * 60 * 1_000_000_000;
-    
+
     let should_check_cycles = LAST_CYCLE_CHECK.with(|last| {
         let last_check = *last.borrow();
         if last_check == 0 || now - last_check >= five_minutes_ns {
@@ -530,20 +497,17 @@ async fn heartbeat() {
             false
         }
     });
-    
+
     if should_check_cycles {
         // Record current cycle balance
         let balance = ic_cdk::api::canister_balance128();
-        
+
         CYCLE_MEASUREMENTS.with(|measurements| {
             let mut m = measurements.borrow_mut();
-            
+
             // Add new measurement
-            m.push_back(CycleMeasurement {
-                timestamp: now,
-                balance,
-            });
-            
+            m.push_back(CycleMeasurement { timestamp: now, balance });
+
             // Keep only measurements from the last 100 minutes (20 measurements at 5-minute intervals)
             let cutoff = now.saturating_sub(100 * 60 * 1_000_000_000);
             while !m.is_empty() && m.front().unwrap().timestamp < cutoff {
@@ -551,36 +515,36 @@ async fn heartbeat() {
             }
         });
     }
-    
+
     // Increment heartbeat counter for mining
     let current_counter = HEARTBEAT_COUNTER.with(|c| {
         let current = *c.borrow();
         *c.borrow_mut() = (current + 1) % 6; // 0-5, so we can check for == 5
         current
     });
-    
+
     // Only mine on heartbeat 5 to avoid excessive resource usage
     if current_counter != 5 || !IS_MINING.with(|m| *m.borrow()) {
         return;
     }
-    
+
     // Check if we're in a backoff period
     let can_mine = NEXT_MINING_ATTEMPT.with(|next| {
         let next_attempt = *next.borrow();
         next_attempt == 0 || now >= next_attempt
     });
-    
+
     if !can_mine {
         return;
     }
-    
+
     // Initialize the miner if it doesn't exist
     BLOCK_MINER.with(|m| {
         if m.borrow().is_none() {
             *m.borrow_mut() = Some(BlockMiner::new());
         }
     });
-    
+
     // Get token ID
     let token_id = match CURRENT_TOKEN.with(|t| t.borrow().clone()) {
         Some(id) => id,
@@ -588,31 +552,32 @@ async fn heartbeat() {
             return;
         }
     };
-    
+
     // Get current block template
     let block = match call::<_, (Option<BlockTemplate>,)>(token_id, "get_current_block", ())
         .await
-        .map_err(|(code, msg)| format!("Failed to get block: {} (code: {:?})", msg, code)) {
-            Ok((block,)) => {
-                if block.is_some() {
-                    reset_block_backoff();
-                } else {
-                    handle_block_retrieval_failure();
-                }
-                block
-            },
-            Err(_) => {
+        .map_err(|(code, msg)| format!("Failed to get block: {} (code: {:?})", msg, code))
+    {
+        Ok((block,)) => {
+            if block.is_some() {
+                reset_block_backoff();
+            } else {
                 handle_block_retrieval_failure();
-                None
             }
-        };
+            block
+        }
+        Err(_) => {
+            handle_block_retrieval_failure();
+            None
+        }
+    };
 
     if let Some(block) = block {
         // Store current block height
         CURRENT_BLOCK_HEIGHT.with(|h| {
             *h.borrow_mut() = block.height;
         });
-        
+
         // Generate unique starting nonce
         let initial_nonce = match generate_unique_nonce_start().await {
             Ok(nonce) => nonce,
@@ -620,11 +585,11 @@ async fn heartbeat() {
                 return;
             }
         };
-        
+
         START_NONCE.with(|n| {
             *n.borrow_mut() = initial_nonce;
         });
-        
+
         // Try to mine the block with the configured chunk size
         let mining_result = BLOCK_MINER.with(|m| {
             if let Some(miner) = m.borrow_mut().as_mut() {
@@ -654,7 +619,7 @@ async fn heartbeat() {
 async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: u32) {
     // Get token info to get ledger ID
     let token_info: Result<(Result<TokenInfo, String>,), _> = call(token_id, "get_info", ()).await;
-    
+
     match token_info {
         Ok((Ok(token_info),)) => {
             if let Some(ledger_id) = token_info.ledger_id {
@@ -664,20 +629,30 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                     token_id,
                     "submit_solution",
                     (ledger_id, result.nonce, result.solution_hash, hashes_processed),
-                    SUBMISSION_CYCLES
-                ).await
+                    SUBMISSION_CYCLES,
+                )
+                .await
                 {
                     Ok((Ok((true, block_height, reward, ticker)),)) => {
                         // Increment blocks_mined counter on successful submission only
                         BLOCK_MINER.with(|m| {
                             if let Some(miner) = m.borrow_mut().as_mut() {
                                 miner.get_stats_mut().blocks_mined += 1;
+                                // We still update the total_rewards for backward compatibility
+                                miner.get_stats_mut().total_rewards += reward;
                             }
                         });
-                        
+
+                        // Update token-specific rewards
+                        TOKEN_REWARDS.with(|tr| {
+                            let mut rewards = tr.borrow_mut();
+                            let entry = rewards.rewards.entry(token_id).or_insert(0);
+                            *entry += reward;
+                        });
+
                         // Check if any cycles were refunded (shouldn't be in normal case)
                         let _refunded = ic_cdk::api::call::msg_cycles_refunded();
-                        
+
                         // Send notification for solution found
                         let solution_data = json!({
                             "token_id": token_id.to_text(),
@@ -689,9 +664,9 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                             "reward": reward,
                             "decimals": token_info.decimals
                         });
-                        
+
                         notify_event("solution_found", solution_data);
-                        
+
                         // Get new random nonce after success
                         if let Ok(new_nonce) = generate_unique_nonce_start().await {
                             // Update the START_NONCE thread-local instead of local variable
@@ -700,7 +675,12 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                             });
                         }
                         reset_heartbeat_counter();
-                    },
+
+                        // Directly transfer rewards to the controller
+                        ic_cdk::spawn(async move {
+                            let _ = auto_transfer_rewards_to_controller(token_id, ledger_id).await;
+                        });
+                    }
                     Ok((Ok((false, _block_height, _, _ticker)),)) => {
                         // Use chunk size for increment to avoid collisions
                         let chunk_size = BLOCK_MINER.with(|m| m.borrow().as_ref().map(|m| m.get_chunk_size()).unwrap_or(1000));
@@ -710,19 +690,19 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                             let current = *n.borrow();
                             *n.borrow_mut() = current.wrapping_add(increment);
                         });
-                    },
+                    }
                     Ok((Err(_),)) => {
                         let _refunded = ic_cdk::api::call::msg_cycles_refunded();
-                    },
+                    }
                     Err(_) => {
                         let _refunded = ic_cdk::api::call::msg_cycles_refunded();
                     }
                 }
             }
-        },
+        }
         Ok((Err(_),)) => {
             // Token returned error
-        },
+        }
         Err(_) => {
             // Error getting token info
         }
@@ -754,16 +734,16 @@ fn set_chunks_per_refresh(chunks: u64) {
 fn set_api_endpoint(endpoint: String, api_key: String) -> Result<(), String> {
     // Only controller can set API endpoint
     caller_is_controller()?;
-    
+
     // Always keep our hardcoded URL
     if endpoint != "https://api.floppa.ai/" {
         return Ok(());
     }
-    
+
     API_ENDPOINT.with(|e| *e.borrow_mut() = Some(endpoint));
     API_KEY.with(|k| *k.borrow_mut() = Some(api_key));
     API_ENABLED.with(|e| *e.borrow_mut() = true);
-    
+
     Ok(())
 }
 
@@ -788,23 +768,23 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
     if !enabled {
         return;
     }
-    
+
     // Get API endpoint and key
     let endpoint_opt = API_ENDPOINT.with(|e| e.borrow().clone());
     let api_key_opt = API_KEY.with(|k| k.borrow().clone());
-    
+
     // If endpoint or key is not configured, skip notification
     if endpoint_opt.is_none() || api_key_opt.is_none() {
         return;
     }
-    
+
     let endpoint = endpoint_opt.unwrap();
     let api_key = api_key_opt.unwrap();
-    
+
     // Clone data for the async task
     let event_type = event_type.to_string();
     let data_clone = data.clone();
-    
+
     // Spawn a task to send the notification
     ic_cdk::spawn(async move {
         // Create the payload
@@ -814,7 +794,7 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
             "timestamp": ic_cdk::api::time(),
             "data": data_clone
         });
-        
+
         // Prepare the request body
         let body = match serde_json::to_vec(&payload) {
             Ok(bytes) => Some(bytes),
@@ -822,7 +802,7 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
                 return;
             }
         };
-        
+
         // The endpoint's URL path needs to be corrected
         // in the future i dont wanna worry about / or no /
         let full_url = if endpoint.ends_with("/") {
@@ -830,7 +810,7 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
         } else {
             format!("{}/miner-notifications", endpoint)
         };
-        
+
         // Create the HTTP request argument
         let request = CanisterHttpRequestArgument {
             url: full_url,
@@ -844,22 +824,25 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
                 HttpHeader {
                     name: "X-API-Key".to_string(),
                     value: api_key,
-                }
+                },
             ],
             max_response_bytes: Some(1024),
-            transform: None,
+            transform: Some(TransformContext::from_name("transform_http_response".to_string(), vec![])),
         };
-        
-        // Define cycles to pay for the HTTP outcall (500 million cycles is a reasonable amount)
+
+        // Define cycles to pay for the HTTP outcall (1 billion cycles is a reasonable amount)
         // whats overspend gets refunded better safe than sorry
-        let cycles_to_pay: u128 = 500_000_000;
-        
+        let cycles_to_pay: u128 = 1_000_000_000;
+
         // Send the HTTP request
         match http_request(request, cycles_to_pay).await {
-            // we dont really care about the response hence why it is within a spawn, to the void it goes
-            Ok((_response,)) => {
-            },
-            Err((_code, _msg)) => {
+            Ok((response,)) => {
+                // Log successful response
+                ic_cdk::println!("API notification sent successfully: {}", response.status);
+            }
+            Err((code, msg)) => {
+                // Log error
+                ic_cdk::println!("API notification failed: {} (code: {:?})", msg, code);
             }
         }
     });
@@ -870,13 +853,13 @@ fn notify_event(event_type: &str, data: serde_json::Value) {
 fn set_chunk_size(size: u64) -> Result<(), String> {
     // Only controller can set chunk size
     caller_is_controller()?;
-    
+
     BLOCK_MINER.with(|m| {
         // Initialize the miner if it doesn't exist
         if m.borrow().is_none() {
             *m.borrow_mut() = Some(BlockMiner::new());
         }
-        
+
         // Now we can safely unwrap as we've ensured it exists
         if let Some(miner) = m.borrow_mut().as_mut() {
             miner.set_chunk_size(size)
@@ -891,15 +874,15 @@ fn set_chunk_size(size: u64) -> Result<(), String> {
 #[ic_cdk::query]
 fn get_cycle_usage() -> CycleUsageStats {
     let current_balance = ic_cdk::api::canister_balance128();
-    
+
     CYCLE_MEASUREMENTS.with(|measurements| {
         let m = measurements.borrow();
         let measurements_vec: Vec<CycleMeasurement> = m.iter().cloned().collect();
-        
+
         // Calculate usage over the last 15 minutes
         let now = ic_cdk::api::time();
         let fifteen_min_ago = now.saturating_sub(15 * 60 * 1_000_000_000);
-        
+
         let usage_last_15min = if measurements_vec.len() >= 2 {
             // Find the closest measurement to 15 minutes ago
             let mut closest_older = None;
@@ -910,7 +893,7 @@ fn get_cycle_usage() -> CycleUsageStats {
                     break;
                 }
             }
-            
+
             // Calculate usage if we have a measurement from before 15 minutes ago
             closest_older.map(|older| {
                 if older.balance > current_balance {
@@ -922,14 +905,14 @@ fn get_cycle_usage() -> CycleUsageStats {
         } else {
             None
         };
-        
+
         // Calculate hourly usage rate
         let usage_rate_per_hour = if measurements_vec.len() >= 2 {
             let oldest = measurements_vec.first().unwrap();
             let newest = measurements_vec.last().unwrap();
-            
+
             let time_diff_hours = (newest.timestamp - oldest.timestamp) as f64 / (60.0 * 60.0 * 1_000_000_000.0);
-            
+
             if time_diff_hours > 0.0 && oldest.balance > newest.balance {
                 Some((oldest.balance - newest.balance) as f64 / time_diff_hours)
             } else {
@@ -938,12 +921,12 @@ fn get_cycle_usage() -> CycleUsageStats {
         } else {
             None
         };
-        
+
         // Estimate remaining time based on usage rate
         let estimated_remaining_time = usage_rate_per_hour.map(|rate| {
             if rate > 0.0 {
                 let hours_remaining = current_balance as f64 / rate;
-                
+
                 if hours_remaining < 1.0 {
                     format!("{:.1} minutes", hours_remaining * 60.0)
                 } else if hours_remaining < 24.0 {
@@ -957,7 +940,7 @@ fn get_cycle_usage() -> CycleUsageStats {
                 "Unknown (no usage detected)".to_string()
             }
         });
-        
+
         CycleUsageStats {
             current_balance,
             measurements: measurements_vec,
@@ -973,5 +956,188 @@ fn icrc1_version() -> u16 {
     ICRC_VERSION
 }
 
+// Helper function to get the first controller of the canister
+async fn get_first_controller() -> Result<Principal, String> {
+    use ic_cdk::api::management_canister::main::canister_status;
+
+    let canister_id = ic_cdk::id();
+    let (status,) = canister_status(CanisterIdRecord { canister_id })
+        .await
+        .map_err(|(code, msg)| format!("Failed to get canister status: {} (code: {:?})", msg, code))?;
+
+    status
+        .settings
+        .controllers
+        .into_iter()
+        .next()
+        .ok_or_else(|| "No controller found".to_string())
+}
+
+// Function to automatically transfer rewards to the controller
+async fn auto_transfer_rewards_to_controller(token_id: Principal, ledger_id: Principal) -> Result<(), String> {
+    // Get token-specific rewards
+    let reward_amount = TOKEN_REWARDS.with(|tr| tr.borrow().rewards.get(&token_id).cloned().unwrap_or(0));
+
+    if reward_amount == 0 {
+        return Ok(());
+    }
+
+    // Get the first controller
+    let controller = get_first_controller()
+        .await
+        .map_err(|e| format!("Failed to get first controller: {}", e))?;
+
+    // Get the fee for the transfer
+    let fee_result: Result<(Nat,), _> = call(ledger_id, "icrc1_fee", ())
+        .await
+        .map_err(|(code, msg)| format!("Failed to get fee: {} (code: {:?})", msg, code));
+
+    let fee = match fee_result {
+        Ok((fee,)) => fee,
+        Err(e) => return Err(e),
+    };
+
+    // Transfer rewards to controller
+    let transfer_args = icrc_ledger_types::icrc1::transfer::TransferArg {
+        from_subaccount: None,
+        to: {
+            icrc_ledger_types::icrc1::account::Account {
+                owner: controller,
+                subaccount: None,
+            }
+        },
+        fee: Some(fee),
+        memo: Some(icrc_ledger_types::icrc1::transfer::Memo(
+            b"Mining reward auto-transfer".to_vec().into(),
+        )),
+        created_at_time: None,
+        amount: Nat::from(reward_amount),
+    };
+    // Call ledger to transfer rewards
+    let result: Result<(Result<Nat, String>,), _> = call(ledger_id, "icrc1_transfer", (transfer_args,))
+        .await
+        .map_err(|(code, msg)| format!("Transfer failed: {} (code: {:?})", msg, code));
+
+    match result {
+        Ok((Ok(_block_height),)) => {
+            // Reset token-specific rewards counter
+            TOKEN_REWARDS.with(|tr| {
+                let mut rewards = tr.borrow_mut();
+                rewards.rewards.remove(&token_id);
+            });
+
+            // Also reset the total_rewards counter for backward compatibility
+            BLOCK_MINER.with(|m| {
+                if let Some(miner) = m.borrow_mut().as_mut() {
+                    miner.get_stats_mut().total_rewards = miner.get_stats_mut().total_rewards.saturating_sub(reward_amount);
+                }
+            });
+
+            // Send notification for reward transfer
+            let transfer_data = json!({
+                "token_id": token_id.to_text(),
+                "ledger_id": ledger_id.to_text(),
+                "controller": controller.to_text(),
+                "amount": reward_amount.to_string(),
+            });
+
+            notify_event("rewards_transferred", transfer_data);
+
+            Ok(())
+        }
+        Ok((Err(e),)) => Err(format!("Transfer rejected: {}", e)),
+        Err(e) => Err(e),
+    }
+}
+
+// New function to claim rewards for a specific token
+#[ic_cdk::update]
+async fn claim_token_rewards(token_id: Principal) -> Result<(), String> {
+    // Only controller can claim rewards
+    caller_is_controller()?;
+
+    // Check if we have rewards for this token
+    let has_rewards = TOKEN_REWARDS.with(|tr| tr.borrow().rewards.contains_key(&token_id));
+
+    if !has_rewards {
+        return Err(format!("No rewards available for token {}", token_id));
+    }
+
+    // Get token info to verify ledger exists
+    let (token_info,): (TokenInfo,) = call(token_id, "get_info", ())
+        .await
+        .map_err(|(code, msg)| format!("Failed to get token info: {} (code: {:?})", msg, code))?;
+
+    if let Some(ledger_id) = token_info.ledger_id {
+        // Use the auto transfer function to transfer rewards to the controller
+        auto_transfer_rewards_to_controller(token_id, ledger_id).await
+    } else {
+        Err("Token has no ledger".to_string())
+    }
+}
+
+// New function to get all token rewards
+#[ic_cdk::query]
+fn get_token_rewards() -> HashMap<Principal, u64> {
+    TOKEN_REWARDS.with(|tr| tr.borrow().rewards.clone())
+}
+
+// New function to claim all rewards from all tokens
+#[ic_cdk::update]
+async fn claim_all_rewards() -> Result<Vec<(Principal, Result<(), String>)>, String> {
+    // Only controller can claim rewards
+    caller_is_controller()?;
+
+    // Get all tokens with rewards
+    let tokens_with_rewards = TOKEN_REWARDS.with(|tr| tr.borrow().rewards.keys().cloned().collect::<Vec<_>>());
+
+    if tokens_with_rewards.is_empty() {
+        return Err("No rewards available for any token".to_string());
+    }
+
+    let mut results = Vec::new();
+
+    // Process each token
+    for token_id in tokens_with_rewards {
+        // Get token info to verify ledger exists
+        let token_info_result: Result<(Result<TokenInfo, String>,), _> = call(token_id, "get_info", ()).await;
+
+        match token_info_result {
+            Ok((Ok(token_info),)) => {
+                if let Some(ledger_id) = token_info.ledger_id {
+                    // Try to transfer rewards
+                    let transfer_result = auto_transfer_rewards_to_controller(token_id, ledger_id).await;
+                    results.push((token_id, transfer_result));
+                } else {
+                    results.push((token_id, Err("Token has no ledger".to_string())));
+                }
+            }
+            Ok((Err(e),)) => {
+                results.push((token_id, Err(format!("Token error: {}", e))));
+            }
+            Err((code, msg)) => {
+                results.push((token_id, Err(format!("Failed to get token info: {} (code: {:?})", msg, code))));
+            }
+        }
+    }
+
+    Ok(results)
+}
+
+#[ic_cdk::query]
+fn check_api_config() -> (bool, Option<String>) {
+    (API_ENABLED.with(|e| *e.borrow()), API_ENDPOINT.with(|e| e.borrow().clone()))
+}
+
+#[ic_cdk::query]
+fn transform_http_response(args: TransformArgs) -> HttpResponse {
+    HttpResponse {
+        status: args.response.status,
+        headers: vec![],
+        body: vec![],
+    }
+}
+
 // Candid interface export
 ic_cdk::export_candid!();
+

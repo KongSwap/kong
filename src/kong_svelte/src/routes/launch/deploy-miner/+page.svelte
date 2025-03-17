@@ -166,11 +166,7 @@
     processSteps={PROCESS_STEPS}
     {isProcessing}
   />
-  
-  <DeploymentLog
-    bind:this={deploymentLogComponent}
-    logStore={deploymentLog}
-  />
+
   
   <DeploymentProcess
     bind:this={deploymentProcessComponent}

@@ -2,8 +2,6 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
-export type AllInfoResult = { 'Ok' : TokenAllInfo } |
-  { 'Err' : string };
 export interface ArchiveOptions {
   'num_blocks_to_archive' : bigint,
   'max_transactions_per_response' : [] | [bigint],
@@ -120,8 +118,6 @@ export type EventType = {
       'competition_id' : string,
     }
   };
-export type EverythingResult = { 'Ok' : TokenEverything } |
-  { 'Err' : string };
 export interface HttpRequest {
   'url' : string,
   'method' : string,
@@ -177,45 +173,23 @@ export type Result_5 = { 'Ok' : DelegationResponse } |
   { 'Err' : DelegationError };
 export type Result_6 = { 'Ok' : Principal } |
   { 'Err' : string };
+export type Result_7 = { 'Ok' : [boolean, bigint, bigint, string] } |
+  { 'Err' : string };
 export interface SocialLink { 'url' : string, 'platform' : string }
 export interface SupportedStandard { 'url' : string, 'name' : string }
-export interface TokenAllInfo {
-  'principal' : Principal,
+export interface TokenInfo {
   'decimals' : number,
   'ticker' : string,
   'average_block_time' : [] | [number],
   'transfer_fee' : bigint,
   'logo' : [] | [string],
   'name' : string,
-  'block_time_rating' : [] | [string],
-  'formatted_block_time' : [] | [string],
-  'ledger_id' : [] | [Principal],
-  'circulating_supply' : bigint,
-  'formatted_block_reward' : string,
-  'total_supply' : bigint,
-  'mining_progress_percentage' : string,
-  'current_block_height' : bigint,
-  'social_links' : [] | [Array<SocialLink>],
-  'current_block_reward' : bigint,
-}
-export interface TokenEverything {
-  'mining_completion_estimate' : [] | [string],
-  'block_time_target' : bigint,
-  'recent_events' : Array<Event>,
-  'all_info' : TokenAllInfo,
-  'active_miners_count' : bigint,
-  'mining_difficulty' : number,
-}
-export interface TokenInfo {
-  'decimals' : number,
-  'ticker' : string,
-  'transfer_fee' : bigint,
-  'logo' : [] | [string],
-  'name' : string,
   'ledger_id' : [] | [Principal],
   'archive_options' : [] | [ArchiveOptions],
   'total_supply' : bigint,
+  'current_block_height' : bigint,
   'social_links' : [] | [Array<SocialLink>],
+  'current_block_reward' : bigint,
 }
 export interface TokenInitArgs {
   'decimals' : [] | [number],
@@ -242,13 +216,12 @@ export interface _SERVICE {
   'create_genesis_block' : ActorMethod<[], Result_2>,
   'deregister_miner' : ActorMethod<[], Result>,
   'get_active_miners' : ActorMethod<[], Array<Principal>>,
-  'get_all_info' : ActorMethod<[], AllInfoResult>,
   'get_auth_status' : ActorMethod<[], boolean>,
   'get_average_block_time' : ActorMethod<[[] | [number]], BlockTimeResult>,
+  'get_block_height' : ActorMethod<[], bigint>,
   'get_block_time_target' : ActorMethod<[], bigint>,
   'get_current_block' : ActorMethod<[], [] | [BlockTemplate]>,
   'get_event_batches' : ActorMethod<[[] | [bigint]], Array<EventBatch>>,
-  'get_everything' : ActorMethod<[], EverythingResult>,
   'get_info' : ActorMethod<[], Result_3>,
   'get_metrics' : ActorMethod<[], MetricsResult>,
   'get_miner_leaderboard' : ActorMethod<[[] | [number]], Array<MinerInfo>>,
@@ -261,6 +234,7 @@ export interface _SERVICE {
   'get_social_links' : ActorMethod<[], Result_4>,
   'get_total_cycles_earned' : ActorMethod<[], bigint>,
   'http_request' : ActorMethod<[HttpRequest], HttpResponse>,
+  'http_request_streaming_callback' : ActorMethod<[], HttpResponse>,
   'icrc10_supported_standards' : ActorMethod<[], Array<SupportedStandard>>,
   'icrc1_version' : ActorMethod<[], string>,
   'icrc21_consent_message' : ActorMethod<
@@ -269,14 +243,19 @@ export interface _SERVICE {
   >,
   'icrc28_trusted_origins' : ActorMethod<[], TrustedOriginsResponse>,
   'icrc34_delegate' : ActorMethod<[DelegationRequest], Result_5>,
+  'is_genesis_block_generated' : ActorMethod<[], boolean>,
+  'is_mining_ready' : ActorMethod<[], Result_1>,
   'mining_version' : ActorMethod<[], string>,
   'register_miner' : ActorMethod<[], Result>,
   'remove_social_link' : ActorMethod<[bigint], Result>,
+  'restore_mining_params' : ActorMethod<
+    [bigint, number, bigint, bigint],
+    Result
+  >,
   'start_token' : ActorMethod<[], Result_6>,
   'submit_solution' : ActorMethod<
     [Principal, bigint, Uint8Array | number[], bigint],
-    { 'Ok' : [boolean, bigint, bigint, string] } |
-      { 'Err' : string }
+    Result_7
   >,
   'update_social_link' : ActorMethod<[bigint, string, string], Result>,
   'whoami' : ActorMethod<[], Principal>,

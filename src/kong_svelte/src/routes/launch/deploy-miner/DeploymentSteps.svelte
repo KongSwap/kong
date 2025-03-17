@@ -64,9 +64,9 @@
   });
 
   // Update spring when progressWidth changes
-  $: {
-    progressSpring.set(progressWidth);
-  }
+  $effect(() => {
+    progressSpring.set(progressWidth());
+  });
 </script>
 
 <div class="deployment-steps-container">
@@ -125,9 +125,9 @@
     {:else}
       <div class="active-step" transition:fade={{ duration: 200 }}>
         <div class="step-number">Step {Math.min(currentStep + 1, safeSteps.length)}</div>
-        <div class="step-name">{currentStepInfo.name}</div>
-        {#if currentStepInfo.description}
-          <div class="step-description">{currentStepInfo.description}</div>
+        <div class="step-name">{currentStepInfo().name}</div>
+        {#if currentStepInfo().description}
+          <div class="step-description">{currentStepInfo().description}</div>
         {/if}
         {#if isProcessing}
           <div class="processing-indicator">
