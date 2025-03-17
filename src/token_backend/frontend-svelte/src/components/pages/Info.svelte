@@ -348,7 +348,7 @@
 <div class="container px-4 py-8 mx-auto max-w-7xl">
   <!-- Ledger ID Banner -->
   <div class="p-4 mb-6 text-center transition-all duration-300 border shadow-xl bg-black/40 border-emerald-900/50 rounded-xl hover:border-emerald-700/50 hover:shadow-2xl">
-    <h2 class="mb-2 text-lg font-medium text-emerald-500">Floppa's Ledger ID</h2>
+    <h2 class="mb-2 text-lg font-medium text-emerald-500">{tokenInfoValue?.name || 'Token'}'s Ledger ID</h2>
     <div class="flex items-center justify-center gap-2">
       <code class="px-3 py-1 font-mono text-sm text-white rounded-lg bg-black/30">{tokenInfoValue?.ledger_id && tokenInfoValue.ledger_id.length > 0 && tokenInfoValue.ledger_id[0]?.toText ? Principal.fromText(tokenInfoValue.ledger_id[0].toText()).toText() : 'Ledger not yet initialized'}</code>
       <button 

@@ -668,6 +668,13 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                 ).await
                 {
                     Ok((Ok((true, block_height, reward, ticker)),)) => {
+                        // Increment blocks_mined counter on successful submission only
+                        BLOCK_MINER.with(|m| {
+                            if let Some(miner) = m.borrow_mut().as_mut() {
+                                miner.get_stats_mut().blocks_mined += 1;
+                            }
+                        });
+                        
                         // Check if any cycles were refunded (shouldn't be in normal case)
                         let _refunded = ic_cdk::api::call::msg_cycles_refunded();
                         

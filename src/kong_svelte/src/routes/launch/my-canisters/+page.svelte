@@ -116,6 +116,7 @@
         recentChanges?: any[];
         totalChanges?: bigint;
         noWasmModule?: boolean;
+        cycleUsageStats?: any;
     }
     
     let canisterStatuses: Record<string, CanisterStatus | null> = {};
@@ -127,6 +128,9 @@
     
     // Toggle the pulse animation every 3 seconds if there are hidden canisters
     $: hiddenCanistersCount = canisters.filter(c => c.hidden).length;
+
+    // ICRC version tracking
+    let canisterVersions: Record<string, number> = {};
 
     // Format helpers
     function formatDate(timestamp: number): string {
@@ -398,97 +402,42 @@
             console.log("Management actor:", management);
             
             try {
-                const response = await management.canisterStatus(Principal.fromText(canisterId));
-
-                console.log("Canister status response:", response);
-                canisterStatuses[canisterId] = {
-                    status: 'running' in response.status ? 'running' 
-                        : 'stopping' in response.status ? 'stopping'
-                        : 'stopped',
-                    memorySize: response.memory_size,
-                    cycles: response.cycles,
-                    moduleHash: response.module_hash?.[0],
-                    settings: response.settings,
-                    idleCyclesBurnedPerDay: response.idle_cycles_burned_per_day,
-                    queryStats: response.query_stats
-                };
-            } catch (statusError) {
-                // Check for specific error types
-                const errorStr = String(statusError);
-                if (errorStr.includes('IC0537') || errorStr.includes('no wasm module')) {
-                    console.log("Canister has no WASM module, trying canister_info instead");
-                    console.log("Full error object:", statusError);
-                    
-                    // Try to extract cycles from the error response
-                    let cycles = 0n;
-                    
-                    // The IC response often contains the cycles in the message
+                const canisterStatus = await management.canisterStatus(Principal.fromText(canisterId));
+                
+                canisterStatuses[canisterId] = canisterStatus;
+                
+                // Also try to get ICRC version if possible
+                await fetchCanisterVersion(canisterId);
+                
+                // If this is a miner canister, fetch cycle usage stats
+                const canister = canisters.find(c => c.id === canisterId);
+                if (canister && canister.wasmType === 'miner' && agent) {
                     try {
-                        // Different ways the cycles might be stored in the error
-                        if (statusError.response?.cycles) {
-                            cycles = statusError.response.cycles;
-                        } else if (statusError.message && typeof statusError.message === 'string') {
-                            // Try to extract cycles from error message which might contain JSON
-                            const jsonMatch = statusError.message.match(/\{.*\}/);
-                            if (jsonMatch) {
-                                try {
-                                    const jsonData = JSON.parse(jsonMatch[0]);
-                                    if (jsonData.cycles) {
-                                        cycles = BigInt(jsonData.cycles);
-                                    }
-                                } catch (e) {
-                                    console.error("Failed to parse JSON from error message", e);
-                                }
+                        const minerActor = await agent.createActor(canisterId, {
+                            agentOptions: {
+                                host: 'https://icp-api.io'
                             }
-                            
-                            // Try to extract cycles using regex
-                            const cyclesMatch = statusError.message.match(/cycles:\s*(\d+)/i);
-                            if (cyclesMatch && cyclesMatch[1]) {
-                                cycles = BigInt(cyclesMatch[1]);
-                            }
-                        } else if (statusError.error_code === "IC0537" && statusError.reject_message) {
-                            console.log("Reject message:", statusError.reject_message);
-                            // Try to extract from reject_message which may contain cycles info
-                        }
-                    } catch (e) {
-                        console.error("Couldn't extract cycles from error", e);
-                    }
-                    
-                    console.log("Extracted cycles:", cycles.toString());
-                    
-                    try {
-                        // Try to get canister info which works even without a WASM module
-                        const infoResponse = await management.canister_info({
-                            canister_id: Principal.fromText(canisterId),
-                            num_requested_changes: []
                         });
                         
-                        console.log("Canister info response:", infoResponse);
+                        const cycleUsageStats = await minerActor.get_cycle_usage();
+                        console.log(`Miner ${canisterId} cycle usage stats:`, cycleUsageStats);
                         
-                        // No WASM module installed - show status but indicate no WASM
+                        // Add cycle usage stats to canister status
                         canisterStatuses[canisterId] = {
-                            status: 'running', // Assume it's running since it exists
-                            memorySize: 0n,    // No WASM = no memory usage
-                            cycles: cycles,
-                            controllers: infoResponse.controllers,
-                            noWasmModule: true
+                            ...canisterStatus,
+                            cycleUsageStats
                         };
-                        
-                        // Set a more informative message
-                        statusErrors[canisterId] = "This canister exists but has no WASM module installed yet.";
-                    } catch (infoError) {
-                        // No WASM module installed - show status but indicate no WASM
-                        canisterStatuses[canisterId] = {
-                            status: 'running', // Assume it's running since it exists
-                            memorySize: 0n,    // No WASM = no memory usage
-                            cycles: cycles,
-                            noWasmModule: true
-                        };
-                        
-                        statusErrors[canisterId] = "This canister exists but has no WASM module installed yet.";
+                    } catch (error) {
+                        console.error(`Error fetching cycle usage stats for miner ${canisterId}:`, error);
                     }
-                } else if (errorStr.includes('canister_not_found') || errorStr.includes('Only controllers') || errorStr.includes('IC0512')) {
-                    // Set a more user-friendly error message
+                }
+                
+                loadingStatuses[canisterId] = false;
+            } catch (error) {
+                console.error("Error fetching canister status:", error);
+                
+                // Handle permission errors gracefully
+                if (error.toString().includes('IC0512') || error.toString().includes('Only controllers')) {
                     statusErrors[canisterId] = "You need controller access to view detailed status. You can still view it on the IC Dashboard.";
                     
                     // Set a minimal status so the UI shows something
@@ -498,13 +447,58 @@
                         cycles: 0n
                     };
                 } else {
-                    statusErrors[canisterId] = errorStr;
+                    statusErrors[canisterId] = error instanceof Error ? error.message : String(error);
+                }
+                
+                loadingStatuses[canisterId] = false;
+            }
+        } catch (error) {
+            console.error("Error creating management actor:", error);
+            statusErrors[canisterId] = error instanceof Error ? error.message : String(error);
+            loadingStatuses[canisterId] = false;
+        }
+    }
+    
+    // Fetch ICRC version from canister
+    async function fetchCanisterVersion(canisterId: string) {
+        if (!agent) {
+            console.error(`Cannot fetch ICRC version for ${canisterId}: agent is null`);
+            canisterVersions[canisterId] = 0;
+            return;
+        }
+        
+        try {
+            // Create an actor for the canister
+            const canisterActor = await agent.createActor(canisterId, {
+                agentOptions: {
+                    host: 'https://icp-api.io'
+                }
+            });
+            
+            try {
+                // Try to call icrc1_version
+                const version = await canisterActor.icrc1_version();
+                canisterVersions[canisterId] = version;
+                console.log(`Canister ${canisterId} ICRC version:`, version);
+            } catch (e) {
+                // If that fails, try to call get_info which might have icrc_version
+                try {
+                    const info = await canisterActor.get_info();
+                    if (info && info.icrc_version) {
+                        canisterVersions[canisterId] = info.icrc_version;
+                        console.log(`Canister ${canisterId} ICRC version from get_info:`, info.icrc_version);
+                    } else {
+                        // Default to 0 if we can't determine version
+                        canisterVersions[canisterId] = 0;
+                    }
+                } catch (e2) {
+                    // Default to 0 if we can't determine version
+                    canisterVersions[canisterId] = 0;
                 }
             }
         } catch (error) {
-            statusErrors[canisterId] = String(error);
-        } finally {
-            loadingStatuses[canisterId] = false;
+            console.error(`Error fetching ICRC version for ${canisterId}:`, error);
+            canisterVersions[canisterId] = 0;
         }
     }
 
@@ -776,6 +770,7 @@
                                     newName={newName}
                                     newTags={newTags}
                                     hasUpgrade={hasNewerVersion(canister)}
+                                    icrcVersion={canisterVersions[canister.id] || 0}
                                     on:edit={startEdit}
                                     on:save={saveEdit}
                                     on:cancel={cancelEdit}

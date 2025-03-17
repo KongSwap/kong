@@ -789,10 +789,12 @@ export class SwapService {
 
   /**
    * Executes KONG to TCYCLES swap with proper approval
+   * Higher slippage tolerance is implemented by design to accommodate smaller transactions (approximately 10 KONG),
+   * which are inherently subject to greater relative price impact due to their limited size in relation to the liquidity pool
    */
   public static async swapKongToTCycles(
     kongAmountE8s: bigint,
-    maxSlippage: number = 2.0,
+    maxSlippage: number = 20.0,
   ): Promise<bigint> {
     try {
       console.log('[SwapService][swapKongToTCycles] Starting swap with params:', {

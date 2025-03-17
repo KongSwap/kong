@@ -16,6 +16,7 @@
   export let newName: string = '';
   export let newTags: string = '';
   export let hasUpgrade: boolean = false;
+  export let icrcVersion: number = 0;
 
   // Event dispatcher
   const dispatch = createEventDispatcher();
@@ -135,7 +136,7 @@
   <div class="h-1.5 w-full bg-gradient-to-r {getCanisterTypeColor(canister.wasmType)}"></div>
   
   <!-- Upgrade indicator (if available) -->
-  {#if hasUpgrade}
+  {#if hasUpgrade && icrcVersion >= 2}
     <div class="w-full bg-yellow-500/20 text-yellow-400 py-1 px-2 text-xs text-center font-medium">
       <span class="flex items-center justify-center gap-1">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
@@ -150,22 +151,51 @@
     <!-- Canister Name and Type -->
     <div class="flex items-start justify-between mb-3">
       <div>
-        <h3 class="text-lg font-semibold text-kong-text-primary truncate max-w-[200px]">
-          {canister.name || truncateMiddle(canister.id, 10)}
-        </h3>
-        <div class="flex items-center mt-1">
-          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-kong-bg-light/10 text-kong-text-secondary">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1">
-              <path stroke-linecap="round" stroke-linejoin="round" d="{getCanisterTypeIcon(canister.wasmType)}" />
-            </svg>
-            {getCanisterTypeName(canister.wasmType)}
-          </span>
-        </div>
+        {#if isEditing}
+          <input 
+            type="text" 
+            bind:value={newName} 
+            placeholder="Canister name" 
+            class="w-full px-2 py-1 mb-2 text-lg font-semibold text-kong-text-primary bg-kong-bg-light/10 border border-kong-border/20 rounded-md focus:outline-none focus:ring-kong-primary focus:border-kong-primary"
+          />
+          <input 
+            type="text" 
+            bind:value={newTags} 
+            placeholder="Tags (comma separated)" 
+            class="w-full px-2 py-1 text-sm text-kong-text-primary bg-kong-bg-light/10 border border-kong-border/20 rounded-md focus:outline-none focus:ring-kong-primary focus:border-kong-primary"
+          />
+          <div class="flex mt-2 space-x-2">
+            <button 
+              on:click={saveEdit} 
+              class="px-2 py-1 text-xs text-white transition-colors rounded-md bg-kong-primary hover:bg-kong-primary/90"
+            >
+              Save
+            </button>
+            <button 
+              on:click={cancelEdit} 
+              class="px-2 py-1 text-xs transition-colors rounded-md border border-kong-border bg-transparent hover:bg-kong-bg-light/20 text-kong-text-secondary"
+            >
+              Cancel
+            </button>
+          </div>
+        {:else}
+          <h3 class="text-lg font-semibold text-kong-text-primary truncate max-w-[200px]">
+            {canister.name || truncateMiddle(canister.id, 10)}
+          </h3>
+          <div class="flex items-center mt-1">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-kong-bg-light/10 text-kong-text-secondary">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1">
+                <path stroke-linecap="round" stroke-linejoin="round" d="{getCanisterTypeIcon(canister.wasmType)}" />
+              </svg>
+              {getCanisterTypeName(canister.wasmType)}
+            </span>
+          </div>
+        {/if}
       </div>
       
       <!-- Action Buttons -->
       <div class="flex space-x-1">
-        {#if hasUpgrade}
+        {#if hasUpgrade && icrcVersion >= 2}
           <button 
             on:click={() => dispatch('install-wasm', { id: canister.id })}
             class="p-1 text-yellow-400 rounded-full hover:text-yellow-300 hover:bg-kong-bg-light/10"
@@ -192,24 +222,56 @@
           </svg>
         </button>
         
-        <!-- svelte-ignore a11y_consider_explicit_label -->
-        <button 
-          on:click={() => startEdit()} 
-          class="p-1 text-kong-primary rounded-full hover:text-kong-primary/90 hover:bg-kong-bg-light/10"
-          title="Edit Canister"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-          </svg>
-        </button>
+        {#if !isEditing}
+          <button 
+            on:click={() => startEdit()} 
+            class="p-1 text-kong-primary rounded-full hover:text-kong-primary/90 hover:bg-kong-bg-light/10"
+            title="Edit Canister"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+            </svg>
+          </button>
+        {/if}
       </div>
     </div>
     
-    <!-- Canister ID -->
-    <div class="mb-3">
+    <!-- Canister ID with Copy Button -->
+    <div class="mb-3 flex items-center">
       <p class="font-mono text-xs text-kong-text-secondary">
         {truncateMiddle(canister.id, 16)}
       </p>
+      <button 
+        on:click={copyCanisterId} 
+        class="ml-2 p-1 text-kong-text-secondary rounded-full hover:text-kong-text-primary hover:bg-kong-bg-light/10"
+        title="Copy Canister ID"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+        </svg>
+      </button>
+      <a 
+        href={getCanisterUrl(canister.id)} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        class="ml-1 p-1 text-kong-text-secondary rounded-full hover:text-kong-text-primary hover:bg-kong-bg-light/10"
+        title="Open Canister URL"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+        </svg>
+      </a>
+      <a 
+        href={getIcDashboardUrl(canister.id)} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        class="ml-1 p-1 text-kong-text-secondary rounded-full hover:text-kong-text-primary hover:bg-kong-bg-light/10"
+        title="View on IC Dashboard"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5m.75-9l3-3 2.148 2.148A12.061 12.061 0 0116.5 7.605" />
+        </svg>
+      </a>
     </div>
     
     <!-- Cycles Balance -->
@@ -219,7 +281,28 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <span class="font-medium">{canisterStatus?.cycles ? formatCycles(canisterStatus.cycles) : 'Unknown'}</span>
+        
+        <!-- Refresh button -->
+        <button 
+          on:click={refreshStatus} 
+          class="ml-2 p-1 text-kong-text-secondary rounded-full hover:text-kong-text-primary hover:bg-kong-bg-light/10"
+          title="Refresh Status"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </button>
       </p>
+      
+      <!-- Cycle usage stats for miners -->
+      {#if canister.wasmType === 'miner' && canisterStatus?.cycleUsageStats}
+        <div class="mt-1 text-xs text-kong-text-secondary">
+          <p>Usage: {canisterStatus.cycleUsageStats.usage_rate_per_hour ? formatCycles(BigInt(Math.round(canisterStatus.cycleUsageStats.usage_rate_per_hour))) + '/hour' : 'Unknown'}</p>
+          {#if canisterStatus.cycleUsageStats.estimated_remaining_time}
+            <p>Est. remaining: {canisterStatus.cycleUsageStats.estimated_remaining_time}</p>
+          {/if}
+        </div>
+      {/if}
     </div>
     
     <!-- Creation Date -->
@@ -228,6 +311,17 @@
         Created: {formatDate(new Date(canister.createdAt))}
       </p>
     </div>
+    
+    <!-- Tags (if any) -->
+    {#if canister.tags && canister.tags.length > 0 && !isEditing}
+      <div class="mb-3 flex flex-wrap gap-1">
+        {#each canister.tags as tag}
+          <span class="px-2 py-0.5 text-xs bg-kong-bg-light/10 text-kong-text-secondary rounded-full">
+            {tag}
+          </span>
+        {/each}
+      </div>
+    {/if}
     
     <!-- Top Up Button -->
     <button 

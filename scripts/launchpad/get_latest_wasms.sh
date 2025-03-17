@@ -62,4 +62,7 @@ find "$WASM_BASE_DIR" -name "*.wasm" | while read -r wasm; do
     sha256sum "$wasm" >"${wasm}.sha256" # Generating SHA-256 hash for each WASM file
 done
 
+dfx generate token_backend
+dfx generate miner
+
 echo "All required WASMs/DIDs/hashes available in:\n$PROJECT_ROOT/src/kong_svelte/static/wasms" # Final step: Confirming availability of all files
