@@ -73,16 +73,31 @@
           // Extract the comprehensive token info
           const allInfo = allInfoResult.Ok;
           
-          // Construct the enhanced token object
+          // Add error handling for missing fields
+          if (!allInfo) {
+            console.error("Invalid response from get_all_info");
+            return getFallbackTokenInfo(token);
+          }
+          
+          // Construct the enhanced token object with safe property access
           tokenInfo = {
             ...tokenInfo,
-            ...allInfo,
-            // Use pre-formatted values from get_all_info
+            name: allInfo.name || token.name || "Unknown Token",
+            ticker: allInfo.ticker || token.ticker || "???",
+            total_supply: allInfo.total_supply || 0,
+            ledger_id: allInfo.ledger_id,
+            logo: allInfo.logo,
+            decimals: allInfo.decimals || 8,
+            transfer_fee: allInfo.transfer_fee || 0,
+            social_links: allInfo.social_links,
+            // Use pre-formatted values from get_all_info with fallbacks
             averageBlockTime: allInfo.average_block_time,
             formattedBlockTime: allInfo.formatted_block_time,
             blockTimeRating: allInfo.block_time_rating,
             miningProgress: allInfo.mining_progress_percentage,
-            formattedBlockReward: allInfo.formatted_block_reward
+            formattedBlockReward: allInfo.formatted_block_reward,
+            current_block_height: allInfo.current_block_height || 0,
+            current_block_reward: allInfo.current_block_reward || 0
           };
           
           // Process logo - support both string and array formats

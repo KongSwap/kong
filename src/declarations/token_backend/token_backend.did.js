@@ -53,6 +53,12 @@ export const idlFactory = ({ IDL }) => {
       'blocks_mined' : IDL.Nat64,
       'achievement' : IDL.Text,
     }),
+    'BlockMined' : IDL.Record({
+      'miner' : IDL.Principal,
+      'reward' : IDL.Nat64,
+      'hash' : IDL.Vec(IDL.Nat8),
+      'nonce' : IDL.Nat64,
+    }),
     'LeaderboardUpdate' : IDL.Record({
       'miner' : IDL.Principal,
       'total_mined' : IDL.Nat64,

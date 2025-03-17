@@ -78,6 +78,12 @@ type EventType = variant {
     prize : nat64;
     competition_id : text;
   };
+  BlockMined : record {
+    miner : principal;
+    reward : nat64;
+    hash : blob;
+    nonce : nat64;
+  };
 };
 type HttpRequest = record {
   url : text;
