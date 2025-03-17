@@ -23,13 +23,13 @@ export function formatUsdValue(value: number | string, showLessThanCent: boolean
     }
 
     if (valueNumber >= 1_000_000_000) {
-        return `$${(valueNumber / 1000000000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}B`;
+        return `$${(valueNumber / 1000000000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}B`;
     }
     if (valueNumber >= 1000000) {
-        return `$${(valueNumber / 1000000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}M`;
+        return `$${(valueNumber / 1000000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}M`;
     }
     if (valueNumber >= 1000) {
-        return `$${(valueNumber / 1000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}K`;
+        return `$${(valueNumber / 1000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}K`;
     }
     
     // For normal values (>= 1), show 2 decimals
