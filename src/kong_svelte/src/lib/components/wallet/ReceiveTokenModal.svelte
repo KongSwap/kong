@@ -2,12 +2,14 @@
   import { onMount } from 'svelte';
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { Check, Copy, QrCode } from 'lucide-svelte';
+  import { Check, Copy, QrCode, X } from 'lucide-svelte';
   import { tooltip } from "$lib/actions/tooltip";
   import { auth } from "$lib/services/auth";
   import QRCode from 'qrcode';
   import { getAccountIds } from "$lib/utils/accountUtils";
   import { toastStore } from "$lib/stores/toastStore";
+  import { fade } from 'svelte/transition';
+  import Portal from 'svelte-portal';
 
   // Props type definition
   type ReceiveTokenModalProps = {
@@ -34,6 +36,8 @@
   // Modal visibility handling to make animations work better
   let mounted = $state(false);
   let closing = $state(false);
+  
+  let enlargedQrCode = $state<{ src: string, alt: string } | null>(null);
   
   $effect(() => {
     if (!mounted && isOpen) {
@@ -109,6 +113,16 @@
       }
     }
   });
+
+  // Handle QR code click to enlarge
+  function enlargeQrCode(src: string, alt: string) {
+    enlargedQrCode = { src, alt };
+  }
+
+  // Close enlarged QR code
+  function closeEnlargedQrCode() {
+    enlargedQrCode = null;
+  }
 </script>
 
 <Modal
@@ -150,7 +164,12 @@
           <h3 class="text-sm font-medium text-kong-text-primary">Principal ID</h3>
           {#if principalQrCode}
             <div class="flex">
-              <img src={principalQrCode} alt="Principal QR Code" class="w-16 h-16" />
+              <img 
+                src={principalQrCode} 
+                alt="Principal QR Code" 
+                class="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity" 
+                on:click={() => enlargeQrCode(principalQrCode, "Principal ID QR Code")}
+              />
             </div>
           {/if}
         </div>
@@ -182,7 +201,12 @@
             <h3 class="text-sm font-medium text-kong-text-primary">Account ID</h3>
             {#if accountIdQrCode}
               <div class="flex">
-                <img src={accountIdQrCode} alt="Account ID QR Code" class="w-16 h-16" />
+                <img 
+                  src={accountIdQrCode} 
+                  alt="Account ID QR Code" 
+                  class="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity" 
+                  on:click={() => enlargeQrCode(accountIdQrCode, "Account ID QR Code")}
+                />
               </div>
             {/if}
           </div>
@@ -225,6 +249,49 @@
     </div>
   </div>
 </Modal>
+
+<!-- Enlarged QR Code Overlay -->
+{#if enlargedQrCode}
+  <Portal target="body">
+    <div 
+      class="fixed inset-0 bg-black/70 flex items-center justify-center p-4"
+      on:click={closeEnlargedQrCode}
+      transition:fade={{ duration: 200 }}
+      style="z-index: 999999;"
+    >
+      <div 
+        class="relative bg-kong-bg-dark p-4 rounded-xl max-w-md w-full flex flex-col items-center"
+        on:click|stopPropagation={() => {}}
+      >
+        <button 
+          class="absolute top-3 right-3 p-1.5 text-kong-text-secondary hover:text-kong-text-primary bg-kong-bg-light/20 rounded-full"
+          on:click={closeEnlargedQrCode}
+        >
+          <X size={20} />
+        </button>
+        
+        <div class="text-center mb-4">
+          <h3 class="text-lg font-medium text-kong-text-primary">{enlargedQrCode.alt}</h3>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg">
+          <img 
+            src={enlargedQrCode.src} 
+            alt={enlargedQrCode.alt}
+            class="w-80 h-80"
+          />
+        </div>
+        
+        <button
+          class="mt-4 px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
+          on:click={closeEnlargedQrCode}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </Portal>
+{/if}
 
 <style>
   /* Add global CSS for the modal transitions */
