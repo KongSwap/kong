@@ -10,6 +10,7 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
   import ManageTokensModal from "$lib/components/wallet/ManageTokensModal.svelte";
+  import ReceiveTokenModal from "$lib/components/wallet/ReceiveTokenModal.svelte";
 
   // Define props using the $props syntax
   type TokenBalance = {
@@ -82,6 +83,7 @@
   let showAddTokenModal = $state(false);
   let showManageTokensModal = $state(false);
   let showSyncConfirmModal = $state(false);
+  let showReceiveTokenModal = $state(false);
   let tokenSyncCandidates = $state<{tokensToAdd: FE.Token[], tokensToRemove: FE.Token[]}>({
     tokensToAdd: [],
     tokensToRemove: []
@@ -272,7 +274,11 @@
   // Handle dropdown action selection
   function handleDropdownAction(action: 'send' | 'receive' | 'swap' | 'info') {
     if (selectedToken) {
-      onAction(action, selectedToken);
+      if (action === 'receive') {
+        showReceiveTokenModal = true;
+      } else {
+        onAction(action, selectedToken);
+      }
     }
     closeDropdown();
   }
@@ -292,6 +298,11 @@
       loadUserBalances(forceRefresh);
     }
   });
+
+  // Close the receive token modal
+  function closeReceiveTokenModal() {
+    showReceiveTokenModal = false;
+  }
 </script>
 
 <div class="py-2">
@@ -632,4 +643,13 @@
     isOpen={showManageTokensModal}
     onClose={closeManageTokensModal}
   />
+
+  <!-- Receive Token Modal -->
+  {#if selectedToken && showReceiveTokenModal}
+    <ReceiveTokenModal 
+      token={selectedToken.token}
+      isOpen={showReceiveTokenModal}
+      onClose={closeReceiveTokenModal}
+    />
+  {/if}
 </div>
