@@ -5,6 +5,7 @@
   export let isActive = false;
   export let iconBackground = "bg-kong-text-primary/5";
   export let badgeCount = 0;
+  export let comingSoon = false;
 </script>
 
 <button

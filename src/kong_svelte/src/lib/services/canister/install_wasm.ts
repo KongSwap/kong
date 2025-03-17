@@ -3,7 +3,7 @@ import { IDL } from "@dfinity/candid";
 import { ICManagementCanister } from "@dfinity/ic-management";
 import { createAgent } from "@dfinity/utils";
 import type { PNP } from "@windoge98/plug-n-play";
-import { getPnpInstance } from '../pnp/PnpInitializer';
+import { initializePNP } from '../../config/auth.config';
 import pako from 'pako';
 
 let icManagementActor = null;
@@ -29,7 +29,7 @@ export async function getICManagementActor() {
   
   // Try to get identity
   try {
-    const pnp = getPnpInstance();
+    const pnp = initializePNP();
     
     // Try to extract identity from provider (found in the log)
     if (pnp?.provider?.authClient?._identity) {

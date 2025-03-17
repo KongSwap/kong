@@ -20,6 +20,8 @@
     Search,
     Trophy,
     Bell,
+    Joystick,
+    ChevronDown,
   } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/stores/tokenStore";
@@ -37,6 +39,21 @@
   import NavbarButton from "./NavbarButton.svelte";
   import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
   import { copyToClipboard } from "$lib/utils/clipboard";
+
+  // Simple swap mode service implementation
+  const swapModeService = {
+    getLastMode: () => {
+      if (browser) {
+        return localStorage.getItem('swapMode') || 'basic';
+      }
+      return 'basic';
+    },
+    saveMode: (mode: string) => {
+      if (browser) {
+        localStorage.setItem('swapMode', mode);
+      }
+    }
+  };
 
   // Get current theme details including colorScheme
   $: currentTheme = browser && $themeStore ? getThemeById($themeStore) : null;

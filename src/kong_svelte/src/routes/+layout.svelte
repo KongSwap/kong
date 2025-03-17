@@ -20,6 +20,7 @@
   import { keyboardShortcuts } from "$lib/services/keyboardShortcuts";
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
   import { connectWebSocket } from "$lib/api/canisters";
+  import DeploymentNotification from "$lib/components/common/DeploymentNotification.svelte";
   
   const pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
