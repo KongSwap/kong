@@ -82,7 +82,7 @@
   let showAddTokenModal = $state(false);
   let showManageTokensModal = $state(false);
   let showSyncConfirmModal = $state(false);
-  let tokenSyncCandidates = $state<{tokensToAdd: FE.Token[], tokensToRemove: string[]}>({
+  let tokenSyncCandidates = $state<{tokensToAdd: FE.Token[], tokensToRemove: FE.Token[]}>({
     tokensToAdd: [],
     tokensToRemove: []
   });
@@ -129,9 +129,15 @@
     try {
       // Get token candidates instead of automatically applying changes
       const syncResults = await syncTokens(walletId);
+      
+      // Find the full token objects for tokens to remove
+      const tokensToRemoveObjects = syncResults.tokensToRemove
+        .map(canisterId => $userTokens.tokens.find(token => token.canister_id === canisterId))
+        .filter(token => token !== undefined) as FE.Token[];
+      
       tokenSyncCandidates = {
         tokensToAdd: syncResults.tokensToAdd,
-        tokensToRemove: syncResults.tokensToRemove
+        tokensToRemove: tokensToRemoveObjects
       };
       
       // Only show confirmation if there are changes to make
@@ -157,9 +163,12 @@
   // Apply token changes after user confirmation
   async function confirmAndApplyTokenChanges() {
     try {
+      // Extract canister IDs from tokensToRemove for the API call
+      const tokensToRemoveIds = tokenSyncCandidates.tokensToRemove.map(token => token.canister_id);
+      
       syncStatus = await applyTokenChanges(
         tokenSyncCandidates.tokensToAdd,
-        tokenSyncCandidates.tokensToRemove
+        tokensToRemoveIds
       );
       
       // Show small inline indicator for immediate feedback
@@ -501,8 +510,15 @@
             </h4>
             <div class="bg-kong-bg-light/10 p-3 rounded-md text-sm max-h-40 overflow-y-auto">
               <ul class="space-y-2">
-                {#each tokenSyncCandidates.tokensToRemove as canisterId}
-                  <li>{canisterId}</li>
+                {#each tokenSyncCandidates.tokensToRemove as token}
+                  <li class="flex items-center gap-2">
+                    <TokenImages
+                      tokens={[token]}
+                      size={18}
+                      showSymbolFallback={true}
+                    />
+                    <span>{token.name} ({token.symbol})</span>
+                  </li>
                 {/each}
               </ul>
             </div>

@@ -1,6 +1,5 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { createEventDispatcher } from "svelte";
   import {
     Trophy,
     Crown,
@@ -15,21 +14,29 @@
   import TraderDetailsExpanded from "./TraderDetailsExpanded.svelte";
   import { formatVolume, formatPrincipalId } from "$lib/utils/formatters";
 
-  export let user: LeaderboardEntry;
-  export let rank: number;
-  export let expanded: boolean = false;
-  export let tradedTokens: FE.Token[] | undefined = undefined;
-  export let loadingTokens: boolean = false;
-  export let tokenError: string | null = null;
-  export let userDetails: { fee_level: number } | null = null;
-  export let loadingUserDetails: boolean = false;
-  export let width: string = "100%";
-
-  const dispatch = createEventDispatcher();
-
-  function handleClick() {
-    dispatch('click');
-  }
+  let {
+    user,
+    rank,
+    expanded = false,
+    tradedTokens = undefined,
+    loadingTokens = false,
+    tokenError = null,
+    userDetails = null,
+    loadingUserDetails = false,
+    width = "100%", 
+    onClick = () => {}
+  } = $props<{
+    user: LeaderboardEntry;
+    rank: number;
+    expanded?: boolean;
+    tradedTokens?: FE.Token[] | undefined;
+    loadingTokens?: boolean;
+    tokenError?: string | null;
+    userDetails?: { fee_level: number } | null;
+    loadingUserDetails?: boolean;
+    width?: string;
+    onClick?: () => void;
+  }>();
 
   // Function to determine card style based on rank
   function getRankStyle(rank: number) {
@@ -137,7 +144,7 @@
       class="{isChampion
         ? 'pt-8'
         : 'pt-7'} gap-4 cursor-pointer transition-all hover:bg-opacity-80 h-full flex items-center justify-center"
-      on:click={handleClick}
+      on:click={onClick}
     >
       <!-- User info -->
       <div class="w-1/4 flex flex-col items-center text-center">
@@ -196,7 +203,7 @@
     <!-- Expand indicator -->
     <div
       class="pt-4 text-kong-text-secondary flex items-center w-full justify-end cursor-pointer"
-      on:click={handleClick}
+      on:click={onClick}
     >
       <span class="text-xs mr-2"
         >{expanded ? "Hide Details" : "Show Details"}</span
@@ -232,7 +239,7 @@
   <!-- For traders below top 3, show in table row format -->
   <tr
     class="hover:bg-kong-bg-light cursor-pointer transition-colors group"
-    on:click={handleClick}
+    on:click={onClick}
   >
     <td class="px-4 py-4 whitespace-nowrap">
       <div class="flex items-center">
@@ -271,7 +278,7 @@
         <span class="mr-2">{user.swap_count}</span>
         <div
           class="transition-transform transform group-hover:translate-y-[-2px] flex items-center cursor-pointer"
-          on:click={handleClick}
+          on:click={onClick}
         >
           <span class="text-xs mr-2">{expanded ? "Hide Details" : "Show Details"}</span>
           {#if expanded}

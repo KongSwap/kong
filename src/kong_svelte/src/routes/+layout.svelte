@@ -74,19 +74,6 @@
     init().catch((error) => {
       console.error("[App] Failed to initialize app:", error);
     });
-    
-    // Load tokens
-    fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS))
-      .then((tokens) => {
-        defaultTokens = tokens;
-        if (defaultTokens.length > 0 && !$auth.isConnected) {
-          userTokens.enableTokens(defaultTokens);
-        }
-        return userTokens.refreshTokenData();
-      })
-      .catch((error) => {
-        console.error("[App] Failed to fetch tokens:", error);
-      });
       
     // Cleanup on destroy
     return () => {

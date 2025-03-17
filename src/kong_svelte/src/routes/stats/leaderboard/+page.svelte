@@ -2,13 +2,14 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import Panel from '$lib/components/common/Panel.svelte';
-  import { Trophy, BarChart3, Crown } from 'lucide-svelte';
+  import { Trophy, BarChart3, Users, TrendingUp, Activity } from 'lucide-svelte';
   
   // Import the components
   import LeaderboardTraderCard from '$lib/components/stats/LeaderboardTraderCard.svelte';
   import LoadingState from '$lib/components/common/LoadingState.svelte';
   import ErrorState from '$lib/components/common/ErrorState.svelte';
   import EmptyState from '$lib/components/common/EmptyState.svelte';
+  import PageHeader from '$lib/components/common/PageHeader.svelte';
   
   // Import utility functions
   import { formatVolume, formatNumber } from '$lib/utils/formatters';
@@ -42,7 +43,6 @@
   $: tokenErrors = $leaderboardStore.tokenErrors;
   $: userDetails = $leaderboardStore.userDetails;
   $: loadingUserDetails = $leaderboardStore.loadingUserDetails;
-  $: userDetailsErrors = $leaderboardStore.userDetailsErrors;
   
   onMount(() => {
     if (browser) {
@@ -55,34 +55,49 @@
   <title>Trading Leaderboard - KongSwap</title>
 </svelte:head>
 
-<h1 class="text-3xl font-semibold text-kong-text-primary text-center">Volume Leaderboard</h1>
- 
-<div class="max-w-[1300px] mx-auto pt-6">
-  <!-- Period Selector -->
-  <div class="flex justify-center">
-    <div class="inline-flex p-1 bg-kong-surface-dark rounded-lg shadow-md border border-kong-border overflow-hidden">
+<PageHeader
+  title="Volume Leaderboard"
+  description="Discover the top traders on KongSwap by trading volume. Leading traders are ranked based on their total trading activity."
+  icon={Trophy}
+  stats={[
+    { label: "Total Volume", value: $isLoading ? "Loading..." : formatVolume($totalVolume), icon: TrendingUp },
+    { label: "Active Traders", value: $isLoading ? "Loading..." : formatNumber($totalTraders), icon: Users },
+    { label: "Time Period", value: selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1), icon: Activity }
+  ]}
+/>
+
+<div class="max-w-[1300px] mx-auto pt-4">
+  <!-- Period Selector - Redesigned -->
+  <div class="flex justify-end mb-8 px-4">
+    <div class="inline-flex p-0.5 bg-kong-bg-dark rounded-lg shadow-sm border border-kong-border overflow-hidden">
       <button 
-        class="px-6 py-2 rounded-md text-sm font-medium transition-all {selectedPeriod === 'day' ? 'bg-kong-primary text-white shadow-lg' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'day' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
         on:click={() => handlePeriodChange('day')}
+        aria-label="Show daily leaderboard"
       >
-        Day
+        <Activity class="w-3.5 h-3.5" />
+        <span>Day</span>
       </button>
       <button 
-        class="px-6 py-2 rounded-md text-sm font-medium transition-all {selectedPeriod === 'week' ? 'bg-kong-primary text-white shadow-lg' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'week' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
         on:click={() => handlePeriodChange('week')}
+        aria-label="Show weekly leaderboard"
       >
-        Week
+        <Activity class="w-3.5 h-3.5" />
+        <span>Week</span>
       </button>
       <button 
-        class="px-6 py-2 rounded-md text-sm font-medium transition-all {selectedPeriod === 'month' ? 'bg-kong-primary text-white shadow-lg' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'month' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
         on:click={() => handlePeriodChange('month')}
+        aria-label="Show monthly leaderboard"
       >
-        Month
+        <Activity class="w-3.5 h-3.5" />
+        <span>Month</span>
       </button>
     </div>
   </div>
   
-  <div class="rounded-xl overflow-hidden">
+  <div class="rounded-xl overflow-hidden px-4">
     {#if $isLoading}
       <LoadingState message="Loading leaderboard data..." size="large" />
     {:else if $error}
@@ -95,21 +110,7 @@
         size="large"
       />
     {:else}
-      <div class="py-6 mb-4">
-        <!-- Stats Summary Banner (optional) -->
-        <div class="mb-8 flex justify-center">
-          <div class="flex bg-kong-surface-dark rounded-lg p-3 border border-kong-border text-kong-text-secondary text-sm">
-            <div class="px-4 flex items-center border-r border-kong-border">
-              <span class="mr-2">Total Volume:</span>
-              <span class="font-medium text-kong-accent-green">{formatVolume($totalVolume)}</span>
-            </div>
-            <div class="px-4 flex items-center">
-              <span class="mr-2">Traders:</span>
-              <span class="font-medium">{formatNumber($totalTraders)}</span>
-            </div>
-          </div>
-        </div>
-      
+      <div class="pb-6 mb-4">
         <!-- Top 3 winners section heading -->
         <div class="flex items-center justify-center mb-8">
           <div class="px-4 text-kong-text-primary font-medium flex items-center">
@@ -131,7 +132,7 @@
               userDetails={userDetails[0]}
               loadingUserDetails={loadingUserDetails[0] || false}
               width="500px"
-              on:click={() => toggleRowExpansion(0)}
+              onClick={() => toggleRowExpansion(0)}
             />
           </div>
         {/if}
@@ -151,7 +152,7 @@
                 userDetails={userDetails[index]}
                 loadingUserDetails={loadingUserDetails[index] || false}
                 width="500px"
-                on:click={() => toggleRowExpansion(index)}
+                onClick={() => toggleRowExpansion(index)}
               />
             {/each}
           </div>
@@ -195,7 +196,7 @@
                     tokenError={tokenErrors[index] || null}
                     userDetails={userDetails[index]}
                     loadingUserDetails={loadingUserDetails[index] || false}
-                    on:click={() => toggleRowExpansion(index)}
+                    onClick={() => toggleRowExpansion(index)}
                   />
                 {/each}
               </tbody>
