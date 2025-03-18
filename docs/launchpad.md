@@ -8,7 +8,7 @@ Before getting started, ensure you have the following installed:
 
 - [DFX](https://internetcomputer.org/docs/current/developer-docs/setup/install/) (version 0.24.3 or higher)
 - [Node.js](https://nodejs.org/) (version 16 or higher)
-- [Rust](https://www.rust-lang.org/tools/install) (version 1.66 or higher)
+- [Rust](https://www.rust-lang.org/tools/install) rustc 1.80.1 (3f5fd8dd4 2024-08-06)
 - Wasm target: `rustup target add wasm32-unknown-unknown`
 - [ic-wasm](https://github.com/dfinity/ic-wasm): `cargo install ic-wasm`
 - [candid-extractor](https://github.com/dfinity/candid): `cargo install candid-extractor`
