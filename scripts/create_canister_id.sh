@@ -3,7 +3,8 @@
 # usage: create_canister_id.sh (local|staging|ic)
 
 original_dir=$(pwd)
-root_dir="${original_dir}"/..
+# Use the current directory, not the parent directory
+root_dir="${original_dir}"
 
 input=$(cat "${root_dir}"/canister_ids.all.json)
 

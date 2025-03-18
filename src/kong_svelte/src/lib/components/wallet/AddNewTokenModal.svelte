@@ -170,10 +170,15 @@
     customTokenError = "";
     
     try {
-      // Extract the actual canister ID without the IC. prefix
+      // Format canister ID to include the required IC. prefix for the backend
       const canisterId = formattedCanisterId.startsWith("IC.") 
-        ? formattedCanisterId.substring(3) 
-        : formattedCanisterId;
+        ? formattedCanisterId 
+        : `IC.${formattedCanisterId}`;
+      
+      // For UI purposes, we may need the raw canister ID without prefix
+      const rawCanisterId = canisterId.startsWith("IC.") 
+        ? canisterId.substring(3) 
+        : canisterId;
             
       try {
         // Call the add_token canister function directly
@@ -182,6 +187,7 @@
           canisterIDLs.kong_backend
         );
         
+        // Pass the canister ID with the IC. prefix to satisfy the backend requirements
         const addTokenResult = await kongBackendActor.add_token({ token: canisterId });
         
         if ('Err' in addTokenResult) {
