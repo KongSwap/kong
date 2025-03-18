@@ -93,6 +93,7 @@ pub fn nat_multiply_f64(n1: &Nat, n2: f64) -> Option<Nat> {
 }
 
 // integer division
+#[allow(dead_code)]
 pub fn nat_divide(numerator: &Nat, denominator: &Nat) -> Option<Nat> {
     if nat_is_zero(numerator) {
         return Some(nat_zero());
@@ -104,6 +105,7 @@ pub fn nat_divide(numerator: &Nat, denominator: &Nat) -> Option<Nat> {
 }
 
 // division with decimal precision
+#[allow(dead_code)]
 pub fn nat_divide_as_f64(numerator: &Nat, denominator: &Nat) -> Option<f64> {
     if nat_is_zero(numerator) {
         return Some(0_f64);
