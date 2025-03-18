@@ -9,6 +9,7 @@
       "type": "custom",
       "build": "bash ./scripts/build_kong_backend.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_backend.wasm",
+      "specified_id": "2ipq2-uqaaa-aaaar-qailq-cai",
       "metadata": [
         {
           "name": "candid:service"
@@ -62,6 +63,7 @@
       "type": "custom",
       "build": "bash ./scripts/build_kong_faucet.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_faucet.wasm",
+      "specified_id": "ohr23-xqaaa-aaaar-qahqq-cai",
       "metadata": [
         {
           "name": "candid:service"

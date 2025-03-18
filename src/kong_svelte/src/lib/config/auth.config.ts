@@ -11,6 +11,8 @@ import { idlFactory as kongDataIDL } from "../../../../declarations/kong_data";
 import { idlFactory as icpIDL } from "$lib/idls/icp.idl.js";
 import { idlFactory as predictionMarketsBackendIDL, canisterId as predictionMarketsBackendCanisterId } from "../../../../declarations/prediction_markets_backend";
 import { idlFactory as trollboxIDL, canisterId as trollboxCanisterId } from "../../../../declarations/trollbox";
+import { isLocalDevelopment } from "$lib/utils/environment";
+
 export type CanisterType =
   | "kong_backend"
   | "kong_faucet"
@@ -51,15 +53,50 @@ export function initializePNP(): PNP | null {
     ].filter(Boolean) as Principal[];
     
     const derivationOrigin = () => {
+      // For local development with Vite, always use the actual browser origin
+      if (isLocalDevelopment() && browser && 
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        console.debug("[Auth] Using local development origin:", window.location.origin);
+        return window.location.origin;
+      }
 
+      // For canister-based URLs
       let httpPrefix = "https://";
       let icp0Suffix = ".icp0.io";
+      
       if (process.env.DFX_NETWORK === "local") {
         httpPrefix = "http://";
         icp0Suffix = ".localhost:4943";
       }
 
-      return httpPrefix + process.env.CANISTER_ID_KONG_SVELTE + icp0Suffix;
+      // Use CANISTER_ID_KONG_SVELTE instead of generic CANISTER_ID
+      const canisterId = process.env.CANISTER_ID_KONG_SVELTE || process.env.CANISTER_ID;
+      if (!canisterId) {
+        console.warn("[Auth] No canister ID found for kong_svelte, using localhost as fallback");
+        return window.location.origin;
+      }
+      
+      const origin = httpPrefix + canisterId + icp0Suffix;
+      console.debug("[Auth] Using canister-based origin:", origin);
+      return origin;
+    };
+
+    // Get Internet Identity URL dynamically
+    const getIdentityProvider = () => {
+      if (process.env.DFX_NETWORK !== "local") {
+        return "https://identity.ic0.app";
+      }
+      
+      // Use the environment variable if available
+      const iiCanisterId = process.env.CANISTER_ID_INTERNET_IDENTITY;
+      if (iiCanisterId) {
+        const identityProvider = `http://${iiCanisterId}.localhost:4943`;
+        console.debug("[Auth] Using II provider:", identityProvider);
+        return identityProvider;
+      }
+      
+      // Fallback to the default local II canister
+      return "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943";
     };
 
     globalPnp = createPNP({
@@ -72,10 +109,7 @@ export function initializePNP(): PNP | null {
       fetchRootKeys: process.env.DFX_NETWORK === "local",
       timeout: 1000 * 60 * 60 * 4, // 4 hours
       verifyQuerySignatures: process.env.DFX_NETWORK !== "local", 
-      identityProvider:
-        process.env.DFX_NETWORK !== "local"
-          ? "https://identity.ic0.app"
-          : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943",
+      identityProvider: getIdentityProvider(),
       persistSession: true,
       derivationOrigin: derivationOrigin(),
       delegationTimeout: BigInt(86400000000000), // 30 days

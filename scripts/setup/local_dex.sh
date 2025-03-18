@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+echo "Please start Docker"
+
 # Colors for pretty output
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'

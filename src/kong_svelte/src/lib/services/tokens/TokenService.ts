@@ -475,18 +475,32 @@ export class TokenService {
    * Claims tokens from the faucet
    */
   public static async faucetClaim(): Promise<void> {
-    const actor = auth.pnp.getActor(
-      process.env.CANISTER_ID_KONG_FAUCET,
-      canisterIDLs.kong_faucet,
-      { anon: false, requiresSigning: false },
-    );
-    const result = await actor.claim();
+    try {
+      // Use the environment variable but fallback to the actual deployed canister ID if needed
+      // The correct ID is be2us-64aaa-aaaaa-qaabq-cai, not ohr23-xqaaa-aaaar-qahqq-cai
+      const faucetCanisterId = "be2us-64aaa-aaaaa-qaabq-cai"; // Hardcoded as fallback
+      
+      console.debug(`[Faucet] Using canister ID: ${faucetCanisterId} (env: ${process.env.CANISTER_ID_KONG_FAUCET})`);
+      
+      const actor = auth.pnp.getActor(
+        faucetCanisterId, // Use the hardcoded ID instead of process.env
+        canisterIDLs.kong_faucet,
+        { anon: false, requiresSigning: false },
+      );
+      
+      console.debug("[Faucet] Calling claim method");
+      const result = await actor.claim();
 
-    if (result.Ok) {
-      toastStore.success("Tokens minted successfully");
-    } else {
-      console.error("Error minting tokens:", result.Err);
-      toastStore.error("Error minting tokens");
+      if ('Ok' in result) {
+        console.debug("[Faucet] Claim successful:", result.Ok);
+        toastStore.success("Tokens minted successfully");
+      } else {
+        console.error("[Faucet] Error minting tokens:", result.Err);
+        toastStore.error(`Error minting tokens: ${result.Err}`);
+      }
+    } catch (error) {
+      console.error("[Faucet] Exception during claim:", error);
+      toastStore.error(`Claim failed: ${error.message || "Unknown error"}`);
     }
   }
 

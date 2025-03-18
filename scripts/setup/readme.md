@@ -21,6 +21,13 @@ To set up a complete local DEX environment with both the backend canister and AP
 ./scripts/setup/local_dex.sh
 ```
 
+NOTE: after that run the kong_svelte frontend by
+```bash
+npm start
+```
+
+this way you dont need the slow local dfx frontend and can use npm start for fast frontend updates
+
 This script will:
 1. Start a local Internet Computer (dfx) instance
 2. Deploy the Kong backend canister
