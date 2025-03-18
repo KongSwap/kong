@@ -1106,7 +1106,7 @@ fn get_all_info() -> AllInfoResult {
         formatted_block_reward: formatted_reward,
         
         // Token IDs
-        principal,
+        canister_id: principal,
         current_block_height: block_height,
     })
 }

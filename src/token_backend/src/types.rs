@@ -158,7 +158,7 @@ pub struct TokenAllInfo {
     pub formatted_block_reward: String,
     
     // Token IDs
-    pub principal: Principal,
+    pub canister_id: Principal,
     pub current_block_height: u64,
 }
 
