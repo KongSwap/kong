@@ -21,6 +21,8 @@
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
   import { connectWebSocket } from "$lib/api/canisters";
   import DeploymentNotification from "$lib/components/common/DeploymentNotification.svelte";
+  import { setupDebugComponent } from "$lib/debug/testTokenBalance";
+  import { onMount } from "svelte";
   
   const pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
@@ -91,6 +93,14 @@
   $effect(() => {
     if (defaultTokens.length > 0 && !$auth.isConnected) {
       userTokens.enableTokens(defaultTokens);
+    }
+  });
+
+  // Add onMount to initialize the debug component in development mode
+  onMount(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[DEBUG] Initializing debug tools for development");
+      setupDebugComponent();
     }
   });
 </script>

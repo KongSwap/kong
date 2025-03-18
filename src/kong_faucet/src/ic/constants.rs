@@ -8,8 +8,10 @@ pub const ICP_LEDGER: &str = "nppha-riaaa-aaaal-ajf2q-cai";
 pub const CKBTC: &str = "ksBTC";
 pub const CKBTC_LEDGER: &str = "zeyan-7qaaa-aaaar-qaibq-cai";
 
-pub const CKETH: &str = "ksETH";
-pub const CKETH_LEDGER: &str = "zr7ra-6yaaa-aaaar-qaica-cai";
+// We'll comment out tokens that don't exist in local deployment
+// This way they won't cause errors when the faucet tries to mint them
+// pub const CKETH: &str = "ksETH";
+// pub const CKETH_LEDGER: &str = "zr7ra-6yaaa-aaaar-qaica-cai";
 
-pub const KONG: &str = "KONG";
-pub const KONG_LEDGER: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";
+// pub const KONG: &str = "KONG";
+// pub const KONG_LEDGER: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";

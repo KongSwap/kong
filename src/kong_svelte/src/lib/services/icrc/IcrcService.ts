@@ -90,6 +90,12 @@ export class IcrcService {
     separateBalances: boolean = false
   ): Promise<{ default: bigint, subaccount: bigint } | bigint> {
     try {
+      // Debug logging for local development
+      if (process.env.NODE_ENV === "development") {
+        console.debug(`[Balance] Fetching balance for ${token.symbol} (${token.canister_id})`);
+        console.debug(`[Balance] Principal: ${principal.toString()}`);
+      }
+      
       const actor = await createAnonymousActorHelper(
         token.canister_id,
         canisterIDLs.icrc1,
@@ -100,6 +106,12 @@ export class IcrcService {
           owner: principal,
           subaccount: [],
         })
+        
+      // Debug logging for local development
+      if (process.env.NODE_ENV === "development") {
+        console.debug(`[Balance] ${token.symbol} balance: ${defaultBalance.toString()}`);
+      }
+        
       // If we don't need separate balances or there's no subaccount, return total
       if (!separateBalances || !subaccount) {
         return defaultBalance;
@@ -116,7 +128,23 @@ export class IcrcService {
         subaccount: subaccountBalance
       };
     } catch (error) {
-      console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
+      // Enhanced error reporting for local development
+      if (process.env.NODE_ENV === "development") {
+        console.error(`[Balance ERROR] Failed to get balance for ${token.symbol} (${token.canister_id}):`);
+        console.error(`[Balance ERROR] Principal: ${principal.toString()}`);
+        console.error(`[Balance ERROR] Error:`, error);
+        
+        // Check for common issues
+        if (error.message?.includes("reject code: 4")) {
+          console.warn(`[Balance HINT] Token canister ${token.canister_id} may not be deployed or might have a different interface`);
+        }
+        if (error.message?.includes("connect ECONNREFUSED")) {
+          console.warn(`[Balance HINT] Local replica might not be running. Check if dfx is started.`);
+        }
+      } else {
+        console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
+      }
+      
       return separateBalances ? { default: BigInt(0), subaccount: BigInt(0) } : BigInt(0);
     }
   }

@@ -199,6 +199,89 @@ deploy_token_ledgers() {
   log_success "Token ledgers deployed and initialized"
 }
 
+# Function to deploy Kong Faucet canister
+deploy_kong_faucet() {
+  log_info "Deploying Kong Faucet canister..."
+  
+  # Make sure we're using the kong identity for deployment
+  dfx identity use kong
+  
+  # Deploy kong_faucet canister
+  log_info "Deploying kong_faucet canister..."
+  KONG_BUILDENV="${NETWORK}" dfx deploy kong_faucet --network ${NETWORK}
+  
+  # Log the canister ID
+  FAUCET_CANISTER_ID=$(dfx canister id --network ${NETWORK} kong_faucet)
+  log_success "Kong Faucet deployed with canister ID: ${FAUCET_CANISTER_ID}"
+}
+
+# Function to mint tokens to the faucet
+mint_tokens_to_faucet() {
+  log_info "Minting tokens to the faucet canister..."
+  
+  # Ensure we're using the kong_token_minter identity
+  dfx identity use kong_token_minter
+  
+  # Get the faucet canister ID
+  FAUCET_CANISTER_ID=$(dfx canister id --network ${NETWORK} kong_faucet)
+  
+  if [ -z "$FAUCET_CANISTER_ID" ]; then
+    log_error "Could not get kong_faucet canister ID"
+    return 1
+  fi
+  
+  log_info "Kong faucet ID: ${FAUCET_CANISTER_ID}"
+  
+  # Mint tokens to the faucet
+  if dfx canister id --network ${NETWORK} ksusdt_ledger &> /dev/null; then
+    KSUSDT_LEDGER=$(dfx canister id --network ${NETWORK} ksusdt_ledger)
+    log_info "Minting ksUSDT tokens to faucet (100,000,000 with 6 decimals)..."
+    dfx canister call --network ${NETWORK} ${KSUSDT_LEDGER} icrc1_transfer "(record {
+      to = record { owner = principal \"${FAUCET_CANISTER_ID}\" };
+      amount = 100000000000000;
+    })" || log_warning "Failed to mint ksUSDT to faucet"
+  fi
+  
+  if dfx canister id --network ${NETWORK} ksicp_ledger &> /dev/null; then
+    KSICP_LEDGER=$(dfx canister id --network ${NETWORK} ksicp_ledger)
+    log_info "Minting ksICP tokens to faucet (10,000,000 with 8 decimals)..."
+    dfx canister call --network ${NETWORK} ${KSICP_LEDGER} icrc1_transfer "(record {
+      to = record { owner = principal \"${FAUCET_CANISTER_ID}\" };
+      amount = 1000000000000000;
+    })" || log_warning "Failed to mint ksICP to faucet"
+  fi
+  
+  if dfx canister id --network ${NETWORK} ksbtc_ledger &> /dev/null; then
+    KSBTC_LEDGER=$(dfx canister id --network ${NETWORK} ksbtc_ledger)
+    log_info "Minting ksBTC tokens to faucet (1,500 with 8 decimals)..."
+    dfx canister call --network ${NETWORK} ${KSBTC_LEDGER} icrc1_transfer "(record {
+      to = record { owner = principal \"${FAUCET_CANISTER_ID}\" };
+      amount = 150000000000;
+    })" || log_warning "Failed to mint ksBTC to faucet"
+  fi
+  
+  # Switch back to kong identity
+  dfx identity use kong
+  
+  log_success "Tokens minted to faucet canister"
+}
+
+# Function to deploy Internet Identity canister
+deploy_internet_identity() {
+  log_info "Deploying Internet Identity canister..."
+  
+  # Make sure we're using the kong identity for deployment
+  dfx identity use kong
+  
+  # Deploy internet_identity canister
+  log_info "Deploying internet_identity canister..."
+  dfx deploy internet_identity --network ${NETWORK}
+  
+  # Log the canister ID
+  II_CANISTER_ID=$(dfx canister id --network ${NETWORK} internet_identity)
+  log_success "Internet Identity deployed with canister ID: ${II_CANISTER_ID}"
+}
+
 # Function to mint initial tokens to identities
 mint_initial_tokens() {
   log_info "Minting initial tokens to user identities..."
@@ -764,6 +847,15 @@ display_summary() {
     echo -e "${GREEN}Frontend URL:${NC} http://$(dfx canister id --network ${NETWORK} kong_frontend).localhost:${DFX_PORT}/"
   fi
   
+  if dfx canister id --network ${NETWORK} kong_faucet &> /dev/null; then
+    echo -e "${GREEN}Kong Faucet Canister:${NC} $(dfx canister id --network ${NETWORK} kong_faucet)"
+  fi
+  
+  if dfx canister id --network ${NETWORK} internet_identity &> /dev/null; then
+    echo -e "${GREEN}Internet Identity Canister:${NC} $(dfx canister id --network ${NETWORK} internet_identity)"
+    echo -e "${GREEN}Internet Identity URL:${NC} http://$(dfx canister id --network ${NETWORK} internet_identity).localhost:${DFX_PORT}/"
+  fi
+  
   echo -e "${GREEN}API Server:${NC} http://localhost:${API_PORT}"
   echo -e "${GREEN}API Documentation:${NC} http://localhost:${API_PORT}/swagger-ui"
   echo ""
@@ -784,6 +876,9 @@ display_summary() {
   echo -e "${YELLOW}To manually sync tokens from kong_backend to API:${NC}"
   echo -e "  cd ${API_DIR}/scripts && ./sync_tokens.sh"
   echo ""
+  echo -e "${YELLOW}To claim test tokens:${NC}"
+  echo -e "  dfx canister call kong_faucet claim"
+  echo ""
   echo -e "${YELLOW}To shut down:${NC}"
   echo -e "  1. Kill the API server: kill \$(lsof -t -i:${API_PORT})"
   echo -e "  2. Stop dfx: dfx stop"
@@ -803,6 +898,9 @@ create_identities
 prepare_canisters
 deploy_kong_backend
 deploy_token_ledgers
+deploy_kong_faucet
+mint_tokens_to_faucet
+deploy_internet_identity
 mint_initial_tokens
 create_tokens_and_pools
 start_postgres
