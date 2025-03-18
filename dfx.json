@@ -165,7 +165,9 @@
     "token_backend": {
       "candid": "src/token_backend/token_backend.did",
       "package": "token_backend",
-      "type": "rust",
+      "type": "custom",
+      "build": "sh scripts/build_rust_canister.sh token_backend",
+      "wasm": "target/wasm32-unknown-unknown/release/token_backend.wasm",
       "metadata": [
         { "name": "candid:service" }
       ]
@@ -173,7 +175,9 @@
     "miner": {
       "candid": "src/miner/src/miner.did",
       "package": "miner",
-      "type": "rust",
+      "type": "custom",
+      "build": "sh scripts/build_rust_canister.sh miner",
+      "wasm": "target/wasm32-unknown-unknown/release/miner.wasm",
       "metadata": [
         { "name": "candid:service" }
       ]

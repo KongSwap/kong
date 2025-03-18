@@ -99,14 +99,6 @@ export type EventType = {
     }
   } |
   {
-    'BlockMined' : {
-      'miner' : Principal,
-      'reward' : bigint,
-      'hash' : Uint8Array | number[],
-      'nonce' : bigint,
-    }
-  } |
-  {
     'LeaderboardUpdate' : {
       'miner' : Principal,
       'total_mined' : bigint,
@@ -180,11 +172,11 @@ export type Result_6 = { 'Ok' : Principal } |
 export interface SocialLink { 'url' : string, 'platform' : string }
 export interface SupportedStandard { 'url' : string, 'name' : string }
 export interface TokenAllInfo {
-  'principal' : Principal,
   'decimals' : number,
   'ticker' : string,
   'average_block_time' : [] | [number],
   'transfer_fee' : bigint,
+  'canister_principal' : Principal,
   'logo' : [] | [string],
   'name' : string,
   'block_time_rating' : [] | [string],

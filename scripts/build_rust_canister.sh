@@ -10,23 +10,30 @@ fi
 
 CANISTER_NAME=$1
 
-# Make sure the output directory exists
-mkdir -p "target/wasm32-unknown-unknown/release"
-touch "src/${CANISTER_NAME}/${CANISTER_NAME}.did"
-# touch "target/wasm32-unknown-unknown/release/${CANISTER_NAME}-ic.wasm"
-touch "target/wasm32-unknown-unknown/release/${CANISTER_NAME}.wasm"
+# CRITICAL: Identify the SOURCE candid file (manually edited with all types)
+if [ "$CANISTER_NAME" == "miner" ]; then
+    SOURCE_CANDID_FILE="src/${CANISTER_NAME}/src/${CANISTER_NAME}.did"
+else
+    # For token_backend, we use the src/ directory version which has ALL types
+    SOURCE_CANDID_FILE="src/${CANISTER_NAME}/src/${CANISTER_NAME}.did"
+fi
+
+# Ensure the source candid file exists
+if [ ! -f "$SOURCE_CANDID_FILE" ]; then
+    echo "ERROR: Source candid file not found at $SOURCE_CANDID_FILE"
+    exit 1
+fi
+
+# Clean the specific package to ensure fresh build
+echo "Cleaning $CANISTER_NAME package..."
+cargo clean -p "$CANISTER_NAME"
 
 # Build the Rust canister
+echo "Building $CANISTER_NAME..."
 cargo build -p "$CANISTER_NAME" --release --target wasm32-unknown-unknown
 
-# Optimize the Wasm file
-# INPUT_WASM="target/wasm32-unknown-unknown/release/${CANISTER_NAME}.wasm"
-# OUTPUT_WASM="target/wasm32-unknown-unknown/release/${CANISTER_NAME}-ic.wasm"
-# ic-wasm "$INPUT_WASM" -o "$OUTPUT_WASM" shrink
+# Add the COMPLETE candid file as metadata to the WASM
+echo "Adding COMPLETE candid metadata to WASM file..."
+ic-wasm "target/wasm32-unknown-unknown/release/${CANISTER_NAME}.wasm" -o "target/wasm32-unknown-unknown/release/${CANISTER_NAME}.wasm" metadata candid:service -f "$SOURCE_CANDID_FILE" -v public
 
-# Extract the Candid interface
-CANDID_INPUT="target/wasm32-unknown-unknown/release/${CANISTER_NAME}.wasm"
-CANDID_OUTPUT="src/${CANISTER_NAME}/${CANISTER_NAME}.did"
-candid-extractor "$CANDID_INPUT" >"$CANDID_OUTPUT"
-
-dfx generate ${CANISTER_NAME}
+echo "Build complete for $CANISTER_NAME with COMPLETE types"

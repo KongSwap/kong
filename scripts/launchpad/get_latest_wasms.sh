@@ -7,6 +7,26 @@ PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 WASM_BASE_DIR="$PROJECT_ROOT/src/kong_svelte/static/wasms"
 TOKEN_BACKEND_DIR="$PROJECT_ROOT/src/token_backend"
 
+# Source candid files (the source of truth with ALL types)
+TOKEN_BACKEND_SRC_CANDID="$PROJECT_ROOT/src/token_backend/src/token_backend.did"
+MINER_SRC_CANDID="$PROJECT_ROOT/src/miner/src/miner.did"
+
+# Verify source candid files exist
+if [ ! -f "$TOKEN_BACKEND_SRC_CANDID" ]; then
+    echo "ERROR: Token backend source candid file not found at $TOKEN_BACKEND_SRC_CANDID"
+    exit 1
+fi
+
+if [ ! -f "$MINER_SRC_CANDID" ]; then
+    echo "ERROR: Miner source candid file not found at $MINER_SRC_CANDID"
+    exit 1
+fi
+
+# Clean up any existing declarations to force regeneration
+echo "Cleaning up existing declarations..."
+rm -rf "$PROJECT_ROOT/src/declarations/token_backend"
+rm -rf "$PROJECT_ROOT/src/declarations/miner"
+
 # Check if ic-wasm is installed
 if ! command -v ic-wasm &>/dev/null; then
     echo "ic-wasm is not installed. Installing..." # Checking and installing ic-wasm if not present
@@ -30,35 +50,75 @@ echo "Fetching ICRC ledger..." # Step 1: Initiating download of ICRC ledger WASM
 curl -L "$ICRC_WASM_URL" | gunzip >"$WASM_BASE_DIR/ledger/ledger.wasm" # Downloading and extracting ICRC ledger WASM
 curl -L "$ICRC_DID_URL" >"$WASM_BASE_DIR/ledger/ledger.did" # Downloading ICRC ledger candid file
 
-# 2. Build token_backend and miner WASMs
-echo "Building local canisters..." # Step 2: Starting build process for local canisters
+# Clear dfx cache
+echo "Clearing dfx cache..."
+dfx cache delete
+
+# Copy source candid files to their dfx locations first
+echo "Copying source candid files to dfx locations..."
+mkdir -p "$PROJECT_ROOT/src/token_backend"
+
+# Only copy if the files are different
+echo "Copying token_backend.did to dfx location..."
+if ! cmp -s "$TOKEN_BACKEND_SRC_CANDID" "$PROJECT_ROOT/src/token_backend/token_backend.did"; then
+    cp "$TOKEN_BACKEND_SRC_CANDID" "$PROJECT_ROOT/src/token_backend/token_backend.did"
+fi
+
+# Generate declarations BEFORE building frontend
+echo "Generating declarations from source candid files..."
+if ! dfx generate token_backend; then
+    echo "ERROR: Failed to generate declarations for token_backend!"
+    exit 1
+fi
+
+if ! dfx generate miner; then
+    echo "ERROR: Failed to generate declarations for miner!"
+    exit 1
+fi
+
+# Verify that declarations were generated with the correct types
+if ! grep -q "TokenAllInfo" "$PROJECT_ROOT/src/declarations/token_backend/token_backend.did"; then
+    echo "ERROR: TokenAllInfo type not found in generated declarations!"
+    echo "Checking if TokenAllInfo exists in the source file:"
+    grep -A 5 "TokenAllInfo" "$TOKEN_BACKEND_SRC_CANDID" || echo "Not found in source file either!"
+    exit 1
+fi
+
+# Verify miner declarations as well
+if ! grep -q "start_mining" "$PROJECT_ROOT/src/declarations/miner/miner.did"; then
+    echo "ERROR: start_mining function not found in miner declarations!"
+    echo "Checking if start_mining exists in the source file:"
+    grep -A 5 "start_mining" "$MINER_SRC_CANDID" || echo "Not found in source file either!"
+    exit 1
+fi
+
+# Switch to project root
 cd "$PROJECT_ROOT"
 
-# Build token_backend
-echo "Building token_backend..." # Step 2.1: Building token_backend canister
-sh scripts/launchpad/upgrade_token_backend_fe.sh
-cargo clean -p token_backend # Clean token_backend to ensure fresh build
-cargo build --target wasm32-unknown-unknown --release -p token_backend # Compiling token_backend to WASM
-candid-extractor target/wasm32-unknown-unknown/release/token_backend.wasm > "$WASM_BASE_DIR/token_backend/token_backend.did" # Extracting candid interface for token_backend
-ic-wasm "target/wasm32-unknown-unknown/release/token_backend.wasm" -o "target/wasm32-unknown-unknown/release/token_backend.wasm" metadata candid:service -f "$WASM_BASE_DIR/token_backend/token_backend.did" -v public # Adding metadata to token_backend WASM
+# 2. Build token_backend and miner WASMs
+echo "Building local canisters..." # Step 2: Starting build process for local canisters
 
-# Build miner
-echo "Building miner..." # Step 2.2: Building miner canister
-cargo clean -p miner # Clean miner to ensure fresh build
-cargo build --target wasm32-unknown-unknown --release -p miner # Compiling miner to WASM
-candid-extractor target/wasm32-unknown-unknown/release/miner.wasm >"$WASM_BASE_DIR/miner/miner.did" # Extracting candid interface for miner
-ic-wasm "target/wasm32-unknown-unknown/release/miner.wasm" -o "target/wasm32-unknown-unknown/release/miner.wasm" metadata candid:service -f "$WASM_BASE_DIR/miner/miner.did" -v public # Adding metadata to miner WASM
+# First build the token_backend frontend
+echo "Building token_backend frontend..." # Step 2.1: Building token_backend frontend
+sh scripts/launchpad/upgrade_token_backend_fe.sh
+
+# Build token_backend using the custom script
+echo "Building token_backend canister..." # Step 2.2: Building token_backend canister
+sh scripts/build_rust_canister.sh token_backend
+
+# Build miner using the custom script
+echo "Building miner canister..." # Step 2.3: Building miner canister
+sh scripts/build_rust_canister.sh miner
 
 # Copy optimized WASM files to their final destinations
 cp "target/wasm32-unknown-unknown/release/token_backend.wasm" "$WASM_BASE_DIR/token_backend/token_backend.wasm" # Copying optimized token_backend WASM
 cp "target/wasm32-unknown-unknown/release/miner.wasm" "$WASM_BASE_DIR/miner/miner.wasm" # Copying optimized miner WASM
 
-# Copy Candid files to where dfx expects them
-cp "$WASM_BASE_DIR/miner/miner.did" "$PROJECT_ROOT/src/kong_svelte/src/miner.did"
-# IMPORTANT: Copy to the location specified in dfx.json
-cp "$WASM_BASE_DIR/miner/miner.did" "$PROJECT_ROOT/src/miner/src/miner.did"
-mkdir -p "$PROJECT_ROOT/src/token_backend"
-cp "$WASM_BASE_DIR/token_backend/token_backend.did" "$PROJECT_ROOT/src/token_backend/token_backend.did"
+# Copy Candid files to static assets for frontend access (from SOURCE candid files)
+echo "Copying SOURCE candid files to static assets..."
+cp "$TOKEN_BACKEND_SRC_CANDID" "$WASM_BASE_DIR/token_backend/token_backend.did"
+cp "$MINER_SRC_CANDID" "$WASM_BASE_DIR/miner/miner.did"
+cp "$MINER_SRC_CANDID" "$PROJECT_ROOT/src/kong_svelte/src/miner.did"
 
 # Compress and hash
 echo "Compressing and hashing..." # Step 4: Compressing WASM files and generating hashes
@@ -70,11 +130,21 @@ find "$WASM_BASE_DIR" -name "*.wasm" | while read -r wasm; do
     sha256sum "$wasm" >"${wasm}.sha256" # Generating SHA-256 hash for each WASM file
 done
 
-# Clean dfx cache to ensure fresh generation
-dfx cache delete
+# Final check to ensure declarations still have ALL types
+echo "Final verification of declarations..."
+if grep -q "TokenAllInfo" "$PROJECT_ROOT/src/declarations/token_backend/token_backend.did"; then
+    echo "SUCCESS: TokenAllInfo type found in token_backend declarations!"
+else
+    echo "ERROR: TokenAllInfo type NOT found in token_backend declarations. Something went wrong."
+    exit 1
+fi
 
-# Generate declarations with the updated Candid files
-dfx generate token_backend
-dfx generate miner
+if grep -q "start_mining" "$PROJECT_ROOT/src/declarations/miner/miner.did"; then
+    echo "SUCCESS: start_mining function found in miner declarations!"
+else
+    echo "ERROR: start_mining function NOT found in miner declarations. Something went wrong."
+    exit 1
+fi
 
-echo "All required WASMs/DIDs/hashes available in:\n$PROJECT_ROOT/src/kong_svelte/static/wasms"
+echo "All required WASMs/DIDs/hashes available in: $PROJECT_ROOT/src/kong_svelte/static/wasms"
+echo "Process complete. Declarations are up to date with ALL types from source candid files."

@@ -171,7 +171,7 @@ type TokenAllInfo = record {
   mining_progress_percentage : text;
   current_block_reward : nat64;
   formatted_block_reward : text;
-  principal : principal;
+  canister_principal : principal;
   current_block_height : nat64;
 };
 

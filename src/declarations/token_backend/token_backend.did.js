@@ -53,12 +53,6 @@ export const idlFactory = ({ IDL }) => {
       'blocks_mined' : IDL.Nat64,
       'achievement' : IDL.Text,
     }),
-    'BlockMined' : IDL.Record({
-      'miner' : IDL.Principal,
-      'reward' : IDL.Nat64,
-      'hash' : IDL.Vec(IDL.Nat8),
-      'nonce' : IDL.Nat64,
-    }),
     'LeaderboardUpdate' : IDL.Record({
       'miner' : IDL.Principal,
       'total_mined' : IDL.Nat64,
@@ -88,11 +82,11 @@ export const idlFactory = ({ IDL }) => {
   });
   const Result_2 = IDL.Variant({ 'Ok' : BlockTemplate, 'Err' : IDL.Text });
   const TokenAllInfo = IDL.Record({
-    'principal' : IDL.Principal,
     'decimals' : IDL.Nat8,
     'ticker' : IDL.Text,
     'average_block_time' : IDL.Opt(IDL.Float64),
     'transfer_fee' : IDL.Nat64,
+    'canister_principal' : IDL.Principal,
     'logo' : IDL.Opt(IDL.Text),
     'name' : IDL.Text,
     'block_time_rating' : IDL.Opt(IDL.Text),
