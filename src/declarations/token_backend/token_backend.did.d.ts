@@ -99,6 +99,14 @@ export type EventType = {
     }
   } |
   {
+    'BlockMined' : {
+      'miner' : Principal,
+      'reward' : bigint,
+      'hash_solution' : Uint8Array | number[],
+      'solution_time' : bigint,
+    }
+  } |
+  {
     'LeaderboardUpdate' : {
       'miner' : Principal,
       'total_mined' : bigint,

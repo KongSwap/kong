@@ -1168,8 +1168,8 @@ fn create_block_mined_event(miner: Principal, reward: u64, nonce: u64, hash: Has
         event_type: EventType::BlockMined {
             miner,
             reward,
-            nonce,
-            hash,
+            hash_solution: hash,
+            solution_time: current_time,
         },
         timestamp: current_time,
         block_height: height,

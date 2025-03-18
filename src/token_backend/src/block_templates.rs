@@ -31,8 +31,8 @@ pub enum EventType {
     BlockMined {
         miner: Principal,
         reward: u64,
-        nonce: u64,
-        hash: Hash,
+        hash_solution: Hash,
+        solution_time: u64,
     },
     
     // Competition/Game events
