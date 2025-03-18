@@ -361,7 +361,6 @@ pub fn update_liquidity_pool(
 
             pool.balance_0 = nat_add(&pool.balance_0, &amount_0);
             pool.balance_1 = nat_add(&pool.balance_1, &amount_1);
-            pool.set_tvl();
             pool_map::update(&pool);
             request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
 

@@ -149,16 +149,6 @@ fn unsuspend_pool(symbol: String) -> Result<String, String> {
     Ok(format!("Pool {} unsuspended", symbol))
 }
 
-/// used to force a pool tvl update
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn update_pool_tvl(symbol: String) -> Result<String, String> {
-    let mut pool = pool_map::get_by_token(&symbol)?;
-    pool.set_tvl();
-    pool_map::update(&pool);
-
-    serde_json::to_string(&pool).map_err(|e| format!("Failed to serialize: {}", e))
-}
-
 /// adjust pool balances
 /// token = pool token symbol
 /// direction = "add" or "subtract"

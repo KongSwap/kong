@@ -97,6 +97,7 @@ pub fn nat_multiply_f64(n1: &Nat, n2: f64) -> Option<Nat> {
 }
 
 // integer division
+#[allow(dead_code)]
 pub fn nat_divide(numerator: &Nat, denominator: &Nat) -> Option<Nat> {
     if nat_is_zero(numerator) {
         return Some(nat_zero());

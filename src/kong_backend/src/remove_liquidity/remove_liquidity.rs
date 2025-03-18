@@ -330,14 +330,13 @@ fn return_lp_token(user_id: u32, lp_token: &StableToken, remove_lp_token_amount:
 fn update_liquidity_pool(request_id: u64, pool: &StablePool, amount_0: &Nat, lp_fee_0: &Nat, amount_1: &Nat, lp_fee_1: &Nat) {
     request_map::update_status(request_id, StatusCode::UpdatePoolAmounts, None);
 
-    let mut update_pool = StablePool {
+    let update_pool = StablePool {
         balance_0: nat_subtract(&pool.balance_0, amount_0).unwrap_or(nat_zero()),
         lp_fee_0: nat_subtract(&pool.lp_fee_0, lp_fee_0).unwrap_or(nat_zero()),
         balance_1: nat_subtract(&pool.balance_1, amount_1).unwrap_or(nat_zero()),
         lp_fee_1: nat_subtract(&pool.lp_fee_1, lp_fee_1).unwrap_or(nat_zero()),
         ..pool.clone()
     };
-    update_pool.set_tvl();
     pool_map::update(&update_pool);
     request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
 }

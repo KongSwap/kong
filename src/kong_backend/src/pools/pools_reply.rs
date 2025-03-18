@@ -2,15 +2,6 @@ use candid::{CandidType, Nat};
 use serde::{Deserialize, Serialize};
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
-pub struct PoolsReply {
-    pub pools: Vec<PoolReply>,
-    pub total_tvl: Nat,
-    pub total_24h_volume: Nat,
-    pub total_24h_lp_fee: Nat,
-    pub total_24h_num_swaps: Nat,
-}
-
-#[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct PoolReply {
     pub pool_id: u32,
     pub name: String,
@@ -27,11 +18,6 @@ pub struct PoolReply {
     pub lp_fee_1: Nat,
     pub price: f64,
     pub lp_fee_bps: u8,
-    pub tvl: Nat,
-    pub rolling_24h_volume: Nat,
-    pub rolling_24h_lp_fee: Nat,
-    pub rolling_24h_num_swaps: Nat,
-    pub rolling_24h_apy: f64,
     pub lp_token_symbol: String,
     pub is_removed: bool,
 }
