@@ -1,0 +1,3 @@
+[submodule "apis"]
+	path = apis
+	url = https://github.com/KongSwap/apis
