@@ -835,6 +835,11 @@ sync_tokens_to_api() {
   log_success "Tokens added to API database successfully"
 }
 
+# deploy prediction markets
+deploy_prediction_markets() {
+  scripts/prediction_markets/canister_reinstall.sh
+}
+
 # Function to display summary
 display_summary() {
   log_success "Kong DEX local environment is up and running!"

@@ -476,14 +476,13 @@ export class TokenService {
    */
   public static async faucetClaim(): Promise<void> {
     try {
-      // Use the environment variable but fallback to the actual deployed canister ID if needed
-      // The correct ID is be2us-64aaa-aaaaa-qaabq-cai, not ohr23-xqaaa-aaaar-qahqq-cai
-      const faucetCanisterId = "be2us-64aaa-aaaaa-qaabq-cai"; // Hardcoded as fallback
+      // Use the environment variable with fallback to hardcoded value
+      const faucetCanisterId = process.env.CANISTER_ID_KONG_FAUCET || "be2us-64aaa-aaaaa-qaabq-cai";
       
-      console.debug(`[Faucet] Using canister ID: ${faucetCanisterId} (env: ${process.env.CANISTER_ID_KONG_FAUCET})`);
+      console.debug(`[Faucet] Using canister ID: ${faucetCanisterId}`);
       
       const actor = auth.pnp.getActor(
-        faucetCanisterId, // Use the hardcoded ID instead of process.env
+        faucetCanisterId,
         canisterIDLs.kong_faucet,
         { anon: false, requiresSigning: false },
       );

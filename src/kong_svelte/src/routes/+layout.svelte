@@ -21,7 +21,6 @@
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
   import { connectWebSocket } from "$lib/api/canisters";
   import DeploymentNotification from "$lib/components/common/DeploymentNotification.svelte";
-  import { setupDebugComponent } from "$lib/debug/testTokenBalance";
   import { onMount } from "svelte";
   
   const pageTitle = $state(
@@ -100,7 +99,6 @@
   onMount(() => {
     if (process.env.NODE_ENV === "development") {
       console.log("[DEBUG] Initializing debug tools for development");
-      setupDebugComponent();
     }
   });
 </script>
@@ -166,7 +164,7 @@
   <GlobalSearch isOpen={$searchStore.isOpen} on:close={() => searchStore.close()} />
   <KeyboardShortcutsHelp />
   <div id="modals"></div>
-  <DeploymentNotification />
+  <!-- <DeploymentNotification /> -->
 </div>
 
 <style lang="postcss">

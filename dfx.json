@@ -93,6 +93,7 @@
       "wasm": "target/wasm32-unknown-unknown/release/prediction_markets_backend.wasm",
       "package": "prediction_markets_backend",
       "build": "sh scripts/build_rust_canister.sh prediction_markets_backend",
+      "specified_id": "xidgj-jyaaa-aaaad-qghpq-cai",
       "declarations": {
         "node_compatibility": true
       },
