@@ -748,6 +748,7 @@
 {/if}
 
 {#if showWalletProvider && browser}
+  <Portal target="body">
     <WalletProvider 
       isOpen={showWalletProvider}
       onClose={() => showWalletProvider = false}
@@ -755,6 +756,7 @@
         showWalletProvider = false;
       }}
     />
+  </Portal>
 {/if}
 
 <style scoped lang="postcss">

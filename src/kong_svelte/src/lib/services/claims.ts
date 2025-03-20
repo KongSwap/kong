@@ -1,4 +1,4 @@
-import { auth } from './auth';
+import { auth } from '$lib/stores/auth';
 import { canisterIDLs } from '../config/auth.config';
 import { KONG_BACKEND_CANISTER_ID } from '../constants/canisterConstants';
 import type { Claim } from '../types/claims';
