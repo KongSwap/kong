@@ -24,7 +24,7 @@
   import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
   // @ts-ignore - This component doesn't have a default export but works in Svelte
   import TokenStatistics from "./TokenStatistics.svelte";
-  import { GOVERNANCE_CANISTER_IDS } from "$lib/services/sns/snsService";
+  import { GOVERNANCE_CANISTER_IDS } from "$lib/utils/snsUtils";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { toastStore } from "$lib/stores/toastStore";
   import { tokenData } from "$lib/stores/tokenData";

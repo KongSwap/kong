@@ -161,15 +161,6 @@
         await swapState.initializeTokens(null, null);
       }
       isInitialized = true;
-      console.log('Initialization complete');
-      
-      // Add a delayed balance refresh after initialization
-      setTimeout(() => {
-        if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
-          console.log('Running delayed balance refresh after initialization');
-          refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, false);
-        }
-      }, 1500); // 1.5 second delay
     }
   });
 
