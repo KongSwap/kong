@@ -3,7 +3,7 @@
 	import TokenImages from "$lib/components/common/TokenImages.svelte";
 	import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 	import { formatUsdValue } from "$lib/utils/tokenFormatters";
-	import { FavoriteService } from "$lib/services/tokens/favoriteService";
+	import { favoriteStore } from "$lib/stores/favoriteStore";
 	import { tooltip } from "$lib/actions/tooltip";
 	import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
 
@@ -37,7 +37,7 @@
 				{#if isConnected}
 					<button
 						class="absolute -right-2 -bottom-2 w-5 h-5 flex items-center justify-center rounded-full bg-kong-bg-dark/80 border border-kong-border/30 hover:bg-kong-bg-dark active:scale-95 transition-all duration-150"
-						on:click|stopPropagation={() => FavoriteService.toggleFavorite(token.canister_id)}
+						on:click|stopPropagation={() => favoriteStore.toggleFavorite(token.canister_id)}
 					>
 						{#if isFavorite}
 							<Star class="w-3 h-3" color="yellow" fill="yellow" />

@@ -3,7 +3,7 @@ import { toastStore } from "$lib/stores/toastStore";
 import { Principal } from "@dfinity/principal";
 import BigNumber from "bignumber.js";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
-import { swapStatusStore } from "./swapStore";
+import { swapStatusStore } from "$lib/stores/swapStore";
 import { auth, canisterIDLs } from "$lib/services/auth";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { requireWalletConnection } from "$lib/services/auth";

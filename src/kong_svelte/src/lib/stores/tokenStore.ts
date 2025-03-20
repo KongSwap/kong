@@ -1,7 +1,6 @@
 // src/kong_svelte/src/lib/stores/tokenStore.ts
 import { derived, writable, get } from "svelte/store";
 import BigNumber from "bignumber.js";
-import type { TokenState } from "$lib/services/tokens/types";
 import { userTokens } from "$lib/stores/userTokens";
 import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
 import { 
@@ -10,6 +9,12 @@ import {
   loadBalances, 
 } from "$lib/stores/balancesStore";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
+
+export interface TokenState {
+  activeSwaps: Record<string, any>;
+  pendingBalanceRequests: Set<string>;
+}
+
 
 // Create a writable store for tracking portfolio update status
 export const isUpdatingPortfolio = writable<boolean>(false);

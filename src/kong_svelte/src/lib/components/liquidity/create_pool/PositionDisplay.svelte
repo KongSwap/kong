@@ -1,7 +1,7 @@
 <script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { livePools } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/stores/poolStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { onMount, onDestroy } from "svelte";
   import { auth } from "$lib/services/auth";

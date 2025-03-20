@@ -2,7 +2,7 @@ import { swapState } from "./SwapStateService";
 import { get } from "svelte/store";
 import { toastStore } from "$lib/stores/toastStore";
 import { SwapService } from "./SwapService";
-import { swapStatusStore } from "./swapStore";
+import { swapStatusStore } from "$lib/stores/swapStore";
 import { SwapMonitor } from "./SwapMonitor";
 import type { Principal } from "@dfinity/principal";
 import { userTokens } from "$lib/stores/userTokens";

@@ -18,7 +18,7 @@
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { onMount } from "svelte";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-  import { livePools } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/stores/poolStore";
   import { auth } from "$lib/services/auth";
 
   export let searchQuery = "";

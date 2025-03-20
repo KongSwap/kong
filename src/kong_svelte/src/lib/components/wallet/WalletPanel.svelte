@@ -19,7 +19,7 @@
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
-  import { truncateAddress } from "$lib/utils/address";
+  import { truncateAddress } from "$lib/utils/principalUtils";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import WalletTokensList from "$lib/components/wallet/WalletTokensList.svelte";
   import WalletPoolsList from "$lib/components/wallet/WalletPoolsList.svelte";

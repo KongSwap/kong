@@ -1,18 +1,14 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import {
     Trophy,
     Crown,
-    ExternalLink,
     ChevronDown,
     ChevronUp,
   } from "lucide-svelte";
   import Panel from "$lib/components/common/Panel.svelte";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
   import type { LeaderboardEntry } from "$lib/api/leaderboard";
-  import { AlertTriangle } from "lucide-svelte";
   import TraderDetailsExpanded from "./TraderDetailsExpanded.svelte";
-  import { formatVolume, formatPrincipalId } from "$lib/utils/formatters";
+  import { formatVolume } from "$lib/utils/numberFormatUtils";
 
   let {
     user,

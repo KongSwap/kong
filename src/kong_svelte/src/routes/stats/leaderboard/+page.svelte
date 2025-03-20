@@ -12,7 +12,7 @@
   import PageHeader from '$lib/components/common/PageHeader.svelte';
   
   // Import utility functions
-  import { formatVolume, formatNumber } from '$lib/utils/formatters';
+  import { formatVolume, formatNumberWithCommas } from '$lib/utils/numberFormatUtils';
   
   // Import the store
   import { 
@@ -61,7 +61,7 @@
   icon={Trophy}
   stats={[
     { label: "Total Volume", value: $isLoading ? "Loading..." : formatVolume($totalVolume), icon: TrendingUp },
-    { label: "Active Traders", value: $isLoading ? "Loading..." : formatNumber($totalTraders), icon: Users },
+    { label: "Active Traders", value: $isLoading ? "Loading..." : formatNumberWithCommas($totalTraders), icon: Users },
     { label: "Time Period", value: selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1), icon: Activity }
   ]}
 />

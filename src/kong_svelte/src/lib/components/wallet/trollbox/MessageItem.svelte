@@ -11,7 +11,6 @@
   import type { Message } from "$lib/api/trollbox";
   import { auth } from "$lib/services/auth";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  import { DEFAULT_LOGOS } from "$lib/services/tokens";
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
 
@@ -182,7 +181,7 @@
 
       // Get token logo URL or fallback
       const logoUrl =
-        token.logo_url || DEFAULT_LOGOS[token.canister_id] || DEFAULT_IMAGE;
+        token.logo_url || DEFAULT_IMAGE;
 
       // Format price and determine price change direction
       const price = token.metrics?.price

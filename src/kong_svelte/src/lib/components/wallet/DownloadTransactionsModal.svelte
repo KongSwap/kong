@@ -5,7 +5,7 @@
   import { auth } from "$lib/services/auth";
   import { toastStore } from "$lib/stores/toastStore";
   import { FileDown, Calendar, ArrowRightLeft, Droplet, SendHorizonal } from "lucide-svelte";
-  import { formatDate } from "$lib/utils/dateUtils";
+  import { formatDate } from "$lib/utils/dateFormatters";
   import { processTransaction, formatAmount } from "$lib/utils/transactionUtils";
 
   // Props

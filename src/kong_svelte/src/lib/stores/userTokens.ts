@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { fetchTokensByCanisterId } from '$lib/api/tokens';
-import { DEFAULT_TOKENS } from '$lib/constants/tokenConstants';
+import { DEFAULT_TOKENS } from '$lib/constants/canisterConstants';
 import { writable, get, derived } from 'svelte/store';
 import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
 import { syncTokens as analyzeTokens, applyTokenChanges } from '$lib/utils/tokenSyncUtils';

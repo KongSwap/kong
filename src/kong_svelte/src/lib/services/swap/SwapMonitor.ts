@@ -1,5 +1,5 @@
 import { toastStore } from "$lib/stores/toastStore";
-import { swapStatusStore } from "./swapStore";
+import { swapStatusStore } from "$lib/stores/swapStore";
 import { get } from "svelte/store";
 import { loadBalances } from "$lib/stores/tokenStore";
 import { auth } from "$lib/services/auth";

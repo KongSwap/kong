@@ -3,7 +3,7 @@
   import { onDestroy, onMount } from "svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { fetchPoolsForCanister } from "$lib/services/pools/poolStore";
+  import { fetchPoolsForCanister } from "$lib/stores/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import { goto } from "$app/navigation";

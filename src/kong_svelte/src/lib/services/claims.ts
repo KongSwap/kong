@@ -3,7 +3,6 @@ import { canisterIDLs } from '../config/auth.config';
 import { KONG_BACKEND_CANISTER_ID } from '../constants/canisterConstants';
 import type { Claim } from '../types/claims';
 import { toastStore } from '../stores/toastStore';
-import { DEFAULT_LOGOS } from './tokens';
 import { fetchTokensByCanisterId } from '../api/tokens/TokenApiClient';
 import { get } from 'svelte/store';
 import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
@@ -155,7 +154,7 @@ export class ClaimsService {
       
       return {
         ...claim,
-        logo_url: tokenDetails?.logo_url || (canisterId && DEFAULT_LOGOS[canisterId]) || this.DEFAULT_IMAGE,
+        logo_url: tokenDetails?.logo_url || this.DEFAULT_IMAGE,
         decimals: tokenDetails?.decimals || 8
       };
     });

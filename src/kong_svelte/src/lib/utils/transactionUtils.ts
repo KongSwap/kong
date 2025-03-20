@@ -1,4 +1,4 @@
-import { formatDate } from "./dateUtils";
+import { formatDate } from "./dateFormatters";
 
 /**
  * Formats a numeric amount to a human-readable string

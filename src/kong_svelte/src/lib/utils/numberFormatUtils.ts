@@ -233,3 +233,23 @@ export const toScaledAmount = (amount: number, decimals: number): string => {
         .integerValue(BigNumber.ROUND_DOWN)
         .toString();
 };
+
+/**
+ * Format a USD volume value into a human-readable string with appropriate suffixes
+ */
+export function formatVolume(volume: number): string {
+  if (volume >= 1_000_000) {
+    return `$${(volume / 1_000_000).toFixed(2)}M`;
+  } else if (volume >= 1_000) {
+    return `$${(volume / 1_000).toFixed(2)}K`;
+  } else {
+    return `$${volume.toFixed(2)}`;
+  }
+}
+
+/**
+ * Format a number with commas for thousands separators
+ */
+export function formatNumberWithCommas(num: number): string {
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
