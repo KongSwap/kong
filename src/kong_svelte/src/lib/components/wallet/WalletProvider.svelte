@@ -114,7 +114,8 @@
     try {
       connecting = true;
       selectedWalletId.set(walletId);
-      
+      await auth.connect(walletId);
+
       // Save wallet ID to storage
       try {
         await authStorage.setItem(SELECTED_WALLET_KEY, walletId);
@@ -125,7 +126,6 @@
       // Add timeout to prevent hanging connections
       const timeoutId = setTimeout(() => abortController.abort(), 30000);
       
-      await auth.connect(walletId);
       clearTimeout(timeoutId);
       
       if ($auth.isConnected) {

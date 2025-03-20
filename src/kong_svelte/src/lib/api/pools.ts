@@ -27,9 +27,6 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
     }
     
     const queryString = new URLSearchParams(queryParams).toString();
-
-    // Strictly use GET method with no request body
-    console.log(`Requesting: GET ${API_URL}/api/pools?${queryString}`);
     
     const response = await fetch(
       `${API_URL}/api/pools?${queryString}`,

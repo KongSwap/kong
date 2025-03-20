@@ -302,21 +302,21 @@
   <div
     class="flex {isCurrentUser
       ? 'items-end'
-      : 'items-center'} gap-1.5 max-w-[85%]"
+      : 'items-start'} gap-1.5 max-w-[85%]"
   >
     {#if !isCurrentUser}
       <img
         on:click={() => goto(`/wallets/${message.principal.toText()}`)}
-        src={`https://api.dicebear.com/7.x/notionists-neutral/svg?seed=${message.principal.toText()}&size=20`}
+        src={`https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${message.principal.toText()}&size=20`}
         alt="avatar"
-        class="w-8 h-8 rounded-full bg-kong-dark cursor-pointer"
+        class="w-8 h-8 mt-1 rounded-full bg-kong-dark cursor-pointer"
       />
     {/if}
 
     <div
       class="{isCurrentUser
         ? 'bg-kong-primary text-kong-text-on-primary rounded-t-md rounded-bl-md rounded-br-sm'
-        : 'bg-kong-dark text-kong-text-primary rounded-t-md rounded-br-md rounded-bl-sm'} px-3 py-2 relative group"
+        : 'bg-kong-dark text-kong-text-primary rounded-t-md rounded-br-md rounded-bl-sm'} px-3 pb-2 relative group"
     >
       {#if !isCurrentUser}
         <div
