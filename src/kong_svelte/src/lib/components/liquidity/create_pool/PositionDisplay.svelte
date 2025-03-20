@@ -16,6 +16,12 @@
   let tokenChangeTimer: ReturnType<typeof setTimeout> | null = null;
   let lastToken0: string | null = null;
   let lastToken1: string | null = null;
+  
+  // Memoized values to avoid unnecessary recalculations
+  let memoizedPool: BE.Pool | null = null;
+  let memoizedUserPool: any = null;
+  let memoizedPercentage: string = "0";
+  let lastPoolCheckKey: string = "";
 
   // Get objects or null values for TokenImages component
   $: tokenObj0 = typeof token0 === 'object' ? token0 : null;
@@ -25,25 +31,45 @@
   $: token0Symbol = typeof token0 === 'object' ? token0?.symbol : token0;
   $: token1Symbol = typeof token1 === 'object' ? token1?.symbol : token1;
 
-  // Calculate percentage of total pool using symbols for lookup
-  $: pool = $livePools.find(
-    (p) => p.symbol_0 === token0Symbol && p.symbol_1 === token1Symbol,
-  );
-  $: userPool = $currentUserPoolsStore.filteredPools.find(
-    (p) => p.symbol_0 === token0Symbol && p.symbol_1 === token1Symbol,
-  );
+  // Create a cache key for memoization
+  $: poolCheckKey = `${token0Symbol || ""}-${token1Symbol || ""}-${$livePools.length}-${$currentUserPoolsStore.filteredPools.length}`;
+  
+  // Only recompute pool and user pool when necessary
+  $: if (poolCheckKey !== lastPoolCheckKey) {
+    lastPoolCheckKey = poolCheckKey;
+    
+    // Find pool and userPool only when tokens or pools change
+    if (token0Symbol && token1Symbol) {
+      memoizedPool = $livePools.find(
+        (p) => p.symbol_0 === token0Symbol && p.symbol_1 === token1Symbol,
+      );
+      
+      memoizedUserPool = $currentUserPoolsStore.filteredPools.find(
+        (p) => p.symbol_0 === token0Symbol && p.symbol_1 === token1Symbol,
+      );
+      
+      // Pre-calculate percentage
+      memoizedPercentage = calculateUserPoolPercentage(
+        memoizedPool?.balance_0, 
+        memoizedPool?.balance_1, 
+        memoizedUserPool?.amount_0, 
+        memoizedUserPool?.amount_1
+      );
+    } else {
+      memoizedPool = null;
+      memoizedUserPool = null;
+      memoizedPercentage = "0";
+    }
+  }
+  
+  // Use memoized values
+  $: pool = memoizedPool;
+  $: userPool = memoizedUserPool;
+  $: userPoolPercentage = memoizedPercentage;
   
   // Check if position exists by checking if userPool exists and has been properly loaded
   $: hasPosition = !!userPool && userPool.id != null;
   $: hasTokens = !!token0Symbol && !!token1Symbol;
-  
-  // Calculate user's percentage of the pool using the imported function
-  $: userPoolPercentage = calculateUserPoolPercentage(
-    pool?.balance_0, 
-    pool?.balance_1, 
-    userPool?.amount_0, 
-    userPool?.amount_1
-  );
   
   // Helper function to get token decimals
   function getTokenDecimals(
@@ -102,6 +128,9 @@
     }
   }
   
+  // Cache for formatted numbers to avoid repeated calculations
+  const formattedNumbersCache = new Map<string, string>();
+  
   // Helper to safely convert value to BigNumber
   function toBigNumber(value: any): BigNumber {
     if (!value) return new BigNumber(0);
@@ -113,11 +142,24 @@
     }
   }
 
-  // Format number for display with proper decimal places
+  // Format number for display with proper decimal places with caching
   function formatNumber(value: BigNumber | string | number | undefined): string {
     if (!value) return "0";
+    
+    // Create a cache key
+    const cacheKey = `${value}-8`;
+    
+    // Check if we have a cached result
+    if (formattedNumbersCache.has(cacheKey)) {
+      return formattedNumbersCache.get(cacheKey);
+    }
+    
+    // Calculate and cache the result
     const bn = typeof value === 'object' && 'toFormat' in value ? value : toBigNumber(value);
-    return bn.toFormat(8, BigNumber.ROUND_DOWN);
+    const formatted = bn.toFormat(8, BigNumber.ROUND_DOWN);
+    formattedNumbersCache.set(cacheKey, formatted);
+    
+    return formatted;
   }
 </script>
 

@@ -97,6 +97,7 @@ export interface Market {
   'creator' : Principal,
   'outcome_percentages' : Array<number>,
   'question' : string,
+  'image_url' : [] | [string],
   'resolution_data' : [] | [string],
   'created_at' : bigint,
   'end_time' : bigint,
@@ -194,6 +195,7 @@ export interface _SERVICE {
       Array<string>,
       ResolutionMethod,
       MarketEndTime,
+      [] | [string],
     ],
     Result
   >,

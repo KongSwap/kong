@@ -3,10 +3,15 @@ import type { Message } from '$lib/api/trollbox';
 import * as trollboxApi from '$lib/api/trollbox';
 import { browser } from '$app/environment';
 import { Principal } from '@dfinity/principal';
+import { createNamespacedStore } from '$lib/config/localForage.config';
 
 // Constants
-const PENDING_MESSAGES_KEY = 'trollbox_pending_messages';
-const MESSAGE_SUBMISSION_FLAG = 'trollbox_message_submission';
+const TROLLBOX_NAMESPACE = 'trollbox';
+const PENDING_MESSAGES_KEY = 'pending_messages';
+const MESSAGE_SUBMISSION_FLAG = 'message_submission';
+
+// Create namespaced store
+const trollboxStorage = createNamespacedStore(TROLLBOX_NAMESPACE);
 
 // Define store state
 interface TrollboxState {
@@ -37,6 +42,23 @@ const initialState: TrollboxState = {
   errorMessage: '',
   bannedUsers: new Map()
 };
+
+// Helper function to save pending messages to localForage
+async function savePendingMessagesToStorage(pendingMessages: Array<{ message: string; created_at: bigint; id: string }>) {
+  if (!browser) return;
+  
+  try {
+    // Convert BigInt to string for JSON serialization
+    const serializable = pendingMessages.map(msg => ({
+      ...msg,
+      created_at: msg.created_at.toString()
+    }));
+    
+    await trollboxStorage.setItem(PENDING_MESSAGES_KEY, serializable);
+  } catch (error) {
+    console.error('Error saving pending messages to storage:', error);
+  }
+}
 
 // Create the store
 function createTrollboxStore() {
@@ -119,7 +141,7 @@ function createTrollboxStore() {
                 // Update the pending IDs set
                 state.pendingMessageIds = currentPendingIds;
                 
-                // Update localStorage if needed
+                // Update storage if needed
                 if (state.pendingMessages.length !== currentPendingMessages.length) {
                   savePendingMessagesToStorage(state.pendingMessages);
                 }
@@ -274,10 +296,10 @@ function createTrollboxStore() {
         
         // Set flag that we're starting a message submission (for page reloads)
         if (browser) {
-          localStorage.setItem(MESSAGE_SUBMISSION_FLAG, 'true');
+          trollboxStorage.setItem(MESSAGE_SUBMISSION_FLAG, true);
         }
         
-        // Save to localStorage immediately
+        // Save to storage immediately
         savePendingMessagesToStorage(state.pendingMessages);
         
         return state;
@@ -368,18 +390,17 @@ function createTrollboxStore() {
       });
     },
     
-    // Load pending messages from localStorage
-    loadPendingMessagesFromStorage: () => {
+    // Load pending messages from storage
+    loadPendingMessagesFromStorage: async () => {
       if (!browser) return;
       
       try {
-        const storedPendingMessages = localStorage.getItem(PENDING_MESSAGES_KEY);
-        if (storedPendingMessages) {
-          const parsed = JSON.parse(storedPendingMessages);
-          
+        const storedPendingMessages = await trollboxStorage.getItem<any[]>(PENDING_MESSAGES_KEY);
+        
+        if (storedPendingMessages && Array.isArray(storedPendingMessages)) {
           update(state => {
             // Convert dates back to BigInt
-            state.pendingMessages = parsed.map(msg => ({
+            state.pendingMessages = storedPendingMessages.map(msg => ({
               ...msg,
               created_at: BigInt(msg.created_at)
             }));
@@ -399,30 +420,13 @@ function createTrollboxStore() {
           });
         }
       } catch (error) {
-        console.error('Error loading pending messages from localStorage:', error);
+        console.error('Error loading pending messages from storage:', error);
       }
     },
     
     // Reset store to initial state
     reset: () => set(initialState)
   };
-}
-
-// Helper function to save pending messages to localStorage
-function savePendingMessagesToStorage(pendingMessages: Array<{ message: string; created_at: bigint; id: string }>) {
-  if (!browser) return;
-  
-  try {
-    // Convert BigInt to string for JSON serialization
-    const serializable = pendingMessages.map(msg => ({
-      ...msg,
-      created_at: msg.created_at.toString()
-    }));
-    
-    localStorage.setItem(PENDING_MESSAGES_KEY, JSON.stringify(serializable));
-  } catch (error) {
-    console.error('Error saving pending messages to localStorage:', error);
-  }
 }
 
 // Create and export the store

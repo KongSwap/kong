@@ -1,21 +1,22 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import { resolveMarketViaAdmin } from "$lib/api/predictionMarket";
   import { toastStore } from "$lib/stores/toastStore";
 
-  export let isOpen = false;
-  export let market: any = null;
+  let { isOpen = false, market = null, onClose = () => {}, onResolved = () => {} } = $props<{
+    isOpen: boolean;
+    market: any;
+    onClose: () => void;
+    onResolved: () => void;
+  }>();
 
-  const dispatch = createEventDispatcher();
-
-  let selectedOutcome: number | null = null;
-  let isSubmitting = false;
+  let selectedOutcome: number | null = $state(null);
+  let isSubmitting = $state(false);
 
   function close() {
     selectedOutcome = null;
     isSubmitting = false;
-    dispatch("close");
+    onClose();
   }
 
   async function handleResolve() {
@@ -28,7 +29,7 @@
       isSubmitting = true;
       await resolveMarketViaAdmin(market.id, selectedOutcome);
       toastStore.success("Market resolved successfully");
-      dispatch("resolved");
+      onResolved();
       close();
     } catch (error) {
       console.error("Failed to resolve market:", error);

@@ -1,7 +1,6 @@
 // src/kong_svelte/src/lib/stores/tokenStore.ts
 import { derived, writable, get } from "svelte/store";
 import BigNumber from "bignumber.js";
-import type { AuthStore } from "$lib/services/auth";
 import type { TokenState } from "$lib/services/tokens/types";
 import { userTokens } from "$lib/stores/userTokens";
 import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
@@ -9,7 +8,6 @@ import {
   currentUserBalancesStore, 
   loadBalance, 
   loadBalances, 
-  updateStoredBalances 
 } from "$lib/stores/balancesStore";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
@@ -18,7 +16,6 @@ export const isUpdatingPortfolio = writable<boolean>(false);
 
 // Re-export important functions for backward compatibility
 export { 
-  updateStoredBalances,
   loadBalance,
   loadBalances,
   currentUserBalancesStore
@@ -26,9 +23,13 @@ export {
 
 // Create a fallback empty store for balances in case the imported one is not available
 const fallbackBalancesStore = writable<Record<string, FE.TokenBalance>>({});
+const fallbackUserTokensStore = writable({ enabledTokens: {}, tokens: [], isAuthenticated: false });
+const fallbackUserPoolsStore = writable({ processedPools: [] });
 
-// Make sure we have a valid store for currentUserBalancesStore
+// Make sure we have valid stores, especially important for SSR
 const safeBalancesStore = currentUserBalancesStore || fallbackBalancesStore;
+const safeUserTokensStore = userTokens || fallbackUserTokensStore;
+const safeUserPoolsStore = currentUserPoolsStore || fallbackUserPoolsStore;
 
 function createTokenStore() {
   const initialState: TokenState = {
@@ -60,15 +61,13 @@ function createTokenStore() {
   };
 }
 
-export const tokenStore = createTokenStore();
-
 // Update the portfolioValue derived store with safe stores
 export const portfolioValue = derived(
-  [userTokens, currentUserPoolsStore, safeBalancesStore],
+  [safeUserTokensStore, safeUserPoolsStore, safeBalancesStore],
   ([$userTokens, $currentUserPoolsStore, $storedBalances]) => {
     // Make sure all stores are initialized before accessing properties
     if (!$userTokens || !$storedBalances) {
-      return 0;
+      return "0.00";
     }
 
     // Calculate token values with proper null checking
@@ -82,7 +81,7 @@ export const portfolioValue = derived(
     }, 0);
 
     // Calculate pool values using processedPools, ensuring the array exists
-    const poolValue = ($currentUserPoolsStore.processedPools || []).reduce((acc, pool) => {
+    const poolValue = ($currentUserPoolsStore?.processedPools || []).reduce((acc, pool) => {
       const value = pool && pool.usd_balance ? Number(pool.usd_balance) : 0;
       return acc + value;
     }, 0);
@@ -97,7 +96,7 @@ export const portfolioValue = derived(
 );
 
 export const getTokenDecimals = async (canisterId: string) => {
-  const token = get(userTokens).tokens.find(t => t.canister_id === canisterId) || await fetchTokensByCanisterId([canisterId])[0];
+  const token = get(safeUserTokensStore).tokens.find(t => t.canister_id === canisterId) || await fetchTokensByCanisterId([canisterId])[0];
   return token?.decimals || 0;
 };
 

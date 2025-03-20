@@ -1,74 +1,114 @@
 <script lang="ts">
   import { createMarket, getAllCategories, isAdmin } from "$lib/api/predictionMarket";
+  import { uploadFile } from "$lib/api/upload";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { AlertTriangle, Plus, Trash2, ClipboardList, Target, Clock, CheckCircle, HelpCircle, Tag, Gavel, ScrollText, ListChecks, Calendar, TriangleAlert, Coins } from "lucide-svelte";
+  import { AlertTriangle, Plus, Trash2, ClipboardList, Target, Clock, CheckCircle, HelpCircle, Tag, Gavel, ScrollText, ListChecks, Calendar, TriangleAlert, Coins, Image, Upload } from "lucide-svelte";
   import { page } from "$app/stores";
   import { browser } from "$app/environment";
   import { formatCategory } from "$lib/utils/numberFormatUtils";
   import { fade, fly } from 'svelte/transition';
   import { auth } from "$lib/services/auth";
-  import { get } from "svelte/store";
 
-  let loading = false;
-  let error: string | null = null;
-  let categories: string[] = [];
-  let isCheckingAdmin = true;
-  let loadingCategories = true;
-  let categoryError: string | null = null;
+  // Constants
+  const TOTAL_STEPS = 4;
+  const DEFAULT_DURATION = 24; // hours
+  const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+  const MIN_IMAGE_DIMENSION = 200; // pixels
+  const DEBOUNCE_DELAY = 300; // ms
+  
+  // Debounce utility function
+  function debounce<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
+    let timer: ReturnType<typeof setTimeout>;
+    return (...args: Parameters<T>) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => func(...args), delay);
+    };
+  }
 
-  // Form data
-  let question = "";
-  let category = "Other";
-  let rules = "";
-  let outcomes: string[] = ["", ""];
-  let resolutionMethod = "Admin";
-  let endTimeType = "Duration";
-  let duration = 24; // Default 24 hours
-  let specificDate: string = "";
-  let specificTime: string = "";
-  let isUserAdmin = false;
-
-  // Validation
-  let formErrors: Record<string, string> = {};
-
-  // Add these to the script section
+  // Form state
+  const formState = {
+    question: "",
+    category: "Other",
+    rules: "",
+    outcomes: ["", ""] as string[],
+    resolutionMethod: "Admin",
+    endTimeType: "Duration",
+    duration: DEFAULT_DURATION,
+    specificDate: "",
+    specificTime: "",
+    imageFile: null as File | null,
+    imageUrl: null as string | null,
+  };
+  
+  // UI state
   let currentStep = 1;
-  const totalSteps = 4;
-
-  // URL parameter handling
+  let loading = false;
+  let uploadingImage = false;
+  let loadingCategories = true;
+  let isUserAdmin = false;
+  let categories: string[] = [];
+  let formErrors: Record<string, string> = {};
+  let error: string | null = null;
+  let imageError: string | null = null;
+  let categoryError: string | null = null;
+  
+  // Create separate variables for radio buttons
+  let endTimeType = formState.endTimeType;
+  
+  // Update formState when endTimeType changes
+  $: formState.endTimeType = endTimeType;
+  
+  // Derived values
+  $: questionError = formState.question.length > 200 ? "Question must be less than 200 characters" : "";
+  $: validOutcomes = formState.outcomes.filter(o => o.trim());
+  
+  // URL parameter handling with debouncing
   $: if (browser && currentStep > 1) {
+    debouncedUpdateURL();
+  }
+  
+  // Create debounced version of updateURL
+  const debouncedUpdateURL = debounce(() => updateURL(), DEBOUNCE_DELAY);
+  
+  function updateURL() {
+    if (!browser) return;
+    
     const params = new URLSearchParams();
     params.set('step', currentStep.toString());
     
-    if (question) params.set('question', question);
-    if (category) params.set('category', category);
-    if (rules) params.set('rules', rules);
-    if (outcomes.length > 0) params.set('outcomes', JSON.stringify(outcomes));
-    if (resolutionMethod) params.set('resolutionMethod', resolutionMethod);
-    if (endTimeType) params.set('endTimeType', endTimeType);
-    if (duration) params.set('duration', duration.toString());
-    if (specificDate) params.set('specificDate', specificDate);
-    if (specificTime) params.set('specificTime', specificTime);
+    // Only add params relevant to current and previous steps
+    if (currentStep > 1) {
+      params.set('question', formState.question);
+      params.set('category', formState.category);
+      params.set('rules', formState.rules);
+    }
+    
+    if (currentStep > 2) {
+      params.set('outcomes', JSON.stringify(formState.outcomes));
+    }
+    
+    if (currentStep > 3) {
+      params.set('resolutionMethod', formState.resolutionMethod);
+      params.set('endTimeType', formState.endTimeType);
+      params.set('duration', formState.duration.toString());
+      if (formState.specificDate) params.set('specificDate', formState.specificDate);
+      if (formState.specificTime) params.set('specificTime', formState.specificTime);
+    }
 
-    const url = new URL(window.location.href);
-    url.search = params.toString();
-    history.replaceState(null, '', url.toString());
+    goto(`?${params.toString()}`, { replaceState: true });
   }
-
-  // Load state from URL on mount
+  
+  // Load state from URL and fetch categories
   onMount(async () => {
     try {
       // Fetch all available categories
       const fetchedCategories = await getAllCategories();
-      categories = Array.isArray(fetchedCategories) ? fetchedCategories : ["Other"];
-      
-      // If category array is empty, add "Other"
-      if (categories.length === 0) {
-        categories = ["Other"];
-      }
+      categories = Array.isArray(fetchedCategories) && fetchedCategories.length > 0 
+        ? fetchedCategories 
+        : ["Other"];
       
       // Ensure "Other" is always available as a fallback
       if (!categories.includes("Other")) {
@@ -82,35 +122,39 @@
       loadingCategories = false;
     }
 
+    // Restore state from URL if parameters exist
     const params = new URLSearchParams(window.location.search);
-    
-    // Only restore state if we have parameters
     if (params.has('step')) {
       currentStep = parseInt(params.get('step') || '1');
-      question = params.get('question') || '';
-      category = params.get('category') || 'Other';
-      rules = params.get('rules') || '';
+      formState.question = params.get('question') || '';
+      formState.category = params.get('category') || 'Other';
+      formState.rules = params.get('rules') || '';
       
       try {
         const savedOutcomes = params.get('outcomes');
         if (savedOutcomes) {
-          outcomes = JSON.parse(savedOutcomes);
+          formState.outcomes = JSON.parse(savedOutcomes);
         }
       } catch (e) {
         console.error('Failed to parse outcomes from URL:', e);
       }
       
-      resolutionMethod = params.get('resolutionMethod') || 'Admin';
-      endTimeType = params.get('endTimeType') || 'Duration';
-      duration = parseInt(params.get('duration') || '24');
-      specificDate = params.get('specificDate') || '';
-      specificTime = params.get('specificTime') || '';
+      formState.resolutionMethod = params.get('resolutionMethod') || 'Admin';
+      // Set both the form state and the local variable
+      const loadedEndTimeType = params.get('endTimeType') || 'Duration';
+      formState.endTimeType = loadedEndTimeType;
+      endTimeType = loadedEndTimeType;
+      
+      formState.duration = parseInt(params.get('duration') || String(DEFAULT_DURATION));
+      formState.specificDate = params.get('specificDate') || '';
+      formState.specificTime = params.get('specificTime') || '';
     }
   });
-
+  
+  // Check admin status
   $: if ($auth.isConnected) {
-    isAdmin($auth.account.owner).then((isAdmin) => {
-      isUserAdmin = isAdmin;
+    isAdmin($auth.account.owner).then((admin) => {
+      isUserAdmin = admin;
       if (!isUserAdmin) {
         toastStore.add({
           title: "Access Denied",
@@ -121,53 +165,59 @@
       }
     });
   }
-
-  function addOutcome() {
-    outcomes = [...outcomes, ""];
-  }
-
-  function removeOutcome(index: number) {
-    if (outcomes.length > 2) {
-      outcomes = outcomes.filter((_, i) => i !== index);
-    }
-  }
-
+  
+  // Form navigation
   function nextStep() {
     if (validateCurrentStep()) {
-      currentStep = Math.min(currentStep + 1, totalSteps);
-      updateURL();
+      currentStep = Math.min(currentStep + 1, TOTAL_STEPS);
     }
   }
-
+  
   function prevStep() {
     currentStep = Math.max(currentStep - 1, 1);
-    updateURL();
   }
-
+  
+  // Outcome management
+  function addOutcome() {
+    formState.outcomes = [...formState.outcomes, ""];
+  }
+  
+  function removeOutcome(index: number) {
+    if (formState.outcomes.length > 2) {
+      formState.outcomes = formState.outcomes.filter((_, i) => i !== index);
+    }
+  }
+  
+  // Debounced validation
+  const debouncedValidate = debounce(() => {
+    validateCurrentStep();
+  }, DEBOUNCE_DELAY);
+  
+  // Validation
   function validateCurrentStep(): boolean {
     formErrors = {};
     
     if (currentStep === 1) {
-      if (!question.trim()) {
+      if (!formState.question.trim()) {
         formErrors.question = "Question is required";
       }
-      if (!rules.trim()) {
+      if (!formState.rules.trim()) {
         formErrors.rules = "Rules are required";
       }
     } else if (currentStep === 2) {
-      if (outcomes.some(outcome => !outcome.trim())) {
+      if (formState.outcomes.some(outcome => !outcome.trim())) {
         formErrors.outcomes = "All outcomes must be filled";
       }
     } else if (currentStep === 3) {
-      if (endTimeType === "Duration") {
-        if (!duration || duration < 1) {
+      if (formState.endTimeType === "Duration") {
+        if (!formState.duration || formState.duration < 1) {
           formErrors.duration = "Duration must be at least 1 hour";
         }
       } else {
-        if (!specificDate || !specificTime) {
+        if (!formState.specificDate || !formState.specificTime) {
           formErrors.specificDate = "Date and time are required";
         } else {
-          const selectedDateTime = new Date(`${specificDate}T${specificTime}`);
+          const selectedDateTime = new Date(`${formState.specificDate}T${formState.specificTime}`);
           if (selectedDateTime <= new Date()) {
             formErrors.specificDate = "End time must be in the future";
           }
@@ -178,65 +228,125 @@
     return Object.keys(formErrors).length === 0;
   }
 
-  function updateURL() {
-    if (!browser) return;
-    
-    const params = new URLSearchParams();
-    params.set('step', currentStep.toString());
-    
-    if (currentStep > 1) {
-      if (question) params.set('question', question);
-      if (category) params.set('category', category);
-      if (rules) params.set('rules', rules);
-    }
-    
-    if (currentStep > 2) {
-      if (outcomes.length > 0) params.set('outcomes', JSON.stringify(outcomes));
-    }
-    
-    if (currentStep > 3) {
-      if (resolutionMethod) params.set('resolutionMethod', resolutionMethod);
-      if (endTimeType) params.set('endTimeType', endTimeType);
-      if (duration) params.set('duration', duration.toString());
-      if (specificDate) params.set('specificDate', specificDate);
-      if (specificTime) params.set('specificTime', specificTime);
-    }
+  // Debounced image processing
+  const debouncedImageProcessing = debounce((file: File) => {
+    processImageFile(file);
+  }, DEBOUNCE_DELAY);
 
-    goto(`?${params.toString()}`, { replaceState: true });
+  async function processImageFile(file: File) {
+    imageError = null;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      imageError = 'Please upload an image file';
+      return;
+    }
+    
+    // Validate file size
+    if (file.size > MAX_IMAGE_SIZE) {
+      imageError = 'Image size should be less than 5MB';
+      return;
+    }
+    
+    formState.imageFile = file;
+    
+    // Validate dimensions using FileReader
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (!e.target || typeof e.target.result !== 'string') {
+          imageError = 'Failed to load image preview';
+          return;
+        }
+        
+        const img = document.createElement('img');
+        img.onload = () => {
+          if (img.width < MIN_IMAGE_DIMENSION || img.height < MIN_IMAGE_DIMENSION) {
+            imageError = `Image dimensions should be at least ${MIN_IMAGE_DIMENSION}x${MIN_IMAGE_DIMENSION} pixels`;
+          }
+        };
+        img.onerror = () => {
+          imageError = 'Failed to process image';
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Image preview error:", err);
+      imageError = err instanceof Error ? err.message : 'Failed to process image';
+    }
   }
 
-  async function handleSubmit() {
+  // Image handling
+  async function handleImageUpload(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+    
+    if (files && files.length > 0) {
+      const file = files[0];
+      debouncedImageProcessing(file);
+    }
+  }
+  
+  function resetImage() {
+    formState.imageFile = null;
+    formState.imageUrl = null;
+    imageError = null;
+    document.getElementById('image')?.setAttribute('value', '');
+  }
+
+  // Form submission with debouncing to prevent double-clicks
+  const debouncedSubmit = debounce(async () => {
     if (!validateCurrentStep()) return;
 
     loading = true;
     error = null;
 
     try {
-      // Prepare end time
-      let endTimeSpec;
-      if (endTimeType === "Duration") {
-        // Convert hours to seconds only
-        const durationInSeconds = duration * 60 * 60; // Convert hours to seconds
-        endTimeSpec = { Duration: BigInt(durationInSeconds) };
-      } else {
-        const endDate = new Date(`${specificDate}T${specificTime}`);
-        // Convert to seconds instead of nanoseconds
-        endTimeSpec = { SpecificDate: BigInt(Math.floor(endDate.getTime() / 1000)) };
+      // Upload image if provided
+      let uploadedImageUrl = null;
+      if (formState.imageFile) {
+        try {
+          uploadingImage = true;
+          uploadedImageUrl = await uploadFile(formState.imageFile);
+          
+          if (!uploadedImageUrl) {
+            toastStore.add({
+              title: "Warning",
+              message: "Image upload failed, creating market without image",
+              type: "warning"
+            });
+          }
+        } catch (err) {
+          console.error("Image upload error:", err);
+          toastStore.add({
+            title: "Image Upload Failed",
+            message: "Creating market without image: " + (err instanceof Error ? err.message : String(err)),
+            type: "warning"
+          });
+        } finally {
+          uploadingImage = false;
+        }
       }
+
+      // Prepare end time
+      const endTimeSpec = formState.endTimeType === "Duration"
+        ? { Duration: BigInt(formState.duration * 60 * 60) } // Convert hours to seconds
+        : { SpecificDate: BigInt(Math.floor(new Date(`${formState.specificDate}T${formState.specificTime}`).getTime() / 1000)) };
 
       // Prepare resolution method
       let resolutionMethodSpec;
-      switch (resolutionMethod) {
+      switch (formState.resolutionMethod) {
         case "Admin":
           resolutionMethodSpec = { Admin: null };
           break;
         case "Decentralized":
-          resolutionMethodSpec = { Decentralized: { quorum: 100n } }; // Default quorum
+          resolutionMethodSpec = { Decentralized: { quorum: 100n } };
           break;
         case "Oracle":
           resolutionMethodSpec = {
             Oracle: {
-              oracle_principals: [], // Would need to be configured
+              oracle_principals: [],
               required_confirmations: 1n
             }
           };
@@ -244,14 +354,14 @@
       }
 
       // Create market
-      console.log("Creating market... rules:", rules);
       const result = await createMarket({
-        question,
-        category: { [category]: null },
-        rules,
-        outcomes: outcomes.filter(o => o.trim()),
+        question: formState.question,
+        category: { [formState.category]: null },
+        rules: formState.rules,
+        outcomes: validOutcomes,
         resolutionMethod: resolutionMethodSpec,
-        endTimeSpec
+        endTimeSpec,
+        image_url: uploadedImageUrl
       });
 
       if ('Ok' in result) {
@@ -270,10 +380,11 @@
     } finally {
       loading = false;
     }
-  }
+  }, DEBOUNCE_DELAY);
 
-  // Add this to the script section
-  $: questionError = question.length > 200 ? "Question must be less than 200 characters" : "";
+  async function handleSubmit() {
+    debouncedSubmit();
+  }
 </script>
 
 <svelte:head>
@@ -306,10 +417,10 @@
             <!-- Active Connector Line -->
             <div 
               class="absolute top-[11px] left-3 h-0.5 bg-gradient-to-r from-kong-accent-blue to-kong-accent-green transition-all duration-300"
-              style="width: calc(({((currentStep - 1) / (totalSteps - 1)) * (100 - 1.5)}% - 6px))"
+              style="width: calc(({((currentStep - 1) / (TOTAL_STEPS - 1)) * (100 - 1.5)}% - 6px))"
             ></div>
             
-            {#each Array(totalSteps) as _, i}
+            {#each Array(TOTAL_STEPS) as _, i}
               <div class="flex flex-col items-center relative z-10">
                 <div 
                   class="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 {i + 1 <= currentStep ? 'bg-kong-accent-blue ring-4 ring-kong-accent-blue/20' : 'bg-kong-surface-dark border-2 border-kong-border'}"
@@ -326,7 +437,7 @@
           </div>
         </div>
 
-        {#if currentStep === 4}
+        {#if currentStep === TOTAL_STEPS}
         <div class="p-3 mx-0.5 rounded-lg border border-kong-accent-yellow/30 backdrop-blur-sm bg-kong-accent-yellow/20 text-kong-text-primary flex gap-4">
           <div class="flex items-center self-start mt-1">
             <div class="flex items-center justify-center gap-2 p-2 rounded-lg bg-kong-accent-yellow/10">
@@ -364,7 +475,7 @@
                   <input
                     type="text"
                     id="question"
-                    bind:value={question}
+                    bind:value={formState.question}
                     class="w-full p-4 bg-kong-bg-dark rounded-lg border {questionError ? 'border-kong-accent-red' : 'border-kong-border'} text-lg text-kong-text-primary placeholder:text-kong-text-secondary/50 focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                     placeholder="e.g., Will Bitcoin reach $100,000 by the end of 2024?"
                   />
@@ -373,6 +484,75 @@
                     <p class="text-sm text-kong-text-accent-red flex items-center gap-2 mt-2">
                       <AlertTriangle size={16} />
                       {formErrors.question}
+                    </p>
+                  {/if}
+                </div>
+
+                <!-- Image Upload -->
+                <div class="space-y-2">
+                  <label for="image" class="block text-xs uppercase font-medium text-kong-text-primary flex items-center gap-2">
+                    Market Image <span class="text-xs lowercase normal-case text-kong-text-secondary">(optional)</span>
+                    <div class="group relative">
+                      <HelpCircle size={16} class="text-kong-text-secondary cursor-help" />
+                      <div class="absolute left-1/2 -translate-x-1/2 mt-2 px-3 py-2 bg-kong-bg-dark border border-kong-border rounded-lg text-sm text-kong-text-primary w-56 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                        Add an image to make your market more engaging. Recommended size 800x400px, max 5MB.
+                        <div class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-kong-bg-dark border-t border-l border-kong-border transform rotate-45"></div>
+                      </div>
+                    </div>
+                  </label>
+                  
+                  <div class="relative rounded-lg overflow-hidden border border-dashed border-kong-border hover:border-kong-accent-blue transition-colors">
+                    <input 
+                      type="file"
+                      id="image"
+                      accept="image/*"
+                      class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      on:change={handleImageUpload}
+                      disabled={uploadingImage}
+                    />
+                    
+                    {#if formState.imageFile}
+                      <div class="relative group">
+                        <img 
+                          src={URL.createObjectURL(formState.imageFile)} 
+                          alt="Preview" 
+                          class="w-full h-48 object-cover" 
+                        />
+                        <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button 
+                            type="button" 
+                            class="p-2 bg-kong-bg-dark rounded-lg text-kong-text-primary hover:bg-kong-accent-red hover:text-white transition-colors"
+                            on:click|stopPropagation={resetImage}
+                            disabled={uploadingImage}
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
+                        
+                        {#if uploadingImage}
+                          <div class="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
+                            <div class="flex flex-col items-center">
+                              <div class="w-8 h-8 border-2 border-kong-accent-blue border-t-transparent rounded-full animate-spin"></div>
+                              <span class="text-white text-sm mt-2">Uploading...</span>
+                            </div>
+                          </div>
+                        {/if}
+                      </div>
+                    {:else}
+                      <div class="flex flex-col items-center justify-center p-6 min-h-[12rem] text-kong-text-secondary">
+                        <div class="w-12 h-12 mb-2 border-2 border-kong-text-secondary/30 rounded-full flex items-center justify-center">
+                          <Image size={24} class="text-kong-text-secondary/70" />
+                        </div>
+                        <p class="text-sm mb-1">Drag & drop an image or click to browse</p>
+                        <p class="text-xs text-kong-text-secondary/70">PNG, JPG, WEBP up to 5MB</p>
+                      </div>
+                    {/if}
+                  </div>
+                  
+                  {#if imageError}
+                    <p class="text-sm text-kong-text-accent-red flex items-center gap-2 mt-2">
+                      <AlertTriangle size={16} />
+                      {imageError}
                     </p>
                   {/if}
                 </div>
@@ -391,7 +571,7 @@
                     {:else}
                       <select
                         id="category"
-                        bind:value={category}
+                        bind:value={formState.category}
                         class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
                       >
                         {#each categories as cat}
@@ -419,7 +599,7 @@
                   <div class="relative">
                     <select
                       id="resolutionMethod"
-                      bind:value={resolutionMethod}
+                      bind:value={formState.resolutionMethod}
                       class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
                     >
                       <option value="Admin">Admin Resolution</option>
@@ -431,9 +611,9 @@
                     </div>
                   </div>
                   <p class="text-sm text-kong-text-secondary">
-                    {#if resolutionMethod === "Admin"}
+                    {#if formState.resolutionMethod === "Admin"}
                       Market will be resolved by platform administrators
-                    {:else if resolutionMethod === "Decentralized"}
+                    {:else if formState.resolutionMethod === "Decentralized"}
                       Market will be resolved through community consensus
                     {:else}
                       Market will be resolved through trusted oracle providers
@@ -448,7 +628,7 @@
                   </label>
                   <textarea
                     id="rules"
-                    bind:value={rules}
+                    bind:value={formState.rules}
                     rows="4"
                     class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary placeholder:text-kong-text-secondary/50 focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none resize-none transition-all duration-200"
                     placeholder="Specify clear rules for how this market will be resolved..."
@@ -468,11 +648,11 @@
                     What are the possible outcomes?
                   </label>
                   <div class="space-y-3">
-                    {#each outcomes as outcome, i}
+                    {#each formState.outcomes as outcome, i}
                       <div class="flex gap-3 items-center">
                         <input
                           type="text"
-                          bind:value={outcomes[i]}
+                          bind:value={formState.outcomes[i]}
                           placeholder={`Outcome ${i + 1}`}
                           class="flex-1 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary placeholder:text-kong-text-secondary/50 focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                         />
@@ -513,29 +693,29 @@
                   
                   <div class="space-y-4">
                     <div class="flex gap-4">
-                      <label class="flex-1 flex items-center gap-3 p-4 bg-kong-bg-dark rounded-lg border cursor-pointer transition-all duration-200 {endTimeType === 'Duration' ? 'border-kong-accent-blue bg-kong-accent-blue/5' : 'border-kong-border hover:border-kong-border-light'}">
+                      <label class="flex-1 flex items-center gap-3 p-4 bg-kong-bg-dark rounded-lg border cursor-pointer transition-all duration-200 {formState.endTimeType === 'Duration' ? 'border-kong-accent-blue bg-kong-accent-blue/5' : 'border-kong-border hover:border-kong-border-light'}">
                         <input
                           type="radio"
                           bind:group={endTimeType}
                           value="Duration"
                           class="hidden"
                         />
-                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors duration-200 {endTimeType === 'Duration' ? 'border-kong-accent-blue' : 'border-kong-text-secondary'}">
-                          {#if endTimeType === 'Duration'}
+                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors duration-200 {formState.endTimeType === 'Duration' ? 'border-kong-accent-blue' : 'border-kong-text-secondary'}">
+                          {#if formState.endTimeType === 'Duration'}
                             <div class="w-3 h-3 rounded-full bg-kong-accent-blue"></div>
                           {/if}
                         </div>
                         <span class="text-lg">Duration</span>
                       </label>
-                      <label class="flex-1 flex items-center gap-3 p-4 bg-kong-bg-dark rounded-lg border cursor-pointer transition-all duration-200 {endTimeType === 'SpecificDate' ? 'border-kong-accent-blue bg-kong-accent-blue/5' : 'border-kong-border hover:border-kong-border-light'}">
+                      <label class="flex-1 flex items-center gap-3 p-4 bg-kong-bg-dark rounded-lg border cursor-pointer transition-all duration-200 {formState.endTimeType === 'SpecificDate' ? 'border-kong-accent-blue bg-kong-accent-blue/5' : 'border-kong-border hover:border-kong-border-light'}">
                         <input
                           type="radio"
                           bind:group={endTimeType}
                           value="SpecificDate"
                           class="hidden"
                         />
-                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors duration-200 {endTimeType === 'SpecificDate' ? 'border-kong-accent-blue' : 'border-kong-text-secondary'}">
-                          {#if endTimeType === 'SpecificDate'}
+                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors duration-200 {formState.endTimeType === 'SpecificDate' ? 'border-kong-accent-blue' : 'border-kong-text-secondary'}">
+                          {#if formState.endTimeType === 'SpecificDate'}
                             <div class="w-3 h-3 rounded-full bg-kong-accent-blue"></div>
                           {/if}
                         </div>
@@ -543,11 +723,11 @@
                       </label>
                     </div>
 
-                    {#if endTimeType === "Duration"}
+                    {#if formState.endTimeType === "Duration"}
                       <div class="flex items-center gap-3">
                         <input
                           type="number"
-                          bind:value={duration}
+                          bind:value={formState.duration}
                           min="1"
                           class="w-32 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                         />
@@ -557,12 +737,12 @@
                       <div class="flex gap-3">
                         <input
                           type="date"
-                          bind:value={specificDate}
+                          bind:value={formState.specificDate}
                           class="flex-1 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                         />
                         <input
                           type="time"
-                          bind:value={specificTime}
+                          bind:value={formState.specificTime}
                           class="flex-1 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                         />
                       </div>
@@ -578,7 +758,7 @@
               </div>
             {:else if currentStep === 4}
               <div class="space-y-6">
-                <div class="">
+                <div>
                   <h3 class="text-xl font-bold mb-4">Market Preview</h3>
                   <div class="space-y-4">
                     <Panel
@@ -590,29 +770,39 @@
                         <div class="flex justify-between items-start mb-2 sm:mb-3">
                           <div class="flex-1">
                             <div class="text-sm sm:text-base line-clamp-2 font-medium mb-1 sm:mb-1.5 text-kong-text-primary text-left relative min-h-[2.5rem] sm:min-h-[3rem] w-full">
-                              <span class="block pr-3">{question}</span>
+                              <span class="block pr-3">{formState.question}</span>
                             </div>
                             <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-sm">
                               <span class="px-1.5 py-0.5 bg-kong-pm-accent/10 text-kong-pm-accent rounded text-xs font-medium">
-                                {formatCategory(category)}
+                                {formatCategory(formState.category)}
                               </span>
                               <span class="flex items-center gap-1 text-kong-pm-text-secondary text-xs whitespace-nowrap">
                                 <Calendar class="w-3 h-3" />
-                                {#if endTimeType === "Duration"}
-                                  {duration} hours from now
+                                {#if formState.endTimeType === "Duration"}
+                                  {formState.duration} hours from now
                                 {:else}
-                                  {new Date(`${specificDate}T${specificTime}`).toLocaleString()}
+                                  {new Date(`${formState.specificDate}T${formState.specificTime}`).toLocaleString()}
                                 {/if}
                               </span>
                             </div>
                           </div>
+                          
+                          {#if formState.imageFile}
+                            <div class="w-20 h-20 rounded overflow-hidden flex-shrink-0 ml-2">
+                              <img 
+                                src={URL.createObjectURL(formState.imageFile)} 
+                                alt="Market image" 
+                                class="w-full h-full object-cover" 
+                              />
+                            </div>
+                          {/if}
                         </div>
                       </div>
 
                       <!-- Outcomes section -->
                       <div class="flex-1 flex flex-col">
                         <div class="space-y-1.5 sm:space-y-2 mb-2 sm:mb-3">
-                          {#each outcomes.filter(o => o.trim()) as outcome, i}
+                          {#each validOutcomes as outcome, i}
                             <div class="relative group/outcome rounded">
                               <div class="h-8 sm:h-10 bg-kong-bg-dark/10 rounded p-1.5 transition-colors relative w-full">
                                 <div class="relative flex justify-between items-center h-full gap-2">
@@ -682,7 +872,7 @@
                 {/if}
               </div>
               <div>
-                {#if currentStep < totalSteps}
+                {#if currentStep < TOTAL_STEPS}
                   <button
                     type="button"
                     on:click={nextStep}

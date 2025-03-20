@@ -32,7 +32,6 @@
 
 <div class="p-4">
   <div class="fees-container">
-
     <div class="settings-group">
       <div class="setting-row">
         <div class="flex items-center gap-2">
@@ -49,7 +48,6 @@
         <span class="label">Max Slippage</span>
         <span class="value highlight">{userMaxSlippage}%</span>
       </div>
-
     </div>
   </div>
 </div>

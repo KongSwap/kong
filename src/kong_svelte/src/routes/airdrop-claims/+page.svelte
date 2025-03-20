@@ -60,7 +60,7 @@
   }
 
   onMount(() => {
-    goto('/swap')
+    goto("/swap");
     fetchClaims();
   });
   

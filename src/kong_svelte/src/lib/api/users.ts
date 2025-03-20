@@ -187,11 +187,42 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
           // Safely process each transaction's timestamp
           if (item?.transaction?.ts) {
             try {
-              // Validate timestamp - replace invalid dates with current time
-              const timestamp = Number(item.transaction.ts);
-              new Date(timestamp).toISOString(); // Will throw error if invalid
+              let timestamp;
+              
+              // Handle different timestamp formats
+              if (typeof item.transaction.ts === 'string') {
+                // Check if it's an ISO date string
+                if (item.transaction.ts.includes('T')) {
+                  // For ISO strings, keep the original string format
+                  // We'll convert it at display time in the UI
+                  timestamp = item.transaction.ts;
+                  // Still verify it parses to a valid date
+                  new Date(timestamp).toISOString();
+                  return item;
+                } else {
+                  // Try numeric conversion
+                  timestamp = Number(item.transaction.ts);
+                  
+                  // Handle nanosecond timestamps
+                  if (timestamp > 1e15) {
+                    timestamp = Math.floor(timestamp / 1_000_000);
+                    item.transaction.ts = timestamp.toString();
+                  }
+                }
+              } else {
+                timestamp = Number(item.transaction.ts);
+              }
+              
+              // Only replace if completely invalid (can't be parsed)
+              if (isNaN(timestamp)) {
+                console.warn('Invalid timestamp format, replacing with current time:', item.transaction.ts);
+                item.transaction.ts = Date.now().toString();
+              } else {
+                // Keep the valid timestamp (even if it appears to be in the future)
+                new Date(timestamp).toISOString(); // Just verify it works
+              }
             } catch (e) {
-              // If date is invalid, replace with current timestamp
+              // If date is completely invalid, replace with current timestamp
               console.warn('Invalid timestamp detected, replacing with current time:', item.transaction.ts);
               item.transaction.ts = Date.now().toString();
             }
@@ -203,11 +234,41 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
               const rawJson = item.transaction.raw_json[key];
               if (rawJson && rawJson.ts) {
                 try {
-                  // Validate timestamp
-                  const timestamp = Number(rawJson.ts);
-                  new Date(timestamp).toISOString(); // Will throw error if invalid
+                  let timestamp;
+                  
+                  // Handle different timestamp formats
+                  if (typeof rawJson.ts === 'string') {
+                    // Check if it's an ISO date string
+                    if (rawJson.ts.includes('T')) {
+                      // For ISO strings, keep the original string format
+                      timestamp = rawJson.ts;
+                      // Still verify it parses to a valid date
+                      new Date(timestamp).toISOString();
+                      return;
+                    } else {
+                      // Try numeric conversion
+                      timestamp = Number(rawJson.ts);
+                      
+                      // Handle nanosecond timestamps
+                      if (timestamp > 1e15) {
+                        timestamp = Math.floor(timestamp / 1_000_000);
+                        rawJson.ts = timestamp.toString();
+                      }
+                    }
+                  } else {
+                    timestamp = Number(rawJson.ts);
+                  }
+                  
+                  // Only replace if completely invalid (can't be parsed)
+                  if (isNaN(timestamp)) {
+                    console.warn('Invalid raw_json timestamp format, replacing with current time:', rawJson.ts);
+                    rawJson.ts = Date.now().toString();
+                  } else {
+                    // Keep the valid timestamp (even if it appears to be in the future)
+                    new Date(timestamp).toISOString(); // Just verify it works
+                  }
                 } catch (e) {
-                  // If date is invalid, replace with current timestamp
+                  // If date is completely invalid, replace with current timestamp
                   console.warn('Invalid raw_json timestamp detected, replacing with current time:', rawJson.ts);
                   rawJson.ts = Date.now().toString();
                 }

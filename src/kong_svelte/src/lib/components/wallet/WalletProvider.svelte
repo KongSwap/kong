@@ -4,6 +4,11 @@
   import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
   import { browser } from "$app/environment";
+  import { createNamespacedStore } from "$lib/config/localForage.config";
+
+  const AUTH_NAMESPACE = 'auth';
+  const authStorage = createNamespacedStore(AUTH_NAMESPACE);
+  const SELECTED_WALLET_KEY = 'selectedWallet';
 
   interface WalletInfo {
     id: string;
@@ -109,7 +114,13 @@
     try {
       connecting = true;
       selectedWalletId.set(walletId);
-      localStorage.setItem("kongSelectedWallet", walletId);
+      
+      // Save wallet ID to storage
+      try {
+        await authStorage.setItem(SELECTED_WALLET_KEY, walletId);
+      } catch (error) {
+        console.warn("Could not save selected wallet to storage:", error);
+      }
       
       // Add timeout to prevent hanging connections
       const timeoutId = setTimeout(() => abortController.abort(), 30000);
@@ -126,7 +137,13 @@
         console.error("Failed to connect wallet:", error);
         errorMessage = error instanceof Error ? error.message : "Failed to connect wallet";
         selectedWalletId.set("");
-        localStorage.removeItem("kongSelectedWallet");
+        
+        // Remove from storage
+        try {
+          await authStorage.removeItem(SELECTED_WALLET_KEY);
+        } catch (storageError) {
+          console.warn("Could not remove wallet from storage:", storageError);
+        }
       }
     } finally {
       connecting = false;
@@ -256,6 +273,7 @@
   }
 
   .wallet-option:active:not(:disabled) {
+    @apply text-kong-bg-light;
     transform: translateY(0);
     transition: transform 0.1s ease;
   }
@@ -265,7 +283,7 @@
   }
 
   .wallet-option.connecting {
-    @apply border-kong-primary bg-kong-primary/15;
+    @apply border-kong-primary bg-kong-primary/15 text-kong-bg-light;
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
@@ -297,21 +315,18 @@
     @apply dark:brightness-100 brightness-90;
   }
 
-  .wallet-option.connecting .wallet-icon {
-    @apply opacity-70;
-  }
 
   .loading-spinner {
+    @apply rounded-full;
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    border-radius: 12px;
     border: 2px solid transparent;
-    border-top-color: rgb(var(--primary) / 1);
-    border-right-color: rgb(var(--primary) / 0.3);
-    border-bottom-color: rgb(var(--primary) / 0.1);
+    border-top-color: rgb(var(--accent-green));
+    border-right-color: rgb(var(--accent-green) / 0.3);
+    border-bottom-color: rgb(var(--accent-green) / 0.1);
     animation: spin 1s linear infinite;
   }
 
@@ -337,7 +352,7 @@
   }
 
   .wallet-name {
-    @apply text-kong-text-primary font-medium text-lg;
+    @apply font-medium text-lg;
     @apply text-left;
   }
 

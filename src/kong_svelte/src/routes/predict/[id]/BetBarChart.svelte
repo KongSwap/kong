@@ -13,7 +13,6 @@
     TimeSeriesScale
   } from 'chart.js';
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
   import 'chartjs-adapter-date-fns';
 
   // Create event dispatcher for error events

@@ -5,7 +5,6 @@
   import TokenDropdown from "./TokenDropdown.svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import { currentUserBalancesStore, loadBalances } from "$lib/stores/balancesStore";
-  import { syncTokens, applyTokenChanges } from "$lib/utils/tokenSyncUtils";
   import { fade } from "svelte/transition";
   import Modal from "$lib/components/common/Modal.svelte";
   import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
@@ -129,21 +128,16 @@
     showSyncStatus = false;
     
     try {
-      // Get token candidates instead of automatically applying changes
-      const syncResults = await syncTokens(walletId);
-      
-      // Find the full token objects for tokens to remove
-      const tokensToRemoveObjects = syncResults.tokensToRemove
-        .map(canisterId => $userTokens.tokens.find(token => token.canister_id === canisterId))
-        .filter(token => token !== undefined) as FE.Token[];
+      // Use the userTokens store to analyze tokens
+      const result = await userTokens.analyzeUserTokens(walletId);
       
       tokenSyncCandidates = {
-        tokensToAdd: syncResults.tokensToAdd,
-        tokensToRemove: tokensToRemoveObjects
+        tokensToAdd: result.tokensToAdd,
+        tokensToRemove: result.tokensToRemove
       };
       
       // Only show confirmation if there are changes to make
-      if (syncResults.stats.added > 0 || syncResults.stats.removed > 0) {
+      if (result.syncStatus && (result.syncStatus.added > 0 || result.syncStatus.removed > 0)) {
         showSyncConfirmModal = true;
       } else {
         // No changes needed, just show a status notification
@@ -165,12 +159,10 @@
   // Apply token changes after user confirmation
   async function confirmAndApplyTokenChanges() {
     try {
-      // Extract canister IDs from tokensToRemove for the API call
-      const tokensToRemoveIds = tokenSyncCandidates.tokensToRemove.map(token => token.canister_id);
-      
-      syncStatus = await applyTokenChanges(
+      // Use the userTokens store to apply the changes
+      syncStatus = await userTokens.applyTokenSync(
         tokenSyncCandidates.tokensToAdd,
-        tokensToRemoveIds
+        tokenSyncCandidates.tokensToRemove
       );
       
       // Show small inline indicator for immediate feedback

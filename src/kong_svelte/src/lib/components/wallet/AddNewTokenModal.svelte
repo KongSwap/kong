@@ -170,11 +170,6 @@
     customTokenError = "";
     
     try {
-      // Extract the actual canister ID without the IC. prefix
-      const canisterId = formattedCanisterId.startsWith("IC.") 
-        ? formattedCanisterId.substring(3) 
-        : formattedCanisterId;
-            
       try {
         // Call the add_token canister function directly
         const kongBackendActor = auth.getActor(
@@ -182,7 +177,7 @@
           canisterIDLs.kong_backend
         );
         
-        const addTokenResult = await kongBackendActor.add_token({ token: canisterId });
+        const addTokenResult = await kongBackendActor.add_token({ token: formattedCanisterId });
         
         if ('Err' in addTokenResult) {
           throw new Error(`Failed to add token: ${addTokenResult.Err}`);

@@ -124,8 +124,8 @@
           isComplete = true;
           toastStore.success("Successfully removed liquidity from the pool");
           await Promise.all([
-            loadBalance(token0.canister_id, auth, true),
-            loadBalance(token1.canister_id, auth, true),
+            loadBalance(token0.canister_id, true),
+            loadBalance(token1.canister_id, true),
             currentUserPoolsStore.initialize(),
           ]);
         } else if (requestStatus.reply?.Failed) {
@@ -151,8 +151,8 @@
       // Ensure we still refresh balances even on error
       await Promise.all([
         currentUserPoolsStore.initialize(),
-        loadBalance(token0.canister_id, auth, true),
-        loadBalance(token1.canister_id, auth, true),
+        loadBalance(token0.canister_id, true),
+        loadBalance(token1.canister_id, true),
       ]);
       console.error("Error removing liquidity:", err);
       error = err.message;

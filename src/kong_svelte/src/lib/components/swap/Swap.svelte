@@ -35,6 +35,7 @@
   import { getThemeById } from "$lib/themes/themeRegistry";
   import SwapButton from "./swap_ui/SwapButton.svelte";
   import SwitchTokensButton from "./swap_ui/SwitchTokensButton.svelte";
+  import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
 
   // Theme-specific styling data
   let theme = $derived(getThemeById($themeStore));
@@ -77,6 +78,7 @@
   let hasValidPool = false;
   let skipNextUrlInitialization = false;
   let currentBalance: string | null = null;
+  let showWalletProvider = false;
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -304,7 +306,8 @@
 
   async function handleButtonAction(): Promise<void> {
     if (!$auth.isConnected) {
-      sidebarStore.open();
+      console.log('User not connected, opening wallet provider');
+      showWalletProvider = true;
       return;
     }
 
@@ -750,6 +753,18 @@
       resetSwapState();
     }}
   />
+{/if}
+
+{#if showWalletProvider && browser}
+  <Portal target="body">
+    <WalletProvider 
+      isOpen={showWalletProvider}
+      onClose={() => showWalletProvider = false}
+      onLogin={() => {
+        showWalletProvider = false;
+      }}
+    />
+  </Portal>
 {/if}
 
 <style scoped lang="postcss">

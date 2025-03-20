@@ -7,15 +7,20 @@ import {
   CKUSDT_CANISTER_ID, 
   ICP_CANISTER_ID,
   CKBTC_CANISTER_ID,
-  CKETH_CANISTER_ID
+  CKETH_CANISTER_ID,
+  KONG_LEDGER_CANISTER_ID,
+  EXE_CANISTER_ID
 } from "$lib/constants/canisterConstants";
+import { loadBalances } from "$lib/stores/balancesStore";
 
 // List of essential tokens that should never be removed
 const ESSENTIAL_TOKEN_IDS = [
   CKUSDT_CANISTER_ID,
   ICP_CANISTER_ID,
   CKBTC_CANISTER_ID,
-  CKETH_CANISTER_ID
+  CKETH_CANISTER_ID,
+  KONG_LEDGER_CANISTER_ID,
+  EXE_CANISTER_ID,
 ].filter(Boolean); // Filter out any undefined values
 
 /**
@@ -81,8 +86,8 @@ export async function syncTokens(
       
       try {
         // Get balances for this batch
-        const batchBalances = await IcrcService.batchGetBalances(tokenBatch, principal);
-        
+        const batchBalances = await loadBalances(tokenBatch, principal.toText(), true);
+        console.log("batchBalances", batchBalances);
         // Process each token in the batch
         for (const token of tokenBatch) {
           if (!token.canister_id) continue;
@@ -139,6 +144,7 @@ export async function syncTokens(
         tokensToAdd.push(token);
       }
     }
+
     
     return { 
       tokensToAdd, 
