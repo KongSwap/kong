@@ -11,7 +11,7 @@ export class SwapLogicService {
   static async handleSwapSuccess(event: CustomEvent) {
     const tokens = get(userTokens).tokens;
     if (!tokens?.length) {
-      console.error('TokenStore not initialized or empty');
+      console.warn('TokenStore not initialized or empty');
       return;
     }
 

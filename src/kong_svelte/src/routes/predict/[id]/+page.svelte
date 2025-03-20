@@ -19,6 +19,8 @@
   import { slide, fade, crossfade } from "svelte/transition";
   import BetModal from "../BetModal.svelte";
   import { toastStore } from "$lib/stores/toastStore";
+  import { auth } from "$lib/services/auth";
+  import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
   
   // Import our new components
   import MarketHeader from "./MarketHeader.svelte";
@@ -45,13 +47,17 @@
 
   // Betting state
   let showBetModal = false;
+  let walletProviderOpen = false;
   let betAmount = 0;
   let selectedOutcome: number | null = null;
   let selectedChartTab: string = "percentageChance";
+  
+  // Store pending outcome for after authentication
+  let pendingOutcome: number | null = null;
 
   // Handle chart tab changes
-  function handleChartTabChange(event: CustomEvent<string>) {
-    selectedChartTab = event.detail;
+  function handleChartTabChange(tab: string) {
+    selectedChartTab = tab;
   }
 
   const [send, receive] = crossfade({
@@ -154,35 +160,6 @@
     }
   });
 
-  function calculatePotentialWin(
-    outcomeIndex: number,
-    betAmount: number,
-  ): number {
-    if (!market || betAmount <= 0) return 0;
-
-    // Convert bet amount to token units (multiply by 10^8)
-    const betAmountScaled = toScaledAmount(betAmount, 8);
-    const currentTotalPool = Number(market.total_pool);
-    const outcomePool = Number(market.outcome_pools[outcomeIndex] || 0);
-
-    if (outcomePool === 0) return betAmount * 2; // If no bets yet, assume 2x return
-
-    // Calculate new total pool after bet
-    const newTotalPool = currentTotalPool + Number(betAmountScaled);
-
-    // Calculate your share of the outcome pool after your bet
-    const yourShareOfOutcome =
-      Number(betAmountScaled) / (outcomePool + Number(betAmountScaled));
-
-    // Your potential win is your share * total pool
-    const potentialWinScaled = Math.floor(
-      yourShareOfOutcome * Number(newTotalPool),
-    );
-
-    // Convert back from token units to display units
-    return Number(formatBalance(potentialWinScaled, 8));
-  }
-
   async function handleBet(outcomeIndex: number, amount: number) {
     if (!market) return;
 
@@ -229,21 +206,28 @@
     }
   }
 
-  function calculateOdds(percentage: number): string {
-    if (percentage <= 0) return "0x";
-    if (percentage >= 100) return "1x";
-
-    // Convert percentage to decimal odds
-    // Decimal odds = 100/percentage
-    const decimalOdds = 100 / percentage;
-
-    // Round to 2 decimal places
-    return `${decimalOdds.toFixed(2)}x`;
-  }
-
   function handleOutcomeSelect(outcomeIndex: number) {
+    // Check if user is authenticated
+    if (!$auth.isConnected) {
+      // Store the outcome to open after authentication
+      pendingOutcome = outcomeIndex;
+      walletProviderOpen = true;
+      return;
+    }
+    
+    // User is authenticated, proceed with opening bet modal
     selectedOutcome = outcomeIndex;
     showBetModal = true;
+  }
+  
+  function handleWalletLogin() {
+    walletProviderOpen = false;
+    // If we have a pending outcome, open the bet modal after authentication
+    if (pendingOutcome !== null) {
+      selectedOutcome = pendingOutcome;
+      showBetModal = true;
+      pendingOutcome = null;
+    }
   }
 
   $: totalPool = Number(market?.total_pool || 0);
@@ -324,7 +308,7 @@
               market={market}
               marketBets={marketBets}
               selectedChartTab={selectedChartTab}
-              on:tabChange={handleChartTabChange}
+              onTabChange={handleChartTabChange}
             />
           </Panel>
 
@@ -385,7 +369,13 @@
     betError = null;
   }}
   onBet={(amount) => handleBet(selectedOutcome!, amount)}
-  onOutcomeSelect={(index) => (selectedOutcome = index)}
+/>
+
+<!-- Wallet Provider Modal -->
+<WalletProvider
+  isOpen={walletProviderOpen}
+  onClose={() => (walletProviderOpen = false)}
+  onLogin={handleWalletLogin}
 />
 
 <style lang="postcss" scoped>

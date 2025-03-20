@@ -17,7 +17,7 @@
       if ($auth.isConnected) {
         console.log("User is connected", $auth);
         history = await getUserHistory($auth.account.owner.toString());
-        console.log("History", history);
+        console.log("Histosry", history);
       }
     } catch (e) {
       console.error("Failed to load history:", e);

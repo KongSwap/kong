@@ -75,7 +75,6 @@
     }
   }
 
-  let showSettings = false;
   let isMobile = false;
   let activeTab: "swap" | "predict" | "earn" | "stats" = "swap";
   let navOpen = false;
@@ -105,7 +104,7 @@
   $: tabs =
     process.env.DFX_NETWORK !== "ic"
       ? allTabs
-      : allTabs.filter(t => t !== "predict")
+      : allTabs.filter(tab => tab !== "predict");
 
   const dataOptions = [
     {
@@ -130,10 +129,6 @@
       comingSoon: false,
     },
   ];
-
-  function handleOpenSettings() {
-    showSettings = true;
-  }
 
   function handleConnect() {
     // If user is not authenticated, show the wallet provider

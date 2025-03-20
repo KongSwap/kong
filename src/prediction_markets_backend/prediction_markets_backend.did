@@ -89,6 +89,7 @@ type Market = record {
   creator : principal;
   outcome_percentages : vec float64;
   question : text;
+  image_url : opt text;
   resolution_data : opt text;
   created_at : nat;
   end_time : nat;
@@ -181,6 +182,7 @@ service : () -> {
       vec text,
       ResolutionMethod,
       MarketEndTime,
+      opt text,
     ) -> (Result);
   get_all_categories : () -> (vec text) query;
   get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;

@@ -48,9 +48,6 @@ export class TokenService {
         existingTokens
       );
 
-      // Update the token store
-      tokenStore.set(processedTokens);
-      
       return processedTokens;
     } catch (error) {
       console.error("[TokenService] Error fetching tokens:", error);

@@ -43,6 +43,7 @@
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
   const DEFAULT_TOKEN = "ICP";
   const SECONDARY_TOKEN_IDS = [ICP_CANISTER_ID, CKUSDT_CANISTER_ID];
+  const DEBOUNCE_DELAY = 300; // 300ms debounce delay
 
   // State variables
   let token0: FE.Token = null;
@@ -55,6 +56,17 @@
   let authInitialized = false;
   let showConfirmModal = false;
   let isLoading = true; // Add loading state to prevent rendering before data is ready
+  let isLoadingBalances = false; // Track balance loading state
+  let lastBalanceLoadTime = 0; // Track when balances were last loaded
+  let balanceLoadAttempts = 0; // Track number of balance load attempts
+  let lastLoadedTokenPair = ""; // Track the last token pair that was loaded
+  const MAX_BALANCE_LOAD_ATTEMPTS = 3; // Maximum number of times to try loading balances
+  const MIN_BALANCE_LOAD_INTERVAL = 2000; // Minimum time (ms) between balance loads
+  
+  // Debounce timers
+  let amountDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let priceDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let balanceLoadingTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Helper to safely convert value to BigNumber
   const toBigNumber = (value: any): BigNumber => {
@@ -66,6 +78,23 @@
       return new BigNumber(0);
     }
   };
+
+  // Debounce function to limit function calls
+  function debounce<T extends (...args: any[]) => any>(
+    fn: T,
+    delay: number,
+    timerRef: { current: ReturnType<typeof setTimeout> | null }
+  ): (...args: Parameters<T>) => void {
+    return (...args: Parameters<T>) => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      timerRef.current = setTimeout(() => {
+        fn(...args);
+        timerRef.current = null;
+      }, delay);
+    };
+  }
 
   const safeExec = async (fn: () => Promise<any>, errorMsg: string) => {
     try {
@@ -79,47 +108,102 @@
 
   // Improved function to handle loading balances and updating the store
   async function loadBalancesAndUpdateStore(tokens, owner, forceRefresh = true) {
+    const currentTime = Date.now();
+    const tokenPairKey = tokens.map(t => t.canister_id).sort().join('-');
+    
+    // Prevent loading the same token pair repeatedly in a short time window
+    if (tokenPairKey === lastLoadedTokenPair && 
+        currentTime - lastBalanceLoadTime < MIN_BALANCE_LOAD_INTERVAL) {
+      console.log("Throttling balance load - too frequent for the same tokens");
+      return null;
+    }
+    
+    // Return early if already loading to prevent race conditions
+    if (isLoadingBalances) {
+      console.log("Skipping balance load - already in progress");
+      return null;
+    }
+    
+    // Limit maximum attempts to prevent infinite loops
+    if (tokenPairKey === lastLoadedTokenPair && balanceLoadAttempts >= MAX_BALANCE_LOAD_ATTEMPTS) {
+      console.log(`Max balance load attempts (${MAX_BALANCE_LOAD_ATTEMPTS}) reached for these tokens, stopping`);
+      return null;
+    }
+    
     try {
+      isLoadingBalances = true;
+      lastLoadedTokenPair = tokenPairKey;
+      lastBalanceLoadTime = currentTime;
+      balanceLoadAttempts++;
+      
+      console.log(`Loading balances attempt ${balanceLoadAttempts}/${MAX_BALANCE_LOAD_ATTEMPTS} for`, tokens.map(t => t.symbol).join(", "));
+      
       const balances = await safeExec(
         () => loadBalances(tokens, owner, forceRefresh),
         "Error loading balances"
       ) || {};
       
-      const currentBalances = { ...$currentUserBalancesStore, ...balances };
-      currentUserBalancesStore.set(currentBalances);
-      
-      // Update local token balance variables safely
-      if (token0?.canister_id) {
-        token0Balance = currentBalances[token0.canister_id]?.in_tokens?.toString() || "0";
-      }
-      
-      if (token1?.canister_id) {
-        token1Balance = currentBalances[token1.canister_id]?.in_tokens?.toString() || "0";
+      // Only update if the component is still mounted and tokens haven't changed
+      if (token0?.canister_id && token1?.canister_id) {
+        const tokensMatch = tokens.some(t => t.canister_id === token0?.canister_id) && 
+                           tokens.some(t => t.canister_id === token1?.canister_id);
+        
+        if (tokensMatch) {
+          console.log("Updating balances store with new values");
+          const currentBalances = { ...$currentUserBalancesStore, ...balances };
+          currentUserBalancesStore.set(currentBalances);
+          
+          // Update local token balance variables safely
+          const newToken0Balance = currentBalances[token0.canister_id]?.in_tokens?.toString() || "0";
+          const newToken1Balance = currentBalances[token1.canister_id]?.in_tokens?.toString() || "0";
+          
+          // Only update if balances have changed
+          if (token0Balance !== newToken0Balance || token1Balance !== newToken1Balance) {
+            token0Balance = newToken0Balance;
+            token1Balance = newToken1Balance;
+            console.log("Updated balances:", token0.symbol, token0Balance, token1.symbol, token1Balance);
+          } else {
+            console.log("Balances unchanged, skipping further loads");
+            // Reset attempts since balances are now stable
+            balanceLoadAttempts = MAX_BALANCE_LOAD_ATTEMPTS;
+          }
+        } else {
+          console.log("Tokens changed during balance loading, skipping update");
+        }
       }
       
       return balances;
     } catch (error) {
       console.error("Error loading balances:", error);
       return {};
+    } finally {
+      isLoadingBalances = false;
     }
   }
 
   // Improved function to load initial tokens from URL or defaults
   async function loadInitialTokens() {
+    console.log("loadInitialTokens called");
     try {
       isLoading = true;
       const urlToken0 = $page.url.searchParams.get("token0");
       const urlToken1 = $page.url.searchParams.get("token1");
-      
+            
       // Only fetch tokens if we have valid IDs
       const tokensToFetch = [];
       if (urlToken0) tokensToFetch.push(urlToken0);
       if (urlToken1) tokensToFetch.push(urlToken1);
       
       // Only make the API call if we have tokens to fetch
-      const tokensFromUrl = tokensToFetch.length > 0 
-        ? await fetchTokensByCanisterId(tokensToFetch)
-        : [];
+      let tokensFromUrl = [];
+      if (tokensToFetch.length > 0) {
+        try {
+          tokensFromUrl = await fetchTokensByCanisterId(tokensToFetch);
+        } catch (fetchError) {
+          console.error("Error fetching tokens:", fetchError);
+          tokensFromUrl = [];
+        }
+      }
       
       // Get default tokens as fallbacks
       const defaultToken0 = $userTokens.tokens.find(token => token.canister_id === ICP_CANISTER_ID) || null;
@@ -140,40 +224,58 @@
     } catch (error) {
       console.error("Error loading initial tokens:", error);
       // Set default tokens if error occurs
-      const defaultToken0 = $userTokens.tokens.find(token => token.canister_id === ICP_CANISTER_ID) || null;
-      const defaultToken1 = $userTokens.tokens.find(token => token.canister_id === CKUSDT_CANISTER_ID) || null;
-      
-      liquidityStore.setToken(0, defaultToken0);
-      liquidityStore.setToken(1, defaultToken1);
+      try {
+        const defaultToken0 = $userTokens.tokens.find(token => token.canister_id === ICP_CANISTER_ID) || null;
+        const defaultToken1 = $userTokens.tokens.find(token => token.canister_id === CKUSDT_CANISTER_ID) || null;
+        
+        liquidityStore.setToken(0, defaultToken0);
+        liquidityStore.setToken(1, defaultToken1);
+      } catch (fallbackError) {
+        console.error("Error setting fallback tokens:", fallbackError);
+      }
     } finally {
+      console.log("Finished loadInitialTokens, setting isLoading to false");
       isLoading = false;
     }
   }
 
   // Improved component lifecycle management
-  onMount(() => {
-    isLoading = true;
-    
+  onMount(() => {    
     const unsubscribe = auth.subscribe(async authState => {
+      console.log("Auth state changed:", authState.isInitialized, authInitialized);
       if (authState.isInitialized && !authInitialized) {
         authInitialized = true;
         
-        // Wait for user tokens to be available
-        if ($userTokens.tokens.length > 0) {
-          await loadInitialTokens();
-          
-          if (authState.account?.owner) {
-            await loadBalancesAndUpdateStore(
-              $userTokens.tokens, 
-              authState.account.owner.toString(), 
-              true
-            );
+        try {
+          // Wait for user tokens to be available
+          if ($userTokens.tokens.length > 0) {
+            await loadInitialTokens();
+            
+            if (authState.account?.owner) {
+              await loadBalancesAndUpdateStore(
+                $userTokens.tokens, 
+                authState.account.owner.toString(), 
+                true
+              );
+            }
           }
+        } catch (error) {
+          console.error("Error during initialization:", error);
+        } finally {
+          // Always set isLoading to false when done, regardless of success/failure
+          console.log("Setting isLoading to false");
+          isLoading = false;
         }
-        
-        isLoading = false;
       }
     });
+    
+    // Safety timeout to prevent infinite loading
+    setTimeout(() => {
+      if (isLoading) {
+        console.log("Safety timeout triggered, forcing isLoading to false");
+        isLoading = false;
+      }
+    }, 5000);
     
     return unsubscribe;
   });
@@ -188,34 +290,116 @@
   }
   
   // Use effect instead of reactive blocks for complex logic
+  let lastReactiveState = {
+    isLoading: null,
+    token0Id: null,
+    token1Id: null,
+    livePools: null,
+    currentUserBalancesTimestamp: 0,
+    authOwner: null
+  };
+  
   $: {
-    if (!isLoading) {
-      // Update tokens safely
-      token0 = $liquidityStore.token0;
-      token1 = $liquidityStore.token1;
+    const token0Id = $liquidityStore.token0?.canister_id;
+    const token1Id = $liquidityStore.token1?.canister_id;
+    const livePoolsLength = $livePools.length;
+    
+    // Safely get a timestamp, falling back to the current time
+    const balancesTimestamp = typeof $currentUserBalancesStore.lastUpdated === 'number' 
+      ? $currentUserBalancesStore.lastUpdated 
+      : Date.now();
       
-      // Only check poolExists if both tokens are available
-      if (token0 && token1) {
-        poolExists = doesPoolExist(token0, token1, $livePools);
+    const authOwner = $auth?.account?.owner?.toString();
+    
+    // Check if anything meaningful has changed to avoid unnecessary executions
+    const hasChanged = 
+      isLoading !== lastReactiveState.isLoading ||
+      token0Id !== lastReactiveState.token0Id ||
+      token1Id !== lastReactiveState.token1Id ||
+      livePoolsLength !== lastReactiveState.livePools ||
+      balancesTimestamp !== lastReactiveState.currentUserBalancesTimestamp ||
+      authOwner !== lastReactiveState.authOwner;
+    
+    if (hasChanged) {
+      // Update memoization state
+      lastReactiveState = {
+        isLoading,
+        token0Id,
+        token1Id,
+        livePools: livePoolsLength,
+        currentUserBalancesTimestamp: balancesTimestamp,
+        authOwner
+      };
+      
+      if (!isLoading) {
+        // Update tokens safely
+        token0 = $liquidityStore.token0;
+        token1 = $liquidityStore.token1;
         
-        // Only find pool if poolExists is true
-        pool = poolExists ? $livePools.find(p => 
-          p.address_0 === token0?.address && 
-          p.address_1 === token1?.address
-        ) : null;
-        
-        // Only load balances if both tokens are available
-        if (token0?.canister_id && token1?.canister_id && $auth?.isInitialized && $auth?.account?.owner) {
-          loadBalancesAndUpdateStore([token0, token1], $auth.account.owner.toString(), true);
-        }
-        
-        // Update local balance variables safely
-        if (token0?.canister_id) {
-          token0Balance = $currentUserBalancesStore[token0.canister_id]?.in_tokens?.toString() || "0";
-        }
-        
-        if (token1?.canister_id) {
-          token1Balance = $currentUserBalancesStore[token1.canister_id]?.in_tokens?.toString() || "0";
+        // Only check poolExists if both tokens are available
+        if (token0 && token1) {
+          // Create a key to check if we need to update
+          const tokenKey = `${token0.canister_id}-${token1.canister_id}`;
+          const currentPoolExists = doesPoolExist(token0, token1, $livePools);
+          
+          // Only update if there's a change in poolExists
+          if (poolExists !== currentPoolExists) {
+            console.log("Pool exists changed:", poolExists, "->", currentPoolExists);
+            poolExists = currentPoolExists;
+          
+            // Only find pool if poolExists is true
+            pool = poolExists ? $livePools.find(p => 
+              p.address_0 === token0?.address && 
+              p.address_1 === token1?.address
+            ) : null;
+  
+            // Reset balance load attempts when pool status changes
+            balanceLoadAttempts = 0;
+          }
+          
+          // Only load balances if both tokens are available and we need to
+          if (token0?.canister_id && token1?.canister_id && $auth?.isInitialized && $auth?.account?.owner) {
+            // Avoid unnecessary balance updates
+            const shouldUpdateBalances = 
+              (token0Balance === "0" || 
+              token1Balance === "0" || 
+              !$currentUserBalancesStore[token0.canister_id] || 
+              !$currentUserBalancesStore[token1.canister_id]) &&
+              balanceLoadAttempts < MAX_BALANCE_LOAD_ATTEMPTS;
+              
+            if (shouldUpdateBalances && !isLoadingBalances) {
+              // Check if we've loaded this token pair recently
+              const tokenPairKey = [token0.canister_id, token1.canister_id].sort().join('-');
+              const currentTime = Date.now();
+              const canLoadAgain = 
+                tokenPairKey !== lastLoadedTokenPair || 
+                currentTime - lastBalanceLoadTime >= MIN_BALANCE_LOAD_INTERVAL;
+              
+              if (canLoadAgain) {
+                console.log("Scheduling balance update");
+                
+                // Clear any existing timer
+                if (balanceLoadingTimer) {
+                  clearTimeout(balanceLoadingTimer);
+                }
+                
+                // Debounce the balance loading to prevent rapid consecutive calls
+                balanceLoadingTimer = setTimeout(() => {
+                  if (!isLoadingBalances) {
+                    console.log("Executing debounced balance load");
+                    loadBalancesAndUpdateStore([token0, token1], $auth.account.owner.toString(), false);
+                  }
+                  balanceLoadingTimer = null;
+                }, 100); // Short debounce for balance loading
+              } else {
+                console.log("Skipping balance update - tokens were loaded recently");
+              }
+            } else if (!shouldUpdateBalances && balanceLoadAttempts < MAX_BALANCE_LOAD_ATTEMPTS) {
+              // Update local balance variables safely without API call
+              token0Balance = $currentUserBalancesStore[token0.canister_id]?.in_tokens?.toString() || "0";
+              token1Balance = $currentUserBalancesStore[token1.canister_id]?.in_tokens?.toString() || "0";
+            }
+          }
         }
       }
     }
@@ -237,47 +421,85 @@
       return;
     }
 
+    // Clear any existing balance loading timer to prevent stale updates
+    if (balanceLoadingTimer) {
+      clearTimeout(balanceLoadingTimer);
+      balanceLoadingTimer = null;
+    }
+
+    // Reset balance tracking data when tokens change
+    lastLoadedTokenPair = "";
+    balanceLoadAttempts = 0;
+    lastBalanceLoadTime = 0;
+
     // Update store and URL
     liquidityStore.setToken(index, result.newToken);
-    const newToken0 = index === 0 ? result.newToken : $liquidityStore.token0;
-    const newToken1 = index === 1 ? result.newToken : $liquidityStore.token1;
     updateQueryParams(
       index === 0 ? result.newToken?.canister_id : $liquidityStore.token0?.canister_id,
       index === 1 ? result.newToken?.canister_id : $liquidityStore.token1?.canister_id
     );
-  }
-
-  // Handle price input changes
-  function handlePriceChange(value: string) {
-    if (poolExists === false || pool?.balance_0 === 0n) {
-      liquidityStore.setInitialPrice(value);
-      liquidityStore.setAmount(1, calculateToken1FromPrice($liquidityStore.amount0, value));
+    
+    // Reset the balance for the updated token to trigger a new balance load
+    if (index === 0) {
+      token0Balance = "0";
+    } else {
+      token1Balance = "0";
     }
   }
 
-  // Handle amount input changes
+  // Handle price input changes with debouncing
+  function handlePriceChange(value: string) {
+    // Update price immediately for responsiveness
+    liquidityStore.setInitialPrice(value);
+    
+    // Clear any existing timer
+    if (priceDebounceTimer) {
+      clearTimeout(priceDebounceTimer);
+    }
+    
+    // Debounce the expensive calculation
+    priceDebounceTimer = setTimeout(() => {
+      if (poolExists === false || pool?.balance_0 === 0n) {
+        liquidityStore.setAmount(1, calculateToken1FromPrice($liquidityStore.amount0, value));
+      }
+      priceDebounceTimer = null;
+    }, DEBOUNCE_DELAY);
+  }
+
+  // Handle amount input changes with debouncing
   async function handleAmountChange(index: 0 | 1, value: string) {
     const sanitizedValue = value.replace(/,/g, '');
+    
+    // Update the amount immediately for responsiveness
     liquidityStore.setAmount(index, sanitizedValue);
     
-    // For new pools or pools with zero balance
-    if (poolExists === false || (poolExists === true && pool?.balance_0 === 0n)) {
-      if ($liquidityStore.initialPrice) {
-        const otherIndex = index === 0 ? 1 : 0;
-        const amount = index === 0 
-          ? calculateToken1FromPrice(sanitizedValue, $liquidityStore.initialPrice) 
-          : calculateToken0FromPrice(sanitizedValue, $liquidityStore.initialPrice);
-        liquidityStore.setAmount(otherIndex, amount || "0");
-      }
-    } 
-    // For existing pools with non-zero balance
-    else if (poolExists === true && pool && token0 && token1) {
-      safeExec(async () => {
-        const otherIndex = index === 0 ? 1 : 0;
-        const calcFn = index === 0 ? calculateToken1FromPoolRatio : calculateToken0FromPoolRatio;
-        liquidityStore.setAmount(otherIndex, await calcFn(sanitizedValue, token0, token1, pool));
-      }, "Failed to calculate amounts");
+    // Clear any existing timer
+    if (amountDebounceTimer) {
+      clearTimeout(amountDebounceTimer);
     }
+    
+    // Debounce the expensive calculations and API calls
+    amountDebounceTimer = setTimeout(async () => {
+      // For new pools or pools with zero balance
+      if (poolExists === false || (poolExists === true && pool?.balance_0 === 0n)) {
+        if ($liquidityStore.initialPrice) {
+          const otherIndex = index === 0 ? 1 : 0;
+          const amount = index === 0 
+            ? calculateToken1FromPrice(sanitizedValue, $liquidityStore.initialPrice) 
+            : calculateToken0FromPrice(sanitizedValue, $liquidityStore.initialPrice);
+          liquidityStore.setAmount(otherIndex, amount || "0");
+        }
+      } 
+      // For existing pools with non-zero balance
+      else if (poolExists === true && pool && token0 && token1) {
+        safeExec(async () => {
+          const otherIndex = index === 0 ? 1 : 0;
+          const calcFn = index === 0 ? calculateToken1FromPoolRatio : calculateToken0FromPoolRatio;
+          liquidityStore.setAmount(otherIndex, await calcFn(sanitizedValue, token0, token1, pool));
+        }, "Failed to calculate amounts");
+      }
+      amountDebounceTimer = null;
+    }, DEBOUNCE_DELAY);
   }
 
   // Handle percentage click to set token amount based on percentage of balance
@@ -326,6 +548,11 @@
   }
 
   onDestroy(() => {
+    // Clear any pending timers
+    if (amountDebounceTimer) clearTimeout(amountDebounceTimer);
+    if (priceDebounceTimer) clearTimeout(priceDebounceTimer);
+    if (balanceLoadingTimer) clearTimeout(balanceLoadingTimer);
+    
     // Only reset amounts on destroy, keep the tokens
     liquidityStore.resetAmounts();
   });

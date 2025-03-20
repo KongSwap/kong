@@ -85,7 +85,7 @@
 
     // Update TradingView CSS custom properties
     try {
-      chart.setCSSCustomProperty('--tv-color-platform-background', bgLightColor);
+      chart.setCSSCustomProperty('--tv-color-platform-background', 'transparent');
       chart.setCSSCustomProperty('--tv-color-pane-background', bgDarkColor);
       chart.setCSSCustomProperty('--tv-color-toolbar-button-background-hover', bgLightColor);
       chart.setCSSCustomProperty('--tv-color-toolbar-button-background-expanded', borderColor);

@@ -24,6 +24,7 @@ fn create_market(
     outcomes: Vec<String>,
     resolution_method: ResolutionMethod,
     end_time_secs: MarketEndTime,
+    image_url: Option<String>,
 ) -> Result<MarketId, String> {
     // Validate inputs
     if question.is_empty() {
@@ -64,6 +65,7 @@ fn create_market(
                 rules,
                 outcomes,
                 resolution_method,
+                image_url,
                 status: MarketStatus::Open,
                 created_at: StorableNat::from(now),
                 end_time: StorableNat::from(end_time),

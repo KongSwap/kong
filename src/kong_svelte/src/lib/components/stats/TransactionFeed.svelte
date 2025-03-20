@@ -417,12 +417,12 @@
     {:else}
       <div class="relative flex flex-col h-full">
         <div
-          class="hidden md:block sticky top-0 z-20 bg-kong-bg-light rounded-t-lg"
+          class="hidden md:block sticky top-0 z-20 bg-kong-bg-dark border-b border-kong-border/30"
         >
           <table class="w-full">
             <thead>
               <tr class="text-left text-kong-text-primary/70 !font-normal">
-                <th class="px-4 py-2 w-[110px] rounded-tl-lg">Wallet</th>
+                <th class="px-4 py-2 w-[110px]">Wallet</th>
                 <th class="px-4 py-2 w-[120px]">Paid</th>
                 <th class="px-4 py-2 w-[140px]">Received</th>
                 <th class="px-4 py-2 w-[100px]">Value</th>

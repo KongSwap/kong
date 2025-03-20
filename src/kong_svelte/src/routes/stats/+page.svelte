@@ -102,12 +102,6 @@
     if (isPageChangeRefresh) isLoading.set(true);
     
     try {
-      console.log("Fetching data with params:", { 
-        page: $currentPage,
-        limit: ITEMS_PER_PAGE,
-        search: $debouncedSearchTerm
-      });
-      
       const [{tokens, total_count}, totalsResult] = await Promise.all([
         fetchTokens({ 
           page: $currentPage, 
@@ -117,7 +111,6 @@
         fetchPoolTotals()
       ]);
 
-      console.log(`Fetched ${tokens.length} tokens with search '${$debouncedSearchTerm}'`);
       tokenData.set(tokens);
       totalCount.set(total_count);
       poolTotals.set(totalsResult);
@@ -141,9 +134,7 @@
     if (searchTimeout) clearTimeout(searchTimeout);
     const currentSearchTerm = $searchTerm;
     
-    searchTimeout = setTimeout(() => {
-      console.log("Debounce completed for:", currentSearchTerm);
-      
+    searchTimeout = setTimeout(() => {      
       // Only update if different to prevent cycles
       if (currentSearchTerm !== $debouncedSearchTerm) {
         debouncedSearchTerm.set(currentSearchTerm);

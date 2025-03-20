@@ -125,9 +125,6 @@
         <div class="mobile-swap-section">
           <div class="swap-section">
             <Swap
-              initialFromToken={fromToken}
-              initialToToken={toToken}
-              {currentMode}
               on:modeChange
               on:tokenChange={handleTokenChange}
             />
@@ -171,9 +168,6 @@
           <!-- Swap interface -->
           <div class="swap-section">
             <Swap
-              initialFromToken={fromToken}
-              initialToToken={toToken}
-              {currentMode}
               on:modeChange
               on:tokenChange={handleTokenChange}
             />

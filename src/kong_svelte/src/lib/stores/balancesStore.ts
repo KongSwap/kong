@@ -159,12 +159,6 @@ export const getStoredBalances = async (walletId: string) => {
   }
 };
 
-// Update stored balances
-export const updateStoredBalances = async (walletId: string) => {
-  const balances = await getStoredBalances(walletId);
-  currentUserBalancesStore.set(balances);
-};
-
 // Helper function to update balances in the store
 export const updateBalancesInStore = (entries: Array<{
   canister_id: string;

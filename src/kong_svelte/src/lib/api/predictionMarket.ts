@@ -102,6 +102,7 @@ export interface CreateMarketParams {
   outcomes: string[];
   resolutionMethod: any; // ResolutionMethod type from candid
   endTimeSpec: any; // MarketEndTime type from candid
+  image_url?: string; // Optional image URL
 }
 
 export async function createMarket(params: CreateMarketParams) {
@@ -110,7 +111,7 @@ export async function createMarket(params: CreateMarketParams) {
     canisterIDLs.prediction_markets_backend,
     {
       anon: false,
-      requiresSigning: true,
+      requiresSigning: false,
     },
   );
   const result = await actor.create_market(
@@ -120,6 +121,7 @@ export async function createMarket(params: CreateMarketParams) {
     params.outcomes,
     params.resolutionMethod,
     params.endTimeSpec,
+    params.image_url ? [params.image_url] : [] // Pass as optional array
   );
   return result;
 }

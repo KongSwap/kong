@@ -1,14 +1,26 @@
-import { kongDB } from "$lib/services/db";
 import { get } from "svelte/store";
 import { auth } from "$lib/services/auth";
 
+// Add import for storage constants
+import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
+
 export class FavoriteService {
   /**
-   * In-memory cache for the currently-authenticated wallet’s favorites.
+   * In-memory cache for the currently-authenticated wallet's favorites.
    * Also store the wallet ID we used to build this cache.
    */
   private static favoritesCache = new Set<string>();
   private static lastWalletId = "anonymous";
+
+  /**
+   * LocalForage namespace for favorite tokens
+   */
+  private static FAVORITE_TOKENS_KEY = STORAGE_KEYS.FAVORITE_TOKENS;
+  
+  /**
+   * Dedicated store instance for favorites
+   */
+  private static store = createNamespacedStore(STORAGE_KEYS.FAVORITE_TOKENS);
 
   /**
    * Get the current wallet ID
@@ -30,6 +42,13 @@ export class FavoriteService {
   }
 
   /**
+   * Key for storing favorites for a specific wallet
+   */
+  private static getStorageKey(walletId: string): string {
+    return `${this.FAVORITE_TOKENS_KEY}_${walletId}`;
+  }
+
+  /**
    * Load favorites for the current wallet, using the in-memory cache
    * if we already loaded them for the same wallet.
    */
@@ -47,12 +66,10 @@ export class FavoriteService {
       return Array.from(this.favoritesCache);
     }
 
-    // Otherwise, fetch from IndexedDB
+    // Otherwise, fetch from localForage
     try {
-      const favorites = await kongDB.favorite_tokens
-        .where("wallet_id")
-        .equals(currentWalletId)
-        .toArray();
+      const key = this.getStorageKey(currentWalletId);
+      const favorites = await this.store.getItem<{canister_id: string, timestamp: number}[]>(key) || [];
 
       const ids = favorites.map((fav) => fav.canister_id);
       // Populate our in-memory cache
@@ -77,21 +94,23 @@ export class FavoriteService {
     }
 
     try {
-      // Check if already exists in DB
-      const existing = await kongDB.favorite_tokens
-        .where(["wallet_id", "canister_id"])
-        .equals([currentWalletId, canisterId])
-        .first();
-
+      const key = this.getStorageKey(currentWalletId);
+      const favorites = await this.store.getItem<{canister_id: string, timestamp: number}[]>(key) || [];
+      
+      // Check if already exists
+      const existing = favorites.find(fav => fav.canister_id === canisterId);
       if (existing) {
         return true; // Already favorited
       }
-
-      await kongDB.favorite_tokens.add({
-        wallet_id: currentWalletId,
+      
+      // Add new favorite
+      favorites.push({
         canister_id: canisterId,
         timestamp: Date.now(),
       });
+      
+      // Save back to localForage
+      await this.store.setItem(key, favorites);
 
       // Update cache
       this.favoritesCache.add(canisterId);
@@ -114,19 +133,24 @@ export class FavoriteService {
     }
 
     try {
-      // Use compound index for lookup
-      const existing = await kongDB.favorite_tokens
-        .where(["wallet_id", "canister_id"])
-        .equals([currentWalletId, canisterId])
-        .first();
-
-      if (existing?.id) {
-        await kongDB.favorite_tokens.delete(existing.id);
-        // Update cache
-        this.favoritesCache.delete(canisterId);
-        return true;
+      const key = this.getStorageKey(currentWalletId);
+      const favorites = await this.store.getItem<{canister_id: string, timestamp: number}[]>(key) || [];
+      
+      // Find if exists
+      const index = favorites.findIndex(fav => fav.canister_id === canisterId);
+      if (index === -1) {
+        return false; // Not found
       }
-      return false;
+      
+      // Remove from array
+      favorites.splice(index, 1);
+      
+      // Save back to localForage
+      await this.store.setItem(key, favorites);
+      
+      // Update cache
+      this.favoritesCache.delete(canisterId);
+      return true;
     } catch (error) {
       console.error("Error removing favorite:", error);
       return false;
@@ -145,19 +169,26 @@ export class FavoriteService {
     }
 
     try {
-      // Use compound index for lookup
-      const existing = await kongDB.favorite_tokens
-        .where(["wallet_id", "canister_id"])
-        .equals([currentWalletId, canisterId])
-        .first();
-
-      if (existing?.id) {
-        // Remove from DB + cache
-        await this.removeFavorite(canisterId);
+      const key = this.getStorageKey(currentWalletId);
+      const favorites = await this.store.getItem<{canister_id: string, timestamp: number}[]>(key) || [];
+      
+      // Check if already exists
+      const index = favorites.findIndex(fav => fav.canister_id === canisterId);
+      
+      if (index !== -1) {
+        // Remove from array and cache
+        favorites.splice(index, 1);
+        this.favoritesCache.delete(canisterId);
+        await this.store.setItem(key, favorites);
         return false;
       } else {
-        // Add to DB + cache
-        await this.addFavorite(canisterId);
+        // Add to array and cache
+        favorites.push({
+          canister_id: canisterId,
+          timestamp: Date.now(),
+        });
+        this.favoritesCache.add(canisterId);
+        await this.store.setItem(key, favorites);
         return true;
       }
     } catch (error) {
@@ -168,7 +199,7 @@ export class FavoriteService {
 
   /**
    * Check if a token is favorited by looking up the in-memory cache
-   * (or hitting the DB if needed).
+   * (or hitting the storage if needed).
    */
   static async isFavorite(canisterId: string): Promise<boolean> {
     this.maybeResetCache();
@@ -183,7 +214,7 @@ export class FavoriteService {
       return this.favoritesCache.has(canisterId);
     }
 
-    // Otherwise, we need to load from DB
+    // Otherwise, we need to load from storage
     const favorites = await this.loadFavorites();
     return favorites.includes(canisterId);
   }
@@ -204,7 +235,7 @@ export class FavoriteService {
       return this.favoritesCache.size;
     }
 
-    // Otherwise, load from DB and return
+    // Otherwise, load from storage and return
     try {
       // loadFavorites() will fill the cache, so we can just reuse it
       const favorites = await this.loadFavorites();
