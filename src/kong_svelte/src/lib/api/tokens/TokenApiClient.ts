@@ -8,14 +8,11 @@ import type {
   TokensByCanisterResponse,
   RawTokenData
 } from './types';
-
-// Create a single instance of the base API client for HTTP operations
 import { ApiClient } from '../base/ApiClient';
 import { API_URL } from '../index';
 import { browser } from '$app/environment';
-import { auth } from '$lib/services/auth';
+import { auth, canisterIDLs } from '$lib/stores/auth';
 import { toastStore } from '$lib/stores/toastStore';
-import { canisterIDLs } from '$lib/services/auth';
 import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
 import { userTokens } from '$lib/stores/userTokens';
 import { get } from 'svelte/store';

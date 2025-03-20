@@ -14,7 +14,7 @@
   } from "lucide-svelte";
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { browser } from "$app/environment";
   import { page } from "$app/stores";
   import TokenCardMobile from "$lib/components/stats/TokenCardMobile.svelte";
@@ -220,7 +220,7 @@
   $effect(() => {
     if ($auth.isConnected) {
       Promise.all([
-        favoriteStore.getFavoriteCount().then(count => favoriteCount.set(count)),
+        Promise.resolve(favoriteStore.getCount()).then(count => favoriteCount.set(count)),
         favoriteStore.loadFavorites().then(favorites => favoriteTokenIds.set(favorites))
       ]);
     } else {

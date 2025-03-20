@@ -2,7 +2,7 @@ import { toastStore } from "$lib/stores/toastStore";
 import { swapStatusStore } from "$lib/stores/swapStore";
 import { get } from "svelte/store";
 import { loadBalances } from "$lib/stores/tokenStore";
-import { auth } from "$lib/services/auth";
+import { auth } from "$lib/stores/auth";
 import { SwapService } from "./SwapService";
 import { swapState } from "./SwapStateService";
 import { userTokens } from "$lib/stores/userTokens";

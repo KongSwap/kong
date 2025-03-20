@@ -24,7 +24,7 @@
   } from "$lib/utils/liquidityUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import { page } from "$app/stores";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { livePools } from "$lib/stores/poolStore";
   import { onDestroy, onMount } from "svelte";
   import {

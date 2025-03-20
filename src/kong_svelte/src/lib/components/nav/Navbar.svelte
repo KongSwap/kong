@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { fade, slide } from "svelte/transition";
   import { goto } from "$app/navigation";
   import { notificationsStore } from "$lib/stores/notificationsStore";

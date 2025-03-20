@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { walletsList } from '@windoge98/plug-n-play';
-  import { auth, selectedWalletId } from "$lib/services/auth";
+  import { auth, selectedWalletId } from "$lib/stores/auth";
   import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
   import { browser } from "$app/environment";

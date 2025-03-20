@@ -10,7 +10,7 @@
   import { browser } from "$app/environment";
   import { formatCategory } from "$lib/utils/numberFormatUtils";
   import { fade, fly } from 'svelte/transition';
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
 
   // Constants
   const TOTAL_STEPS = 4;

@@ -1,4 +1,4 @@
-import { auth } from "$lib/services/auth";
+import { auth } from "$lib/stores/auth";
 import { canisterIDLs } from "$lib/config/auth.config";
 import { Principal } from "@dfinity/principal";
 import { toastStore } from "$lib/stores/toastStore";

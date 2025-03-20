@@ -1,8 +1,7 @@
 import { API_URL } from "$lib/api/index";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
-import { canisterIDLs } from "$lib/services/auth";
-import { auth, requireWalletConnection } from "$lib/services/auth";
+import { auth, requireWalletConnection, canisterIDLs } from "$lib/stores/auth";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { toastStore } from "$lib/stores/toastStore";
 

@@ -4,7 +4,7 @@
   import { livePools } from "$lib/stores/poolStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { onMount, onDestroy } from "svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { BigNumber } from "bignumber.js";
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
 

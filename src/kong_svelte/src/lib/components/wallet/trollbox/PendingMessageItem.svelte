@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { auth } from '$lib/services/auth';
+  import { auth } from '$lib/stores/auth';
   import { fade } from 'svelte/transition';
   import { fetchTokensByCanisterId } from '$lib/api/tokens';
   import { onMount } from 'svelte';

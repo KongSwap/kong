@@ -1,7 +1,7 @@
 import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
 import type { Settings } from '$lib/types/settings.ts';
-import { auth } from '$lib/services/auth';
+import { auth } from '$lib/stores/auth';
 import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
 
 const DEFAULT_SETTINGS: Settings = {

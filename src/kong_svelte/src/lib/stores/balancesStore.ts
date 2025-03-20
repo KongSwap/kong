@@ -1,8 +1,6 @@
 import { writable, get } from "svelte/store";
 import { Principal } from "@dfinity/principal";
-import { auth } from "$lib/services/auth";
-import type { AuthStore } from "$lib/services/auth"; // Import the AuthStore type
-import { BigNumber } from "bignumber.js";
+import { auth } from "$lib/stores/auth";
 import { userTokens } from "$lib/stores/userTokens";
 
 // Create a store for balances

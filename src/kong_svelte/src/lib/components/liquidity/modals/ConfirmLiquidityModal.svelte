@@ -11,7 +11,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { loadBalance } from "$lib/stores/tokenStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
 
   export let isCreatingPool: boolean = false;
   export let show: boolean;

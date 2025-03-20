@@ -12,7 +12,7 @@
 	import { favoriteStore } from "$lib/stores/favoriteStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { userTokens } from "$lib/stores/userTokens";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { debounce } from "$lib/utils/debounce";
   import TokenItem from "./TokenItem.svelte";

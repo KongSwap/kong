@@ -2,7 +2,7 @@
   import { User, Copy, ExternalLink, Check, Plus } from 'lucide-svelte';
   import Badge from "$lib/components/common/Badge.svelte";
   import { onMount, afterUpdate } from 'svelte';
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
     import { uint8ArrayToHexString } from '@dfinity/utils';
     import { toastStore } from '$lib/stores/toastStore';
   

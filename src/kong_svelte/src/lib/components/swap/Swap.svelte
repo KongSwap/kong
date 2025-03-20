@@ -10,7 +10,7 @@
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import {
     getTokenDecimals,
     currentUserBalancesStore
@@ -69,16 +69,16 @@
   const SEARCH_HEADER_HEIGHT = 56; // Height of search header
 
   // State
-  let isProcessing = false;
-  let isInitialized = false;
+  let isProcessing = $state(false);
+  let isInitialized = $state(false);
   let currentSwapId: string | null = null;
-  let isQuoteLoading = false;
-  let showSettings = false;
-  let insufficientFunds = false;
-  let hasValidPool = false;
+  let isQuoteLoading = $state(false);
+  let showSettings = $state(false);
+  let insufficientFunds = $state(false);
+  let hasValidPool = $state(false);
   let skipNextUrlInitialization = false;
   let currentBalance: string | null = null;
-  let showWalletProvider = false;
+  let showWalletProvider = $state(false);
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -113,6 +113,7 @@
   });
 
   let buttonText = $derived(
+    !$auth.isConnected ? "Connect Wallet" :
     (!$swapState.payAmount || $swapState.payAmount === "0") ? "Enter Amount" : 
     insufficientFunds ? "Insufficient Balance" :
     SwapButtonService.getButtonText($swapState, $settingsStore, isQuoteLoading, insufficientFunds, $auth)
@@ -747,7 +748,6 @@
 {/if}
 
 {#if showWalletProvider && browser}
-  <Portal target="body">
     <WalletProvider 
       isOpen={showWalletProvider}
       onClose={() => showWalletProvider = false}
@@ -755,7 +755,6 @@
         showWalletProvider = false;
       }}
     />
-  </Portal>
 {/if}
 
 <style scoped lang="postcss">

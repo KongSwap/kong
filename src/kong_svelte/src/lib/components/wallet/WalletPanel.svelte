@@ -17,7 +17,7 @@
     loadBalances,
   } from "$lib/stores/balancesStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { tooltip } from "$lib/actions/tooltip";
   import { truncateAddress } from "$lib/utils/principalUtils";
   import { copyToClipboard } from "$lib/utils/clipboard";

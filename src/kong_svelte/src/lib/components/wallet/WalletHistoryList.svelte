@@ -7,7 +7,7 @@
     Download,
     Loader2,
   } from "lucide-svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { toastStore } from "$lib/stores/toastStore";
   import { writable } from "svelte/store";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";

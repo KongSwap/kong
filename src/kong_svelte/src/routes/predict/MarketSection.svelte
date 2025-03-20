@@ -9,7 +9,7 @@
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
   import { goto } from "$app/navigation";
   import AdminResolutionModal from "./AdminResolutionModal.svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { isAdmin } from "$lib/api/predictionMarket";
 
   // Convert props to use $props

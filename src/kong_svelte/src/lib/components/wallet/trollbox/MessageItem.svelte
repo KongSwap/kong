@@ -9,7 +9,7 @@
     UserCheck,
   } from "lucide-svelte";
   import type { Message } from "$lib/api/trollbox";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";

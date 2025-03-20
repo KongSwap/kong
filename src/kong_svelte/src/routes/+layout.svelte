@@ -10,7 +10,7 @@
   import { themeStore } from "$lib/stores/themeStore";
   import { browser } from "$app/environment";
   import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { userTokens } from "$lib/stores/userTokens";
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";

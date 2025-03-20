@@ -3,7 +3,7 @@
   import Badge from "$lib/components/common/Badge.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { livePools } from "$lib/stores/poolStore";
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";

@@ -19,7 +19,7 @@
   import { slide, fade, crossfade } from "svelte/transition";
   import BetModal from "../BetModal.svelte";
   import { toastStore } from "$lib/stores/toastStore";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
   
   // Import our new components

@@ -1,5 +1,5 @@
 import { writable, get, derived } from "svelte/store";
-import { auth } from "$lib/services/auth";
+import { auth } from "$lib/stores/auth";
 import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
 
 // Internal store for favorites state

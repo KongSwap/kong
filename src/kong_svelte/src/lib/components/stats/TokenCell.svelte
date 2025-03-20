@@ -2,7 +2,7 @@
   import { Star, Flame, PiggyBank, TrendingUp, TrendingDown } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { tooltip } from "$lib/actions/tooltip";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
 	import { favoriteStore } from "$lib/stores/favoriteStore";
   import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
 

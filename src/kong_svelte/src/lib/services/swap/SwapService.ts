@@ -4,9 +4,9 @@ import { Principal } from "@dfinity/principal";
 import BigNumber from "bignumber.js";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { swapStatusStore } from "$lib/stores/swapStore";
-import { auth, canisterIDLs } from "$lib/services/auth";
+import { auth, canisterIDLs } from "$lib/stores/auth";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { requireWalletConnection } from "$lib/services/auth";
+import { requireWalletConnection } from "$lib/stores/auth";
 import { SwapMonitor } from "./SwapMonitor";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 

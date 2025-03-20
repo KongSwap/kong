@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { userTokens } from "$lib/stores/userTokens";
   import { toastStore } from "$lib/stores/toastStore";
