@@ -8,7 +8,8 @@ interface UserTokensState {
   tokens: FE.Token[];
 }
 
-const STORAGE_KEY = 'kong_user_tokens';
+const STORAGE_KEY_PREFIX = 'kong_user_tokens_';
+const CURRENT_PRINCIPAL_KEY = 'kong_current_principal';
 
 // Helper function to safely convert BigInt values to strings for JSON serialization
 function safeStringify(value: any): any {
@@ -27,20 +28,28 @@ function safeStringify(value: any): any {
 }
 
 function createUserTokensStore() {
+  let currentPrincipal: string | null = browser ? localStorage.getItem(CURRENT_PRINCIPAL_KEY) : null;
+  
+  // Get storage key for current principal
+  const getStorageKey = (principal?: string) => {
+    const id = principal || currentPrincipal || 'default';
+    return `${STORAGE_KEY_PREFIX}${id}`;
+  };
+  
   // Initialize from localStorage if available
   const initialState: UserTokensState = browser
-    ? JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"enabledTokens": {}, "tokens": []}')
+    ? JSON.parse(localStorage.getItem(getStorageKey()) || '{"enabledTokens": {}, "tokens": []}')
     : { enabledTokens: {}, tokens: [] };
 
   const state = writable<UserTokensState>(initialState);
   const { subscribe, set, update } = state;
 
   // Helper function to update localStorage
-  const updateStorage = (newState: UserTokensState) => {
+  const updateStorage = (newState: UserTokensState, principal?: string) => {
     if (browser) {
       // Convert any BigInt values to strings before serializing
       const safeState = safeStringify(newState);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(safeState));
+      localStorage.setItem(getStorageKey(principal), JSON.stringify(safeState));
     }
   };
 
@@ -60,6 +69,27 @@ function createUserTokensStore() {
 
   return {
     subscribe,
+    reset: () => {
+      const newState = { enabledTokens: {}, tokens: [] };
+      set(newState);
+      updateStorage(newState);
+    },
+    setPrincipal: (principalId: string | null) => {
+      // Store current principal
+      if (browser && principalId) {
+        localStorage.setItem(CURRENT_PRINCIPAL_KEY, principalId);
+      } else if (browser && principalId === null) {
+        localStorage.removeItem(CURRENT_PRINCIPAL_KEY);
+      }
+      
+      currentPrincipal = principalId;
+      
+      // Load tokens for this principal
+      if (browser && principalId) {
+        const storedState = localStorage.getItem(getStorageKey()) || '{"enabledTokens": {}, "tokens": []}';
+        set(JSON.parse(storedState));
+      }
+    },
     enableToken: (token: FE.Token) => {
       update(state => {
         // First check if token already exists in the tokens array
@@ -123,12 +153,28 @@ function createUserTokensStore() {
     },
     isTokenEnabled: (canisterId: string) => {
       if (!browser) return true; // Default to enabled if not in browser
-      const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"enabledTokens": {}, "tokens": []}');
+      
+      // Get state for current principal
+      const storageKey = getStorageKey();
+      const state = JSON.parse(localStorage.getItem(storageKey) || '{"enabledTokens": {}, "tokens": []}');
       return !!state.enabledTokens[canisterId];
     },
     refreshTokenData,
     isDefaultToken: (canisterId: string) => {
       return Object.values(DEFAULT_TOKENS).includes(canisterId);
+    },
+    hasSavedTokens: (principalId: string): boolean => {
+      if (!browser) return false;
+      const key = `${STORAGE_KEY_PREFIX}${principalId}`;
+      const data = localStorage.getItem(key);
+      if (!data) return false;
+      
+      try {
+        const parsed = JSON.parse(data);
+        return Object.keys(parsed.enabledTokens).length > 0;
+      } catch {
+        return false;
+      }
     }
   };
 }

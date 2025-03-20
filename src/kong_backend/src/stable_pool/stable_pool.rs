@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::helpers::math_helpers::price_rounded;
 use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_to_bigint, nat_to_decimal_precision, nat_zero};
-use crate::ic::ckusdt::ckusdt_amount;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -38,11 +37,6 @@ pub struct StablePool {
     pub kong_fee_1: Nat,  // Kong's share of the LP fee
     pub lp_fee_bps: u8,   // LP's fee in basis points
     pub kong_fee_bps: u8, // Kong's fee in basis points
-    pub tvl: Nat,
-    pub rolling_24h_volume: Nat,
-    pub rolling_24h_lp_fee: Nat,
-    pub rolling_24h_num_swaps: Nat,
-    pub rolling_24h_apy: f64,
     pub lp_token_id: u32, // token id of the LP token
     #[serde(default = "false_bool")]
     pub is_removed: bool,
@@ -66,11 +60,6 @@ impl StablePool {
             kong_fee_1: nat_zero(),
             lp_fee_bps,
             kong_fee_bps,
-            tvl: nat_zero(),
-            rolling_24h_volume: nat_zero(),
-            rolling_24h_lp_fee: nat_zero(),
-            rolling_24h_num_swaps: nat_zero(),
-            rolling_24h_apy: 0_f64,
             lp_token_id,
             is_removed: false,
         }
@@ -150,19 +139,6 @@ impl StablePool {
 
     pub fn get_price_as_f64(&self) -> Option<f64> {
         price_rounded(&self.get_price()?)
-    }
-
-    /// make sure to call pool_map::update after calling this function
-    /// sets tvl = balance_0 + balance_1 in ckUSDT
-    pub fn set_tvl(&mut self) {
-        let token_0 = self.token_0();
-        let token_1 = self.token_1();
-        // TVL_0 = balance_0 + lp_fee_0 + kong_fee_0
-        let tvl_0 = nat_add(&nat_add(&self.balance_0, &self.lp_fee_0), &self.kong_fee_0);
-        let tvl_1 = nat_add(&nat_add(&self.balance_1, &self.lp_fee_1), &self.kong_fee_1);
-        let tvl_0_ckusdt = ckusdt_amount(&token_0, &tvl_0).unwrap_or(nat_zero());
-        let tvl_1_ckusdt = ckusdt_amount(&token_1, &tvl_1).unwrap_or(nat_zero());
-        self.tvl = nat_add(&tvl_0_ckusdt, &tvl_1_ckusdt);
     }
 }
 

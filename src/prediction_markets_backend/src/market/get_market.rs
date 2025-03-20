@@ -54,8 +54,7 @@ pub fn get_market(market_id: MarketId) -> Option<Market> {
                 })
                 .collect();
 
-            // Clear rules as they're not relevant in this context
-            market.rules = String::new();
+            // Keep market rules in the response
 
             market
         })

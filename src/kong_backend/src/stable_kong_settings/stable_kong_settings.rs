@@ -44,11 +44,9 @@ pub struct StableKongSettings {
     pub lp_token_map_idx: u64, // counter for LP_TOKEN_MAP
     pub claims_interval_secs: u64,
     pub transfer_expiry_nanosecs: u64,
-    pub stats_interval_secs: u64,
     pub requests_archive_interval_secs: u64,
     pub txs_archive_interval_secs: u64,
     pub transfers_archive_interval_secs: u64,
-    pub lp_tokens_archive_interval_secs: u64,
     pub archive_to_kong_data: bool,
     pub send_to_event_store: bool,
 }
@@ -101,11 +99,9 @@ impl Default for StableKongSettings {
             lp_token_map_idx,
             claims_interval_secs: 300,                   // claims every 5 minutes
             transfer_expiry_nanosecs: 3_600_000_000_000, // 1 hour (nano seconds)
-            stats_interval_secs: 3600,                   // stats every hour
             requests_archive_interval_secs: 3600,        // archive requests every hour
             txs_archive_interval_secs: 3600,             // archive txs every hour
             transfers_archive_interval_secs: 3600,       // archive transfers every hour
-            lp_tokens_archive_interval_secs: 3600,       // archive lp_positions every hour
             archive_to_kong_data: false,                 // replicate to kong_data
             send_to_event_store: false,                  // replicate to event_store (Token Terminal)
         }

@@ -5,14 +5,25 @@
     import { toastStore } from "$lib/stores/toastStore";
     import { Principal } from "@dfinity/principal";
 
-    export let isOpen = false;
-    export let onClose: () => void;
-    export let onScan: (text: string) => void;
+    // Props type definition
+    type QrScannerProps = {
+        isOpen: boolean;
+        onClose: () => void;
+        onScan: (text: string) => void;
+    };
 
-    let scanner: Html5Qrcode | null = null;
-    let scannedData: string | null = null;
-    let showConfirmation = false;
-    let modalMounted = false;
+    // Destructure props
+    let { 
+        isOpen = false, 
+        onClose = () => {}, 
+        onScan = () => {}
+    }: QrScannerProps = $props();
+
+    // State variables using Svelte 5 syntax
+    let scanner = $state<Html5Qrcode | null>(null);
+    let scannedData = $state<string | null>(null);
+    let showConfirmation = $state(false);
+    let modalMounted = $state(false);
     let fileInput: HTMLInputElement;
 
     async function checkCameraSupport() {
@@ -184,15 +195,20 @@
         closeScanner();
     });
 
-    $: if (isOpen) {
-        setTimeout(() => modalMounted = true, 100);
-    } else {
-        modalMounted = false;
-    }
+    // Use $effect instead of reactivity statements
+    $effect(() => {
+        if (isOpen) {
+            setTimeout(() => modalMounted = true, 100);
+        } else {
+            modalMounted = false;
+        }
+    });
 
-    $: if (isOpen && modalMounted) {
-        initializeScanner();
-    }
+    $effect(() => {
+        if (isOpen && modalMounted) {
+            initializeScanner();
+        }
+    });
 </script>
 
 {#if isOpen}

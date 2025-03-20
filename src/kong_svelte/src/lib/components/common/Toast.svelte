@@ -21,17 +21,17 @@
   } as const;
 
   const TYPE_CLASSES = {
-    success: "border-l-[3px] border-l-kong-success bg-gradient-to-r from-kong-success/[0.07] to-transparent",
-    error: "border-l-[3px] border-l-kong-error bg-gradient-to-r from-kong-error/[0.07] to-transparent",
-    warning: "border-l-[3px] border-l-kong-warning bg-gradient-to-r from-kong-warning/[0.07] to-transparent",
-    info: "border-l-[3px] border-l-kong-primary bg-gradient-to-r from-kong-primary/[0.07] to-transparent",
+    success: "toast-success",
+    error: "toast-error",
+    warning: "toast-warning",
+    info: "toast-info",
   } as const;
 
   const ICON_COLORS = {
-    success: "text-kong-success",
-    error: "text-kong-error",
-    warning: "text-kong-warning",
-    info: "text-kong-primary",
+    success: "text-kong-accent-green",
+    error: "text-kong-accent-red",
+    warning: "text-kong-accent-yellow",
+    info: "text-kong-accent-blue",
   } as const;
 
   const DEFAULT_DURATION = 5000;
@@ -106,7 +106,7 @@
       <div
         class="toast-container flex flex-row items-start gap-3 p-4 rounded-lg relative w-full
           transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg cursor-pointer
-          bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl shadow-lg {TYPE_CLASSES[toast.type] || ''}"
+          {TYPE_CLASSES[toast.type] || ''}"
         on:click={() => dismissToast(toast.id)}
       >
         <!-- Toast Type Icon -->
@@ -124,7 +124,7 @@
           <div class="flex flex-col gap-1">
             <!-- Title -->
             <div class="flex items-center justify-between">
-              <div class="font-medium text-sm text-kong-text-primary sm:text-sm">
+              <div class="font-medium text-sm text-kong-text-primary sm:text-xs">
                 {toast.title || DEFAULT_TITLE}
               </div>
               <div class="flex items-center gap-2">
@@ -135,7 +135,7 @@
                 <!-- Close Button -->
                 <button
                   class="close-button"
-                  on:click={() => dismissToast(toast.id)}
+                  on:click|stopPropagation={() => dismissToast(toast.id)}
                 >
                   <IconClose class="w-3 h-3 sm:w-2.5 sm:h-2.5" />
                 </button>
@@ -144,7 +144,7 @@
 
             <!-- Message -->
             {#if toast.message}
-              <div class="message text-sm leading-relaxed text-kong-text-secondary sm:text-base">
+              <div class="message text-xs leading-relaxed text-kong-text-secondary sm:text-xs">
                 {toast.message}
               </div>
             {/if}
@@ -157,7 +157,7 @@
 
 <style lang="postcss">
   .toast-wrapper {
-    @apply fixed bottom-4 right-4 flex flex-col items-end gap-3 max-w-md z-[999999];
+    @apply fixed bottom-4 right-4 flex flex-col items-end gap-2 max-w-md z-[999999];
     isolation: isolate;
     transform: translateZ(0);
     pointer-events: none;
@@ -170,13 +170,39 @@
   }
 
   .toast-container {
-    @apply w-full pointer-events-auto;
-    animation: slide-up 0.15s ease-out;
+    @apply w-full pointer-events-auto backdrop-blur-md bg-kong-bg-dark/95;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.1);
+    @apply rounded-md border border-kong-border/20;
+    animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Success Toast */
+  .toast-success {
+    @apply border-l-2 border-l-kong-accent-green;
+    background-image: linear-gradient(to right, rgba(163, 190, 140, 0.08), transparent 30%);
+  }
+
+  /* Error Toast */
+  .toast-error {
+    @apply border-l-2 border-l-kong-accent-red;
+    background-image: linear-gradient(to right, rgba(191, 97, 106, 0.08), transparent 30%);
+  }
+
+  /* Warning Toast */
+  .toast-warning {
+    @apply border-l-2 border-l-kong-accent-yellow; 
+    background-image: linear-gradient(to right, rgba(235, 203, 139, 0.08), transparent 30%);
+  }
+
+  /* Info Toast */
+  .toast-info {
+    @apply border-l-2 border-l-kong-accent-blue;
+    background-image: linear-gradient(to right, rgba(129, 161, 193, 0.08), transparent 30%);
   }
 
   .close-button {
     @apply -mr-1 flex items-center justify-center w-5 h-5 rounded-full
-      hover:bg-black/5 dark:hover:bg-white/5
+      hover:bg-kong-bg-light/30
       text-kong-text-secondary hover:text-kong-text-primary
       transition-colors sm:w-4 sm:h-4;
   }
@@ -189,31 +215,32 @@
     overflow: hidden;
   }
 
-  @keyframes slide-up {
-    from {
+  @keyframes toast-in {
+    0% {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(8px) scale(0.98);
     }
-    to {
+    100% {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
     }
   }
 
   @media (max-width: 640px) {
     .toast-wrapper {
-      @apply fixed top-4 right-0 left-0 p-2;
+      @apply fixed top-4 right-0 left-0 px-4;
       max-width: none;
     }
 
     .toast-outer {
       min-width: 0;
       max-width: none;
-      @apply px-2;
+      @apply w-full;
     }
 
     .toast-container {
-      @apply rounded-xl p-3;
+      @apply rounded-md p-3 shadow-lg;
+      background: theme('colors.kong.bg-dark/98');
     }
   }
 

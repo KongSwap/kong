@@ -20,7 +20,6 @@
     TrendingUp,
     ExternalLink,
   } from "lucide-svelte";
-  import { toastStore } from "$lib/stores/toastStore";
   import { onDestroy } from "svelte";
 
   // Get props passed from layout
@@ -131,12 +130,6 @@
     });
   }
 
-  // Copy principal ID to clipboard
-  function copyToClipboard() {
-    navigator.clipboard.writeText(page.params.principalId);
-    toastStore.success("Copied to clipboard");
-  }
-
   // Tooltip text for whale indicator
   const whaleTooltipText = `This wallet holds at least ${WHALE_THRESHOLD}% of the token's total supply, making it a significant holder ("whale").`;
 
@@ -150,6 +143,7 @@
 
 <svelte:head>
   <title>Wallet Overview for {page.params.principalId} - KongSwap</title>
+  <meta name="description" content="View your wallet overview and portfolio distribution" />
 </svelte:head>
 
 <div class="space-y-2">

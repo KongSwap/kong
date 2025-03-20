@@ -40,6 +40,9 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                                     });
                                 }
                                 MarketStatus::Closed(ref winning_outcomes) => {
+                                    // Initialize winnings to zero by default
+                                    let mut winnings = StorableNat::from(0u64);
+                                    
                                     if winning_outcomes.iter().any(|n| candid::Nat::from(bet.outcome_index.clone()) == *n) {
                                         // Calculate winnings based on the proportion of the winning pool
                                         let mut total_winning_pool = StorableNat::from(0u64);
@@ -52,7 +55,7 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                                             }
                                         }
 
-                                        let winnings = if !total_winning_pool.is_zero() {
+                                        winnings = if !total_winning_pool.is_zero() {
                                             (bet.amount.clone() * market.total_pool.clone()) / total_winning_pool.to_u64()
                                         } else {
                                             StorableNat::from(0u64)
@@ -66,7 +69,7 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                                         bet_amount: bet.amount.clone(),
                                         outcome_index: bet.outcome_index.clone(),
                                         outcome_text: market.outcomes[bet.outcome_index.to_u64() as usize].clone(),
-                                        winnings: Some(StorableNat::from(0u64)),
+                                        winnings: Some(winnings),
                                     });
                                 }
                                 MarketStatus::Disputed => {

@@ -16,7 +16,7 @@ AMOUNT=$3
 
 # icrc2_approve KONG token so backend can icrc2_transfer_from
 PREDICTION_MARKETS_CANISTER=$(dfx canister id prediction_markets_backend)
-KONG_LEDGER=$(dfx canister id kong_ledger)
+KONG_LEDGER=$(dfx canister id kskong_ledger)
 KONG_FEE=$(dfx canister call ${KONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
 KONG_FEE=${KONG_FEE//_/}
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # approval expires 60 seconds from now

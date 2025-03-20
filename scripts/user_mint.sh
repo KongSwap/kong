@@ -3,8 +3,11 @@
 network="--network $1"
 identity="--identity kong_token_minter"
 
-to_principal_id=$(dfx identity get-principal $network --identity kong_user1)
-#to_principal_id=jum6j-nhmrj-nuoi5-lccjt-3ftxs-dw5u6-enrtt-7432h-iaa4z-pnzoo-oqe
+to_principal_id=$(dfx identity get-principal $network --identity kong)
+# to_principal_id=$(dfx identity get-principal $network --identity kong_user1)
+# to_principal_id=$(dfx identity get-principal $network --identity kong_user2)
+# to_principal_id=jum6j-nhmrj-nuoi5-lccjt-3ftxs-dw5u6-enrtt-7432h-iaa4z-pnzoo-oqe
+# to_principal_id=4s7ce-nntbc-oebfq-damfd-6fuxi-nydjp-fozv6-fherl-djnrj-xtgie-2qe
 
 # 1,000,000 ksUSDT
 amount=1_000_000_000_000

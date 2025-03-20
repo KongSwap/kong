@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { fade } from 'svelte/transition';
   import "../app.css";
   import { page } from "$app/state";
   import Navbar from "$lib/components/nav/Navbar.svelte";
@@ -14,7 +15,6 @@
   import { userTokens } from "$lib/stores/userTokens";
   import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens/TokenApiClient";
-  import TrollBox from "$lib/components/trollbox/TrollBox.svelte";
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";
   import { keyboardShortcuts } from "$lib/services/keyboardShortcuts";
@@ -25,6 +25,7 @@
   );
   let initializationPromise = $state<Promise<void> | null>(null);
   let defaultTokens = $state<FE.Token[]>([]);
+  let themeReady = $state(false);
   let { children } = $props();
   
   async function init() {
@@ -54,6 +55,17 @@
     if (browser) {
       themeStore.initTheme();
       
+      // Check if theme is ready
+      const checkThemeReady = () => {
+        if (document.documentElement.getAttribute('data-theme-ready') === 'true') {
+          themeReady = true;
+        } else {
+          setTimeout(checkThemeReady, 10);
+        }
+      };
+      
+      checkThemeReady();
+      
       // Initialize keyboard shortcuts
       keyboardShortcuts.initialize();
     }
@@ -62,19 +74,6 @@
     init().catch((error) => {
       console.error("[App] Failed to initialize app:", error);
     });
-    
-    // Load tokens
-    fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS))
-      .then((tokens) => {
-        defaultTokens = tokens;
-        if (defaultTokens.length > 0 && !$auth.isConnected) {
-          userTokens.enableTokens(defaultTokens);
-        }
-        return userTokens.refreshTokenData();
-      })
-      .catch((error) => {
-        console.error("[App] Failed to fetch tokens:", error);
-      });
       
     // Cleanup on destroy
     return () => {
@@ -98,12 +97,41 @@
       width: 100%;
       height: 100%;
       display: flex;
-      @apply dark:bg-[#010101] light:bg-gray-200 transition-colors duration-200;
+    }
+    
+    /* Hide app until theme is ready */
+    html:not([data-theme-ready="true"]) .app-content {
+      visibility: hidden;
+    }
+    
+    /* Simple loading indicator */
+    .theme-loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #0D111F;
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 0.3s ease-out;
+    }
+    
+    html[data-theme-ready="true"] .theme-loading {
+      opacity: 0;
+      pointer-events: none;
     }
   </style>
 </svelte:head>
 
-<div class="flex flex-col min-h-screen w-full origin-center">
+{#if browser}
+  <div class="theme-loading">
+    <!-- Simple loading spinner -->
+    <div class="loading-spinner"></div>
+  </div>
+{/if}
+
+<div class="flex flex-col min-h-screen w-full origin-center app-content">
   <PageWrapper page={page.url.pathname}>
     <div class="ticker-section">
       <TokenTicker />
@@ -112,7 +140,7 @@
       <Navbar />
     </div>
     <main class="flex flex-col items-center w-full">
-      <div class="w-full h-full">
+      <div class="w-full h-full" transition:fade>
         {@render children?.()}
       </div>
     </main>
@@ -120,9 +148,24 @@
   <Toast />
   <AddToHomeScreen />
   <QRModal />
-  <!-- Add TrollBox component -->
-  <TrollBox />
   <GlobalSearch isOpen={$searchStore.isOpen} on:close={() => searchStore.close()} />
   <KeyboardShortcutsHelp />
   <div id="modals"></div>
 </div>
+
+<style lang="postcss">
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #0095EB;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>

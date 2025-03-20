@@ -1,4 +1,4 @@
-import type { Settings } from "../settings/types";
+import type { Settings } from "../../types/settings";
 import type { SwapState } from "./SwapStateService";
 
 interface AuthState {

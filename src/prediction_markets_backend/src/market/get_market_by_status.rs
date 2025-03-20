@@ -1,14 +1,31 @@
 use ic_cdk::query;
 use num_traits::ToPrimitive;
+use candid::CandidType;
+use serde::Deserialize;
 
 use super::market::*;
 
 use crate::nat::*;
 use crate::stable_memory::*;
 
+#[derive(CandidType, Deserialize)]
+pub struct GetMarketsByStatusArgs {
+    pub start: StorableNat,
+    pub length: StorableNat,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct GetMarketsByStatusResult {
+    pub markets_by_status: MarketsByStatus,
+    pub total_active: StorableNat,
+    pub total_expired_unresolved: StorableNat,
+    pub total_resolved: StorableNat,
+}
+
 /// Get markets grouped by their status: active, expired but unresolved, and resolved
+/// with pagination support
 #[query]
-pub fn get_markets_by_status() -> MarketsByStatus {
+pub fn get_markets_by_status(args: GetMarketsByStatusArgs) -> GetMarketsByStatusResult {
     let now = ic_cdk::api::time();
 
     MARKETS.with(|markets| {
@@ -35,7 +52,7 @@ pub fn get_markets_by_status() -> MarketsByStatus {
 
                     // Create a modified market with outcome pool information
                     let mut market = market.clone();
-                    market.rules = String::new(); // Remove rules as they're not relevant in this context
+                    // Keep market rules in the response
 
                     if now < market.end_time {
                         result.active.push(market);
@@ -46,7 +63,7 @@ pub fn get_markets_by_status() -> MarketsByStatus {
                 MarketStatus::Disputed => {
                     // Add disputed markets to expired_unresolved since they need admin attention
                     let mut market = market.clone();
-                    market.rules = String::new(); // Remove rules as they're not relevant in this context
+                    // Keep market rules in the response
                     result.expired_unresolved.push(market);
                 }
                 MarketStatus::Closed(ref winning_outcomes) => {
@@ -110,7 +127,7 @@ pub fn get_markets_by_status() -> MarketsByStatus {
                         .collect();
 
                     let mut market = market.clone();
-                    market.rules = String::new(); // Remove rules as they're not relevant in this context
+                    // Keep market rules in the response
 
                     result.resolved.push(MarketResult {
                         market: market.clone(),
@@ -130,6 +147,24 @@ pub fn get_markets_by_status() -> MarketsByStatus {
             }
         }
 
-        result
+        // Store total counts before pagination
+        let total_active = StorableNat::from(result.active.len() as u64);
+        let total_expired_unresolved = StorableNat::from(result.expired_unresolved.len() as u64);
+        let total_resolved = StorableNat::from(result.resolved.len() as u64);
+        
+        // Apply pagination to each category
+        let start_idx = args.start.to_u64() as usize;
+        let length = args.length.to_u64() as usize;
+        
+        result.active = result.active.into_iter().skip(start_idx).take(length).collect();
+        result.expired_unresolved = result.expired_unresolved.into_iter().skip(start_idx).take(length).collect();
+        result.resolved = result.resolved.into_iter().skip(start_idx).take(length).collect();
+        
+        GetMarketsByStatusResult {
+            markets_by_status: result,
+            total_active,
+            total_expired_unresolved,
+            total_resolved,
+        }
     })
 }

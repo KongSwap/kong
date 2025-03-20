@@ -14,7 +14,7 @@
     isFavorite: boolean;
     enablingTokenId: string | null;
     blockedTokenIds: string[];
-    balance?: { tokens: string; usd: string };
+    balance?: { tokens: string; usd: string; loading?: boolean };
     onTokenClick: (e: MouseEvent | TouchEvent) => void;
     onFavoriteClick: (e: MouseEvent) => void;
     onEnableClick: (e: MouseEvent) => void;
@@ -82,10 +82,16 @@
     {:else if props.balance}
       <!-- Balance display for enabled tokens -->
       <span class="flex flex-col text-right token-balance">
-        {props.balance.tokens}
-        <span class="text-xs token-balance-label">
-          {props.balance.usd}
-        </span>
+        {#if props.balance.loading}
+          <div class="balance-loading-indicator">
+            <div class="balance-spinner"></div>
+          </div>
+        {:else}
+          {props.balance.tokens}
+          <span class="text-xs token-balance-label">
+            {props.balance.usd}
+          </span>
+        {/if}
       </span>
       <!-- Selected indicator -->
       {#if props.currentToken?.canister_id === props.token.canister_id}
@@ -150,8 +156,8 @@
     top: 50%;
     transform: translateY(-50%);
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.5);
-    background-color: rgb(37, 41, 62);
+    color: theme('colors.kong.text-secondary');
+    background-color: theme('colors.kong.bg-light');
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
   }
@@ -187,18 +193,18 @@
     @apply text-kong-text-secondary;
     padding: 0.25rem;
     border-radius: 0.375rem;
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: theme('colors.kong.bg-light/10');
     transition: all 0.2s;
   }
 
   .favorite-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
+    background-color: theme('colors.kong.bg-light/20');
+    color: theme('colors.kong.accent-yellow');
   }
 
   .favorite-button.active {
-    color: #fde047;
-    background-color: rgba(253, 224, 71, 0.1);
+    color: theme('colors.kong.accent-yellow');
+    background-color: theme('colors.kong.bg-light');
   }
 
   .token-symbol {
@@ -220,8 +226,8 @@
   }
 
   .selected-indicator {
-    @apply text-kong-accent-green;
-    background: rgba(74, 222, 128, 0.1);
+    @apply text-kong-text-on-primary;
+    background: theme('colors.kong.accent-green/10');
     border-radius: 50%;
     padding: 4px;
     display: flex;
@@ -240,7 +246,7 @@
 
   .button-spinner {
     @apply w-4 h-4;
-    @apply border-2 border-white/20 border-t-white;
+    @apply border-2 border-kong-text-primary/20 border-t-kong-text-primary;
     @apply rounded-full;
     animation: spin 0.6s linear infinite;
     margin: 0 auto;
@@ -258,5 +264,18 @@
 
   .token-item.not-enabled:hover {
     @apply opacity-100;
+  }
+
+  .balance-loading-indicator {
+    @apply flex items-center justify-center;
+    min-width: 60px;
+    min-height: 24px;
+  }
+
+  .balance-spinner {
+    @apply w-3 h-3;
+    @apply border-2 border-kong-text-primary/10 border-t-kong-text-primary/60;
+    @apply rounded-full;
+    animation: spin 0.6s linear infinite;
   }
 </style> 

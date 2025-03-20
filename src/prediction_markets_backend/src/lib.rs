@@ -5,7 +5,7 @@
 //! - Resolve markets through various methods (admin, oracle, or decentralized)
 //! - Automatically distribute winnings to successful bettors
 
-use candid::Principal;
+use candid::{Principal, decode_one};
 use ic_cdk::{init, post_upgrade, pre_upgrade};
 
 use crate::bet::bet::*;
@@ -14,9 +14,16 @@ use crate::category::market_category::*;
 use crate::delegation::*;
 use crate::market::create_market::*;
 use crate::market::market::*;
+use crate::market::get_all_markets::GetAllMarketsArgs;
+use crate::market::get_all_markets::GetAllMarketsResult;
+use crate::market::get_market_by_status::GetMarketsByStatusArgs;
+use crate::market::get_market_by_status::GetMarketsByStatusResult;
 use crate::nat::*;
 use crate::resolution::resolution::*;
 use crate::user::user::*;
+use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
+use icrc_ledger_types::icrc21::responses::ConsentInfo; 
+use icrc_ledger_types::icrc21::errors::ErrorInfo;
 
 pub mod bet;
 pub mod canister;

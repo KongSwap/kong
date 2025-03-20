@@ -4,6 +4,7 @@
   export let onClick: () => void;
   export let isActive = false;
   export let iconBackground = "bg-kong-text-primary/5";
+  export let badgeCount = 0;
 </script>
 
 <button
@@ -11,8 +12,11 @@
   class:active={isActive}
   on:click={onClick}
 >
-  <div class="mobile-nav-btn-icon {iconBackground}">
+  <div class="mobile-nav-btn-icon {iconBackground} relative">
     <svelte:component this={icon} size={18} />
+    {#if badgeCount > 0}
+      <div class="badge">{badgeCount}</div>
+    {/if}
   </div>
   <div class="mobile-nav-btn-content">
     <span>{label}</span>
@@ -34,5 +38,9 @@
 
   .mobile-nav-btn-content {
     @apply flex items-center justify-between flex-1;
+  }
+  
+  .badge {
+    @apply absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center;
   }
 </style> 
