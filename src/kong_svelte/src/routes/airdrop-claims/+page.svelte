@@ -26,6 +26,7 @@
     const result = await ClaimsService.fetchClaims();
     claims = result.claims;
     error = result.error;
+    hasAccess = !error && claims.length > 0;
     isLoading = false;
   }
 
@@ -74,58 +75,58 @@
   <meta name="description" content="View and process your claimable airdrop tokens" />
 </svelte:head>
 
-<div class="container mx-auto pb-4 py-4">
+<div class="container mx-auto max-w-[1300px]">
   <PageHeader 
     title="Airdrop Claims"
     description="View and process your claimable airdrop tokens"
     icon={Award}
-  />
-  
-  {#if $auth.isConnected && !isLoading && !error && claims.length > 0 && hasAccess}
-    <div class="px-4 mb-6">
-      <div class="flex flex-col sm:flex-row gap-3 justify-end">
-        <!-- Claim All button -->
-        <ButtonV2 
-          theme="accent-green" 
-          variant={isProcessingAll ? "solid" : "outline"} 
-          size="sm"
-          on:click={processAllClaims}
-          isDisabled={isProcessingAll || isProcessing}
-          className="w-full sm:w-auto"
-        >
-          <div class="flex items-center justify-center">
-            {#if isProcessingAll}
-              <Loader2 class="animate-spin mr-2" size={16} />
-              <span>Processing...</span>
-            {:else}
+  >
+    <svelte:fragment slot="buttons">
+      {#if $auth.isConnected && !isLoading && !error && claims.length > 0}
+        <div class="flex flex-row gap-3">
+          <!-- Claim All button -->
+          <ButtonV2 
+            theme="accent-green" 
+            variant={isProcessingAll ? "solid" : "outline"} 
+            size="sm"
+            on:click={processAllClaims}
+            isDisabled={isProcessingAll || isProcessing || !hasAccess}
+            className="w-auto"
+          >
+            <div class="flex items-center justify-center">
+              {#if isProcessingAll}
+                <Loader2 class="animate-spin mr-2" size={16} />
+                <span>Processing...</span>
+              {:else}
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Claim All
+              {/if}
+            </div>
+          </ButtonV2>
+          
+          <!-- Refresh button -->
+          <ButtonV2 
+            theme="secondary" 
+            variant="outline" 
+            size="sm"
+            on:click={fetchClaims}
+            isDisabled={isLoading || isProcessingAll}
+            className="w-auto"
+          >
+            <div class="flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Claim All
-            {/if}
-          </div>
-        </ButtonV2>
-        
-        <!-- Refresh button -->
-        <ButtonV2 
-          theme="secondary" 
-          variant="outline" 
-          size="sm"
-          on:click={fetchClaims}
-          isDisabled={isLoading || isProcessingAll}
-          className="w-full sm:w-auto"
-        >
-          <div class="flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh
-          </div>
-        </ButtonV2>
-      </div>
-    </div>
-  {/if}
-
+              Refresh
+            </div>
+          </ButtonV2>
+        </div>
+      {/if}
+    </svelte:fragment>
+  </PageHeader>
+  
   {#if !$auth.isConnected}
     <Panel variant="solid" type="main" className="max-w-lg mx-auto mt-4">
       <div class="p-6 text-center">
@@ -155,7 +156,7 @@
       </div>
     </Panel>
   {:else}
-    <div class="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 animate-fade-in">
+    <div class="grid px-4 gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 animate-fade-in mt-4">
       {#each claims as claim (claim.claim_id)}
         <Panel 
           variant="solid" 

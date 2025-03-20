@@ -27,25 +27,31 @@
         <p class="text-kong-text-secondary text-sm max-w-[600px] hidden md:block">{description}</p>
       </div>
 
-      <!-- Right side: Stats -->
-      <div class="grid grid-cols-3 xs:grid-cols-2 md:flex justify-start items-start md:items-center gap-y-4 gap-x-6 w-full md:w-auto">
-        {#each stats as stat}
-          <div class="flex items-center gap-3 justify-center">
-            <div class="p-2 rounded-lg bg-kong-primary/10 shrink-0">
-              <svelte:component 
-                this={stat.icon}
-                class="w-5 h-5 md:h-6 md:w-6 text-kong-primary"
-              />
-            </div>
-            <div class="text-right">
-              <div class="text-xs md:text-sm text-kong-text-secondary">{stat.label}</div>
-              <div class="text-sm font-medium text-kong-text-primary">
-                {stat.value}
+      <!-- Right side: Stats or Buttons -->
+      {#if stats.length > 0}
+        <div class="grid grid-cols-3 xs:grid-cols-2 md:flex justify-start items-start md:items-center gap-y-4 gap-x-6 w-full md:w-auto">
+          {#each stats as stat}
+            <div class="flex items-center gap-3 justify-center">
+              <div class="p-2 rounded-lg bg-kong-primary/10 shrink-0">
+                <svelte:component 
+                  this={stat.icon}
+                  class="w-5 h-5 md:h-6 md:w-6 text-kong-primary"
+                />
+              </div>
+              <div class="text-right">
+                <div class="text-xs md:text-sm text-kong-text-secondary">{stat.label}</div>
+                <div class="text-sm font-medium text-kong-text-primary">
+                  {stat.value}
+                </div>
               </div>
             </div>
-          </div>
-        {/each}
-      </div>
+          {/each}
+        </div>
+      {:else}
+        <div class="flex items-center gap-3">
+          <slot name="buttons"></slot>
+        </div>
+      {/if}
     </div>
   </div>
 </div> 

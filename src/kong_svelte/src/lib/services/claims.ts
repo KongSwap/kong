@@ -55,6 +55,7 @@ export class ClaimsService {
 
   static async processClaim(claimId: bigint): Promise<{ success: boolean, error: string | null }> {
     try {
+      console.log("Processing claim:", claimId);
       const actor = auth.getActor(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend);
       const result = await actor.claim(claimId);
       

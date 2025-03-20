@@ -1,16 +1,19 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
-    import { onMount } from "svelte";
-
+  import { goto } from "$app/navigation";
+  
   let { children } = $props<{ children: any }>();
 
-  onMount(() => {
+  $effect(() => {
     goto("/swap");
   });
 </script>
 
 <svelte:head>
   <title>Prediction Markets - KongSwap</title>
+  <meta property="og:title" content="Prediction Markets - KongSwap" />
+  <meta property="og:description" content="Trade on prediction markets with KongSwap" />
+  <meta property="og:image" content="/images/predictionmarket-og.png" />
+  <meta property="og:type" content="website" />
 </svelte:head>
 
 <!-- Regular prediction markets content -->
