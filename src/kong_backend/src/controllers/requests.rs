@@ -6,6 +6,7 @@ use crate::ic::get_time::get_time;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
 use crate::stable_request::request_archive::archive_request_map;
+use crate::stable_request::request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 
 const MAX_REQUESTS: usize = 1000;
@@ -48,7 +49,8 @@ fn update_requests(stable_requests_json: String) -> Result<String, String> {
     REQUEST_MAP.with(|request_map| {
         let mut map = request_map.borrow_mut();
         for (k, v) in requests {
-            map.insert(k, v);
+            map.insert(k, v.clone());
+            let _ = request_map::archive_to_kong_data(&v);
         }
     });
 
