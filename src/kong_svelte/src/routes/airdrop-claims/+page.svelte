@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { auth } from '$lib/services/auth';
+  import { auth } from '$lib/stores/auth';
   import { ClaimsService } from '$lib/services/claims';
   import ButtonV2 from '$lib/components/common/ButtonV2.svelte';
   import LoadingIndicator from '$lib/components/common/LoadingIndicator.svelte';

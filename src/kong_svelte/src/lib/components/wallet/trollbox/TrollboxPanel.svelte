@@ -5,7 +5,7 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import Badge from "$lib/components/common/Badge.svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   
   // TrollBox imports
   import { trollboxStore } from "$lib/components/wallet/trollbox/trollboxStore";

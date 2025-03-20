@@ -2,10 +2,10 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import { onMount } from "svelte";
   import { fetchUserTransactions } from "$lib/api/users";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { toastStore } from "$lib/stores/toastStore";
   import { FileDown, Calendar, ArrowRightLeft, Droplet, SendHorizonal } from "lucide-svelte";
-  import { formatDate } from "$lib/utils/dateUtils";
+  import { formatDate } from "$lib/utils/dateFormatters";
   import { processTransaction, formatAmount } from "$lib/utils/transactionUtils";
 
   // Props

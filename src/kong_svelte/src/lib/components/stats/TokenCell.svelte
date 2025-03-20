@@ -2,8 +2,8 @@
   import { Star, Flame, PiggyBank, TrendingUp, TrendingDown } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { tooltip } from "$lib/actions/tooltip";
-  import { auth } from "$lib/services/auth";
-  import { FavoriteService } from "$lib/services/tokens/favoriteService";
+  import { auth } from "$lib/stores/auth";
+	import { favoriteStore } from "$lib/stores/favoriteStore";
   import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
 
   export let row: any;
@@ -17,14 +17,14 @@
   $: isTopLoser = !isExcludedToken && row.priceChangeRank && row.priceChangeRank <= 3 && Number(row.metrics?.price_change_24h || 0) < 0;
 
   $: if ($auth.isConnected) {
-    FavoriteService.isFavorite(row.canister_id).then(fav => isFavorite = fav);
+    favoriteStore.isFavorite(row.canister_id).then(fav => isFavorite = fav);
   }
 
   async function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
     if (!$auth.isConnected) return;
     
-    const success = await FavoriteService.toggleFavorite(row.canister_id);
+    const success = await favoriteStore.toggleFavorite(row.canister_id);
     if (success) {
       isFavorite = !isFavorite;
     }

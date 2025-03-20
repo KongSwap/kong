@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { getUserHistory } from "$lib/api/predictionMarket";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { goto } from "$app/navigation";
   import { ArrowLeft, TrendingUp, Wallet, Award, Activity, ArrowUpRight } from "lucide-svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";

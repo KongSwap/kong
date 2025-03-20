@@ -3,7 +3,7 @@
   import MessageItem from './MessageItem.svelte';
   import PendingMessageItem from './PendingMessageItem.svelte';
   import InstructionsPanel from './InstructionsPanel.svelte';
-  import { auth } from '$lib/services/auth';
+  import { auth } from '$lib/stores/auth';
   
   // Props and event handlers
   let {

@@ -4,7 +4,7 @@ import { getThemeById, generateThemeVariables, getAllThemes, registerTheme } fro
 import type { ThemeDefinition } from '../themes/baseTheme';
 import { createNamespacedStore } from '../config/localForage.config';
 import { get } from 'svelte/store';
-import { auth } from '../services/auth';
+import { auth } from '../stores/auth';
 
 // Define theme ID type based on available themes
 export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'win98light' | 'synthwave';

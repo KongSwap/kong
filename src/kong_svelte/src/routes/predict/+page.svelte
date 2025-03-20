@@ -8,7 +8,7 @@
   import MarketSection from "./MarketSection.svelte";
   import BetModal from "./BetModal.svelte";
   import { toastStore } from "$lib/stores/toastStore";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import {
     marketStore,
     filteredMarkets,

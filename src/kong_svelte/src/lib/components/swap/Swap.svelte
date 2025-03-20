@@ -10,17 +10,17 @@
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import {
     getTokenDecimals,
     currentUserBalancesStore
   } from "$lib/stores/tokenStore";
   import { settingsStore } from "$lib/stores/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
-  import { swapStatusStore } from "$lib/services/swap/swapStore";
+  import { swapStatusStore } from "$lib/stores/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
-  import { livePools } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/stores/poolStore";
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import { browser } from "$app/environment";
@@ -69,16 +69,16 @@
   const SEARCH_HEADER_HEIGHT = 56; // Height of search header
 
   // State
-  let isProcessing = false;
-  let isInitialized = false;
+  let isProcessing = $state(false);
+  let isInitialized = $state(false);
   let currentSwapId: string | null = null;
-  let isQuoteLoading = false;
-  let showSettings = false;
-  let insufficientFunds = false;
-  let hasValidPool = false;
+  let isQuoteLoading = $state(false);
+  let showSettings = $state(false);
+  let insufficientFunds = $state(false);
+  let hasValidPool = $state(false);
   let skipNextUrlInitialization = false;
   let currentBalance: string | null = null;
-  let showWalletProvider = false;
+  let showWalletProvider = $state(false);
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -113,6 +113,7 @@
   });
 
   let buttonText = $derived(
+    !$auth.isConnected ? "Connect Wallet" :
     (!$swapState.payAmount || $swapState.payAmount === "0") ? "Enter Amount" : 
     insufficientFunds ? "Insufficient Balance" :
     SwapButtonService.getButtonText($swapState, $settingsStore, isQuoteLoading, insufficientFunds, $auth)
@@ -161,15 +162,6 @@
         await swapState.initializeTokens(null, null);
       }
       isInitialized = true;
-      console.log('Initialization complete');
-      
-      // Add a delayed balance refresh after initialization
-      setTimeout(() => {
-        if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
-          console.log('Running delayed balance refresh after initialization');
-          refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, false);
-        }
-      }, 1500); // 1.5 second delay
     }
   });
 

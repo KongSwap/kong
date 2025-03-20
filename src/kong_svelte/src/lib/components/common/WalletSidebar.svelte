@@ -12,7 +12,7 @@
   } from "lucide-svelte";
   import Badge from "$lib/components/common/Badge.svelte";
   import { browser } from "$app/environment";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
 
   // TrollBox imports
   import TrollboxPanel from "$lib/components/wallet/trollbox/TrollboxPanel.svelte";

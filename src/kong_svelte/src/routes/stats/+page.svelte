@@ -14,12 +14,12 @@
   } from "lucide-svelte";
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { browser } from "$app/environment";
   import { page } from "$app/stores";
   import TokenCardMobile from "$lib/components/stats/TokenCardMobile.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { FavoriteService } from "$lib/services/tokens/favoriteService";
+	import { favoriteStore } from "$lib/stores/favoriteStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
@@ -220,8 +220,8 @@
   $effect(() => {
     if ($auth.isConnected) {
       Promise.all([
-        FavoriteService.getFavoriteCount().then(count => favoriteCount.set(count)),
-        FavoriteService.loadFavorites().then(favorites => favoriteTokenIds.set(favorites))
+        Promise.resolve(favoriteStore.getCount()).then(count => favoriteCount.set(count)),
+        favoriteStore.loadFavorites().then(favorites => favoriteTokenIds.set(favorites))
       ]);
     } else {
       favoriteTokenIds.set([]);

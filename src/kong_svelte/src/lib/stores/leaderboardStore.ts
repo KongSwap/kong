@@ -10,12 +10,13 @@ interface UserDetails {
   fee_level: number;
 }
 
-// Define the response structure for leaderboard API
-interface VolumeLeaderboardResponse {
+// Define the full response structure we need
+interface FullLeaderboardResponse {
   items: LeaderboardEntry[];
+  limit: number;
+  page: number;
   total_count: number;
   total_pages: number;
-  limit: number;
 }
 
 interface LeaderboardState {
@@ -126,11 +127,27 @@ const createLeaderboardStore = () => {
         throw new Error("Period not specified");
       }
       
-      const response = await fetchVolumeLeaderboard(period) as VolumeLeaderboardResponse;
+      const response = await fetchVolumeLeaderboard(period);
       
-      if (response && response.items) {
-        const leaderboardItems = response.items;
-        const totalTraders = response.total_count;
+      // Handle the two possible return types
+      if (Array.isArray(response)) {
+        // Handle case where response is LeaderboardEntry[]
+        const leaderboardItems = response;
+        const totalTraders = leaderboardItems.length;
+        const totalVolume = leaderboardItems.reduce((sum, entry) => sum + entry.total_volume_usd, 0);
+        
+        update(state => ({
+          ...state,
+          leaderboardData: leaderboardItems,
+          totalTraders,
+          totalVolume,
+          isLoading: false
+        }));
+      } else if (response && 'items' in response) {
+        // Handle case where response is VolumeLeaderboardResponse
+        const typedResponse = response as unknown as FullLeaderboardResponse;
+        const leaderboardItems = typedResponse.items;
+        const totalTraders = typedResponse.total_count;
         const totalVolume = leaderboardItems.reduce((sum, entry) => sum + entry.total_volume_usd, 0);
         
         update(state => ({

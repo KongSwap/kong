@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { walletsList } from '@windoge98/plug-n-play';
-  import { auth, selectedWalletId } from "$lib/services/auth";
+  import { auth, selectedWalletId } from "$lib/stores/auth";
   import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
   import { browser } from "$app/environment";
@@ -178,7 +178,9 @@
       <div class="wallet-list">
         {#each filteredWallets as wallet}
           <button
-            class="wallet-option {wallet.recommended ? 'recommended' : ''} {connectingWalletId === wallet.id ? 'connecting' : ''}"
+            class="wallet-option 
+              {connectingWalletId === wallet.id ? 'connecting' : ''} 
+              {wallet.recommended && connectingWalletId !== wallet.id && connectingWalletId !== null ? '' : (wallet.recommended ? 'recommended' : '')}"
             on:click={() => handleConnect(wallet.id)}
             disabled={connecting}
             aria-busy={connectingWalletId === wallet.id}
@@ -287,11 +289,18 @@
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  .wallet-option.recommended {
+  /* Override any recommended styles when connecting */
+  .wallet-option.connecting.recommended {
+    @apply border-kong-primary bg-kong-primary/15 text-kong-bg-light;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Only apply recommended styles when not connecting */
+  .wallet-option.recommended:not(.connecting) {
     @apply bg-kong-primary/10 border-kong-primary/20;
   }
 
-  .wallet-option.recommended:hover:not(:disabled) {
+  .wallet-option.recommended:hover:not(:disabled):not(.connecting) {
     @apply bg-kong-primary/25 border-kong-primary/30;
     box-shadow:
       0 4px 24px -2px rgb(var(--primary) / 0.15),

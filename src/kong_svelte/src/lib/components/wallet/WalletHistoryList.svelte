@@ -3,25 +3,14 @@
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import {
     Clock,
-    ExternalLink,
-    ArrowDownRight,
-    ArrowUpRight,
-    Plus,
-    Minus,
-    Repeat,
     RefreshCw,
     Download,
-    ArrowRightLeft,
     Loader2,
   } from "lucide-svelte";
-  import Badge from "$lib/components/common/Badge.svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { toastStore } from "$lib/stores/toastStore";
-  import Modal from "$lib/components/common/Modal.svelte";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { writable, derived } from "svelte/store";
+  import { writable } from "svelte/store";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
-  import { formatDate } from "$lib/utils/dateUtils";
   import { fetchUserTransactions } from "$lib/api/users";
   import TransactionModal from "./TransactionModal.svelte";
   import TransactionItem from "./TransactionItem.svelte";

@@ -9,10 +9,10 @@
   import { cubicOut } from "svelte/easing";
   import { browser } from "$app/environment";
   import { swapState } from "$lib/services/swap/SwapStateService";
-  import { FavoriteService } from "$lib/services/tokens/favoriteService";
+	import { favoriteStore } from "$lib/stores/favoriteStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { userTokens } from "$lib/stores/userTokens";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { debounce } from "$lib/utils/debounce";
   import TokenItem from "./TokenItem.svelte";
@@ -299,8 +299,8 @@
     
     const isFavorite = state.favoriteTokens.get(token.canister_id) || false;
     await (isFavorite 
-      ? FavoriteService.removeFavorite(token.canister_id)
-      : FavoriteService.addFavorite(token.canister_id));
+      ? favoriteStore.removeFavorite(token.canister_id)
+      : favoriteStore.addFavorite(token.canister_id));
 
     // Update the local state
     state.favoriteTokens.set(token.canister_id, !isFavorite);
@@ -455,12 +455,12 @@
   async function loadFavorites() {
     if (!browser || state.favoritesLoaded) return;
 
-    await FavoriteService.loadFavorites();
+    await favoriteStore.loadFavorites();
 
     const newFavorites = new Map<string, boolean>();
     const promises = baseFilteredTokens.map(async (token) => {
       const tokenId = getTokenId(token);
-      if (tokenId) newFavorites.set(tokenId, await FavoriteService.isFavorite(tokenId));
+      if (tokenId) newFavorites.set(tokenId, await favoriteStore.isFavorite(tokenId));
     });
 
     await Promise.all(promises);

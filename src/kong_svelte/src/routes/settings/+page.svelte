@@ -7,7 +7,7 @@
   import Slider from '$lib/components/common/Slider.svelte';
   import { settingsStore } from '$lib/stores/settingsStore';
   import { toastStore } from '$lib/stores/toastStore';
-  import { auth } from '$lib/services/auth';
+  import { auth } from '$lib/stores/auth';
   import { browser } from '$app/environment';
   import { Settings as SettingsIcon, ArrowLeft } from 'lucide-svelte';
   import PageHeader from '$lib/components/common/PageHeader.svelte';
@@ -364,17 +364,7 @@
       isThemeDropdownOpen = false;
     }
   }
-  
-  // Get display name for current theme
-  function getThemeDisplayName(theme: string): string {
-    switch (theme) {
-      case 'light': return 'Light';
-      case 'dark': return 'Dark';
-      case 'plain-black': return 'Plain Black';
-      default: return 'Unknown';
-    }
-  }
-  
+
   // Navigation function to go back
   function goBack() {
     if (browser) {

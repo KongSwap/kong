@@ -1,8 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { TokenService } from "$lib/services/tokens/TokenService";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { userTokens } from "$lib/stores/userTokens";
   import { toastStore } from "$lib/stores/toastStore";
@@ -10,6 +9,7 @@
   import { fade } from "svelte/transition";
   import BigNumber from "bignumber.js";
   import { canisterIDLs } from "$lib/config/auth.config";
+    import { fetchTokenMetadata } from "$lib/api/tokens/TokenApiClient";
 
   // Props
   const props = $props<{
@@ -89,7 +89,7 @@
     customTokenError = "";
     
     try {
-      const token = await TokenService.fetchTokenMetadata(canisterId);      
+      const token = await fetchTokenMetadata(canisterId);      
       if (token) {
         previewToken = token;
         // Only update lastPreviewedCanisterId after a successful API call

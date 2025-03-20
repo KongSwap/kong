@@ -3,7 +3,7 @@ import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.con
 import { browser } from '$app/environment';
 import { get } from 'svelte/store';
 // Import auth directly to avoid circular references since we've moved initialization to an explicit method
-import { auth } from '$lib/services/auth';
+import { auth } from '$lib/stores/auth';
 
 interface AllowanceState {
   // wallet_id -> allowancedata[]

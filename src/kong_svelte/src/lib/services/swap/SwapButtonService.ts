@@ -20,7 +20,6 @@ export class SwapButtonService {
         if (insufficientFunds) return "Insufficient Funds";
         if (swapState.swapSlippage > settingsStore.max_slippage)
             return `High Slippage (${swapState.swapSlippage.toFixed(2)}% > ${settingsStore.max_slippage}%) - Click to Adjust`;
-        if (!auth.isConnected) return "Connect Wallet";
         if (!swapState.payAmount) return "Enter Amount";
         return "SWAP";
     }

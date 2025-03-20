@@ -3,7 +3,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import { onMount } from "svelte";
-  import { livePools } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/stores/poolStore";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import TokenInfo from "./TokenInfo.svelte";

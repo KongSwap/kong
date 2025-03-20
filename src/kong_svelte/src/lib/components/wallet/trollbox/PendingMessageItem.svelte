@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { auth } from '$lib/services/auth';
+  import { auth } from '$lib/stores/auth';
   import { fade } from 'svelte/transition';
   import { fetchTokensByCanisterId } from '$lib/api/tokens';
-  import { DEFAULT_LOGOS } from "$lib/services/tokens";
   import { onMount } from 'svelte';
   
   let {
@@ -19,7 +18,6 @@
   // State
   let tokenCache = $state(new Map());
   let processedMessage = $derived(processMessageContent(pending.message));
-  let isCurrentUser = $derived(true); // Pending messages are always from current user
   let timeString = $derived(new Date(Number(pending.created_at / BigInt(1000000))).toLocaleTimeString([], { 
     hour: '2-digit', 
     minute: '2-digit' 
@@ -79,7 +77,7 @@
       }
       
       // Get token logo URL or fallback
-      const logoUrl = token.logo_url || DEFAULT_LOGOS[token.canister_id] || DEFAULT_IMAGE;
+      const logoUrl = token.logo_url || DEFAULT_IMAGE;
       
       // Format price and determine price change direction
       const price = token.metrics?.price ? parseFloat(token.metrics.price).toFixed(2) : "?.??";

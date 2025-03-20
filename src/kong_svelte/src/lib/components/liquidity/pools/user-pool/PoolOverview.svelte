@@ -2,7 +2,7 @@
   import { fade } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal, formatLargeNumber, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
-  import { livePools } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/stores/poolStore";
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
 
   export let pool: any;

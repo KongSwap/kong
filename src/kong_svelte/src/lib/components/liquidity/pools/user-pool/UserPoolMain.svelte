@@ -4,7 +4,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { loadBalances } from "$lib/stores/tokenStore";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { liquidityStore } from "$lib/stores/liquidityStore";
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";
   

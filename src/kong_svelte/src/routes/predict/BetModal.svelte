@@ -6,7 +6,7 @@
   import { currentUserBalancesStore, refreshSingleBalance } from "$lib/stores/balancesStore";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { calculateMaxAmount } from "$lib/utils/validators/tokenValidators";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { userTokens } from "$lib/stores/userTokens";
 
   let {

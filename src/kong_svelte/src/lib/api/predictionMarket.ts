@@ -2,10 +2,8 @@ import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { PREDICTION_MARKETS_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { canisterIDLs } from "$lib/config/auth.config";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
-import { auth } from "$lib/services/auth";
+import { auth } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
-import BigNumber from "bignumber.js";
-import { get } from "svelte/store";
 
 export async function getMarket(marketId: number) {
   const actor = createAnonymousActorHelper(

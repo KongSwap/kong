@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
 
   export let variant: "default" | "stats" = "default";
   export let textClass: string = "text-left";

@@ -10,6 +10,7 @@
     Tooltip
   } from 'chart.js';
   import 'chartjs-adapter-date-fns';
+  import { formatDate } from '$lib/utils/dateFormatters';
   import { enUS } from 'date-fns/locale';
   import { fetchChartData, type CandleData } from '$lib/api/transactions';
 
@@ -40,14 +41,6 @@
   function getChartColor(priceChange: number | null) {
     if (priceChange === null) return '#3b82f6'; // default blue
     return priceChange >= 0 ? '#22c55e' : '#ef4444'; // green : red
-  }
-
-  function formatDate(date: Date): string {
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
   }
 
   function formatPrice(price: number): string {

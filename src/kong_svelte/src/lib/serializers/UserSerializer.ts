@@ -2,6 +2,7 @@
 // Serializer for user data with principal ID cleaning
 
 import { BaseSerializer } from './BaseSerializer';
+import { truncateAddress } from '$lib/utils/principalUtils';
 
 export class UserSerializer extends BaseSerializer {
   /**
@@ -12,18 +13,6 @@ export class UserSerializer extends BaseSerializer {
   static cleanPrincipalId(principalId: string): string {
     if (!principalId) return '';
     return principalId.endsWith('-2') ? principalId.slice(0, -2) : principalId;
-  }
-
-  /**
-   * Formats a principal ID for display by shortening it if necessary
-   * @param principalId - The principal ID to format
-   * @returns Formatted principal ID for display
-   */
-  static formatPrincipalId(principalId: string): string {
-    const cleanId = this.cleanPrincipalId(principalId);
-    
-    if (cleanId.length <= 10) return cleanId;
-    return `${cleanId.substring(0, 6)}...${cleanId.substring(cleanId.length - 4)}`;
   }
 
   /**

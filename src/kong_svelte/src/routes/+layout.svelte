@@ -10,15 +10,15 @@
   import { themeStore } from "$lib/stores/themeStore";
   import { browser } from "$app/environment";
   import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { userTokens } from "$lib/stores/userTokens";
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";
   import { keyboardShortcuts } from "$lib/services/keyboardShortcuts";
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
   import { configureStorage } from "$lib/config/localForage.config";
-  import { allowanceStore } from "$lib/services/tokens/allowanceStore";
-  import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
+  import { allowanceStore } from "$lib/stores/allowanceStore";
+  import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   
   const pageTitle = $state(
