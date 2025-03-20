@@ -7,7 +7,6 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
-use crate::stable_transfer::transfer_map;
 
 const MAX_TRANSFERS: usize = 1000;
 
@@ -48,9 +47,7 @@ fn update_transfers(stable_transfers_json: String) -> Result<String, String> {
     TRANSFER_MAP.with(|transfer_map| {
         let mut map = transfer_map.borrow_mut();
         for (k, v) in transfers {
-            let transfer_id = k.0;
             map.insert(k, v);
-            let _ = transfer_map::archive_to_kong_data(transfer_id);
         }
     });
 

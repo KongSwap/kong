@@ -8,7 +8,6 @@ use crate::stable_memory::{TX_ARCHIVE_MAP, TX_MAP};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
 use crate::stable_tx::tx_archive::archive_tx_map;
-use crate::stable_tx::tx_map;
 
 const MAX_TXS: usize = 1000;
 
@@ -49,9 +48,7 @@ fn update_txs(stable_txs_json: String) -> Result<String, String> {
     TX_MAP.with(|tx_map| {
         let mut map = tx_map.borrow_mut();
         for (k, v) in txs {
-            let tx_id = k.0;
             map.insert(k, v);
-            let _ = tx_map::archive_to_kong_data(tx_id);
         }
     });
 

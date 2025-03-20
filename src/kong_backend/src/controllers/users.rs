@@ -5,7 +5,6 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{PRINCIPAL_ID_MAP, USER_MAP};
 use crate::stable_user::principal_id_map::create_principal_id_map;
 use crate::stable_user::stable_user::{StableUser, StableUserId};
-use crate::stable_user::user_map;
 
 const MAX_USERS: usize = 1_000;
 
@@ -60,7 +59,6 @@ fn update_users(stable_users_json: String) -> Result<String, String> {
         let mut map = user_map.borrow_mut();
         for (k, v) in users {
             map.insert(k, v.clone());
-            let _ = user_map::archive_to_kong_data(&v);
         }
     });
 
