@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { writable, derived } from "svelte/store";
-  import { fetchUserTransactions } from "$lib/api/transactions";
+  import { fetchUserTransactions } from "$lib/api/users";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { ArrowRightLeft, ChevronLeft, ChevronRight } from "lucide-svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";

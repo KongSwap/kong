@@ -7,7 +7,6 @@ import * as path from "path";
 import { VitePWA } from 'vite-plugin-pwa';
 import viteCompression from 'vite-plugin-compression';
 import type { UserConfig } from 'vite';
-import { sentrySvelteKit } from '@sentry/sveltekit';
 import { execSync } from 'child_process';
 
 // Load base env first
@@ -43,12 +42,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
 
   // Create base plugins array
   const basePlugins = [
-    sentrySvelteKit({
-      sourceMapsUploadOptions: {
-        org: 'kongswap',
-        project: 'kong_svelte',
-      }
-    }),
     sveltekit(),
     environment("all", { prefix: "CANISTER_" }),
     environment("all", { prefix: "DFX_" }),

@@ -28,7 +28,6 @@
     "@dicebear/collection": "^9.2.2",
     "@dicebear/core": "^9.2.2",
     "@dicebear/identicon": "9.2.2",
-    "@sentry/sveltekit": "9.1.0",
     "@windoge98/plug-n-play": "0.0.46",
     "bignumber.js": "9.1.2",
     "chart.js": "4.4.8",

@@ -96,8 +96,9 @@ export async function syncTokens(
           const isEssentialToken = ESSENTIAL_TOKEN_IDS.includes(token.canister_id);
           
           // For normal tokens, check balance
-          const balance = batchBalances.get(token.canister_id);
-          const hasBalance = balance !== undefined && balance !== null && balance > BigInt(0);
+          const balance = batchBalances[token.canister_id];
+          const hasBalance = balance !== undefined && balance !== null && 
+                            (balance.in_tokens !== undefined && balance.in_tokens > BigInt(0));
           
           // Token should be enabled if it has balance OR is an essential token
           if (hasBalance || isEssentialToken) {
