@@ -9,7 +9,7 @@ use crate::stable_user::stable_user::{StableUser, StableUserId};
 const MAX_USERS: usize = 1_000;
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn update_prinicpal_id_map() -> Result<String, String> {
+fn update_principal_id_map() -> Result<String, String> {
     create_principal_id_map();
 
     Ok("Principal Id map updated".to_string())
