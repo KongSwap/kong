@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 echo "Please start Docker"
 
@@ -201,12 +200,11 @@ enable_archiving_to_kong_data() {
   log_info "Kong backend canister ID: ${KONG_CANISTER}"
   log_info "Kong data canister ID: ${KONG_DATA_CANISTER}"
   
-  # Call the update_kong_setting function to enable archiving
+  # Call the set_kong_settings function to enable archiving
   log_info "Updating Kong settings to enable archiving..."
-  dfx canister call --network ${NETWORK} ${KONG_CANISTER} update_kong_setting "(record {
-    archive_to_kong_data = opt true;
-    kong_data = opt principal \"${KONG_DATA_CANISTER}\";
-  })" || log_warning "Failed to enable archiving to kong_data"
+  dfx canister call ${KONG_CANISTER} set_kong_settings "(
+    \"{\\\"archive_to_kong_data\\\": true, \\\"kong_data\\\": \\\"${KONG_DATA_CANISTER}\\\"}\"
+  )" || log_warning "Failed to enable archiving to kong_data"
   
   log_success "Archiving to kong_data enabled"
 }
