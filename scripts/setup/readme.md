@@ -3,6 +3,8 @@
 This directory contains scripts to simplify the setup and running of various components.
 
 ## Available Scripts
+lsof -ti:8080 | xargs kill
+
 
 | Script | Description |
 |--------|-------------|

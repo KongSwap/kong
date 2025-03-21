@@ -167,6 +167,50 @@ deploy_kong_backend() {
   fi
 }
 
+# Function to deploy Kong Data canister
+deploy_kong_data() {
+  log_info "Deploying Kong Data canister..."
+  
+  # Ensure we're using the kong identity for deployment
+  dfx identity use kong
+  
+  # Deploy kong_data canister
+  log_info "Deploying kong_data canister..."
+  CANISTER_IDS_ROOT="${PROJECT_ROOT}" KONG_BUILDENV="${NETWORK}" dfx deploy kong_data --network ${NETWORK}
+  
+  # Get the Kong Data canister ID
+  KONG_DATA_CANISTER=$(dfx canister id --network ${NETWORK} kong_data)
+  log_success "Kong Data deployed with canister ID: ${KONG_DATA_CANISTER}"
+  
+  # Ensure identity is still kong before we proceed
+  current_identity=$(dfx identity whoami)
+  if [ "$current_identity" != "kong" ]; then
+    log_info "Switching back to kong identity..."
+    dfx identity use kong
+  fi
+}
+
+# Function to enable archiving between kong_backend and kong_data
+enable_archiving_to_kong_data() {
+  log_info "Enabling archiving to kong_data..."
+  
+  # Get canister IDs
+  KONG_CANISTER=$(dfx canister id --network ${NETWORK} kong_backend)
+  KONG_DATA_CANISTER=$(dfx canister id --network ${NETWORK} kong_data)
+  
+  log_info "Kong backend canister ID: ${KONG_CANISTER}"
+  log_info "Kong data canister ID: ${KONG_DATA_CANISTER}"
+  
+  # Call the update_kong_setting function to enable archiving
+  log_info "Updating Kong settings to enable archiving..."
+  dfx canister call --network ${NETWORK} ${KONG_CANISTER} update_kong_setting "(record {
+    archive_to_kong_data = opt true;
+    kong_data = opt principal \"${KONG_DATA_CANISTER}\";
+  })" || log_warning "Failed to enable archiving to kong_data"
+  
+  log_success "Archiving to kong_data enabled"
+}
+
 # Function to deploy token ledgers
 deploy_token_ledgers() {
   log_info "Deploying token ledgers..."
@@ -655,6 +699,9 @@ run_api_migrations() {
       # Get the Kong backend canister ID
       KONG_CANISTER=$(dfx canister id --network ${NETWORK} ${KONG_BACKEND})
       
+      # Get the Kong data canister ID
+      KONG_DATA_CANISTER=$(dfx canister id --network ${NETWORK} kong_data)
+      
       # Set appropriate local development values
       sed -i.bak 's|APP__DATABASE__URL=.*|APP__DATABASE__URL=postgresql://postgres:postgres@localhost:5432/localapi|g' .env
       sed -i.bak 's|APP__REDIS__URL=.*|APP__REDIS__URL=redis://localhost:6379|g' .env
@@ -662,6 +709,7 @@ run_api_migrations() {
       sed -i.bak 's|APP__SERVER__HOST=.*|APP__SERVER__HOST=0.0.0.0|g' .env
       sed -i.bak 's|APP__SERVER__PORT=.*|APP__SERVER__PORT=8080|g' .env
       sed -i.bak "s|APP__IC__KONG_CANISTER_ID=.*|APP__IC__KONG_CANISTER_ID=${KONG_CANISTER}|g" .env
+      sed -i.bak "s|APP__IC__KONG_DATA_CANISTER_ID=.*|APP__IC__KONG_DATA_CANISTER_ID=${KONG_DATA_CANISTER}|g" .env
       sed -i.bak 's|APP__IC__HOST=.*|APP__IC__HOST=http://localhost:4943|g' .env
       rm -f .env.bak
       
@@ -674,11 +722,14 @@ run_api_migrations() {
     
     # Ensure the Kong canister ID is up to date
     KONG_CANISTER=$(dfx canister id --network ${NETWORK} ${KONG_BACKEND})
+    KONG_DATA_CANISTER=$(dfx canister id --network ${NETWORK} kong_data)
+    
     sed -i.bak "s|APP__IC__KONG_CANISTER_ID=.*|APP__IC__KONG_CANISTER_ID=${KONG_CANISTER}|g" .env
+    sed -i.bak "s|APP__IC__KONG_DATA_CANISTER_ID=.*|APP__IC__KONG_DATA_CANISTER_ID=${KONG_DATA_CANISTER}|g" .env
     sed -i.bak 's|APP__IC__HOST=.*|APP__IC__HOST=http://localhost:4943|g' .env
     rm -f .env.bak
     
-    log_info "Updated Kong canister ID in API .env file"
+    log_info "Updated Kong canister IDs in API .env file"
   fi
   
   # Run migrations
@@ -850,6 +901,10 @@ display_summary() {
     echo -e "${GREEN}Kong Backend Canister:${NC} $(dfx canister id --network ${NETWORK} ${KONG_BACKEND})"
   fi
   
+  if dfx canister id --network ${NETWORK} kong_data &> /dev/null; then
+    echo -e "${GREEN}Kong Data Canister:${NC} $(dfx canister id --network ${NETWORK} kong_data)"
+  fi
+  
   if dfx canister id --network ${NETWORK} kong_frontend &> /dev/null; then
     echo -e "${GREEN}Frontend URL:${NC} http://$(dfx canister id --network ${NETWORK} kong_frontend).localhost:${DFX_PORT}/"
   fi
@@ -876,6 +931,13 @@ display_summary() {
   if dfx canister id --network ${NETWORK} ksbtc_ledger &> /dev/null; then
     echo -e "  - ksBTC: $(dfx canister id --network ${NETWORK} ksbtc_ledger)"
   fi
+  echo ""
+  echo -e "${YELLOW}To view your transaction history:${NC}"
+  echo -e "  PRINCIPAL=\$(dfx identity get-principal)"
+  echo -e "  dfx canister call kong_data txs \"(opt \\\"\${PRINCIPAL}\\\", null, null, null)\""
+  echo ""
+  echo -e "${YELLOW}To view a specific transaction:${NC}"
+  echo -e "  dfx canister call kong_data txs \"(null, opt <TX_ID>, null, null)\""
   echo ""
   echo -e "${YELLOW}To test the API:${NC}"
   echo -e "  cd ${API_DIR}/scripts && ./test_geckoterminal.sh"
@@ -904,6 +966,8 @@ start_dfx
 create_identities
 prepare_canisters
 deploy_kong_backend
+deploy_kong_data
+enable_archiving_to_kong_data
 deploy_token_ledgers
 deploy_kong_faucet
 mint_tokens_to_faucet

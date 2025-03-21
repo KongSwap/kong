@@ -9,7 +9,7 @@ import { KONG_BACKEND_CANISTER_ID, KONG_CANISTER_ID } from "$lib/constants/canis
 import { requireWalletConnection } from "$lib/services/auth";
 import { SwapMonitor } from "./SwapMonitor";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
-import { getWalletIdentity } from "$lib/utils/wallet";
+import { allowanceStore } from "../tokens/allowanceStore";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -278,16 +278,49 @@ export class SwapService {
   }
 
   /**
-   * Executes complete swap flow
+   * Executes complete swap flow with comprehensive debugging
    */
   public static async executeSwap(
     params: SwapExecuteParams,
   ): Promise<bigint | false> {
     const swapId = params.swapId;
+    console.log(`[SwapService][executeSwap] Starting swap execution for ID: ${swapId}`, {
+      payToken: params.payToken.symbol,
+      payAmount: params.payAmount,
+      receiveToken: params.receiveToken.symbol,
+      receiveAmount: params.receiveAmount,
+      maxSlippage: params.userMaxSlippage
+    });
+    
     try {
+      // Debug the wallet connection and token properties
+      console.log(`[SwapService][executeSwap] Wallet status:`, {
+        connected: !!auth.pnp.activeWallet,
+        activeWalletId: auth.pnp.activeWallet?.id,
+        principal: auth.pnp.activeWallet?.principal
+      });
+      
+      console.log(`[SwapService][executeSwap] Pay token details:`, {
+        symbol: params.payToken.symbol,
+        canisterId: params.payToken.canister_id,
+        address: params.payToken.address,
+        decimals: params.payToken.decimals,
+        icrc1: params.payToken.icrc1,
+        icrc2: params.payToken.icrc2,
+        feeFixed: params.payToken.fee_fixed?.toString()
+      });
+      
+      console.log(`[SwapService][executeSwap] Receive token details:`, {
+        symbol: params.receiveToken.symbol,
+        canisterId: params.receiveToken.canister_id,
+        address: params.receiveToken.address,
+        decimals: params.receiveToken.decimals
+      });
+
       // Add check for blocked tokens at the start
       if (BLOCKED_TOKEN_IDS.includes(params.payToken.canister_id) || 
           BLOCKED_TOKEN_IDS.includes(params.receiveToken.canister_id)) {
+        console.log(`[SwapService][executeSwap] Blocked token detected`);
         toastStore.warning(
           "BIL token is currently in read-only mode. Trading will resume when the ledger is stable.",
           {
@@ -303,23 +336,31 @@ export class SwapService {
         return false;
       }
 
+      // Check wallet connection
+      console.log(`[SwapService][executeSwap] Checking wallet connection...`);
       requireWalletConnection();
+      console.log(`[SwapService][executeSwap] Wallet connection verified`);
+      
       const payToken = params.payToken
-
       if (!payToken) {
-        console.error("Pay token not found:", params.payToken);
+        console.error("[SwapService][executeSwap] Pay token not found:", params.payToken);
         throw new Error(`Pay token ${params.payToken.symbol} not found`);
       }
 
+      // Convert to BigInt with proper decimal handling
       const payAmount = SwapService.toBigInt(
         params.payAmount,
         payToken.decimals,
       );
+      console.log(`[SwapService][executeSwap] Converted pay amount to BigInt:`, {
+        original: params.payAmount,
+        bigIntValue: payAmount.toString(),
+        decimals: payToken.decimals
+      });
 
       const receiveToken = params.receiveToken
-
       if (!receiveToken) {
-        console.error("Receive token not found:", params.receiveToken);
+        console.error("[SwapService][executeSwap] Receive token not found:", params.receiveToken);
         throw new Error(
           `Receive token ${params.receiveToken.symbol} not found`,
         );
@@ -331,13 +372,76 @@ export class SwapService {
         `Swapping ${params.payAmount} ${params.payToken.symbol} to ${params.receiveAmount} ${params.receiveToken.symbol}...`,
         { duration: 20000 },
       );
+      
+      // IMPORTANT DEBUG: Get the values from allowanceStore to check existing allowances
+      console.log(`[SwapService][executeSwap] Checking current allowance in store before proceeding...`);
+      try {
+        const allowanceStoreValue = allowanceStore.getAllowance(
+          payToken.canister_id,
+          auth.pnp.account.owner.toString(),
+          params.backendPrincipal.toString()
+        );
+        console.log(`[SwapService][executeSwap] Current stored allowance:`, {
+          token: payToken.symbol,
+          spender: params.backendPrincipal.toString(),
+          allowance: allowanceStoreValue ? allowanceStoreValue.toString() : '0'
+        });
+      } catch (allowanceError) {
+        console.error(`[SwapService][executeSwap] Error getting current allowance:`, allowanceError);
+      }
+      
       if (payToken.icrc2) {
+        console.log(`[SwapService][executeSwap] Token supports ICRC2, checking/requesting allowance...`);
         const requiredAllowance = payAmount;
+        
+        console.log(`[SwapService][executeSwap] Requesting allowance of ${requiredAllowance.toString()} ${payToken.symbol}`);
+        console.log(`[SwapService][executeSwap] Backend principal for allowance:`, params.backendPrincipal.toString());
+        
+        // CRITICAL: Direct check of current allowance from canister
+        try {
+          const directAllowance = await IcrcService.checkIcrc2Allowance(
+            payToken,
+            auth.pnp.account.owner,
+            params.backendPrincipal
+          );
+          console.log(`[SwapService][executeSwap] Direct allowance check from canister:`, {
+            token: payToken.symbol,
+            spender: params.backendPrincipal.toString(),
+            allowance: directAllowance.toString()
+          });
+        } catch (directAllowanceError) {
+          console.error(`[SwapService][executeSwap] Error checking direct allowance:`, directAllowanceError);
+        }
+        
         approvalId = await IcrcService.checkAndRequestIcrc2Allowances(
           payToken,
           requiredAllowance,
         );
+        console.log(`[SwapService][executeSwap] Allowance request result:`, {
+          approvalId: approvalId ? approvalId.toString() : 'false',
+          status: approvalId ? 'success' : 'failed'
+        });
+        
+        // IMPORTANT: Verify the allowance was actually set
+        try {
+          const verifyAllowance = await IcrcService.checkIcrc2Allowance(
+            payToken,
+            auth.pnp.account.owner,
+            params.backendPrincipal
+          );
+          console.log(`[SwapService][executeSwap] Post-approval allowance verification:`, {
+            token: payToken.symbol,
+            spender: params.backendPrincipal.toString(),
+            allowance: verifyAllowance.toString(),
+            requiredAllowance: requiredAllowance.toString(),
+            sufficient: verifyAllowance >= requiredAllowance
+          });
+        } catch (verifyError) {
+          console.error(`[SwapService][executeSwap] Error verifying allowance after approval:`, verifyError);
+        }
+        
       } else if (payToken.icrc1) {
+        console.log(`[SwapService][executeSwap] Token supports ICRC1, executing direct transfer...`);
         const result = await IcrcService.transfer(
           payToken,
           params.backendPrincipal,
@@ -345,18 +449,23 @@ export class SwapService {
           { fee: BigInt(payToken.fee_fixed) },
         );
 
+        console.log(`[SwapService][executeSwap] ICRC1 transfer result:`, result);
         if (result?.Ok) {
           txId = result.Ok;
+          console.log(`[SwapService][executeSwap] Transfer successful, txId:`, txId.toString());
         } else {
           txId = false;
+          console.error(`[SwapService][executeSwap] Transfer failed:`, result?.Err || 'Unknown error');
         }
       } else {
+        console.error(`[SwapService][executeSwap] Token ${payToken.symbol} doesn't support ICRC1 or ICRC2`);
         throw new Error(
           `Token ${payToken.symbol} does not support ICRC1 or ICRC2`,
         );
       }
 
       if (txId === false || approvalId === false) {
+        console.error(`[SwapService][executeSwap] Transaction failed during transfer/approval phase`);
         swapStatusStore.updateSwap(swapId, {
           status: "Failed",
           isProcessing: false,
@@ -366,6 +475,7 @@ export class SwapService {
         return false;
       }
 
+      // Prepare swap parameters
       const swapParams = {
         pay_token: "IC." + params.payToken.address,
         pay_amount: BigInt(payAmount),
@@ -376,23 +486,40 @@ export class SwapService {
         referred_by: [],
         pay_tx_id: txId ? [{ BlockIndex: Number(txId) }] : [],
       };
+      
+      console.log(`[SwapService][executeSwap] Prepared swap parameters:`, {
+        pay_token: swapParams.pay_token,
+        pay_amount: swapParams.pay_amount.toString(),
+        receive_token: swapParams.receive_token,
+        max_slippage: swapParams.max_slippage,
+        pay_tx_id: swapParams.pay_tx_id
+      });
 
+      // Execute the swap
+      console.log(`[SwapService][executeSwap] Executing swap_async...`);
       const result = await SwapService.swap_async(swapParams);
+      console.log(`[SwapService][executeSwap] swap_async result:`, result);
 
       if (result.Ok) {
+        console.log(`[SwapService][executeSwap] Swap initiated successfully, requestId:`, result.Ok.toString());
+        console.log(`[SwapService][executeSwap] Starting transaction monitoring...`);
         SwapMonitor.monitorTransaction(result?.Ok, swapId, toastId);
+        return result.Ok;
       } else {
-        console.error("Swap error:", result.Err);
+        console.error(`[SwapService][executeSwap] Swap error:`, result.Err);
         return false;
       }
-      return result.Ok;
     } catch (error) {
+      console.error(`[SwapService][executeSwap] Exception during swap execution:`, {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       swapStatusStore.updateSwap(swapId, {
         status: "Failed",
         isProcessing: false,
         error: error instanceof Error ? error.message : "Swap failed",
       });
-      console.error("Swap execution failed:", error);
       toastStore.error(error instanceof Error ? error.message : "Swap failed");
       return false;
     }

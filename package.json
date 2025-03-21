@@ -29,6 +29,7 @@
     "@dfinity/nns": "8.3.1",
     "@dfinity/principal": "2.3.0",
     "@dfinity/utils": "2.10.1",
+    "@windoge98/plug-n-play": "0.0.44",
     "pako": "^2.1.0"
   },
   "devDependencies": {
