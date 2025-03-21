@@ -17,7 +17,7 @@ principals=(
 AMOUNT=5_000_000_000_000  # 50000 * 10^8
 
 # Get canister ID
-TOKEN_SYMBOL="KONG"
+TOKEN_SYMBOL="ksKONG"
 TOKEN_LEDGER=$(echo ${TOKEN_SYMBOL}_ledger | tr '[:upper:]' '[:lower:]')
 CANISTER_ID=$(dfx canister id ${TOKEN_LEDGER})
 
