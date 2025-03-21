@@ -66,6 +66,24 @@ pub fn get_markets_by_status(args: GetMarketsByStatusArgs) -> GetMarketsByStatus
                     // Keep market rules in the response
                     result.expired_unresolved.push(market);
                 }
+                MarketStatus::Voided => {
+                    // Add voided markets to resolved since they are no longer active
+                    // but don't have any distributions
+                    let mut market = market.clone();
+                    
+                    // Create an empty market result for voided markets
+                    result.resolved.push(MarketResult {
+                        market: market.clone(),
+                        winning_outcomes: Vec::new(),
+                        total_pool: StorableNat::from(0u64),
+                        winning_pool: StorableNat::from(0u64),
+                        outcome_pools: vec![StorableNat::from(0u64); market.outcomes.len()],
+                        outcome_percentages: vec![0.0; market.outcomes.len()],
+                        bet_counts: vec![StorableNat::from(0u64); market.outcomes.len()],
+                        bet_count_percentages: vec![0.0; market.outcomes.len()],
+                        distributions: Vec::new(),
+                    });
+                }
                 MarketStatus::Closed(ref winning_outcomes) => {
                     // Calculate distributions for resolved markets
                     let mut distributions = Vec::new();

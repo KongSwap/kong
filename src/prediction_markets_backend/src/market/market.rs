@@ -13,6 +13,7 @@ pub enum MarketStatus {
     Open,             // Market is open for betting
     Closed(Vec<Nat>), // Market is closed with winning outcome indices
     Disputed,         // Market result is disputed
+    Voided,           // Market is voided, all bets returned to users
 }
 
 #[derive(CandidType, Deserialize)]

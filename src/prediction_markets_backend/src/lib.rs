@@ -37,7 +37,8 @@ pub mod stable_memory;
 pub mod user;
 
 // Constants
-const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";
+const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
+// const KONG_LEDGER_ID: &str = "br5f7-7uaaa-aaaaa-qaaca-cai"; ///For Local testing
 
 #[init]
 fn init() {

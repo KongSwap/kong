@@ -4,3 +4,4 @@ pub mod resolution;
 pub mod resolve_via_admin;
 pub mod resolve_via_oracle;
 pub mod transfer_kong;
+pub mod void_market;
