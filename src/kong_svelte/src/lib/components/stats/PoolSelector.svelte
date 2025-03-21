@@ -2,7 +2,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { onMount } from 'svelte';
-  import { livePools, isLoadingPools, loadPools } from "$lib/services/pools/poolStore";
+  import { livePools, isLoadingPools, loadPools } from "$lib/stores/poolStore";
 
   const { selectedPool, token, formattedTokens, onPoolSelect, isLoading, relevantPools: propRelevantPools } = $props<{
     selectedPool: BE.Pool | undefined;

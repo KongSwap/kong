@@ -22,3 +22,10 @@ export function getPrincipalColor(principalId: string): string {
     return `hsl(${hue}, 60%, 75%)`;
   }
 } 
+
+export function truncateAddress(address: string): string {
+  if (typeof address !== "string") {
+    return "";
+  }
+  return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+}

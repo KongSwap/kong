@@ -33,6 +33,32 @@ fn backup_tokens(token_id: Option<u32>, num_tokens: Option<u16>) -> Result<Strin
     })
 }
 
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn suspend_token(symbol: String) -> Result<String, String> {
+    let token = token_map::get_by_token(&symbol)?;
+    match token {
+        StableToken::LP(_) => return Err("Cannot suspend LP tokens".to_string()),
+        StableToken::IC(token) => {
+            token_map::remove(token.token_id)?;
+        }
+    }
+
+    Ok(format!("Token {} suspended", symbol))
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn unsuspend_token(symbol: String) -> Result<String, String> {
+    let token = token_map::get_by_token(&symbol)?;
+    match token {
+        StableToken::LP(_) => return Err("Cannot unsuspend LP tokens".to_string()),
+        StableToken::IC(token) => {
+            token_map::unremove(token.token_id)?;
+        }
+    }
+
+    Ok(format!("Token {} unsuspended", symbol))
+}
+
 /// deserialize TOKEN_MAP and update stable memory
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn update_tokens(stable_tokens: String) -> Result<String, String> {

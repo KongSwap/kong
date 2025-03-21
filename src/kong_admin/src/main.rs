@@ -1,6 +1,4 @@
 use crate::settings::read_settings;
-use agent::create_agent_from_identity;
-use agent::{create_anonymous_identity, create_identity_from_pem_file};
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::MakeTlsConnector;
 use std::env;
@@ -8,6 +6,8 @@ use std::thread;
 use std::time::Duration;
 use tokio_postgres::Client;
 
+use agent::create_agent_from_identity;
+use agent::{create_anonymous_identity, create_identity_from_pem_file};
 use db_updates::get_db_updates;
 use kong_backend::KongBackend;
 use kong_data::KongData;

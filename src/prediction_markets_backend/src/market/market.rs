@@ -31,6 +31,7 @@ pub struct Market {
     pub rules: String,            // Competition rules defined by creator
     pub outcomes: Vec<String>,    // Possible outcomes
     pub resolution_method: ResolutionMethod,
+    pub image_url: Option<String>, // Optional URL for market image
     pub status: MarketStatus,
     pub created_at: Timestamp,           // When the market was created
     pub end_time: Timestamp,             // When the market closes for betting

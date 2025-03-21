@@ -7,15 +7,20 @@ import {
   CKUSDT_CANISTER_ID, 
   ICP_CANISTER_ID,
   CKBTC_CANISTER_ID,
-  CKETH_CANISTER_ID
+  CKETH_CANISTER_ID,
+  KONG_LEDGER_CANISTER_ID,
+  EXE_CANISTER_ID
 } from "$lib/constants/canisterConstants";
+import { loadBalances } from "$lib/stores/balancesStore";
 
 // List of essential tokens that should never be removed
 const ESSENTIAL_TOKEN_IDS = [
   CKUSDT_CANISTER_ID,
   ICP_CANISTER_ID,
   CKBTC_CANISTER_ID,
-  CKETH_CANISTER_ID
+  CKETH_CANISTER_ID,
+  KONG_LEDGER_CANISTER_ID,
+  EXE_CANISTER_ID,
 ].filter(Boolean); // Filter out any undefined values
 
 /**
@@ -81,8 +86,8 @@ export async function syncTokens(
       
       try {
         // Get balances for this batch
-        const batchBalances = await IcrcService.batchGetBalances(tokenBatch, principal);
-        
+        const batchBalances = await loadBalances(tokenBatch, principal.toText(), true);
+        console.log("batchBalances", batchBalances);
         // Process each token in the batch
         for (const token of tokenBatch) {
           if (!token.canister_id) continue;
@@ -91,8 +96,9 @@ export async function syncTokens(
           const isEssentialToken = ESSENTIAL_TOKEN_IDS.includes(token.canister_id);
           
           // For normal tokens, check balance
-          const balance = batchBalances.get(token.canister_id);
-          const hasBalance = balance !== undefined && balance !== null && balance > BigInt(0);
+          const balance = batchBalances[token.canister_id];
+          const hasBalance = balance !== undefined && balance !== null && 
+                            (balance.in_tokens !== undefined && balance.in_tokens > BigInt(0));
           
           // Token should be enabled if it has balance OR is an essential token
           if (hasBalance || isEssentialToken) {
@@ -139,6 +145,7 @@ export async function syncTokens(
         tokensToAdd.push(token);
       }
     }
+
     
     return { 
       tokensToAdd, 

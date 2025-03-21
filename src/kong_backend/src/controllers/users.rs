@@ -58,7 +58,7 @@ fn update_users(stable_users_json: String) -> Result<String, String> {
     USER_MAP.with(|user_map| {
         let mut map = user_map.borrow_mut();
         for (k, v) in users {
-            map.insert(k, v);
+            map.insert(k, v.clone());
         }
     });
 

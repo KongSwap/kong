@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { snsService, type SNSProposal } from '$lib/services/sns/snsService';
+  import { snsService, type SNSProposal } from '$lib/utils/snsUtils';
   import Panel from '$lib/components/common/Panel.svelte';
   
   export let governanceCanisterId: string;

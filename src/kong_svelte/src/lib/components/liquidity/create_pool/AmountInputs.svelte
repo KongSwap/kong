@@ -19,6 +19,8 @@
   let input1Element: HTMLInputElement;
   let displayValue0 = "";
   let displayValue1 = "";
+  let inputDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  const DEBOUNCE_DELAY = 100; // 100ms for input formatting is more responsive
 
   function handleFormattedInput(index: 0 | 1, event: Event) {
     const input = event.target as HTMLInputElement;
@@ -30,12 +32,11 @@
       index === 0 ? displayValue0 : displayValue1,
     );
 
+    // Update the display value immediately for visual feedback
     if (index === 0) {
       displayValue0 = result.formattedValue;
-      onAmountChange(0, result.rawValue);
     } else {
       displayValue1 = result.formattedValue;
-      onAmountChange(1, result.rawValue);
     }
 
     input.value = result.formattedValue;
@@ -45,6 +46,20 @@
         result.newCursorPosition,
       );
     });
+
+    // Debounce the callback to parent component
+    if (inputDebounceTimer) {
+      clearTimeout(inputDebounceTimer);
+    }
+
+    inputDebounceTimer = setTimeout(() => {
+      if (index === 0) {
+        onAmountChange(0, result.rawValue);
+      } else {
+        onAmountChange(1, result.rawValue);
+      }
+      inputDebounceTimer = null;
+    }, DEBOUNCE_DELAY);
   }
 
   // Update these reactive statements to properly handle formatted values

@@ -4,7 +4,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { Check, Copy, QrCode, X } from 'lucide-svelte';
   import { tooltip } from "$lib/actions/tooltip";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import QRCode from 'qrcode';
   import { getAccountIds } from "$lib/utils/accountUtils";
   import { toastStore } from "$lib/stores/toastStore";

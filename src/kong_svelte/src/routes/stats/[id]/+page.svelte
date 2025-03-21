@@ -3,7 +3,7 @@
   import { onDestroy, onMount } from "svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { fetchPoolsForCanister } from "$lib/services/pools/poolStore";
+  import { fetchPoolsForCanister } from "$lib/stores/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import { goto } from "$app/navigation";
@@ -24,7 +24,7 @@
   import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
   // @ts-ignore - This component doesn't have a default export but works in Svelte
   import TokenStatistics from "./TokenStatistics.svelte";
-  import { GOVERNANCE_CANISTER_IDS } from "$lib/services/sns/snsService";
+  import { GOVERNANCE_CANISTER_IDS } from "$lib/utils/snsUtils";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { toastStore } from "$lib/stores/toastStore";
   import { tokenData } from "$lib/stores/tokenData";

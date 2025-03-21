@@ -2,10 +2,8 @@ import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { PREDICTION_MARKETS_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { canisterIDLs } from "$lib/config/auth.config";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
-import { auth } from "$lib/services/auth";
+import { auth } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
-import BigNumber from "bignumber.js";
-import { get } from "svelte/store";
 
 export async function getMarket(marketId: number) {
   const actor = createAnonymousActorHelper(
@@ -102,6 +100,7 @@ export interface CreateMarketParams {
   outcomes: string[];
   resolutionMethod: any; // ResolutionMethod type from candid
   endTimeSpec: any; // MarketEndTime type from candid
+  image_url?: string; // Optional image URL
 }
 
 export async function createMarket(params: CreateMarketParams) {
@@ -110,7 +109,7 @@ export async function createMarket(params: CreateMarketParams) {
     canisterIDLs.prediction_markets_backend,
     {
       anon: false,
-      requiresSigning: true,
+      requiresSigning: false,
     },
   );
   const result = await actor.create_market(
@@ -120,6 +119,7 @@ export async function createMarket(params: CreateMarketParams) {
     params.outcomes,
     params.resolutionMethod,
     params.endTimeSpec,
+    params.image_url ? [params.image_url] : [] // Pass as optional array
   );
   return result;
 }

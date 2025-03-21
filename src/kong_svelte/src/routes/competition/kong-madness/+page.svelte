@@ -6,7 +6,7 @@
     import Modal from '$lib/components/common/Modal.svelte';
     import { KONG_LEDGER_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
     import { getMarket, placeBet, getUserHistory } from '$lib/api/predictionMarket';
-    import { auth } from '$lib/services/auth';
+    import { auth } from '$lib/stores/auth';
     import { Principal } from '@dfinity/principal';
     import { formatBalance } from '$lib/utils/numberFormatUtils';
 

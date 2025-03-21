@@ -7,11 +7,11 @@
     parseTokenAmount,
   } from "$lib/utils/numberFormatUtils";
   import { onDestroy } from "svelte";
-  import { PoolService } from "$lib/services/pools/PoolService";
+  import { createPool, addLiquidity, pollRequestStatus } from "$lib/api/pools";
   import { toastStore } from "$lib/stores/toastStore";
   import { loadBalance } from "$lib/stores/tokenStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
 
   export let isCreatingPool: boolean = false;
   export let show: boolean;
@@ -75,7 +75,7 @@
         toastStore.info(
           `Adding liquidity to ${token0.symbol}/${token1.symbol} pool...`,
         );
-        const result = await PoolService.createPool(params);
+        const result = await createPool(params);
 
         if (result) {
           toastStore.success("Pool created successfully!");
@@ -107,15 +107,15 @@
           amount_1: amount1,
         };
 
-        const addLiquidityResult = await PoolService.addLiquidity(params);
+        const addLiquidityResult = await addLiquidity(params);
 
         if (addLiquidityResult) {
-          await PoolService.pollRequestStatus(addLiquidityResult);
+          await pollRequestStatus(addLiquidityResult);
           
           // Reload balances and pool list after successful liquidity addition
           await Promise.all([
-            loadBalance(token0.canister_id, auth, true),
-            loadBalance(token1.canister_id, auth, true),
+            loadBalance(token0.canister_id, true),
+            loadBalance(token1.canister_id, true),
             currentUserPoolsStore.initialize(),
           ]);
           

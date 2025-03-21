@@ -1,9 +1,10 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
+    import { onMount } from "svelte";
 
   let { children } = $props<{ children: any }>();
 
-  $effect(() => {
+  onMount(() => {
     goto("/swap");
   });
 </script>

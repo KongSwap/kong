@@ -6,18 +6,21 @@
   import { cubicOut } from "svelte/easing";
   import { isMobileBrowser } from "$lib/utils/browser";
   import type { BeforeInstallPromptEvent } from "$lib/types/pwa";
+  import { createNamespacedStore, STORAGE_KEYS } from "$lib/config/localForage.config";
 
   let InstallPWADialog: typeof import("$lib/components/common/InstallPWADialog.svelte").default;
   let deferredPrompt: BeforeInstallPromptEvent | null = null;
   let showPrompt = false;
   let showIOSDialog = false;
   let isEligible = false;
+  const pwaStore = createNamespacedStore(STORAGE_KEYS.SETTINGS);
+  const PWA_PROMPT_KEY = "pwa-install-prompt";
 
   async function loadInstallDialog() {
     InstallPWADialog = (await import("$lib/components/common/InstallPWADialog.svelte")).default;
   }
 
-  onMount(() => {
+  onMount(async () => {
     if (!browser) return;
 
     // First check if device is eligible
@@ -25,7 +28,7 @@
     if (!isEligible) return;
 
     // Then check if user has already interacted
-    const hasInteracted = localStorage.getItem("pwa-install-prompt");
+    const hasInteracted = await pwaStore.getItem(PWA_PROMPT_KEY);
     if (hasInteracted) return;
 
     // For iOS, show prompt immediately
@@ -42,7 +45,7 @@
     });
 
     window.addEventListener("appinstalled", () => {
-      localStorage.setItem("pwa-install-prompt", "installed");
+      pwaStore.setItem(PWA_PROMPT_KEY, "installed");
       showPrompt = false;
     });
   });
@@ -63,7 +66,7 @@
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
-        localStorage.setItem("pwa-install-prompt", "installed");
+        await pwaStore.setItem(PWA_PROMPT_KEY, "installed");
       }
     } catch (error) {
       console.error('Installation failed:', error);
@@ -76,14 +79,14 @@
     showPrompt = false;
   }
 
-  function closeIOSDialog({ source }: { source: 'backdrop' | 'button' }) {
+  async function closeIOSDialog({ source }: { source: 'backdrop' | 'button' }) {
     showIOSDialog = false;
     if (source === 'backdrop') {
       showPrompt = true;
       return;
     }
     if (source === 'button') {
-      localStorage.setItem("pwa-install-prompt", "dismissed");
+      await pwaStore.setItem(PWA_PROMPT_KEY, "dismissed");
     }
   }
 </script>

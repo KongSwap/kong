@@ -7,12 +7,13 @@
   import Slider from '$lib/components/common/Slider.svelte';
   import { settingsStore } from '$lib/stores/settingsStore';
   import { toastStore } from '$lib/stores/toastStore';
-  import { auth } from '$lib/services/auth';
+  import { auth } from '$lib/stores/auth';
   import { browser } from '$app/environment';
   import { Settings as SettingsIcon, ArrowLeft } from 'lucide-svelte';
   import PageHeader from '$lib/components/common/PageHeader.svelte';
   import Panel from '$lib/components/common/Panel.svelte';
   import type { ComponentType } from 'svelte';
+  import { STORAGE_KEYS, createNamespacedStore, clearAllStorage } from '$lib/config/localForage.config';
   
   let themes: ThemeDefinition[] = [];
   let currentThemeId = '';
@@ -26,8 +27,14 @@
   let previousAuthState = { isConnected: false, principalId: null };
   let isThemeDropdownOpen = false;
   const quickSlippageValues = [1, 2, 3, 5];
-  const SETTINGS_KEY = 'kong_settings';
-  const FAVORITES_KEY = 'kong_favorites';
+  const SETTINGS_KEY = STORAGE_KEYS.SETTINGS;
+  const FAVORITES_KEY = STORAGE_KEYS.FAVORITE_TOKENS;
+  const THEME_KEY = 'theme';
+  
+  // Create namespaced stores
+  const settingsStorage = createNamespacedStore(SETTINGS_KEY);
+  const slippageStorage = createNamespacedStore('slippage');
+  const favoritesStorage = createNamespacedStore(FAVORITES_KEY);
   
   // Initialize when component mounts
   onMount(() => {
@@ -58,6 +65,7 @@
       window.addEventListener('resize', handleResize);
       window.addEventListener('click', handleClickOutside);
       initializeSlippageFromStorage();
+      loadThemeFromStorage();
       return () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('click', handleClickOutside);
@@ -92,6 +100,7 @@
       
       console.log('Auth state changed, reloading user settings');
       loadUserSettings();
+      loadThemeFromStorage();
       
       // Update previous state
       previousAuthState = currentAuthState;
@@ -99,26 +108,45 @@
   }
   
   // Apply a theme when selected
-  function applyTheme(themeId: string) {
+  async function applyTheme(themeId: string) {
     console.log('Applying theme:', themeId);
-    themeStore.setTheme(themeId as ThemeId);
+    await themeStore.setTheme(themeId as ThemeId);
     // Force update UI
     currentThemeId = themeId;
+    isThemeDropdownOpen = false;
+    
+    // Show success toast
+    toastStore.success('Theme applied successfully');
   }
   
-  // Function to get settings from localStorage
-  function getSettings() {
+  // Load theme from storage - use the store's function to avoid duplication
+  async function loadThemeFromStorage() {
+    if (browser) {
+      const storedTheme = await themeStore.loadThemeFromStorage();
+      if (storedTheme) {
+        currentThemeId = storedTheme;
+      }
+    }
+  }
+  
+  // Function to get settings from localForage
+  async function getSettings() {
     if (browser) {
       const walletId = $auth?.account?.owner?.toString() || 'default';
       const settingsKey = `${SETTINGS_KEY}_${walletId}`;
-      const storedSettings = localStorage.getItem(settingsKey);
       
-      if (storedSettings) {
-        try {
-          return JSON.parse(storedSettings);
-        } catch (error) {
-          console.error('Error parsing settings from localStorage:', error);
+      try {
+        const storedSettings = await settingsStorage.getItem<{
+          sound_enabled: boolean;
+          max_slippage: number;
+          timestamp: number;
+        }>(settingsKey);
+        
+        if (storedSettings) {
+          return storedSettings;
         }
+      } catch (error) {
+        console.error('Error loading settings from storage:', error);
       }
     }
     
@@ -130,9 +158,32 @@
     };
   }
   
+  // Function to save settings to localForage
+  async function saveSettings(settings: any) {
+    if (browser) {
+      try {
+        const walletId = $auth?.account?.owner?.toString() || 'default';
+        const settingsKey = `${SETTINGS_KEY}_${walletId}`;
+        
+        // Add timestamp
+        const settingsToSave = {
+          ...settings,
+          timestamp: Date.now()
+        };
+        
+        await settingsStorage.setItem(settingsKey, settingsToSave);
+        return true;
+      } catch (error) {
+        console.error('Error saving settings to storage:', error);
+        return false;
+      }
+    }
+    return false;
+  }
+  
   // Function to load and apply user settings
-  function loadUserSettings() {
-    const settings = getSettings();
+  async function loadUserSettings() {
+    const settings = await getSettings();
     soundEnabled = settings.sound_enabled;
     slippageValue = settings.max_slippage || 2.0;
     slippageInputValue = slippageValue.toString();
@@ -142,24 +193,55 @@
     settingsStore.set(settings);
   }
   
-  // Initialize slippage from localStorage or default to 2.0
-  function initializeSlippageFromStorage() {
+  // Initialize slippage from storage or default to 2.0
+  async function initializeSlippageFromStorage() {
     if (browser) {
-      const storedSlippage = localStorage.getItem('slippage');
-      if (storedSlippage) {
-        const value = parseFloat(storedSlippage);
-        slippageValue = value;
-        slippageInputValue = value.toString();
-        isCustomSlippage = !quickSlippageValues.includes(value);
+      try {
+        const walletId = $auth?.account?.owner?.toString() || 'default';
+        const slippageKey = `slippage_${walletId}`;
+        
+        const storedSlippage = await slippageStorage.getItem(slippageKey);
+        if (storedSlippage) {
+          const value = typeof storedSlippage === 'string' 
+            ? parseFloat(storedSlippage) 
+            : (storedSlippage as number);
+            
+          slippageValue = value;
+          slippageInputValue = value.toString();
+          isCustomSlippage = !quickSlippageValues.includes(value);
+        }
+      } catch (error) {
+        console.error('Error loading slippage from storage:', error);
       }
     }
   }
   
-  // Save slippage to localStorage
-  function saveSlippageToStorage(value: number) {
+  // Save slippage to storage
+  async function saveSlippageToStorage(value: number) {
     if (browser) {
-      localStorage.setItem('slippage', value.toString());
+      try {
+        const walletId = $auth?.account?.owner?.toString() || 'default';
+        const slippageKey = `slippage_${walletId}`;
+        
+        await slippageStorage.setItem(slippageKey, value);
+        
+        // Update the settings store as well for consistency
+        settingsStore.updateSetting('max_slippage', value);
+        
+        // Also save to the settings storage
+        const currentSettings = await getSettings();
+        await saveSettings({
+          ...currentSettings,
+          max_slippage: value
+        });
+        
+        return true;
+      } catch (error) {
+        console.error('Error saving slippage to storage:', error);
+        return false;
+      }
     }
+    return false;
   }
   
   function handleSlippageChange() {
@@ -169,32 +251,60 @@
     }
     
     const boundedValue = Math.min(Math.max(slippageValue, 0.1), 99);
-    settingsStore.updateSetting('max_slippage', boundedValue);
     slippageInputValue = boundedValue.toFixed(1);
     isCustomSlippage = !quickSlippageValues.includes(boundedValue);
-    saveSlippageToStorage(boundedValue);
+    
+    saveSlippageToStorage(boundedValue).then(success => {
+      if (success) {
+        toastStore.success('Slippage setting saved');
+      }
+    });
     
     // Force update for slider track
     slippageValue = boundedValue;
   }
   
   function handleToggleSound(event: CustomEvent<boolean>) {
-    if ($auth.isConnected) {
-      settingsStore.updateSetting('sound_enabled', event.detail);
-      soundEnabled = event.detail;
-    } else {
+    if (!$auth.isConnected) {
       toastStore.error('Please connect your wallet to save settings');
       event.preventDefault();
+      return;
     }
+    
+    const newValue = event.detail;
+    soundEnabled = newValue;
+    
+    // Update the settings store
+    settingsStore.updateSetting('sound_enabled', newValue);
+    
+    // Save to storage
+    getSettings().then(currentSettings => {
+      saveSettings({
+        ...currentSettings,
+        sound_enabled: newValue
+      }).then(success => {
+        if (success) {
+          toastStore.success('Sound setting saved');
+        }
+      });
+    });
   }
   
   async function clearFavorites() {
     if (confirm('Are you sure you want to clear your favorite tokens?')) {
       if (browser) {
-        // Clear favorites from localStorage
-        const walletId = $auth?.account?.owner?.toString() || 'default';
-        localStorage.removeItem(`${FAVORITES_KEY}_${walletId}`);
-        toastStore.success('Favorites cleared successfully. Please refresh the page for changes to take effect.');
+        try {
+          // Get the wallet ID
+          const walletId = $auth?.account?.owner?.toString() || 'default';
+          const favoritesKey = `${FAVORITES_KEY}_${walletId}`;
+          
+          // Clear favorites from storage
+          await favoritesStorage.removeItem(favoritesKey);
+          toastStore.success('Favorites cleared successfully. Please refresh the page for changes to take effect.');
+        } catch (error) {
+          console.error('Error clearing favorites:', error);
+          toastStore.error('Failed to clear favorites');
+        }
       }
     }
   }
@@ -209,22 +319,17 @@
         // Show loading toast
         toastStore.info('Resetting application...');
         
-        // Clear all localStorage items related to the app
+        // Clear all data from storage
         if (browser) {
-          // Get all keys from localStorage
-          const keysToRemove = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && (key.startsWith('kong_') || key === 'slippage')) {
-              keysToRemove.push(key);
-            }
+          try {
+            // Clear localForage data
+            await clearAllStorage();    
+            toastStore.success('Reset successful, reloading...');
+          } catch (error) {
+            console.error('Error clearing storage:', error);
+            toastStore.error('Error clearing data, forcing reload...');
           }
-          
-          // Remove all keys
-          keysToRemove.forEach(key => localStorage.removeItem(key));
         }
-
-        toastStore.success('Reset successful, reloading...');
         
         // Small delay to show the success message
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -249,8 +354,7 @@
   
   // Update to set a specific theme instead of toggling
   function setTheme(theme: 'light' | 'dark' | 'plain-black') {
-    themeStore.setTheme(theme);
-    isThemeDropdownOpen = false; // Close dropdown after selection
+    applyTheme(theme);
   }
   
   // Close dropdown when clicking outside
@@ -260,17 +364,7 @@
       isThemeDropdownOpen = false;
     }
   }
-  
-  // Get display name for current theme
-  function getThemeDisplayName(theme: string): string {
-    switch (theme) {
-      case 'light': return 'Light';
-      case 'dark': return 'Dark';
-      case 'plain-black': return 'Plain Black';
-      default: return 'Unknown';
-    }
-  }
-  
+
   // Navigation function to go back
   function goBack() {
     if (browser) {
@@ -284,9 +378,8 @@
   <meta name="description" content="Customize Kong's appearance and behavior" />
 </svelte:head>
 
-<div class="page-content max-w-6xl mx-auto">
   <!-- Back button -->
-  <div class="mb-4">
+  <div class="mb-4 px-4 max-w-[1300px] mx-auto">
     <button
       class="flex items-center gap-2 text-kong-text-secondary hover:text-kong-primary transition-colors"
       on:click={goBack}
@@ -303,7 +396,8 @@
     icon={SettingsIcon}
     maxWidth="1300px"
   />
-  
+
+<div class="page-content max-w-[1300px] mx-auto px-4 lg:px-0">  
   <!-- General Settings Section -->
   <div class="settings-container mt-8 mb-12 space-y-8">
     <!-- Slippage Section -->

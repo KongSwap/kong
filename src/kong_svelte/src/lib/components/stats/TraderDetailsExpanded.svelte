@@ -3,7 +3,7 @@
   import { ExternalLink, AlertTriangle } from 'lucide-svelte';
   import TokenImages from '$lib/components/common/TokenImages.svelte';
   import type { LeaderboardEntry } from '$lib/api/leaderboard';
-  import { formatVolume } from '$lib/utils/formatters';
+  import { formatVolume } from '$lib/utils/numberFormatUtils';
   
   export let user: LeaderboardEntry;
   export let tradedTokens: FE.Token[] | undefined = undefined;

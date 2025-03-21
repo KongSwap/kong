@@ -13,7 +13,7 @@
     Check 
   } from 'lucide-svelte';
   import { tooltip } from "$lib/actions/tooltip";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";

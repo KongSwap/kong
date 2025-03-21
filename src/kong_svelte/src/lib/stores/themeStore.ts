@@ -1,14 +1,36 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import { getThemeById, generateThemeVariables, getAllThemes } from '../themes/themeRegistry';
+import { getThemeById, generateThemeVariables, getAllThemes, registerTheme } from '../themes/themeRegistry';
 import type { ThemeDefinition } from '../themes/baseTheme';
+import { createNamespacedStore } from '../config/localForage.config';
+import { get } from 'svelte/store';
+import { auth } from '../stores/auth';
 
 // Define theme ID type based on available themes
 export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'win98light' | 'synthwave';
 
 function createThemeStore() {
   const { subscribe, set } = writable<ThemeId>('dark');
-
+  const THEME_KEY = 'theme';
+  const themeStorage = createNamespacedStore(THEME_KEY);
+  let previousAuthState = { isConnected: false, principalId: null };
+  
+  /**
+   * Get the current user ID from auth service or default to 'default'
+   */
+  function getUserId(): string {
+    if (browser) {
+      try {
+        const authState = get(auth);
+        return authState?.account?.owner?.toString() || 'default';
+      } catch (error) {
+        console.error('Failed to get user ID:', error);
+        return 'default';
+      }
+    }
+    return 'default';
+  }
+  
   /**
    * Apply a theme's CSS variables to the document root
    * @param themeId The ID of the theme to apply
@@ -110,70 +132,226 @@ function createThemeStore() {
   }
 
   /**
+   * Save theme to storage using localForage
+   * @param themeId The ID of the theme to save
+   */
+  async function saveThemeToStorage(themeId: ThemeId) {
+    if (browser) {
+      try {
+        // Get wallet ID or default to 'default'
+        const walletId = getUserId();
+        
+        // Create a theme key with the wallet ID
+        const themeKey = `${THEME_KEY}_${walletId}`;
+        
+        // Save to localForage
+        await themeStorage.setItem(themeKey, themeId);
+        
+        // Also save to default key for quick access
+        await themeStorage.setItem(THEME_KEY, themeId);
+        
+        return true;
+      } catch (error) {
+        console.error('Failed to save theme to storage:', error);
+        return false;
+      }
+    }
+    return false;
+  }
+  
+  /**
+   * Load theme from storage using localForage
+   * @returns Promise with the stored theme ID or null if not found
+   */
+  async function loadThemeFromStorage(): Promise<ThemeId | null> {
+    if (browser) {
+      try {
+        // Get wallet ID or default to 'default'
+        const walletId = getUserId();
+        
+        // First try user-specific theme
+        const themeKey = `${THEME_KEY}_${walletId}`;
+        const userTheme = await themeStorage.getItem<ThemeId>(themeKey);
+        
+        if (userTheme) {
+          return userTheme;
+        }
+        
+        // If no user theme, try the default theme
+        const defaultTheme = await themeStorage.getItem<ThemeId>(THEME_KEY);
+        if (defaultTheme) {
+          return defaultTheme;
+        }
+        
+        // If still no theme, try the global default
+        const globalDefault = await themeStorage.getItem<ThemeId>(`${THEME_KEY}_default`);
+        if (globalDefault) {
+          return globalDefault;
+        }
+      } catch (error) {
+        console.error('Failed to load theme from storage:', error);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get theme quickly (synchronously) for initial UI render
+   * @returns Theme ID or null
+   */
+  function getQuickTheme(): ThemeId | null {
+    if (browser) {
+      try {
+        // Get cached theme ID from memory if it exists
+        const cachedTheme = get({ subscribe }) as ThemeId;
+        if (cachedTheme) {
+          return cachedTheme;
+        }
+        
+        // Default based on system preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return prefersDark ? 'dark' : 'light';
+      } catch (error) {
+        console.error('Error getting quick theme:', error);
+      }
+    }
+    return 'dark';
+  }
+
+  /**
    * Set the current theme
    * @param themeId The ID of the theme to set
    */
-  function setTheme(themeId: ThemeId) {
+  async function setTheme(themeId: ThemeId) {
     if (browser) {
       applyThemeStyles(themeId);
-      localStorage.setItem('theme', themeId);
+      await saveThemeToStorage(themeId);
     }
     set(themeId);
+  }
+  
+  /**
+   * Register a new theme and apply it
+   * @param theme The theme definition to register and apply
+   */
+  async function registerAndApplyTheme(theme: ThemeDefinition) {
+    if (browser) {
+      registerTheme(theme);
+      await setTheme(theme.id as ThemeId);
+      return true;
+    }
+    return false;
   }
 
   /**
    * Toggle between available themes in a cycle
    */
-  function toggleTheme() {
+  async function toggleTheme() {
     if (browser) {
       const themes = getAllThemes().map(theme => theme.id) as ThemeId[];
+      
       // Get current theme
-      const currentTheme = localStorage.getItem('theme') as ThemeId || 'dark';
+      const currentTheme = await loadThemeFromStorage() || 'dark';
+      
       // Find current theme index
       const currentIndex = themes.indexOf(currentTheme);
+      
       // Get next theme (cycle back to first if at the end)
       const nextIndex = (currentIndex + 1) % themes.length;
-      setTheme(themes[nextIndex]);
+      await setTheme(themes[nextIndex]);
     }
   }
 
   /**
-   * Initialize the theme from local storage or system preference
+   * Initialize the theme from localForage or system preference
    */
   function initTheme() {
     if (browser) {
+      // Check if theme is already initializing from app.html
+      const isInitializing = document.documentElement.getAttribute('data-theme-initializing') === 'true';
+      
       // Start with data-theme-ready="false" to hide content during loading
       document.documentElement.setAttribute('data-theme-ready', 'false');
       
-      const savedTheme = localStorage.getItem('theme') as ThemeId | null;
-      const availableThemes = getAllThemes().map(theme => theme.id);
-      
-      // Determine which theme to use
-      let themeToApply: ThemeId;
-      if (savedTheme && availableThemes.includes(savedTheme)) {
-        themeToApply = savedTheme as ThemeId;
+      // If not initializing from app.html, set a quick theme
+      if (!isInitializing) {
+        // Use system preference for immediate display to prevent flashing
+        const quickTheme = getQuickTheme();
+        const theme = getThemeById(quickTheme);
+        const themeClass = theme.colorScheme === 'light' ? 'light' : 'dark';
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(themeClass);
       } else {
-        // If no theme saved, use system preference
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        themeToApply = prefersDark ? 'dark' : 'light';
+        // Clear the initializing attribute
+        document.documentElement.removeAttribute('data-theme-initializing');
       }
       
-      // Apply color scheme class early to prevent flashing
-      const theme = getThemeById(themeToApply);
-      const themeClass = theme.colorScheme === 'light' ? 'light' : 'dark';
-      document.documentElement.classList.remove('light', 'dark');
-      document.documentElement.classList.add(themeClass);
-      
-      // Then apply full theme with a slight delay to ensure DOM is ready
-      setTimeout(() => {
-        setTheme(themeToApply);
+      // Then load from localForage (async)
+      loadThemeFromStorage().then(savedTheme => {
+        const availableThemes = getAllThemes().map(theme => theme.id);
         
-        // Mark theme as ready after styles are applied
+        // Determine which theme to use
+        let themeToApply: ThemeId;
+        if (savedTheme && availableThemes.includes(savedTheme)) {
+          themeToApply = savedTheme;
+        } else {
+          // Default based on system preference
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          themeToApply = prefersDark ? 'dark' : 'light';
+        }
+        
+        // Apply color scheme class early to prevent flashing
+        const theme = getThemeById(themeToApply);
+        const themeClass = theme.colorScheme === 'light' ? 'light' : 'dark';
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(themeClass);
+        
+        // Apply full theme 
         setTimeout(() => {
-          document.documentElement.setAttribute('data-theme-ready', 'true');
-        }, 50);
-      }, 10);
+          setTheme(themeToApply);
+          
+          // Mark theme as ready after styles are applied
+          setTimeout(() => {
+            document.documentElement.setAttribute('data-theme-ready', 'true');
+          }, 50);
+        }, 10);
+      }).catch(error => {
+        console.error('Error initializing theme:', error);
+        
+        // Fallback to dark theme in case of error
+        setTheme('dark');
+      });
     }
+  }
+
+  // Create a subscription to the auth store to reload theme when auth changes
+  if (browser) {
+    auth.subscribe((authState) => {
+      const currentAuthState = {
+        isConnected: authState.isConnected,
+        principalId: authState.account?.owner?.toString() || null
+      };
+      
+      // Check if auth state has changed in a meaningful way
+      if (currentAuthState.isConnected !== previousAuthState.isConnected || 
+          currentAuthState.principalId !== previousAuthState.principalId) {
+        
+        console.log('[ThemeStore] Auth state changed, reloading theme');
+        
+        // Wait a bit before loading to make sure auth state has stabilized
+        setTimeout(() => {
+          loadThemeFromStorage().then(theme => {
+            if (theme) {
+              console.log('[ThemeStore] Applying theme from storage:', theme);
+              setTheme(theme);
+            }
+          });
+        }, 100);
+        
+        // Update previous state
+        previousAuthState = currentAuthState;
+      }
+    });
   }
 
   // Initialize on module load
@@ -186,7 +364,10 @@ function createThemeStore() {
     subscribe,
     setTheme,
     initTheme,
-    toggleTheme
+    toggleTheme,
+    loadThemeFromStorage,
+    saveThemeToStorage,
+    registerAndApplyTheme
   };
 }
 

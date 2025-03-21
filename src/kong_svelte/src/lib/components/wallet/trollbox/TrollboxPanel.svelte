@@ -5,7 +5,7 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import Badge from "$lib/components/common/Badge.svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   
   // TrollBox imports
   import { trollboxStore } from "$lib/components/wallet/trollbox/trollboxStore";
@@ -46,7 +46,7 @@
   async function initializeTrollbox() {
     if (!chatContainer) return; // Wait until chat container is available
     
-    // Load pending messages from localStorage
+    // Load pending messages from localForage
     trollboxStore.loadPendingMessagesFromStorage();
     
     // Load messages
@@ -177,10 +177,13 @@
       trollboxStore.addMessage(newMessage);
       
       // Scroll to bottom after message is added
-      setTimeout(scrollToBottom, 0);
-      
-      // Refresh to ensure state is consistent
-      loadMessages();
+      setTimeout(() => {
+        scrollToBottom();
+        // Force UI update by triggering another load to ensure message appears
+        setTimeout(() => {
+          loadMessages(true);
+        }, 50);
+      }, 10);
     } catch (error) {
       console.error('Error sending message:', error);
       messageInput = message; // Restore message input on error

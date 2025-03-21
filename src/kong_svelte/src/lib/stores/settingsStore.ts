@@ -1,7 +1,8 @@
 import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
 import type { Settings } from '$lib/types/settings.ts';
-import { auth } from '$lib/services/auth';
+import { auth } from '$lib/stores/auth';
+import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
 
 const DEFAULT_SETTINGS: Settings = {
   sound_enabled: false,
@@ -9,7 +10,8 @@ const DEFAULT_SETTINGS: Settings = {
   timestamp: Date.now(),
 };
 
-const SETTINGS_KEY = 'kong_settings';
+const SETTINGS_KEY = STORAGE_KEYS.SETTINGS;
+const settingsStorage = createNamespacedStore(SETTINGS_KEY);
 
 function createSettingsStore() {
   const { subscribe, set, update } = writable<Settings>(DEFAULT_SETTINGS);
@@ -24,14 +26,13 @@ function createSettingsStore() {
       }
 
       try {
-        const storedSettings = localStorage.getItem(`${SETTINGS_KEY}_${walletId}`);
+        const storedSettings = await settingsStorage.getItem<Settings>(`${SETTINGS_KEY}_${walletId}`);
         if (storedSettings) {
-          const dbSettings = JSON.parse(storedSettings);
-          // Ensure max_slippage is set when loading from localStorage
+          // Ensure max_slippage is set when loading from storage
           set({
             ...DEFAULT_SETTINGS, // Start with defaults
-            ...dbSettings, // Override with stored settings
-            max_slippage: dbSettings.max_slippage ?? DEFAULT_SETTINGS.max_slippage // Ensure max_slippage has a value
+            ...storedSettings, // Override with stored settings
+            max_slippage: storedSettings.max_slippage ?? DEFAULT_SETTINGS.max_slippage // Ensure max_slippage has a value
           });
         } else {
           // If no settings exist, store default settings
@@ -40,7 +41,7 @@ function createSettingsStore() {
             principal_id: walletId,
             timestamp: Date.now()
           };
-          localStorage.setItem(`${SETTINGS_KEY}_${walletId}`, JSON.stringify(defaultSettings));
+          await settingsStorage.setItem(`${SETTINGS_KEY}_${walletId}`, defaultSettings);
         }
       } catch (error) {
         console.error('Error initializing settings:', error);
@@ -48,71 +49,71 @@ function createSettingsStore() {
     }
   }
 
-  async function updateSetting(
-    key: keyof Settings,
-    value: Settings[keyof Settings],
-  ) {
-    update(settings => {
-      const walletId = get(auth).account?.owner?.toString();
-      if (!walletId) {
-        console.error('Wallet ID is not available.');
-        return settings;
-      }
-
-      const newSettings = {
-        ...settings,
-        [key]: value,
-      };
-
-      if (browser) {
-        try {
-          const settingsToStore = {
-            ...newSettings,
-            principal_id: walletId,
-            timestamp: Date.now(),
-          };
-          localStorage.setItem(`${SETTINGS_KEY}_${walletId}`, JSON.stringify(settingsToStore));
-        } catch (error) {
-          console.error("Error updating settings:", error);
-        }
-      }
-
-      return newSettings;
-    });
-  }
-
-  async function reset() {
-    const walletId = get(auth).account?.owner?.toString();
-    if (!walletId) {
-      console.error('Wallet ID is not available.');
-      return;
-    }
-
-    set(DEFAULT_SETTINGS);
+  async function updateSetting<K extends keyof Settings>(key: K, value: Settings[K]) {
+    if (!browser) return;
     
-    if (browser) {
+    try {
+      const pnp = get(auth);
+      const walletId = pnp?.account?.owner?.toString();
+      if (!walletId) {
+        console.error('Wallet ID is not available to save settings');
+        return;
+      }
+      
+      update(settings => {
+        const newSettings = { 
+          ...settings, 
+          [key]: value,
+          timestamp: Date.now()
+        };
+        return newSettings;
+      });
+      
+      // Get the current state to save
+      let currentSettings: Settings;
+      subscribe(value => (currentSettings = value))();
+      
+      // Save to storage
+      await settingsStorage.setItem(`${SETTINGS_KEY}_${walletId}`, currentSettings);
+    } catch (error) {
+      console.error('Error updating setting:', error);
+    }
+  }
+  
+  async function reset() {
+    if (!browser) return;
+    
+    const pnp = get(auth);
+    const walletId = pnp?.account?.owner?.toString();
+    if (!walletId) return;
+    
+    try {
+      // Reset to default settings
       const defaultSettings = {
         ...DEFAULT_SETTINGS,
-        principal_id: walletId,
         timestamp: Date.now(),
       };
-      localStorage.setItem(`${SETTINGS_KEY}_${walletId}`, JSON.stringify(defaultSettings));
+      
+      // Save to store
+      set(defaultSettings);
+      
+      // Save to storage
+      await settingsStorage.setItem(`${SETTINGS_KEY}_${walletId}`, defaultSettings);
+    } catch (error) {
+      console.error('Error resetting settings:', error);
     }
   }
 
   return {
     subscribe,
     set,
-    initializeStore,
+    update,
     updateSetting,
     reset,
+    initializeStore,
     soundEnabled: derived(
       { subscribe },
-      ($settings) => $settings.sound_enabled ?? DEFAULT_SETTINGS.sound_enabled,
-    ),
-    currentLanguage: derived(
-      { subscribe },
-      ($settings) => $settings.default_language,
+      ($settings) => $settings.sound_enabled
     ),
   };
 }

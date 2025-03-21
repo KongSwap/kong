@@ -37,12 +37,12 @@
 
   // Theme-based styles
   const baseThemeClasses = {
-    primary: "text-white/90",
-    secondary: "text-white/90",
+    primary: "text-kong-text-primary",
+    secondary: "text-kong-text-primary",
     success: "text-kong-success",
     error: "text-white",
     warning: "text-kong-warning",
-    "accent-green": "text-kong-text-on-primary",
+    "accent-green": "text-kong-bg-dark",
     "accent-blue": "text-kong-white",
     "accent-red": "text-kong-white",
     muted: "text-kong-text-inverse/60",
@@ -50,7 +50,7 @@
 
   const solidThemeClasses = {
     primary: "bg-kong-primary hover:bg-kong-primary-hover",
-    secondary: "bg-white/5 hover:bg-white/10",
+    secondary: "bg-kong-bg-light",
     success: "bg-kong-accent-green hover:bg-kong-accent-green-hover",
     error: "bg-red-600 hover:bg-red-700",
     warning: "bg-kong-warning hover:bg-yellow-500",
