@@ -1,18 +1,14 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import {
     Trophy,
     Crown,
-    ExternalLink,
     ChevronDown,
     ChevronUp,
   } from "lucide-svelte";
   import Panel from "$lib/components/common/Panel.svelte";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
   import type { LeaderboardEntry } from "$lib/api/leaderboard";
-  import { AlertTriangle } from "lucide-svelte";
   import TraderDetailsExpanded from "./TraderDetailsExpanded.svelte";
-  import { formatVolume, formatPrincipalId } from "$lib/utils/formatters";
+  import { formatVolume } from "$lib/utils/numberFormatUtils";
 
   let {
     user,
@@ -153,14 +149,14 @@
             class="absolute inset-0 {style.bgColor} rounded-full opacity-10 animate-pulse-slow"
           ></div>
           <img
-            src={`https://api.dicebear.com/7.x/notionists-neutral/svg?seed=${user.principal_id}&size=${isChampion ? 64 : 48}`}
+            src={`https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${user.principal_id}&size=${isChampion ? 64 : 48}`}
             alt="Trader Avatar"
             class="w-{isChampion ? '20' : '16'} h-{isChampion
               ? '20'
               : '16'} rounded-full bg-kong-dark {borderWidth} border-kong-border shadow-md relative z-10"
           />
           <div
-            class="absolute -bottom-2 -right-2 {isChampion
+            class="absolute z-10 -bottom-2 -right-2 {isChampion
               ? 'bg-kong-accent-green'
               : style.bgColor} text-white text-xs font-bold rounded-full w-{isChampion
               ? '8'
@@ -256,7 +252,7 @@
       <div class="flex items-center">
         <div class="relative">
           <img
-            src={`https://api.dicebear.com/7.x/notionists-neutral/svg?seed=${user.principal_id}&size=32`}
+            src={`https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${user.principal_id}&size=32`}
             alt="Trader Avatar"
             class="w-10 h-10 rounded-full bg-kong-dark border border-kong-border flex-shrink-0 mr-3 shadow-sm transition-transform transform group-hover:scale-105"
           />

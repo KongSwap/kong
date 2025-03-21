@@ -3,7 +3,7 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { formatTimestamp } from "$lib/utils/dateFormatters";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
-  import { getPrincipalColor } from "$lib/utils/principalColorUtils";
+  import { getPrincipalColor } from "$lib/utils/principalUtils";
   import { goto } from "$app/navigation";
   import { copyToClipboard } from "$lib/utils/clipboard";
 

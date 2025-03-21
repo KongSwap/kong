@@ -1,8 +1,6 @@
 import { writable, get } from "svelte/store";
 import { Principal } from "@dfinity/principal";
-import { auth } from "$lib/services/auth";
-import type { AuthStore } from "$lib/services/auth"; // Import the AuthStore type
-import { BigNumber } from "bignumber.js";
+import { auth } from "$lib/stores/auth";
 import { userTokens } from "$lib/stores/userTokens";
 
 // Create a store for balances
@@ -157,12 +155,6 @@ export const getStoredBalances = async (walletId: string) => {
     console.error("Error getting stored balances:", error);
     return {};
   }
-};
-
-// Update stored balances
-export const updateStoredBalances = async (walletId: string) => {
-  const balances = await getStoredBalances(walletId);
-  currentUserBalancesStore.set(balances);
 };
 
 // Helper function to update balances in the store

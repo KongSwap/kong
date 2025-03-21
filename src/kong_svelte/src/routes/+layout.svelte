@@ -10,18 +10,16 @@
   import { themeStore } from "$lib/stores/themeStore";
   import { browser } from "$app/environment";
   import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
-  import { auth } from "$lib/services/auth";
-  import { kongDB } from "$lib/services/db";
+  import { auth } from "$lib/stores/auth";
   import { userTokens } from "$lib/stores/userTokens";
-  import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
-  import { fetchTokensByCanisterId } from "$lib/api/tokens/TokenApiClient";
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";
   import { keyboardShortcuts } from "$lib/services/keyboardShortcuts";
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
-  import { connectWebSocket } from "$lib/api/canisters";
-  import DeploymentNotification from "$lib/components/common/DeploymentNotification.svelte";
-  import { onMount } from "svelte";
+  import { configureStorage } from "$lib/config/localForage.config";
+  import { allowanceStore } from "$lib/stores/allowanceStore";
+  import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
+  import { fetchTokensByCanisterId } from "$lib/api/tokens";
   
   const pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
@@ -38,9 +36,18 @@
 
     const promise = (async () => {
       try {
-        await kongDB.initialize();
+        if (browser) {
+          configureStorage();
+        }
         await auth.initialize();
-        console.log("[App] App initialization complete");
+        if (browser) {
+          allowanceStore.initialize();
+          
+          // Fetch default tokens
+          const tokenCanisterIds = Object.values(DEFAULT_TOKENS);
+          const tokens = await fetchTokensByCanisterId(tokenCanisterIds);
+          defaultTokens = tokens;
+        }
       } catch (error) {
         console.error("[App] Initialization error:", error);
         initializationPromise = null;
@@ -85,6 +92,7 @@
     return () => {
       if (browser) {  
         keyboardShortcuts.destroy();
+        allowanceStore.destroy();
       }
     };
   });

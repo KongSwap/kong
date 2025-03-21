@@ -89,6 +89,7 @@ type Market = record {
   creator : principal;
   outcome_percentages : vec float64;
   question : text;
+  image_url : opt text;
   resolution_data : opt text;
   created_at : nat;
   end_time : nat;
@@ -121,7 +122,7 @@ type MarketResult = record {
   winning_outcomes : vec nat;
   bet_counts : vec nat;
 };
-type MarketStatus = variant { Disputed; Open; Closed : vec nat };
+type MarketStatus = variant { Disputed; Open; Closed : vec nat; Voided };
 type MarketsByStatus = record {
   resolved : vec MarketResult;
   active : vec Market;
@@ -137,6 +138,7 @@ type ResolutionError = variant {
   Unauthorized;
   UpdateFailed;
   PayoutFailed;
+  VoidingFailed;
 };
 type ResolutionMethod = variant {
   Oracle : record {
@@ -181,6 +183,7 @@ service : () -> {
       vec text,
       ResolutionMethod,
       MarketEndTime,
+      opt text,
     ) -> (Result);
   get_all_categories : () -> (vec text) query;
   get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
@@ -201,4 +204,5 @@ service : () -> {
   place_bet : (nat, nat, nat) -> (Result_4);
   resolve_via_admin : (nat, vec nat) -> (Result_5);
   resolve_via_oracle : (nat, vec nat, blob) -> (Result_5);
+  void_market : (nat) -> (Result_5);
 }

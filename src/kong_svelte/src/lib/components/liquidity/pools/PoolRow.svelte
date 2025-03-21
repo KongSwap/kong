@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { Flame, TrendingUp, PiggyBank } from "lucide-svelte";
-  import { livePools } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/stores/poolStore";
   import { tooltip } from "$lib/actions/tooltip";
 
   // Define proper types for the pool data

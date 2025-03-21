@@ -1,8 +1,8 @@
-import { auth } from "$lib/services/auth";
+import { auth } from "$lib/stores/auth";
 import { canisterIDLs } from "$lib/config/auth.config";
 import { Principal } from "@dfinity/principal";
 import { toastStore } from "$lib/stores/toastStore";
-import { allowanceStore } from "../tokens/allowanceStore";
+import { allowanceStore } from "$lib/stores/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 

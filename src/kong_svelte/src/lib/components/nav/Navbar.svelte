@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { fade, slide } from "svelte/transition";
   import { goto } from "$app/navigation";
   import { notificationsStore } from "$lib/stores/notificationsStore";
@@ -23,7 +23,6 @@
     Joystick,
     ChevronDown,
   } from "lucide-svelte";
-  import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { page } from "$app/stores";
   import { browser } from "$app/environment";
@@ -35,10 +34,11 @@
   import { userTokens } from "$lib/stores/userTokens";
   import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
   import { getThemeById } from "$lib/themes/themeRegistry";
-  import { writable } from 'svelte/store';
+  import { writable } from "svelte/store";
   import NavbarButton from "./NavbarButton.svelte";
   import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
   import { copyToClipboard } from "$lib/utils/clipboard";
+  import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
 
   // Simple swap mode service implementation
   const swapModeService = {
@@ -58,8 +58,8 @@
   // Get current theme details including colorScheme
   $: currentTheme = browser && $themeStore ? getThemeById($themeStore) : null;
   $: shouldInvertLogo = currentTheme?.colors?.logoInvert === 1;
-  $: isWin98Theme = browser && $themeStore === 'win98light';
-  
+  $: isWin98Theme = browser && $themeStore === "win98light";
+
   // Get button theme variables for current theme
   $: buttonBg = currentTheme?.colors?.buttonBg;
   $: buttonHoverBg = currentTheme?.colors?.buttonHoverBg;
@@ -67,14 +67,14 @@
   $: buttonBorder = currentTheme?.colors?.buttonBorder;
   $: buttonBorderColor = currentTheme?.colors?.buttonBorderColor;
   $: buttonShadow = currentTheme?.colors?.buttonShadow;
-  
+
   // Get primary button theme variables
   $: primaryButtonBg = currentTheme?.colors?.primaryButtonBg;
   $: primaryButtonHoverBg = currentTheme?.colors?.primaryButtonHoverBg;
   $: primaryButtonText = currentTheme?.colors?.primaryButtonText;
   $: primaryButtonBorder = currentTheme?.colors?.primaryButtonBorder;
   $: primaryButtonBorderColor = currentTheme?.colors?.primaryButtonBorderColor;
-  
+
   // Reactively update logo when theme changes
   $: if (browser && $themeStore) {
     // Small delay to ensure CSS variables are updated
@@ -82,17 +82,18 @@
   }
 
   // Create a writable store for the logo source
-  const logoSrcStore = writable('/titles/logo-white-wide.png');
-  
+  const logoSrcStore = writable("/titles/logo-white-wide.png");
+
   // Update the logo when theme changes
   function updateLogoSrc() {
     if (browser) {
-      const cssLogoPath = getComputedStyle(document.documentElement).getPropertyValue('--logo-path').trim();
-      logoSrcStore.set(cssLogoPath || '/titles/logo-white-wide.png');
+      const cssLogoPath = getComputedStyle(document.documentElement)
+        .getPropertyValue("--logo-path")
+        .trim();
+      logoSrcStore.set(cssLogoPath || "/titles/logo-white-wide.png");
     }
   }
 
-  let showSettings = false;
   let isMobile = false;
   let activeTab: "swap" | "predict" | "earn" | "stats" | "launch" = "swap";
   let navOpen = false;
@@ -100,10 +101,13 @@
   let activeDropdown: "swap" | "earn" | "stats" | null = null;
   let showWalletSidebar = false;
   let showWalletProvider = false;
-  let walletSidebarActiveTab: "notifications" | "chat" | "wallet" = "notifications";
+  let walletSidebarActiveTab: "notifications" | "chat" | "wallet" =
+    "notifications";
 
   // Toggle wallet sidebar
-  function toggleWalletSidebar(tab: "notifications" | "chat" | "wallet" = "notifications") {
+  function toggleWalletSidebar(
+    tab: "notifications" | "chat" | "wallet" = "notifications",
+  ) {
     walletSidebarActiveTab = tab;
     showWalletSidebar = !showWalletSidebar;
   }
@@ -122,7 +126,7 @@
   $: tabs =
     process.env.DFX_NETWORK !== "ic"
       ? allTabs
-      : allTabs.filter(t => t !== "predict")
+      : allTabs.filter((tab) => tab !== "predict");
 
   const launchOptions = [
     {
@@ -172,21 +176,18 @@
     },
   ];
 
-  function handleOpenSettings() {
-    showSettings = true;
-  }
-
   function handleConnect() {
     // If user is not authenticated, show the wallet provider
     if (!$auth.isConnected) {
       showWalletProvider = true;
       return;
     }
-    
+
     // Otherwise, show the wallet sidebar
     // If there are unread notifications, open the notifications tab first
     // Otherwise, open the wallet tab
-    const activeTab = $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
+    const activeTab =
+      $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
     toggleWalletSidebar(activeTab);
   }
 
@@ -197,16 +198,16 @@
   onMount(() => {
     // Initially set logo src
     updateLogoSrc();
-    
+
     // Subscribe to theme changes
     const unsubscribe = themeStore.subscribe(() => {
       // Add a small delay to ensure CSS variables are updated
       setTimeout(updateLogoSrc, 50);
     });
-    
+
     checkMobile();
     window.addEventListener("resize", checkMobile);
-    
+
     return () => {
       unsubscribe();
       if (browser) {
@@ -220,7 +221,7 @@
   }
 
   async function claimTokens() {
-    await TokenService.faucetClaim();
+    await faucetClaim();
     await loadBalances($userTokens.tokens, $auth.account.owner, true);
   }
 
@@ -665,7 +666,6 @@
           customShadow={buttonShadow}
         />
 
-
         {#if $auth.isConnected}
           {#if process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging"}
             <NavbarButton
@@ -895,9 +895,13 @@
   </div>
 {/if}
 
-<WalletSidebar isOpen={showWalletSidebar} activeTab={walletSidebarActiveTab} onClose={closeWalletSidebar} />
+<WalletSidebar
+  isOpen={showWalletSidebar}
+  activeTab={walletSidebarActiveTab}
+  onClose={closeWalletSidebar}
+/>
 {#if browser}
-  <WalletProvider 
+  <WalletProvider
     isOpen={showWalletProvider}
     onClose={closeWalletProvider}
     onLogin={() => {

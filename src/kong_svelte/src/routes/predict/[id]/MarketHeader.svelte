@@ -9,12 +9,15 @@
 <div class="!rounded animate-fadeIn mb-2">
   <div class="flex items-center gap-2 sm:gap-3">
     <div
-      class="p-2 sm:p-2 bg-kong-accent-green/10 rounded flex items-center justify-center"
+      class="{market.image_url ? '' : 'p-2 sm:p-2 bg-kong-accent-green/10 rounded flex items-center justify-center'}"
     >
+    {#if market.image_url.length > 0}
+      <img src={market.image_url} alt="Market Icon" class="w-[4.4rem] h-[4.4rem] object-cover">
+    {:else}
       <CircleHelp
-        size={20}
-        class="text-kong-text-accent-green sm:w-6 sm:h-6"
+        class="text-kong-text-accent-green w-8 h-8"
       />
+    {/if}
     </div>
     <div class="flex-1">
       <h1

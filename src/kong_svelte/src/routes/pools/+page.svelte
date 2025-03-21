@@ -16,7 +16,7 @@
     PiggyBank,
   } from "lucide-svelte";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { browser } from "$app/environment";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";

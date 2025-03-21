@@ -1,4 +1,5 @@
 <script lang="ts">
+    import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import OutcomeProgressBar from "./OutcomeProgressBar.svelte";
   import { Dices, BarChart3 } from "lucide-svelte";
@@ -80,13 +81,14 @@
             </div>
             <div class="ml-2 sm:ml-4">
               {#if !isMarketResolved && !isPendingResolution}
-                <button
-                  aria-label={`Place bet for ${outcome}`}
-                  class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-accent-green hover:bg-kong-accent-green-hover text-white rounded-md font-bold shadow-sm hover:shadow-md transition-shadow text-sm sm:text-base"
+                <ButtonV2
+                  theme="accent-green"
+                  variant="solid"
+                  size="md"
                   on:click={() => onSelectOutcome(i)}
                 >
                   Bet
-                </button>
+                </ButtonV2>
               {:else if isMarketClosed && winningOutcomes.some((w) => Number(w) === i)}
                 <div
                   class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-accent-green/20 text-kong-text-accent-green rounded-md text-sm sm:text-base font-medium border border-kong-accent-green"

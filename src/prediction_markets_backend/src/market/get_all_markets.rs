@@ -49,7 +49,8 @@ pub fn get_all_markets(args: GetAllMarketsArgs) -> GetAllMarketsResult {
                 match (status_filter, &market.status) {
                     (MarketStatus::Open, MarketStatus::Open) |
                     (MarketStatus::Closed(_), MarketStatus::Closed(_)) |
-                    (MarketStatus::Disputed, MarketStatus::Disputed) => filtered_market_ids.push(id),
+                    (MarketStatus::Disputed, MarketStatus::Disputed) |
+                    (MarketStatus::Voided, MarketStatus::Voided) => filtered_market_ids.push(id),
                     _ => continue,
                 }
             } else {

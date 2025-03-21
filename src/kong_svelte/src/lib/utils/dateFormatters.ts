@@ -1,5 +1,3 @@
-import { formatDistance } from "date-fns";
-
 export function formatTimestamp(timestamp: string): string {
   if (!timestamp) {
     return "N/A";
@@ -45,3 +43,13 @@ export function formatTimestamp(timestamp: string): string {
     return "N/A";
   }
 } 
+
+export function formatDate(date: Date): string {
+  return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+  });
+}

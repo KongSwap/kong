@@ -25,6 +25,7 @@ export const idlFactory = ({ IDL }) => {
     'Disputed' : IDL.Null,
     'Open' : IDL.Null,
     'Closed' : IDL.Vec(IDL.Nat),
+    'Voided' : IDL.Null,
   });
   const SortDirection = IDL.Variant({
     'Descending' : IDL.Null,
@@ -48,6 +49,7 @@ export const idlFactory = ({ IDL }) => {
     'creator' : IDL.Principal,
     'outcome_percentages' : IDL.Vec(IDL.Float64),
     'question' : IDL.Text,
+    'image_url' : IDL.Opt(IDL.Text),
     'resolution_data' : IDL.Opt(IDL.Text),
     'created_at' : IDL.Nat,
     'end_time' : IDL.Nat,
@@ -200,6 +202,7 @@ export const idlFactory = ({ IDL }) => {
     'Unauthorized' : IDL.Null,
     'UpdateFailed' : IDL.Null,
     'PayoutFailed' : IDL.Null,
+    'VoidingFailed' : IDL.Null,
   });
   const Result_5 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ResolutionError });
   return IDL.Service({
@@ -211,6 +214,7 @@ export const idlFactory = ({ IDL }) => {
           IDL.Vec(IDL.Text),
           ResolutionMethod,
           MarketEndTime,
+          IDL.Opt(IDL.Text),
         ],
         [Result],
         [],
@@ -258,6 +262,7 @@ export const idlFactory = ({ IDL }) => {
         [Result_5],
         [],
       ),
+    'void_market' : IDL.Func([IDL.Nat], [Result_5], []),
   });
 };
 export const init = ({ IDL }) => { return []; };

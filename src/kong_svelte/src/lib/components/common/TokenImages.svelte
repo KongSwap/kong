@@ -1,6 +1,5 @@
 <script lang="ts">
   import { tooltip as tooltipAction } from "$lib/actions/tooltip";
-  import { DEFAULT_LOGOS } from "$lib/services/tokens";
 
   // Define props using the $props rune
   type TokenImagesProps = {
@@ -80,7 +79,7 @@
   
   // Check if image exists for a token
   function hasValidImage(token: FE.Token): boolean {
-    return !!(token.logo_url || DEFAULT_LOGOS[token.canister_id]);
+    return !!(token.logo_url || DEFAULT_IMAGE);
   }
 </script>
 
@@ -100,7 +99,6 @@
         <img
           class="w-full h-full rounded-full bg-transparent ring-2 ring-kong-bg-dark ring-opacity-40"
           src={token?.logo_url ||
-            DEFAULT_LOGOS[token.canister_id] ||
             DEFAULT_IMAGE}
           alt={getTokenAlt(token)}
           loading="eager"

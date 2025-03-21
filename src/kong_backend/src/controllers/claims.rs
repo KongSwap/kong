@@ -41,12 +41,17 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
         Err(e) => return Err(format!("Invalid claims: {}", e)),
     };
 
+    let mut claims_ids = Vec::new();
     CLAIM_MAP.with(|claim_map| {
         let mut map = claim_map.borrow_mut();
         for (k, v) in claims {
+            claims_ids.push(k.0);
             map.insert(k, v);
         }
     });
+    for claim_id in claims_ids {
+        let _ = claim_map::archive_to_kong_data(claim_id);
+    }
 
     Ok("Claims updated".to_string())
 }

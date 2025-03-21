@@ -130,7 +130,7 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
     Ok(user.user_id)
 }
 
-fn archive_to_kong_data(user: &StableUser) -> Result<(), String> {
+pub fn archive_to_kong_data(user: &StableUser) -> Result<(), String> {
     if !kong_settings_map::get().archive_to_kong_data {
         return Ok(());
     }

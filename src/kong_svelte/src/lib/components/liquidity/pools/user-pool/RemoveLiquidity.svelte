@@ -3,12 +3,11 @@
   import { fade, fly } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { loadBalance } from "$lib/stores/tokenStore";
-  import { PoolService } from "$lib/services/pools";
   import { toastStore } from "$lib/stores/toastStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
-  import { auth } from "$lib/services/auth";
-
+  import { calculateRemoveLiquidityAmounts, removeLiquidity, pollRequestStatus } from "$lib/api/pools";
+  
   const dispatch = createEventDispatcher();
 
   export let pool: any;
@@ -49,7 +48,7 @@
       }
 
       const [amount0, amount1] =
-        await PoolService.calculateRemoveLiquidityAmounts(
+        await calculateRemoveLiquidityAmounts(
           pool.address_0,
           pool.address_1,
           numericAmount,
@@ -85,7 +84,7 @@
       toastStore.info("Removing liquidity...");
       const numericAmount = parseFloat(removeLiquidityAmount);
       const lpTokenBigInt = BigInt(Math.floor(numericAmount * 1e8));
-      const requestId = await PoolService.removeLiquidity({
+      const requestId = await removeLiquidity({
         token0: pool.address_0,
         token1: pool.address_1,
         lpTokenAmount: lpTokenBigInt,
@@ -97,7 +96,7 @@
       const maxAttempts = 50; // 50 seconds timeout
 
       while (!isComplete && attempts < maxAttempts) {
-        const requestStatus = await PoolService.pollRequestStatus(
+        const requestStatus = await pollRequestStatus(
           BigInt(requestId),
         );
 
@@ -124,8 +123,8 @@
           isComplete = true;
           toastStore.success("Successfully removed liquidity from the pool");
           await Promise.all([
-            loadBalance(token0.canister_id, auth, true),
-            loadBalance(token1.canister_id, auth, true),
+            loadBalance(token0.canister_id, true),
+            loadBalance(token1.canister_id, true),
             currentUserPoolsStore.initialize(),
           ]);
         } else if (requestStatus.reply?.Failed) {
@@ -151,8 +150,8 @@
       // Ensure we still refresh balances even on error
       await Promise.all([
         currentUserPoolsStore.initialize(),
-        loadBalance(token0.canister_id, auth, true),
-        loadBalance(token1.canister_id, auth, true),
+        loadBalance(token0.canister_id, true),
+        loadBalance(token1.canister_id, true),
       ]);
       console.error("Error removing liquidity:", err);
       error = err.message;

@@ -13,6 +13,7 @@ pub enum MarketStatus {
     Open,             // Market is open for betting
     Closed(Vec<Nat>), // Market is closed with winning outcome indices
     Disputed,         // Market result is disputed
+    Voided,           // Market is voided, all bets returned to users
 }
 
 #[derive(CandidType, Deserialize)]
@@ -31,6 +32,7 @@ pub struct Market {
     pub rules: String,            // Competition rules defined by creator
     pub outcomes: Vec<String>,    // Possible outcomes
     pub resolution_method: ResolutionMethod,
+    pub image_url: Option<String>, // Optional URL for market image
     pub status: MarketStatus,
     pub created_at: Timestamp,           // When the market was created
     pub end_time: Timestamp,             // When the market closes for betting

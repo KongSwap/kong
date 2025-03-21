@@ -8,11 +8,14 @@ import type {
   TokensByCanisterResponse,
   RawTokenData
 } from './types';
-
-// Create a single instance of the base API client for HTTP operations
 import { ApiClient } from '../base/ApiClient';
 import { API_URL } from '../index';
 import { browser } from '$app/environment';
+import { auth, canisterIDLs } from '$lib/stores/auth';
+import { toastStore } from '$lib/stores/toastStore';
+import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
+import { userTokens } from '$lib/stores/userTokens';
+import { get } from 'svelte/store';
 
 // Lazy initialization of API client to prevent SSR issues
 const getApiClient = () => {
@@ -189,4 +192,113 @@ export const addToken = async (canisterId: string): Promise<any> => {
     console.error('Error adding token:', error);
     throw error;
   }
+};
+
+/**
+ * Claims tokens from the faucet
+ */
+export const faucetClaim = async (): Promise<void> => {
+  const actor = auth.pnp.getActor(
+    process.env.CANISTER_ID_KONG_FAUCET,
+    canisterIDLs.kong_faucet,
+    { anon: false, requiresSigning: false },
+  );
+  const result = await actor.claim();
+
+  if (result.Ok) {
+    toastStore.success("Tokens minted successfully");
+  } else {
+    console.error("Error minting tokens:", result.Err);
+    toastStore.error("Error minting tokens");
+  }
+}
+
+/**
+ * Fetches token metadata from a canister
+ */
+export const fetchTokenMetadata = async (canisterId: string): Promise<FE.Token | null> => {
+  try {
+    // Ensure we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+
+    const actor = await createAnonymousActorHelper(canisterId, canisterIDLs.icrc2);
+    if (!actor) {
+      throw new Error('Failed to create token actor');
+    }
+
+    // Fetch token data from the canister
+    const tokenData = await fetchTokenDataFromCanister(actor);
+    const tokens = get(userTokens).tokens;
+    const tokenId = tokens.length + 1000;
+
+    // Create raw token data
+    const rawTokenData = createRawTokenData(canisterId, tokenData, tokenId);
+
+    // Use the TokenSerializer to process the token data
+    return TokenSerializer.serializeTokenMetadata(rawTokenData);
+  } catch (error) {
+    console.error('Error fetching token metadata:', error);
+    toastStore.error('Error fetching token metadata');
+    return null;
+  }
+};
+
+/**
+ * Fetches token data from a canister
+ * @private
+ */
+const fetchTokenDataFromCanister = async (actor: any): Promise<any> => {
+  const [name, symbol, decimals, fee, supportedStandards, metadata, totalSupply] = await Promise.all([
+    actor.icrc1_name(),
+    actor.icrc1_symbol(),
+    actor.icrc1_decimals(),
+    actor.icrc1_fee(),
+    actor.icrc1_supported_standards(),
+    actor.icrc1_metadata(),
+    actor.icrc1_total_supply()
+  ]);
+
+  return { name, symbol, decimals, fee, supportedStandards, metadata, totalSupply };
+};
+
+/**
+ * Creates raw token data object
+ * @private
+ */
+const createRawTokenData = (canisterId: string, tokenData: any, tokenId: number): any => {
+  const { name, symbol, decimals, fee, supportedStandards, metadata, totalSupply } = tokenData;
+
+  return {
+    canister_id: canisterId,
+    name: name.toString(),
+    symbol: symbol.toString(),
+    decimals: Number(decimals),
+    address: canisterId,
+    fee: fee.toString(),
+    fee_fixed: fee.toString(),
+    token: canisterId,
+    icrc1: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-1") ? true : false,
+    icrc2: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-2") ? true : false,
+    icrc3: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-3") ? true : false,
+    pool_symbol: "",
+    pools: [],
+    timestamp: Date.now(),
+    metrics: {
+      price: "0",
+      volume_24h: "0",
+      total_supply: totalSupply.toString(),
+      market_cap: "0",
+      tvl: "0",
+      updated_at: new Date().toISOString(),
+      price_change_24h: "0"
+    },
+    balance: "0",
+    logo_url: TokenSerializer.extractLogoFromMetadata(metadata as Array<[string, any]>),
+    token_type: "IC",
+    token_id: tokenId,
+    chain: "IC",
+    total_24h_volume: "0"
+  };
 };

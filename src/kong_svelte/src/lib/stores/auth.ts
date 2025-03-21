@@ -7,20 +7,22 @@ import {
 } from "$lib/config/auth.config";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
-import { DEFAULT_TOKENS } from "$lib/constants/tokenConstants";
-import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { fetchBalances } from "$lib/api/balances";
 import { currentUserBalancesStore } from "$lib/stores/balancesStore";
 import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-import { userTokens } from "$lib/stores/userTokens";
+import { createNamespacedStore } from "$lib/config/localForage.config";
 
 // Constants
+const AUTH_NAMESPACE = 'auth';
 const STORAGE_KEYS = {
-  LAST_WALLET: "kongSelectedWallet",
-  AUTO_CONNECT_ATTEMPTED: "kongAutoConnectAttempted",
+  LAST_WALLET: "selectedWallet",
+  AUTO_CONNECT_ATTEMPTED: "autoConnectAttempted",
   WAS_CONNECTED: "wasConnected",
   CONNECTION_RETRY_COUNT: "connectionRetryCount",
 } as const;
+
+// Create namespaced store
+const authStorage = createNamespacedStore(AUTH_NAMESPACE);
 
 // Create stores with initial states
 export const selectedWalletId = writable<string | null>(null);
@@ -40,15 +42,37 @@ function createAuthStore(pnp: PNP) {
 
   const { subscribe, set } = store;
 
-  // Simplified storage operations
+  // Storage operations using localForage
   const storage = {
-    get: (key: keyof typeof STORAGE_KEYS) =>
-      browser ? localStorage.getItem(STORAGE_KEYS[key]) : null,
-    set: (key: keyof typeof STORAGE_KEYS, value: string) =>
-      browser && localStorage.setItem(STORAGE_KEYS[key], value),
-    clear: () =>
-      browser &&
-      Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k)),
+    get: async (key: keyof typeof STORAGE_KEYS) => {
+      if (!browser) return null;
+      try {
+        return await authStorage.getItem<string>(STORAGE_KEYS[key]);
+      } catch (error) {
+        console.error(`Error getting ${key} from storage:`, error);
+        return null;
+      }
+    },
+    
+    set: async (key: keyof typeof STORAGE_KEYS, value: string) => {
+      if (!browser) return;
+      try {
+        await authStorage.setItem(STORAGE_KEYS[key], value);
+      } catch (error) {
+        console.error(`Error setting ${key} in storage:`, error);
+      }
+    },
+    
+    clear: async () => {
+      if (!browser) return;
+      try {
+        for (const key of Object.values(STORAGE_KEYS)) {
+          await authStorage.removeItem(key);
+        }
+      } catch (error) {
+        console.error('Error clearing storage:', error);
+      }
+    },
   };
 
   const storeObj = {
@@ -57,25 +81,24 @@ function createAuthStore(pnp: PNP) {
 
     async initialize() {
       if (!browser) return;
-      console.log("Initializing auth");
-
-      const lastWallet = storage.get("LAST_WALLET");
-      if (!lastWallet || lastWallet === "plug") return;
-
-      const hasAttempted = sessionStorage.getItem(
-        STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED,
-      );
-      const wasConnected = storage.get("WAS_CONNECTED");
-
-      if (hasAttempted && !wasConnected) {
-        return;
-      }
 
       try {
+        const lastWallet = await storage.get("LAST_WALLET");
+        if (!lastWallet || lastWallet === "plug") return;
+
+        const hasAttempted = sessionStorage.getItem(
+          STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED,
+        );
+        const wasConnected = await storage.get("WAS_CONNECTED");
+
+        if (hasAttempted && !wasConnected) {
+          return;
+        }
+
         await this.connect(lastWallet, true);
       } catch (error) {
         console.warn("Auto-connect failed:", error);
-        storage.clear();
+        await storage.clear();
         connectionError.set(error.message);
       } finally {
         sessionStorage.setItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED, "true");
@@ -87,7 +110,12 @@ function createAuthStore(pnp: PNP) {
         connectionError.set(null);
         const result = await pnp.connect(walletId);
 
-        if (!result?.owner) throw new Error("Invalid connection result");
+        if (!result?.owner) {
+          console.error("Invalid connection result", result);
+          // reset state
+          set({ isConnected: false, account: null, isInitialized: true });
+          throw new Error("Invalid connection result");
+        }
 
         const owner = result.owner.toString();
         set({ isConnected: true, account: result, isInitialized: true });
@@ -95,8 +123,8 @@ function createAuthStore(pnp: PNP) {
         // Update state and storage
         selectedWalletId.set(walletId);
         isConnected.set(true);
-        storage.set("LAST_WALLET", walletId);
-        storage.set("WAS_CONNECTED", "true");
+        await storage.set("LAST_WALLET", walletId);
+        await storage.set("WAS_CONNECTED", "true");
 
         // Load balances using the new API client
         setTimeout(async () => {
@@ -104,18 +132,12 @@ function createAuthStore(pnp: PNP) {
             // Import userTokens dynamically to avoid circular dependency
             const { userTokens } = await import("$lib/stores/userTokens");
             
-            // Set current principal in userTokens store
-            userTokens.setPrincipal(owner);
+            // Set current principal in userTokens store and load tokens if needed
+            await userTokens.setPrincipal(owner);
             
+            // Get updated token state
             const userTokensStore = get(userTokens);
-
-            // Initialize default tokens if needed - only if this principal has no saved tokens
-            if (Object.keys(userTokensStore.enabledTokens).length === 0 && !userTokens.hasSavedTokens(owner)) {
-              userTokens.enableTokens(
-                await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS)),
-              );
-            }
-
+            
             // Load balances using the API client
             await fetchBalances(userTokensStore.tokens, owner, true);
           } catch (error) {
@@ -143,8 +165,8 @@ function createAuthStore(pnp: PNP) {
       const { userTokens } = await import("$lib/stores/userTokens");
       userTokens.setPrincipal(null);
       
-      // Clear other storage but keep token data
-      storage.clear();
+      // Clear storage completely and await its completion
+      await storage.clear();
     },
 
     handleConnectionError(error: any) {
@@ -194,6 +216,10 @@ export function requireWalletConnection(): void {
 
 export const connectWallet = async (walletId: string) => {
   try {
+    // If already connected to a wallet, disconnect first and wait for it to complete
+    if (get(isConnected)) {
+      await auth.disconnect();
+    }
     return await auth.connect(walletId);
   } catch (error) {
     console.error("Failed to connect wallet:", error);

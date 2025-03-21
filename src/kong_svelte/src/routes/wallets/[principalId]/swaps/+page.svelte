@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { writable, derived } from "svelte/store";
-  import { TokenService } from "$lib/services/tokens/TokenService";
+  import { fetchUserTransactions } from "$lib/api/users";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { ArrowRightLeft, ChevronLeft, ChevronRight } from "lucide-svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
@@ -54,7 +54,7 @@
       
       console.log(`Loading swaps page ${pageNumber} for principal: ${forPrincipal} with cursor:`, cursor);
       
-      const response = await TokenService.fetchUserTransactions(
+      const response = await fetchUserTransactions(
         forPrincipal,
         cursor,
         PAGE_SIZE,

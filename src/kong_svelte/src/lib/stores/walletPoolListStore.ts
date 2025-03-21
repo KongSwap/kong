@@ -2,7 +2,7 @@ import { writable, derived, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { canisterIDLs } from "$lib/services/auth";
+import { canisterIDLs } from "$lib/stores/auth";
 
 interface PoolListState {
   processedPools: ProcessedPool[];

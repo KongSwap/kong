@@ -5,7 +5,7 @@
   import { loadTradingViewLibrary } from "$lib/config/tradingview/widget.config";
   import { getChartConfig } from "$lib/config/tradingview/chart.config";
   import { fetchChartData } from "$lib/api/transactions";
-  import { livePools } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/stores/poolStore";
   import { debounce } from "lodash-es";
   import { themeStore } from "$lib/stores/themeStore";
   import { updateTradingViewPriceScale, findBestPoolForTokens } from "$lib/utils/statsUtils";
@@ -85,7 +85,7 @@
 
     // Update TradingView CSS custom properties
     try {
-      chart.setCSSCustomProperty('--tv-color-platform-background', bgLightColor);
+      chart.setCSSCustomProperty('--tv-color-platform-background', 'transparent');
       chart.setCSSCustomProperty('--tv-color-pane-background', bgDarkColor);
       chart.setCSSCustomProperty('--tv-color-toolbar-button-background-hover', bgLightColor);
       chart.setCSSCustomProperty('--tv-color-toolbar-button-background-expanded', borderColor);

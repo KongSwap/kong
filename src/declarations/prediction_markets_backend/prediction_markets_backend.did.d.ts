@@ -97,6 +97,7 @@ export interface Market {
   'creator' : Principal,
   'outcome_percentages' : Array<number>,
   'question' : string,
+  'image_url' : [] | [string],
   'resolution_data' : [] | [string],
   'created_at' : bigint,
   'end_time' : bigint,
@@ -130,7 +131,8 @@ export interface MarketResult {
 }
 export type MarketStatus = { 'Disputed' : null } |
   { 'Open' : null } |
-  { 'Closed' : Array<bigint> };
+  { 'Closed' : Array<bigint> } |
+  { 'Voided' : null };
 export interface MarketsByStatus {
   'resolved' : Array<MarketResult>,
   'active' : Array<Market>,
@@ -144,7 +146,8 @@ export type ResolutionError = { 'MarketNotFound' : null } |
   { 'AlreadyResolved' : null } |
   { 'Unauthorized' : null } |
   { 'UpdateFailed' : null } |
-  { 'PayoutFailed' : null };
+  { 'PayoutFailed' : null } |
+  { 'VoidingFailed' : null };
 export type ResolutionMethod = {
     'Oracle' : {
       'oracle_principals' : Array<Principal>,
@@ -194,6 +197,7 @@ export interface _SERVICE {
       Array<string>,
       ResolutionMethod,
       MarketEndTime,
+      [] | [string],
     ],
     Result
   >,
@@ -224,6 +228,7 @@ export interface _SERVICE {
     [bigint, Array<bigint>, Uint8Array | number[]],
     Result_5
   >,
+  'void_market' : ActorMethod<[bigint], Result_5>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

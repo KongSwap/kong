@@ -27,4 +27,5 @@ pub enum ResolutionError {
     UpdateFailed,
     PayoutFailed,
     TransferError(String),
+    VoidingFailed,    // New variant for voiding failures
 }

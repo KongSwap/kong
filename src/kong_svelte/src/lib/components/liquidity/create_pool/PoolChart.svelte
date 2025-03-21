@@ -1,6 +1,6 @@
 <script lang="ts">
   import { liquidityStore } from "$lib/stores/liquidityStore";
-  import { livePools } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/stores/poolStore";
   import { fetchPoolBalanceHistory } from "$lib/api/pools";
   import TVLHistoryChart from "./charts/TVLHistoryChart.svelte";
   import PoolBalanceChart from "./charts/PoolBalanceChart.svelte";

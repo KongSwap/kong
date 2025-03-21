@@ -3,63 +3,83 @@
   import { AlertTriangle, Coins, ArrowLeft } from "lucide-svelte";
   import { formatBalance, toFixed } from "$lib/utils/numberFormatUtils";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
-  import { currentUserBalancesStore } from "$lib/stores/tokenStore";
+  import { currentUserBalancesStore, refreshSingleBalance } from "$lib/stores/balancesStore";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { calculateMaxAmount } from "$lib/utils/validators/tokenValidators";
+  import { auth } from "$lib/stores/auth";
+  import { userTokens } from "$lib/stores/userTokens";
 
-  export let showBetModal: boolean;
-  export let selectedMarket: any;
-  export let isBetting: boolean;
-  export let isApprovingAllowance: boolean;
-  export let betError: string | null;
-  export let selectedOutcome: number | null;
-  export let betAmount: number;
+  let {
+    showBetModal = false,
+    selectedMarket = null,
+    isBetting = false,
+    isApprovingAllowance = false,
+    betError = null,
+    selectedOutcome = null,
+    betAmount = $bindable(0),
+    onClose = () => {},
+    onBet = (amount: number) => {}
+  } = $props<{
+    showBetModal: boolean;
+    selectedMarket: any;
+    isBetting: boolean;
+    isApprovingAllowance: boolean;
+    betError: string | null;
+    selectedOutcome: number | null;
+    betAmount: number;
+    onClose: () => void;
+    onBet: (amount: number) => void;
+  }>();
 
-  export let onClose: () => void;
-  export let onBet: (amount: number) => void;
-  export let onOutcomeSelect: (index: number) => void;
-
-  let kongBalance = 0;
-  let maxAmount = 0;
-  let modalId = Math.random().toString(36).substr(2, 9);
-  let step = 1; // Track which step of the flow we're on: 1 = input, 2 = confirmation
+  const state = $state({
+    kongBalance: 0,
+    maxAmount: 0,
+    modalId: Math.random().toString(36).substr(2, 9),
+    step: 1 // Track which step of the flow we're on: 1 = input, 2 = confirmation
+  });
   
-  // Reset modal state when it's opened
-  $: if (showBetModal) {
-    modalId = Math.random().toString(36).substr(2, 9);
-    step = 1;
-  }
-
-  // Subscribe to the currentUserBalancesStore to get KONG balance
-  $: {
-    const balances = $currentUserBalancesStore;
-    if (balances && balances[KONG_LEDGER_CANISTER_ID]) {
-      const rawBalance = BigInt(balances[KONG_LEDGER_CANISTER_ID].in_tokens);
-      kongBalance = Number(rawBalance) / 1e8;
-      // Calculate max amount considering the token fee
-      maxAmount = calculateMaxAmount(rawBalance, 8, BigInt(10000));
+  // Reset modal state and fetch balance when modal is opened
+  $effect(() => {
+    if (showBetModal) {
+      state.modalId = Math.random().toString(36).substr(2, 9);
+      state.step = 1;
+      
+      // Fetch KONG balance when modal is opened
+      if ($auth.isConnected) {
+        const kongToken = $userTokens.tokens.find(token => token.canister_id === KONG_LEDGER_CANISTER_ID);
+        if (kongToken) {
+          refreshSingleBalance(kongToken, $auth.account?.owner || "", true);
+        }
+      }
     }
-  }
+  });
+
+  // Update balance when store changes
+  $effect(() => {
+    const balances = $currentUserBalancesStore;
+    if ($auth.isConnected && balances && balances[KONG_LEDGER_CANISTER_ID]) {
+      const rawBalance = BigInt(balances[KONG_LEDGER_CANISTER_ID].in_tokens);
+      state.kongBalance = Number(rawBalance) / 1e8;
+      // Calculate max amount considering the token fee
+      state.maxAmount = calculateMaxAmount(rawBalance, 8, BigInt(10000));
+    }
+  });
+
+  // Calculate potential win based on selected outcome and bet amount
+  const potentialWin = $derived(
+    selectedOutcome !== null 
+      ? calculatePotentialWin(selectedOutcome, betAmount)
+      : 0
+  );
 
   function handleClose() {
     onClose();
   }
 
   function setPercentage(percentage: number) {
-    if (maxAmount > 0) {
-      betAmount = Number((maxAmount * (percentage / 100)).toFixed(8));
+    if (state.maxAmount > 0) {
+      betAmount = Number((state.maxAmount * (percentage / 100)).toFixed(8));
     }
-  }
-
-  function calculatePercentage(
-    amount: number | undefined,
-    total: number | undefined,
-  ): number {
-    const amountNum = Number(amount || 0);
-    const totalNum = Number(total || 0);
-    if (isNaN(amountNum) || isNaN(totalNum)) return 0;
-    if (totalNum === 0) return amountNum > 0 ? 100 : 0;
-    return (amountNum / totalNum) * 100;
   }
 
   function calculatePotentialWin(
@@ -109,35 +129,30 @@
 
     return (otherOutcomesPool / outcomePool + 1).toFixed(2);
   }
-  
+
   function goToNextStep() {
     if (selectedOutcome !== null && betAmount > 0) {
-      step = 2;
+      state.step = 2;
     }
   }
   
   function goBack() {
-    step = 1;
+    state.step = 1;
   }
-
-  $: potentialWin =
-    selectedOutcome !== null
-      ? calculatePotentialWin(selectedOutcome, betAmount)
-      : 0;
 </script>
 
 <Modal
   isOpen={showBetModal}
   variant="transparent"
   on:close={handleClose}
-  modalKey={modalId}
+  modalKey={state.modalId}
   title={selectedMarket?.question || "Place Your Bet"}
   width="min(95vw, 500px)"
   className="!rounded max-h-[90vh] flex flex-col"
 >
   {#if selectedMarket}
     <!-- Step 1: Input Bet Amount -->
-    {#if step === 1}
+    {#if state.step === 1}
       <div class="px-3 pb-3 sm:px-4 space-y-3 sm:space-y-5 flex-1 overflow-y-auto">
         <!-- Simplified Betting Summary Section -->
         {#if selectedOutcome !== null}
@@ -156,14 +171,14 @@
               <h4 class="text-sm font-medium text-kong-text-secondary">Bet Amount</h4>
               <div class="flex items-center gap-2 text-xs sm:text-sm text-kong-text-secondary">
                 <Coins class="w-3 h-3 sm:w-4 sm:h-4" />
-                <span>Balance: <span class="font-medium">{kongBalance.toFixed(8)} KONG</span></span>
+                <span>Balance: <span class="font-medium">{state.kongBalance.toFixed(8)} KONG</span></span>
               </div>
             </div>
             <input
               type="number"
               bind:value={betAmount}
               min="0"
-              max={maxAmount}
+              max={state.maxAmount}
               step="0.1"
               class="w-full p-2.5 sm:p-3 bg-kong-bg-light rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
               placeholder="Enter amount"
@@ -172,28 +187,28 @@
               <button
                 class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
                 on:click={() => setPercentage(25)}
-                disabled={maxAmount <= 0}
+                disabled={state.maxAmount <= 0}
               >
                 25%
               </button>
               <button
                 class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
                 on:click={() => setPercentage(50)}
-                disabled={maxAmount <= 0}
+                disabled={state.maxAmount <= 0}
               >
                 50%
               </button>
               <button
                 class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
                 on:click={() => setPercentage(75)}
-                disabled={maxAmount <= 0}
+                disabled={state.maxAmount <= 0}
               >
                 75%
               </button>
               <button
                 class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
                 on:click={() => setPercentage(100)}
-                disabled={maxAmount <= 0}
+                disabled={state.maxAmount <= 0}
               >
                 MAX
               </button>
@@ -232,7 +247,7 @@
       </div>
     
     <!-- Step 2: Confirmation Screen -->
-    {:else if step === 2}
+    {:else if state.step === 2}
       <div class="px-3 pb-3 sm:px-4 flex-1 overflow-y-auto">
         <div class="py-6 flex flex-col items-center">
           <!-- Confirmation Message -->
@@ -303,7 +318,3 @@
     {/if}
   {/if}
 </Modal>
-
-<style>
-  /* Add any additional styles here */
-</style>

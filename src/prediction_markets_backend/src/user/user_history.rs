@@ -81,6 +81,17 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                                         outcome_text: market.outcomes[bet.outcome_index.to_u64() as usize].clone(),
                                         winnings: Some(StorableNat::from(0u64)),
                                     });
+                                },
+                                MarketStatus::Voided => {
+                                    // For voided markets, add to resolved bets with original bet amount as winnings
+                                    // since all bets are returned to users
+                                    resolved_bets.push(UserBetInfo {
+                                        market: market.clone(),
+                                        bet_amount: bet.amount.clone(),
+                                        outcome_index: bet.outcome_index.clone(),
+                                        outcome_text: market.outcomes[bet.outcome_index.to_u64() as usize].clone(),
+                                        winnings: Some(bet.amount.clone()),
+                                    });
                                 }
                             }
                         }

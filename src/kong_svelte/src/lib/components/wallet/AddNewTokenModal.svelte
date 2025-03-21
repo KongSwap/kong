@@ -1,8 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { TokenService } from "$lib/services/tokens/TokenService";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { userTokens } from "$lib/stores/userTokens";
   import { toastStore } from "$lib/stores/toastStore";
@@ -10,6 +9,7 @@
   import { fade } from "svelte/transition";
   import BigNumber from "bignumber.js";
   import { canisterIDLs } from "$lib/config/auth.config";
+    import { fetchTokenMetadata } from "$lib/api/tokens/TokenApiClient";
 
   // Props
   const props = $props<{
@@ -89,7 +89,7 @@
     customTokenError = "";
     
     try {
-      const token = await TokenService.fetchTokenMetadata(canisterId);      
+      const token = await fetchTokenMetadata(canisterId);      
       if (token) {
         previewToken = token;
         // Only update lastPreviewedCanisterId after a successful API call
@@ -170,16 +170,6 @@
     customTokenError = "";
     
     try {
-      // Format canister ID to include the required IC. prefix for the backend
-      const canisterId = formattedCanisterId.startsWith("IC.") 
-        ? formattedCanisterId 
-        : `IC.${formattedCanisterId}`;
-      
-      // For UI purposes, we may need the raw canister ID without prefix
-      const rawCanisterId = canisterId.startsWith("IC.") 
-        ? canisterId.substring(3) 
-        : canisterId;
-            
       try {
         // Call the add_token canister function directly
         const kongBackendActor = auth.getActor(
@@ -187,8 +177,7 @@
           canisterIDLs.kong_backend
         );
         
-        // Pass the canister ID with the IC. prefix to satisfy the backend requirements
-        const addTokenResult = await kongBackendActor.add_token({ token: canisterId });
+        const addTokenResult = await kongBackendActor.add_token({ token: formattedCanisterId });
         
         if ('Err' in addTokenResult) {
           throw new Error(`Failed to add token: ${addTokenResult.Err}`);
