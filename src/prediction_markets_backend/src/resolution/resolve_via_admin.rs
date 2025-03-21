@@ -36,10 +36,11 @@ async fn resolve_via_admin(market_id: MarketId, outcome_indices: Vec<StorableNat
         _ => return Err(ResolutionError::InvalidMethod),
     }
 
-    // Verify market has ended
-    if ic_cdk::api::time() < market.end_time {
-        return Err(ResolutionError::MarketStillOpen);
-    }
+    // Admin can resolve markets at any time, even before the end date
+    // Commenting out the time check to allow early resolution when necessary
+    // if ic_cdk::api::time() < market.end_time {
+    //     return Err(ResolutionError::MarketStillOpen);
+    // }
 
     // Finalize the market with the chosen outcomes
     finalize_market(&mut market, outcome_indices).await?;
