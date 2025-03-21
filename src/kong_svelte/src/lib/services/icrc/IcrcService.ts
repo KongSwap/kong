@@ -271,14 +271,17 @@ export class IcrcService {
         return currentAllowance.amount;
       }
 
+      // Use a large allowance value (1 trillion tokens) instead of trying to parse total_supply
+      // This is a common practice for approvals - just use a very large number
+      // We multiply by 10^decimals to account for token decimals
+      const largeAllowance = 1000000000000n * BigInt(10 ** token.decimals);
+      
       const approveArgs = {
         fee: [],
         memo: [],
         from_subaccount: [],
         created_at_time: [],
-        amount: token?.metrics?.total_supply
-          ? BigInt(token.metrics.total_supply.toString().replace("_", ""))
-          : totalAmount * 10n,
+        amount: largeAllowance,
         expected_allowance: [],
         expires_at: [expiresAt],
         spender: {

@@ -77,8 +77,8 @@
     if (activeToken?.metrics) {
       marketCapValue = Number(activeToken.metrics.market_cap || 0);
       volume24hValue = Number(activeToken.metrics.volume_24h || 0);
-      totalSupplyValue = Number(activeToken.metrics.total_supply || 0) / 10 ** activeToken.decimals;
-      circulatingSupplyValue = Number(activeToken.metrics.total_supply || 0) / 10 ** activeToken.decimals;
+      totalSupplyValue = Number(activeToken.metrics.total_supply || 0);
+      circulatingSupplyValue = Number(activeToken.metrics.total_supply || 0);
       
       // Update motion values
       marketCapMotion.set(marketCapValue);
