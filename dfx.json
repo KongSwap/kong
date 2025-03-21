@@ -25,6 +25,7 @@
       "type": "custom",
       "build": "bash ./scripts/build_kong_data.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_data.wasm",
+      "specified_id": "cbefx-hqaaa-aaaar-qakrq-cai",
       "metadata": [
         {
           "name": "candid:service"

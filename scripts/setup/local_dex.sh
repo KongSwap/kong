@@ -1,6 +1,11 @@
 #!/bin/bash
 
 echo "Please start Docker"
+ lsof -ti:4943 | xargs kill -9
+  lsof -ti:4943 | xargs kill -9
+   lsof -ti:4943 | xargs kill -9
+    lsof -ti:4943 | xargs kill -9
+     lsof -ti:4943 | xargs kill -9
 
 # Colors for pretty output
 GREEN='\033[0;32m'
@@ -977,7 +982,6 @@ start_redis
 initialize_api_database
 run_api_migrations
 start_api_server
-sync_tokens_to_api
 display_summary
 
 log_info "Press CTRL+C to exit"

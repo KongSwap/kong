@@ -20,6 +20,8 @@
   import { allowanceStore } from "$lib/stores/allowanceStore";
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { onMount } from 'svelte';
+  import { connectWebSocket } from "$lib/api/canisters";
   
   const pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",

@@ -6,34 +6,39 @@
 export function formatUsdValue(value: number | string, showLessThanCent: boolean = false): string {
     if (!value) return "$0.00";
     const valueNumber = typeof value === 'string' ? Number(value.replace(/,/g, '')) : value;
+    
+    // If this is a volume value like 7469791196.40000, it should just be 74.70 USD
+    // These volume values are stored with extra 8 decimal places
+    const isLikelyVolume = valueNumber > 1_000_000_000;
+    const adjustedValue = isLikelyVolume ? valueNumber / 100000000 : valueNumber;
 
     // For extremely small values (< 0.00001), show scientific notation
-    if (valueNumber < 0.01 && valueNumber > 0 && !showLessThanCent) {
+    if (adjustedValue < 0.01 && adjustedValue > 0 && !showLessThanCent) {
         return `< $0.01`;
     }
     
     // For very small values (< 0.01), show up to 6 decimals
-    if (valueNumber < 0.01 && valueNumber > 0) {
-        return `$${valueNumber.toFixed(6).replace(/\.?0+$/, '')}`;
+    if (adjustedValue < 0.01 && adjustedValue > 0) {
+        return `$${adjustedValue.toFixed(6).replace(/\.?0+$/, '')}`;
     }
 
     // For small values (0.01 to 1), show up to 4 decimals
-    if (valueNumber < 1 && valueNumber >= 0.01) {
-        return `$${valueNumber.toFixed(4).replace(/\.?0+$/, '')}`;
+    if (adjustedValue < 1 && adjustedValue >= 0.01) {
+        return `$${adjustedValue.toFixed(4).replace(/\.?0+$/, '')}`;
     }
 
-    if (valueNumber >= 1_000_000_000) {
-        return `$${(valueNumber / 1000000000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}B`;
+    if (adjustedValue >= 1_000_000_000) {
+        return `$${(adjustedValue / 1000000000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}B`;
     }
-    if (valueNumber >= 1000000) {
-        return `$${(valueNumber / 1000000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}M`;
+    if (adjustedValue >= 1000000) {
+        return `$${(adjustedValue / 1000000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}M`;
     }
-    if (valueNumber >= 1000) {
-        return `$${(valueNumber / 1000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}K`;
+    if (adjustedValue >= 1000) {
+        return `$${(adjustedValue / 1000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}K`;
     }
     
     // For normal values (>= 1), show 2 decimals
-    return `$${valueNumber.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$${adjustedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /**
