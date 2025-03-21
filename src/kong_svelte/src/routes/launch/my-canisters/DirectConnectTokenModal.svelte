@@ -1,6 +1,5 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
-  import TextInput from "$lib/components/common/TextInput.svelte";
   import { toastStore } from "$lib/stores/toastStore";
   import { fade } from "svelte/transition";
   import { canisterStore } from "$lib/stores/canisters";
