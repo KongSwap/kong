@@ -13,3 +13,10 @@ dfx canister call ${NETWORK} ${IDENTITY} ${EVENT_STORE_CANISTER_ID} events "(
         length = (100: nat64);
     }
 )"
+
+# dfx canister call event_store events "(
+#     record {
+#         start = (0: nat64);
+#         length = (100: nat64);
+#     }
+# )"
