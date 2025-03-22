@@ -11,6 +11,7 @@
   import AdminResolutionModal from "./AdminResolutionModal.svelte";
   import { auth } from "$lib/stores/auth";
   import { isAdmin } from "$lib/api/predictionMarket";
+  import { voidMarketViaAdmin } from "$lib/api/predictionMarket";
 
   // Convert props to use $props
   let { 
@@ -49,6 +50,16 @@
   // Check if market is resolved
   function isMarketResolved(market: any): boolean {
     return market && market.status && "Closed" in market.status;
+  }
+
+  // Check if market is open
+  function showResolveVoid(market: any): boolean {
+    return market && (market.status && "Open" in market.status || market.status && "Pending" in market.status);
+  }
+
+  // Check if market is voided
+  function isMarketVoided(market: any): boolean {
+    return market && market.status && "Voided" in market.status;
   }
 
   // Helper function to check if an outcome is a winner
@@ -115,9 +126,24 @@
     await onMarketResolved();
   }
 
+  async function handleVoidMarket(market: any) {
+    if (!confirm(`Are you sure you want to void the market "${market.question}"?`)) {
+      return;
+    }
+    
+    try {
+      await voidMarketViaAdmin(market.id.toString());
+      await onMarketResolved();
+    } catch (error) {
+      console.error("Failed to void market:", error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   // Get status color based on market state
   function getMarketStatusColor(market: any): string {
     if (isMarketResolved(market)) return "bg-kong-accent-blue";
+    if (isMarketVoided(market)) return "bg-kong-text-accent-red";
     if (isMarketExpiredUnresolved(market)) return "bg-yellow-400";
     return "bg-kong-accent-green";
   }
@@ -125,6 +151,7 @@
   // Get status text based on market state
   function getMarketStatusText(market: any): string {
     if (isMarketResolved(market)) return "Resolved";
+    if (isMarketVoided(market)) return "Voided";
     if (isMarketExpiredUnresolved(market)) return "Pending";
     return "Active";
   }
@@ -409,16 +436,28 @@
               </div>
 
               <!-- Card Footer -->
-              {#if isMarketExpiredUnresolved(market)}
-                <div class="pt-2 border-t border-kong-border">
+              {#if showResolveVoid(market)}
+                <div class="pt-2 mt-2 border-t border-kong-border">
                   {#if isUserAdmin}
-                    <button
-                      class="w-full flex items-center justify-center py-1.5 sm:py-2 border shadow-sm border-kong-accent-green/50 hover:bg-kong-accent-green/10 text-kong-text-accent-green rounded font-medium transition-all text-xs sm:text-sm"
-                      onclick={() => openResolutionModal(market)}
-                    >
-                      <Coins class="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1.5" />
-                      Resolve Market
-                    </button>
+                    <div class="flex gap-2">
+                      <button
+                        class="flex-1 flex items-center justify-center px-3 py-2 bg-kong-accent-green/10 border border-kong-accent-green/30 text-kong-text-accent-green rounded-md font-medium transition-all duration-200 text-sm hover:bg-kong-accent-green/20 hover:border-kong-accent-green/60 hover:shadow-[0_0_8px_rgba(0,203,160,0.2)] active:translate-y-0.5"
+                        onclick={() => openResolutionModal(market)}
+                      >
+                        <Coins class="w-3.5 h-3.5 mr-1.5" />
+                        Resolve
+                      </button>
+                      <button
+                        class="flex-1 flex items-center justify-center px-3 py-2 bg-kong-accent-red/10 border border-kong-accent-red/30 text-kong-text-accent-red rounded-md font-medium transition-all duration-200 text-sm hover:bg-kong-accent-red/20 hover:border-kong-accent-red/60 hover:shadow-[0_0_8px_rgba(255,59,59,0.2)] active:translate-y-0.5"
+                        onclick={() => handleVoidMarket(market)}
+                      >
+                        <svg class="w-3.5 h-3.5 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M18 6 6 18"></path>
+                          <path d="m6 6 12 12"></path>
+                        </svg>
+                        Void
+                      </button>
+                    </div>
                   {:else}
                     <div class="text-center text-xs text-kong-text-secondary">
                       Awaiting resolution
@@ -426,9 +465,17 @@
                   {/if}
                 </div>
               {:else if isMarketResolved(market)}
-                <div class="pt-2 border-t border-kong-border">
+                <div class="pt-2 mt-2 border-t border-kong-border">
                   <div class="text-center text-xs text-kong-text-secondary">
                     Resolved on {new Date(
+                      Number(market.end_time) / 1_000_000,
+                    ).toLocaleDateString()}
+                  </div>
+                </div>
+              {:else if isMarketVoided(market)}
+                <div class="pt-2 mt-2 border-t border-kong-border">
+                  <div class="text-center text-xs text-kong-text-secondary">
+                    Market voided on {new Date(
                       Number(market.end_time) / 1_000_000,
                     ).toLocaleDateString()}
                   </div>

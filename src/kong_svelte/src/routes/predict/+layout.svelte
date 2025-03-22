@@ -1,11 +1,5 @@
-<script lang="ts">
-  import { goto } from "$app/navigation";
-  
+<script lang="ts">  
   let { children } = $props<{ children: any }>();
-
-  $effect(() => {
-    goto("/swap");
-  });
 </script>
 
 <svelte:head>

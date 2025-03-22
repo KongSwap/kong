@@ -60,6 +60,7 @@ export class PoolSerializer extends BaseSerializer {
       rolling_24h_num_swaps: this.toBigInt(pool.rolling_24h_num_swaps),
       rolling_24h_apy: this.toNumber(pool.rolling_24h_apy).toFixed(2),
       lp_token_symbol: this.toString(pool.lp_token_symbol),
+      lp_token_id: this.toString(pool.lp_token_id),
       tvl: this.toBigInt(pool.tvl),
       is_removed: this.toBoolean(pool.is_removed),
       lp_token_supply: balance_0 + balance_1

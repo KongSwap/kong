@@ -12,7 +12,8 @@ export type MarketCategory =
 export type MarketStatus = 
   | { Disputed: null }
   | { Open: null }
-  | { Closed: bigint[] };
+  | { Closed: bigint[] }
+  | { Voided: null };
 
 export type ResolutionMethod = 
   | { Oracle: { oracle_principals: Principal[]; required_confirmations: bigint } }

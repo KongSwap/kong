@@ -4,6 +4,7 @@
   export let market: any;
   export let isMarketResolved: boolean;
   export let isPendingResolution: boolean;
+  export let isMarketVoided = false;
 </script>
 
 <div class="!rounded animate-fadeIn mb-2">
@@ -25,7 +26,7 @@
       >
         {market.question}
       </h1>
-      {#if isMarketResolved || isPendingResolution}
+      {#if isMarketResolved || isPendingResolution || isMarketVoided}
         <div class="flex items-center gap-2 mt-1">
           {#if isMarketResolved}
             <span
@@ -38,6 +39,12 @@
                 by {market.resolved_by[0].toString().slice(0, 8)}...
               </span>
             {/if}
+          {:else if isMarketVoided}
+            <span
+              class="px-2 py-0.5 bg-kong-accent-red/20 text-kong-text-accent-red text-xs rounded-full"
+            >
+              Voided
+            </span>
           {:else if isPendingResolution}
             <span
               class="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded-full"

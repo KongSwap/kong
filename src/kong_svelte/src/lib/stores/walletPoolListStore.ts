@@ -111,6 +111,7 @@ function createWalletPoolListStore() {
           );
           
           const response = await actor.user_balances(walletId);
+          console.log("response", response);
           
           if (response.Ok) {
             const rawPools = response.Ok.map(pool => pool.LP);

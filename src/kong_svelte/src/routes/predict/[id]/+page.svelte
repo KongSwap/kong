@@ -238,11 +238,12 @@
   $: isMarketClosed = market?.status?.Closed !== undefined;
   $: winningOutcomes = isMarketClosed ? market.status.Closed : [];
   $: isMarketResolved = isMarketClosed;
+  $: isMarketVoided = market?.status?.Voided !== undefined;
   $: marketEndTime = market?.end_time
     ? Number(market.end_time) / 1_000_000
     : null;
   $: isPendingResolution =
-    !isMarketResolved && marketEndTime && marketEndTime < Date.now();
+    !isMarketResolved && !isMarketVoided && marketEndTime && marketEndTime < Date.now();
 </script>
 
 <svelte:head> 
@@ -300,7 +301,8 @@
             <MarketHeader 
               {market} 
               isMarketResolved={isMarketResolved} 
-              isPendingResolution={isPendingResolution} 
+              isPendingResolution={isPendingResolution}
+              isMarketVoided={isMarketVoided}
             />
             
             <!-- Re-enable the simplified ChartPanel -->

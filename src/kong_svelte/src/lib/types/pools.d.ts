@@ -37,6 +37,7 @@ declare global {
       chain_0: string;
       chain_1: string;
       lp_token_supply: bigint;
+      lp_token_id: string;
       symbol: string;
       lp_fee_bps: number;
       tvl?: bigint;

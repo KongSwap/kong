@@ -109,7 +109,7 @@
   $: tabs =
     process.env.DFX_NETWORK !== "ic"
       ? allTabs
-      : allTabs.filter((tab) => tab !== "predict");
+      : allTabs;
 
   const dataOptions = [
     {
@@ -192,13 +192,13 @@
       icon: Coins,
       comingSoon: false,
     },
-    // {
-    //   label: "Airdrop Claims",
-    //   description: "Claim your airdrop tokens",
-    //   path: "/airdrop-claims",
-    //   icon: Award,
-    //   comingSoon: false,
-    // },
+    {
+      label: "Airdrop Claims",
+      description: "Claim your airdrop tokens",
+      path: "/airdrop-claims",
+      icon: Award,
+      comingSoon: false,
+    },
     {
       label: "Staking",
       description: "Stake your tokens to earn yield and governance rights",
