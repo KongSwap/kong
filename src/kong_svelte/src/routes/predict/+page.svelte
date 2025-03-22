@@ -46,6 +46,8 @@
   // Store the market and outcome to open after authentication
   let pendingMarket: any = null;
   let pendingOutcome: number | null = null;
+  let tokens = [];
+  let kongToken = null;
 
   onDestroy(() => {
     // Stop the polling task
@@ -113,6 +115,9 @@
   onMount(async () => {
     // Initialize market store
     await marketStore.init();
+
+    tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
+    kongToken = tokens[0];
 
     // Initial bets load
     await loadRecentBets();
@@ -187,9 +192,6 @@
     try {
       isBetting = true;
       betError = null;
-
-      const tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
-      const kongToken = tokens[0];
 
       if (!kongToken) {
         throw new Error("Failed to fetch KONG token information");
@@ -441,18 +443,22 @@
             {#if ($filteredMarkets.active && $filteredMarkets.active.length > 0) || ($marketStore.statusFilter !== "open" && (($filteredMarkets.expired_unresolved && $filteredMarkets.expired_unresolved.length > 0) || ($filteredMarkets.resolved && $filteredMarkets.resolved.length > 0)))}
               <MarketSection
                 markets={$marketStore.statusFilter === "resolved"
-                  ? $filteredMarkets.resolved.filter(market => 'Closed' in (market as any).status)
+                  ? $filteredMarkets.resolved.filter(
+                      (market) => "Closed" in (market as any).status,
+                    )
                   : $marketStore.statusFilter === "voided"
-                    ? $filteredMarkets.resolved.filter(market => 'Voided' in (market as any).status)
-                  : $marketStore.statusFilter === "expired"
-                    ? $filteredMarkets.expired_unresolved
-                    : $marketStore.statusFilter === "all"
-                      ? [
-                          ...($filteredMarkets.active || []),
-                          ...($filteredMarkets.expired_unresolved || []),
-                          ...($filteredMarkets.resolved || []),
-                        ]
-                      : $filteredMarkets.active}
+                    ? $filteredMarkets.resolved.filter(
+                        (market) => "Voided" in (market as any).status,
+                      )
+                    : $marketStore.statusFilter === "expired"
+                      ? $filteredMarkets.expired_unresolved
+                      : $marketStore.statusFilter === "all"
+                        ? [
+                            ...($filteredMarkets.active || []),
+                            ...($filteredMarkets.expired_unresolved || []),
+                            ...($filteredMarkets.resolved || []),
+                          ]
+                        : $filteredMarkets.active}
                 {openBetModal}
                 onMarketResolved={async () =>
                   await marketStore.refreshMarkets()}
