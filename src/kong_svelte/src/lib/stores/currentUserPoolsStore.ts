@@ -81,6 +81,7 @@ function createCurrentUserPoolsStore() {
         const response = await actor.user_balances(
           currentAuth?.account?.owner?.toString() || ''
         );
+        console.log("response", response);
         
         if (response.Ok) {
           // Match UserPoolList's processing

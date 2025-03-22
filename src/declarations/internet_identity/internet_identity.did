@@ -262,7 +262,8 @@ type InternetIdentityInit = record {
     register_rate_limit : opt RateLimitConfig;
     // Configuration of the captcha in the registration flow.
     captcha_config : opt CaptchaConfig;
-    // Configuration for Related Origins Requests
+    // Configuration for Related Origins Requests.
+    // If present, list of origins from where registration is allowed.
     related_origins : opt vec text;
     // Configuration for OpenID Google client
     openid_google : opt opt OpenIdConfig;
@@ -272,6 +273,9 @@ type InternetIdentityInit = record {
     fetch_root_key : opt bool;
     // Configuration to show dapps explorer or not
     enable_dapps_explorer : opt bool;
+    // Configuration to set the canister as production mode.
+    // For now, this is used only to show or hide the banner.
+    is_production : opt bool;
 };
 
 type ChallengeKey = text;
@@ -451,6 +455,11 @@ type AuthnMethodData = record {
     // must be of the `String` variant. This restriction may be lifted in the future.
     metadata : MetadataMapV2;
     last_authentication : opt Timestamp;
+};
+
+type OpenIDRegFinishArg = record {
+    jwt: JWT;
+    salt: Salt;
 };
 
 // Extra information about registration status for new authentication methods
@@ -772,6 +781,7 @@ service : (opt InternetIdentityInit) -> {
 
     // OpenID credentials protocol
     // =========================
+    openid_identity_registration_finish : (OpenIDRegFinishArg) -> (variant { Ok : IdRegFinishResult; Err : IdRegFinishError });
     openid_credential_add : (IdentityNumber, JWT, Salt) -> (variant { Ok; Err : OpenIdCredentialAddError });
     openid_credential_remove : (IdentityNumber, OpenIdCredentialKey) -> (variant { Ok; Err : OpenIdCredentialRemoveError });
     openid_prepare_delegation : (JWT, Salt, SessionKey) -> (variant { Ok : OpenIdPrepareDelegationResponse; Err : OpenIdDelegationError });

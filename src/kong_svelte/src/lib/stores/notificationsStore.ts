@@ -54,6 +54,35 @@ function createNotificationsStore() {
     subscribe,
     
     /**
+     * Add a new notification directly to the store
+     */
+    add: (notification: Omit<Toast, 'id' | 'timestamp'>) => {
+      const newNotification: Toast = {
+        ...notification,
+        id: crypto.randomUUID(),
+        timestamp: Date.now()
+      };
+      
+      update(state => {
+        // Add new notification to history
+        const allNotifications = [...state.history, newNotification];
+        
+        // Sort by timestamp (newest first)
+        const sortedNotifications = allNotifications
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 50); // Keep up to 50 notifications
+          
+        return {
+          history: sortedNotifications,
+          unreadCount: state.unreadCount + 1
+        };
+      });
+      
+      toastStore.info(notification.message);
+      return newNotification.id;
+    },
+    
+    /**
      * Mark all notifications as read
      */
     markAllAsRead: () => {
