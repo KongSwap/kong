@@ -7,6 +7,7 @@
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
   import QRModal from "$lib/components/common/QRModal.svelte";
+  import MetaTags from "$lib/components/common/MetaTags.svelte";
   import { themeStore } from "$lib/stores/themeStore";
   import { browser } from "$app/environment";
   import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
@@ -102,7 +103,6 @@
 </script>
 
 <svelte:head>
-  <title>{pageTitle} - Rumble in the crypto jungle!</title>
   <style>
     body {
       width: 100%;
@@ -134,6 +134,8 @@
     }
   </style>
 </svelte:head>
+
+<MetaTags />
 
 {#if browser}
   <div class="theme-loading">
