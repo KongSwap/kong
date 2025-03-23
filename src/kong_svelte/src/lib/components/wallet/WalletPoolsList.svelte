@@ -83,11 +83,27 @@
   }
   
   // Function to handle when liquidity is removed
-  function handleLiquidityRemoved() {
+  async function handleLiquidityRemoved() {
     showUserPoolModal = false;
     selectedPool = null;
-    // Refresh pools after liquidity changes
-    handleRefresh();
+    
+    // Force a complete refresh of the pools store
+    try {
+      // First reset the store to clear all existing data
+      currentUserPoolsStore.reset();
+      
+      // Add a small delay to ensure state is properly cleared
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Then reinitialize to fetch fresh data
+      await currentUserPoolsStore.initialize();
+      
+      // Call the optional refresh callback
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error("Error refreshing pools after liquidity removal:", error);
+      errorMessage = "Failed to update your liquidity positions. Please try refreshing manually.";
+    }
   }
   
   // Get pool share percentage

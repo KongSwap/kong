@@ -77,8 +77,16 @@
   async function refreshUserPools() {
     if (hasCompletedInitialLoad) {
       try {
-        // Since refresh() doesn't exist, we can re-initialize the store
-        // after initial load is complete
+        // Reset the cache to force UI to update
+        cachedPools = [];
+        
+        // First reset the store to clear all existing data
+        currentUserPoolsStore.reset();
+        
+        // Small delay to ensure state is cleared
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Then completely re-initialize the store with fresh data
         await currentUserPoolsStore.initialize();
       } catch (error) {
         console.error("Error refreshing user pools:", error);
