@@ -224,7 +224,11 @@
 
     // User is authenticated, proceed with opening bet modal
     selectedOutcome = outcomeIndex;
-    showBetModal = true;
+    showBetModal = false;
+    // Force a repaint cycle before opening modal again
+    setTimeout(() => {
+      showBetModal = true;
+    }, 0);
   }
 
   function handleWalletLogin() {
@@ -638,6 +642,7 @@
   </div>
 </div>
 
+{#if showBetModal}
 <BetModal
   {showBetModal}
   selectedMarket={market}
@@ -647,13 +652,18 @@
   {selectedOutcome}
   {betAmount}
   onClose={() => {
-    showBetModal = false;
+    // First set the selected outcome and amount to null 
     selectedOutcome = null;
     betAmount = 0;
     betError = null;
+    // Then close modal in the next tick to ensure clean state
+    setTimeout(() => {
+      showBetModal = false;
+    }, 0);
   }}
   onBet={(amount) => handleBet(selectedOutcome!, amount)}
 />
+{/if}
 
 <!-- Wallet Provider Modal -->
 <WalletProvider

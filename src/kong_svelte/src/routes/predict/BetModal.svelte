@@ -40,8 +40,10 @@
   
   // Reset modal state and fetch balance when modal is opened
   $effect(() => {
+    // Always regenerate the modalId when showBetModal changes
+    state.modalId = Math.random().toString(36).substr(2, 9);
+    
     if (showBetModal) {
-      state.modalId = Math.random().toString(36).substr(2, 9);
       state.step = 1;
       
       // Fetch KONG balance when modal is opened
@@ -145,7 +147,7 @@
   isOpen={showBetModal}
   variant="transparent"
   on:close={handleClose}
-  modalKey={state.modalId}
+  modalKey={state.modalId + (showBetModal ? "-open" : "-closed")}
   title={selectedMarket?.question || "Place Your Bet"}
   width="min(95vw, 500px)"
   className="!rounded max-h-[90vh] flex flex-col"
