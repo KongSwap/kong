@@ -41,9 +41,9 @@ else
 	WHITELIST_PRINCIPAL="principal \"${KONG_DATA_CANISTER_ID}\""
 fi
 
-dfx deploy ${NETWORK} ${IDENTITY} ${REINSTALL_FLAG} event_store --subnet-type fiduciary --argument "(
+dfx deploy ${NETWORK} ${IDENTITY} ${REINSTALL_FLAG} event_store --argument "(
     record {
         push_events_whitelist = vec { ${WHITELIST_PRINCIPAL} };
-        read_events_whitelist = vec { principal \"${PRINCIPAL_ID}\"};
+        read_events_whitelist = vec { ${WHITELIST_PRINCIPAL} };
     }
 )"
