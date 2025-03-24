@@ -12,7 +12,6 @@ use std::io::{BufReader, Read};
 use std::path::Path;
 use tokio_postgres::Client;
 
-use super::kong_backend::KongBackend;
 use super::kong_update::KongUpdate;
 use super::math_helpers::round_f64;
 
@@ -210,41 +209,6 @@ pub async fn update_claims<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn
         let mut contents = String::new();
         reader.read_to_string(&mut contents)?;
         kong_update.update_claims(&contents).await?;
-    }
-
-    Ok(())
-}
-
-pub async fn insert_claims(kong_backend: &KongBackend) -> Result<(), Box<dyn std::error::Error>> {
-    let dir_path = "./backups";
-    let re_pattern = Regex::new(r"^insert_claims.*.json$").unwrap();
-    let mut files = fs::read_dir(dir_path)?
-        .filter_map(|entry| entry.ok())
-        .filter_map(|entry| {
-            if re_pattern.is_match(entry.file_name().to_str().unwrap()) {
-                Some(entry)
-            } else {
-                None
-            }
-        })
-        .map(|entry| {
-            // sort by the number in the filename
-            let file = entry.path();
-            let filename = Path::new(&file).file_name().unwrap().to_str().unwrap();
-            let number_str = filename.split('.').nth(1).unwrap();
-            let number = number_str.parse::<u32>().unwrap();
-            (number, file)
-        })
-        .collect::<Vec<_>>();
-    files.sort_by(|a, b| a.0.cmp(&b.0));
-
-    for file in files {
-        println!("processing: {:?}", file.1.file_name().unwrap());
-        let file = File::open(file.1)?;
-        let mut reader = BufReader::new(file);
-        let mut contents = String::new();
-        reader.read_to_string(&mut contents)?;
-        kong_backend.insert_claims(&contents).await?;
     }
 
     Ok(())
