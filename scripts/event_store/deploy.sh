@@ -12,38 +12,44 @@ if [ "$2" = "reinstall" ]; then
 	echo "Reinstall mode enabled"
 fi
 
-IDENTITY="--identity kong"
-PRINCIPAL_ID=$(dfx identity ${IDENTITY} get-principal)
+# Store current identity
+CURRENT_IDENTITY=$(dfx identity whoami)
+echo "Current identity: ${CURRENT_IDENTITY}"
 
-if [ -f "apis/apis.pem" ]; then
-	# Import PEM file as 'apis' identity if it doesn't exist
-	if ! dfx identity list | grep -q "apis"; then
-		echo "Importing apis.pem as 'apis' identity..."
-		dfx identity import apis apis/apis.pem
-	fi
-	
-	# Store current identity
-	CURRENT_IDENTITY=$(dfx identity whoami)
-	
+# Set kong identity for deployment
+IDENTITY="--identity kong"
+PRINCIPAL_ID=$(dfx identity get-principal)
+echo "Kong Principal ID: ${PRINCIPAL_ID}"
+
+# Switch to apis identity 
+if dfx identity list | grep -q "apis"; then
 	# Switch to apis identity
+	echo "Switching to 'apis' identity to get push principal..."
 	dfx identity use apis
 	
-	# Get API principal
+	# Get API principal for push whitelist
 	API_PRINCIPAL=$(dfx identity get-principal)
-	WHITELIST_PRINCIPAL="principal \"${API_PRINCIPAL}\""
-	echo "APIs PEM Principal: ${WHITELIST_PRINCIPAL}"
+	PUSH_WHITELIST_PRINCIPAL="principal \"${API_PRINCIPAL}\""
+	echo "APIs Principal for pushing events: ${PUSH_WHITELIST_PRINCIPAL}"
 	
 	# Switch back to original identity
+	echo "Switching back to '${CURRENT_IDENTITY}' identity..."
 	dfx identity use ${CURRENT_IDENTITY}
 else
-	# Fallback to kong_data canister
-	KONG_DATA_CANISTER_ID=$(dfx canister id ${NETWORK} kong_data)
-	WHITELIST_PRINCIPAL="principal \"${KONG_DATA_CANISTER_ID}\""
+	echo "Error: 'apis' identity does not exist. Please create it first with 'dfx identity new apis'"
+	exit 1
 fi
 
+# Get kong identity principal for read access
+READ_WHITELIST_PRINCIPAL="principal \"${PRINCIPAL_ID}\""
+echo "Kong Principal for reading events: ${READ_WHITELIST_PRINCIPAL}"
+
+# Deploy with both principals properly specified
+echo "Deploying event_store canister with appropriate permissions..."
 dfx deploy ${NETWORK} ${IDENTITY} ${REINSTALL_FLAG} event_store --argument "(
     record {
-        push_events_whitelist = vec { ${WHITELIST_PRINCIPAL} };
-        read_events_whitelist = vec { ${WHITELIST_PRINCIPAL} };
+        push_events_whitelist = vec { ${PUSH_WHITELIST_PRINCIPAL} };
+        read_events_whitelist = vec { ${READ_WHITELIST_PRINCIPAL} };
     }
 )"
+echo "Event store deployment completed."

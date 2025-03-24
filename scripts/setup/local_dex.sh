@@ -1,11 +1,18 @@
 #!/bin/bash
 
 echo "Please start Docker"
- lsof -ti:4943 | xargs kill -9
-  lsof -ti:4943 | xargs kill -9
-   lsof -ti:4943 | xargs kill -9
-    lsof -ti:4943 | xargs kill -9
-     lsof -ti:4943 | xargs kill -9
+
+# dfx port
+lsof -ti:4943 | xargs kill -9
+lsof -ti:4943 | xargs kill -9
+lsof -ti:4943 | xargs kill -9
+lsof -ti:4943 | xargs kill -9
+lsof -ti:4943 | xargs kill -9
+
+# apis port
+lsof -ti:8080 | xargs kill -9 
+
+    
 
 # Colors for pretty output
 GREEN='\033[0;32m'
