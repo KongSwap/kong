@@ -38,11 +38,12 @@ pub async fn user_balances(principal_id: String) -> Result<Vec<UserBalancesReply
 }
 
 fn to_user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Option<UserBalancesReply> {
-    let lp_token_id = token.token_id;
-    let lp_token = lp_token_map::get_by_token_id_by_user_id(lp_token_id, user_id)?;
+    let token_id = token.token_id;
+    let lp_token = lp_token_map::get_by_token_id_by_user_id(token_id, user_id)?;
     // user balance and total supply of the LP token
+    let lp_token_id = lp_token.lp_token_id;
     let user_lp_token_balance = lp_token.amount;
-    let lp_token_total_supply = lp_token_map::get_total_supply(lp_token_id);
+    let lp_token_total_supply = lp_token_map::get_total_supply(token_id);
     // pool of the LP token
     let pool = token.pool_of()?;
 
@@ -74,6 +75,7 @@ fn to_user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Opt
     Some(UserBalancesReply::LP(LPReply {
         name: token.name(),
         symbol: token.symbol.clone(),
+        lp_token_id,
         balance,
         usd_balance,
         chain_0: token_0.chain(),

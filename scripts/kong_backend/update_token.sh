@@ -10,7 +10,7 @@ IDENTITY="--identity kong_user1"
 
 KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
 
-TOKEN_SYMBOL='IC.oj6if-riaaa-aaaaq-aaeha-cai'
+TOKEN_SYMBOL='IC.zeyan-7qaaa-aaaar-qaibq-cai'
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} update_token "(record {
     token = \"${TOKEN_SYMBOL}\";

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct LPReply {
     pub symbol: String,
     pub name: String,
+    pub lp_token_id: u64,
     pub balance: f64,
     pub usd_balance: f64,
     pub chain_0: String,
