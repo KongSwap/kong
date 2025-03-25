@@ -14,7 +14,7 @@ pub fn get_by_token_id(token_id: u32) -> Option<StableLPToken> {
     get_by_token_id_by_user_id(token_id, user_id)
 }
 
-/// get lp_token for specific user
+/// get lp_token for specific user and token
 pub fn get_by_token_id_by_user_id(token_id: u32, user_id: u32) -> Option<StableLPToken> {
     LP_TOKEN_MAP.with(|m| {
         m.borrow().iter().find_map(|(_, v)| {
@@ -23,6 +23,16 @@ pub fn get_by_token_id_by_user_id(token_id: u32, user_id: u32) -> Option<StableL
             }
             None
         })
+    })
+}
+
+/// get lp_token for specific user
+pub fn get_by_user_id(user_id: u32) -> Vec<StableLPToken> {
+    LP_TOKEN_MAP.with(|m| {
+        m.borrow()
+            .iter()
+            .filter_map(|(_, v)| if v.user_id == user_id { Some(v) } else { None })
+            .collect()
     })
 }
 
