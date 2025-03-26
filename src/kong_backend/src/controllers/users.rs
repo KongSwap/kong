@@ -79,6 +79,8 @@ fn update_user(stable_user_json: String) -> Result<String, String> {
         map.insert(StableUserId(user.user_id), user);
     });
 
+    create_principal_id_map();
+
     Ok("User updated".to_string())
 }
 
@@ -88,6 +90,8 @@ fn remove_user(user_id: u32) -> Result<String, String> {
         let mut map = user_map.borrow_mut();
         map.remove(&StableUserId(user_id));
     });
+
+    create_principal_id_map();
 
     Ok("User removed".to_string())
 }
