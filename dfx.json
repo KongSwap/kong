@@ -32,8 +32,8 @@
     },
     "event_store": {
       "type": "custom",
-      "candid": "canisters/event_store.did",
-      "wasm": "canisters/event_store.wasm.gz",
+      "candid": "canisters/event_store_glad.did",
+      "wasm": "canisters/event_store_glad.wasm.gz",
       "specified_id": "rsp5s-2yaaa-aaaar-qaojq-cai",
       "metadata": [
         {
