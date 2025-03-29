@@ -8,8 +8,8 @@ use crate::ic::ckusdt::{ckusdt_amount, to_ckusdt_decimals_f64};
 use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_lp_token::lp_token_map;
-use crate::stable_token::lp_token::LPToken;
-use crate::stable_token::stable_token::StableToken::{IC, LP};
+use crate::stable_lp_token::stable_lp_token::StableLPToken;
+use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
@@ -25,24 +25,32 @@ pub async fn user_balances(principal_id: String) -> Result<Vec<UserBalancesReply
     let mut user_balances = Vec::new();
     let ts = get_time();
 
-    token_map::get().iter().for_each(|token| match token {
-        LP(lp_token) => {
-            if let Some(reply) = to_user_balance_lp_token_reply(lp_token, user_id, ts) {
-                user_balances.push(reply);
-            }
+    lp_token_map::get_by_user_id(user_id).iter().for_each(|lp_token| {
+        if let Some(reply) = to_user_balance_lp_token_reply(lp_token, ts) {
+            user_balances.push(reply);
         }
-        IC(_) => (),
     });
 
     Ok(user_balances)
 }
 
-fn to_user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Option<UserBalancesReply> {
-    let lp_token_id = token.token_id;
-    let lp_token = lp_token_map::get_by_token_id_by_user_id(lp_token_id, user_id)?;
-    // user balance and total supply of the LP token
-    let user_lp_token_balance = lp_token.amount;
-    let lp_token_total_supply = lp_token_map::get_total_supply(lp_token_id);
+fn to_user_balance_lp_token_reply(lp_token: &StableLPToken, ts: u64) -> Option<UserBalancesReply> {
+    let lp_token_id = lp_token.lp_token_id;
+    let token_id = lp_token.token_id;
+    let token = match token_map::get_by_token_id(token_id)? {
+        StableToken::LP(lp_token) => lp_token,
+        _ => return None,
+    };
+    if token.is_removed {
+        return None;
+    }
+    // get user balance. filter out LP tokens with zero balance
+    let user_lp_token_balance = if lp_token.amount == nat_zero() {
+        return None;
+    } else {
+        lp_token.amount.clone()
+    };
+    let lp_token_total_supply = lp_token_map::get_total_supply(token_id);
     // pool of the LP token
     let pool = token.pool_of()?;
 
@@ -74,6 +82,7 @@ fn to_user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Opt
     Some(UserBalancesReply::LP(LPReply {
         name: token.name(),
         symbol: token.symbol.clone(),
+        lp_token_id,
         balance,
         usd_balance,
         chain_0: token_0.chain(),

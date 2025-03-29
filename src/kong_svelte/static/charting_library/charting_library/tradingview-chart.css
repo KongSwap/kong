@@ -12,20 +12,18 @@
   --tv-color-toolbar-button-background-hover: var(--bg-light);
   --tv-color-toolbar-button-background-expanded: var(--border);
   --tv-color-toolbar-button-background-active: var(--border-light);
-  --tv-color-toolbar-button-background-active-hover: #2A2E39;
-  --tv-color-toolbar-button-text: #787B86;
-  --tv-color-toolbar-button-text-hover: #D1D4DC;
-  --tv-color-toolbar-button-text-active: #D1D4DC;
-  --tv-color-toolbar-button-text-active-hover: #D1D4DC;
-  --tv-color-item-active-text: #D1D4DC;
-  --tv-color-toolbar-toggle-button-background-active: #00A7FF;
-  --tv-color-toolbar-toggle-button-background-active-hover: #00A7FF;
-  --tv-color-toolbar-divider-background: #2A2E39;
-  --tv-color-popup-background: #2A2E39;
-  --tv-color-popup-element-text: #D1D4DC;
-  --tv-color-popup-element-text-hover: #FFFFFF;
-  --tv-color-popup-element-background-hover: #3C4049;
-  --tv-color-popup-element-divider-background: #3C4049;
+  --tv-color-toolbar-button-background-active-hover: var(--border-light);
+  --tv-color-toolbar-button-text: var(--text-secondary);
+  --tv-color-toolbar-button-text-hover: var(--text-primary);
+  --tv-color-toolbar-button-text-active: var(--text-primary);
+  --tv-color-toolbar-button-text-active-hover: var(--text-primary);
+  --tv-color-item-active-text: var(--text-primary);
+  --tv-color-toolbar-toggle-button-background-active: var(--accent-blue);
+  --tv-color-toolbar-toggle-button-background-active-hover: var(--accent-blue);
+  --tv-color-toolbar-divider-background: var(--border);
+  --tv-color-popup-background: var(--bg-light);
+  --tv-color-popup-element-text: var(--text-secondary);
+  --tv-color-popup-element-text-hover: var(--text-primary);
   --tv-color-popup-element-secondary-text: #787B86;
   --tv-color-buy-button: #05EC86;
   --tv-color-sell-button: #FF4545;
@@ -153,6 +151,3 @@
 .chart-container .pane-legend-line > * {
   color: var(--tv-color-popup-element-text) !important;
 }
-
-/* Make sure iframe loads the CSS correctly */
-@import url("tradingview-chart.css");

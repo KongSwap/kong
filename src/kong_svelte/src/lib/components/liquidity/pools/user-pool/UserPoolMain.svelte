@@ -13,6 +13,7 @@
   import AddLiquidity from "./AddLiquidity.svelte";
   import RemoveLiquidity from "./RemoveLiquidity.svelte";
   import Earnings from "./Earnings.svelte";
+  import SendTokens from "./SendTokens.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -23,7 +24,7 @@
   let token1: any = null;
   let lastPoolSymbols = { address_0: "", address_1: "" };
   let showConfirmModal = false;
-  let activeTab: "overview" | "remove" | "add" | "earnings"  = "overview";
+  let activeTab: "overview" | "remove" | "add" | "earnings" | "send" = "overview";
 
   $: if (
     pool &&
@@ -119,11 +120,17 @@
       Remove
     </button>
     <button
-    class="tab-button {activeTab === 'earnings' ? 'active' : ''}"
-    on:click={() => (activeTab = "earnings")}
-  >
-    Earnings
-  </button>
+      class="tab-button {activeTab === 'earnings' ? 'active' : ''}"
+      on:click={() => (activeTab = "earnings")}
+    >
+      Earnings
+    </button>
+    <button
+      class="tab-button {activeTab === 'send' ? 'active' : ''}"
+      on:click={() => (activeTab = "send")}
+    >
+      Send
+    </button>
   </div>
 
   <div class="pool-details">
@@ -138,6 +145,16 @@
           {token0} 
           {token1} 
           on:showConfirmModal={handleShowConfirmModal} 
+        />
+      {:else if activeTab === "send"}
+        <SendTokens
+          {pool}
+          {token0}
+          {token1}
+          on:tokensSent={() => {
+            dispatch("liquidityRemoved");
+            showModal = false;
+          }}
         />
       {:else}
         <RemoveLiquidity 

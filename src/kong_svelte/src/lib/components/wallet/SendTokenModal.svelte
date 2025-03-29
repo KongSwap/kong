@@ -270,7 +270,7 @@
       let fromSubaccount;
       if (selectedAccount === "subaccount" && auth.pnp?.account?.subaccount) {
         // Ensure subaccount is properly formatted as Uint8Array for the IcrcService
-        fromSubaccount = new Uint8Array(auth.pnp.account.subaccount);
+        fromSubaccount = $auth?.account?.subaccount;
       }
 
       const result = await IcrcService.transfer(

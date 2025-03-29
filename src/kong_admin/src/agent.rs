@@ -1,6 +1,6 @@
 use anyhow::Result;
 use ed25519_consensus::SigningKey;
-use ic_agent::identity::{AnonymousIdentity, BasicIdentity};
+use ic_agent::identity::{AnonymousIdentity, BasicIdentity, Secp256k1Identity};
 use ic_agent::{Agent, Identity};
 use rand::thread_rng;
 
@@ -25,6 +25,12 @@ pub fn create_random_identity() -> impl Identity {
 
 /// Secp256k1Identity is the format output by the `dfx identity export user` command.
 #[allow(dead_code)]
-pub fn create_identity_from_pem_file(pem_file: &str) -> impl Identity {
-    ic_agent::identity::Secp256k1Identity::from_pem_file(pem_file).expect("Could not load identity.")
+pub fn create_identity_from_pem_file(pem_file: &str) -> Result<Box<dyn Identity>> {
+    match BasicIdentity::from_pem_file(pem_file) {
+        Ok(basic_identity) => Ok(Box::new(basic_identity)),
+        Err(_) => match Secp256k1Identity::from_pem_file(pem_file) {
+            Ok(secp256k1_identity) => Ok(Box::new(secp256k1_identity)),
+            Err(_) => Err(anyhow::anyhow!("Failed to create identity from pem file. Unknown identity format.")),
+        },
+    }
 }

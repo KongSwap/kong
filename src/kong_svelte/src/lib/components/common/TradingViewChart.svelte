@@ -85,8 +85,9 @@
 
     // Update TradingView CSS custom properties
     try {
-      chart.setCSSCustomProperty('--tv-color-platform-background', 'transparent');
+      chart.setCSSCustomProperty('--tv-color-platform-background', bgDarkColor);
       chart.setCSSCustomProperty('--tv-color-pane-background', bgDarkColor);
+      chart.setCSSCustomProperty('--tv-color-background', bgDarkColor);
       chart.setCSSCustomProperty('--tv-color-toolbar-button-background-hover', bgLightColor);
       chart.setCSSCustomProperty('--tv-color-toolbar-button-background-expanded', borderColor);
       chart.setCSSCustomProperty('--tv-color-toolbar-button-background-active', borderLightColor);
@@ -549,7 +550,7 @@
     width: 100%;
     height: 100%;
     min-height: 400px;
-    background: transparent;
+    background: var(--bg-dark);
     border-radius: 12px;
     overflow: hidden;
   }

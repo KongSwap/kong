@@ -45,7 +45,7 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
     }
 
     const data = await response.json();
-
+    console.log("data", data);
     if (!data || !data.items) {
       throw new Error("Invalid API response");
     }
@@ -70,6 +70,7 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
           'balance_1',
           'lp_fee_0',
           'lp_fee_1',
+          'lp_token_id',
           'rolling_24h_volume',
           'rolling_24h_lp_fee',
           'rolling_24h_num_swaps',
@@ -88,6 +89,7 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
       // Return a flat structure combining pool data with token details.
       return {
         ...pool,
+        lp_token_id: item.pool.lp_token_id,
         symbol_0: item.token0?.symbol,
         address_0: item.token0?.canister_id,
         symbol_1: item.token1?.symbol,
@@ -434,22 +436,6 @@ export async function removeLiquidity(params: {
   }
 }
 
-export async function getPool(token0: string, token1: string): Promise<BE.Pool | null> {
-  try {
-    const actor = createAnonymousActorHelper(
-      KONG_BACKEND_CANISTER_ID,
-      canisterIDLs.kong_backend
-    );
-    
-    // Use get_by_tokens instead of get_pool
-    const result = await actor.get_by_tokens("IC." + token0, "IC." + token1);
-    return result || null;
-  } catch (err) {
-    console.error("Error getting pool:", err);
-    return null;
-  }
-}
-
 export async function approveTokens(token: FE.Token, amount: bigint) {
   try {
     await IcrcService.checkAndRequestIcrc2Allowances(token, amount);
@@ -537,5 +523,45 @@ export async function createPool(params: {
   } catch (error) {
     console.error("Error creating pool:", error);
     throw new Error(error.message || "Failed to create pool");
+  }
+}
+
+/**
+ * Send LP tokens to another address
+ */
+export async function sendLpTokens(params: {
+  token: string; // LP token ID
+  toAddress: string;
+  amount: number | bigint;
+}): Promise<any> {
+  requireWalletConnection();
+  try {
+    // Ensure we're using BigInt for the amount
+    const amountBigInt = typeof params.amount === "number"
+      ? BigInt(Math.floor(params.amount * 1e8))
+      : params.amount;
+
+    const actor = await auth.pnp.getActor(
+      KONG_BACKEND_CANISTER_ID,
+      canisterIDLs.kong_backend,
+      { anon: false, requiresSigning: false },
+    );
+
+    const result = await actor.send({
+      token: params.token,
+      to_address: params.toAddress,
+      amount: amountBigInt,
+    });
+
+    if (!result.OK) {
+      throw new Error(result.Err || "Failed to send LP tokens");
+    }
+
+    toastStore.success(`Successfully sent ${params.amount} LP tokens`);
+    return result.OK;
+  } catch (error) {
+    console.error("Error sending LP tokens:", error);
+    toastStore.error(error.message || "Failed to send LP tokens");
+    throw error;
   }
 }

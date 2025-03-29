@@ -7,18 +7,14 @@ export const idlFactory = ({ IDL }) => {
     'trusted_origins' : IDL.Vec(IDL.Text),
   });
   const PoolReply = IDL.Record({
-    'tvl' : IDL.Nat,
     'lp_token_symbol' : IDL.Text,
     'name' : IDL.Text,
     'lp_fee_0' : IDL.Nat,
     'lp_fee_1' : IDL.Nat,
     'balance_0' : IDL.Nat,
     'balance_1' : IDL.Nat,
-    'rolling_24h_volume' : IDL.Nat,
-    'rolling_24h_apy' : IDL.Float64,
     'address_0' : IDL.Text,
     'address_1' : IDL.Text,
-    'rolling_24h_num_swaps' : IDL.Nat,
     'symbol_0' : IDL.Text,
     'symbol_1' : IDL.Text,
     'pool_id' : IDL.Nat32,
@@ -27,17 +23,12 @@ export const idlFactory = ({ IDL }) => {
     'chain_1' : IDL.Text,
     'is_removed' : IDL.Bool,
     'symbol' : IDL.Text,
-    'rolling_24h_lp_fee' : IDL.Nat,
     'lp_fee_bps' : IDL.Nat8,
   });
-  const PoolsReply = IDL.Record({
-    'total_24h_lp_fee' : IDL.Nat,
-    'total_tvl' : IDL.Nat,
-    'total_24h_volume' : IDL.Nat,
-    'pools' : IDL.Vec(PoolReply),
-    'total_24h_num_swaps' : IDL.Nat,
+  const PoolsResult = IDL.Variant({
+    'Ok' : IDL.Vec(PoolReply),
+    'Err' : IDL.Text,
   });
-  const PoolsResult = IDL.Variant({ 'Ok' : PoolsReply, 'Err' : IDL.Text });
   const ICTokenReply = IDL.Record({
     'fee' : IDL.Nat,
     'decimals' : IDL.Nat8,

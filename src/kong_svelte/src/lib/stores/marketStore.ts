@@ -4,7 +4,7 @@ import { getAllMarkets, getAllCategories } from '$lib/api/predictionMarket';
 import { toastStore } from './toastStore';
 
 export type SortOption = 'newest' | 'pool_asc' | 'pool_desc';
-export type StatusFilter = 'all' | 'open' | 'expired' | 'resolved';
+export type StatusFilter = 'all' | 'open' | 'expired' | 'resolved' | 'voided';
 
 // New unified interface without categorization
 interface MarketState {
@@ -21,7 +21,7 @@ const initialState: MarketState = {
   markets: [],
   categories: ['All'],
   selectedCategory: null,
-  sortOption: 'newest',
+  sortOption: 'pool_desc',
   statusFilter: 'open',
   loading: true,
   error: null
@@ -115,6 +115,8 @@ function createMarketStore() {
           apiStatusFilter = 'Open';
         } else if (statusFilter === 'resolved') {
           apiStatusFilter = 'Closed';
+        } else if (statusFilter === 'voided') {
+          apiStatusFilter = 'Voided';
         }
         
         const allMarketsResult = await getAllMarkets({
@@ -187,6 +189,10 @@ export const filteredMarkets = derived(
       statusFilteredMarkets = filteredMarkets.filter(
         market => 'Closed' in market.status
       );
+    } else if (statusFilter === 'voided') {
+      statusFilteredMarkets = filteredMarkets.filter(
+        market => 'Voided' in market.status
+      );
     }
     
     // For compatibility with the UI, maintain the expected structure
@@ -201,7 +207,7 @@ export const filteredMarkets = derived(
       return {
         active: statusFilter === 'open' ? statusFilteredMarkets : [],
         expired_unresolved: statusFilter === 'expired' ? statusFilteredMarkets : [],
-        resolved: statusFilter === 'resolved' ? statusFilteredMarkets as unknown as MarketResult[] : []
+        resolved: (statusFilter === 'resolved' || statusFilter === 'voided') ? statusFilteredMarkets as unknown as MarketResult[] : []
       };
     }
   }

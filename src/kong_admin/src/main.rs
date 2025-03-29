@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // read from flat files (./backups) and update kong_data
     if args.contains(&"--kong_data".to_string()) {
         let dfx_pem_file = settings.dfx_pem_file.as_ref().ok_or("dfx identity required for Kong Data")?;
-        let identity = create_identity_from_pem_file(dfx_pem_file);
+        let identity = create_identity_from_pem_file(dfx_pem_file)?;
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_data = KongData::new(&agent).await;
         // Dump to kong_data
@@ -66,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // read from flat files (./backups) and update kong_backend. used for development
     if args.contains(&"--kong_backend".to_string()) {
         let dfx_pem_file = settings.dfx_pem_file.as_ref().ok_or("dfx identity required for Kong Backend")?;
-        let identity = create_identity_from_pem_file(dfx_pem_file);
+        let identity = create_identity_from_pem_file(dfx_pem_file)?;
         let agent = create_agent_from_identity(replica_url, identity, is_mainnet).await?;
         let kong_backend = KongBackend::new(&agent).await;
         // Dump to kong_backend
@@ -77,7 +77,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         lp_tokens::update_lp_tokens(&kong_backend).await?;
         requests::update_requests(&kong_backend).await?;
         claims::update_claims(&kong_backend).await?;
-        claims::insert_claims(&kong_backend).await?;
         transfers::update_transfers(&kong_backend).await?;
         txs::update_txs(&kong_backend).await?;
     }

@@ -81,6 +81,8 @@ export function getChartConfig(params: {
     fullscreen: false,
     autosize: autosize ?? true,
     backgroundColor: bgDarkColor,
+    backgroundType: 'solid',
+    background: bgDarkColor,
     timezone: 'Etc/UTC',
     loading_screen: { 
       backgroundColor: bgDarkColor,
@@ -139,6 +141,8 @@ export function getChartConfig(params: {
       "paneProperties.vertGridProperties.color": borderColor,
       "paneProperties.horzGridProperties.color": borderColor,
       "paneProperties.crossHairProperties.color": accentBlueColor,
+
+      "platformProperties.background": bgDarkColor,
       
       // Scale (Y axis)
       "scalesProperties.backgroundColor": bgDarkColor,

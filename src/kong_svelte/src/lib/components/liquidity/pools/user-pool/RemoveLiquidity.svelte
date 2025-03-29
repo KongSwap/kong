@@ -125,6 +125,8 @@
           await Promise.all([
             loadBalance(token0.canister_id, true),
             loadBalance(token1.canister_id, true),
+            currentUserPoolsStore.reset(),
+            new Promise(resolve => setTimeout(resolve, 100)),
             currentUserPoolsStore.initialize(),
           ]);
         } else if (requestStatus.reply?.Failed) {
