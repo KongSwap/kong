@@ -1,5 +1,5 @@
 import { Principal } from '@dfinity/principal';
-import { auth } from '$lib/services/auth';
+import { auth } from '$lib/stores/auth';
 import { toastStore } from '$lib/stores/toastStore';
 import { SwapService } from '$lib/services/swap/SwapService';
 import { fetchICPtoXDRRates } from '$lib/services/canister/ic-api';

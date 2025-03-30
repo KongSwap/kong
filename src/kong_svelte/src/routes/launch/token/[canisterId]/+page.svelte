@@ -2,7 +2,7 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { Principal } from '@dfinity/principal';
-  import { auth } from '$lib/services/auth';
+  import { auth } from '$lib/stores/auth';
   import { idlFactory } from '../../../../../../../src/declarations/token_backend/token_backend.did.js';
   import Panel from '$lib/components/common/Panel.svelte';
   import { toastStore } from '$lib/stores/toastStore';

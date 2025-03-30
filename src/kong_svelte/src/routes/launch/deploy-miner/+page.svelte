@@ -4,7 +4,7 @@
   import { writable } from "svelte/store";
   import { ArrowLeft, AlertTriangle } from "lucide-svelte";
   import { minerParams } from "$lib/stores/minerParams";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { TCyclesService } from "$lib/services/canister/tcycles-service";
   import { SwapService } from "$lib/services/swap/SwapService";
   

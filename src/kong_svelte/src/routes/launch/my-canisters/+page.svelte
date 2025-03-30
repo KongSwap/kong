@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { canisterStore, type CanisterMetadata } from '$lib/stores/canisters';
-    import { auth } from '$lib/services/auth';
+    import { auth } from '$lib/stores/auth';
     import { Principal } from '@dfinity/principal';
     import { InstallService, type WasmMetadata, agent, getICManagementActor } from '$lib/services/canister/install_wasm';
     import { idlFactory as icManagementIdlFactory } from '$lib/services/canister/ic-management.idl';
@@ -504,9 +504,9 @@
 
     // Initialize
     onMount(() => {
-        const unsubscribe = auth.subscribe(($auth) => {
-            if ($auth.isConnected && $auth.account?.owner) {
-                principal = Principal.fromText($auth.account.owner.toText());
+        const unsubscribe = auth.subscribe(($authValue) => {
+            if ($authValue.isConnected && $authValue.account?.owner) {
+                principal = Principal.fromText($authValue.account.owner.toText());
                 
                 // When principal changes, sync canisters from API and filter by current user
                 syncCanistersToLocalStore(principal.toText()).catch(error => {

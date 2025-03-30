@@ -1,5 +1,5 @@
 import { Principal } from '@dfinity/principal';
-import { auth } from '$lib/services/auth';
+import { auth } from '$lib/stores/auth';
 import { IcrcService } from '../icrc/IcrcService';
 import { idlFactory as cmcIdlFactory } from '$lib/services/canister/cmc.idl';
 

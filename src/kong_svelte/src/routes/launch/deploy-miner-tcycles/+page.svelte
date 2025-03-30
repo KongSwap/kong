@@ -4,7 +4,7 @@
   import { writable } from "svelte/store";
   import { ArrowLeft, AlertTriangle, Info, Cpu, Zap } from "lucide-svelte";
   import { minerParams } from "$lib/stores/minerParams";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   
   // Import components
   import Panel from "$lib/components/common/Panel.svelte";

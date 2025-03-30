@@ -5,7 +5,7 @@
   import { writable } from "svelte/store";
   import { ArrowLeft, AlertTriangle } from "lucide-svelte";
   import { tokenParams } from "$lib/stores/tokenParams";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   
   // Import our new components

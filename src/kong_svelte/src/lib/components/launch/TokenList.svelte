@@ -4,7 +4,7 @@
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { ArrowRight, Rocket, Copy, Clock, Target, Activity, Search, SortAsc, SortDesc, Plus } from "lucide-svelte";
   import { onMount } from "svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { idlFactory as tokenIdlFactory } from "../../../../../../src/declarations/token_backend/token_backend.did.js";
   import { toastStore } from "$lib/stores/toastStore";
 

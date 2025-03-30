@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Plus, Search, ArrowUpDown } from "lucide-svelte";
   import { goto } from "$app/navigation";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { toastStore } from "$lib/stores/toastStore";
   
   export let activeTab = "tokens";

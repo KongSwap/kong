@@ -5,7 +5,7 @@
     import { formatICP, icpToE8s } from '$lib/utils/icp';
     import { formatCycles } from '$lib/utils/cycles';
     import { topUpCanister, calculateCyclesFromIcp } from '$lib/services/canister/top_up_canister';
-    import { auth } from '$lib/services/auth';
+    import { auth } from '$lib/stores/auth';
     import { SwapService } from '$lib/services/swap/SwapService';
     import { fetchICPtoXDRRates } from '$lib/services/canister/ic-api';
 

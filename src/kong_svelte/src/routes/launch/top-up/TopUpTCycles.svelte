@@ -3,7 +3,7 @@
     import { Principal } from '@dfinity/principal';
     import { toastStore } from '$lib/stores/toastStore';
     import { formatCycles } from '$lib/utils/cycles';
-    import { auth } from '$lib/services/auth';
+    import { auth } from '$lib/stores/auth';
     import { SwapService } from '$lib/services/swap/SwapService';
     import { TCyclesService } from '$lib/services/canister/tcycles-service';
 

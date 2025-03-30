@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { canisterStore } from "$lib/stores/canisters";
   import { Principal } from "@dfinity/principal";
   import { IDL } from "@dfinity/candid";

@@ -3,7 +3,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { ArrowRight, Activity, Cpu, Pickaxe, Zap, Bolt, BarChart3, Search, SortAsc, SortDesc, Plus } from "lucide-svelte";
   import { onMount } from "svelte";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { idlFactory as minerIdlFactory } from "../../../../../../src/declarations/miner/miner.did.js";
   import { toastStore } from "$lib/stores/toastStore";
 

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { createEventDispatcher } from 'svelte';
-    import { auth } from '$lib/services/auth';
+    import { auth } from '$lib/stores/auth';
     import { toastStore } from '$lib/stores/toastStore';
     import Button from '$lib/components/common/Button.svelte';
     import { formatBalance } from '$lib/utils/numberFormatUtils';

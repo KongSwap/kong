@@ -4,7 +4,7 @@
   import { Principal } from "@dfinity/principal";
   import { IDL } from "@dfinity/candid";
   import { SwapService } from "$lib/services/swap/SwapService";
-  import { auth } from "$lib/services/auth";
+  import { auth } from "$lib/stores/auth";
   import { InstallService } from "$lib/services/canister/install_wasm";
   import type { WasmMetadata } from "$lib/services/canister/install_wasm";
   import { fetchICPtoXDRRates } from "$lib/services/canister/ic-api";

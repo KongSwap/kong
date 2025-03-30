@@ -1,5 +1,4 @@
 import { Principal } from '@dfinity/principal';
-import { auth } from '$lib/services/auth';
 import { idlFactory as cmcIdlFactory } from '$lib/services/canister/cmc.idl';
 
 // IC API service for fetching network data
