@@ -50,8 +50,8 @@
 
     <MarketStatCard
       icon={Users}
-      label="Total Bets"
-      value={`${betCounts.reduce((a, b) => a + b, 0).toLocaleString()} bets`}
+      label="Total Predictions"
+      value={`${betCounts.reduce((a, b) => a + b, 0).toLocaleString()} predictions`}
     />
 
     <div class="col-span-2 lg:col-span-1">

@@ -54,7 +54,6 @@
             }
             
             userBets = await getUserHistory(principal);
-            console.log('User bets loaded:', userBets);
         } catch (error) {
             console.error('Error loading user bets:', error);
             userBets = null;
@@ -265,7 +264,7 @@
         <!-- Add My Bets Section -->
         <div class="my-bets-section competition-info mx-4 p-6">
             <h2 class="text-4xl font-bold mb-5 tracking-wider text-white flex items-center gap-3">
-                MY BETS
+                MY PREDICTIONS
                 {#if isLoadingBets}
                     <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                 {/if}
@@ -273,7 +272,7 @@
             
             {#if !auth.pnp?.account?.owner}
                 <div class="text-center py-4 text-gray-400">
-                    Connect your wallet to view your bets
+                    Connect your wallet to view your predictions
                 </div>
             {:else if userBets}
                 <div class="bets-container space-y-4">
@@ -326,7 +325,7 @@
                 </div>
             {:else}
                 <div class="text-center py-4 text-gray-400">
-                    No bets found
+                    No predictions found
                 </div>
             {/if}
         </div>
@@ -356,14 +355,14 @@
                                 <div class="bet-count flex items-center gap-2">
                                     <span class="text-blue-400 flex items-center gap-1">
                                         <Coins class="w-4 h-4" strokeWidth={2} />
-                                        Bets: {match.betCount1.toLocaleString()}
+                                        Predictions: {match.betCount1.toLocaleString()}
                                     </span>
                                     {#if userBets?.active_bets?.some(bet => bet.market.id === match.id && bet.outcome_text === match.player1?.symbol)}
                                         <span class="text-green-400 flex items-center gap-1 ml-3">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z" />
                                             </svg>
-                                            Your bet: {formatBalance(userBets.active_bets.find(bet => bet.market.id === match.id && bet.outcome_text === match.player1?.symbol)?.bet_amount, 8)} KONG
+                                            Your prediction: {formatBalance(userBets.active_bets.find(bet => bet.market.id === match.id && bet.outcome_text === match.player1?.symbol)?.bet_amount, 8)} KONG
                                         </span>
                                     {/if}
                                 </div>
@@ -429,14 +428,14 @@
                                 <div class="bet-count flex items-center gap-2">
                                     <span class="text-blue-400 flex items-center gap-1">
                                         <Coins class="w-4 h-4" strokeWidth={2} />
-                                        Bets: {match.betCount2.toLocaleString()}
+                                        Predictions: {match.betCount2.toLocaleString()}
                                     </span>
                                     {#if userBets?.active_bets?.some(bet => bet.market.id === match.id && bet.outcome_text === match.player2?.symbol)}
                                         <span class="text-green-400 flex items-center gap-1 ml-3">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z" />
                                             </svg>
-                                            Your bet: {formatBalance(userBets.active_bets.find(bet => bet.market.id === match.id && bet.outcome_text === match.player2?.symbol)?.bet_amount, 8)} KONG
+                                            Your prediction: {formatBalance(userBets.active_bets.find(bet => bet.market.id === match.id && bet.outcome_text === match.player2?.symbol)?.bet_amount, 8)} KONG
                                         </span>
                                     {/if}
                                 </div>
@@ -497,10 +496,10 @@
             <div class="info-box bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-sm text-blue-200">
                 <h4 class="font-bold mb-2">How Betting Works</h4>
                 <ul class="list-disc pl-4 space-y-1">
-                    <li>All bets are pooled together for each token</li>
+                    <li>All predictions are pooled together for each token</li>
                     <li>If your token wins, you get your bet back plus a share of the losing pool</li>
                     <li>Your share is proportional to your bet size vs the total winning pool</li>
-                    <li>Bets are final once placed</li>
+                    <li>Transactions are final once placed</li>
                     <li>{selectedToken.symbol} Pool: {opponent?.pool1} KONG</li>
                     {#if opponent}
                         <li>{opponent.player1?.symbol === selectedToken.symbol ? opponent.player2?.symbol : opponent.player1?.symbol} Pool: {opponent?.pool2} KONG</li>

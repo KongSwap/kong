@@ -163,7 +163,7 @@
               {selectedMarket.outcomes[selectedOutcome]}
             </span>
             <div class="mt-2 text-kong-text-secondary text-sm">
-              <p>You are betting on this outcome.</p>
+              <p>You are predicting this outcome.</p>
             </div>
           </div>
 
@@ -257,7 +257,7 @@
             <h3 class="text-center text-lg font-medium mb-4">Confirm Your Bet</h3>
             
             <p class="text-center text-base leading-relaxed">
-              You are betting <span class="font-bold">{betAmount} KONG</span> on the outcome 
+              You are placing <span class="font-bold">{betAmount} KONG</span> on the outcome 
               <span class="font-bold">{selectedMarket.outcomes[selectedOutcome]}</span>. 
               The market ends in <span class="font-bold"><CountdownTimer endTime={selectedMarket.end_time} /></span>.
             </p>

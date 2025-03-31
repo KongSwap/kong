@@ -67,7 +67,7 @@
         ? 'text-kong-primary font-medium'
         : 'text-kong-text-secondary hover:text-kong-text-primary'}"
     >
-      <span class="text-sm sm:text-base">Bet History</span>
+      <span class="text-sm sm:text-base">Prediction History</span>
       {#if props.selectedChartTab === "betHistory"}
         <div
           class="absolute bottom-0 left-0 w-full h-0.5 bg-kong-primary rounded-t-full"
@@ -98,7 +98,7 @@
             class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
           >
             <p class="text-kong-text-secondary">
-              Unable to display bet history chart
+              Unable to display prediction history chart
             </p>
           </div>
         {:else}
@@ -114,7 +114,7 @@
         <div
           class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
         >
-          <p class="text-kong-text-secondary">No bet history data available</p>
+          <p class="text-kong-text-secondary">No prediction history data available</p>
         </div>
       {/if}
     {:else if props.selectedChartTab === "percentageChance"}

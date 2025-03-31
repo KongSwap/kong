@@ -365,7 +365,7 @@
   />
   <meta
     property="og:description"
-    content="Make your prediction and place bets on KongSwap!"
+    content="Make your predictions on future events at KongSwap!"
   />
   <meta
     property="og:image"
@@ -633,7 +633,7 @@
             showOutcomes={true}
             maxHeight="500px"
             panelVariant="transparent"
-            title="Recent Bets"
+            title="Recent Predictions"
             loading={loadingBets}
           />
         </div>

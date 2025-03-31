@@ -57,7 +57,6 @@
       chart.destroy();
     }
 
-    console.log("Creating personal betting history chart:", history);
     
     // Create a timeline of all bets in chronological order
     const timeline = [];
