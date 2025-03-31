@@ -293,14 +293,16 @@
   <!-- Portfolio Overview -->
   <div class="px-5 py-3">
     <div class="flex justify-between items-center mb-2">
-      <div class="text-sm text-kong-text-secondary flex items-center gap-2">
+      <div class="text-sm text-kong-text-secondary flex items-center gap-2 cursor-pointer" aria-label="Total Portfolio Value" onclick={() => {
+        goto(`/wallets/${walletId}`);
+      }}>
         Total Portfolio Value
         <div class="flex items-center gap-2">
           <button
             class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all {isRefreshing
               ? 'animate-spin'
               : ''}"
-            on:click={() => refreshBalances(true)}
+            onclick={() => refreshBalances(true)}
             disabled={isRefreshing}
             use:tooltip={{ text: "Refresh balance data", direction: "bottom" }}
           >
@@ -312,7 +314,7 @@
         <div
           class="text-xs text-kong-text-secondary font-mono flex items-center gap-1 cursor-pointer group"
           title="Click to copy your Principal ID"
-          on:click={() => handleCopyPrincipal(walletId)}
+          onclick={() => handleCopyPrincipal(walletId)}
           use:tooltip={{ text: "Copy Principal ID", direction: "bottom" }}
         >
           <span class="group-hover:text-kong-primary transition-colors"
@@ -329,7 +331,9 @@
         </div>
       {/if}
     </div>
-    <div class="text-2xl font-bold text-kong-text-primary">
+    <div class="text-2xl font-bold text-kong-text-primary cursor-pointer" aria-label="Total Portfolio Value" onclick={() => {
+      goto(`/wallets/${walletId}`);
+    }}>
       {#if isLoadingBalances && Object.keys($currentUserBalancesStore || {}).length === 0}
         <span class="opacity-50">Loading...</span>
       {:else}
@@ -349,7 +353,7 @@
         class="flex-1 py-2.5 px-2 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors relative {activeSection === tab.id
           ? 'text-kong-primary'
           : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-        on:click={() => {
+        onclick={() => {
           activeSection = tab.id as WalletSection;
           // Don't trigger a balance refresh when switching tabs
         }}

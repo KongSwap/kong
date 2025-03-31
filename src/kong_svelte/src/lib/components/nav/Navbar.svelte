@@ -521,15 +521,7 @@
             {onTabChange}
             onClose={() => (navOpen = false)}
           />
-
-          <MobileNavGroup
-            title="STATS"
-            options={dataOptions}
-            {activeTab}
-            {onTabChange}
-            onClose={() => (navOpen = false)}
-          />
-
+          
           <MobileNavGroup
             title="PREDICT"
             options={[
@@ -541,6 +533,14 @@
                 comingSoon: false,
               },
             ]}
+            {activeTab}
+            {onTabChange}
+            onClose={() => (navOpen = false)}
+          />
+
+          <MobileNavGroup
+            title="STATS"
+            options={dataOptions}
             {activeTab}
             {onTabChange}
             onClose={() => (navOpen = false)}

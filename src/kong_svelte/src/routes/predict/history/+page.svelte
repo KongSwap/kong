@@ -36,6 +36,29 @@
       loading = true;
       history = await getUserHistory($auth.account.owner.toString());
       console.log("History", history);
+      
+      // Debug winnings from resolved bets
+      if (history && history.resolved_bets) {
+        history.resolved_bets.forEach((bet, index) => {
+          console.log(`Resolved bet ${index}:`, bet);
+          console.log(`  - Outcome index:`, bet.outcome_index);
+          console.log(`  - Market status:`, bet.market.status);
+          console.log(`  - Winnings:`, bet.winnings);
+          
+          // Check if this is a winning bet
+          if (bet.market.status && "Closed" in bet.market.status) {
+            const winningOutcomes = bet.market.status.Closed;
+            const isWinner = winningOutcomes.includes(bet.outcome_index);
+            console.log(`  - Is winner: ${isWinner}`);
+            
+            // Convert BigInt to string before logging
+            const safeWinningOutcomes = winningOutcomes.map(outcome => 
+              typeof outcome === 'bigint' ? outcome.toString() : outcome
+            );
+            console.log(`  - Winning outcomes:`, safeWinningOutcomes);
+          }
+        });
+      }
     } catch (e) {
       console.error("Failed to load history:", e);
       error = e instanceof Error ? e.message : "Failed to load betting history";
