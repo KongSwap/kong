@@ -20,7 +20,7 @@
   let displayValue0 = "";
   let displayValue1 = "";
   let inputDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-  const DEBOUNCE_DELAY = 100; // 100ms for input formatting is more responsive
+  const DEBOUNCE_DELAY = 50; // Reduce debounce delay for more responsiveness
 
   function handleFormattedInput(index: 0 | 1, event: Event) {
     const input = event.target as HTMLInputElement;
@@ -39,7 +39,10 @@
       displayValue1 = result.formattedValue;
     }
 
-    input.value = result.formattedValue;
+    // Don't update the input value during typing - avoid unnecessary DOM manipulation
+    // input.value = result.formattedValue;
+    
+    // Maintain cursor position
     requestAnimationFrame(() => {
       input.setSelectionRange(
         result.newCursorPosition,
@@ -62,21 +65,23 @@
     }, DEBOUNCE_DELAY);
   }
 
-  // Update these reactive statements to properly handle formatted values
-  $: {
-    // Remove commas from amount0 to ensure consistent formatting
+  // Update these reactive statements to optimize performance
+  $: if (amount0 !== displayValue0.replace(/,/g, '')) {
+    // Only update if the underlying value actually changed
     const rawAmount0 = amount0.replace(/,/g, '');
     displayValue0 = formatWithCommas(rawAmount0);
-    if (input0Element) {
+    if (input0Element && !input0Element.matches(':focus')) {
+      // Only update DOM when input is not focused
       input0Element.value = displayValue0;
     }
   }
 
-  $: {
-    // Remove commas from amount1 to ensure consistent formatting
+  $: if (amount1 !== displayValue1.replace(/,/g, '')) {
+    // Only update if the underlying value actually changed
     const rawAmount1 = amount1.replace(/,/g, '');
     displayValue1 = formatWithCommas(rawAmount1);
-    if (input1Element) {
+    if (input1Element && !input1Element.matches(':focus')) {
+      // Only update DOM when input is not focused
       input1Element.value = displayValue1;
     }
   }

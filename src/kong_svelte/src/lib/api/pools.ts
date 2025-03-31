@@ -365,7 +365,7 @@ export async function pollRequestStatus(requestId: bigint): Promise<any> {
         if (currentStatus !== lastStatus) {
           lastStatus = currentStatus;
           if(currentStatus.includes("Success")) {
-            toastStore.success(currentStatus);
+            toastStore.success("Successfully added liquidity");
           } else {
             toastStore.info(currentStatus);
           }
