@@ -75,13 +75,9 @@ export async function getMarketBets(marketId: number) {
 }
 
 export async function getUserHistory(principal: string) {
-  const actor = auth.pnp.getActor(
+  const actor = createAnonymousActorHelper(
     PREDICTION_MARKETS_CANISTER_ID,
     canisterIDLs.prediction_markets_backend,
-    {
-      anon: false,
-      requiresSigning: false,
-    },
   );
   try {
     const principalObj = Principal.fromText(principal);

@@ -111,8 +111,7 @@ function createAuthStore(pnp: PNP) {
         const result = await pnp.connect(walletId);
 
         if (!result?.owner) {
-          console.error("Invalid connection result", result);
-          // reset state
+          await this.disconnect();
           set({ isConnected: false, account: null, isInitialized: true });
           throw new Error("Invalid connection result");
         }
@@ -126,19 +125,11 @@ function createAuthStore(pnp: PNP) {
         await storage.set("LAST_WALLET", walletId);
         await storage.set("WAS_CONNECTED", "true");
 
-        // Load balances using the new API client
         setTimeout(async () => {
           try {
-            // Import userTokens dynamically to avoid circular dependency
             const { userTokens } = await import("$lib/stores/userTokens");
-            
-            // Set current principal in userTokens store and load tokens if needed
             await userTokens.setPrincipal(owner);
-            
-            // Get updated token state
             const userTokensStore = get(userTokens);
-            
-            // Load balances using the API client
             await fetchBalances(userTokensStore.tokens, owner, true);
           } catch (error) {
             console.error("Error loading balances:", error);
