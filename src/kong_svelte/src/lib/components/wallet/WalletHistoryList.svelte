@@ -394,14 +394,14 @@
       <!-- Predictions list -->
       <div class="space-y-0">
         {#if predictions.active_bets && predictions.active_bets.length > 0}
-          <div class="px-4 py-2 text-xs font-medium text-kong-text-secondary">Active Bets</div>
+          <div class="px-4 py-2 text-xs font-medium text-kong-text-secondary">Active Predictions</div>
           {#each predictions.active_bets as bet}
             <PredictionItem {bet} onClick={() => navigateToPrediction(bet.market.id)} />
           {/each}
         {/if}
 
         {#if predictions.resolved_bets && predictions.resolved_bets.length > 0}
-          <div class="px-4 py-2 text-xs font-medium text-kong-text-secondary">Resolved Bets</div>
+          <div class="px-4 py-2 text-xs font-medium text-kong-text-secondary">Resolved Predictions</div>
           {#each predictions.resolved_bets as bet}
             <PredictionItem {bet} onClick={() => navigateToPrediction(bet.market.id)} />
           {/each}
