@@ -43,7 +43,7 @@
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
   const DEFAULT_TOKEN = "ICP";
   const SECONDARY_TOKEN_IDS = [ICP_CANISTER_ID, CKUSDT_CANISTER_ID];
-  const DEBOUNCE_DELAY = 300; // 300ms debounce delay
+  const DEBOUNCE_DELAY = 150; // Reduce from 300ms to improve responsiveness
 
   // State variables
   let token0: FE.Token = null;
@@ -352,6 +352,25 @@
               p.address_0 === token0?.address && 
               p.address_1 === token1?.address
             ) : null;
+            
+            // Log the raw pool object to inspect its structure
+            console.log("Raw pool object:", pool);
+            
+            // Check if pool has zero balance using strict equality and type checking
+            const hasZeroBalance = pool?.balance_0 !== undefined 
+              ? pool.balance_0 === 0n || pool.balance_0.toString() === "0" || Number(pool.balance_0) === 0
+              : false;
+              
+            console.log("Pool info:", {
+              poolExists,
+              poolBalance0: pool?.balance_0 !== undefined ? pool.balance_0.toString() : null,
+              poolBalance1: pool?.balance_1 !== undefined ? pool.balance_1.toString() : null,
+              token0Symbol: token0?.symbol,
+              token1Symbol: token1?.symbol,
+              hasZeroBalance,
+              poolBalance0Type: pool?.balance_0 !== undefined ? typeof pool.balance_0 : null,
+              showInitialPrice: poolExists === false || hasZeroBalance
+            });
   
             // Reset balance load attempts when pool status changes
             balanceLoadAttempts = 0;
@@ -432,6 +451,10 @@
     balanceLoadAttempts = 0;
     lastBalanceLoadTime = 0;
 
+    // Reset pool-related state
+    poolExists = null;
+    pool = null;
+
     // Update store and URL
     liquidityStore.setToken(index, result.newToken);
     updateQueryParams(
@@ -445,6 +468,24 @@
     } else {
       token1Balance = "0";
     }
+
+    // Immediately update local tokens
+    token0 = $liquidityStore.token0;
+    token1 = $liquidityStore.token1;
+
+    // Immediately check if pool exists if both tokens are available
+    if (token0 && token1) {
+      poolExists = doesPoolExist(token0, token1, $livePools);
+      
+      // Find the pool if it exists
+      if (poolExists) {
+        pool = $livePools.find(p => 
+          p.address_0 === token0.address && 
+          p.address_1 === token1.address
+        );
+        console.log("Pool found after token change:", pool);
+      }
+    }
   }
 
   // Handle price input changes with debouncing
@@ -457,9 +498,15 @@
       clearTimeout(priceDebounceTimer);
     }
     
+    // Skip expensive logging during typing
+    
     // Debounce the expensive calculation
     priceDebounceTimer = setTimeout(() => {
-      if (poolExists === false || pool?.balance_0 === 0n) {
+      if (poolExists === false || (
+          pool && (pool.balance_0 === 0n || 
+                  pool.balance_0?.toString() === "0" || 
+                  Number(pool.balance_0) === 0))
+      ) {
         liquidityStore.setAmount(1, calculateToken1FromPrice($liquidityStore.amount0, value));
       }
       priceDebounceTimer = null;
@@ -478,10 +525,12 @@
       clearTimeout(amountDebounceTimer);
     }
     
+    // Skip expensive logging during typing
+    
     // Debounce the expensive calculations and API calls
     amountDebounceTimer = setTimeout(async () => {
       // For new pools or pools with zero balance
-      if (poolExists === false || (poolExists === true && pool?.balance_0 === 0n)) {
+      if (poolExists === false || (poolExists === true && (pool?.balance_0 === 0n || pool?.balance_0?.toString() === "0"))) {
         if ($liquidityStore.initialPrice) {
           const otherIndex = index === 0 ? 1 : 0;
           const amount = index === 0 
@@ -534,7 +583,15 @@
       const amount0 = parseTokenAmount($liquidityStore.amount0, token0.decimals);
       if (!amount0) throw new Error("Invalid amount for " + token0.symbol);
 
-      if (poolExists === true && pool?.balance_0 !== 0n) {
+      // Check if pool exists with non-zero balance
+      const hasZeroBalance = !pool || 
+        typeof pool.balance_0 === 'undefined' || 
+        (typeof pool.balance_0 === 'number' && pool.balance_0 === 0) || 
+        (typeof pool.balance_0 === 'bigint' && pool.balance_0 === 0n) ||
+        pool.balance_0?.toString() === "0";
+
+      // For existing pools with non-zero balance, calculate token1 amount using the pool ratio
+      if (poolExists === true && !hasZeroBalance) {
         const result = await calculateLiquidityAmounts(token0.symbol, amount0, token1.symbol);
         if (!result.Ok) throw new Error("Failed to calculate liquidity amounts");
         
@@ -543,8 +600,42 @@
           .toString()
         );
       }
+      // For new pools or pools with zero balance, use the initial price
+      else if (poolExists === false || hasZeroBalance) {
+        // Ensure initial price is set for zero-balance pools
+        if (!$liquidityStore.initialPrice) {
+          throw new Error("Initial price is required for new pools or pools with zero balance");
+        }
+        // We already calculated amounts based on initialPrice in the handleAmountChange function
+      }
+      
       showConfirmModal = true;
     }, "Failed to add liquidity");
+  }
+
+  // Add a separate reactive statement just for pool detection to ensure it runs independently
+  $: if (token0 && token1 && !isLoading) {
+    const currentPoolExists = doesPoolExist(token0, token1, $livePools);
+    if (poolExists !== currentPoolExists) {
+      console.log("Pool exists reactively changed:", poolExists, "->", currentPoolExists);
+      poolExists = currentPoolExists;
+      
+      // Update pool reference
+      pool = poolExists ? $livePools.find(p => 
+        p.address_0 === token0.address && 
+        p.address_1 === token1.address
+      ) : null;
+    }
+  }
+
+  // Helper function to detect zero balance pools consistently
+  function hasZeroBalance(poolToCheck) {
+    if (!poolToCheck) return true;
+    if (typeof poolToCheck.balance_0 === 'undefined') return true;
+    if (typeof poolToCheck.balance_0 === 'number' && poolToCheck.balance_0 === 0) return true;
+    if (typeof poolToCheck.balance_0 === 'bigint' && poolToCheck.balance_0 === 0n) return true;
+    if (poolToCheck.balance_0?.toString() === "0") return true;
+    return false;
   }
 
   onDestroy(() => {
@@ -586,7 +677,7 @@
           />
         {/if}
 
-        {#if token0 && token1 && (poolExists === false || (pool && pool.balance_0 === 0n))}
+        {#if token0 && token1 && (poolExists === false || hasZeroBalance(pool))}
           <div class="flex flex-col gap-4">
             <PoolWarning {token0} {token1} />
             <div>
@@ -605,7 +696,7 @@
         {#if token0 && token1}
           <div class="mt-2">
             <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
-              {#if poolExists === false || (pool && pool.balance_0 === 0n)}
+              {#if poolExists === false || hasZeroBalance(pool)}
                 Initial Deposits
               {:else}
                 Deposit Amounts
