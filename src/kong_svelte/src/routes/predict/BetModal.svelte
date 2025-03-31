@@ -170,7 +170,7 @@
           <!-- Bet Amount Input -->
           <div>
             <div class="flex justify-between items-center mb-2">
-              <h4 class="text-sm font-medium text-kong-text-secondary">Bet Amount</h4>
+              <h4 class="text-sm font-medium text-kong-text-secondary">Prediction Amount</h4>
               <div class="flex items-center gap-2 text-xs sm:text-sm text-kong-text-secondary">
                 <Coins class="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>Balance: <span class="font-medium">{state.kongBalance.toFixed(8)} KONG</span></span>

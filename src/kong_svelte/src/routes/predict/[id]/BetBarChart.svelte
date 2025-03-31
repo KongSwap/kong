@@ -148,7 +148,7 @@
         data: {
           datasets: [
             {
-              label: "Daily Bet Amount",
+              label: "Daily Prediction Amount",
               data: dataPoints,
               backgroundColor: "rgba(54, 162, 235, 0.7)",
               borderColor: "rgba(54, 162, 235, 1)",

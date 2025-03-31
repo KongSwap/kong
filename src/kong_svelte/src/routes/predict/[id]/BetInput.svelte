@@ -25,7 +25,7 @@
   <div class="grid grid-cols-4 gap-1.5">
     {#each quickAmounts as quickAmount}
       <button
-        aria-label={`Set bet amount to ${quickAmount} KONG`}
+        aria-label={`Set prediction amount to ${quickAmount} KONG`}
         class="px-2 py-1.5 bg-kong-bg-light hover:bg-kong-bg-dark text-xs rounded transition-all border border-kong-border hover:border-kong-accent-green/50 font-medium group"
         on:click={() => handleQuickAmount(quickAmount)}
       >

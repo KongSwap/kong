@@ -197,7 +197,7 @@
                   <th class="p-4 text-kong-text-secondary font-medium">Market</th>
                   <th class="p-4 text-kong-text-secondary font-medium">Outcome</th>
                   <th class="p-4 text-kong-text-secondary font-medium">Status</th>
-                  <th class="p-4 text-kong-text-secondary font-medium text-right">Bet Amount</th>
+                  <th class="p-4 text-kong-text-secondary font-medium text-right">Amount</th>
                   <th class="p-4 text-kong-text-secondary font-medium text-right">Result</th>
                 </tr>
               </thead>
