@@ -21,6 +21,7 @@
     ExternalLink,
   } from "lucide-svelte";
   import { onDestroy } from "svelte";
+  import { calculatePortfolioValue, formatCurrency } from "$lib/utils/portfolioUtils";
 
   // Get props passed from layout
   let { initialDataLoading, initError } = $props<{
@@ -51,10 +52,7 @@
   // Computed total value from wallet balances
   $effect(() => {
     if ($walletDataStore?.balances) {
-      totalValue = Object.values($walletDataStore.balances).reduce(
-        (acc, balance) => acc + Number(balance?.in_usd || 0),
-        0,
-      );
+      totalValue = calculatePortfolioValue($walletDataStore.balances, []);
     } else {
       totalValue = 0;
     }
@@ -118,16 +116,6 @@
     const balanceStr =
       typeof balance === "bigint" ? balance.toString() : balance;
     return (Number(balanceStr) / totalSupply) * 100;
-  }
-
-  // Format currency for display
-  function formatCurrency(value: number): string {
-    return value.toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
   }
 
   // Tooltip text for whale indicator

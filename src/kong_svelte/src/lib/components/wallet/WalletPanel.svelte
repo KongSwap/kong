@@ -26,6 +26,7 @@
   import WalletAddressesList from "$lib/components/wallet/WalletAddressesList.svelte";
   import WalletHistoryList from "$lib/components/wallet/WalletHistoryList.svelte";
   import SendTokenModal from "$lib/components/wallet/SendTokenModal.svelte";
+  import { calculatePortfolioValue } from "$lib/utils/portfolioUtils";
 
   // Props type definition
   type WalletPanelProps = {
@@ -144,7 +145,7 @@
   
   // Update total portfolio value whenever stores change
   $effect(() => {
-    const calculated = calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
+    const calculated = calculatePortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
     
     // Only update last known value if calculated is greater than 0
     if (calculated > 0) {
@@ -157,31 +158,6 @@
       totalPortfolioValue = calculated;
     }
   });
-
-  // Helper function to calculate total portfolio value
-  function calculateTotalPortfolioValue(balances: any, pools: any[]): number {
-    const tokensValue = Object.values(balances || {})
-      .reduce((acc: number, balance: any) => {
-        if (balance && balance.in_usd) {
-          // Safely convert to number, handling non-numeric strings
-          const numValue = parseFloat(balance.in_usd);
-          return acc + (isNaN(numValue) ? 0 : numValue);
-        }
-        return acc;
-      }, 0);
-    
-    const poolsValue = (pools || []).reduce((acc, pool: any) => {
-      // Safely convert usd_balance to number, handling all edge cases
-      let usdBalance = 0;
-      if (pool && pool.usd_balance) {
-        usdBalance = parseFloat(pool.usd_balance);
-        if (isNaN(usdBalance)) usdBalance = 0;
-      }
-      return acc + usdBalance;
-    }, 0);
-    
-    return tokensValue + poolsValue;
-  }
 
   // Local copy function with feedback
   function handleCopyPrincipal(text: string) {
@@ -207,14 +183,12 @@
           isLoadingBalances = false;
           isRefreshing = false;
           
-          // Manually recalculate portfolio value after balances are loaded
-          setTimeout(() => {
-            const calculated = calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
-            if (calculated > 0) {
-              lastKnownPortfolioValue = calculated;
-              totalPortfolioValue = calculated;
-            }
-          }, 100);
+          // Immediately recalculate portfolio value using shared utility
+          const calculated = calculatePortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
+          if (calculated > 0) {
+            lastKnownPortfolioValue = calculated;
+            totalPortfolioValue = calculated;
+          }
         })
         .catch((err) => {
           console.error("Error refreshing balances:", err);
@@ -274,14 +248,12 @@
       isLoadingBalances = true;
       refreshBalances(true);
       
-      // Calculate initial portfolio value after a small delay to allow data loading
-      setTimeout(() => {
-        const calculated = calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
-        if (calculated > 0) {
-          lastKnownPortfolioValue = calculated;
-          totalPortfolioValue = calculated;
-        }
-      }, 1000);
+      // Calculate initial portfolio value without delay
+      const calculated = calculatePortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
+      if (calculated > 0) {
+        lastKnownPortfolioValue = calculated;
+        totalPortfolioValue = calculated;
+      }
     }
   });
 </script>
