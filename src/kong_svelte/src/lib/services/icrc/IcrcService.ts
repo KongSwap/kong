@@ -105,13 +105,8 @@ export class IcrcService {
       const defaultBalance = await actor.icrc1_balance_of({
           owner: principal,
           subaccount: [],
-        })
-        
-      // Debug logging for local development
-      if (process.env.NODE_ENV === "development") {
-        console.debug(`[Balance] ${token.symbol} balance: ${defaultBalance.toString()}`);
-      }
-        
+        });
+
       // If we don't need separate balances or there's no subaccount, return total
       if (!separateBalances || !subaccount) {
         return defaultBalance;
@@ -121,7 +116,7 @@ export class IcrcService {
       const subaccountBalance = await actor.icrc1_balance_of({
           owner: principal,
           subaccount: [subaccount],
-        })
+        });
 
       return {
         default: defaultBalance,
@@ -382,28 +377,30 @@ export class IcrcService {
     try {
         // If it's an ICP transfer to an account ID
         if (token.symbol === 'ICP' && typeof to === 'string' && to.length === 64) {
-            const ledgerActor = auth.getActor(
+            // For ICP account IDs, we need to use icrc1_transfer with appropriate formatting
+            const actor = auth.getActor(
                 token.canister_id, 
-                canisterIDLs.ICP,
+                canisterIDLs.icrc1,
                 { anon: false, requiresSigning: true }
             );
             
-            const transfer_args = {
-                to: this.hex2Bytes(to),
-                amount: { e8s: amount },
-                fee: { e8s: BigInt(token.fee_fixed) },
-                memo: 0n,
-                from_subaccount: opts.fromSubaccount ? [Array.from(opts.fromSubaccount)] : [],
-                created_at_time: opts.createdAtTime ? [{ timestamp_nanos: opts.createdAtTime }] : [],
-            };
-
-            return await ledgerActor.transfer(transfer_args);
+            return await actor.icrc1_transfer({
+                to: {
+                    owner: Principal.fromText(token.canister_id), // The ledger canister
+                    subaccount: [this.hex2Bytes(to)] // The account ID as subaccount
+                },
+                amount,
+                fee: [BigInt(token.fee_fixed || 10000)],
+                memo: opts.memo || [],
+                from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
+                created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
+            });
         }
 
         // For all other cases (ICRC1 transfers to principals)
         const actor = auth.getActor(
             token.canister_id, 
-            canisterIDLs["icrc1"],
+            canisterIDLs.icrc1,
             { anon: false, requiresSigning: true }
         );
 
@@ -413,7 +410,7 @@ export class IcrcService {
                 subaccount: []
             },
             amount,
-            fee: [BigInt(token.fee_fixed)],
+            fee: [BigInt(token.fee_fixed || 10000)],
             memo: opts.memo || [],
             from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
             created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
