@@ -54,7 +54,6 @@
   let tokenFee = $state<bigint>(BigInt(0));
   let showScanner = $state(false);
   let hasCamera = $state(false);
-  let selectedAccount = $state<"main" | "subaccount">("main");
   let accounts = $state({
     subaccount: "",
     main: "",
@@ -119,21 +118,15 @@
         return;
       }
       
-      if (token.symbol === "ICP" && auth.pnp?.account?.subaccount) {
-        const subaccountResult = await IcrcService.getIcrc1Balance(
-          token,
-          auth.pnp.account.owner,
-          Array.from(auth.pnp.account.subaccount)
-        );
-        if (typeof subaccountResult === 'bigint') {
-          balances.subaccount = subaccountResult;
-        }
-      }
+      console.debug("Loading balances for", token.symbol);
       
+      // Only load main account balance
       const defaultResult = await IcrcService.getIcrc1Balance(token, auth.pnp?.account?.owner);
       if (typeof defaultResult === 'bigint') {
         balances.default = defaultResult;
       }
+      
+      console.debug("Final balance:", balances.default.toString());
     } catch (error) {
       console.error("Error loading balances:", error);
     }
@@ -141,13 +134,7 @@
 
   // Calculate max amount user can send
   const maxAmount = $derived(
-    token?.symbol === "ICP"
-      ? calculateMaxAmount(
-          selectedAccount === "main" ? balances.default : balances.subaccount || BigInt(0),
-          token.decimals,
-          tokenFee
-        )
-      : calculateMaxAmount(balances.default, token.decimals, tokenFee)
+    calculateMaxAmount(balances.default, token.decimals, tokenFee)
   );
 
   // Handle amount input
@@ -222,12 +209,6 @@
     isValidating = false;
   }
 
-  // Handle account change
-  function handleAccountChange(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    selectedAccount = select.value as "main" | "subaccount";
-  }
-
   // Check if camera is available
   async function checkCameraAvailability() {
     try {
@@ -266,20 +247,13 @@
         throw new Error("Authentication not initialized");
       }
 
-      // Prepare from subaccount
-      let fromSubaccount;
-      if (selectedAccount === "subaccount" && auth.pnp?.account?.subaccount) {
-        // Ensure subaccount is properly formatted as Uint8Array for the IcrcService
-        fromSubaccount = $auth?.account?.subaccount;
-      }
-
+      // Always use main account (no fromSubaccount)
       const result = await IcrcService.transfer(
         token,
         recipientAddress,
         amountBigInt,
         {
-          fee: token.fee_fixed ? BigInt(token.fee_fixed) : tokenFee,
-          fromSubaccount: fromSubaccount ? Array.from(fromSubaccount) : undefined,
+          fee: token.fee_fixed ? BigInt(token.fee_fixed) : tokenFee
         }
       );
 
@@ -322,16 +296,6 @@
     }
   }
 
-  // Load account information
-  $effect(() => {
-    if (auth.pnp?.account?.owner) {
-      const principal = auth.pnp.account.owner;
-      const principalStr =
-        typeof principal === "string" ? principal : principal?.toText?.() || "";
-      accounts = getAccountIds(principalStr, auth.pnp?.account?.subaccount);
-    }
-  });
-
   // Validate address
   $effect(() => {
     if (recipientAddress) {
@@ -344,7 +308,7 @@
   // Validate amount
   $effect(() => {
     if (amount) {
-      const currentBalance = selectedAccount === "main" ? balances.default : balances.subaccount || BigInt(0);
+      const currentBalance = balances.default;
       amountValidation = validateTokenAmount(amount, currentBalance, token.decimals, tokenFee);
     } else {
       amountValidation = { isValid: false, errorMessage: "" };
@@ -422,29 +386,6 @@
       class="flex flex-col gap-3 transition-all duration-300"
       style="opacity: {closing ? 0 : (mounted ? 1 : 0)}; transform: translateY({closing ? '-10px' : (mounted ? 0 : '20px')});"
     >
-      {#if token.symbol === "ICP" && auth.pnp?.account?.subaccount && balances.subaccount !== undefined}
-        <!-- Account selector for ICP -->
-        <div class="mb-1">
-          <label for="account-select" class="block text-xs text-kong-text-secondary mb-1.5">From Account</label>
-          <div class="relative">
-            <select
-              id="account-select"
-              class="w-full py-2 px-3 bg-kong-bg-light/30 border border-kong-border/50 rounded-md text-sm text-kong-text-primary appearance-none"
-              value={selectedAccount}
-              on:change={handleAccountChange}
-            >
-              <option value="main">Main Account - {formatBalance(balances.default.toString(), token.decimals)} {token.symbol}</option>
-              <option value="subaccount">Subaccount - {formatBalance(balances.subaccount.toString(), token.decimals)} {token.symbol}</option>
-            </select>
-            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-              <svg class="w-4 h-4 text-kong-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      {/if}
-
       <!-- Recipient Address Input -->
       <div>
         <label for="recipient-address" class="block text-xs text-kong-text-secondary mb-1.5">Recipient Address</label>
