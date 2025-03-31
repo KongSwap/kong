@@ -91,8 +91,8 @@
       } catch (error) {
         console.error("Error fetching bets data:", error);
         toastStore.add({
-          title: "Error Loading Bets",
-          message: "Could not load recent bets. Please try again later.",
+          title: "Error Loading Predictions",
+          message: "Could not load recent predictions. Please try again later.",
           type: "error",
         });
         recentBets = [];
@@ -293,7 +293,7 @@
             size="md"
             on:click={() => goto("/predict/history")}
           >
-            Betting History
+            Prediction History
           </ButtonV2>
         {/if}
       </div>

@@ -71,6 +71,7 @@
     const currentPrice = Number(token.metrics?.price || 0);
     const prevPrice = $previousPrices.get(token.canister_id);
 
+    // First update the previous price to avoid race conditions
     previousPrices.update(prices => {
       prices.set(token.canister_id, currentPrice);
       return prices;
@@ -79,18 +80,21 @@
     if (prevPrice !== undefined && prevPrice !== currentPrice) {
       const flashClass = currentPrice > prevPrice ? "flash-green" : "flash-red";
       
-      if ($priceFlashStates.has(token.canister_id)) {
-        clearTimeout($priceFlashStates.get(token.canister_id)!.timeout);
-      }
-
-      const timeout = setTimeout(() => {
-        priceFlashStates.update(states => {
-          states.delete(token.canister_id);
-          return states;
-        });
-      }, 2000);
-
+      // Clean up existing timeout to avoid memory leaks
       priceFlashStates.update(states => {
+        if (states.has(token.canister_id)) {
+          clearTimeout(states.get(token.canister_id)!.timeout);
+        }
+        
+        // Create a new timeout
+        const timeout = setTimeout(() => {
+          priceFlashStates.update(currentStates => {
+            currentStates.delete(token.canister_id);
+            return currentStates;
+          });
+        }, 2000);
+        
+        // Update with new animation state 
         states.set(token.canister_id, { class: flashClass, timeout });
         return states;
       });
@@ -154,8 +158,10 @@
       if ($currentPage !== 1) {
         console.log("Resetting to page 1 for new search");
         currentPage.set(1);
+        // No need to call refreshData here as the page change effect will handle it
       } else {
         console.log("Already on page 1, refreshing data");
+        isPageChange.set(true); // Signal it's a page change type refresh
         refreshData(true);
       }
     }
@@ -193,26 +199,33 @@
   });
 
   // Handle URL updates separately to avoid too many history calls
+  let urlUpdateTimeout;
   $effect(() => {
     if (browser && $page.url.pathname === '/stats' && 
         ($currentPage !== undefined || $debouncedSearchTerm !== undefined)) {
       
-      const url = new URL(window.location.href);
-      url.searchParams.set('page', $currentPage.toString());
+      // Clear previous timeout to avoid race conditions
+      if (urlUpdateTimeout) clearTimeout(urlUpdateTimeout);
       
-      if ($debouncedSearchTerm) {
-        url.searchParams.set('search', $debouncedSearchTerm);
-      } else {
-        url.searchParams.delete('search');
-      }
-      
-      const newUrl = url.toString();
-      
-      // Only update URL if it actually changed to prevent excessive history API calls
-      if (newUrl !== lastUrlUpdate) {
-        lastUrlUpdate = newUrl;
-        goto(newUrl, { replaceState: true, keepFocus: true });
-      }
+      // Debounce URL updates to ensure we're not updating too frequently
+      urlUpdateTimeout = setTimeout(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', $currentPage.toString());
+        
+        if ($debouncedSearchTerm) {
+          url.searchParams.set('search', $debouncedSearchTerm);
+        } else {
+          url.searchParams.delete('search');
+        }
+        
+        const newUrl = url.toString();
+        
+        // Only update URL if it actually changed to prevent excessive history API calls
+        if (newUrl !== lastUrlUpdate) {
+          lastUrlUpdate = newUrl;
+          goto(newUrl, { replaceState: true, keepFocus: true });
+        }
+      }, 50); // Short timeout to batch potential multiple changes
     }
   });
 

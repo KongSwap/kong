@@ -69,7 +69,7 @@
                 <div class="flex items-center gap-1">
                   <BarChart3 size={12} class="sm:w-4 sm:h-4" />
                   <span class="truncate"
-                    >{betCountPercentages[i].toFixed(1)}% of bets ({betCounts[
+                    >{betCountPercentages[i].toFixed(1)}% of predictions ({betCounts[
                       i
                     ]} total)</span
                   >
@@ -87,7 +87,7 @@
                   size="md"
                   on:click={() => onSelectOutcome(i)}
                 >
-                  Bet
+                  Select
                 </ButtonV2>
               {:else if isMarketClosed && winningOutcomes.some((w) => Number(w) === i)}
                 <div

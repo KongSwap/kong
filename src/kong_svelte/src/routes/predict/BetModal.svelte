@@ -163,14 +163,14 @@
               {selectedMarket.outcomes[selectedOutcome]}
             </span>
             <div class="mt-2 text-kong-text-secondary text-sm">
-              <p>You are betting on this outcome.</p>
+              <p>You are predicting this outcome.</p>
             </div>
           </div>
 
           <!-- Bet Amount Input -->
           <div>
             <div class="flex justify-between items-center mb-2">
-              <h4 class="text-sm font-medium text-kong-text-secondary">Bet Amount</h4>
+              <h4 class="text-sm font-medium text-kong-text-secondary">Prediction Amount</h4>
               <div class="flex items-center gap-2 text-xs sm:text-sm text-kong-text-secondary">
                 <Coins class="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>Balance: <span class="font-medium">{state.kongBalance.toFixed(8)} KONG</span></span>
@@ -257,7 +257,7 @@
             <h3 class="text-center text-lg font-medium mb-4">Confirm Your Bet</h3>
             
             <p class="text-center text-base leading-relaxed">
-              You are betting <span class="font-bold">{betAmount} KONG</span> on the outcome 
+              You are placing <span class="font-bold">{betAmount} KONG</span> on the outcome 
               <span class="font-bold">{selectedMarket.outcomes[selectedOutcome]}</span>. 
               The market ends in <span class="font-bold"><CountdownTimer endTime={selectedMarket.end_time} /></span>.
             </p>

@@ -21,7 +21,7 @@
       }
     } catch (e) {
       console.error("Failed to load history:", e);
-      error = e instanceof Error ? e.message : "Failed to load betting history";
+      error = e instanceof Error ? e.message : "Failed to load prediction history";
     } finally {
       loading = false;
     }
@@ -36,9 +36,32 @@
       loading = true;
       history = await getUserHistory($auth.account.owner.toString());
       console.log("History", history);
+      
+      // Debug winnings from resolved bets
+      if (history && history.resolved_bets) {
+        history.resolved_bets.forEach((bet, index) => {
+          console.log(`Resolved bet ${index}:`, bet);
+          console.log(`  - Outcome index:`, bet.outcome_index);
+          console.log(`  - Market status:`, bet.market.status);
+          console.log(`  - Winnings:`, bet.winnings);
+          
+          // Check if this is a winning bet
+          if (bet.market.status && "Closed" in bet.market.status) {
+            const winningOutcomes = bet.market.status.Closed;
+            const isWinner = winningOutcomes.includes(bet.outcome_index);
+            console.log(`  - Is winner: ${isWinner}`);
+            
+            // Convert BigInt to string before logging
+            const safeWinningOutcomes = winningOutcomes.map(outcome => 
+              typeof outcome === 'bigint' ? outcome.toString() : outcome
+            );
+            console.log(`  - Winning outcomes:`, safeWinningOutcomes);
+          }
+        });
+      }
     } catch (e) {
       console.error("Failed to load history:", e);
-      error = e instanceof Error ? e.message : "Failed to load betting history";
+      error = e instanceof Error ? e.message : "Failed to load prediction history";
     } finally {
       loading = false;
     }
@@ -87,7 +110,7 @@
     </button>
 
     <div class="mb-8">
-      <h1 class="text-2xl md:text-3xl font-bold mb-2">Betting History</h1>
+      <h1 class="text-2xl md:text-3xl font-bold mb-2">Prediction History</h1>
       <p class="text-kong-text-secondary">View your past predictions and outcomes</p>
     </div>
 
@@ -101,16 +124,16 @@
       <Panel className="!rounded">
         <div class="text-center py-8">
           <div class="animate-spin w-8 h-8 border-4 border-kong-accent-green rounded-full border-t-transparent mx-auto" />
-          <p class="mt-4 text-kong-text-secondary">Loading your betting history...</p>
+          <p class="mt-4 text-kong-text-secondary">Loading your prediction history...</p>
         </div>
       </Panel>
     {:else if !history || (!history.active_bets.length && !history.resolved_bets.length)}
       <Panel className="!rounded">
         <div class="text-center py-12">
           <div class="max-w-md mx-auto">
-            <p class="text-lg mb-2">No bets yet</p>
+            <p class="text-lg mb-2">No predictions yet</p>
             <p class="text-sm text-kong-text-secondary">
-              Start making predictions to see your betting history here
+              Start making predictions to see your prediction history here
             </p>
           </div>
         </div>
@@ -149,7 +172,7 @@
           <div class="p-4">
             <div class="flex items-center gap-2 mb-2">
               <Activity class="w-5 h-5 text-yellow-400" />
-              <h3 class="text-sm text-kong-text-secondary">Active Bets</h3>
+              <h3 class="text-sm text-kong-text-secondary">Active Predictions</h3>
             </div>
             <p class="text-xl font-medium">{history.active_bets.length} ({formatBalance(history.active_bets.reduce((sum, bet) => sum + Number(bet.bet_amount), 0), 8, 2)} KONG)</p>
           </div>
@@ -166,7 +189,7 @@
       <!-- Combined Bets Table -->
       {#if (history && (history.active_bets.length > 0 || (history.resolved_bets && history.resolved_bets.length > 0)))}
         <div class="mb-8">
-          <h2 class="text-xl font-bold mb-4">Betting History</h2>
+          <h2 class="text-xl font-bold mb-4">Prediction History</h2>
           <Panel className="!rounded overflow-x-auto">
             <table class="w-full min-w-full">
               <thead>
@@ -174,7 +197,7 @@
                   <th class="p-4 text-kong-text-secondary font-medium">Market</th>
                   <th class="p-4 text-kong-text-secondary font-medium">Outcome</th>
                   <th class="p-4 text-kong-text-secondary font-medium">Status</th>
-                  <th class="p-4 text-kong-text-secondary font-medium text-right">Bet Amount</th>
+                  <th class="p-4 text-kong-text-secondary font-medium text-right">Amount</th>
                   <th class="p-4 text-kong-text-secondary font-medium text-right">Result</th>
                 </tr>
               </thead>

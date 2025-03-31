@@ -26,6 +26,7 @@
   import WalletAddressesList from "$lib/components/wallet/WalletAddressesList.svelte";
   import WalletHistoryList from "$lib/components/wallet/WalletHistoryList.svelte";
   import SendTokenModal from "$lib/components/wallet/SendTokenModal.svelte";
+  import { calculatePortfolioValue } from "$lib/utils/portfolioUtils";
 
   // Props type definition
   type WalletPanelProps = {
@@ -144,7 +145,7 @@
   
   // Update total portfolio value whenever stores change
   $effect(() => {
-    const calculated = calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
+    const calculated = calculatePortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
     
     // Only update last known value if calculated is greater than 0
     if (calculated > 0) {
@@ -157,31 +158,6 @@
       totalPortfolioValue = calculated;
     }
   });
-
-  // Helper function to calculate total portfolio value
-  function calculateTotalPortfolioValue(balances: any, pools: any[]): number {
-    const tokensValue = Object.values(balances || {})
-      .reduce((acc: number, balance: any) => {
-        if (balance && balance.in_usd) {
-          // Safely convert to number, handling non-numeric strings
-          const numValue = parseFloat(balance.in_usd);
-          return acc + (isNaN(numValue) ? 0 : numValue);
-        }
-        return acc;
-      }, 0);
-    
-    const poolsValue = (pools || []).reduce((acc, pool: any) => {
-      // Safely convert usd_balance to number, handling all edge cases
-      let usdBalance = 0;
-      if (pool && pool.usd_balance) {
-        usdBalance = parseFloat(pool.usd_balance);
-        if (isNaN(usdBalance)) usdBalance = 0;
-      }
-      return acc + usdBalance;
-    }, 0);
-    
-    return tokensValue + poolsValue;
-  }
 
   // Local copy function with feedback
   function handleCopyPrincipal(text: string) {
@@ -207,14 +183,12 @@
           isLoadingBalances = false;
           isRefreshing = false;
           
-          // Manually recalculate portfolio value after balances are loaded
-          setTimeout(() => {
-            const calculated = calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
-            if (calculated > 0) {
-              lastKnownPortfolioValue = calculated;
-              totalPortfolioValue = calculated;
-            }
-          }, 100);
+          // Immediately recalculate portfolio value using shared utility
+          const calculated = calculatePortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
+          if (calculated > 0) {
+            lastKnownPortfolioValue = calculated;
+            totalPortfolioValue = calculated;
+          }
         })
         .catch((err) => {
           console.error("Error refreshing balances:", err);
@@ -274,14 +248,12 @@
       isLoadingBalances = true;
       refreshBalances(true);
       
-      // Calculate initial portfolio value after a small delay to allow data loading
-      setTimeout(() => {
-        const calculated = calculateTotalPortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
-        if (calculated > 0) {
-          lastKnownPortfolioValue = calculated;
-          totalPortfolioValue = calculated;
-        }
-      }, 1000);
+      // Calculate initial portfolio value without delay
+      const calculated = calculatePortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
+      if (calculated > 0) {
+        lastKnownPortfolioValue = calculated;
+        totalPortfolioValue = calculated;
+      }
     }
   });
 </script>
@@ -293,14 +265,16 @@
   <!-- Portfolio Overview -->
   <div class="px-5 py-3">
     <div class="flex justify-between items-center mb-2">
-      <div class="text-sm text-kong-text-secondary flex items-center gap-2">
+      <div class="text-sm text-kong-text-secondary flex items-center gap-2 cursor-pointer" aria-label="Total Portfolio Value" onclick={() => {
+        goto(`/wallets/${walletId}`);
+      }}>
         Total Portfolio Value
         <div class="flex items-center gap-2">
           <button
             class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all {isRefreshing
               ? 'animate-spin'
               : ''}"
-            on:click={() => refreshBalances(true)}
+            onclick={() => refreshBalances(true)}
             disabled={isRefreshing}
             use:tooltip={{ text: "Refresh balance data", direction: "bottom" }}
           >
@@ -312,7 +286,7 @@
         <div
           class="text-xs text-kong-text-secondary font-mono flex items-center gap-1 cursor-pointer group"
           title="Click to copy your Principal ID"
-          on:click={() => handleCopyPrincipal(walletId)}
+          onclick={() => handleCopyPrincipal(walletId)}
           use:tooltip={{ text: "Copy Principal ID", direction: "bottom" }}
         >
           <span class="group-hover:text-kong-primary transition-colors"
@@ -329,7 +303,9 @@
         </div>
       {/if}
     </div>
-    <div class="text-2xl font-bold text-kong-text-primary">
+    <div class="text-2xl font-bold text-kong-text-primary cursor-pointer" aria-label="Total Portfolio Value" onclick={() => {
+      goto(`/wallets/${walletId}`);
+    }}>
       {#if isLoadingBalances && Object.keys($currentUserBalancesStore || {}).length === 0}
         <span class="opacity-50">Loading...</span>
       {:else}
@@ -349,7 +325,7 @@
         class="flex-1 py-2.5 px-2 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors relative {activeSection === tab.id
           ? 'text-kong-primary'
           : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-        on:click={() => {
+        onclick={() => {
           activeSection = tab.id as WalletSection;
           // Don't trigger a balance refresh when switching tabs
         }}

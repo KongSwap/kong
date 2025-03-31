@@ -57,28 +57,105 @@
       chart.destroy();
     }
 
-    const allBets = [...history.active_bets, ...(history.resolved_bets || [])].sort(
-      (a, b) => Number(a.market.created_at - b.market.created_at)
-    );
-
-    let runningWagered = 0;
-    let runningWon = 0;
-
-    const chartData = allBets.map(bet => {
-      runningWagered += Number(bet.bet_amount);
+    
+    // Create a timeline of all bets in chronological order
+    const timeline = [];
+    
+    // First, extract all bets with their timestamps
+    [...(history.active_bets || []), ...(history.resolved_bets || [])].forEach(bet => {
+      // Get timestamp from the bet
+      const timestamp = Number(bet.market.created_at) / 1_000_000;
       
-      if (bet.market.status && "Closed" in bet.market.status) {
-        if (bet.winnings && bet.winnings.length > 0) {
-          runningWon += Number(bet.winnings[0]);
-        }
+      // Add the bet to the timeline
+      timeline.push({
+        timestamp,
+        type: 'bet_placed',
+        amount: Number(bet.bet_amount),
+        questionText: bet.market.question,
+        outcomeText: bet.outcome_text,
+        resolved: bet.market.status && "Closed" in bet.market.status,
+        won: bet.market.status && 
+             "Closed" in bet.market.status && 
+             bet.market.status.Closed.some(outcome => outcome == bet.outcome_index),
+        winnings: bet.winnings && bet.winnings.length > 0 ? Number(bet.winnings[0]) : 0
+      });
+    });
+    
+    // Sort timeline chronologically
+    timeline.sort((a, b) => a.timestamp - b.timestamp);
+    
+    // If we have no bets, create a simple empty chart
+    if (timeline.length === 0) {
+      timeline.push({
+        timestamp: Date.now() / 1000 - (60 * 60 * 24 * 30),
+        type: 'start',
+        amount: 0,
+        questionText: 'Start',
+        outcomeText: '',
+        resolved: false,
+        won: false,
+        winnings: 0
+      });
+      
+      timeline.push({
+        timestamp: Date.now() / 1000,
+        type: 'current',
+        amount: 0,
+        questionText: 'Current',
+        outcomeText: '',
+        resolved: false,
+        won: false,
+        winnings: 0
+      });
+    }
+    
+    // Group data points by day
+    const groupedByDay = {};
+    
+    // First pass: group events by day
+    timeline.forEach(event => {
+      // Convert timestamp to date string (YYYY-MM-DD format)
+      const date = new Date(event.timestamp * 1000);
+      const dateString = date.toISOString().split('T')[0];
+      
+      if (!groupedByDay[dateString]) {
+        groupedByDay[dateString] = {
+          timestamp: new Date(dateString).getTime() / 1000,
+          events: []
+        };
       }
-
+      
+      groupedByDay[dateString].events.push(event);
+    });
+    
+    // Calculate running totals for each day
+    let wageredTotal = 0;
+    let wonTotal = 0;
+    
+    const chartData = Object.keys(groupedByDay).sort().map(dateString => {
+      const dayData = groupedByDay[dateString];
+      
+      // Process all events for this day
+      dayData.events.forEach(event => {
+        if (event.type === 'bet_placed') {
+          wageredTotal += event.amount;
+          
+          // If this bet is already resolved and won, add winnings
+          if (event.resolved && event.won) {
+            wonTotal += event.winnings;
+          }
+        }
+      });
+      
+      // Return a single data point for this day
       return {
-        x: Number(bet.market.created_at) / 1_000_000,
-        wagered: Number(formatBalance(runningWagered, 8, 2)),
-        won: Number(formatBalance(runningWon, 8, 2))
+        x: dayData.timestamp,
+        wagered: wageredTotal,
+        won: wonTotal
       };
     });
+    
+    console.log("Chart data points (grouped by day):", chartData);
 
     const config: ChartConfiguration = {
       type: 'line',
@@ -90,9 +167,10 @@
             borderColor: '#6366f1',
             backgroundColor: '#6366f120',
             fill: true,
-            tension: 0.4,
+            tension: 0.2,
             borderWidth: 2,
-            pointRadius: 4,
+            pointRadius: 3,
+            pointHoverRadius: 6,
             pointBackgroundColor: '#6366f1',
             pointBorderColor: '#1e293b',
             pointBorderWidth: 2,
@@ -103,9 +181,10 @@
             borderColor: '#22c55e',
             backgroundColor: '#22c55e20',
             fill: true,
-            tension: 0.4,
+            tension: 0.2,
             borderWidth: 2,
-            pointRadius: 4,
+            pointRadius: 3,
+            pointHoverRadius: 6,
             pointBackgroundColor: '#22c55e',
             pointBorderColor: '#1e293b',
             pointBorderWidth: 2,
@@ -115,9 +194,13 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: {
+          duration: 1000
+        },
         interaction: {
-          mode: 'index',
-          intersect: false
+          mode: 'nearest',
+          intersect: false,
+          axis: 'x'
         },
         scales: {
           x: {
@@ -137,7 +220,7 @@
             position: 'right',
             ticks: {
               color: '#94a3b8',
-              callback: (value) => value + ' KONG'
+              callback: (value) => formatBalance(value, 8, 2) + ' KONG'
             }
           }
         },
@@ -165,7 +248,7 @@
               label: (context) => {
                 const label = context.dataset.label || '';
                 const value = context.parsed.y;
-                return `${label}: ${value.toLocaleString()} KONG`;
+                return `${label}: ${formatBalance(value, 8, 2)} KONG`;
               }
             }
           }
