@@ -83,7 +83,7 @@ export function getChartConfig(params: {
     backgroundColor: bgDarkColor,
     backgroundType: 'solid',
     background: bgDarkColor,
-    timezone: 'Etc/UTC',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Etc/UTC',
     loading_screen: { 
       backgroundColor: bgDarkColor,
       foregroundColor: accentBlueColor

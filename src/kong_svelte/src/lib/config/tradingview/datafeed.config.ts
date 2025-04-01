@@ -78,7 +78,7 @@ export class KongDatafeed {
       description: symbolName,
       type: 'crypto',
       session: '24x7',
-      timezone: 'Etc/UTC',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Etc/UTC',
       exchange: 'Kong',
       listed_exchange: 'Kong',
       format: 'price',
