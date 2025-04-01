@@ -82,8 +82,8 @@
           
           // Reload balances and pool list after successful pool creation
           await Promise.all([
-            loadBalance(token0.canister_id, auth, true),
-            loadBalance(token1.canister_id, auth, true),
+            loadBalance(token0.canister_id, true),
+            loadBalance(token1.canister_id, true),
             currentUserPoolsStore.initialize(),
           ]);
           

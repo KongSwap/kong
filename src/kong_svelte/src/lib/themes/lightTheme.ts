@@ -40,6 +40,7 @@ export const lightTheme: ThemeDefinition = {
     textAccentGreen: '#059669', // Green 600
     textAccentRed: '#DC2626',   // Red 600
     textAccentBlue: '#2563EB',  // Blue 600
+    textOnPrimary: '#fff',
     
     // Font settings
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",

@@ -53,7 +53,10 @@
 		tokenBalances.length > 0 ? tokenBalances : 
 		// Otherwise process them internally
 		$userTokens.tokens
-			.filter(token => token.canister_id && $userTokens.enabledTokens.has(token.canister_id))
+			.filter(token => {
+				// Include token if it has a canister_id and is enabled
+				return token.canister_id && $userTokens.enabledTokens.has(token.canister_id);
+			})
 			.map((token) => {
 				const balanceInfo = $currentUserBalancesStore?.[token.canister_id] || {
 					in_tokens: 0n,
@@ -106,8 +109,28 @@
 		try {
 			// Always force refresh when explicitly requested
 			if (forceRefresh) {
-				await loadBalances($userTokens.tokens, walletId, true);
+				console.log("Loading balances with force refresh...");
+				
+				// Request balance refresh for all tokens, not just enabled ones
+				// This helps discover tokens that have balances but aren't enabled
+				const allTokens = $userTokens.tokens;
+				console.log(`Refreshing balances for ${allTokens.length} tokens`);
+				
+				const balances = await loadBalances(allTokens, walletId, true);
+				console.log(`Received balances for ${Object.keys(balances).length} tokens`);
+				
+				// Find tokens with non-zero balances that aren't enabled
+				const tokensWithBalance = Object.entries(balances)
+					.filter(([_, balance]) => balance.in_tokens > 0n)
+					.map(([canisterId]) => canisterId);
+					
+				console.log(`Found ${tokensWithBalance.length} tokens with non-zero balances`);
+				
 				lastRefreshed = Date.now();
+				
+				// Force token data refresh after balances are loaded
+				await userTokens.refreshTokenData();
+				
 				onBalancesLoaded();
 			} else {
 				// For normal updates, check if we need to refresh
@@ -139,8 +162,18 @@
 		showSyncStatus = false;
 		
 		try {
+			// Make sure we have the latest balances before analyzing tokens
+			console.log("Refreshing all balances before token sync...");
+			await loadUserBalances(true);
+			
 			// Use the userTokens store to analyze tokens
+			console.log("Analyzing user tokens for walletId:", walletId);
 			const result = await userTokens.analyzeUserTokens(walletId);
+			
+			console.log("Token sync analysis complete:", {
+				tokensToAdd: result.tokensToAdd.length,
+				tokensToRemove: result.tokensToRemove.length
+			});
 			
 			tokenSyncCandidates = {
 				tokensToAdd: result.tokensToAdd,
@@ -149,9 +182,11 @@
 			
 			// Only show confirmation if there are changes to make
 			if (result.syncStatus && (result.syncStatus.added > 0 || result.syncStatus.removed > 0)) {
+				console.log("Changes found, showing confirmation dialog");
 				showSyncConfirmModal = true;
 			} else {
 				// No changes needed, just show a status notification
+				console.log("No token changes needed");
 				syncStatus = { added: 0, removed: 0 };
 				showSyncStatus = true;
 				setTimeout(() => {
@@ -170,11 +205,18 @@
 	// Apply token changes after user confirmation
 	async function confirmAndApplyTokenChanges() {
 		try {
+			console.log("Applying token changes:", {
+				tokensToAdd: tokenSyncCandidates.tokensToAdd.length,
+				tokensToRemove: tokenSyncCandidates.tokensToRemove.length
+			});
+			
 			// Use the userTokens store to apply the changes
 			syncStatus = await userTokens.applyTokenSync(
 				tokenSyncCandidates.tokensToAdd,
 				tokenSyncCandidates.tokensToRemove
 			);
+			
+			console.log("Token changes applied:", syncStatus);
 			
 			// Show small inline indicator for immediate feedback
 			showSyncStatus = true;
@@ -188,7 +230,23 @@
 			
 			// Refresh balances to reflect the changes
 			if (syncStatus.added > 0 || syncStatus.removed > 0) {
+				// Complete refresh sequence:
+				// 1. First force a token data refresh
+				console.log("Refreshing token data after sync...");
+				await userTokens.refreshTokenData();
+				
+				// 2. Wait a moment to ensure the store is updated
+				await new Promise(resolve => setTimeout(resolve, 500));
+				
+				// 3. Then load balances with force refresh
+				console.log("Refreshing balances after sync...");
 				await loadUserBalances(true);
+				
+				// 4. Log the current state of tokens for debugging
+				console.log("Current tokens state:", {
+					enabledTokens: Array.from($userTokens.enabledTokens).length,
+					tokens: $userTokens.tokens.length
+				});
 			}
 		} catch (error) {
 			console.error("Error applying token changes:", error);
@@ -296,6 +354,142 @@
 	function closeReceiveTokenModal() {
 		showReceiveTokenModal = false;
 	}
+	
+	// Run a thorough token discovery process that finds tokens with balances
+	async function runTokenDiscovery() {
+		if (!walletId || isLoadingBalances || isSyncing) return;
+		
+		// Show loading state
+		isLoadingBalances = true;
+		isSyncing = true;
+		
+		try {
+			// 1. First, load a fresh list of all available tokens
+			console.log("Starting thorough token discovery process...");
+			const { fetchAllTokens } = await import("$lib/api/tokens");
+			const allAvailableTokens = await fetchAllTokens();
+			console.log(`Fetched ${allAvailableTokens.length} tokens from the API`);
+			
+			// 2. Split tokens into manageable batches to avoid overwhelming the network
+			const BATCH_SIZE = 25;
+			const batches = [];
+			for (let i = 0; i < allAvailableTokens.length; i += BATCH_SIZE) {
+				batches.push(allAvailableTokens.slice(i, i + BATCH_SIZE));
+			}
+			
+			// 3. Go through each batch and check balances
+			let tokensWithBalance = [];
+			for (let i = 0; i < batches.length; i++) {
+				const batch = batches[i];				
+				const batchBalances = await loadBalances(batch, walletId, true);
+				
+				// Find tokens with non-zero balances
+				const batchTokensWithBalance = batch.filter(token => {
+					if (!token.canister_id) return false;
+					const balance = batchBalances[token.canister_id];
+					return balance && balance.in_tokens > 0n;
+				});
+				
+				if (batchTokensWithBalance.length > 0) {
+					tokensWithBalance.push(...batchTokensWithBalance);
+				}
+				
+				// Pause between batches to avoid rate limiting
+				if (i < batches.length - 1) {
+					await new Promise(resolve => setTimeout(resolve, 100));
+				}
+			}
+			
+			// 4. Identify which tokens to add (tokens with balance not already enabled)
+			if (tokensWithBalance.length > 0) {				
+				// Get current enabled token IDs
+				const enabledTokenIds = $userTokens.enabledTokens;
+				
+				// Find which tokens should be added (have balance but aren't enabled)
+				const tokensToAdd = tokensWithBalance.filter(token => 
+					token.canister_id && !enabledTokenIds.has(token.canister_id)
+				);
+								
+				// Find which tokens could be removed (are enabled but have zero balance)
+				// We'll need to check balances for all currently enabled tokens
+				const currentEnabledTokens = $userTokens.tokens
+					.filter(token => token.canister_id && enabledTokenIds.has(token.canister_id));
+				
+				// Check balances for these tokens if we haven't already
+				const enabledTokenBalances = await loadBalances(currentEnabledTokens, walletId, true);
+				
+				// Find tokens with zero balance (potential removal candidates)
+				const tokensToRemove = currentEnabledTokens.filter(token => {
+					// Skip essential tokens that should never be removed
+					if (!token.canister_id) return false;
+					
+					// Check if it's an essential token that should never be removed
+					const essentialTokenIds = [
+						"ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP
+						"mxzaz-hqaaa-aaaar-qaada-cai", // CKBTC
+						"ss2fx-dyaaa-aaaar-qacoq-cai", // CKETH
+						"djua2-fiaaa-aaaar-qaazq-cai", // CKUSDC
+						"aanaa-xaaaa-aaaah-aaeiq-cai", // CKUSDT
+					];
+					if (essentialTokenIds.includes(token.canister_id)) return false;
+					
+					// Check if it has zero balance
+					const balance = enabledTokenBalances[token.canister_id];
+					return !balance || balance.in_tokens === 0n;
+				});
+								
+				// Populate the token sync candidates
+				tokenSyncCandidates = {
+					tokensToAdd,
+					tokensToRemove
+				};
+				
+				// Show the confirmation modal if we have changes to make
+				if (tokensToAdd.length > 0 || tokensToRemove.length > 0) {
+					syncStatus = {
+						added: tokensToAdd.length,
+						removed: tokensToRemove.length
+					};
+					showSyncConfirmModal = true;
+					return true;
+				} else {
+					// No changes needed
+					console.log("No token changes needed");
+					syncStatus = { added: 0, removed: 0 };
+					showSyncStatus = true;
+					setTimeout(() => {
+						showSyncStatus = false;
+					}, 2000);
+					return false;
+				}
+			} else {
+				console.log("No tokens with balances found during discovery");
+				syncStatus = { added: 0, removed: 0 };
+				showSyncStatus = true;
+				setTimeout(() => {
+					showSyncStatus = false;
+				}, 2000);
+				return false;
+			}
+		} catch (error) {
+			console.error("Error during token discovery:", error);
+			return false;
+		} finally {
+			isLoadingBalances = false;
+			isSyncing = false;
+		}
+	}
+	
+	// Function to handle sync button click
+	async function handleSyncButtonClick() {
+		// Try thorough discovery first
+		const foundTokens = await runTokenDiscovery();
+		
+		// If discovery didn't show the confirmation modal, fall back to regular sync
+		if (!foundTokens) {
+			handleSyncTokens();
+		}
+	}
 </script>
 
 <div class="py-2">
@@ -314,7 +508,7 @@
 		<div class="flex gap-2">    
 			<button 
 				class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-light/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-				on:click={handleSyncTokens}
+				on:click={handleSyncButtonClick}
 				disabled={isSyncing || isLoading || isLoadingBalances}
 			>
 				<Shuffle size={12} class={isSyncing ? 'text-kong-primary animate-glow' : ''} />
@@ -435,14 +629,6 @@
 			
 			<!-- Token Management Buttons -->
 			<div class="p-4 flex justify-center gap-3">
-				<button
-					class="flex items-center gap-2 py-2 px-4 bg-kong-bg-light/10 hover:bg-kong-bg-light/20 text-kong-text-primary rounded-md transition-colors"
-					on:click={openAddTokenModal}
-				>
-					<Upload size={16} />
-					<span>Import Token</span>
-				</button>
-				
 				<button
 					class="flex items-center gap-2 py-2 px-4 bg-kong-bg-light/10 hover:bg-kong-bg-light/20 text-kong-text-primary rounded-md transition-colors"
 					on:click={openManageTokensModal}
