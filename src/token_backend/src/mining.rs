@@ -1,35 +1,29 @@
 // src/token_backend/src/mining.rs
 
-use candid::Nat;
-use candid::Principal;
 use candid::{CandidType, Deserialize};
 use ciborium;
-use ic_cdk::api::call::call;
 use ic_stable_structures::storable::Bound;
 use ic_stable_structures::{
     memory_manager::{MemoryId, MemoryManager, VirtualMemory},
     DefaultMemoryImpl, StableCell, Storable,
 };
-use icrc_ledger_types::icrc1::account::Account;
-use icrc_ledger_types::icrc1::transfer::TransferArg;
+use lru::LruCache;
 use serde::Serialize;
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::num::NonZeroUsize;
 
-use crate::block_templates::{BlockTemplate, Event, EventType, Hash};
-use crate::types::MiningInfo;
+use crate::block_templates::{BlockTemplate, Hash};
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
-/// Returns the version of the mining module implementation
 #[ic_cdk::query]
 pub fn mining_version() -> String {
-    "v1.0.0".to_string()
+    "v1".to_string()
 }
 
-// Wrapper for Vec<u64> to implement Storable
 #[derive(Debug, Clone)]
-struct StorableTimestamps(Vec<u64>);
+pub(crate) struct StorableTimestamps(pub(crate) Vec<u64>);
 
 impl Storable for StorableTimestamps {
     fn to_bytes(&self) -> Cow<[u8]> {
@@ -57,14 +51,14 @@ impl Storable for StorableTimestamps {
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: 1024 * 8,
+        max_size: 1024 * 8, // Approx 1024 timestamps
         is_fixed_size: false,
     };
 }
 
 // Create a newtype wrapper for Hash to implement Storable
-#[derive(Debug, Clone, Copy)]
-struct StorableHash(Hash);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct StorableHash(pub(crate) Hash);
 
 impl From<Hash> for StorableHash {
     fn from(hash: Hash) -> Self {
@@ -80,7 +74,6 @@ impl From<StorableHash> for Hash {
 
 impl Storable for StorableHash {
     fn to_bytes(&self) -> Cow<[u8]> {
-        // Direct borrow of the fixed-size array
         Cow::Borrowed(&self.0)
     }
 
@@ -98,11 +91,11 @@ impl Storable for StorableHash {
 
 // Create a newtype wrapper for solution tracking
 #[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
-struct StorableSolution {
-    nonce: u64,
-    hash: Hash,
-    block_height: u64,
-    timestamp: u64,
+pub(crate) struct StorableSolution {
+    pub(crate) nonce: u64,
+    pub(crate) hash: Hash,
+    pub(crate) block_height: u64,
+    pub(crate) timestamp: u64,
 }
 
 impl Storable for StorableSolution {
@@ -135,7 +128,7 @@ impl Storable for StorableSolution {
 
 // Wrapper for Vec<StorableSolution> to implement Storable
 #[derive(Debug, Clone)]
-struct StorableSolutions(Vec<StorableSolution>);
+pub(crate) struct StorableSolutions(pub(crate) Vec<StorableSolution>);
 
 impl Storable for StorableSolutions {
     fn to_bytes(&self) -> Cow<[u8]> {
@@ -159,7 +152,7 @@ impl Storable for StorableSolutions {
 
 // Bloom filter for fast solution verification
 #[derive(Debug, Clone)]
-struct BloomFilter {
+pub(crate) struct BloomFilter {
     data: [u8; 1024], // 8192 bits
     k: u32,           // Number of hash functions
 }
@@ -169,17 +162,17 @@ impl BloomFilter {
         Self { data: [0; 1024], k: 3 }
     }
 
+    // Simple DJB2 hash variation
     fn hash(&self, data: &[u8], seed: u32) -> usize {
-        let mut hash: u64 = 5381;
+        let mut hash: u64 = 5381_u64.wrapping_add(seed as u64);
         for &byte in data {
             hash = ((hash << 5).wrapping_add(hash)).wrapping_add(byte as u64);
         }
-        hash = hash.wrapping_add(seed as u64);
         (hash % (self.data.len() * 8) as u64) as usize
     }
 
-    fn add(&mut self, solution: &StorableSolution) {
-        let mut data = Vec::with_capacity(48);
+    pub(crate) fn add(&mut self, solution: &StorableSolution) {
+        let mut data = Vec::with_capacity(48); // nonce (8) + hash (32) + block_height (8)
         data.extend_from_slice(&solution.nonce.to_le_bytes());
         data.extend_from_slice(&solution.hash);
         data.extend_from_slice(&solution.block_height.to_le_bytes());
@@ -188,11 +181,13 @@ impl BloomFilter {
             let pos = self.hash(&data, i);
             let byte_pos = pos / 8;
             let bit_pos = pos % 8;
-            self.data[byte_pos] |= 1 << bit_pos;
+            if byte_pos < self.data.len() {
+                self.data[byte_pos] |= 1 << bit_pos;
+            }
         }
     }
 
-    fn might_contain(&self, solution: &StorableSolution) -> bool {
+    pub(crate) fn might_contain(&self, solution: &StorableSolution) -> bool {
         let mut data = Vec::with_capacity(48);
         data.extend_from_slice(&solution.nonce.to_le_bytes());
         data.extend_from_slice(&solution.hash);
@@ -202,7 +197,7 @@ impl BloomFilter {
             let pos = self.hash(&data, i);
             let byte_pos = pos / 8;
             let bit_pos = pos % 8;
-            if self.data[byte_pos] & (1 << bit_pos) == 0 {
+            if byte_pos >= self.data.len() || self.data[byte_pos] & (1 << bit_pos) == 0 {
                 return false;
             }
         }
@@ -237,156 +232,7 @@ impl Storable for BloomFilter {
     };
 }
 
-// Rate limiting for miners
-#[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
-struct MinerRateLimit {
-    submissions_per_minute: u32,
-    last_submission: u64,
-    submission_count: u32,
-}
-
-impl Default for MinerRateLimit {
-    fn default() -> Self {
-        Self {
-            submissions_per_minute: 60,
-            last_submission: 0,
-            submission_count: 0,
-        }
-    }
-}
-
-impl Storable for MinerRateLimit {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        let mut bytes = Vec::with_capacity(16);
-        bytes.extend_from_slice(&self.submissions_per_minute.to_le_bytes());
-        bytes.extend_from_slice(&self.last_submission.to_le_bytes());
-        bytes.extend_from_slice(&self.submission_count.to_le_bytes());
-        Cow::Owned(bytes)
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        let bytes = bytes.as_ref();
-        debug_assert!(bytes.len() >= 16, "MinerRateLimit requires 16 bytes");
-
-        Self {
-            submissions_per_minute: u32::from_le_bytes(bytes[0..4].try_into().unwrap()),
-            last_submission: u64::from_le_bytes(bytes[4..12].try_into().unwrap()),
-            submission_count: u32::from_le_bytes(bytes[12..16].try_into().unwrap()),
-        }
-    }
-
-    const BOUND: Bound = Bound::Bounded {
-        max_size: 16,
-        is_fixed_size: true,
-    };
-}
-
-// Wrapper for HashMap<Principal, MinerRateLimit> to implement Storable
-#[derive(Debug, Clone)]
-struct StorableRateLimits(std::collections::HashMap<Principal, MinerRateLimit>);
-
-impl Storable for StorableRateLimits {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        let vec: Vec<(Principal, MinerRateLimit)> = self.0.iter().map(|(&k, v)| (k, v.clone())).collect();
-        let mut bytes = Vec::new();
-        ciborium::ser::into_writer(&vec, &mut bytes).expect("Failed to serialize rate limits");
-        Cow::Owned(bytes)
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        let vec: Vec<(Principal, MinerRateLimit)> = ciborium::de::from_reader(bytes.as_ref()).expect("Failed to deserialize rate limits");
-        Self(vec.into_iter().collect())
-    }
-
-    const BOUND: Bound = Bound::Bounded {
-        max_size: 1024 * 64, // Allow up to 1024 rate limits
-        is_fixed_size: false,
-    };
-}
-
-// Event batching for improved scalability
-#[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
-pub struct EventBatch {
-    pub events: Vec<Event>,
-    pub block_height: u64,
-    pub timestamp: u64,
-}
-
-impl Storable for EventBatch {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        let mut bytes = Vec::new();
-        ciborium::ser::into_writer(self, &mut bytes).expect("Failed to serialize EventBatch");
-        Cow::Owned(bytes)
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        ciborium::de::from_reader(bytes.as_ref()).expect("Failed to deserialize EventBatch")
-    }
-
-    const BOUND: Bound = Bound::Bounded {
-        max_size: 1024 * 64, // 64KB per batch
-        is_fixed_size: false,
-    };
-}
-
-// Wrapper for Vec<EventBatch> to implement Storable
-#[derive(Debug, Clone)]
-struct StorableEventBatches(Vec<EventBatch>);
-
-impl Storable for StorableEventBatches {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        let mut bytes = Vec::new();
-        ciborium::ser::into_writer(&self.0, &mut bytes).expect("Failed to serialize event batches");
-        Cow::Owned(bytes)
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Self(ciborium::de::from_reader(bytes.as_ref()).expect("Failed to deserialize event batches"))
-    }
-
-    const BOUND: Bound = Bound::Bounded {
-        max_size: 1024 * 256, // Allow up to 256KB of batches
-        is_fixed_size: false,
-    };
-}
-
-// Wrapper for i64 to implement Storable
-#[derive(Debug, Clone, Copy)]
-struct StorableI64(i64);
-
-impl From<i64> for StorableI64 {
-    fn from(val: i64) -> Self {
-        Self(val)
-    }
-}
-
-impl From<StorableI64> for i64 {
-    fn from(val: StorableI64) -> Self {
-        val.0
-    }
-}
-
-impl Storable for StorableI64 {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        let mut bytes = Vec::with_capacity(8);
-        bytes.extend_from_slice(&self.0.to_le_bytes());
-        Cow::Owned(bytes)
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        let bytes = bytes.as_ref();
-        debug_assert!(bytes.len() >= 8, "StorableI64 requires 8 bytes");
-        Self(i64::from_le_bytes(bytes[0..8].try_into().unwrap()))
-    }
-    const BOUND: Bound = Bound::Bounded {
-        max_size: 8,
-        is_fixed_size: true,
-    };
-}
-
-// Add LRU cache for recent solution verifications
-use lru::LruCache;
-use std::num::NonZeroUsize;
+// LRU cache for recent solution verifications (in-memory only)
 thread_local! {
     static SOLUTION_CACHE: RefCell<LruCache<(u64, Hash), ()>> = RefCell::new(
         LruCache::new(NonZeroUsize::new(1000).unwrap())
@@ -394,144 +240,125 @@ thread_local! {
 }
 
 thread_local! {
-    // Get memory manager from parent
+    // Memory Manager
     static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = RefCell::new(
         MemoryManager::init(DefaultMemoryImpl::default())
     );
 
-    // Mining state in stable memory
-    static CURRENT_BLOCK: RefCell<StableCell<Option<BlockTemplate>, Memory>> = RefCell::new(
+    // --- Mining State ---
+
+    // Current block template being mined
+    pub(crate) static CURRENT_BLOCK: RefCell<StableCell<Option<BlockTemplate>, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(8))),
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(6))), // ID 6
             None
         ).expect("Failed to init CURRENT_BLOCK")
     );
 
-    static LAST_BLOCK_HASH: RefCell<StableCell<StorableHash, Memory>> = RefCell::new(
+    // Hash of the previously mined block
+    pub(crate) static LAST_BLOCK_HASH: RefCell<StableCell<StorableHash, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(9))),
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(7))), // ID 7
             StorableHash([0; 32])
         ).expect("Failed to init LAST_BLOCK_HASH")
     );
 
-    static BLOCK_HEIGHT: RefCell<StableCell<u64, Memory>> = RefCell::new(
+    // Current block height (number of blocks mined so far)
+    pub(crate) static BLOCK_HEIGHT: RefCell<StableCell<u64, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(10))),
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(8))), // ID 8
             0
         ).expect("Failed to init BLOCK_HEIGHT")
     );
 
-    static MINING_DIFFICULTY: RefCell<StableCell<u32, Memory>> = RefCell::new(
+    // Current mining difficulty target
+    pub(crate) static MINING_DIFFICULTY: RefCell<StableCell<u32, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(11))),
-            0
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(9))), // ID 9
+            0 // Initialized properly in init_mining_params or post_upgrade
         ).expect("Failed to init MINING_DIFFICULTY")
     );
 
-    static BLOCK_REWARD: RefCell<StableCell<u64, Memory>> = RefCell::new(
+    // Initial block reward (halves over time)
+    pub(crate) static BLOCK_REWARD: RefCell<StableCell<u64, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(12))),
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(10))), // ID 10
             0
         ).expect("Failed to init BLOCK_REWARD")
     );
 
-    static BLOCK_TIME_TARGET: RefCell<StableCell<u64, Memory>> = RefCell::new(
+    // Target time between blocks (in seconds)
+    pub(crate) static BLOCK_TIME_TARGET: RefCell<StableCell<u64, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(13))),
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(11))), // ID 11
             0
         ).expect("Failed to init BLOCK_TIME_TARGET")
     );
 
-    static BLOCK_TIMESTAMPS: RefCell<StableCell<StorableTimestamps, Memory>> = RefCell::new(
+    // Recent block timestamps (for difficulty adjustment)
+    pub(crate) static BLOCK_TIMESTAMPS: RefCell<StableCell<StorableTimestamps, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(15))),
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(12))), // ID 12
             StorableTimestamps(Vec::new())
         ).expect("Failed to init BLOCK_TIMESTAMPS")
     );
 
-    static PROCESSED_SOLUTIONS: RefCell<StableCell<StorableSolutions, Memory>> = RefCell::new(
+    // Recently processed unique solutions (nonce, hash, height) to prevent duplicates
+    pub(crate) static PROCESSED_SOLUTIONS: RefCell<StableCell<StorableSolutions, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(16))),
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(13))), // ID 13
             StorableSolutions(Vec::new())
         ).expect("Failed to init PROCESSED_SOLUTIONS")
     );
 
-    static SOLUTION_BLOOM_FILTER: RefCell<StableCell<BloomFilter, Memory>> = RefCell::new(
+    // Bloom filter for quick check against processed solutions
+    pub(crate) static SOLUTION_BLOOM_FILTER: RefCell<StableCell<BloomFilter, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(17))),
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(14))), // ID 14
             BloomFilter::new()
         ).expect("Failed to init SOLUTION_BLOOM_FILTER")
     );
 
-    static MINER_RATE_LIMITS: RefCell<StableCell<StorableRateLimits, Memory>> = RefCell::new(
+    // Number of blocks after which the reward halves
+    // IMPORTANT: Assign a unique MemoryId, e.g., 16, instead of reusing 14.
+    pub(crate) static HALVING_INTERVAL: RefCell<StableCell<u64, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(18))),
-            StorableRateLimits(std::collections::HashMap::new())
-        ).expect("Failed to init MINER_RATE_LIMITS")
-    );
-
-    static EVENT_BATCHES: RefCell<StableCell<StorableEventBatches, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(19))),
-            StorableEventBatches(Vec::new())
-        ).expect("Failed to init EVENT_BATCHES")
-    );
-
-    // Add ASERT time offset tracking
-    static ASERT_TIME_OFFSET: RefCell<StableCell<StorableI64, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(20))),
-            StorableI64(0)
-        ).expect("Failed to init ASERT_TIME_OFFSET")
-    );
-
-    // Add total cycles tracking
-    static TOTAL_CYCLES_EARNED: RefCell<StableCell<u128, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(21))),
-            0
-        ).expect("Failed to init TOTAL_CYCLES_EARNED")
-    );
-
-    // Track consecutive slow blocks
-    static CONSECUTIVE_SLOW_BLOCKS: RefCell<u32> = RefCell::new(0);
-
-    // Track consecutive fast blocks too
-    static CONSECUTIVE_FAST_BLOCKS: RefCell<u32> = RefCell::new(0);
-
-    // Add heartbeat counter
-    static HEARTBEAT_COUNTER: RefCell<u32> = RefCell::new(0);
-
-    // Add halving interval
-    static HALVING_INTERVAL: RefCell<StableCell<u64, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(14))),
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(16))), // Changed to ID 16
             0
         ).expect("Failed to init HALVING_INTERVAL")
     );
 
-    // Add a dedicated flag for tracking genesis block generation
-    static GENESIS_BLOCK_GENERATED: RefCell<StableCell<bool, Memory>> = RefCell::new(
+    // Flag indicating if the genesis block (block 1) has been created
+    pub(crate) static GENESIS_BLOCK_GENERATED: RefCell<StableCell<bool, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(24))), // Use an available memory ID
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(24))), // ID 24
             false
         ).expect("Failed to init GENESIS_BLOCK_GENERATED")
     );
+
+    // --- In-Memory State (Lost on Upgrade) ---
+
+    // Counter for heartbeat mechanism (difficulty reduction when stalled)
+    pub(crate) static HEARTBEAT_COUNTER: RefCell<u32> = RefCell::new(0);
 }
 
+/// Initialize mining parameters. Called once during initial canister deployment.
 pub fn init_mining_params(initial_block_reward: u64, block_time_target: u64, halving_interval: u64) {
+    const INITIAL_DIFFICULTY: u32 = 10; // Set a reasonable starting difficulty
+
     BLOCK_REWARD.with(|r| {
         r.borrow_mut().set(initial_block_reward).expect("Failed to set block reward");
     });
 
     MINING_DIFFICULTY.with(|d| {
-        d.borrow_mut().set(10).expect("Failed to set mining difficulty");
+        d.borrow_mut().set(INITIAL_DIFFICULTY).expect("Failed to set mining difficulty");
     });
 
     BLOCK_TIME_TARGET.with(|t| {
         t.borrow_mut().set(block_time_target).expect("Failed to set block time target");
     });
 
+    // Set halving interval (using ID 16 now)
     HALVING_INTERVAL.with(|h| {
         h.borrow_mut().set(halving_interval).expect("Failed to set halving interval");
     });
@@ -552,351 +379,131 @@ pub fn init_mining_params(initial_block_reward: u64, block_time_target: u64, hal
     LAST_BLOCK_HASH.with(|h| {
         h.borrow_mut().set(StorableHash([0; 32])).expect("Failed to init last block hash");
     });
-}
-// Difficulty adjustment parameters and functions
-// --------------------------------------------
 
-#[derive(Debug, Clone)]
-struct AdjustmentCache {
-    last_target_time: u64,
-    min_diff: u32,
-    max_diff: u32,
-    increase_factor: f64,
-    decrease_factor: f64,
-    half_life: f64,
+     // Initialize Genesis Flag to false
+    GENESIS_BLOCK_GENERATED.with(|g| {
+        g.borrow_mut().set(false).expect("Failed to init genesis flag");
+    });
+
+    ic_cdk::println!(
+        "Mining params initialized: Reward={}, TargetTime={}, Halving={}, Difficulty={}",
+        initial_block_reward, block_time_target, halving_interval, INITIAL_DIFFICULTY
+    );
 }
 
-thread_local! {
-static ADJUSTMENT_CACHE: RefCell<Option<AdjustmentCache>> = RefCell::new(None);
-}
+// --- Difficulty Adjustment (Simplified) ---
 
-/// Calculates difficulty adjustment parameters based on the target block time.
-/// Returns a tuple of (min_difficulty, max_difficulty, increase_factor, decrease_factor, half_life)
-/// that are appropriately scaled for the given target time.
-fn get_adjustment_factors(target_time: u64) -> (u32, u32, f64, f64, f64) {
-    // Base parameters calibrated for wide range (3s to 1hr blocks)
-    const BASE_MIN_DIFF: u32 = 5; // Higher minimum for fast block protection
-    const BASE_MAX_DIFF: u32 = 12_000; // Increased maximum ceiling
-    const BASE_INCREASE: f64 = 1.15; // More conservative 15% max increase
-    const BASE_DECREASE: f64 = 0.88; // More gradual 12% max decrease
-    const BASE_HALF_LIFE: f64 = 0.12; // Slower response time base
+/// Adjusts mining difficulty based on the time of the last block relative to the target.
+/// Clamps the adjustment factor to prevent excessive swings.
+fn adjust_difficulty() -> u32 {
+    const MIN_DIFFICULTY: u32 = 5;           // Minimum difficulty floor
+    const MAX_ADJUSTMENT_FACTOR: f64 = 1.25; // Max 25% increase per block
+    const MIN_ADJUSTMENT_FACTOR: f64 = 0.75; // Max 25% decrease per block
+    // Optional: Define a maximum difficulty ceiling if needed
+    // const MAX_DIFFICULTY: u32 = 100_000;
 
-    // Logarithmic scaling for wide time range
-    let time_ratio = (target_time as f64) / 60.0;
-    let log_scale = (time_ratio.ln().exp() - 1.0).ln().max(0.0) + 1.0;
-    let time_factor = (time_ratio + 1.0).log2(); // Handle sub-minute ranges better
-
-    // Calculate scaled parameters with non-linear adjustments
-    let min_diff = BASE_MIN_DIFF;
-    let max_diff = ((BASE_MAX_DIFF as f64) * time_factor.sqrt()).clamp(100.0, 100_000.0) as u32;
-
-    // Dynamic scaling factors with upper/lower bounds
-    let increase = 1.0 + ((BASE_INCREASE - 1.0) * (1.0 / log_scale)).clamp(0.01, 0.5);
-    let decrease = 1.0 - ((1.0 - BASE_DECREASE) * (1.0 / log_scale)).clamp(0.01, 0.3);
-
-    // Adaptive half-life calculation with minimum bound
-    let half_life = (BASE_HALF_LIFE * time_factor.sqrt()).clamp(0.01, 2.0);
-
-    (min_diff, max_diff, increase, decrease, half_life)
-}
-
-/// Adjusts mining difficulty based on block time variations and consecutive block patterns.
-fn adjust_difficulty_asert() -> u32 {
-    // Get current mining parameters
-    let target_time = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
+    let target_time_sec = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
     let current_diff = MINING_DIFFICULTY.with(|d| *d.borrow().get());
-    let now = ic_cdk::api::time() / 1_000_000_000;
 
-    // Get cached factors or calculate new ones if target time changed
-    let (min_diff, max_diff, increase_factor, decrease_factor, half_life) = ADJUSTMENT_CACHE.with(|cache| {
-        let mut cache = cache.borrow_mut();
-        match &*cache {
-            Some(c) if c.last_target_time == target_time => {
-                // Return cached values
-                (c.min_diff, c.max_diff, c.increase_factor, c.decrease_factor, c.half_life)
-            }
-            _ => {
-                // Calculate new values and update cache
-                let (min, max, inc, dec, hl) = get_adjustment_factors(target_time);
-                *cache = Some(AdjustmentCache {
-                    last_target_time: target_time,
-                    min_diff: min,
-                    max_diff: max,
-                    increase_factor: inc,
-                    decrease_factor: dec,
-                    half_life: hl,
-                });
-                (min, max, inc, dec, hl)
-            }
-        }
-    });
-
-    // Get timestamp of last block
-    let last_timestamp = BLOCK_TIMESTAMPS.with(|ts| {
+    // Get timestamp of the last block (in seconds)
+    let last_timestamp_sec = BLOCK_TIMESTAMPS.with(|ts| {
         let data = ts.borrow().get().0.clone();
-        if data.is_empty() {
-            now
-        } else {
-            data[data.len() - 1] / 1_000_000_000
-        }
+        data.last().map(|ns| ns / 1_000_000_000)
     });
 
-    // Calculate actual time since last block
-    let actual_time = now.saturating_sub(last_timestamp);
-
-    // Calculate dynamic half-life based on target block time
-    let half_life_seconds = (target_time as f64 * half_life).max(1.0);
-
-    // Get consecutive block counters
-    let consecutive_fast = CONSECUTIVE_FAST_BLOCKS.with(|c| *c.borrow());
-    let consecutive_slow = CONSECUTIVE_SLOW_BLOCKS.with(|c| *c.borrow());
-
-    // Calculate adjustment multipliers based on consecutive blocks
-    let mut increase_multiplier = if consecutive_fast > 0 {
-        1.0 + (consecutive_fast as f64 * 0.1) // 10% stronger per consecutive fast block
-    } else {
-        1.0
+    // If no previous block timestamp, or target time is 0, return current difficulty (or minimum)
+    let last_timestamp_sec = match last_timestamp_sec {
+        Some(ts) if target_time_sec > 0 => ts,
+        _ => return current_diff.max(MIN_DIFFICULTY), // No adjustment if no history or invalid target
     };
 
-    let mut decrease_multiplier = if consecutive_slow > 0 {
-        1.0 + (consecutive_slow as f64 * 0.15) // 15% stronger per consecutive slow block
-    } else {
-        1.0
-    };
+    let now_sec = ic_cdk::api::time() / 1_000_000_000;
+    let actual_time_sec = now_sec.saturating_sub(last_timestamp_sec);
 
-    // Cap multipliers to prevent extreme adjustments
-    increase_multiplier = increase_multiplier.min(3.0);
-    decrease_multiplier = decrease_multiplier.min(3.0);
-
-    // Update consecutive block counters only for actual mined blocks (not heartbeats)
-    let is_heartbeat = ic_cdk::caller() == ic_cdk::api::id();
-    if !is_heartbeat {
-        let is_slow_block = actual_time > target_time * 5 / 4; // 25% slower than target
-        let is_fast_block = actual_time < target_time * 2 / 3; // 33% faster than target
-
-        // Update fast block counter
-        CONSECUTIVE_FAST_BLOCKS.with(|c| {
-            let mut count = c.borrow_mut();
-            *count = if is_fast_block { *count + 1 } else { 0 };
-        });
-
-        // Update slow block counter
-        CONSECUTIVE_SLOW_BLOCKS.with(|c| {
-            let mut count = c.borrow_mut();
-            *count = if is_slow_block { *count + 1 } else { 0 };
-        });
+    // Avoid division by zero or extreme adjustments for very fast blocks (<1s)
+    if actual_time_sec == 0 {
+        return current_diff.max(MIN_DIFFICULTY); // No adjustment for zero time diff
     }
 
-    // Calculate exponential difficulty adjustment
-    let time_diff = target_time as f64 - actual_time as f64;
-    let exponent = time_diff / half_life_seconds;
-    let raw_adjustment = 2f64.powf(exponent);
+    // Calculate the basic adjustment factor: (Target Time / Actual Time)
+    let adjustment_factor = target_time_sec as f64 / actual_time_sec as f64;
 
-    // Apply asymmetric adjustment factors
-    let adjustment_factor = if raw_adjustment > 1.0 {
-        (raw_adjustment * increase_multiplier).min(increase_factor)
+    // Clamp the adjustment factor to prevent excessive swings
+    let clamped_factor = adjustment_factor.clamp(MIN_ADJUSTMENT_FACTOR, MAX_ADJUSTMENT_FACTOR);
+
+    // Calculate new difficulty
+    let new_diff_f64 = current_diff as f64 * clamped_factor;
+
+    // Clamp to minimum difficulty and convert to u32, ensuring finite value
+    let new_diff = if new_diff_f64.is_finite() {
+        (new_diff_f64.round() as u32).max(MIN_DIFFICULTY) // Round before casting
     } else {
-        (raw_adjustment * decrease_multiplier).max(decrease_factor)
+        ic_cdk::println!("Warning: Difficulty calculation resulted in non-finite number. Factor: {}, Current Diff: {}", clamped_factor, current_diff);
+        current_diff.max(MIN_DIFFICULTY) // Fallback
     };
 
-    // Calculate and clamp new difficulty
-    let new_diff = (current_diff as f64 * adjustment_factor) as u32;
-    let new_diff = new_diff.clamp(min_diff, max_diff);
     new_diff
 }
 
+// --- Block Generation & Submission ---
+
 #[ic_cdk::query]
 pub fn get_current_block() -> Option<BlockTemplate> {
-    // Check if the ledger is deployed
     let ledger_deployed = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some());
-
-    // Check if genesis block has been generated
     let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
-
-    // Get the current block template
     let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
 
-    // If no block is available, log the reason
     if current_block.is_none() {
-        if !ledger_deployed {
-            ic_cdk::println!("Warning: get_current_block called but ledger is not deployed yet");
+        let reason = if !ledger_deployed {
+            "ledger not deployed"
         } else if !genesis_generated {
-            ic_cdk::println!("Warning: get_current_block called but genesis block has not been generated yet");
+            "genesis block not generated"
         } else {
-            ic_cdk::println!("Warning: get_current_block called but no block template is available");
-        }
+            "no block template available (likely needs next solution)"
+        };
+        ic_cdk::println!("Warning: get_current_block called but {}", reason);
     }
 
     current_block
 }
 
-fn calculate_block_reward(block_height: u64) -> u64 {
-    BLOCK_REWARD.with(|r| {
-        let initial_reward = *r.borrow().get();
+/// Calculates the block reward for a given block height based on halving interval.
+pub(crate) fn calculate_block_reward(block_height: u64) -> u64 {
+    let initial_reward = BLOCK_REWARD.with(|r| *r.borrow().get());
+    let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
 
-        // Get halving interval from stable storage
-        let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
-
-        // If halving_interval is 0, use continuous emission (always same reward)
-        if halving_interval == 0 {
-            return initial_reward;
-        }
-
-        // Calculate number of halvings that have occurred
-        let halvings = block_height / halving_interval;
-
-        // After 64 halvings reward becomes 0
-        if halvings >= 64 {
-            0
-        } else {
-            initial_reward >> halvings // Bit shift right = divide by 2^halvings
-        }
-    })
-}
-
-// Batch size configuration
-const MAX_EVENTS_PER_BATCH: usize = 100;
-
-fn should_add_event_to_batch(height: u64) -> bool {
-    EVENT_BATCHES.with(|batches| {
-        let batches = batches.borrow();
-        batches.get().0.last().map_or(true, |last| last.block_height != height)
-    })
-}
-
-fn add_event_to_batch(event: Event) {
-    EVENT_BATCHES.with(|batches| {
-        let mut batches = batches.borrow_mut();
-        let current_batches = batches.get();
-
-        let mut new_events = Vec::with_capacity(MAX_EVENTS_PER_BATCH);
-        new_events.push(event);
-
-        let new_batch = EventBatch {
-            events: new_events,
-            block_height: BLOCK_HEIGHT.with(|h| *h.borrow().get()),
-            timestamp: ic_cdk::api::time(),
-        };
-
-        let mut current_batches = current_batches.0.to_vec();
-        current_batches.push(new_batch);
-        batches
-            .set(StorableEventBatches(current_batches))
-            .expect("Failed to update event batches");
-    });
-}
-
-// Replace direct event generation with batched version
-fn generate_events(height: u64, old_difficulty: u32, new_difficulty: u32) -> Vec<Event> {
-    let current_time = ic_cdk::api::time() / 1_000_000_000; // Convert to seconds
-    let mut events = Vec::new();
-    let mut batch_events = Vec::new();
-
-    // Add difficulty adjustment event if difficulty changed
-    if old_difficulty != new_difficulty {
-        let event = Event {
-            event_type: EventType::DifficultyAdjustment {
-                old_difficulty,
-                new_difficulty,
-                reason: format!("Block time adjustment at height {}", height),
-            },
-            timestamp: current_time,
-            block_height: height,
-        };
-        events.push(event.clone());
-
-        // Collect events for batching
-        if should_add_event_to_batch(height) {
-            batch_events.push(event);
-        }
+    if initial_reward == 0 {
+        return 0; // If initial reward is zero, reward is always zero
     }
 
-    // Check for reward halving
-    let reward = calculate_block_reward(height);
-    let prev_reward = calculate_block_reward(height - 1);
-    if reward != prev_reward {
-        let event = Event {
-            event_type: EventType::RewardHalving {
-                new_reward: reward,
-                block_height: height,
-            },
-            timestamp: current_time,
-            block_height: height,
-        };
-        events.push(event.clone());
-
-        // Collect events for batching
-        if should_add_event_to_batch(height) {
-            batch_events.push(event);
-        }
+    // If halving_interval is 0, use continuous emission (always same reward)
+    if halving_interval == 0 {
+        return initial_reward;
     }
 
-    // Check for mining milestones
-    for miner_info in crate::get_miners() {
-        // Check various milestone thresholds
-        let milestones = [
-            (10, "IC Cadet"),
-            (100, "Canister Captain"),
-            (1000, "Cycles Sovereign"),
-            (10000, "Internet Computer Legend"),
-        ];
+    // Calculate number of halvings that have occurred (use height - 1 because block 1 is the first)
+    let halvings = if block_height > 0 {
+        (block_height - 1) / halving_interval
+    } else {
+        0 // No halvings before block 1
+    };
 
-        for (threshold, title) in milestones.iter() {
-            if miner_info.stats.blocks_mined == *threshold {
-                let event = Event {
-                    event_type: EventType::MiningMilestone {
-                        miner: miner_info.principal,
-                        achievement: title.to_string(),
-                        blocks_mined: miner_info.stats.blocks_mined,
-                    },
-                    timestamp: current_time,
-                    block_height: height,
-                };
-                events.push(event.clone());
-
-                // Collect events for batching
-                if should_add_event_to_batch(height) {
-                    batch_events.push(event);
-                }
-            }
-        }
+    // After 64 halvings reward becomes 0 effectively
+    if halvings >= 64 {
+        0
+    } else {
+        initial_reward >> halvings // Bit shift right = divide by 2^halvings
     }
-
-    // Add all collected events to batch at once
-    for event in batch_events {
-        add_event_to_batch(event);
-    }
-
-    events
 }
 
-// Add query method to get event batches
-#[ic_cdk::query]
-pub fn get_event_batches(start_height: Option<u64>) -> Vec<EventBatch> {
-    EVENT_BATCHES.with(|batches| {
-        let all_batches = batches.borrow().get().0.clone();
-        if let Some(height) = start_height {
-            all_batches.into_iter().filter(|batch| batch.block_height >= height).collect()
-        } else {
-            all_batches
-        }
-    })
-}
-
+/// Generates a new block template. Called after a solution is found or during genesis creation.
+/// Requires caller check for genesis block generation.
 pub async fn generate_new_block() -> Result<BlockTemplate, String> {
-    // Get current block height and check security
     let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
-    
-    // Calculate the next height FIRST, BEFORE making the block
     let next_height = height + 1;
 
-    // Check if mining is complete first
-    let current_reward = calculate_block_reward(next_height);
-    if is_mining_complete(current_reward) {
-        return Err("Mining is complete. No new blocks can be generated.".to_string());
-    }
-
-    // For blocks after 0, verify caller is a registered active miner
+    // Miner check: Only registered active miners can *trigger* new block generation *after* genesis
+    // The genesis block creation is triggered by the controller via `create_genesis_block`.
     if height > 0 {
         let caller = ic_cdk::caller();
         let is_active_miner = crate::MINERS_MAP.with(|miners| {
@@ -907,774 +514,260 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
                 .unwrap_or(false)
         });
 
-        if !is_active_miner {
-            return Err("Only registered active miners can generate blocks after block 0".to_string());
+        // Also allow the canister itself (for heartbeat/post-upgrade checks if implemented)
+        if !is_active_miner && caller != ic_cdk::api::id() {
+            return Err("Only registered active miners can trigger new block generation after genesis.".to_string());
         }
     }
 
-    // Get previous block hash
+    // Get previous block hash (will be zeros for genesis)
     let prev_hash = LAST_BLOCK_HASH.with(|h| h.borrow().get().0);
 
-    // Get current difficulty and adjust if needed
-    let old_difficulty = MINING_DIFFICULTY.with(|d| *d.borrow().get());
-    let new_difficulty = adjust_difficulty_asert();
+    // Adjust difficulty based on previous block time
+    let new_difficulty = adjust_difficulty();
 
-    // ALWAYS update difficulty to ensure consistency
+    // Update stable memory with the calculated difficulty *before* creating the block
     MINING_DIFFICULTY.with(|d| {
         d.borrow_mut().set(new_difficulty).expect("Failed to update difficulty");
     });
 
-    // Check if this will be the final block (next one would have zero reward)
-    let next_reward = calculate_block_reward(next_height + 1);
-    let is_final_block =
-        next_reward == 0 || next_reward <= crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or(0, |info| info.transfer_fee));
-
-    // Generate events for this block
-    let mut events = generate_events(next_height, old_difficulty, new_difficulty);
-
-    // Add special final block event if needed
-    if is_final_block {
-        let supply = crate::CIRCULATING_SUPPLY_CELL.with(|s| *s.borrow().get());
-        let total = crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or(0, |info| info.total_supply));
-        let percentage = if total > 0 { (supply as f64 / total as f64) * 100.0 } else { 0.0 };
-
-        events.push(Event {
-            event_type: EventType::SystemAnnouncement {
-                message: format!(
-                    "This is the final mining block. Mining complete at height {}. Total supply: {}/{} ({:.2}%)",
-                    next_height, supply, total, percentage
-                ),
-                severity: "important".to_string(),
-            },
-            timestamp: ic_cdk::api::time() / 1_000_000_000,
-            block_height: next_height,
-        });
-    }
-
-    // Create new block template with NEXT height
+    // Create new block template
     let block = BlockTemplate::new(
-        next_height, // USE THE NEXT HEIGHT
+        next_height, // Use the calculated next height
         prev_hash,
-        events,
         new_difficulty,
     );
 
-    // Verify consistency
+    // Sanity check: Ensure block's difficulty matches the set difficulty
     if block.difficulty != new_difficulty {
-        // Force consistency
+         ic_cdk::println!(
+            "CRITICAL WARNING: Block difficulty mismatch after creation! Expected {}, got {}. Forcing consistency.",
+            new_difficulty, block.difficulty
+        );
         let mut fixed_block = block.clone();
         fixed_block.difficulty = new_difficulty;
-        fixed_block.target = BlockTemplate::calculate_target(new_difficulty);
+        fixed_block.target = BlockTemplate::calculate_target(new_difficulty); // Recalculate target too
 
-        // Store fixed block
         CURRENT_BLOCK.with(|b| {
-            b.borrow_mut().set(Some(fixed_block.clone())).expect("Failed to set current block");
+            b.borrow_mut().set(Some(fixed_block.clone())).expect("Failed to set fixed current block");
         });
-
-        // AFTER storing the block, actually update the counter to match
         BLOCK_HEIGHT.with(|h| {
-            h.borrow_mut().set(next_height).expect("Failed to update block height");
+            h.borrow_mut().set(next_height).expect("Failed to update block height for fixed block");
         });
-        
         Ok(fixed_block)
     } else {
-        // Store as current block
         CURRENT_BLOCK.with(|b| {
             b.borrow_mut().set(Some(block.clone())).expect("Failed to set current block");
         });
-
-        // AFTER storing the block, actually update the counter to match
         BLOCK_HEIGHT.with(|h| {
             h.borrow_mut().set(next_height).expect("Failed to update block height");
         });
-        
         Ok(block)
     }
 }
 
-async fn transfer_to_miner(ledger_id: Principal, miner: Principal, reward: u64) -> Result<(), String> {
-    let transfer_args = TransferArg {
-        from_subaccount: None,
-        to: Account {
-            owner: miner,
-            subaccount: None,
-        },
-        amount: Nat::from(reward),
-        fee: None,
-        memo: None,
-        created_at_time: None,
-    };
-
-    let _result = call(ledger_id, "icrc1_transfer", (transfer_args,))
-        .await
-        .map_err(|(code, msg)| format!("Transfer call failed: {} (code: {:?})", msg, code))?;
-
-    Ok(())
-}
-
-fn check_rate_limit(miner: Principal) -> Result<(), String> {
-    MINER_RATE_LIMITS.with(|limits| {
-        let mut limits = limits.borrow_mut();
-        let mut rate_limits = limits.get().0.clone();
-
-        let now = ic_cdk::api::time();
-        let rate_limit = rate_limits.entry(miner).or_insert_with(MinerRateLimit::default);
-
-        // Reset counter if 30 seconds has passed
-        // per 60 seconds gets too defensive too quickly for fast block times
-        if now - rate_limit.last_submission >= 30_000_000_000 {
-            // 30 seconds in nanoseconds
-            rate_limit.submission_count = 0;
-            rate_limit.last_submission = now;
-        }
-
-        // Check if rate limit exceeded
-        if rate_limit.submission_count >= rate_limit.submissions_per_minute {
-            return Err("Rate limit exceeded. Please wait before submitting more solutions.".to_string());
-        }
-
-        // Update counters
-        rate_limit.submission_count += 1;
-        rate_limit.last_submission = now;
-
-        // Save updated limits
-        limits.set(StorableRateLimits(rate_limits)).expect("Failed to update rate limits");
-
-        Ok(())
-    })
-}
-
-/// Allows miners to check if they can submit a solution before attempting submission
-/// Returns Ok(true) if submission is allowed, Ok(false) if rate limited, or Err for other errors
-#[ic_cdk::query]
-pub fn can_submit_solution() -> Result<bool, String> {
-    let miner = ic_cdk::caller();
-
-    MINER_RATE_LIMITS.with(|limits| {
-        let limits = limits.borrow();
-        let rate_limits = limits.get().0.clone();
-
-        let now = ic_cdk::api::time();
-
-        // If miner not in rate limits yet, they can submit
-        if !rate_limits.contains_key(&miner) {
-            return Ok(true);
-        }
-
-        let rate_limit = rate_limits.get(&miner).unwrap();
-
-        // Check if we should reset counter due to time elapsed
-        if now - rate_limit.last_submission >= 30_000_000_000 {
-            // 30 seconds in nanoseconds
-            return Ok(true);
-        }
-
-        // Check if rate limit would be exceeded
-        if rate_limit.submission_count >= rate_limit.submissions_per_minute {
-            return Ok(false);
-        }
-
-        Ok(true)
-    })
-}
-
-#[ic_cdk::query]
-pub fn get_block_height() -> u64 {
-    BLOCK_HEIGHT.with(|h| *h.borrow().get())
-}
-
-#[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
-struct MinerStats {
-    blocks_mined: u64,
-    total_rewards: u64,
-    first_block_timestamp: Option<u64>,
-    last_block_timestamp: Option<u64>,
-    // Add new fields for better stats
-    total_hashes_processed: u64,
-    current_hashrate: f64,
-    average_hashrate: f64,
-    best_hashrate: f64,
-    last_hashrate_update: u64,
-    hashrate_samples: Vec<(u64, f64)>, // (timestamp, hashrate) pairs for moving average
-}
-
-impl Default for MinerStats {
-    fn default() -> Self {
-        Self {
-            blocks_mined: 0,
-            total_rewards: 0,
-            first_block_timestamp: None,
-            last_block_timestamp: None,
-            total_hashes_processed: 0,
-            current_hashrate: 0.0,
-            average_hashrate: 0.0,
-            best_hashrate: 0.0,
-            last_hashrate_update: 0,
-            hashrate_samples: Vec::new(),
-        }
-    }
-}
-
-// Add function to update hashrate
-fn update_miner_hashrate(miner: Principal, hashes_processed: u64) {
-    crate::MINERS.with(|miners| {
-        let mut miners = miners.borrow_mut();
-        if let Some(info) = miners.get(&miner).cloned() {
-            let mut info = info; // Now we own the value
-            let now = ic_cdk::api::time() / 1_000_000_000; // Convert to seconds
-
-            // Update total hashes
-            info.stats.total_hashes_processed += hashes_processed;
-
-            // Calculate current hashrate
-            if let Some(last_timestamp) = info.stats.last_hashrate_update {
-                let time_diff = now - last_timestamp;
-                if time_diff > 0 {
-                    let current_rate = hashes_processed as f64 / time_diff as f64;
-                    info.stats.current_hashrate = current_rate;
-
-                    // Update best hashrate if current is better
-                    if current_rate > info.stats.best_hashrate {
-                        info.stats.best_hashrate = current_rate;
-                    }
-
-                    // Add to samples for moving average
-                    info.stats.hashrate_samples.push((now, current_rate));
-
-                    // Keep only last 10 samples
-                    if info.stats.hashrate_samples.len() > 10 {
-                        info.stats.hashrate_samples.remove(0);
-                    }
-
-                    // Calculate moving average
-                    let total_rate: f64 = info.stats.hashrate_samples.iter().map(|(_, rate)| rate).sum();
-                    info.stats.average_hashrate = total_rate / info.stats.hashrate_samples.len() as f64;
-                }
-            }
-
-            info.stats.last_hashrate_update = Some(now);
-            miners.insert(miner, info);
-        }
-    });
-}
-
-// Constants for cycle management
-const REQUIRED_SUBMISSION_CYCLES: u128 = 420_690; // Required cycles per submission
-
-// Add a function to create a BlockMined event
-fn create_block_mined_event(miner: Principal, reward: u64, nonce: u64, hash: Hash, height: u64) -> Event {
-    let current_time = ic_cdk::api::time() / 1_000_000_000; // Convert to seconds
-    Event {
-        event_type: EventType::BlockMined {
-            miner,
-            reward,
-            hash_solution: hash,
-            solution_time: current_time,
-        },
-        timestamp: current_time,
-        block_height: height,
-    }
-}
-
-#[ic_cdk::update]
-pub async fn submit_solution(
-    ledger_id: Principal,
-    nonce: u64,
-    solution_hash: Hash,
-    hashes_processed: u64,
-) -> Result<(bool, u64, u64, String), String> {
-    // Check if ledger is deployed
-    let stored_ledger_id = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().as_ref().map(|p| p.0));
-
-    if stored_ledger_id.is_none() {
-        return Err("Mining not available: Ledger has not been deployed yet".to_string());
-    }
-
-    // Verify the provided ledger ID matches the stored one
-    if stored_ledger_id != Some(ledger_id) {
-        return Err(format!(
-            "Invalid ledger ID. Expected: {}, Got: {}",
-            stored_ledger_id.unwrap().to_text(),
-            ledger_id.to_text()
-        ));
-    }
-
-    // Check if genesis block has been generated
-    let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
-    if !genesis_generated {
-        return Err("Mining not available: Genesis block has not been generated yet".to_string());
-    }
-
-    // Check if mining is complete first
-    let current_height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
-    let current_reward = calculate_block_reward(current_height);
-    if is_mining_complete(current_reward) {
-        return Err("Mining is complete. Token has reached its maximum supply or minimum reward threshold.".to_string());
-    }
-
-    // First verify cycles payment
-    let available_cycles = ic_cdk::api::call::msg_cycles_available128();
-    if available_cycles < REQUIRED_SUBMISSION_CYCLES {
-        return Err("Insufficient cycles attached. 25,000 cycles required per submission.".to_string());
-    }
-
-    // Accept exactly the required cycles
-    let accepted = ic_cdk::api::call::msg_cycles_accept128(REQUIRED_SUBMISSION_CYCLES);
-    if accepted < REQUIRED_SUBMISSION_CYCLES {
-        return Err("Failed to accept cycles. Please try again.".to_string());
-    }
-
-    // Update total cycles earned
-    TOTAL_CYCLES_EARNED.with(|total| {
-        let current = *total.borrow().get();
-        total.borrow_mut().set(current + accepted).expect("Failed to update total cycles");
-    });
-
-    // Cool, got payment for self sustainability, now let's process the solution
-    // check if the module hash of caller is one of our miner versions
-
-    let caller = ic_cdk::caller();
-
-    // Update hashrate first
-    update_miner_hashrate(caller, hashes_processed);
-
-    // Check rate limit first
-    check_rate_limit(caller)?;
-
-    // Get current block
-    let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone().ok_or("No block template available".to_string()))?;
-
-    // Store the height of the block being mined
-    let mined_height = current_block.height;
-
-    // Create solution object for checking
-    let solution = StorableSolution {
-        nonce,
-        hash: solution_hash,
-        block_height: current_block.height,
-        timestamp: ic_cdk::api::time(),
-    };
-
-    // First check bloom filter (fast negative check)
-    let might_be_processed = SOLUTION_BLOOM_FILTER.with(|filter| {
-        let bloom = filter.borrow().get().clone();
-        bloom.might_contain(&solution)
-    });
-
-    // If bloom filter indicates it might be processed, do the full check
-    if might_be_processed {
-        let already_processed = PROCESSED_SOLUTIONS.with(|solutions| {
-            solutions
-                .borrow()
-                .get()
-                .0
-                .iter()
-                .any(|s| s.nonce == nonce && s.hash == solution_hash && s.block_height == current_block.height)
-        });
-
-        if already_processed {
-            // Get token ticker
-            let ticker =
-                crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or("UNKNOWN".to_string(), |info| info.ticker.clone()));
-            return Ok((true, current_block.height, 0, ticker)); // No new reward for already processed solutions
-        }
-    }
-
-    // Verify solution
-    if !current_block.verify_solution(nonce, solution_hash) {
-        // Get token ticker
-        let ticker = crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or("UNKNOWN".to_string(), |info| info.ticker.clone()));
-        return Ok((false, current_block.height, 0, ticker));
-    }
-
-    // Add to bloom filter and processed solutions
-    SOLUTION_BLOOM_FILTER.with(|filter| {
-        let mut filter = filter.borrow_mut();
-        let mut bloom = filter.get().clone();
-        bloom.add(&solution);
-        filter.set(bloom).expect("Failed to update bloom filter");
-    });
-
-    PROCESSED_SOLUTIONS.with(|solutions| {
-        let mut sols = solutions.borrow().get().0.clone();
-        // Keep only last 100 solutions to prevent unbounded growth
-        if sols.len() >= 100 {
-            sols.remove(0); // Remove oldest
-        }
-        sols.push(solution);
-        solutions
-            .borrow_mut()
-            .set(StorableSolutions(sols))
-            .expect("Failed to update processed solutions");
-    });
-
-    // Store block timestamp for ASERT
-    BLOCK_TIMESTAMPS.with(|ts| {
-        let mut timestamps = ts.borrow_mut();
-        let mut data = timestamps.get().0.clone();
-        // Keep only last 1000 timestamps to prevent unbounded growth
-        if data.len() >= 1000 {
-            data.remove(0); // Remove oldest
-        }
-        data.push(current_block.timestamp * 1_000_000_000); // Convert seconds to nanoseconds
-        timestamps.set(StorableTimestamps(data)).expect("Failed to update block timestamps");
-    });
-
-    // Step 1: Update block hash
-    LAST_BLOCK_HASH.with(|h| {
-        h.borrow_mut()
-            .set(StorableHash(solution_hash))
-            .expect("Failed to update last block hash");
-    });
-
-    // Step 2: Process reward if applicable
-    let reward = calculate_block_reward(mined_height);
-    if reward > 0 {
-        transfer_to_miner(ledger_id, caller, reward).await?;
-        crate::update_circulating_supply(reward);
-        crate::update_miner_stats(caller, reward);
-        
-        // Add a BlockMined event
-        let block_mined_event = create_block_mined_event(caller, reward, nonce, solution_hash, mined_height);
-        
-        // Add to event batches
-        if should_add_event_to_batch(mined_height) {
-            add_event_to_batch(block_mined_event.clone());
-        }
-    }
-
-    // Step 5: Generate new block
-    match generate_new_block().await {
-        Ok(_) => {
-            // Get token ticker
-            let ticker = crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or("UNKNOWN".to_string(), |info| info.ticker.clone()));
-            Ok((true, mined_height, reward, ticker))
-        }
-        Err(e) => Err(e)
-    }
-}
-
-#[ic_cdk::query]
-pub fn get_mining_difficulty() -> u32 {
-    MINING_DIFFICULTY.with(|d| *d.borrow().get())
-}
-
-#[ic_cdk::query]
-pub fn get_mining_info() -> MiningInfo {
-    let difficulty = MINING_DIFFICULTY.with(|d| *d.borrow().get());
-    let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
-    let target = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
-    let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
-
-    // Calculate next_halving, handling the case where halving_interval is 0
-    let next_halving = if halving_interval == 0 {
-        0 // No halving will occur when halving_interval is 0
-    } else {
-        halving_interval - (height % halving_interval)
-    };
-
-    // Calculate the current block reward
-    let current_reward = calculate_block_reward(height);
-
-    // Check if mining is complete
-    // This occurs when either:
-    // 1. The block reward becomes too small (less than transfer fee)
-    // 2. We've reached the target supply
-    let mining_complete = is_mining_complete(current_reward);
-
-    MiningInfo {
-        current_difficulty: difficulty,
-        current_block_reward: current_reward,
-        block_time_target: target,
-        next_halving_interval: next_halving,
-        mining_complete,
-    }
-}
-
-/// Determines if mining is effectively complete based on current conditions
-fn is_mining_complete(current_reward: u64) -> bool {
-    // Get current circulating supply
-    let supply = crate::CIRCULATING_SUPPLY_CELL.with(|s| *s.borrow().get());
-
-    // Get total supply from token info
-    let total_supply = crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or(0, |info| info.total_supply));
-
-    // Get transfer fee
-    let transfer_fee = crate::TOKEN_INFO_CELL.with(|t| t.borrow().get().as_ref().map_or(0, |info| info.transfer_fee));
-
-    // Mining is complete if:
-    // 1. Reward is zero or less than transfer fee (not economically viable)
-    // 2. We've mined 99.99% of total supply
-    let reward_too_small = current_reward == 0 || current_reward <= transfer_fee;
-    let supply_nearly_complete = total_supply > 0 && ((total_supply - supply) * 10000 / total_supply) < 1; // Less than 0.01% remaining
-
-    reward_too_small || supply_nearly_complete
-}
-
-// Add query method to get total cycles earned
-#[ic_cdk::query]
-pub fn get_total_cycles_earned() -> u128 {
-    TOTAL_CYCLES_EARNED.with(|total| *total.borrow().get())
-}
-
-// Add query to get current block time target
-#[ic_cdk::query]
-pub fn get_block_time_target() -> u64 {
-    BLOCK_TIME_TARGET.with(|t| *t.borrow().get())
-}
-
-/// Updates the current block template with any needed difficulty adjustments
-/// Returns true if the template was updated
-pub fn update_block_template() -> bool {
-    let now = ic_cdk::api::time() / 1_000_000_000;
-    let last_timestamp = BLOCK_TIMESTAMPS.with(|ts| {
-        let data = ts.borrow().get().0.clone();
-        if data.is_empty() {
-            now
-        } else {
-            data[data.len() - 1] / 1_000_000_000
-        }
-    });
-
-    let time_since_last = now.saturating_sub(last_timestamp);
+/// Calculates the expected heartbeat interval based on block time target.
+fn calculate_heartbeat_interval() -> u64 {
     let target_time = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
+    if target_time == 0 { return 6; }
+    (target_time / 10).clamp(1, 60)
+}
 
-    // Only start counting heartbeats after we've passed target time
-    if time_since_last > target_time {
-        // Get time since target was exceeded
-        let excess_time = time_since_last - target_time;
+/// Called periodically (e.g., by canister_heartbeat) to potentially lower difficulty
+/// if no blocks have been mined for a while.
+pub fn update_block_template_difficulty() -> bool {
+     if !GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get()) || CURRENT_BLOCK.with(|b| b.borrow().get().is_none()) {
+         return false;
+     }
 
-        // Use the safeguarded heartbeat calculation
+    let now_sec = ic_cdk::api::time() / 1_000_000_000;
+    let last_timestamp_sec = match BLOCK_TIMESTAMPS.with(|ts| ts.borrow().get().0.last().map(|ns| ns / 1_000_000_000)) {
+        Some(ts) => ts,
+        None => return false,
+    };
+
+    let target_time_sec = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
+    let time_since_last = now_sec.saturating_sub(last_timestamp_sec);
+
+    if target_time_sec > 0 && time_since_last > target_time_sec {
         let heartbeat_interval = calculate_heartbeat_interval();
-
-        // Only increment counter every heartbeat_interval seconds after target time
+        let excess_time = time_since_last - target_time_sec;
         let mut should_decrease = false;
-        if excess_time % heartbeat_interval == 0 {
+
+        if heartbeat_interval > 0 && excess_time > 0 && (excess_time % heartbeat_interval == 0 || excess_time == 1) {
             HEARTBEAT_COUNTER.with(|counter| {
                 let mut count = counter.borrow_mut();
                 *count += 1;
-                if *count >= 5 { // Reduced from 10 to 5 for faster response
+                const HEARTBEAT_THRESHOLD: u32 = 5;
+                if *count >= HEARTBEAT_THRESHOLD {
                     should_decrease = true;
                     *count = 0;
+                    ic_cdk::println!("Heartbeat threshold {} reached after {}s overdue.", HEARTBEAT_THRESHOLD, time_since_last);
+                } else {
+                    ic_cdk::println!("Heartbeat tick {}/{} ({}s overdue)", *count, HEARTBEAT_THRESHOLD, time_since_last);
                 }
             });
         }
 
-        let current_diff = MINING_DIFFICULTY.with(|d| *d.borrow().get());
+        if should_decrease {
+            let current_diff = MINING_DIFFICULTY.with(|d| *d.borrow().get());
+            const MIN_DIFFICULTY_FLOOR: u32 = 5;
 
-        // If we've hit the required heartbeats, decrease difficulty more aggressively
-        if should_decrease && current_diff > 5 { // Changed from 16 to 5 to allow lower difficulty
-            let new_diff = current_diff - (current_diff * 15 / 100); // Increased from 5% to 15% for more aggressive reduction
-            MINING_DIFFICULTY.with(|d| {
-                d.borrow_mut().set(new_diff).expect("Failed to update difficulty");
-            });
+            if current_diff > MIN_DIFFICULTY_FLOOR {
+                let reduction_percentage = 15;
+                let decrease_amount = ((current_diff as u64 * reduction_percentage / 100) as u32).max(1);
+                let new_diff = current_diff.saturating_sub(decrease_amount).max(MIN_DIFFICULTY_FLOOR);
 
-            CURRENT_BLOCK.with(|b| {
-                let current_opt = b.borrow().get().clone();
+                if new_diff != current_diff {
+                    MINING_DIFFICULTY.with(|d| d.borrow_mut().set(new_diff).expect("Failed to update difficulty via heartbeat"));
 
-                if let Some(mut current) = current_opt {
-                    current.difficulty = new_diff;
-                    current.target = BlockTemplate::calculate_target(new_diff);
-                    b.borrow_mut().set(Some(current.clone())).expect("Failed to update block");
+                    let updated = CURRENT_BLOCK.with(|b| {
+                        let mut block_cell = b.borrow_mut();
+                        if let Some(mut current) = block_cell.get().clone() {
+                            current.difficulty = new_diff;
+                            current.target = BlockTemplate::calculate_target(new_diff);
+                            block_cell.set(Some(current)).expect("Failed to update block template via heartbeat");
+                            ic_cdk::println!("Heartbeat triggered: Difficulty reduced from {} to {}", current_diff, new_diff);
+                            true
+                        } else {
+                             ic_cdk::println!("Heartbeat triggered reduction, but no current block template found unexpectedly.");
+                             false
+                        }
+                    });
+                    return updated;
                 }
-            });
-            true
-        } else {
-            false
-        }
-    } else {
-        false
-    }
-}
-
-#[ic_cdk::query]
-pub fn get_recent_events_from_batches(limit: Option<u32>) -> Vec<Event> {
-    let limit = limit.unwrap_or(50) as usize;
-
-    EVENT_BATCHES.with(|batches| {
-        let all_batches = batches.borrow().get().0.clone();
-        let mut events = Vec::new();
-
-        // Iterate through batches in reverse to get most recent events
-        for batch in all_batches.iter().rev() {
-            for event in batch.events.iter() {
-                events.push(event.clone());
-                if events.len() >= limit {
-                    return events;
-                }
+            } else {
+                 ic_cdk::println!("Heartbeat check: Difficulty already at minimum ({}), no reduction.", MIN_DIFFICULTY_FLOOR);
             }
         }
-
-        events
-    })
+    } else {
+        HEARTBEAT_COUNTER.with(|c| *c.borrow_mut() = 0);
+    }
+    false
 }
 
-#[derive(CandidType, Serialize, Deserialize)]
-pub enum BlockTimeResult {
-    Ok(f64), // Average block time in seconds
-    Err(String),
-}
+// --- Upgrade and Initialization ---
 
-#[ic_cdk::query]
-pub fn get_average_block_time(window_size: Option<u32>) -> BlockTimeResult {
-    BLOCK_TIMESTAMPS.with(|ts| {
-        let timestamps = ts.borrow().get().0.clone();
-
-        if timestamps.len() < 2 {
-            return BlockTimeResult::Err("Not enough blocks to calculate average".to_string());
-        }
-
-        let window = window_size.unwrap_or(100) as usize;
-        let start_idx = if timestamps.len() > window { timestamps.len() - window } else { 0 };
-
-        let mut total_diff = 0u64;
-        let mut count = 0;
-
-        for i in start_idx + 1..timestamps.len() {
-            let diff = timestamps[i] - timestamps[i - 1];
-            total_diff += diff;
-            count += 1;
-        }
-
-        if count == 0 {
-            return BlockTimeResult::Err("No block time differences to average".to_string());
-        }
-
-        // Convert from nanoseconds to seconds and return as float
-        let avg_ns = total_diff as f64 / count as f64;
-        BlockTimeResult::Ok(avg_ns / 1_000_000_000.0)
-    })
-}
-
+/// Initializes stable memory structures required by the mining module.
+/// Also handles restoring default parameters if they seem reset after an upgrade.
 pub fn initialize_memory() {
-    // Initialize memory manager and all buckets
     MEMORY_MANAGER.with(|m| {
         let manager = m.borrow_mut();
-        // Pre-allocate all memory buckets
-        for i in 8..=21 {
-            manager.get(MemoryId::new(i));
+        // Check IDs used in thread_local!: 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 24
+        let memory_ids = [6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 24]; // Removed 15
+        for id in memory_ids {
+            manager.get(MemoryId::new(id));
         }
+         ic_cdk::println!("Mining memory IDs initialized/retrieved.");
     });
 
-    // Check if mining parameters are reset (set to 0) and reinitialize them if needed
     let difficulty = MINING_DIFFICULTY.with(|d| *d.borrow().get());
     let block_time_target = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
     let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
     let block_reward = BLOCK_REWARD.with(|r| *r.borrow().get());
 
-    // If any of the critical mining parameters are 0, reinitialize with default values
-    if difficulty == 0 || block_time_target == 0 || halving_interval == 0 || block_reward == 0 {
-        ic_cdk::println!("Critical mining parameters were reset during upgrade. Restoring defaults.");
+    let mut reinitialized = false;
+    let default_difficulty = 10;
+    let default_block_time = 60;
+    let default_halving = 210_000;
+    let default_reward = 50 * 100_000_000;
 
-        // Default values (adjust these based on your token's requirements)
-        let default_difficulty = if difficulty == 0 { 10 } else { difficulty };
-        let default_block_time = if block_time_target == 0 { 60 } else { block_time_target }; // 60 seconds
-        let default_halving = if halving_interval == 0 { 210000 } else { halving_interval }; // 210,000 blocks
-        let default_reward = if block_reward == 0 { 50 * 100000000 } else { block_reward }; // 50 tokens with 8 decimals
+    let final_difficulty = if difficulty == 0 { reinitialized = true; default_difficulty } else { difficulty };
+    let final_block_time = if block_time_target == 0 { reinitialized = true; default_block_time } else { block_time_target };
+    let final_halving = if halving_interval == 0 { reinitialized = true; default_halving } else { halving_interval };
+    let final_reward = if block_reward == 0 { reinitialized = true; default_reward } else { block_reward };
 
-        // Restore the parameters
-        MINING_DIFFICULTY.with(|d| {
-            d.borrow_mut().set(default_difficulty).expect("Failed to restore mining difficulty");
-        });
-
-        BLOCK_TIME_TARGET.with(|t| {
-            t.borrow_mut().set(default_block_time).expect("Failed to restore block time target");
-        });
-
-        HALVING_INTERVAL.with(|h| {
-            h.borrow_mut().set(default_halving).expect("Failed to restore halving interval");
-        });
-
-        BLOCK_REWARD.with(|r| {
-            r.borrow_mut().set(default_reward).expect("Failed to restore block reward");
-        });
+    if reinitialized {
+        ic_cdk::println!("WARN: Critical mining parameters were zero after upgrade. Restoring defaults.");
+        MINING_DIFFICULTY.with(|d| d.borrow_mut().set(final_difficulty).expect("Restore failed"));
+        BLOCK_TIME_TARGET.with(|t| t.borrow_mut().set(final_block_time).expect("Restore failed"));
+        HALVING_INTERVAL.with(|h| h.borrow_mut().set(final_halving).expect("Restore failed"));
+        BLOCK_REWARD.with(|r| r.borrow_mut().set(final_reward).expect("Restore failed"));
     }
 
-    // Check if current block is available
-    let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
+    let current_block_exists = CURRENT_BLOCK.with(|b| b.borrow().get().is_some());
     let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
     let ledger_deployed = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some());
 
-    // Log the current state
     ic_cdk::println!(
-        "Post-upgrade mining state: ledger_deployed={}, genesis_generated={}, current_block={}",
-        ledger_deployed,
-        genesis_generated,
-        current_block.is_some()
+        "Post-upgrade mining state: Ledger={}, Genesis={}, BlockTemplate={}, Difficulty={}, TargetTime={}",
+        ledger_deployed, genesis_generated, current_block_exists, final_difficulty, final_block_time
     );
 
-    // If ledger is deployed and genesis block is generated but no current block,
-    // we need to update the block template
-    if ledger_deployed && genesis_generated && current_block.is_none() {
-        ic_cdk::println!("Ledger is deployed and genesis block is generated, but no current block. Updating block template...");
-        update_block_template();
-
-        // Check if block template was updated
-        let updated_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
-        if updated_block.is_some() {
-            ic_cdk::println!("Block template updated successfully after upgrade");
+    if ledger_deployed && genesis_generated && !current_block_exists {
+        ic_cdk::println!("Post-upgrade: No current block template found. Running heartbeat check...");
+        if update_block_template_difficulty() {
+             ic_cdk::println!("Post-upgrade: Block template difficulty updated via heartbeat logic.");
         } else {
-            ic_cdk::println!("Warning: Failed to update block template after upgrade");
+             ic_cdk::println!("Post-upgrade: Heartbeat check did not result in difficulty update. Next solution submission required.");
+        }
+    } else if current_block_exists {
+        CURRENT_BLOCK.with(|b| {
+            let mut block_cell = b.borrow_mut();
+            if let Some(mut current) = block_cell.get().clone() {
+                if current.difficulty != final_difficulty {
+                     ic_cdk::println!("Post-upgrade: Updating existing block template difficulty from {} to {}.", current.difficulty, final_difficulty);
+                     current.difficulty = final_difficulty;
+                     current.target = BlockTemplate::calculate_target(final_difficulty);
+                     block_cell.set(Some(current)).expect("Failed to update block template post-upgrade");
+                }
+            }
+        });
+    }
+}
+
+
+// --- Genesis Block Creation ---
+
+fn check_genesis_not_generated() -> Result<(), String> {
+    if GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get()) {
+        return Err("Genesis block already generated (flag is set).".to_string());
+    }
+    if CURRENT_BLOCK.with(|b| b.borrow().get().is_some()) {
+        return Err("Genesis block seems generated (block template exists).".to_string());
+    }
+    let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
+    if height > 0 {
+        return Err(format!("Genesis block seems generated (height is {}).", height));
+    }
+    Ok(())
+}
+
+#[ic_cdk::update]
+pub async fn create_genesis_block() -> Result<BlockTemplate, String> {
+    let caller = ic_cdk::caller();
+    if !ic_cdk::api::is_controller(&caller) {
+        return Err("Only the controller can create the genesis block.".to_string());
+    }
+    if !crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some()) {
+        return Err("Cannot create genesis block: Ledger ID not set.".to_string());
+    }
+    check_genesis_not_generated()?;
+
+    ic_cdk::println!("Controller {} initiating genesis block creation...", caller);
+    match generate_new_block().await {
+        Ok(block_template) => {
+            if block_template.height != 1 {
+                 return Err(format!(
+                    "Genesis block generation returned unexpected height: {}. Expected 1.",
+                    block_template.height
+                ));
+            }
+            GENESIS_BLOCK_GENERATED.with(|g| {
+                g.borrow_mut().set(true).expect("Failed to set genesis block generated flag");
+            });
+            ic_cdk::println!("Genesis block (Height: 1) successfully generated by {}.", caller);
+            Ok(block_template)
+        }
+        Err(e) => {
+            ic_cdk::println!("Failed to generate genesis block: {}", e);
+            Err(e)
         }
     }
 }
 
-fn calculate_heartbeat_interval() -> u64 {
-    let target_time = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
-    let heartbeat_interval = if target_time < 10 {
-        1 // Minimum 1 second interval
-    } else {
-        target_time / 10
-    };
-    heartbeat_interval.max(1) // Final safety net
-}
 
-fn is_genesis_already_generated() -> Result<(), String> {
-    let current_block_exists = CURRENT_BLOCK.with(|b| b.borrow().get().is_some());
-    if current_block_exists {
-        return Err("Genesis block has already been generated. A block template already exists.".to_string());
-    }
-    
-    // Check block height - if greater than 0, we've clearly generated blocks
-    let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
-    if height > 0 {
-        return Err(format!(
-            "Genesis block has already been generated. Current block height is {}",
-            height
-        ));
-    }
-
-    Ok(())
-}
-
-// update
-#[ic_cdk::update]
-pub async fn create_genesis_block() -> Result<BlockTemplate, String> {
-    // Check if caller is the controller
-    let caller = ic_cdk::caller();
-    let is_controller = ic_cdk::api::is_controller(&caller);
-
-    if !is_controller {
-        return Err("Only the controller can create the genesis block".to_string());
-    }
-
-    // Check if genesis block has already been generated using multiple verification methods
-    is_genesis_already_generated()?;
-
-    // Generate the genesis block
-    let result = generate_new_block().await;
-
-    // If successful, set the genesis flag
-    if result.is_ok() {
-        GENESIS_BLOCK_GENERATED.with(|g| {
-            g.borrow_mut().set(true).expect("Failed to set genesis block generated flag");
-        });
-
-        ic_cdk::println!("Genesis block successfully generated and flag set");
-    }
-
-    result
-}
+// --- Controller Parameter Restoration ---
 
 #[ic_cdk::update]
 pub fn restore_mining_params(
@@ -1683,73 +776,33 @@ pub fn restore_mining_params(
     block_time_target: u64,
     halving_interval: u64,
 ) -> Result<(), String> {
-    // Check if caller is a controller
     let caller = ic_cdk::caller();
-    let is_controller = ic_cdk::api::is_controller(&caller);
-
-    if !is_controller {
+    if !ic_cdk::api::is_controller(&caller) {
         return Err("Only the controller can restore mining parameters".to_string());
     }
 
-    // Restore the parameters
-    MINING_DIFFICULTY.with(|d| {
-        d.borrow_mut().set(mining_difficulty).expect("Failed to restore mining difficulty");
-    });
+    if block_time_target == 0 { return Err("Block time target cannot be zero.".to_string()); }
+    if mining_difficulty == 0 { return Err("Mining difficulty cannot be zero.".to_string()); }
 
-    BLOCK_TIME_TARGET.with(|t| {
-        t.borrow_mut().set(block_time_target).expect("Failed to restore block time target");
-    });
-
-    HALVING_INTERVAL.with(|h| {
-        h.borrow_mut().set(halving_interval).expect("Failed to restore halving interval");
-    });
-
-    BLOCK_REWARD.with(|r| {
-        r.borrow_mut().set(block_reward).expect("Failed to restore block reward");
-    });
+    MINING_DIFFICULTY.with(|d| d.borrow_mut().set(mining_difficulty).expect("Restore failed"));
+    BLOCK_TIME_TARGET.with(|t| t.borrow_mut().set(block_time_target).expect("Restore failed"));
+    HALVING_INTERVAL.with(|h| h.borrow_mut().set(halving_interval).expect("Restore failed"));
+    BLOCK_REWARD.with(|r| r.borrow_mut().set(block_reward).expect("Restore failed"));
 
     ic_cdk::println!(
-        "Mining parameters manually restored: difficulty={}, block_time={}, halving_interval={}, block_reward={}",
-        mining_difficulty,
-        block_time_target,
-        halving_interval,
-        block_reward
+        "Controller {} manually restored mining params: Reward={}, Diff={}, TargetTime={}, Halving={}",
+        caller, block_reward, mining_difficulty, block_time_target, halving_interval
     );
 
+    CURRENT_BLOCK.with(|b| {
+        let mut block_cell = b.borrow_mut();
+        if let Some(mut current) = block_cell.get().clone() {
+            ic_cdk::println!("Updating current block template with restored difficulty...");
+            current.difficulty = mining_difficulty;
+            current.target = BlockTemplate::calculate_target(mining_difficulty);
+            block_cell.set(Some(current)).expect("Failed to update block template after restore");
+        }
+    });
+
     Ok(())
-}
-
-#[ic_cdk::query]
-pub fn is_mining_ready() -> Result<bool, String> {
-    // Check if ledger is deployed
-    let ledger_deployed = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some());
-    if !ledger_deployed {
-        return Err("Mining not ready: Ledger has not been deployed yet".to_string());
-    }
-
-    // Check if genesis block has been generated
-    let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
-    if !genesis_generated {
-        return Err("Mining not ready: Genesis block has not been generated yet".to_string());
-    }
-
-    // Check if current block is available
-    let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
-    if current_block.is_none() {
-        return Err("Mining not ready: No block template available".to_string());
-    }
-
-    // Check if mining is complete
-    let current_height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
-    let current_reward = calculate_block_reward(current_height);
-    if is_mining_complete(current_reward) {
-        return Err("Mining is complete. Token has reached its maximum supply or minimum reward threshold.".to_string());
-    }
-
-    Ok(true)
-}
-
-#[ic_cdk::query]
-pub fn is_genesis_block_generated() -> bool {
-    GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get())
 }

@@ -8,7 +8,7 @@ use icrc_ledger_types::icrc1::account::Account;
 use std::collections::BTreeMap;
 use ic_stable_structures::{
     memory_manager::{MemoryManager, MemoryId, VirtualMemory},
-    DefaultMemoryImpl, StableBTreeMap, StableCell, StableLog,
+    DefaultMemoryImpl, StableBTreeMap, StableCell,
     Storable, storable::Bound
 };
 use std::borrow::Cow;
@@ -17,11 +17,21 @@ mod block_templates;
 mod mining;
 mod types;
 mod standards;
-mod security;
-mod http;
+mod statistics;
+mod submit_solution;
+mod transfer_to_miner;
 
-use block_templates::{BlockTemplate, Hash, Event, EventType};
-use types::*;
+use block_templates::{BlockTemplate, Hash};
+use crate::types::{ 
+    ArchiveOptions, SocialLink, 
+    InitArgs, FeatureFlags, LedgerArg, MetadataValue,
+    TokenAllInfo, AllInfoResult
+};
+
+#[ic_cdk::query]
+fn icrc1_version() -> String {
+    "v1".to_string()
+}
 
 // Store token state
 thread_local! {
@@ -73,16 +83,9 @@ thread_local! {
         )
     );
 
-    static EVENT_LOG: RefCell<StableLog<Event, Memory, Memory>> = RefCell::new(
-        StableLog::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(5))),
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(6))),
-        ).expect("Failed to init EVENT_LOG")
-    );
-
     static BLOCK_HEIGHT: RefCell<StableCell<u64, Memory>> = RefCell::new(
         StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(7))),
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(5))),
             0,
         ).expect("Failed to init BLOCK_HEIGHT")
     );
@@ -131,49 +134,6 @@ impl From<Principal> for StorablePrincipal {
     }
 }
 
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
-struct TokenInfo {
-    name: String,
-    ticker: String,
-    total_supply: u64,
-    ledger_id: Option<Principal>,
-    logo: Option<String>,
-    decimals: u8,
-    transfer_fee: u64,
-    archive_options: Option<ArchiveOptions>,
-    social_links: Option<Vec<SocialLink>>,
-    average_block_time: Option<f64>,
-    current_block_reward: u64,
-    current_block_height: u64,
-}
-
-#[derive(CandidType, Serialize, Deserialize)]
-struct TokenInitArgs {
-    name: String,
-    ticker: String,
-    total_supply: u64,
-    logo: Option<String>,
-    decimals: Option<u8>,
-    transfer_fee: Option<u64>,
-    archive_options: Option<ArchiveOptions>,
-    initial_block_reward: u64,
-    block_time_target_seconds: u64,
-    halving_interval: u64,
-    social_links: Option<Vec<SocialLink>>,
-}
-
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
-struct TokenMetrics {
-    total_supply: u64,
-    circulating_supply: u64,
-}
-
-#[derive(CandidType, Deserialize)]
-enum MetricsResult {
-    Ok(TokenMetrics),
-    Err(String),
-}
-
 // Authentication helper functions
 fn is_authenticated() -> bool {
     let caller = ic_cdk::caller();
@@ -195,50 +155,15 @@ fn get_auth_status() -> bool {
     is_authenticated()
 }
 
-// Implement Storable for TokenInfo
-impl Storable for TokenInfo {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(candid::encode_one(self).expect("Failed to encode TokenInfo"))
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        candid::decode_one(&bytes).expect("Failed to decode TokenInfo")
-    }
-
-    const BOUND: Bound = Bound::Bounded {
-        max_size: 1024,
-        is_fixed_size: false,
-    };
-}
-
-// Add heartbeat system method
-#[ic_cdk::heartbeat]
-fn heartbeat() {
-    let counter = HEARTBEAT_COUNTER.with(|c| {
-        let mut counter = c.borrow_mut();
-        *counter += 1;
-        *counter
-    });
-
-    if mining::update_block_template() {
-        ic_cdk::println!("Block template updated by heartbeat");
-    }
-
-    // Clean up rate limits every 60 heartbeats (less frequently)
-    if counter % 60 == 0 {
-        security::cleanup_rate_limits();
-    }
-}
-
 // Update init function to use stable cells
 #[ic_cdk_macros::init]
 fn init(args: TokenInitArgs) {
     // Initialize memory manager and stable structures
-    const TOTAL_MEMORY_REGIONS: u8 = 25; // Updated to accommodate all regions (0-24)
-
     MEMORY_MANAGER.with(|m| {
         let mm = m.borrow_mut();
-        for i in 0..TOTAL_MEMORY_REGIONS {
+        // Ensure ALL memory regions are initialized, including mining ones (6-14, 16, 24)
+        const TOTAL_MEMORY_REGIONS: u8 = 25; // Corrected total regions (0-24)
+        for i in 0..TOTAL_MEMORY_REGIONS { 
             mm.get(MemoryId::new(i));
         }
     });
@@ -246,20 +171,16 @@ fn init(args: TokenInitArgs) {
     // Initialize standards module
     standards::init();
 
-    // Initialize HTTP asset certification
-    http::init_asset_certification();
-
-    // Set creator to caller
+    // Set creator
     let caller = ic_cdk::caller();
     CREATOR_CELL.with(|c| {
         c.borrow_mut().set(Some(StorablePrincipal(caller))).expect("Failed to set creator");
     });
-    ic_cdk::println!("Setting creator to: {}", caller.to_text());
 
-    // Initialize token state
+    // Initialize token info using local TokenInfo and TokenInitArgs
     TOKEN_INFO_CELL.with(|info| {
-        info.borrow_mut().set(Some(TokenInfo {
-            name: args.name,
+        info.borrow_mut().set(Some(TokenInfo { // Use local TokenInfo
+            name: args.name, // Access fields directly
             ticker: args.ticker,
             total_supply: args.total_supply,
             ledger_id: None,
@@ -274,24 +195,25 @@ fn init(args: TokenInitArgs) {
         })).expect("Failed to set token info");
     });
 
-    // Initialize circulating supply to 0
+    // Initialize circulating supply
     CIRCULATING_SUPPLY_CELL.with(|c| {
         c.borrow_mut().set(0).expect("Failed to init circulating supply");
     });
 
-    // Initialize ledger ID to None
+    // Initialize ledger ID
     LEDGER_ID_CELL.with(|l| {
         l.borrow_mut().set(None).expect("Failed to init ledger ID");
     });
 
-    // Initialize mining parameters with minimum difficulty check
+    // Initialize mining parameters
+    // Ensure fields match the TokenInitArgs struct in types.rs
     mining::init_mining_params(
-        args.initial_block_reward,
-        args.block_time_target_seconds,
-        args.halving_interval
+        args.initial_block_reward,       // Should exist in TokenInitArgs
+        args.block_time_target_seconds, // Should exist in TokenInitArgs
+        args.halving_interval          // Should exist in TokenInitArgs
     );
 
-    ic_cdk::println!("Token backend initialized with stable memory structures and security measures");
+    ic_cdk::println!("Token backend initialized...");
 }
 
 // Update start_token with proper initialization
@@ -423,17 +345,17 @@ fn get_info() -> Result<TokenInfo, String> {
         let mut token_info = info.borrow().get().as_ref().cloned().ok_or_else(|| "Token not initialized".to_string())?;
         
         // Get current block height
-        let block_height = get_block_height();
+        let block_height = statistics::get_block_height();
         token_info.current_block_height = block_height;
         
         // Get mining info which includes current block reward
-        let mining_info = mining::get_mining_info();
+        let mining_info = statistics::get_mining_info();
         token_info.current_block_reward = mining_info.current_block_reward;
         
         // Get average block time
-        token_info.average_block_time = match mining::get_average_block_time(None) {
-            mining::BlockTimeResult::Ok(avg_time) => Some(avg_time),
-            mining::BlockTimeResult::Err(_) => None,
+        token_info.average_block_time = match statistics::get_average_block_time(None) {
+            statistics::BlockTimeResult::Ok(avg_time) => Some(avg_time),
+            statistics::BlockTimeResult::Err(_) => None,
         };
         
         Ok(token_info)
@@ -479,17 +401,22 @@ fn update_circulating_supply(amount: u64) {
 pub use mining::{
     generate_new_block,
     create_genesis_block,
-    submit_solution,
     get_current_block,
-    get_mining_difficulty,
-    get_mining_info,
-    EventBatch,
-    get_event_batches,
-    get_recent_events_from_batches,
-    get_average_block_time,
-    BlockTimeResult,
     restore_mining_params,
 };
+
+// Re-export statistics functions
+pub use statistics::{
+    get_mining_difficulty,
+    get_mining_info,
+    get_average_block_time,
+    BlockTimeResult,
+    get_block_height,
+    get_block_time_target,
+};
+
+// Re-export submit solution function
+pub use submit_solution::submit_solution;
 
 // Re-export standards types for Candid
 pub use standards::{
@@ -500,13 +427,6 @@ pub use standards::{
     DelegationError,
     SupportedStandard,
     TrustedOriginsResponse,
-};
-
-// Re-export HTTP types and functions
-pub use http::{
-    HttpRequest,
-    HttpResponse,
-    http_request,
 };
 
 fn build_metadata(token_info: &TokenInfo) -> Vec<(String, MetadataValue)> {
@@ -535,6 +455,64 @@ fn default_archive_options(controller: Principal) -> ArchiveOptions {
         controller_id: controller,
         more_controller_ids: None,
     }
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+struct TokenInfo {
+    name: String,
+    ticker: String,
+    total_supply: u64,
+    ledger_id: Option<Principal>,
+    logo: Option<String>,
+    decimals: u8,
+    transfer_fee: u64,
+    archive_options: Option<ArchiveOptions>,
+    social_links: Option<Vec<SocialLink>>,
+    average_block_time: Option<f64>,
+    current_block_reward: u64,
+    current_block_height: u64,
+}
+
+#[derive(CandidType, Serialize, Deserialize)]
+struct TokenInitArgs {
+    name: String,
+    ticker: String,
+    total_supply: u64,
+    logo: Option<String>,
+    decimals: Option<u8>,
+    transfer_fee: Option<u64>,
+    archive_options: Option<ArchiveOptions>,
+    initial_block_reward: u64,
+    block_time_target_seconds: u64,
+    halving_interval: u64,
+    social_links: Option<Vec<SocialLink>>,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+struct TokenMetrics {
+    total_supply: u64,
+    circulating_supply: u64,
+}
+
+#[derive(CandidType, Deserialize)]
+enum MetricsResult {
+    Ok(TokenMetrics),
+    Err(String),
+}
+
+impl Storable for TokenInfo {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(candid::encode_one(self).expect("Failed to encode TokenInfo"))
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        candid::decode_one(&bytes).expect("Failed to decode TokenInfo")
+    }
+
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 1024,
+        is_fixed_size: false,
+    };
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
@@ -583,7 +561,6 @@ struct MinerInfo {
     last_status_change: u64,
 }
 
-// Implement Storable for MinerInfo
 impl Storable for MinerInfo {
     fn to_bytes(&self) -> Cow<[u8]> {
         Cow::Owned(candid::encode_one(self).expect("Failed to encode MinerInfo"))
@@ -599,33 +576,6 @@ impl Storable for MinerInfo {
     };
 }
 
-// Helper function to get block height with proper dereferencing
-fn get_block_height() -> u64 {
-    BLOCK_HEIGHT.with(|h| *h.borrow().get())
-}
-
-// Helper/Reference function to increment block height
-// fn increment_block_height() -> u64 {
-//     BLOCK_HEIGHT.with(|h| {
-//         let current = *h.borrow().get();
-//         let next = current + 1;
-//         h.borrow_mut().set(next).expect("Failed to increment block height");
-//         next
-//     })
-// }
-
-// Helper function to log events with proper block height handling
-fn log_event(mut event: Event) {
-    let current_height = get_block_height();
-    event.block_height = current_height;
-    
-    EVENT_LOG.with(|log| {
-        let log = log.borrow_mut();
-        // Pre-allocate space for the event
-        log.append(&event).expect("Failed to append event");
-    });
-}
-
 // Update miner registration with proper block height handling
 #[ic_cdk::update]
 async fn register_miner() -> Result<(), String> {
@@ -637,7 +587,6 @@ async fn register_miner() -> Result<(), String> {
     }
 
     let now = ic_cdk::api::time();
-    let current_height = get_block_height();
     
     MINERS_MAP.with(|miners| {
         let mut miners = miners.borrow_mut();
@@ -671,17 +620,6 @@ async fn register_miner() -> Result<(), String> {
         };
         
         miners.insert(StorablePrincipal(caller), miner_info.clone());
-        
-        // Log registration event
-        log_event(Event {
-            event_type: EventType::SystemAnnouncement {
-                message: format!("New miner registered: {}", caller),
-                severity: "info".to_string(),
-            },
-            timestamp: now,
-            block_height: current_height,
-        });
-
         Ok(())
     })
 }
@@ -736,7 +674,6 @@ fn update_miner_stats(miner: Principal, reward: u64) {
     MINERS_MAP.with(|miners| {
         let mut miners = miners.borrow_mut();
         if let Some(mut info) = miners.get(&StorablePrincipal(miner)) {
-            let blocks_mined = info.stats.blocks_mined + 1;  // Cache the value
             info.stats.blocks_mined += 1;
             info.stats.total_rewards += reward;
             info.stats.last_block_timestamp = Some(now);
@@ -744,34 +681,7 @@ fn update_miner_stats(miner: Principal, reward: u64) {
                 info.stats.first_block_timestamp = Some(now);
             }
             
-            // Pre-allocate milestone event if needed
-            let milestone_event = {
-                let milestones = [
-                    (10, "IC Cadet"),
-                    (100, "Canister Captain"),
-                    (1000, "Cycles Sovereign"),
-                    (10000, "Internet Computer Legend")
-                ];
-                
-                milestones.iter()
-                    .find(|&&(threshold, _)| blocks_mined == threshold)
-                    .map(|&(_, title)| Event {
-                        event_type: EventType::MiningMilestone {
-                            miner,
-                            achievement: title.to_string(),
-                            blocks_mined,
-                        },
-                        timestamp: now,
-                        block_height: BLOCK_HEIGHT.with(|h| *h.borrow().get()),
-                    })
-            };
-            
             miners.insert(StorablePrincipal(miner), info);
-
-            // Log milestone event if applicable
-            if let Some(event) = milestone_event {
-                log_event(event);
-            }
         }
     });
 }
@@ -796,34 +706,6 @@ fn get_miner_leaderboard(limit: Option<u32>) -> Vec<MinerInfo> {
         result.sort_by(|a, b| b.stats.blocks_mined.cmp(&a.stats.blocks_mined));
         result.truncate(limit);
         result
-    })
-}
-
-// Add function to get recent events
-#[ic_cdk::query]
-fn get_recent_events(limit: Option<u32>) -> Vec<Event> {
-    let limit = limit.unwrap_or(50) as u64;
-    
-    EVENT_LOG.with(|log| {
-        let log = log.borrow();
-        let len = log.len();  // This is u64
-        let start = if len > limit { 
-            len - limit
-        } else { 
-            0 
-        };
-        
-        // Pre-allocate exact size needed
-        let capacity = (len - start).try_into().unwrap_or(0);
-        let mut events = Vec::with_capacity(capacity);
-        
-        // Use range with u64
-        for i in start..len {
-            if let Some(event) = log.get(i) {
-                events.push(event);
-            }
-        }
-        events
     })
 }
 
@@ -943,31 +825,16 @@ fn remove_social_link(index: usize) -> Result<(), String> {
     })
 }
 
-/// Returns the version of the token canister implementation
-#[ic_cdk::query]
-fn icrc1_version() -> String {
-    "v1.0.0".to_string()
-}
-
-// Candid interface export
-ic_cdk::export_candid!();
-
 #[ic_cdk_macros::pre_upgrade]
 fn pre_upgrade() {
-    // The pre_upgrade hook ensures that stable memory is properly preserved
-    // No additional action needed as we're using StableCell for storage
     ic_cdk::println!("Pre-upgrade: Preparing for canister upgrade");
 }
 
 #[ic_cdk_macros::post_upgrade]
 fn post_upgrade() {
-    // Re-initialize asset certification after upgrade
-    http::init_asset_certification();
-    
-    // Initialize memory manager to ensure all regions are allocated
     MEMORY_MANAGER.with(|m| {
         let mm = m.borrow_mut();
-        const TOTAL_MEMORY_REGIONS: u8 = 25; // Updated to accommodate all regions (0-24)
+        const TOTAL_MEMORY_REGIONS: u8 = 25;
         for i in 0..TOTAL_MEMORY_REGIONS {
             mm.get(MemoryId::new(i));
         }
@@ -977,9 +844,9 @@ fn post_upgrade() {
     mining::initialize_memory();
     
     // Log the current mining parameters after upgrade
-    let difficulty = mining::get_mining_difficulty();
-    let block_time = mining::get_block_time_target();
-    let mining_info = mining::get_mining_info();
+    let difficulty = statistics::get_mining_difficulty();
+    let block_time = statistics::get_block_time_target();
+    let mining_info = statistics::get_mining_info();
     
     ic_cdk::println!("Post-upgrade: Mining parameters - difficulty: {}, block_time_target: {}", 
         difficulty, block_time);
@@ -987,102 +854,29 @@ fn post_upgrade() {
     ic_cdk::println!("Post-upgrade: Asset certification and mining memory re-initialized");
 }
 
-// Helper function to format block time
-fn format_block_time(seconds: f64) -> String {
-    if seconds.is_nan() || seconds <= 0.0 {
-        return "N/A".to_string();
-    }
-    format!("{:.2}s", seconds)
-}
-
-// Helper function to get block time rating
-fn get_block_time_rating(seconds: f64) -> String {
-    if seconds.is_nan() {
-        return "Unknown".to_string();
-    }
-    
-    if seconds < 15.0 {
-        "Fast".to_string()
-    } else if seconds < 30.0 {
-        "Medium".to_string()
-    } else {
-        "Slow".to_string()
-    }
-}
-
-// Helper function to format mining progress percentage
-fn format_mining_progress(circulating: u64, total: u64) -> String {
-    if total == 0 {
-        return "0%".to_string();
-    }
-    let percentage = (circulating as f64 / total as f64) * 100.0;
-    format!("{:.2}%", percentage)
-}
-
-// Helper function to format block reward
-fn format_block_reward(reward: u64, decimals: u8, ticker: &str) -> String {
-    if decimals == 0 {
-        return format!("{} {}", reward, ticker);
-    }
-    
-    let divisor = 10u64.pow(decimals as u32);
-    let whole_part = reward / divisor;
-    let fractional_part = reward % divisor;
-    
-    if fractional_part == 0 {
-        format!("{} {}", whole_part, ticker)
-    } else {
-        let fractional_str = format!("{:0width$}", fractional_part, width = decimals as usize);
-        format!("{}.{} {}", whole_part, fractional_str, ticker)
-    }
-}
-
 // New comprehensive query that returns all token info in one call
 #[ic_cdk::query]
 fn get_all_info() -> AllInfoResult {
-    // Get basic token info
     let token_info = match get_info() {
         Ok(info) => info,
         Err(e) => return AllInfoResult::Err(e),
     };
     
-    // Get metrics
     let metrics = match get_metrics() {
         MetricsResult::Ok(m) => m,
         MetricsResult::Err(e) => return AllInfoResult::Err(e),
     };
     
-    // Get mining info
-    let mining_info = mining::get_mining_info();
-    
-    // Get block height
-    let block_height = get_block_height();
-    
-    // Get average block time
-    let avg_block_time = match mining::get_average_block_time(None) {
-        mining::BlockTimeResult::Ok(time) => Some(time),
-        mining::BlockTimeResult::Err(_) => None,
+    let mining_info = statistics::get_mining_info();
+    let block_height = statistics::get_block_height();
+    let avg_block_time = match statistics::get_average_block_time(None) {
+        statistics::BlockTimeResult::Ok(time) => Some(time),
+        statistics::BlockTimeResult::Err(_) => None,
     };
     
-    // Format block time and get rating
-    let formatted_block_time = avg_block_time.map(format_block_time);
-    let block_time_rating = avg_block_time.map(get_block_time_rating);
-    
-    // Calculate mining progress
-    let mining_progress = format_mining_progress(metrics.circulating_supply, metrics.total_supply);
-    
-    // Format block reward
-    let formatted_reward = format_block_reward(
-        mining_info.current_block_reward, 
-        token_info.decimals, 
-        &token_info.ticker
-    );
-    
-    // Get canister ID
     let principal = ic_cdk::id();
     
     AllInfoResult::Ok(TokenAllInfo {
-        // Basic token info
         name: token_info.name,
         ticker: token_info.ticker,
         total_supply: token_info.total_supply,
@@ -1091,77 +885,13 @@ fn get_all_info() -> AllInfoResult {
         decimals: token_info.decimals,
         transfer_fee: token_info.transfer_fee,
         social_links: token_info.social_links,
-        
-        // Block statistics
         average_block_time: avg_block_time,
-        formatted_block_time,
-        block_time_rating,
-        
-        // Supply metrics
         circulating_supply: metrics.circulating_supply,
-        mining_progress_percentage: mining_progress,
-        
-        // Block rewards
         current_block_reward: mining_info.current_block_reward,
-        formatted_block_reward: formatted_reward,
-        
-        // Token IDs
         canister_id: principal,
         current_block_height: block_height,
     })
 }
 
-// Super comprehensive query that returns everything about the token
-#[ic_cdk::query]
-fn get_everything() -> EverythingResult {
-    // Get all info first
-    let all_info = match get_all_info() {
-        AllInfoResult::Ok(info) => info,
-        AllInfoResult::Err(e) => return EverythingResult::Err(e),
-    };
-    
-    // Get active miners count - use the re-exported function
-    let active_miners = get_active_miners();
-    
-    // Get mining difficulty
-    let mining_difficulty = mining::get_mining_difficulty();
-    
-    // Get recent events (last 10)
-    let recent_events = get_recent_events(Some(10));
-    
-    // Get block time target
-    let block_time_target = mining::get_block_time_target();
-    
-    // Calculate mining completion estimate
-    let mining_completion_estimate = if all_info.mining_progress_percentage == "100.00%" {
-        Some("Mining complete".to_string())
-    } else if all_info.average_block_time.is_some() && all_info.average_block_time.unwrap() > 0.0 {
-        let remaining_supply = all_info.total_supply - all_info.circulating_supply;
-        let blocks_remaining = remaining_supply / all_info.current_block_reward;
-        let time_remaining_seconds = blocks_remaining as f64 * all_info.average_block_time.unwrap();
-        
-        // Convert to days/hours/minutes
-        let days = (time_remaining_seconds / 86400.0) as u64;
-        let hours = ((time_remaining_seconds % 86400.0) / 3600.0) as u64;
-        let minutes = ((time_remaining_seconds % 3600.0) / 60.0) as u64;
-        
-        if days > 0 {
-            Some(format!("~{} days, {} hours remaining", days, hours))
-        } else if hours > 0 {
-            Some(format!("~{} hours, {} minutes remaining", hours, minutes))
-        } else {
-            Some(format!("~{} minutes remaining", minutes))
-        }
-    } else {
-        None
-    };
-    
-    EverythingResult::Ok(TokenEverything {
-        all_info,
-        active_miners_count: active_miners.len(),
-        mining_difficulty,
-        block_time_target,
-        recent_events,
-        mining_completion_estimate,
-    })
-}
+// Candid interface export
+ic_cdk::export_candid!();

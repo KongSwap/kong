@@ -128,7 +128,6 @@ pub struct MiningInfo {
     pub current_block_reward: u64,
     pub block_time_target: u64,
     pub next_halving_interval: u64,
-    pub mining_complete: bool,
 } 
 
 // New comprehensive types for enhanced queries
@@ -146,16 +145,12 @@ pub struct TokenAllInfo {
     
     // Block statistics
     pub average_block_time: Option<f64>,
-    pub formatted_block_time: Option<String>,
-    pub block_time_rating: Option<String>,
-    
+
     // Supply metrics
     pub circulating_supply: u64,
-    pub mining_progress_percentage: String,
-    
+
     // Block rewards
     pub current_block_reward: u64,
-    pub formatted_block_reward: String,
     
     // Token IDs
     pub canister_id: Principal,
@@ -171,9 +166,6 @@ pub struct TokenEverything {
     pub active_miners_count: usize,
     pub mining_difficulty: u32,
     pub block_time_target: u64,
-    
-    // Recent activity
-    pub recent_events: Vec<crate::block_templates::Event>,
     
     // Additional metrics
     pub mining_completion_estimate: Option<String>,

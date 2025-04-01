@@ -279,7 +279,6 @@ pub enum DelegationResponse {
     }
 }
 
-// Keep as update since it modifies state and requires consensus
 #[ic_cdk::update]
 pub async fn icrc34_delegate(req: DelegationRequest) -> Result<DelegationResponse, DelegationError> {
     let caller = api::caller();
@@ -435,10 +434,6 @@ pub fn icrc10_supported_standards() -> Vec<SupportedStandard> {
         SupportedStandard {
             name: "ICRC-34".to_string(),
             url: "https://github.com/dfinity/ICRC/tree/main/ICRCs/ICRC-34/ICRC-34.md".to_string(),
-        },
-        SupportedStandard {
-            name: "ICRC-35".to_string(),
-            url: "https://github.com/dfinity/wg-identity-authentication/blob/main/topics/icrc_35_webpage_apis.md".to_string(),
         },
     ]
 }

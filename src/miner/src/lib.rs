@@ -260,9 +260,6 @@ async fn generate_unique_nonce_start() -> Result<u64, String> {
     Ok(u64::from_le_bytes(unique_bytes))
 }
 
-// Constants for cycle payments
-const SUBMISSION_CYCLES: u128 = 1_000_000_000; // 1 billion cycles
-
 #[ic_cdk::update]
 async fn start_mining() -> Result<(), String> {
     // Only controller can start mining
@@ -629,7 +626,7 @@ async fn submit_solution(token_id: Principal, result: MiningResult, difficulty: 
                     token_id,
                     "submit_solution",
                     (ledger_id, result.nonce, result.solution_hash, hashes_processed),
-                    SUBMISSION_CYCLES,
+                    500_000_000,
                 )
                 .await
                 {
