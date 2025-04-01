@@ -3,7 +3,7 @@ use ic_cdk::api::call::call;
 use icrc_ledger_types::icrc1::{account::Account, transfer::{TransferArg, TransferError, BlockIndex}};
 
 /// Performs an ICRC1 transfer from this canister to the miner.
-pub(crate) async fn transfer_to_miner(ledger_id: Principal, miner: Principal, reward: u64) -> Result<(), String> {
+pub(crate) async fn transfer_to_miner_ic(ledger_id: Principal, miner: Principal, reward: u64) -> Result<(), String> {
     if reward == 0 {
         ic_cdk::println!("Reward is 0 for miner {}, skipping transfer.", miner);
         return Ok(()); // No transfer needed if reward is zero
@@ -39,3 +39,16 @@ pub(crate) async fn transfer_to_miner(ledger_id: Principal, miner: Principal, re
         }
     }
 }
+
+// cfg feature flags
+
+// transfer to miner sol
+
+// transfer to miner sui
+
+// transfer to miner eth
+
+// transfer to miner btc
+
+// transfer to miner ltc
+

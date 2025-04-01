@@ -82,7 +82,7 @@ impl BlockTemplate {
     }
 
     pub fn verify_solution(&self, nonce: u64, solution_hash: Hash) -> bool {
-        let calculated_hash = self.calculate_hash(nonce); // Now calls the added function
+        let calculated_hash = self.calculate_hash(nonce);
         if calculated_hash != solution_hash {
             return false;
         }

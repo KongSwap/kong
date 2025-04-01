@@ -3,19 +3,17 @@
 use candid::{CandidType, Deserialize};
 use ciborium;
 use ic_stable_structures::storable::Bound;
-use ic_stable_structures::{
-    memory_manager::{MemoryId, MemoryManager, VirtualMemory},
-    DefaultMemoryImpl, StableCell, Storable,
-};
+use ic_stable_structures::Storable;
 use lru::LruCache;
 use serde::Serialize;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::num::NonZeroUsize;
+use candid::Principal;
 
 use crate::block_templates::{BlockTemplate, Hash};
-
-type Memory = VirtualMemory<DefaultMemoryImpl>;
+use crate::memory;
+use crate::types::{StorablePrincipal, MinerStatus};
 
 #[ic_cdk::query]
 pub fn mining_version() -> String {
@@ -158,7 +156,7 @@ pub(crate) struct BloomFilter {
 }
 
 impl BloomFilter {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { data: [0; 1024], k: 3 }
     }
 
@@ -240,105 +238,6 @@ thread_local! {
 }
 
 thread_local! {
-    // Memory Manager
-    static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = RefCell::new(
-        MemoryManager::init(DefaultMemoryImpl::default())
-    );
-
-    // --- Mining State ---
-
-    // Current block template being mined
-    pub(crate) static CURRENT_BLOCK: RefCell<StableCell<Option<BlockTemplate>, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(6))), // ID 6
-            None
-        ).expect("Failed to init CURRENT_BLOCK")
-    );
-
-    // Hash of the previously mined block
-    pub(crate) static LAST_BLOCK_HASH: RefCell<StableCell<StorableHash, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(7))), // ID 7
-            StorableHash([0; 32])
-        ).expect("Failed to init LAST_BLOCK_HASH")
-    );
-
-    // Current block height (number of blocks mined so far)
-    pub(crate) static BLOCK_HEIGHT: RefCell<StableCell<u64, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(8))), // ID 8
-            0
-        ).expect("Failed to init BLOCK_HEIGHT")
-    );
-
-    // Current mining difficulty target
-    pub(crate) static MINING_DIFFICULTY: RefCell<StableCell<u32, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(9))), // ID 9
-            0 // Initialized properly in init_mining_params or post_upgrade
-        ).expect("Failed to init MINING_DIFFICULTY")
-    );
-
-    // Initial block reward (halves over time)
-    pub(crate) static BLOCK_REWARD: RefCell<StableCell<u64, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(10))), // ID 10
-            0
-        ).expect("Failed to init BLOCK_REWARD")
-    );
-
-    // Target time between blocks (in seconds)
-    pub(crate) static BLOCK_TIME_TARGET: RefCell<StableCell<u64, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(11))), // ID 11
-            0
-        ).expect("Failed to init BLOCK_TIME_TARGET")
-    );
-
-    // Recent block timestamps (for difficulty adjustment)
-    pub(crate) static BLOCK_TIMESTAMPS: RefCell<StableCell<StorableTimestamps, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(12))), // ID 12
-            StorableTimestamps(Vec::new())
-        ).expect("Failed to init BLOCK_TIMESTAMPS")
-    );
-
-    // Recently processed unique solutions (nonce, hash, height) to prevent duplicates
-    pub(crate) static PROCESSED_SOLUTIONS: RefCell<StableCell<StorableSolutions, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(13))), // ID 13
-            StorableSolutions(Vec::new())
-        ).expect("Failed to init PROCESSED_SOLUTIONS")
-    );
-
-    // Bloom filter for quick check against processed solutions
-    pub(crate) static SOLUTION_BLOOM_FILTER: RefCell<StableCell<BloomFilter, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(14))), // ID 14
-            BloomFilter::new()
-        ).expect("Failed to init SOLUTION_BLOOM_FILTER")
-    );
-
-    // Number of blocks after which the reward halves
-    // IMPORTANT: Assign a unique MemoryId, e.g., 16, instead of reusing 14.
-    pub(crate) static HALVING_INTERVAL: RefCell<StableCell<u64, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(16))), // Changed to ID 16
-            0
-        ).expect("Failed to init HALVING_INTERVAL")
-    );
-
-    // Flag indicating if the genesis block (block 1) has been created
-    pub(crate) static GENESIS_BLOCK_GENERATED: RefCell<StableCell<bool, Memory>> = RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(24))), // ID 24
-            false
-        ).expect("Failed to init GENESIS_BLOCK_GENERATED")
-    );
-
-    // --- In-Memory State (Lost on Upgrade) ---
-
-    // Counter for heartbeat mechanism (difficulty reduction when stalled)
     pub(crate) static HEARTBEAT_COUNTER: RefCell<u32> = RefCell::new(0);
 }
 
@@ -346,44 +245,14 @@ thread_local! {
 pub fn init_mining_params(initial_block_reward: u64, block_time_target: u64, halving_interval: u64) {
     const INITIAL_DIFFICULTY: u32 = 10; // Set a reasonable starting difficulty
 
-    BLOCK_REWARD.with(|r| {
-        r.borrow_mut().set(initial_block_reward).expect("Failed to set block reward");
-    });
-
-    MINING_DIFFICULTY.with(|d| {
-        d.borrow_mut().set(INITIAL_DIFFICULTY).expect("Failed to set mining difficulty");
-    });
-
-    BLOCK_TIME_TARGET.with(|t| {
-        t.borrow_mut().set(block_time_target).expect("Failed to set block time target");
-    });
-
-    // Set halving interval (using ID 16 now)
-    HALVING_INTERVAL.with(|h| {
-        h.borrow_mut().set(halving_interval).expect("Failed to set halving interval");
-    });
-
-    // Initialize empty timestamps vector
-    BLOCK_TIMESTAMPS.with(|t| {
-        t.borrow_mut()
-            .set(StorableTimestamps(Vec::new()))
-            .expect("Failed to init timestamps");
-    });
-
-    // Initialize block height to 0
-    BLOCK_HEIGHT.with(|h| {
-        h.borrow_mut().set(0).expect("Failed to init block height");
-    });
-
-    // Initialize last block hash to zeros
-    LAST_BLOCK_HASH.with(|h| {
-        h.borrow_mut().set(StorableHash([0; 32])).expect("Failed to init last block hash");
-    });
-
-     // Initialize Genesis Flag to false
-    GENESIS_BLOCK_GENERATED.with(|g| {
-        g.borrow_mut().set(false).expect("Failed to init genesis flag");
-    });
+    memory::with_block_reward_mut(|cell| cell.set(initial_block_reward).expect("Failed to set block reward"));
+    memory::with_mining_difficulty_mut(|cell| cell.set(INITIAL_DIFFICULTY).expect("Failed to set mining difficulty"));
+    memory::with_block_time_target_mut(|cell| cell.set(block_time_target).expect("Failed to set block time target"));
+    memory::with_halving_interval_mut(|cell| cell.set(halving_interval).expect("Failed to set halving interval"));
+    memory::with_block_timestamps_mut(|cell| cell.set(StorableTimestamps(Vec::new())).expect("Failed to init timestamps"));
+    memory::with_block_height_mut(|cell| cell.set(0).expect("Failed to init block height"));
+    memory::with_last_block_hash_mut(|cell| cell.set(StorableHash([0; 32])).expect("Failed to init last block hash"));
+    memory::with_genesis_block_generated_mut(|cell| cell.set(false).expect("Failed to init genesis flag"));
 
     ic_cdk::println!(
         "Mining params initialized: Reward={}, TargetTime={}, Halving={}, Difficulty={}",
@@ -402,14 +271,13 @@ fn adjust_difficulty() -> u32 {
     // Optional: Define a maximum difficulty ceiling if needed
     // const MAX_DIFFICULTY: u32 = 100_000;
 
-    let target_time_sec = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
-    let current_diff = MINING_DIFFICULTY.with(|d| *d.borrow().get());
+    let target_time_sec = memory::with_block_time_target(|t| *t);
+    let current_diff = memory::with_mining_difficulty(|d| *d);
 
     // Get timestamp of the last block (in seconds)
-    let last_timestamp_sec = BLOCK_TIMESTAMPS.with(|ts| {
-        let data = ts.borrow().get().0.clone();
-        data.last().map(|ns| ns / 1_000_000_000)
-    });
+    let last_timestamp_sec = memory::with_block_timestamps(|timestamps|
+        timestamps.0.last().map(|ns| ns / 1_000_000_000)
+    );
 
     // If no previous block timestamp, or target time is 0, return current difficulty (or minimum)
     let last_timestamp_sec = match last_timestamp_sec {
@@ -449,9 +317,9 @@ fn adjust_difficulty() -> u32 {
 
 #[ic_cdk::query]
 pub fn get_current_block() -> Option<BlockTemplate> {
-    let ledger_deployed = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some());
-    let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
-    let current_block = CURRENT_BLOCK.with(|b| b.borrow().get().clone());
+    let ledger_deployed = memory::with_ledger_id(|id_opt| id_opt.is_some());
+    let genesis_generated = memory::with_genesis_block_generated(|g| *g);
+    let current_block = memory::with_current_block(|b_opt| b_opt.clone());
 
     if current_block.is_none() {
         let reason = if !ledger_deployed {
@@ -468,9 +336,10 @@ pub fn get_current_block() -> Option<BlockTemplate> {
 }
 
 /// Calculates the block reward for a given block height based on halving interval.
-pub(crate) fn calculate_block_reward(block_height: u64) -> u64 {
-    let initial_reward = BLOCK_REWARD.with(|r| *r.borrow().get());
-    let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
+/// Uses memory module accessors.
+pub fn calculate_block_reward(block_height: u64) -> u64 {
+    let initial_reward = memory::with_block_reward(|r| *r);
+    let halving_interval = memory::with_halving_interval(|h| *h);
 
     if initial_reward == 0 {
         return 0; // If initial reward is zero, reward is always zero
@@ -499,18 +368,16 @@ pub(crate) fn calculate_block_reward(block_height: u64) -> u64 {
 /// Generates a new block template. Called after a solution is found or during genesis creation.
 /// Requires caller check for genesis block generation.
 pub async fn generate_new_block() -> Result<BlockTemplate, String> {
-    let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
+    let height = memory::with_block_height(|h| *h);
     let next_height = height + 1;
 
     // Miner check: Only registered active miners can *trigger* new block generation *after* genesis
     // The genesis block creation is triggered by the controller via `create_genesis_block`.
     if height > 0 {
         let caller = ic_cdk::caller();
-        let is_active_miner = crate::MINERS_MAP.with(|miners| {
-            miners
-                .borrow()
-                .get(&crate::StorablePrincipal(caller))
-                .map(|info| matches!(info.status, crate::MinerStatus::Active))
+        let is_active_miner = memory::with_miners_map(|miners_map| {
+            miners_map.get(&StorablePrincipal(caller))
+                .map(|info| matches!(info.status, MinerStatus::Active))
                 .unwrap_or(false)
         });
 
@@ -521,14 +388,14 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
     }
 
     // Get previous block hash (will be zeros for genesis)
-    let prev_hash = LAST_BLOCK_HASH.with(|h| h.borrow().get().0);
+    let prev_hash = memory::with_last_block_hash(|h| h.0); // Get inner Hash
 
     // Adjust difficulty based on previous block time
     let new_difficulty = adjust_difficulty();
 
     // Update stable memory with the calculated difficulty *before* creating the block
-    MINING_DIFFICULTY.with(|d| {
-        d.borrow_mut().set(new_difficulty).expect("Failed to update difficulty");
+    memory::with_mining_difficulty_mut(|cell| {
+        cell.set(new_difficulty).expect("Failed to update difficulty")
     });
 
     // Create new block template
@@ -548,19 +415,19 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
         fixed_block.difficulty = new_difficulty;
         fixed_block.target = BlockTemplate::calculate_target(new_difficulty); // Recalculate target too
 
-        CURRENT_BLOCK.with(|b| {
-            b.borrow_mut().set(Some(fixed_block.clone())).expect("Failed to set fixed current block");
+        memory::with_current_block_mut(|cell| {
+            cell.set(Some(fixed_block.clone())).expect("Failed to set fixed current block")
         });
-        BLOCK_HEIGHT.with(|h| {
-            h.borrow_mut().set(next_height).expect("Failed to update block height for fixed block");
+        memory::with_block_height_mut(|cell| {
+            cell.set(next_height).expect("Failed to update block height for fixed block")
         });
         Ok(fixed_block)
     } else {
-        CURRENT_BLOCK.with(|b| {
-            b.borrow_mut().set(Some(block.clone())).expect("Failed to set current block");
+        memory::with_current_block_mut(|cell| {
+            cell.set(Some(block.clone())).expect("Failed to set current block")
         });
-        BLOCK_HEIGHT.with(|h| {
-            h.borrow_mut().set(next_height).expect("Failed to update block height");
+        memory::with_block_height_mut(|cell| {
+            cell.set(next_height).expect("Failed to update block height")
         });
         Ok(block)
     }
@@ -568,7 +435,7 @@ pub async fn generate_new_block() -> Result<BlockTemplate, String> {
 
 /// Calculates the expected heartbeat interval based on block time target.
 fn calculate_heartbeat_interval() -> u64 {
-    let target_time = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
+    let target_time = memory::with_block_time_target(|t| *t);
     if target_time == 0 { return 6; }
     (target_time / 10).clamp(1, 60)
 }
@@ -576,17 +443,17 @@ fn calculate_heartbeat_interval() -> u64 {
 /// Called periodically (e.g., by canister_heartbeat) to potentially lower difficulty
 /// if no blocks have been mined for a while.
 pub fn update_block_template_difficulty() -> bool {
-     if !GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get()) || CURRENT_BLOCK.with(|b| b.borrow().get().is_none()) {
+     if !memory::with_genesis_block_generated(|g| *g) || memory::with_current_block(|b| b.is_none()) {
          return false;
      }
 
     let now_sec = ic_cdk::api::time() / 1_000_000_000;
-    let last_timestamp_sec = match BLOCK_TIMESTAMPS.with(|ts| ts.borrow().get().0.last().map(|ns| ns / 1_000_000_000)) {
-        Some(ts) => ts,
+    let last_timestamp_sec = match memory::with_block_timestamps(|ts| ts.0.last().copied()) {
+        Some(ns) => ns / 1_000_000_000,
         None => return false,
     };
 
-    let target_time_sec = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
+    let target_time_sec = memory::with_block_time_target(|t| *t);
     let time_since_last = now_sec.saturating_sub(last_timestamp_sec);
 
     if target_time_sec > 0 && time_since_last > target_time_sec {
@@ -610,7 +477,7 @@ pub fn update_block_template_difficulty() -> bool {
         }
 
         if should_decrease {
-            let current_diff = MINING_DIFFICULTY.with(|d| *d.borrow().get());
+            let current_diff = memory::with_mining_difficulty(|d| *d);
             const MIN_DIFFICULTY_FLOOR: u32 = 5;
 
             if current_diff > MIN_DIFFICULTY_FLOOR {
@@ -619,52 +486,46 @@ pub fn update_block_template_difficulty() -> bool {
                 let new_diff = current_diff.saturating_sub(decrease_amount).max(MIN_DIFFICULTY_FLOOR);
 
                 if new_diff != current_diff {
-                    MINING_DIFFICULTY.with(|d| d.borrow_mut().set(new_diff).expect("Failed to update difficulty via heartbeat"));
+                    memory::with_mining_difficulty_mut(|cell| cell.set(new_diff).expect("Failed to update difficulty via heartbeat"));
 
-                    let updated = CURRENT_BLOCK.with(|b| {
-                        let mut block_cell = b.borrow_mut();
-                        if let Some(mut current) = block_cell.get().clone() {
+                    let update_succeeded = memory::with_current_block_mut(|current_block_cell| {
+                        if let Some(mut current) = current_block_cell.get().clone() {
                             current.difficulty = new_diff;
                             current.target = BlockTemplate::calculate_target(new_diff);
-                            block_cell.set(Some(current)).expect("Failed to update block template via heartbeat");
+                            current_block_cell.set(Some(current)).expect("Failed to update block template via heartbeat");
                             ic_cdk::println!("Heartbeat triggered: Difficulty reduced from {} to {}", current_diff, new_diff);
-                            true
+                            true // Indicate success
                         } else {
-                             ic_cdk::println!("Heartbeat triggered reduction, but no current block template found unexpectedly.");
-                             false
+                            ic_cdk::println!("Heartbeat triggered reduction, but no current block template found unexpectedly.");
+                            false // Indicate failure
                         }
                     });
-                    return updated;
+                    return update_succeeded; // Return the captured result
+                } else {
+                    // Difficulty didn't change, return false
+                    return false;
                 }
             } else {
                  ic_cdk::println!("Heartbeat check: Difficulty already at minimum ({}), no reduction.", MIN_DIFFICULTY_FLOOR);
+                 return false;
             }
         }
     } else {
         HEARTBEAT_COUNTER.with(|c| *c.borrow_mut() = 0);
     }
-    false
+    false // Default return if no decrease happened
 }
+
 
 // --- Upgrade and Initialization ---
 
-/// Initializes stable memory structures required by the mining module.
-/// Also handles restoring default parameters if they seem reset after an upgrade.
+/// Initializes mining-specific logic after upgrade. Uses memory module accessors.
+/// Assumes `memory::init_memory()` has already been called in `post_upgrade`.
 pub fn initialize_memory() {
-    MEMORY_MANAGER.with(|m| {
-        let manager = m.borrow_mut();
-        // Check IDs used in thread_local!: 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 24
-        let memory_ids = [6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 24]; // Removed 15
-        for id in memory_ids {
-            manager.get(MemoryId::new(id));
-        }
-         ic_cdk::println!("Mining memory IDs initialized/retrieved.");
-    });
-
-    let difficulty = MINING_DIFFICULTY.with(|d| *d.borrow().get());
-    let block_time_target = BLOCK_TIME_TARGET.with(|t| *t.borrow().get());
-    let halving_interval = HALVING_INTERVAL.with(|h| *h.borrow().get());
-    let block_reward = BLOCK_REWARD.with(|r| *r.borrow().get());
+    let difficulty = memory::with_mining_difficulty(|d| *d);
+    let block_time_target = memory::with_block_time_target(|t| *t);
+    let halving_interval = memory::with_halving_interval(|h| *h);
+    let block_reward = memory::with_block_reward(|r| *r);
 
     let mut reinitialized = false;
     let default_difficulty = 10;
@@ -679,15 +540,15 @@ pub fn initialize_memory() {
 
     if reinitialized {
         ic_cdk::println!("WARN: Critical mining parameters were zero after upgrade. Restoring defaults.");
-        MINING_DIFFICULTY.with(|d| d.borrow_mut().set(final_difficulty).expect("Restore failed"));
-        BLOCK_TIME_TARGET.with(|t| t.borrow_mut().set(final_block_time).expect("Restore failed"));
-        HALVING_INTERVAL.with(|h| h.borrow_mut().set(final_halving).expect("Restore failed"));
-        BLOCK_REWARD.with(|r| r.borrow_mut().set(final_reward).expect("Restore failed"));
+        memory::with_mining_difficulty_mut(|cell| cell.set(final_difficulty).expect("Restore failed"));
+        memory::with_block_time_target_mut(|cell| cell.set(final_block_time).expect("Restore failed"));
+        memory::with_halving_interval_mut(|cell| cell.set(final_halving).expect("Restore failed"));
+        memory::with_block_reward_mut(|cell| cell.set(final_reward).expect("Restore failed"));
     }
 
-    let current_block_exists = CURRENT_BLOCK.with(|b| b.borrow().get().is_some());
-    let genesis_generated = GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get());
-    let ledger_deployed = crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some());
+    let current_block_exists = memory::with_current_block(|b| b.is_some());
+    let genesis_generated = memory::with_genesis_block_generated(|g| *g);
+    let ledger_deployed = memory::with_ledger_id(|id| id.is_some());
 
     ic_cdk::println!(
         "Post-upgrade mining state: Ledger={}, Genesis={}, BlockTemplate={}, Difficulty={}, TargetTime={}",
@@ -702,8 +563,7 @@ pub fn initialize_memory() {
              ic_cdk::println!("Post-upgrade: Heartbeat check did not result in difficulty update. Next solution submission required.");
         }
     } else if current_block_exists {
-        CURRENT_BLOCK.with(|b| {
-            let mut block_cell = b.borrow_mut();
+        memory::with_current_block_mut(|block_cell| {
             if let Some(mut current) = block_cell.get().clone() {
                 if current.difficulty != final_difficulty {
                      ic_cdk::println!("Post-upgrade: Updating existing block template difficulty from {} to {}.", current.difficulty, final_difficulty);
@@ -714,19 +574,20 @@ pub fn initialize_memory() {
             }
         });
     }
+     ic_cdk::println!("Mining module specific post-upgrade checks completed.");
 }
 
 
 // --- Genesis Block Creation ---
 
 fn check_genesis_not_generated() -> Result<(), String> {
-    if GENESIS_BLOCK_GENERATED.with(|g| *g.borrow().get()) {
+    if memory::with_genesis_block_generated(|g| *g) {
         return Err("Genesis block already generated (flag is set).".to_string());
     }
-    if CURRENT_BLOCK.with(|b| b.borrow().get().is_some()) {
+    if memory::with_current_block(|b| b.is_some()) {
         return Err("Genesis block seems generated (block template exists).".to_string());
     }
-    let height = BLOCK_HEIGHT.with(|h| *h.borrow().get());
+    let height = memory::with_block_height(|h| *h);
     if height > 0 {
         return Err(format!("Genesis block seems generated (height is {}).", height));
     }
@@ -736,15 +597,19 @@ fn check_genesis_not_generated() -> Result<(), String> {
 #[ic_cdk::update]
 pub async fn create_genesis_block() -> Result<BlockTemplate, String> {
     let caller = ic_cdk::caller();
-    if !ic_cdk::api::is_controller(&caller) {
-        return Err("Only the controller can create the genesis block.".to_string());
+    let creator_principal: Option<Principal> = memory::with_creator(|creator_opt| {
+        creator_opt.as_ref().map(|storable_p| storable_p.0) // Get Principal
+    });
+
+    // Allow controller OR the original creator principal stored in memory
+    if !ic_cdk::api::is_controller(&caller) && creator_principal != Some(caller) {
+        return Err("Only the controller or original creator can create the genesis block.".to_string());
     }
-    if !crate::LEDGER_ID_CELL.with(|id| id.borrow().get().is_some()) {
+    if memory::with_ledger_id(|id| id.is_none()) {
         return Err("Cannot create genesis block: Ledger ID not set.".to_string());
     }
     check_genesis_not_generated()?;
 
-    ic_cdk::println!("Controller {} initiating genesis block creation...", caller);
     match generate_new_block().await {
         Ok(block_template) => {
             if block_template.height != 1 {
@@ -753,8 +618,8 @@ pub async fn create_genesis_block() -> Result<BlockTemplate, String> {
                     block_template.height
                 ));
             }
-            GENESIS_BLOCK_GENERATED.with(|g| {
-                g.borrow_mut().set(true).expect("Failed to set genesis block generated flag");
+            memory::with_genesis_block_generated_mut(|cell| {
+                cell.set(true).expect("Failed to set genesis block generated flag")
             });
             ic_cdk::println!("Genesis block (Height: 1) successfully generated by {}.", caller);
             Ok(block_template)
@@ -766,43 +631,3 @@ pub async fn create_genesis_block() -> Result<BlockTemplate, String> {
     }
 }
 
-
-// --- Controller Parameter Restoration ---
-
-#[ic_cdk::update]
-pub fn restore_mining_params(
-    block_reward: u64,
-    mining_difficulty: u32,
-    block_time_target: u64,
-    halving_interval: u64,
-) -> Result<(), String> {
-    let caller = ic_cdk::caller();
-    if !ic_cdk::api::is_controller(&caller) {
-        return Err("Only the controller can restore mining parameters".to_string());
-    }
-
-    if block_time_target == 0 { return Err("Block time target cannot be zero.".to_string()); }
-    if mining_difficulty == 0 { return Err("Mining difficulty cannot be zero.".to_string()); }
-
-    MINING_DIFFICULTY.with(|d| d.borrow_mut().set(mining_difficulty).expect("Restore failed"));
-    BLOCK_TIME_TARGET.with(|t| t.borrow_mut().set(block_time_target).expect("Restore failed"));
-    HALVING_INTERVAL.with(|h| h.borrow_mut().set(halving_interval).expect("Restore failed"));
-    BLOCK_REWARD.with(|r| r.borrow_mut().set(block_reward).expect("Restore failed"));
-
-    ic_cdk::println!(
-        "Controller {} manually restored mining params: Reward={}, Diff={}, TargetTime={}, Halving={}",
-        caller, block_reward, mining_difficulty, block_time_target, halving_interval
-    );
-
-    CURRENT_BLOCK.with(|b| {
-        let mut block_cell = b.borrow_mut();
-        if let Some(mut current) = block_cell.get().clone() {
-            ic_cdk::println!("Updating current block template with restored difficulty...");
-            current.difficulty = mining_difficulty;
-            current.target = BlockTemplate::calculate_target(mining_difficulty);
-            block_cell.set(Some(current)).expect("Failed to update block template after restore");
-        }
-    });
-
-    Ok(())
-}

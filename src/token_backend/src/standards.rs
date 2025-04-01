@@ -1,11 +1,9 @@
 use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::api;
 use std::cell::RefCell;
-use ic_stable_structures::{
-    memory_manager::{MemoryManager, MemoryId, VirtualMemory},
-    DefaultMemoryImpl, StableBTreeMap, Storable, storable::Bound
-};
 use std::borrow::Cow;
+use crate::memory;
+use crate::types::{StorablePrincipal, DelegationData};
 
 // ICRC-28 and ICRC-10 data structures
 #[derive(CandidType, Deserialize)]
@@ -64,110 +62,9 @@ pub enum ConsentError {
     SystemError(String),
 }
 
-thread_local! {
-    // Memory manager for stable storage
-    static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> = RefCell::new(
-        MemoryManager::init(DefaultMemoryImpl::default())
-    );
-
-    // Stable storage for delegation data
-    static DELEGATIONS: RefCell<StableBTreeMap<StorablePrincipal, DelegationData, Memory>> = RefCell::new(
-        StableBTreeMap::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(22)))
-        )
-    );
-
-    // Stable storage for rate limiting data
-    static FAILED_ATTEMPTS: RefCell<StableBTreeMap<StorablePrincipal, (u32, u64), Memory>> = RefCell::new(
-        StableBTreeMap::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(23)))
-        )
-    );
-}
-
-type Memory = VirtualMemory<DefaultMemoryImpl>;
-
 // Initialize the standards module
 pub(crate) fn init() {
     ic_cdk::println!("Initializing standards module");
-}
-
-// Wrapper for Principal to implement Storable
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct StorablePrincipal(Principal);
-
-impl Storable for StorablePrincipal {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        let mut bytes = vec![0u8; 32];
-        let principal_bytes = self.0.as_slice();
-        bytes[..principal_bytes.len()].copy_from_slice(principal_bytes);
-        Cow::Owned(bytes)
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        // Take only the non-zero bytes for the principal
-        let mut actual_bytes = bytes.as_ref().to_vec();
-        while let Some(&0) = actual_bytes.last() {
-            actual_bytes.pop();
-        }
-        Self(Principal::from_slice(&actual_bytes))
-    }
-
-    const BOUND: Bound = Bound::Bounded {
-        max_size: 32,
-        is_fixed_size: true,
-    };
-}
-
-impl From<Principal> for StorablePrincipal {
-    fn from(p: Principal) -> Self {
-        Self(p)
-    }
-}
-
-// Data structure for storing delegation information
-#[derive(Clone, Debug)]
-struct DelegationData {
-    expiry: u64,
-    delegation_id: Vec<u8>,
-    created_at: u64,
-    last_used: u64,
-    use_count: u64,
-}
-
-impl Storable for DelegationData {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        let mut bytes = Vec::with_capacity(40 + self.delegation_id.len());
-        bytes.extend_from_slice(&self.expiry.to_be_bytes());
-        bytes.extend_from_slice(&self.created_at.to_be_bytes());
-        bytes.extend_from_slice(&self.last_used.to_be_bytes());
-        bytes.extend_from_slice(&self.use_count.to_be_bytes());
-        bytes.extend_from_slice(&(self.delegation_id.len() as u32).to_be_bytes());
-        bytes.extend_from_slice(&self.delegation_id);
-        Cow::Owned(bytes)
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        let expiry = u64::from_be_bytes(bytes[0..8].try_into().expect("Invalid expiry bytes"));
-        let created_at = u64::from_be_bytes(bytes[8..16].try_into().expect("Invalid created_at bytes"));
-        let last_used = u64::from_be_bytes(bytes[16..24].try_into().expect("Invalid last_used bytes"));
-        let use_count = u64::from_be_bytes(bytes[24..32].try_into().expect("Invalid use_count bytes"));
-        let id_len = u32::from_be_bytes(bytes[32..36].try_into().expect("Invalid id_len bytes")) as usize;
-        let delegation_id = bytes[36..36+id_len].to_vec();
-        
-        Self { 
-            expiry, 
-            delegation_id, 
-            created_at, 
-            last_used, 
-            use_count 
-        }
-    }
-
-    const BOUND: Bound = Bound::Bounded {
-        max_size: 256,
-        is_fixed_size: false,
-    };
 }
 
 // Public types for Candid interface
@@ -309,8 +206,8 @@ pub async fn icrc34_delegate(req: DelegationRequest) -> Result<DelegationRespons
         use_count: 0,
     };
 
-    DELEGATIONS.with(|d| {
-        d.borrow_mut().insert(
+    memory::with_delegations_map_mut(|delegations_map| {
+        delegations_map.insert(
             StorablePrincipal::from(req.delegatee),
             delegation_data
         );
@@ -370,17 +267,17 @@ pub fn cleanup_expired_delegations() -> u64 {
     let current_time = api::time();
     let mut cleaned = 0;
     
-    DELEGATIONS.with(|d| {
-        let mut delegations = d.borrow_mut();
-        let expired: Vec<_> = delegations
+    memory::with_delegations_map_mut(|delegations_map| {
+        let expired: Vec<_> = delegations_map
             .iter()
             .filter(|(_, data)| data.expiry <= current_time)
             .map(|(key, _)| key.clone())
             .collect();
             
         for key in expired {
-            delegations.remove(&key);
-            cleaned += 1;
+            if delegations_map.remove(&key).is_some() {
+                cleaned += 1;
+            }
         }
     });
     
@@ -390,22 +287,25 @@ pub fn cleanup_expired_delegations() -> u64 {
 // Check rate limiting for a principal
 fn check_rate_limit(principal: &Principal) -> Result<(), DelegationError> {
     let current_time = api::time();
-    
-    FAILED_ATTEMPTS.with(|attempts| {
-        let mut attempts = attempts.borrow_mut();
-        if let Some((count, last_attempt)) = attempts.get(&StorablePrincipal::from(*principal)) {
-            if current_time - last_attempt < RATE_LIMIT_WINDOW_NS {
+    let storable_principal = StorablePrincipal::from(*principal);
+
+    memory::with_failed_attempts_map_mut(|attempts_map| {
+        let current_attempt = attempts_map.get(&storable_principal);
+
+        if let Some((count, last_attempt)) = current_attempt {
+            if current_time.saturating_sub(last_attempt) < RATE_LIMIT_WINDOW_NS {
                 if count >= MAX_FAILED_ATTEMPTS {
                     return Err(DelegationError::RateLimitExceeded {
                         next_allowed: last_attempt + RATE_LIMIT_WINDOW_NS,
                     });
+                } else {
+                    attempts_map.insert(storable_principal, (count + 1, last_attempt));
                 }
             } else {
-                attempts.insert(
-                    StorablePrincipal::from(*principal),
-                    (1, current_time)
-                );
+                attempts_map.insert(storable_principal, (1, current_time));
             }
+        } else {
+            attempts_map.insert(storable_principal, (1, current_time));
         }
         Ok(())
     })
