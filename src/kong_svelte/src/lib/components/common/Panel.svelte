@@ -3,42 +3,77 @@
   import { fade, slide, type TransitionConfig } from 'svelte/transition';
   import { themeStore } from '../../stores/themeStore';
   import { getThemeById } from '../../themes/themeRegistry';
-  import { onMount } from 'svelte';
 
-  export let variant: "transparent" | "solid" = "transparent";
-  export let type: "main" | "secondary" = "main";
-  export let width: string = "auto";
-  export let height: string = "auto";
-  export let content: string = '';
-  export let className: string = '';
-  export let zIndex: number = 10;
-  export let roundedBorders: boolean = true;
-  // New roundness prop using Tailwind classes, can be overridden by prop
-  export let roundness: "rounded-none" | "rounded-sm" | "rounded" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | "rounded-3xl" | "rounded-full" | null = null;
-  export let unpadded: boolean = false;
-  export let animated: boolean = false;
-  export let isSwapPanel: boolean = false;
-  export let isSidebar: boolean = false;
-  export let interactive: boolean = false;
-  
-  // Transition props
-  export let transition: 'fade' | 'slide' | null = null;
-  export let transitionParams: TransitionConfig = {};
+  let {
+    variant = "transparent",
+    type = "main",
+    width = "auto",
+    height = "auto",
+    content = '',
+    className = '',
+    zIndex = 10,
+    roundedBorders = true,
+    // New roundness prop using Tailwind classes, can be overridden by prop
+    roundness = null,
+    unpadded = false,
+    animated = false,
+    isSwapPanel = false,
+    isSidebar = false,
+    interactive = false,
+    
+    // Transition props
+    transition = null,
+    transitionParams = {},
+    
+    children
+  } = $props<{
+    variant?: "transparent" | "solid";
+    type?: "main" | "secondary";
+    width?: string;
+    height?: string;
+    content?: string;
+    className?: string;
+    zIndex?: number;
+    roundedBorders?: boolean;
+    roundness?: "rounded-none" | "rounded-sm" | "rounded" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | "rounded-3xl" | "rounded-full" | null;
+    unpadded?: boolean;
+    animated?: boolean;
+    isSwapPanel?: boolean;
+    isSidebar?: boolean;
+    interactive?: boolean;
+    transition?: 'fade' | 'slide' | null;
+    transitionParams?: TransitionConfig;
+    children?: () => any;
+  }>();
 
   // Default transition parameters
   const defaultSlideParams = { duration: 300, delay: 200, axis: 'x' };
   const defaultFadeParams = { duration: 200 };
 
-  $: params = {
+  // Store the current theme's panel roundness or use default
+  let themeRoundness = $state("rounded-lg");
+  
+  // Computed values
+  let params = $derived({
     ...(transition === 'slide' ? defaultSlideParams : defaultFadeParams),
     ...transitionParams
-  };
-
-  // Store the current theme's panel roundness or use default
-  let themeRoundness: string = "rounded-lg";
+  });
+  
+  // Compute the roundness class based on props and theme
+  let roundnessClass = $derived(!roundedBorders 
+    ? 'rounded-none' 
+    : roundness || themeRoundness);
+    
+  // Compute the interactive class based on interactive prop
+  let interactiveClass = $derived(interactive ? 'interactive' : '');
+  
+  // Function to render content
+  function renderContent() {
+    return children ? children() : () => content;
+  }
   
   // Subscribe to theme changes
-  onMount(() => {
+  $effect(() => {
     const unsubscribe = themeStore.subscribe(themeId => {
       const theme = getThemeById(themeId);
       themeRoundness = theme.colors.panelRoundness || "rounded-lg";
@@ -46,14 +81,6 @@
     
     return unsubscribe;
   });
-
-  // Compute the roundness class based on props and theme
-  $: roundnessClass = !roundedBorders 
-    ? 'rounded-none' 
-    : roundness || themeRoundness;
-    
-  // Compute the interactive class based on interactive prop
-  $: interactiveClass = interactive ? 'interactive' : '';
 </script>
 
 {#if transition === 'slide'}
@@ -64,7 +91,11 @@
     on:click
     on:keydown
   >
-    <slot>{content}</slot>
+    {#if children}
+      {@render children()}
+    {:else}
+      {content}
+    {/if}
   </div>
 {:else if transition === 'fade'}
   <div 
@@ -74,7 +105,11 @@
     on:click
     on:keydown
   >
-    <slot>{content}</slot>
+    {#if children}
+      {@render children()}
+    {:else}
+      {content}
+    {/if}
   </div>
 {:else}
   <div 
@@ -83,7 +118,11 @@
     on:click
     on:keydown
   >
-    <slot>{content}</slot>
+    {#if children}
+      {@render children()}
+    {:else}
+      {content}
+    {/if}
   </div>
 {/if}
 

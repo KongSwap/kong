@@ -5,6 +5,7 @@ import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "$lib/stores/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
+import { hexStringToUint8Array } from "@dfinity/utils";
 
 // Error types for better handling
 const enum ErrorType {
@@ -378,6 +379,8 @@ export class IcrcService {
         // If it's an ICP transfer to an account ID
         if (token.symbol === 'ICP' && typeof to === 'string' && to.length === 64) {
             // For ICP account IDs, we need to use icrc1_transfer with appropriate formatting
+            throw new Error("Sending ICP to subaccount IDs are temporarily disabled");
+
             const actor = auth.getActor(
                 token.canister_id, 
                 canisterIDLs.icrc1,
@@ -387,7 +390,7 @@ export class IcrcService {
             return await actor.icrc1_transfer({
                 to: {
                     owner: Principal.fromText(token.canister_id), // The ledger canister
-                    subaccount: [this.hex2Bytes(to)] // The account ID as subaccount
+                    subaccount: hexStringToUint8Array(to) // The account ID as subaccount
                 },
                 amount,
                 fee: [BigInt(token.fee_fixed || 10000)],
