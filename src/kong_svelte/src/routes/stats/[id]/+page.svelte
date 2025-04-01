@@ -280,7 +280,7 @@
     marketCapRank = rank !== -1 ? rank + 1 : null;
   });
 
-  // Update the chart data ready effect to be more robust
+  // Update the chart data ready effect to be more robust and avoid unnecessary re-renders
   $effect(() => {
     // Only evaluate readiness if we have the basic requirements
     if (!token || !selectedPool) {
@@ -302,8 +302,8 @@
     if (dataReady !== isChartDataReady) {
       console.log(`Chart data ready state changing: ${isChartDataReady} -> ${dataReady}`);
       
-      if (dataReady) {
-        // Force a re-render of the chart component by incrementing the instance counter
+      if (dataReady && !chartMounted) {
+        // Only force a re-render when first mounting
         chartInstance++;
         chartMounted = true;
         console.log('Chart is ready to load with data:', {
@@ -608,8 +608,72 @@
               >
                 <div class="h-[450px] min-h-[400px] w-full">
                   {#if isChartDataReady}
-                    {#key chartInstance}
-                      <div class="h-full w-full" id="mobile-chart-container">
+                    <div class="h-full w-full" id="mobile-chart-container">
+                      <TradingViewChart
+                        poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
+                        symbol={token && selectedPool
+                          ? `${token.symbol}/${
+                              selectedPool.address_0 === token.canister_id
+                                ? (selectedPool.token1?.symbol || 
+                                   selectedPool.symbol_1 || 
+                                   $tokenData?.find(t => t.canister_id === selectedPool.address_1)?.symbol || 
+                                   'Unknown')
+                                : (selectedPool.token0?.symbol || 
+                                   selectedPool.symbol_0 || 
+                                   $tokenData?.find(t => t.canister_id === selectedPool.address_0)?.symbol || 
+                                   'Unknown')
+                            }`
+                          : ""}
+                          quoteToken={selectedPool?.address_0 === token?.canister_id
+                            ? (selectedPool.token1 || 
+                               $tokenData?.find(t => t.canister_id === selectedPool.address_1) || 
+                               { 
+                                 canister_id: selectedPool.address_1,
+                                 symbol: selectedPool.symbol_1,
+                                 name: selectedPool.symbol_1 || 'Unknown',
+                                 address: selectedPool.address_1,
+                                 token_id: 999999  // Add token_id as required by TradingViewChart
+                               } as FE.Token)
+                            : (selectedPool.token0 || 
+                               $tokenData?.find(t => t.canister_id === selectedPool.address_0) || 
+                               {
+                                 canister_id: selectedPool.address_0,
+                                 symbol: selectedPool.symbol_0,
+                                 name: selectedPool.symbol_0 || 'Unknown',
+                                 address: selectedPool.address_0,
+                                 token_id: 999999  // Add token_id as required by TradingViewChart
+                               } as FE.Token)
+                          }
+                          baseToken={token}
+                        />
+                    </div>
+                  {:else}
+                    <div class="flex items-center justify-center h-full">
+                      <div class="loader"></div>
+                    </div>
+                  {/if}
+                </div>
+              </Panel>
+
+              <!-- Transactions Panel -->
+              {#if token && token.canister_id === $page.params.id}
+                <TransactionFeed {token} className="w-full !p-0" />
+              {/if}
+            </div>
+
+            <!-- Desktop layout - hidden on mobile -->
+            <div class="hidden lg:flex lg:flex-row gap-6 w-full">
+              <!-- Left Column - Chart and Transactions -->
+              <div class="lg:w-[70%] flex flex-col gap-6">
+                <!-- Chart Panel -->
+                <Panel
+                  variant="transparent"
+                  type="main"
+                  className="!p-0 border-none"
+                >
+                  <div class="h-[450px] min-h-[400px] w-full">
+                    {#if isChartDataReady}
+                      <div class="h-full w-full" id="desktop-chart-container">
                         <TradingViewChart
                           poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
                           symbol={token && selectedPool
@@ -648,74 +712,6 @@
                           baseToken={token}
                         />
                       </div>
-                    {/key}
-                  {:else}
-                    <div class="flex items-center justify-center h-full">
-                      <div class="loader"></div>
-                    </div>
-                  {/if}
-                </div>
-              </Panel>
-
-              <!-- Transactions Panel -->
-              {#if token && token.canister_id === $page.params.id}
-                <TransactionFeed {token} className="w-full !p-0" />
-              {/if}
-            </div>
-
-            <!-- Desktop layout - hidden on mobile -->
-            <div class="hidden lg:flex lg:flex-row gap-6 w-full">
-              <!-- Left Column - Chart and Transactions -->
-              <div class="lg:w-[70%] flex flex-col gap-6">
-                <!-- Chart Panel -->
-                <Panel
-                  variant="transparent"
-                  type="main"
-                  className="!p-0 border-none"
-                >
-                  <div class="h-[450px] min-h-[400px] w-full">
-                    {#if isChartDataReady}
-                      {#key chartInstance}
-                        <div class="h-full w-full" id="desktop-chart-container">
-                          <TradingViewChart
-                            poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
-                            symbol={token && selectedPool
-                              ? `${token.symbol}/${
-                                  selectedPool.address_0 === token.canister_id
-                                    ? (selectedPool.token1?.symbol || 
-                                       selectedPool.symbol_1 || 
-                                       $tokenData?.find(t => t.canister_id === selectedPool.address_1)?.symbol || 
-                                       'Unknown')
-                                    : (selectedPool.token0?.symbol || 
-                                       selectedPool.symbol_0 || 
-                                       $tokenData?.find(t => t.canister_id === selectedPool.address_0)?.symbol || 
-                                       'Unknown')
-                              }`
-                              : ""}
-                            quoteToken={selectedPool?.address_0 === token?.canister_id
-                              ? (selectedPool.token1 || 
-                                 $tokenData?.find(t => t.canister_id === selectedPool.address_1) || 
-                                 { 
-                                   canister_id: selectedPool.address_1,
-                                   symbol: selectedPool.symbol_1,
-                                   name: selectedPool.symbol_1 || 'Unknown',
-                                   address: selectedPool.address_1,
-                                   token_id: 999999  // Add token_id as required by TradingViewChart
-                                 } as FE.Token)
-                              : (selectedPool.token0 || 
-                                 $tokenData?.find(t => t.canister_id === selectedPool.address_0) || 
-                                 {
-                                   canister_id: selectedPool.address_0,
-                                   symbol: selectedPool.symbol_0,
-                                   name: selectedPool.symbol_0 || 'Unknown',
-                                   address: selectedPool.address_0,
-                                   token_id: 999999  // Add token_id as required by TradingViewChart
-                                 } as FE.Token)
-                            }
-                            baseToken={token}
-                          />
-                        </div>
-                      {/key}
                     {:else}
                       <div class="flex items-center justify-center h-full">
                         <div class="loader"></div>
