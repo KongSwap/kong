@@ -32,6 +32,7 @@
     isMounted: false,
     isFetchingData: false,
     isInitializingChart: false,
+    isUpdatingChart: false,
     selectedPoolId: props.poolId,
     currentTheme: $themeStore,
     currentPrice: 0,
@@ -151,7 +152,7 @@
     }
   });
   
-  // Reinitialize chart on token/pool changes
+  // More efficiently handle token/pool changes without full chart recreation
   $effect(() => {
     if (!state.isMounted) return;
     
@@ -163,18 +164,28 @@
     const hasPoolChange = props.poolId !== state.selectedPoolId;
 
     if ((hasTokenChange || hasPoolChange) && 
-        ((props.quoteToken && props.baseToken) || props.poolId) &&
-        (!chart || (chart && hasTokenChange))) {
+        ((props.quoteToken && props.baseToken) || props.poolId)) {
       
+      // Update state tracking
       state.previousTokenIds = { quote: currentQuoteId, base: currentBaseId };
       state.selectedPoolId = props.poolId;
 
-      if (chart) {
+      // Use in-place update if possible
+      if (chart && chart._ready && !hasTokenChange) {
+        // If only pool changed but tokens are the same, we can do a lightweight update
+        console.log("[Chart] Pool changed, updating in place");
+        state.isUpdatingChart = true;
+        updateChartData();
+      } else if (chart && hasTokenChange) {
+        // If tokens changed, we need to recreate the chart
+        console.log("[Chart] Tokens changed, recreating chart");
         chart.remove();
         chartStore.set(null);
+        debouncedFetchData();
+      } else {
+        // Initial load
+        debouncedFetchData();
       }
-      
-      debouncedFetchData();
     }
   });
 
@@ -190,6 +201,40 @@
       };
       check();
     });
+
+  // Update chart data without recreating the chart
+  const updateChartData = async () => {
+    if (!chart || !chart._ready) {
+      debouncedFetchData();
+      return;
+    }
+    
+    try {
+      state.isUpdatingChart = true;
+      
+      // Find best pool for the current tokens
+      let poolId = state.selectedPoolId;
+      
+      // Update chart symbol if needed
+      const newSymbol = props.symbol || `${props.baseToken.symbol}/${props.quoteToken.symbol}`;
+      
+      // Update price from the new pool
+      const pool = $livePools.find(p => p.pool_id === poolId);
+      if (pool?.price) {
+        chart.datafeed.updateCurrentPrice(pool.price);
+        updateTradingViewPriceScale(chart, pool);
+      }
+      
+      // Mark loading as complete
+      state.isLoading = false;
+      state.hasNoData = false;
+      state.isUpdatingChart = false;
+    } catch (error) {
+      console.error("[Chart] Failed to update chart data:", error);
+      state.isUpdatingChart = false;
+      state.isLoading = false;
+    }
+  };
 
   // Initialize chart
   const initChart = async () => {
@@ -360,6 +405,9 @@
         state.hasNoData = false;
         if (!chart) {
           await initChart();
+        } else if (chart && chart._ready && !state.isUpdatingChart) {
+          // If chart exists but we fetched new data, update it in place
+          updateChartData();
         }
       }
     } catch (error) {

@@ -29,6 +29,7 @@ export interface ProposalResponse {
   hasMore: boolean;
 }
 
+// move to api at some point
 export const GOVERNANCE_CANISTER_IDS: { [key: string]: string } = {
   "o7oak-iyaaa-aaaaq-aadzq-cai": "oypg6-faaaa-aaaaq-aadza-cai",
   "vtrom-gqaaa-aaaaq-aabia-cai": "xomae-vyaaa-aaaaq-aabhq-cai",
@@ -42,7 +43,14 @@ export const GOVERNANCE_CANISTER_IDS: { [key: string]: string } = {
   "o4zzi-qaaaa-aaaaq-aaeeq-cai": "o3y74-5yaaa-aaaaq-aaeea-cai",
   "lkwrt-vyaaa-aaaaq-aadhq-cai": "lnxxh-yaaaa-aaaaq-aadha-cai",
   "jcmow-hyaaa-aaaaq-aadlq-cai": "jfnic-kaaaa-aaaaq-aadla-cai",
-  "6rdgd-kyaaa-aaaaq-aaavq-cai": "6wcax-haaaa-aaaaq-aaava-cai"
+  "6rdgd-kyaaa-aaaaq-aaavq-cai": "6wcax-haaaa-aaaaq-aaava-cai",
+  "lrtnw-paaaa-aaaaq-aadfa-cai": "lyqgk-ziaaa-aaaaq-aadeq-cai",
+  "emww2-4yaaa-aaaaq-aacbq-cai": "elxqo-raaaa-aaaaq-aacba-cai",
+  "hvgxa-wqaaa-aaaaq-aacia-cai": "fi3zi-fyaaa-aaaaq-aachq-cai",
+  "mih44-vaaaa-aaaaq-aaekq-cai": "mpg2i-yyaaa-aaaaq-aaeka-cai",
+  "xsi2v-cyaaa-aaaaq-aabfq-cai": "xsi2v-cyaaa-aaaaq-aabfq-cai",
+  "k45jy-aiaaa-aaaaq-aadcq-cai": "k34pm-nqaaa-aaaaq-aadca-cai",
+  "uf2wh-taaaa-aaaaq-aabna-cai": "umz53-fiaaa-aaaaq-aabmq-cai"
 }
 
 export class SNSService {
