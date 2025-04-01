@@ -5,15 +5,14 @@ import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "$lib/stores/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
-import { hexStringToUint8Array } from "@dfinity/utils";
 
 // Error types for better handling
 const enum ErrorType {
-  CORS = 'CORS',
-  RATE_LIMIT = 'RATE_LIMIT',
-  NETWORK = 'NETWORK',
-  AUTH = 'AUTH',
-  UNKNOWN = 'UNKNOWN'
+  CORS = "CORS",
+  RATE_LIMIT = "RATE_LIMIT",
+  NETWORK = "NETWORK",
+  AUTH = "AUTH",
+  UNKNOWN = "UNKNOWN",
 }
 
 export class IcrcService {
@@ -21,18 +20,25 @@ export class IcrcService {
 
   private static classifyError(error: any): ErrorType {
     if (!error) return ErrorType.UNKNOWN;
-    const message = error.message?.toLowerCase() || '';
-    
-    if (message.includes('cors') || message.includes('access-control-allow-origin')) {
+    const message = error.message?.toLowerCase() || "";
+
+    if (
+      message.includes("cors") ||
+      message.includes("access-control-allow-origin")
+    ) {
       return ErrorType.CORS;
     }
-    if (message.includes('429') || message.includes('too many requests')) {
+    if (message.includes("429") || message.includes("too many requests")) {
       return ErrorType.RATE_LIMIT;
     }
-    if (message.includes('network') || message.includes('failed to fetch') || message.includes('net::')) {
+    if (
+      message.includes("network") ||
+      message.includes("failed to fetch") ||
+      message.includes("net::")
+    ) {
       return ErrorType.NETWORK;
     }
-    if (message.includes('wallet') || message.includes('authentication')) {
+    if (message.includes("wallet") || message.includes("authentication")) {
       return ErrorType.AUTH;
     }
     return ErrorType.UNKNOWN;
@@ -41,13 +47,19 @@ export class IcrcService {
   private static handleError(methodName: string, error: any) {
     console.error(`Error in ${methodName}:`, error);
     const errorType = this.classifyError(error);
-    
+
     if (errorType === ErrorType.AUTH) {
-      throw new Error("Please connect your wallet to proceed with this operation.");
+      throw new Error(
+        "Please connect your wallet to proceed with this operation.",
+      );
     }
-    
+
     // Let the retry mechanism handle these types of errors
-    if (errorType === ErrorType.CORS || errorType === ErrorType.NETWORK || errorType === ErrorType.RATE_LIMIT) {
+    if (
+      errorType === ErrorType.CORS ||
+      errorType === ErrorType.NETWORK ||
+      errorType === ErrorType.RATE_LIMIT
+    ) {
       throw error;
     }
 
@@ -56,7 +68,7 @@ export class IcrcService {
 
   private static async withConcurrencyLimit<T>(
     operations: (() => Promise<T>)[],
-    limit: number = this.MAX_CONCURRENT_REQUESTS
+    limit: number = this.MAX_CONCURRENT_REQUESTS,
   ): Promise<T[]> {
     const results: T[] = [];
     const executing: Promise<void>[] = [];
@@ -70,7 +82,7 @@ export class IcrcService {
         results.push(result);
       } catch (error) {
         results.push(null as T);
-        console.error('Operation failed:', error);
+        console.error("Operation failed:", error);
       }
       await executeNext();
     }
@@ -88,8 +100,8 @@ export class IcrcService {
     token: FE.Token,
     principal: Principal,
     subaccount?: number[] | undefined,
-    separateBalances: boolean = false
-  ): Promise<{ default: bigint, subaccount: bigint } | bigint> {
+    separateBalances: boolean = false,
+  ): Promise<{ default: bigint; subaccount: bigint } | bigint> {
     try {
       // Debug logging for local development
       if (process.env.NODE_ENV === "development") {
@@ -104,9 +116,9 @@ export class IcrcService {
 
       // Get default balance with retry logic
       const defaultBalance = await actor.icrc1_balance_of({
-          owner: principal,
-          subaccount: [],
-        });
+        owner: principal,
+        subaccount: [],
+      });
 
       // If we don't need separate balances or there's no subaccount, return total
       if (!separateBalances || !subaccount) {
@@ -115,33 +127,19 @@ export class IcrcService {
 
       // Get subaccount balance with retry logic
       const subaccountBalance = await actor.icrc1_balance_of({
-          owner: principal,
-          subaccount: [subaccount],
-        });
+        owner: principal,
+        subaccount: [subaccount],
+      });
 
       return {
         default: defaultBalance,
-        subaccount: subaccountBalance
+        subaccount: subaccountBalance,
       };
     } catch (error) {
-      // Enhanced error reporting for local development
-      if (process.env.NODE_ENV === "development") {
-        console.error(`[Balance ERROR] Failed to get balance for ${token.symbol} (${token.canister_id}):`);
-        console.error(`[Balance ERROR] Principal: ${principal.toString()}`);
-        console.error(`[Balance ERROR] Error:`, error);
-        
-        // Check for common issues
-        if (error.message?.includes("reject code: 4")) {
-          console.warn(`[Balance HINT] Token canister ${token.canister_id} may not be deployed or might have a different interface`);
-        }
-        if (error.message?.includes("connect ECONNREFUSED")) {
-          console.warn(`[Balance HINT] Local replica might not be running. Check if dfx is started.`);
-        }
-      } else {
-        console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
-      }
-      
-      return separateBalances ? { default: BigInt(0), subaccount: BigInt(0) } : BigInt(0);
+      console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
+      return separateBalances
+        ? { default: BigInt(0), subaccount: BigInt(0) }
+        : BigInt(0);
     }
   }
 
@@ -150,51 +148,55 @@ export class IcrcService {
     principal: Principal,
   ): Promise<Map<string, bigint>> {
     // Add request deduplication with a shorter window and token-specific keys
-    const requestKeys = tokens.map(token => 
-      `${token.canister_id}-${principal.toString()}-${Date.now() - (Date.now() % 5000)}`
+    const requestKeys = tokens.map(
+      (token) =>
+        `${token.canister_id}-${principal.toString()}-${Date.now() - (Date.now() % 5000)}`,
     );
-    
+
     // Check if any of these exact tokens are already being fetched
     const pendingPromises = requestKeys
-      .map(key => this.pendingRequests.get(key))
+      .map((key) => this.pendingRequests.get(key))
       .filter(Boolean);
-    
+
     if (pendingPromises.length === tokens.length) {
       // All tokens are already being fetched, wait for them
       const results = await Promise.all(pendingPromises);
-      return new Map([...results.flatMap(m => [...m.entries()])]);
+      return new Map([...results.flatMap((m) => [...m.entries()])]);
     }
 
     // Some or none of the tokens are being fetched, do a fresh fetch
     const promise = this._batchGetBalances(tokens, principal);
-    
+
     // Store the promise for each token
-    requestKeys.forEach(key => {
+    requestKeys.forEach((key) => {
       this.pendingRequests.set(key, promise);
       // Clean up after 5 seconds
       setTimeout(() => this.pendingRequests.delete(key), 200);
     });
-    
+
     try {
       const result = await promise;
       return result;
     } catch (error) {
-      console.error('Error in batchGetBalances:', error);
-      requestKeys.forEach(key => this.pendingRequests.delete(key));
+      console.error("Error in batchGetBalances:", error);
+      requestKeys.forEach((key) => this.pendingRequests.delete(key));
       return new Map();
     }
   }
 
   // Add this as a static class property
-  private static pendingRequests = new Map<string, Promise<Map<string, bigint>>>();
+  private static pendingRequests = new Map<
+    string,
+    Promise<Map<string, bigint>>
+  >();
 
   private static async _batchGetBalances(
     tokens: FE.Token[],
     principal: Principal,
   ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
-    const subaccount = auth.pnp?.account?.subaccount 
-      ? Array.from(auth.pnp.account.subaccount) as number[]
+    const subaccount = auth.pnp?.account?.subaccount
+      ? (Array.from(auth.pnp.account.subaccount) as number[])
       : undefined;
 
     // Group tokens by subnet to minimize subnet key fetches
@@ -207,30 +209,40 @@ export class IcrcService {
 
     // Process subnets in parallel with a higher concurrency limit
     const subnetEntries = Array.from(tokensBySubnet.entries());
-    const subnetOperations = subnetEntries.map(([subnet, subnetTokens]) => async () => {
-      const operations = subnetTokens.map(token => async () => {
-        try {
-          const balance = await this.getIcrc1Balance(token, principal, subaccount);
-          return { token, balance };
-        } catch (error) {
-          console.error(`Failed to get balance for ${token.symbol}:`, error);
-          return { token, balance: BigInt(0) };
-        }
-      });
+    const subnetOperations = subnetEntries.map(
+      ([subnet, subnetTokens]) =>
+        async () => {
+          const operations = subnetTokens.map((token) => async () => {
+            try {
+              const balance = await this.getIcrc1Balance(
+                token,
+                principal,
+                subaccount,
+              );
+              return { token, balance };
+            } catch (error) {
+              console.error(
+                `Failed to get balance for ${token.symbol}:`,
+                error,
+              );
+              return { token, balance: BigInt(0) };
+            }
+          });
 
-      // Increase concurrency limit for token balance fetching
-      const balances = await this.withConcurrencyLimit(operations, 25);
-      
-      balances.forEach(result => {
-        if (result) {
-          const { token, balance } = result;
-          results.set(
-            token.canister_id,
-            typeof balance === 'bigint' ? balance : balance.default
-          );
-        }
-      });
-    });
+          // Increase concurrency limit for token balance fetching
+          const balances = await this.withConcurrencyLimit(operations, 25);
+
+          balances.forEach((result) => {
+            if (result) {
+              const { token, balance } = result;
+              results.set(
+                token.canister_id,
+                typeof balance === "bigint" ? balance : balance.default,
+              );
+            }
+          });
+        },
+    );
 
     // Process all subnets with higher concurrency
     await this.withConcurrencyLimit(subnetOperations, 25);
@@ -307,7 +319,7 @@ export class IcrcService {
       if ("Err" in result) {
         // Convert BigInt values to strings in the error object
         const stringifiedError = JSON.stringify(result.Err, (_, value) =>
-          typeof value === 'bigint' ? value.toString() : value
+          typeof value === "bigint" ? value.toString() : value,
         );
         throw new Error(`ICRC2 approve error: ${stringifiedError}`);
       }
@@ -363,64 +375,69 @@ export class IcrcService {
     }
   }
 
-
   public static async transfer(
     token: FE.Token,
     to: string | Principal,
     amount: bigint,
     opts: {
-        memo?: number[];
-        fee?: bigint;
-        fromSubaccount?: number[];
-        createdAtTime?: bigint;
+      memo?: number[];
+      fee?: bigint;
+      fromSubaccount?: number[];
+      createdAtTime?: bigint;
     } = {},
   ): Promise<Result<bigint>> {
     try {
-        // If it's an ICP transfer to an account ID
-        if (token.symbol === 'ICP' && typeof to === 'string' && to.length === 64) {
-            // For ICP account IDs, we need to use icrc1_transfer with appropriate formatting
-            throw new Error("Sending ICP to subaccount IDs are temporarily disabled");
-
-            const actor = auth.getActor(
-                token.canister_id, 
-                canisterIDLs.icrc1,
-                { anon: false, requiresSigning: true }
-            );
-            
-            return await actor.icrc1_transfer({
-                to: {
-                    owner: Principal.fromText(token.canister_id), // The ledger canister
-                    subaccount: hexStringToUint8Array(to) // The account ID as subaccount
-                },
-                amount,
-                fee: [BigInt(token.fee_fixed || 10000)],
-                memo: opts.memo || [],
-                from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
-                created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
-            });
+      // If it's an ICP transfer to an account ID
+      if (
+        token.symbol === "ICP" &&
+        typeof to === "string" &&
+        to.length === 64
+      ) {
+        const wallet = auth.pnp.activeWallet.id;
+        if (wallet === "oisy") {
+          return { Err: "Oisy subaccount transfer is temporarily disabled." };
         }
-
-        // For all other cases (ICRC1 transfers to principals)
-        const actor = auth.getActor(
-            token.canister_id, 
-            canisterIDLs.icrc1,
-            { anon: false, requiresSigning: true }
-        );
-
-        return await actor.icrc1_transfer({
-            to: {
-                owner: typeof to === 'string' ? Principal.fromText(to) : to,
-                subaccount: []
-            },
-            amount,
-            fee: [BigInt(token.fee_fixed || 10000)],
-            memo: opts.memo || [],
-            from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
-            created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
+        const ledgerActor = auth.getActor(token.canister_id, canisterIDLs.ICP, {
+          anon: false,
+          requiresSigning: true,
         });
+
+        const transfer_args = {
+          to: this.hex2Bytes(to),
+          amount: { e8s: amount },
+          fee: { e8s: BigInt(token.fee_fixed) },
+          memo: 0n,
+          from_subaccount: opts.fromSubaccount
+            ? [Array.from(opts.fromSubaccount)]
+            : [],
+          created_at_time: opts.createdAtTime
+            ? [{ timestamp_nanos: opts.createdAtTime }]
+            : [],
+        };
+
+        return await ledgerActor.transfer(transfer_args);
+      }
+
+      // For all other cases (ICRC1 transfers to principals)
+      const actor = auth.getActor(token.canister_id, canisterIDLs["icrc1"], {
+        anon: false,
+        requiresSigning: true,
+      });
+
+      return await actor.icrc1_transfer({
+        to: {
+          owner: typeof to === "string" ? Principal.fromText(to) : to,
+          subaccount: [],
+        },
+        amount,
+        fee: [BigInt(token.fee_fixed)],
+        memo: opts.memo || [],
+        from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
+        created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
+      });
     } catch (error) {
-        console.error("Transfer error:", error);
-        return { Err: error };
+      console.error("Transfer error:", error);
+      return { Err: error };
     }
   }
 
@@ -428,7 +445,7 @@ export class IcrcService {
   private static hex2Bytes(hex: string): number[] {
     const bytes = [];
     for (let i = 0; i < hex.length; i += 2) {
-        bytes.push(parseInt(hex.substr(i, 2), 16));
+      bytes.push(parseInt(hex.substr(i, 2), 16));
     }
     return bytes;
   }
