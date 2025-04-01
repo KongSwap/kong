@@ -7,6 +7,7 @@
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { calculateRemoveLiquidityAmounts, removeLiquidity, pollRequestStatus } from "$lib/api/pools";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   
   const dispatch = createEventDispatcher();
 
@@ -201,12 +202,15 @@
 
       <div class="percentage-row">
         {#each [25, 50, 75, 100] as percent}
-          <button
-            class="percent-btn"
+          <ButtonV2
+            theme="muted"
+            variant="transparent"
+            size="xs"
+            className="percent-btn-v2"
             on:click={() => setPercentage(percent)}
           >
             {percent}%
-          </button>
+          </ButtonV2>
         {/each}
       </div>
     </div>
@@ -300,21 +304,28 @@
 
   <div class="modal-footer">
     <div class="action-buttons">
-      <button
+      <ButtonV2
+        theme="accent-red"
+        variant="solid"
+        size="md"
+        isDisabled={!removeLiquidityAmount || isRemoving || isCalculating}
+        fullWidth={true}
         on:click={handleRemoveLiquidity}
-        class="action-button remove-button"
-        disabled={!removeLiquidityAmount || isRemoving || isCalculating}
       >
         {#if isRemoving}
-          <div class="loading-spinner"></div>
-          <span>Removing...</span>
+          <div class="button-content">
+            <div class="loading-spinner"></div>
+            <span>Removing...</span>
+          </div>
         {:else if isCalculating}
-          <div class="loading-spinner"></div>
-          <span>Calculating...</span>
+          <div class="button-content">
+            <div class="loading-spinner"></div>
+            <span>Calculating...</span>
+          </div>
         {:else}
           <span>Remove Liquidity</span>
         {/if}
-      </button>
+      </ButtonV2>
     </div>
   </div>
 </div>
@@ -371,10 +382,8 @@
     @apply flex justify-between gap-2;
   }
 
-  .percent-btn {
-    @apply flex-1 py-1.5 text-xs bg-white/[0.03] rounded-md border border-white/[0.04]
-           hover:bg-white/[0.06] hover:text-kong-text-primary transition-all duration-200
-           active:scale-95 font-medium text-kong-text-primary/70;
+  .percent-btn-v2 {
+    @apply flex-1 !py-1 text-xs active:scale-95;
   }
 
   .output-preview {
@@ -433,14 +442,8 @@
     @apply flex gap-2 w-full;
   }
 
-  :global(.action-button) {
-    @apply !h-10 transition-all duration-200
-           font-medium tracking-wide text-center flex items-center justify-center
-           w-full !rounded-lg;
-  }
-
-  .remove-button {
-    @apply bg-kong-accent-red text-white hover:bg-kong-accent-red-hover;
+  .button-content {
+    @apply flex items-center justify-center;
   }
 
   .loading-pulse {

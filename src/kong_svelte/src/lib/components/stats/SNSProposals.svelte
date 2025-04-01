@@ -79,7 +79,7 @@
   });
 </script>
 
-<Panel variant="transparent" type="main" >
+<Panel variant="solid" type="main" >
   <div class="flex flex-col gap-4">
     <h2 class="text-lg font-semibold">Governance Proposals</h2>
     
@@ -95,7 +95,7 @@
       </div>
     {:else}
       <div
-        class="space-y-4 max-h-[365px] overflow-y-auto"
+        class="space-y-4 max-h-[600px] overflow-y-auto"
         bind:this={scrollContainer}
         on:scroll={handleScroll}
       >
@@ -144,7 +144,7 @@
   </div>
 </Panel>
 
-<style>
+<style lang="postcss" scoped>
   .loader {
     border: 3px solid rgba(255, 255, 255, 0.2);
     border-top: 3px solid #ffffff;

@@ -41,14 +41,18 @@
       searchQuery, 
       activeTab,
       allTokens,
-      // We need a way to track the tokens store changes that doesn't
-      // trigger endless loops. Convert to a simple string identifier:
-      $userTokens.tokens.map(t => t.canister_id).join(',')
+      // Track the enabledTokens set directly for reactive updates
+      Array.from($userTokens.enabledTokens).join(',')
     ];
     
     if (allTokens.length > 0) {
       updateFilteredTokens();
     }
+  });
+  
+  // Log when enabledTokens changes
+  $effect(() => {
+    console.log("Enabled tokens changed:", Array.from($userTokens.enabledTokens));
   });
   
   // Methods
@@ -76,8 +80,8 @@
   }
   
   function updateFilteredTokens() {
-    // Get enabled token IDs
-    const enabledTokenIds = new Set($userTokens.tokens.map(t => t.canister_id));
+    // Get enabled token IDs directly from the store
+    const enabledTokenIds = $userTokens.enabledTokens;
     
     // Filter tokens based on current tab and search query
     const filtered = allTokens.filter(token => {
@@ -127,15 +131,21 @@
   function toggleToken(token: FE.Token) {
     if (!token.canister_id) return;
     
-    const isCurrentlyEnabled = $userTokens.tokens.some(
-      t => t.canister_id === token.canister_id
-    );
+    // Check if token is currently enabled using enabledTokens directly
+    const isCurrentlyEnabled = $userTokens.enabledTokens.has(token.canister_id);
+    
+    console.log(`Toggling token ${token.symbol} (${token.canister_id}), currently enabled: ${isCurrentlyEnabled}`);
     
     if (isCurrentlyEnabled) {
+      console.log(`Disabling token ${token.symbol}`);
       userTokens.disableToken(token.canister_id);
     } else {
+      console.log(`Enabling token ${token.symbol}`);
       userTokens.enableToken(token);
     }
+    
+    // Force update filtered tokens
+    setTimeout(() => updateFilteredTokens(), 0);
   }
   
   function getFormattedBalance(token: FE.Token): string {
@@ -150,7 +160,7 @@
   // Check if token is enabled
   function isTokenEnabled(token: FE.Token): boolean {
     if (!token.canister_id) return false;
-    return $userTokens.tokens.some(t => t.canister_id === token.canister_id);
+    return $userTokens.enabledTokens.has(token.canister_id);
   }
   
   // Check if token has a balance
@@ -283,7 +293,11 @@
                 
                 <button
                   class="flex items-center justify-center rounded-full p-1.5 {enabled ? 'bg-kong-primary/10 text-kong-primary hover:bg-kong-primary/20' : 'bg-kong-bg-light/10 text-kong-text-secondary hover:bg-kong-bg-light/20'} transition-colors"
-                  on:click={() => toggleToken(token)}
+                  on:click={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    toggleToken(token);
+                  }}
                   title={enabled ? "Disable token" : "Enable token"}
                 >
                   {#if enabled}

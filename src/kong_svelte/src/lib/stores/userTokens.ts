@@ -516,9 +516,9 @@ function createUserTokensStore() {
         const newEnabledTokens = new Set(state.enabledTokens);
         const newTokenData = new Map(state.tokenData);
         
-        // Update state
+        // Update state - only remove from enabledTokens, keep in tokenData
         newEnabledTokens.delete(canisterId);
-        newTokenData.delete(canisterId);
+        // Don't remove from tokenData: newTokenData.delete(canisterId);
         
         const newState = {
           ...state,
