@@ -69,7 +69,9 @@
   let activeDropdown = $state<"swap" | "earn" | "stats" | null>(null);
   let showWalletSidebar = $state(false);
   let showWalletProvider = $state(false);
-  let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">("notifications");
+  let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
+    "notifications",
+  );
 
   // Toggle wallet sidebar
   function toggleWalletSidebar(
@@ -260,7 +262,13 @@
           class="h-[34px] w-[34px] flex items-center justify-center"
           on:click={() => (navOpen = !navOpen)}
         >
-          <Menu size={20} color={browser && getThemeById($themeStore)?.colors?.logoInvert === 1 ? "black" : "white"} />
+          <Menu
+            size={20}
+            color={browser &&
+            getThemeById($themeStore)?.colors?.logoInvert === 1
+              ? "black"
+              : "white"}
+          />
         </button>
       {:else}
         <button
@@ -271,7 +279,8 @@
             src={$logoSrcStore}
             alt="Kong Logo"
             class="h-[30px] transition-all duration-200 navbar-logo"
-            class:light-logo={browser && getThemeById($themeStore)?.colors?.logoInvert === 1}
+            class:light-logo={browser &&
+              getThemeById($themeStore)?.colors?.logoInvert === 1}
             on:error={handleImageError}
           />
           <span
@@ -345,7 +354,8 @@
             src={$logoSrcStore}
             alt="Kong Logo"
             class="h-6 transition-all duration-200 navbar-logo"
-            class:light-logo={browser && getThemeById($themeStore)?.colors?.logoInvert === 1}
+            class:light-logo={browser &&
+              getThemeById($themeStore)?.colors?.logoInvert === 1}
             on:error={handleImageError}
           />
           <span
@@ -366,11 +376,16 @@
           tooltipText="Settings"
           useThemeBorder={isWin98Theme}
           customBgColor={browser && getThemeById($themeStore)?.colors?.buttonBg}
-          customHoverBgColor={browser && getThemeById($themeStore)?.colors?.buttonHoverBg}
-          customTextColor={browser && getThemeById($themeStore)?.colors?.buttonText}
-          customBorderStyle={browser && getThemeById($themeStore)?.colors?.buttonBorder}
-          customBorderColor={browser && getThemeById($themeStore)?.colors?.buttonBorderColor}
-          customShadow={browser && getThemeById($themeStore)?.colors?.buttonShadow}
+          customHoverBgColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonHoverBg}
+          customTextColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonText}
+          customBorderStyle={browser &&
+            getThemeById($themeStore)?.colors?.buttonBorder}
+          customBorderColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonBorderColor}
+          customShadow={browser &&
+            getThemeById($themeStore)?.colors?.buttonShadow}
         />
 
         <NavbarButton
@@ -379,11 +394,16 @@
           tooltipText="Search"
           useThemeBorder={isWin98Theme}
           customBgColor={browser && getThemeById($themeStore)?.colors?.buttonBg}
-          customHoverBgColor={browser && getThemeById($themeStore)?.colors?.buttonHoverBg}
-          customTextColor={browser && getThemeById($themeStore)?.colors?.buttonText}
-          customBorderStyle={browser && getThemeById($themeStore)?.colors?.buttonBorder}
-          customBorderColor={browser && getThemeById($themeStore)?.colors?.buttonBorderColor}
-          customShadow={browser && getThemeById($themeStore)?.colors?.buttonShadow}
+          customHoverBgColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonHoverBg}
+          customTextColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonText}
+          customBorderStyle={browser &&
+            getThemeById($themeStore)?.colors?.buttonBorder}
+          customBorderColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonBorderColor}
+          customShadow={browser &&
+            getThemeById($themeStore)?.colors?.buttonShadow}
         />
 
         {#if $auth.isConnected}
@@ -393,12 +413,18 @@
               onClick={claimTokens}
               tooltipText="Claim test tokens"
               useThemeBorder={isWin98Theme}
-              customBgColor={browser && getThemeById($themeStore)?.colors?.buttonBg}
-              customHoverBgColor={browser && getThemeById($themeStore)?.colors?.buttonHoverBg}
-              customTextColor={browser && getThemeById($themeStore)?.colors?.buttonText}
-              customBorderStyle={browser && getThemeById($themeStore)?.colors?.buttonBorder}
-              customBorderColor={browser && getThemeById($themeStore)?.colors?.buttonBorderColor}
-              customShadow={browser && getThemeById($themeStore)?.colors?.buttonShadow}
+              customBgColor={browser &&
+                getThemeById($themeStore)?.colors?.buttonBg}
+              customHoverBgColor={browser &&
+                getThemeById($themeStore)?.colors?.buttonHoverBg}
+              customTextColor={browser &&
+                getThemeById($themeStore)?.colors?.buttonText}
+              customBorderStyle={browser &&
+                getThemeById($themeStore)?.colors?.buttonBorder}
+              customBorderColor={browser &&
+                getThemeById($themeStore)?.colors?.buttonBorderColor}
+              customShadow={browser &&
+                getThemeById($themeStore)?.colors?.buttonShadow}
             />
           {/if}
 
@@ -408,12 +434,18 @@
             onClick={() => copyToClipboard($auth?.account?.owner)}
             tooltipText="Copy Principal ID"
             useThemeBorder={isWin98Theme}
-            customBgColor={browser && getThemeById($themeStore)?.colors?.buttonBg}
-            customHoverBgColor={browser && getThemeById($themeStore)?.colors?.buttonHoverBg}
-            customTextColor={browser && getThemeById($themeStore)?.colors?.buttonText}
-            customBorderStyle={browser && getThemeById($themeStore)?.colors?.buttonBorder}
-            customBorderColor={browser && getThemeById($themeStore)?.colors?.buttonBorderColor}
-            customShadow={browser && getThemeById($themeStore)?.colors?.buttonShadow}
+            customBgColor={browser &&
+              getThemeById($themeStore)?.colors?.buttonBg}
+            customHoverBgColor={browser &&
+              getThemeById($themeStore)?.colors?.buttonHoverBg}
+            customTextColor={browser &&
+              getThemeById($themeStore)?.colors?.buttonText}
+            customBorderStyle={browser &&
+              getThemeById($themeStore)?.colors?.buttonBorder}
+            customBorderColor={browser &&
+              getThemeById($themeStore)?.colors?.buttonBorderColor}
+            customShadow={browser &&
+              getThemeById($themeStore)?.colors?.buttonShadow}
           />
         {/if}
 
@@ -424,11 +456,16 @@
           isSelected={showWalletSidebar && walletSidebarActiveTab === "wallet"}
           variant="primary"
           useThemeBorder={isWin98Theme}
-          customBgColor={browser && getThemeById($themeStore)?.colors?.primaryButtonBg}
-          customHoverBgColor={browser && getThemeById($themeStore)?.colors?.primaryButtonHoverBg}
-          customTextColor={browser && getThemeById($themeStore)?.colors?.primaryButtonText}
-          customBorderStyle={browser && getThemeById($themeStore)?.colors?.primaryButtonBorder}
-          customBorderColor={browser && getThemeById($themeStore)?.colors?.primaryButtonBorderColor}
+          customBgColor={browser &&
+            getThemeById($themeStore)?.colors?.primaryButtonBg}
+          customHoverBgColor={browser &&
+            getThemeById($themeStore)?.colors?.primaryButtonHoverBg}
+          customTextColor={browser &&
+            getThemeById($themeStore)?.colors?.primaryButtonText}
+          customBorderStyle={browser &&
+            getThemeById($themeStore)?.colors?.primaryButtonBorder}
+          customBorderColor={browser &&
+            getThemeById($themeStore)?.colors?.primaryButtonBorderColor}
           isWalletButton={true}
           badgeCount={$notificationsStore.unreadCount}
         />
@@ -439,11 +476,16 @@
           variant="mobile"
           useThemeBorder={isWin98Theme}
           customBgColor={browser && getThemeById($themeStore)?.colors?.buttonBg}
-          customHoverBgColor={browser && getThemeById($themeStore)?.colors?.buttonHoverBg}
-          customTextColor={browser && getThemeById($themeStore)?.colors?.buttonText}
-          customBorderStyle={browser && getThemeById($themeStore)?.colors?.buttonBorder}
-          customBorderColor={browser && getThemeById($themeStore)?.colors?.buttonBorderColor}
-          customShadow={browser && getThemeById($themeStore)?.colors?.buttonShadow}
+          customHoverBgColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonHoverBg}
+          customTextColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonText}
+          customBorderStyle={browser &&
+            getThemeById($themeStore)?.colors?.buttonBorder}
+          customBorderColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonBorderColor}
+          customShadow={browser &&
+            getThemeById($themeStore)?.colors?.buttonShadow}
         />
 
         <NavbarButton
@@ -453,11 +495,16 @@
           variant="mobile"
           useThemeBorder={isWin98Theme}
           customBgColor={browser && getThemeById($themeStore)?.colors?.buttonBg}
-          customHoverBgColor={browser && getThemeById($themeStore)?.colors?.buttonHoverBg}
-          customTextColor={browser && getThemeById($themeStore)?.colors?.buttonText}
-          customBorderStyle={browser && getThemeById($themeStore)?.colors?.buttonBorder}
-          customBorderColor={browser && getThemeById($themeStore)?.colors?.buttonBorderColor}
-          customShadow={browser && getThemeById($themeStore)?.colors?.buttonShadow}
+          customHoverBgColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonHoverBg}
+          customTextColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonText}
+          customBorderStyle={browser &&
+            getThemeById($themeStore)?.colors?.buttonBorder}
+          customBorderColor={browser &&
+            getThemeById($themeStore)?.colors?.buttonBorderColor}
+          customShadow={browser &&
+            getThemeById($themeStore)?.colors?.buttonShadow}
           isWalletButton={true}
           badgeCount={$notificationsStore.unreadCount}
         />
@@ -478,7 +525,8 @@
           src={$logoSrcStore}
           alt="Kong Logo"
           class="logo-wide navbar-logo"
-          class:light-logo={browser && getThemeById($themeStore)?.colors?.logoInvert === 1}
+          class:light-logo={browser &&
+            getThemeById($themeStore)?.colors?.logoInvert === 1}
         />
         <button class="mobile-close-btn" on:click={() => (navOpen = false)}>
           <X size={16} />
@@ -496,14 +544,6 @@
           />
 
           <MobileNavGroup
-            title="EARN"
-            options={earnOptions}
-            {activeTab}
-            {onTabChange}
-            onClose={() => (navOpen = false)}
-          />
-          
-          <MobileNavGroup
             title="PREDICT"
             options={[
               {
@@ -514,6 +554,14 @@
                 comingSoon: false,
               },
             ]}
+            {activeTab}
+            {onTabChange}
+            onClose={() => (navOpen = false)}
+          />
+
+          <MobileNavGroup
+            title="EARN"
+            options={earnOptions}
             {activeTab}
             {onTabChange}
             onClose={() => (navOpen = false)}
@@ -602,11 +650,16 @@
           iconSize={20}
           class="mobile-wallet-btn"
           useThemeBorder={isWin98Theme}
-          customBgColor={browser && getThemeById($themeStore)?.colors?.primaryButtonBg}
-          customHoverBgColor={browser && getThemeById($themeStore)?.colors?.primaryButtonHoverBg}
-          customTextColor={browser && getThemeById($themeStore)?.colors?.primaryButtonText}
-          customBorderStyle={browser && getThemeById($themeStore)?.colors?.primaryButtonBorder}
-          customBorderColor={browser && getThemeById($themeStore)?.colors?.primaryButtonBorderColor}
+          customBgColor={browser &&
+            getThemeById($themeStore)?.colors?.primaryButtonBg}
+          customHoverBgColor={browser &&
+            getThemeById($themeStore)?.colors?.primaryButtonHoverBg}
+          customTextColor={browser &&
+            getThemeById($themeStore)?.colors?.primaryButtonText}
+          customBorderStyle={browser &&
+            getThemeById($themeStore)?.colors?.primaryButtonBorder}
+          customBorderColor={browser &&
+            getThemeById($themeStore)?.colors?.primaryButtonBorderColor}
           isWalletButton={true}
           badgeCount={$notificationsStore.unreadCount}
         />
