@@ -466,6 +466,7 @@ export const idlFactory = ({ IDL }) => {
     'chain_0' : IDL.Text,
     'chain_1' : IDL.Text,
     'symbol' : IDL.Text,
+    'lp_token_id' : IDL.Nat64,
   });
   const UserBalancesReply = IDL.Variant({ 'LP' : LPBalancesReply });
   const UserBalancesResult = IDL.Variant({

@@ -8,6 +8,7 @@
   import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import TokenInput from "./TokenInput.svelte";
   import { calculateLiquidityAmounts } from "$lib/api/pools";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -301,37 +302,44 @@
     <div class="action-buttons">
       {#if isAnyTokenExceeding}
         <!-- Custom insufficient balance button -->
-        <button
-          class="insufficient-balance-button action-button"
-          disabled={true}
+        <ButtonV2
+          theme="warning"
+          variant="outline"
+          size="md"
+          isDisabled={true}
+          fullWidth={true}
         >
           <span>Insufficient Balance</span>
-        </button>
+        </ButtonV2>
       {:else}
-        <button
+        <ButtonV2
+          theme="accent-green"
+          variant="solid"
+          size="md"
+          isDisabled={!addAmount0 || !addAmount1 || isAddingLiquidity || isCalculatingAdd}
+          fullWidth={true}
           on:click={handleAddLiquidity}
-          class="action-button add-button"
-          disabled={!addAmount0 ||
-            !addAmount1 ||
-            isAddingLiquidity ||
-            isCalculatingAdd}
         >
           {#if isAddingLiquidity}
-            <div class="loading-spinner"></div>
-            <span>Adding...</span>
+            <div class="button-content">
+              <div class="loading-spinner"></div>
+              <span>Adding...</span>
+            </div>
           {:else if isCalculatingAdd}
-            <div class="loading-spinner"></div>
-            <span>Calculating...</span>
+            <div class="button-content">
+              <div class="loading-spinner"></div>
+              <span>Calculating...</span>
+            </div>
           {:else}
             <span>Add Liquidity</span>
           {/if}
-        </button>
+        </ButtonV2>
       {/if}
     </div>
   </div>
 </div>
 
-<style lang="postcss">
+<style lang="postcss" scoped>
   .add-liquidity-container {
     @apply flex flex-col gap-3;
   }
@@ -373,6 +381,10 @@
     @apply flex gap-2 w-full;
   }
 
+  .button-content {
+    @apply flex items-center justify-center;
+  }
+
   :global(.action-button) {
     @apply !h-10 transition-all duration-200
            font-medium tracking-wide text-center flex items-center justify-center
@@ -380,7 +392,7 @@
   }
 
   .add-button {
-    @apply bg-kong-accent-green text-white hover:bg-kong-accent-green-hover;
+    @apply bg-kong-accent-green text-kong-bg-dark hover:bg-kong-accent-green-hover;
   }
 
   .loading-spinner {

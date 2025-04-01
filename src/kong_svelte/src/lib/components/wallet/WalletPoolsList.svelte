@@ -61,18 +61,25 @@
     }
   }
   
+  // Common function to refresh pools data
+  async function refreshPoolsData(errorMsg = "Failed to refresh your liquidity positions. Please try again.") {
+    try {
+      currentUserPoolsStore.reset();
+      await currentUserPoolsStore.initialize();
+      if (onRefresh) onRefresh();
+      return true;
+    } catch (error) {
+      console.error("Error refreshing pools:", error);
+      errorMessage = errorMsg;
+      return false;
+    }
+  }
+  
   // Function to refresh user pools with callback
   async function handleRefresh() {
     if (hasCompletedInitialLoad) {
       errorMessage = null;
-      try {
-        await currentUserPoolsStore.initialize();
-        // Call the onRefresh callback if provided
-        if (onRefresh) onRefresh();
-      } catch (error) {
-        console.error("Error refreshing user pools:", error);
-        errorMessage = "Failed to refresh your liquidity positions. Please try again.";
-      }
+      await refreshPoolsData();
     }
   }
   
@@ -88,22 +95,8 @@
     selectedPool = null;
     
     // Force a complete refresh of the pools store
-    try {
-      // First reset the store to clear all existing data
-      currentUserPoolsStore.reset();
-      
-      // Add a small delay to ensure state is properly cleared
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Then reinitialize to fetch fresh data
-      await currentUserPoolsStore.initialize();
-      
-      // Call the optional refresh callback
-      if (onRefresh) onRefresh();
-    } catch (error) {
-      console.error("Error refreshing pools after liquidity removal:", error);
-      errorMessage = "Failed to update your liquidity positions. Please try refreshing manually.";
-    }
+    errorMessage = null;
+    await refreshPoolsData("Failed to update your liquidity positions. Please try refreshing manually.");
   }
   
   // Get pool share percentage
