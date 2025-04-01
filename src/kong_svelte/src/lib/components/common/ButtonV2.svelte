@@ -17,7 +17,7 @@
   } = $props<{
     label?: string;
     type?: "button" | "submit" | "reset";
-    theme?: "primary" | "secondary" | "success" | "error" | "warning" | "accent-green" | "accent-blue" | "muted";
+    theme?: "primary" | "secondary" | "success" | "error" | "warning" | "accent-green" | "accent-blue" | "accent-red" | "muted";
     variant?: "solid" | "outline" | "transparent" | "shine";
     size?: "xs" | "sm" | "md" | "lg";
     isDisabled?: boolean;
@@ -37,7 +37,7 @@
 
   // Theme-based styles
   const baseThemeClasses = {
-    primary: "text-kong-text-primary",
+    primary: "text-kong-text-on-primary",
     secondary: "text-kong-text-primary",
     success: "text-kong-success",
     error: "text-white",
@@ -61,7 +61,7 @@
   };
 
   const outlineThemeClasses = {
-    primary: "border border-kong-primary text-kong-primary hover:bg-kong-primary/10",
+    primary: "border border-kong-primary text-kong-text-primary hover:bg-kong-primary/10",
     secondary: "border border-white/10 text-white/90 hover:bg-white/5",
     "accent-green": "border border-kong-accent-green text-kong-text-accent-green hover:bg-kong-accent-green/10",
     "accent-blue": "border border-kong-accent-blue text-kong-accent-blue hover:bg-kong-accent-blue/10",
@@ -107,6 +107,7 @@
     warning: "bg-gradient-to-r from-kong-warning to-yellow-500",
     "accent-green": "bg-gradient-to-r from-kong-accent-green to-kong-accent-green-hover",
     "accent-blue": "bg-gradient-to-r from-kong-accent-blue to-kong-accent-blue-hover",
+    "accent-red": "bg-gradient-to-r from-kong-accent-red to-kong-accent-red-hover",
     muted: "bg-gradient-to-r from-white/10 to-white/20",
   };
 

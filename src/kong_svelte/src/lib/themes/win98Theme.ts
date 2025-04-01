@@ -14,7 +14,6 @@ export const win98Theme: ThemeDefinition = {
     
     // Primary and secondary colors
     primary: '#010081',     // Windows 98 blue
-    textOnPrimary: '#fff', // Windows 98 text
     primaryHover: '#000064', // Darker variant of Windows 98 blue
     secondary: '#008080',   // Windows 98 teal
     secondaryHover: '#006464', // Darker variant of teal
@@ -40,6 +39,9 @@ export const win98Theme: ThemeDefinition = {
     textAccentGreen: '#008000', // More vibrant forest green
     textAccentRed: '#B00000',   // More vibrant deep red
     textAccentBlue: '#00008B',  // Darker blue for better contrast on gray
+    textOnPrimary: '#fff',
+    textLight: '#fff',
+    textDark: '#000',
     
     // Font settings - Using Windows 98-style font
     fontFamily: "'Comic Sans MS', 'MS Sans Serif', 'Segoe UI', Arial, sans-serif",

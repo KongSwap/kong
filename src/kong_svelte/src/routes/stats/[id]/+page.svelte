@@ -49,16 +49,24 @@
   let dropdownButtonRef = $state<HTMLButtonElement | null>(null);
   let dropdownRef = $state<HTMLElement | null>(null);
 
-  // Fetch token data when page loads
-  $effect.root(() => {
+  // Fetch token data when page loads or ID changes
+  $effect(() => {
+    const pageId = $page.params.id;
+    if (!pageId) return;
+    
+    // Reset UI state
+    activeTab = "overview";
+    showDropdown = false;
+    
     const fetchToken = async () => {
       try {
-        const pageId = $page.params.id;
-        if (!pageId) return;
-
         isTokenLoading = true;
         isChartDataReady = false;
         chartInstance = 0;
+        chartMounted = false;
+        token = undefined;
+        selectedPool = undefined;
+        relevantPools = [];
 
         // Try direct API fetch
         const fetchedTokens = await fetchTokensByCanisterId([pageId]);
@@ -175,9 +183,14 @@
   // Market cap rank calculation
   let marketCapRank = $state<number | null>(null);
   $effect(() => {
-    if (!$tokenData) return;
+    const pageId = $page.params.id;
+    if (!$tokenData || !pageId) {
+      marketCapRank = null;
+      return;
+    }
+    
     const foundToken = $tokenData.find(
-      (t) => t.address === $page.params.id || t.canister_id === $page.params.id,
+      (t) => t.address === pageId || t.canister_id === pageId
     );
     if (!foundToken) {
       marketCapRank = null;
@@ -269,7 +282,7 @@
 </script>
 
 <svelte:head>
-  <title>{token?.name} ({token?.symbol}) Chart and Stats - KongSwap</title>
+  <title>{token?.name || 'Token'} {token?.symbol ? `(${token.symbol})` : ''} Chart and Stats - KongSwap</title>
 </svelte:head>
 
 <div class="p-4 pt-0">
