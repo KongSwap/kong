@@ -52,30 +52,32 @@
 		// If tokenBalances were provided, use them (backward compatibility)
 		tokenBalances.length > 0 ? tokenBalances : 
 		// Otherwise process them internally
-		$userTokens.tokens.map((token) => {
-			const balanceInfo = $currentUserBalancesStore?.[token.canister_id] || {
-				in_tokens: 0n,
-				in_usd: "0",
-			};
+		$userTokens.tokens
+			.filter(token => token.canister_id && $userTokens.enabledTokens.has(token.canister_id))
+			.map((token) => {
+				const balanceInfo = $currentUserBalancesStore?.[token.canister_id] || {
+					in_tokens: 0n,
+					in_usd: "0",
+				};
 
-			// Safely convert in_usd to number, handling non-numeric strings
-			const usdValue = balanceInfo.in_usd 
-				? parseFloat(balanceInfo.in_usd) 
-				: 0;
+				// Safely convert in_usd to number, handling non-numeric strings
+				const usdValue = balanceInfo.in_usd 
+					? parseFloat(balanceInfo.in_usd) 
+					: 0;
 
-			return {
-				symbol: token.symbol,
-				name: token.name,
-				balance: formatBalance(balanceInfo.in_tokens, token.decimals || 0),
-				usdValue: isNaN(usdValue) ? 0 : usdValue,
-				icon: token.logo_url || "",
-				change24h: token.metrics?.price_change_24h
-					? parseFloat(token.metrics.price_change_24h)
-					: 0,
-				token: token, // Store the original token object for TokenImages
-			};
-		})
-		.sort((a, b) => b.usdValue - a.usdValue) // Sort by value, highest first
+				return {
+					symbol: token.symbol,
+					name: token.name,
+					balance: formatBalance(balanceInfo.in_tokens, token.decimals || 0),
+					usdValue: isNaN(usdValue) ? 0 : usdValue,
+					icon: token.logo_url || "",
+					change24h: token.metrics?.price_change_24h
+						? parseFloat(token.metrics.price_change_24h)
+						: 0,
+					token: token, // Store the original token object for TokenImages
+				};
+			})
+			.sort((a, b) => b.usdValue - a.usdValue) // Sort by value, highest first
 	);
 
 	let isLoadingBalances = $state(false);
