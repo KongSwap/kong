@@ -33,7 +33,6 @@
   // Batch price updates using requestAnimationFrame
   let pendingUpdates = new Set<FE.Token>();
   let updateScheduled = false;
-
   let tickerWidth = 0;
   let contentWidth = 0;
 
@@ -54,32 +53,35 @@
       icpToken = tokens.find(t => t.symbol === "ICP") || null;
       ckUSDCToken = tokens.find(t => t.symbol === "ckUSDC") || null;
 
-      // Update prices and trigger flashes without resetting animation
-      sortedTokens.forEach(newToken => {
-        const currentPrice = Number(newToken.metrics?.price || 0);
-        const prevPrice = previousPrices.get(newToken.canister_id);
-        
-        if (prevPrice !== undefined && prevPrice !== currentPrice) {
-          const flashClass = currentPrice > prevPrice ? "flash-green" : "flash-red";
-          
-          if (priceFlashStates.has(newToken.canister_id)) {
-            clearTimeout(priceFlashStates.get(newToken.canister_id)!.timeout);
-          }
-          
-          const timeout = setTimeout(() => {
-            priceFlashStates.delete(newToken.canister_id);
-            priceFlashStates = priceFlashStates;
-          }, 2000);
-          
-          priceFlashStates.set(newToken.canister_id, { class: flashClass, timeout });
-        }
-        
-        previousPrices.set(newToken.canister_id, currentPrice);
-      });
+      // Check for new tokens or rearrangement
+      const newTokenIds = sortedTokens.map(t => t.canister_id).join(',');
+      const currentTokenIds = tickerTokens.map(t => t.canister_id).join(',');
+      const hasNewTokens = newTokenIds !== currentTokenIds;
 
-      // Update ticker tokens without resetting animation
-      if (tickerTokens.length === 0 || JSON.stringify(sortedTokens.map(t => t.canister_id)) !== JSON.stringify(tickerTokens.map(t => t.canister_id))) {
+      // Handle price updates using the batch update mechanism
+      sortedTokens.forEach(newToken => {
+        pendingUpdates.add(newToken);
+      });
+      
+      // Schedule the updates
+      scheduleUpdate();
+
+      // Update ticker tokens if the list changed
+      if (hasNewTokens || tickerTokens.length === 0) {
         tickerTokens = sortedTokens;
+      } else {
+        // Create a map of new token data by canister_id
+        const tokenMap = new Map(sortedTokens.map(t => [t.canister_id, t]));
+        
+        // Update existing token data to preserve references where possible
+        // but ensure metrics are updated
+        tickerTokens = tickerTokens.map(token => {
+          const newData = tokenMap.get(token.canister_id);
+          if (newData && newData.metrics) {
+            return { ...token, metrics: { ...newData.metrics } };
+          }
+          return token;
+        });
       }
     } catch (error) {
       console.error('Error fetching ticker data:', error);
@@ -119,10 +121,10 @@
         }, 2000);
 
         priceFlashStates.set(token.canister_id, { class: flashClass, timeout });
-        
-        // Update the previous price immediately after setting flash state
-        previousPrices.set(token.canister_id, currentPrice);
       }
+      
+      // Always update the previous price for next comparison
+      previousPrices.set(token.canister_id, currentPrice);
     });
 
     pendingUpdates.clear();
@@ -204,13 +206,7 @@
       "tickerData",
       () => {
         if (isVisible && !isChartHovered && !isTickerHovered) {
-          const prevTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
-          fetchTickerData().then(() => {
-            const newTokens = JSON.stringify(tickerTokens.map(t => t.canister_id));
-            if (prevTokens === newTokens) {
-              tickerTokens = tickerTokens.map(t => ({ ...t }));
-            }
-          });
+          fetchTickerData();
         }
       },
       14000
