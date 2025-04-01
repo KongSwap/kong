@@ -184,6 +184,7 @@ type UserBalancesReply = variant {
 type LPBalancesReply = record {
     name : text;
     symbol : text;
+    lp_token_id : nat64;
     balance : float64;
     usd_balance : float64;
     chain_0 : text;

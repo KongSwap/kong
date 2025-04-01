@@ -33,13 +33,12 @@ export class PoolSerializer extends BaseSerializer {
     }
     
     const pool = rawPool as Record<string, unknown>;
-    
     const balance_0 = this.toBigInt(pool.balance_0);
     const balance_1 = this.toBigInt(pool.balance_1);
     const pool_id = this.toNumber(pool.pool_id);
     
     return {
-      id: this.toString(pool.pool_id),
+      id: this.toString(pool.id),
       pool_id,
       name: this.toString(pool.name),
       symbol: this.toString(pool.symbol),

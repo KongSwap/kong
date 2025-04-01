@@ -87,8 +87,7 @@ function createCurrentUserPoolsStore() {
           // Match UserPoolList's processing
           const rawPools = response.Ok.map(pool => pool.LP);
           const poolsWithIds = rawPools.map(pool => ({
-            ...pool,
-            id: `${pool.address_0}-${pool.address_1}`
+            ...pool
           }));
           
           // Initial processing without tokens

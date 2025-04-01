@@ -169,6 +169,7 @@ export interface LPBalancesReply {
   'chain_0' : string,
   'chain_1' : string,
   'symbol' : string,
+  'lp_token_id' : bigint,
 }
 export interface LPTokenReply {
   'fee' : bigint,
