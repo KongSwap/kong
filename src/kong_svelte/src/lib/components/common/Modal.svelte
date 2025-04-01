@@ -1,6 +1,5 @@
 <script lang="ts">
   import { browser } from "$app/environment";
-  import { onMount, onDestroy } from "svelte";
   import Panel from "./Panel.svelte";
   import { fade } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
@@ -10,33 +9,57 @@
   import { X } from "lucide-svelte";
   import { modalStack } from "$lib/stores/modalStore";
 
-  export let isOpen = false;
-  export let modalKey = Math.random().toString(36).substr(2, 9);
-  export let title: string | HTMLElement = "";
-  export let variant: "solid" | "transparent" = "solid";
-  export let width = "600px";
-  export let height = "auto";
-  export let minHeight = "auto";
-  export let onClose: () => void = () => {};
-  export let loading = false;
-  export let closeOnEscape = true;
-  export let closeOnClickOutside = true;
-  export let className: string = "";
-  export let isPadded = false;
-  export let target: string = "#portal-target";
-  let isMobile = false;
-  let modalWidth = width;
-  let modalHeight = height;
-  let startX = 0;
-  let currentX = 0;
-  let isDragging = false;
-  let modalElement: HTMLDivElement;
-  let titleElement: HTMLElement;
-  const SLIDE_THRESHOLD = 100; // pixels to trigger close
-  let zIndex = 99999;
+  // Props
+  let {
+    isOpen = false,
+    modalKey = Math.random().toString(36).substr(2, 9),
+    title = "",
+    variant = "solid",
+    width = "600px",
+    height = "auto",
+    minHeight = "auto",
+    onClose = () => {},
+    loading = false,
+    closeOnEscape = true,
+    closeOnClickOutside = true,
+    className = "",
+    isPadded = false,
+    target = "#portal-target",
+    children,
+    titleContent
+  } = $props<{
+    isOpen?: boolean;
+    modalKey?: string;
+    title?: string | HTMLElement;
+    variant?: "solid" | "transparent";
+    width?: string;
+    height?: string;
+    minHeight?: string;
+    onClose?: () => void;
+    loading?: boolean;
+    closeOnEscape?: boolean;
+    closeOnClickOutside?: boolean;
+    className?: string;
+    isPadded?: boolean;
+    target?: string;
+    children?: () => any;
+    titleContent?: () => any;
+  }>();
 
-  // Watch isOpen changes to handle transitions
-  $: {
+  // State
+  let isMobile = $state(false);
+  let modalWidth = $state(width);
+  let modalHeight = $state(height);
+  let startX = $state(0);
+  let currentX = $state(0);
+  let isDragging = $state(false);
+  let modalElement: HTMLDivElement;
+  let zIndex = $state(99999);
+  
+  const SLIDE_THRESHOLD = 100; // pixels to trigger close
+
+  // Update modal stack when isOpen changes
+  $effect(() => {
     if (isOpen) {
       modalStack.update((stack) => ({
         ...stack,
@@ -48,25 +71,30 @@
         return rest;
       });
     }
-  }
-
-  // Subscribe to modalStack to update zIndex
-  const unsubscribe = modalStack.subscribe((stack) => {
-    const modalEntries = Object.entries(stack);
-    if (modalEntries.length === 0) return;
-
-    // Sort modals by timestamp in descending order (newest first)
-    modalEntries.sort((a, b) => b[1].timestamp - a[1].timestamp);
-    
-    // Find position of current modal
-    const currentIndex = modalEntries.findIndex(([key]) => key === modalKey);
-    if (currentIndex !== -1) {
-      // Base z-index is 99999, each modal adds 10 to ensure proper stacking
-      zIndex = 99999 + (currentIndex * 10);
-    }
   });
 
-  onMount(() => {
+  // Subscribe to modalStack to update zIndex
+  $effect(() => {
+    const unsubscribe = modalStack.subscribe((stack) => {
+      const modalEntries = Object.entries(stack);
+      if (modalEntries.length === 0) return;
+
+      // Sort modals by timestamp in descending order (newest first)
+      modalEntries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+      
+      // Find position of current modal
+      const currentIndex = modalEntries.findIndex(([key]) => key === modalKey);
+      if (currentIndex !== -1) {
+        // Base z-index is 99999, each modal adds 10 to ensure proper stacking
+        zIndex = 99999 + (currentIndex * 10);
+      }
+    });
+
+    return unsubscribe;
+  });
+
+  // Setup mobile responsiveness
+  $effect(() => {
     if (browser) {
       const updateDimensions = () => {
         isMobile = window.innerWidth <= 768;
@@ -84,6 +112,35 @@
         }
       };
     }
+  });
+
+  // Handle HTML title when title is HTML string
+  $effect(() => {
+    if (isOpen && title && typeof title === "string" && title.includes("<")) {
+      tick().then(() => {
+        const titleElements = document.querySelectorAll('.modal-title');
+        titleElements.forEach(element => {
+          if (element) {
+            element.innerHTML = title;
+          }
+        });
+      });
+    }
+  });
+
+  // Cleanup when component is destroyed
+  $effect(() => {
+    return () => {
+      // Clean up modal stack
+      modalStack.update((stack) => {
+        const { [modalKey]: _, ...rest } = stack;
+        return rest;
+      });
+
+      // Reset state variables
+      isDragging = false;
+      currentX = 0;
+    };
   });
 
   function handleDragStart(event: MouseEvent | TouchEvent) {
@@ -159,30 +216,6 @@
       }
     }
   }
-
-  $: if (isOpen && title && typeof title === "string" && title.includes("<")) {
-    tick().then(() => {
-      if (titleElement) {
-        titleElement.innerHTML = title;
-      }
-    });
-  }
-
-  // Improve cleanup in onDestroy
-  onDestroy(() => {
-    // Clean up modal stack
-    modalStack.update((stack) => {
-      const { [modalKey]: _, ...rest } = stack;
-      return rest;
-    });
-
-    // Clean up subscription
-    unsubscribe();
-
-    // Reset state variables
-    isDragging = false;
-    currentX = 0;
-  });
 </script>
 
 <svelte:window on:keydown={handleEscape} />
@@ -238,16 +271,13 @@
             <header
               class="flex justify-between items-center flex-shrink-0 pb-4"
             >
-              <slot name="title">
-                {#if typeof title === "string"}
-                  <h2 class="text-lg font-semibold">{title}</h2>
-                {:else}
-                  <div
-                    class="text-lg font-semibold"
-                    bind:this={titleElement}
-                  ></div>
-                {/if}
-              </slot>
+              {#if titleContent}
+                {@render titleContent()}
+              {:else}
+                <h2 class="text-lg font-semibold modal-title">
+                  {typeof title === "string" && !title.includes("<") ? title : ""}
+                </h2>
+              {/if}
               <button
                 class="!flex !self-start justify-end hover:text-kong-accent-red !border-0 !shadow-none group relative"
                 on:click={(e) => handleClose(e)}
@@ -261,7 +291,7 @@
             <div
               class="flex-1 overflow-y-auto scrollbar-custom min-h-0 {className}"
             >
-              <slot />
+              {@render children?.()}
             </div>
           </div>
         </Panel>
