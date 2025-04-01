@@ -8,11 +8,12 @@
   import type { BeforeInstallPromptEvent } from "$lib/types/pwa";
   import { createNamespacedStore, STORAGE_KEYS } from "$lib/config/localForage.config";
 
-  let InstallPWADialog: typeof import("$lib/components/common/InstallPWADialog.svelte").default;
-  let deferredPrompt: BeforeInstallPromptEvent | null = null;
-  let showPrompt = false;
-  let showIOSDialog = false;
-  let isEligible = false;
+  // State using runes
+  let InstallPWADialog = $state<typeof import("$lib/components/common/InstallPWADialog.svelte").default | null>(null);
+  let deferredPrompt = $state<BeforeInstallPromptEvent | null>(null);
+  let showPrompt = $state(false);
+  let showIOSDialog = $state(false);
+  let isEligible = $state(false);
   const pwaStore = createNamespacedStore(STORAGE_KEYS.SETTINGS);
   const PWA_PROMPT_KEY = "pwa-install-prompt";
 
