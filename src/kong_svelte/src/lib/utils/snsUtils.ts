@@ -30,7 +30,19 @@ export interface ProposalResponse {
 }
 
 export const GOVERNANCE_CANISTER_IDS: { [key: string]: string } = {
-  "o7oak-iyaaa-aaaaq-aadzq-cai": "oypg6-faaaa-aaaaq-aadza-cai"
+  "o7oak-iyaaa-aaaaq-aadzq-cai": "oypg6-faaaa-aaaaq-aadza-cai",
+  "vtrom-gqaaa-aaaaq-aabia-cai": "xomae-vyaaa-aaaaq-aabhq-cai",
+  "2ouva-viaaa-aaaaq-aaamq-cai": "2jvtu-yqaaa-aaaaq-aaama-cai",
+  "zfcdd-tqaaa-aaaaq-aaaga-cai": "zqfso-syaaa-aaaaq-aaafq-cai",
+  "tyyy3-4aaaa-aaaaq-aab7a-cai": "tr3th-kiaaa-aaaaq-aab6q-cai",
+  "oj6if-riaaa-aaaaq-aaeha-cai": "oa5dz-haaaa-aaaaq-aaegq-cai",
+  "f54if-eqaaa-aaaaq-aacea-cai": "eqsml-lyaaa-aaaaq-aacdq-cai",
+  "druyg-tyaaa-aaaaq-aactq-cai": "dwv6s-6aaaa-aaaaq-aacta-cai",
+  "ddsp7-7iaaa-aaaaq-aacqq-cai": "detjl-sqaaa-aaaaq-aacqa-cai",
+  "o4zzi-qaaaa-aaaaq-aaeeq-cai": "o3y74-5yaaa-aaaaq-aaeea-cai",
+  "lkwrt-vyaaa-aaaaq-aadhq-cai": "lnxxh-yaaaa-aaaaq-aadha-cai",
+  "jcmow-hyaaa-aaaaq-aadlq-cai": "jfnic-kaaaa-aaaaq-aadla-cai",
+  "6rdgd-kyaaa-aaaaq-aaavq-cai": "6wcax-haaaa-aaaaq-aaava-cai"
 }
 
 export class SNSService {
@@ -52,7 +64,7 @@ export class SNSService {
 
       const result = await governanceActor.list_proposals({
         limit: BigInt(limit),
-        before_proposal: beforeProposal ? [beforeProposal] : [],
+        before_proposal: beforeProposal ? [{ id: beforeProposal }] : [],
         exclude_type: [],
         include_reward_status: [] as number[],
         include_status: [] as number[]
