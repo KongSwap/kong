@@ -254,10 +254,6 @@
         }
         
         isInitialized = true;
-        console.log('Token initialization complete:', { 
-          payToken: $swapState.payToken?.symbol,
-          receiveToken: $swapState.receiveToken?.symbol
-        });
       } catch (error) {
         console.error('Error during token initialization:', error);
         // Fallback to default tokens
@@ -633,29 +629,6 @@
     resetSwapState();
   });
 
-  // Add monitor for balance updates
-  $effect(() => {
-    if ($currentUserBalancesStore) {
-      console.log('Balance store updated:', Object.keys($currentUserBalancesStore).length, 'tokens with balances');
-      
-      // If pay token exists, log its balance
-      if ($swapState.payToken?.canister_id && $currentUserBalancesStore[$swapState.payToken.canister_id]) {
-        console.log('Pay token balance:', {
-          token: $swapState.payToken.symbol,
-          balance: $currentUserBalancesStore[$swapState.payToken.canister_id].in_tokens.toString()
-        });
-      }
-      
-      // If receive token exists, log its balance
-      if ($swapState.receiveToken?.canister_id && $currentUserBalancesStore[$swapState.receiveToken.canister_id]) {
-        console.log('Receive token balance:', {
-          token: $swapState.receiveToken.symbol,
-          balance: $currentUserBalancesStore[$swapState.receiveToken.canister_id].in_tokens.toString()
-        });
-      }
-    }
-  });
-
   // Add effect to check if user has sufficient balance
   $effect(() => {
     const checkBalance = async () => {
@@ -679,15 +652,6 @@
             
             // Save the current balance for display
             currentBalance = balanceAsNumber.toString();
-            
-            console.log('Balance check:', {
-              token: $swapState.payToken.symbol,
-              requestedAmount: payAmount,
-              availableBalance: balanceAsNumber,
-              insufficientFunds,
-              balanceBigInt: balanceBigInt.toString(),
-              decimals
-            });
           } catch (error) {
             console.error('Error calculating balance:', error);
             insufficientFunds = false;
