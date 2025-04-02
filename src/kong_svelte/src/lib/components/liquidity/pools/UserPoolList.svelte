@@ -30,27 +30,10 @@
   // Simple flag for initial load only
   let hasCompletedInitialLoad = false;
 
-  // Cache for pools
-  let cachedPools: any[] = [];
-
-  // Update cache whenever we have valid data (not during loading)
-  $: if (
-    $currentUserPoolsStore.filteredPools.length > 0 &&
-    !$currentUserPoolsStore.loading
-  ) {
-    cachedPools = [...$currentUserPoolsStore.filteredPools];
+  // Helper to get a unique pool key
+  function getPoolKey(pool: any): string {
+    return pool.address_0 + '-' + pool.address_1;
   }
-
-  // Always use cached pools after initial load if we have them
-  $: displayPools = !hasCompletedInitialLoad
-    ? $currentUserPoolsStore.filteredPools
-    : cachedPools.length > 0
-      ? cachedPools
-      : $currentUserPoolsStore.filteredPools;
-
-  // Only show loading indicator on initial load
-  $: showLoadingIndicator =
-    $currentUserPoolsStore.loading && !hasCompletedInitialLoad;
 
   // Subscribe to the store
   $: if (searchQuery !== $currentUserPoolsStore.searchQuery) {
@@ -77,9 +60,6 @@
   async function refreshUserPools() {
     if (hasCompletedInitialLoad) {
       try {
-        // Reset the cache to force UI to update
-        cachedPools = [];
-        
         // First reset the store to clear all existing data
         currentUserPoolsStore.reset();
         
@@ -95,10 +75,11 @@
   }
 
   function handlePoolItemClick(pool: any) {
-    if (expandedPoolId === pool.id) {
+    const poolKey = getPoolKey(pool);
+    if (expandedPoolId === poolKey) {
       expandedPoolId = null;
     } else {
-      expandedPoolId = pool.id;
+      expandedPoolId = poolKey;
     }
   }
 
@@ -148,7 +129,7 @@
 </script>
 
 <div class="mt-2">
-  {#if showLoadingIndicator}
+  {#if $currentUserPoolsStore.loading && !hasCompletedInitialLoad}
     <div class="loading-state" in:fade={{ duration: 300 }}>
       <div class="loading-animation">
         <Droplets size={32} class="animate-pulse text-kong-primary" />
@@ -174,7 +155,7 @@
         Retry
       </button>
     </div>
-  {:else if displayPools.length === 0}
+  {:else if $currentUserPoolsStore.filteredPools.length === 0}
     <div class="empty-state" in:fade={{ duration: 300 }}>
       <div class="empty-icon-container">
         <Droplets size={40} class="empty-icon" />
@@ -199,126 +180,118 @@
       {/if}
     </div>
   {:else}
-    <div class="pools-grid">
-      {#each displayPools as pool (pool.id)}
-        <div
-          in:fly={{
-            y: 20,
-            duration: 300,
-            delay: 50 * displayPools.indexOf(pool),
-          }}
-        >
-          <div
-            class="pool-card {expandedPoolId === pool.id ? 'expanded' : ''}"
-            on:click={() => handlePoolItemClick(pool)}
-            on:keydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
-            role="button"
-            tabindex="0"
-          >
-            <!-- Card Header -->
-            <div class="pool-card-header">
-              <div class="pool-info">
-                <button
-                  class="absolute bottom-0 right-0 text-kong-text-primary/60"
-                  aria-label="Toggle pool details"
-                >
-                  {#if expandedPoolId === pool.id}
+    <div class="table-container">
+      <table class="pools-table">
+        <thead>
+          <tr>
+            <th class="text-left pl-4">Pool</th>
+            <th class="text-right">Share</th>
+            <th class="text-right">APY</th>
+            <th class="text-right pr-4">Value</th>
+            <th class="w-10"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each $currentUserPoolsStore.filteredPools as pool (getPoolKey(pool))}
+            <tr 
+              class="pool-row {expandedPoolId === getPoolKey(pool) ? 'expanded' : ''}"
+              on:click={() => handlePoolItemClick(pool)}
+              on:keydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
+              role="button"
+              tabindex="0"
+            >
+              <td class="pool-name-cell">
+                <div class="flex items-center gap-3">
+                  <TokenImages tokens={[pool.token0, pool.token1]} size={32} />
+                  <span class="pool-name">{pool.symbol_0}/{pool.symbol_1}</span>
+                </div>
+              </td>
+              <td class="text-right">
+                <div class="flex items-center justify-end gap-1">
+                  <span class="stat-value">{getPoolSharePercentage(pool)}%</span>
+                </div>
+              </td>
+              <td class="text-right">
+                <div class="flex items-center justify-end gap-1 text-kong-text-accent-green">
+                  <span class="stat-value accent">{getPoolApy(pool)}%</span>
+                </div>
+              </td>
+              <td class="text-right font-medium text-kong-primary">
+                ${formatToNonZeroDecimal(pool.usd_balance)}
+              </td>
+              <td class="text-center">
+                <button class="expand-button" aria-label="Toggle pool details">
+                  {#if expandedPoolId === getPoolKey(pool)}
                     <ChevronUp size={18} />
                   {:else}
                     <ChevronDown size={18} />
                   {/if}
                 </button>
-                <div class="token-images">
-                  <TokenImages tokens={[pool.token0, pool.token1]} size={40} />
-                </div>
-                <div class="pool-details">
-                  <h3 class="pool-name">
-                    {pool.symbol_0}/{pool.symbol_1}
-                  </h3>
-                  <div class="pool-stats">
-                    <div class="flex items-center gap-1">
-                      <ChartPie size={14} />
-                      <span class="stat-value"
-                        >{getPoolSharePercentage(pool)}% share</span
-                      >
-                    </div>
-                    <div class="h-3 w-px bg-white/10"></div>
-                    <div class="flex items-center gap-1 text-kong-text-accent-green">
-                      <BarChart3 size={14} />
-                      <span class="stat-value accent"
-                        >{getPoolApy(pool)}% APY</span
-                      >
-                    </div>
-                  </div>
-                </div>
-                <div class="pool-value">
-                  <div class="usd-value">
-                    ${formatToNonZeroDecimal(pool.usd_balance)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Expanded Content -->
-            {#if expandedPoolId === pool.id}
-              <div
-                class="expanded-content"
-                transition:slide={{ duration: 300 }}
-              >
-                <!-- Token Details -->
-                <div class="token-details">
-                  <h4 class="section-title">Your Tokens</h4>
-                  {#each [{ id: "token0", symbol: pool.symbol_0, amount: pool.amount_0, token: pool.token0 }, { id: "token1", symbol: pool.symbol_1, amount: pool.amount_1, token: pool.token1 }] as tokenInfo (tokenInfo.id)}
-                    <div class="token-card">
-                      <div class="token-info">
-                        <TokenImages tokens={[tokenInfo.token]} size={28} />
-                        <div class="token-text">
-                          <p class="token-symbol">{tokenInfo.symbol}</p>
-                          <p
-                            class="token-amount truncate"
-                            title={formatToNonZeroDecimal(tokenInfo.amount)}
-                          >
-                            {formatToNonZeroDecimal(tokenInfo.amount)}
-                          </p>
-                        </div>
+              </td>
+            </tr>
+            
+            {#if expandedPoolId === getPoolKey(pool)}
+              <tr class="expanded-row" transition:slide={{ duration: 200 }}>
+                <td colspan="5" class="expanded-cell">
+                  <div class="expanded-content">
+                    <div class="token-details-grid">
+                      <div class="section-header">
+                        <h4 class="section-title">Your Tokens</h4>
                       </div>
-                      <div class="token-value">
-                        ${calculateTokenUsdValue(
-                          tokenInfo.amount,
-                          tokenInfo.token,
-                        )}
+                      <div class="tokens-grid">
+                        {#each [{ id: "token0", symbol: pool.symbol_0, amount: pool.amount_0, token: pool.token0 }, { id: "token1", symbol: pool.symbol_1, amount: pool.amount_1, token: pool.token1 }] as tokenInfo (tokenInfo.id)}
+                          <div class="token-card">
+                            <div class="token-info">
+                              <TokenImages tokens={[tokenInfo.token]} size={24} />
+                              <div class="token-text">
+                                <p class="token-symbol">{tokenInfo.symbol}</p>
+                                <p
+                                  class="token-amount truncate"
+                                  title={formatToNonZeroDecimal(tokenInfo.amount)}
+                                >
+                                  {formatToNonZeroDecimal(tokenInfo.amount)}
+                                </p>
+                              </div>
+                            </div>
+                            <div class="token-value">
+                              ${calculateTokenUsdValue(
+                                tokenInfo.amount,
+                                tokenInfo.token,
+                              )}
+                            </div>
+                          </div>
+                        {/each}
+                      </div>
+
+                      <div class="action-buttons">
+                        <!-- Remove LP Button -->
+                        <button
+                          class="action-button remove-button"
+                          on:click|stopPropagation={(e) =>
+                            handleRemoveLiquidity(pool, e)}
+                        >
+                          <Minus size={16} />
+                          <span>Remove Liquidity</span>
+                        </button>
+
+                        <!-- Add LP Button -->
+                        <button
+                          class="action-button add-button"
+                          on:click|stopPropagation={(e) =>
+                            handleAddLiquidity(pool, e)}
+                        >
+                          <Plus size={16} />
+                          <span>Add Liquidity</span>
+                        </button>
                       </div>
                     </div>
-                  {/each}
-                </div>
-
-                <!-- Actions -->
-                <div class="action-buttons">
-                  <!-- Remove LP Button -->
-                  <button
-                    class="action-button remove-button"
-                    on:click|stopPropagation={(e) =>
-                      handleRemoveLiquidity(pool, e)}
-                  >
-                    <Minus size={16} />
-                    <span>Remove Liquidity</span>
-                  </button>
-
-                  <!-- Add LP Button -->
-                  <button
-                    class="action-button add-button"
-                    on:click|stopPropagation={(e) =>
-                      handleAddLiquidity(pool, e)}
-                  >
-                    <Plus size={16} />
-                    <span>Add Liquidity</span>
-                  </button>
-                </div>
-              </div>
+                  </div>
+                </td>
+              </tr>
             {/if}
-          </div>
-        </div>
-      {/each}
+          {/each}
+        </tbody>
+      </table>
     </div>
   {/if}
 
@@ -396,8 +369,7 @@
   }
 
   .expand-button {
-    @apply p-1 rounded-full text-kong-text-primary/50 hover:text-kong-primary 
-           hover:bg-kong-primary/10 transition-colors duration-200;
+    @apply p-1 text-kong-text-primary/60 hover:text-kong-primary transition-colors duration-200;
   }
 
   .expanded-content {
@@ -409,13 +381,17 @@
   }
 
   .section-title {
-    @apply text-sm font-medium text-kong-text-primary/70 mb-2;
+    @apply text-sm font-medium text-kong-text-primary/80 uppercase tracking-wide;
+  }
+
+  .tokens-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-3 mb-4;
   }
 
   .token-card {
     @apply flex items-center justify-between p-3 rounded-lg 
-           bg-white/[0.03] border border-white/[0.04]
-           hover:bg-white/[0.05] transition-colors duration-200;
+         bg-black/10 border border-white/[0.06]
+         hover:bg-black/20 transition-colors duration-200;
   }
 
   .token-info {
@@ -431,7 +407,7 @@
   }
 
   .token-amount {
-    @apply text-xs text-kong-text-primary/60 overflow-hidden text-ellipsis whitespace-nowrap;
+    @apply text-xs text-kong-text-primary/70 overflow-hidden text-ellipsis whitespace-nowrap;
   }
 
   .truncate {
@@ -443,22 +419,22 @@
   }
 
   .action-buttons {
-    @apply flex gap-3 pt-2;
+    @apply flex gap-3 pt-1;
   }
 
   .action-button {
-    @apply flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg
-           text-sm font-medium transition-all duration-200;
+    @apply flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg
+         text-sm font-medium transition-all duration-200 shadow-sm;
   }
 
   .add-button {
     @apply bg-kong-accent-green/10 text-kong-accent-green border border-kong-accent-green/20
-           hover:bg-kong-accent-green hover:text-white;
+         hover:bg-kong-accent-green hover:text-white shadow-[0_0_10px_rgba(39,174,96,0.1)];
   }
 
   .remove-button {
     @apply bg-kong-accent-red/10 text-kong-accent-red border border-kong-accent-red/20
-           hover:bg-kong-accent-red hover:text-white;
+         hover:bg-kong-accent-red hover:text-white shadow-[0_0_10px_rgba(235,87,87,0.1)];
   }
 
   /* Loading State */
@@ -477,7 +453,7 @@
   /* Error State */
   .error-state {
     @apply flex flex-col items-center justify-center h-64 gap-4
-           text-kong-accent-red;
+         text-kong-accent-red;
   }
 
   .error-icon {
@@ -490,9 +466,9 @@
 
   .retry-button {
     @apply px-4 py-2 bg-kong-bg-dark/40 text-kong-text-secondary text-xs font-medium rounded-lg
-           transition-all duration-200 hover:bg-kong-bg-dark/60 hover:text-kong-text-primary
-           border border-kong-border/40 hover:border-kong-accent-blue/30
-           active:scale-[0.98];
+         transition-all duration-200 hover:bg-kong-bg-dark/60 hover:text-kong-text-primary
+         border border-kong-border/40 hover:border-kong-accent-blue/30
+         active:scale-[0.98];
   }
 
   /* Empty State */
@@ -518,12 +494,68 @@
 
   .empty-action-button {
     @apply mt-4 flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg
-           bg-kong-primary text-white font-medium
-           hover:bg-kong-primary-hover transition-all duration-200;
+         bg-kong-primary text-white font-medium
+         hover:bg-kong-primary-hover transition-all duration-200;
   }
 
   .refresh-indicator {
     @apply fixed bottom-4 right-4 bg-white/10 backdrop-blur-md
-           rounded-full p-2 shadow-lg z-30 border border-white/20;
+         rounded-full p-2 shadow-lg z-30 border border-white/20;
+  }
+
+  .table-container {
+    @apply overflow-x-auto w-full;
+  }
+
+  .pools-table {
+    @apply w-full table-auto border-collapse;
+  }
+
+  .pools-table thead {
+    @apply sticky top-0 bg-kong-bg-dark/90 backdrop-blur-md z-10;
+  }
+
+  .pools-table th {
+    @apply py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05];
+  }
+
+  .pool-row {
+    @apply border-b border-white/[0.05] hover:bg-white/[0.04] cursor-pointer transition-colors duration-200;
+  }
+
+  .pool-row.expanded {
+    @apply bg-white/[0.03] border-b-0;
+  }
+
+  .pool-row td {
+    @apply py-4 px-4 text-sm text-kong-text-primary;
+  }
+
+  .pool-name-cell {
+    @apply py-3;
+  }
+
+  .pool-name {
+    @apply text-sm font-medium text-kong-text-primary;
+  }
+
+  .expanded-row {
+    @apply bg-transparent;
+  }
+
+  .expanded-cell {
+    @apply p-0;
+  }
+
+  .expanded-content {
+    @apply px-5 py-5 mx-4 mb-4 rounded-lg bg-white/[0.04] border border-white/[0.08] shadow-inner backdrop-blur-sm;
+  }
+
+  .token-details-grid {
+    @apply space-y-4;
+  }
+
+  .section-header {
+    @apply mb-3;
   }
 </style>
