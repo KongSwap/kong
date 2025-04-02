@@ -154,7 +154,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
           global: "globalThis",
         },
       },
-      include: ['dexie', 'comlink', '@dfinity/agent'],
+      include: ['comlink', '@dfinity/agent'],
       exclude: ['@sveltejs/kit', '$lib/utils/browser', '@dfinity/candid', '@dfinity/principal']
     },
     server: {
