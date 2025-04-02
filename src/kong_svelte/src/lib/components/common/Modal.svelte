@@ -24,9 +24,7 @@
     closeOnClickOutside = true,
     className = "",
     isPadded = false,
-    target = "#portal-target",
-    children,
-    titleContent
+    target = "#portal-target"
   } = $props<{
     isOpen?: boolean;
     modalKey?: string;
@@ -42,8 +40,6 @@
     className?: string;
     isPadded?: boolean;
     target?: string;
-    children?: () => any;
-    titleContent?: () => any;
   }>();
 
   // State
@@ -271,15 +267,18 @@
             <header
               class="flex justify-between items-center flex-shrink-0 pb-4"
             >
-              {#if titleContent}
-                {@render titleContent()}
-              {:else}
-                <h2 class="text-lg font-semibold modal-title">
-                  {typeof title === "string" && !title.includes("<") ? title : ""}
-                </h2>
-              {/if}
+              <!-- Check for all title rendering options -->
+              <div class="flex-grow">
+                <slot name="title">
+                  <h2 class="text-lg font-semibold modal-title">
+                    {#if typeof title === "string" && !title.includes("<")}
+                      {title}
+                    {/if}
+                  </h2>
+                </slot>
+              </div>
               <button
-                class="!flex !self-start justify-end hover:text-kong-accent-red !border-0 !shadow-none group relative"
+                class="!flex !items-center hover:text-kong-accent-red !border-0 !shadow-none group relative ml-2"
                 on:click={(e) => handleClose(e)}
                 aria-label="Close modal"
               >
@@ -291,7 +290,7 @@
             <div
               class="flex-1 overflow-y-auto scrollbar-custom min-h-0 {className}"
             >
-              {@render children?.()}
+              <slot></slot>
             </div>
           </div>
         </Panel>
