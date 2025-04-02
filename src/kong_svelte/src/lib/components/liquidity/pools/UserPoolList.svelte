@@ -30,27 +30,10 @@
   // Simple flag for initial load only
   let hasCompletedInitialLoad = false;
 
-  // Cache for pools
-  let cachedPools: any[] = [];
-
-  // Update cache whenever we have valid data (not during loading)
-  $: if (
-    $currentUserPoolsStore.filteredPools.length > 0 &&
-    !$currentUserPoolsStore.loading
-  ) {
-    cachedPools = [...$currentUserPoolsStore.filteredPools];
+  // Helper to get a unique pool key
+  function getPoolKey(pool: any): string {
+    return pool.address_0 + '-' + pool.address_1;
   }
-
-  // Always use cached pools after initial load if we have them
-  $: displayPools = !hasCompletedInitialLoad
-    ? $currentUserPoolsStore.filteredPools
-    : cachedPools.length > 0
-      ? cachedPools
-      : $currentUserPoolsStore.filteredPools;
-
-  // Only show loading indicator on initial load
-  $: showLoadingIndicator =
-    $currentUserPoolsStore.loading && !hasCompletedInitialLoad;
 
   // Subscribe to the store
   $: if (searchQuery !== $currentUserPoolsStore.searchQuery) {
@@ -77,9 +60,6 @@
   async function refreshUserPools() {
     if (hasCompletedInitialLoad) {
       try {
-        // Reset the cache to force UI to update
-        cachedPools = [];
-        
         // First reset the store to clear all existing data
         currentUserPoolsStore.reset();
         
@@ -95,10 +75,11 @@
   }
 
   function handlePoolItemClick(pool: any) {
-    if (expandedPoolId === pool.id) {
+    const poolKey = getPoolKey(pool);
+    if (expandedPoolId === poolKey) {
       expandedPoolId = null;
     } else {
-      expandedPoolId = pool.id;
+      expandedPoolId = poolKey;
     }
   }
 
@@ -148,7 +129,7 @@
 </script>
 
 <div class="mt-2">
-  {#if showLoadingIndicator}
+  {#if $currentUserPoolsStore.loading && !hasCompletedInitialLoad}
     <div class="loading-state" in:fade={{ duration: 300 }}>
       <div class="loading-animation">
         <Droplets size={32} class="animate-pulse text-kong-primary" />
@@ -174,7 +155,7 @@
         Retry
       </button>
     </div>
-  {:else if displayPools.length === 0}
+  {:else if $currentUserPoolsStore.filteredPools.length === 0}
     <div class="empty-state" in:fade={{ duration: 300 }}>
       <div class="empty-icon-container">
         <Droplets size={40} class="empty-icon" />
@@ -200,16 +181,16 @@
     </div>
   {:else}
     <div class="pools-grid">
-      {#each displayPools as pool (pool.id)}
+      {#each $currentUserPoolsStore.filteredPools as pool (getPoolKey(pool))}
         <div
           in:fly={{
             y: 20,
             duration: 300,
-            delay: 50 * displayPools.indexOf(pool),
+            delay: 50 * $currentUserPoolsStore.filteredPools.indexOf(pool),
           }}
         >
           <div
-            class="pool-card {expandedPoolId === pool.id ? 'expanded' : ''}"
+            class="pool-card {expandedPoolId === getPoolKey(pool) ? 'expanded' : ''}"
             on:click={() => handlePoolItemClick(pool)}
             on:keydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
             role="button"
@@ -222,7 +203,7 @@
                   class="absolute bottom-0 right-0 text-kong-text-primary/60"
                   aria-label="Toggle pool details"
                 >
-                  {#if expandedPoolId === pool.id}
+                  {#if expandedPoolId === getPoolKey(pool)}
                     <ChevronUp size={18} />
                   {:else}
                     <ChevronDown size={18} />
@@ -260,7 +241,7 @@
             </div>
 
             <!-- Expanded Content -->
-            {#if expandedPoolId === pool.id}
+            {#if expandedPoolId === getPoolKey(pool)}
               <div
                 class="expanded-content"
                 transition:slide={{ duration: 300 }}
