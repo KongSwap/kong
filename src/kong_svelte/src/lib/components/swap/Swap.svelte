@@ -126,20 +126,26 @@
 
   // Replace initializeFromUrl with:
   async function initializeFromUrl() {
-    await SwapUrlService.initializeFromUrl(
-      $userTokens.tokens,
-      fetchTokensByCanisterId,
-      (token0, token1) => {
-        swapState.update((state) => ({
-          ...state,
-          payToken: token0 || state.payToken,
-          receiveToken: token1 || state.receiveToken,
-          payAmount: "",
-          receiveAmount: "",
-          error: null,
-        }));
-      }
-    );
+    console.log('Initializing from URL with token count:', $userTokens.tokens?.length || 0);
+    try {
+      await SwapUrlService.initializeFromUrl(
+        $userTokens.tokens,
+        fetchTokensByCanisterId,
+        (token0, token1) => {
+          console.log('URL tokens resolved:', token0?.symbol, token1?.symbol);
+          swapState.update((state) => ({
+            ...state,
+            payToken: token0 || state.payToken,
+            receiveToken: token1 || state.receiveToken,
+            payAmount: "",
+            receiveAmount: "",
+            error: null,
+          }));
+        }
+      );
+    } catch (error) {
+      console.error('Error initializing from URL:', error);
+    }
   }
 
   // Replace updateTokenInURL with:
@@ -147,21 +153,117 @@
     SwapUrlService.updateTokenInURL(param, tokenId);
   }
 
-  // Update onMount to handle URL parameters
+  // Add a direct URL parsing function
+  function getTokenParamsFromUrl() {
+    if (!browser) return { fromToken: null, toToken: null };
+    
+    const url = new URL(window.location.href);
+    const fromParam = url.searchParams.get('from');
+    const toParam = url.searchParams.get('to');
+    
+    console.log('URL params:', { fromParam, toParam });
+    
+    return { fromParam, toParam };
+  }
+
+  // More direct token lookup by canister ID
+  async function findTokenByCanisterId(canisterId: string): Promise<FE.Token | null> {
+    if (!canisterId) return null;
+    
+    // First check in userTokens
+    if ($userTokens.tokens && $userTokens.tokens.length > 0) {
+      const token = $userTokens.tokens.find(t => t.canister_id === canisterId);
+      if (token) return token;
+    }
+    
+    // If not found, try to fetch it
+    try {
+      console.log(`Fetching token for canister ID: ${canisterId}`);
+      // Wrap canisterId in an array to match the expected parameter type
+      const tokens = await fetchTokensByCanisterId([canisterId]);
+      if (tokens && tokens.length > 0) {
+        return tokens[0];
+      }
+    } catch (error) {
+      console.error(`Error fetching token ${canisterId}:`, error);
+    }
+    
+    return null;
+  }
+
+  // Update onMount with direct URL token handling
   onMount(async () => {
     if (browser) {
-      if (skipNextUrlInitialization) {
-        console.log("Skipping initializeFromUrl because we just reversed tokens.");
-        skipNextUrlInitialization = false;
-      } else {
-        await initializeFromUrl();
-      }
-      await tick();
-      // If no tokens were set via the URL, initialize default tokens
-      if (!$swapState.payToken || !$swapState.receiveToken) {
+      try {
+        console.log('onMount: Starting token initialization');
+        
+        // Check if we should skip URL initialization
+        if (skipNextUrlInitialization) {
+          console.log("Skipping URL initialization (tokens just reversed)");
+          skipNextUrlInitialization = false;
+        } else {
+          // Wait for user tokens to be available if possible
+          let attempts = 0;
+          while ((!$userTokens.tokens || $userTokens.tokens.length === 0) && attempts < 5) {
+            console.log(`Waiting for tokens to load (attempt ${attempts + 1})...`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            attempts++;
+          }
+          
+          // Get token params directly from URL
+          const { fromParam, toParam } = getTokenParamsFromUrl();
+          
+          if (fromParam || toParam) {
+            console.log('Found token params in URL, looking up tokens...');
+            
+            // Lookup tokens in parallel
+            const [fromToken, toToken] = await Promise.all([
+              fromParam ? findTokenByCanisterId(fromParam) : null,
+              toParam ? findTokenByCanisterId(toParam) : null
+            ]);
+            
+            console.log('Tokens from URL:', { 
+              fromToken: fromToken?.symbol, 
+              toToken: toToken?.symbol 
+            });
+            
+            // Update the state with found tokens
+            if (fromToken || toToken) {
+              swapState.update(state => ({
+                ...state,
+                payToken: fromToken || state.payToken,
+                receiveToken: toToken || state.receiveToken,
+                payAmount: "",
+                receiveAmount: "",
+                error: null
+              }));
+            }
+          } else {
+            // No params in URL, try the service as fallback
+            console.log('No direct token params, trying service...');
+            await initializeFromUrl();
+          }
+        }
+        
+        await tick();
+        
+        // If no tokens were set, initialize default tokens
+        if (!$swapState.payToken || !$swapState.receiveToken) {
+          console.log('No tokens found, initializing defaults');
+          await swapState.initializeTokens(null, null);
+        }
+        
+        isInitialized = true;
+        console.log('Token initialization complete:', { 
+          payToken: $swapState.payToken?.symbol,
+          receiveToken: $swapState.receiveToken?.symbol
+        });
+      } catch (error) {
+        console.error('Error during token initialization:', error);
+        // Fallback to default tokens
         await swapState.initializeTokens(null, null);
+        isInitialized = true;
       }
-      isInitialized = true;
     }
   });
 
@@ -424,10 +526,30 @@
     // Debounce the quote update
     quoteUpdateTimeout = setTimeout(async () => {
       try {
+        // Get the most up-to-date state inside the timeout callback
+        const currentState = get(swapState);
+        
+        // Verify the state is still valid before making the API call
+        if (
+          !currentState.payToken ||
+          !currentState.receiveToken ||
+          !hasValidPool ||
+          !currentState.payAmount ||
+          currentState.payAmount === "0"
+        ) {
+          swapState.update((s) => ({
+            ...s,
+            receiveAmount: "0",
+            swapSlippage: 0,
+          }));
+          isQuoteLoading = false;
+          return;
+        }
+        
         const quote = await SwapService.getSwapQuote(
-          state.payToken,
-          state.receiveToken,
-          state.payAmount,
+          currentState.payToken,
+          currentState.receiveToken,
+          currentState.payAmount,
         );
 
         swapState.update((s) => ({
