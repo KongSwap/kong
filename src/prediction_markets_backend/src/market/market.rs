@@ -8,7 +8,7 @@ use crate::nat::*;
 use crate::resolution::resolution::*;
 
 /// Represents the current status of a market
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum MarketStatus {
     Open,             // Market is open for betting
     Closed(Vec<Nat>), // Market is closed with winning outcome indices

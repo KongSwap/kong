@@ -173,6 +173,11 @@ export type SortDirection = { 'Descending' : null } |
   { 'Ascending' : null };
 export type SortOption = { 'TotalPool' : SortDirection } |
   { 'CreatedAt' : SortDirection };
+export interface StatsResult {
+  'total_bets' : bigint,
+  'total_active_markets' : bigint,
+  'total_markets' : bigint,
+}
 export interface UserBetInfo {
   'outcome_text' : string,
   'bet_amount' : bigint,
@@ -209,6 +214,7 @@ export interface _SERVICE {
     [GetMarketsByStatusArgs],
     GetMarketsByStatusResult
   >,
+  'get_stats' : ActorMethod<[], StatsResult>,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],

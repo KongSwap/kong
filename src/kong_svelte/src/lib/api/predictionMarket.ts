@@ -344,6 +344,15 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
   return allBets.slice(fromIndex, toIndex);
 }
 
+export async function getPredictionMarketStats() {
+  const actor = createAnonymousActorHelper(
+    PREDICTION_MARKETS_CANISTER_ID,
+    canisterIDLs.prediction_markets_backend,
+  );
+  const stats = await actor.get_stats();
+  return stats;
+}
+
 export async function getAllCategories() {
   const actor = createAnonymousActorHelper(
     PREDICTION_MARKETS_CANISTER_ID,

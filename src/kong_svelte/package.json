@@ -40,7 +40,8 @@
     "hyperid": "3.3.0",
     "localforage": "^1.10.0",
     "qrcode": "1.5.4",
-    "svelte-tiny-virtual-list": "2.1.2"
+    "svelte-tiny-virtual-list": "2.1.2",
+    "three": "^0.175.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "3.0.8",
