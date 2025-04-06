@@ -207,22 +207,7 @@
       path: "/airdrop-claims",
       icon: Award,
       comingSoon: false,
-    },
-    {
-      label: "Staking",
-      description: "Stake your tokens to earn yield and governance rights",
-      path: "/pools/staking",
-      icon: Award,
-      comingSoon: true,
-    },
-    {
-      label: "Borrow & Lend",
-      description:
-        "Lend assets to earn interest or borrow against your collateral",
-      path: "/pools/lending",
-      icon: PiggyBank,
-      comingSoon: true,
-    },
+    }
   ];
 
   function showDropdown(type: 'swap' | 'earn' | 'stats' | 'launch' | 'predict') {

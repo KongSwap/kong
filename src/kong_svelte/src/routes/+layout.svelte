@@ -158,12 +158,16 @@
 
 <div class="flex flex-col min-h-screen w-full origin-center app-content">
   <PageWrapper page={page.url.pathname}>
+    {#if page.url.pathname !== '/'}
     <div class="ticker-section">
       <TokenTicker />
     </div>
-    <div class="bg-transparent">
+    {/if}
+    {#if page.url.pathname !== '/'}
+    <div class="bg-transparent navbar-section">
       <Navbar />
     </div>
+    {/if}
     <main class="flex flex-col items-center w-full">
       <div class="w-full h-full" transition:fade>
         {@render children?.()}

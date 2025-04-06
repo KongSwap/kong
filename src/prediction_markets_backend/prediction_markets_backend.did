@@ -160,6 +160,11 @@ type SortOption = variant {
   TotalPool : SortDirection;
   CreatedAt : SortDirection;
 };
+type StatsResult = record {
+  total_bets : nat;
+  total_active_markets : nat;
+  total_markets : nat;
+};
 type UserBetInfo = record {
   outcome_text : text;
   bet_amount : nat;
@@ -192,6 +197,7 @@ service : () -> {
   get_markets_by_status : (GetMarketsByStatusArgs) -> (
       GetMarketsByStatusResult,
     ) query;
+  get_stats : () -> (StatsResult) query;
   get_user_history : (principal) -> (UserHistory) query;
   icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
       Result_1,
