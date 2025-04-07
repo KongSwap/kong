@@ -138,23 +138,6 @@
     // Only create defs once
     const defs = svg.append("defs");
     
-    // Create a single reusable glow filter instead of one per slice
-    const glowFilter = defs.append("filter")
-      .attr("id", "glow-filter")
-      .attr("x", "-50%")
-      .attr("y", "-50%")
-      .attr("width", "200%")
-      .attr("height", "200%");
-      
-    glowFilter.append("feGaussianBlur")
-      .attr("stdDeviation", "6")
-      .attr("result", "blur");
-      
-    glowFilter.append("feComposite")
-      .attr("in", "SourceGraphic")
-      .attr("in2", "blur")
-      .attr("operator", "over");
-    
     // Create gradients (one per color is still needed)
     filteredTokenData.forEach((d, i) => {
       const grad = defs.append("linearGradient")
@@ -189,7 +172,8 @@
       .attr("stroke", "#0A1020")
       .attr("stroke-width", 2)
       .style("cursor", "pointer")
-      .style("filter", "drop-shadow(0 0 4px rgba(0,0,0,0.3))");
+      .style("filter", "drop-shadow(0 0 4px rgba(0,0,0,0.3))")
+      .style("transform-origin", "center center");
       
     // Add inner ring
     innerRingGroup.selectAll("path")
@@ -234,23 +218,17 @@
       if (dataIndex === null) return;
       
       const d = filteredTokenData[dataIndex];
-      target.transition().duration(300).attr("d", arcHover as any).attr("filter", "brightness(1.2)");
+      target.transition().duration(200).style("transform", "scale(1.05)");
       centerText.text(d.label).attr("fill", d.color);
       centerTextBottom.text(`${d.percentage}% (${formatNumber(d.amount)})`);
-      
-      // Apply filter with CSS to avoid DOM manipulation
-      target.style("filter", `drop-shadow(0 0 8px ${d.color}40) brightness(1.2)`);
     })
     .on("mouseout", function(event) {
       const target = d3.select(event.target);
       if (target.classed("slice-group") || !target.attr("d")) return;
       
-      target.transition().duration(300).attr("d", arcOuter as any);
+      target.transition().duration(200).style("transform", "scale(1)");
       centerText.text("INITIAL").attr("fill", "#FFFFFF");
       centerTextBottom.text("DISTRIBUTION");
-      
-      // Reset filter
-      target.style("filter", "drop-shadow(0 0 4px rgba(0,0,0,0.3))");
     });
     
     // Simplify animation to just fade in
@@ -340,34 +318,34 @@
   bind:this={governanceSectionElement}
   class="min-h-screen py-16 md:pb-24 px-2 sm:px-4 md:pt-0 w-full flex items-center justify-center bg-[#0D111F] relative overflow-hidden"
 >
-  <!-- Animated background grid - reduced complexity for mobile -->
-  <div class="absolute inset-0 grid grid-cols-[repeat(10,1fr)] md:grid-cols-[repeat(20,1fr)] grid-rows-[repeat(10,1fr)] md:grid-rows-[repeat(20,1fr)] opacity-10">
-    {#each Array(100) as _}
+  <!-- Animated background grid - reduced complexity -->
+  <div class="absolute inset-0 grid grid-cols-[repeat(8,1fr)] md:grid-cols-[repeat(10,1fr)] grid-rows-[repeat(5,1fr)] md:grid-rows-[repeat(10,1fr)] opacity-10">
+    {#each Array(40) as _}
       <div class="border-[0.5px] border-white/5"></div>
     {/each}
   </div>
 
-  <!-- Connection particles - reduced count for performance -->
+  <!-- Connection particles - reduced count -->
   <div class="absolute top-0 left-0 right-0 h-32 overflow-hidden pointer-events-none z-10">
-    {#each Array(3) as _, i}
+    {#each Array(2) as _, i}
       <div class="absolute h-1 w-1 rounded-full bg-[#00A4FF]/40" 
-           style="top: {i * 8}%; left: {10 + (i * 25)}%; animation: connect-float-down 5s ease-in-out infinite; animation-delay: {i * 1}s;"></div>
+           style="top: {i * 12}%; left: {15 + (i * 30)}%; animation: connect-float-down 5s ease-in-out infinite; animation-delay: {i * 1}s;"></div>
     {/each}
-    {#each Array(3) as _, i}
+    {#each Array(2) as _, i}
       <div class="absolute h-1 w-1 rounded-full bg-purple-400/40" 
-           style="top: {i * 8}%; right: {10 + (i * 25)}%; animation: connect-float-down 5s ease-in-out infinite; animation-delay: {i * 1}s;"></div>
+           style="top: {i * 12}%; right: {15 + (i * 30)}%; animation: connect-float-down 5s ease-in-out infinite; animation-delay: {i * 1}s;"></div>
     {/each}
   </div>
 
-  <!-- Bottom connection particles - reduced count for performance -->
+  <!-- Bottom connection particles - reduced count -->
   <div class="absolute bottom-0 left-0 right-0 h-32 overflow-hidden pointer-events-none z-10">
-    {#each Array(3) as _, i}
+    {#each Array(2) as _, i}
       <div class="absolute h-1 w-1 rounded-full bg-[#00A4FF]/40" 
-           style="bottom: {i * 8}%; left: {10 + (i * 25)}%; animation: connect-float 5s ease-in-out infinite; animation-delay: {i * 1}s;"></div>
+           style="bottom: {i * 12}%; left: {15 + (i * 30)}%; animation: connect-float 5s ease-in-out infinite; animation-delay: {i * 1}s;"></div>
     {/each}
-    {#each Array(3) as _, i}
+    {#each Array(2) as _, i}
       <div class="absolute h-1 w-1 rounded-full bg-purple-400/40" 
-           style="bottom: {i * 8}%; right: {10 + (i * 25)}%; animation: connect-float 5s ease-in-out infinite; animation-delay: {i * 1}s;"></div>
+           style="bottom: {i * 12}%; right: {15 + (i * 30)}%; animation: connect-float 5s ease-in-out infinite; animation-delay: {i * 1}s;"></div>
     {/each}
   </div>
 
@@ -475,7 +453,7 @@
       >
         <div class="relative w-full max-w-[320px] sm:max-w-[400px] md:max-w-[500px]">
           <div 
-            class="relative rounded-xl overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 p-4 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-transform duration-700 ease-out" 
+            class="relative rounded-xl overflow-hidden bg-white/5 border border-white/10 p-4 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-transform duration-700 ease-out" 
             style="transform: {governanceVisible ? 'scale(1)' : 'scale(0.9)'}; opacity: {governanceVisible ? 1 : 0.8};"
           >
             <h3 
@@ -521,11 +499,11 @@
     <!-- Blockchain pattern with reduced number of elements -->
     <svg class="absolute inset-0 w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
       <!-- Connected block pattern - reduced count -->
-      {#each Array(5) as _, i}
+      {#each Array(3) as _, i}
         <g class="blockchain-node" style="animation-delay: {i * 0.3}s">
           <rect 
-            x={100 + (i * 180) % 800} 
-            y={150 + Math.floor((i * 180) / 800) * 200} 
+            x={100 + (i * 250) % 800} 
+            y={150 + Math.floor((i * 250) / 800) * 200} 
             width="70" 
             height="40" 
             rx="3" 
@@ -534,10 +512,10 @@
             stroke-width="1"
           />
           <line 
-            x1={170 + (i * 180) % 800} 
-            y1={170 + Math.floor((i * 180) / 800) * 200} 
-            x2={220 + (i * 180) % 800} 
-            y2={170 + Math.floor((i * 180) / 800) * 200} 
+            x1={170 + (i * 250) % 800} 
+            y1={170 + Math.floor((i * 250) / 800) * 200} 
+            x2={220 + (i * 250) % 800} 
+            y2={170 + Math.floor((i * 250) / 800) * 200} 
             stroke="rgba(158, 124, 244, 0.3)" 
             stroke-width="1"
             stroke-dasharray="5,5"
@@ -545,7 +523,7 @@
         </g>
       {/each}
       
-      <!-- Price chart lines - simplified to just one per type -->
+      <!-- Price chart lines - simplified -->
       <path 
         class="price-line"
         d="M0,800 Q200,750 300,650 T500,700 T700,600 T1000,550" 
@@ -554,20 +532,12 @@
         stroke-width="2"
         stroke-dasharray="1,2"
       />
-      <path 
-        class="price-line"
-        d="M0,700 Q150,720 250,680 T450,630 T650,700 T1000,650" 
-        fill="none" 
-        stroke="rgba(158, 124, 244, 0.2)" 
-        stroke-width="2"
-        stroke-dasharray="1,2"
-      />
       
       <!-- Market volume bars - reduced count -->
-      {#each Array(6) as _, i}
+      {#each Array(4) as _, i}
         <rect 
           class="volume-bar"
-          x={50 + i * 160} 
+          x={50 + i * 240} 
           y={850 - (30 + Math.sin(i * 0.7) * 30)} 
           width="20" 
           height={30 + Math.sin(i * 0.7) * 30}
@@ -576,17 +546,17 @@
       {/each}
       
       <!-- Financial indicators - reduced count -->
-      {#each Array(3) as _, i}
+      {#each Array(2) as _, i}
         <g class="financial-indicator" style="animation-delay: {i * 0.5}s">
           <path 
-            d="M{800 - (i * 200) % 700},{400 + Math.floor((i * 200) / 700) * 150} l-15,-15 l15,-15 l15,15 z" 
+            d="M{800 - (i * 300) % 700},{400 + Math.floor((i * 300) / 700) * 150} l-15,-15 l15,-15 l15,15 z" 
             fill="rgba(255, 0, 255, 0.1)" 
             stroke="rgba(255, 0, 255, 0.2)" 
             stroke-width="1"
           />
           <text 
-            x={800 - (i * 200) % 700} 
-            y={390 + Math.floor((i * 200) / 700) * 150} 
+            x={800 - (i * 300) % 700} 
+            y={390 + Math.floor((i * 300) / 700) * 150} 
             text-anchor="middle" 
             font-size="10" 
             fill="rgba(255, 255, 255, 0.3)"
@@ -614,19 +584,6 @@
     background: linear-gradient(to bottom, transparent 50%, rgba(158,124,244,0.1) 50%);
     background-size: 100% 4px;
     opacity: 0.15;
-  }
-  
-  .crt-effects::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.1'/%3E%3C/svg%3E");
-    background-size: 150px;
-    opacity: 0.08;
-    animation: noise-animation 0.5s infinite;
   }
   
   /* Optimized background overlays */
