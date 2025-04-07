@@ -254,7 +254,8 @@
       neonColor1: { value: new THREE.Color(0x7B68EE) },     // Use Indigo/Purple from SwapSection
       neonColor2: { value: new THREE.Color(0x9370DB) },     // Use Indigo/Purple from SwapSection
       mousePosition: { value: new THREE.Vector2(0.5, 0.5) },// Mouse position in UV space
-      mouseActive: { value: 0.0 }                           // Mouse activity indicator
+      mouseActive: { value: 0.0 },                           // Mouse activity indicator
+      isLowPerformance: { value: (isLowEndDevice || isMobile) ? 1.0 : 0.0 }
     };
     
     const bladeRunnerMaterial = new THREE.ShaderMaterial({
@@ -275,6 +276,7 @@
         uniform vec3 neonColor2;
         uniform vec2 mousePosition;
         uniform float mouseActive;
+        uniform float isLowPerformance;
         varying vec2 vUv;
         
         // Optimized random function
@@ -300,42 +302,48 @@
           float n = noise(uv * 4.0 + time * 0.1);
           color += mix(neonColor1, neonColor2, n) * 0.15;
           
-          // Layer 2: Faster moving smaller scale noise
-          float n2 = noise(uv * 15.0 - time * 0.3);
-          color += mix(baseColor * 1.2, neonColor1, n2) * 0.1;
-          
-          // Layer 3: Diagonal subtle waves
-          float wave = sin(uv.x * 10.0 + uv.y * 5.0 + time * 0.5) * 0.5 + 0.5;
-          color += neonColor2 * wave * 0.05;
+          // Conditionally render more complex layers
+          if (isLowPerformance < 0.5) {
+            // Layer 2: Faster moving smaller scale noise
+            float n2 = noise(uv * 15.0 - time * 0.3);
+            color += mix(baseColor * 1.2, neonColor1, n2) * 0.1;
+
+            // Layer 3: Diagonal subtle waves
+            float wave = sin(uv.x * 10.0 + uv.y * 5.0 + time * 0.5) * 0.5 + 0.5;
+            color += neonColor2 * wave * 0.05;
+          }
           
           return color;
         }
         
-        // Simplified neon streaks
+        // Simplified neon streaks - skip on low performance
         vec3 neonStreaks(vec2 uv, float time) {
           vec3 streakColor = vec3(0.0);
           
-          // Horizontal streak
-          float y1 = fract(0.3 + time * 0.08);
-          float w1 = 0.003;
-          streakColor += smoothstep(w1, 0.0, abs(uv.y - y1)) * neonColor1 * 0.15;
-          
-          // Diagonal streak
-          float diag1 = fract(uv.x - uv.y * 0.5 + time * 0.04);
-          float w2 = 0.002;
-          streakColor += smoothstep(w2, 0.0, abs(diag1 - 0.5)) * neonColor2 * 0.1;
+          if (isLowPerformance < 0.5) {
+            // Horizontal streak
+            float y1 = fract(0.3 + time * 0.08);
+            float w1 = 0.003;
+            streakColor += smoothstep(w1, 0.0, abs(uv.y - y1)) * neonColor1 * 0.15;
+
+            // Diagonal streak
+            float diag1 = fract(uv.x - uv.y * 0.5 + time * 0.04);
+            float w2 = 0.002;
+            streakColor += smoothstep(w2, 0.0, abs(diag1 - 0.5)) * neonColor2 * 0.1;
+          }
           
           return streakColor;
         }
         
-        // Optimized mouse effect (Ripple)
+        // Optimized mouse effect (Ripple) - reduce intensity on low performance
         vec3 mouseEffect(vec2 uv, vec2 mousePos) {
           float dist = length(uv - mousePos);
           float ripple = sin(dist * 25.0 - time * 4.0) * 0.5 + 0.5;
           float falloff = smoothstep(0.25, 0.0, dist);
           float finalRipple = ripple * falloff * mouseActive;
           vec3 rippleColor = mix(neonColor1, neonColor2, sin(dist * 15.0 - time * 1.5) * 0.5 + 0.5);
-          return rippleColor * finalRipple * 0.3; // Reduced intensity
+          // Reduce intensity based on performance flag
+          return rippleColor * finalRipple * 0.3 * (1.0 - isLowPerformance * 0.7);
         }
         
         void main() {
@@ -502,7 +510,7 @@
 
 </script>
 
-<section id="hero" class="h-screen flex flex-col items-center justify-center relative overflow-hidden">
+<section id="hero" class="h-screen flex flex-col items-center justify-center relative overflow-hidden" class:low-performance={isLowEndDevice || isMobile}>
   <!-- Three.js blade runner background -->
   <div bind:this={canvasContainer} class="absolute inset-0 z-0 pointer-events-auto overflow-hidden"></div>
   
@@ -515,11 +523,11 @@
 
   <!-- Floating particles (like swap section) -->
   <div class="absolute inset-0 z-[2] pointer-events-none overflow-hidden">
-    {#each Array(isSmallScreen ? 6 : 12) as _, i}
+    {#each Array(isSmallScreen ? 3 : 8) as _, i}
       <div class="absolute h-1 w-1 rounded-full bg-purple-400/30 will-change-transform will-change-opacity"
            style="top: {Math.random() * 100}%; left: {Math.random() * 100}%; animation: float {6 + Math.random() * 8}s ease-in-out infinite; animation-delay: {Math.random() * 8}s;"></div>
     {/each}
-    {#each Array(isSmallScreen ? 4 : 8) as _, i}
+    {#each Array(isSmallScreen ? 2 : 5) as _, i}
       <div class="absolute h-[2px] w-[2px] rounded-full bg-indigo-400/40 will-change-transform will-change-opacity"
            style="top: {Math.random() * 100}%; left: {Math.random() * 100}%; animation: float-slow {10 + Math.random() * 10}s ease-in-out infinite; animation-delay: {Math.random() * 10}s;"></div>
     {/each}
@@ -987,5 +995,13 @@
   :global(#hero canvas) {
     width: 100% !important;
     height: 100% !important;
+  }
+
+  /* Disable complex filter animation on low-performance devices */
+  .low-performance .kong-logo {
+    animation: none;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.6)) drop-shadow(0 0 4px rgba(123, 104, 238, 0.4)); /* Apply a simpler static filter */
+    mix-blend-mode: screen; /* Keep blend mode */
+    opacity: 0.9; /* Keep opacity */
   }
 </style> 

@@ -21,14 +21,16 @@
   import { allowanceStore } from "$lib/stores/allowanceStore";
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import type { LayoutData } from './$types';
+
+  let { data, children } = $props<{ 
+    data: LayoutData & { metadata: { url: string } },
+    children: any 
+  }>();
   
-  const pageTitle = $state(
-    process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
-  );
   let initializationPromise = $state<Promise<void> | null>(null);
   let defaultTokens = $state<FE.Token[]>([]);
   let themeReady = $state(false);
-  let { children } = $props();
   
   async function init() {
     if (initializationPromise) {
@@ -135,7 +137,12 @@
   </style>
 </svelte:head>
 
-<MetaTags />
+<MetaTags 
+  title={data.metadata.title} 
+  description={data.metadata.description} 
+  image={data.metadata.image} 
+  url={data.metadata.url} 
+/>
 
 {#if browser}
   <div class="theme-loading">
