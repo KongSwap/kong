@@ -32,7 +32,7 @@
     position?: { top: number; left: number; width: number };
     visible?: boolean;
     expanded?: boolean;
-    onClose?: () => void;
+    onClose?: (e?: MouseEvent) => void;
     onAction?: (action: 'send' | 'receive' | 'swap' | 'info' | 'copy', token: TokenDetail) => void;
   };
   
@@ -94,66 +94,61 @@
   function updatePosition() {
     if (expanded || !position || !dropdownElement || !shouldUpdatePosition()) return;
     
-    // Get viewport dimensions
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    // Default width and position
-    let top = position.top;
-    let left = position.left;
-    let width = Math.min(position.width, 320); // Cap width at 320px
-    
-    // Measure actual dropdown height
-    const dropdownHeight = dropdownElement.offsetHeight;
-    
-    // If on a small mobile device, use a fixed width
-    if (viewportWidth < 480) {
-      width = Math.min(viewportWidth - 40, 320); // 20px padding on each side
-      left = Math.max(20, (viewportWidth - width) / 2); // Center horizontally
-    } else {
-      // On larger screens, align with the clicked item
-      // Make sure dropdown doesn't go off screen to the right
-      if (left + width > viewportWidth - 20) {
-        left = Math.max(10, viewportWidth - width - 20);
+    // Use requestAnimationFrame to ensure dimensions are calculated after render
+    window.requestAnimationFrame(() => {
+      if (!dropdownElement) return; // Check again inside rAF
+      
+      // Get viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Measure actual dropdown height
+      const dropdownHeight = dropdownElement.offsetHeight;
+      
+      // Default width and position
+      let top = position.top;
+      let left = position.left;
+      let width = Math.min(position.width, 320); // Cap width at 320px
+      
+      // Adjust width and horizontal position based on viewport
+      if (viewportWidth < 480) {
+        width = Math.min(viewportWidth - 40, 320); // 20px padding
+        left = Math.max(20, (viewportWidth - width) / 2); // Center
+      } else {
+        // Ensure dropdown doesn't go off-screen right
+        if (left + width > viewportWidth - 20) {
+          left = Math.max(10, viewportWidth - width - 20);
+        }
       }
-    }
-    
-    // Check if there's more space above or below the clicked position
-    const spaceBelow = viewportHeight - position.top;
-    const spaceAbove = position.top;
-    
-    // Determine whether to place dropdown above or below
-    if (spaceBelow < dropdownHeight + 20 && spaceAbove > spaceBelow) {
-      // Place above if there's not enough space below but more space above
-      top = Math.max(10, position.top - dropdownHeight - 10);
-    } else if (spaceBelow < dropdownHeight + 20) {
-      // Not enough space below and not enough space above either
-      // Center in available space and let it scroll
-      top = Math.max(10, viewportHeight - dropdownHeight - 10);
-    }
-    
-    // Final safety check to ensure the dropdown is visible
-    if (top + dropdownHeight > viewportHeight - 10) {
-      top = Math.max(10, viewportHeight - dropdownHeight - 10);
-    }
-    
-    // Update position - only if it's meaningfully different
-    if (
-      Math.abs(adjustedPosition.top - top) > 2 ||
-      Math.abs(adjustedPosition.left - left) > 2 ||
-      Math.abs(adjustedPosition.width - width) > 2
-    ) {
-      adjustedPosition = { top, left, width };
-    }
+      
+      // Determine vertical placement
+      const spaceBelow = viewportHeight - position.top;
+      const spaceAbove = position.top;
+      
+      if (spaceBelow < dropdownHeight + 20 && spaceAbove > dropdownHeight + 20) {
+        // Place above if not enough space below, but enough above
+        top = Math.max(10, position.top - dropdownHeight - 10);
+      } else if (top + dropdownHeight > viewportHeight - 10) {
+        // Default placement (below) goes off-screen, adjust to fit
+        top = Math.max(10, viewportHeight - dropdownHeight - 10);
+      } // Otherwise, default placement below the item is fine
+      
+      // Update position state only if it changed significantly
+      if (
+        Math.abs(adjustedPosition.top - top) > 2 ||
+        Math.abs(adjustedPosition.left - left) > 2 ||
+        Math.abs(adjustedPosition.width - width) > 2
+      ) {
+        adjustedPosition = { top, left, width };
+      }
+    });
   }
   
   // Update position effect - replaces afterUpdate
   $effect(() => {
     if (!expanded && visible && dropdownElement) {
-      // Use requestAnimationFrame to defer the calculation until after render
-      window.requestAnimationFrame(() => {
-        updatePosition();
-      });
+      // Call updatePosition directly; it now handles rAF internally
+      updatePosition();
     }
   });
   
@@ -189,10 +184,11 @@
         }
         break;
       case 'receive':
+      case 'send':
+        // Don't close dropdown for send and receive
         if (onAction) {
           onAction(action, token);
         }
-        onClose();
         break;
       default:
         if (onAction) {
@@ -315,7 +311,7 @@
         </div>
         <button 
           class="w-6 h-6 flex items-center justify-center rounded-md text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/5 hover:bg-kong-text-primary/10 transition-colors" 
-          on:click={onClose}
+          on:click={(e) => onClose(e)}
         >
           <X size={14} />
         </button>

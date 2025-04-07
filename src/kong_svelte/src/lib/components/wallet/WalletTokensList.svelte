@@ -12,6 +12,7 @@
 	import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
 	import ManageTokensModal from "$lib/components/wallet/ManageTokensModal.svelte";
 	import ReceiveTokenModal from "$lib/components/wallet/ReceiveTokenModal.svelte";
+	import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
 
 	// Define props using the $props syntax
 	type TokenBalance = {
@@ -345,6 +346,9 @@
 	
 	// Handle token click to show dropdown
 	function handleTokenClick(event: MouseEvent, token: TokenBalance) {
+		// Prevent opening dropdown if syncing or already selected
+		if (isSyncing) return;
+		
 		// If clicking the same token that's already open, close it
 		if (selectedTokenId === token.token?.canister_id && showDropdown) {
 			closeDropdown();
@@ -388,8 +392,13 @@
 		if (selectedToken) {
 			if (action === 'receive') {
 				showReceiveTokenModal = true;
+				return; // Don't close the dropdown
 			} else if (action === 'copy') {
 				// Copy action is handled directly in the TokenDropdown component
+				return; // Don't close the dropdown
+			} else if (action === 'send') {
+				// Handle send action without closing dropdown
+				onAction(action, selectedToken);
 				return; // Don't close the dropdown
 			} else {
 				onAction(action, selectedToken);
@@ -686,97 +695,108 @@
 			</p>
 		</div>
 	{:else}
-		<div class="space-y-0">
-			{#each processedTokenBalances as tokenBalance}
-				<div>
-					<div
-						class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border/30 hover:bg-kong-bg-light/10 transition-all duration-200 cursor-pointer relative
-							{showDropdown && selectedTokenId !== tokenBalance.token?.canister_id ? 'opacity-40 hover:opacity-70' : ''}
-							{showDropdown && selectedTokenId === tokenBalance.token?.canister_id ? 
-								'active-token-gradient border-l-2 border-l-kong-primary shadow-[0_0_15px_rgba(0,0,0,0.1)] active-token' : 'border-l-2 border-l-transparent'}"
-						on:click={(e) => handleTokenClick(e, tokenBalance)}
-					>
-						<div class="flex items-center justify-between">
-							<div class="flex items-center gap-3">
-								{#if tokenBalance.token}
-									<div class="flex-shrink-0">
-										<TokenImages
-											tokens={[tokenBalance.token]}
-											size={36}
-											showSymbolFallback={true}
-											tooltip={{
-												text: tokenBalance.name,
-												direction: "top",
-											}}
-										/>
-									</div>
-								{:else}
-									<div
-										class="w-9 h-9 rounded-full bg-kong-text-primary/10 flex items-center justify-center border border-kong-border flex-shrink-0"
-									>
-										<span class="text-xs font-bold text-kong-primary"
-											>{tokenBalance.symbol}</span
-										>
-									</div>
-								{/if}
-								<div class="flex flex-col justify-center">
-									<div class="font-medium text-kong-text-primary text-sm leading-tight">
-										{tokenBalance.name}
-									</div>
-									<div class="text-xs text-kong-text-secondary mt-1 leading-tight">
-										{#if Number(tokenBalance.balance) > 0 && Number(tokenBalance.balance) < 0.00001}
-											<span title={tokenBalance.balance.toString()}>~0.00001</span> {tokenBalance.symbol}
-										{:else}
-											{tokenBalance.balance} {tokenBalance.symbol}
-										{/if}
-									</div>
-								</div>
-							</div>
-
-							<div class="text-right flex flex-col justify-center">
-								<div class="font-medium text-kong-text-primary text-sm leading-tight">
-									{formatCurrency(tokenBalance.usdValue)}
-								</div>
-								<div
-									class="text-xs {tokenBalance.change24h >= 0
-										? 'text-kong-accent-green'
-										: 'text-kong-accent-red'} font-medium mt-1 leading-tight"
-								>
-									{Number(formatToNonZeroDecimal(tokenBalance.change24h)) >= 0
-										? "+"
-										: ""}{formatToNonZeroDecimal(tokenBalance.change24h)}%
-								</div>
-							</div>
-						</div>
-					</div>
-					
-					<!-- Token Actions Row - Expanded underneath the token -->
-					{#if selectedTokenId === tokenBalance.token?.canister_id && showDropdown}
-						<div 
-							class="px-4 py-3 border-b border-kong-border/30 bg-gradient-to-b from-kong-accent-blue/5 to-kong-bg-light/10" 
-							transition:slide={{ duration: 200 }}
-						>
-							<TokenDropdown 
-								token={selectedToken} 
-								expanded={true}
-								visible={showDropdown}
-								onClose={closeDropdown}
-								onAction={handleDropdownAction}
-							/>
-						</div>
-					{/if}
-				</div>
-			{/each}
-			
-			<!-- Token Management Buttons -->
-			<div class="p-4 flex justify-center gap-3">
-				<button
-					class="flex items-center gap-2 py-2 px-4 bg-kong-bg-light/10 hover:bg-kong-bg-light/20 text-kong-text-primary rounded-md transition-colors"
-					on:click={openManageTokensModal}
+		<div class="relative"> 
+			{#if isSyncing}
+				<div 
+					class="absolute inset-0 flex flex-col items-center justify-start pt-10 bg-kong-bg-dark/80 rounded-md z-10"
+					transition:fade={{ duration: 150 }}
 				>
-					<Settings size={16} />
-					<span>Manage Tokens</span>
-				</button>
+					<LoadingIndicator text="Syncing tokens..." size={18} />
+				</div>
+			{/if}
+			<div class="space-y-0">
+				{#each processedTokenBalances as tokenBalance}
+					<div>
+						<div
+							class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border/30 hover:bg-kong-bg-light/10 transition-all duration-200 relative
+								{isSyncing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+								{showDropdown && selectedTokenId !== tokenBalance.token?.canister_id ? 'opacity-40 hover:opacity-70' : ''}
+								{showDropdown && selectedTokenId === tokenBalance.token?.canister_id ? 
+									'active-token-gradient border-l-2 border-l-kong-primary shadow-[0_0_15px_rgba(0,0,0,0.1)] active-token' : 'border-l-2 border-l-transparent'}"
+							on:click={(e) => handleTokenClick(e, tokenBalance)}
+						>
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-3">
+									{#if tokenBalance.token}
+										<div class="flex-shrink-0">
+											<TokenImages
+												tokens={[tokenBalance.token]}
+												size={36}
+												showSymbolFallback={true}
+												tooltip={{
+													text: tokenBalance.name,
+													direction: "top",
+												}}
+											/>
+										</div>
+									{:else}
+										<div
+											class="w-9 h-9 rounded-full bg-kong-text-primary/10 flex items-center justify-center border border-kong-border flex-shrink-0"
+										>
+											<span class="text-xs font-bold text-kong-primary"
+												>{tokenBalance.symbol}</span
+											>
+										</div>
+									{/if}
+									<div class="flex flex-col justify-center">
+										<div class="font-medium text-kong-text-primary text-sm leading-tight">
+											{tokenBalance.name}
+										</div>
+										<div class="text-xs text-kong-text-secondary mt-1 leading-tight">
+											{#if Number(tokenBalance.balance) > 0 && Number(tokenBalance.balance) < 0.00001}
+												<span title={tokenBalance.balance.toString()}>~0.00001</span> {tokenBalance.symbol}
+											{:else}
+												{tokenBalance.balance} {tokenBalance.symbol}
+											{/if}
+										</div>
+									</div>
+								</div>
+
+								<div class="text-right flex flex-col justify-center">
+									<div class="font-medium text-kong-text-primary text-sm leading-tight">
+										{formatCurrency(tokenBalance.usdValue)}
+									</div>
+									<div
+										class="text-xs {tokenBalance.change24h >= 0
+											? 'text-kong-accent-green'
+											: 'text-kong-accent-red'} font-medium mt-1 leading-tight"
+									>
+										{Number(formatToNonZeroDecimal(tokenBalance.change24h)) >= 0
+											? "+"
+											: ""}{formatToNonZeroDecimal(tokenBalance.change24h)}%
+									</div>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Token Actions Row - Expanded underneath the token -->
+						{#if selectedTokenId === tokenBalance.token?.canister_id && showDropdown}
+							<div 
+								class="px-4 py-3 border-b border-kong-border/30 bg-gradient-to-b from-kong-accent-blue/5 to-kong-bg-light/10" 
+								transition:slide={{ duration: 200 }}
+							>
+								<TokenDropdown 
+									token={selectedToken} 
+									expanded={true}
+									visible={showDropdown}
+									onClose={closeDropdown}
+									onAction={handleDropdownAction}
+								/>
+							</div>
+						{/if}
+					</div>
+				{/each}
+				
+				<!-- Token Management Buttons -->
+				<div class="p-4 flex justify-center gap-3">
+					<button
+						class="flex items-center gap-2 py-2 px-4 bg-kong-bg-light/10 hover:bg-kong-bg-light/20 text-kong-text-primary rounded-md transition-colors"
+						on:click={openManageTokensModal}
+					>
+						<Settings size={16} />
+						<span>Manage Tokens</span>
+					</button>
+				</div>
 			</div>
 		</div>
 	{/if}
