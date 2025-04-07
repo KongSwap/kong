@@ -303,7 +303,7 @@ export const baseTheme: ThemeDefinition = {
     swapButtonErrorGradientEnd: '#EB3737',
     swapButtonProcessingGradientStart: '#6F5DFB',
     swapButtonProcessingGradientEnd: '#9EA4BA',
-    swapButtonBorderColor: '#FFFFFF',
+    swapButtonBorderColor: 'rgba(255, 255, 255, 0.2)',
     swapButtonGlowColor: '#00A7FF',
     swapButtonShineColor: '#0090DC',
     swapButtonReadyGlowStart: '#05EC86',

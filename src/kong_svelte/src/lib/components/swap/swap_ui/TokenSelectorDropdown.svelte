@@ -551,7 +551,7 @@
       transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}
     >
       <div class="relative bg-kong-bg-dark flex flex-col h-full">
-        <header class="px-4 py-3 flex justify-between items-center bg-kong-token-selector-header-bg">
+        <header class="px-4 py-3 flex justify-between items-center bg-kong-bg-dark">
           <h2 class="text-kong-text-primary text-xl font-semibold">Tokens</h2>
           <button class="text-kong-text-secondary hover:bg-kong-border/10 p-1 rounded" on:click|stopPropagation={closeWithCleanup}>
             <svg
