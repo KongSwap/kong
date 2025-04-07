@@ -29,10 +29,16 @@
   let cellMap = new Map(); // Fast cell lookup by position
   let animationFrame: number | null = null;
   let lastUpdateTime = 0;
-  let activeCell: HTMLElement | null = null;
+  let currentHoveredCell: HTMLElement | null = null; // Restore tracking for direct hover
+  let hoveredGroup: HTMLElement[] = []; // Track the group affected by direct hover
   const THROTTLE_MS = 50; // More aggressive throttling (~20fps is enough for this effect)
   const CELL_SIZE = 120; // Further increased cell size to reduce total number
   const MAX_CELLS = 200; // Lower cell count limit for better performance
+  
+  // Parameters for dynamic hover activation
+  const HOVER_RADIUS = 250; // Radius to find potential neighbors for dynamic activation
+  const MIN_ACTIVE_CELLS = 2; // Minimum cells in a dynamic hover group (including primary)
+  const MAX_ACTIVE_CELLS = 5; // Maximum cells in a dynamic hover group
   
   // Device performance classification
   let isLowPerformanceDevice = false;
@@ -42,10 +48,9 @@
   let glitchInterval: ReturnType<typeof setInterval> | null = null;
   let isInViewport = false;
   
-  // Add these variables for enhanced hover effect
-  let lastHoveredCell: HTMLElement | null = null;
-  let neighborCells: HTMLElement[] = [];
-  const PROXIMITY_THRESHOLD = 300; // How far the effect spreads to neighboring cells
+  // Add variables for trail effect
+  let mousePath: {x: number, y: number, time: number}[] = [];
+  const MAX_PATH_POINTS = 5; // Limit the number of points to track
   
   // Performance detection function
   function detectPerformance() {
@@ -171,6 +176,13 @@
           will-change: transform, background-color, box-shadow;
         `;
         cell.appendChild(dot);
+
+        // Add row and column data attributes for easier lookup
+        cell.dataset.row = r.toString();
+        cell.dataset.col = c.toString();
+        
+        // Attach listeners using helper function
+        attachCellListeners(cell);
         
         fragment.appendChild(cell);
         gridCells.push(cell);
@@ -182,141 +194,6 @@
     
     gridContainer.appendChild(fragment);
     gridContainer.dataset.initialized = "true";
-  }
-  
-  // Update the highlightCell function to add proximity effect to neighboring cells
-  function highlightCell(cell: HTMLElement) {
-    // If this is already the active cell, no need to update
-    if (cell === activeCell) return;
-    
-    // Deactivate previous cell if exists
-    if (activeCell) {
-      deactivateCell(activeCell);
-    }
-    
-    // Clear previous neighbor cells
-    neighborCells.forEach(neighbor => {
-      neighbor.classList.remove('neighbor-active');
-      const neighborDot = neighbor.querySelector('.cell-dot') as HTMLElement;
-      if (neighborDot) {
-        neighborDot.classList.remove('neighbor-dot-active');
-      }
-    });
-    neighborCells = [];
-    
-    // Use classList for toggling classes instead of inline styles when possible
-    cell.classList.add('active');
-    
-    const border = cell.querySelector('.cell-border') as HTMLElement;
-    if (border) {
-      border.classList.add('border-active');
-    }
-    
-    const dot = cell.querySelector('.cell-dot') as HTMLElement;
-    if (dot) {
-      dot.classList.add('dot-active');
-    }
-    
-    // Add ripple effect
-    addRippleEffect(cell);
-    
-    // Find and highlight neighboring cells with proximity effect
-    if (!isLowPerformanceDevice) {
-      highlightNeighborCells(cell);
-    }
-    
-    activeCell = cell;
-    lastHoveredCell = cell;
-  }
-  
-  // Function to add ripple effect to cell
-  function addRippleEffect(cell: HTMLElement) {
-    if (isLowPerformanceDevice) return; // Skip on low-performance devices
-    
-    // Create ripple element
-    const ripple = document.createElement('div');
-    ripple.className = 'cell-ripple';
-    
-    // Position at center of cell
-    const cellRect = cell.getBoundingClientRect();
-    const size = Math.max(cellRect.width, cellRect.height) * 2;
-    
-    ripple.style.width = `${size}px`;
-    ripple.style.height = `${size}px`;
-    ripple.style.left = '50%';
-    ripple.style.top = '50%';
-    
-    // Add to cell and remove after animation
-    cell.appendChild(ripple);
-    setTimeout(() => {
-      if (ripple.parentNode === cell) {
-        cell.removeChild(ripple);
-      }
-    }, 1000);
-  }
-  
-  // Function to find and highlight neighboring cells based on proximity
-  function highlightNeighborCells(centerCell: HTMLElement) {
-    if (!gridContainer || isLowPerformanceDevice) return;
-    
-    const centerRect = centerCell.getBoundingClientRect();
-    const centerX = centerRect.left + centerRect.width / 2;
-    const centerY = centerRect.top + centerRect.height / 2;
-    
-    // Check all cells for proximity effects
-    gridCells.forEach(cell => {
-      if (cell === centerCell) return; // Skip the center cell itself
-      
-      const cellRect = cell.getBoundingClientRect();
-      const cellX = cellRect.left + cellRect.width / 2;
-      const cellY = cellRect.top + cellRect.height / 2;
-      
-      // Calculate distance
-      const dx = centerX - cellX;
-      const dy = centerY - cellY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      // Apply proximity effect if within threshold
-      if (distance < PROXIMITY_THRESHOLD) {
-        // Calculate effect strength (closer = stronger)
-        const effect = 1 - (distance / PROXIMITY_THRESHOLD);
-        
-        // Add proximity class with strength
-        cell.classList.add('neighbor-active');
-        cell.style.setProperty('--effect-strength', effect.toFixed(2));
-        
-        const dot = cell.querySelector('.cell-dot') as HTMLElement;
-        if (dot) {
-          dot.classList.add('neighbor-dot-active');
-          dot.style.setProperty('--effect-strength', effect.toFixed(2));
-        }
-        
-        neighborCells.push(cell);
-      }
-    });
-  }
-  
-  // Reset a cell to default state (updated version)
-  function deactivateCell(cell: HTMLElement) {
-    cell.classList.remove('active');
-    
-    const border = cell.querySelector('.cell-border') as HTMLElement;
-    if (border) {
-      border.classList.remove('border-active');
-    }
-    
-    const dot = cell.querySelector('.cell-dot') as HTMLElement;
-    if (dot) {
-      dot.classList.remove('dot-active');
-    }
-    
-    // Also clear any ripple effects that might still be animating
-    const ripples = cell.querySelectorAll('.cell-ripple');
-    ripples.forEach(ripple => {
-      if (ripple.parentNode === cell) {
-        cell.removeChild(ripple);
-      }
-    });
   }
   
   // Find which cell the mouse is over - using O(1) lookup
@@ -343,7 +220,7 @@
     return cellMap.get(`${row}-${col}`) || null;
   }
   
-  // Update cells based on mouse position - optimized with throttling
+  // Update cells based on mouse position - primarily for trail effect now
   function updateCells(time: number) {
     // Skip animation frame if not in viewport
     if (!isInViewport) {
@@ -360,19 +237,14 @@
     
     lastUpdateTime = time;
     
+    // Ensure mouseActive check is still present for trail effect logic if added later
     if (!browser || !mouseActive) {
-      animationFrame = requestAnimationFrame(updateCells);
-      return;
+       animationFrame = requestAnimationFrame(updateCells);
+       return;
     }
-    
-    const targetCell = findCellAtPosition(mouseX, mouseY);
-    
-    if (targetCell) {
-      highlightCell(targetCell);
-    } else if (activeCell) {
-      deactivateCell(activeCell);
-      activeCell = null;
-    }
+
+    // Removed logic that called findCellAtPosition, highlightCell, deactivateCell
+    // updateCells should now only be responsible for time-based effects like the trail
     
     animationFrame = requestAnimationFrame(updateCells);
   }
@@ -383,10 +255,35 @@
     updateCells(time);
   }
   
-  // Mouse event handlers with more aggressive throttling
+  // Update createTrailEffect to check against hoveredGroup
+  function createTrailEffect() {
+    if (mousePath.length < 2) return;
+    
+    for (let i = 0; i < mousePath.length - 1; i++) {
+      const point = mousePath[i];
+      const age = performance.now() - point.time;
+      if (age > 300) continue;
+      const cell = findCellAtPosition(point.x, point.y);
+      
+      // Skip if null or part of the currently hovered group
+      if (!cell || hoveredGroup.includes(cell)) continue; 
+      
+      const opacity = Math.max(0, 1 - (age / 300));
+      cell.style.setProperty('--trail-opacity', opacity.toString());
+      cell.classList.add('trail-cell');
+      
+      setTimeout(() => {
+        if (!hoveredGroup.includes(cell)) { // Check against hover group on removal too
+          cell.classList.remove('trail-cell');
+        }
+      }, 300);
+    }
+  }
+  
+  // Restore simple mouse move logic, hover is handled by listeners
   let lastMoveTime = 0;
   function handleMouseMove(e: MouseEvent) {
-    if (!isInViewport) return; // Skip processing if not in viewport
+    if (!isInViewport) return; 
     
     const now = performance.now();
     const effectiveThrottle = isLowPerformanceDevice ? THROTTLE_MS * 2 : THROTTLE_MS;
@@ -396,14 +293,25 @@
     mouseX = e.clientX;
     mouseY = e.clientY;
     mouseActive = true;
+    
+    // Trail effect path update
+    mousePath.push({x: mouseX, y: mouseY, time: now});
+    if (mousePath.length > MAX_PATH_POINTS) {
+      mousePath.shift();
+    }
+    if (!isLowPerformanceDevice) {
+      createTrailEffect();
+    }
   }
   
+  // Restore handleMouseLeave to use resetCellStyle and clear hoveredGroup
   function handleMouseLeave() {
     mouseActive = false;
-    if (activeCell) {
-      deactivateCell(activeCell);
-      activeCell = null;
+    if (hoveredGroup.length > 0) {
+      hoveredGroup.forEach(resetCellStyle); // Use the style reset helper
+      hoveredGroup = [];
     }
+    currentHoveredCell = null; // Clear the primary hovered cell tracker
   }
   
   // Debounced window resize handler 
@@ -425,7 +333,7 @@
         }
         
         // Reset active cell
-        activeCell = null;
+        currentHoveredCell = null;
         
         createGridCells();
         
@@ -453,15 +361,15 @@
         const wasInViewport = isInViewport;
         isInViewport = entries[0].isIntersecting;
         
-        // Only take action if viewport status changed
         if (!wasInViewport && isInViewport) {
-          // Initialize grid when entering viewport
           if (!gridContainer.dataset.initialized) {
-            createGridCells();
-            animationFrame = requestAnimationFrame(animateGrid);
+            createGridCells(); 
+            // Start animation frame if needed for non-hover effects (like trail)
+            if (!animationFrame) { 
+               animationFrame = requestAnimationFrame(animateGrid);
+            }
           }
         } else if (wasInViewport && !isInViewport) {
-          // Optional: pause expensive animations when not in viewport
           if (animationFrame) {
             cancelAnimationFrame(animationFrame);
             animationFrame = null;
@@ -469,27 +377,28 @@
         }
       }, { 
         threshold: 0.1,
-        rootMargin: '100px 0px'  // Preload a bit before visible
+        rootMargin: '100px 0px'  
       });
       
       if (gridContainer) {
         observer.observe(gridContainer);
       }
       
-      // Add event listeners for window resize with passive option
       window.addEventListener('resize', handleResize, { passive: true });
       
-      // For low performance devices, check if we're already in viewport
-      // to initialize the grid immediately if needed
-      if (isLowPerformanceDevice && gridContainer) {
+      // Ensure grid is created if initially in viewport
+      if (!isLowPerformanceDevice && gridContainer) {
         const rect = gridContainer.getBoundingClientRect();
         if (
           rect.top < window.innerHeight &&
-          rect.bottom > 0
+          rect.bottom > 0 &&
+          !gridContainer.dataset.initialized
         ) {
           isInViewport = true;
           createGridCells();
-          animationFrame = requestAnimationFrame(animateGrid);
+          if (!animationFrame) { 
+             animationFrame = requestAnimationFrame(animateGrid);
+          }
         }
       }
     }
@@ -504,6 +413,146 @@
       window.removeEventListener('resize', handleResize);
     }
   });
+
+  // --- Utility Functions ---
+
+  // Fisher-Yates (aka Knuth) Shuffle
+  function shuffleArray<T>(array: T[]): T[] {
+    let currentIndex = array.length, randomIndex;
+    // While there remain elements to shuffle.
+    while (currentIndex !== 0) {
+      // Pick a remaining element.
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+      // And swap it with the current element.
+      [array[currentIndex], array[randomIndex]] = [
+        array[randomIndex], array[currentIndex]];
+    }
+    return array;
+  }
+  
+  // Function to find cells within a radius (similar to old neighbor logic)
+  function findCellsInRadius(centerCell: HTMLElement, radius: number): HTMLElement[] {
+    if (!gridContainer) return [];
+    
+    const nearbyCells: HTMLElement[] = [];
+    const centerRect = centerCell.getBoundingClientRect();
+    const centerX = centerRect.left + centerRect.width / 2;
+    const centerY = centerRect.top + centerRect.height / 2;
+    
+    gridCells.forEach(cell => {
+      if (cell === centerCell) return; // Skip the center cell itself
+      
+      const cellRect = cell.getBoundingClientRect();
+      const cellX = cellRect.left + cellRect.width / 2;
+      const cellY = cellRect.top + cellRect.height / 2;
+      
+      const dx = centerX - cellX;
+      const dy = centerY - cellY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < radius) {
+        nearbyCells.push(cell);
+      }
+    });
+    
+    return nearbyCells;
+  }
+
+  // --- Event Listener Logic ---
+  function attachCellListeners(cell: HTMLElement) {
+    // Restore direct mouse event listeners, modified for group hover
+    cell.addEventListener('mouseenter', () => {
+      // Clear previous hovered group styles
+      if (hoveredGroup.length > 0) {
+        hoveredGroup.forEach(resetCellStyle);
+      }
+      hoveredGroup = []; // Reset the group
+
+      // --- Dynamic Group Selection ---
+      const neighborsInRadius = findCellsInRadius(cell, HOVER_RADIUS);
+      const potentialGroup = [cell, ...neighborsInRadius]; // Include self
+
+      // Determine how many cells to activate (randomly between min/max)
+      const numToActivate = Math.floor(Math.random() * (MAX_ACTIVE_CELLS - MIN_ACTIVE_CELLS + 1)) + MIN_ACTIVE_CELLS;
+      
+      // Shuffle the potential group and pick the desired number
+      const shuffledGroup = shuffleArray(potentialGroup);
+      hoveredGroup = shuffledGroup.slice(0, numToActivate);
+      // --- End Dynamic Selection ---
+
+      // Apply hover styles to the dynamically selected group
+      hoveredGroup.forEach(applyHoverStyles);
+      currentHoveredCell = cell; // Track the primary cell that triggered the hover
+    });
+    
+    cell.addEventListener('mouseleave', (e) => {
+        const cellBeingLeft = e.target as HTMLElement;
+        const relatedTarget = e.relatedTarget as HTMLElement;
+
+        // Only proceed if the cell being left was part of the active hover group
+        if (hoveredGroup.includes(cellBeingLeft)) {
+          let movingToAnotherCellInGroup = false;
+          
+          // Check if moving to another valid cell within the SAME group
+          if (relatedTarget && relatedTarget.classList && relatedTarget.classList.contains('grid-cell') && hoveredGroup.includes(relatedTarget)) {
+              movingToAnotherCellInGroup = true;
+          }
+
+          // If not moving to another cell within the same group, reset the entire group
+          if (!movingToAnotherCellInGroup) {
+              hoveredGroup.forEach(resetCellStyle);
+              hoveredGroup = [];
+              currentHoveredCell = null; // Clear tracker when group is deactivated
+          }
+        }
+        // If the cell being left wasn't part of the group, do nothing.
+        // If moving within the group, do nothing (mouseenter on the new cell handles activation).
+    });
+  }
+  // --- End Event Listener Logic ---
+
+  // Helper function to apply hover styles (restoring the previous inline style approach for hover)
+  function applyHoverStyles(cell: HTMLElement) {
+    const border = cell.querySelector('.cell-border') as HTMLElement;
+    const dot = cell.querySelector('.cell-dot') as HTMLElement;
+
+    if (border) {
+      border.style.borderColor = 'rgba(0, 164, 255, 0.6)';
+      border.style.boxShadow = '0 0 15px 8px rgba(0, 164, 255, 0.5), inset 0 0 8px 4px rgba(255, 0, 255, 0.5)';
+    }
+
+    if (dot) {
+      dot.style.backgroundColor = 'rgba(0, 164, 255, 0.8)';
+      dot.style.boxShadow = '0 0 20px 10px rgba(0, 164, 255, 0.5)';
+      dot.style.transform = 'translate3d(-50%, -50%, 0) scale(2.5)';
+    }
+
+    const currentTransform = cell.style.transform;
+    const baseTransform = currentTransform.replace(/ scale\([^)]*\)/, '');
+    cell.style.transform = `${baseTransform} scale(1.03)`;
+  }
+
+  // Restore resetCellStyle (it was added before but let's ensure it's correct)
+  function resetCellStyle(cell: HTMLElement) {
+    const border = cell.querySelector('.cell-border') as HTMLElement;
+    const dot = cell.querySelector('.cell-dot') as HTMLElement;
+    
+    if (border) {
+      border.style.borderColor = 'rgba(0, 164, 255, 0.1)'; // Explicitly set default color
+      border.style.boxShadow = 'none'; // Explicitly remove shadow
+    }
+    
+    if (dot) {
+      dot.style.backgroundColor = 'rgba(0, 164, 255, 0.2)'; // Explicitly set default color
+      dot.style.boxShadow = 'none'; // Explicitly remove shadow
+      dot.style.transform = 'translate3d(-50%, -50%, 0)'; // Explicitly set default transform
+    }
+    
+    const currentTransform = cell.style.transform;
+    const baseTransform = currentTransform.replace(/ scale\([^)]*\)/, '');
+    cell.style.transform = baseTransform; // Remove scale only
+  }
 </script>
 
 <section id="cta" class="h-screen flex items-center justify-center relative overflow-hidden crt-flicker">
@@ -532,7 +581,7 @@
     <img src="/images/kongface-white.svg" alt="" class="w-full h-full" />
   </div>
   
-  <div class="max-w-4xl mx-auto px-6 md:px-8 w-full z-30 text-center relative transition-all duration-1000 ease-out {contentVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-12'}">
+  <div class="max-w-4xl mx-auto px-6 md:px-8 w-full z-30 text-center relative transition-all duration-1000 ease-out {contentVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-12'} pointer-events-none">
     <!-- Cyberpunk header with neon effect -->
     <h2 class="text-3xl md:text-5xl font-black mb-8 uppercase tracking-tight leading-none cyberpunk-title">
       <div class="relative inline-block leading-tight perspective-1000">
@@ -552,7 +601,7 @@
     <div class="flex flex-wrap gap-4 justify-center">
       <button 
         on:click={navigateToSwap}
-        class="neon-button relative inline-flex items-center overflow-hidden"
+        class="neon-button relative inline-flex items-center overflow-hidden pointer-events-auto"
       >
         <span class="neon-button-text text-nowrap">LAUNCH APP</span>
         <div class="neon-button-glow"></div>
@@ -566,7 +615,7 @@
 
 <svelte:window on:mousemove={handleMouseMove} on:mouseleave={handleMouseLeave} />
 
-<style>
+<style lang="postcss" scoped>
   /* Animation keyframes */
   @keyframes float-slow {
     0% { transform: translate(0, 0); }
@@ -887,90 +936,6 @@
     animation: pulse-glow 2s infinite;
   }
   
-  /* Secondary neon button */
-  .neon-button-secondary {
-    position: relative;
-    background: rgba(0, 10, 30, 0.3);
-    color: #FF00FF;
-    border: 1px solid rgba(255, 0, 255, 0.4);
-    border-radius: 4px;
-    padding: 12px 28px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    box-shadow: 
-      0 0 10px rgba(255, 0, 255, 0.2),
-      inset 0 0 5px rgba(255, 0, 255, 0.1);
-    backdrop-filter: blur(4px);
-    font-family: 'Inter', 'Rajdhani', 'SF Pro Display', sans-serif;
-    will-change: transform, box-shadow, color, background, border-color;
-  }
-  
-  .neon-button-secondary:hover {
-    color: white;
-    background: rgba(255, 0, 255, 0.8);
-    border-color: rgba(255, 0, 255, 0.8);
-    box-shadow: 
-      0 0 15px rgba(255, 0, 255, 0.5),
-      0 0 30px rgba(255, 0, 255, 0.3),
-      inset 0 0 10px rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
-  }
-  
-  .neon-button-secondary:active {
-    transform: translateY(1px);
-    box-shadow: 
-      0 0 8px rgba(255, 0, 255, 0.3),
-      inset 0 0 4px rgba(255, 0, 255, 0.1);
-  }
-  
-  .neon-button-secondary .neon-button-glow {
-    background: radial-gradient(
-      circle at center,
-      rgba(255, 0, 255, 0.3) 0%,
-      transparent 70%
-    );
-  }
-  
-  .neon-button-secondary:hover .neon-button-glow {
-    opacity: 1;
-    animation: pulse-glow-magenta 2s infinite;
-  }
-  
-  @keyframes pulse-glow {
-    0% {
-      opacity: 0.7;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.9;
-      transform: scale(1.05);
-    }
-    100% {
-      opacity: 0.7;
-      transform: scale(1);
-    }
-  }
-  
-  @keyframes pulse-glow-magenta {
-    0% {
-      opacity: 0.7;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.9;
-      transform: scale(1.05);
-    }
-    100% {
-      opacity: 0.7;
-      transform: scale(1);
-    }
-  }
-  
   /* Cyberpunk text style */
   .cyberpunk-text {
     text-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
@@ -993,81 +958,5 @@
     transform: translateZ(0);
     will-change: transform;
     container-type: size;
-  }
-  
-  /* Highlighter element will use transforms for better performance */
-  .highlighter {
-    will-change: transform, opacity;
-  }
-  
-  /* Grid cell optimizations */
-  .grid-cell {
-    will-change: transform, opacity;
-    contain: layout style paint;
-    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-  
-  .grid-cell.active {
-    opacity: 1;
-    z-index: 21;
-    transform: scale(1.05);
-  }
-  
-  /* Neighboring cell effect */
-  .grid-cell.neighbor-active {
-    z-index: 20;
-    opacity: calc(0.8 + (var(--effect-strength) * 0.2));
-    transform: scale(calc(1 + (var(--effect-strength) * 0.03)));
-  }
-  
-  /* Use CSS classes instead of inline styles for better performance */
-  .border-active {
-    border-color: rgba(0, 164, 255, 0.8) !important;
-    box-shadow: 0 0 20px 20px rgba(0, 164, 255, 0.9), inset 0 0 15px 10px rgba(255, 0, 255, 0.9) !important;
-  }
-  
-  .dot-active {
-    background-color: rgba(0, 164, 255, 1) !important;
-    box-shadow: 0 0 25px 15px rgba(0, 164, 255, 0.9) !important;
-    transform: translate3d(-50%, -50%, 0) scale(3.5) !important;
-  }
-  
-  /* Neighbor dot effect with variable intensity based on proximity */
-  .neighbor-dot-active {
-    background-color: rgba(0, 164, 255, calc(0.2 + (var(--effect-strength) * 0.8))) !important;
-    box-shadow: 0 0 calc(var(--effect-strength) * 15px) calc(var(--effect-strength) * 10px) rgba(0, 164, 255, calc(0.3 + (var(--effect-strength) * 0.6))) !important;
-    transform: translate3d(-50%, -50%, 0) scale(calc(1 + (var(--effect-strength) * 2.5))) !important;
-  }
-  
-  /* Ripple effect styling */
-  .cell-ripple {
-    position: absolute;
-    border-radius: 50%;
-    background: radial-gradient(
-      circle,
-      rgba(0, 216, 255, 0.7) 0%,
-      rgba(0, 216, 255, 0.3) 30%,
-      rgba(0, 216, 255, 0.1) 70%,
-      transparent 100%
-    );
-    transform: translate(-50%, -50%) scale(0);
-    opacity: 0.8;
-    pointer-events: none;
-    animation: ripple-effect 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-    will-change: transform, opacity;
-  }
-  
-  @keyframes ripple-effect {
-    0% {
-      transform: translate(-50%, -50%) scale(0);
-      opacity: 0.8;
-    }
-    70% {
-      opacity: 0.4;
-    }
-    100% {
-      transform: translate(-50%, -50%) scale(1);
-      opacity: 0;
-    }
   }
 </style> 
