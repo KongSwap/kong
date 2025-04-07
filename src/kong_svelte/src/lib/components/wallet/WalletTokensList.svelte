@@ -57,30 +57,18 @@
 		(() => {
 			console.log('[WalletTokensList] Recalculating derived processedTokenBalances...');
 			const currentEnabled = $userTokens.enabledTokens;
-			const allUserTokens = $userTokens.tokens;
-			console.log('[WalletTokensList] enabledTokens Set:', Array.from(currentEnabled));
-			console.log(`[WalletTokensList] Processing based on ${currentEnabled.size} enabled tokens from ${allUserTokens.length} total tokens...`);
-
-			// Create a map for quick lookup of token data by canister ID
-			const tokenMap = new Map(allUserTokens.map(token => [token.canister_id, token]));
+			const tokenDataMap = $userTokens.tokenData; // Use the derived Map directly
 
 			// Iterate over enabled tokens, look up data, process, and filter out any missing tokens
 			const processed = Array.from(currentEnabled)
 				.map(canisterId => {
-					const token = tokenMap.get(canisterId);
+					const token = tokenDataMap.get(canisterId); // Use the derived Map
 					if (!token) {
-						console.warn(`[WalletTokensList] Enabled token ${canisterId} not found in allUserTokens map during derived recalc.`);
+						console.warn(`[WalletTokensList] Enabled token ${canisterId} not found in tokenData map during derived recalc.`);
 						return null; // Skip if token data isn't available for some reason
 					}
 
-					// Log the found token
-					console.log(`[WalletTokensList] Processing enabled token: ${token.symbol} (${canisterId})`);
-
 					const balanceInfo = $currentUserBalancesStore?.[token.canister_id];
-
-					// Log the found balance info
-					console.log(`[WalletTokensList] Balance info for ${token.symbol}:`, balanceInfo ? JSON.stringify(balanceInfo, (_, v) => typeof v === 'bigint' ? v.toString() : v) : 'Not found');
-
 					// Use the existing default logic which should be fine
 					const effectiveBalanceInfo = balanceInfo || {
 						in_tokens: 0n,
@@ -106,7 +94,6 @@
 				})
 				.filter((item): item is TokenBalance => item !== null); // Filter out any nulls (missing tokens)
 
-			console.log(`[WalletTokensList] Processed ${processed.length} enabled tokens.`);
 
 			const sorted = processed.sort((a, b) => b.usdValue - a.usdValue); // Sort by value, highest first
 			console.log(`[WalletTokensList] Finished calculating derived state. Displaying ${sorted.length} tokens.`);
@@ -139,14 +126,10 @@
 		
 		try {
 			// Always force refresh when explicitly requested
-			if (forceRefresh) {
-				console.log("Loading balances with force refresh...");
-				
+			if (forceRefresh) {				
 				// Request balance refresh for all tokens, not just enabled ones
 				// This helps discover tokens that have balances but aren't enabled
-				const allTokens = $userTokens.tokens;
-				console.log(`Refreshing balances for ${allTokens.length} tokens`);
-				
+				const allTokens = $userTokens.tokens;				
 				const balances = await loadBalances(allTokens, walletId, true);
 				console.log(`Received balances for ${Object.keys(balances).length} tokens`);
 				
@@ -211,11 +194,6 @@
 			console.log("Analyzing user tokens for walletId:", walletId);
 			const result = await userTokens.analyzeUserTokens(walletId);
 			
-			console.log("Token sync analysis complete:", {
-				tokensToAdd: result.tokensToAdd.length,
-				tokensToRemove: result.tokensToRemove.length
-			});
-			
 			tokenSyncCandidates = {
 				tokensToAdd: result.tokensToAdd,
 				tokensToRemove: result.tokensToRemove
@@ -223,11 +201,9 @@
 			
 			// Only show confirmation if there are changes to make
 			if (result.syncStatus && (result.syncStatus.added > 0 || result.syncStatus.removed > 0)) {
-				console.log("Changes found, showing confirmation dialog");
 				showSyncConfirmModal = true;
 			} else {
 				// No changes needed, just show a status notification
-				console.log("No token changes needed");
 				syncStatus = { added: 0, removed: 0 };
 				showSyncStatus = true;
 				setTimeout(() => {
@@ -246,18 +222,11 @@
 	// Apply token changes after user confirmation
 	async function confirmAndApplyTokenChanges() {
 		try {
-			console.log("Applying token changes:", {
-				tokensToAdd: tokenSyncCandidates.tokensToAdd.length,
-				tokensToRemove: tokenSyncCandidates.tokensToRemove.length
-			});
-			
 			// Use the userTokens store to apply the changes
 			syncStatus = await userTokens.applyTokenSync(
 				tokenSyncCandidates.tokensToAdd,
 				tokenSyncCandidates.tokensToRemove
 			);
-			
-			console.log("Token changes applied:", syncStatus);
 			
 			// Show small inline indicator for immediate feedback
 			showSyncStatus = true;
@@ -275,19 +244,8 @@
 				// 1. First force a token data refresh
 				console.log("Refreshing token data after sync...");
 				await userTokens.refreshTokenData();
-				
-				// 2. Wait a moment to ensure the store is updated
-				await new Promise(resolve => setTimeout(resolve, 500));
-				
-				// 3. Then load balances with force refresh
 				console.log("Refreshing balances after sync...");
 				await loadUserBalances(true);
-				
-				// 4. Log the current state of tokens for debugging
-				console.log("Current tokens state:", {
-					enabledTokens: Array.from($userTokens.enabledTokens).length,
-					tokens: $userTokens.tokens.length
-				});
 			}
 		} catch (error) {
 			console.error("Error applying token changes:", error);
@@ -705,7 +663,7 @@
 				</div>
 			{/if}
 			<div class="space-y-0">
-				{#each processedTokenBalances as tokenBalance}
+				{#each processedTokenBalances as tokenBalance (tokenBalance.token.canister_id)}
 					<div>
 						<div
 							class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border/30 hover:bg-kong-bg-light/10 transition-all duration-200 relative
