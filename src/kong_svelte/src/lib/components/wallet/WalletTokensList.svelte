@@ -384,10 +384,13 @@
 	});
 	
 	// Handle dropdown action selection
-	function handleDropdownAction(action: 'send' | 'receive' | 'swap' | 'info') {
+	function handleDropdownAction(action: 'send' | 'receive' | 'swap' | 'info' | 'copy') {
 		if (selectedToken) {
 			if (action === 'receive') {
 				showReceiveTokenModal = true;
+			} else if (action === 'copy') {
+				// Copy action is handled directly in the TokenDropdown component
+				return; // Don't close the dropdown
 			} else {
 				onAction(action, selectedToken);
 			}
@@ -601,6 +604,12 @@
 	.active-token-gradient {
 		background: linear-gradient(to right, rgba(var(--color-kong-primary-rgb), 0.05), rgba(var(--color-kong-bg-light-rgb), 0.15));
 	}
+
+	.active-token {
+		position: relative;
+		z-index: 5;
+		border-bottom-color: transparent !important;
+	}
 </style>
 
 <div class="py-2">
@@ -679,76 +688,77 @@
 	{:else}
 		<div class="space-y-0">
 			{#each processedTokenBalances as tokenBalance}
-				<div
-					class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border/30 hover:bg-kong-bg-light/10 transition-all duration-200 cursor-pointer relative
-						{showDropdown && selectedTokenId !== tokenBalance.token?.canister_id ? 'opacity-40 hover:opacity-70' : ''}
-						{showDropdown && selectedTokenId === tokenBalance.token?.canister_id ? 
-							'active-token-gradient border-l-2 border-l-kong-primary shadow-[0_0_15px_rgba(0,0,0,0.1)] relative z-10' : 'border-l-2 border-l-transparent'}"
-					on:click={(e) => handleTokenClick(e, tokenBalance)}
-				>
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							{#if tokenBalance.token}
-								<div class="flex-shrink-0">
-									<TokenImages
-										tokens={[tokenBalance.token]}
-										size={36}
-										showSymbolFallback={true}
-										tooltip={{
-											text: tokenBalance.name,
-											direction: "top",
-										}}
-									/>
-								</div>
-							{:else}
-								<div
-									class="w-9 h-9 rounded-full bg-kong-text-primary/10 flex items-center justify-center border border-kong-border flex-shrink-0"
-								>
-									<span class="text-xs font-bold text-kong-primary"
-										>{tokenBalance.symbol}</span
+				<div>
+					<div
+						class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border/30 hover:bg-kong-bg-light/10 transition-all duration-200 cursor-pointer relative
+							{showDropdown && selectedTokenId !== tokenBalance.token?.canister_id ? 'opacity-40 hover:opacity-70' : ''}
+							{showDropdown && selectedTokenId === tokenBalance.token?.canister_id ? 
+								'active-token-gradient border-l-2 border-l-kong-primary shadow-[0_0_15px_rgba(0,0,0,0.1)] active-token' : 'border-l-2 border-l-transparent'}"
+						on:click={(e) => handleTokenClick(e, tokenBalance)}
+					>
+						<div class="flex items-center justify-between">
+							<div class="flex items-center gap-3">
+								{#if tokenBalance.token}
+									<div class="flex-shrink-0">
+										<TokenImages
+											tokens={[tokenBalance.token]}
+											size={36}
+											showSymbolFallback={true}
+											tooltip={{
+												text: tokenBalance.name,
+												direction: "top",
+											}}
+										/>
+									</div>
+								{:else}
+									<div
+										class="w-9 h-9 rounded-full bg-kong-text-primary/10 flex items-center justify-center border border-kong-border flex-shrink-0"
 									>
-								</div>
-							{/if}
-							<div class="flex flex-col justify-center">
-								<div class="font-medium text-kong-text-primary text-sm leading-tight">
-									{tokenBalance.name}
-								</div>
-								<div class="text-xs text-kong-text-secondary mt-1 leading-tight">
-									{#if Number(tokenBalance.balance) > 0 && Number(tokenBalance.balance) < 0.00001}
-										<span title={tokenBalance.balance.toString()}>~0.00001</span> {tokenBalance.symbol}
-									{:else}
-										{tokenBalance.balance} {tokenBalance.symbol}
-									{/if}
+										<span class="text-xs font-bold text-kong-primary"
+											>{tokenBalance.symbol}</span
+										>
+									</div>
+								{/if}
+								<div class="flex flex-col justify-center">
+									<div class="font-medium text-kong-text-primary text-sm leading-tight">
+										{tokenBalance.name}
+									</div>
+									<div class="text-xs text-kong-text-secondary mt-1 leading-tight">
+										{#if Number(tokenBalance.balance) > 0 && Number(tokenBalance.balance) < 0.00001}
+											<span title={tokenBalance.balance.toString()}>~0.00001</span> {tokenBalance.symbol}
+										{:else}
+											{tokenBalance.balance} {tokenBalance.symbol}
+										{/if}
+									</div>
 								</div>
 							</div>
-						</div>
 
-						<div class="text-right flex flex-col justify-center">
-							<div class="font-medium text-kong-text-primary text-sm leading-tight">
-								{formatCurrency(tokenBalance.usdValue)}
-							</div>
-							<div
-								class="text-xs {tokenBalance.change24h >= 0
-									? 'text-kong-accent-green'
-									: 'text-kong-accent-red'} font-medium mt-1 leading-tight"
-							>
-								{Number(formatToNonZeroDecimal(tokenBalance.change24h)) >= 0
-									? "+"
-									: ""}{formatToNonZeroDecimal(tokenBalance.change24h)}%
+							<div class="text-right flex flex-col justify-center">
+								<div class="font-medium text-kong-text-primary text-sm leading-tight">
+									{formatCurrency(tokenBalance.usdValue)}
+								</div>
+								<div
+									class="text-xs {tokenBalance.change24h >= 0
+										? 'text-kong-accent-green'
+										: 'text-kong-accent-red'} font-medium mt-1 leading-tight"
+								>
+									{Number(formatToNonZeroDecimal(tokenBalance.change24h)) >= 0
+										? "+"
+										: ""}{formatToNonZeroDecimal(tokenBalance.change24h)}%
+								</div>
 							</div>
 						</div>
 					</div>
 					
-					<!-- Token Dropdown - render inside token container for expanding effect -->
+					<!-- Token Actions Row - Expanded underneath the token -->
 					{#if selectedTokenId === tokenBalance.token?.canister_id && showDropdown}
-						<div class="relative z-20 mt-2 bg-kong-bg-light/10 rounded-b-md border-t border-kong-border/20" transition:slide={{ duration: 200 }}>
+						<div 
+							class="px-4 py-3 border-b border-kong-border/30 bg-gradient-to-b from-kong-accent-blue/5 to-kong-bg-light/10" 
+							transition:slide={{ duration: 200 }}
+						>
 							<TokenDropdown 
 								token={selectedToken} 
-								position={{ 
-									top: 0, 
-									left: 0, 
-									width: selectedTokenElement ? selectedTokenElement.offsetWidth : 0 
-								}}
+								expanded={true}
 								visible={showDropdown}
 								onClose={closeDropdown}
 								onAction={handleDropdownAction}

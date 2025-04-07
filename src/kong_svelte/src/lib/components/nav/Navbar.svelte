@@ -404,6 +404,7 @@
             getThemeById($themeStore)?.colors?.buttonBorderColor}
           customShadow={browser &&
             getThemeById($themeStore)?.colors?.buttonShadow}
+          class="navbar-icon"
         />
 
         <NavbarButton
@@ -422,6 +423,7 @@
             getThemeById($themeStore)?.colors?.buttonBorderColor}
           customShadow={browser &&
             getThemeById($themeStore)?.colors?.buttonShadow}
+          class="navbar-icon"
         />
 
         {#if $auth.isConnected}
@@ -443,6 +445,7 @@
                 getThemeById($themeStore)?.colors?.buttonBorderColor}
               customShadow={browser &&
                 getThemeById($themeStore)?.colors?.buttonShadow}
+              class="navbar-icon"
             />
           {/if}
 
@@ -464,6 +467,7 @@
               getThemeById($themeStore)?.colors?.buttonBorderColor}
             customShadow={browser &&
               getThemeById($themeStore)?.colors?.buttonShadow}
+            class="navbar-icon"
           />
         {/if}
 
@@ -486,6 +490,7 @@
             getThemeById($themeStore)?.colors?.primaryButtonBorderColor}
           isWalletButton={true}
           badgeCount={$notificationsStore.unreadCount}
+          class="navbar-icon"
         />
       {:else}
         <NavbarButton
@@ -504,6 +509,7 @@
             getThemeById($themeStore)?.colors?.buttonBorderColor}
           customShadow={browser &&
             getThemeById($themeStore)?.colors?.buttonShadow}
+          iconSize={14}
         />
 
         <NavbarButton
@@ -523,6 +529,7 @@
             getThemeById($themeStore)?.colors?.buttonBorderColor}
           customShadow={browser &&
             getThemeById($themeStore)?.colors?.buttonShadow}
+          iconSize={14}
           isWalletButton={true}
           badgeCount={$notificationsStore.unreadCount}
         />
@@ -789,5 +796,11 @@
     .mobile-nav-section {
       @apply px-3;
     }
+  }
+
+  /* Desktop navbar icon size fix */
+  :global(.navbar-icon svg) {
+    width: 18px !important;
+    height: 18px !important;
   }
 </style>
