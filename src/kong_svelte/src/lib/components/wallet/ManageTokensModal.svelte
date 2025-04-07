@@ -37,14 +37,10 @@
   // Use a specific effect that runs only when the dependencies change
   $effect(() => {
     // Only update when these dependencies change
-    const _ = [
-      searchQuery, 
-      activeTab,
-      allTokens,
-      // Track the enabledTokens set directly for reactive updates
-      Array.from($userTokens.enabledTokens).join(',')
-    ];
-    
+    // Directly depend on the derived store - Svelte 5 tracks this
+    const currentEnabledTokens = $userTokens.enabledTokens;
+    const _ = [searchQuery, activeTab, allTokens, currentEnabledTokens];
+
     if (allTokens.length > 0) {
       updateFilteredTokens();
     }
@@ -52,7 +48,9 @@
   
   // Log when enabledTokens changes
   $effect(() => {
-    console.log("Enabled tokens changed:", Array.from($userTokens.enabledTokens));
+    // This effect now properly depends on the derived store
+    const currentEnabledTokens = $userTokens.enabledTokens;
+    console.log("Enabled tokens changed (ManageTokensModal):", Array.from(currentEnabledTokens));
   });
   
   // Methods
@@ -143,9 +141,6 @@
       console.log(`Enabling token ${token.symbol}`);
       userTokens.enableToken(token);
     }
-    
-    // Force update filtered tokens
-    setTimeout(() => updateFilteredTokens(), 0);
   }
   
   function getFormattedBalance(token: FE.Token): string {

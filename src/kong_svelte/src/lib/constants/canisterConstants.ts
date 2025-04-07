@@ -21,6 +21,8 @@ const defaultTokens = () => {
     exe: "rh2pm-ryaaa-aaaan-qeniq-cai",
     dkp: "zfcdd-tqaaa-aaaaq-aaaga-cai",
     alex: "ysy5f-2qaaa-aaaap-qkmmq-cai",
+    party: "7xkvf-zyaaa-aaaal-ajvra-cai",
+    motoko: "k45jy-aiaaa-aaaaq-aadcq-cai",
     nicp: "buwm7-7yaaa-aaaar-qagva-cai",
     tcycles: "um5iw-rqaaa-aaaaq-qaaba-cai",
     gldgov: "tyyy3-4aaaa-aaaaq-aab7a-cai",
@@ -28,8 +30,8 @@ const defaultTokens = () => {
     bob: "7pail-xaaaa-aaaas-aabmq-cai",
     alice: "oj6if-riaaa-aaaaq-aaeha-cai",
     ntn: "f54if-eqaaa-aaaaq-aacea-cai",
-    ogy: "lkwrt-vyaaa-aaaaq-aadhq-cai",
-    cloud: "pcj6u-uaaaa-aaaak-aewnq-cai"
+    cloud: "pcj6u-uaaaa-aaaak-aewnq-cai",
+    panda: "druyg-tyaaa-aaaaq-aactq-cai"
   };
 };
 

@@ -316,7 +316,7 @@
     <div
       class="{isCurrentUser
         ? 'bg-kong-primary text-kong-text-on-primary rounded-t-md rounded-bl-md rounded-br-sm'
-        : 'bg-kong-dark text-kong-text-primary rounded-t-md rounded-br-md rounded-bl-sm'} px-3 pb-2 relative group"
+        : 'bg-kong-dark text-kong-text-primary rounded-t-md rounded-br-md rounded-bl-sm'} px-3 py-2 relative group"
     >
       {#if !isCurrentUser}
         <div
