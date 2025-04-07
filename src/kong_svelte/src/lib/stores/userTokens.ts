@@ -124,6 +124,7 @@ function createUserTokensStore() {
   const enabledTokens = derived(state, $state => $state.enabledTokens);
   const tokens = derived(state, $state => Array.from($state.tokenData.values()));
   const isAuthenticated = derived(state, $state => $state.isAuthenticated);
+  const tokenData = derived(state, $state => $state.tokenData);
   
   // Storage key helper
   const getStorageKey = (principal?: string) => {
@@ -401,10 +402,11 @@ function createUserTokensStore() {
   return {
     subscribe: state.subscribe,
     
-    // Provide derived stores for specific parts of the state
-    enabledTokens: { subscribe: enabledTokens.subscribe },
-    tokens: { subscribe: tokens.subscribe },
-    isAuthenticated: { subscribe: isAuthenticated.subscribe },
+    // Directly export the derived stores (readables)
+    enabledTokens: enabledTokens,
+    tokens: tokens,
+    isAuthenticated: isAuthenticated,
+    tokenData: tokenData,
     
     reset: () => {
       const newState = {
@@ -458,6 +460,9 @@ function createUserTokensStore() {
       if (!token || !token.canister_id) return;
       
       state.update(state => {
+        console.log(`[UserTokens] enableToken called for ${token.symbol} (${token.canister_id})`);
+        console.log('[UserTokens] State BEFORE enable:', Array.from(state.enabledTokens));
+
         // Create copies of current state
         const newEnabledTokens = new Set(state.enabledTokens);
         const newTokenData = new Map(state.tokenData);
@@ -475,7 +480,8 @@ function createUserTokensStore() {
           tokenData: newTokenData,
           lastUpdated: Date.now(),
         };
-        
+
+        console.log('[UserTokens] State AFTER enable:', Array.from(newState.enabledTokens));
         debouncedUpdateStorage(newState);
         return newState;
       });
@@ -512,6 +518,9 @@ function createUserTokensStore() {
     
     disableToken: (canisterId: string) => {
       state.update(state => {
+        console.log(`[UserTokens] disableToken called for ${canisterId}`);
+        console.log('[UserTokens] State BEFORE disable:', Array.from(state.enabledTokens));
+
         // Create copies of current state
         const newEnabledTokens = new Set(state.enabledTokens);
         const newTokenData = new Map(state.tokenData);
@@ -526,7 +535,8 @@ function createUserTokensStore() {
           tokenData: newTokenData,
           lastUpdated: Date.now(),
         };
-        
+
+        console.log('[UserTokens] State AFTER disable:', Array.from(newState.enabledTokens));
         debouncedUpdateStorage(newState);
         return newState;
       });

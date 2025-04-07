@@ -275,7 +275,7 @@
         </h1>
       </div>
 
-      <div class="flex gap-3 w-full justify-end">
+      <div class="flex gap-3 w-full justify-center md:justify-end">
         {#if isUserAdmin}
           <ButtonV2
             theme="accent-green"
@@ -300,7 +300,7 @@
     </div>
 
     <!-- Admin Actions & User History -->
-    <div class="flex justify-between gap-3 mb-4">
+    <div class="flex flex-col md:flex-row justify-between gap-3 mb-4">
       <!-- Category Filters -->
       <div class="flex flex-wrap gap-2 max-w-full overflow-x-auto items-center">
         {#each $marketStore.categories as category}
@@ -328,101 +328,88 @@
         {/each}
       </div>
 
-      <div
-        class="flex flex-col items-center justify-center md:justify-end gap-4"
-      >
-        <!-- Status and Sorting Controls Row -->
+      <!-- Filters Container -->
+      <div class="flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
+        <!-- Status Filter Dropdown -->
         <div
-          class="flex flex-col sm:flex-row items-center gap-3 w-full justify-center md:justify-end"
+          class="relative status-dropdown flex-1 md:flex-none max-w-[48%] md:max-w-none"
+          use:clickOutside={() => (statusDropdownOpen = false)}
         >
-          <!-- Status Filter Dropdown -->
-          <div
-            class="relative status-dropdown"
-            use:clickOutside={() => (statusDropdownOpen = false)}
+          <button
+            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
+            on:click={(e) => {
+              e.stopPropagation();
+              statusDropdownOpen = !statusDropdownOpen;
+              sortDropdownOpen = false;
+            }}
           >
-            <div class="flex items-center gap-2 justify-center">
-              <span class="text-xs text-kong-pm-text-secondary">Status:</span>
+            <span class="whitespace-nowrap overflow-hidden text-ellipsis">
+              Status: {getCurrentStatusLabel()}
+            </span>
+            <ChevronDown class="w-3 h-3 ml-1 flex-shrink-0" />
+          </button>
 
-              <button
-                class="flex items-center px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
-                on:click={(e) => {
-                  e.stopPropagation();
-                  statusDropdownOpen = !statusDropdownOpen;
-                  sortDropdownOpen = false;
-                }}
-              >
-                {getCurrentStatusLabel()}
-                <ChevronDown class="w-3 h-3 ml-1" />
-              </button>
+          {#if statusDropdownOpen}
+            <div
+              class="absolute top-full left-0 mt-1 z-50 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
+            >
+              {#each statusOptions as option}
+                <button
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.statusFilter ===
+                  option.value
+                    ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
+                    : 'text-kong-text-primary'}"
+                  on:click={() => {
+                    marketStore.setStatusFilter(option.value as StatusFilter);
+                    statusDropdownOpen = false;
+                  }}
+                >
+                  {option.label}
+                </button>
+              {/each}
             </div>
+          {/if}
+        </div>
 
-            {#if statusDropdownOpen}
-              <div
-                class="absolute top-full left-0 mt-1 z-50 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 min-w-[120px] backdrop-blur-sm"
-              >
-                {#each statusOptions as option}
-                  <button
-                    class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.statusFilter ===
-                    option.value
-                      ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
-                      : 'text-kong-text-primary'}"
-                    on:click={() => {
-                      marketStore.setStatusFilter(option.value as StatusFilter);
-                      statusDropdownOpen = false;
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                {/each}
-              </div>
-            {/if}
-          </div>
-
-          <!-- Divider for small screens -->
-          <div class="hidden sm:block w-px h-6 bg-kong-border"></div>
-
-          <!-- Sorting Dropdown -->
-          <div
-            class="relative sort-dropdown"
-            use:clickOutside={() => (sortDropdownOpen = false)}
+        <!-- Sorting Dropdown -->
+        <div
+          class="relative sort-dropdown flex-1 md:flex-none max-w-[48%] md:max-w-none"
+          use:clickOutside={() => (sortDropdownOpen = false)}
+        >
+          <button
+            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
+            on:click={(e) => {
+              e.stopPropagation();
+              sortDropdownOpen = !sortDropdownOpen;
+              statusDropdownOpen = false;
+            }}
           >
-            <div class="flex items-center gap-2 justify-center">
-              <span class="text-xs text-kong-pm-text-secondary">Sort by:</span>
+            <span class="whitespace-nowrap overflow-hidden text-ellipsis">
+              Sort: {getCurrentSortLabel()}
+            </span>
+            <ChevronDown class="w-3 h-3 ml-1 flex-shrink-0" />
+          </button>
 
-              <button
-                class="flex items-center px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
-                on:click={(e) => {
-                  e.stopPropagation();
-                  sortDropdownOpen = !sortDropdownOpen;
-                  statusDropdownOpen = false;
-                }}
-              >
-                {getCurrentSortLabel()}
-                <ChevronDown class="w-3 h-3 ml-1" />
-              </button>
+          {#if sortDropdownOpen}
+            <div
+              class="absolute top-full right-0 mt-1 z-30 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[180px] backdrop-blur-sm"
+            >
+              {#each sortOptions as option}
+                <button
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.sortOption ===
+                  option.value
+                    ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
+                    : 'text-kong-text-primary'}"
+                  on:click={() => {
+                    marketStore.setSortOption(option.value as SortOption);
+                    sortDropdownOpen = false;
+                  }}
+                >
+                  {option.label}
+                </button>
+              {/each}
             </div>
-
-            {#if sortDropdownOpen}
-              <div
-                class="absolute top-full right-0 mt-1 z-30 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 min-w-[180px] backdrop-blur-sm"
-              >
-                {#each sortOptions as option}
-                  <button
-                    class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.sortOption ===
-                    option.value
-                      ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
-                      : 'text-kong-text-primary'}"
-                    on:click={() => {
-                      marketStore.setSortOption(option.value as SortOption);
-                      sortDropdownOpen = false;
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                {/each}
-              </div>
-            {/if}
-          </div>
+          {/if}
         </div>
       </div>
     </div>

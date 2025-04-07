@@ -1,0 +1,991 @@
+<script lang="ts">
+  import { fade, fly } from "svelte/transition";
+  import { onMount, onDestroy, tick } from "svelte";
+  import * as THREE from "three";
+  import { tweened } from "svelte/motion";
+  import { cubicOut } from "svelte/easing";
+  import { ChevronDown } from "lucide-svelte";
+
+  // Props using $props rune - corrected syntax
+  type PoolStats = { total_volume_24h: number; total_tvl: number; total_fees_24h: number };
+  type FormatNumberFn = (num: number, precision?: number) => string;
+  type FormatCountFn = (num: number) => string;
+  type NavigateToSwapFn = () => void;
+
+  let { 
+    showGetStarted,
+    isLoading,
+    poolStats,
+    totalSwaps,
+    formatNumber,
+    formatCount,
+    navigateToSwap,
+    isVisible = false // Default value provided here
+  } = $props<{
+    showGetStarted: boolean;
+    isLoading: boolean;
+    poolStats: PoolStats;
+    totalSwaps: number;
+    formatNumber: FormatNumberFn;
+    formatCount: FormatCountFn;
+    navigateToSwap: NavigateToSwapFn;
+    isVisible?: boolean;
+  }>();
+
+  // State using $state rune
+  let hasTriggeredAnimation = $state(false);
+  let contentVisible = $state(false);
+
+  // Trigger animations when the section becomes visible
+  $effect(() => {
+    if (isVisible && !hasTriggeredAnimation) {
+      triggerAnimation();
+    }
+  });
+  
+  function triggerAnimation() {
+    hasTriggeredAnimation = true;
+    setTimeout(() => {
+      contentVisible = true;
+    }, 200);
+  }
+
+  // Tweened values for stats
+  const tweenedTVL = tweened(0, { duration: 1500, easing: cubicOut });
+  const tweenedVolume = tweened(0, { duration: 1500, easing: cubicOut });
+  const tweenedFees = tweened(0, { duration: 1500, easing: cubicOut });
+  const tweenedSwaps = tweened(0, { duration: 1500, easing: cubicOut });
+  
+  // Update tweened values when props change
+  // Use a non-reactive variable for the timeout ID
+  let updateTimeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
+  $effect(() => {
+    // Capture reactive dependencies explicitly if needed, though direct access is usually fine
+    const currentIsLoading = isLoading;
+    const currentPoolStats = poolStats;
+    const currentTotalSwaps = totalSwaps;
+    
+    if (!currentIsLoading && currentPoolStats) {
+      // Clear any existing timeout *before* setting a new one
+      if (updateTimeoutId) {
+        clearTimeout(updateTimeoutId);
+        updateTimeoutId = undefined; // Clear the ID immediately after clearing
+      }
+      
+      // Set the new timeout
+      updateTimeoutId = setTimeout(() => {
+        tweenedTVL.set(currentPoolStats.total_tvl);
+        tweenedVolume.set(currentPoolStats.total_volume_24h);
+        tweenedFees.set(currentPoolStats.total_fees_24h);
+        tweenedSwaps.set(currentTotalSwaps);
+        updateTimeoutId = undefined; // Clear the ID once the timeout callback runs
+      }, 100);
+    }
+    
+    // Cleanup function: ensures timeout is cleared if dependencies change or component unmounts
+    return () => {
+      if (updateTimeoutId) {
+        clearTimeout(updateTimeoutId);
+        updateTimeoutId = undefined;
+      }
+    };
+  });
+  
+  // Three.js variables - using $state where appropriate
+  let canvasContainer = $state<HTMLElement | undefined>(undefined); // Keep $state for the element ref
+  let scene: THREE.Scene | undefined;
+  let camera: THREE.OrthographicCamera | undefined;
+  let renderer: THREE.WebGLRenderer | undefined;
+  let animationFrameId: number | undefined;
+  let materialUniforms: any | undefined; // Consider defining a proper type
+  
+  // Performance detection - using $state
+  let isLowEndDevice = $state(false);
+  let isMobile = $state(false);
+  
+  // Mouse tracking variables with throttling
+  let mouse = $state({
+    position: { x: 0.5, y: 0.5 },
+    target: { x: 0.5, y: 0.5 },
+    active: true, // Default to active
+  });
+  let lastMoveTime = $state(0);
+  let frameCount = $state(0);
+  
+  // Store handler references for cleanup
+  const handleMouseEnter = () => { mouse.active = true; };
+  const handleMouseLeave = () => { 
+    // Don't immediately turn off effect on mouseleave
+    setTimeout(() => {
+      mouse.active = false;
+    }, 500);
+  };
+  
+  // Handle mouse move with throttling
+  function handleMouseMove(event: MouseEvent) {
+    const now = performance.now();
+    if (now - lastMoveTime < 16) return; // Skip if less than ~60fps interval
+    lastMoveTime = now;
+    
+    // Convert screen coordinates to normalized UV coordinates (0 to 1)
+    mouse.target.x = event.clientX / window.innerWidth;
+    mouse.target.y = 1.0 - (event.clientY / window.innerHeight); // Invert Y for shader space
+    
+    // Ensure mouseActive is true when mouse is moving
+    mouse.active = true;
+  }
+  
+  // Handle touch move for mobile with throttling
+  function handleTouchMove(event: TouchEvent) {
+    const now = performance.now();
+    if (now - lastMoveTime < 32) return; // Even more throttling for touch events (~30fps)
+    lastMoveTime = now;
+    
+    if (event.touches.length > 0) {
+      const touch = event.touches[0];
+      mouse.target.x = touch.clientX / window.innerWidth;
+      mouse.target.y = 1.0 - (touch.clientY / window.innerHeight);
+      mouse.active = true;
+    }
+  }
+  
+  // Handle touch start for mobile
+  function handleTouchStart(event: TouchEvent) {
+    if (event.touches.length > 0) {
+      const touch = event.touches[0];
+      mouse.target.x = touch.clientX / window.innerWidth;
+      mouse.target.y = 1.0 - (touch.clientY / window.innerHeight);
+      mouse.active = true;
+    }
+  }
+  
+  // Handle touch end for mobile
+  function handleTouchEnd() {
+    // Keep effect active for a moment after touch ends
+    setTimeout(() => {
+      mouse.active = false;
+    }, 500);
+  }
+  
+  // Detect if device is low-end
+  function detectPerformance() {
+    // Check for mobile devices
+    isMobile = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Simple performance check - can be expanded with more sophisticated detection
+    try {
+      // Test how long it takes to create a large array
+      const startTime = performance.now();
+      const arr = new Array(1000000).fill(0);
+      const endTime = performance.now();
+      
+      // If operation took more than 50ms, consider it a low-end device
+      isLowEndDevice = (endTime - startTime) > 50;
+    } catch (e) {
+      // If there's an error, assume it's a low-end device
+      isLowEndDevice = true;
+    }
+    
+    // Additional check for older browsers that might not handle WebGL well
+    if (!window.WebGLRenderingContext) {
+      isLowEndDevice = true;
+    }
+  }
+  
+  // Initialize Three.js scene
+  let sceneInitialized = $state(false);
+  
+  async function initThreeJs() {
+    // Skip initialization if already done
+    if (sceneInitialized) return;
+    sceneInitialized = true;
+    
+    // Wait for next tick to ensure DOM is ready
+    await tick();
+    
+    // Check if container exists before proceeding
+    if (!canvasContainer) {
+      console.error("Canvas container not found");
+      return;
+    }
+
+    const newScene = new THREE.Scene();
+    
+    // Camera setup - orthographic for fullscreen quad
+    const newCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    
+    // Renderer setup with pixel ratio limiting based on device capability
+    const newRenderer = new THREE.WebGLRenderer({ 
+      alpha: true,
+      antialias: false,
+      powerPreference: 'low-power' // Changed from 'high-performance' for consistency
+    });
+    
+    // Limit pixel ratio more aggressively for mobile/low-end devices
+    const maxPixelRatio = isLowEndDevice || isMobile ? 1 : 1.5; // Slightly reduced max non-mobile
+    const pixelRatio = Math.min(window.devicePixelRatio, maxPixelRatio);
+    newRenderer.setPixelRatio(pixelRatio);
+    
+    // Set lower resolution for mobile/low-end devices
+    if (isMobile || isLowEndDevice) {
+      const scale = isMobile ? 1.3 : 1.2; // Slightly increased scaling for lower res
+      newRenderer.setSize(window.innerWidth / scale, window.innerHeight / scale, true);
+    } else {
+      newRenderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    
+    // Ensure canvas fills the container properly
+    newRenderer.domElement.style.position = 'absolute';
+    newRenderer.domElement.style.top = '0';
+    newRenderer.domElement.style.left = '0';
+    newRenderer.domElement.style.width = '100%';
+    newRenderer.domElement.style.height = '100%';
+    
+    canvasContainer.appendChild(newRenderer.domElement);
+    
+    // Create cyberpunk Blade Runner background effect
+    const crtGeometry = new THREE.PlaneGeometry(2, 2);
+    
+    // Even more optimized version of the shader
+    materialUniforms = {
+      time: { value: 0.0 },
+      resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+      baseColor: { value: new THREE.Color(0x0D111F) },      // Match other sections bg
+      neonColor1: { value: new THREE.Color(0x7B68EE) },     // Use Indigo/Purple from SwapSection
+      neonColor2: { value: new THREE.Color(0x9370DB) },     // Use Indigo/Purple from SwapSection
+      mousePosition: { value: new THREE.Vector2(0.5, 0.5) },// Mouse position in UV space
+      mouseActive: { value: 0.0 }                           // Mouse activity indicator
+    };
+    
+    const bladeRunnerMaterial = new THREE.ShaderMaterial({
+      uniforms: materialUniforms,
+      vertexShader: `
+        varying vec2 vUv;
+        
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        uniform vec2 resolution;
+        uniform vec3 baseColor;
+        uniform vec3 neonColor1;
+        uniform vec3 neonColor2;
+        uniform vec2 mousePosition;
+        uniform float mouseActive;
+        varying vec2 vUv;
+        
+        // Optimized random function
+        float random(vec2 st) {
+          return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+        }
+        
+        // Simplified noise function
+        float noise(vec2 st) {
+          vec2 i = floor(st);
+          vec2 f = fract(st);
+          vec2 u = f * f * (3.0 - 2.0 * f); // Smoothstep
+          
+          return mix(mix(random(i), random(i + vec2(1.0, 0.0)), u.x),
+                     mix(random(i + vec2(0.0, 1.0)), random(i + vec2(1.0, 1.0)), u.x), u.y);
+        }
+        
+        // Function for abstract background patterns
+        vec3 backgroundPattern(vec2 uv, float time) {
+          vec3 color = vec3(0.0);
+          
+          // Layer 1: Slow moving noise field
+          float n = noise(uv * 4.0 + time * 0.1);
+          color += mix(neonColor1, neonColor2, n) * 0.15;
+          
+          // Layer 2: Faster moving smaller scale noise
+          float n2 = noise(uv * 15.0 - time * 0.3);
+          color += mix(baseColor * 1.2, neonColor1, n2) * 0.1;
+          
+          // Layer 3: Diagonal subtle waves
+          float wave = sin(uv.x * 10.0 + uv.y * 5.0 + time * 0.5) * 0.5 + 0.5;
+          color += neonColor2 * wave * 0.05;
+          
+          return color;
+        }
+        
+        // Simplified neon streaks
+        vec3 neonStreaks(vec2 uv, float time) {
+          vec3 streakColor = vec3(0.0);
+          
+          // Horizontal streak
+          float y1 = fract(0.3 + time * 0.08);
+          float w1 = 0.003;
+          streakColor += smoothstep(w1, 0.0, abs(uv.y - y1)) * neonColor1 * 0.15;
+          
+          // Diagonal streak
+          float diag1 = fract(uv.x - uv.y * 0.5 + time * 0.04);
+          float w2 = 0.002;
+          streakColor += smoothstep(w2, 0.0, abs(diag1 - 0.5)) * neonColor2 * 0.1;
+          
+          return streakColor;
+        }
+        
+        // Optimized mouse effect (Ripple)
+        vec3 mouseEffect(vec2 uv, vec2 mousePos) {
+          float dist = length(uv - mousePos);
+          float ripple = sin(dist * 25.0 - time * 4.0) * 0.5 + 0.5;
+          float falloff = smoothstep(0.25, 0.0, dist);
+          float finalRipple = ripple * falloff * mouseActive;
+          vec3 rippleColor = mix(neonColor1, neonColor2, sin(dist * 15.0 - time * 1.5) * 0.5 + 0.5);
+          return rippleColor * finalRipple * 0.3; // Reduced intensity
+        }
+        
+        void main() {
+          vec2 uv = vUv;
+          vec3 color = baseColor;
+          
+          // Add abstract patterns
+          color += backgroundPattern(uv, time);
+          
+          // Add subtle neon streaks
+          color += neonStreaks(uv, time);
+          
+          // Add mouse ripple effect
+          color += mouseEffect(uv, mousePosition);
+          
+          // Subtle static noise
+          float staticNoise = random(uv + fract(time * 0.5));
+          color += vec3(staticNoise * 0.03);
+          
+          // Subtle horizontal scan lines
+          if (fract(uv.y * 100.0) > 0.6) { // Increased frequency, reduced visibility
+            color *= 0.99;
+          }
+          
+          // Vignette effect (similar to other sections)
+          float vignetteDist = length(vec2(0.5) - uv);
+          color *= smoothstep(0.8, 0.3, vignetteDist); // Adjusted falloff
+          
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+      transparent: true
+    });
+    
+    const crtScreen = new THREE.Mesh(crtGeometry, bladeRunnerMaterial);
+    newScene.add(crtScreen);
+    
+    // Assign to state variables
+    scene = newScene;
+    camera = newCamera;
+    renderer = newRenderer;
+    
+    // Handle window resize
+    const handleResizeScoped = () => {
+      // Check if mobile status changed
+      const wasMobile = isMobile;
+      isMobile = window.innerWidth < 768;
+      
+      // Update renderer size on all resizes to ensure proper fit
+      const scale = isMobile ? 1.2 : 1.0;
+      if (renderer) {
+          renderer.setSize(window.innerWidth / scale, window.innerHeight / scale, true);
+          
+          // Ensure canvas size is always correct
+          renderer.domElement.style.width = '100%';
+          renderer.domElement.style.height = '100%';
+      }
+      
+      if (materialUniforms) {
+          materialUniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+      }
+    };
+    
+    window.addEventListener('resize', handleResizeScoped);
+    
+    // Animation loop with performance optimizations
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+      frameCount++;
+      
+      if (!materialUniforms || !renderer || !scene || !camera) return;
+
+      // Update time uniform with reduced step for slower animations
+      const timeStep = isMobile || isLowEndDevice ? 0.003 : 0.006;
+      if (materialUniforms) materialUniforms.time.value += timeStep;
+      
+      // Only update mouse position every few frames to improve performance
+      if (frameCount % (isMobile || isLowEndDevice ? 3 : 2) === 0) {
+        mouse.position.x += (mouse.target.x - mouse.position.x) * 0.05;
+        mouse.position.y += (mouse.target.y - mouse.position.y) * 0.05;
+        
+        // Update mouse uniforms
+        if (materialUniforms) {
+          materialUniforms.mousePosition.value.x = mouse.position.x;
+          materialUniforms.mousePosition.value.y = mouse.position.y;
+          materialUniforms.mouseActive.value = mouse.active ? 1.0 : 0.0;
+        }
+      }
+      
+      // Render scene
+      renderer.render(scene, camera);
+    };
+    
+    animate();
+
+    // Return cleanup function for the effect that calls initThreeJs
+    return () => {
+        window.removeEventListener('resize', handleResizeScoped);
+        const currentAnimationFrameId = animationFrameId; // Capture value
+        if (currentAnimationFrameId) cancelAnimationFrame(currentAnimationFrameId);
+        animationFrameId = undefined; // Clear state
+
+        if (renderer) {
+            const currentRenderer = renderer; // Capture value
+            currentRenderer.dispose();
+            if (canvasContainer && canvasContainer.contains(renderer.domElement)) {
+                canvasContainer.removeChild(currentRenderer.domElement);
+            }
+            renderer = undefined; // Clear state
+        }
+        scene = undefined; // Clear non-state variables
+        camera = undefined; // Clear non-state variables
+        materialUniforms = undefined; // Clear non-state variables
+        sceneInitialized = false; // Reset init flag
+    };
+  }
+  
+  // Add isSmallScreen detection for conditional rendering
+  let isSmallScreen = $state(false);
+
+  // Resize handler function
+  function handleResize() {
+    isSmallScreen = window.innerWidth < 640;
+  }
+
+  onMount(() => {
+    let threeJsCleanup: (() => void) | undefined;
+    
+    // Run checks and setup that don't depend on Three.js immediately
+    isSmallScreen = window.innerWidth < 640;
+    detectPerformance();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('mouseenter', handleMouseEnter);
+    window.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    
+    // Delay Three.js initialization
+    const initTimeout = setTimeout(async () => {
+        threeJsCleanup = await initThreeJs();
+    }, 100);
+
+    // Cleanup on unmount
+    return () => {
+      clearTimeout(initTimeout); // Clear timeout if component unmounts before init
+      if (threeJsCleanup) {
+        threeJsCleanup(); // Run the specific Three.js cleanup
+      }
+      
+      // Remove general listeners
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseenter', handleMouseEnter);
+      window.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  });
+
+  // No need for separate onDestroy, cleanup is handled in mount's return function
+
+</script>
+
+<section id="hero" class="h-screen flex flex-col items-center justify-center relative overflow-hidden">
+  <!-- Three.js blade runner background -->
+  <div bind:this={canvasContainer} class="absolute inset-0 z-0 pointer-events-auto overflow-hidden"></div>
+  
+  <!-- Animated background grid (like other sections) -->
+  <div class="absolute inset-0 grid grid-cols-[repeat(10,1fr)] sm:grid-cols-[repeat(20,1fr)] grid-rows-[repeat(10,1fr)] sm:grid-rows-[repeat(20,1fr)] opacity-[0.04] pointer-events-none z-[1]">
+    {#each Array(isSmallScreen ? 100 : 400) as _, i}
+      <div class="border-[0.5px] border-white/10"></div>
+    {/each}
+  </div>
+
+  <!-- Floating particles (like swap section) -->
+  <div class="absolute inset-0 z-[2] pointer-events-none overflow-hidden">
+    {#each Array(isSmallScreen ? 6 : 12) as _, i}
+      <div class="absolute h-1 w-1 rounded-full bg-purple-400/30 will-change-transform will-change-opacity"
+           style="top: {Math.random() * 100}%; left: {Math.random() * 100}%; animation: float {6 + Math.random() * 8}s ease-in-out infinite; animation-delay: {Math.random() * 8}s;"></div>
+    {/each}
+    {#each Array(isSmallScreen ? 4 : 8) as _, i}
+      <div class="absolute h-[2px] w-[2px] rounded-full bg-indigo-400/40 will-change-transform will-change-opacity"
+           style="top: {Math.random() * 100}%; left: {Math.random() * 100}%; animation: float-slow {10 + Math.random() * 10}s ease-in-out infinite; animation-delay: {Math.random() * 10}s;"></div>
+    {/each}
+  </div>
+
+  <!-- Content layout with proper spacing -->
+  <div class="relative z-10 container mx-auto px-4 sm:px-6 flex flex-col items-center justify-center h-full pt-10 sm:pt-0 transition-all duration-1000 ease-out {contentVisible ? 'opacity-100' : 'opacity-0 transform translate-y-8'}">
+    
+    <!-- Logo with CRT effect -->
+    <div class="relative mb-5 sm:mb-10 w-full max-w-6xl">
+      <!-- Logo container with scan effects -->
+      <div class="relative flex justify-center perspective-[1000px]">
+        <!-- Background effects positioned behind the logo -->
+        <div class="absolute inset-0 logo-scanlines"></div>
+        <div class="absolute inset-0 logo-noise"></div>
+        
+        <!-- Main logo -->
+        <img 
+          src="titles/logo-white-wide.png" 
+          alt="KongSwap Logo" 
+          class="kong-logo pt-12 md:pt-0 w-full max-w-[400px] xs:max-w-[500px] sm:max-w-[650px] md:max-w-[900px] lg:max-w-[1000px] mx-auto relative z-[2] md:pt-12"
+        />
+        
+        <!-- Neon reflection -->
+        <div class="kong-logo-reflection"></div>
+      </div>
+    </div>
+    
+    <!-- Text with CRT phosphor glow effect -->
+    <p class="phosphor-text text-sm sm:text-lg md:text-xl mb-7 sm:mb-12 max-w-sm sm:max-w-md md:max-w-2xl mx-auto text-center" data-text="The most advanced multi-chain DeFi hub in the world. Decentralized, DAO governed, and fully on-chain.">
+      The most advanced multi-chain DeFi hub in the world. Decentralized, DAO governed, and fully on-chain.
+    </p>
+    
+    <!-- Protocol Stats -->
+    <div class="mx-auto mb-7 sm:mb-10 max-w-[850px] w-full transition-all duration-1000 ease-out delay-300 {contentVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-12'}">
+      <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+        <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-3 sm:p-4 min-h-[70px] sm:min-h-[90px] relative transition-all duration-300 ease-in-out will-change-transform will-change-opacity hover:border-[#7B68EE]/30 hover:bg-white/[0.07] overflow-hidden screen-panel">
+          <div class="relative z-10">
+            <div class="text-[0.7rem] sm:text-[0.8rem] uppercase text-[#A1A7BC]/90 tracking-wider mb-1 text-shadow shadow-black/70 font-['BlenderPro','Rajdhani',monospace] text-center">Total Value Locked</div>
+            <div class="panel-value crt-value text-lg sm:text-xl md:text-2xl">{isLoading ? '...' : formatNumber($tweenedTVL)}</div>
+          </div>
+          <div class="panel-scanlines"></div>
+          <div class="panel-noise"></div>
+        </div>
+        
+        <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-3 sm:p-4 min-h-[70px] sm:min-h-[90px] relative transition-all duration-300 ease-in-out will-change-transform will-change-opacity hover:border-[#7B68EE]/30 hover:bg-white/[0.07] overflow-hidden screen-panel">
+          <div class="relative z-10">
+            <div class="text-[0.7rem] sm:text-[0.8rem] uppercase text-[#A1A7BC]/90 tracking-wider mb-1 text-shadow shadow-black/70 font-['BlenderPro','Rajdhani',monospace] text-center">24h Volume</div>
+            <div class="panel-value crt-value text-lg sm:text-xl md:text-2xl">{isLoading ? '...' : formatNumber($tweenedVolume)}</div>
+          </div>
+          <div class="panel-scanlines"></div>
+          <div class="panel-noise"></div>
+        </div>
+        
+        <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-3 sm:p-4 min-h-[70px] sm:min-h-[90px] relative transition-all duration-300 ease-in-out will-change-transform will-change-opacity hover:border-[#7B68EE]/30 hover:bg-white/[0.07] overflow-hidden screen-panel">
+          <div class="relative z-10">
+            <div class="text-[0.7rem] sm:text-[0.8rem] uppercase text-[#A1A7BC]/90 tracking-wider mb-1 text-shadow shadow-black/70 font-['BlenderPro','Rajdhani',monospace] text-center">24h Fees</div>
+            <div class="panel-value crt-value text-lg sm:text-xl md:text-2xl">{isLoading ? '...' : formatNumber($tweenedFees)}</div>
+          </div>
+          <div class="panel-scanlines"></div>
+          <div class="panel-noise"></div>
+        </div>
+        
+        <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-3 sm:p-4 min-h-[70px] sm:min-h-[90px] relative transition-all duration-300 ease-in-out will-change-transform will-change-opacity hover:border-[#7B68EE]/30 hover:bg-white/[0.07] overflow-hidden screen-panel">
+          <div class="relative z-10">
+            <div class="text-[0.7rem] sm:text-[0.8rem] uppercase text-[#A1A7BC]/90 tracking-wider mb-1 text-shadow shadow-black/70 font-['BlenderPro','Rajdhani',monospace] text-center">Total Swaps</div>
+            <div class="panel-value crt-value text-lg sm:text-xl md:text-2xl">{formatCount($tweenedSwaps)}</div>
+          </div>
+          <div class="panel-scanlines"></div>
+          <div class="panel-noise"></div>
+        </div>
+      </div>
+    </div>
+    
+    {#if showGetStarted}
+      <div class="mt-7 sm:mt-10 transition-all duration-1000 ease-out delay-500 {contentVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}">
+        <button 
+          on:click={navigateToSwap}
+          class="relative inline-flex items-center overflow-hidden text-base sm:text-lg px-5 bg-[#0D111F]/30 text-[#9370DB] border border-[#9370DB]/40 rounded font-semibold tracking-wider uppercase transition-all duration-300 ease-in-out shadow-[0_0_10px_rgba(147,112,219,0.2),inset_0_0_5px_rgba(147,112,219,0.1)] backdrop-blur-md will-change-transform will-change-opacity will-change-shadow translate-z-0 hover:text-white hover:bg-[#9370DB]/80 hover:border-[#9370DB]/80 hover:shadow-[0_0_20px_rgba(147,112,219,0.6),0_0_35px_rgba(123,104,238,0.4)] hover:-translate-y-0.5 hover:text-shadow active:translate-y-0.5 active:shadow-[0_0_8px_rgba(147,112,219,0.3),inset_0_0_4px_rgba(147,112,219,0.1)] sm:min-w-[180px] font-['Inter','Rajdhani','SF_Pro_Display',sans-serif] neon-button"
+        >
+          <span class="relative z-10 text-nowrap px-5 py-3 sm:py-4">LAUNCH APP</span>
+          <div class="neon-button-glow"></div>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 sm:w-6 sm:h-6 ml-2 relative z-10">
+            <path fill-rule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+    {/if}
+    
+    <!-- Improved scroll indicator with animation that matches other sections' style -->
+    <div class="mt-10 sm:mt-14 md:mt-16 flex flex-col items-center opacity-70 transition-all duration-1000 ease-out delay-700 {contentVisible ? 'opacity-70' : 'opacity-0'}">
+      <span class="text-[#A1A7BC] text-sm sm:text-base">Scroll to explore</span>
+      <div class="mt-3 sm:mt-4 flex flex-col items-center">
+        <ChevronDown size={isSmallScreen ? 22 : 26} class="text-[#7B68EE] opacity-60 chevron-animation-1" strokeWidth={2.5} />
+        <ChevronDown size={isSmallScreen ? 20 : 24} class="text-[#9370DB] opacity-40 chevron-animation-2 -mt-1" strokeWidth={2} />
+      </div>
+    </div>
+  </div>
+  
+  
+  <!-- Screen overlay effects positioned above everything -->
+  <div class="absolute inset-0 z-[20] pointer-events-none">
+    <!-- Scanlines overlay - Made more subtle -->
+    <div class="scanlines absolute inset-0"></div>
+    <!-- Screen curvature & vignette - Made more subtle -->
+    <div class="vignette absolute inset-0"></div>
+  </div>
+</section>
+
+<style>
+  @keyframes float {
+    0% { transform: translateY(0px) translateX(0px); opacity: 0; }
+    50% { opacity: 0.4; }
+    100% { transform: translateY(-80px) translateX(15px); opacity: 0; }
+  }
+  
+  @keyframes float-slow {
+    0% { transform: translate(0, 0); opacity: 0.1; }
+    50% { transform: translate(20px, -20px); opacity: 0.5; }
+    100% { transform: translate(0, 0); opacity: 0.1; }
+  }
+  
+  @keyframes move-chevron {
+    0% { opacity: 0; transform: translateY(0); }
+    25% { opacity: 1; }
+    50% { opacity: 1; transform: translateY(10px); }
+    75% { opacity: 1; transform: translateY(20px); }
+    100% { opacity: 0; transform: translateY(30px); }
+  }
+  
+  /* Chevron animations */
+  .chevron-animation-1 {
+    animation: move-chevron 2s ease-out infinite;
+    will-change: transform, opacity;
+  }
+  
+  .chevron-animation-2 {
+    animation: move-chevron 2s ease-out 500ms infinite;
+    will-change: transform, opacity;
+  }
+  
+  /* Animation delay for second chevron */
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+  
+  /* Add smooth scrolling to all sections */
+  :global(html) {
+    scroll-behavior: smooth;
+  }
+  
+  /* New animation for connecting particles between sections */
+  @keyframes connect-float {
+    0% { transform: translateY(0); opacity: 0; }
+    50% { transform: translateY(-30px); opacity: 0.7; }
+    100% { transform: translateY(-60px); opacity: 0; }
+  }
+  
+  /* Logo neon effect - enhanced with realistic tube glow */
+  .kong-logo {
+    filter: 
+      drop-shadow(0 0 2px rgba(255, 255, 255, 0.6))
+      drop-shadow(0 0 4px rgba(123, 104, 238, 0.4))
+      drop-shadow(0 0 8px rgba(123, 104, 238, 0.5))
+      drop-shadow(0 0 14px rgba(123, 104, 238, 0.2));
+    animation: logo-neon-pulse 3s ease-in-out infinite alternate;
+    will-change: filter;
+    mix-blend-mode: screen;
+    opacity: 0.9;
+    transform: translateZ(0);
+  }
+  
+  @keyframes logo-neon-pulse {
+    0% { 
+      filter: 
+        drop-shadow(0 0 2px rgba(255, 255, 255, 0.6))
+        drop-shadow(0 0 4px rgba(123, 104, 238, 0.4))
+        drop-shadow(0 0 8px rgba(123, 104, 238, 0.5))
+        drop-shadow(0 0 14px rgba(123, 104, 238, 0.2));
+    }
+    50% {
+      filter: 
+        drop-shadow(0 0 2px rgba(255, 255, 255, 0.7))
+        drop-shadow(0 0 5px rgba(147, 112, 219, 0.5))
+        drop-shadow(0 0 10px rgba(147, 112, 219, 0.6))
+        drop-shadow(0 0 16px rgba(147, 112, 219, 0.3));
+    }
+    100% {
+      filter: 
+        drop-shadow(0 0 2px rgba(255, 255, 255, 0.6))
+        drop-shadow(0 0 4px rgba(123, 104, 238, 0.4))
+        drop-shadow(0 0 8px rgba(123, 104, 238, 0.5))
+        drop-shadow(0 0 14px rgba(123, 104, 238, 0.2));
+    }
+  }
+  
+  /* Neon reflection effect for logo */
+  .kong-logo-reflection {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(to bottom, rgba(123, 104, 238, 0.3), transparent);
+    filter: blur(5px);
+    transform: scaleY(0.3);
+    transform-origin: top;
+    opacity: 0.5;
+    border-radius: 50%;
+    animation: reflection-pulse 3s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  @keyframes reflection-pulse {
+    0% {
+      opacity: 0.5;
+      background: linear-gradient(to bottom, rgba(123, 104, 238, 0.3), transparent);
+    }
+    50% {
+      opacity: 0.6;
+      background: linear-gradient(to bottom, rgba(147, 112, 219, 0.4), transparent);
+    }
+    100% {
+      opacity: 0.5;
+      background: linear-gradient(to bottom, rgba(123, 104, 238, 0.3), transparent);
+    }
+  }
+  
+  /* Add a horizontal scan line that moves across panels - simplified */
+  .screen-panel::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: rgba(123, 104, 238, 0.2);
+    opacity: 0.5;
+    z-index: 7;
+    animation: horizontal-scan 6s infinite linear;
+  }
+  
+  @keyframes horizontal-scan {
+    0% {
+      top: -1px;
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.5;
+    }
+    80% {
+      opacity: 0.5;
+    }
+    100% {
+      top: 100%;
+      opacity: 0;
+    }
+  }
+  
+  .screen-panel:nth-child(1)::after {
+    animation-delay: 0s;
+  }
+  
+  .screen-panel:nth-child(2)::after {
+    animation-delay: 1s;
+  }
+  
+  .screen-panel:nth-child(3)::after {
+    animation-delay: 2s;
+  }
+  
+  .screen-panel:nth-child(4)::after {
+    animation-delay: 3s;
+  }
+  
+  .neon-button-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(
+      circle at center,
+      rgba(147, 112, 219, 0.3) 0%,
+      transparent 70%
+    );
+    opacity: 0;
+    z-index: 1;
+    transition: opacity 0.3s ease;
+  }
+  
+  .neon-button:hover .neon-button-glow {
+    opacity: 1;
+  }
+  
+  /* Scanlines overlay - more subtle */
+  .scanlines {
+    background: linear-gradient(
+      to bottom,
+      transparent 50%,
+      rgba(147, 112, 219, 0.05) 50% /* Even more subtle */
+    );
+    background-size: 100% 3px; /* Smaller lines */
+    pointer-events: none;
+    z-index: 20;
+    opacity: 0.1; /* Reduced opacity */
+    mix-blend-mode: overlay;
+  }
+  
+  /* Vignette effect - more subtle */
+  .vignette {
+    pointer-events: none;
+    z-index: 21;
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.5); /* Further reduced spread/opacity */
+    border-radius: 5px;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 75%, /* Increased transparent area */
+      rgba(0, 0, 0, 0.3) 100% /* Reduced opacity */
+    );
+  }
+  
+  /* Phosphor CRT text effect - simplified and toned down */
+  .phosphor-text {
+    color: #B0B8D3; /* Adjusted base color */
+    font-family: 'Courier New', monospace;
+    line-height: 1.5;
+    letter-spacing: 0.5px;
+    text-shadow: 
+      0 0 1px rgba(147, 112, 219, 0.5), /* Reduced glow */
+      0 0 2px rgba(123, 104, 238, 0.3); /* Reduced glow */
+    position: relative;
+    transition: text-shadow 0.2s ease-out;
+    will-change: text-shadow;
+    transform: translateZ(0);
+  }
+  
+  .phosphor-text:hover {
+    text-shadow: 
+      0 0 1px #D8DEFF, /* Lighter highlight */
+      0 0 3px rgba(147, 112, 219, 0.7), /* Slightly stronger hover */
+      0 0 5px rgba(123, 104, 238, 0.4);
+  }
+  
+  /* CRT color fringing - Made more subtle */
+  .phosphor-text::before {
+    content: attr(data-text);
+    position: absolute;
+    left: -0.3px; /* Reduced shift */
+    top: 0;
+    color: rgba(255, 0, 100, 0.15); /* Reduced opacity */
+    width: 100%;
+    height: 100%;
+    mix-blend-mode: screen;
+    z-index: -1;
+    opacity: 0.8; /* Added overall opacity */
+  }
+  
+  .phosphor-text::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0.3px; /* Reduced shift */
+    top: 0;
+    color: rgba(0, 164, 255, 0.15); /* Reduced opacity */
+    width: 100%;
+    height: 100%;
+    mix-blend-mode: screen;
+    z-index: -1;
+    opacity: 0.8; /* Added overall opacity */
+  }
+  
+  /* Enhanced CRT effect for stat values */
+  .crt-value {
+    background: linear-gradient(90deg, #7B68EE, #9370DB);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    position: relative;
+    text-shadow: 
+      0 0 2px rgba(255, 255, 255, 0.7),
+      0 0 5px rgba(123, 104, 238, 0.5),
+      0 0 8px rgba(147, 112, 219, 0.3);
+    font-family: "BlenderPro", "Rajdhani", monospace;
+    letter-spacing: 1px;
+    text-align: center;
+    animation: crt-value-flicker 8s infinite;
+    font-weight: 700;
+    line-height: 1.1;
+    display: block;
+  }
+  
+  @keyframes crt-value-flicker {
+    0%, 98%, 100% {
+      text-shadow: 
+        0 0 2px rgba(255, 255, 255, 0.7),
+        0 0 5px rgba(123, 104, 238, 0.5),
+        0 0 8px rgba(147, 112, 219, 0.3);
+    }
+    98.5% {
+      text-shadow: 
+        0 0 2px rgba(255, 255, 255, 0.7),
+        0 0 5px rgba(123, 104, 238, 0.7),
+        0 0 10px rgba(147, 112, 219, 0.5);
+    }
+    99% {
+      text-shadow: 
+        0 0 2px rgba(255, 255, 255, 0.7),
+        0 0 5px rgba(123, 104, 238, 0.5),
+        0 0 8px rgba(147, 112, 219, 0.3);
+    }
+  }
+  
+  /* Simplified scanlines that match the main screen */
+  .panel-scanlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      to bottom,
+      transparent 50%,
+      rgba(147, 112, 219, 0.15) 50%
+    );
+    background-size: 100% 4px;
+    pointer-events: none;
+    opacity: 0.15;
+    mix-blend-mode: overlay;
+    z-index: 5;
+  }
+  
+  /* Simplified CRT noise effect */
+  .panel-noise {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.1'/%3E%3C/svg%3E");
+    background-size: 150px;
+    opacity: 0.08;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    z-index: 6;
+  }
+  
+  /* Add xs breakpoint for extra small screens */
+  @media (min-width: 400px) {
+    .xs\:max-w-\[450px\] {
+      max-width: 450px;
+    }
+  }
+  
+  /* Mobile optimizations for the hero section */
+  @media (max-width: 640px) {
+    /* Adjust canvas rendering for better mobile fit */
+    :global(#hero canvas) {
+      object-fit: cover;
+      height: 100% !important;
+      width: 100% !important;
+    }
+  }
+  
+  /* Ensure canvas is properly sized */
+  :global(#hero canvas) {
+    width: 100% !important;
+    height: 100% !important;
+  }
+</style> 

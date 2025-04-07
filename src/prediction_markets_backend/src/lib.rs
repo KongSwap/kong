@@ -21,6 +21,7 @@ use crate::market::get_market_by_status::GetMarketsByStatusResult;
 use crate::nat::*;
 use crate::resolution::resolution::*;
 use crate::user::user::*;
+use crate::market::get_stats::*;
 use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
 use icrc_ledger_types::icrc21::responses::ConsentInfo; 
 use icrc_ledger_types::icrc21::errors::ErrorInfo;

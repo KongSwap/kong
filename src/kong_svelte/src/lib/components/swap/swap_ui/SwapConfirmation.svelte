@@ -209,7 +209,7 @@
   isPadded={true}
   width="500px"
 >
-<div class="flex flex-col gap-3 pb-2">
+<div class="swap-confirmation-layout">
   {#if error}
     <Panel variant="transparent" type="secondary" unpadded={false}>
       <div class="error-container">
@@ -218,32 +218,34 @@
       </div>
     </Panel>
   {:else if payToken && receiveToken}
-    <div class="confirmation-container" transition:fade={{ duration: 200 }}>
-      <div class="content-wrapper">        
-        <div class="sections-wrapper">
-          <Panel variant="transparent" type="secondary" unpadded={true}>
-            <PayReceiveSection
-              {payToken}
-              {payAmount}
-              {receiveToken}
-              {receiveAmount}
-              routingPath={currentRoutingPath}
-            />
-          </Panel>
-          
-          <Panel variant="transparent" type="secondary" unpadded={true}>
-            <FeesSection
-              {gasFees}
-              {lpFees}
-              {userMaxSlippage}
-              {priceImpact}
-              {showPriceImpactWarning}
-            />
-          </Panel>
+    <div class="scrollable-content">
+      <div class="confirmation-container" transition:fade={{ duration: 200 }}>
+        <div class="content-wrapper">        
+          <div class="sections-wrapper">
+            <Panel variant="transparent" type="secondary" unpadded={true}>
+              <PayReceiveSection
+                {payToken}
+                {payAmount}
+                {receiveToken}
+                {receiveAmount}
+                routingPath={currentRoutingPath}
+              />
+            </Panel>
+            
+            <Panel variant="transparent" type="secondary" unpadded={true}>
+              <FeesSection
+                {gasFees}
+                {lpFees}
+                {userMaxSlippage}
+                {priceImpact}
+                {showPriceImpactWarning}
+              />
+            </Panel>
+          </div>
         </div>
       </div>
     </div>
-    <div class="button-container">
+    <div class="button-wrapper">
       <button
         class="swap-button"
         class:processing={isLoading}
@@ -278,12 +280,31 @@
 </Modal>
 
 <style lang="postcss">
+  .swap-confirmation-layout {
+    @apply flex flex-col gap-3;
+    height: 100%;
+    max-height: 80vh;
+  }
+
+  .scrollable-content {
+    @apply flex-1 overflow-y-auto pr-1;
+    margin-bottom: 0.5rem;
+  }
+
+  .button-wrapper {
+    @apply w-full mt-auto;
+    position: sticky;
+    bottom: 0;
+    background: rgb(var(--bg-dark));
+    z-index: 10;
+  }
+
   .confirmation-container {
-    @apply flex flex-col w-full rounded-md transition-all duration-300 px-2;
+    @apply flex flex-col w-full rounded-md transition-all duration-300;
   }
 
   .content-wrapper {
-    @apply flex flex-col h-full;
+    @apply flex flex-col;
   }
 
   .sections-wrapper {
@@ -292,10 +313,6 @@
 
   .sections-wrapper > :global(*) {
     @apply relative rounded-md border border-kong-border transition-all duration-200 w-full box-border;
-  }
-
-  .button-container {
-    @apply w-full sticky bottom-0 rounded-b-xl px-2 py-3;
   }
 
   .error-container {
@@ -366,21 +383,28 @@
   }
 
   @media (max-width: 640px) {
+    .swap-confirmation-layout {
+      max-height: 70vh;
+    }
+
+    .scrollable-content {
+      padding-right: 0;
+    }
+
+    .button-wrapper {
+      border-top: 1px solid rgb(var(--border) / 0.1);
+    }
+
     .confirmation-container {
       height: auto;
     }
 
     .content-wrapper {
-      @apply p-2;
       height: auto;
     }
 
     .sections-wrapper {
       @apply gap-2;
-    }
-
-    .button-container {
-      @apply p-2 rounded-none;
     }
 
     .error-container {
@@ -396,7 +420,7 @@
     }
 
     .swap-button {
-      @apply p-2.5 rounded-lg;
+      @apply rounded-lg;
     }
 
     .button-text {

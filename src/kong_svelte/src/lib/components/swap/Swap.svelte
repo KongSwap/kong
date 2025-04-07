@@ -674,7 +674,7 @@
 
 <div class="relative flex flex-col" in:fade={{ duration: 420 }}>
   <div class="relative flex flex-col gap-2 mb-2">
-    <div class="relative flex flex-col gap-1 min-h-[240px]">
+    <div class="relative flex flex-col gap-1 min-h-[240px] px-3 md:px-0 mt-0 md:mt-10">
       <!-- Doge image peeking only for Win98 theme -->
       {#if theme.id === 'win98light'}
         <div class="absolute -top-[4.8rem] right-5 z-1 transform translate-x-1/4 select-none pointer-events-none">
@@ -724,7 +724,7 @@
       </div>
     </div>
 
-    <div class="mt-1">
+    <div class="mt-1 px-3 md:px-0">
       <SwapButton 
         text={buttonText}
         isError={!!$swapState.error || $swapState.swapSlippage > $settingsStore.max_slippage || insufficientFunds}

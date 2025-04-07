@@ -26,7 +26,9 @@
     "@dfinity/ledger-icp": "2.6.10",
     "@dfinity/nns": "8.3.1",
     "@dfinity/principal": "2.3.0",
-    "@dfinity/utils": "2.10.1"
+    "@dfinity/utils": "2.10.1",
+    "@types/three": "^0.175.0",
+    "three": "^0.175.0"
   },
   "devDependencies": {
     "@kong/cli": "file:src/cli"

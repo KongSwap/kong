@@ -1,16 +1,18 @@
 <script lang="ts">
 	import { formatToNonZeroDecimal, formatBalance } from '$lib/utils/numberFormatUtils';
 	import { formatCurrency } from '$lib/utils/portfolioUtils';
-	import { Coins, Loader2, RefreshCw, Shuffle, Check, AlertCircle, Plus, Minus, Upload, Settings } from "lucide-svelte";
+	import { Coins, Loader2, RefreshCw, Shuffle, Check, AlertCircle, Plus, Minus, Upload, Settings, ChevronRight } from "lucide-svelte";
 	import TokenImages from "$lib/components/common/TokenImages.svelte";
 	import TokenDropdown from "./TokenDropdown.svelte";
 	import { userTokens } from "$lib/stores/userTokens";
 	import { currentUserBalancesStore, loadBalances } from "$lib/stores/balancesStore";
-	import { fade } from "svelte/transition";
+	import { fade, slide } from "svelte/transition";
+	import { onMount } from "svelte";
 	import Modal from "$lib/components/common/Modal.svelte";
 	import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
 	import ManageTokensModal from "$lib/components/wallet/ManageTokensModal.svelte";
 	import ReceiveTokenModal from "$lib/components/wallet/ReceiveTokenModal.svelte";
+	import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
 
 	// Define props using the $props syntax
 	type TokenBalance = {
@@ -50,37 +52,53 @@
 	// Process tokens with balance information when we need to do it internally
 	const processedTokenBalances = $derived(
 		// If tokenBalances were provided, use them (backward compatibility)
-		tokenBalances.length > 0 ? tokenBalances : 
+		tokenBalances.length > 0 ? tokenBalances :
 		// Otherwise process them internally
-		$userTokens.tokens
-			.filter(token => {
-				// Include token if it has a canister_id and is enabled
-				return token.canister_id && $userTokens.enabledTokens.has(token.canister_id);
-			})
-			.map((token) => {
-				const balanceInfo = $currentUserBalancesStore?.[token.canister_id] || {
-					in_tokens: 0n,
-					in_usd: "0",
-				};
+		(() => {
+			console.log('[WalletTokensList] Recalculating derived processedTokenBalances...');
+			const currentEnabled = $userTokens.enabledTokens;
+			const tokenDataMap = $userTokens.tokenData; // Use the derived Map directly
 
-				// Safely convert in_usd to number, handling non-numeric strings
-				const usdValue = balanceInfo.in_usd 
-					? parseFloat(balanceInfo.in_usd) 
-					: 0;
+			// Iterate over enabled tokens, look up data, process, and filter out any missing tokens
+			const processed = Array.from(currentEnabled)
+				.map(canisterId => {
+					const token = tokenDataMap.get(canisterId); // Use the derived Map
+					if (!token) {
+						console.warn(`[WalletTokensList] Enabled token ${canisterId} not found in tokenData map during derived recalc.`);
+						return null; // Skip if token data isn't available for some reason
+					}
 
-				return {
-					symbol: token.symbol,
-					name: token.name,
-					balance: formatBalance(balanceInfo.in_tokens, token.decimals || 0),
-					usdValue: isNaN(usdValue) ? 0 : usdValue,
-					icon: token.logo_url || "",
-					change24h: token.metrics?.price_change_24h
-						? parseFloat(token.metrics.price_change_24h)
-						: 0,
-					token: token, // Store the original token object for TokenImages
-				};
-			})
-			.sort((a, b) => b.usdValue - a.usdValue) // Sort by value, highest first
+					const balanceInfo = $currentUserBalancesStore?.[token.canister_id];
+					// Use the existing default logic which should be fine
+					const effectiveBalanceInfo = balanceInfo || {
+						in_tokens: 0n,
+						in_usd: "0",
+					};
+
+					// Safely convert in_usd to number, handling non-numeric strings
+					const usdValue = effectiveBalanceInfo.in_usd
+						? parseFloat(effectiveBalanceInfo.in_usd)
+						: 0;
+
+					return {
+						symbol: token.symbol,
+						name: token.name,
+						balance: formatBalance(effectiveBalanceInfo.in_tokens, token.decimals || 0),
+						usdValue: isNaN(usdValue) ? 0 : usdValue,
+						icon: token.logo_url || "",
+						change24h: token.metrics?.price_change_24h
+							? parseFloat(token.metrics.price_change_24h)
+							: 0,
+						token: token, // Store the original token object for TokenImages
+					};
+				})
+				.filter((item): item is TokenBalance => item !== null); // Filter out any nulls (missing tokens)
+
+
+			const sorted = processed.sort((a, b) => b.usdValue - a.usdValue); // Sort by value, highest first
+			console.log(`[WalletTokensList] Finished calculating derived state. Displaying ${sorted.length} tokens.`);
+			return sorted;
+		})()
 	);
 
 	let isLoadingBalances = $state(false);
@@ -108,14 +126,10 @@
 		
 		try {
 			// Always force refresh when explicitly requested
-			if (forceRefresh) {
-				console.log("Loading balances with force refresh...");
-				
+			if (forceRefresh) {				
 				// Request balance refresh for all tokens, not just enabled ones
 				// This helps discover tokens that have balances but aren't enabled
-				const allTokens = $userTokens.tokens;
-				console.log(`Refreshing balances for ${allTokens.length} tokens`);
-				
+				const allTokens = $userTokens.tokens;				
 				const balances = await loadBalances(allTokens, walletId, true);
 				console.log(`Received balances for ${Object.keys(balances).length} tokens`);
 				
@@ -139,9 +153,17 @@
 					Date.now() - lastRefreshed > 30000; // Reduced to 30 seconds for more frequent updates
 				
 				if (needsRefresh) {
-					await loadBalances($userTokens.tokens, walletId, true);
-					lastRefreshed = Date.now();
-					onBalancesLoaded();
+					// OPTIMIZATION: Only load balances for ENABLED tokens during normal refresh
+					const enabledTokenIds = $userTokens.enabledTokens;
+					const enabledTokens = $userTokens.tokens.filter(token =>
+						token.canister_id && enabledTokenIds.has(token.canister_id)
+					);
+					console.log(`Performing normal balance refresh for ${enabledTokens.length} enabled tokens...`);
+					if (enabledTokens.length > 0) {
+						await loadBalances(enabledTokens, walletId, true);
+						lastRefreshed = Date.now();
+						onBalancesLoaded();
+					}
 				}
 			}
 		} catch (err) {
@@ -154,26 +176,23 @@
 	}
 
 	// Sync tokens based on actual balances
-	async function handleSyncTokens() {
+	async function handleSyncTokens(skipInitialRefresh = false) {
 		if (!walletId || isSyncing) return;
-		
+
 		isSyncing = true;
 		syncStatus = null;
 		showSyncStatus = false;
-		
+
 		try {
 			// Make sure we have the latest balances before analyzing tokens
-			console.log("Refreshing all balances before token sync...");
-			await loadUserBalances(true);
-			
+			if (!skipInitialRefresh) {
+				console.log("Refreshing all balances before token sync...");
+				await loadUserBalances(true);
+			}
+
 			// Use the userTokens store to analyze tokens
 			console.log("Analyzing user tokens for walletId:", walletId);
 			const result = await userTokens.analyzeUserTokens(walletId);
-			
-			console.log("Token sync analysis complete:", {
-				tokensToAdd: result.tokensToAdd.length,
-				tokensToRemove: result.tokensToRemove.length
-			});
 			
 			tokenSyncCandidates = {
 				tokensToAdd: result.tokensToAdd,
@@ -182,11 +201,9 @@
 			
 			// Only show confirmation if there are changes to make
 			if (result.syncStatus && (result.syncStatus.added > 0 || result.syncStatus.removed > 0)) {
-				console.log("Changes found, showing confirmation dialog");
 				showSyncConfirmModal = true;
 			} else {
 				// No changes needed, just show a status notification
-				console.log("No token changes needed");
 				syncStatus = { added: 0, removed: 0 };
 				showSyncStatus = true;
 				setTimeout(() => {
@@ -205,18 +222,11 @@
 	// Apply token changes after user confirmation
 	async function confirmAndApplyTokenChanges() {
 		try {
-			console.log("Applying token changes:", {
-				tokensToAdd: tokenSyncCandidates.tokensToAdd.length,
-				tokensToRemove: tokenSyncCandidates.tokensToRemove.length
-			});
-			
 			// Use the userTokens store to apply the changes
 			syncStatus = await userTokens.applyTokenSync(
 				tokenSyncCandidates.tokensToAdd,
 				tokenSyncCandidates.tokensToRemove
 			);
-			
-			console.log("Token changes applied:", syncStatus);
 			
 			// Show small inline indicator for immediate feedback
 			showSyncStatus = true;
@@ -234,19 +244,8 @@
 				// 1. First force a token data refresh
 				console.log("Refreshing token data after sync...");
 				await userTokens.refreshTokenData();
-				
-				// 2. Wait a moment to ensure the store is updated
-				await new Promise(resolve => setTimeout(resolve, 500));
-				
-				// 3. Then load balances with force refresh
 				console.log("Refreshing balances after sync...");
 				await loadUserBalances(true);
-				
-				// 4. Log the current state of tokens for debugging
-				console.log("Current tokens state:", {
-					enabledTokens: Array.from($userTokens.enabledTokens).length,
-					tokens: $userTokens.tokens.length
-				});
 			}
 		} catch (error) {
 			console.error("Error applying token changes:", error);
@@ -299,34 +298,66 @@
 
 	// For dropdown - use $state for proper reactivity in Svelte 5
 	let selectedToken = $state<TokenBalance | null>(null);
-	let dropdownPosition = $state({ top: 0, left: 0, width: 0 });
+	let selectedTokenId = $state<string | null>(null);
+	let selectedTokenElement = $state<HTMLElement | null>(null);
 	let showDropdown = $state(false);
 	
 	// Handle token click to show dropdown
 	function handleTokenClick(event: MouseEvent, token: TokenBalance) {
+		// Prevent opening dropdown if syncing or already selected
+		if (isSyncing) return;
+		
+		// If clicking the same token that's already open, close it
+		if (selectedTokenId === token.token?.canister_id && showDropdown) {
+			closeDropdown();
+			return;
+		}
+		
 		const target = event.currentTarget as HTMLElement;
-		const rect = target.getBoundingClientRect();
-		
-		dropdownPosition = {
-			top: rect.bottom,
-			left: rect.left,
-			width: rect.width
-		};
-		
+		selectedTokenElement = target;
 		selectedToken = token;
+		selectedTokenId = token.token?.canister_id || null;
 		showDropdown = true;
+		
+		// Add click outside listener
+		setTimeout(() => {
+			document.addEventListener('click', handleClickOutside);
+		}, 0);
 	}
 	
 	// Close the dropdown
 	function closeDropdown() {
 		showDropdown = false;
+		document.removeEventListener('click', handleClickOutside);
 	}
+
+	// Handle click outside to close dropdown
+	function handleClickOutside(event: MouseEvent) {
+		if (selectedTokenElement && !selectedTokenElement.contains(event.target as Node)) {
+			closeDropdown();
+		}
+	}
+
+	// Clean up listeners on component unmount
+	onMount(() => {
+		return () => {
+			document.removeEventListener('click', handleClickOutside);
+		};
+	});
 	
 	// Handle dropdown action selection
-	function handleDropdownAction(action: 'send' | 'receive' | 'swap' | 'info') {
+	function handleDropdownAction(action: 'send' | 'receive' | 'swap' | 'info' | 'copy') {
 		if (selectedToken) {
 			if (action === 'receive') {
 				showReceiveTokenModal = true;
+				return; // Don't close the dropdown
+			} else if (action === 'copy') {
+				// Copy action is handled directly in the TokenDropdown component
+				return; // Don't close the dropdown
+			} else if (action === 'send') {
+				// Handle send action without closing dropdown
+				onAction(action, selectedToken);
+				return; // Don't close the dropdown
 			} else {
 				onAction(action, selectedToken);
 			}
@@ -355,6 +386,12 @@
 		showReceiveTokenModal = false;
 	}
 	
+	// --- Token Discovery Cache ---
+	let allAvailableTokensCache: FE.Token[] = [];
+	let allAvailableTokensCacheTimestamp = 0;
+	const CACHE_DURATION = 30 * 1000; // 30 seconds
+	// ---------------------------
+
 	// Run a thorough token discovery process that finds tokens with balances
 	async function runTokenDiscovery() {
 		if (!walletId || isLoadingBalances || isSyncing) return;
@@ -364,11 +401,22 @@
 		isSyncing = true;
 		
 		try {
-			// 1. First, load a fresh list of all available tokens
+			// 1. First, load a fresh list of all available tokens (with caching)
 			console.log("Starting thorough token discovery process...");
-			const { fetchAllTokens } = await import("$lib/api/tokens");
-			const allAvailableTokens = await fetchAllTokens();
-			console.log(`Fetched ${allAvailableTokens.length} tokens from the API`);
+			let allAvailableTokens: FE.Token[];
+			const now = Date.now();
+
+			if (now - allAvailableTokensCacheTimestamp < CACHE_DURATION && allAvailableTokensCache.length > 0) {
+				console.log("Using cached list of all available tokens.");
+				allAvailableTokens = allAvailableTokensCache;
+			} else {
+				console.log("Fetching fresh list of all available tokens.");
+				const { fetchAllTokens } = await import("$lib/api/tokens");
+				allAvailableTokens = await fetchAllTokens();
+				allAvailableTokensCache = allAvailableTokens; // Update cache
+				allAvailableTokensCacheTimestamp = now;    // Update timestamp
+			}
+			console.log(`Fetched or cached ${allAvailableTokens.length} tokens from the API`);
 			
 			// 2. Split tokens into manageable batches to avoid overwhelming the network
 			const BATCH_SIZE = 25;
@@ -379,11 +427,18 @@
 			
 			// 3. Go through each batch and check balances
 			let tokensWithBalance = [];
+			const allFetchedBalances = new Map<string, { in_tokens: bigint; in_usd: string }>(); // Store all fetched balances
+
 			for (let i = 0; i < batches.length; i++) {
-				const batch = batches[i];				
+				const batch = batches[i];
 				const batchBalances = await loadBalances(batch, walletId, true);
-				
-				// Find tokens with non-zero balances
+
+				// Store balances in our combined map
+				Object.entries(batchBalances).forEach(([canisterId, balanceData]) => {
+					allFetchedBalances.set(canisterId, balanceData);
+				});
+
+				// Find tokens with non-zero balances in this batch
 				const batchTokensWithBalance = batch.filter(token => {
 					if (!token.canister_id) return false;
 					const balance = batchBalances[token.canister_id];
@@ -416,13 +471,14 @@
 					.filter(token => token.canister_id && enabledTokenIds.has(token.canister_id));
 				
 				// Check balances for these tokens if we haven't already
-				const enabledTokenBalances = await loadBalances(currentEnabledTokens, walletId, true);
-				
-				// Find tokens with zero balance (potential removal candidates)
+				// OPTIMIZATION: Use the already fetched balances instead of a new call
+				// const enabledTokenBalances = await loadBalances(currentEnabledTokens, walletId, true);
+
+				// Find tokens with zero balance (potential removal candidates) using the fetched balances
 				const tokensToRemove = currentEnabledTokens.filter(token => {
 					// Skip essential tokens that should never be removed
 					if (!token.canister_id) return false;
-					
+
 					// Check if it's an essential token that should never be removed
 					const essentialTokenIds = [
 						"ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP
@@ -432,9 +488,9 @@
 						"aanaa-xaaaa-aaaah-aaeiq-cai", // CKUSDT
 					];
 					if (essentialTokenIds.includes(token.canister_id)) return false;
-					
-					// Check if it has zero balance
-					const balance = enabledTokenBalances[token.canister_id];
+
+					// Check if it has zero balance using the combined fetched balance data
+					const balance = allFetchedBalances.get(token.canister_id);
 					return !balance || balance.in_tokens === 0n;
 				});
 								
@@ -484,13 +540,44 @@
 	async function handleSyncButtonClick() {
 		// Try thorough discovery first
 		const foundTokens = await runTokenDiscovery();
-		
+
 		// If discovery didn't show the confirmation modal, fall back to regular sync
 		if (!foundTokens) {
-			handleSyncTokens();
+			console.log("Discovery found no changes, falling back to regular sync analysis (skipping redundant balance refresh).");
+			handleSyncTokens(true); // Pass true to skip the initial refresh
 		}
 	}
+
+	// Effect to load balances when walletId changes (initial load)
+	$effect(() => {
+		// This effect specifically handles the initial load when walletId becomes available
+		if (walletId) {
+			console.log("[WalletTokensList] walletId detected, triggering initial balance load.");
+			loadUserBalances(false); // Use false, let internal logic decide if refresh needed
+		}
+	});
+
+	// Effect to handle externally triggered forceRefresh
+	$effect(() => {
+		// This effect handles the forceRefresh prop changing AFTER initial mount
+		if (forceRefresh && walletId) {
+			console.log("[WalletTokensList] forceRefresh prop triggered balance load.");
+			loadUserBalances(true);
+		}
+	});
 </script>
+
+<style>
+	.active-token-gradient {
+		background: linear-gradient(to right, rgba(var(--color-kong-primary-rgb), 0.05), rgba(var(--color-kong-bg-light-rgb), 0.15));
+	}
+
+	.active-token {
+		position: relative;
+		z-index: 5;
+		border-bottom-color: transparent !important;
+	}
+</style>
 
 <div class="py-2">
 	<div class="flex items-center justify-between mb-3 px-4">
@@ -566,92 +653,108 @@
 			</p>
 		</div>
 	{:else}
-		<div class="space-y-0">
-			{#each processedTokenBalances as tokenBalance}
-				<div
-					class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border/30 hover:bg-kong-bg-light/10 transition-colors cursor-pointer relative"
-					on:click={(e) => handleTokenClick(e, tokenBalance)}
+		<div class="relative"> 
+			{#if isSyncing}
+				<div 
+					class="absolute inset-0 flex flex-col items-center justify-start pt-10 bg-kong-bg-dark/80 rounded-md z-10"
+					transition:fade={{ duration: 150 }}
 				>
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							{#if tokenBalance.token}
-								<div class="flex-shrink-0">
-									<TokenImages
-										tokens={[tokenBalance.token]}
-										size={36}
-										showSymbolFallback={true}
-										tooltip={{
-											text: tokenBalance.name,
-											direction: "top",
-										}}
-									/>
-								</div>
-							{:else}
-								<div
-									class="w-9 h-9 rounded-full bg-kong-text-primary/10 flex items-center justify-center border border-kong-border flex-shrink-0"
-								>
-									<span class="text-xs font-bold text-kong-primary"
-										>{tokenBalance.symbol}</span
-									>
-								</div>
-							{/if}
-							<div class="flex flex-col justify-center">
-								<div class="font-medium text-kong-text-primary text-sm leading-tight">
-									{tokenBalance.name}
-								</div>
-								<div class="text-xs text-kong-text-secondary mt-1 leading-tight">
-									{#if Number(tokenBalance.balance) > 0 && Number(tokenBalance.balance) < 0.00001}
-										<span title={tokenBalance.balance.toString()}>~0.00001</span> {tokenBalance.symbol}
-									{:else}
-										{tokenBalance.balance} {tokenBalance.symbol}
-									{/if}
-								</div>
-							</div>
-						</div>
-
-						<div class="text-right flex flex-col justify-center">
-							<div class="font-medium text-kong-text-primary text-sm leading-tight">
-								{formatCurrency(tokenBalance.usdValue)}
-							</div>
-							<div
-								class="text-xs {tokenBalance.change24h >= 0
-									? 'text-kong-accent-green'
-									: 'text-kong-accent-red'} font-medium mt-1 leading-tight"
-							>
-								{Number(formatToNonZeroDecimal(tokenBalance.change24h)) >= 0
-									? "+"
-									: ""}{formatToNonZeroDecimal(tokenBalance.change24h)}%
-							</div>
-						</div>
-					</div>
+					<LoadingIndicator text="Syncing tokens..." size={18} />
 				</div>
-			{/each}
-			
-			<!-- Token Management Buttons -->
-			<div class="p-4 flex justify-center gap-3">
-				<button
-					class="flex items-center gap-2 py-2 px-4 bg-kong-bg-light/10 hover:bg-kong-bg-light/20 text-kong-text-primary rounded-md transition-colors"
-					on:click={openManageTokensModal}
-				>
-					<Settings size={16} />
-					<span>Manage Tokens</span>
-				</button>
-			</div>
-		</div>
-	{/if}
-	
-	<!-- Token Dropdown -->
-	{#if selectedToken && showDropdown}
-		<div class="fixed inset-0 z-20 pointer-events-none">
-			<div class="absolute inset-0 bg-black/20 pointer-events-auto" on:click={closeDropdown}></div>
-			<div class="pointer-events-auto">
-				<TokenDropdown 
-					token={selectedToken} 
-					position={dropdownPosition}
-					visible={showDropdown}
-					onClose={closeDropdown}
-					onAction={handleDropdownAction}
-				/>
+			{/if}
+			<div class="space-y-0">
+				{#each processedTokenBalances as tokenBalance (tokenBalance.token.canister_id)}
+					<div>
+						<div
+							class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border/30 hover:bg-kong-bg-light/10 transition-all duration-200 relative
+								{isSyncing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+								{showDropdown && selectedTokenId !== tokenBalance.token?.canister_id ? 'opacity-40 hover:opacity-70' : ''}
+								{showDropdown && selectedTokenId === tokenBalance.token?.canister_id ? 
+									'active-token-gradient border-l-2 border-l-kong-primary shadow-[0_0_15px_rgba(0,0,0,0.1)] active-token' : 'border-l-2 border-l-transparent'}"
+							on:click={(e) => handleTokenClick(e, tokenBalance)}
+						>
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-3">
+									{#if tokenBalance.token}
+										<div class="flex-shrink-0">
+											<TokenImages
+												tokens={[tokenBalance.token]}
+												size={36}
+												showSymbolFallback={true}
+												tooltip={{
+													text: tokenBalance.name,
+													direction: "top",
+												}}
+											/>
+										</div>
+									{:else}
+										<div
+											class="w-9 h-9 rounded-full bg-kong-text-primary/10 flex items-center justify-center border border-kong-border flex-shrink-0"
+										>
+											<span class="text-xs font-bold text-kong-primary"
+												>{tokenBalance.symbol}</span
+											>
+										</div>
+									{/if}
+									<div class="flex flex-col justify-center">
+										<div class="font-medium text-kong-text-primary text-sm leading-tight">
+											{tokenBalance.name}
+										</div>
+										<div class="text-xs text-kong-text-secondary mt-1 leading-tight">
+											{#if Number(tokenBalance.balance) > 0 && Number(tokenBalance.balance) < 0.00001}
+												<span title={tokenBalance.balance.toString()}>~0.00001</span> {tokenBalance.symbol}
+											{:else}
+												{tokenBalance.balance} {tokenBalance.symbol}
+											{/if}
+										</div>
+									</div>
+								</div>
+
+								<div class="text-right flex flex-col justify-center">
+									<div class="font-medium text-kong-text-primary text-sm leading-tight">
+										{formatCurrency(tokenBalance.usdValue)}
+									</div>
+									<div
+										class="text-xs {tokenBalance.change24h >= 0
+											? 'text-kong-accent-green'
+											: 'text-kong-accent-red'} font-medium mt-1 leading-tight"
+									>
+										{Number(formatToNonZeroDecimal(tokenBalance.change24h)) >= 0
+											? "+"
+											: ""}{formatToNonZeroDecimal(tokenBalance.change24h)}%
+									</div>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Token Actions Row - Expanded underneath the token -->
+						{#if selectedTokenId === tokenBalance.token?.canister_id && showDropdown}
+							<div 
+								class="px-4 py-3 border-b border-kong-border/30 bg-gradient-to-b from-kong-accent-blue/5 to-kong-bg-light/10" 
+								transition:slide={{ duration: 200 }}
+							>
+								<TokenDropdown 
+									token={selectedToken} 
+									expanded={true}
+									visible={showDropdown}
+									onClose={closeDropdown}
+									onAction={handleDropdownAction}
+								/>
+							</div>
+						{/if}
+					</div>
+				{/each}
+				
+				<!-- Token Management Buttons -->
+				<div class="p-4 flex justify-center gap-3">
+					<button
+						class="flex items-center gap-2 py-2 px-4 bg-kong-bg-light/10 hover:bg-kong-bg-light/20 text-kong-text-primary rounded-md transition-colors"
+						on:click={openManageTokensModal}
+					>
+						<Settings size={16} />
+						<span>Manage Tokens</span>
+					</button>
+				</div>
 			</div>
 		</div>
 	{/if}
