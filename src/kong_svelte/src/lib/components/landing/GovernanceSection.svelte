@@ -3,11 +3,14 @@
   import * as d3 from 'd3';
   import { fetchTokensByCanisterId } from '$lib/api/tokens/TokenApiClient';
   import { KONG_CANISTER_ID } from '$lib/constants/canisterConstants';
-  import { Coins, Wallet, Clock, LucideCheck } from 'lucide-svelte';
+  import { Coins, Wallet, Clock, LucideCheck, Gavel } from 'lucide-svelte';
   import TokenAnimation from './TokenAnimation.svelte';
   import { browser } from '$app/environment';
-  import { fly, fade, scale } from 'svelte/transition';
-  import { expoOut, elasticOut } from 'svelte/easing';
+  import { fly, fade } from 'svelte/transition';
+  import { expoOut } from 'svelte/easing';
+  
+  // Import the StatCard component
+  import StatCard from './StatCard.svelte';
   
   // Accept isVisible prop from parent
   export let isVisible = false;
@@ -39,10 +42,10 @@
   let glitchActive = false;
   let kongPrice = '0.00';
   let isLoadingPrice = true;
-  let tokenomicsVisible = false;
+  let governanceVisible = false;
   let hasTriggeredAnimation = false;
   let observer: IntersectionObserver;
-  let tokenomicsSectionElement: HTMLElement;
+  let governanceSectionElement: HTMLElement;
   let chartCreated = false;
   let mounted = false;
   
@@ -55,7 +58,7 @@
     hasTriggeredAnimation = true;
     // Use requestAnimationFrame for smoother transitions
     requestAnimationFrame(() => {
-      tokenomicsVisible = true;
+      governanceVisible = true;
     });
   }
   
@@ -275,13 +278,13 @@
   }
   
   const handleResize = debounce(() => {
-    if (tokenChartContainer && tokenomicsVisible && document.body.contains(tokenChartContainer)) {
+    if (tokenChartContainer && governanceVisible && document.body.contains(tokenChartContainer)) {
       chartCreated = false;
       createTokenDistributionChart();
     }
   }, 250);
   
-  $: if (tokenomicsVisible && tokenChartContainer && !chartCreated && mounted) {
+  $: if (governanceVisible && tokenChartContainer && !chartCreated && mounted) {
     setTimeout(() => createTokenDistributionChart(), 300);
   }
   
@@ -309,7 +312,7 @@
       observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            tokenomicsVisible = true;
+            governanceVisible = true;
             observer.disconnect(); // Immediately disconnect once triggered
           }
         });
@@ -318,9 +321,9 @@
         rootMargin: '100px' // Pre-load when close to viewport
       });
       
-      if (tokenomicsSectionElement) observer.observe(tokenomicsSectionElement);
+      if (governanceSectionElement) observer.observe(governanceSectionElement);
     } else {
-      setTimeout(() => { tokenomicsVisible = true; }, 500);
+      setTimeout(() => { governanceVisible = true; }, 500);
     }
     
     return () => {
@@ -333,8 +336,8 @@
 </script>
 
 <section 
-  id="tokenomics" 
-  bind:this={tokenomicsSectionElement}
+  id="governance" 
+  bind:this={governanceSectionElement}
   class="min-h-screen py-16 md:pb-24 px-2 sm:px-4 md:pt-0 w-full flex items-center justify-center bg-[#0D111F] relative overflow-hidden"
 >
   <!-- Animated background grid - reduced complexity for mobile -->
@@ -370,57 +373,88 @@
 
   <!-- Token animation background - only load if visible and in browser -->
   {#if browser && isVisible}
-    <TokenAnimation containerClass="z-[-1]" tokenomicsVisible={isVisible} />
+    <TokenAnimation containerClass="z-[-1]" governanceVisible={isVisible} />
   {/if}
 
   <!-- CRT Effects - optimize with CSS variables instead of multiple divs -->
   <div class="crt-effects"></div>
 
   <!-- Main content container -->
-  <div class="container max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8 animate-[content-warp_20s_infinite_ease-in-out] transform-origin-center will-change-transform">
+  <div class="container max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8">
     <!-- Text content side -->
-    <div class="flex-1 text-left mb-10 md:mb-0 z-10 transform translate-y-12 opacity-0 transition-all duration-700 ease-out {tokenomicsVisible ? 'translate-y-0 opacity-100' : ''}">
-      <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm text-purple-300 text-xs md:text-sm font-medium mb-4 w-fit border border-purple-500/20 mx-auto md:mx-0 transition-all duration-500 ease-out {tokenomicsVisible ? 'opacity-100' : 'opacity-0 transform translate-y-4'}" style="transition-delay: 100ms">
-        <Coins size={14} class="text-purple-300" />
-        <span>Token Economics</span>
+    {#if governanceVisible} <div class="flex-1 text-left mb-10 md:mb-0 z-10" in:fade={{ duration: 700 }}>
+      <div 
+        class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm text-purple-300 text-xs md:text-sm font-medium mb-4 w-fit border border-purple-500/20 mx-auto md:mx-0"
+        in:fly={{ y: 20, delay: 100, duration: 500, easing: expoOut }}
+      >
+        <Gavel size={14} class="text-purple-300" />
+        <span>Decentralized Autonomous Organization</span>
       </div>
       
-      <h2 class="text-2xl md:text-3xl lg:text-5xl font-bold mb-4 md:mb-6 text-transparent bg-clip-text bg-gradient-to-r from-[#9E7CF4] to-[#FF00FF] leading-tight transition-all duration-700 ease-out {tokenomicsVisible ? 'opacity-100' : 'opacity-0 transform translate-y-4'}" style="transition-delay: 200ms">
-        $KONG <br class="hidden md:block" />Tokenomics
+      <h2 
+        class="text-2xl md:text-3xl lg:text-5xl font-bold mb-4 md:mb-6 text-transparent bg-clip-text bg-gradient-to-r from-[#9E7CF4] to-[#FF00FF] leading-tight"
+        in:fly={{ y: 20, delay: 200, duration: 700, easing: expoOut }}
+      >
+        KONG <br class="hidden md:block" />GOVERNANCE
       </h2>
       
-      <p class="text-base md:text-lg lg:text-xl text-gray-300 mb-6 md:mb-8 max-w-lg transition-all duration-700 ease-out {tokenomicsVisible ? 'opacity-100' : 'opacity-0 transform translate-y-4'}" style="transition-delay: 300ms">
+      <p 
+        class="text-base md:text-lg lg:text-xl text-gray-300 mb-6 md:mb-8 max-w-lg"
+        in:fly={{ y: 20, delay: 300, duration: 700, easing: expoOut }}
+      >
         KONG is the governance and utility token of the Kong Protocol, powering the entire ecosystem with staking rewards and governance rights.
       </p>
       
-      <!-- Stats cards - 2 columns on mobile, 3 on larger screens -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-6 md:mb-8 transition-all duration-700 ease-out {tokenomicsVisible ? 'opacity-100' : 'opacity-0 transform translate-y-4'}" style="transition-delay: 400ms">
-        {#each [
-          { icon: Wallet, color: "purple", value: formatPrice(kongPrice), label: "Current Price" },
-          { icon: Coins, color: "pink", value: "999M", label: "Total Supply" },
-          { icon: Clock, color: "indigo", value: "14.5%", label: "Staking APY" }
-        ] as stat, i}
-          <div class="{i === 2 ? 'col-span-2 sm:col-span-1' : ''} bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/10 hover:border-purple-500/30 transition-all transform {tokenomicsVisible ? 'scale-100' : 'scale-95 opacity-0'}" style="transition-delay: {400 + i * 100}ms">
-            <div class="flex items-center">
-              <div class="flex-shrink-0 mr-2 sm:mr-3 bg-{stat.color}-500/20 p-1.5 sm:p-2 rounded-md sm:rounded-lg">
-                <svelte:component this={stat.icon} size={14} class="text-{stat.color}-300" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="bg-[linear-gradient(90deg,#9E7CF4,#FF00FF)] bg-clip-text text-transparent text-base sm:text-lg md:text-xl truncate font-['BlenderPro',_'Rajdhani',_monospace] tracking-wider font-bold leading-none sm:leading-tight tokenomics-value">{stat.value}</div>
-                <div class="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">{stat.label}</div>
-              </div>
-            </div>
-          </div>
-        {/each}
+      <!-- Stats cards using StatCard component -->
+      <div 
+        class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-6 md:mb-8"
+        in:fly={{ y: 20, delay: 400, duration: 700, easing: expoOut }}
+      >
+        <div>
+          <StatCard
+            icon={Wallet}
+            value={formatPrice(kongPrice)}
+            label="Current Price"
+            iconBgClass="bg-purple-500/20"
+            iconColorClass="text-purple-300"
+            gradientClass="bg-[linear-gradient(90deg,#9E7CF4,#FF00FF)]"
+          />
+        </div>
+
+        <div>
+          <StatCard
+            icon={Coins}
+            value="999M"
+            label="Total Supply"
+            iconBgClass="bg-pink-500/20"
+            iconColorClass="text-pink-300"
+            gradientClass="bg-[linear-gradient(90deg,#9E7CF4,#FF00FF)]"
+          />
+        </div>
+
+        <div class="col-span-2 sm:col-span-1">
+          <StatCard
+            icon={Clock}
+            value="14.5%"
+            label="Staking APY"
+            iconBgClass="bg-indigo-500/20"
+            iconColorClass="text-indigo-300"
+            gradientClass="bg-[linear-gradient(90deg,#9E7CF4,#FF00FF)]"
+          />
+        </div>
       </div>
       
       <!-- Feature bullets -->
-      <div class="space-y-5 md:space-y-6 transition-all duration-700 ease-out {tokenomicsVisible ? 'opacity-100' : 'opacity-0 transform translate-y-4'}" style="transition-delay: 700ms">
+      <div class="space-y-5 md:space-y-6">
         {#each [
-          { title: "Governance Rights", description: "Stake KONG to vote on key protocol decisions and earn staking rewards!" },
+          { title: "Fully On-Chain", description: "The KONG DAO controls everything on-chain, frontend and backend! Protocol updates are voted on and deployed by the DAO." },
+          { title: "Governance Rights", description: "Stake KONG to vote on key protocol decisions and earn staking rewards." },
           { title: "Treasury Management", description: `DAO-owned treasury of ~${formatNumber(snsData.icpTreasury)} ICP.` }
         ] as feature, i}
-          <div class="flex items-start transition-all transform {tokenomicsVisible ? 'translate-x-0 opacity-100' : 'translate-x-[-20px] opacity-0'}" style="transition-delay: {700 + i * 150}ms">
+          <div 
+            class="flex items-start"
+            in:fly={{ x: -20, delay: 700 + i * 150, duration: 500, easing: expoOut }}
+          >
             <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center mr-3 mt-1">
               <LucideCheck size={10} class="text-white" />
             </div>
@@ -431,23 +465,45 @@
           </div>
         {/each}
       </div>
-    </div>
+    </div> {/if} 
     
     <!-- Chart visualization side - only load if visible -->
-    {#if tokenomicsVisible}
-      <div class="w-full md:flex-1 flex justify-center items-center relative z-10 transform translate-y-12 opacity-0 transition-all duration-700 ease-out {tokenomicsVisible ? 'translate-y-0 opacity-100' : ''}" style="transition-delay: 300ms">
+    {#if governanceVisible}
+      <div 
+        class="w-full md:flex-1 flex justify-center items-center relative z-10"
+        in:fade={{ delay: 300, duration: 700 }}
+      >
         <div class="relative w-full max-w-[320px] sm:max-w-[400px] md:max-w-[500px]">
-          <div class="relative rounded-xl overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 p-4 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700 ease-out transform {tokenomicsVisible ? 'scale-100' : 'scale-90 opacity-80'}">
-            <h3 class="text-base md:text-lg font-bold mb-3 md:mb-4 text-center text-purple-300 transition-all duration-500 ease-out {tokenomicsVisible ? 'opacity-100' : 'opacity-0 transform scale-95'}">Token Distribution</h3>
+          <div 
+            class="relative rounded-xl overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 p-4 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-transform duration-700 ease-out" 
+            style="transform: {governanceVisible ? 'scale(1)' : 'scale(0.9)'}; opacity: {governanceVisible ? 1 : 0.8};"
+          >
+            <h3 
+              class="text-base md:text-lg font-bold mb-3 md:mb-4 text-center text-purple-300"
+              in:fade={{ delay: 500, duration: 500 }}
+            >
+              Token Distribution
+            </h3>
             
             <!-- D3 Chart container -->
             <div bind:this={tokenChartContainer} class="h-[250px] sm:h-[320px] md:h-[400px] w-full overflow-visible"></div>
             
             <!-- Distribution legend - 2 columns -->
-            <div class="grid grid-cols-2 gap-y-2 gap-x-3 md:gap-x-4 mt-3 md:mt-4 transition-all duration-700 ease-out {tokenomicsVisible ? 'opacity-100' : 'opacity-0 transform translate-y-4'}">
+            <div 
+              class="grid grid-cols-2 gap-y-2 gap-x-3 md:gap-x-4 mt-3 md:mt-4"
+              in:fade={{ delay: 700, duration: 700 }}
+            >
               {#each tokenDistribution.filter(item => item.percentage > 0) as item, i}
-                <div class="flex items-center transform transition-all duration-500 ease-out {tokenomicsVisible ? 'opacity-100' : 'opacity-0'}" style="transition-delay: {700 + i * 100}ms">
-                  <div class="w-2.5 md:w-3 h-2.5 md:h-3 rounded-full mr-1.5 md:mr-2 transition-all duration-500 ease-out" style="background-color: {item.color}; transform: {tokenomicsVisible ? 'scale(1)' : 'scale(0)'}; transition-delay: {700 + i * 100}ms"></div>
+                <div 
+                  class="flex items-center opacity-0"
+                  in:fade={{ delay: 800 + i * 100, duration: 500 }}
+                  style="opacity: 1;"
+                >
+                  <div 
+                    class="w-2.5 md:w-3 h-2.5 md:h-3 rounded-full mr-1.5 md:mr-2 transition-transform duration-500 ease-out" 
+                    style="background-color: {item.color}; transform: {governanceVisible ? 'scale(1)' : 'scale(0)'}; transition-delay: {800 + i * 100}ms"
+                  >
+                  </div>
                   <div class="text-[10px] md:text-xs text-gray-300 whitespace-nowrap">
                     <span class="font-semibold">{item.label}</span> ({item.percentage}%)
                   </div>
@@ -548,11 +604,7 @@
   <div class="gradient-overlay"></div>
 </section>
 
-<style>
-  .delay-1000 {
-    animation-delay: 1000ms;
-  }
-  
+<style scoped>
   /* Combined CRT effects for better performance */
   .crt-effects {
     position: absolute;
@@ -612,13 +664,6 @@
   @keyframes content-warp {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.001); }
-  }
-  
-  /* Enhanced text effect for tokenomics values - simplified */
-  .tokenomics-value {
-    text-shadow: 
-      0 0 5px rgba(158, 124, 244, 0.5);
-    animation: crt-token-pulse 8s infinite alternate;
   }
   
   @keyframes crt-token-pulse {

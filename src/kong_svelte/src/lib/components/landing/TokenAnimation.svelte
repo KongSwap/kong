@@ -5,7 +5,7 @@
 
   // Component props
   export let containerClass = '';
-  export let tokenomicsVisible = false; // New prop to control initialization
+  export let governanceVisible = false; // New prop to control initialization
 
   // ThreeJS variables
   let container: HTMLDivElement;
@@ -302,7 +302,7 @@
   });
 
   // Reactive statement to initialize when visible
-  $: if (browser && container && tokenomicsVisible && !isInitialized) {
+  $: if (browser && container && governanceVisible && !isInitialized) {
     initScene();
     animate();
   }
