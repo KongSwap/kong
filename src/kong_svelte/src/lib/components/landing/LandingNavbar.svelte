@@ -45,11 +45,11 @@
         PREDICT
       </a>
       <a 
-        href="#tokenomics" 
+        href="#governance" 
         class="text-[#A1A7BC] font-['Inter',_'Rajdhani',_'SF_Pro_Display',_sans-serif] text-[0.9rem] tracking-wide font-semibold uppercase py-2 relative transition-all duration-250 ease-in-out hover:text-[#7DF9FF] hover:tracking-wider hover:-translate-y-[1px] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[#00A4FF] after:transition-all after:duration-200 hover:after:w-full {currentSection === 3 ? 'text-[#7DF9FF]' : ''}" 
         on:click|preventDefault={() => scrollToSection(3)}
       >
-        TOKENOMICS
+        GOVERNANCE
       </a>
     </div>
     
@@ -106,11 +106,11 @@
           PREDICT
         </a>
         <a 
-          href="#tokenomics" 
+          href="#governance" 
           class="text-[#A1A7BC] text-lg font-medium py-4 border-b border-[rgba(255,255,255,0.05)] font-['Inter',_'Rajdhani',_'SF_Pro_Display',_sans-serif] uppercase transition-all duration-250 ease-in-out hover:text-[#7DF9FF] {currentSection === 3 ? 'text-[#7DF9FF]' : ''}" 
           on:click|preventDefault={() => scrollToSection(3)}
         >
-          TOKENOMICS
+          GOVERNANCE
         </a>
         <button 
           on:click={navigateToSwap} 

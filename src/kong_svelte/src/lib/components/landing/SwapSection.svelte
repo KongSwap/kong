@@ -4,54 +4,79 @@
   import { cubicOut } from "svelte/easing";
   import { DollarSign, BarChart3, RefreshCw, Zap, LucideCheck } from "lucide-svelte";
   
-  // Section visibility state
-  export let isVisible = false;
+  // Import the new components
+  import StatCard from './StatCard.svelte';
+  import IphoneFrame from './IphoneFrame.svelte';
   
-  // Props for stats data
-  export let poolStats = { total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 };
-  export let totalSwaps = 0;
-  export let formatNumber = (num: number, precision?: number): string => {
-    if (num >= 1_000_000_000) {
-    } else if (num >= 1_000_000) {
-      return `$${(num / 1_000_000).toFixed(precision || 2)}M`;
-    } else if (num >= 1_000) {
-      return `$${(num / 1_000).toFixed(precision || 2)}K`;
+  // Props using $props
+  let { 
+    isVisible = false,
+    poolStats = { total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 },
+    totalSwaps = 0,
+    formatNumber = (num: number, precision?: number): string => {
+      if (num >= 1_000_000_000) {
+        return `$${(num / 1_000_000_000).toFixed(precision || 2)}B`;
+      } else if (num >= 1_000_000) {
+        return `$${(num / 1_000_000).toFixed(precision || 2)}M`;
+      } else if (num >= 1_000) {
+        return `$${(num / 1_000).toFixed(precision || 2)}K`;
+      }
+      return `$${num.toFixed(precision || 2)}`;
+    },
+    formatCount = (num: number): string => {
+      if (num >= 1_000_000) {
+        return `${(num / 1_000_000).toFixed(1)}M+`;
+      } else if (num >= 1_000) {
+        return `${(num / 1_000).toFixed(0)}K+`;
+      }
+      return num.toString();
     }
-    return `$${num.toFixed(precision || 2)}`;
-  };
-  export let formatCount = (num: number): string => {
-    if (num >= 1_000_000) {
-      return `${(num / 1_000_000).toFixed(1)}M+`;
-    } else if (num >= 1_000) {
-      return `${(num / 1_000).toFixed(0)}K+`;
-    }
-    return num.toString();
-  };
+  } = $props<{
+    isVisible?: boolean;
+    poolStats?: { total_volume_24h: number; total_tvl: number; total_fees_24h: number };
+    totalSwaps?: number;
+    formatNumber?: (num: number, precision?: number) => string;
+    formatCount?: (num: number) => string;
+  }>();
   
-  // Calculated stats from real data
-  let avgSaving = 0.82; // Average saving percentage
-  let tradePairs = 160; // Number of trading pairs
+  // Feature bullets data
+  const features = [
+    {
+      title: "Intelligent Routing",
+      description: "Swap any token with any other token! Kong's intelligent routing gives you the best rates across the entire market."
+    },
+    {
+      title: "Multi-Chain",
+      description: "KONG is the most advanced DeFi meta-protocol in the world! Swap any token with any other token across multiple chains!"
+    },
+    {
+      title: `DAO Governed`,
+      description: "KONG is fully on-chain. Protocol updates are voted on and deployed by the DAO, ensuring the highest level of transparency and security."
+    }
+  ];
   
   // Tweened values for animations
   const tweenedTVL = tweened(0, { duration: 1500, easing: cubicOut });
   const tweenedVolume = tweened(0, { duration: 1500, easing: cubicOut });
   const tweenedSwapCount = tweened(0, { duration: 1500, easing: cubicOut });
   
-  // Update tweened values when props change
-  $: {
+  // Update tweened values when props change using $effect
+  $effect(() => {
     tweenedTVL.set(poolStats.total_tvl);
     tweenedVolume.set(poolStats.total_volume_24h);
     tweenedSwapCount.set(totalSwaps);
-  }
+  });
   
-  // Animation classes
-  let animationClass = '';
-  let hasTriggeredAnimation = false;
+  // Animation state using $state
+  let animationClass = $state('');
+  let hasTriggeredAnimation = $state(false);
   
-  // Watch for visibility changes
-  $: if (isVisible && !hasTriggeredAnimation) {
-    triggerAnimation();
-  }
+  // Watch for visibility changes using $effect
+  $effect(() => {
+    if (isVisible && !hasTriggeredAnimation) {
+      triggerAnimation();
+    }
+  });
   
   function triggerAnimation() {
     hasTriggeredAnimation = true;
@@ -60,17 +85,17 @@
     }, 300);
   }
   
-  // Lightning variables
-  let lightningActive = false;
-  let lightningInterval;
-  let lightningCount = 0;
-  let sectionRef;
-  let hasTriggeredInitialLightning = false;
+  // Lightning variables using $state
+  let lightningActive = $state(false);
+  let lightningInterval = $state<ReturnType<typeof setInterval> | undefined>(undefined);
+  let lightningCount = $state(0);
+  let sectionRef = $state<HTMLElement | undefined>(undefined);
+  let hasTriggeredInitialLightning = $state(false);
   
-  // Check for small screens
-  let isSmallScreen = false;
+  // Check for small screens using $state
+  let isSmallScreen = $state(false);
   
-  // Function to trigger a lightning strike
+  // Function to trigger a lightning strike (modifies $state)
   function triggerLightning(delay = 0) {
     setTimeout(() => {
       lightningActive = true;
@@ -82,7 +107,7 @@
     }, delay);
   }
   
-  // Resize handler for responsive adjustments
+  // Resize handler for responsive adjustments (modifies $state)
   function handleResize() {
     isSmallScreen = window.innerWidth < 640;
   }
@@ -95,39 +120,40 @@
       window.addEventListener('resize', handleResize);
     }
     
-    // Calculate monthly volume based on daily volume
-    const monthlyVolume = poolStats.total_volume_24h * 30;
-    
-    // Setup random ongoing lightning flashes
-    lightningInterval = setInterval(() => {
+    // Setup random ongoing lightning flashes (modifies $state)
+    const intervalId = setInterval(() => {
       if (Math.random() > 0.7) {
         triggerLightning();
       }
     }, 3000 + Math.random() * 5000);
+    lightningInterval = intervalId;
     
     return () => {
-      if (lightningInterval) clearInterval(lightningInterval);
+      if (intervalId) clearInterval(intervalId);
+      lightningInterval = undefined; // Clear state on cleanup
       if (typeof window !== 'undefined') {
         window.removeEventListener('resize', handleResize);
       }
     };
   });
   
-  // Watch visibility to trigger initial lightning strikes
-  $: if (isVisible && !hasTriggeredInitialLightning) {
-    hasTriggeredInitialLightning = true;
-    
-    // First strike after a short delay
-    triggerLightning(200);
-    
-    // A second strike shortly after
-    triggerLightning(800);
-    
-    // Maybe a third one for dramatic effect
-    if (Math.random() > 0.5) {
-      triggerLightning(1400);
+  // Effect to trigger initial lightning strikes based on visibility
+  $effect(() => {
+    if (isVisible && !hasTriggeredInitialLightning) {
+      hasTriggeredInitialLightning = true;
+      
+      // First strike after a short delay
+      triggerLightning(200);
+      
+      // A second strike shortly after
+      triggerLightning(800);
+      
+      // Maybe a third one for dramatic effect
+      if (Math.random() > 0.5) {
+        triggerLightning(1400);
+      }
     }
-  }
+  });
 </script>
 
 <section 
@@ -262,39 +288,12 @@
   <div class="container max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8">
     <!-- iPhone with screenshot (on left for swap section) -->
     <div class="flex-1 flex justify-center items-center relative z-10 order-2 md:order-1 transform translate-y-12 opacity-0 transition-all duration-1000 ease-out {animationClass}">
-      <div class="relative w-[220px] xs:w-[260px] sm:w-[280px] md:w-[320px] transition-all duration-300 hover:scale-[1.02]">
-        <!-- iPhone frame with improved realism -->
-        <div class="relative w-full h-[450px] xs:h-[520px] sm:h-[580px] md:h-[650px] bg-gradient-to-b from-gray-700 to-gray-900 rounded-[35px] md:rounded-[40px] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-[6px] border-gray-800">
-          <!-- Volume buttons -->
-          <div class="absolute -left-[2px] top-[80px] md:top-[100px] w-[2px] h-8 md:h-12 bg-gray-900 rounded-l-lg shadow-inner"></div>
-          <div class="absolute -left-[2px] top-[120px] md:top-[150px] w-[2px] h-10 md:h-16 bg-gray-900 rounded-l-lg shadow-inner"></div>
-          
-          <!-- Power button -->
-          <div class="absolute -right-[2px] top-[100px] md:top-[120px] w-[2px] h-10 md:h-14 bg-gray-900 rounded-r-lg shadow-inner"></div>
-          
-          <!-- Subtle inner shadow on frame -->
-          <div class="absolute inset-3 rounded-[28px] md:rounded-[32px] shadow-inner opacity-30"></div>
-          
-          <!-- Notch with more detail -->
-          <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-1/3 h-5 md:h-7 bg-gray-900 rounded-b-2xl overflow-hidden flex justify-center">
-            <div class="w-1.5 md:w-2 h-1.5 md:h-2 bg-gray-700 rounded-full my-1 mx-0.5 md:mx-1"></div>
-            <div class="w-4 md:w-6 h-1.5 md:h-2 bg-gray-700 rounded-full my-1 mx-0.5 md:mx-1"></div>
-            <div class="w-1.5 md:w-2 h-1.5 md:h-2 bg-gray-700 rounded-full my-1 mx-0.5 md:mx-1"></div>
-          </div>
-          
-          <!-- Screenshot with subtle animation -->
-          <div class="h-full w-full rounded-[28px] md:rounded-[32px] overflow-hidden relative">
-            <div class="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-indigo-500/10 z-10 pointer-events-none animate-pulse"></div>
-            <img src="/images/swapscreen.png" alt="Swap Interface Screenshot" class="w-full h-full object-cover relative z-0" />
-          </div>
-          
-          <!-- Home indicator with subtle animation -->
-          <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-16 md:w-28 h-1 bg-gray-300 rounded-full animate-pulse"></div>
-        </div>
-        
-        <!-- Device reflection -->
-        <div class="absolute bottom-[-15px] md:bottom-[-20px] left-[10%] right-[10%] h-[15px] md:h-[20px] bg-gradient-to-b from-purple-500/20 to-transparent blur-sm rounded-[50%]"></div>
-      </div>
+      <!-- Use the IphoneFrame component -->
+      <IphoneFrame 
+        screenshotSrc="/images/swapscreen.png" 
+        gradientOverlay="from-purple-500/10 to-indigo-500/10"
+        reflectionColor="from-purple-500/20"
+      />
     </div>
 
     <!-- Text content with enhanced design -->
@@ -312,66 +311,51 @@
         Trade tokens with exceptional speed and minimal slippage. Kong's intelligent routing gives you the best rates across the entire market.
       </p>
       
-      <!-- Swap stats cards with real data - improved sizing -->
+      <!-- Swap stats cards using StatCard component -->
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-6 md:mb-8">
-        <div class="bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/10 hover:border-purple-500/30 transition-all">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 mr-2 sm:mr-3 bg-indigo-500/20 p-1.5 sm:p-2 rounded-md sm:rounded-lg">
-              <DollarSign size={14} class="text-indigo-300" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="bg-[linear-gradient(90deg,#7B68EE,#9370DB)] bg-clip-text text-transparent text-base sm:text-lg md:text-xl truncate font-['BlenderPro',_'Rajdhani',_monospace] tracking-wider font-bold leading-none sm:leading-tight">{formatNumber(poolStats.total_tvl)}</div>
-              <div class="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">TVL</div>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          icon={DollarSign}
+          value={formatNumber(poolStats.total_tvl)}
+          label="TVL"
+          iconBgClass="bg-indigo-500/20"
+          iconColorClass="text-indigo-300"
+          gradientClass="bg-[linear-gradient(90deg,#7B68EE,#9370DB)]"
+        />
         
-        <div class="bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/10 hover:border-purple-500/30 transition-all">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 mr-2 sm:mr-3 bg-purple-500/20 p-1.5 sm:p-2 rounded-md sm:rounded-lg">
-              <BarChart3 size={14} class="text-purple-300" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="bg-[linear-gradient(90deg,#7B68EE,#9370DB)] bg-clip-text text-transparent text-base sm:text-lg md:text-xl truncate font-['BlenderPro',_'Rajdhani',_monospace] tracking-wider font-bold leading-none sm:leading-tight">{formatNumber(poolStats.total_volume_24h, 0)}</div>
-              <div class="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">24h Volume</div>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          icon={BarChart3}
+          value={formatNumber(poolStats.total_volume_24h, 0)}
+          label="24h Volume"
+          iconBgClass="bg-purple-500/20"
+          iconColorClass="text-purple-300"
+          gradientClass="bg-[linear-gradient(90deg,#7B68EE,#9370DB)]"
+        />
         
-        <div class="col-span-2 sm:col-span-1 bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/10 hover:border-purple-500/30 transition-all">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 mr-2 sm:mr-3 bg-blue-500/20 p-1.5 sm:p-2 rounded-md sm:rounded-lg">
-              <RefreshCw size={14} class="text-blue-300" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="bg-[linear-gradient(90deg,#7B68EE,#9370DB)] bg-clip-text text-transparent text-base sm:text-lg md:text-xl truncate font-['BlenderPro',_'Rajdhani',_monospace] tracking-wider font-bold leading-none sm:leading-tight">{formatCount(totalSwaps)}</div>
-              <div class="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">Total Swaps</div>
-            </div>
-          </div>
+        <div class="col-span-2 sm:col-span-1"> 
+          <StatCard
+            icon={RefreshCw}
+            value={formatCount(totalSwaps)}
+            label="Total Swaps"
+            iconBgClass="bg-blue-500/20"
+            iconColorClass="text-blue-300"
+            gradientClass="bg-[linear-gradient(90deg,#7B68EE,#9370DB)]"
+          />
         </div>
       </div>
       
-      <!-- Feature bullets with enhanced styling -->
+      <!-- Feature bullets with enhanced styling (rendered dynamically) -->
       <div class="space-y-5 md:space-y-6">
-        <div class="flex items-start">
-          <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center mr-3 mt-1">
-            <LucideCheck size={10} class="text-white" />
+        {#each features as feature}
+          <div class="flex items-start">
+            <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center mr-3 mt-1">
+              <LucideCheck size={10} class="text-white" />
+            </div>
+            <div>
+              <h3 class="text-base md:text-lg font-semibold text-white mb-1">{feature.title}</h3>
+              <p class="text-sm md:text-base text-gray-300">{feature.description}</p>
+            </div>
           </div>
-          <div>
-            <h3 class="text-base md:text-lg font-semibold text-white mb-1">Intelligent Routing</h3>
-            <p class="text-sm md:text-base text-gray-300">Swap any token with any other token! Kong's intelligent routing gives you the best rates across the entire market.</p>
-          </div>
-        </div>
-        
-        <div class="flex items-start">
-          <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center mr-3 mt-1">
-            <LucideCheck size={10} class="text-white" />
-          </div>
-          <div>
-            <h3 class="text-base md:text-lg font-semibold text-white mb-1">{tradePairs}+ Trading Pairs</h3>
-            <p class="text-sm md:text-base text-gray-300">Access a wide range of tokens with deep liquidity</p>
-          </div>
-        </div>
+        {/each}
       </div>
     </div>
   </div>

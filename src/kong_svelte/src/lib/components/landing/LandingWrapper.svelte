@@ -8,41 +8,41 @@
   import HeroSection from "./HeroSection.svelte";
   import PredictionMarketsSection from "./PredictionMarketsSection.svelte";
   import SwapSection from "./SwapSection.svelte";
-  import TokenomicsSection from "./TokenomicsSection.svelte";
+  import GovernanceSection from "./GovernanceSection.svelte";
   import CtaSection from "./CtaSection.svelte";
   import LandingFooter from "./LandingFooter.svelte";
 
-  // Reactive state
-  let showGetStarted = false;
-  let currentSection = 0;
+  // Reactive state using $state
+  let showGetStarted = $state(false);
+  let currentSection = $state(0);
   let sections = [
     "hero",
     "swap",
     "prediction-markets",
-    "tokenomics",
+    "governance",
     "cta",
     "footer",
   ];
-  let observer: IntersectionObserver;
-  let isMenuOpen = false;
-  let appNavbarElems: HTMLElement[] = [];
-  let poolStats = { total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 };
-  let totalSwaps = 0;
-  let isLoading = true;
-  let scrollContainer: HTMLElement;
-  let scrollY = 0;
-  let navbarVisible = true; // Always visible
-  let sectionUpdateTimeout: ReturnType<typeof setTimeout> | null = null;
+  let observer: IntersectionObserver | undefined;
+  let isMenuOpen = $state(false);
+  let appNavbarElems: HTMLElement[] = []; // No need for $state if not directly reactive in template/effects
+  let poolStats = $state({ total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 });
+  let totalSwaps = $state(0);
+  let isLoading = $state(true);
+  let scrollContainer = $state<HTMLElement | undefined>(undefined);
+  let scrollY = $state(0);
+  let navbarVisible = $state(true); // Always visible - maybe remove $state if truly static?
+  let sectionUpdateTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
   
-  // Section visibility states
-  let sectionVisibility = {
+  // Section visibility states using $state
+  let sectionVisibility = $state({
     "hero": false,
     "swap": false, 
     "prediction-markets": false,
-    "tokenomics": false,
+    "governance": false,
     "cta": false,
     "footer": false
-  };
+  });
 
   // Function to navigate to the swap page
   function navigateToSwap() {
@@ -189,11 +189,9 @@
         // Update section visibility states
         entries.forEach(entry => {
           if (entry.target.id && sections.includes(entry.target.id)) {
-            // Update section visibility
-            sectionVisibility = {
-              ...sectionVisibility,
-              [entry.target.id]: entry.isIntersecting && entry.intersectionRatio > 0.2
-            };
+            // Update section visibility state directly
+            sectionVisibility[entry.target.id as keyof typeof sectionVisibility] = 
+              entry.isIntersecting && entry.intersectionRatio > 0.2;
           }
         });
         
@@ -245,7 +243,8 @@
 
       // Add scroll listener
       if (scrollContainer) {
-        scrollContainer.addEventListener("scroll", handleScroll);
+        const currentScrollContainer = scrollContainer; // Capture state
+        currentScrollContainer.addEventListener("scroll", handleScroll);
       }
 
       return () => {
@@ -307,9 +306,9 @@
       isVisible={sectionVisibility["prediction-markets"]}
     />
 
-    <!-- Tokenomics Section -->
-    <TokenomicsSection 
-      isVisible={sectionVisibility["tokenomics"]}
+    <!-- Governance Section -->
+    <GovernanceSection 
+      isVisible={sectionVisibility["governance"]}
     />
 
     <!-- CTA Section -->

@@ -1,17 +1,26 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
-  export let navigateToSwap: () => void;
-  export let isVisible = false;
+
+  // Props
+  let { 
+    navigateToSwap,
+    isVisible = false
+  } = $props<{
+    navigateToSwap: () => void;
+    isVisible?: boolean;
+  }>();
   
   // Animation state
-  let hasTriggeredAnimation = false;
-  let contentVisible = false;
+  let hasTriggeredAnimation = $state(false);
+  let contentVisible = $state(false);
   
-  // Trigger animations when section becomes visible
-  $: if (isVisible && !hasTriggeredAnimation) {
-    triggerAnimation();
-  }
+  // Trigger animations when section becomes visible (using $effect)
+  $effect(() => {
+    if (isVisible && !hasTriggeredAnimation) {
+      triggerAnimation();
+    }
+  });
   
   function triggerAnimation() {
     hasTriggeredAnimation = true;
@@ -20,17 +29,17 @@
     }, 200);
   }
   
-  // Grid interaction variables
-  let gridContainer: HTMLElement;
-  let mouseX = 0;
-  let mouseY = 0;
-  let mouseActive = false;
-  let gridCells: HTMLElement[] = [];
-  let cellMap = new Map(); // Fast cell lookup by position
-  let animationFrame: number | null = null;
-  let lastUpdateTime = 0;
-  let currentHoveredCell: HTMLElement | null = null; // Restore tracking for direct hover
-  let hoveredGroup: HTMLElement[] = []; // Track the group affected by direct hover
+  // Grid interaction variables - use $state for reactive ones
+  let gridContainer = $state<HTMLElement | undefined>(undefined);
+  let mouseX = $state(0);
+  let mouseY = $state(0);
+  let mouseActive = $state(false);
+  let gridCells: HTMLElement[] = []; // Not $state, mutated directly
+  let cellMap = new Map(); // Not $state
+  let animationFrame = $state<number | null>(null);
+  let lastUpdateTime = $state(0);
+  let currentHoveredCell = $state<HTMLElement | null>(null);
+  let hoveredGroup = $state<HTMLElement[]>([]);
   const THROTTLE_MS = 50; // More aggressive throttling (~20fps is enough for this effect)
   const CELL_SIZE = 120; // Further increased cell size to reduce total number
   const MAX_CELLS = 200; // Lower cell count limit for better performance
@@ -41,15 +50,15 @@
   const MAX_ACTIVE_CELLS = 5; // Maximum cells in a dynamic hover group
   
   // Device performance classification
-  let isLowPerformanceDevice = false;
+  let isLowPerformanceDevice = $state(false);
   
   // Glitch effect variables
-  let glitchActive = false;
-  let glitchInterval: ReturnType<typeof setInterval> | null = null;
-  let isInViewport = false;
+  let glitchActive = $state(false);
+  let glitchInterval = $state<ReturnType<typeof setInterval> | null>(null);
+  let isInViewport = $state(false);
   
   // Add variables for trail effect
-  let mousePath: {x: number, y: number, time: number}[] = [];
+  let mousePath = $state<{x: number, y: number, time: number}[]>([]);
   const MAX_PATH_POINTS = 5; // Limit the number of points to track
   
   // Performance detection function
@@ -97,16 +106,17 @@
   
   // Create interactive grid cells with cell count limitation and performance tiering
   function createGridCells() {
-    if (!browser || !gridContainer) return;
+    const container = gridContainer; // Use local copy for check
+    if (!browser || !container) return;
     
     // Clean up existing cells
-    gridContainer.innerHTML = '';
+    container.innerHTML = '';
     gridCells = [];
     cellMap.clear();
     
     // Calculate cell size and count based on container size
-    const containerWidth = gridContainer.offsetWidth;
-    const containerHeight = gridContainer.offsetHeight;
+    const containerWidth = container.offsetWidth;
+    const containerHeight = container.offsetHeight;
     
     // Use even larger cells on low-performance devices
     const effectiveCellSize = isLowPerformanceDevice ? CELL_SIZE * 1.5 : CELL_SIZE;
@@ -192,8 +202,8 @@
       }
     }
     
-    gridContainer.appendChild(fragment);
-    gridContainer.dataset.initialized = "true";
+    container.appendChild(fragment);
+    container.dataset.initialized = "true";
   }
   
   // Find which cell the mouse is over - using O(1) lookup
@@ -315,7 +325,7 @@
   }
   
   // Debounced window resize handler 
-  let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+  let resizeTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
   function handleResize() {
     if (!browser) return;
     
@@ -342,7 +352,7 @@
         
         resizeTimeout = null;
       }
-    }, 350); // Further increased debounce time
+    }, 350);
   }
   
   // Use Intersection Observer for viewport detection
@@ -362,7 +372,7 @@
         isInViewport = entries[0].isIntersecting;
         
         if (!wasInViewport && isInViewport) {
-          if (!gridContainer.dataset.initialized) {
+          if (gridContainer && !gridContainer.dataset.initialized) {
             createGridCells(); 
             // Start animation frame if needed for non-hover effects (like trail)
             if (!animationFrame) { 
@@ -382,6 +392,9 @@
       
       if (gridContainer) {
         observer.observe(gridContainer);
+        // Add mouse move listener here, only when gridContainer is available
+        window.addEventListener('mousemove', handleMouseMove, { passive: true });
+        window.addEventListener('mouseleave', handleMouseLeave);
       }
       
       window.addEventListener('resize', handleResize, { passive: true });
@@ -406,11 +419,23 @@
   
   onDestroy(() => {
     if (browser) {
-      if (glitchInterval) clearInterval(glitchInterval);
-      if (animationFrame) cancelAnimationFrame(animationFrame);
-      if (resizeTimeout) clearTimeout(resizeTimeout);
+      // Capture state values for cleanup
+      const currentGlitchInterval = glitchInterval;
+      const currentAnimationFrame = animationFrame;
+      const currentResizeTimeout = resizeTimeout;
+
+      if (currentGlitchInterval) clearInterval(currentGlitchInterval);
+      if (currentAnimationFrame) cancelAnimationFrame(currentAnimationFrame);
+      if (currentResizeTimeout) clearTimeout(currentResizeTimeout);
       if (observer) observer.disconnect();
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseleave', handleMouseLeave);
+      
+      // Reset state if needed
+      glitchInterval = null;
+      animationFrame = null;
+      resizeTimeout = null;
     }
   });
 
@@ -578,10 +603,10 @@
   
   <!-- Kong logo watermark -->
   <div class="absolute top-[100px] right-[0px] w-[300px] h-[300px] z-1 animate-[float-slow_20s_ease-in-out_infinite_alternate] opacity-10">
-    <img src="/images/kongface-white.svg" alt="" class="w-full h-full" />
+    <img src="/images/kongface-white.svg" alt="Kong logo watermark" class="w-full h-full" />
   </div>
   
-  <div class="max-w-4xl mx-auto px-6 md:px-8 w-full z-30 text-center relative transition-all duration-1000 ease-out {contentVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-12'} pointer-events-none">
+  <div class="max-w-4xl mx-auto px-6 md:px-8 w-full z-30 text-center relative transition-all duration-1000 ease-out {contentVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'} pointer-events-none">
     <!-- Cyberpunk header with neon effect -->
     <h2 class="text-3xl md:text-5xl font-black mb-8 uppercase tracking-tight leading-none cyberpunk-title">
       <div class="relative inline-block leading-tight perspective-1000">
@@ -612,8 +637,6 @@
     </div>
   </div>
 </section>
-
-<svelte:window on:mousemove={handleMouseMove} on:mouseleave={handleMouseLeave} />
 
 <style lang="postcss" scoped>
   /* Animation keyframes */

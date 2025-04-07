@@ -5,92 +5,130 @@
   import { TrendingUp, Zap, Globe, BarChart3, LucideCheck } from "lucide-svelte";
   import { getPredictionMarketStats } from '$lib/api/predictionMarket';
   
-  // Section visibility state
-  export let isVisible = false;
+  // Import the StatCard component
+  import StatCard from './StatCard.svelte';
   
-  // Component state
-  let mounted = false;
+  // Section visibility prop using $props
+  let { isVisible = false } = $props<{ isVisible?: boolean }>();
   
-  // Stats for prediction markets - Initialize with loading state
-  let totalMarkets: number | null = null;
-  let activeMarkets: number | null = null;
-  let totalBets: number | null = null;
-  let isLoadingStats = true;
-  let errorLoadingStats: string | null = null;
+  // Component state using $state
+  let mounted = $state(false);
   
-  // Tweened values for animations - only create when needed
+  // Stats for prediction markets - Initialize with loading state using $state
+  let totalMarkets = $state<number | null>(null);
+  let activeMarkets = $state<number | null>(null);
+  let totalBets = $state<number | null>(null);
+  let isLoadingStats = $state(false);
+  let errorLoadingStats = $state<string | null>(null);
+  
+  // Feature bullets data
+  const features = [
+    {
+      title: "Get Rewarded",
+      description: "Forecast future events and earn rewards with Kong's decentralized prediction markets."
+    },
+    {
+      title: "Zero Fees",
+      description: "No platform fees! Trade without paying platform commissions."
+    },
+    {
+      title: "Multiple Resolution Methods",
+      description: "Markets can be resolved by the community, a trusted third party, or Oracle."
+    }
+  ];
+  
+  // Tweened values for animations - remain the same, no $state needed for the store itself
   let tweenedMarkets = tweened(0, { duration: 1500, easing: cubicOut });
   let tweenedActiveMarkets = tweened(0, { duration: 1500, easing: cubicOut });
   let tweenedTotalBets = tweened(0, { duration: 1500, easing: cubicOut });
   
-  // Animation classes
-  let animationClass = '';
-  let sectionRef;
-  let hasTriggeredAnimation = false;
+  // Animation state using $state
+  let animationClass = $state('');
+  let sectionRef = $state<HTMLElement | undefined>(undefined); // For bind:this
+  let hasTriggeredAnimation = $state(false);
   
-  // Watch for visibility changes
-  $: if (isVisible && !hasTriggeredAnimation && mounted) {
-    triggerAnimation();
-  }
+  // Effect to trigger animation based on visibility
+  $effect(() => {
+    // Log visibility change for animation trigger
+    // console.log(`PredictionMarketsSection Animation Effect: isVisible=${isVisible}, hasTriggeredAnimation=${hasTriggeredAnimation}, mounted=${mounted}`);
+    if (isVisible && !hasTriggeredAnimation && mounted) {
+      triggerAnimation();
+    }
+  });
   
   function triggerAnimation() {
     hasTriggeredAnimation = true;
     requestAnimationFrame(() => {
+      // Modify $state directly
       animationClass = 'translate-y-0 opacity-100';
     });
   }
   
+  // Fetch stats function (modifies $state variables)
   async function fetchStats() {
-    if (!mounted) return; // Don't fetch if component is unmounted
+    if (!mounted) {
+      return; // Don't fetch if component is unmounted
+    }
     
     isLoadingStats = true;
     errorLoadingStats = null;
     try {
       const stats = await getPredictionMarketStats();
-      if (!mounted) return; // Exit if unmounted during API call
+      
+      if (!mounted) {
+        console.log("PredictionMarketsSection fetchStats: Unmounted during API call. Aborting update.");
+        // Note: 'finally' will still run and manage isLoadingStats if mounted state is checked there too
+        return; 
+      }
       
       totalMarkets = Number(stats.total_markets);
       activeMarkets = Number(stats.total_active_markets);
       totalBets = Number(stats.total_bets);
-
       // Start tweened animations after fetching data
       tweenedMarkets.set(totalMarkets);
       tweenedActiveMarkets.set(activeMarkets);
       tweenedTotalBets.set(totalBets);
-
     } catch (error) {
-      console.error("Error fetching prediction market stats:", error);
+      console.error("PredictionMarketsSection: Error fetching stats:", error);
       errorLoadingStats = "Failed to load stats.";
       // Set default values on error
-      totalMarkets = 50;
-      activeMarkets = 10;
-      totalBets = 2500;
+      totalMarkets = 50; // Example default
+      activeMarkets = 10; // Example default
+      totalBets = 2500; // Example default
+      console.log("PredictionMarketsSection: Setting default stats due to error.");
+      // Update tweened values even on error with defaults
       tweenedMarkets.set(totalMarkets);
       tweenedActiveMarkets.set(activeMarkets);
       tweenedTotalBets.set(totalBets);
     } finally {
-      if (mounted) isLoadingStats = false;
+      if (mounted) {
+        isLoadingStats = false;
+      } else {
+         console.log("PredictionMarketsSection fetchStats Finally: Component unmounted, not setting isLoadingStats.");
+      }
     }
   }
   
-  // Add animation class after component mounts for entrance effect
+  // onMount lifecycle hook
   onMount(() => {
     mounted = true;
+    console.log("PredictionMarketsSection: Mounted.");
     
-    // Only fetch stats if component is visible
-    if (isVisible) {
-      fetchStats();
-    }
+    // Fetch logic is now solely handled by the $effect below
     
     return () => {
+      console.log("PredictionMarketsSection: Unmounting.");
       mounted = false;
     };
   });
   
-  // Watch for visibility to fetch data when needed
-  $: if (isVisible && mounted && !totalMarkets) {
-    fetchStats();
-  }
+  // Effect to fetch data when visibility changes OR on initial mount if visible
+  $effect(() => {
+    // Condition: Visible, mounted, haven't loaded stats yet (totalMarkets is null), and not currently loading.
+    if (isVisible && mounted && totalMarkets === null && !isLoadingStats) {
+      fetchStats();
+    }
+  });
 </script>
 
 <section 
@@ -196,93 +234,78 @@
       
       <!-- Stats cards with improved styling for mobile -->
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-6 md:mb-8">
-        <div class="bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/10 hover:border-blue-500/30 transition-all">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 mr-2 sm:mr-3 bg-blue-500/20 p-1.5 sm:p-2 rounded-md sm:rounded-lg">
-              <BarChart3 size={14} class="text-blue-300" />
+        {#if isLoadingStats}
+          <!-- Loading skeletons -->
+          {#each Array(3) as _}
+            <div class="bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/10">
+              <div class="flex items-center">
+                <div class="animate-pulse bg-gray-700/50 h-8 w-8 rounded-md sm:rounded-lg mr-2 sm:mr-3"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="animate-pulse bg-gray-600/50 h-5 w-12 rounded-md mb-1"></div>
+                  <div class="animate-pulse bg-gray-500/50 h-3 w-20 rounded-md"></div>
+                </div>
+              </div>
             </div>
-            <div class="flex-1 min-w-0">
-              {#if isLoadingStats}
-                <div class="animate-pulse bg-gray-600/50 h-5 w-12 rounded-md mb-1"></div>
-                <div class="animate-pulse bg-gray-500/50 h-3 w-20 rounded-md"></div>
-              {:else if errorLoadingStats}
-                <div class="text-red-400 text-xs">Error</div>
-              {:else}
-                <div class="bg-[linear-gradient(90deg,#ADD8E6,#87CEEB)] bg-clip-text text-transparent text-base sm:text-lg md:text-xl truncate font-['BlenderPro',_'Rajdhani',_monospace] tracking-wider font-bold leading-none sm:leading-tight">{$tweenedMarkets.toFixed(0)}</div>
-                <div class="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">Total Markets</div>
-              {/if}
-            </div>
+          {/each}
+        {:else if errorLoadingStats}
+          <!-- Error display -->
+          <div class="col-span-2 sm:col-span-3 text-red-400 text-sm bg-red-900/20 p-3 rounded-lg border border-red-500/30">
+            {errorLoadingStats}
           </div>
-        </div>
-        
-        <div class="bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/10 hover:border-blue-500/30 transition-all">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 mr-2 sm:mr-3 bg-cyan-500/20 p-1.5 sm:p-2 rounded-md sm:rounded-lg">
-              <TrendingUp size={14} class="text-cyan-300" />
-            </div>
-            <div class="flex-1 min-w-0">
-              {#if isLoadingStats}
-                <div class="animate-pulse bg-gray-600/50 h-5 w-10 rounded-md mb-1"></div>
-                <div class="animate-pulse bg-gray-500/50 h-3 w-24 rounded-md"></div>
-              {:else if errorLoadingStats}
-                <div class="text-red-400 text-xs">Error</div>
-              {:else}
-                <div class="bg-[linear-gradient(90deg,#ADD8E6,#87CEEB)] bg-clip-text text-transparent text-base sm:text-lg md:text-xl truncate font-['BlenderPro',_'Rajdhani',_monospace] tracking-wider font-bold leading-none sm:leading-tight">{$tweenedActiveMarkets.toFixed(0)}</div>
-                <div class="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">Active Markets</div>
-              {/if}
-            </div>
+        {:else}
+          <!-- Use StatCard component -->
+          <StatCard 
+            icon={BarChart3}
+            value={$tweenedMarkets.toFixed(0)}
+            label="Total Markets"
+            iconBgClass="bg-blue-500/20"
+            iconColorClass="text-blue-300"
+            gradientClass="bg-[linear-gradient(90deg,#ADD8E6,#87CEEB)]"
+          />
+
+          <StatCard 
+            icon={TrendingUp}
+            value={$tweenedActiveMarkets.toFixed(0)}
+            label="Active Markets"
+            iconBgClass="bg-cyan-500/20"
+            iconColorClass="text-cyan-300"
+            gradientClass="bg-[linear-gradient(90deg,#ADD8E6,#87CEEB)]"
+          />
+
+          <div class="col-span-2 sm:col-span-1">
+            <StatCard 
+              icon={Zap}
+              value={$tweenedTotalBets.toFixed(0)}
+              label="Total Predictions"
+              iconBgClass="bg-teal-500/20"
+              iconColorClass="text-teal-300"
+              gradientClass="bg-[linear-gradient(90deg,#ADD8E6,#87CEEB)]"
+            />
           </div>
-        </div>
-        
-        <div class="col-span-2 sm:col-span-1 bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/10 hover:border-blue-500/30 transition-all">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 mr-2 sm:mr-3 bg-teal-500/20 p-1.5 sm:p-2 rounded-md sm:rounded-lg">
-              <Zap size={14} class="text-teal-300" />
-            </div>
-            <div class="flex-1 min-w-0">
-              {#if isLoadingStats}
-                <div class="animate-pulse bg-gray-600/50 h-5 w-14 rounded-md mb-1"></div>
-                <div class="animate-pulse bg-gray-500/50 h-3 w-28 rounded-md"></div>
-              {:else if errorLoadingStats}
-                <div class="text-red-400 text-xs">Error</div>
-              {:else}
-                <div class="bg-[linear-gradient(90deg,#ADD8E6,#87CEEB)] bg-clip-text text-transparent text-base sm:text-lg md:text-xl truncate font-['BlenderPro',_'Rajdhani',_monospace] tracking-wider font-bold leading-none sm:leading-tight">{$tweenedTotalBets.toFixed(0)}</div>
-                <div class="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">Total Predictions</div>
-              {/if}
-            </div>
-          </div>
-        </div>
+        {/if}
       </div>
       
       <!-- Feature bullets with enhanced styling -->
       <div class="space-y-5 md:space-y-6">
-        <div class="flex items-start">
-          <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center justify-center mr-3 mt-1">
-            <LucideCheck size={10} class="text-white" />
+        {#each features as feature}
+          <div class="flex items-start">
+            <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center justify-center mr-3 mt-1">
+              <LucideCheck size={10} class="text-white" />
+            </div>
+            <div>
+              <h3 class="text-base md:text-lg font-semibold text-white mb-1">{feature.title}</h3>
+              <p class="text-sm md:text-base text-gray-300">{feature.description}</p>
+            </div>
           </div>
-          <div>
-            <h3 class="text-base md:text-lg font-semibold text-white mb-1">Zero Fees</h3>
-            <p class="text-sm md:text-base text-gray-300">Trade without paying platform commissions</p>
-          </div>
-        </div>
-        
-        <div class="flex items-start">
-          <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center justify-center mr-3 mt-1">
-            <LucideCheck size={10} class="text-white" />
-          </div>
-          <div>
-            <h3 class="text-base md:text-lg font-semibold text-white mb-1">Real-time Resolution</h3>
-            <p class="text-sm md:text-base text-gray-300">Markets settle instantly with verified data</p>
-          </div>
-        </div>
+        {/each}
       </div>
     </div>
 
     <!-- iPhone with screenshot - Optimized for mobile -->
     <div class="flex-1 flex justify-center items-center relative z-10 transform translate-y-12 opacity-0 transition-all duration-700 delay-300 ease-out {animationClass}">
-      <div class="relative w-[220px] sm:w-[260px] md:w-[320px] transition-all duration-300 hover:scale-[1.02]">
+      <div class="relative w-[240px] sm:w-[280px] md:w-[360px] transition-all duration-300 hover:scale-[1.02]">
         <!-- iPhone frame with improved realism -->
-        <div class="relative w-full h-[450px] sm:h-[520px] md:h-[650px] bg-gradient-to-b from-gray-700 to-gray-900 rounded-[35px] md:rounded-[40px] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-[6px] border-gray-800">
+        <div class="relative w-full h-[490px] sm:h-[560px] md:h-[700px] bg-gradient-to-b from-gray-700 to-gray-900 rounded-[35px] md:rounded-[40px] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-[6px] border-gray-800">
           <!-- Volume buttons -->
           <div class="absolute -left-[2px] top-[80px] md:top-[100px] w-[2px] h-8 md:h-12 bg-gray-900 rounded-l-lg shadow-inner"></div>
           <div class="absolute -left-[2px] top-[120px] md:top-[150px] w-[2px] h-10 md:h-16 bg-gray-900 rounded-l-lg shadow-inner"></div>

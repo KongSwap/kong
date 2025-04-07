@@ -5,24 +5,43 @@
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import { ChevronDown } from "lucide-svelte";
-  
-  export let showGetStarted: boolean;
-  export let isLoading: boolean;
-  export let poolStats: { total_volume_24h: number; total_tvl: number; total_fees_24h: number };
-  export let totalSwaps: number;
-  export let formatNumber: (num: number, precision?: number) => string;
-  export let formatCount: (num: number) => string;
-  export let navigateToSwap: () => void;
-  export let isVisible = false;
 
-  // Animation state
-  let hasTriggeredAnimation = false;
-  let contentVisible = false;
-  
+  // Props using $props rune - corrected syntax
+  type PoolStats = { total_volume_24h: number; total_tvl: number; total_fees_24h: number };
+  type FormatNumberFn = (num: number, precision?: number) => string;
+  type FormatCountFn = (num: number) => string;
+  type NavigateToSwapFn = () => void;
+
+  let { 
+    showGetStarted,
+    isLoading,
+    poolStats,
+    totalSwaps,
+    formatNumber,
+    formatCount,
+    navigateToSwap,
+    isVisible = false // Default value provided here
+  } = $props<{
+    showGetStarted: boolean;
+    isLoading: boolean;
+    poolStats: PoolStats;
+    totalSwaps: number;
+    formatNumber: FormatNumberFn;
+    formatCount: FormatCountFn;
+    navigateToSwap: NavigateToSwapFn;
+    isVisible?: boolean;
+  }>();
+
+  // State using $state rune
+  let hasTriggeredAnimation = $state(false);
+  let contentVisible = $state(false);
+
   // Trigger animations when the section becomes visible
-  $: if (isVisible && !hasTriggeredAnimation) {
-    triggerAnimation();
-  }
+  $effect(() => {
+    if (isVisible && !hasTriggeredAnimation) {
+      triggerAnimation();
+    }
+  });
   
   function triggerAnimation() {
     hasTriggeredAnimation = true;
@@ -31,52 +50,74 @@
     }, 200);
   }
 
-  // Use Svelte store for stats to optimize reactivity
   // Tweened values for stats
   const tweenedTVL = tweened(0, { duration: 1500, easing: cubicOut });
   const tweenedVolume = tweened(0, { duration: 1500, easing: cubicOut });
   const tweenedFees = tweened(0, { duration: 1500, easing: cubicOut });
   const tweenedSwaps = tweened(0, { duration: 1500, easing: cubicOut });
   
-  // Update tweened values when props change - with debouncing effect
-  let updateTimeout: ReturnType<typeof setTimeout>;
-  $: if (!isLoading && poolStats) {
-    // Debounce updates to avoid multiple tweens starting at once
-    clearTimeout(updateTimeout);
-    updateTimeout = setTimeout(() => {
-      // Check if tweened instances exist before setting
-      if (tweenedTVL) tweenedTVL.set(poolStats.total_tvl);
-      if (tweenedVolume) tweenedVolume.set(poolStats.total_volume_24h);
-      if (tweenedFees) tweenedFees.set(poolStats.total_fees_24h);
-      if (tweenedSwaps) tweenedSwaps.set(totalSwaps);
-    }, 100);
-  }
+  // Update tweened values when props change
+  // Use a non-reactive variable for the timeout ID
+  let updateTimeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
+  $effect(() => {
+    // Capture reactive dependencies explicitly if needed, though direct access is usually fine
+    const currentIsLoading = isLoading;
+    const currentPoolStats = poolStats;
+    const currentTotalSwaps = totalSwaps;
+    
+    if (!currentIsLoading && currentPoolStats) {
+      // Clear any existing timeout *before* setting a new one
+      if (updateTimeoutId) {
+        clearTimeout(updateTimeoutId);
+        updateTimeoutId = undefined; // Clear the ID immediately after clearing
+      }
+      
+      // Set the new timeout
+      updateTimeoutId = setTimeout(() => {
+        tweenedTVL.set(currentPoolStats.total_tvl);
+        tweenedVolume.set(currentPoolStats.total_volume_24h);
+        tweenedFees.set(currentPoolStats.total_fees_24h);
+        tweenedSwaps.set(currentTotalSwaps);
+        updateTimeoutId = undefined; // Clear the ID once the timeout callback runs
+      }, 100);
+    }
+    
+    // Cleanup function: ensures timeout is cleared if dependencies change or component unmounts
+    return () => {
+      if (updateTimeoutId) {
+        clearTimeout(updateTimeoutId);
+        updateTimeoutId = undefined;
+      }
+    };
+  });
   
-  // Three.js variables
-  let canvasContainer: HTMLElement;
-  let scene: THREE.Scene;
-  let camera: THREE.OrthographicCamera;
-  let renderer: THREE.WebGLRenderer;
-  let animationFrameId: number;
-  let materialUniforms: any;
+  // Three.js variables - using $state where appropriate
+  let canvasContainer = $state<HTMLElement | undefined>(undefined); // Keep $state for the element ref
+  let scene: THREE.Scene | undefined;
+  let camera: THREE.OrthographicCamera | undefined;
+  let renderer: THREE.WebGLRenderer | undefined;
+  let animationFrameId: number | undefined;
+  let materialUniforms: any | undefined; // Consider defining a proper type
   
-  // Performance detection
-  let isLowEndDevice = false;
-  let isMobile = false;
+  // Performance detection - using $state
+  let isLowEndDevice = $state(false);
+  let isMobile = $state(false);
   
   // Mouse tracking variables with throttling
-  let mousePosition = { x: 0.5, y: 0.5 };
-  let mouseTarget = { x: 0.5, y: 0.5 };
-  let mouseActive = true; // Default to active
-  let lastMoveTime = 0;
-  let frameCount = 0;
+  let mouse = $state({
+    position: { x: 0.5, y: 0.5 },
+    target: { x: 0.5, y: 0.5 },
+    active: true, // Default to active
+  });
+  let lastMoveTime = $state(0);
+  let frameCount = $state(0);
   
   // Store handler references for cleanup
-  const handleMouseEnter = () => { mouseActive = true; };
+  const handleMouseEnter = () => { mouse.active = true; };
   const handleMouseLeave = () => { 
     // Don't immediately turn off effect on mouseleave
     setTimeout(() => {
-      mouseActive = false;
+      mouse.active = false;
     }, 500);
   };
   
@@ -87,11 +128,11 @@
     lastMoveTime = now;
     
     // Convert screen coordinates to normalized UV coordinates (0 to 1)
-    mouseTarget.x = event.clientX / window.innerWidth;
-    mouseTarget.y = 1.0 - (event.clientY / window.innerHeight); // Invert Y for shader space
+    mouse.target.x = event.clientX / window.innerWidth;
+    mouse.target.y = 1.0 - (event.clientY / window.innerHeight); // Invert Y for shader space
     
     // Ensure mouseActive is true when mouse is moving
-    mouseActive = true;
+    mouse.active = true;
   }
   
   // Handle touch move for mobile with throttling
@@ -102,9 +143,9 @@
     
     if (event.touches.length > 0) {
       const touch = event.touches[0];
-      mouseTarget.x = touch.clientX / window.innerWidth;
-      mouseTarget.y = 1.0 - (touch.clientY / window.innerHeight);
-      mouseActive = true;
+      mouse.target.x = touch.clientX / window.innerWidth;
+      mouse.target.y = 1.0 - (touch.clientY / window.innerHeight);
+      mouse.active = true;
     }
   }
   
@@ -112,9 +153,9 @@
   function handleTouchStart(event: TouchEvent) {
     if (event.touches.length > 0) {
       const touch = event.touches[0];
-      mouseTarget.x = touch.clientX / window.innerWidth;
-      mouseTarget.y = 1.0 - (touch.clientY / window.innerHeight);
-      mouseActive = true;
+      mouse.target.x = touch.clientX / window.innerWidth;
+      mouse.target.y = 1.0 - (touch.clientY / window.innerHeight);
+      mouse.active = true;
     }
   }
   
@@ -122,7 +163,7 @@
   function handleTouchEnd() {
     // Keep effect active for a moment after touch ends
     setTimeout(() => {
-      mouseActive = false;
+      mouse.active = false;
     }, 500);
   }
   
@@ -151,8 +192,8 @@
     }
   }
   
-  // Initialize Three.js scene - deferred to improve initial load time
-  let sceneInitialized = false;
+  // Initialize Three.js scene
+  let sceneInitialized = $state(false);
   
   async function initThreeJs() {
     // Skip initialization if already done
@@ -162,13 +203,19 @@
     // Wait for next tick to ensure DOM is ready
     await tick();
     
-    scene = new THREE.Scene();
+    // Check if container exists before proceeding
+    if (!canvasContainer) {
+      console.error("Canvas container not found");
+      return;
+    }
+
+    const newScene = new THREE.Scene();
     
     // Camera setup - orthographic for fullscreen quad
-    camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const newCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     
     // Renderer setup with pixel ratio limiting based on device capability
-    renderer = new THREE.WebGLRenderer({ 
+    const newRenderer = new THREE.WebGLRenderer({ 
       alpha: true,
       antialias: false,
       powerPreference: 'low-power' // Changed from 'high-performance' for consistency
@@ -177,24 +224,24 @@
     // Limit pixel ratio more aggressively for mobile/low-end devices
     const maxPixelRatio = isLowEndDevice || isMobile ? 1 : 1.5; // Slightly reduced max non-mobile
     const pixelRatio = Math.min(window.devicePixelRatio, maxPixelRatio);
-    renderer.setPixelRatio(pixelRatio);
+    newRenderer.setPixelRatio(pixelRatio);
     
     // Set lower resolution for mobile/low-end devices
     if (isMobile || isLowEndDevice) {
       const scale = isMobile ? 1.3 : 1.2; // Slightly increased scaling for lower res
-      renderer.setSize(window.innerWidth / scale, window.innerHeight / scale, true);
+      newRenderer.setSize(window.innerWidth / scale, window.innerHeight / scale, true);
     } else {
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      newRenderer.setSize(window.innerWidth, window.innerHeight);
     }
     
     // Ensure canvas fills the container properly
-    renderer.domElement.style.position = 'absolute';
-    renderer.domElement.style.top = '0';
-    renderer.domElement.style.left = '0';
-    renderer.domElement.style.width = '100%';
-    renderer.domElement.style.height = '100%';
+    newRenderer.domElement.style.position = 'absolute';
+    newRenderer.domElement.style.top = '0';
+    newRenderer.domElement.style.left = '0';
+    newRenderer.domElement.style.width = '100%';
+    newRenderer.domElement.style.height = '100%';
     
-    canvasContainer.appendChild(renderer.domElement);
+    canvasContainer.appendChild(newRenderer.domElement);
     
     // Create cyberpunk Blade Runner background effect
     const crtGeometry = new THREE.PlaneGeometry(2, 2);
@@ -324,45 +371,58 @@
     });
     
     const crtScreen = new THREE.Mesh(crtGeometry, bladeRunnerMaterial);
-    scene.add(crtScreen);
+    newScene.add(crtScreen);
+    
+    // Assign to state variables
+    scene = newScene;
+    camera = newCamera;
+    renderer = newRenderer;
     
     // Handle window resize
-    const handleResize = () => {
+    const handleResizeScoped = () => {
       // Check if mobile status changed
       const wasMobile = isMobile;
       isMobile = window.innerWidth < 768;
       
       // Update renderer size on all resizes to ensure proper fit
       const scale = isMobile ? 1.2 : 1.0;
-      renderer.setSize(window.innerWidth / scale, window.innerHeight / scale, true);
+      if (renderer) {
+          renderer.setSize(window.innerWidth / scale, window.innerHeight / scale, true);
+          
+          // Ensure canvas size is always correct
+          renderer.domElement.style.width = '100%';
+          renderer.domElement.style.height = '100%';
+      }
       
-      // Ensure canvas size is always correct
-      renderer.domElement.style.width = '100%';
-      renderer.domElement.style.height = '100%';
-      
-      materialUniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+      if (materialUniforms) {
+          materialUniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+      }
     };
     
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResizeScoped);
     
     // Animation loop with performance optimizations
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
       frameCount++;
       
+      if (!materialUniforms || !renderer || !scene || !camera) return;
+
       // Update time uniform with reduced step for slower animations
       const timeStep = isMobile || isLowEndDevice ? 0.003 : 0.006;
-      materialUniforms.time.value += timeStep;
+      if (materialUniforms) materialUniforms.time.value += timeStep;
       
       // Only update mouse position every few frames to improve performance
       if (frameCount % (isMobile || isLowEndDevice ? 3 : 2) === 0) {
-        mousePosition.x += (mouseTarget.x - mousePosition.x) * 0.05;
-        mousePosition.y += (mouseTarget.y - mousePosition.y) * 0.05;
+        mouse.position.x += (mouse.target.x - mouse.position.x) * 0.05;
+        mouse.position.y += (mouse.target.y - mouse.position.y) * 0.05;
         
         // Update mouse uniforms
-        materialUniforms.mousePosition.value.x = mousePosition.x;
-        materialUniforms.mousePosition.value.y = mousePosition.y;
-        materialUniforms.mouseActive.value = mouseActive ? 1.0 : 0.0;
+        if (materialUniforms) {
+          materialUniforms.mousePosition.value.x = mouse.position.x;
+          materialUniforms.mousePosition.value.y = mouse.position.y;
+          materialUniforms.mouseActive.value = mouse.active ? 1.0 : 0.0;
+        }
       }
       
       // Render scene
@@ -370,10 +430,31 @@
     };
     
     animate();
+
+    // Return cleanup function for the effect that calls initThreeJs
+    return () => {
+        window.removeEventListener('resize', handleResizeScoped);
+        const currentAnimationFrameId = animationFrameId; // Capture value
+        if (currentAnimationFrameId) cancelAnimationFrame(currentAnimationFrameId);
+        animationFrameId = undefined; // Clear state
+
+        if (renderer) {
+            const currentRenderer = renderer; // Capture value
+            currentRenderer.dispose();
+            if (canvasContainer && canvasContainer.contains(renderer.domElement)) {
+                canvasContainer.removeChild(currentRenderer.domElement);
+            }
+            renderer = undefined; // Clear state
+        }
+        scene = undefined; // Clear non-state variables
+        camera = undefined; // Clear non-state variables
+        materialUniforms = undefined; // Clear non-state variables
+        sceneInitialized = false; // Reset init flag
+    };
   }
   
   // Add isSmallScreen detection for conditional rendering
-  let isSmallScreen = false;
+  let isSmallScreen = $state(false);
 
   // Resize handler function
   function handleResize() {
@@ -381,59 +462,44 @@
   }
 
   onMount(() => {
-    // Initialize Three.js
-    if (typeof window !== 'undefined') {
-      // Check screen size and performance
-      isSmallScreen = window.innerWidth < 640;
-      detectPerformance();
-      
-      // Update screen size check on resize
-      window.addEventListener('resize', handleResize);
-      
-      // Delay Three.js initialization to improve initial page load speed
-      setTimeout(() => {
-        initThreeJs();
-      }, 100);
-      
-      // Add mouse event listeners
-      window.addEventListener('mousemove', handleMouseMove, { passive: true });
-      window.addEventListener('mouseenter', handleMouseEnter);
-      window.addEventListener('mouseleave', handleMouseLeave);
-      
-      // Add touch event listeners for mobile
-      window.addEventListener('touchmove', handleTouchMove, { passive: true });
-      window.addEventListener('touchstart', handleTouchStart, { passive: true });
-      window.addEventListener('touchend', handleTouchEnd, { passive: true });
-    }
-  });
-  
-  onDestroy(() => {
-    // Clean up Three.js resources
-    if (typeof window !== 'undefined') {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
+    let threeJsCleanup: (() => void) | undefined;
+    
+    // Run checks and setup that don't depend on Three.js immediately
+    isSmallScreen = window.innerWidth < 640;
+    detectPerformance();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('mouseenter', handleMouseEnter);
+    window.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    
+    // Delay Three.js initialization
+    const initTimeout = setTimeout(async () => {
+        threeJsCleanup = await initThreeJs();
+    }, 100);
+
+    // Cleanup on unmount
+    return () => {
+      clearTimeout(initTimeout); // Clear timeout if component unmounts before init
+      if (threeJsCleanup) {
+        threeJsCleanup(); // Run the specific Three.js cleanup
       }
       
-      if (renderer) {
-        renderer.dispose();
-      }
-      
-      clearTimeout(updateTimeout);
-      
-      // Remove mouse event listeners
+      // Remove general listeners
+      window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseenter', handleMouseEnter);
       window.removeEventListener('mouseleave', handleMouseLeave);
-      
-      // Remove touch event listeners
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchend', handleTouchEnd);
-      
-      // Remove resize listener
-      window.removeEventListener('resize', handleResize);
-    }
+    };
   });
+
+  // No need for separate onDestroy, cleanup is handled in mount's return function
+
 </script>
 
 <section id="hero" class="h-screen flex flex-col items-center justify-center relative overflow-hidden">
@@ -532,7 +598,7 @@
       <div class="mt-7 sm:mt-10 transition-all duration-1000 ease-out delay-500 {contentVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}">
         <button 
           on:click={navigateToSwap}
-          class="relative inline-flex items-center overflow-hidden text-base sm:text-lg px-5 bg-[#0D111F]/30 text-[#9370DB] border border-[#9370DB]/40 rounded font-semibold tracking-wider uppercase transition-all duration-300 ease-in-out shadow-[0_0_10px_rgba(147,112,219,0.2),inset_0_0_5px_rgba(147,112,219,0.1)] backdrop-blur-md will-change-transform will-change-opacity will-change-shadow translate-z-0 hover:text-white hover:bg-[#9370DB]/80 hover:border-[#9370DB]/80 hover:shadow-[0_0_15px_rgba(147,112,219,0.5),0_0_30px_rgba(123,104,238,0.3),inset_0_0_10px_rgba(255,255,255,0.2)] hover:-translate-y-0.5 hover:text-shadow hover:shadow-white/50 active:translate-y-0.5 active:shadow-[0_0_8px_rgba(147,112,219,0.3),inset_0_0_4px_rgba(147,112,219,0.1)] sm:min-w-[180px] font-['Inter','Rajdhani','SF_Pro_Display',sans-serif] neon-button"
+          class="relative inline-flex items-center overflow-hidden text-base sm:text-lg px-5 bg-[#0D111F]/30 text-[#9370DB] border border-[#9370DB]/40 rounded font-semibold tracking-wider uppercase transition-all duration-300 ease-in-out shadow-[0_0_10px_rgba(147,112,219,0.2),inset_0_0_5px_rgba(147,112,219,0.1)] backdrop-blur-md will-change-transform will-change-opacity will-change-shadow translate-z-0 hover:text-white hover:bg-[#9370DB]/80 hover:border-[#9370DB]/80 hover:shadow-[0_0_20px_rgba(147,112,219,0.6),0_0_35px_rgba(123,104,238,0.4)] hover:-translate-y-0.5 hover:text-shadow active:translate-y-0.5 active:shadow-[0_0_8px_rgba(147,112,219,0.3),inset_0_0_4px_rgba(147,112,219,0.1)] sm:min-w-[180px] font-['Inter','Rajdhani','SF_Pro_Display',sans-serif] neon-button"
         >
           <span class="relative z-10 text-nowrap px-5 py-3 sm:py-4">LAUNCH APP</span>
           <div class="neon-button-glow"></div>
