@@ -124,6 +124,7 @@ function createUserTokensStore() {
   const enabledTokens = derived(state, $state => $state.enabledTokens);
   const tokens = derived(state, $state => Array.from($state.tokenData.values()));
   const isAuthenticated = derived(state, $state => $state.isAuthenticated);
+  const tokenData = derived(state, $state => $state.tokenData);
   
   // Storage key helper
   const getStorageKey = (principal?: string) => {
@@ -401,10 +402,11 @@ function createUserTokensStore() {
   return {
     subscribe: state.subscribe,
     
-    // Provide derived stores for specific parts of the state
-    enabledTokens: { subscribe: enabledTokens.subscribe },
-    tokens: { subscribe: tokens.subscribe },
-    isAuthenticated: { subscribe: isAuthenticated.subscribe },
+    // Directly export the derived stores (readables)
+    enabledTokens: enabledTokens,
+    tokens: tokens,
+    isAuthenticated: isAuthenticated,
+    tokenData: tokenData,
     
     reset: () => {
       const newState = {
