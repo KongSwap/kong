@@ -149,6 +149,39 @@
 
     checkMobile();
     window.addEventListener("resize", checkMobile);
+    
+    // Add event listener to handle swipe gestures for mobile menu
+    if (browser) {
+      let touchStartX = 0;
+      const handleTouchStart = (e: TouchEvent) => {
+        touchStartX = e.touches[0].clientX;
+      };
+      
+      const handleTouchEnd = (e: TouchEvent) => {
+        const touchEndX = e.changedTouches[0].clientX;
+        const diffX = touchEndX - touchStartX;
+        
+        // Swipe right to open menu (when closed)
+        if (diffX > 75 && touchStartX < 50 && !navOpen) {
+          navOpen = true;
+        }
+        
+        // Swipe left to close menu (when open)
+        if (diffX < -75 && navOpen) {
+          navOpen = false;
+        }
+      };
+      
+      document.addEventListener('touchstart', handleTouchStart, { passive: true });
+      document.addEventListener('touchend', handleTouchEnd, { passive: true });
+      
+      return () => {
+        unsubscribe();
+        window.removeEventListener("resize", checkMobile);
+        document.removeEventListener('touchstart', handleTouchStart);
+        document.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
 
     return () => {
       unsubscribe();
@@ -338,7 +371,7 @@
           <img
             src={$logoSrcStore}
             alt="Kong Logo"
-            class="h-6 transition-all duration-200 navbar-logo"
+            class="h-8 transition-all duration-200 navbar-logo mobile-navbar-logo"
             class:light-logo={browser &&
               getThemeById($themeStore)?.colors?.logoInvert === 1}
             on:error={handleImageError}
@@ -509,7 +542,7 @@
         <img
           src={$logoSrcStore}
           alt="Kong Logo"
-          class="logo-wide navbar-logo"
+          class="logo-wide navbar-logo h-8"
           class:light-logo={browser &&
             getThemeById($themeStore)?.colors?.logoInvert === 1}
         />
@@ -679,7 +712,7 @@
   }
 
   .mobile-menu-content {
-    @apply fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col bg-kong-bg-dark border-r border-kong-border;
+    @apply fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col bg-kong-bg-dark border-r border-kong-border shadow-lg;
   }
 
   .mobile-menu-header {
@@ -687,11 +720,11 @@
   }
 
   .mobile-close-btn {
-    @apply w-7 h-7 flex items-center justify-center rounded-lg text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/5 hover:bg-kong-text-primary/10 transition-colors duration-200;
+    @apply w-9 h-9 flex items-center justify-center rounded-full text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/10 hover:bg-kong-text-primary/15 transition-colors duration-200;
   }
 
   .mobile-nav {
-    @apply flex-1 overflow-y-auto py-2;
+    @apply flex-1 overflow-y-auto py-3;
   }
 
   .mobile-nav-section {
@@ -699,7 +732,7 @@
   }
 
   .mobile-nav-section:not(:last-child) {
-    @apply mb-2;
+    @apply mb-3;
   }
 
   .mobile-nav-section-title {
@@ -707,15 +740,21 @@
   }
 
   .mobile-menu-footer {
-    @apply p-0;
+    @apply p-4 border-t border-kong-border;
   }
 
   /* Logo styles */
   .light-logo {
     @apply invert brightness-[var(--logo-brightness,0.8)] transition-all duration-200;
   }
+  
+  /* Bigger logo for mobile */
+  .mobile-navbar-logo {
+    height: 32px !important;
+  }
 
   .mobile-menu-header .logo-wide {
+    height: 36px !important;
     @apply transition-all duration-200;
   }
 
@@ -735,5 +774,20 @@
   .nav-link.active {
     @apply text-kong-primary;
     text-shadow: 0 0px 30px theme(colors.kong.primary);
+  }
+
+  /* Responsive adjustments for mobile */
+  @media (max-width: 375px) {
+    .mobile-menu-content {
+      @apply w-[90%] max-w-[300px];
+    }
+    
+    .mobile-menu-header {
+      @apply p-4;
+    }
+    
+    .mobile-nav-section {
+      @apply px-3;
+    }
   }
 </style>
