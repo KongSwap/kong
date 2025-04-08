@@ -13,6 +13,8 @@
     TWEENED_FEES_KEY,
     TWEENED_SWAPS_KEY
   } from "$lib/constants/contextKeys"; // Import shared keys
+  import { goto } from "$app/navigation"; // Import goto
+  import { page } from "$app/stores";
 
   import LandingNavbar from "./LandingNavbar.svelte";
   import HeroSection from "./HeroSection.svelte";
@@ -90,7 +92,7 @@
 
   // Function to navigate to the swap page
   function navigateToSwap() {
-    window.location.href = "/swap";
+    goto("/swap"); // Use goto for client-side navigation
   }
 
   // Toggle mobile menu

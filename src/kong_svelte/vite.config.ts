@@ -46,7 +46,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     environment("all", { prefix: "CANISTER_" }),
     environment("all", { prefix: "DFX_" }),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       manifest: {
         name: 'KongSwap',
         short_name: 'KongSwap',
@@ -86,7 +86,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
   // Base build options
   const buildOptions = {
     emptyOutDir: true,
-    sourcemap: true,
+    sourcemap: process.env.DFX_NETWORK === "local",
     chunkSizeWarningLimit: 1800,
     rollupOptions: {
       output: {
