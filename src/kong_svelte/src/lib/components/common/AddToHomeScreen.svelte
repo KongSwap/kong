@@ -76,8 +76,10 @@
     }
   }
 
-  function dismissPrompt() {
+  async function dismissPrompt() {
     showPrompt = false;
+    // Persist dismissal
+    await pwaStore.setItem(PWA_PROMPT_KEY, "dismissed");
   }
 
   async function closeIOSDialog({ source }: { source: 'backdrop' | 'button' }) {
