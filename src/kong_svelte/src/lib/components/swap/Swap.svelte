@@ -35,8 +35,8 @@
   import { getThemeById } from "$lib/themes/themeRegistry";
   import SwapButton from "./swap_ui/SwapButton.svelte";
   import SwitchTokensButton from "./swap_ui/SwitchTokensButton.svelte";
-  import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
-    import { goto } from "$app/navigation";
+  import { walletProviderStore } from "$lib/stores/walletProviderStore";
+  import { goto } from "$app/navigation";
 
   // Theme-specific styling data
   let theme = $derived(getThemeById($themeStore));
@@ -79,7 +79,6 @@
   let hasValidPool = $state(false);
   let skipNextUrlInitialization = false;
   let currentBalance: string | null = null;
-  let showWalletProvider = $state(false);
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -120,6 +119,9 @@
   );
 
   let buttonDisabled = $derived(
+    // Never disable the button when it says "Connect Wallet"
+    buttonText === "Connect Wallet" ? false :
+    // Otherwise use normal disable logic
     !$swapState.payAmount || $swapState.payAmount === "0" || 
     SwapButtonService.isButtonDisabled($swapState, insufficientFunds, isQuoteLoading, $auth)
   );
@@ -378,7 +380,13 @@
 
   async function handleButtonAction(): Promise<void> {
     if (!$auth.isConnected) {
-      showWalletProvider = true;
+      walletProviderStore.open(() => {
+        // After successful connection, we can attempt the action again if needed
+        if ($swapState.payAmount && $swapState.payAmount !== "0" && 
+            $swapState.payToken && $swapState.receiveToken) {
+          handleSwapClick();
+        }
+      });
       return;
     }
 
@@ -807,18 +815,6 @@
       resetSwapState();
     }}
   />
-{/if}
-
-{#if showWalletProvider && browser}
-  <Portal target="body">
-    <WalletProvider 
-      isOpen={showWalletProvider}
-      onClose={() => showWalletProvider = false}
-      onLogin={() => {
-        showWalletProvider = false;
-      }}
-    />
-  </Portal>
 {/if}
 
 <style scoped lang="postcss">

@@ -12,13 +12,9 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import {
     ArrowLeft,
-    Twitter,
     X,
     Facebook,
-    Linkedin,
-    Link,
     Copy,
-    MessageCircle,
   } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
@@ -27,7 +23,7 @@
   import BetModal from "../BetModal.svelte";
   import { toastStore } from "$lib/stores/toastStore";
   import { auth } from "$lib/stores/auth";
-  import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
+  import { walletProviderStore } from "$lib/stores/walletProviderStore";
 
   // Import our new components
   import MarketHeader from "./MarketHeader.svelte";
@@ -46,22 +42,20 @@
   let isApprovingAllowance = false;
   let timeLeftInterval: ReturnType<typeof setInterval>;
   let timeLeft: string = "";
-
-  // Add an error state for charts
-  let chartError: boolean = false;
-
-  // Reference to the ChartPanel component
-  let chartPanel: typeof ChartPanel;
-
   // Betting state
   let showBetModal = false;
-  let walletProviderOpen = false;
   let betAmount = 0;
   let selectedOutcome: number | null = null;
   let selectedChartTab: string = "percentageChance";
 
   // Store pending outcome for after authentication
   let pendingOutcome: number | null = null;
+
+  // Add an error state for charts
+  let chartError: boolean = false;
+
+  // Reference to the ChartPanel component
+  let chartPanel: typeof ChartPanel;
 
   // Handle chart tab changes
   function handleChartTabChange(tab: string) {
@@ -218,7 +212,7 @@
     if (!$auth.isConnected) {
       // Store the outcome to open after authentication
       pendingOutcome = outcomeIndex;
-      walletProviderOpen = true;
+      walletProviderStore.open(handleWalletLogin);
       return;
     }
 
@@ -232,7 +226,6 @@
   }
 
   function handleWalletLogin() {
-    walletProviderOpen = false;
     // If we have a pending outcome, open the bet modal after authentication
     if (pendingOutcome !== null) {
       selectedOutcome = pendingOutcome;
@@ -664,13 +657,6 @@
   onBet={(amount) => handleBet(selectedOutcome!, amount)}
 />
 {/if}
-
-<!-- Wallet Provider Modal -->
-<WalletProvider
-  isOpen={walletProviderOpen}
-  onClose={() => (walletProviderOpen = false)}
-  onLogin={handleWalletLogin}
-/>
 
 <style lang="postcss" scoped>
   @keyframes fadeIn {

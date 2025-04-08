@@ -21,11 +21,10 @@
   import Badge from "$lib/components/common/Badge.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { goto } from "$app/navigation";
-  import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
+  import { walletProviderStore } from "$lib/stores/walletProviderStore";
 
   // Modal state
   let showBetModal = false;
-  let walletProviderOpen = false;
   let selectedMarket: any = null;
   let betAmount = 0;
   let selectedOutcome: number | null = null;
@@ -144,7 +143,7 @@
       // Store the market and outcome to open after authentication
       pendingMarket = market;
       pendingOutcome = outcomeIndex !== undefined ? outcomeIndex : 0;
-      walletProviderOpen = true;
+      walletProviderStore.open(handleWalletLogin);
       return;
     }
 
@@ -177,7 +176,6 @@
   }
 
   function handleWalletLogin() {
-    walletProviderOpen = false;
     // If we have a pending market/outcome, open the bet modal after authentication
     if (pendingMarket) {
       openBetModal(pendingMarket, pendingOutcome);
@@ -482,13 +480,6 @@
   bind:betAmount
   onClose={closeBetModal}
   onBet={handleBet}
-/>
-
-<!-- Wallet Provider Modal -->
-<WalletProvider
-  isOpen={walletProviderOpen}
-  onClose={() => (walletProviderOpen = false)}
-  onLogin={handleWalletLogin}
 />
 
 <style lang="postcss" scoped>
