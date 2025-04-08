@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { walletsList } from '@windoge98/plug-n-play';
   import { auth, selectedWalletId } from "$lib/stores/auth";
-  import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
+  import { isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
   import { browser } from "$app/environment";
   import { createNamespacedStore } from "$lib/config/localForage.config";
+  import { tooltip } from '$lib/actions/tooltip';
+  import Badge from '$lib/components/common/Badge.svelte';
 
   const AUTH_NAMESPACE = 'auth';
   const authStorage = createNamespacedStore(AUTH_NAMESPACE);
@@ -16,6 +18,7 @@
     icon: string;
     description?: string;
     recommended?: boolean;
+    unsupported?: boolean;
   }
 
   // Map available wallets to our WalletInfo structure
@@ -24,7 +27,8 @@
     name: wallet.name === "Oisy Wallet" ? "OISY Wallet" : wallet.name,
     icon: wallet.icon,
     description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined,
-    recommended: wallet.id === 'oisy' // Mark Plug as recommended
+    recommended: wallet.id === 'oisy', // Mark OISY as recommended
+    unsupported: wallet.id === 'plug' // Mark Plug as unsupported
   }));
 
   // Props
@@ -165,7 +169,10 @@
   <div class="flex flex-col gap-6 pt-2">
     <div class="wallet-connect-body">
       {#if errorMessage}
-        <div class="error-message" role="alert">
+        <div 
+          class="flex items-center gap-2 p-3 mb-3 rounded-lg bg-kong-accent-red/10 text-kong-accent-red border border-kong-accent-red/20 text-sm animate-fadeIn" 
+          role="alert"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -175,35 +182,55 @@
         </div>
       {/if}
       
-      <div class="wallet-list">
+      <div class="flex flex-col gap-3 px-1">
         {#each filteredWallets as wallet}
           <button
-            class="wallet-option 
-              {connectingWalletId === wallet.id ? 'connecting' : ''} 
-              {wallet.recommended && connectingWalletId !== wallet.id && connectingWalletId !== null ? '' : (wallet.recommended ? 'recommended' : '')}"
+            class="relative flex items-center justify-between w-full px-4 py-4 rounded-xl border border-kong-text-primary/10 bg-kong-bg-dark/10 
+                   will-change-transform backface-hidden transition-[transform,border-color,background-color,box-shadow] duration-200 ease-out 
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kong-primary 
+                   disabled:opacity-50 disabled:cursor-not-allowed 
+                   hover:not(:disabled):border-kong-primary hover:not(:disabled):bg-kong-primary/25 hover:not(:disabled):translate-y-[-1px] hover:not(:disabled):shadow-[0_4px_24px_-2px_rgb(0_0_0_/_0.12),0_2px_8px_-2px_rgb(0_0_0_/_0.06)]
+                   active:not(:disabled):text-kong-bg-light active:not(:disabled):translate-y-0 active:not(:disabled):transition-transform active:not(:disabled):duration-100 active:not(:disabled):ease-linear
+                   {connectingWalletId === wallet.id ? 'border-kong-primary bg-kong-primary/15 text-kong-bg-light animate-pulse-slow' : ''}
+                   {wallet.recommended && connectingWalletId !== wallet.id && connectingWalletId !== null ? '' : 
+                     (wallet.recommended && connectingWalletId !== wallet.id ? 'recommended not-connecting bg-kong-primary/10 border-kong-primary/20 hover:not(:disabled):not(.connecting):bg-kong-primary/25 hover:not(:disabled):not(.connecting):border-kong-primary/30 hover:not(:disabled):not(.connecting):shadow-[0_4px_24px_-2px_rgb(var(--primary)/_0.15),0_2px_8px_-2px_rgb(var(--primary)/_0.1)]' : '')}"
             on:click={() => handleConnect(wallet.id)}
             disabled={connecting}
             aria-busy={connectingWalletId === wallet.id}
           >
-            <div class="wallet-content">
-              <div class="wallet-icon-container">
-                <img src={wallet.icon} alt={wallet.name} class="wallet-icon" />
+            <div class="flex items-center gap-4">
+              <div class="relative w-12 h-12">
+                <img 
+                  src={wallet.icon} 
+                  alt={wallet.name} 
+                  class="w-12 h-12 rounded-xl transition-transform duration-200 dark:brightness-100 brightness-[0.85] transform translate-Z-0 group-hover:dark:brightness-100 group-hover:brightness-90" 
+                />
                 {#if connectingWalletId === wallet.id}
-                  <div class="loading-spinner"></div>
+                  <div class="absolute top-0 left-0 w-full h-full rounded-full border-2 border-transparent border-t-kong-accent-green border-r-kong-accent-green/30 border-b-kong-accent-green/10 animate-spin"></div>
                 {/if}
               </div>
-              <div class="wallet-info">
-                <span class="wallet-name">{wallet.name}</span>
+              <div class="flex flex-col gap-1 flex-1 text-left">
+                <span class="font-medium text-lg text-left flex items-center gap-2">
+                  {wallet.name}
+                  {#if wallet.unsupported}
+                    <span 
+                      class="text-xs font-semibold px-1.5 py-0.5 rounded bg-kong-accent-yellow/20 text-kong-accent-yellow"
+                      use:tooltip={{ text: 'The Plug website is no longer available, and its future is uncertain. Use with caution.', direction: 'top' }}
+                    >
+                      Unsupported
+                    </span>
+                  {/if}
+                  {#if wallet.recommended && !wallet.unsupported}
+                    <Badge variant="blue" size="xs">Recommended</Badge>
+                  {/if}
+                </span>
                 {#if wallet.description}
-                  <span class="wallet-description">{wallet.description}</span>
-                {/if}
-                {#if wallet.recommended}
-                  <span class="recommended-badge">Recommended</span>
+                  <span class="text-kong-text-secondary text-sm">{wallet.description}</span>
                 {/if}
               </div>
             </div>
             <svg
-              class="wallet-arrow"
+              class="text-kong-text-secondary opacity-50 transition-transform duration-200 group-hover:transform group-hover:translate-x-1 group-hover:opacity-100"
               xmlns="http://www.w3.org/2000/svg"
               width="20"
               height="20"
@@ -237,168 +264,12 @@
 {/if}
 
 <style lang="postcss">
-  .wallet-list {
-    @apply flex flex-col gap-3 px-1;
-  }
-
-  .wallet-option {
-    @apply flex items-center justify-between w-full px-4 py-4;
-    @apply bg-kong-bg-dark/10 rounded-xl border border-kong-text-primary/10;
-    position: relative;
-    will-change: transform;
-    backface-visibility: hidden;
-    transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .wallet-option:focus-visible {
-    @apply outline-none ring-2 ring-kong-primary;
-  }
-
-  .wallet-option::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    backdrop-filter: blur(2px);
-    border-radius: inherit;
-    z-index: -1;
-  }
-
-  .wallet-content {
-    @apply flex items-center gap-4;
-  }
-
-  .wallet-option:hover:not(:disabled) {
-    @apply border-kong-primary bg-kong-primary/25;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 24px -2px rgb(0 0 0 / 0.12),
-                0 2px 8px -2px rgb(0 0 0 / 0.06);
-  }
-
-  .wallet-option:active:not(:disabled) {
-    @apply text-kong-bg-light;
-    transform: translateY(0);
-    transition: transform 0.1s ease;
-  }
-
-  .wallet-option:disabled {
-    @apply opacity-50 cursor-not-allowed;
-  }
-
-  .wallet-option.connecting {
-    @apply border-kong-primary bg-kong-primary/15 text-kong-bg-light;
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  /* Override any recommended styles when connecting */
-  .wallet-option.connecting.recommended {
-    @apply border-kong-primary bg-kong-primary/15 text-kong-bg-light;
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  /* Only apply recommended styles when not connecting */
-  .wallet-option.recommended:not(.connecting) {
-    @apply bg-kong-primary/10 border-kong-primary/20;
-  }
-
-  .wallet-option.recommended:hover:not(:disabled):not(.connecting) {
-    @apply bg-kong-primary/25 border-kong-primary/30;
-    box-shadow:
-      0 4px 24px -2px rgb(var(--primary) / 0.15),
-      0 2px 8px -2px rgb(var(--primary) / 0.1);
-  }
-
-  .wallet-icon-container {
-    position: relative;
-    width: 48px;
-    height: 48px;
-  }
-
-  .wallet-icon {
-    @apply w-12 h-12 rounded-xl;
-    @apply transition-transform duration-200;
-    @apply dark:brightness-100 brightness-[0.85];
-    transform: translateZ(0);
-  }
-
-  .wallet-option:hover .wallet-icon {
-    @apply dark:brightness-100 brightness-90;
-  }
-
-
-  .loading-spinner {
-    @apply rounded-full;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: 2px solid transparent;
-    border-top-color: rgb(var(--accent-green));
-    border-right-color: rgb(var(--accent-green) / 0.3);
-    border-bottom-color: rgb(var(--accent-green) / 0.1);
-    animation: spin 1s linear infinite;
-  }
-
+  /* Removed styles that are now inline */
+  
+  /* Keep keyframes if they are used by inline classes */
   @keyframes spin {
     to {
       transform: rotate(360deg);
-    }
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.7;
-    }
-  }
-
-  .wallet-info {
-    @apply flex flex-col gap-1;
-    @apply flex-1;
-    @apply text-left;
-  }
-
-  .wallet-name {
-    @apply font-medium text-lg;
-    @apply text-left;
-  }
-
-  .wallet-description {
-    @apply text-kong-text-secondary text-sm;
-  }
-
-  .recommended-badge {
-    @apply text-kong-primary text-xs font-medium;
-    @apply bg-kong-primary/10 px-2 py-0.5 rounded-full;
-    @apply inline-block w-fit mt-1;
-  }
-
-  .wallet-arrow {
-    @apply text-kong-text-secondary opacity-50;
-    @apply transition-transform duration-200;
-  }
-
-  .wallet-option:hover .wallet-arrow {
-    @apply transform translate-x-1 opacity-100;
-  }
-
-  .error-message {
-    @apply flex items-center gap-2 p-3 mb-3 rounded-lg;
-    @apply bg-kong-accent-red/10 text-kong-accent-red border border-kong-accent-red/20;
-    @apply text-sm;
-    animation: fadeIn 0.3s ease-out;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(-5px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
     }
   }
 </style>
