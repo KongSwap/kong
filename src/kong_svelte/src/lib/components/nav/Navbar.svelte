@@ -32,7 +32,7 @@
   import { getThemeById } from "$lib/themes/themeRegistry";
   import { writable } from "svelte/store";
   import NavbarButton from "./NavbarButton.svelte";
-  import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
+  import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
 
@@ -64,7 +64,6 @@
   let closeTimeout: ReturnType<typeof setTimeout>;
   let activeDropdown = $state<"swap" | "earn" | "stats" | null>(null);
   let showWalletSidebar = $state(false);
-  let showWalletProvider = $state(false);
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
   );
@@ -80,10 +79,6 @@
   // Close wallet sidebar
   function closeWalletSidebar() {
     showWalletSidebar = false;
-  }
-
-  function closeWalletProvider() {
-    showWalletProvider = false;
   }
 
   // Filter tabs based on DFX_NETWORK
@@ -117,7 +112,7 @@
   function handleConnect() {
     // If user is not authenticated, show the wallet provider
     if (!$auth.isConnected) {
-      showWalletProvider = true;
+      walletProviderStore.open();
       return;
     }
 
@@ -691,15 +686,6 @@
   activeTab={walletSidebarActiveTab}
   onClose={closeWalletSidebar}
 />
-{#if browser}
-  <WalletProvider
-    isOpen={showWalletProvider}
-    onClose={closeWalletProvider}
-    onLogin={() => {
-      // Handle login if needed
-    }}
-  />
-{/if}
 
 <style scoped lang="postcss">
   /* Mobile Menu */

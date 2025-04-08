@@ -22,6 +22,7 @@
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import type { LayoutData } from './$types';
+  import GlobalWalletProvider from "$lib/components/wallet/GlobalWalletProvider.svelte";
 
   let { data, children } = $props<{ 
     data: LayoutData & { metadata: { url: string } },
@@ -172,6 +173,7 @@
   <QRModal />
   <GlobalSearch isOpen={$searchStore.isOpen} on:close={() => searchStore.close()} />
   <KeyboardShortcutsHelp />
+  <GlobalWalletProvider />
   <div id="modals"></div>
 </div>
 

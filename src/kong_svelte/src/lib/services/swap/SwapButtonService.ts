@@ -13,6 +13,9 @@ export class SwapButtonService {
         insufficientFunds: boolean,
         auth: AuthState
     ): string {
+        // If user isn't connected, always show connect wallet button
+        // This is now handled in the Swap.svelte component itself
+        
         if (!swapState.payToken || !swapState.receiveToken) return "Select Tokens";
         if (swapState.isProcessing) return "Processing...";
         if (isQuoteLoading) return "Fetching Quote...";
