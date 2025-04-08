@@ -160,7 +160,7 @@
       <Navbar />
     </div>
     {/if}
-    <main class="flex flex-col items-center w-full">
+    <main class="flex flex-col items-center w-full flex-grow">
       <div class="w-full h-full" transition:fade>
         {@render children?.()}
       </div>
