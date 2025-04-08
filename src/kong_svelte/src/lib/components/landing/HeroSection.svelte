@@ -1,33 +1,40 @@
 <script lang="ts">
-  import { fade, fly } from "svelte/transition";
-  import { onMount, onDestroy, tick } from "svelte";
+  import { onMount, onDestroy, tick, getContext } from "svelte";
+  import type { Writable } from 'svelte/store';
   import * as THREE from "three";
-  import { tweened } from "svelte/motion";
-  import { cubicOut } from "svelte/easing";
   import { ChevronDown } from "lucide-svelte";
+  import LandingButton from "./LandingButton.svelte";
+  import {
+    FORMAT_NUMBER_KEY,
+    FORMAT_COUNT_KEY,
+    TWEENED_TVL_KEY,
+    TWEENED_VOLUME_KEY,
+    TWEENED_FEES_KEY,
+    TWEENED_SWAPS_KEY
+  } from "$lib/constants/contextKeys"; // Import shared keys
 
   // Props using $props rune - corrected syntax
-  type PoolStats = { total_volume_24h: number; total_tvl: number; total_fees_24h: number };
   type FormatNumberFn = (num: number, precision?: number) => string;
   type FormatCountFn = (num: number) => string;
   type NavigateToSwapFn = () => void;
 
+  // === Get Context ===
+  const tweenedTVL = getContext<Writable<number>>(TWEENED_TVL_KEY);
+  const tweenedVolume = getContext<Writable<number>>(TWEENED_VOLUME_KEY);
+  const tweenedFees = getContext<Writable<number>>(TWEENED_FEES_KEY);
+  const tweenedSwaps = getContext<Writable<number>>(TWEENED_SWAPS_KEY);
+  const formatNumber = getContext<FormatNumberFn>(FORMAT_NUMBER_KEY);
+  const formatCount = getContext<FormatCountFn>(FORMAT_COUNT_KEY);
+
+  // === Props (Only non-shared props) ===
   let { 
     showGetStarted,
     isLoading,
-    poolStats,
-    totalSwaps,
-    formatNumber,
-    formatCount,
     navigateToSwap,
     isVisible = false // Default value provided here
   } = $props<{
     showGetStarted: boolean;
     isLoading: boolean;
-    poolStats: PoolStats;
-    totalSwaps: number;
-    formatNumber: FormatNumberFn;
-    formatCount: FormatCountFn;
     navigateToSwap: NavigateToSwapFn;
     isVisible?: boolean;
   }>();
@@ -45,52 +52,9 @@
   
   function triggerAnimation() {
     hasTriggeredAnimation = true;
-    setTimeout(() => {
-      contentVisible = true;
-    }, 200);
+    contentVisible = true; // Set immediately when triggered
   }
 
-  // Tweened values for stats
-  const tweenedTVL = tweened(0, { duration: 1500, easing: cubicOut });
-  const tweenedVolume = tweened(0, { duration: 1500, easing: cubicOut });
-  const tweenedFees = tweened(0, { duration: 1500, easing: cubicOut });
-  const tweenedSwaps = tweened(0, { duration: 1500, easing: cubicOut });
-  
-  // Update tweened values when props change
-  // Use a non-reactive variable for the timeout ID
-  let updateTimeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
-  $effect(() => {
-    // Capture reactive dependencies explicitly if needed, though direct access is usually fine
-    const currentIsLoading = isLoading;
-    const currentPoolStats = poolStats;
-    const currentTotalSwaps = totalSwaps;
-    
-    if (!currentIsLoading && currentPoolStats) {
-      // Clear any existing timeout *before* setting a new one
-      if (updateTimeoutId) {
-        clearTimeout(updateTimeoutId);
-        updateTimeoutId = undefined; // Clear the ID immediately after clearing
-      }
-      
-      // Set the new timeout
-      updateTimeoutId = setTimeout(() => {
-        tweenedTVL.set(currentPoolStats.total_tvl);
-        tweenedVolume.set(currentPoolStats.total_volume_24h);
-        tweenedFees.set(currentPoolStats.total_fees_24h);
-        tweenedSwaps.set(currentTotalSwaps);
-        updateTimeoutId = undefined; // Clear the ID once the timeout callback runs
-      }, 100);
-    }
-    
-    // Cleanup function: ensures timeout is cleared if dependencies change or component unmounts
-    return () => {
-      if (updateTimeoutId) {
-        clearTimeout(updateTimeoutId);
-        updateTimeoutId = undefined;
-      }
-    };
-  });
-  
   // Three.js variables - using $state where appropriate
   let canvasContainer = $state<HTMLElement | undefined>(undefined); // Keep $state for the element ref
   let scene: THREE.Scene | undefined;
@@ -567,7 +531,7 @@
         <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-3 sm:p-4 min-h-[70px] sm:min-h-[90px] relative transition-all duration-300 ease-in-out will-change-transform will-change-opacity hover:border-[#7B68EE]/30 hover:bg-white/[0.07] overflow-hidden screen-panel">
           <div class="relative z-10">
             <div class="text-[0.7rem] sm:text-[0.8rem] uppercase text-[#A1A7BC]/90 tracking-wider mb-1 text-shadow shadow-black/70 font-['BlenderPro','Rajdhani',monospace] text-center">Total Value Locked</div>
-            <div class="panel-value crt-value text-lg sm:text-xl md:text-2xl">{isLoading ? '...' : formatNumber($tweenedTVL)}</div>
+            <div class="panel-value crt-value text-lg sm:text-xl md:text-2xl">{formatNumber($tweenedTVL)}</div>
           </div>
           <div class="panel-scanlines"></div>
           <div class="panel-noise"></div>
@@ -576,7 +540,7 @@
         <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-3 sm:p-4 min-h-[70px] sm:min-h-[90px] relative transition-all duration-300 ease-in-out will-change-transform will-change-opacity hover:border-[#7B68EE]/30 hover:bg-white/[0.07] overflow-hidden screen-panel">
           <div class="relative z-10">
             <div class="text-[0.7rem] sm:text-[0.8rem] uppercase text-[#A1A7BC]/90 tracking-wider mb-1 text-shadow shadow-black/70 font-['BlenderPro','Rajdhani',monospace] text-center">24h Volume</div>
-            <div class="panel-value crt-value text-lg sm:text-xl md:text-2xl">{isLoading ? '...' : formatNumber($tweenedVolume)}</div>
+            <div class="panel-value crt-value text-lg sm:text-xl md:text-2xl">{formatNumber($tweenedVolume)}</div>
           </div>
           <div class="panel-scanlines"></div>
           <div class="panel-noise"></div>
@@ -585,7 +549,7 @@
         <div class="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-3 sm:p-4 min-h-[70px] sm:min-h-[90px] relative transition-all duration-300 ease-in-out will-change-transform will-change-opacity hover:border-[#7B68EE]/30 hover:bg-white/[0.07] overflow-hidden screen-panel">
           <div class="relative z-10">
             <div class="text-[0.7rem] sm:text-[0.8rem] uppercase text-[#A1A7BC]/90 tracking-wider mb-1 text-shadow shadow-black/70 font-['BlenderPro','Rajdhani',monospace] text-center">24h Fees</div>
-            <div class="panel-value crt-value text-lg sm:text-xl md:text-2xl">{isLoading ? '...' : formatNumber($tweenedFees)}</div>
+            <div class="panel-value crt-value text-lg sm:text-xl md:text-2xl">{formatNumber($tweenedFees)}</div>
           </div>
           <div class="panel-scanlines"></div>
           <div class="panel-noise"></div>
@@ -604,16 +568,12 @@
     
     {#if showGetStarted}
       <div class="mt-7 sm:mt-10 transition-all duration-1000 ease-out delay-500 {contentVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}">
-        <button 
-          on:click={navigateToSwap}
-          class="relative inline-flex items-center overflow-hidden text-base sm:text-lg px-5 bg-[#0D111F]/30 text-[#9370DB] border border-[#9370DB]/40 rounded font-semibold tracking-wider uppercase transition-all duration-300 ease-in-out shadow-[0_0_10px_rgba(147,112,219,0.2),inset_0_0_5px_rgba(147,112,219,0.1)] backdrop-blur-md will-change-transform will-change-opacity will-change-shadow translate-z-0 hover:text-white hover:bg-[#9370DB]/80 hover:border-[#9370DB]/80 hover:shadow-[0_0_20px_rgba(147,112,219,0.6),0_0_35px_rgba(123,104,238,0.4)] hover:-translate-y-0.5 hover:text-shadow active:translate-y-0.5 active:shadow-[0_0_8px_rgba(147,112,219,0.3),inset_0_0_4px_rgba(147,112,219,0.1)] sm:min-w-[180px] font-['Inter','Rajdhani','SF_Pro_Display',sans-serif] neon-button"
-        >
-          <span class="relative z-10 text-nowrap px-5 py-3 sm:py-4">LAUNCH APP</span>
-          <div class="neon-button-glow"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 sm:w-6 sm:h-6 ml-2 relative z-10">
-            <path fill-rule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clip-rule="evenodd" />
-          </svg>
-        </button>
+        <LandingButton 
+          onClick={navigateToSwap}
+          buttonClass="text-base sm:text-lg px-5 bg-[#0D111F]/30 text-[#9370DB] border border-[#9370DB]/40 shadow-[0_0_10px_rgba(147,112,219,0.2),inset_0_0_5px_rgba(147,112,219,0.1)] backdrop-blur-md will-change-transform will-change-opacity will-change-shadow translate-z-0 hover:text-white hover:bg-[#9370DB]/80 hover:border-[#9370DB]/80 hover:shadow-[0_0_20px_rgba(147,112,219,0.6),0_0_35px_rgba(123,104,238,0.4)] hover:text-shadow sm:min-w-[180px] font-['Inter','Rajdhani','SF_Pro_Display',sans-serif] neon-button"
+          textClass="px-5 py-3 sm:py-4"
+          iconClass="w-5 h-5 sm:w-6 sm:h-6 ml-2 relative z-10"
+        />
       </div>
     {/if}
     
@@ -805,10 +765,7 @@
   
   .neon-button-glow {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0; /* Use inset for brevity */
     background: radial-gradient(
       circle at center,
       rgba(147, 112, 219, 0.3) 0%,
@@ -820,7 +777,8 @@
   }
   
   .neon-button:hover .neon-button-glow {
-    opacity: 1;
+    /* The hover effect for glow is now handled by the LandingButton component */
+    /* opacity: 1; */ 
   }
   
   /* Scanlines overlay - more subtle */

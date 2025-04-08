@@ -291,7 +291,7 @@
       {:else}
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          on:click={() => goto("/swap")}
+          on:click={() => goto("/")}
         >
           <img
             src={$logoSrcStore}

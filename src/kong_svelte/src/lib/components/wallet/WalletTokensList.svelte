@@ -96,7 +96,6 @@
 
 
 			const sorted = processed.sort((a, b) => b.usdValue - a.usdValue); // Sort by value, highest first
-			console.log(`[WalletTokensList] Finished calculating derived state. Displaying ${sorted.length} tokens.`);
 			return sorted;
 		})()
 	);
@@ -127,23 +126,20 @@
 		try {
 			// Always force refresh when explicitly requested
 			if (forceRefresh) {				
+				// Force token data refresh BEFORE balances are loaded to use latest prices
+				await userTokens.refreshTokenData();
+
 				// Request balance refresh for all tokens, not just enabled ones
 				// This helps discover tokens that have balances but aren't enabled
 				const allTokens = $userTokens.tokens;				
 				const balances = await loadBalances(allTokens, walletId, true);
-				console.log(`Received balances for ${Object.keys(balances).length} tokens`);
 				
 				// Find tokens with non-zero balances that aren't enabled
 				const tokensWithBalance = Object.entries(balances)
 					.filter(([_, balance]) => balance.in_tokens > 0n)
 					.map(([canisterId]) => canisterId);
-					
-				console.log(`Found ${tokensWithBalance.length} tokens with non-zero balances`);
-				
+									
 				lastRefreshed = Date.now();
-				
-				// Force token data refresh after balances are loaded
-				await userTokens.refreshTokenData();
 				
 				onBalancesLoaded();
 			} else {
@@ -153,6 +149,9 @@
 					Date.now() - lastRefreshed > 30000; // Reduced to 30 seconds for more frequent updates
 				
 				if (needsRefresh) {
+					// Also refresh token data during periodic updates
+					await userTokens.refreshTokenData();
+
 					// OPTIMIZATION: Only load balances for ENABLED tokens during normal refresh
 					const enabledTokenIds = $userTokens.enabledTokens;
 					const enabledTokens = $userTokens.tokens.filter(token =>
@@ -160,7 +159,7 @@
 					);
 					console.log(`Performing normal balance refresh for ${enabledTokens.length} enabled tokens...`);
 					if (enabledTokens.length > 0) {
-						await loadBalances(enabledTokens, walletId, true);
+						await loadBalances(enabledTokens, walletId, true); // Keep force=true here to ensure API call
 						lastRefreshed = Date.now();
 						onBalancesLoaded();
 					}
@@ -242,9 +241,7 @@
 			if (syncStatus.added > 0 || syncStatus.removed > 0) {
 				// Complete refresh sequence:
 				// 1. First force a token data refresh
-				console.log("Refreshing token data after sync...");
 				await userTokens.refreshTokenData();
-				console.log("Refreshing balances after sync...");
 				await loadUserBalances(true);
 			}
 		} catch (error) {
@@ -469,11 +466,7 @@
 				// We'll need to check balances for all currently enabled tokens
 				const currentEnabledTokens = $userTokens.tokens
 					.filter(token => token.canister_id && enabledTokenIds.has(token.canister_id));
-				
-				// Check balances for these tokens if we haven't already
-				// OPTIMIZATION: Use the already fetched balances instead of a new call
-				// const enabledTokenBalances = await loadBalances(currentEnabledTokens, walletId, true);
-
+			
 				// Find tokens with zero balance (potential removal candidates) using the fetched balances
 				const tokensToRemove = currentEnabledTokens.filter(token => {
 					// Skip essential tokens that should never be removed
@@ -482,6 +475,7 @@
 					// Check if it's an essential token that should never be removed
 					const essentialTokenIds = [
 						"ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP
+						"o7oak-iyaaa-aaaaq-aadzq-cai", // KONG
 						"mxzaz-hqaaa-aaaar-qaada-cai", // CKBTC
 						"ss2fx-dyaaa-aaaar-qacoq-cai", // CKETH
 						"djua2-fiaaa-aaaar-qaazq-cai", // CKUSDC
@@ -510,7 +504,6 @@
 					return true;
 				} else {
 					// No changes needed
-					console.log("No token changes needed");
 					syncStatus = { added: 0, removed: 0 };
 					showSyncStatus = true;
 					setTimeout(() => {

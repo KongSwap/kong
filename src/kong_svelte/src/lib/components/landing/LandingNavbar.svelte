@@ -1,5 +1,6 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
+  import LandingButton from "./LandingButton.svelte";
   
   export let currentSection: number;
   export let isMenuOpen: boolean;
@@ -55,16 +56,10 @@
     
     <!-- Actions -->
     <div class="flex items-center">
-      <button 
-        on:click={navigateToSwap} 
-        class="hidden md:flex relative text-nowrap items-center overflow-hidden bg-[rgba(0,10,30,0.3)] text-[#00D8FF] border border-[rgba(0,216,255,0.4)] rounded px-6 py-2.5 text-[0.9rem] font-semibold tracking-wider uppercase transition-all duration-300 ease-in-out shadow-[0_0_10px_rgba(0,216,255,0.2),inset_0_0_5px_rgba(0,216,255,0.1)] backdrop-blur-sm font-['Inter',_'Rajdhani',_'SF_Pro_Display',_sans-serif] hover:text-white hover:bg-[rgba(0,216,255,0.8)] hover:border-[rgba(0,216,255,0.8)] hover:shadow-[0_0_15px_rgba(0,216,255,0.5),0_0_30px_rgba(0,216,255,0.3),inset_0_0_10px_rgba(255,255,255,0.2)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[0_0_8px_rgba(0,216,255,0.3),inset_0_0_4px_rgba(0,216,255,0.1)]"
-      >
-        <span class="relative z-10 text-nowrap">LAUNCH APP</span>
-        <div class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,rgba(0,216,255,0.3)_0%,transparent_70%)] opacity-0 z-[1] transition-opacity duration-300 ease-in-out group-hover:opacity-100 group-hover:animate-pulse"></div>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 ml-2 relative z-10">
-          <path fill-rule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clip-rule="evenodd" />
-        </svg>
-      </button>
+      <LandingButton 
+        onClick={navigateToSwap} 
+        buttonClass="hidden md:flex bg-[rgba(0,10,30,0.3)] text-[#00D8FF] border border-[rgba(0,216,255,0.4)] shadow-[0_0_10px_rgba(0,216,255,0.2),inset_0_0_5px_rgba(0,216,255,0.1)] hover:text-white hover:bg-[rgba(0,216,255,0.8)] hover:border-[rgba(0,216,255,0.8)] hover:shadow-[0_0_15px_rgba(0,216,255,0.5),0_0_30px_rgba(0,216,255,0.3),inset_0_0_10px_rgba(255,255,255,0.2)] active:shadow-[0_0_8px_rgba(0,216,255,0.3),inset_0_0_4px_rgba(0,216,255,0.1)]" 
+      />
       
       <button 
         class="md:hidden bg-transparent border-none cursor-pointer p-2" 
@@ -112,16 +107,10 @@
         >
           GOVERNANCE
         </a>
-        <button 
-          on:click={navigateToSwap} 
-          class="mt-6 inline-flex items-center relative overflow-hidden bg-[rgba(0,10,30,0.3)] text-[#00D8FF] border border-[rgba(0,216,255,0.4)] rounded px-6 py-2.5 text-[0.9rem] font-semibold tracking-wider uppercase transition-all duration-300 ease-in-out shadow-[0_0_10px_rgba(0,216,255,0.2),inset_0_0_5px_rgba(0,216,255,0.1)] backdrop-blur-sm font-['Inter',_'Rajdhani',_'SF_Pro_Display',_sans-serif] hover:text-white hover:bg-[rgba(0,216,255,0.8)] hover:border-[rgba(0,216,255,0.8)] hover:shadow-[0_0_15px_rgba(0,216,255,0.5),0_0_30px_rgba(0,216,255,0.3),inset_0_0_10px_rgba(255,255,255,0.2)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[0_0_8px_rgba(0,216,255,0.3),inset_0_0_4px_rgba(0,216,255,0.1)]"
-        >
-          <span class="relative z-10 text-nowrap">LAUNCH APP</span>
-          <div class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,rgba(0,216,255,0.3)_0%,transparent_70%)] opacity-0 z-[1] transition-opacity duration-300 ease-in-out group-hover:opacity-100 group-hover:animate-pulse"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 ml-2 relative z-10">
-            <path fill-rule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clip-rule="evenodd" />
-          </svg>
-        </button>
+        <LandingButton 
+          onClick={navigateToSwap} 
+          buttonClass="mt-6 inline-flex bg-[rgba(0,10,30,0.3)] text-[#00D8FF] border border-[rgba(0,216,255,0.4)] shadow-[0_0_10px_rgba(0,216,255,0.2),inset_0_0_5px_rgba(0,216,255,0.1)] hover:text-white hover:bg-[rgba(0,216,255,0.8)] hover:border-[rgba(0,216,255,0.8)] hover:shadow-[0_0_15px_rgba(0,216,255,0.5),0_0_30px_rgba(0,216,255,0.3),inset_0_0_10px_rgba(255,255,255,0.2)] active:shadow-[0_0_8px_rgba(0,216,255,0.3),inset_0_0_4px_rgba(0,216,255,0.1)]"
+        />
       </div>
     </div>
   {/if}

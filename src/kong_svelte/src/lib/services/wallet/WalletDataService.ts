@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
- import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
+import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { formatBalance } from "$lib/utils/numberFormatUtils";
@@ -37,6 +37,21 @@ export const walletDataStore = writable<WalletData>(initialState);
 let initializationInProgress = false;
 let lastInitializedWallet: string | null = null;
 let initializationPromise: Promise<void> | null = null;
+
+// Token cache to avoid reloading tokens for every wallet
+let tokenCache: {
+  tokens: FE.Token[];
+  lastUpdated: number | null;
+} = {
+  tokens: [],
+  lastUpdated: null
+};
+
+// Helper function for delay
+const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// Cache expiration time in milliseconds (1 hour)
+const TOKEN_CACHE_EXPIRY = 60 * 1000;
 
 /**
  * WalletDataService - Centralized service for managing wallet token data
@@ -79,6 +94,12 @@ export class WalletDataService {
       console.log(`Initialization already in progress for wallet ${principalId}, returning existing promise`);
       return initializationPromise;
     }
+    
+    // Prevent starting a new initialization if we're already loading for this wallet
+    if (currentState.isLoading && currentState.currentWallet === principalId) {
+      console.log(`Already loading wallet data for ${principalId}, skipping redundant initialization`);
+      return;
+    }
 
     // Set initialization flags
     initializationInProgress = true;
@@ -90,9 +111,9 @@ export class WalletDataService {
       isLoading: true,
       error: null,
       currentWallet: principalId, // Set current wallet immediately
-      // Clear existing data to prevent showing stale data
-      balances: {},
-      tokens: []
+      // Preserve tokens if available, clear balances
+      tokens: state.tokens.length > 0 ? state.tokens : [],
+      balances: {}
     }));
 
     // Create a promise for this initialization
@@ -100,8 +121,25 @@ export class WalletDataService {
       try {
         console.log(`Starting initialization for wallet ${principalId}`);
 
-        // Load tokens first
-        const tokens = await this.loadAllTokens();
+        // Load tokens first - use cache if available and not expired
+        let tokens: FE.Token[] = [];
+        
+        if (
+          tokenCache.tokens.length > 0 && 
+          tokenCache.lastUpdated && 
+          Date.now() - tokenCache.lastUpdated < TOKEN_CACHE_EXPIRY
+        ) {
+          console.log('Using cached tokens');
+          tokens = tokenCache.tokens;
+        } else {
+          console.log('Token cache expired or empty, loading fresh tokens');
+          tokens = await this.loadAllTokens();
+          // Update the token cache
+          tokenCache = {
+            tokens,
+            lastUpdated: Date.now()
+          };
+        }
         
         // Update store with tokens
         walletDataStore.update(state => ({
@@ -123,11 +161,18 @@ export class WalletDataService {
             }));
           } catch (balanceError) {
             console.warn("Error loading balances, but continuing with tokens:", balanceError);
-            // Don't fail the entire initialization if balance loading fails
+            
+            // Set a more specific error for balances, but don't fail completely
+            walletDataStore.update(state => ({
+              ...state,
+              error: balanceError instanceof Error 
+                ? `Balance loading error: ${balanceError.message}` 
+                : "Failed to load token balances"
+            }));
           }
         }
 
-        // Load liquidity positions in parallel
+        // Load liquidity positions in parallel but don't wait for it
         this.loadLiquidityPositions(principalId).catch(error => {
           console.warn("Error loading liquidity positions, but continuing:", error);
         });
@@ -135,19 +180,22 @@ export class WalletDataService {
         // Update store to indicate completion
         walletDataStore.update(state => ({
           ...state,
-          isLoading: false,
-          error: null
+          isLoading: false
         }));
         
         console.log(`Successfully initialized wallet data for ${principalId}`);
       } catch (error) {
         console.error("Error initializing wallet data:", error);
         
-        // Update store with error
+        // Update store with more specific error
+        const errorMessage = error instanceof Error 
+          ? `Wallet initialization failed: ${error.message}` 
+          : "Failed to initialize wallet data";
+          
         walletDataStore.update(state => ({
           ...state,
           isLoading: false,
-          error: error instanceof Error ? error.message : "Failed to initialize wallet data"
+          error: errorMessage
         }));
       } finally {
         // Reset initialization flags
@@ -158,6 +206,72 @@ export class WalletDataService {
     });
 
     return initializationPromise;
+  }
+
+  /**
+   * Refresh only the balances for the current wallet without reloading tokens
+   * This is useful for updating balances after transactions
+   */
+  public static async refreshBalances(forceRefresh = false): Promise<void> {
+    const currentState = get(walletDataStore);
+    const principalId = currentState.currentWallet;
+    
+    if (!principalId || principalId === "anonymous") {
+      console.log('No wallet to refresh balances for');
+      return;
+    }
+    
+    if (currentState.isLoading) {
+      console.log('Already loading data, skipping balance refresh');
+      return;
+    }
+    
+    try {
+      // Update loading state
+      walletDataStore.update(state => ({
+        ...state,
+        isLoading: true,
+        error: null
+      }));
+      
+      console.log(`Refreshing balances for wallet ${principalId}`);
+      
+      // Use existing tokens from the store
+      const tokens = currentState.tokens;
+      
+      if (tokens.length > 0) {
+        const balances = await this.loadWalletBalances(
+          principalId, 
+          tokens, 
+          { forceRefresh }
+        );
+        
+        // Update store with new balances
+        walletDataStore.update(state => ({
+          ...state,
+          balances,
+          lastUpdated: Date.now(),
+          isLoading: false
+        }));
+        
+        console.log(`Successfully refreshed balances for ${principalId}`);
+      } else {
+        // If no tokens, we need to initialize completely
+        console.log('No tokens available, initializing wallet data');
+        await this.initializeWallet(principalId);
+      }
+    } catch (error) {
+      console.error("Error refreshing balances:", error);
+      
+      // Update store with error
+      walletDataStore.update(state => ({
+        ...state,
+        isLoading: false,
+        error: error instanceof Error 
+          ? `Balance refresh failed: ${error.message}` 
+          : "Failed to refresh balances"
+      }));
+    }
   }
 
   /**
@@ -210,6 +324,35 @@ export class WalletDataService {
   }
 
   /**
+   * Force refresh the token cache
+   * This is useful when new tokens are added to the system
+   */
+  public static async refreshTokenCache(): Promise<FE.Token[]> {
+    console.log('Force refreshing token cache');
+    try {
+      const tokens = await this.loadAllTokens();
+      
+      // Update the token cache
+      tokenCache = {
+        tokens,
+        lastUpdated: Date.now()
+      };
+      
+      // Update store with new tokens
+      walletDataStore.update(state => ({
+        ...state,
+        tokens,
+        lastUpdated: Date.now()
+      }));
+      
+      return tokens;
+    } catch (error) {
+      console.error("Failed to refresh token cache:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Load all tokens with pagination and retry logic
    */
   public static async loadAllTokens(): Promise<FE.Token[]> {
@@ -218,9 +361,6 @@ export class WalletDataService {
     let hasMorePages = true;
     const pageLimit = 75;
     const maxRetries = 1;
-    
-    // Helper function for delay
-    const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
     
     // Paginate through all tokens with delay between requests
     while (hasMorePages) {
@@ -246,7 +386,7 @@ export class WalletDataService {
             
             // Add delay between requests to prevent 503 errors
             if (hasMorePages) {
-              await delay(200); // 300ms delay between page requests
+              await delay(200);
             }
             
             success = true;
@@ -304,7 +444,6 @@ export class WalletDataService {
       // Process tokens in smaller batches to prevent 503 errors
       const BATCH_SIZE = 50;
       let allBalances: Record<string, TokenBalance> = {};
-      const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
       
       for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
         const tokenBatch = tokens.slice(i, i + BATCH_SIZE);
@@ -364,7 +503,7 @@ export class WalletDataService {
       return nonZeroBalances;
     } catch (error) {
       console.error("Error loading wallet balances:", error);
-      return {};
+      throw new Error(error instanceof Error ? error.message : "Failed to load wallet balances");
     }
   }
 
@@ -383,8 +522,26 @@ export class WalletDataService {
       
       console.log('Starting token metadata load for', principalId);
       
-      // Load all tokens
-      const tokens = await this.loadAllTokens();
+      // Check if we have tokens in the cache
+      let tokens: FE.Token[] = [];
+      
+      if (
+        tokenCache.tokens.length > 0 && 
+        tokenCache.lastUpdated && 
+        Date.now() - tokenCache.lastUpdated < TOKEN_CACHE_EXPIRY
+      ) {
+        console.log('Using cached tokens for metadata-only load');
+        tokens = tokenCache.tokens;
+      } else {
+        console.log('Token cache expired or empty, loading fresh tokens for metadata-only load');
+        tokens = await this.loadAllTokens();
+        
+        // Update the token cache
+        tokenCache = {
+          tokens,
+          lastUpdated: Date.now()
+        };
+      }
       
       // Update store with tokens
       walletDataStore.update(state => ({
@@ -418,6 +575,8 @@ export class WalletDataService {
     initializationInProgress = false;
     lastInitializedWallet = null;
     initializationPromise = null;
+    
+    // Note: We don't reset the token cache here to avoid unnecessary reloading
   }
 
   /**

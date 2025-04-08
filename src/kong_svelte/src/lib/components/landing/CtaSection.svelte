@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
+  import LandingButton from "./LandingButton.svelte";
 
   // Props
   let { 
@@ -623,17 +624,11 @@
       Join the thousands of professional and retail traders already leveraging KongSwap's advanced infrastructure.
     </p>
     
-    <div class="flex flex-wrap gap-4 justify-center">
-      <button 
-        on:click={navigateToSwap}
-        class="neon-button relative inline-flex items-center overflow-hidden pointer-events-auto"
-      >
-        <span class="neon-button-text text-nowrap">LAUNCH APP</span>
-        <div class="neon-button-glow"></div>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 ml-2 relative z-10">
-          <path fill-rule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clip-rule="evenodd" />
-        </svg>
-      </button>
+    <div class="flex flex-wrap gap-4 justify-center pointer-events-auto">
+      <LandingButton 
+        onClick={navigateToSwap} 
+        buttonClass="inline-flex bg-[rgba(0,10,30,0.3)] py-6 px-8 text-[#00D8FF] border border-[rgba(0,216,255,0.4)] shadow-[0_0_10px_rgba(0,216,255,0.2),inset_0_0_5px_rgba(0,216,255,0.1)] hover:text-white hover:bg-[rgba(0,216,255,0.8)] hover:border-[rgba(0,216,255,0.8)] hover:shadow-[0_0_15px_rgba(0,216,255,0.5),0_0_30px_rgba(0,216,255,0.3),inset_0_0_10px_rgba(255,255,255,0.2)] active:shadow-[0_0_8px_rgba(0,216,255,0.3),inset_0_0_4px_rgba(0,216,255,0.1)]"
+      />
     </div>
   </div>
 </section>
@@ -889,74 +884,6 @@
     50% {
       opacity: 0.1;
     }
-  }
-  
-  /* Neon button - modernized for better UI */
-  .neon-button {
-    position: relative;
-    background: rgba(0, 10, 30, 0.3);
-    color: #00D8FF;
-    border: 1px solid rgba(0, 216, 255, 0.4);
-    border-radius: 4px;
-    padding: 12px 28px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    box-shadow: 
-      0 0 10px rgba(0, 216, 255, 0.2),
-      inset 0 0 5px rgba(0, 216, 255, 0.1);
-    backdrop-filter: blur(4px);
-    font-family: 'Inter', 'Rajdhani', 'SF Pro Display', sans-serif;
-    will-change: transform, box-shadow, color, background, border-color;
-  }
-  
-  .neon-button:hover {
-    color: white;
-    background: rgba(0, 216, 255, 0.8);
-    border-color: rgba(0, 216, 255, 0.8);
-    box-shadow: 
-      0 0 15px rgba(0, 216, 255, 0.5),
-      0 0 30px rgba(0, 216, 255, 0.3),
-      inset 0 0 10px rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
-  }
-  
-  .neon-button:active {
-    transform: translateY(1px);
-    box-shadow: 
-      0 0 8px rgba(0, 216, 255, 0.3),
-      inset 0 0 4px rgba(0, 216, 255, 0.1);
-  }
-  
-  .neon-button-text {
-    position: relative;
-    z-index: 10;
-  }
-  
-  .neon-button-glow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(
-      circle at center,
-      rgba(0, 216, 255, 0.3) 0%,
-      transparent 70%
-    );
-    opacity: 0;
-    z-index: 1;
-    transition: opacity 0.3s ease;
-    will-change: opacity, transform;
-  }
-  
-  .neon-button:hover .neon-button-glow {
-    opacity: 1;
-    animation: pulse-glow 2s infinite;
   }
   
   /* Cyberpunk text style */

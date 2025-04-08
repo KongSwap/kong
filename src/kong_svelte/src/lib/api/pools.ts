@@ -45,7 +45,7 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
     }
 
     const data = await response.json();
-    console.log("data", data);
+
     if (!data || !data.items) {
       throw new Error("Invalid API response");
     }
@@ -124,8 +124,6 @@ export const fetchPoolBalanceHistory = async (poolId: string | number): Promise<
   try {
     // Use the exact endpoint without any query parameters
     const endpoint = `${API_URL}/api/pools/${poolId}/balance-history`;
-    console.log('Calling pool balance history endpoint:', endpoint);
-    
     const response = await fetch(endpoint, {
       method: 'GET',
       headers: {
@@ -147,13 +145,6 @@ export const fetchPoolBalanceHistory = async (poolId: string | number): Promise<
     }
     
     const data = await response.json();
-    
-    // Log the first item to help debug
-    if (Array.isArray(data) && data.length > 0) {
-      console.log('Sample balance history item:', data[0]);
-    } else {
-      console.log('Empty or unexpected response format:', data);
-    }
     
     return data;
   } catch (error) {

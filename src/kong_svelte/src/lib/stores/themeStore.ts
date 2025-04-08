@@ -335,14 +335,11 @@ function createThemeStore() {
       // Check if auth state has changed in a meaningful way
       if (currentAuthState.isConnected !== previousAuthState.isConnected || 
           currentAuthState.principalId !== previousAuthState.principalId) {
-        
-        console.log('[ThemeStore] Auth state changed, reloading theme');
-        
+                
         // Wait a bit before loading to make sure auth state has stabilized
         setTimeout(() => {
           loadThemeFromStorage().then(theme => {
             if (theme) {
-              console.log('[ThemeStore] Applying theme from storage:', theme);
               setTheme(theme);
             }
           });
