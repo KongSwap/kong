@@ -4,21 +4,34 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
 
-  export let label: string;
-  export let options: Array<{
+  // Define props using runes
+  let { 
+    label, 
+    options, 
+    isActive, 
+    activeDropdown, 
+    onShowDropdown, 
+    onHideDropdown, 
+    onTabChange, 
+    defaultPath 
+  } = $props<{
     label: string;
-    description: string;
-    path: string;
-    icon: any;
-    comingSoon?: boolean;
-  }>;
-  export let isActive: boolean;
-  export let activeDropdown: string | null;
-  export let onShowDropdown: (type: string) => void;
-  export let onHideDropdown: () => void;
-  export let onTabChange: (tab: string) => void;
-  export let defaultPath: string;
+    options: Array<{
+      label: string;
+      description: string;
+      path: string;
+      icon: any;
+      comingSoon?: boolean;
+    }>;
+    isActive: boolean;
+    activeDropdown: string | null;
+    onShowDropdown: (type: string) => void;
+    onHideDropdown: () => void;
+    onTabChange: (tab: string) => void;
+    defaultPath: string;
+  }>();
 
+  // Handle click on a dropdown option
   const handleOptionClick = async (option: typeof options[number]) => {
     if (!option.comingSoon) {
       onHideDropdown();
