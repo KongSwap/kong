@@ -36,6 +36,7 @@
   import SwapButton from "./swap_ui/SwapButton.svelte";
   import SwitchTokensButton from "./swap_ui/SwitchTokensButton.svelte";
   import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
+    import { goto } from "$app/navigation";
 
   // Theme-specific styling data
   let theme = $derived(getThemeById($themeStore));
@@ -382,7 +383,7 @@
     }
 
     if ($swapState.swapSlippage > $settingsStore.max_slippage) {
-      showSettings = true;
+      goto('/settings');
       return;
     }
 
