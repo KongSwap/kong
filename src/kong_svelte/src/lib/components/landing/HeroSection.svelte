@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy, tick, getContext } from "svelte";
+  import { onMount, tick, getContext } from "svelte";
   import type { Writable } from 'svelte/store';
   import * as THREE from "three";
   import { ChevronDown } from "lucide-svelte";
@@ -29,12 +29,10 @@
   // === Props (Only non-shared props) ===
   let { 
     showGetStarted,
-    isLoading,
     navigateToSwap,
     isVisible = false // Default value provided here
   } = $props<{
     showGetStarted: boolean;
-    isLoading: boolean;
     navigateToSwap: NavigateToSwapFn;
     isVisible?: boolean;
   }>();
@@ -512,7 +510,7 @@
         <img 
           src="titles/logo-white-wide.png" 
           alt="KongSwap Logo" 
-          class="kong-logo pt-12 md:pt-0 w-full max-w-[400px] xs:max-w-[500px] sm:max-w-[650px] md:max-w-[900px] lg:max-w-[1000px] mx-auto relative z-[2] md:pt-12"
+          class="kong-logo pt-12 w-full max-w-[400px] xs:max-w-[500px] sm:max-w-[600px] md:max-w-[700px] lg:max-w-[800px] xl:max-w-[1000px] mx-auto relative z-[2]"
         />
         
         <!-- Neon reflection -->

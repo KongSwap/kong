@@ -315,7 +315,6 @@
     <!-- Hero Section -->
     <HeroSection
       {showGetStarted}
-      {isLoading}
       {navigateToSwap}
       isVisible={sectionVisibility["hero"]}
     />
