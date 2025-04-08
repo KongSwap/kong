@@ -215,7 +215,7 @@
                   {#if wallet.unsupported}
                     <span 
                       class="text-xs font-semibold px-1.5 py-0.5 rounded bg-kong-accent-yellow/20 text-kong-accent-yellow"
-                      use:tooltip={{ text: 'The Plug website is no longer available. Use with caution. We recommend using OISY Wallet or Internet Identity instead.', direction: 'top' }}
+                      use:tooltip={{ text: 'The Plug website is no longer available. Use with caution. We recommend migrating to a different wallet.', direction: 'top' }}
                     >
                       Unsupported
                     </span>
