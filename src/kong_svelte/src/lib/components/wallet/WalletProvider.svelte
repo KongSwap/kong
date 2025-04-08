@@ -45,8 +45,6 @@
   // State
   let connecting = $state(false);
   let connectingWalletId = $state<string | null>(null);
-  let plugDialog = $state<any>(null);
-  let dialogOpen = $state(false);
   let abortController = $state(new AbortController());
   let isOnMobile = $state(false);
   let filteredWallets = $state(walletList);
@@ -96,25 +94,6 @@
     // Reset abort controller for new connection attempt
     abortController = new AbortController();
 
-    // Show modal on mobile if IC object is not present
-    if (isOnMobile && walletId === "plug" && !isPlugAvailable()) {
-      // Dynamically import the dialog component when needed
-      if (!plugDialog) {
-        const module = await import(
-          "$lib/components/wallet/PlugMobileDialog.svelte"
-        );
-        plugDialog = module.default;
-      }
-      dialogOpen = true;
-      return;
-    }
-
-    // Redirect to Plug website on desktop if Plug is not installed
-    if (!isOnMobile && walletId === "plug" && !isPlugAvailable()) {
-      window.open("https://plugwallet.ooo/", "_blank");
-      return;
-    }
-
     try {
       connecting = true;
       selectedWalletId.set(walletId);
@@ -129,7 +108,6 @@
       
       // Add timeout to prevent hanging connections
       const timeoutId = setTimeout(() => abortController.abort(), 30000);
-      
       clearTimeout(timeoutId);
       
       if ($auth.isConnected) {
@@ -141,8 +119,6 @@
         console.error("Failed to connect wallet:", error);
         errorMessage = error instanceof Error ? error.message : "Failed to connect wallet";
         selectedWalletId.set("");
-        
-        // Remove from storage
         try {
           await authStorage.removeItem(SELECTED_WALLET_KEY);
         } catch (storageError) {
@@ -258,10 +234,6 @@
     </div>
   </div>
 </Modal>
-
-{#if plugDialog}
-  <svelte:component this={plugDialog} bind:open={dialogOpen} />
-{/if}
 
 <style lang="postcss">
   /* Removed styles that are now inline */
