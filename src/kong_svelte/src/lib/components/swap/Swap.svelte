@@ -674,12 +674,10 @@
           token={$swapState.payToken}
           amount={$swapState.payAmount}
           onAmountChange={handleAmountChange}
-          onTokenSelect={() => handleTokenSelect("pay")}
           showPrice={false}
           slippage={$swapState.swapSlippage}
           disabled={false}
           panelType="pay"
-          otherToken={$swapState.receiveToken}
         />
       </div>
 
@@ -694,12 +692,10 @@
           token={$swapState.receiveToken}
           amount={$swapState.receiveAmount}
           onAmountChange={handleAmountChange}
-          onTokenSelect={() => handleTokenSelect("receive")}
           showPrice={true}
           slippage={$swapState.swapSlippage}
           disabled={false}
           panelType="receive"
-          otherToken={$swapState.payToken}
           isLoading={isQuoteLoading}
         />
       </div>
@@ -711,7 +707,6 @@
         isError={!!$swapState.error || $swapState.swapSlippage > $settingsStore.max_slippage || insufficientFunds}
         isProcessing={$swapState.isProcessing}
         isLoading={isQuoteLoading}
-        isReady={!($swapState.error || $swapState.swapSlippage > $settingsStore.max_slippage || insufficientFunds) && !($swapState.isProcessing || isQuoteLoading)}
         showShineAnimation={buttonText === "SWAP"}
         disabled={buttonDisabled}
         onClick={handleButtonAction}
