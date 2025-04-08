@@ -103,7 +103,6 @@
   // Reactive statement to call refreshTokenBalances when token or amount changes
   $effect(() => {
     if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
-      console.log('Token or auth state changed, refreshing balances');
       refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, false);
     } else {
       console.log('Resetting balance states - missing auth or tokens');
@@ -132,7 +131,6 @@
         $userTokens.tokens,
         fetchTokensByCanisterId,
         (token0, token1) => {
-          console.log('URL tokens resolved:', token0?.symbol, token1?.symbol);
           swapState.update((state) => ({
             ...state,
             payToken: token0 || state.payToken,
@@ -160,9 +158,7 @@
     const url = new URL(window.location.href);
     const fromParam = url.searchParams.get('from');
     const toParam = url.searchParams.get('to');
-    
-    console.log('URL params:', { fromParam, toParam });
-    
+        
     return { fromParam, toParam };
   }
 
@@ -178,7 +174,6 @@
     
     // If not found, try to fetch it
     try {
-      console.log(`Fetching token for canister ID: ${canisterId}`);
       // Wrap canisterId in an array to match the expected parameter type
       const tokens = await fetchTokensByCanisterId([canisterId]);
       if (tokens && tokens.length > 0) {
@@ -194,9 +189,7 @@
   // Update onMount with direct URL token handling
   onMount(async () => {
     if (browser) {
-      try {
-        console.log('onMount: Starting token initialization');
-        
+      try {        
         // Check if we should skip URL initialization
         if (skipNextUrlInitialization) {
           console.log("Skipping URL initialization (tokens just reversed)");
@@ -205,7 +198,6 @@
           // Wait for user tokens to be available if possible
           let attempts = 0;
           while ((!$userTokens.tokens || $userTokens.tokens.length === 0) && attempts < 5) {
-            console.log(`Waiting for tokens to load (attempt ${attempts + 1})...`);
             await new Promise(resolve => setTimeout(resolve, 200));
             attempts++;
           }
@@ -213,19 +205,12 @@
           // Get token params directly from URL
           const { fromParam, toParam } = getTokenParamsFromUrl();
           
-          if (fromParam || toParam) {
-            console.log('Found token params in URL, looking up tokens...');
-            
+          if (fromParam || toParam) {            
             // Lookup tokens in parallel
             const [fromToken, toToken] = await Promise.all([
               fromParam ? findTokenByCanisterId(fromParam) : null,
               toParam ? findTokenByCanisterId(toParam) : null
             ]);
-            
-            console.log('Tokens from URL:', { 
-              fromToken: fromToken?.symbol, 
-              toToken: toToken?.symbol 
-            });
             
             // Update the state with found tokens
             if (fromToken || toToken) {
@@ -396,7 +381,6 @@
 
   async function handleButtonAction(): Promise<void> {
     if (!$auth.isConnected) {
-      console.log('User not connected, opening wallet provider');
       showWalletProvider = true;
       return;
     }

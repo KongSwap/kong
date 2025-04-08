@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { getContext } from 'svelte';
   import { themeStore } from '$lib/stores/themeStore';
-  import type { ThemeDefinition, ThemeColors } from '$lib/themes/baseTheme';
+  import type { ThemeColors } from '$lib/themes/baseTheme';
   import { getThemeById } from '$lib/themes/themeRegistry';
 
   // Props
@@ -10,7 +9,6 @@
     isError,
     isProcessing,
     isLoading,
-    isReady,
     showShineAnimation,
     disabled,
     onClick,
@@ -31,7 +29,6 @@
     isError: boolean;
     isProcessing: boolean;
     isLoading: boolean;
-    isReady: boolean;
     showShineAnimation: boolean;
     disabled: boolean;
     onClick: () => void;

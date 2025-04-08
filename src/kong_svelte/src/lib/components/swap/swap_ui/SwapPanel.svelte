@@ -36,25 +36,21 @@
     title,
     token,
     amount,
-    onTokenSelect,
     onAmountChange,
     disabled,
     showPrice,
     slippage,
     panelType,
-    otherToken,
     isLoading = false,
   } = $props<{
     title: string;
     token: FE.Token;
     amount: string;
-    onTokenSelect: () => void;
     onAmountChange: (event: CustomEvent) => void;
     disabled: boolean;
     showPrice: boolean;
     slippage: number;
     panelType: "pay" | "receive";
-    otherToken: FE.Token;
     isLoading?: boolean;
   }>();
 
@@ -551,7 +547,6 @@
                   {token.symbol || ''}
                 {:else}
                   <!-- Log what's happening for debugging -->
-                  {console.log('Balance not found for token:', token.symbol, 'canister:', token.canister_id, 'balances store:', Object.keys($currentUserBalancesStore))}
                   0 {token.symbol || ''}
                 {/if}
               {:else}
