@@ -7,7 +7,6 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { onMount } from "svelte";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
-  import { tweened } from 'svelte/motion';
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
 
   let hoveredToken: FE.Token | null = null;
@@ -24,13 +23,8 @@
   let tickerTokens: FE.Token[] = [];
   let icpToken: FE.Token | null = null;
   let ckUSDCToken: FE.Token | null = null;
-  // Track which quote token is actually being used for the chart
   let actualQuoteToken: 'ckUSDT' | 'ICP' = 'ckUSDT';
-
-  // Track previous prices to detect changes using a more efficient structure
   let previousPrices = new Map<string, number>();
-
-  // Batch price updates using requestAnimationFrame
   let pendingUpdates = new Set<FE.Token>();
   let updateScheduled = false;
   let tickerWidth = 0;
@@ -268,14 +262,6 @@
 
   function formatChange(change: number): string {
     return `${Math.abs(change).toFixed(2)}%`;
-  }
-
-  $: if (hoveredToken) {
-    console.log('Tokens for chart:', {
-      hoveredSymbol: hoveredToken.symbol,
-      ckUSDT: quoteToken,
-      ICP: icpToken
-    });
   }
 </script>
 
