@@ -3,7 +3,6 @@
   import { fade, slide } from "svelte/transition";
   import { goto } from "$app/navigation";
   import { notificationsStore } from "$lib/stores/notificationsStore";
-  import { onMount } from "svelte";
   import {
     Droplet,
     Settings as SettingsIcon,
@@ -15,14 +14,13 @@
     Wallet,
     Coins,
     Award,
-    PiggyBank,
     TrendingUpDown,
     Search,
     Trophy,
     Bell,
   } from "lucide-svelte";
   import { loadBalances } from "$lib/stores/tokenStore";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import { browser } from "$app/environment";
   import { themeStore } from "$lib/stores/themeStore";
   import NavOption from "./NavOption.svelte";
@@ -34,20 +32,12 @@
   import { getThemeById } from "$lib/themes/themeRegistry";
   import { writable } from "svelte/store";
   import NavbarButton from "./NavbarButton.svelte";
-  import WalletProvider from "$lib/components/wallet/WalletProvider.svelte";
+  import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
 
-  // Computed directly where needed using $themeStore
+  // Computed directly where needed using themeStore rune
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
-
-  // Update logo when theme changes
-  $effect(() => {
-    if (browser && $themeStore) {
-      // Small delay to ensure CSS variables are updated
-      setTimeout(updateLogoSrc, 50);
-    }
-  });
 
   // Create a writable store for the logo source
   const logoSrcStore = writable("/titles/logo-white-wide.png");
@@ -58,8 +48,14 @@
       const cssLogoPath = getComputedStyle(document.documentElement)
         .getPropertyValue("--logo-path")
         .trim();
-      logoSrcStore.set(cssLogoPath || "/titles/logo-white-wide.png");
+      const finalLogoPath = cssLogoPath || "/titles/logo-white-wide.png";
+      logoSrcStore.set(finalLogoPath);
     }
+  }
+
+  // Initialize logo on first load
+  if (browser) {
+    updateLogoSrc();
   }
 
   let isMobile = $state(false);
@@ -68,7 +64,6 @@
   let closeTimeout: ReturnType<typeof setTimeout>;
   let activeDropdown = $state<"swap" | "earn" | "stats" | null>(null);
   let showWalletSidebar = $state(false);
-  let showWalletProvider = $state(false);
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
   );
@@ -84,10 +79,6 @@
   // Close wallet sidebar
   function closeWalletSidebar() {
     showWalletSidebar = false;
-  }
-
-  function closeWalletProvider() {
-    showWalletProvider = false;
   }
 
   // Filter tabs based on DFX_NETWORK
@@ -121,7 +112,7 @@
   function handleConnect() {
     // If user is not authenticated, show the wallet provider
     if (!$auth.isConnected) {
-      showWalletProvider = true;
+      walletProviderStore.open();
       return;
     }
 
@@ -134,61 +125,55 @@
   }
 
   function checkMobile() {
-    isMobile = window.innerWidth < 768;
+    if (browser) {
+      isMobile = window.innerWidth < 768;
+    }
   }
 
-  onMount(() => {
-    // Initially set logo src
-    updateLogoSrc();
+  // Call checkMobile initially
+  checkMobile();
 
-    // Subscribe to theme changes
-    const unsubscribe = themeStore.subscribe(() => {
-      // Add a small delay to ensure CSS variables are updated
-      setTimeout(updateLogoSrc, 50);
-    });
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    
-    // Add event listener to handle swipe gestures for mobile menu
+  // Replace onMount with $effect for listeners and theme updates
+  $effect(() => {
     if (browser) {
+      // Update logo whenever the theme changes
+      const currentTheme = $themeStore;
+      setTimeout(updateLogoSrc, 50);
+
+      // Add resize listener
+      window.addEventListener("resize", checkMobile);
+
+      // Add event listener to handle swipe gestures for mobile menu
       let touchStartX = 0;
       const handleTouchStart = (e: TouchEvent) => {
         touchStartX = e.touches[0].clientX;
       };
-      
+
       const handleTouchEnd = (e: TouchEvent) => {
         const touchEndX = e.changedTouches[0].clientX;
         const diffX = touchEndX - touchStartX;
-        
+
         // Swipe right to open menu (when closed)
         if (diffX > 75 && touchStartX < 50 && !navOpen) {
           navOpen = true;
         }
-        
+
         // Swipe left to close menu (when open)
         if (diffX < -75 && navOpen) {
           navOpen = false;
         }
       };
-      
+
       document.addEventListener('touchstart', handleTouchStart, { passive: true });
       document.addEventListener('touchend', handleTouchEnd, { passive: true });
-      
+
+      // Cleanup function
       return () => {
-        unsubscribe();
         window.removeEventListener("resize", checkMobile);
         document.removeEventListener('touchstart', handleTouchStart);
         document.removeEventListener('touchend', handleTouchEnd);
       };
     }
-
-    return () => {
-      unsubscribe();
-      if (browser) {
-        window.removeEventListener("resize", checkMobile);
-      }
-    };
   });
 
   function onTabChange(tab: "swap" | "earn" | "stats" | "predict") {
@@ -197,6 +182,7 @@
 
   async function claimTokens() {
     await faucetClaim();
+    // Use runes directly
     await loadBalances($userTokens.tokens, $auth.account.owner, true);
   }
 
@@ -246,7 +232,8 @@
   ];
 
   $effect(() => {
-    const path = $page.url.pathname;
+    // Use page rune directly
+    const path = page.url.pathname;
     if (path.startsWith("/swap")) {
       activeTab = "swap";
     } else if (path.startsWith("/earn") || path.startsWith("/pools")) {
@@ -291,7 +278,7 @@
       {:else}
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          on:click={() => goto("/swap")}
+          on:click={() => goto("/")}
         >
           <img
             src={$logoSrcStore}
@@ -646,6 +633,7 @@
                 navOpen = false;
               }}
               iconBackground="bg-kong-text-primary/10"
+              badgeCount={$notificationsStore.unreadCount}
             />
           {/if}
 
@@ -698,15 +686,6 @@
   activeTab={walletSidebarActiveTab}
   onClose={closeWalletSidebar}
 />
-{#if browser}
-  <WalletProvider
-    isOpen={showWalletProvider}
-    onClose={closeWalletProvider}
-    onLogin={() => {
-      // Handle login if needed
-    }}
-  />
-{/if}
 
 <style scoped lang="postcss">
   /* Mobile Menu */

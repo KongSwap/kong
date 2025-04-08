@@ -1,42 +1,39 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { tweened } from "svelte/motion";
-  import { cubicOut } from "svelte/easing";
-  import { DollarSign, BarChart3, RefreshCw, Zap, LucideCheck } from "lucide-svelte";
+  import { onMount, getContext } from 'svelte';
+  import type { Writable } from 'svelte/store';
+  import { DollarSign, BarChart3, RefreshCw, Zap } from "lucide-svelte";
+  import {
+    FORMAT_NUMBER_KEY,
+    FORMAT_COUNT_KEY,
+    // Import new tweened keys
+    TWEENED_TVL_KEY,
+    TWEENED_VOLUME_KEY,
+    TWEENED_SWAPS_KEY
+  } from "$lib/constants/contextKeys"; // Import shared keys
   
   // Import the new components
   import StatCard from './StatCard.svelte';
   import IphoneFrame from './IphoneFrame.svelte';
+  import FeatureList from './FeatureList.svelte';
   
-  // Props using $props
+  // === Define Context Keys (Match LandingWrapper) ===
+  type FormatNumberFn = (num: number, precision?: number) => string;
+  type FormatCountFn = (num: number) => string;
+  
+  // === Get Context ===
+  // Get individual tweened stores using their specific keys
+  const tweenedTVL = getContext<Writable<number>>(TWEENED_TVL_KEY);
+  const tweenedVolume = getContext<Writable<number>>(TWEENED_VOLUME_KEY);
+  const tweenedSwapCount = getContext<Writable<number>>(TWEENED_SWAPS_KEY); // Use specific key
+  // Get formatters
+  const formatNumber = getContext<FormatNumberFn>(FORMAT_NUMBER_KEY);
+  const formatCount = getContext<FormatCountFn>(FORMAT_COUNT_KEY);
+  
+  // === Props (Only non-shared props) ===
   let { 
     isVisible = false,
-    poolStats = { total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 },
-    totalSwaps = 0,
-    formatNumber = (num: number, precision?: number): string => {
-      if (num >= 1_000_000_000) {
-        return `$${(num / 1_000_000_000).toFixed(precision || 2)}B`;
-      } else if (num >= 1_000_000) {
-        return `$${(num / 1_000_000).toFixed(precision || 2)}M`;
-      } else if (num >= 1_000) {
-        return `$${(num / 1_000).toFixed(precision || 2)}K`;
-      }
-      return `$${num.toFixed(precision || 2)}`;
-    },
-    formatCount = (num: number): string => {
-      if (num >= 1_000_000) {
-        return `${(num / 1_000_000).toFixed(1)}M+`;
-      } else if (num >= 1_000) {
-        return `${(num / 1_000).toFixed(0)}K+`;
-      }
-      return num.toString();
-    }
-  } = $props<{
+  } = $props<{ 
     isVisible?: boolean;
-    poolStats?: { total_volume_24h: number; total_tvl: number; total_fees_24h: number };
-    totalSwaps?: number;
-    formatNumber?: (num: number, precision?: number) => string;
-    formatCount?: (num: number) => string;
   }>();
   
   // Feature bullets data
@@ -55,18 +52,6 @@
     }
   ];
   
-  // Tweened values for animations
-  const tweenedTVL = tweened(0, { duration: 1500, easing: cubicOut });
-  const tweenedVolume = tweened(0, { duration: 1500, easing: cubicOut });
-  const tweenedSwapCount = tweened(0, { duration: 1500, easing: cubicOut });
-  
-  // Update tweened values when props change using $effect
-  $effect(() => {
-    tweenedTVL.set(poolStats.total_tvl);
-    tweenedVolume.set(poolStats.total_volume_24h);
-    tweenedSwapCount.set(totalSwaps);
-  });
-  
   // Animation state using $state
   let animationClass = $state('');
   let hasTriggeredAnimation = $state(false);
@@ -80,9 +65,9 @@
   
   function triggerAnimation() {
     hasTriggeredAnimation = true;
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       animationClass = 'translate-y-0 opacity-100';
-    }, 300);
+    });
   }
   
   // Lightning variables using $state
@@ -298,7 +283,7 @@
 
     <!-- Text content with enhanced design -->
     <div class="flex-1 text-left mb-10 md:mb-0 z-10 order-1 md:order-2 transform translate-y-12 opacity-0 transition-all duration-1000 delay-300 ease-out {animationClass}">
-      <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 backdrop-blur-sm text-purple-300 text-xs md:text-sm font-medium mb-4 w-fit border border-purple-500/20 mx-auto md:mx-0">
+      <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 backdrop-blur-sm text-purple-300 text-xs md:text-sm font-medium mb-4 w-fit border border-purple-500/30 mx-auto md:mx-0">
         <Zap size={14} class="text-purple-300" />
         <span>Powered by Kong Protocol</span>
       </div>
@@ -315,7 +300,7 @@
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-6 md:mb-8">
         <StatCard
           icon={DollarSign}
-          value={formatNumber(poolStats.total_tvl)}
+          value={formatNumber($tweenedTVL)}
           label="TVL"
           iconBgClass="bg-indigo-500/20"
           iconColorClass="text-indigo-300"
@@ -324,7 +309,7 @@
         
         <StatCard
           icon={BarChart3}
-          value={formatNumber(poolStats.total_volume_24h, 0)}
+          value={formatNumber($tweenedVolume, 0)}
           label="24h Volume"
           iconBgClass="bg-purple-500/20"
           iconColorClass="text-purple-300"
@@ -334,7 +319,7 @@
         <div class="col-span-2 sm:col-span-1"> 
           <StatCard
             icon={RefreshCw}
-            value={formatCount(totalSwaps)}
+            value={formatCount($tweenedSwapCount)}
             label="Total Swaps"
             iconBgClass="bg-blue-500/20"
             iconColorClass="text-blue-300"
@@ -343,20 +328,11 @@
         </div>
       </div>
       
-      <!-- Feature bullets with enhanced styling (rendered dynamically) -->
-      <div class="space-y-5 md:space-y-6">
-        {#each features as feature}
-          <div class="flex items-start">
-            <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center mr-3 mt-1">
-              <LucideCheck size={10} class="text-white" />
-            </div>
-            <div>
-              <h3 class="text-base md:text-lg font-semibold text-white mb-1">{feature.title}</h3>
-              <p class="text-sm md:text-base text-gray-300">{feature.description}</p>
-            </div>
-          </div>
-        {/each}
-      </div>
+      <!-- Use FeatureList component -->
+      <FeatureList 
+        {features} 
+        defaultIconBgGradientClass="from-indigo-600 to-purple-600"
+      />
     </div>
   </div>
   

@@ -12,9 +12,19 @@
         "ignore": false
     },
     {
+        "match": "index.html",
+        "headers": {
+            "Cache-Control": "public, max-age=0, must-revalidate",
+            "Content-Security-Policy": "default-src 'self';script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.onramper.com/web-sdk https://seashell-app-tva2e.ondigitalocean.app https://oisy.com https://beta.oisy.com https://static.onramper.com/web-sdk/v1/onramper-web-sdk.min.js https://www.googletagmanager.com https://cdn.jsdelivr.net;script-src-elem 'self' 'unsafe-eval' 'unsafe-inline' https://static.onramper.com/web-sdk https://seashell-app-tva2e.ondigitalocean.app https://oisy.com https://beta.oisy.com https://static.onramper.com/web-sdk/v1/onramper-web-sdk.min.js https://www.googletagmanager.com https://cdn.jsdelivr.net;worker-src 'self' blob:;connect-src 'self' blob: https://nfid.one:* http://localhost:* https://seashell-app-tva2e.ondigitalocean.app https://icp0.io https://*.icp0.io https://icp-api.io https://ic0.app https://kongswap.io https://www.kongswap.i https://oisy.com https://beta.oisy.com https://api.kongswap.io https://api.coincap.io https://o4508554870325248.ingest.us.sentry.io https://www.google-analytics.com https://*.google-analytics.com https://cdn.jsdelivr.net;frame-src 'self' blob: https://*.tradingview.com https://*.onramper.com https://buy.onramper.com;img-src * blob: data:;style-src * 'unsafe-inline';style-src-elem * 'unsafe-inline' https://cdn.jsdelivr.net;font-src *;object-src 'none';base-uri 'self';frame-ancestors 'self' https://*.tradingview.com https://*.onramper.com https://buy.onramper.com https://www.kongswap.io;form-action 'self';upgrade-insecure-requests;",
+            "Permissions-Policy": "clipboard-read=(self), clipboard-write=(self)"
+        },
+        "allow_raw_access": true
+    },
+    {
         "match": "**/*",
         "security_policy": "standard",
         "headers": {
+            "Cache-Control": "public, max-age=86400, immutable",
             "Content-Security-Policy": "default-src 'self';script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.onramper.com/web-sdk https://seashell-app-tva2e.ondigitalocean.app https://oisy.com https://beta.oisy.com https://static.onramper.com/web-sdk/v1/onramper-web-sdk.min.js https://www.googletagmanager.com https://cdn.jsdelivr.net;script-src-elem 'self' 'unsafe-eval' 'unsafe-inline' https://static.onramper.com/web-sdk https://seashell-app-tva2e.ondigitalocean.app https://oisy.com https://beta.oisy.com https://static.onramper.com/web-sdk/v1/onramper-web-sdk.min.js https://www.googletagmanager.com https://cdn.jsdelivr.net;worker-src 'self' blob:;connect-src 'self' blob: https://nfid.one:* http://localhost:* https://seashell-app-tva2e.ondigitalocean.app https://icp0.io https://*.icp0.io https://icp-api.io https://ic0.app https://kongswap.io https://www.kongswap.i https://oisy.com https://beta.oisy.com https://api.kongswap.io https://api.coincap.io https://o4508554870325248.ingest.us.sentry.io https://www.google-analytics.com https://*.google-analytics.com https://cdn.jsdelivr.net;frame-src 'self' blob: https://*.tradingview.com https://*.onramper.com https://buy.onramper.com;img-src * blob: data:;style-src * 'unsafe-inline';style-src-elem * 'unsafe-inline' https://cdn.jsdelivr.net;font-src *;object-src 'none';base-uri 'self';frame-ancestors 'self' https://*.tradingview.com https://*.onramper.com https://buy.onramper.com https://www.kongswap.io;form-action 'self';upgrade-insecure-requests;",
             "Permissions-Policy": "clipboard-read=(self), clipboard-write=(self)"
         },

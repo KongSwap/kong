@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import Panel from '$lib/components/common/Panel.svelte';
   import { Trophy, BarChart3, Users, TrendingUp, Activity } from 'lucide-svelte';
@@ -25,6 +24,34 @@
   } from '$lib/stores/leaderboardStore';
   import type { Period } from '$lib/types';
   
+  // State variables using runes
+  let selectedPeriod = $state<Period>('day');
+  let expandedRowIndex = $state<number | null>(null);
+  let tradedTokens = $state<Record<number, any>>({});
+  let loadingTokens = $state<Record<number, boolean>>({});
+  let tokenErrors = $state<Record<number, string | null>>({});
+  let userDetails = $state<Record<number, any>>({});
+  let loadingUserDetails = $state<Record<number, boolean>>({});
+  
+  // Derived values from stores
+  const isLoadingValue = $derived($isLoading);
+  const errorValue = $derived($error);
+  const leaderboardDataValue = $derived($leaderboardData);
+  const totalVolumeValue = $derived($totalVolume);
+  const totalTradersValue = $derived($totalTraders);
+  
+  // Initialize state from store
+  $effect(() => {
+    const state = $leaderboardStore;
+    selectedPeriod = state.selectedPeriod;
+    expandedRowIndex = state.expandedRowIndex;
+    tradedTokens = state.tradedTokens;
+    loadingTokens = state.loadingTokens;
+    tokenErrors = state.tokenErrors;
+    userDetails = state.userDetails;
+    loadingUserDetails = state.loadingUserDetails;
+  });
+  
   // Handle period change
   function handlePeriodChange(period: Period) {
     leaderboardStore.setPeriod(period);
@@ -35,16 +62,8 @@
     leaderboardStore.toggleRowExpansion(index);
   }
   
-  // Subscribe to the store to get all state
-  $: selectedPeriod = $leaderboardStore.selectedPeriod;
-  $: expandedRowIndex = $leaderboardStore.expandedRowIndex;
-  $: tradedTokens = $leaderboardStore.tradedTokens;
-  $: loadingTokens = $leaderboardStore.loadingTokens;
-  $: tokenErrors = $leaderboardStore.tokenErrors;
-  $: userDetails = $leaderboardStore.userDetails;
-  $: loadingUserDetails = $leaderboardStore.loadingUserDetails;
-  
-  onMount(() => {
+  // Load data on mount
+  $effect(() => {
     if (browser) {
       leaderboardStore.loadLeaderboard(selectedPeriod);
     }
@@ -60,8 +79,8 @@
   description="Discover the top traders on KongSwap by trading volume. Leading traders are ranked based on their total trading activity."
   icon={Trophy}
   stats={[
-    { label: "Total Volume", value: $isLoading ? "Loading..." : formatVolume($totalVolume), icon: TrendingUp },
-    { label: "Active Traders", value: $isLoading ? "Loading..." : formatNumberWithCommas($totalTraders), icon: Users },
+    { label: "Total Volume", value: isLoadingValue ? "Loading..." : formatVolume(totalVolumeValue), icon: TrendingUp },
+    { label: "Active Traders", value: isLoadingValue ? "Loading..." : formatNumberWithCommas(totalTradersValue), icon: Users },
     { label: "Time Period", value: selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1), icon: Activity }
   ]}
 />
@@ -98,11 +117,11 @@
   </div>
   
   <div class="rounded-xl overflow-hidden px-4">
-    {#if $isLoading}
+    {#if isLoadingValue}
       <LoadingState message="Loading leaderboard data..." size="large" />
-    {:else if $error}
-      <ErrorState message={$error} size="large" retryHandler={() => leaderboardStore.loadLeaderboard(selectedPeriod)} />
-    {:else if $leaderboardData.length === 0}
+    {:else if errorValue}
+      <ErrorState message={errorValue} size="large" retryHandler={() => leaderboardStore.loadLeaderboard(selectedPeriod)} />
+    {:else if leaderboardDataValue.length === 0}
       <EmptyState 
         message="No data available for this period" 
         subMessage="Try selecting a different time period" 
@@ -120,10 +139,10 @@
         </div>
         
         <!-- Champion (Rank #1) -->
-        {#if $leaderboardData.length > 0}
+        {#if leaderboardDataValue.length > 0}
           <div class="mb-12 flex justify-center">
             <LeaderboardTraderCard
-              user={$leaderboardData[0]}
+              user={leaderboardDataValue[0]}
               rank={1}
               expanded={expandedRowIndex === 0}
               tradedTokens={tradedTokens[0]}
@@ -138,9 +157,9 @@
         {/if}
 
         <!-- Runners-up (Ranks #2-3) -->
-        {#if $leaderboardData.length > 2}
+        {#if leaderboardDataValue.length > 2}
           <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12 justify-items-center">
-            {#each $leaderboardData.slice(1, 3) as user, sliceIndex}
+            {#each leaderboardDataValue.slice(1, 3) as user, sliceIndex}
               {@const index = sliceIndex + 1}
               <LeaderboardTraderCard
                 user={user}
@@ -159,7 +178,7 @@
         {/if}
 
         <!-- Other traders (Rank #4 and below) -->
-        {#if $leaderboardData.length > 3}
+        {#if leaderboardDataValue.length > 3}
           <div class="flex items-center mb-2 mt-10">
             <div class="pl-1 text-kong-text-primary font-medium flex items-center">
               <BarChart3 class="w-5 h-5 mr-2 text-kong-text-secondary" />
@@ -185,7 +204,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-kong-border">
-                {#each $leaderboardData.slice(3) as user, sliceIndex}
+                {#each leaderboardDataValue.slice(3) as user, sliceIndex}
                   {@const index = sliceIndex + 3}
                   <LeaderboardTraderCard
                     user={user}

@@ -16,6 +16,9 @@
   // Get principal from the URL params
   let principal = $derived(page.params.principalId);
 
+  // Keep track of the last loaded principal to prevent repeated loading
+  let lastLoadedPrincipal = $state<string | null>(null);
+
   // Single function to load wallet data
   async function loadWalletData() {
     try {
@@ -40,11 +43,12 @@
   // Monitor wallet data changes
   $effect(() => {
     const walletData = $walletDataStore;
+    // Using the most recent value in the console log doesn't trigger reactivity
     console.log('Wallet data updated for', walletData.currentWallet, ':', 
       'tokens:', walletData.tokens?.length || 0, 
       'balances:', Object.keys(walletData.balances || {}).length);
     
-    // Update local error state
+    // Update local error state only when it changes
     if (walletData.error) {
       error = walletData.error;
     }
@@ -52,24 +56,29 @@
 
   // Load data when principalId changes
   $effect(() => {
-    if (principal) {
-      // Check if we need to load data
-      const currentWallet = $walletDataStore.currentWallet;
-      const hasBalances = Object.keys($walletDataStore.balances || {}).length > 0;
-      const isCurrentlyLoading = $walletDataStore.isLoading;
-      
+    // Make a stable non-reactive check by getting values once at the start of the effect
+    const currentPrincipal = principal;
+    const previousPrincipal = lastLoadedPrincipal;
+    const isAlreadyLoading = $walletDataStore.isLoading;
+    const currentWallet = $walletDataStore.currentWallet;
+    const hasBalances = Object.keys($walletDataStore.balances || {}).length > 0;
+    
+    if (currentPrincipal && currentPrincipal !== previousPrincipal) {
       // Always load data if the principal changed or we don't have balances
       // But avoid reloading if we're already loading for this principal
-      if ((currentWallet !== principal || !hasBalances) && 
-          !(isCurrentlyLoading && currentWallet === principal)) {
+      if ((currentWallet !== currentPrincipal || !hasBalances) && 
+          !(isAlreadyLoading && currentWallet === currentPrincipal)) {
         console.log('Loading wallet data due to principal change or missing balances');
+        lastLoadedPrincipal = currentPrincipal;
         loadWalletData();
       } else {
-        console.log(`Wallet data already loaded for ${principal}`);
+        console.log(`Wallet data already loaded for ${currentPrincipal}`);
+        lastLoadedPrincipal = currentPrincipal;
       }
-    } else {
+    } else if (!currentPrincipal && previousPrincipal) {
       // Reset wallet data if no principal
       WalletDataService.reset();
+      lastLoadedPrincipal = null;
     }
   });
 

@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { getContext } from 'svelte';
   import { themeStore } from '$lib/stores/themeStore';
-  import type { ThemeDefinition, ThemeColors } from '$lib/themes/baseTheme';
+  import type { ThemeColors } from '$lib/themes/baseTheme';
   import { getThemeById } from '$lib/themes/themeRegistry';
 
   // Props
@@ -10,7 +9,6 @@
     isError,
     isProcessing,
     isLoading,
-    isReady,
     showShineAnimation,
     disabled,
     onClick,
@@ -31,7 +29,6 @@
     isError: boolean;
     isProcessing: boolean;
     isLoading: boolean;
-    isReady: boolean;
     showShineAnimation: boolean;
     disabled: boolean;
     onClick: () => void;
@@ -156,14 +153,18 @@
   class:animate-pulse={isProcessing || isLoading}
   class:shine-animation={showShineAnimation}
   on:click={onClick}
-  {disabled}
+  disabled={disabled || isProcessing}
 >
-  <div class="relative z-10 flex items-center justify-center gap-2">
+  <div class="relative z-10 flex items-center justify-center gap-2 w-full">
     {#if isProcessing || isLoading}
       <div class="w-[22px] h-[22px] rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
     {/if}
-    <span class="font-semibold text-2xl tracking-wide flex items-center justify-center min-w-[140px] text-center" style="color: {getTextColor()}; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);">
-      {text}
+    <span class="font-semibold text-2xl tracking-wide flex items-center justify-center text-center overflow-hidden" style="color: {getTextColor()}; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);">
+      {#if text.length > 20}
+        <span class="text-xl px-2">{text}</span>
+      {:else}
+        {text}
+      {/if}
     </span>
   </div>
   

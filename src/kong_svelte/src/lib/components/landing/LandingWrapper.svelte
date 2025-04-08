@@ -1,8 +1,20 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, setContext } from "svelte";
   import { browser } from "$app/environment";
+  import { tweened } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
   import { fetchPoolTotals } from "$lib/api/pools";
   import { fetchVolumeLeaderboard } from "$lib/api/leaderboard";
+  import {
+    FORMAT_NUMBER_KEY,
+    FORMAT_COUNT_KEY,
+    TWEENED_TVL_KEY,
+    TWEENED_VOLUME_KEY,
+    TWEENED_FEES_KEY,
+    TWEENED_SWAPS_KEY
+  } from "$lib/constants/contextKeys"; // Import shared keys
+  import { goto } from "$app/navigation"; // Import goto
+  import { page } from "$app/stores";
 
   import LandingNavbar from "./LandingNavbar.svelte";
   import HeroSection from "./HeroSection.svelte";
@@ -25,15 +37,49 @@
   ];
   let observer: IntersectionObserver | undefined;
   let isMenuOpen = $state(false);
-  let appNavbarElems: HTMLElement[] = []; // No need for $state if not directly reactive in template/effects
   let poolStats = $state({ total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 });
   let totalSwaps = $state(0);
   let isLoading = $state(true);
+
+  // === Create Tweened Stores for Stats ===
+  const tweenOptions = { duration: 1500, easing: cubicOut };
+  const tweenedTVL = tweened(0, tweenOptions);
+  const tweenedVolume = tweened(0, tweenOptions);
+  const tweenedFees = tweened(0, tweenOptions);
+  const tweenedSwaps = tweened(0, tweenOptions);
+
+  // Update tweened stores when poolStats or totalSwaps change
+  $effect(() => {
+    // Only update if not loading AND data is present
+    // Check individual properties to ensure they exist
+    if (!isLoading && poolStats && typeof poolStats.total_tvl === 'number') {
+      tweenedTVL.set(poolStats.total_tvl);
+    }
+    if (!isLoading && poolStats && typeof poolStats.total_volume_24h === 'number') {
+      tweenedVolume.set(poolStats.total_volume_24h);
+    }
+    if (!isLoading && poolStats && typeof poolStats.total_fees_24h === 'number') {
+       tweenedFees.set(poolStats.total_fees_24h); // Added tweenedFees
+    }
+    if (!isLoading && typeof totalSwaps === 'number') {
+       tweenedSwaps.set(totalSwaps);
+    }
+  });
+
   let scrollContainer = $state<HTMLElement | undefined>(undefined);
   let scrollY = $state(0);
-  let navbarVisible = $state(true); // Always visible - maybe remove $state if truly static?
-  let sectionUpdateTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
+  let navbarVisible = true; // Always visible, no need for $state
   
+  // === Set Context ===
+  // Use specific keys for each tweened store
+  setContext(TWEENED_TVL_KEY, tweenedTVL);
+  setContext(TWEENED_VOLUME_KEY, tweenedVolume);
+  setContext(TWEENED_FEES_KEY, tweenedFees);
+  setContext(TWEENED_SWAPS_KEY, tweenedSwaps);
+  // Keep formatters in context
+  setContext(FORMAT_NUMBER_KEY, formatNumber);
+  setContext(FORMAT_COUNT_KEY, formatCount);
+
   // Section visibility states using $state
   let sectionVisibility = $state({
     "hero": false,
@@ -46,7 +92,7 @@
 
   // Function to navigate to the swap page
   function navigateToSwap() {
-    window.location.href = "/swap";
+    goto("/swap"); // Use goto for client-side navigation
   }
 
   // Toggle mobile menu
@@ -55,7 +101,12 @@
   }
 
   // Format number with commas and optionally to a specific precision
-  function formatNumber(num: number, precision: number = 2): string {
+  function formatNumber(num: number | null | undefined, precision: number = 2): string {
+    // Handle non-numeric inputs gracefully
+    if (typeof num !== 'number' || isNaN(num)) {
+      return '$0.00'; // Or return '...' or handle as loading state
+    }
+
     if (num >= 1_000_000_000) {
       return `$${(num / 1_000_000_000).toFixed(precision)}B`;
     } else if (num >= 1_000_000) {
@@ -67,25 +118,18 @@
   }
 
   // Format count number without dollar sign
-  function formatCount(num: number): string {
+  function formatCount(num: number | null | undefined): string {
+    // Handle non-numeric inputs gracefully
+    if (typeof num !== 'number' || isNaN(num) || num === 0) { // Also treat 0 as loading/initial state here if desired
+      return '0'; // Or return '...' 
+    }
+
     if (num >= 1_000_000) {
       return `${(num / 1_000_000).toFixed(1)}M+`;
     } else if (num >= 1_000) {
       return `${(num / 1_000).toFixed(0)}K+`;
     }
     return num.toString();
-  }
-
-  // Debounced section update to prevent rapid changes
-  function updateCurrentSection(newIndex: number) {
-    if (sectionUpdateTimeout) {
-      clearTimeout(sectionUpdateTimeout);
-    }
-    
-    sectionUpdateTimeout = setTimeout(() => {
-      currentSection = newIndex;
-      sectionUpdateTimeout = null;
-    }, 50); // Short delay to debounce multiple rapid updates
   }
 
   // Fetch pool stats and leaderboard data
@@ -100,26 +144,28 @@
       ]);
 
       poolStats = poolStatsData;
+      
+      // Reset totalSwaps before calculation
+      let calculatedSwaps = 0; 
 
       // Calculate approximate total swaps from leaderboard data
       if (Array.isArray(leaderboardData)) {
         // If it's a direct array of entries
-        totalSwaps = leaderboardData.reduce(
-          (sum, entry) => sum + entry.swap_count,
+        calculatedSwaps = leaderboardData.reduce(
+          (sum, entry) => sum + (entry.swap_count || 0), // Add fallback for safety
           0,
         );
+        totalSwaps = calculatedSwaps;
       } else if (leaderboardData && Array.isArray(leaderboardData.items)) {
         // If it's in the format with items property
-        totalSwaps = leaderboardData.items.reduce(
-          (sum, entry) => sum + entry.swap_count,
+        calculatedSwaps = leaderboardData.items.reduce(
+          (sum, entry) => sum + (entry?.swap_count || 0), // Add optional chaining and fallback
           0,
         );
-      }
-
-      // If the sum is too small (less than 10K), use a reasonable default
-      // This ensures we show a meaningful number even if the API returns limited data
-      if (totalSwaps < 10000) {
-        totalSwaps = 100000; // Reasonable default based on platform scale
+        totalSwaps = calculatedSwaps; // Assign state here
+      } else {
+        console.log("Leaderboard data is not in a recognized format:", leaderboardData);
+        totalSwaps = 0; // Default if format is unexpected
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
@@ -181,37 +227,28 @@
       // Set up intersection observer to detect current section
       const options = {
         root: null, // viewport
-        rootMargin: "-10% 0px -10% 0px", // trigger slightly before section is fully visible
-        threshold: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], // multiple thresholds for more accuracy
+        rootMargin: "0px 0px -30% 0px",  // Keep the less aggressive margin
+        threshold: 0.2, // Trigger when 20% of the section is visible
       };
 
       observer = new IntersectionObserver((entries) => {
         // Update section visibility states
         entries.forEach(entry => {
           if (entry.target.id && sections.includes(entry.target.id)) {
-            // Update section visibility state directly
+            // Update section visibility state directly based on intersection threshold
             sectionVisibility[entry.target.id as keyof typeof sectionVisibility] = 
-              entry.isIntersecting && entry.intersectionRatio > 0.2;
+              entry.isIntersecting && entry.intersectionRatio >= options.threshold;
           }
         });
         
-        // Store entries with their intersection ratios
-        const visibleSections = entries
-          .filter(entry => entry.isIntersecting)
-          .map(entry => ({
-            id: entry.target.id,
-            ratio: entry.intersectionRatio,
-          }));
-          
-        if (visibleSections.length > 0) {
-          // Find the section with the highest visibility
-          const mostVisibleSection = visibleSections.reduce((prev, current) => 
-            current.ratio > prev.ratio ? current : prev
-          );
-          
-          const index = sections.indexOf(mostVisibleSection.id);
+        // Find the entry that is currently intersecting (crossed the threshold)
+        const intersectingEntry = entries.find(entry => entry.isIntersecting);
+           
+        if (intersectingEntry) {
+          const index = sections.indexOf(intersectingEntry.target.id);
           if (index !== -1 && index !== currentSection) {
-            updateCurrentSection(index);
+            // Update currentSection directly
+            currentSection = index;
           }
         }
       }, options);
@@ -251,9 +288,6 @@
         if (observer) {
           observer.disconnect();
         }
-        if (sectionUpdateTimeout) {
-          clearTimeout(sectionUpdateTimeout);
-        }
         window.removeEventListener("keydown", handleKeydown);
         // Remove scroll listener
         if (scrollContainer) {
@@ -283,21 +317,12 @@
     <!-- Hero Section -->
     <HeroSection
       {showGetStarted}
-      {isLoading}
-      {poolStats}
-      {totalSwaps}
-      {formatNumber}
-      {formatCount}
       {navigateToSwap}
       isVisible={sectionVisibility["hero"]}
     />
 
     <!-- Swap Section -->
     <SwapSection 
-      {poolStats} 
-      {totalSwaps} 
-      {formatNumber} 
-      {formatCount}
       isVisible={sectionVisibility["swap"]}
     />
 
@@ -321,5 +346,6 @@
     <div id="footer">
       <LandingFooter />
     </div>
+
   </div>
 </div>

@@ -10,7 +10,6 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
   import { onMount } from "svelte";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { themeStore } from "$lib/stores/themeStore";
@@ -37,25 +36,21 @@
     title,
     token,
     amount,
-    onTokenSelect,
     onAmountChange,
     disabled,
     showPrice,
     slippage,
     panelType,
-    otherToken,
     isLoading = false,
   } = $props<{
     title: string;
     token: FE.Token;
     amount: string;
-    onTokenSelect: () => void;
     onAmountChange: (event: CustomEvent) => void;
     disabled: boolean;
     showPrice: boolean;
     slippage: number;
     panelType: "pay" | "receive";
-    otherToken: FE.Token;
     isLoading?: boolean;
   }>();
 
@@ -514,18 +509,6 @@
               </svg>
             {/if}
           </button>
-          <TokenSelectorDropdown
-            show={$swapState.tokenSelectorOpen === panelType}
-            onSelect={() => {
-              swapState.update((s) => ({ ...s, tokenSelectorOpen: null }));
-              onTokenSelect();
-            }}
-            onClose={() =>
-              swapState.update((s) => ({ ...s, tokenSelectorOpen: null }))}
-            currentToken={token}
-            otherPanelToken={otherToken}
-            {expandDirection}
-          />
         </div>
       </div>
     </div>
@@ -564,7 +547,6 @@
                   {token.symbol || ''}
                 {:else}
                   <!-- Log what's happening for debugging -->
-                  {console.log('Balance not found for token:', token.symbol, 'canister:', token.canister_id, 'balances store:', Object.keys($currentUserBalancesStore))}
                   0 {token.symbol || ''}
                 {/if}
               {:else}

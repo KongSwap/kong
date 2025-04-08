@@ -53,12 +53,14 @@
   }
 
   // UI state
-  let searchInput: HTMLInputElement | null = $state(null);
   let dropdownElement: HTMLDivElement | null = $state(null);
   let scrollContainer: HTMLDivElement | null = $state(null);
   
   // UI state with reactivity
   let state = $state({
+    searchInput: null as HTMLInputElement | null,
+    dropdownElement: null as HTMLDivElement | null,
+    scrollContainer: null as HTMLDivElement | null,
     searchQuery: "",
     scrollTop: 0,
     containerHeight: 0,
@@ -102,10 +104,6 @@
   // Helper functions for token state
   function isApiToken(token: FE.Token): boolean {
     return !!token && !$userTokens.enabledTokens.has(token.canister_id);
-  }
-  
-  function isTokenEnabled(token: FE.Token): boolean {
-    return !isApiToken(token) || $userTokens.enabledTokens.has(token.canister_id);
   }
   
   function isFavoriteToken(tokenId: string): boolean {
@@ -161,7 +159,8 @@
     favorites: Map<string, boolean>,
     sortCol: string,
     sortDir: string,
-    balances: Record<string, { in_tokens: bigint; in_usd: string }>
+    balances: Record<string, { in_tokens: bigint; in_usd: string }>,
+    currentToken: FE.Token | null
   ): FE.Token[] {
     return tokens.filter(token => {
       // Basic validation
@@ -186,6 +185,12 @@
       
       return true;
     }).sort((a, b) => {
+      // Sort by current token first
+      const aIsCurrent = currentToken?.canister_id === a.canister_id;
+      const bIsCurrent = currentToken?.canister_id === b.canister_id;
+      if (aIsCurrent) return -1;
+      if (bIsCurrent) return 1;
+
       // Sort by favorites first
       const aFavorite = favorites.get(a.canister_id) || false;
       const bFavorite = favorites.get(b.canister_id) || false;
@@ -208,6 +213,7 @@
   function getFilteredAndSortedTokens(
     allTokens: FE.Token[],
     apiTokens: FE.Token[],
+    currentToken: FE.Token | null
   ): FE.Token[] {
     // Deduplicate tokens from both sources
     const uniqueTokens = Array.from(new Map(
@@ -222,16 +228,17 @@
       state.favoriteTokens,
       state.sortColumn,
       state.sortDirection,
-      $currentUserBalancesStore
+      $currentUserBalancesStore,
+      currentToken
     );
   }
 
   // Derived lists and virtual scroll states
   let filteredTokens = $derived(
-    browser ? getFilteredAndSortedTokens(baseFilteredTokens, state.apiSearchResults) : []
+    browser ? getFilteredAndSortedTokens(baseFilteredTokens, state.apiSearchResults, currentToken) : []
   );
   
-  let enabledFilteredTokens = $derived(filteredTokens.filter(token => isTokenEnabled(token)));
+  let enabledFilteredTokens = $derived(filteredTokens.filter(token => $userTokens.enabledTokens.has(token.canister_id)));
   let apiFilteredTokens = $derived(filteredTokens.filter(token => isApiToken(token)));
   
   let enabledTokensVirtualState = $derived(
@@ -517,7 +524,7 @@
 
       // Focus search and add event listeners
       setTimeout(() => {
-        searchInput?.focus();
+        state.searchInput?.focus();
         window.addEventListener("click", handleClickOutside);
         window.addEventListener("keydown", handleKeydown);
       }, 0);
@@ -572,7 +579,7 @@
             <div class="z-10 pb-3">
               <div class="relative flex items-center px-4">
                 <input
-                  bind:this={searchInput}
+                  bind:this={state.searchInput}
                   bind:value={state.searchQuery}
                   type="text"
                   placeholder="Search by name, symbol, canister ID, or standard"
@@ -606,7 +613,7 @@
           <!-- Scrollable Token List -->
           <div
             class="scrollable-section bg-kong-bg-dark flex-1 overflow-y-auto relative z-10 touch-pan-y overscroll-contain will-change-transform"
-            bind:this={scrollContainer}
+            bind:this={state.scrollContainer}
             bind:clientHeight={state.containerHeight}
             on:scroll={handleScroll}
             style="-webkit-overflow-scrolling: touch;"
@@ -661,7 +668,7 @@
                   </div>
                   
                   {#if state.isSearching}
-                    <div class="flex items-center justify-center gap-2 p-4 text-sm text-white/70">
+                    <div class="flex items-center justify-center gap-2 p-4 text-sm text-kong-text-primary/70">
                       <span class="w-4 h-4 rounded-full border-2 border-kong-text-primary/20 border-t-kong-text-primary animate-spin"></span>
                       <span>Searching...</span>
                     </div>
@@ -705,6 +712,13 @@
                 </div>
               {/if}
               
+              <!-- No Tokens Found Message -->
+              {#if filteredTokens.length === 0 && !state.isSearching}
+                <div class="flex items-center justify-center p-8 text-kong-text-secondary text-sm flex-col gap-4">
+                  <span>No tokens found</span>
+                </div>
+              {/if}
+
               <!-- Add New Token Button -->
               <div class="px-2 py-3 mt-2">
                 <button 
@@ -715,12 +729,6 @@
                   <span>Add New Token</span>
                 </button>
               </div>
-              
-              {#if filteredTokens.length === 0}
-                <div class="flex items-center justify-center p-8 text-kong-text-secondary text-sm flex-col gap-4">
-                  <span>No tokens found</span>
-                </div>
-              {/if}
             </div>
           </div>
         </div>

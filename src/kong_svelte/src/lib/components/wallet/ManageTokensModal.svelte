@@ -46,13 +46,6 @@
     }
   });
   
-  // Log when enabledTokens changes
-  $effect(() => {
-    // This effect now properly depends on the derived store
-    const currentEnabledTokens = $userTokens.enabledTokens;
-    console.log("Enabled tokens changed (ManageTokensModal):", Array.from(currentEnabledTokens));
-  });
-  
   // Methods
   async function loadTokens() {
     isLoading = true;
@@ -131,14 +124,10 @@
     
     // Check if token is currently enabled using enabledTokens directly
     const isCurrentlyEnabled = $userTokens.enabledTokens.has(token.canister_id);
-    
-    console.log(`Toggling token ${token.symbol} (${token.canister_id}), currently enabled: ${isCurrentlyEnabled}`);
-    
+
     if (isCurrentlyEnabled) {
-      console.log(`Disabling token ${token.symbol}`);
       userTokens.disableToken(token.canister_id);
-    } else {
-      console.log(`Enabling token ${token.symbol}`);
+    } else {  
       userTokens.enableToken(token);
     }
   }
@@ -166,7 +155,6 @@
   
   // Handle newly added token
   function handleTokenAdded(event: CustomEvent<FE.Token>) {
-    const newToken = event.detail;
     showAddNewTokenModal = false;
     
     // Refresh token list

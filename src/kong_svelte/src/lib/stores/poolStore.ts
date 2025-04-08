@@ -101,13 +101,10 @@ export const fetchPoolsForCanister = async (canisterId: string): Promise<BE.Pool
   const cacheEntry = poolCache[cacheKey];
   
   if (cacheEntry && (now - cacheEntry.timestamp < CACHE_EXPIRATION)) {
-    console.log(`[PoolStore] Using cached pool data for ${canisterId}, age: ${(now - cacheEntry.timestamp) / 1000}s`);
     return cacheEntry.pools;
   }
   
-  try {
-    console.log(`[PoolStore] Fetching pools for canister ID: ${canisterId}`);
-    
+  try {    
     // Use the fetchPools API function directly
     const result = await fetchPools({
       canisterIds: [canisterId],
@@ -151,7 +148,6 @@ export const loadPools = async () => {
   })();
   
   if (lastUpdateValue && (now - lastUpdateValue < 30000)) { // 30 seconds cache
-    console.log("[PoolStore] Using cached pools data, age:", (now - lastUpdateValue) / 1000, "seconds");
     // Use a local variable to store the current value
     let currentPools: ExtendedPool[] = [];
     poolsStore.subscribe(value => {

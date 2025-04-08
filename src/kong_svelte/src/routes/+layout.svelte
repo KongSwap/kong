@@ -22,6 +22,7 @@
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import type { LayoutData } from './$types';
+  import GlobalWalletProvider from "$lib/components/wallet/GlobalWalletProvider.svelte";
 
   let { data, children } = $props<{ 
     data: LayoutData & { metadata: { url: string } },
@@ -33,10 +34,6 @@
   let themeReady = $state(false);
   
   async function init() {
-    if (initializationPromise) {
-      return initializationPromise;
-    }
-
     const promise = (async () => {
       try {
         if (browser) {
@@ -54,7 +51,6 @@
       } catch (error) {
         console.error("[App] Initialization error:", error);
         initializationPromise = null;
-        throw error;
       }
     })();
 
@@ -83,10 +79,12 @@
       keyboardShortcuts.initialize();
     }
     
-    // Initialize the app
-    init().catch((error) => {
-      console.error("[App] Failed to initialize app:", error);
-    });
+    // Initialize the app only if not already initializing
+    if (!initializationPromise) {
+      init().catch((error) => {
+        console.error("[App] Failed to initialize app:", error);
+      });
+    }
       
     // Cleanup on destroy
     return () => {
@@ -163,17 +161,19 @@
       <Navbar />
     </div>
     {/if}
-    <main class="flex flex-col items-center w-full">
+    <main class="flex flex-col items-center w-full flex-grow">
       <div class="w-full h-full" transition:fade>
         {@render children?.()}
       </div>
     </main>
+    
   </PageWrapper>
   <Toast />
   <AddToHomeScreen />
   <QRModal />
   <GlobalSearch isOpen={$searchStore.isOpen} on:close={() => searchStore.close()} />
   <KeyboardShortcutsHelp />
+  <GlobalWalletProvider />
   <div id="modals"></div>
 </div>
 
