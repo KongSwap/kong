@@ -668,7 +668,7 @@
                   </div>
                   
                   {#if state.isSearching}
-                    <div class="flex items-center justify-center gap-2 p-4 text-sm text-white/70">
+                    <div class="flex items-center justify-center gap-2 p-4 text-sm text-kong-text-primary/70">
                       <span class="w-4 h-4 rounded-full border-2 border-kong-text-primary/20 border-t-kong-text-primary animate-spin"></span>
                       <span>Searching...</span>
                     </div>
@@ -712,6 +712,13 @@
                 </div>
               {/if}
               
+              <!-- No Tokens Found Message -->
+              {#if filteredTokens.length === 0 && !state.isSearching}
+                <div class="flex items-center justify-center p-8 text-kong-text-secondary text-sm flex-col gap-4">
+                  <span>No tokens found</span>
+                </div>
+              {/if}
+
               <!-- Add New Token Button -->
               <div class="px-2 py-3 mt-2">
                 <button 
@@ -722,12 +729,6 @@
                   <span>Add New Token</span>
                 </button>
               </div>
-              
-              {#if filteredTokens.length === 0}
-                <div class="flex items-center justify-center p-8 text-kong-text-secondary text-sm flex-col gap-4">
-                  <span>No tokens found</span>
-                </div>
-              {/if}
             </div>
           </div>
         </div>

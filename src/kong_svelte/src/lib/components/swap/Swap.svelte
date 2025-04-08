@@ -125,7 +125,6 @@
 
   // Replace initializeFromUrl with:
   async function initializeFromUrl() {
-    console.log('Initializing from URL with token count:', $userTokens.tokens?.length || 0);
     try {
       await SwapUrlService.initializeFromUrl(
         $userTokens.tokens,
@@ -192,7 +191,6 @@
       try {        
         // Check if we should skip URL initialization
         if (skipNextUrlInitialization) {
-          console.log("Skipping URL initialization (tokens just reversed)");
           skipNextUrlInitialization = false;
         } else {
           // Wait for user tokens to be available if possible
@@ -225,7 +223,6 @@
             }
           } else {
             // No params in URL, try the service as fallback
-            console.log('No direct token params, trying service...');
             await initializeFromUrl();
           }
         }
@@ -234,7 +231,6 @@
         
         // If no tokens were set, initialize default tokens
         if (!$swapState.payToken || !$swapState.receiveToken) {
-          console.log('No tokens found, initializing defaults');
           await swapState.initializeTokens(null, null);
         }
         

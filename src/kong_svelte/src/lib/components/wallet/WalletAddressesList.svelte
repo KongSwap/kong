@@ -34,7 +34,6 @@
     if (auth.pnp !== lastAuthState) {
       lastAuthState = auth.pnp;
       updateAccountData();
-      console.log('Auth.pnp changed, updating account data');
     }
   });
   
@@ -44,7 +43,6 @@
     updateAccountData();
     
     const unsubscribe = auth.subscribe(state => {
-      console.log('Auth state changed:', state);
       isConnected = state.isConnected;
       updateAccountData();
     });
@@ -57,13 +55,11 @@
     if (auth.pnp?.account?.owner) {
       const principal = auth.pnp.account.owner;
       principalId = typeof principal === 'string' ? principal : principal.toString();
-      console.log('Principal ID updated:', principalId);
       
       // Get subaccount if available
       if (auth.pnp.account.subaccount) {
         const sub = auth.pnp.account.subaccount;
         subaccount = uint8ArrayToHexString(sub);
-        console.log('Subaccount updated:', subaccount);
       } else {
         subaccount = '';
         console.log('No subaccount found');
@@ -108,28 +104,10 @@
     if (!address) return '';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   }
-  
-  // Handle add wallet button click
-  function handleAddWalletClick() {
-    // This functionality would be implemented later or dispatched to parent
-    console.log("Add wallet clicked");
-  }
-  
+
   // Check if we have a wallet connection
   $: hasWalletConnection = isConnected || !!principalId || userAddresses.some(addr => !!addr.address);
-  
-  // Format subaccount for display if needed
   $: formattedSubaccount = subaccount
-  
-  // Debug output for troubleshooting
-  $: console.log('WalletAddressesList state:', { 
-    principalId, 
-    subaccount,
-    isConnected, 
-    hasWalletConnection,
-    userAddressesCount: userAddresses.length,
-    authPnp: !!auth.pnp
-  });
 </script>
 
 <div class="py-3">
@@ -185,7 +163,7 @@
         {#if subaccount}
           <div class="mt-3 pt-3 border-t border-kong-border/20">
             <div class="flex items-center justify-between mb-2">
-              <div class="text-xs text-kong-text-secondary">Subaccount (For exchanges)</div>
+              <div class="text-xs text-kong-text-secondary">Account ID (For exchanges)</div>
             </div>
             <div class="flex items-center justify-between">
               <div class="text-sm font-medium text-kong-text-primary font-mono break-all pr-2">
