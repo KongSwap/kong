@@ -9,15 +9,15 @@
   <!-- Open Graph Tags -->
   <meta property="og:title" content="KongSwap - The Leading Fully On-Chain DeFi platform" />
   <meta property="og:description" content="Trade tokens with lightning speed and security on KongSwap, the premier decentralized exchange on the Internet Computer." />
-  <meta property="og:image" content="https://kongswap.io/images/banner.webp" />
+  <meta property="og:image" content="/images/banner.webp" />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://kongswap.io/" />
+  <meta property="og:url" content="https://kongswap.io" />
 
   <!-- Twitter Card Tags -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="KongSwap - The Leading Fully On-Chain DeFi platform" />
   <meta name="twitter:description" content="Trade tokens with lightning speed and security on KongSwap, the premier decentralized exchange on the Internet Computer." />
-  <meta name="twitter:image" content="https://kongswap.io/images/banner.webp" />
+  <meta name="twitter:image" content="/images/banner.webp" />
 </svelte:head>
 
 <LandingWrapper />

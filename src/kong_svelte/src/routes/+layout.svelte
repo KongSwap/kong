@@ -33,10 +33,6 @@
   let themeReady = $state(false);
   
   async function init() {
-    if (initializationPromise) {
-      return initializationPromise;
-    }
-
     const promise = (async () => {
       try {
         if (browser) {
@@ -54,7 +50,6 @@
       } catch (error) {
         console.error("[App] Initialization error:", error);
         initializationPromise = null;
-        throw error;
       }
     })();
 
@@ -86,10 +81,12 @@
       connectWebSocket();
     }
     
-    // Initialize the app
-    init().catch((error) => {
-      console.error("[App] Failed to initialize app:", error);
-    });
+    // Initialize the app only if not already initializing
+    if (!initializationPromise) {
+      init().catch((error) => {
+        console.error("[App] Failed to initialize app:", error);
+      });
+    }
       
     // Cleanup on destroy
     return () => {
@@ -178,6 +175,7 @@
         {@render children?.()}
       </div>
     </main>
+    
   </PageWrapper>
   <Toast />
   <AddToHomeScreen />

@@ -1,7 +1,6 @@
 <script lang="ts">
   import Portal from "svelte-portal";
   import TokenSelectorDropdown from "$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
   
   export let token0: FE.Token | null;
   export let token1: FE.Token | null;

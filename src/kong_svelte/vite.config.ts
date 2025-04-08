@@ -46,7 +46,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     environment("all", { prefix: "CANISTER_" }),
     environment("all", { prefix: "DFX_" }),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       manifest: {
         name: 'KongSwap',
         short_name: 'KongSwap',

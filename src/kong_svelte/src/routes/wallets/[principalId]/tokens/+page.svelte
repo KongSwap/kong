@@ -113,37 +113,58 @@
   // Combined effect for data loading and state management
   $effect(() => {
     const principal = page.params.principalId;
-    const hasBalances = Object.keys(walletData.balances).length > 0;
-    const hasTokens = walletData.tokens.length > 0;
+    const walletState = $walletDataStore; // Use store directly for reactivity
+    const hasBalances = Object.keys(walletState.balances).length > 0;
+    const hasTokens = walletState.tokens.length > 0;
+    const isStoreLoading = walletState.isLoading;
     
-    // Update local error state
-    loadingError = initError || walletData.error;
+    // Update local error state from layout or store
+    loadingError = initError || walletState.error;
     
-    // Update loading state
-    if (!isLoading) {
-      isLoading = initialDataLoading || walletData.isLoading;
-    } else if (!initialDataLoading && !walletData.isLoading) {
-      isLoading = false;
+    // Update local loading state based on layout and store
+    const shouldBeLoading = initialDataLoading || isStoreLoading;
+    if (isLoading !== shouldBeLoading) {
+      isLoading = shouldBeLoading;
     }
     
-    // Clear any pending timeout
+    // Clear any pending history load timeout
     if (historyLoadTimeout !== null) {
       clearTimeout(historyLoadTimeout);
       historyLoadTimeout = null;
     }
     
-    // Handle data loading based on current state
-    if (principal) {
-      if (hasBalances && hasTokens) {
-        // Load history when we have both tokens and balances
-        historyLoadTimeout = setTimeout(() => loadHistory(principal), 100) as unknown as number;
-      } else if (!hasTokens && !hasAttemptedTokenLoad && !isLoading) {
-        // Load tokens if we don't have them yet
-        console.log('No tokens loaded yet, loading tokens');
-        hasAttemptedTokenLoad = true;
-        loadTokensOnly(principal);
-      }
+    // Load history only when the store is stable for the correct principal
+    // and we have both tokens and balances.
+    if (principal && 
+        walletState.currentWallet === principal && 
+        !isStoreLoading && 
+        hasTokens && 
+        hasBalances && 
+        !isLoadingHistory && 
+        portfolioHistory.length === 0
+    ) {
+      console.log(`Tokens page: Wallet store stable for ${principal}, loading history.`);
+      // Debounce history loading slightly
+      historyLoadTimeout = setTimeout(() => loadHistory(principal), 100) as unknown as number;
+    } else if (principal && walletState.currentWallet === principal && !isStoreLoading && hasTokens && !hasBalances) {
+      // If we have tokens but no balances, and the store isn't loading, something might be wrong
+      // or the parent layout hasn't finished balance loading. Just wait.
+      console.log(`Tokens page: Have tokens, no balances for ${principal}. Waiting.`);
+    } else if (principal && walletState.currentWallet !== principal && !isStoreLoading) {
+      // If the store has finished loading but for the wrong wallet, wait for layout to correct.
+      console.log(`Tokens page: Store loaded for ${walletState.currentWallet}, expecting ${principal}. Waiting for layout.`);
+    } else if (isStoreLoading) {
+       console.log(`Tokens page: Wallet store is loading for ${walletState.currentWallet}. Waiting.`);
     }
+    
+    // Reset history if principal changes
+    $effect(() => {
+      const currentPrincipal = page.params.principalId;
+      if (portfolioHistory.length > 0 && walletState.currentWallet !== currentPrincipal) {
+         console.log(`Tokens page: Principal changed, resetting history.`);
+         resetPerformanceData();
+      }
+    });
   });
 </script>
 

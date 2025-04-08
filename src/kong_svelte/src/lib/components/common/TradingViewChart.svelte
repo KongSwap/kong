@@ -311,13 +311,6 @@
   const debouncedFetchData = debounce(async () => {
     if (state.isFetchingData) return;
     state.isFetchingData = true;
-    console.log("[Chart] Starting data fetch process", {
-      quoteToken: props.quoteToken?.symbol,
-      baseToken: props.baseToken?.symbol,
-      poolId: state.selectedPoolId,
-      poolsAvailable: state.pools.length
-    });
-    
     try {
       state.isLoading = true;
       state.hasNoData = false;
@@ -326,8 +319,7 @@
       if (state.pools.length === 0) {
         // Wait briefly for pools to load if they're empty
         if ($livePools.length === 0) {
-          console.log("[Chart] Waiting for pools data to be available...");
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 300));
           // Update pools from store after waiting
           state.pools = ($livePools || []) as BE.Pool[];
         } else {
@@ -340,11 +332,6 @@
       let bestPool: { pool_id: number } | null = null;
       
       if (props.quoteToken && props.baseToken) {
-        console.log("[Chart] Finding best pool for tokens", {
-          quoteToken: props.quoteToken.symbol,
-          baseToken: props.baseToken.symbol
-        });
-        
         bestPool = findBestPoolForTokens(
           props.quoteToken, 
           props.baseToken, 
@@ -353,11 +340,9 @@
         );
         
         if (bestPool?.pool_id) {
-          console.log("[Chart] Best pool found:", bestPool.pool_id);
           state.selectedPoolId = bestPool.pool_id;
         }
       } else if (state.selectedPoolId) {
-        console.log("[Chart] Using selected pool:", state.selectedPoolId);
         bestPool = { pool_id: state.selectedPoolId };
       }
 
@@ -378,14 +363,6 @@
       const now = Math.floor(Date.now() / 1000);
       const startTime = now - 90 * 24 * 60 * 60; // 90 days
       
-      console.log("[Chart] Fetching candle data for pool", {
-        poolId: bestPool.pool_id,
-        quoteTokenId: props.quoteToken?.token_id || 1,
-        baseTokenId: props.baseToken?.token_id || 10,
-        startTime: new Date(startTime * 1000).toISOString(),
-        endTime: new Date(now * 1000).toISOString()
-      });
-      
       const candleData = await fetchChartData(
         props.quoteToken?.token_id || 1,
         props.baseToken?.token_id || 10,
@@ -401,7 +378,6 @@
           chartStore.set(null);
         }
       } else {
-        console.log(`[Chart] Received ${candleData.length} candles of data`);
         state.hasNoData = false;
         if (!chart) {
           await initChart();

@@ -1,9 +1,6 @@
 <script lang="ts">
   import { Star } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { fade } from "svelte/transition";
-  import { flip } from "svelte/animate";
-  import { cubicOut } from "svelte/easing";
 
   const props = $props<{
     token: FE.Token;
@@ -19,10 +16,6 @@
     onFavoriteClick: (e: MouseEvent) => void;
     onEnableClick: (e: MouseEvent) => void;
   }>();
-
-  function getStaggerDelay(index: number) {
-    return index * 30; // 30ms delay between each item
-  }
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -226,8 +219,8 @@
   }
 
   .selected-indicator {
-    @apply text-kong-text-on-primary;
-    background: theme('colors.kong.accent-green/10');
+    @apply text-kong-bg-dark;
+    background: theme('colors.kong.accent-green');
     border-radius: 50%;
     padding: 4px;
     display: flex;

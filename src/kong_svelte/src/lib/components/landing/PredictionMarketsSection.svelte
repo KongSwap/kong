@@ -2,11 +2,13 @@
   import { onMount } from 'svelte';
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { TrendingUp, Zap, Globe, BarChart3, LucideCheck } from "lucide-svelte";
+  import { TrendingUp, Zap, Globe, BarChart3 } from "lucide-svelte";
   import { getPredictionMarketStats } from '$lib/api/predictionMarket';
   
   // Import the StatCard component
   import StatCard from './StatCard.svelte';
+  import FeatureList from './FeatureList.svelte';
+  import IphoneFrame from './IphoneFrame.svelte';
   
   // Section visibility prop using $props
   let { isVisible = false } = $props<{ isVisible?: boolean }>();
@@ -285,57 +287,21 @@
         {/if}
       </div>
       
-      <!-- Feature bullets with enhanced styling -->
-      <div class="space-y-5 md:space-y-6">
-        {#each features as feature}
-          <div class="flex items-start">
-            <div class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center justify-center mr-3 mt-1">
-              <LucideCheck size={10} class="text-white" />
-            </div>
-            <div>
-              <h3 class="text-base md:text-lg font-semibold text-white mb-1">{feature.title}</h3>
-              <p class="text-sm md:text-base text-gray-300">{feature.description}</p>
-            </div>
-          </div>
-        {/each}
-      </div>
+      <!-- Use FeatureList component -->
+      <FeatureList 
+        {features} 
+        defaultIconBgGradientClass="from-blue-600 to-cyan-600"
+      />
     </div>
 
     <!-- iPhone with screenshot - Optimized for mobile -->
-    <div class="flex-1 flex justify-center items-center relative z-10 transform translate-y-12 opacity-0 transition-all duration-700 delay-300 ease-out {animationClass}">
-      <div class="relative w-[240px] sm:w-[280px] md:w-[360px] transition-all duration-300 hover:scale-[1.02]">
-        <!-- iPhone frame with improved realism -->
-        <div class="relative w-full h-[490px] sm:h-[560px] md:h-[700px] bg-gradient-to-b from-gray-700 to-gray-900 rounded-[35px] md:rounded-[40px] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-[6px] border-gray-800">
-          <!-- Volume buttons -->
-          <div class="absolute -left-[2px] top-[80px] md:top-[100px] w-[2px] h-8 md:h-12 bg-gray-900 rounded-l-lg shadow-inner"></div>
-          <div class="absolute -left-[2px] top-[120px] md:top-[150px] w-[2px] h-10 md:h-16 bg-gray-900 rounded-l-lg shadow-inner"></div>
-          
-          <!-- Power button -->
-          <div class="absolute -right-[2px] top-[100px] md:top-[120px] w-[2px] h-10 md:h-14 bg-gray-900 rounded-r-lg shadow-inner"></div>
-          
-          <!-- Subtle inner shadow on frame -->
-          <div class="absolute inset-3 rounded-[28px] md:rounded-[32px] shadow-inner opacity-30"></div>
-          
-          <!-- Notch with more detail -->
-          <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-1/3 h-5 md:h-7 bg-gray-900 rounded-b-2xl overflow-hidden flex justify-center">
-            <div class="w-1.5 md:w-2 h-1.5 md:h-2 bg-gray-700 rounded-full my-1 mx-0.5 md:mx-1"></div>
-            <div class="w-4 md:w-6 h-1.5 md:h-2 bg-gray-700 rounded-full my-1 mx-0.5 md:mx-1"></div>
-            <div class="w-1.5 md:w-2 h-1.5 md:h-2 bg-gray-700 rounded-full my-1 mx-0.5 md:mx-1"></div>
-          </div>
-          
-          <!-- Screenshot with image preloading hint -->
-          <div class="h-full w-full rounded-[28px] md:rounded-[32px] overflow-hidden relative">
-            <div class="absolute inset-0 bg-gradient-to-b from-blue-500/10 to-cyan-500/10 z-10 pointer-events-none"></div>
-            <img src="/images/pmscreen.png" alt="Prediction Markets Screenshot" class="w-full h-full object-cover relative z-0" loading="lazy" />
-          </div>
-          
-          <!-- Home indicator -->
-          <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-16 md:w-28 h-1 bg-gray-300 rounded-full"></div>
-        </div>
-        
-        <!-- Device reflection - optimized -->
-        <div class="absolute bottom-[-15px] md:bottom-[-20px] left-[10%] right-[10%] h-[15px] md:h-[20px] bg-gradient-to-b from-blue-500/20 to-transparent blur-sm rounded-[50%]"></div>
-      </div>
+    <div class="flex-1 flex justify-center items-center relative z-10 order-2 md:order-1 transform translate-y-12 opacity-0 transition-all duration-1000 delay-300 ease-out {animationClass}">
+      <!-- Use the IphoneFrame component -->
+      <IphoneFrame 
+        screenshotSrc="/images/pmscreen.png"
+        gradientOverlay="from-blue-500/10 to-cyan-500/10"
+        reflectionColor="from-blue-500/20"
+      />
     </div>
   </div>
   
