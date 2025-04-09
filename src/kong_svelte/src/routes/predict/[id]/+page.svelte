@@ -19,7 +19,7 @@
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import RecentBets from "../RecentBets.svelte";
-  import { slide, fade, crossfade } from "svelte/transition";
+  import { crossfade } from "svelte/transition";
   import BetModal from "../BetModal.svelte";
   import { toastStore } from "$lib/stores/toastStore";
   import { auth } from "$lib/stores/auth";
@@ -50,12 +50,6 @@
 
   // Store pending outcome for after authentication
   let pendingOutcome: number | null = null;
-
-  // Add an error state for charts
-  let chartError: boolean = false;
-
-  // Reference to the ChartPanel component
-  let chartPanel: typeof ChartPanel;
 
   // Handle chart tab changes
   function handleChartTabChange(tab: string) {
@@ -177,7 +171,6 @@
 
       // Convert bet amount to scaled token units
       const scaledAmount = toScaledAmount(amount, kongToken.decimals);
-
       await placeBet(kongToken, Number(market.id), outcomeIndex, scaledAmount);
 
       // Reset betting state
@@ -267,7 +260,6 @@
   function shareToTikTok() {
     if (browser) {
       const marketUrl = `${window.location.origin}/predict/${$page.params.id}`;
-      const marketQuestion = market?.question || "Prediction Market";
       
       // Copy the link to clipboard
       navigator.clipboard

@@ -36,6 +36,7 @@
 		onRefresh?: () => void;
 		onTokenAdded?: (token: FE.Token) => void;
 		onBalancesLoaded?: () => void;
+		showUsdValues?: boolean; // <-- Add prop for USD visibility
 	};
 
 	let { 
@@ -46,7 +47,8 @@
 		onAction = () => {},
 		onRefresh = () => {},
 		onTokenAdded = () => {},
-		onBalancesLoaded = () => {}
+		onBalancesLoaded = () => {},
+		showUsdValues = true // <-- Destructure with default
 	}: WalletTokensListProps = $props();
 
 	// Process tokens with balance information when we need to do it internally
@@ -694,10 +696,14 @@
 											{tokenBalance.name}
 										</div>
 										<div class="text-xs text-kong-text-secondary mt-1 leading-tight">
-											{#if Number(tokenBalance.balance) > 0 && Number(tokenBalance.balance) < 0.00001}
-												<span title={tokenBalance.balance.toString()}>~0.00001</span> {tokenBalance.symbol}
+											{#if showUsdValues}
+												{#if Number(tokenBalance.balance) > 0 && Number(tokenBalance.balance) < 0.00001}
+													<span title={tokenBalance.balance.toString()}>~0.00001</span> {tokenBalance.symbol}
+												{:else}
+													{tokenBalance.balance} {tokenBalance.symbol}
+												{/if}
 											{:else}
-												{tokenBalance.balance} {tokenBalance.symbol}
+												**** {tokenBalance.symbol}
 											{/if}
 										</div>
 									</div>
@@ -705,7 +711,11 @@
 
 								<div class="text-right flex flex-col justify-center">
 									<div class="font-medium text-kong-text-primary text-sm leading-tight">
-										{formatCurrency(tokenBalance.usdValue)}
+										{#if showUsdValues} <!-- Conditionally show USD value -->
+											{formatCurrency(tokenBalance.usdValue)}
+										{:else}
+											$ ****
+										{/if}
 									</div>
 									<div
 										class="text-xs {tokenBalance.change24h >= 0

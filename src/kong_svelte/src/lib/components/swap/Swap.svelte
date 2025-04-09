@@ -31,25 +31,24 @@
   import { 
     refreshBalances, 
   } from "$lib/stores/balancesStore";
-  import { themeStore } from "$lib/stores/themeStore";
-  import { getThemeById } from "$lib/themes/themeRegistry";
+  import {
+    themeId,
+    primaryColor,
+    secondaryColor,
+    errorColorStart,
+    errorColorEnd,
+    processingColorStart,
+    processingColorEnd,
+    buttonBorderColor,
+    glowEffectColor
+  } from "$lib/stores/derivedThemeStore";
   import SwapButton from "./swap_ui/SwapButton.svelte";
   import SwitchTokensButton from "./swap_ui/SwitchTokensButton.svelte";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { goto } from "$app/navigation";
 
   // Theme-specific styling data
-  let theme = $derived(getThemeById($themeStore));
-  
-  // Swap button theme colors
-  let primaryStart = $derived(theme.colors.primary || 'rgba(55, 114, 255, 0.95)');
-  let primaryEnd = $derived(theme.colors.secondary || 'rgba(111, 66, 193, 0.95)');
-  let errorStart = $derived('rgba(239, 68, 68, 0.9)'); // Fallback for error color
-  let errorEnd = $derived('rgba(239, 68, 68, 0.8)'); // Fallback for errorDark color
-  let processingStart = $derived('#3772ff'); // Fallback for info color
-  let processingEnd = $derived('#4580ff'); // Fallback for infoLight color
-  let buttonBorder = $derived(theme.colors.borderLight || 'rgba(255, 255, 255, 0.12)');
-  let glowEffect = $derived('rgba(255, 255, 255, 0.2)'); // Fallback for highlight color
+  // let theme = $derived(getThemeById($themeStore));
   
   // Types
   type PanelType = "pay" | "receive";
@@ -70,15 +69,12 @@
   const SEARCH_HEADER_HEIGHT = 56; // Height of search header
 
   // State
-  let isProcessing = $state(false);
   let isInitialized = $state(false);
   let currentSwapId: string | null = null;
   let isQuoteLoading = $state(false);
-  let showSettings = $state(false);
   let insufficientFunds = $state(false);
   let hasValidPool = $state(false);
   let skipNextUrlInitialization = false;
-  let currentBalance: string | null = null;
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -105,8 +101,7 @@
     if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
       refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, false);
     } else {
-      console.log('Resetting balance states - missing auth or tokens');
-      currentBalance = null;
+      console.warn('Resetting balance states - missing auth or tokens');
       insufficientFunds = false;
     }
   });
@@ -125,28 +120,6 @@
     !$swapState.payAmount || $swapState.payAmount === "0" || 
     SwapButtonService.isButtonDisabled($swapState, insufficientFunds, isQuoteLoading, $auth)
   );
-
-  // Replace initializeFromUrl with:
-  async function initializeFromUrl() {
-    try {
-      await SwapUrlService.initializeFromUrl(
-        $userTokens.tokens,
-        fetchTokensByCanisterId,
-        (token0, token1) => {
-          swapState.update((state) => ({
-            ...state,
-            payToken: token0 || state.payToken,
-            receiveToken: token1 || state.receiveToken,
-            payAmount: "",
-            receiveAmount: "",
-            error: null,
-          }));
-        }
-      );
-    } catch (error) {
-      console.error('Error initializing from URL:', error);
-    }
-  }
 
   // Replace updateTokenInURL with:
   function updateTokenInURL(param: "from" | "to", tokenId: string) {
@@ -224,9 +197,6 @@
                 error: null
               }));
             }
-          } else {
-            // No params in URL, try the service as fallback
-            await initializeFromUrl();
           }
         }
         
@@ -638,9 +608,6 @@
             
             // Update insufficient funds flag
             insufficientFunds = payAmount > balanceAsNumber;
-            
-            // Save the current balance for display
-            currentBalance = balanceAsNumber.toString();
           } catch (error) {
             console.error('Error calculating balance:', error);
             insufficientFunds = false;
@@ -665,7 +632,7 @@
   <div class="relative flex flex-col gap-2 mb-2">
     <div class="relative flex flex-col gap-1 min-h-[240px] px-3 md:px-0 mt-0 md:mt-10">
       <!-- Doge image peeking only for Win98 theme -->
-      {#if theme.id === 'win98light'}
+      {#if $themeId === 'win98light'}
         <div class="absolute -top-[4.8rem] right-5 z-1 transform translate-x-1/4 select-none pointer-events-none">
           <img 
             src="/images/layingdoge.png" 
@@ -690,7 +657,7 @@
       </div>
 
       <SwitchTokensButton 
-        isDisabled={isProcessing}
+        isDisabled={$swapState.isProcessing}
         onSwitch={handleReverseTokens}
       />
 
@@ -718,17 +685,17 @@
         showShineAnimation={buttonText === "SWAP"}
         disabled={buttonDisabled}
         onClick={handleButtonAction}
-        primaryGradientStart={primaryStart}
-        primaryGradientEnd={primaryEnd}
-        errorGradientStart={errorStart}
-        errorGradientEnd={errorEnd}
-        processingGradientStart={processingStart}
-        processingGradientEnd={processingEnd}
-        borderColor={buttonBorder}
-        glowColor={glowEffect}
-        shine={glowEffect}
-        readyGlowStart={primaryStart}
-        readyGlowEnd={primaryEnd}
+        primaryGradientStart={$primaryColor}
+        primaryGradientEnd={$secondaryColor}
+        errorGradientStart={$errorColorStart}
+        errorGradientEnd={$errorColorEnd}
+        processingGradientStart={$processingColorStart}
+        processingGradientEnd={$processingColorEnd}
+        borderColor={$buttonBorderColor}
+        glowColor={$glowEffectColor}
+        shine={$glowEffectColor}
+        readyGlowStart={$primaryColor}
+        readyGlowEnd={$secondaryColor}
       />
     </div>
   </div>

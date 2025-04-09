@@ -595,12 +595,12 @@
                 {#each FILTER_TABS as tab}
                   <button
                     on:click={() => setStandardFilter(tab.id as FilterType)}
-                    class="flex-1 px-3 py-2 flex items-center justify-center gap-2 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium bg-kong-bg-light/30 rounded-2xl {state.standardFilter === tab.id ? 'text-white font-semibold bg-kong-primary text-kong-bg-light hover:bg-kong-primary' : 'hover:bg-kong-bg-light/60'}"
+                    class="flex-1 px-3 py-2 flex items-center justify-center gap-2 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium bg-kong-bg-dark/30 rounded-2xl {state.standardFilter === tab.id ? 'text-white font-semibold bg-kong-primary text-kong-bg-light hover:bg-kong-primary' : 'hover:bg-kong-bg-light/60'}"
                     aria-label="Show {tab.label.toLowerCase()} tokens"
                   >
                     <span class="relative z-10">{tab.label}</span>
                     <span
-                      class="text-kong-text-secondary text-xs px-2 py-1 rounded-full bg-kong-border/10 min-w-[1.5rem] text-center transition-all duration-200 {state.standardFilter === tab.id ? 'bg-kong-primary/10 text-kong-bg-light' : ''}"
+                      class="text-kong-text-on-primary text-xs px-2 py-1 rounded-full bg-kong-bg-dark/50 min-w-[1.5rem] text-center transition-all duration-200 {state.standardFilter === tab.id ? 'bg-kong-primary/10 text-kong-bg-light' : ''}"
                     >
                       {getTabCount(tab.id)}
                     </span>
