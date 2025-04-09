@@ -209,53 +209,50 @@
   isPadded={true}
   width="500px"
 >
-<div class="swap-confirmation-layout">
+<div class="flex flex-col gap-1 h-full max-h-[80vh] sm:max-h-[70vh]">
   {#if error}
     <Panel variant="transparent" type="secondary" unpadded={false}>
-      <div class="error-container">
-        <div class="error-icon">!</div>
-        <p class="error-message">{error}</p>
+      <div class="flex flex-col items-center justify-center gap-2 p-3 text-center sm:p-2 sm:gap-1">
+        <div class="w-10 h-10 rounded-full bg-kong-bg-dark text-kong-error flex items-center justify-center text-xl font-bold sm:w-8 sm:h-8 sm:text-lg">!</div>
+        <p class="text-kong-error text-sm max-w-[300px] sm:text-xs">{error}</p>
       </div>
     </Panel>
   {:else if payToken && receiveToken}
-    <div class="scrollable-content">
-      <div class="confirmation-container" transition:fade={{ duration: 200 }}>
-        <div class="content-wrapper">        
-          <div class="sections-wrapper">
-            <Panel variant="transparent" type="secondary" unpadded={true}>
-              <PayReceiveSection
-                {payToken}
-                {payAmount}
-                {receiveToken}
-                {receiveAmount}
-                routingPath={currentRoutingPath}
-              />
-            </Panel>
-            
-            <Panel variant="transparent" type="secondary" unpadded={true}>
-              <FeesSection
-                {gasFees}
-                {lpFees}
-                {userMaxSlippage}
-                {priceImpact}
-                {showPriceImpactWarning}
-              />
-            </Panel>
-          </div>
+    <div class="flex-1 overflow-y-auto pr-1 sm:pr-0 scrollbar-custom">
+      <div class="flex flex-col w-full rounded-md transition-all duration-300" transition:fade={{ duration: 200 }}>
+        <div class="flex flex-col">
+          <Panel variant="transparent" type="secondary" unpadded={true}>
+            <PayReceiveSection
+              {payToken}
+              {payAmount}
+              {receiveToken}
+              {receiveAmount}
+              routingPath={currentRoutingPath}
+            />
+            <hr class="border-t border-kong-border/30 my-1" />
+            <FeesSection
+              {gasFees}
+              {lpFees}
+              {userMaxSlippage}
+              {priceImpact}
+              {showPriceImpactWarning}
+            />
+          </Panel>
         </div>
       </div>
     </div>
-    <div class="button-wrapper">
+    <div class="w-full mt-auto sticky bottom-0 bg-kong-bg-dark z-10 pt-0 sm:border-t sm:border-kong-border/10">
       <button
-        class="swap-button"
         class:processing={isLoading}
         class:shine-animation={!isLoading}
         class:warning={showPriceImpactWarning}
+        class="swap-button relative w-full py-1 px-2 rounded-xl border border-kong-border/10 cursor-pointer transform transition-all duration-200 overflow-hidden sm:rounded-lg disabled:opacity-70 disabled:cursor-not-allowed"
+        style="background: linear-gradient(135deg, rgb(var(--accent-blue) / 0.95) 0%, rgb(var(--accent-purple) / 0.95) 100%); box-shadow: 0 2px 6px rgb(var(--accent-blue) / 0.2);"
         on:click={handleConfirm}
         disabled={isLoading}
       >
-        <div class="button-content">
-          <span class="button-text">
+        <div class="relative z-[1] flex items-center justify-center gap-2">
+          <span class="text-sm font-semibold text-white text-center sm:text-xs" style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
             {#if isLoading}
               Processing...
             {:else if showPriceImpactWarning}
@@ -265,7 +262,7 @@
             {/if}
           </span>
           {#if isLoading}
-            <div class="loading-spinner"></div>
+            <div class="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin sm:w-3 sm:h-3"></div>
           {/if}
         </div>
         {#if !isLoading}
@@ -280,83 +277,20 @@
 </Modal>
 
 <style lang="postcss">
-  .swap-confirmation-layout {
-    @apply flex flex-col gap-3;
-    height: 100%;
-    max-height: 80vh;
-  }
-
-  .scrollable-content {
-    @apply flex-1 overflow-y-auto pr-1;
-    margin-bottom: 0.5rem;
-  }
-
-  .button-wrapper {
-    @apply w-full mt-auto;
-    position: sticky;
-    bottom: 0;
-    background: rgb(var(--bg-dark));
-    z-index: 10;
-  }
-
-  .confirmation-container {
-    @apply flex flex-col w-full rounded-md transition-all duration-300;
-  }
-
-  .content-wrapper {
-    @apply flex flex-col;
-  }
-
-  .sections-wrapper {
-    @apply flex flex-col gap-3 flex-1 rounded-md;
-  }
-
-  .sections-wrapper > :global(*) {
+  /* Apply styles directly to the single Panel */
+  .flex-col > :global(div.panel) {
     @apply relative rounded-md border border-kong-border transition-all duration-200 w-full box-border;
   }
 
-  .error-container {
-    @apply flex flex-col items-center justify-center gap-3 p-4 text-center;
-  }
-
-  .error-icon {
-    @apply w-10 h-10 rounded-full bg-kong-bg-dark text-kong-error flex items-center justify-center text-xl font-bold;
-  }
-
-  .error-message {
-    @apply text-kong-error text-sm max-w-[300px];
-  }
-
-  .swap-button {
-    @apply relative w-full p-3 rounded-xl border border-kong-border/10 cursor-pointer transform transition-all duration-200 overflow-hidden;
+  .swap-button.warning {
     background: linear-gradient(
       135deg,
-      rgb(var(--accent-blue) / 0.95) 0%,
-      rgb(var(--accent-purple) / 0.95) 100%
+      rgb(var(--accent-yellow) / 0.95) 0%,
+      rgb(var(--accent-red) / 0.95) 100%
     );
-    box-shadow: 0 2px 6px rgb(var(--accent-blue) / 0.2);
   }
 
-  .swap-button:disabled {
-    @apply opacity-70 cursor-not-allowed;
-  }
-
-  .button-content {
-    @apply relative z-[1] flex items-center justify-center gap-2;
-  }
-
-  .button-text {
-    @apply text-base font-semibold text-white text-center;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
-
-  .loading-spinner {
-    @apply w-4 h-4 rounded-full;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: white;
-    animation: spin 0.8s linear infinite;
-  }
-
+  /* Keep non-Tailwind styles and animations */
   .button-glow {
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
     background: radial-gradient(
@@ -373,64 +307,10 @@
   .swap-button.processing {
     animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
   }
+  
+  /* Removed duplicate warning style - handled by class:warning and inline style potentially */
 
-  .swap-button.warning {
-    background: linear-gradient(
-      135deg,
-      rgb(var(--accent-yellow) / 0.95) 0%,
-      rgb(var(--accent-red) / 0.95) 100%
-    );
-  }
-
-  @media (max-width: 640px) {
-    .swap-confirmation-layout {
-      max-height: 70vh;
-    }
-
-    .scrollable-content {
-      padding-right: 0;
-    }
-
-    .button-wrapper {
-      border-top: 1px solid rgb(var(--border) / 0.1);
-    }
-
-    .confirmation-container {
-      height: auto;
-    }
-
-    .content-wrapper {
-      height: auto;
-    }
-
-    .sections-wrapper {
-      @apply gap-2;
-    }
-
-    .error-container {
-      @apply p-3 gap-2;
-    }
-
-    .error-icon {
-      @apply w-8 h-8 text-lg;
-    }
-
-    .error-message {
-      @apply text-xs;
-    }
-
-    .swap-button {
-      @apply rounded-lg;
-    }
-
-    .button-text {
-      @apply text-sm;
-    }
-
-    .loading-spinner {
-      @apply w-3.5 h-3.5;
-    }
-  }
+  /* Removed empty media query block */
 
   @keyframes spin {
     to {
@@ -494,5 +374,27 @@
       opacity: 0.5;
       transform: scale(1.02);
     }
+  }
+
+  /* Add custom scrollbar utility */
+  .scrollbar-custom {
+    &::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background-color: rgb(var(--bg-dark) / 0.5);
+      border-radius: 3px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background-color: rgb(var(--accent-blue) / 0.7);
+      border-radius: 3px;
+      border: 1px solid rgb(var(--bg-dark) / 0.5);
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background-color: rgb(var(--accent-blue));
+    }
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--accent-blue) / 0.7) rgb(var(--bg-dark) / 0.5);
   }
 </style>

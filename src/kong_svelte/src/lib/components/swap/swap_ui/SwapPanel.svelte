@@ -11,27 +11,17 @@
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
-  import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  import { themeStore } from "$lib/stores/themeStore";
-  import { getThemeById } from "$lib/themes/themeRegistry";
+  import { 
+    swapPanelRoundness, 
+    swapPanelBorder, 
+    swapPanelShadow, 
+    swapPanelBorderStyle, 
+    swapPanelInputsRounded, 
+    transparentSwapPanel 
+  } from "$lib/stores/derivedThemeStore";
   
-  // Theme-specific styling data - use $derived to eliminate race conditions
-  let theme = $derived(getThemeById($themeStore));
-  let swapPanelRoundness = $derived(theme.colors.swapPanelRoundness || 'rounded-lg');
-  let swapPanelBorder = $derived(theme.colors.swapPanelBorder || '1px solid rgba(255, 255, 255, 0.1)');
-  let swapPanelShadow = $derived(theme.colors.swapPanelShadow || '0 8px 32px rgba(0, 0, 0, 0.32)');
-  let swapPanelBorderStyle = $derived(theme.colors.swapPanelBorderStyle || 'default');
-  let inputsRounded = $derived(theme.colors.swapPanelInputsRounded !== false);
-  let transparentPanel = $derived(theme.colors.transparentSwapPanel !== false);
-  let isWin95Border = $derived(swapPanelBorderStyle === 'win95');
+  let isWin95Border = $derived($swapPanelBorderStyle === 'win95');
   
-  // Create CSS variables for the theme-specific styling - derive directly from other derived values
-  let swapPanelStyle = $derived(`
-    --swap-panel-border: ${swapPanelBorder};
-    --swap-panel-shadow: ${swapPanelShadow};
-  `);
-
-  // Props with proper TypeScript types
   let {
     title,
     token,
@@ -66,20 +56,12 @@
   // State management using runes
   let inputElement = $state<HTMLInputElement | null>(null);
   let inputFocused = $state(false);
-  let calculatedUsdValue = $state(0);
   let previousValue = $state("0");
   let isMobile = $state(false);
 
   // Derived state using runes
-  let tokenInfo = $state<FE.Token | null>(null);
-  $effect(() => {
-    fetchTokensByCanisterId([token?.canister_id]).then(tokens => {
-      tokenInfo = tokens[0];
-    });
-  });
-
-  let decimals = $derived(tokenInfo?.decimals || DEFAULT_DECIMALS);
-  let isIcrc1 = $derived(tokenInfo?.icrc1 && !tokenInfo?.icrc2);
+  let decimals = $derived(token?.decimals || DEFAULT_DECIMALS);
+  let isIcrc1 = $derived(token?.icrc1 && !token?.icrc2);
 
   // Initialize window-dependent values
   let windowWidth = $state(0);
@@ -102,11 +84,6 @@
 
   // Animated values using runes
   let animatedUsdValue = tweened(0, {
-    duration: ANIMATION_BASE_DURATION,
-    easing: cubicOut,
-  });
-
-  let animatedAmount = tweened(0, {
     duration: ANIMATION_BASE_DURATION,
     easing: cubicOut,
   });
@@ -163,32 +140,22 @@
     return regex.test(value);
   }
 
-  // Watch for token changes
-  onMount(() => {
-    // Initial balance load is now handled by parent
-  });
-
-  let lastLoadedToken = $state<string | undefined>(undefined);
-  $effect(() => {
-    const canisterId = tokenInfo?.canister_id;
-    if (canisterId && canisterId !== lastLoadedToken) {
-      lastLoadedToken = canisterId;
-    }
-  });
-
   // Animation and value updates using $effect
   $effect(() => {
     if (amount === "0") {
-      updateAnimatedValues(0);
+      // Update animated values directly using tradeUsdValue
+      animatedUsdValue.set(0, { duration: 0 }); // Reset directly for 0 amount
     } else {
       const currentValue = $animatedUsdValue;
-      const valueDiff = Math.abs(calculatedUsdValue - currentValue);
+      // Use tradeUsdValue for calculation
+      const valueDiff = Math.abs(tradeUsdValue - currentValue);
       const duration = Math.min(
         ANIMATION_MAX_DURATION,
         ANIMATION_BASE_DURATION + valueDiff * ANIMATION_VALUE_MULTIPLIER,
       );
 
-      animatedUsdValue.set(calculatedUsdValue, {
+      // Use tradeUsdValue for setting the tweened value
+      animatedUsdValue.set(tradeUsdValue, {
         duration,
         easing: cubicOut,
       });
@@ -196,11 +163,6 @@
 
     animatedSlippage.set(slippage, { duration: 0 });
   });
-
-  function updateAnimatedValues(duration: number) {
-    animatedUsdValue.set(calculatedUsdValue, { duration });
-    animatedAmount.set(parseFloat(amount || "0"), { duration });
-  }
 
   // Event handlers
   function handleInput(event: Event) {
@@ -242,7 +204,7 @@
   async function handleMaxClick() {
     if (!disabled && title === "You Pay" && token) {
       try {
-        if (!tokenInfo) {
+        if (!token) {
           console.error("Token info missing");
           toastStore.error("Invalid token configuration");
           return;
@@ -255,9 +217,9 @@
           return;
         }
 
-        // Calculate fees
-        const feesInTokens = tokenInfo.fee_fixed
-          ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, "")) *
+        // Calculate fees using token prop directly
+        const feesInTokens = token.fee_fixed
+          ? BigInt(token.fee_fixed.toString().replace(/_/g, "")) *
             (isIcrc1 ? 1n : 2n)
           : 0n;
 
@@ -337,8 +299,9 @@
   let displayAmount = $derived(formatDisplayValue(amount || "0"));
   let formattedDisplayAmount = $derived(formatWithCommas(displayAmount));
   let parsedAmount = $derived(parseFloat(displayAmount || "0"));
+  // Use token prop directly for price
   let tokenPrice = $derived(
-    tokenInfo ? Number(tokenInfo?.metrics?.price || 0) : 0,
+    token ? Number(token?.metrics?.price || 0) : 0,
   );
   let tradeUsdValue = $derived(tokenPrice * parsedAmount);
 
@@ -374,16 +337,16 @@
 </script>
 
 <Panel
-  variant={transparentPanel ? "transparent" : "solid"}
+  variant={$transparentSwapPanel ? "transparent" : "solid"}
   width="auto"
   type="main"
-  className="max-w-xl !p-4 !h-full swap-panel-wrapper {isWin95Border ? 'win95-panel' : ''}"
-  roundness={swapPanelRoundness}
+  className="w-full max-w-2xl !p-4 !h-full swap-panel-wrapper {isWin95Border ? 'win95-panel' : ''}"
+  roundness={$swapPanelRoundness}
   isSwapPanel={true}
 >
   <div
     class="flex flex-col min-h-[165px] max-h-[220px] box-border relative swap-panel-content"
-    style={swapPanelStyle}
+    style="--swap-panel-border: {$swapPanelBorder}; --swap-panel-shadow: {$swapPanelShadow};"
   >
     <header>
       <div class="flex items-center justify-between gap-4 min-h-[1rem] mb-5">
@@ -395,7 +358,7 @@
         <div class="flex items-center gap-2">
           {#if panelType === "pay"}
             <button
-              class="onramp-button"
+              class="onramp-button font-semibold text-sm text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1.5 sm:px-3"
               on:click={(e) => {
                 e.preventDefault();
                 window.open("https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp", '_blank', 'width=500,height=650');
@@ -416,7 +379,7 @@
               </span>
               <span
                 class="text-[1rem] font-semibold text-kong-text-primary"
-                class:high={$animatedSlippage >= HIGH_IMPACT_THRESHOLD}
+                class:text-kong-accent-red={$animatedSlippage >= HIGH_IMPACT_THRESHOLD}
               >
                 {$animatedSlippage.toFixed(2)}%
               </span>
@@ -431,10 +394,10 @@
         <div class="relative flex-1">
           {#if isLoading && panelType === "receive"}
             <div class="absolute inset-0 flex items-center">
-              <div class="loading-dots">
-                <span></span>
-                <span></span>
-                <span></span>
+              <div class="loading-dots flex gap-[6px] items-center justify-start pl-[4px]">
+                <span class="w-[8px] h-[8px] rounded-full bg-kong-text-primary/50 animate-bounce delay-[-0.32s]"></span>
+                <span class="w-[8px] h-[8px] rounded-full bg-kong-text-primary/50 animate-bounce delay-[-0.16s]"></span>
+                <span class="w-[8px] h-[8px] rounded-full bg-kong-text-primary/50 animate-bounce"></span>
               </div>
             </div>
           {/if}
@@ -444,9 +407,9 @@
             inputmode="decimal"
             pattern="[0-9]*"
             placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary placeholder:text-kong-text-primary"
+            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary placeholder:text-kong-text-primary sm:text-[1.88rem] sm:mt-[-0.15rem]"
             class:opacity-0={isLoading && panelType === "receive"}
-            class:input-rounded={inputsRounded}
+            class:rounded-md={$swapPanelInputsRounded}
             value={formattedDisplayAmount}
             on:input={handleInput}
             on:focus={() => (inputFocused = true)}
@@ -457,8 +420,8 @@
         </div>
         <div class="token-selector-wrapper relative">
           <button
-            class="token-selector-button {isWin95Border ? 'win95-button' : ''}"
-            class:button-rounded={inputsRounded && !isWin95Border}
+            class="token-selector-button min-w-[100px] flex items-center justify-between bg-white/5 p-3 border border-white/10 transition-colors duration-150 gap-3 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 {isWin95Border ? 'win95-button' : ''}"
+            class:rounded-xl={$swapPanelInputsRounded && !isWin95Border}
             on:click|stopPropagation={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
               const position = {
@@ -477,15 +440,15 @@
             }}
           >
             {#if token}
-              <div class="token-info">
+              <div class="token-info flex items-center gap-2">
                 <TokenImages tokens={[token]} size={32} />
-                <span class="token-symbol hide-on-mobile">{token.symbol}</span>
+                <span class="token-symbol hidden text-lg font-semibold text-kong-text-primary sm:inline">{token.symbol}</span>
               </div>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 20 20"
                 fill="currentColor"
-                class="chevron"
+                class="chevron w-5 h-5 text-kong-text-primary/50"
               >
                 <path
                   fill-rule="evenodd"
@@ -494,12 +457,12 @@
                 />
               </svg>
             {:else}
-              <span class="select-token-text">Select Token</span>
+              <span class="select-token-text text-lg text-kong-text-primary/70 text-left">Select Token</span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 20 20"
                 fill="currentColor"
-                class="chevron"
+                class="chevron w-5 h-5 text-kong-text-primary/50"
               >
                 <path
                   fill-rule="evenodd"
@@ -513,29 +476,30 @@
       </div>
     </div>
 
-    <footer class="text-kong-text-primary text-[clamp(0.75rem,2vw,0.875rem)]">
+    <div class="text-kong-text-primary text-sm">
       <div class="flex justify-between items-center leading-6">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1">
           <span
-            class="text-kong-text-primary font-normal tracking-wide mobile-text"
-            >Value</span
+            class="text-kong-text-primary font-normal tracking-wide sm:text-xs"
+            >Value:</span
           >
           <span
-            class="pl-1 text-kong-text-primary font-medium tracking-wide mobile-text"
+            class="text-kong-text-primary font-medium tracking-wide sm:text-xs"
           >
             ${formatToNonZeroDecimal(tradeUsdValue)}
           </span>
         </div>
         {#if token}
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1">
             <span
-              class="text-kong-text-primary font-normal tracking-wide mobile-text"
+              class="text-kong-text-primary font-normal tracking-wide sm:text-xs"
             >
               Available:
             </span>
             <button
-              class="pl-1 text-kong-text-primary font-semibold tracking-tight mobile-text"
+              class="text-kong-text-primary font-semibold tracking-tight sm:text-xs"
               class:clickable={title === "You Pay" && !disabled}
+              class:hover:text-yellow-500={title === 'You Pay' && !disabled}
               on:click={handleMaxClick}
             >
               {#if token && token.canister_id && $currentUserBalancesStore}
@@ -556,182 +520,11 @@
           </div>
         {/if}
       </div>
-    </footer>
+    </div>
   </div>
 </Panel>
 
-<style lang="postcss">
-  .clickable:hover {
-    color: #eab308;
-  }
-
-  .high {
-    color: #ef4444;
-  }
-
-  /* Conditional border-radius for inputs based on theme setting */
-  .input-rounded {
-    border-radius: 0.375rem;
-  }
-  
-  .button-rounded {
-    border-radius: 0.75rem;
-  }
-
-  @media (max-width: 420px) {
-    input {
-      font-size: 1.88rem;
-      margin-top: -0.15rem;
-    }
-
-    .mobile-text {
-      font-size: 0.7rem;
-    }
-  }
-  
-  .token-selector-wrapper {
-    position: relative;
-  }
-
-  .token-selector-button {
-    min-width: 100px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background-color: rgba(255, 255, 255, 0.05);
-    padding: 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: background-color 150ms;
-    gap: 0.75rem;
-  }
-
-  .token-selector-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .token-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .token-symbol {
-    color: rgb(var(--text-primary));
-    @apply font-semibold text-lg;
-  }
-
-  @media (max-width: 420px) {
-    .hide-on-mobile {
-      display: none;
-    }
-
-    .token-selector-button {
-      min-width: auto;
-      gap: 0.5rem;
-    }
-  }
-
-  .select-token-text {
-    font-size: 2rem;
-    color: rgb(var(--text-primary) / 0.7);
-    text-align: left;
-  }
-
-  .chevron {
-    width: 1.25rem;
-    height: 1.25rem;
-    color: rgb(var(--text-primary) / 0.5);
-  }
-
-  /* Mobile optimizations */
-  @media (max-width: 420px) {
-    .token-selector-button {
-      padding: 0.5rem 0.75rem;
-      min-width: auto;
-    }
-  }
-
-  .loading-dots {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    justify-content: flex-start;
-    padding-left: 4px;
-  }
-
-  .loading-dots span {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: rgb(var(--text-primary) / 0.5);
-    animation: bounce 1.4s infinite ease-in-out both;
-  }
-
-  .loading-dots span:nth-child(1) {
-    animation-delay: -0.32s;
-  }
-
-  .loading-dots span:nth-child(2) {
-    animation-delay: -0.16s;
-  }
-
-  @keyframes bounce {
-    0%,
-    80%,
-    100% {
-      transform: scale(0);
-      opacity: 0.3;
-    }
-    40% {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
-
-  .onramp-button {
-    @apply font-semibold text-sm;
-    @apply text-kong-text-primary/70 hover:text-kong-text-primary/90;
-    @apply bg-kong-primary/40 hover:bg-kong-primary/60;
-    @apply px-4 py-0.5;
-    @apply border border-kong-primary/80;
-    @apply cursor-pointer;
-    @apply transition-all duration-200 ease-in-out;
-  }
-
-  @media (max-width: 420px) {
-    .onramp-button {
-      font-size: 0.75rem;
-      padding: 0.375rem 0.75rem;
-    }
-  }
-  
-  /* Win95 panel styles */
-  :global(.win95-panel) {
-    position: relative;
-    border: none !important;
-    box-shadow: none !important;
-    background-color: #C3C3C3 !important;
-  }
-  
-  :global(.win95-panel::before) {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border: 2px solid;
-    border-color: #FFFFFF #808080 #808080 #FFFFFF;
-    pointer-events: none;
-  }
-  
-  :global(.win95-panel::after) {
-    content: '';
-    position: absolute;
-    inset: 2px;
-    border: 1px solid;
-    border-color: #DFDFDF #404040 #404040 #DFDFDF;
-    pointer-events: none;
-  }
-  
-  /* Win95 button style */
+<style lang="postcss" scoped>
   .win95-button {
     background-color: #C3C3C3 !important;
     border: none !important;
