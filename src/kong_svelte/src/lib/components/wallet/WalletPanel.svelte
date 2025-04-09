@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { fade } from "svelte/transition";
   import { goto } from "$app/navigation";
+  import localforage from "localforage";
   import {
     Coins,
     LayoutGrid,
@@ -10,6 +11,8 @@
     Copy,
     Check,
     RefreshCw,
+    Eye,
+    EyeOff,
   } from "lucide-svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import {
@@ -50,6 +53,9 @@
   let isRefreshing = $state(false);
   let hasCopiedPrincipal = $state(false);
   let walletId = $state("");
+  let showUsdValues = $state(true);
+
+  const USD_VISIBILITY_KEY = "wallet_usd_visibility";
 
   // Define tabs configuration
   const tabsConfig = [
@@ -70,7 +76,8 @@
         onAction: handleTokenAction,
         onRefresh: () => refreshBalances(true),
         onTokenAdded: handleTokenAdded,
-        onBalancesLoaded: handleBalancesLoaded
+        onBalancesLoaded: handleBalancesLoaded,
+        showUsdValues
       })
     },
     pools: {
@@ -232,8 +239,19 @@
     refreshBalances(true);
   }
 
-  // Load token data on mount
-  onMount(() => {
+  // Effect to save USD visibility state
+  $effect(() => {
+    localforage.setItem(USD_VISIBILITY_KEY, showUsdValues);
+  });
+
+  // Load token data on mount and load persisted state
+  onMount(async () => {
+    // Load persisted USD visibility state
+    const persistedVisibility = await localforage.getItem<boolean>(USD_VISIBILITY_KEY);
+    if (persistedVisibility !== null) {
+      showUsdValues = persistedVisibility;
+    }
+
     // User tokens might not be loaded yet
     userTokens.refreshTokenData();
     
@@ -256,6 +274,11 @@
       }
     }
   });
+
+  // Toggle USD visibility
+  function toggleUsdVisibility() {
+    showUsdValues = !showUsdValues;
+  }
 </script>
 
 <!-- Fixed portfolio overview section -->
@@ -265,10 +288,10 @@
   <!-- Portfolio Overview -->
   <div class="px-5 py-3">
     <div class="flex justify-between items-center mb-2">
-      <div class="text-sm text-kong-text-secondary flex items-center gap-2 cursor-pointer" aria-label="Total Portfolio Value" onclick={() => {
-        goto(`/wallets/${walletId}`);
-      }}>
-        Total Portfolio Value
+      <div class="text-sm text-kong-text-secondary flex items-center gap-2 cursor-pointer" aria-label="Total Portfolio Value">
+        <span onclick={() => {
+          goto(`/wallets/${walletId}`);
+        }}>Total Portfolio Value</span>
         <div class="flex items-center gap-2">
           <button
             class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all {isRefreshing
@@ -279,6 +302,17 @@
             use:tooltip={{ text: "Refresh balance data", direction: "bottom" }}
           >
             <RefreshCw size={12} />
+          </button>
+          <button
+            class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all"
+            onclick={toggleUsdVisibility}
+            use:tooltip={{ text: showUsdValues ? "Hide balances and USD values" : "Show balances and USD values", direction: "bottom" }}
+          >
+            {#if showUsdValues}
+              <EyeOff size={12} />
+            {:else}
+              <Eye size={12} />
+            {/if}
           </button>
         </div>
       </div>
@@ -308,6 +342,8 @@
     }}>
       {#if isLoadingBalances && Object.keys($currentUserBalancesStore || {}).length === 0}
         <span class="opacity-50">Loading...</span>
+      {:else if !showUsdValues}
+        $ ****
       {:else}
         ${(isNaN(totalPortfolioValue) ? 0 : totalPortfolioValue).toLocaleString(undefined, {
           minimumFractionDigits: 2,

@@ -28,7 +28,7 @@
     icon: wallet.icon,
     description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined,
     recommended: wallet.id === 'oisy', // Mark OISY as recommended
-    unsupported: wallet.id === 'plug' // Mark Plug as unsupported
+    unsupported: null
   }));
 
   // Props
