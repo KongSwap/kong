@@ -644,7 +644,7 @@
   });
 </script>
 
-<div class="relative flex flex-col" in:fade={{ duration: 420 }}>
+<div class="relative flex flex-col w-full max-w-xl mx-auto" in:fade={{ duration: 420 }}>
   <div class="relative flex flex-col gap-2 mb-2">
     <div class="relative flex flex-col gap-1 min-h-[240px] px-3 md:px-0 mt-0 md:mt-10">
       <!-- Doge image peeking only for Win98 theme -->

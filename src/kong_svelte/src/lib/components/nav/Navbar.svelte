@@ -211,6 +211,39 @@
     }
   });
 
+  // --- Start Refactoring: Extract common theme props ---
+  const standardButtonThemeProps = $derived({
+    useThemeBorder: isWin98Theme,
+    customBgColor: browser ? getThemeById($themeStore)?.colors?.buttonBg : undefined,
+    customHoverBgColor: browser ? getThemeById($themeStore)?.colors?.buttonHoverBg : undefined,
+    customTextColor: browser ? getThemeById($themeStore)?.colors?.buttonText : undefined,
+    customBorderStyle: browser ? getThemeById($themeStore)?.colors?.buttonBorder : undefined,
+    customBorderColor: browser ? getThemeById($themeStore)?.colors?.buttonBorderColor : undefined,
+    customShadow: browser ? getThemeById($themeStore)?.colors?.buttonShadow : undefined
+  });
+
+  const desktopIconButtons = $derived([
+    {
+      icon: SettingsIcon,
+      onClick: () => goto("/settings"),
+      tooltipText: "Settings",
+      show: true
+    },
+    {
+      icon: Search,
+      onClick: handleOpenSearch,
+      tooltipText: "Search",
+      show: true
+    },
+    {
+      icon: Droplet,
+      onClick: claimTokens,
+      tooltipText: "Claim test tokens",
+      show: $auth.isConnected && (process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging")
+    }
+  ]);
+  // --- End Refactoring ---
+
   function onTabChange(tab: "swap" | "earn" | "stats" | "predict") {
     activeTab = tab;
   }
@@ -636,85 +669,27 @@
 
     <div class="flex items-center gap-1.5">
       {#if !isMobile}
-        <NavbarButton
-          icon={SettingsIcon}
-          onClick={() => goto("/settings")}
-          tooltipText="Settings"
-          useThemeBorder={isWin98Theme}
-          customBgColor={browser && getThemeById($themeStore)?.colors?.buttonBg}
-          customHoverBgColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonHoverBg}
-          customTextColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonText}
-          customBorderStyle={browser &&
-            getThemeById($themeStore)?.colors?.buttonBorder}
-          customBorderColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonBorderColor}
-          customShadow={browser &&
-            getThemeById($themeStore)?.colors?.buttonShadow}
-          class="navbar-icon !px-3"
-        />
-
-        <NavbarButton
-          icon={Search}
-          onClick={handleOpenSearch}
-          tooltipText="Search"
-          useThemeBorder={isWin98Theme}
-          customBgColor={browser && getThemeById($themeStore)?.colors?.buttonBg}
-          customHoverBgColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonHoverBg}
-          customTextColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonText}
-          customBorderStyle={browser &&
-            getThemeById($themeStore)?.colors?.buttonBorder}
-          customBorderColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonBorderColor}
-          customShadow={browser &&
-            getThemeById($themeStore)?.colors?.buttonShadow}
-          class="navbar-icon !px-3"
-        />
-
-        {#if $auth.isConnected}
-          {#if process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging"}
+        <!-- Refactored Icon Buttons -->
+        {#each desktopIconButtons as button}
+          {#if button.show}
             <NavbarButton
-              icon={Droplet}
-              onClick={claimTokens}
-              tooltipText="Claim test tokens"
-              useThemeBorder={isWin98Theme}
-              customBgColor={browser &&
-                getThemeById($themeStore)?.colors?.buttonBg}
-              customHoverBgColor={browser &&
-                getThemeById($themeStore)?.colors?.buttonHoverBg}
-              customTextColor={browser &&
-                getThemeById($themeStore)?.colors?.buttonText}
-              customBorderStyle={browser &&
-                getThemeById($themeStore)?.colors?.buttonBorder}
-              customBorderColor={browser &&
-                getThemeById($themeStore)?.colors?.buttonBorderColor}
-              customShadow={browser &&
-                getThemeById($themeStore)?.colors?.buttonShadow}
+              icon={button.icon}
+              onClick={button.onClick}
+              tooltipText={button.tooltipText}
+              {...standardButtonThemeProps}
               class="navbar-icon !px-3"
             />
           {/if}
+        {/each}
 
+        <!-- Keep Copy Button separate due to dropdown -->
+        {#if $auth.isConnected}
           <div class="relative" id="copy-dropdown-button">
             <NavbarButton
               icon={Copy}
               onClick={() => showCopyDropdown = !showCopyDropdown}
               tooltipText="Quick Copy Addresses"
-              useThemeBorder={isWin98Theme}
-              customBgColor={browser &&
-                getThemeById($themeStore)?.colors?.buttonBg}
-              customHoverBgColor={browser &&
-                getThemeById($themeStore)?.colors?.buttonHoverBg}
-              customTextColor={browser &&
-                getThemeById($themeStore)?.colors?.buttonText}
-              customBorderStyle={browser &&
-                getThemeById($themeStore)?.colors?.buttonBorder}
-              customBorderColor={browser &&
-                getThemeById($themeStore)?.colors?.buttonBorderColor}
-              customShadow={browser &&
-                getThemeById($themeStore)?.colors?.buttonShadow}
+              {...standardButtonThemeProps}
               class="navbar-icon !px-3"
             />
             {#if showCopyDropdown}
@@ -758,6 +733,7 @@
           </div>
         {/if}
 
+        <!-- Keep Wallet Button separate due to specific props/styling -->
         <NavbarButton
           icon={Wallet}
           label={$auth.isConnected ? null : "Connect"}
