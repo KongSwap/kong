@@ -98,7 +98,6 @@
 
   // Filter tabs based on DFX_NETWORK
   const allTabs = ["swap", "predict", "earn", "stats"] as const;
-  const tabs = process.env.DFX_NETWORK !== "ic" ? allTabs : allTabs;
 
   function handleConnect() {
     // If user is not authenticated, show the wallet provider
