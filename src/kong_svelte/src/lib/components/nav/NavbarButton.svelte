@@ -8,7 +8,7 @@
     label = "",    // Optional - Text label inside button
     tooltipText = "",  // Optional - Tooltip text
     variant = "default", // Button style: "default" | "primary" | "mobile"
-    tooltipDirection = "bottom", // Tooltip direction
+    tooltipDirection = "top", // Tooltip direction
     isSelected = false, // For active/selected state
     badgeCount = 0,  // For notification badges
     iconSize = 18,   // Default icon size
