@@ -564,16 +564,14 @@
       </div>
     </div>
     
-    {#if showGetStarted}
-      <div class="mt-7 sm:mt-10 transition-all duration-1000 ease-out delay-500 {contentVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}">
-        <LandingButton 
-          onClick={navigateToSwap}
-          buttonClass="text-base sm:text-lg px-5 bg-[#0D111F]/30 text-[#9370DB] border border-[#9370DB]/40 shadow-[0_0_10px_rgba(147,112,219,0.2),inset_0_0_5px_rgba(147,112,219,0.1)] backdrop-blur-md will-change-transform will-change-opacity will-change-shadow translate-z-0 hover:text-white hover:bg-[#9370DB]/80 hover:border-[#9370DB]/80 hover:shadow-[0_0_20px_rgba(147,112,219,0.6),0_0_35px_rgba(123,104,238,0.4)] hover:text-shadow sm:min-w-[180px] font-['Inter','Rajdhani','SF_Pro_Display',sans-serif] neon-button"
-          textClass="px-5 py-3 sm:py-2"
-          iconClass="w-5 h-5 sm:w-6 sm:h-6 ml-2 relative z-10"
-        />
-      </div>
-    {/if}
+    <div class="mt-7 sm:mt-10 transition-[opacity,transform] duration-500 ease-out delay-700 {showGetStarted && contentVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-10 pointer-events-none'}">
+      <LandingButton 
+        onClick={navigateToSwap}
+        buttonClass="text-base sm:text-lg px-5 bg-[#0D111F]/30 text-[#9370DB] border border-[#9370DB]/40 shadow-[0_0_10px_rgba(147,112,219,0.2),inset_0_0_5px_rgba(147,112,219,0.1)] backdrop-blur-md will-change-shadow hover:text-white hover:bg-[#9370DB]/80 hover:border-[#9370DB]/80 hover:shadow-[0_0_20px_rgba(147,112,219,0.6),0_0_35px_rgba(123,104,238,0.4)] hover:text-shadow sm:min-w-[180px] font-['Inter','Rajdhani','SF_Pro_Display',sans-serif] neon-button"
+        textClass="px-5 py-3 sm:py-2"
+        iconClass="w-5 h-5 sm:w-6 sm:h-6 ml-2 relative z-10"
+      />
+    </div>
     
     <!-- Improved scroll indicator with animation that matches other sections' style -->
     <div class="mt-10 sm:mt-14 md:mt-16 flex flex-col items-center opacity-70 transition-all duration-1000 ease-out delay-700 {contentVisible ? 'opacity-70' : 'opacity-0'}">
