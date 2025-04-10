@@ -35,6 +35,7 @@
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
+  import { getAccountIds, getPrincipalString } from "$lib/utils/accountUtils";
 
   // Computed directly where needed using themeStore rune
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
@@ -66,6 +67,14 @@
   let showWalletSidebar = $state(false);
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
+  );
+  let showCopyDropdown = $state(false);
+
+  // Compute account ID reactively
+  let accountId = $derived(
+    $auth.isConnected && $auth.account?.owner
+      ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
+      : ""
   );
 
   // Toggle wallet sidebar
@@ -257,6 +266,31 @@
   function handleOpenSearch() {
     searchStore.open();
   }
+
+  // Function to close the copy dropdown
+  function closeCopyDropdown() {
+    showCopyDropdown = false;
+  }
+
+  // Add click outside listener for copy dropdown
+  $effect(() => {
+    if (browser && showCopyDropdown) {
+      const handleClickOutside = (event: MouseEvent) => {
+        const copyButton = document.getElementById("copy-dropdown-button");
+        const copyDropdown = document.getElementById("copy-dropdown-menu");
+        if (
+          copyButton && !copyButton.contains(event.target as Node) &&
+          copyDropdown && !copyDropdown.contains(event.target as Node)
+        ) {
+          closeCopyDropdown();
+        }
+      };
+      document.addEventListener("click", handleClickOutside, true);
+      return () => {
+        document.removeEventListener("click", handleClickOutside, true);
+      };
+    }
+  });
 </script>
 
 <div class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
@@ -391,7 +425,7 @@
             getThemeById($themeStore)?.colors?.buttonBorderColor}
           customShadow={browser &&
             getThemeById($themeStore)?.colors?.buttonShadow}
-          class="navbar-icon"
+          class="navbar-icon !px-3"
         />
 
         <NavbarButton
@@ -410,7 +444,7 @@
             getThemeById($themeStore)?.colors?.buttonBorderColor}
           customShadow={browser &&
             getThemeById($themeStore)?.colors?.buttonShadow}
-          class="navbar-icon"
+          class="navbar-icon !px-3"
         />
 
         {#if $auth.isConnected}
@@ -432,30 +466,69 @@
                 getThemeById($themeStore)?.colors?.buttonBorderColor}
               customShadow={browser &&
                 getThemeById($themeStore)?.colors?.buttonShadow}
-              class="navbar-icon"
+              class="navbar-icon !px-3"
             />
           {/if}
 
-          <NavbarButton
-            icon={Copy}
-            label="PID"
-            onClick={() => copyToClipboard($auth?.account?.owner)}
-            tooltipText="Copy Principal ID"
-            useThemeBorder={isWin98Theme}
-            customBgColor={browser &&
-              getThemeById($themeStore)?.colors?.buttonBg}
-            customHoverBgColor={browser &&
-              getThemeById($themeStore)?.colors?.buttonHoverBg}
-            customTextColor={browser &&
-              getThemeById($themeStore)?.colors?.buttonText}
-            customBorderStyle={browser &&
-              getThemeById($themeStore)?.colors?.buttonBorder}
-            customBorderColor={browser &&
-              getThemeById($themeStore)?.colors?.buttonBorderColor}
-            customShadow={browser &&
-              getThemeById($themeStore)?.colors?.buttonShadow}
-            class="navbar-icon"
-          />
+          <div class="relative" id="copy-dropdown-button">
+            <NavbarButton
+              icon={Copy}
+              onClick={() => showCopyDropdown = !showCopyDropdown}
+              tooltipText="Quick Copy Addresses"
+              useThemeBorder={isWin98Theme}
+              customBgColor={browser &&
+                getThemeById($themeStore)?.colors?.buttonBg}
+              customHoverBgColor={browser &&
+                getThemeById($themeStore)?.colors?.buttonHoverBg}
+              customTextColor={browser &&
+                getThemeById($themeStore)?.colors?.buttonText}
+              customBorderStyle={browser &&
+                getThemeById($themeStore)?.colors?.buttonBorder}
+              customBorderColor={browser &&
+                getThemeById($themeStore)?.colors?.buttonBorderColor}
+              customShadow={browser &&
+                getThemeById($themeStore)?.colors?.buttonShadow}
+              class="navbar-icon !px-3"
+            />
+            {#if showCopyDropdown}
+              <div
+                id="copy-dropdown-menu"
+                class="absolute top-full right-0 mt-1 w-48 bg-kong-bg-dark border border-kong-border rounded-md shadow-lg z-10 overflow-hidden"
+                transition:fade={{ duration: 100 }}
+              >
+                <button
+                  class="w-full text-left px-3 py-2 text-sm text-kong-text-secondary hover:bg-kong-bg-dark-secondary hover:text-kong-text-primary transition-colors duration-150 flex items-center gap-2"
+                  on:click={() => {
+                    const principalToCopy = getPrincipalString($auth?.account?.owner);
+                    if (principalToCopy) {
+                      copyToClipboard(principalToCopy);
+                    }
+                    closeCopyDropdown();
+                  }}
+                >
+                  <Copy size={14} />
+                  Copy Principal ID
+                </button>
+                <button
+                  class="w-full text-left px-3 py-2 text-sm text-kong-text-secondary hover:bg-kong-bg-dark-secondary hover:text-kong-text-primary transition-colors duration-150 flex items-center gap-2"
+                  on:click={() => {
+                    const currentAccountId = $auth.isConnected && $auth.account?.owner
+                      ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
+                      : "";
+                    if (currentAccountId) {
+                      copyToClipboard(currentAccountId);
+                    } else {
+                      console.error("Could not get Account ID to copy.");
+                    }
+                    closeCopyDropdown();
+                  }}
+                >
+                  <Copy size={14} />
+                  Copy Account ID
+                </button>
+              </div>
+            {/if}
+          </div>
         {/if}
 
         <NavbarButton
@@ -477,7 +550,7 @@
             getThemeById($themeStore)?.colors?.primaryButtonBorderColor}
           isWalletButton={true}
           badgeCount={$notificationsStore.unreadCount}
-          class="navbar-icon"
+          class="navbar-icon !px-3"
         />
       {:else}
         <NavbarButton
@@ -629,11 +702,31 @@
               label="Copy Principal ID"
               icon={Copy}
               onClick={() => {
-                copyToClipboard($auth?.account?.owner);
-                navOpen = false;
+                const principalToCopy = getPrincipalString($auth?.account?.owner);
+                if (principalToCopy) {
+                  copyToClipboard(principalToCopy);
+                }
+                closeCopyDropdown();
               }}
               iconBackground="bg-kong-text-primary/10"
               badgeCount={$notificationsStore.unreadCount}
+            />
+
+            <MobileMenuItem
+              label="Copy Account ID"
+              icon={Copy}
+              onClick={() => {
+                const currentAccountId = $auth.isConnected && $auth.account?.owner
+                  ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
+                  : "";
+                if (currentAccountId) {
+                  copyToClipboard(currentAccountId);
+                } else {
+                  console.error("Could not get Account ID to copy.");
+                }
+                navOpen = false;
+              }}
+              iconBackground="bg-kong-text-primary/10"
             />
           {/if}
 
@@ -779,7 +872,7 @@
 
   /* Desktop navbar icon size fix */
   :global(.navbar-icon svg) {
-    width: 18px !important;
-    height: 18px !important;
+    width: 20px !important;
+    height: 20px !important;
   }
 </style>

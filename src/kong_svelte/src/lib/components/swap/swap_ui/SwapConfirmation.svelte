@@ -209,7 +209,7 @@
   isPadded={true}
   width="500px"
 >
-<div class="flex flex-col gap-1 h-full max-h-[80vh] sm:max-h-[70vh]">
+<div class="flex flex-col gap-3 h-full max-h-[80vh] sm:max-h-[70vh]">
   {#if error}
     <Panel variant="transparent" type="secondary" unpadded={false}>
       <div class="flex flex-col items-center justify-center gap-2 p-3 text-center sm:p-2 sm:gap-1">
@@ -229,7 +229,7 @@
               {receiveAmount}
               routingPath={currentRoutingPath}
             />
-            <hr class="border-t border-kong-border/30 my-1" />
+            <hr class="border-t border-kong-border/30 my-2" />
             <FeesSection
               {gasFees}
               {lpFees}
@@ -241,18 +241,18 @@
         </div>
       </div>
     </div>
-    <div class="w-full mt-auto sticky bottom-0 bg-kong-bg-dark z-10 pt-0 sm:border-t sm:border-kong-border/10">
+    <div class="w-full sticky bottom-0 bg-kong-bg-dark z-10 pt-2 pb-1 sm:border-t sm:border-kong-border/10">
       <button
         class:processing={isLoading}
         class:shine-animation={!isLoading}
         class:warning={showPriceImpactWarning}
-        class="swap-button relative w-full py-1 px-2 rounded-xl border border-kong-border/10 cursor-pointer transform transition-all duration-200 overflow-hidden sm:rounded-lg disabled:opacity-70 disabled:cursor-not-allowed"
+        class="swap-button relative w-full py-3 px-4 rounded-xl border border-kong-border/20 cursor-pointer transform transition-all duration-200 overflow-hidden sm:rounded-lg sm:py-2.5 disabled:opacity-70 disabled:cursor-not-allowed"
         style="background: linear-gradient(135deg, rgb(var(--accent-blue) / 0.95) 0%, rgb(var(--accent-purple) / 0.95) 100%); box-shadow: 0 2px 6px rgb(var(--accent-blue) / 0.2);"
         on:click={handleConfirm}
         disabled={isLoading}
       >
         <div class="relative z-[1] flex items-center justify-center gap-2">
-          <span class="text-sm font-semibold text-white text-center sm:text-xs" style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+          <span class="text-base font-semibold text-white text-center sm:text-sm" style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
             {#if isLoading}
               Processing...
             {:else if showPriceImpactWarning}
@@ -262,7 +262,7 @@
             {/if}
           </span>
           {#if isLoading}
-            <div class="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin sm:w-3 sm:h-3"></div>
+            <div class="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin sm:w-3.5 sm:h-3.5"></div>
           {/if}
         </div>
         {#if !isLoading}
@@ -279,7 +279,7 @@
 <style lang="postcss">
   /* Apply styles directly to the single Panel */
   .flex-col > :global(div.panel) {
-    @apply relative rounded-md border border-kong-border transition-all duration-200 w-full box-border;
+    @apply relative rounded-md transition-all duration-200 w-full;
   }
 
   .swap-button.warning {
@@ -287,7 +287,7 @@
       135deg,
       rgb(var(--accent-yellow) / 0.95) 0%,
       rgb(var(--accent-red) / 0.95) 100%
-    );
+    ) !important;
   }
 
   /* Keep non-Tailwind styles and animations */
@@ -307,10 +307,6 @@
   .swap-button.processing {
     animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
-  /* Removed duplicate warning style - handled by class:warning and inline style potentially */
-
-  /* Removed empty media query block */
 
   @keyframes spin {
     to {

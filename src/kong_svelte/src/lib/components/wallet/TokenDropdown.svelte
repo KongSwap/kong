@@ -8,7 +8,8 @@
     ExternalLink,
     ChevronRight,
     X,
-    Copy
+    Copy,
+    Layers
   } from 'lucide-svelte';
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
@@ -33,7 +34,7 @@
     visible?: boolean;
     expanded?: boolean;
     onClose?: (e?: MouseEvent) => void;
-    onAction?: (action: 'send' | 'receive' | 'swap' | 'info' | 'copy', token: TokenDetail) => void;
+    onAction?: (action: 'send' | 'receive' | 'swap' | 'info' | 'copy' | 'add_lp', token: TokenDetail) => void;
   };
   
   const { 
@@ -153,7 +154,7 @@
   });
   
   // Handle action click - optimize by using switch instead of multiple if/else
-  function handleAction(action: 'send' | 'receive' | 'swap' | 'info' | 'copy') {
+  function handleAction(action: 'send' | 'receive' | 'swap' | 'info' | 'copy' | 'add_lp') {
     console.log(`Action clicked: ${action}`);
     
     switch(action) {
@@ -185,7 +186,8 @@
         break;
       case 'receive':
       case 'send':
-        // Don't close dropdown for send and receive
+      case 'add_lp':
+        // Don't close dropdown for send, receive, and add_lp
         if (onAction) {
           onAction(action, token);
         }
@@ -267,6 +269,14 @@
         >
           <Repeat size={16} class="text-kong-text-secondary group-hover:text-kong-primary transition-colors" />
           <span class="text-xs">Swap</span>
+        </button>
+        
+        <button 
+          class="flex-1 min-w-[70px] py-2 px-3 flex flex-col items-center justify-center gap-1.5 rounded-md bg-kong-bg-light/20 hover:bg-kong-primary/10 hover:text-kong-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
+          on:click={() => handleAction('add_lp')}
+        >
+          <Layers size={16} class="text-kong-text-secondary group-hover:text-kong-primary transition-colors" />
+          <span class="text-xs">Add LP</span>
         </button>
         
         <button 
@@ -389,6 +399,14 @@
           <Repeat size={16} class="text-kong-text-secondary" />
           <span>Swap {token.symbol}</span>
           <ChevronRight size={16} class="text-kong-text-secondary ml-auto" />
+        </button>
+        
+        <button 
+          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-light/10 hover:text-kong-primary transition-all text-kong-text-primary"
+          on:click={() => handleAction('add_lp')}
+        >
+          <Layers size={16} class="text-kong-text-secondary" />
+          <span>Add LP</span>
         </button>
         
         <button 

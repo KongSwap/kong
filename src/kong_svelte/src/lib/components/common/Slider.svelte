@@ -30,6 +30,14 @@
       dispatch('input', newValue);
     }
   }
+
+  function handleChange(e: Event) {
+    const newValue = parseFloat((e.target as HTMLInputElement).value);
+    if (!isNaN(newValue)) {
+      value = Math.min(Math.max(newValue, min), max);
+      dispatch('change', value);
+    }
+  }
 </script>
 
 <div class="slider-container">
@@ -43,6 +51,7 @@
       {step}
       style={style}
       on:input={handleInput}
+      on:change={handleChange}
     />
     {#if showInput}
       <input
@@ -52,6 +61,7 @@
         {step}
         bind:value
         on:input={handleInput}
+        on:change={handleChange}
         class="slider-input {inputClass}"
       />
     {/if}
@@ -124,7 +134,7 @@
   }
 
   .slider-input {
-    @apply w-16 px-2 py-1 text-right bg-white/10 rounded-lg text-white/90 
+    @apply w-16 px-2 py-1 text-right bg-white/10 rounded-lg text-kong-text-primary/90 
            focus:outline-none focus:ring-2;
     font-family: monospace;
   }

@@ -351,14 +351,14 @@
     <header>
       <div class="flex items-center justify-between gap-4 min-h-[1rem] mb-5">
         <h2
-          class="text-2xl font-semibold text-kong-text-primary m-0 tracking-tight leading-none"
+          class="text-lg sm:text-2xl font-semibold text-kong-text-primary m-0 tracking-tight leading-none"
         >
           {title}
         </h2>
         <div class="flex items-center gap-2">
           {#if panelType === "pay"}
             <button
-              class="onramp-button font-semibold text-sm text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1.5 sm:px-3"
+              class="onramp-button font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1.5 sm:px-3"
               on:click={(e) => {
                 e.preventDefault();
                 window.open("https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp", '_blank', 'width=500,height=650');
@@ -373,12 +373,12 @@
               title="Price Impact"
             >
               <span
-                class="text-[0.875rem] font-medium text-kong-text-primary uppercase tracking-wide"
+                class="text-xs sm:text-[0.875rem] font-medium text-kong-text-primary uppercase tracking-wide"
               >
                 Impact
               </span>
               <span
-                class="text-[1rem] font-semibold text-kong-text-primary"
+                class="text-sm sm:text-[1rem] font-semibold text-kong-text-primary"
                 class:text-kong-accent-red={$animatedSlippage >= HIGH_IMPACT_THRESHOLD}
               >
                 {$animatedSlippage.toFixed(2)}%
@@ -407,7 +407,7 @@
             inputmode="decimal"
             pattern="[0-9]*"
             placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary placeholder:text-kong-text-primary sm:text-[1.88rem] sm:mt-[-0.15rem]"
+            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary placeholder:text-kong-text-primary text-3xl sm:text-[1.88rem] sm:mt-[-0.15rem]"
             class:opacity-0={isLoading && panelType === "receive"}
             class:rounded-md={$swapPanelInputsRounded}
             value={formattedDisplayAmount}
@@ -420,7 +420,7 @@
         </div>
         <div class="token-selector-wrapper relative">
           <button
-            class="token-selector-button min-w-[100px] flex items-center justify-between bg-white/5 p-3 border border-white/10 transition-colors duration-150 gap-3 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 {isWin95Border ? 'win95-button' : ''}"
+            class="token-selector-button flex items-center justify-between bg-white/5 p-2 border border-white/10 transition-colors duration-150 gap-2 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 {isWin95Border ? 'win95-button' : ''}"
             class:rounded-xl={$swapPanelInputsRounded && !isWin95Border}
             on:click|stopPropagation={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
@@ -480,11 +480,11 @@
       <div class="flex justify-between items-center leading-6">
         <div class="flex items-center gap-1">
           <span
-            class="text-kong-text-primary font-normal tracking-wide sm:text-xs"
+            class="text-kong-text-primary font-normal tracking-wide text-xs sm:text-xs"
             >Value:</span
           >
           <span
-            class="text-kong-text-primary font-medium tracking-wide sm:text-xs"
+            class="text-kong-text-primary font-medium tracking-wide text-xs sm:text-xs"
           >
             ${formatToNonZeroDecimal(tradeUsdValue)}
           </span>
@@ -492,12 +492,12 @@
         {#if token}
           <div class="flex items-center gap-1">
             <span
-              class="text-kong-text-primary font-normal tracking-wide sm:text-xs"
+              class="text-kong-text-primary font-normal tracking-wide text-xs sm:text-xs"
             >
               Available:
             </span>
             <button
-              class="text-kong-text-primary font-semibold tracking-tight sm:text-xs"
+              class="text-kong-text-primary font-semibold tracking-tight text-xs sm:text-xs"
               class:clickable={title === "You Pay" && !disabled}
               class:hover:text-yellow-500={title === 'You Pay' && !disabled}
               on:click={handleMaxClick}

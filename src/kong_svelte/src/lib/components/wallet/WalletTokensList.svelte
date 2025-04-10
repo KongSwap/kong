@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { formatToNonZeroDecimal, formatBalance } from '$lib/utils/numberFormatUtils';
 	import { formatCurrency } from '$lib/utils/portfolioUtils';
-	import { Coins, Loader2, RefreshCw, Shuffle, Check, AlertCircle, Plus, Minus, Upload, Settings, ChevronRight } from "lucide-svelte";
+	import { Coins, Loader2, RefreshCw, Shuffle, Check, AlertCircle, Plus, Minus, Upload, Settings, ChevronRight, Layers } from "lucide-svelte";
 	import TokenImages from "$lib/components/common/TokenImages.svelte";
 	import TokenDropdown from "./TokenDropdown.svelte";
 	import { userTokens } from "$lib/stores/userTokens";
 	import { currentUserBalancesStore, loadBalances } from "$lib/stores/balancesStore";
 	import { fade, slide } from "svelte/transition";
 	import { onMount } from "svelte";
+	import { goto } from '$app/navigation';
+	import { toastStore } from '$lib/stores/toastStore';
 	import Modal from "$lib/components/common/Modal.svelte";
 	import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
 	import ManageTokensModal from "$lib/components/wallet/ManageTokensModal.svelte";
@@ -32,7 +34,10 @@
 		// Optional pre-processed token balances (for backward compatibility)
 		tokenBalances?: TokenBalance[];
 		// Callback props instead of event dispatchers
-		onAction?: (action: 'send' | 'receive' | 'swap' | 'info', token: TokenBalance) => void;
+		onAction?: (
+			action: 'send' | 'receive' | 'swap' | 'info' | 'add_lp',
+			token: TokenBalance
+		) => void;
 		onRefresh?: () => void;
 		onTokenAdded?: (token: FE.Token) => void;
 		onBalancesLoaded?: () => void;
@@ -57,7 +62,6 @@
 		tokenBalances.length > 0 ? tokenBalances :
 		// Otherwise process them internally
 		(() => {
-			console.log('[WalletTokensList] Recalculating derived processedTokenBalances...');
 			const currentEnabled = $userTokens.enabledTokens;
 			const tokenDataMap = $userTokens.tokenData; // Use the derived Map directly
 
@@ -301,6 +305,11 @@
 	let selectedTokenElement = $state<HTMLElement | null>(null);
 	let showDropdown = $state(false);
 	
+	// --- Constants for Add LP --- 
+	const ICP_CANISTER_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai";
+	const KONG_CANISTER_ID = "o7oak-iyaaa-aaaaq-aadzq-cai"; // Used if ICP is selected
+	// ---------------------------
+
 	// Handle token click to show dropdown
 	function handleTokenClick(event: MouseEvent, token: TokenBalance) {
 		// Prevent opening dropdown if syncing or already selected
@@ -345,23 +354,65 @@
 	});
 	
 	// Handle dropdown action selection
-	function handleDropdownAction(action: 'send' | 'receive' | 'swap' | 'info' | 'copy') {
-		if (selectedToken) {
-			if (action === 'receive') {
+	function handleDropdownAction(action: 'send' | 'receive' | 'swap' | 'info' | 'copy' | 'add_lp') {
+		if (!selectedToken) return;
+
+		let shouldCloseDropdown = true; // Default to closing
+
+		switch (action) {
+			case 'receive':
 				showReceiveTokenModal = true;
-				return; // Don't close the dropdown
-			} else if (action === 'copy') {
-				// Copy action is handled directly in the TokenDropdown component
-				return; // Don't close the dropdown
-			} else if (action === 'send') {
-				// Handle send action without closing dropdown
-				onAction(action, selectedToken);
-				return; // Don't close the dropdown
-			} else {
-				onAction(action, selectedToken);
-			}
+				shouldCloseDropdown = false; // Keep open for modal
+				break;
+			case 'copy':
+				// Copy action is handled directly in TokenDropdown
+				shouldCloseDropdown = false; // Keep open for feedback (copy success state)
+				break;
+			case 'send':
+				 onAction(action, selectedToken);
+				 shouldCloseDropdown = false; // Keep open
+				 break;
+			case 'add_lp':
+				const token0Id = selectedToken.token?.canister_id;
+				if (!token0Id) {
+					console.error("Cannot Add LP: Selected token has no canister ID.");
+					toastStore.error("Cannot create LP link: Missing token ID.");
+					shouldCloseDropdown = true; // Close on error
+					break;
+				}
+				
+				// Default to pairing with ICP, unless ICP is selected, then pair with KONG
+				let token1Id = ICP_CANISTER_ID;
+				if (token0Id === ICP_CANISTER_ID) {
+					token1Id = KONG_CANISTER_ID; // Use KONG as the partner for ICP
+				}
+
+				// Prevent pairing a token with itself (shouldn't happen with above logic, but safe)
+				if (token0Id === token1Id) {
+					 console.error("Cannot Add LP: Cannot pair token with itself.");
+					 toastStore.error("Cannot create LP link: Cannot pair token with itself.");
+					 shouldCloseDropdown = true; // Close on error
+					 break;
+				}
+
+				const url = `/pools/add?token0=${token0Id}&token1=${token1Id}`;
+				console.log('Navigating to Add LP:', url);
+				goto(url);
+				// Optionally call the prop if the parent needs to react *before* navigation
+				// onAction(action, selectedToken);
+				shouldCloseDropdown = false; // Keep dropdown open during navigation
+				break;
+			case 'info':
+			case 'swap':
+			default:
+				 onAction(action, selectedToken);
+				 shouldCloseDropdown = true; // Close for these actions
+				 break;
 		}
-		closeDropdown();
+
+		if (shouldCloseDropdown) {
+			closeDropdown();
+		}
 	}
 
 	// Handle refresh button click
@@ -372,11 +423,27 @@
 		onRefresh();
 	}
 
-	// Effect to load balances when walletId changes or on forceRefresh
+	// Effect to handle externally triggered forceRefresh
 	$effect(() => {
-		if (walletId) {
-			// Always load balances on initial component mount or when explicitly requested
-			loadUserBalances(forceRefresh);
+		// This effect handles the forceRefresh prop changing AFTER initial mount
+		if (forceRefresh && walletId) {
+			console.log("[WalletTokensList] forceRefresh prop triggered balance load.");
+			loadUserBalances(true);
+		}
+	});
+
+	// Effect to load balances when walletId becomes available or changes
+	let previousWalletId: string | undefined = undefined;
+	$effect.pre(() => {
+		// Capture the previous walletId before the main effect runs
+		previousWalletId = walletId;
+	});
+
+	$effect(() => {
+		// Run only if walletId is now truthy AND different from the previous value
+		if (walletId && walletId !== previousWalletId) {
+			console.log(`[WalletTokensList] walletId changed from ${previousWalletId} to ${walletId}, triggering initial load.`);
+			loadUserBalances(false); // Use false, let internal logic decide if refresh needed
 		}
 	});
 
@@ -542,24 +609,6 @@
 			handleSyncTokens(true); // Pass true to skip the initial refresh
 		}
 	}
-
-	// Effect to load balances when walletId changes (initial load)
-	$effect(() => {
-		// This effect specifically handles the initial load when walletId becomes available
-		if (walletId) {
-			console.log("[WalletTokensList] walletId detected, triggering initial balance load.");
-			loadUserBalances(false); // Use false, let internal logic decide if refresh needed
-		}
-	});
-
-	// Effect to handle externally triggered forceRefresh
-	$effect(() => {
-		// This effect handles the forceRefresh prop changing AFTER initial mount
-		if (forceRefresh && walletId) {
-			console.log("[WalletTokensList] forceRefresh prop triggered balance load.");
-			loadUserBalances(true);
-		}
-	});
 </script>
 
 <style>
