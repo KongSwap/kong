@@ -497,7 +497,7 @@
                 transition:fade={{ duration: 100 }}
               >
                 <button
-                  class="w-full text-left px-3 py-2 text-sm text-kong-text-secondary hover:bg-kong-bg-dark-secondary transition-colors duration-150 flex items-center gap-2"
+                  class="w-full text-left px-3 py-2 text-sm text-kong-text-secondary hover:bg-kong-bg-dark-secondary hover:text-kong-text-primary transition-colors duration-150 flex items-center gap-2"
                   on:click={() => {
                     const principalToCopy = getPrincipalString($auth?.account?.owner);
                     if (principalToCopy) {
@@ -510,7 +510,7 @@
                   Copy Principal ID
                 </button>
                 <button
-                  class="w-full text-left px-3 py-2 text-sm text-kong-text-secondary hover:bg-kong-bg-dark-secondary transition-colors duration-150 flex items-center gap-2"
+                  class="w-full text-left px-3 py-2 text-sm text-kong-text-secondary hover:bg-kong-bg-dark-secondary hover:text-kong-text-primary transition-colors duration-150 flex items-center gap-2"
                   on:click={() => {
                     const currentAccountId = $auth.isConnected && $auth.account?.owner
                       ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
