@@ -467,7 +467,7 @@
     maxWidth="1300px"
   />
 
-<div class="page-content max-w-[1300px] mx-auto px-4 lg:px-0">  
+<div class="page-content max-w-[1300px] mx-auto px-4">  
   <!-- General Settings Section -->
   <div class="mt-8 mb-12 space-y-8">
     
