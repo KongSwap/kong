@@ -70,7 +70,6 @@
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
   );
-  let showCopyDropdown = $state(false);
 
   // Compute account ID reactively
   let accountId = $derived(
@@ -78,6 +77,12 @@
       ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
       : ""
   );
+
+  // --- Start Refactoring: Show Faucet Option ---
+  const showFaucetOption = $derived(
+    $auth.isConnected && (process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging")
+  );
+  // --- End Refactoring ---
 
   // Toggle wallet sidebar
   function toggleWalletSidebar(
@@ -222,24 +227,125 @@
     customShadow: browser ? getThemeById($themeStore)?.colors?.buttonShadow : undefined
   });
 
-  const desktopIconButtons = $derived([
+  // --- Start Refactoring: Consolidate Desktop Buttons ---
+  const desktopNavButtons = $derived([
+    // Standard Icons
     {
+      type: 'standard',
       icon: SettingsIcon,
       onClick: () => goto("/settings"),
       tooltipText: "Settings",
       show: true
     },
     {
+      type: 'standard',
       icon: Search,
       onClick: handleOpenSearch,
       tooltipText: "Search",
       show: true
     },
     {
+      type: 'standard',
       icon: Droplet,
       onClick: claimTokens,
       tooltipText: "Claim test tokens",
-      show: $auth.isConnected && (process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging")
+      show: showFaucetOption
+    },
+    // Copy Button
+    {
+      type: 'copy',
+      icon: Copy,
+      onClick: copyPrincipalId,
+      tooltipText: "Copy Principal ID",
+      show: $auth.isConnected
+    },
+    // Wallet Button
+    {
+      type: 'wallet',
+      icon: Wallet,
+      label: $auth.isConnected ? null : "Connect",
+      onClick: handleConnect,
+      isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
+      show: true,
+      badgeCount: $notificationsStore.unreadCount
+    }
+  ]);
+  // --- End Refactoring ---
+
+  // --- Start Refactoring: Extract Wallet Button Theme Props ---
+  const walletButtonThemeProps = $derived({
+    useThemeBorder: isWin98Theme,
+    customBgColor: browser ? getThemeById($themeStore)?.colors?.primaryButtonBg : undefined,
+    customHoverBgColor: browser ? getThemeById($themeStore)?.colors?.primaryButtonHoverBg : undefined,
+    customTextColor: browser ? getThemeById($themeStore)?.colors?.primaryButtonText : undefined,
+    customBorderStyle: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorder : undefined,
+    customBorderColor: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorderColor : undefined
+  });
+  // --- End Refactoring ---
+
+  // --- Start Refactoring: Mobile Header Buttons ---
+  const mobileHeaderButtons = $derived([
+    {
+      icon: Search,
+      onClick: handleOpenSearch,
+      variant: "mobile",
+      iconSize: 14,
+      isSelected: false,
+      isWalletButton: false,
+      badgeCount: null,
+      show: true
+    },
+    {
+      icon: Wallet,
+      onClick: handleConnect,
+      isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
+      variant: "mobile",
+      iconSize: 14,
+      isWalletButton: true,
+      badgeCount: $notificationsStore.unreadCount,
+      show: true
+    }
+  ]);
+  // --- End Refactoring ---
+
+  // --- Start Refactoring: Mobile Account Menu Items ---
+  const accountMenuItems = $derived([
+    {
+      label: "Settings",
+      icon: SettingsIcon,
+      onClick: () => { goto("/settings"); navOpen = false; },
+      show: true
+    },
+    {
+      label: "Search",
+      icon: Search,
+      onClick: () => { handleOpenSearch(); navOpen = false; },
+      show: process.env.DFX_NETWORK !== "ic"
+    },
+    {
+      label: "Claim Tokens",
+      icon: Droplet,
+      onClick: () => { claimTokens(); navOpen = false; },
+      show: showFaucetOption
+    },
+    {
+      label: "Copy Principal ID",
+      icon: Copy,
+      onClick: copyPrincipalId,
+      show: $auth.isConnected
+    },
+    {
+      label: "Copy Account ID",
+      icon: Copy,
+      onClick: copyAccountId,
+      show: $auth.isConnected
+    },
+    {
+      label: "Notifications",
+      icon: Bell,
+      onClick: () => { toggleWalletSidebar("notifications"); navOpen = false; },
+      badgeCount: $notificationsStore.unreadCount,
+      show: true
     }
   ]);
   // --- End Refactoring ---
@@ -326,30 +432,29 @@
     searchStore.open();
   }
 
-  // Function to close the copy dropdown
-  function closeCopyDropdown() {
-    showCopyDropdown = false;
+  // --- Start New Copy Functions ---
+  function copyPrincipalId() {
+    const principalToCopy = getPrincipalString($auth?.account?.owner);
+    if (principalToCopy) {
+      copyToClipboard(principalToCopy);
+      navOpen = false;
+    } else {
+      console.error("Could not get Principal ID to copy.");
+    }
   }
 
-  // Add click outside listener for copy dropdown
-  $effect(() => {
-    if (browser && showCopyDropdown) {
-      const handleClickOutside = (event: MouseEvent) => {
-        const copyButton = document.getElementById("copy-dropdown-button");
-        const copyDropdown = document.getElementById("copy-dropdown-menu");
-        if (
-          copyButton && !copyButton.contains(event.target as Node) &&
-          copyDropdown && !copyDropdown.contains(event.target as Node)
-        ) {
-          closeCopyDropdown();
-        }
-      };
-      document.addEventListener("click", handleClickOutside, true);
-      return () => {
-        document.removeEventListener("click", handleClickOutside, true);
-      };
+  function copyAccountId() {
+    const currentAccountId = $auth.isConnected && $auth.account?.owner
+      ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
+      : "";
+    if (currentAccountId) {
+      copyToClipboard(currentAccountId);
+      navOpen = false;
+    } else {
+      console.error("Could not get Account ID to copy.");
     }
-  });
+  }
+  // --- End New Copy Functions ---
 </script>
 
 <div class="relative top-0 left-0 z-50 w-full pt-2 mb-4">
@@ -670,132 +775,48 @@
     <div class="flex items-center gap-1.5">
       {#if !isMobile}
         <!-- Refactored Icon Buttons -->
-        {#each desktopIconButtons as button}
+        {#each desktopNavButtons as button}
+          {#if button.show}
+            {#if button.type === 'standard' || button.type === 'copy'}
+              <NavbarButton
+                icon={button.icon}
+                onClick={button.onClick}
+                tooltipText={button.tooltipText}
+                {...standardButtonThemeProps}
+                class="navbar-icon !px-3"
+              />
+            {:else if button.type === 'wallet'}
+              <NavbarButton
+                icon={button.icon}
+                label={button.label}
+                onClick={button.onClick}
+                isSelected={button.isSelected}
+                variant="primary"
+                {...walletButtonThemeProps}
+                isWalletButton={true}
+                badgeCount={button.badgeCount}
+                class="navbar-icon !px-3"
+              />
+            {/if}
+          {/if}
+        {/each}
+
+      {:else}
+        <!-- Mobile Header Buttons -->
+        {#each mobileHeaderButtons as button}
           {#if button.show}
             <NavbarButton
               icon={button.icon}
               onClick={button.onClick}
-              tooltipText={button.tooltipText}
+              variant={button.variant}
+              iconSize={button.iconSize}
               {...standardButtonThemeProps}
-              class="navbar-icon !px-3"
+              isSelected={button.isSelected ?? false}
+              isWalletButton={button.isWalletButton ?? false}
+              badgeCount={button.badgeCount ?? null}
             />
           {/if}
         {/each}
-
-        <!-- Keep Copy Button separate due to dropdown -->
-        {#if $auth.isConnected}
-          <div class="relative" id="copy-dropdown-button">
-            <NavbarButton
-              icon={Copy}
-              onClick={() => showCopyDropdown = !showCopyDropdown}
-              tooltipText="Quick Copy Addresses"
-              {...standardButtonThemeProps}
-              class="navbar-icon !px-3"
-            />
-            {#if showCopyDropdown}
-              <div
-                id="copy-dropdown-menu"
-                class="absolute top-full right-0 mt-1 w-48 bg-kong-bg-dark border border-kong-border rounded-md shadow-lg z-10 overflow-hidden"
-                transition:fade={{ duration: 100 }}
-              >
-                <button
-                  class="w-full text-left px-3 py-2 text-sm text-kong-text-secondary hover:bg-kong-bg-dark-secondary hover:text-kong-text-primary transition-colors duration-150 flex items-center gap-2"
-                  on:click={() => {
-                    const principalToCopy = getPrincipalString($auth?.account?.owner);
-                    if (principalToCopy) {
-                      copyToClipboard(principalToCopy);
-                    }
-                    closeCopyDropdown();
-                  }}
-                >
-                  <Copy size={14} />
-                  Copy Principal ID
-                </button>
-                <button
-                  class="w-full text-left px-3 py-2 text-sm text-kong-text-secondary hover:bg-kong-bg-dark-secondary hover:text-kong-text-primary transition-colors duration-150 flex items-center gap-2"
-                  on:click={() => {
-                    const currentAccountId = $auth.isConnected && $auth.account?.owner
-                      ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
-                      : "";
-                    if (currentAccountId) {
-                      copyToClipboard(currentAccountId);
-                    } else {
-                      console.error("Could not get Account ID to copy.");
-                    }
-                    closeCopyDropdown();
-                  }}
-                >
-                  <Copy size={14} />
-                  Copy Account ID
-                </button>
-              </div>
-            {/if}
-          </div>
-        {/if}
-
-        <!-- Keep Wallet Button separate due to specific props/styling -->
-        <NavbarButton
-          icon={Wallet}
-          label={$auth.isConnected ? null : "Connect"}
-          onClick={handleConnect}
-          isSelected={showWalletSidebar && walletSidebarActiveTab === "wallet"}
-          variant="primary"
-          useThemeBorder={isWin98Theme}
-          customBgColor={browser &&
-            getThemeById($themeStore)?.colors?.primaryButtonBg}
-          customHoverBgColor={browser &&
-            getThemeById($themeStore)?.colors?.primaryButtonHoverBg}
-          customTextColor={browser &&
-            getThemeById($themeStore)?.colors?.primaryButtonText}
-          customBorderStyle={browser &&
-            getThemeById($themeStore)?.colors?.primaryButtonBorder}
-          customBorderColor={browser &&
-            getThemeById($themeStore)?.colors?.primaryButtonBorderColor}
-          isWalletButton={true}
-          badgeCount={$notificationsStore.unreadCount}
-          class="navbar-icon !px-3"
-        />
-      {:else}
-        <NavbarButton
-          icon={Search}
-          onClick={handleOpenSearch}
-          variant="mobile"
-          useThemeBorder={isWin98Theme}
-          customBgColor={browser && getThemeById($themeStore)?.colors?.buttonBg}
-          customHoverBgColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonHoverBg}
-          customTextColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonText}
-          customBorderStyle={browser &&
-            getThemeById($themeStore)?.colors?.buttonBorder}
-          customBorderColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonBorderColor}
-          customShadow={browser &&
-            getThemeById($themeStore)?.colors?.buttonShadow}
-          iconSize={14}
-        />
-
-        <NavbarButton
-          icon={Wallet}
-          onClick={handleConnect}
-          isSelected={showWalletSidebar && walletSidebarActiveTab === "wallet"}
-          variant="mobile"
-          useThemeBorder={isWin98Theme}
-          customBgColor={browser && getThemeById($themeStore)?.colors?.buttonBg}
-          customHoverBgColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonHoverBg}
-          customTextColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonText}
-          customBorderStyle={browser &&
-            getThemeById($themeStore)?.colors?.buttonBorder}
-          customBorderColor={browser &&
-            getThemeById($themeStore)?.colors?.buttonBorderColor}
-          customShadow={browser &&
-            getThemeById($themeStore)?.colors?.buttonShadow}
-          iconSize={14}
-          isWalletButton={true}
-          badgeCount={$notificationsStore.unreadCount}
-        />
       {/if}
     </div>
   </div>
@@ -866,83 +887,17 @@
 
         <div class="mobile-nav-section">
           <div class="mobile-nav-section-title">ACCOUNT</div>
-          <MobileMenuItem
-            label="Settings"
-            icon={SettingsIcon}
-            onClick={() => {
-              goto("/settings");
-              navOpen = false;
-            }}
-            iconBackground="bg-kong-text-primary/10"
-          />
-
-          {#if process.env.DFX_NETWORK !== "ic"}
-            <MobileMenuItem
-              label="Search"
-              icon={Search}
-              onClick={() => {
-                handleOpenSearch();
-                navOpen = false;
-              }}
-              iconBackground="bg-kong-text-primary/10"
-            />
-          {/if}
-
-          {#if $auth.isConnected}
-            {#if process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging"}
+          {#each accountMenuItems as item}
+            {#if item.show}
               <MobileMenuItem
-                label="Claim Tokens"
-                icon={Droplet}
-                onClick={() => {
-                  claimTokens();
-                  navOpen = false;
-                }}
+                label={item.label}
+                icon={item.icon}
+                onClick={item.onClick}
                 iconBackground="bg-kong-text-primary/10"
+                badgeCount={item.badgeCount ?? null}
               />
             {/if}
-
-            <MobileMenuItem
-              label="Copy Principal ID"
-              icon={Copy}
-              onClick={() => {
-                const principalToCopy = getPrincipalString($auth?.account?.owner);
-                if (principalToCopy) {
-                  copyToClipboard(principalToCopy);
-                }
-                closeCopyDropdown();
-              }}
-              iconBackground="bg-kong-text-primary/10"
-              badgeCount={$notificationsStore.unreadCount}
-            />
-
-            <MobileMenuItem
-              label="Copy Account ID"
-              icon={Copy}
-              onClick={() => {
-                const currentAccountId = $auth.isConnected && $auth.account?.owner
-                  ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
-                  : "";
-                if (currentAccountId) {
-                  copyToClipboard(currentAccountId);
-                } else {
-                  console.error("Could not get Account ID to copy.");
-                }
-                navOpen = false;
-              }}
-              iconBackground="bg-kong-text-primary/10"
-            />
-          {/if}
-
-          <MobileMenuItem
-            label="Notifications"
-            icon={Bell}
-            onClick={() => {
-              toggleWalletSidebar("notifications");
-              navOpen = false;
-            }}
-            iconBackground="bg-kong-text-primary/10"
-            badgeCount={$notificationsStore.unreadCount}
-          />
+          {/each}
         </div>
       </nav>
 
@@ -958,17 +913,7 @@
           variant="primary"
           iconSize={20}
           class="mobile-wallet-btn"
-          useThemeBorder={isWin98Theme}
-          customBgColor={browser &&
-            getThemeById($themeStore)?.colors?.primaryButtonBg}
-          customHoverBgColor={browser &&
-            getThemeById($themeStore)?.colors?.primaryButtonHoverBg}
-          customTextColor={browser &&
-            getThemeById($themeStore)?.colors?.primaryButtonText}
-          customBorderStyle={browser &&
-            getThemeById($themeStore)?.colors?.primaryButtonBorder}
-          customBorderColor={browser &&
-            getThemeById($themeStore)?.colors?.primaryButtonBorderColor}
+          {...walletButtonThemeProps}
           isWalletButton={true}
           badgeCount={$notificationsStore.unreadCount}
         />
