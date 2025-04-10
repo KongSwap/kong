@@ -46,6 +46,7 @@
   import SwitchTokensButton from "./swap_ui/SwitchTokensButton.svelte";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
 
   // Theme-specific styling data
   // let theme = $derived(getThemeById($themeStore));
@@ -74,7 +75,7 @@
   let isQuoteLoading = $state(false);
   let insufficientFunds = $state(false);
   let hasValidPool = $state(false);
-  let skipNextUrlInitialization = false;
+  let lastProcessedSearchParams = $state<string | null>(null);
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -121,22 +122,6 @@
     SwapButtonService.isButtonDisabled($swapState, insufficientFunds, isQuoteLoading, $auth)
   );
 
-  // Replace updateTokenInURL with:
-  function updateTokenInURL(param: "from" | "to", tokenId: string) {
-    SwapUrlService.updateTokenInURL(param, tokenId);
-  }
-
-  // Add a direct URL parsing function
-  function getTokenParamsFromUrl() {
-    if (!browser) return { fromToken: null, toToken: null };
-    
-    const url = new URL(window.location.href);
-    const fromParam = url.searchParams.get('from');
-    const toParam = url.searchParams.get('to');
-        
-    return { fromParam, toParam };
-  }
-
   // More direct token lookup by canister ID
   async function findTokenByCanisterId(canisterId: string): Promise<FE.Token | null> {
     if (!canisterId) return null;
@@ -161,48 +146,70 @@
     return null;
   }
 
+  // Refactored function to process URL parameters
+  async function handleUrlTokenParams(searchParams: URLSearchParams) {
+    const fromParam = searchParams.get('from');
+    const toParam = searchParams.get('to');
+
+    if (!fromParam && !toParam) return; // Nothing to do if no params
+
+    // Wait for user tokens if necessary
+    let attempts = 0;
+    while ((!$userTokens.tokens || $userTokens.tokens.length === 0) && attempts < 5) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      attempts++;
+    }
+
+    const currentPayTokenId = $swapState.payToken?.canister_id;
+    const currentReceiveTokenId = $swapState.receiveToken?.canister_id;
+
+    // Find tokens only if params exist and are different from current state
+    const [fromToken, toToken] = await Promise.all([
+      (fromParam && fromParam !== currentPayTokenId) ? findTokenByCanisterId(fromParam) : Promise.resolve($swapState.payToken),
+      (toParam && toParam !== currentReceiveTokenId) ? findTokenByCanisterId(toParam) : Promise.resolve($swapState.receiveToken)
+    ]);
+
+    const newPayToken = fromParam ? (await findTokenByCanisterId(fromParam)) : $swapState.payToken;
+    const newReceiveToken = toParam ? (await findTokenByCanisterId(toParam)) : $swapState.receiveToken;
+
+    // Update state only if tokens actually changed
+    if (newPayToken?.canister_id !== currentPayTokenId || newReceiveToken?.canister_id !== currentReceiveTokenId) {
+      console.log('Updating tokens from URL params:', { fromParam, toParam, newPayToken, newReceiveToken });
+      swapState.update(state => ({
+        ...state,
+        payToken: newPayToken || state.payToken, // Keep existing if lookup failed
+        receiveToken: newReceiveToken || state.receiveToken, // Keep existing if lookup failed
+        payAmount: "", // Reset amounts when tokens change via URL
+        receiveAmount: "",
+        error: null
+      }));
+      await tick(); // Ensure state updates before potential balance refresh or quote update
+      // Resetting quote is handled by the $effect watching payAmount/tokens
+
+      // Update the tracker *after* successful processing
+      lastProcessedSearchParams = searchParams.toString();
+    } else {
+      console.log('Token lookup resulted in no change.');
+      // Still update the tracker even if no state change occurred, 
+      // to prevent reprocessing the same unchanged params.
+      lastProcessedSearchParams = searchParams.toString();
+    }
+  }
+
   // Update onMount with direct URL token handling
   onMount(async () => {
     if (browser) {
-      try {        
-        // Check if we should skip URL initialization
-        if (skipNextUrlInitialization) {
-          skipNextUrlInitialization = false;
-        } else {
-          // Wait for user tokens to be available if possible
-          let attempts = 0;
-          while ((!$userTokens.tokens || $userTokens.tokens.length === 0) && attempts < 5) {
-            await new Promise(resolve => setTimeout(resolve, 200));
-            attempts++;
-          }
-          
-          // Get token params directly from URL
-          const { fromParam, toParam } = getTokenParamsFromUrl();
-          
-          if (fromParam || toParam) {            
-            // Lookup tokens in parallel
-            const [fromToken, toToken] = await Promise.all([
-              fromParam ? findTokenByCanisterId(fromParam) : null,
-              toParam ? findTokenByCanisterId(toParam) : null
-            ]);
-            
-            // Update the state with found tokens
-            if (fromToken || toToken) {
-              swapState.update(state => ({
-                ...state,
-                payToken: fromToken || state.payToken,
-                receiveToken: toToken || state.receiveToken,
-                payAmount: "",
-                receiveAmount: "",
-                error: null
-              }));
-            }
-          }
-        }
-        
+      try {
+        console.log('Swap.svelte onMount: Processing initial URL params.');
+        // Process initial URL params
+        const initialSearchParams = new URL(window.location.href).searchParams;
+        await handleUrlTokenParams(initialSearchParams);
+        // Set the initial last processed params after mount processing
+        lastProcessedSearchParams = initialSearchParams.toString();
+
         await tick();
         
-        // If no tokens were set, initialize default tokens
+        // If no tokens were set (or couldn't be found from URL), initialize default tokens
         if (!$swapState.payToken || !$swapState.receiveToken) {
           await swapState.initializeTokens(null, null);
         }
@@ -213,6 +220,23 @@
         // Fallback to default tokens
         await swapState.initializeTokens(null, null);
         isInitialized = true;
+      }
+    }
+  });
+
+  // Add effect to react to page URL changes
+  $effect(() => {
+    if (browser && isInitialized && $page.url.searchParams) {
+      const searchParams = $page.url.searchParams;
+      const currentSearchString = searchParams.toString();
+      
+      // Only run if the search string has actually changed
+      if (currentSearchString !== lastProcessedSearchParams) {
+        console.log('Swap.svelte $effect: URL search params changed, processing:', currentSearchString);
+        Promise.resolve().then(() => handleUrlTokenParams(searchParams));
+      } else {
+        // Optional: Log that we skipped due to unchanged params
+        // console.log('Swap.svelte $effect: URL search params unchanged, skipping processing:', currentSearchString);
       }
     }
   });
@@ -439,14 +463,6 @@
       swapState.setPayAmount(tempPayAmount);
     }
     await updateSwapQuote();
-
-    // Before updating the URL, set the flag:
-    skipNextUrlInitialization = true;
-
-    if ($swapState.payToken?.canister_id && $swapState.receiveToken?.canister_id) {
-      updateTokenInURL("from", $swapState.payToken.canister_id);
-      updateTokenInURL("to", $swapState.receiveToken.canister_id);
-    }
   }
 
   // Add a new state for quote loading
@@ -720,15 +736,6 @@
               $swapState.tokenSelectorOpen,
               selectedToken,
             );
-
-            // Then update the URL parameter based on which panel was selected
-            if (browser) {
-              if ($swapState.tokenSelectorOpen === "pay") {
-                updateTokenInURL("from", selectedToken.canister_id);
-              } else {
-                updateTokenInURL("to", selectedToken.canister_id);
-              }
-            }
 
             swapState.closeTokenSelector();
           }}
