@@ -652,7 +652,7 @@
             getThemeById($themeStore)?.colors?.buttonBorderColor}
           customShadow={browser &&
             getThemeById($themeStore)?.colors?.buttonShadow}
-          class="navbar-icon !py-2"
+          class="navbar-icon !px-3"
         />
 
         <NavbarButton
@@ -671,7 +671,7 @@
             getThemeById($themeStore)?.colors?.buttonBorderColor}
           customShadow={browser &&
             getThemeById($themeStore)?.colors?.buttonShadow}
-          class="navbar-icon !py-2"
+          class="navbar-icon !px-3"
         />
 
         {#if $auth.isConnected}
@@ -693,7 +693,7 @@
                 getThemeById($themeStore)?.colors?.buttonBorderColor}
               customShadow={browser &&
                 getThemeById($themeStore)?.colors?.buttonShadow}
-              class="navbar-icon !py-2"
+              class="navbar-icon !px-3"
             />
           {/if}
 
@@ -715,7 +715,7 @@
                 getThemeById($themeStore)?.colors?.buttonBorderColor}
               customShadow={browser &&
                 getThemeById($themeStore)?.colors?.buttonShadow}
-              class="navbar-icon !py-2"
+              class="navbar-icon !px-3"
             />
             {#if showCopyDropdown}
               <div
@@ -777,7 +777,7 @@
             getThemeById($themeStore)?.colors?.primaryButtonBorderColor}
           isWalletButton={true}
           badgeCount={$notificationsStore.unreadCount}
-          class="navbar-icon !py-2"
+          class="navbar-icon !px-3"
         />
       {:else}
         <NavbarButton
@@ -1107,7 +1107,7 @@
 
   /* Desktop navbar icon size fix */
   :global(.navbar-icon svg) {
-    width: 18px !important;
-    height: 18px !important;
+    width: 20px !important;
+    height: 20px !important;
   }
 </style>
