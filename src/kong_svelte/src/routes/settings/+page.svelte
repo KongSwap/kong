@@ -259,9 +259,6 @@
         toastStore.success('Slippage setting saved');
       }
     });
-    
-    // Force update for slider track
-    slippageValue = boundedValue;
   }
   
   function handleToggleSound(event: CustomEvent<boolean>) {
@@ -418,7 +415,7 @@
           step={0.1}
           color="kong-primary"
           showInput={true}
-          on:input={handleSlippageChange}
+          on:change={handleSlippageChange}
           inputClass="w-20 text-center"
         />
       
