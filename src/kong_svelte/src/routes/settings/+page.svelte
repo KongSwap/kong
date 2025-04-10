@@ -14,6 +14,9 @@
   import Panel from '$lib/components/common/Panel.svelte';
   import type { ComponentType } from 'svelte';
   import { STORAGE_KEYS, createNamespacedStore, clearAllStorage } from '$lib/config/localForage.config';
+  import { userTokens } from '$lib/stores/userTokens';
+  import { currentUserBalancesStore } from '$lib/stores/balancesStore';
+  import { notificationsStore } from '$lib/stores/notificationsStore';
   
   let themes: ThemeDefinition[] = [];
   let currentThemeId = '';
@@ -372,11 +375,26 @@
         // Show loading toast
         toastStore.info('Resetting application...');
         
-        // Clear all data from storage
+        // Clear relevant stores explicitly
         if (browser) {
           try {
-            // Clear localForage data
-            await clearAllStorage();    
+            // Disconnect auth, which also clears its storage and resets principal in userTokens
+            await auth.disconnect(); 
+            
+            // Reset user tokens store
+            await userTokens.reset();
+
+            // Clear balances store
+            currentUserBalancesStore.set({});
+
+            // Clear any remaining settings storage specific to this component/page
+            await settingsStorage.clear(); 
+            await slippageStorage.clear();
+            notificationsStore.clearAll();
+
+            // Reset theme to default (dark) immediately
+            await themeStore.setTheme('dark');
+
             toastStore.success('Reset successful, reloading...');
           } catch (error) {
             console.error('Error clearing storage:', error);
@@ -403,11 +421,6 @@
     if (browser) {
       isMobile = window.innerWidth <= 768;
     }
-  }
-  
-  // Update to set a specific theme instead of toggling
-  function setTheme(theme: 'light' | 'dark' | 'plain-black') {
-    applyTheme(theme);
   }
   
   // Close dropdown when clicking outside
