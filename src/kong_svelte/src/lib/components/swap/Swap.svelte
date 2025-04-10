@@ -100,7 +100,7 @@
   // Reactive statement to call refreshTokenBalances when token or amount changes
   $effect(() => {
     if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
-      refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, false);
+      refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, true);
     } else {
       console.warn('Resetting balance states - missing auth or tokens');
       insufficientFunds = false;
@@ -454,7 +454,7 @@
     }));
 
     await tick();
-    await refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, false);
+    await refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, true);
 
     // Update amounts and quote
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
@@ -630,7 +630,7 @@
           }
         } else {
           // If we don't have balance data yet, refresh balances
-          refreshBalances([$swapState.payToken], $auth.account.owner, false);
+          refreshBalances([$swapState.payToken], $auth.account.owner, true);
           insufficientFunds = false; // Reset until we have data
         }
       } else {
