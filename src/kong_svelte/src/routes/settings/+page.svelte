@@ -13,30 +13,32 @@
   import PageHeader from '$lib/components/common/PageHeader.svelte';
   import Panel from '$lib/components/common/Panel.svelte';
   import type { ComponentType } from 'svelte';
-  import { STORAGE_KEYS, createNamespacedStore, clearAllStorage } from '$lib/config/localForage.config';
+  import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
   import { userTokens } from '$lib/stores/userTokens';
   import { currentUserBalancesStore } from '$lib/stores/balancesStore';
   import { notificationsStore } from '$lib/stores/notificationsStore';
   
-  let themes: ThemeDefinition[] = [];
-  let currentThemeId = '';
-  let showThemeCreator = false;
-  let ThemeCreator: ComponentType<any> | undefined;
-  let soundEnabled = true;
-  let slippageValue: number = 2.0;
-  let slippageInputValue = '2.0';
-  let isMobile = false;
-  let isCustomSlippage = false;
-  let previousAuthState = { isConnected: false, principalId: null };
-  let isThemeDropdownOpen = false;
+  // State variables
+  let themes = $state<ThemeDefinition[]>([]);
+  let currentThemeId = $state('');
+  let showThemeCreator = $state(false);
+  let ThemeCreator = $state<ComponentType<any> | undefined>(undefined);
+  let soundEnabled = $state(true);
+  let slippageValue = $state<number>(2.0);
+  let slippageInputValue = $state('2.0');
+  let isMobile = $state(false);
+  let isCustomSlippage = $state(false);
+  let previousAuthState = $state({ isConnected: false, principalId: null });
+  let isThemeDropdownOpen = $state(false);
+  
+  // Constants
   const quickSlippageValues = [1, 2, 3, 5];
   const SETTINGS_KEY = STORAGE_KEYS.SETTINGS;
   const FAVORITES_KEY = STORAGE_KEYS.FAVORITE_TOKENS;
-  const THEME_KEY = 'theme';
   
   // Loading states for async operations
-  let loadingSlippage = false;
-  let loadingSound = false;
+  let loadingSlippage = $state(false);
+  let loadingSound = $state(false);
   
   // Create namespaced stores
   const settingsStorage = createNamespacedStore(SETTINGS_KEY);
@@ -85,16 +87,16 @@
     };
   });
   
-  // Subscribe to settings changes
-  $: if ($settingsStore) {
-    soundEnabled = $settingsStore.sound_enabled;
-    slippageValue = $settingsStore.max_slippage || 2.0;
-    slippageInputValue = slippageValue.toString();
-    isCustomSlippage = !quickSlippageValues.includes(slippageValue);
-  }
+  // Subscribe to settings changes - ONLY for non-slider values
+  $effect(() => {
+    if ($settingsStore) {
+      soundEnabled = $settingsStore.sound_enabled;
+      // DO NOT update slippageValue here
+    }
+  });
   
   // Watch for auth changes to reload settings when user authenticates
-  $: {
+  $effect(() => {
     const currentAuthState = {
       isConnected: $auth.isConnected,
       principalId: $auth.account?.owner?.toString() || null
@@ -112,7 +114,7 @@
       // Update previous state
       previousAuthState = currentAuthState;
     }
-  }
+  });
   
   // Apply a theme when selected
   async function applyTheme(themeId: string) {
@@ -192,7 +194,8 @@
   async function loadUserSettings() {
     const settings = await getSettings();
     soundEnabled = settings.sound_enabled;
-    slippageValue = settings.max_slippage || 2.0;
+    // Restore slippage loading here
+    slippageValue = settings.max_slippage || 2.0; 
     slippageInputValue = slippageValue.toString();
     isCustomSlippage = !quickSlippageValues.includes(slippageValue);
     
@@ -251,11 +254,12 @@
     return false;
   }
   
+  // Use a handler for the change event (fires after sliding stops)
   function handleSlippageChange() {
-    // Debounce or handle rapid changes if needed, for now direct save
+    // Value is already updated by bind:value
     saveCurrentSlippage();
   }
-  
+
   async function saveCurrentSlippage() {
     if (!$auth.isConnected) {
       toastStore.error('Please connect your wallet to save settings');
@@ -267,8 +271,9 @@
     if (loadingSlippage) return; // Prevent concurrent saves
 
     loadingSlippage = true;
+    // Get the current value from the bound variable
     const valueToSave = Math.min(Math.max(slippageValue, 0.1), 99);
-    // Update UI optimistically
+    // Update state variables (input might already be updated by bind:value, but ensure consistency)
     slippageValue = valueToSave; 
     slippageInputValue = valueToSave.toFixed(1);
     isCustomSlippage = !quickSlippageValues.includes(valueToSave);
@@ -278,10 +283,8 @@
       if (success) {
         toastStore.success('Slippage setting saved');
       } else {
-        // Handle save failure (e.g., revert UI or show specific error)
         toastStore.error('Failed to save slippage');
-        // Reload settings on failure to revert UI
-        await loadUserSettings();
+        await loadUserSettings(); // Revert UI on failure
       }
     } catch (error) {
       console.error("Error during slippage save:", error);
@@ -298,8 +301,9 @@
       toastStore.error('Please connect your wallet to save settings');
       return;
     }
+    // Directly update the value and trigger the save
     slippageValue = value;
-    saveCurrentSlippage(); // Trigger save
+    saveCurrentSlippage(); 
   }
 
   function handleToggleSound(event: CustomEvent<boolean>) {
@@ -356,7 +360,7 @@
           
           // Clear favorites from storage
           await favoritesStorage.removeItem(favoritesKey);
-          toastStore.success('Favorites cleared successfully. Refresh may be needed.'); // Updated message slightly
+          toastStore.success('Favorites cleared successfully. Refresh may be needed.'); 
         } catch (error) {
           console.error('Error clearing favorites:', error);
           toastStore.error('Failed to clear favorites');
@@ -465,136 +469,147 @@
 
 <div class="page-content max-w-[1300px] mx-auto px-4 lg:px-0">  
   <!-- General Settings Section -->
-  <div class="settings-container mt-8 mb-12 space-y-8">
-    <!-- Slippage Section -->
-    <Panel variant="solid" type="main" className="space-y-4">
-      <div class="section-header">
-        <h3 class="section-title">Slippage Tolerance</h3>
-        <div class="flex items-center gap-2 text-sm">
-          <span class="text-kong-primary">{slippageValue.toFixed(1)}%</span>
-          <span class="text-kong-text-secondary">Max</span>
+  <div class="mt-8 mb-12 space-y-8">
+    
+    <!-- Wrap Slippage and Settings Grid in a new grid container -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Slippage Section -->
+      <Panel variant="solid" type="main" className="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-kong-text-primary font-medium text-base">Slippage Tolerance</h3>
         </div>
-      </div>
+        <p class="text-sm text-kong-text-secondary mt-1">
+          Slippage is the difference between the expected price of a trade and the price at which it's executed. 
+          Your current max slippage is set to <span class="font-semibold text-kong-primary">{slippageValue.toFixed(1)}%</span>. 
+          High slippage can occur during volatile market conditions.
+        </p>
 
-      <div class="slider-section">
-        <Slider
-          bind:value={slippageValue}
-          min={0.1}
-          max={99}
-          step={0.1}
-          color="kong-primary"
-          showInput={true}
-          on:change={handleSlippageChange}
-          inputClass="w-20 text-center"
-        />
-      
-        <div class="risk-labels max-w-[400px] ml-4">
-          <span class="text-kong-accent-green">Safe (0.1-2%)</span>
-          <span class="text-kong-accent-yellow">Caution (2-5%)</span>
-          <span class="text-kong-accent-red">Risky (5%+)</span>
-        </div>
-      </div>
-
-      <!-- Quick Slippage Buttons -->
-      <div class="flex items-center gap-2 pt-2">
-        <span class="text-sm text-kong-text- mr-2">Quick Set:</span>
-        {#each quickSlippageValues as val}
-          <button
-            class="quick-slippage-btn"
-            class:active={slippageValue === val && !isCustomSlippage}
-            on:click={() => setSlippage(val)}
-            disabled={!$auth.isConnected || loadingSlippage}
-          >
-            {val}%
-          </button>
-        {/each}
-      </div>
-
-      {#if slippageValue > 5}
-        <div class="alert-banner danger mt-4">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span>High slippage may result in significant price impact</span>
-        </div>
-      {:else if slippageValue > 3}
-        <div class="alert-banner warning mt-4">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span>Higher than recommended slippage</span>
-        </div>
-      {/if}
-    </Panel>
-
-    <!-- Settings Grid -->
-    <div class="settings-grid">
-      <!-- Sound Section -->
-      <Panel variant="solid" className="space-y-4">
-        <h3 class="section-title">Preferences</h3>
-        <div class="setting-item">
-          <div class="setting-label">
-            <span>Sound Effects</span>
-            <span class="text-kong-text-secondary text-sm">{soundEnabled ? 'On' : 'Off'}</span>
-          </div>
-          <Toggle 
-            checked={soundEnabled} 
-            on:change={handleToggleSound}
-            size="md"
-            disabled={!$auth.isConnected || loadingSound}
+        <div class="space-y-4">
+          <Slider
+            bind:value={slippageValue}
+            min={0.1}
+            max={99}
+            step={0.1}
+            color="kong-primary"
+            showInput={true}
+            on:change={handleSlippageChange}
+            inputClass="w-20 text-center"
           />
         </div>
+
+          <!-- Quick Slippage Buttons -->
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-kong-text-secondary mr-1">Quick Set:</span>
+            {#each quickSlippageValues as val}
+              <button
+                class="px-3 py-1 text-sm rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class:border-kong-border={!(slippageValue === val && !isCustomSlippage)}
+                class:bg-kong-bg-light={!(slippageValue === val && !isCustomSlippage)}
+                class:text-kong-text-secondary={!(slippageValue === val && !isCustomSlippage)}
+                class:hover:bg-kong-hover-bg-light={!(slippageValue === val && !isCustomSlippage)}
+                class:hover:border-kong-primary={!(slippageValue === val && !isCustomSlippage)}
+                class:bg-kong-primary={slippageValue === val && !isCustomSlippage}
+                class:border-kong-primary={slippageValue === val && !isCustomSlippage}
+                class:text-white={slippageValue === val && !isCustomSlippage}
+                class:hover:bg-kong-primary-hover={slippageValue === val && !isCustomSlippage}
+                class:hover:border-kong-primary-hover={slippageValue === val && !isCustomSlippage}
+                on:click={() => setSlippage(val)}
+                disabled={!$auth.isConnected || loadingSlippage}
+              >
+                {val}%
+              </button>
+            {/each}
+          </div>
+
+        <!-- Slippage Warnings (Moved) -->
+        {#if slippageValue > 10}
+          <div class="flex gap-2 items-center p-3 rounded-lg text-sm bg-red-500/10 text-red-500 border border-red-500/20 mt-2">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>High slippage ({slippageValue.toFixed(1)}%) may lead to significant price impact during trades.</span>
+          </div>
+        {:else if slippageValue > 3}
+          <div class="flex gap-2 items-center p-3 rounded-lg text-sm bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 mt-2">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>Your slippage ({slippageValue.toFixed(1)}%) is higher than recommended and could result in your trade executing at a less favorable price.</span>
+          </div>
+        {/if}
       </Panel>
 
-      <!-- Data Management -->
-      <Panel variant="solid" className="space-y-4">
-        <h3 class="section-title">Data</h3>
-        <div class="setting-item">
-          <div class="setting-label">
-            <span>Clear Favorites</span>
-            <span class="text-kong-text-secondary text-sm">Remove all saved tokens</span>
+      <!-- Settings Grid (Preferences & Data) -->
+      <div class="settings-grid">
+        <!-- Combined Application Settings Panel -->
+        <Panel variant="solid" className="space-y-4">
+          <h3 class="text-kong-text-primary font-medium text-base">Application Settings</h3>
+          
+          <!-- Sound Section -->
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="block text-kong-text-primary text-sm font-medium">Sound Effects</span>
+              <span class="block text-kong-text-secondary text-xs mt-0.5">{soundEnabled ? 'On' : 'Off'}</span>
+            </div>
+            <Toggle 
+              checked={soundEnabled} 
+              on:change={handleToggleSound}
+              size="md"
+              disabled={!$auth.isConnected || loadingSound}
+            />
           </div>
-          <div class="flex items-center gap-2">
-            <button 
-              class="bg-kong-bg-light hover:bg-kong-accent-yellow/60 text-kong-text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              on:click={clearFavorites}
-              disabled={!$auth.isConnected}
-            >
-              Clear
-            </button>
+
+          <!-- Clear Favorites Section -->
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="block text-kong-text-primary text-sm font-medium">Clear Favorites</span>
+              <span class="block text-kong-text-secondary text-xs mt-0.5">Remove all saved tokens</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                class="bg-kong-bg-light hover:bg-kong-accent-yellow/60 text-kong-text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                on:click={clearFavorites}
+                disabled={!$auth.isConnected}
+              >
+                Clear
+              </button>
+            </div>
           </div>
-        </div>
-        
-        <div class="setting-item">
-          <div class="flex flex-col">
-            <span>Reset Application</span>
-            <span class="text-kong-text-secondary text-sm">Clear all local data</span>
+          
+          <!-- Reset Application Section -->
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="block text-kong-text-primary text-sm font-medium">Reset Application</span>
+              <span class="block text-kong-text-secondary text-xs mt-0.5">Clear all local data</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                class="bg-kong-accent-red/30 hover:bg-kong-accent-red/60 text-red-100 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                on:click={resetDatabase}
+                disabled={loadingSlippage || loadingSound}
+              >
+                Reset
+              </button>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button 
-              class="bg-kong-accent-red/30 hover:bg-kong-accent-red/60 text-red-100 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              on:click={resetDatabase}
-              disabled={loadingSlippage || loadingSound}
-            >
-              Reset
-            </button>
-          </div>
-        </div>
-      </Panel>
-    </div>
+        </Panel>
+      </div>
+    </div> <!-- End of new grid container -->
   </div>
   
   <!-- Theme Management Section -->
   <section class="mb-12">
     <h2 class="text-2xl font-bold text-kong-text-primary mb-6">Theme Management</h2>
     
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {#each themes as theme}
         <!-- Theme Card using Panel -->
         <Panel 
           variant="solid" 
           interactive={true}
-          className={currentThemeId === theme.id ? 'active' : ''}
+          className={`
+            ${currentThemeId === theme.id ? 'active border-kong-primary border-2 bg-kong-primary/15' : ''}
+          `}
           on:click={() => applyTheme(theme.id)}
           on:keydown={(e) => e.key === 'Enter' && applyTheme(theme.id)}
         >
@@ -708,41 +723,19 @@ themeStore.registerAndApplyTheme(myCustomTheme);
     word-break: break-word;
   }
 
-  /* Theme preview styling */
-  .theme-preview {
-    @apply border border-kong-border/20 rounded overflow-hidden;
-    transition: all 0.2s ease;
-  }
+  /* Removed theme-preview styling as it seems redundant or handled by panel */
 
-  /* Make panels with active class have proper styling */
-  :global(.panel.interactive.active) {
-    @apply border-kong-primary border-2 bg-kong-primary bg-opacity-[0.15]; /* Enhanced active state */
-  }
+  /* Removed :global(.panel.interactive.active) - handled inline */
 
-  .section-header {
-    @apply flex items-center justify-between;
-  }
+  /* Removed section-header styling - handled inline */
 
-  .section-title {
-    @apply text-kong-text-primary font-medium text-base;
-  }
+  /* Removed section-title styling - handled inline */
 
-  .alert-banner {
-    @apply flex gap-2 items-center p-3 rounded-lg text-sm;
-  }
+  /* Removed alert-banner base and variant styling - handled inline */
+  
+  /* Removed settings-grid styling - commented out previously */
 
-  .alert-banner.warning {
-    @apply bg-yellow-500/10 text-yellow-500 border border-yellow-500/20;
-  }
-
-  .alert-banner.danger {
-    @apply bg-red-500/10 text-red-500 border border-red-500/20;
-  }
-
-  .settings-grid {
-    @apply grid gap-4 md:grid-cols-2;
-  }
-
+  /* Kept setting-item for border logic */
   .setting-item {
     @apply flex items-center justify-between py-3;
     &:not(:last-child) {
@@ -750,22 +743,11 @@ themeStore.registerAndApplyTheme(myCustomTheme);
     }
   }
 
-  .setting-label {
-    @apply space-y-1;
-    > span:first-child {
-      @apply text-kong-text-primary text-sm;
-    }
-  }
+  /* Removed setting-label styling - handled inline on spans */
 
-  .slider-section {
-    @apply space-y-6;
-  }
+  /* Removed slider-section styling - handled inline */
 
-  .risk-labels {
-    @apply flex justify-between text-xs px-1 text-kong-text-secondary;
-  }
-
-  /* Update slider styles to match design system */
+  /* Kept global slider input styling */
   :global(.slider-input) {
     @apply bg-kong-bg-dark/40 border border-kong-border rounded-lg;
     padding: 6px 8px;
@@ -789,16 +771,6 @@ themeStore.registerAndApplyTheme(myCustomTheme);
     ) !important;
   }
 
-  /* Quick Slippage Button Styles */
-  .quick-slippage-btn {
-    @apply px-3 py-1 text-sm rounded-md border transition-colors;
-    @apply border-kong-border bg-kong-bg-light text-kong-text-secondary;
-    @apply hover:bg-kong-hover-bg-light hover:border-kong-primary;
-    @apply disabled:opacity-50 disabled:cursor-not-allowed;
-  }
+  /* Removed quick-slippage-btn base and active styling - handled inline */
 
-  .quick-slippage-btn.active {
-    @apply bg-kong-primary border-kong-primary text-white;
-    @apply hover:bg-kong-primary-hover hover:border-kong-primary-hover;
-  }
 </style> 
