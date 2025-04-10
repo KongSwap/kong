@@ -90,7 +90,8 @@
           if (!$currentUserPoolsStore?.filteredPools?.length) {
             currentUserPoolsStore.initialize();
           }
-        }
+        },
+        showUsdValues
       })
     },
     history: {
