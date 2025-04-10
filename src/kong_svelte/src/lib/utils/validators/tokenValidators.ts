@@ -1,5 +1,6 @@
 import BigNumber from "bignumber.js";
 import { Principal } from "@dfinity/principal";
+import { decodeIcrcAccount, type IcrcAccount } from "@dfinity/ledger-icrc";
 
 export function calculateMaxAmount(
   balance: bigint,
@@ -42,28 +43,34 @@ export function isValidHex(str: string): boolean {
   return hexRegex.test(str);
 }
 
-export function detectAddressType(address: string): "principal" | "account" | null {
+export function detectAddressType(address: string): "principal" | "account" | "icrc1" | null {
   if (!address) return null;
 
-  // Check for Account ID (64 character hex string)
+  try {
+    const decoded = decodeIcrcAccount(address);
+    // If subaccount exists or checksum included, it's explicitly ICRC1 format
+    if (decoded.subaccount || address.includes('-')) {
+        return "icrc1";
+    }
+    // Otherwise, it successfully decoded as a Principal
+    return "principal"; 
+  } catch {
+    // Ignore decoding error, try legacy account ID
+  }
+
+  // Check for legacy ICP Account ID (64 character hex string)
   if (address.length === 64 && isValidHex(address)) {
     return "account";
   }
 
-  // Check for Principal ID
-  try {
-    Principal.fromText(address);
-    return "principal";
-  } catch {
-    return null;
-  }
+  return null; // Failed all checks
 }
 
 export function validateAddress(
   address: string,
   tokenSymbol: string,
   tokenName: string
-): { isValid: boolean; errorMessage: string; addressType: "principal" | "account" | null } {
+): { isValid: boolean; errorMessage: string; addressType: "principal" | "account" | "icrc1" | null } {
   if (!address) {
     return { isValid: false, errorMessage: "Address is required", addressType: null };
   }
@@ -74,21 +81,31 @@ export function validateAddress(
     return { isValid: false, errorMessage: "Address cannot be empty", addressType: null };
   }
 
-  const addressType = detectAddressType(cleanAddress);
-
-  if (addressType === "account" && tokenSymbol !== "ICP") {
-    return { 
-      isValid: false, 
-      errorMessage: `Account ID can't be used with ${tokenName}`, 
-      addressType 
-    };
-  }
-
-  if (addressType === null) {
+  // Try decoding using ICRC standard first
+  try {
+    decodeIcrcAccount(cleanAddress);
+    // If decode succeeds, it's a valid Principal or ICRC1 account format
+    // We still need detectAddressType for specific UI feedback and ICP account restriction
+    const addressType = detectAddressType(cleanAddress);
+    if (addressType === "account" && tokenSymbol !== "ICP") {
+      // This case should technically not be hit if decodeIcrcAccount succeeded
+      // but kept for robustness and explicit ICP Account ID handling.
+      return { 
+         isValid: false, 
+         errorMessage: `Ledger Account ID can only be used for ICP transfers. Use the Principal ID or ICRC1 Account format for ${tokenName}.`, 
+         addressType 
+       };
+    }
+    // If decode succeeded and it's not a wrongly used Account ID, it's valid.
+    return { isValid: true, errorMessage: "", addressType };
+  } catch (e) {
+    // If decodeIcrcAccount failed, check if it's a legacy ICP account ID
+    if (tokenSymbol === "ICP" && cleanAddress.length === 64 && isValidHex(cleanAddress)) {
+      return { isValid: true, errorMessage: "", addressType: "account" };
+    }
+    // If it failed decoding and isn't a valid ICP account ID, it's invalid
     return { isValid: false, errorMessage: "Invalid address format", addressType: null };
   }
-
-  return { isValid: true, errorMessage: "", addressType };
 }
 
 export function formatTokenInput(

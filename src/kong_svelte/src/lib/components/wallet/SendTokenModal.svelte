@@ -30,6 +30,8 @@
   import QrScanner from "$lib/components/common/QrScanner.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { fade } from "svelte/transition";
+  import { decodeIcrcAccount, type IcrcAccount } from "@dfinity/ledger-icrc";
+  import { Principal } from "@dfinity/principal";
 
   // Props type definition
   type SendTokenModalProps = {
@@ -74,11 +76,11 @@
   const authStore = $derived(auth);
 
   // Validation state
-  let addressValidation = $state({
-    isValid: false,
-    errorMessage: "",
-    addressType: null,
-  });
+  let addressValidation = $state<{
+    isValid: boolean;
+    errorMessage: string;
+    addressType: "principal" | "account" | "icrc1" | null;
+  }>({ isValid: false, errorMessage: "", addressType: null });
   let amountValidation = $state({ isValid: false, errorMessage: "" });
 
   // Modal visibility handling to make animations work better
@@ -251,15 +253,26 @@
 
       toastStore.info(`Sending ${amount} ${token.symbol}...`);
 
-      // Ensure auth is properly initialized
       if (!authStore.pnp?.account?.owner) {
         throw new Error("Authentication not initialized");
       }
+      
+      // Use type assertion for clarity, or keep broader type
+      let recipient: IcrcAccount | string;
+      
+      // Use decodeIcrcAccount for principal and ICRC1 types.
+      // Only pass the raw string for legacy ICP account IDs.
+      if (addressValidation.addressType === "account") {
+        recipient = recipientAddress; // Legacy ICP Account ID
+      } else {
+        // Handles both principal text and full ICRC1 account text
+        recipient = decodeIcrcAccount(recipientAddress);
+      }
 
-      // Always use main account (no fromSubaccount)
+      // Always use main account (no fromSubaccount specified in opts)
       const result = await IcrcService.transfer(
         token,
-        recipientAddress,
+        recipient, // Pass the decoded account or the account ID string
         amountBigInt,
         {
           fee: token.fee_fixed ? BigInt(token.fee_fixed) : tokenFee,
@@ -269,24 +282,20 @@
       if (result?.Ok) {
         const txId = result.Ok.toString();
 
-        // Update local state first
         recipientAddress = "";
         amount = "";
 
-        // Force refresh balance in the store
         const principalId = authStore.pnp?.account?.owner?.toString();
         await refreshSingleBalance(token, principalId, true);
 
-        // Show success message and trigger callbacks
         toastStore.success(`Successfully sent ${token.symbol}`);
         onSuccess(txId);
 
-        // Close modal last
         handleClose();
       } else if (result?.Err) {
         const errMsg =
           typeof result.Err === "object"
-            ? Object.keys(result.Err)[0]
+            ? Object.keys(result.Err)[0] 
             : String(result.Err);
         errorMessage = `Transfer failed: ${errMsg}`;
         toastStore.error(errorMessage);
@@ -294,7 +303,24 @@
       }
     } catch (err) {
       console.error("Transfer error:", err);
-      errorMessage = err.message || "Transfer failed";
+      // Attempt to parse potential candid error
+      let errorDetail = "Transfer failed";
+      if (err instanceof Error) {
+        errorDetail = err.message;
+      } else if (typeof err === 'object' && err !== null) {
+        // Basic check for Candid error structure
+        const rejectCode = (err as any).reject_code;
+        const rejectMessage = (err as any).reject_message;
+        if (rejectCode !== undefined && rejectMessage !== undefined) {
+           errorDetail = `Transfer failed (Code ${rejectCode}): ${rejectMessage}`;
+        } else {
+           // Fallback if it's an object but not the expected Candid error
+           try {
+             errorDetail = JSON.stringify(err);
+           } catch { /* ignore stringify error */ }
+        }
+      }
+      errorMessage = errorDetail;
       toastStore.error(errorMessage);
     } finally {
       isValidating = false;
@@ -447,7 +473,7 @@
                 : recipientAddress
                   ? 'border-kong-accent-red/40 focus:border-kong-accent-red/60 focus:ring-kong-accent-red/20'
                   : 'border-kong-border/50 focus:border-kong-primary/60 focus:ring-kong-primary/20'} rounded-md text-sm text-kong-text-primary focus:outline-none focus:ring-1 transition-colors duration-150"
-              placeholder="Enter Canister ID, Principal ID, or Account ID"
+              placeholder="Enter Canister ID, Principal ID, Account ID, or ICRC-1 Account"
               bind:value={recipientAddress}
               on:input={handleAddressInput}
             />
@@ -479,7 +505,13 @@
           </div>
           {#if addressValidation.addressType && addressValidation.isValid}
             <div class="mt-1 text-xs text-kong-accent-green">
-              Valid {addressValidation.addressType} address
+              {#if addressValidation.addressType === 'icrc1'}
+                Valid ICRC-1 Account
+              {:else if addressValidation.addressType === 'principal'}
+                Valid Principal ID
+              {:else if addressValidation.addressType === 'account'}
+                Valid ICP Account ID
+              {/if}
             </div>
           {/if}
         </div>
