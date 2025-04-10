@@ -31,6 +31,10 @@
   const FAVORITES_KEY = STORAGE_KEYS.FAVORITE_TOKENS;
   const THEME_KEY = 'theme';
   
+  // Loading states for async operations
+  let loadingSlippage = false;
+  let loadingSound = false;
+  
   // Create namespaced stores
   const settingsStorage = createNamespacedStore(SETTINGS_KEY);
   const slippageStorage = createNamespacedStore('slippage');
@@ -245,44 +249,96 @@
   }
   
   function handleSlippageChange() {
-    if (!$auth.isConnected) {
-      toastStore.error('Please connect your wallet to save settings');
-      return;
-    }
-    
-    const boundedValue = Math.min(Math.max(slippageValue, 0.1), 99);
-    slippageInputValue = boundedValue.toFixed(1);
-    isCustomSlippage = !quickSlippageValues.includes(boundedValue);
-    
-    saveSlippageToStorage(boundedValue).then(success => {
-      if (success) {
-        toastStore.success('Slippage setting saved');
-      }
-    });
+    // Debounce or handle rapid changes if needed, for now direct save
+    saveCurrentSlippage();
   }
   
-  function handleToggleSound(event: CustomEvent<boolean>) {
+  async function saveCurrentSlippage() {
     if (!$auth.isConnected) {
       toastStore.error('Please connect your wallet to save settings');
-      event.preventDefault();
+      // Revert value if needed, or rely on loadUserSettings on connect
+      // Consider reloading settings here to ensure UI reflects stored state
+      await loadUserSettings(); 
       return;
     }
-    
-    const newValue = event.detail;
-    soundEnabled = newValue;
-    
+    if (loadingSlippage) return; // Prevent concurrent saves
+
+    loadingSlippage = true;
+    const valueToSave = Math.min(Math.max(slippageValue, 0.1), 99);
+    // Update UI optimistically
+    slippageValue = valueToSave; 
+    slippageInputValue = valueToSave.toFixed(1);
+    isCustomSlippage = !quickSlippageValues.includes(valueToSave);
+
+    try {
+      const success = await saveSlippageToStorage(valueToSave);
+      if (success) {
+        toastStore.success('Slippage setting saved');
+      } else {
+        // Handle save failure (e.g., revert UI or show specific error)
+        toastStore.error('Failed to save slippage');
+        // Reload settings on failure to revert UI
+        await loadUserSettings();
+      }
+    } catch (error) {
+      console.error("Error during slippage save:", error);
+      toastStore.error('Error saving slippage');
+      await loadUserSettings(); // Revert UI on error
+    } finally {
+      loadingSlippage = false;
+    }
+  }
+
+  // Function to set slippage from quick buttons
+  function setSlippage(value: number) {
+    if (!$auth.isConnected) {
+      toastStore.error('Please connect your wallet to save settings');
+      return;
+    }
+    slippageValue = value;
+    saveCurrentSlippage(); // Trigger save
+  }
+
+  function handleToggleSound(event: CustomEvent<boolean>) {
+    const intendedValue = event.detail;
+    // Immediately revert if not allowed to change
+    if (!$auth.isConnected || loadingSound) {
+      soundEnabled = !intendedValue; // Revert optimistic UI change from toggle
+      if (!$auth.isConnected) {
+         toastStore.error('Please connect your wallet to save settings');
+      }
+      // Prevent component's internal state update if needed, though reverting `soundEnabled` should suffice
+      event.preventDefault(); 
+      return;
+    }
+
+    loadingSound = true;
+    soundEnabled = intendedValue; // Allow optimistic UI update
+
     // Update the settings store
-    settingsStore.updateSetting('sound_enabled', newValue);
-    
+    settingsStore.updateSetting('sound_enabled', intendedValue);
+
     // Save to storage
     getSettings().then(currentSettings => {
       saveSettings({
         ...currentSettings,
-        sound_enabled: newValue
+        sound_enabled: intendedValue
       }).then(success => {
         if (success) {
           toastStore.success('Sound setting saved');
+        } else {
+          toastStore.error('Failed to save sound setting');
+          // Revert UI on failure
+          soundEnabled = !intendedValue;
+          settingsStore.updateSetting('sound_enabled', !intendedValue);
         }
+      }).catch(error => {
+         console.error("Error saving sound setting:", error);
+         toastStore.error('Error saving sound setting');
+         soundEnabled = !intendedValue; // Revert
+         settingsStore.updateSetting('sound_enabled', !intendedValue);
+      }).finally(() => {
+        loadingSound = false;
       });
     });
   }
@@ -297,7 +353,7 @@
           
           // Clear favorites from storage
           await favoritesStorage.removeItem(favoritesKey);
-          toastStore.success('Favorites cleared successfully. Please refresh the page for changes to take effect.');
+          toastStore.success('Favorites cleared successfully. Refresh may be needed.'); // Updated message slightly
         } catch (error) {
           console.error('Error clearing favorites:', error);
           toastStore.error('Failed to clear favorites');
@@ -426,6 +482,21 @@
         </div>
       </div>
 
+      <!-- Quick Slippage Buttons -->
+      <div class="flex items-center gap-2 pt-2">
+        <span class="text-sm text-kong-text- mr-2">Quick Set:</span>
+        {#each quickSlippageValues as val}
+          <button
+            class="quick-slippage-btn"
+            class:active={slippageValue === val && !isCustomSlippage}
+            on:click={() => setSlippage(val)}
+            disabled={!$auth.isConnected || loadingSlippage}
+          >
+            {val}%
+          </button>
+        {/each}
+      </div>
+
       {#if slippageValue > 5}
         <div class="alert-banner danger mt-4">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -457,6 +528,7 @@
             checked={soundEnabled} 
             on:change={handleToggleSound}
             size="md"
+            disabled={!$auth.isConnected || loadingSound}
           />
         </div>
       </Panel>
@@ -471,8 +543,9 @@
           </div>
           <div class="flex items-center gap-2">
             <button 
-              class="bg-kong-bg-light hover:bg-kong-accent-yellow/60 text-kong-text-primary px-4 py-2 rounded-lg"
+              class="bg-kong-bg-light hover:bg-kong-accent-yellow/60 text-kong-text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               on:click={clearFavorites}
+              disabled={!$auth.isConnected}
             >
               Clear
             </button>
@@ -486,8 +559,9 @@
           </div>
           <div class="flex items-center gap-2">
             <button 
-              class="bg-kong-accent-red/30 hover:bg-kong-accent-red/60 text-red-100 px-4 py-2 rounded-lg"
+              class="bg-kong-accent-red/30 hover:bg-kong-accent-red/60 text-red-100 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               on:click={resetDatabase}
+              disabled={loadingSlippage || loadingSound}
             >
               Reset
             </button>
@@ -553,12 +627,7 @@
             {#if currentThemeId === theme.id}
               <span class="text-xs px-2 py-1 bg-kong-primary text-white rounded-full">Active</span>
             {:else}
-              <button 
-                class="text-xs px-2 py-1 bg-kong-bg-dark hover:bg-kong-hover-bg-light text-kong-text-primary rounded-full transition-colors"
-                on:click|stopPropagation={() => applyTheme(theme.id)}
-              >
-                Apply
-              </button>
+              <!-- Removed Apply Button -->
             {/if}
           </div>
         </Panel>
@@ -634,7 +703,7 @@ themeStore.registerAndApplyTheme(myCustomTheme);
 
   /* Make panels with active class have proper styling */
   :global(.panel.interactive.active) {
-    @apply border-kong-primary bg-kong-primary-hover bg-opacity-10;
+    @apply border-kong-primary border-2 bg-kong-primary bg-opacity-[0.15]; /* Enhanced active state */
   }
 
   .section-header {
@@ -705,5 +774,18 @@ themeStore.registerAndApplyTheme(myCustomTheme);
       var(--active-color) var(--value-percent),
       rgba(255, 255, 255, 0.1) var(--value-percent)
     ) !important;
+  }
+
+  /* Quick Slippage Button Styles */
+  .quick-slippage-btn {
+    @apply px-3 py-1 text-sm rounded-md border transition-colors;
+    @apply border-kong-border bg-kong-bg-light text-kong-text-secondary;
+    @apply hover:bg-kong-hover-bg-light hover:border-kong-primary;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .quick-slippage-btn.active {
+    @apply bg-kong-primary border-kong-primary text-white;
+    @apply hover:bg-kong-primary-hover hover:border-kong-primary-hover;
   }
 </style> 

@@ -134,7 +134,7 @@
   }
 
   .slider-input {
-    @apply w-16 px-2 py-1 text-right bg-white/10 rounded-lg text-white/90 
+    @apply w-16 px-2 py-1 text-right bg-white/10 rounded-lg text-kong-text-primary/90 
            focus:outline-none focus:ring-2;
     font-family: monospace;
   }
