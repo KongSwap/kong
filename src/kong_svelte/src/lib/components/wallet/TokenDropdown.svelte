@@ -9,7 +9,7 @@
     ChevronRight,
     X,
     Copy,
-    Layers
+    Droplets
   } from 'lucide-svelte';
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
@@ -275,7 +275,7 @@
           class="flex-1 min-w-[70px] py-2 px-3 flex flex-col items-center justify-center gap-1.5 rounded-md bg-kong-bg-light/20 hover:bg-kong-primary/10 hover:text-kong-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
           on:click={() => handleAction('add_lp')}
         >
-          <Layers size={16} class="text-kong-text-secondary group-hover:text-kong-primary transition-colors" />
+          <Droplets size={16} class="text-kong-text-secondary group-hover:text-kong-primary transition-colors" />
           <span class="text-xs">Add LP</span>
         </button>
         

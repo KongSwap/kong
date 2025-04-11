@@ -2,9 +2,23 @@
   import { onMount } from 'svelte';
   import BigNumber from "bignumber.js";
   import Modal from "$lib/components/common/Modal.svelte";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import { ArrowRight, Check, AlertTriangle } from "lucide-svelte";
-  import { fly, fade } from 'svelte/transition';
+  import { AlertTriangle, Check } from "lucide-svelte";
+  import { fade } from 'svelte/transition';
+
+  // Format USD value with commas for thousands
+  function formatUsdValue(value: string | number): string {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(Number(value));
+    } catch (e) {
+      return value.toString();
+    }
+  }
 
   // Props type definition
   type TransferConfirmationModalProps = {
@@ -36,6 +50,7 @@
   let formattedFee = $state<string>("");
   let usdValue = $state<string>("0.00");
   let truncatedAddress = $state<string>("");
+  let isMobile = $state(false);
   
   // Compute derived values when inputs change
   $effect(() => {
@@ -64,37 +79,25 @@
       formattedFee = '0';
     }
   });
-
-  // Animation state
-  let showSuccess = $state(false);
   
+  // Handle confirm action
   function handleConfirm() {
-    showSuccess = true;
-    setTimeout(() => {
-      onConfirm();
-      showSuccess = false;
-    }, 800);
+    onConfirm();
   }
 
-  // Improve performance by using CSS custom properties
+  // Check if we're on mobile
   onMount(() => {
-    const container = document.querySelector('.token-logo-container') as HTMLElement;
-    if (container) {
-      const handleMouseOver = () => {
-        container.style.setProperty('--scale', '1.1');
-      };
-      const handleMouseOut = () => {
-        container.style.setProperty('--scale', '1');
-      };
-      
-      container.addEventListener('mouseover', handleMouseOver);
-      container.addEventListener('mouseout', handleMouseOut);
-      
-      return () => {
-        container.removeEventListener('mouseover', handleMouseOver);
-        container.removeEventListener('mouseout', handleMouseOut);
-      };
-    }
+    // Set up responsive checks
+    const updateLayout = () => {
+      isMobile = window.innerWidth < 640;
+    };
+    
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    
+    return () => {
+      window.removeEventListener('resize', updateLayout);
+    };
   });
 </script>
 
@@ -102,122 +105,110 @@
   {isOpen}
   variant="transparent"
   {onClose}
-  title="Confirm Transfer"
-  width="min(450px, 92vw)"
+  title={`Confirm ${token.symbol} Transfer`}
+  width="min(480px, 92vw)"
   height="auto"
   target="body"
-  isPadded={false}
+  isPadded={true}
 >
-  <div class="flex flex-col gap-3 px-3 py-2" in:fade={{ duration: 200 }}>
+  <div class="flex flex-col gap-4 sm:gap-6 w-full mx-auto" in:fade={{ duration: 200 }}>
     <!-- Transfer Header -->
-    <div class="flex flex-col gap-3 items-center justify-center p-3 bg-kong-surface-dark/80 rounded-lg border border-kong-border/30">
-      <div class="flex items-center gap-2">
-        <div class="w-10 h-10 rounded-full overflow-hidden bg-kong-bg-light p-1 border border-kong-border/20 flex items-center justify-center sm:w-12 sm:h-12">
-          <img 
-            src={token.logo_url} 
-            alt={token.symbol}
-            class="w-8 h-8 rounded-full object-contain sm:w-10 sm:h-10" 
-            loading="lazy"
-          />
-        </div>
-        <div class="flex flex-col">
-          <span class="text-kong-text-primary font-medium">{token.name}</span>
-          <span class="text-sm text-kong-text-secondary">{token.symbol}</span>
-        </div>
+    <div class="flex flex-col gap-3 sm:gap-4 items-center justify-center sm:p-4 bg-kong-surface-dark rounded-xl border border-kong-border/30 shadow-sm">
+      <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-kong-bg-light p-1.5 border border-kong-border/20 flex items-center justify-center shadow-inner-white">
+        <TokenImages tokens={[token]} size={isMobile ? 44 : 56} showSymbolFallback={true} />
       </div>
       
-      <div class="flex flex-col items-center">
-        <span class="text-2xl font-medium text-kong-text-primary">{amount} {token.symbol}</span>
+      <div class="flex flex-col items-center gap-1">
+        <span class="text-xl sm:text-3xl font-medium text-kong-text-primary">Sending {amount} {token.symbol}</span>
         {#if usdValue !== "0.00"}
-          <span class="text-sm text-kong-text-secondary">≈ ${usdValue} USD</span>
+          <div class="flex items-center gap-1.5 bg-kong-primary/5 py-1 px-3 mt-1 rounded-full text-kong-text-primary">
+            <span class="font-medium text-kong-primary/90">${formatUsdValue(usdValue)}</span>
+            <span class="text-xs text-kong-text-secondary">USD</span>
+          </div>
         {/if}
       </div>
     </div>
     
+    <!-- Warning Section - Moved to top for better visibility -->
+    <div class="flex items-start gap-2 p-3 rounded-lg bg-kong-accent-yellow/10 border border-kong-accent-yellow/20 text-xs text-kong-text-primary/90">
+      <AlertTriangle size={14} class="text-kong-accent-yellow flex-shrink-0 mt-0.5" />
+      <span>Transfers are irreversible. Please verify all details before confirming.</span>
+    </div>
+    
     <!-- Transfer Details -->
-    <div class="flex flex-col gap-4">
-      <div class="bg-kong-surface-dark/50 rounded-lg p-3 border border-kong-border/20 sm:p-4">
-        <div class="text-sm font-medium text-kong-text-primary/90 mb-2 sm:mb-3">
+    <div class="flex flex-col gap-3 sm:gap-4">
+      <div class="bg-kong-surface-dark/70 rounded-xl p-3 sm:p-4 border border-kong-border/20">
+        <div class="text-xs sm:text-sm font-medium text-kong-text-primary/90 mb-2 sm:mb-3">
           <span>Transaction Details</span>
         </div>
         
-        <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-2 sm:gap-3">
           <div class="flex justify-between items-center">
-            <span class="text-sm text-kong-text-secondary">You're sending</span>
-            <span class="text-sm text-kong-text-primary">{amount} {token.symbol}</span>
+            <span class="text-xs sm:text-sm text-kong-text-secondary">You're sending</span>
+            <span class="text-xs sm:text-sm text-kong-text-primary font-medium">{amount} {token.symbol}</span>
           </div>
           
           <div class="flex justify-between items-center">
-            <span class="text-sm text-kong-text-secondary">Network fee</span>
-            <span class="text-sm text-kong-text-secondary">{formattedFee} {token.symbol}</span>
+            <span class="text-xs sm:text-sm text-kong-text-secondary">Network fee</span>
+            <span class="text-xs sm:text-sm text-kong-text-secondary">{formattedFee} {token.symbol}</span>
           </div>
           
-          <div class="flex justify-between items-center mt-2 pt-2 border-t border-kong-border/10 font-medium text-kong-text-primary">
-            <span class="text-sm text-kong-text-secondary">Total amount</span>
-            <span class="text-sm text-kong-text-primary">{totalAmount} {token.symbol}</span>
+          <div class="flex justify-between items-center mt-1 pt-2 sm:pt-3 border-t border-kong-border/10 font-medium">
+            <span class="text-xs sm:text-sm text-kong-text-secondary">Total amount</span>
+            <span class="text-xs sm:text-sm text-kong-text-primary">{totalAmount} {token.symbol}</span>
           </div>
         </div>
       </div>
       
-      <div class="bg-kong-surface-dark/50 rounded-lg p-3 border border-kong-border/20 sm:p-4">
-        <div class="text-sm font-medium text-kong-text-primary/90 mb-2 sm:mb-3">
+      <div class="bg-kong-surface-dark/70 rounded-xl p-3 sm:p-4 border border-kong-border/20">
+        <div class="text-xs sm:text-sm font-medium text-kong-text-primary/90 mb-2 sm:mb-3">
           <span>Recipient</span>
         </div>
         
-        <div class="flex flex-col gap-2">
-          <div class="bg-kong-bg-light/50 rounded-lg p-3 border border-kong-border/30">
-            <span class="text-xs font-mono text-kong-text-primary break-all" title={toPrincipal}>{truncatedAddress}</span>
-          </div>
-          <div class="text-xs text-kong-text-secondary mt-1 px-1">
-            {toPrincipal.length === 64 ? 'Account ID' : 'Principal ID'}
+        <div class="flex flex-col">
+          <div class="bg-kong-bg-light/50 rounded-lg p-2 sm:p-3 border border-kong-border/30">
+            <span class="text-xs sm:text-sm font-mono text-kong-text-primary break-all" title={toPrincipal}>{truncatedAddress}</span>
           </div>
         </div>
-      </div>
-      
-      <!-- Warning Section -->
-      <div class="flex items-start gap-2 p-2.5 rounded-lg bg-kong-accent-yellow/10 border border-kong-accent-yellow/20 text-xs text-kong-text-primary/80 sm:p-3">
-        <AlertTriangle size={16} class="text-kong-accent-yellow flex-shrink-0 mt-0.5" />
-        <span class="">Transfers are irreversible. Please verify all details before confirming.</span>
       </div>
     </div>
     
     <!-- Action Buttons -->
-    <div class="grid grid-cols-2 gap-2 mt-2 sm:gap-3">
-      <button 
-        type="button" 
-        class="h-10 rounded-lg font-medium bg-kong-bg-light/80 text-kong-text-primary/80 hover:bg-kong-bg-light hover:text-kong-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 sm:h-12" 
+    <div class="grid grid-cols-2 gap-3 mt-1">
+      <ButtonV2
+        theme="secondary"
+        variant="solid"
+        size={isMobile ? "md" : "lg"}
+        fullWidth={true}
+        isDisabled={isValidating}
         on:click={onClose}
-        disabled={isValidating || showSuccess}
       >
         Cancel
-      </button>
+      </ButtonV2>
       
-      <button
-        type="button"
-        class="h-10 rounded-lg font-medium flex items-center justify-center gap-2 bg-kong-primary text-white hover:bg-kong-primary-hover disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200 sm:h-12 {isValidating ? 'bg-kong-primary/90' : ''} {showSuccess ? 'bg-kong-accent-green' : ''}"
+      <ButtonV2
+        theme="primary"
+        variant="solid"
+        size={isMobile ? "md" : "lg"}
+        fullWidth={true}
+        isDisabled={isValidating}
         on:click={handleConfirm}
-        disabled={isValidating || showSuccess}
       >
-        {#if showSuccess}
-          <div class="flex items-center justify-center kong-success-icon">
-            <Check size={18} />
-          </div>
-          Confirmed!
-        {:else if isValidating}
-          <div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full kong-spinner"></div>
-          Processing...
-        {:else}
-          <ArrowRight size={18} />
-          Confirm
-        {/if}
-      </button>
+        <div class="flex items-center justify-center gap-2">
+          {#if isValidating}
+            <div class="w-4 h-4 sm:w-5 sm:h-5 border-2 border-t-transparent border-kong-primary rounded-full animate-spin"></div>
+            <span>Processing...</span>
+          {:else}
+            <Check size={isMobile ? 14 : 16} />
+            <span>Confirm</span>
+          {/if}
+        </div>
+      </ButtonV2>
     </div>
   </div>
 </Modal>
 
-<style scoped lang="postcss">
-  /* Removed @apply directives as they are now inlined */
-  
+<style lang="postcss">
   /* Keyframe animations */
   @keyframes spin {
     to {
@@ -225,26 +216,33 @@
     }
   }
   
-  @keyframes pop {
-    0% {
-      transform: scale(0.5);
-      opacity: 0;
-    }
-    70% {
-      transform: scale(1.2);
-    }
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
-  
   /* Apply animations */
-  .kong-spinner {
+  .animate-spin {
     animation: spin 0.8s linear infinite;
   }
-  
-  .kong-success-icon {
-    animation: pop 0.3s ease-out;
+
+  /* Responsive adjustments */
+  @media (max-width: 640px) {
+    :global(.modal-content) {
+      padding: 0.5rem;
+    }
+    
+    :global(.modal-title) {
+      font-size: 1rem;
+    }
+    
+    /* Create more compact layout on mobile */
+    .rounded-xl {
+      border-radius: 0.5rem;
+    }
+    
+    /* Ensure that modal doesn't take up too much vertical space */
+    .p-3 {
+      padding: 0.75rem;
+    }
+    
+    .gap-3 {
+      gap: 0.5rem;
+    }
   }
 </style> 
