@@ -69,7 +69,7 @@ export class SwapMonitor {
                   const state = get(swapState);
                   const token0 = state.payToken;
                   const token1 = state.receiveToken;
-                  toastStore.success(`Swap of  ${token0?.symbol} for ${token1?.symbol} completed successfully`);
+                  toastStore.info(`Swap of  ${token0?.symbol} for ${token1?.symbol} completed successfully`);
                   swapState.setShowSuccessModal(true);
                 } else if (status === "Success") {
                   toastStore.info(`Balances updated!`);
