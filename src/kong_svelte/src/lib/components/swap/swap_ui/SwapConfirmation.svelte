@@ -252,7 +252,7 @@
         disabled={isLoading}
       >
         <div class="relative z-[1] flex items-center justify-center gap-2">
-          <span class="text-base font-semibold text-white text-center sm:text-sm" style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+          <span class="text-base font-medium text-white text-center sm:text-xl" style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
             {#if isLoading}
               Processing...
             {:else if showPriceImpactWarning}
