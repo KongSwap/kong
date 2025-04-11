@@ -55,7 +55,7 @@
   </button>
   
   {#if activeDropdown === label.toLowerCase()}
-    <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
+    <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
       <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">{label} OPTIONS</div>
       {#each options as option}
         <button
