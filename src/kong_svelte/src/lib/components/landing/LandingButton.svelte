@@ -20,7 +20,7 @@
   }>();
 
   // Base classes - Remove color/bg/border/shadow styles. Keep layout, text size/style, transitions.
-  const baseButtonClass = "relative text-nowrap inline-flex items-center overflow-hidden rounded px-6 py-2.5 text-[0.9rem] font-semibold tracking-wider uppercase transition-all duration-300 ease-in-out backdrop-blur-sm font-['Inter',_'Rajdhani',_'SF_Pro_Display',_sans-serif] hover:-translate-y-0.5 active:translate-y-0.5";
+  const baseButtonClass = "relative text-nowrap inline-flex items-center overflow-hidden rounded px-6 py-2.5 text-[0.9rem] font-semibold tracking-wider uppercase transition-[transform,color,background-color,border-color,box-shadow] duration-300 ease-in-out backdrop-blur-sm font-['Inter',_'Rajdhani',_'SF_Pro_Display',_sans-serif] hover:-translate-y-0.5 active:translate-y-0.5";
   const baseTextClass = "relative z-10 text-nowrap";
   const baseGlowClass = "absolute inset-0 opacity-0 z-[1] transition-opacity duration-300 ease-in-out group-hover:opacity-100 group-hover:animate-pulse";
 

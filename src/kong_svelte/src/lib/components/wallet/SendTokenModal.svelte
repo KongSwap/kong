@@ -3,14 +3,16 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TransferConfirmationModal from "$lib/components/wallet/TransferConfirmationModal.svelte";
+  import QrScanner from "$lib/components/common/QrScanner.svelte";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import {
-    ArrowRight,
     Clipboard,
     Camera,
     Info,
     ArrowUp,
-    X,
     Check,
+    AlertCircle,
+    ScrollText,
   } from "lucide-svelte";
   import { tooltip } from "$lib/actions/tooltip";
   import { auth } from "$lib/stores/auth";
@@ -27,27 +29,30 @@
     validateAddress,
     formatTokenInput,
   } from "$lib/utils/validators/tokenValidators";
-  import QrScanner from "$lib/components/common/QrScanner.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import { fade } from "svelte/transition";
+  import { decodeIcrcAccount, type IcrcAccount } from "@dfinity/ledger-icrc";
 
-  // Props type definition
-  type SendTokenModalProps = {
+  // Format USD value with commas for thousands
+  function formatUsdValue(value: string | number): string {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(Number(value));
+    } catch (e) {
+      return value.toString();
+    }
+  }
+
+  // Props and state
+  let { token, isOpen = false, onClose = () => {}, onSuccess = () => {} } = $props<{
     token: FE.Token;
     isOpen?: boolean;
     onClose?: () => void;
     onSuccess?: (txId: string) => void;
-  };
+  }>();
 
-  // Destructure props with defaults
-  let {
-    token,
-    isOpen = false,
-    onClose = () => {},
-    onSuccess = () => {},
-  }: SendTokenModalProps = $props();
-
-  // State for sending tokens
+  // Form state
   let recipientAddress = $state("");
   let amount = $state("");
   let isValidating = $state(false);
@@ -55,115 +60,132 @@
   let tokenFee = $state<bigint>(BigInt(0));
   let showScanner = $state(false);
   let hasCamera = $state(false);
-
-  // For transfer confirmation
+  let addressFocused = $state(false);
+  let amountFocused = $state(false);
   let showConfirmation = $state(false);
-  let transferDetails = $state<{
-    amount: string;
-    token: FE.Token;
-    tokenFee: bigint;
-    toPrincipal: string;
-  } | null>(null);
-
-  // Derive balance from the central store
-  const currentBalance = $derived(
-    $currentUserBalancesStore[token?.canister_id]?.in_tokens ?? BigInt(0),
-  );
-
-  // Access auth store reactively
-  const authStore = $derived(auth);
-
-  // Validation state
-  let addressValidation = $state({
-    isValid: false,
-    errorMessage: "",
-    addressType: null,
-  });
-  let amountValidation = $state({ isValid: false, errorMessage: "" });
-
-  // Modal visibility handling to make animations work better
+  let transferDetails = $state<{ amount: string; token: FE.Token; tokenFee: bigint; toPrincipal: string; } | null>(null);
+  let showSuccess = $state(false);
   let mounted = $state(false);
   let closing = $state(false);
+  let usdValue = $state<string>("0.00");
 
+  // Derive balance
+  const currentBalance = $derived($currentUserBalancesStore[token?.canister_id]?.in_tokens ?? BigInt(0));
+  const currentBalanceUsd = $derived($currentUserBalancesStore[token?.canister_id]?.in_usd ?? BigInt(0));
+  const authStore = $derived(auth);
+  const maxAmount = $derived(calculateMaxAmount(currentBalance, token?.decimals, tokenFee));
+  
+  // Validation state
+  let addressValidation = $state<{ isValid: boolean; errorMessage: string; addressType: "principal" | "account" | "icrc1" | null; }>({ 
+    isValid: false, errorMessage: "", addressType: null 
+  });
+  let amountValidation = $state({ isValid: false, errorMessage: "" });
+  
+  // Check if form is valid
+  const isFormValid = $derived(
+    amount && recipientAddress && !errorMessage && 
+    addressValidation.isValid && amountValidation.isValid && token
+  );
+
+  // Animation handling
+  $effect(() => { if (!mounted && isOpen) mounted = true; });
+  $effect(() => { if (!isOpen && mounted) closing = true; });
+
+  // Validation effects
   $effect(() => {
-    if (!mounted && isOpen) {
-      mounted = true;
+    if (recipientAddress) {
+      addressValidation = validateAddress(recipientAddress, token?.symbol, token?.name);
+    } else {
+      addressValidation = { isValid: false, errorMessage: "", addressType: null };
     }
   });
 
-  // Watch isOpen changes
   $effect(() => {
-    if (!isOpen && mounted) {
-      closing = true;
+    if (amount && token) {
+      amountValidation = validateTokenAmount(amount, currentBalance, token.decimals, tokenFee);
+    } else {
+      amountValidation = { isValid: false, errorMessage: "" };
+    }
+  });
+
+  $effect(() => {
+    errorMessage = addressValidation.errorMessage || amountValidation.errorMessage || "";
+  });
+
+  // Calculate USD value when amount changes
+  $effect(() => {
+    if (amount && token?.metrics?.price) {
+      try {
+        usdValue = new BigNumber(amount).multipliedBy(token.metrics.price).toFixed(2);
+      } catch (error) {
+        console.error("Error calculating USD value:", error);
+        usdValue = "0.00";
+      }
+    } else {
+      usdValue = "0.00";
     }
   });
 
   // Close the modal with animation
   function handleClose() {
     closing = true;
-    // Wait for animation to complete
     setTimeout(() => {
+      resetState();
       onClose();
     }, 200);
+  }
+
+  // Reset all state
+  function resetState() {
+    recipientAddress = "";
+    amount = "";
+    errorMessage = "";
+    addressFocused = false;
+    amountFocused = false;
+    closing = false;
+    showSuccess = false;
   }
 
   // Load token fee
   async function loadTokenFee() {
     try {
-      // Ensure token exists before trying to fetch fee
-      if (!token || !token.canister_id) {
-        console.debug("Token not available for fee loading");
+      if (!token?.canister_id) {
         tokenFee = BigInt(10000); // Fallback
         return;
       }
       tokenFee = await IcrcService.getTokenFee(token);
     } catch (error) {
       console.error("Error loading token fee:", error);
-      tokenFee = BigInt(10000); // Fallback to default fee
+      tokenFee = BigInt(10000);
     }
   }
 
-  // Refresh balance on mount using the store function
+  // Refresh balance
   async function refreshBalanceOnMount() {
     const principalId = authStore.pnp?.account?.owner?.toString();
     if (token && principalId && principalId !== "anonymous") {
       try {
-        // Don't force refresh if store might have fresh data
         await refreshSingleBalance(token, principalId, false);
       } catch (error) {
-        console.error("Failed to refresh balance on mount:", error);
+        console.error("Failed to refresh balance:", error);
         toastStore.error("Could not load balance.");
       }
-    } else if (!principalId || principalId === "anonymous") {
-      console.debug("User not authenticated, cannot load balance.");
-    } else if (!token) {
-      console.debug("Token info not yet available for balance refresh.");
     }
   }
 
-  // Calculate max amount user can send using derived balance
-  const maxAmount = $derived(
-    calculateMaxAmount(currentBalance, token.decimals, tokenFee),
-  );
-
-  // Handle amount input
+  // Input handlers
   function handleAmountInput(event: Event) {
-    const input = event.target as HTMLInputElement;
-    amount = formatTokenInput(input.value, token.decimals);
+    amount = formatTokenInput((event.target as HTMLInputElement).value, token.decimals);
   }
 
-  // Handle "Send Max" button click
   function handleSendMax() {
     amount = String(maxAmount);
   }
 
-  // Handle recipient address input
   function handleAddressInput(event: Event) {
-    const input = event.target as HTMLInputElement;
-    recipientAddress = input.value.trim();
+    recipientAddress = (event.target as HTMLInputElement).value.trim();
   }
 
-  // Handle QR scanner button click
   function handleScanClick() {
     if (hasCamera) {
       showScanner = true;
@@ -172,30 +194,25 @@
     }
   }
 
-  // Handle address paste
   async function handleAddressPaste() {
     try {
       const text = await navigator.clipboard.readText();
-      if (text) {
-        recipientAddress = text.trim();
-      }
+      if (text) recipientAddress = text.trim();
     } catch (err) {
       console.error("Failed to read clipboard:", err);
       toastStore.error("Failed to access clipboard");
     }
   }
 
-  // Handle QR scan result
   function handleScan(data: string) {
     showScanner = false;
     if (data) {
-      // Extract address from URI if needed
       const addressMatch = data.match(/(?:canister:)?([\w-]+)(?:\?|$)/);
       recipientAddress = addressMatch ? addressMatch[1] : data;
     }
   }
 
-  // Handle token send
+  // Handle form submission
   async function handleSubmit() {
     isValidating = true;
     errorMessage = "";
@@ -205,37 +222,17 @@
       return;
     }
 
-    // Prepare transfer details for confirmation
-    transferDetails = {
-      amount,
-      token,
-      tokenFee,
-      toPrincipal: recipientAddress,
-    };
-
-    // Show transfer confirmation modal
+    transferDetails = { amount, token, tokenFee, toPrincipal: recipientAddress };
     showConfirmation = true;
     isValidating = false;
   }
 
-  // Check if camera is available
-  async function checkCameraAvailability() {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      hasCamera = devices.some((device) => device.kind === "videoinput");
-    } catch (err) {
-      console.debug("Error checking camera:", err);
-      hasCamera = false;
-    }
-  }
-
-  // Handle confirmation close
+  // Confirmation handlers
   function handleConfirmationClose() {
     showConfirmation = false;
     transferDetails = null;
   }
 
-  // Handle confirmation confirm
   async function handleConfirmationConfirm() {
     if (!transferDetails) return;
 
@@ -246,125 +243,92 @@
     try {
       const decimals = token.decimals || 8;
       const amountBigInt = BigInt(
-        new BigNumber(amount).times(new BigNumber(10).pow(decimals)).toString(),
+        new BigNumber(amount).times(new BigNumber(10).pow(decimals)).toString()
       );
 
       toastStore.info(`Sending ${amount} ${token.symbol}...`);
 
-      // Ensure auth is properly initialized
       if (!authStore.pnp?.account?.owner) {
         throw new Error("Authentication not initialized");
       }
+      
+      // Prepare recipient
+      let recipient: IcrcAccount | string;
+      if (addressValidation.addressType === "account") {
+        recipient = recipientAddress; // Legacy ICP Account ID
+      } else {
+        recipient = decodeIcrcAccount(recipientAddress);
+      }
 
-      // Always use main account (no fromSubaccount)
       const result = await IcrcService.transfer(
         token,
-        recipientAddress,
+        recipient,
         amountBigInt,
-        {
-          fee: token.fee_fixed ? BigInt(token.fee_fixed) : tokenFee,
-        },
+        { fee: token.fee_fixed ? BigInt(token.fee_fixed) : tokenFee }
       );
 
       if (result?.Ok) {
+        showSuccess = true;
         const txId = result.Ok.toString();
-
-        // Update local state first
-        recipientAddress = "";
-        amount = "";
-
-        // Force refresh balance in the store
+        
+        // Update balance
         const principalId = authStore.pnp?.account?.owner?.toString();
         await refreshSingleBalance(token, principalId, true);
-
-        // Show success message and trigger callbacks
+        
+        // Reset form for next transaction
+        recipientAddress = "";
+        amount = "";
+        
+        // Notify success
         toastStore.success(`Successfully sent ${token.symbol}`);
         onSuccess(txId);
-
-        // Close modal last
-        handleClose();
+        
+        // Keep modal open, but reset success state after a delay
+        setTimeout(() => {
+          showSuccess = false;
+        }, 2000);
       } else if (result?.Err) {
-        const errMsg =
-          typeof result.Err === "object"
-            ? Object.keys(result.Err)[0]
-            : String(result.Err);
+        const errMsg = typeof result.Err === "object"
+          ? Object.keys(result.Err)[0] 
+          : String(result.Err);
         errorMessage = `Transfer failed: ${errMsg}`;
         toastStore.error(errorMessage);
-        console.error("Transfer error details:", result.Err);
       }
     } catch (err) {
       console.error("Transfer error:", err);
-      errorMessage = err.message || "Transfer failed";
+      let errorDetail = "Transfer failed";
+      
+      if (err instanceof Error) {
+        errorDetail = err.message;
+      } else if (typeof err === 'object' && err !== null) {
+        const rejectCode = (err as any).reject_code;
+        const rejectMessage = (err as any).reject_message;
+        
+        if (rejectCode !== undefined && rejectMessage !== undefined) {
+          errorDetail = `Transfer failed (Code ${rejectCode}): ${rejectMessage}`;
+        } else {
+          try { errorDetail = JSON.stringify(err); } catch {}
+        }
+      }
+      
+      errorMessage = errorDetail;
       toastStore.error(errorMessage);
     } finally {
       isValidating = false;
     }
   }
 
-  // Validate address
-  $effect(() => {
-    if (recipientAddress) {
-      addressValidation = validateAddress(
-        recipientAddress,
-        token?.symbol,
-        token?.name,
-      );
-    } else {
-      addressValidation = {
-        isValid: false,
-        errorMessage: "",
-        addressType: null,
-      };
+  // Check camera availability
+  async function checkCameraAvailability() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      hasCamera = devices.some(device => device.kind === "videoinput");
+    } catch (err) {
+      hasCamera = false;
     }
-  });
-
-  // Validate amount using derived balance
-  $effect(() => {
-    if (amount && token) {
-      // Ensure token is available
-      amountValidation = validateTokenAmount(
-        amount,
-        currentBalance,
-        token.decimals,
-        tokenFee,
-      );
-    } else {
-      amountValidation = { isValid: false, errorMessage: "" };
-    }
-  });
-
-  // Update error message based on validations (separate effect to avoid circular dependencies)
-  $effect(() => {
-    if (addressValidation.errorMessage) {
-      errorMessage = addressValidation.errorMessage;
-    } else if (amountValidation.errorMessage) {
-      errorMessage = amountValidation.errorMessage;
-    } else {
-      errorMessage = "";
-    }
-  });
-
-  // Check if form is valid
-  const isFormValid = $derived(
-    amount &&
-      recipientAddress &&
-      !errorMessage &&
-      addressValidation.addressType !== null &&
-      addressValidation.isValid &&
-      amountValidation.isValid &&
-      token, // Ensure token is loaded
-  );
-
-  // Format tooltip message
-  function getTooltipMessage(): string {
-    if (!token) return "Loading token details...";
-    if (!recipientAddress) return "Enter recipient address";
-    if (!amount) return "Enter amount";
-    if (errorMessage) return errorMessage;
-    return "Send tokens";
   }
 
-  // Initialize component
+  // Initialize
   onMount(() => {
     checkCameraAvailability();
     loadTokenFee();
@@ -380,76 +344,63 @@
   variant="transparent"
   height="auto"
   className={`send-token-modal ${closing ? "modal-closing" : ""}`}
+  isPadded={true}
 >
-  <div class="p-4 flex flex-col gap-4">
+  <div class="flex flex-col gap-5 max-w-[480px] mx-auto">
     <!-- Token Info Banner -->
     {#if token}
       <div
-        class="flex items-center gap-3 p-3 rounded-lg bg-kong-bg-light/10 border border-kong-border/30 transition-all duration-300"
-        style="opacity: {closing
-          ? 0
-          : mounted
-            ? 1
-            : 0}; transform: translateY({closing
-          ? '-10px'
-          : mounted
-            ? 0
-            : '10px'});"
+        class="flex items-center gap-3 p-3 rounded-lg bg-kong-surface-dark border border-kong-border/30 transition-all duration-300 shadow-sm"
+        style="opacity: {closing ? 0 : mounted ? 1 : 0}; transform: translateY({closing ? '-10px' : mounted ? 0 : '10px'});"
       >
-        <div
-          class="w-10 h-10 rounded-full bg-kong-bg-light p-1 border border-kong-border/20 flex-shrink-0"
-        >
-          <TokenImages tokens={[token]} size={32} showSymbolFallback={true} />
+        <div class="w-12 h-12 rounded-full bg-kong-bg-light p-1 border border-kong-border/20 flex-shrink-0 flex items-center justify-center shadow-inner-white">
+          <TokenImages tokens={[token]} size={36} showSymbolFallback={true} />
         </div>
         <div class="flex flex-col">
-          <div class="text-kong-text-primary font-medium">{token.name}</div>
+          <div class="text-kong-text-primary font-medium text-lg">{token.name}</div>
           <div class="text-sm text-kong-text-secondary">
-            Balance: {formatBalance(currentBalance, token.decimals)}
-            {token.symbol}
+            <div class="flex flex-col justify-center">
+              <span class="font-medium">{formatBalance(currentBalance, token.decimals)} {token.symbol}</span>
+              {#if token.metrics?.price && currentBalanceUsd}
+                <span class="font-medium text-xss">${formatUsdValue(String(currentBalanceUsd))}</span>
+              {/if}
+            </div>
           </div>
         </div>
       </div>
     {:else}
-      <!-- Placeholder while token loads -->
-      <div
-        class="h-[68px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse"
-      ></div>
+      <div class="h-[68px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse"></div>
     {/if}
 
     <!-- Send Form -->
     {#if token}
       <form
         on:submit|preventDefault={handleSubmit}
-        class="flex flex-col gap-3 transition-all duration-300"
-        style="opacity: {closing
-          ? 0
-          : mounted
-            ? 1
-            : 0}; transform: translateY({closing
-          ? '-10px'
-          : mounted
-            ? 0
-            : '20px'}); transition-delay: {closing ? '0ms' : '100ms'};"
+        class="flex flex-col gap-4 transition-all duration-300"
+        style="opacity: {closing ? 0 : mounted ? 1 : 0}; transform: translateY({closing ? '-10px' : mounted ? 0 : '20px'}); transition-delay: {closing ? '0ms' : '100ms'};"
       >
-        <!-- Recipient Address Input -->
-        <div>
-          <label
-            for="recipient-address"
-            class="block text-xs text-kong-text-secondary mb-1.5"
-            >Recipient Address</label
-          >
+        <!-- Address Input Section -->
+        <div class="flex flex-col">
+          <label for="recipient-address" class="block text-sm text-kong-text-primary font-medium mb-1.5 flex justify-between">
+            <span>Recipient Address</span>
+            {#if recipientAddress && !addressValidation.isValid && addressValidation.errorMessage}
+              <span class="text-kong-accent-red text-xs">{addressValidation.errorMessage}</span>
+            {/if}
+          </label>
           <div class="relative">
             <input
               id="recipient-address"
               type="text"
-              class="w-full py-2 px-3 bg-kong-bg-light/30 border {addressValidation.isValid
-                ? 'border-kong-primary/40 focus:border-kong-primary/60 focus:ring-kong-primary/20'
-                : recipientAddress
-                  ? 'border-kong-accent-red/40 focus:border-kong-accent-red/60 focus:ring-kong-accent-red/20'
-                  : 'border-kong-border/50 focus:border-kong-primary/60 focus:ring-kong-primary/20'} rounded-md text-sm text-kong-text-primary focus:outline-none focus:ring-1 transition-colors duration-150"
-              placeholder="Enter Canister ID, Principal ID, or Account ID"
+              class={`w-full py-4 px-3 bg-kong-bg-light/30 border ${
+                addressFocused ? 'border-kong-primary ring-1 ring-kong-primary/20' :
+                addressValidation.isValid ? 'border-kong-primary/40' :
+                recipientAddress ? 'border-kong-accent-red/40' : 'border-kong-border/50'
+              } rounded-md text-lg text-kong-text-primary focus:outline-none transition-colors duration-150`}
+              placeholder="Enter recipient address"
               bind:value={recipientAddress}
               on:input={handleAddressInput}
+              on:focus={() => addressFocused = true}
+              on:blur={() => addressFocused = false}
             />
             <div class="absolute inset-y-0 right-0 flex items-center gap-0.5">
               {#if addressValidation.isValid}
@@ -459,7 +410,7 @@
               {/if}
               <button
                 type="button"
-                class="p-1.5 text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-150"
+                class="p-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-150"
                 on:click={handleAddressPaste}
                 use:tooltip={{ text: "Paste from clipboard", direction: "top" }}
               >
@@ -468,7 +419,7 @@
               {#if hasCamera}
                 <button
                   type="button"
-                  class="p-1.5 text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-150"
+                  class="p-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-150"
                   on:click={handleScanClick}
                   use:tooltip={{ text: "Scan QR code", direction: "top" }}
                 >
@@ -477,121 +428,104 @@
               {/if}
             </div>
           </div>
+          
           {#if addressValidation.addressType && addressValidation.isValid}
-            <div class="mt-1 text-xs text-kong-accent-green">
-              Valid {addressValidation.addressType} address
+            <div class="mt-1.5 text-xs text-kong-accent-green flex items-center gap-1">
+              <Check size={12} />
+              {addressValidation.addressType === 'icrc1' ? 'Valid ICRC-1 Account' : 
+               addressValidation.addressType === 'principal' ? 'Valid Principal ID' : 'Valid ICP Account ID'}
             </div>
           {/if}
         </div>
 
-        <!-- Amount Input -->
-        <div>
+        <!-- Amount Input Section -->
+        <div class="flex flex-col">
           <div class="flex justify-between items-center mb-1.5">
-            <label
-              for="amount-input"
-              class="block text-xs text-kong-text-secondary">Amount</label
-            >
+            <label for="amount-input" class="block text-sm text-kong-text-primary font-medium">
+              <span>Amount</span>
+            </label>
             <button
               type="button"
-              class="text-xs text-kong-primary hover:text-kong-primary/80 font-medium transition-colors duration-150"
+              class="text-xs text-kong-primary hover:text-kong-primary/80 font-medium transition-colors duration-150 py-1 px-2 bg-kong-primary/5 rounded-full"
               on:click={handleSendMax}
             >
               Send Max
             </button>
           </div>
+          
+          {#if amountValidation.errorMessage && amount}
+            <div class="text-kong-accent-red text-xs flex items-start gap-1 mb-1.5">
+              <AlertCircle size={12} class="mt-0.5 flex-shrink-0" />
+              <span>{amountValidation.errorMessage}</span>
+            </div>
+          {/if}
+          
           <div class="relative">
             <input
               id="amount-input"
               type="text"
               inputmode="decimal"
-              class="w-full py-2 px-3 bg-kong-bg-light/30 border {amountValidation.isValid
-                ? 'border-kong-primary/40 focus:border-kong-primary/60 focus:ring-kong-primary/20'
-                : amount
-                  ? 'border-kong-accent-red/40 focus:border-kong-accent-red/60 focus:ring-kong-accent-red/20'
-                  : 'border-kong-border/50 focus:border-kong-primary/60 focus:ring-kong-primary/20'} rounded-md text-sm text-kong-text-primary focus:outline-none focus:ring-1 transition-colors duration-150"
+              class={`w-full py-4 px-3 bg-kong-bg-light/30 border ${
+                amountFocused ? 'border-kong-primary ring-1 ring-kong-primary/20' :
+                amountValidation.isValid ? 'border-kong-primary/40' :
+                amount ? 'border-kong-accent-red/40' : 'border-kong-border/50'
+              } rounded-md text-lg text-kong-text-primary focus:outline-none transition-colors duration-150`}
               placeholder="0.00"
               bind:value={amount}
               on:input={handleAmountInput}
+              on:focus={() => amountFocused = true}
+              on:blur={() => amountFocused = false}
             />
             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-              <span class="text-kong-text-secondary">{token.symbol}</span>
+              <div class="flex flex-col items-end">
+                <span class="text-kong-text-secondary font-medium">{token.symbol}</span>
+                {#if usdValue !== "0.00" && amount}
+                  <div class="flex items-center gap-0.5 text-xs text-kong-primary/90">
+                    <span>${formatUsdValue(usdValue)}</span>
+                  </div>
+                {/if}
+              </div>
             </div>
           </div>
-          <div class="mt-1 text-xs flex justify-between items-center">
+          
+          <div class="flex justify-between items-center text-xs mt-1.5">
             <div class="text-kong-text-secondary">
-              Max: {maxAmount}
-              {token.symbol}
+              Max: <span class="font-medium">{maxAmount} {token.symbol}</span>
             </div>
-            <div class="flex items-center gap-1 text-kong-text-secondary/70">
+            <div class="flex items-center gap-1 text-kong-text-secondary/70 bg-kong-bg-light/30 px-2 py-1 rounded-full">
               <Info size={12} />
-              <span
-                >Fee: {tokenFee
-                  ? formatBalance(tokenFee, token.decimals)
-                  : "..."}
-                {token.symbol}</span
-              >
+              <span>Fee: {tokenFee ? formatBalance(tokenFee, token.decimals) : "..."} {token.symbol}</span>
             </div>
           </div>
         </div>
-
-        {#if errorMessage}
-          <div
-            class="px-3 py-2 bg-kong-accent-red/10 border border-kong-accent-red/20 rounded-md text-sm text-kong-accent-red transition-opacity duration-300"
-            style="opacity: {closing ? 0 : mounted ? 1 : 0};"
-            in:fade={{ duration: 200, delay: 100 }}
-            out:fade={{ duration: 150 }}
-          >
-            {errorMessage}
-          </div>
-        {/if}
-
+        
         <!-- Submit Button -->
-        <button
+        <ButtonV2
+          theme="primary"
+          variant="solid"
+          size="lg"
+          fullWidth={true}
+          isDisabled={!isFormValid || isValidating}
           type="submit"
-          class="w-full py-3 px-4 mt-2 rounded-md flex items-center justify-center gap-2 font-medium text-white
-                 {isFormValid
-            ? 'bg-kong-primary hover:bg-kong-primary/90'
-            : 'bg-kong-primary/40 cursor-not-allowed'} 
-                 transition-all duration-300"
-          style="opacity: {closing
-            ? 0
-            : mounted
-              ? 1
-              : 0}; transform: translateY({closing
-            ? '-10px'
-            : mounted
-              ? 0
-              : '10px'}); transition-delay: {closing ? '0ms' : '250ms'};"
-          disabled={!isFormValid || isValidating}
-          use:tooltip={{
-            text: getTooltipMessage(),
-            direction: "top",
-            background: errorMessage ? "bg-kong-accent-red" : "bg-kong-bg-dark",
-          }}
+          className={`mt-2 ${!isFormValid || isValidating ? '!bg-kong-bg-light !text-kong-text-primary border-0' : ''}`}
         >
-          {#if isValidating}
-            <div
-              class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"
-            ></div>
-            <span>Processing...</span>
-          {:else}
-            <ArrowUp size={18} />
-            <span>Send {token.symbol}</span>
-          {/if}
-        </button>
+          <div class="flex items-center justify-center gap-2">
+            {#if isValidating}
+              <div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+              <span>Processing...</span>
+            {:else}
+              <ScrollText size={16} />
+              <span>Review Transfer</span>
+            {/if}
+          </div>
+        </ButtonV2>
       </form>
     {:else}
       <!-- Placeholder for form while token loads -->
-      <div class="flex flex-col gap-3">
-        <div
-          class="h-[58px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse"
-        ></div>
-        <div
-          class="h-[80px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse"
-        ></div>
-        <div
-          class="h-[48px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse mt-2"
-        ></div>
+      <div class="flex flex-col gap-4">
+        <div class="h-[58px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse"></div>
+        <div class="h-[80px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse"></div>
+        <div class="h-[48px] bg-kong-bg-light/10 border border-kong-border/30 rounded-lg animate-pulse mt-2"></div>
       </div>
     {/if}
   </div>
@@ -599,11 +533,7 @@
 
 <!-- QR Scanner Modal -->
 {#if showScanner}
-  <QrScanner
-    isOpen={showScanner}
-    onClose={() => (showScanner = false)}
-    onScan={handleScan}
-  />
+  <QrScanner isOpen={showScanner} onClose={() => (showScanner = false)} onScan={handleScan} />
 {/if}
 
 <!-- Confirmation Modal -->
@@ -620,36 +550,27 @@
   />
 {/if}
 
-<style>
-  /* Add global CSS for the modal transitions */
-  :global(.send-token-modal) {
-    animation: fadeIn 0.25s ease-out;
-  }
-
+<style scoped>
+  :global(.send-token-modal) { animation: fadeIn 0.25s ease-out; }
+  :global(.modal-closing) { animation: fadeOut 0.2s ease-out forwards !important; }
+  
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
   }
-
-  /* This will be applied when the modal is closing */
-  :global(.modal-closing) {
-    animation: fadeOut 0.2s ease-out forwards !important;
-  }
-
+  
   @keyframes fadeOut {
-    from {
-      opacity: 1;
-      transform: translateY(0);
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(20px); }
+  }
+
+  @media (max-width: 640px) {
+    :global(.send-token-modal .modal-content) {
+      padding: 0 8px;
     }
-    to {
-      opacity: 0;
-      transform: translateY(20px);
+
+    :global(.send-token-modal input) {
+      font-size: 1rem;
     }
   }
 </style>

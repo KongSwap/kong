@@ -5,6 +5,7 @@ import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "$lib/stores/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
+import { type IcrcAccount } from "@dfinity/ledger-icrc";
 
 // Error types for better handling
 const enum ErrorType {
@@ -368,21 +369,22 @@ export class IcrcService {
 
   public static async transfer(
     token: FE.Token,
-    to: string | Principal,
+    to: string | Principal | IcrcAccount,
     amount: bigint,
     opts: {
-      memo?: number[];
+      memo?: Uint8Array | number[];
       fee?: bigint;
-      fromSubaccount?: number[];
+      fromSubaccount?: Uint8Array | number[];
       createdAtTime?: bigint;
     } = {},
-  ): Promise<Result<bigint>> {
+  ): Promise<any> {
     try {
-      // If it's an ICP transfer to an account ID
+      // If it's an ICP transfer to a legacy Account ID string
       if (
         token.symbol === "ICP" &&
         typeof to === "string" &&
-        to.length === 64
+        to.length === 64 &&
+        !to.includes("-")
       ) {
         const wallet = auth.pnp.activeWallet.id;
         if (wallet === "oisy") {
@@ -396,7 +398,7 @@ export class IcrcService {
         const transfer_args = {
           to: this.hex2Bytes(to),
           amount: { e8s: amount },
-          fee: { e8s: BigInt(token.fee_fixed) },
+          fee: { e8s: opts.fee ?? BigInt(token.fee_fixed ?? 10000) },
           memo: 0n,
           from_subaccount: opts.fromSubaccount
             ? [Array.from(opts.fromSubaccount)]
@@ -405,30 +407,59 @@ export class IcrcService {
             ? [{ timestamp_nanos: opts.createdAtTime }]
             : [],
         };
-
-        return await ledgerActor.transfer(transfer_args);
+        
+        const result = await ledgerActor.transfer(transfer_args);
+        if ('Err' in result) {
+          const stringifiedError = JSON.stringify(result.Err, (_, value) =>
+             typeof value === 'bigint' ? value.toString() : value
+          );
+          return { Err: JSON.parse(stringifiedError) };
+        }
+        return { Ok: BigInt(result.Ok) };
       }
 
-      // For all other cases (ICRC1 transfers to principals)
+      // For all ICRC standard transfers (Principal or ICRC1 Account)
       const actor = auth.getActor(token.canister_id, canisterIDLs["icrc1"], {
         anon: false,
         requiresSigning: true,
       });
 
-      return await actor.icrc1_transfer({
-        to: {
-          owner: typeof to === "string" ? Principal.fromText(to) : to,
+      let recipientAccount: {
+        owner: Principal;
+        subaccount: [] | [Uint8Array | number[]];
+      };
+
+      if (typeof to === "string") {
+        recipientAccount = {
+          owner: Principal.fromText(to),
           subaccount: [],
-        },
+        };
+      } else if (to instanceof Principal) {
+        recipientAccount = { owner: to, subaccount: [] };
+      } else {
+        recipientAccount = {
+          owner: to.owner,
+          subaccount: to.subaccount ? [to.subaccount] : [],
+        };
+      }
+
+      const transferFee = opts.fee ?? (await this.getTokenFee(token));
+
+      const result = await actor.icrc1_transfer({
+        to: recipientAccount,
         amount,
-        fee: [BigInt(token.fee_fixed)],
-        memo: opts.memo || [],
+        fee: [transferFee],
+        memo: opts.memo ? [opts.memo] : [],
         from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
         created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
       });
+      return result;
     } catch (error) {
       console.error("Transfer error:", error);
-      return { Err: error };
+      const stringifiedError = JSON.stringify(error, (_, value) =>
+        typeof value === 'bigint' ? value.toString() : value
+      );
+      return { Err: JSON.parse(stringifiedError) };
     }
   }
 

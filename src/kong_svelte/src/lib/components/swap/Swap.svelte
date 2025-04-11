@@ -21,7 +21,6 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { livePools } from "$lib/stores/poolStore";
-  import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import { userTokens } from "$lib/stores/userTokens";
   import { browser } from "$app/environment";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
@@ -298,6 +297,13 @@
       return false;
     }
 
+    // Find token symbols for the toast message
+    const paySymbol = $swapState.payToken.symbol;
+    const receiveSymbol = $swapState.receiveToken.symbol;
+    // Use the actual amounts from the state *before* clearing them
+    const paidAmountStr = $swapState.payAmount;
+    const receivedAmountStr = $swapState.receiveAmount;
+
     try {
       swapState.update((state) => ({
         ...state,
@@ -335,22 +341,14 @@
         return false;
       }
 
-      // Store the successful swap details and clear input amounts
-      swapState.update((state) => ({
-        ...state,
-        successDetails: {
-          payAmount: state.payAmount,
-          payToken: state.payToken,
-          receiveAmount: state.receiveAmount,
-          receiveToken: state.receiveToken,
-          principalId: $auth.account?.owner?.toString() || "",
-        },
-        // Clear input amounts but keep tokens selected
-        payAmount: "",
-        receiveAmount: "",
-        isProcessing: false,
-        showConfirmation: false,
-      }));
+      // Show success toast with swap details
+      toastStore.success(
+        `Swapped ${paidAmountStr} ${paySymbol} for ${receivedAmountStr} ${receiveSymbol}`, 
+        { title: "Trade Completed" }
+      );
+
+      // Reset state after successful swap
+      resetSwapState();
 
       return true;
     } catch (error) {
@@ -644,7 +642,7 @@
   });
 </script>
 
-<div class="relative flex flex-col" in:fade={{ duration: 420 }}>
+<div class="relative flex flex-col w-full max-w-xl mx-auto" in:fade={{ duration: 420 }}>
   <div class="relative flex flex-col gap-2 mb-2">
     <div class="relative flex flex-col gap-1 min-h-[240px] px-3 md:px-0 mt-0 md:mt-10">
       <!-- Doge image peeking only for Win98 theme -->
@@ -773,22 +771,6 @@
       }}
     />
   </Portal>
-{/if}
-
-{#if $swapState.showSuccessModal}
-  <SwapSuccessModal
-    show={$swapState.showSuccessModal}
-    payAmount={$swapState.successDetails?.payAmount || $swapState.payAmount}
-    payToken={$swapState.successDetails?.payToken || $swapState.payToken}
-    receiveAmount={$swapState.successDetails?.receiveAmount ||
-      $swapState.receiveAmount}
-    receiveToken={$swapState.successDetails?.receiveToken ||
-      $swapState.receiveToken}
-    onClose={() => {
-      swapState.setShowSuccessModal(false);
-      resetSwapState();
-    }}
-  />
 {/if}
 
 <style scoped lang="postcss">

@@ -340,18 +340,18 @@
   variant={$transparentSwapPanel ? "transparent" : "solid"}
   width="auto"
   type="main"
-  className="w-full max-w-2xl !p-4 !h-full swap-panel-wrapper {isWin95Border ? 'win95-panel' : ''}"
+  className="w-full max-w-2xl !p-4 !h-full {isWin95Border ? 'win95-panel' : ''}"
   roundness={$swapPanelRoundness}
   isSwapPanel={true}
 >
   <div
-    class="flex flex-col min-h-[165px] max-h-[220px] box-border relative swap-panel-content"
+    class="flex flex-col min-h-[165px] max-h-[220px] box-border relative"
     style="--swap-panel-border: {$swapPanelBorder}; --swap-panel-shadow: {$swapPanelShadow};"
   >
     <header>
       <div class="flex items-center justify-between gap-4 min-h-[1rem] mb-5">
         <h2
-          class="text-lg sm:text-2xl font-semibold text-kong-text-primary m-0 tracking-tight leading-none"
+          class="text-lg sm:text-2xl lg:text-xl font-semibold text-kong-text-primary m-0 tracking-tight leading-none"
         >
           {title}
         </h2>
@@ -407,7 +407,7 @@
             inputmode="decimal"
             pattern="[0-9]*"
             placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary placeholder:text-kong-text-primary text-3xl sm:text-[1.88rem] sm:mt-[-0.15rem]"
+            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary placeholder:text-kong-text-primary text-3xl lg:text-4xl sm:mt-[-0.15rem]"
             class:opacity-0={isLoading && panelType === "receive"}
             class:rounded-md={$swapPanelInputsRounded}
             value={formattedDisplayAmount}
@@ -418,9 +418,9 @@
             readonly={panelType === "receive"}
           />
         </div>
-        <div class="token-selector-wrapper relative">
+        <div class="relative">
           <button
-            class="token-selector-button flex items-center justify-between bg-white/5 p-2 border border-white/10 transition-colors duration-150 gap-2 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 {isWin95Border ? 'win95-button' : ''}"
+            class="flex items-center justify-between bg-white/5 p-2 border border-white/10 transition-colors duration-150 gap-2 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 {isWin95Border ? 'win95-button' : ''} w-full"
             class:rounded-xl={$swapPanelInputsRounded && !isWin95Border}
             on:click|stopPropagation={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
@@ -440,9 +440,9 @@
             }}
           >
             {#if token}
-              <div class="token-info flex items-center gap-2">
+              <div class="flex items-center gap-2">
                 <TokenImages tokens={[token]} size={32} />
-                <span class="token-symbol hidden text-lg font-semibold text-kong-text-primary sm:inline">{token.symbol}</span>
+                <span class="hidden text-lg font-semibold text-kong-text-primary sm:inline">{token.symbol}</span>
               </div>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -457,7 +457,7 @@
                 />
               </svg>
             {:else}
-              <span class="select-token-text text-lg text-kong-text-primary/70 text-left">Select Token</span>
+              <span class="text-lg text-kong-text-primary/70 text-left">Select Token</span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 20 20"
@@ -490,7 +490,7 @@
           </span>
         </div>
         {#if token}
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1 min-w-[160px] justify-end">
             <span
               class="text-kong-text-primary font-normal tracking-wide text-xs sm:text-xs"
             >

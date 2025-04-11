@@ -16,6 +16,7 @@
     isLoading = false,
     // Optional callback function for refreshing data
     onRefresh = undefined,
+    showUsdValues = true,
   } = $props<{
     liquidityPools?: Array<{
       id: string;
@@ -28,6 +29,7 @@
     }>;
     isLoading?: boolean;
     onRefresh?: (() => void) | undefined;
+    showUsdValues?: boolean;
   }>();
   
   // State for user pools from store
@@ -230,14 +232,24 @@
           <div class="grid grid-cols-3 gap-2 text-xs">
             <div>
               <div class="text-kong-text-secondary mb-1">Value</div>
-              <div class="text-kong-text-primary font-medium">{formatCurrency(pool.usd_balance || "0")}</div>
+              <div class="text-kong-text-primary font-medium">
+                {#if showUsdValues}
+                  {formatCurrency(pool.usd_balance || "0")}
+                {:else}
+                  $ ****
+                {/if}
+              </div>
             </div>
             <div>
               <div class="text-kong-text-secondary mb-1">Pool Share</div>
               <div class="text-kong-text-primary font-medium">
                 <div class="flex items-center gap-1">
                   <ChartPie size={12} class="text-kong-text-secondary/70" />
-                  <span>{formatToNonZeroDecimal(getPoolSharePercentage(pool))}%</span>
+                  {#if showUsdValues}
+                    <span>{formatToNonZeroDecimal(getPoolSharePercentage(pool))}%</span>
+                  {:else}
+                    <span>****%</span>
+                  {/if}
                 </div>
               </div>
             </div>
@@ -288,11 +300,23 @@
           <div class="grid grid-cols-3 gap-2 text-xs">
             <div>
               <div class="text-kong-text-secondary mb-1">Value</div>
-              <div class="text-kong-text-primary font-medium">{formatCurrency(pool.value)}</div>
+              <div class="text-kong-text-primary font-medium">
+                {#if showUsdValues}
+                  {formatCurrency(pool.value)}
+                {:else}
+                  $ ****
+                {/if}
+              </div>
             </div>
             <div>
               <div class="text-kong-text-secondary mb-1">Pool Share</div>
-              <div class="text-kong-text-primary font-medium">{formatNumber(pool.share * 100, 4)}%</div>
+              <div class="text-kong-text-primary font-medium">
+                {#if showUsdValues}
+                  {formatNumber(pool.share * 100, 4)}%
+                {:else}
+                  ****%
+                {/if}
+              </div>
             </div>
             <div>
               <div class="text-kong-text-secondary mb-1">APR</div>
