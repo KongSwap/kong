@@ -405,7 +405,7 @@
           class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-light/10 hover:text-kong-primary transition-all text-kong-text-primary"
           on:click={() => handleAction('add_lp')}
         >
-          <Layers size={16} class="text-kong-text-secondary" />
+          <Droplets size={16} class="text-kong-text-secondary" />
           <span>Add LP</span>
         </button>
         
