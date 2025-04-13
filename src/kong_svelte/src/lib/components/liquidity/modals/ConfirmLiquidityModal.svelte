@@ -6,12 +6,14 @@
     formatToNonZeroDecimal,
     parseTokenAmount,
   } from "$lib/utils/numberFormatUtils";
-  import { onDestroy } from "svelte";
+  import { onDestroy, createEventDispatcher } from "svelte";
   import { createPool, addLiquidity, pollRequestStatus } from "$lib/api/pools";
   import { toastStore } from "$lib/stores/toastStore";
   import { loadBalance } from "$lib/stores/tokenStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/stores/auth";
+
+  const dispatch = createEventDispatcher();
 
   export let isCreatingPool: boolean = false;
   export let show: boolean;
@@ -87,6 +89,9 @@
             currentUserPoolsStore.initialize(),
           ]);
           
+          // Dispatch liquidityAdded event
+          dispatch("liquidityAdded");
+          
           onClose();
         }
       } else {
@@ -118,6 +123,9 @@
             loadBalance(token1.canister_id, true),
             currentUserPoolsStore.initialize(),
           ]);
+          
+          // Dispatch liquidityAdded event
+          dispatch("liquidityAdded");
           
           onClose();
         }

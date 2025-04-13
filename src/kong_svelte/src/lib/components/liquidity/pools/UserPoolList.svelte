@@ -309,6 +309,7 @@
     pool={selectedPool}
     bind:showModal={showUserPoolModal}
     on:liquidityRemoved={handleLiquidityRemoved}
+    on:liquidityAdded={handleLiquidityRemoved}
   />
 {/if}
 

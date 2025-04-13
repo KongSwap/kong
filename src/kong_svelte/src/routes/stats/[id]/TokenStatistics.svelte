@@ -9,9 +9,11 @@
   import { tweened } from 'svelte/motion';
 
   // Props using $props() for Svelte 5 runes mode
-  const { token, marketCapRank = null } = $props<{
+  const { token, marketCapRank = null, selectedPool = null, totalTokenTvl = 0 } = $props<{
     token: FE.Token;
     marketCapRank: number | null;
+    selectedPool?: BE.Pool | null;
+    totalTokenTvl?: number;
   }>();
 
   // State variables
@@ -118,6 +120,8 @@
   // Derived formatted values
   const formattedPrice = $derived(formatToNonZeroDecimal(activeToken?.metrics?.price));
   const formattedPriceChange24h = $derived(Number(activeToken?.metrics?.price_change_24h) || 0);
+  const formattedSelectedPoolTvl = $derived(selectedPool ? formatUsdValue(Number(selectedPool.tvl)) : "");
+  const formattedTotalTokenTvl = $derived(formatUsdValue(totalTokenTvl));
 </script>
 
 <Panel variant="transparent" type="main" className="p-6">
@@ -156,15 +160,6 @@
     
     <!-- Market Stats -->
     <div class="flex flex-col divide-y divide-kong-border/30 gap-6">
-            <!-- 24h Volume -->
-            <div class="flex flex-col">
-              <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">24h Volume</div>
-              <div class="text-xl font-medium text-kong-text-primary">
-                ${formatToNonZeroDecimal(volume24h)}
-              </div>
-            </div>
-      
-            
       <!-- Market Cap -->
       <div class="flex flex-col">
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Market Cap</div>
@@ -172,7 +167,33 @@
           {formatUsdValue(marketCap)}
         </div>
       </div>
-      
+
+      <!-- 24h Volume -->
+      <div class="flex flex-col">
+        <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">24h Volume</div>
+        <div class="text-xl font-medium text-kong-text-primary">
+          ${formatToNonZeroDecimal(volume24h)}
+        </div>
+      </div>
+
+      <!-- Selected Pool TVL -->
+      {#if selectedPool}
+        <div class="flex flex-col">
+          <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Current Pool TVL</div>
+          <div class="text-xl font-medium text-kong-text-primary">
+            {formattedSelectedPoolTvl}
+          </div>
+        </div>
+      {/if}
+
+      <!-- Total Token TVL -->
+      <div class="flex flex-col">
+        <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Total Token TVL</div>
+        <div class="text-xl font-medium text-kong-text-primary">
+          {formattedTotalTokenTvl}
+        </div>
+      </div>
+            
       <!-- Total Supply -->
       <div class="flex flex-col">
         <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Total Supply</div>
