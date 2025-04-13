@@ -322,7 +322,6 @@
         } else {
           state.pools = ($livePools || []) as BE.Pool[];
         }
-        console.log("[Chart] Pools loaded:", state.pools.length);
       }
 
       // Get best pool
