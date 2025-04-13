@@ -12,6 +12,10 @@
   let loading = true;
   let error: string | null = null;
 
+  // Pagination state
+  let currentPage = 1;
+  const itemsPerPage = 10; // Show 10 items per page
+
   onMount(async () => {
     try {
       if ($auth.isConnected) {
@@ -34,36 +38,29 @@
   async function getHistory() {
     try {
       loading = true;
-      history = await getUserHistory($auth.account.owner.toString());
-      console.log("History", history);
-      
-      // Debug winnings from resolved bets
-      if (history && history.resolved_bets) {
-        history.resolved_bets.forEach((bet, index) => {
-          console.log(`Resolved bet ${index}:`, bet);
-          console.log(`  - Outcome index:`, bet.outcome_index);
-          console.log(`  - Market status:`, bet.market.status);
-          console.log(`  - Winnings:`, bet.winnings);
-          
-          // Check if this is a winning bet
-          if (bet.market.status && "Closed" in bet.market.status) {
-            const winningOutcomes = bet.market.status.Closed;
-            const isWinner = winningOutcomes.includes(bet.outcome_index);
-            console.log(`  - Is winner: ${isWinner}`);
-            
-            // Convert BigInt to string before logging
-            const safeWinningOutcomes = winningOutcomes.map(outcome => 
-              typeof outcome === 'bigint' ? outcome.toString() : outcome
-            );
-            console.log(`  - Winning outcomes:`, safeWinningOutcomes);
-          }
-        });
-      }
+      history = await getUserHistory($auth.account.owner.toString());      
     } catch (e) {
       console.error("Failed to load history:", e);
       error = e instanceof Error ? e.message : "Failed to load prediction history";
     } finally {
       loading = false;
+    }
+  }
+
+  // Combine and paginate bets
+  $: combinedBets = history ? [...history.active_bets, ...(history.resolved_bets || [])] : [];
+  $: totalPages = Math.ceil(combinedBets.length / itemsPerPage);
+  $: paginatedBets = combinedBets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  function nextPage() {
+    if (currentPage < totalPages) {
+      currentPage++;
+    }
+  }
+
+  function prevPage() {
+    if (currentPage > 1) {
+      currentPage--;
     }
   }
 
@@ -202,8 +199,9 @@
                 </tr>
               </thead>
               <tbody>
-                {#if history.active_bets.length > 0}
-                  {#each history.active_bets as bet}
+                {#if paginatedBets.length > 0}
+                  {#each paginatedBets as bet}
+                    {@const statusInfo = getOutcomeStatus(bet)}
                     <tr class="border-b border-kong-bg-dark hover:bg-kong-bg-dark/10 transition-colors">
                       <td class="p-4">
                         <button
@@ -221,62 +219,62 @@
                         </span>
                       </td>
                       <td class="p-4">
-                        <span class="text-sm font-medium text-yellow-400">
-                          Pending
-                        </span>
-                      </td>
-                      <td class="p-4 text-right font-medium">
-                        {formatBalance(bet.bet_amount, 8, 2)} KONG
-                      </td>
-                      <td class="p-4 text-right font-medium text-kong-accent-green">
-                        <span class="text-sm text-kong-text-secondary block">Potential Win</span>
-                        {formatBalance(calculatePotentialWin(bet), 8, 2)} KONG
-                      </td>
-                    </tr>
-                  {/each}
-                {/if}
-
-                {#if history.resolved_bets && history.resolved_bets.length > 0}
-                  {#each history.resolved_bets as bet}
-                    <tr class="border-b border-kong-bg-dark hover:bg-kong-bg-dark/10 transition-colors">
-                      <td class="p-4">
-                        <button
-                          class="text-sm sm:text-base line-clamp-2 font-medium text-kong-text-primary text-left hover:text-kong-text-accent-green transition-colors flex items-center gap-1 max-w-md"
-                          title={bet.market.question}
-                          on:click={() => goto(`/predict/${bet.market.id}`)}
-                        >
-                          <span class="block">{bet.market.question}</span>
-                          <ArrowUpRight class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                        </button>
-                      </td>
-                      <td class="p-4">
-                        <span class="text-sm px-3 py-1 rounded-full bg-kong-bg-dark inline-block">
-                          {bet.outcome_text}
-                        </span>
-                      </td>
-                      <td class="p-4">
-                        <span class="text-sm font-medium {getOutcomeStatus(bet).color}">
-                          {getOutcomeStatus(bet).text}
+                        <span class="text-sm font-medium {statusInfo.color}">
+                          {statusInfo.text}
                         </span>
                       </td>
                       <td class="p-4 text-right font-medium">
                         {formatBalance(bet.bet_amount, 8, 2)} KONG
                       </td>
                       <td class="p-4 text-right font-medium">
-                        <span class="text-sm text-kong-text-secondary block">Winnings</span>
-                        {#if bet.winnings && bet.winnings.length > 0}
-                          <span class="text-kong-accent-green">
-                            {formatBalance(bet.winnings[0], 8, 2)} KONG
-                          </span>
+                        {#if statusInfo.text === 'Pending'}
+                            <span class="text-sm text-kong-text-secondary block">Potential Win</span>
+                            <span class="text-kong-accent-green">{formatBalance(calculatePotentialWin(bet), 8, 2)} KONG</span>
+                        {:else if statusInfo.text === 'Won'}
+                            <span class="text-sm text-kong-text-secondary block">Winnings</span>
+                            {#if bet.winnings && bet.winnings.length > 0}
+                                <span class="text-kong-accent-green">
+                                    +{formatBalance(bet.winnings[0], 8, 2)} KONG
+                                </span>
+                            {:else}
+                                <span class="text-kong-text-secondary">-</span>
+                            {/if}
                         {:else}
-                          <span class="text-kong-text-secondary">-</span>
+                            <span class="text-sm text-kong-text-secondary block">Result</span>
+                            <span class="text-kong-accent-red">-{formatBalance(bet.bet_amount, 8, 2)} KONG</span>
                         {/if}
                       </td>
                     </tr>
                   {/each}
+                {:else}
+                  <tr>
+                    <td colspan="5" class="p-4 text-center text-kong-text-secondary">No predictions found for this page.</td>
+                  </tr>
                 {/if}
               </tbody>
             </table>
+            <!-- Pagination Controls -->
+            {#if totalPages > 1}
+            <div class="flex justify-between items-center p-4 border-t border-kong-bg-dark">
+              <button
+                on:click={prevPage}
+                disabled={currentPage === 1}
+                class="px-4 py-2 text-sm font-medium rounded-md transition-colors {currentPage === 1 ? 'bg-kong-bg-light text-kong-text-disabled cursor-not-allowed' : 'bg-kong-secondary hover:bg-kong-secondary-hover text-kong-text-primary'}"
+              >
+                Previous
+              </button>
+              <span class="text-sm text-kong-text-secondary">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                on:click={nextPage}
+                disabled={currentPage === totalPages}
+                class="px-4 py-2 text-sm font-medium rounded-md transition-colors {currentPage === totalPages ? 'bg-kong-bg-light text-kong-text-disabled cursor-not-allowed' : 'bg-kong-secondary hover:bg-kong-secondary-hover text-kong-text-primary'}"
+              >
+                Next
+              </button>
+            </div>
+            {/if}
           </Panel>
         </div>
       {/if}

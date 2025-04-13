@@ -82,10 +82,9 @@
 </script>
 
 <Modal
-  bind:isOpen={showModal}
+  isOpen={showModal}
   onClose={() => {
     showModal = false;
-    dispatch("liquidityRemoved");
   }}
   variant="solid"
   width="min(420px, 95vw)"
@@ -177,6 +176,11 @@
       liquidityStore.resetAmounts();
       showConfirmModal = false;
       resetState();
+    }}
+    on:liquidityAdded={() => {
+      showConfirmModal = false;
+      showModal = false;
+      dispatch("liquidityAdded");
     }}
     modalKey={`confirm-liquidity-${pool.address_0}-${pool.address_1}`}
     target="#modals"

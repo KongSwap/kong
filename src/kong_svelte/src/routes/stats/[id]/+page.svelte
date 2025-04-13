@@ -207,6 +207,9 @@
     marketCapRank = rank !== -1 ? rank + 1 : null;
   });
 
+  // Calculate total token TVL
+  let totalTokenTvl = $derived(relevantPools.reduce((sum, pool) => sum + Number(pool.tvl), 0));
+
   // Handle click outside dropdown
   const handleClickOutside = (event: MouseEvent | TouchEvent) => {
     if (!showDropdown) return;
@@ -509,6 +512,8 @@
               <TokenStatistics
                 {token}
                 marketCapRank={token?.metrics?.market_cap_rank ?? null}
+                {selectedPool}
+                {totalTokenTvl}
               />
 
               <!-- Chart Panel -->
@@ -673,6 +678,8 @@
                 <TokenStatistics
                   {token}
                   marketCapRank={token?.metrics?.market_cap_rank ?? null}
+                  {selectedPool}
+                  {totalTokenTvl}
                 />
               </div>
             </div>
@@ -725,6 +732,8 @@
               <TokenStatistics
                 {token}
                 marketCapRank={token?.metrics?.market_cap_rank ?? null}
+                {selectedPool}
+                {totalTokenTvl}
               />
             </div>
           </div>
