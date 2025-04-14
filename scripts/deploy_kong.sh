@@ -25,6 +25,19 @@ for cmd in rustc cargo npm dfx jq sha256sum; do
     fi
 done
 
+# Generate secrets
+bash "${PROJECT_ROOT}/scripts/generate_secrets.sh"
+
+# Source the generated secrets file if it exists
+if [ -f "${PROJECT_ROOT}/.secrets" ]; then
+  echo "Sourcing secrets from ${PROJECT_ROOT}/.secrets"
+  set -a # Automatically export all variables defined after this
+  source "${PROJECT_ROOT}/.secrets"
+  set +a # Stop automatically exporting variables
+else
+  echo "Warning: ${PROJECT_ROOT}/.secrets file not found after generation."
+fi
+
 # check wasm32-unknown-unknown target installed
 if ! rustup target list | grep -q "wasm32-unknown-unknown"; then
     echo "wasm32-unknown-unknown target not installed"
