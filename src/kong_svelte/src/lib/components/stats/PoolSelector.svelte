@@ -216,7 +216,7 @@
               </div>
               <div class="flex items-center gap-4">
                 <div class="text-kong-text-primary/50 text-sm">
-                  TVL: {formatUsdValue(Number(pool.tvl) / 1e6)}
+                  TVL: {formatUsdValue(Number(pool.tvl))}
                 </div>
                 <div class="text-kong-text-primary/50 text-sm">
                   Pool #{pool.pool_id}
