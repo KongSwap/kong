@@ -35,8 +35,8 @@
   const handleOptionClick = async (option: typeof options[number]) => {
     if (!option.comingSoon) {
       onHideDropdown();
-      await goto(option.path);
       onTabChange(label.toLowerCase());
+      await goto(option.path);
     }
   };
 </script>
