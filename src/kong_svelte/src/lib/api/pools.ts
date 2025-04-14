@@ -324,17 +324,27 @@ export async function addLiquidity(params: {
 
 /**
  * Poll for request status
+ * @param requestId The ID of the request to poll.
+ * @param successMessage The message to display on successful completion.
+ * @param failureMessagePrefix A prefix for failure messages (e.g., "Failed to add liquidity").
+ * @param token0Symbol Optional symbol for token 0 for more specific status messages.
+ * @param token1Symbol Optional symbol for token 1 for more specific status messages.
  */
-export async function pollRequestStatus(requestId: bigint): Promise<any> {
+export async function pollRequestStatus(
+  requestId: bigint,
+  successMessage: string,
+  failureMessagePrefix: string,
+  token0Symbol?: string,
+  token1Symbol?: string,
+): Promise<any> {
   let attempts = 0;
   const MAX_ATTEMPTS = 20;
   let lastStatus = '';
-  
-  const toastId = toastStore.info(
-    "Processing liquidity operation...",
-  );
+  let toastId: string | number | undefined;
 
   try {
+    toastId = toastStore.info("Processing transaction..."); // Generic initial message
+
     while (attempts < MAX_ATTEMPTS) {
       const actor = await auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
@@ -344,52 +354,110 @@ export async function pollRequestStatus(requestId: bigint): Promise<any> {
       const result = await actor.requests([requestId]);
 
       if (!result.Ok || result.Ok.length === 0) {
-        toastStore.dismiss(toastId);
+        if (toastId !== undefined) toastStore.dismiss(String(toastId));
         throw new Error("Failed to get request status");
       }
 
       const status = result.Ok[0];
-      
-      // Show status updates in toast
+
       if (status.statuses && status.statuses.length > 0) {
         const currentStatus = status.statuses[status.statuses.length - 1];
         if (currentStatus !== lastStatus) {
           lastStatus = currentStatus;
-          if(currentStatus.includes("Success")) {
-            toastStore.success("Successfully added liquidity");
+          let displayStatus = currentStatus;
+
+          // --- Customize status message based on context and symbols ---
+          // Remove Liquidity Specific
+          if (currentStatus === "Receiving token 0" && token0Symbol) {
+            displayStatus = `Receiving ${token0Symbol}`;
+          } else if (currentStatus === "Receiving token 1" && token1Symbol) {
+            displayStatus = `Receiving ${token1Symbol}`;
+          } else if (currentStatus === "Token 0 received" && token0Symbol) {
+            displayStatus = `${token0Symbol} received`;
+          } else if (currentStatus === "Token 1 received" && token1Symbol) {
+            displayStatus = `${token1Symbol} received`;
+          }
+          // Add Liquidity Specific (Using confirmed statuses)
+          else if (currentStatus === "Sending token 0" && token0Symbol) {
+            displayStatus = `Sending ${token0Symbol}`;
+          } else if (currentStatus === "Sending token 1" && token1Symbol) {
+            displayStatus = `Sending ${token1Symbol}`;
+          } else if (currentStatus === "Token 0 deposited" && token0Symbol) {
+            displayStatus = `${token0Symbol} deposited`;
+          } else if (currentStatus === "Token 1 deposited" && token1Symbol) {
+            displayStatus = `${token1Symbol} deposited`;
+          }
+          // --- End of customization ---
+
+          if (toastId !== undefined) toastStore.dismiss(String(toastId));
+
+          if (displayStatus.includes("Success")) {
+            toastId = toastStore.success(successMessage);
+          } else if (displayStatus.includes("Failed")) {
+            const failureDetail = status.statuses.find(s => s.includes("Failed")) || "Operation failed";
+            // Extract reason if possible, otherwise use the full status
+            const reason = failureDetail.split(":").pop()?.trim(); 
+            const finalFailureMessage = reason ? `${failureMessagePrefix}: ${reason}` : failureDetail;
+            toastId = toastStore.error(finalFailureMessage);
           } else {
-            toastStore.info(currentStatus);
+            toastId = toastStore.info(displayStatus);
           }
         }
       }
 
-      // Check for success
-      if (status.statuses.includes("Success")) {
-        toastStore.dismiss(toastId);
+      const isSuccess = status.statuses.includes("Success");
+      const isFailed = status.statuses.some(s => s.includes("Failed"));
+
+      if (isSuccess) {
+        if (!lastStatus.includes("Success")) {
+           if (toastId !== undefined) toastStore.dismiss(String(toastId));
+           toastStore.success(successMessage);
+        }
         return status;
       }
 
-      // Check for failure
-      if (status.statuses.find(s => s.includes("Failed"))) {
-        const failureMessage = status.statuses.find(s => s.includes("Failed"));
-        toastStore.dismiss(toastId);
-        toastStore.error(failureMessage || "Operation failed");
+      if (isFailed) {
+         if (!lastStatus.includes("Failed")) {
+            const failureDetail = status.statuses.find(s => s.includes("Failed")) || "Operation failed";
+            const reason = failureDetail.split(":").pop()?.trim();
+            const finalFailureMessage = reason ? `${failureMessagePrefix}: ${reason}` : failureDetail;
+            if (toastId !== undefined) toastStore.dismiss(String(toastId));
+            toastStore.error(finalFailureMessage);
+         }
         return status;
       }
 
       attempts++;
-      await new Promise(resolve => setTimeout(resolve, 500)); // .5 second delay between polls
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // If we exit the loop without success/failure
-    toastStore.dismiss(toastId);
-    toastStore.error("Operation timed out");
+    // Timeout case
+    if (toastId !== undefined) toastStore.dismiss(String(toastId));
+    toastStore.error(`${failureMessagePrefix}: Operation timed out`);
     throw new Error("Polling timed out");
   } catch (error) {
-    toastStore.dismiss(toastId);
-    toastStore.error(error.message || "Error polling request status");
+     if (toastId !== undefined) {
+        const finalStates = ["Success", "Failed", "timed out"];
+        const isFinalToast = typeof lastStatus === 'string' && finalStates.some(state => lastStatus.includes(state));
+        const isFinalError = finalStates.some(state => error.message.includes(state));
+        if (!isFinalToast && !isFinalError) {
+             toastStore.dismiss(String(toastId));
+        }
+    }
+    
+    // Construct a more specific error message
+    const finalErrorMessage = `${failureMessagePrefix}: ${error.message || "Error polling request status"}`;
+    // Avoid double-toasting known failures
+    if (!error.message.includes("Polling timed out") && !error.message.includes("Operation failed")) {
+        toastStore.error(finalErrorMessage);
+    }
     console.error("Error polling request status:", error);
-    throw error;
+    // Re-throw with the specific prefix if not already present
+    if (!error.message.startsWith(failureMessagePrefix)) {
+        throw new Error(finalErrorMessage);
+    } else {
+        throw error; // Re-throw original error if prefix is already there
+    }
   }
 }
 

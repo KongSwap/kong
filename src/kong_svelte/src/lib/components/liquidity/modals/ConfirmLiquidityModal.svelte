@@ -115,7 +115,13 @@
         const addLiquidityResult = await addLiquidity(params);
 
         if (addLiquidityResult) {
-          await pollRequestStatus(addLiquidityResult);
+          await pollRequestStatus(
+            addLiquidityResult, 
+            "Successfully added liquidity",
+            "Failed to add liquidity",
+            token0?.symbol,
+            token1?.symbol
+          );
           
           // Reload balances and pool list after successful liquidity addition
           await Promise.all([
