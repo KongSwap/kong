@@ -40,27 +40,16 @@
   // Computed directly where needed using themeStore rune
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
 
-  // Create a writable store for the logo source
-  const logoSrcStore = writable("/titles/logo-white-wide.png");
+  // Define logo paths
+  const defaultLogoPath = "/titles/logo-white-wide.png";
+  const invertedLogoPath = "/titles/logo-black-wide.png"; // Adjust if necessary
 
-  // Update the logo when theme changes
-  function updateLogoSrc() {
-    if (browser) {
-      // Use setTimeout to ensure CSS variables are updated after theme change
-      setTimeout(() => {
-        const cssLogoPath = getComputedStyle(document.documentElement)
-          .getPropertyValue("--logo-path")
-          .trim();
-        const finalLogoPath = cssLogoPath || "/titles/logo-white-wide.png";
-        logoSrcStore.set(finalLogoPath);
-      }, 50); // Small delay
-    }
-  }
-
-  // Initialize logo on first load
-  if (browser) {
-    updateLogoSrc();
-  }
+  // Derive logoSrc based on theme's invert property
+  const logoSrc = $derived(
+    browser && getThemeById($themeStore)?.colors?.logoInvert === 1
+      ? invertedLogoPath
+      : defaultLogoPath
+  );
 
   // Define a type for valid tab IDs
   type NavTabId = 'swap' | 'predict' | 'earn' | 'stats';
@@ -115,9 +104,6 @@
   // Replace onMount with $effect for listeners and theme updates
   $effect(() => {
     if (browser) {
-      // Update logo whenever the theme changes
-      const unsub = themeStore.subscribe(updateLogoSrc);
-
       // Initial mobile check
       isMobile = window.innerWidth < 768;
 
@@ -153,7 +139,6 @@
 
       // Cleanup function
       return () => {
-        unsub(); // Unsubscribe from theme store
         window.removeEventListener("resize", handleResize);
         document.removeEventListener('touchstart', handleTouchStart);
         document.removeEventListener('touchend', handleTouchEnd);
@@ -397,16 +382,23 @@
     // Use page rune directly
     const path = page.url.pathname;
     // Use a mapping for clarity and potential extension
+    // Ensure all paths from desktopNavItems and mobileNavGroups are covered
     const pathMap: { [key: string]: NavTabId } = {
       "/swap": "swap",
-      "/earn": "earn",
-      "/pools": "earn",
-      "/stats": "stats",
+      "/swap/pro": "swap",
       "/predict": "predict",
+      "/earn": "earn",       // Base path might not be used, but good to have
+      "/pools": "earn",
+      "/airdrop-claims": "earn",
+      "/stats": "stats",
+      "/stats/bubbles": "stats",
+      "/stats/leaderboard": "stats",
     };
+    let found = false;
     for (const prefix in pathMap) {
       if (path.startsWith(prefix)) {
         activeTab = pathMap[prefix];
+        found = true;
         break; // Exit loop once found
       }
     }
@@ -469,7 +461,7 @@
           on:click={() => goto("/")}
         >
           <img
-            src={$logoSrcStore}
+            src={logoSrc}
             alt="Kong Logo"
             class="h-[30px] transition-all duration-200 navbar-logo"
             class:light-logo={browser &&
@@ -505,7 +497,6 @@
             {:else if navItem.type === "link"}
               <button
                 class="relative h-16 px-5 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200 hover:text-kong-text-primary"
-                class:text-kong-primary={activeTab === navItem.tabId}
                 class:nav-link={activeTab === navItem.tabId}
                 class:active={activeTab === navItem.tabId}
                 on:click={() => {
@@ -530,7 +521,7 @@
           on:click={() => goto("/")}
         >
           <img
-            src={$logoSrcStore}
+            src={logoSrc}
             alt="Kong Logo"
             class="h-8 transition-all duration-200 navbar-logo mobile-navbar-logo"
             class:light-logo={browser &&
@@ -602,7 +593,7 @@
     >
       <div class="flex items-center justify-between p-5 border-b border-kong-border max-[375px]:p-4">
         <img
-          src={$logoSrcStore}
+          src={logoSrc}
           alt="Kong Logo"
           class="navbar-logo h-9 !transition-all !duration-200"
           class:light-logo={browser &&
@@ -675,6 +666,7 @@
 
   /* Keep only for text-shadow on active state */
   .nav-link.active {
+    @apply text-kong-primary;
     text-shadow: 0 0px 30px theme(colors.kong.primary);
   }
 
