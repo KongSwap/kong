@@ -17,7 +17,6 @@
   // Function to load tokens
   async function loadTokens() {
     try {
-      console.log("Fetching tokens...");
       const response = await fetchTokens({
         limit: 200,
         page: 1,
@@ -145,15 +144,15 @@
         try {
           // Check appropriate lock based on request type
           if (isRefresh && isRefreshActive) {
-            console.log("Refresh already in progress, skipping");
+            console.warn("Refresh already in progress, skipping");
             return;
           }
           if (!isRefresh && !append && isInitialLoadActive) {
-            console.log("Initial load already in progress, skipping");
+            console.warn("Initial load already in progress, skipping");
             return;
           }
           if (append && isPaginationActive) {
-            console.log("Pagination already in progress, skipping");
+            console.warn("Pagination already in progress, skipping");
             return;
           }
 
@@ -174,12 +173,10 @@
 
           try {
             if (!token?.token_id) {
-              console.log("No token ID available, skipping transaction load");
               return;
             }
 
             if (!hasMore && append) {
-              console.log("No more transactions to load");
               return;
             }
 
@@ -230,11 +227,6 @@
                 return tx.timestamp !== existing.timestamp;
               });
 
-              console.log(
-                "New unique transactions:",
-                uniqueNewTransactions.length,
-              );
-
               if (uniqueNewTransactions.length > 0) {
                 // Prepend new transactions while maintaining sort order
                 transactions = [...uniqueNewTransactions, ...transactions];
@@ -243,7 +235,6 @@
                 uniqueNewTransactions.forEach((tx, index) => {
                   if (tx.tx_id) {
                     const key = `${tx.tx_id}-${tx.timestamp}-${index}`;
-                    console.log("Adding highlight for tx:", key);
                     newTransactionIds.add(key);
                     // Force reactivity by reassigning the Set
                     newTransactionIds = new Set(newTransactionIds);
