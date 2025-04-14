@@ -3,6 +3,7 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { onMount } from 'svelte';
   import { livePools, isLoadingPools, loadPools } from "$lib/stores/poolStore";
+  import { panelRoundness } from "$lib/stores/derivedThemeStore";
 
   const { selectedPool, token, formattedTokens, onPoolSelect, isLoading, relevantPools: propRelevantPools } = $props<{
     selectedPool: BE.Pool | undefined;
@@ -115,7 +116,7 @@
     <button
       type="button"
       on:click={handleButtonClick}
-      class="w-full flex items-center justify-between p-3 bg-kong-bg-dark/60 hover:bg-kong-bg-dark rounded-lg transition-colors duration-200"
+      class="w-full flex items-center justify-between p-3 bg-kong-bg-dark hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 border border-kong-border"
     >
       {#if $isLoadingPools}
         <div class="flex items-center gap-2">
@@ -178,7 +179,7 @@
     </button>
     
     {#if isPoolSelectorOpen}
-      <div 
+      <div
         class="absolute top-full left-0 right-0 mt-1 z-[999] bg-kong-bg-dark rounded-lg shadow-xl max-h-[400px] overflow-y-auto border border-white/10"
         on:click|stopPropagation
       >
@@ -206,7 +207,7 @@
                   imageWrapperClass=""
                   tooltip={{ text: "", direction: "top" }}
                 />
-                <span class="text-kong-text-primary">
+                <span class="text-kong-text-primary text-nowrap">
                   {token.symbol} / {matchingToken?.symbol || 
                     (pool.address_0 === token.canister_id ? pool.symbol_1 : pool.symbol_0) || 
                     (((pool as any).token1?.symbol || (pool as any).token0?.symbol) || 

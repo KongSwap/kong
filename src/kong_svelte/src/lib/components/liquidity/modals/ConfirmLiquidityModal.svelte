@@ -6,12 +6,14 @@
     formatToNonZeroDecimal,
     parseTokenAmount,
   } from "$lib/utils/numberFormatUtils";
-  import { onDestroy } from "svelte";
+  import { onDestroy, createEventDispatcher } from "svelte";
   import { createPool, addLiquidity, pollRequestStatus } from "$lib/api/pools";
   import { toastStore } from "$lib/stores/toastStore";
   import { loadBalance } from "$lib/stores/tokenStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/stores/auth";
+
+  const dispatch = createEventDispatcher();
 
   export let isCreatingPool: boolean = false;
   export let show: boolean;
@@ -87,6 +89,9 @@
             currentUserPoolsStore.initialize(),
           ]);
           
+          // Dispatch liquidityAdded event
+          dispatch("liquidityAdded");
+          
           onClose();
         }
       } else {
@@ -110,7 +115,13 @@
         const addLiquidityResult = await addLiquidity(params);
 
         if (addLiquidityResult) {
-          await pollRequestStatus(addLiquidityResult);
+          await pollRequestStatus(
+            addLiquidityResult, 
+            "Successfully added liquidity",
+            "Failed to add liquidity",
+            token0?.symbol,
+            token1?.symbol
+          );
           
           // Reload balances and pool list after successful liquidity addition
           await Promise.all([
@@ -118,6 +129,9 @@
             loadBalance(token1.canister_id, true),
             currentUserPoolsStore.initialize(),
           ]);
+          
+          // Dispatch liquidityAdded event
+          dispatch("liquidityAdded");
           
           onClose();
         }

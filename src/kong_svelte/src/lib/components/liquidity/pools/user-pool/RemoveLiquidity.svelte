@@ -99,30 +99,19 @@
       while (!isComplete && attempts < maxAttempts) {
         const requestStatus = await pollRequestStatus(
           BigInt(requestId),
+          "Successfully removed liquidity",
+          "Failed to remove liquidity",
+          token0?.symbol,
+          token1?.symbol,
         );
 
-        // Check for the complete success sequence
-        const expectedStatuses = [
-          "Started",
-          "Updating user LP token amount",
-          "User LP token amount updated",
-          "Updating liquidity pool",
-          "Liquidity pool updated",
-          "Receiving token 0",
-          "Token 0 received",
-          "Receiving token 1",
-          "Token 1 received",
-          "Success",
-        ];
+        // Check for the complete success sequence or a final failed state
+        const isSuccess = requestStatus.statuses.includes("Success");
+        const isFailed = requestStatus.statuses.some(s => s.includes("Failed"));
 
-        // Check if all expected statuses are present in order
-        const hasAllStatuses = expectedStatuses.every(
-          (status, index) => requestStatus.statuses[index] === status,
-        );
-
-        if (hasAllStatuses) {
+        if (isSuccess) {
           isComplete = true;
-          toastStore.success("Successfully removed liquidity from the pool");
+          // Toast is handled within pollRequestStatus now
           await Promise.all([
             loadBalance(token0.canister_id, true),
             loadBalance(token1.canister_id, true),
@@ -130,34 +119,43 @@
             new Promise(resolve => setTimeout(resolve, 100)),
             currentUserPoolsStore.initialize(),
           ]);
-        } else if (requestStatus.reply?.Failed) {
-          throw new Error(requestStatus.reply.Failed || "Transaction failed");
+        } else if (isFailed) {
+          // Toast is handled within pollRequestStatus
+          const failureMessage = requestStatus.statuses.find(s => s.includes("Failed"));
+          throw new Error(failureMessage || "Transaction failed");
         } else {
-          await new Promise((resolve) => setTimeout(resolve, 400));
+          // No need for explicit delay here as pollRequestStatus handles polling interval
           attempts++;
         }
       }
 
-      if (!isComplete) {
-        throw new Error("Operation timed out");
+      if (!isComplete && attempts >= maxAttempts) {
+        // Timeout condition is handled by pollRequestStatus throwing an error
+        // This block might not be strictly necessary if pollRequestStatus always throws on timeout
+        throw new Error("Operation timed out after polling");
       }
 
-      // Close modal and reset state
-      dispatch("close");
-      isRemoving = false;
-      error = null;
-      removeLiquidityAmount = "";
-      estimatedAmounts = { amount0: "0", amount1: "0" };
-      dispatch("liquidityRemoved");
+      // Close modal and reset state only on success
+      if (isComplete) {
+           dispatch("close");
+           isRemoving = false;
+           error = null;
+           removeLiquidityAmount = "";
+           estimatedAmounts = { amount0: "0", amount1: "0" };
+           dispatch("liquidityRemoved");
+      }
     } catch (err) {
-      // Ensure we still refresh balances even on error
+      // Error handling remains largely the same, but rely on pollRequestStatus for toast errors
       await Promise.all([
-        currentUserPoolsStore.initialize(),
-        loadBalance(token0.canister_id, true),
-        loadBalance(token1.canister_id, true),
+        currentUserPoolsStore.initialize(), // Refresh pool data
+        loadBalance(token0?.canister_id, true), // Refresh balances
+        loadBalance(token1?.canister_id, true),
       ]);
       console.error("Error removing liquidity:", err);
-      error = err.message;
+      // Update local error state if not already handled by a toast
+      if (!err.message.includes("timed out") && !err.message.includes("Operation failed")) {
+          error = err.message;
+      }
       isRemoving = false;
     }
   }

@@ -44,9 +44,8 @@ export function calculatePricePrecision(price: number, quoteDecimals: number, ba
   const adjustedPrice = price * Math.pow(10, baseDecimals - quoteDecimals);
   
   // Determine precision and minMove based on price
-  const precision = adjustedPrice >= 1000 ? 5 : 8;
-  const minMove = adjustedPrice >= 1000 ? 0.00001 : 
-                  adjustedPrice >= 1 ? 0.0000001 : 0.00000001;
+  const precision = adjustedPrice >= 1000 ? 6 : 8;
+  const minMove = adjustedPrice >= 1000 ? 0.000001 : 0.00000001;
   
   return { precision, minMove };
 }

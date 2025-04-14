@@ -290,12 +290,9 @@
         state.hasNoData = false;
         state.isInitializingChart = false;
 
-        // Update price scale after chart is ready
-        setTimeout(() => {
-          pool && updateTradingViewPriceScale(widget, pool);
-          // Also update theme CSS properties once chart is ready
-          updateTradingViewTheme();
-        }, 500);
+        // Update price scale and theme immediately after chart is ready
+        pool && updateTradingViewPriceScale(widget, pool);
+        updateTradingViewTheme();
       });
 
       widget.onError = () => {
@@ -325,7 +322,6 @@
         } else {
           state.pools = ($livePools || []) as BE.Pool[];
         }
-        console.log("[Chart] Pools loaded:", state.pools.length);
       }
 
       // Get best pool

@@ -82,10 +82,9 @@
 </script>
 
 <Modal
-  bind:isOpen={showModal}
+  isOpen={showModal}
   onClose={() => {
     showModal = false;
-    dispatch("liquidityRemoved");
   }}
   variant="solid"
   width="min(420px, 95vw)"
@@ -93,48 +92,48 @@
   className="!flex !flex-col !max-h-[90vh]"
   isPadded={false}
 >
-  <div slot="title" class="modal-header">
+  <div slot="title" class="flex flex-col gap-2">
     <div class="flex items-center gap-3">
       <TokenImages tokens={[token0, token1]} size={24} overlap={true} />
       <h2 class="text-lg font-medium">{pool.symbol_0}/{pool.symbol_1}</h2>
     </div>
   </div>
 
-  <div class="tab-navigation">
+  <div class="flex border-b border-kong-border/20 -mt-2">
     <button
-      class="tab-button {activeTab === 'overview' ? 'active' : ''}"
+      class="px-3 py-2 text-sm font-medium relative transition-all duration-200 hover:text-kong-text-primary {activeTab === 'overview' ? 'text-kong-text-primary border-b-2 border-kong-primary' : 'text-kong-text-primary/60'}"
       on:click={() => (activeTab = "overview")}
     >
       Overview
     </button>
     <button
-      class="tab-button {activeTab === 'add' ? 'active' : ''}"
+      class="px-3 py-2 text-sm font-medium relative transition-all duration-200 hover:text-kong-text-primary {activeTab === 'add' ? 'text-kong-text-primary border-b-2 border-kong-primary' : 'text-kong-text-primary/60'}"
       on:click={() => (activeTab = "add")}
     >
       Add
     </button>
     <button
-      class="tab-button {activeTab === 'remove' ? 'active' : ''}"
+      class="px-3 py-2 text-sm font-medium relative transition-all duration-200 hover:text-kong-text-primary {activeTab === 'remove' ? 'text-kong-text-primary border-b-2 border-kong-primary' : 'text-kong-text-primary/60'}"
       on:click={() => (activeTab = "remove")}
     >
       Remove
     </button>
     <button
-      class="tab-button {activeTab === 'earnings' ? 'active' : ''}"
+      class="px-3 py-2 text-sm font-medium relative transition-all duration-200 hover:text-kong-text-primary {activeTab === 'earnings' ? 'text-kong-text-primary border-b-2 border-kong-primary' : 'text-kong-text-primary/60'}"
       on:click={() => (activeTab = "earnings")}
     >
       Earnings
     </button>
     <button
-      class="tab-button {activeTab === 'send' ? 'active' : ''}"
+      class="px-3 py-2 text-sm font-medium relative transition-all duration-200 hover:text-kong-text-primary {activeTab === 'send' ? 'text-kong-text-primary border-b-2 border-kong-primary' : 'text-kong-text-primary/60'}"
       on:click={() => (activeTab = "send")}
     >
       Send
     </button>
   </div>
 
-  <div class="pool-details">
-    <div class="pool-content">
+  <div class="flex flex-col flex-1 overflow-hidden">
+    <div class="p-4 pb-6 sm:pb-4 overflow-y-auto">
       {#if activeTab === "overview"}
         <PoolOverview {pool} {token0} {token1} />
       {:else if activeTab === "earnings"}
@@ -178,45 +177,12 @@
       showConfirmModal = false;
       resetState();
     }}
+    on:liquidityAdded={() => {
+      showConfirmModal = false;
+      showModal = false;
+      dispatch("liquidityAdded");
+    }}
     modalKey={`confirm-liquidity-${pool.address_0}-${pool.address_1}`}
     target="#modals"
   />
-{/if}
-
-<style lang="postcss">
-  .modal-header {
-    @apply flex flex-col gap-2;
-  }
-
-  .tab-navigation {
-    @apply flex border-b border-kong-border/20 -mt-2;
-  }
-
-  .tab-button {
-    @apply px-3 py-2 text-sm font-medium text-kong-text-primary/60 relative
-           transition-all duration-200 hover:text-kong-text-primary;
-  }
-
-  .tab-button.active {
-    @apply text-kong-text-primary;
-  }
-
-  .tab-button.active::after {
-    content: "";
-    @apply absolute bottom-0 left-0 w-full h-0.5 bg-kong-primary rounded-t-full;
-  }
-
-  .pool-details {
-    @apply flex flex-col flex-1 overflow-hidden;
-  }
-
-  .pool-content {
-    @apply p-4 overflow-y-auto;
-  }
-
-  @media (max-width: 640px) {
-    .pool-content {
-      @apply pb-6;
-    }
-  }
-</style> 
+{/if} 

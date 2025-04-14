@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { panelRoundness } from '$lib/stores/derivedThemeStore';
 
   let {
     label = undefined,
@@ -132,7 +133,7 @@
 <button
   bind:this={element}
   type={type}
-  class="rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed 
+  class="{$panelRoundness} font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed 
     {baseThemeClasses[theme]} {variantClasses[variant]} {sizeClasses[size]} 
     {fullWidth ? 'w-full' : 'w-auto'} {uppercase ? 'uppercase' : ''} {className}"
   disabled={isDisabled}

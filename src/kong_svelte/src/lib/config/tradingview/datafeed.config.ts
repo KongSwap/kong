@@ -61,14 +61,14 @@ export class KongDatafeed {
   }
 
   resolveSymbol(symbolName: string, onSymbolResolvedCallback: (symbolInfo: any) => void, onError: (error: string) => void): void {
-    // Calculate precision and price scale based on current price and token decimals
+    // Calculate price scale based on current price and token decimals, consistent with statsUtils
     const getPriceScale = (price: number) => {
-      // Adjust price based on token decimals to get the actual price
       const adjustedPrice = price * Math.pow(10, this.toTokenDecimals - this.fromTokenDecimals);
       
-      if (adjustedPrice >= 1000) return 10000;        // 4 decimals
-      if (adjustedPrice >= 1) return 1000000;         // 6 decimals
-      return 100000000;                               // 8 decimals
+      // Consistent with minMove from statsUtils:
+      // If adjustedPrice >= 1000, minMove = 0.000001 => pricescale = 1 / 0.000001 = 1,000,000
+      // Otherwise, minMove = 0.00000001 => pricescale = 1 / 0.00000001 = 100,000,000
+      return adjustedPrice >= 1000 ? 1000000 : 100000000; 
     };
 
     // Symbol information object
@@ -95,9 +95,7 @@ export class KongDatafeed {
       minmove2: 0,
       fractional: false
     };
-    
-    console.log(`Resolving symbol with price ${this.currentPrice}, adjusted with decimals (${this.fromTokenDecimals}/${this.toTokenDecimals}), using pricescale: ${getPriceScale(this.currentPrice)}`);
-    
+        
     // Use setTimeout to make the callback asynchronous as required by TradingView
     setTimeout(() => {
       onSymbolResolvedCallback(symbolInfo);
@@ -176,7 +174,7 @@ export class KongDatafeed {
     this.onRealtimeCallback = onRealtimeCallback;  // Store callback for price updates
     
     if (!this.fromTokenId || !this.toTokenId) {
-        console.log('Missing token IDs:', { fromTokenId: this.fromTokenId, toTokenId: this.toTokenId });
+        console.warn('Missing token IDs:', { fromTokenId: this.fromTokenId, toTokenId: this.toTokenId });
         return;
     }
     
@@ -240,7 +238,6 @@ export class KongDatafeed {
         }
     };
 
-    console.log('Setting up polling interval');
     const interval = setInterval(poll, 10000);
     (this as any)[subscriberUID] = interval;
   }
@@ -266,7 +263,7 @@ export class KongDatafeed {
     this.currentPrice = newPrice;
     
     if (needsPriceScaleUpdate) {
-      console.log(`Price crossed threshold (${this.currentPrice}), chart may need refresh for proper decimal display`);
+      console.warn(`Price crossed threshold (${this.currentPrice}), chart may need refresh for proper decimal display`);
       // The chart will need to be reinitialized to show the correct decimal places
       // This is handled by the component when it detects significant price changes
     }
@@ -284,7 +281,7 @@ export class KongDatafeed {
       this.lastBar = updatedBar;
       this.onRealtimeCallback(updatedBar);
     } else {
-      console.log('No lastBar or callback available', {
+      console.warn('No lastBar or callback available', {
         hasLastBar: !!this.lastBar,
         hasCallback: !!this.onRealtimeCallback
       });

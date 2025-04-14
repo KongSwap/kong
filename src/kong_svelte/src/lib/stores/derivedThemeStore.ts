@@ -20,6 +20,9 @@ export const processingColorEnd = derived(themeColors, ($colors) => ($colors as 
 export const buttonBorderColor = derived(themeColors, ($colors) => $colors?.borderLight ?? 'rgba(255, 255, 255, 0.12)');
 export const glowEffectColor = derived(themeColors, ($colors) => ($colors as any)?.highlight ?? 'rgba(255, 255, 255, 0.2)');
 
+// Panel and button styling
+export const panelRoundness = derived(themeColors, ($colors) => ($colors as any)?.panelRoundness ?? 'rounded-lg');
+
 // Derived properties for SwapPanel
 export const swapPanelRoundness = derived(themeColors, ($colors) => ($colors as any)?.swapPanelRoundness ?? 'rounded-lg');
 export const swapPanelBorder = derived(themeColors, ($colors) => ($colors as any)?.swapPanelBorder ?? '1px solid rgba(255, 255, 255, 0.1)');

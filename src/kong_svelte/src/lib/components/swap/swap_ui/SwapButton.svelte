@@ -2,6 +2,7 @@
   import { themeStore } from '$lib/stores/themeStore';
   import type { ThemeColors } from '$lib/themes/baseTheme';
   import { getThemeById } from '$lib/themes/themeRegistry';
+  import { panelRoundness } from '$lib/stores/derivedThemeStore';
 
   // Props
   let { 
@@ -126,7 +127,7 @@
   }
   
   function getRoundness(): string {
-    return getThemeColors().swapButtonRoundness || "rounded-lg";
+    return getThemeColors().swapButtonRoundness || $panelRoundness || "rounded-lg";
   }
   
   function getShadow(): string {

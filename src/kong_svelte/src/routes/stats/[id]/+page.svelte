@@ -27,7 +27,8 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { tokenData } from "$lib/stores/tokenData";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
-    import { browser } from "$app/environment";
+  import { browser } from "$app/environment";
+  import { panelRoundness } from "$lib/stores/derivedThemeStore";
 
   // Token and loading states
   let isTokenLoading = $state(true);
@@ -206,6 +207,9 @@
     );
     marketCapRank = rank !== -1 ? rank + 1 : null;
   });
+
+  // Calculate total token TVL
+  let totalTokenTvl = $derived(relevantPools.reduce((sum, pool) => sum + Number(pool.tvl), 0));
 
   // Handle click outside dropdown
   const handleClickOutside = (event: MouseEvent | TouchEvent) => {
@@ -461,7 +465,7 @@
                     bind:element={dropdownButtonRef}
                     variant="outline"
                     size="md"
-                    className="w-full text-nowrap"
+                    className="!border-kong-border w-full text-nowrap bg-kong-bg-dark hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 p-3"
                     on:click={() => (showDropdown = !showDropdown)}
                   >
                     <div class="flex items-center gap-2 justify-between w-full">
@@ -474,7 +478,7 @@
                   {#if showDropdown}
                     <div
                       bind:this={dropdownRef}
-                      class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-light rounded-lg shadow-lg z-50"
+                      class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-dark rounded-lg shadow-xl z-50 border border-white/10"
                     >
                       <button
                         class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-t-lg"
@@ -509,6 +513,8 @@
               <TokenStatistics
                 {token}
                 marketCapRank={token?.metrics?.market_cap_rank ?? null}
+                {selectedPool}
+                {totalTokenTvl}
               />
 
               <!-- Chart Panel -->
@@ -626,7 +632,7 @@
                       bind:element={dropdownButtonRef}
                       variant="outline"
                       size="md"
-                      className="w-full text-nowrap"
+                      className="!border-kong-border w-full text-nowrap bg-kong-bg-dark/60 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 p-3"
                       on:click={() => (showDropdown = !showDropdown)}
                     >
                       <div class="flex items-center gap-2 justify-between w-full">
@@ -639,7 +645,7 @@
                     {#if showDropdown}
                       <div
                         bind:this={dropdownRef}
-                        class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-light rounded-lg shadow-lg z-50"
+                        class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-dark rounded-lg shadow-xl z-50 border border-white/10"
                       >
                         <button
                           class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-t-lg"
@@ -673,6 +679,8 @@
                 <TokenStatistics
                   {token}
                   marketCapRank={token?.metrics?.market_cap_rank ?? null}
+                  {selectedPool}
+                  {totalTokenTvl}
                 />
               </div>
             </div>
@@ -725,6 +733,8 @@
               <TokenStatistics
                 {token}
                 marketCapRank={token?.metrics?.market_cap_rank ?? null}
+                {selectedPool}
+                {totalTokenTvl}
               />
             </div>
           </div>
