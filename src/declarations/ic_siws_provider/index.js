@@ -38,5 +38,3 @@ export const createActor = (canisterId, options = {}) => {
     ...options.actorOptions,
   });
 };
-
-export const ic_siws_provider = canisterId ? createActor(canisterId) : undefined;
