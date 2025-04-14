@@ -106,7 +106,7 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
         "deploy_ksicp_ledger.sh"
         "deploy_ksbtc_ledger.sh"
         "deploy_kseth_ledger.sh"
-        "deploy_kskong_ledger.sh"
+        "deploy_kong_ledger.sh"
     )
 
     for script in "${LEDGER_SCRIPTS[@]}"; do
@@ -120,6 +120,11 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
     [ -f "deploy_kong_faucet.sh" ] && {
         bash "deploy_kong_faucet.sh" "${NETWORK}"
     } || echo "Warning: deploy_kong_faucet.sh not found"
+
+    # deploy ic_siws_provider canister
+    [ -f "deploy_ic_siws_provider.sh" ] && {
+        bash "deploy_ic_siws_provider.sh" "${NETWORK}"
+    } || echo "Warning: deploy_ic_siws_provider.sh not found"
 
 	# mint test tokens to kong_faucet
     [ -f "faucet_mint.sh" ] && {

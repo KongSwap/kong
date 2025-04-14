@@ -227,6 +227,7 @@ export const idlFactory = ({ IDL }) => {
     'expiration' : Timestamp,
   });
   const IdentityAnchorInfo = IDL.Record({
+    'name' : IDL.Opt(IDL.Text),
     'devices' : IDL.Vec(DeviceWithUsage),
     'openid_credentials' : IDL.Opt(IDL.Vec(OpenIdCredential)),
     'device_registration' : IDL.Opt(DeviceRegistrationInfo),
@@ -323,7 +324,10 @@ export const idlFactory = ({ IDL }) => {
       'space_available' : IDL.Nat64,
     }),
   });
-  const IdRegFinishArg = IDL.Record({ 'authn_method' : AuthnMethodData });
+  const IdRegFinishArg = IDL.Record({
+    'name' : IDL.Opt(IDL.Text),
+    'authn_method' : AuthnMethodData,
+  });
   const IdRegFinishResult = IDL.Record({ 'identity_number' : IDL.Nat64 });
   const IdRegFinishError = IDL.Variant({
     'NoRegistrationFlow' : IDL.Null,
@@ -336,6 +340,10 @@ export const idlFactory = ({ IDL }) => {
     'InvalidCaller' : IDL.Null,
     'AlreadyInProgress' : IDL.Null,
     'RateLimitExceeded' : IDL.Null,
+  });
+  const DeviceKeyWithAnchor = IDL.Record({
+    'pubkey' : DeviceKey,
+    'anchor_number' : UserNumber,
   });
   const JWT = IDL.Text;
   const Salt = IDL.Vec(IDL.Nat8);
@@ -555,6 +563,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'init_salt' : IDL.Func([], [], []),
     'lookup' : IDL.Func([UserNumber], [IDL.Vec(DeviceData)], ['query']),
+    'lookup_device_key' : IDL.Func(
+        [IDL.Vec(IDL.Nat8)],
+        [IDL.Opt(DeviceKeyWithAnchor)],
+        ['query'],
+      ),
     'openid_credential_add' : IDL.Func(
         [IdentityNumber, JWT, Salt],
         [IDL.Variant({ 'Ok' : IDL.Null, 'Err' : OpenIdCredentialAddError })],

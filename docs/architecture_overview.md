@@ -25,7 +25,7 @@ ckusdc_ledger,
 ckusdt_ledger,
 ckbtc_ledger,
 cketh_ledger,
-kong_ledger
+kskong_ledger
 
 icp_ckusdc_ledger,  - template ICRC2 ledger for LP tokens
 ckusdt_ckusdc_ledger,

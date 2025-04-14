@@ -13,7 +13,7 @@ IDENTITY="--identity default"
 
 set -e
 
-echo "Stopping and deleting kong_ledger canister..."
-dfx canister stop kong_ledger
+echo "Stopping and deleting kskong_ledger canister..."
+dfx canister stop kskong_ledger
 
-dfx canister delete kong_ledger
+dfx canister delete kskong_ledger

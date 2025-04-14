@@ -7,7 +7,7 @@ set -e
 dfx identity use minter
 
 # Get canister IDs
-KONG_LEDGER=$(dfx canister id kong_ledger)
+KONG_LEDGER=$(dfx canister id kskong_ledger)
 
 # Amount to mint for each user (100,000 tokens = 10000000000000 e8s)
 MINT_AMOUNT=10000000000000

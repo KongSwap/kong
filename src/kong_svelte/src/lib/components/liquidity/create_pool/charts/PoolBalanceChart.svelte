@@ -350,9 +350,6 @@
       ticks: {
         display: false,
       },
-      border: {
-        display: false,
-      },
       afterFit: function(scale) {
         scale.paddingLeft = 0;
         scale.paddingRight = 0;
@@ -366,9 +363,6 @@
       },
       grid: {
         display: true,
-      },
-      border: {
-        display: false,
       },
       afterFit: function(scale) {
         scale.paddingTop = 0;

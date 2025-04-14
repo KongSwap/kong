@@ -122,6 +122,10 @@ export interface DeviceData {
   'credential_id' : [] | [CredentialId],
 }
 export type DeviceKey = PublicKey;
+export interface DeviceKeyWithAnchor {
+  'pubkey' : DeviceKey,
+  'anchor_number' : UserNumber,
+}
 export type DeviceProtection = { 'unprotected' : null } |
   { 'protected' : null };
 export interface DeviceRegistrationInfo {
@@ -171,7 +175,10 @@ export interface IdAliasCredentials {
   'rp_id_alias_credential' : SignedIdAlias,
   'issuer_id_alias_credential' : SignedIdAlias,
 }
-export interface IdRegFinishArg { 'authn_method' : AuthnMethodData }
+export interface IdRegFinishArg {
+  'name' : [] | [string],
+  'authn_method' : AuthnMethodData,
+}
 export type IdRegFinishError = { 'NoRegistrationFlow' : null } |
   { 'UnexpectedCall' : { 'next_step' : RegistrationFlowNextStep } } |
   { 'InvalidAuthnMethod' : string } |
@@ -183,6 +190,7 @@ export type IdRegStartError = { 'InvalidCaller' : null } |
   { 'AlreadyInProgress' : null } |
   { 'RateLimitExceeded' : null };
 export interface IdentityAnchorInfo {
+  'name' : [] | [string],
   'devices' : Array<DeviceWithUsage>,
   'openid_credentials' : [] | [Array<OpenIdCredential>],
   'device_registration' : [] | [DeviceRegistrationInfo],
@@ -449,6 +457,10 @@ export interface _SERVICE {
   >,
   'init_salt' : ActorMethod<[], undefined>,
   'lookup' : ActorMethod<[UserNumber], Array<DeviceData>>,
+  'lookup_device_key' : ActorMethod<
+    [Uint8Array | number[]],
+    [] | [DeviceKeyWithAnchor]
+  >,
   'openid_credential_add' : ActorMethod<
     [IdentityNumber, JWT, Salt],
     { 'Ok' : null } |
