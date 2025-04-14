@@ -245,9 +245,6 @@
 
     const ctx = balanceChartCanvas.getContext("2d");
 
-    // Format dates for chart labels - dates are in YYYY-MM-DD format
-    const labels = props.balanceHistory.map((entry) => entry.date);
-
     // Get the values directly from the API response
     const token0Data = props.balanceHistory.map(
       (entry) => entry.token_0_balance,
@@ -335,6 +332,9 @@
           return processedTooltipData[index] || "";
         },
       },
+      maintainAspectRatio: false,
+      responsive: true,
+      devicePixelRatio: 2,
     });
 
     // Ensure x-axis dates are not displayed
@@ -348,14 +348,31 @@
         display: false,
       },
       ticks: {
-        display: false, // Explicitly hide x-axis ticks
+        display: false,
+      },
+      border: {
+        display: false,
+      },
+      afterFit: function(scale) {
+        scale.paddingLeft = 0;
+        scale.paddingRight = 0;
       }
     };
 
     chartOptions.scales.y = {
       ...chartOptions.scales.y,
       ticks: {
-        display: false, // Explicitly hide y-axis ticks
+        display: false,
+      },
+      grid: {
+        display: true,
+      },
+      border: {
+        display: false,
+      },
+      afterFit: function(scale) {
+        scale.paddingTop = 0;
+        scale.paddingBottom = 0;
       }
     };
 
@@ -391,7 +408,6 @@
           beginAtZero: false,
           grid: {
             display: true,
-            drawBorder: false,
           },
           ticks: {
             display: false, // Hide y-axis ticks
@@ -410,7 +426,6 @@
           beginAtZero: false,
           grid: {
             display: false,
-            drawBorder: false,
           },
           ticks: {
             display: false, // Hide y1-axis ticks
@@ -490,13 +505,14 @@
             display: true,
             grid: {
               display: false,
-              drawBorder: false,
             },
             ticks: {
               display: false,
+              padding: 0,
             },
-            border: {
-              display: false,
+            afterFit: function(scale) {
+              scale.paddingLeft = 0;
+              scale.paddingRight = 0;
             }
           },
           y: {
@@ -504,24 +520,20 @@
             display: true,
             grid: {
               display: true,
-              drawBorder: false,
             },
             ticks: {
               display: false,
+              padding: 0,
             },
-            border: {
-              display: false,
+            afterFit: function(scale) {
+              scale.paddingTop = 0;
+              scale.paddingBottom = 0;
             }
           }
         },
         // Ensure the chart area includes all data points
         layout: {
-          padding: {
-            top: 10,
-            right: 10,
-            bottom: 10,
-            left: 10
-          }
+          padding: 0
         },
         // Disable clipping of the chart area to allow points to be drawn outside
         plugins: {
@@ -542,8 +554,8 @@
   }
 </script>
 
-<Panel variant="transparent" className="!p-0 !overflow-visible">
-  <div class="flex flex-col">
+<Panel variant="transparent" unpadded={true} className="!overflow-visible">
+  <div class="flex flex-col w-full h-full">
     <h3 class="chart-title flex items-start justify-between py-3 px-5">
       Pool Balance
       <div class="text-kong-text-primary/90 flex items-center gap-2">
@@ -584,9 +596,9 @@
         {/if}
       </div>
     </h3>
-    <div class="chart-container w-full" style="height: 220px;">
+    <div class="chart-container w-full h-full">
       {#if props.balanceHistory && props.balanceHistory.length > 0 && isChartAvailable}
-        <canvas bind:this={balanceChartCanvas}></canvas>
+        <canvas class="w-full h-full !p-0 !m-0" bind:this={balanceChartCanvas}></canvas>
       {:else}
         <div class="coming-soon">
           <BarChart3 class="mb-3 w-8 h-8" />
@@ -613,11 +625,11 @@
   }
 
   .chart-container {
-    @apply relative m-0 overflow-visible transition-all duration-300;
+    @apply relative !p-0 !m-0 overflow-visible transition-all duration-300 w-full h-full;
   }
 
   .chart-container canvas {
-    @apply rounded-lg transition-all duration-300;
+    @apply rounded-b-lg transition-all duration-300 w-full !p-0 !m-0;
   }
 
   .coming-soon {

@@ -433,9 +433,7 @@ export class WalletDataService {
       return {};
     }
 
-    try {
-      console.log(`Attempting to load balances for wallet ${principalId} with ${tokens.length} tokens`);
-      
+    try {      
       // Convert principal to Principal type if it's a string
       const principal = typeof principalId === "string" 
         ? Principal.fromText(principalId) 

@@ -32,7 +32,7 @@
   import { themeStore } from "$lib/stores/themeStore";
 
   // Constants
-  const ITEMS_PER_PAGE = 50;
+  const ITEMS_PER_PAGE = 100;
   const REFRESH_INTERVAL = 10000;
   const SEARCH_DEBOUNCE = 300;
   

@@ -159,8 +159,45 @@
           // Use pre-processed tooltip data
           return processedTooltipData[index] || '';
         }
-      }
+      },
+      maintainAspectRatio: false, // Allow filling the entire container
+      responsive: true, // Ensure responsiveness
+      devicePixelRatio: 2, // Sharper rendering
     });
+    
+    // Ensure axes don't add internal padding
+    if (!chartOptions.scales) {
+      chartOptions.scales = {};
+    }
+    
+    chartOptions.scales.x = {
+      ...chartOptions.scales.x,
+      grid: {
+        display: false,
+      },
+      ticks: {
+        display: false, // Hide x-axis ticks
+        padding: 0, // Remove tick padding
+      }
+    };
+    
+    chartOptions.scales.y = {
+      ...chartOptions.scales.y,
+      display: true,
+      grid: {
+        display: true,
+      },
+      ticks: {
+        display: false, // Hide y-axis ticks
+        padding: 0, // Remove tick padding
+      }
+    };
+    
+    // Ensure no layout padding
+    if (!chartOptions.layout) {
+      chartOptions.layout = {};
+    }
+    chartOptions.layout.padding = 0; // No padding at all
     
     tvlChartInstance = new Chart(ctx, {
       type: 'line',
@@ -173,6 +210,7 @@
             borderColor: colors.tvlColor,
             backgroundColor: tvlGradient,
             borderWidth: 2,
+            fill: true, // Ensure fill is enabled
             pointRadius: (ctx) => {
               // Show a point for each day, with larger points for first, last, and significant changes
               const index = ctx.dataIndex;
@@ -189,7 +227,6 @@
             pointBorderColor: colors.pointBorderColor,
             pointBorderWidth: 1.5,
             tension: 0.3,
-            fill: true
           }
         ]
       },
@@ -217,8 +254,8 @@
   });
 </script>
 
-<Panel variant="transparent" className="!p-0 !overflow-visible">
-  <div class="flex flex-col">
+<Panel variant="transparent" unpadded={true} className="!overflow-visible">
+  <div class="flex flex-col w-full h-full">
     <h3 class="flex items-center justify-between py-3 px-5 text-sm uppercase font-medium text-kong-text-primary/90">
       TVL History
       <div class="flex items-center gap-2">
@@ -245,9 +282,9 @@
         </button>
       </div>
     </h3>
-    <div class="relative m-0 overflow-visible transition-all duration-300" style="height: 220px;">
+    <div class="chart-container w-full h-full">
       {#if props.balanceHistory && props.balanceHistory.length > 0 && isChartAvailable}
-        <canvas bind:this={tvlChartCanvas} class="rounded-lg transition-all duration-300"></canvas>
+        <canvas bind:this={tvlChartCanvas} class="w-full h-full !p-0 !m-0 rounded-b-lg"></canvas>
       {:else}
         <div class="w-full h-full flex flex-col items-center justify-center text-kong-text-primary/60 text-lg font-medium">
           <BarChart3 class="mb-3 w-8 h-8" />
@@ -266,4 +303,10 @@
       {/if}
     </div>
   </div>
-</Panel> 
+</Panel>
+
+<style lang="postcss">
+  .chart-container {
+    @apply relative !p-0 !m-0 overflow-visible transition-all duration-300;
+  }
+</style> 

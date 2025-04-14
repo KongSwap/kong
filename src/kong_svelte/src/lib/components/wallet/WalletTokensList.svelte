@@ -30,7 +30,6 @@
 	type WalletTokensListProps = {
 		isLoading?: boolean;
 		walletId?: string;
-		forceRefresh?: boolean;
 		// Optional pre-processed token balances (for backward compatibility)
 		tokenBalances?: TokenBalance[];
 		// Callback props instead of event dispatchers
@@ -47,7 +46,6 @@
 	let { 
 		isLoading = false,
 		walletId = "",
-		forceRefresh = false,
 		tokenBalances = [],
 		onAction = () => {},
 		onRefresh = () => {},
@@ -420,17 +418,7 @@
 		if (walletId) {
 			loadUserBalances(true);
 		}
-		onRefresh();
 	}
-
-	// Effect to handle externally triggered forceRefresh
-	$effect(() => {
-		// This effect handles the forceRefresh prop changing AFTER initial mount
-		if (forceRefresh && walletId) {
-			console.log("[WalletTokensList] forceRefresh prop triggered balance load.");
-			loadUserBalances(true);
-		}
-	});
 
 	// Effect to load balances when walletId becomes available or changes
 	let previousWalletId: string | undefined = undefined;

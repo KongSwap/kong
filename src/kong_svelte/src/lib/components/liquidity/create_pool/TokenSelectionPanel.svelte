@@ -82,13 +82,13 @@
     @apply flex-1 flex items-center justify-center;
     @apply bg-white/[0.02] hover:bg-white/[0.04];
     @apply rounded-xl px-4 py-3;
-    @apply border border-white/[0.03];
+    @apply border border-kong-border;
     @apply transition-all duration-200;
     backdrop-filter: blur(11px);
   }
 
   .token-selector-button:hover {
-    @apply border-white/[0.06];
+    @apply border-kong-border-light;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }

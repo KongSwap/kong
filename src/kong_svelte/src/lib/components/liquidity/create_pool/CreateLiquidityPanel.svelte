@@ -137,8 +137,6 @@
       lastBalanceLoadTime = currentTime;
       balanceLoadAttempts++;
 
-      console.log(`Attempting to load balances for ${tokenPairKey}, attempt: ${balanceLoadAttempts}`);
-
       // Call the imported loadBalances - it handles fetching and updating the store
       await loadBalances(validTokens, owner, forceRefresh);
     } catch (error) {
@@ -291,7 +289,6 @@
       token0Id !== lastReactiveState.token0Id ||
       token1Id !== lastReactiveState.token1Id ||
       livePoolsLength !== lastReactiveState.livePools ||
-      balancesTimestamp !== lastReactiveState.currentUserBalancesTimestamp ||
       authOwner !== lastReactiveState.authOwner;
     
     if (hasChanged) {

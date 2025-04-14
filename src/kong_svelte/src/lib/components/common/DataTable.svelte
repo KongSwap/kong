@@ -46,6 +46,10 @@
   let sortDirection = $state<'asc' | 'desc'>(defaultSort.direction || 'desc');
   let totalPages = $derived(Math.max(1, Math.ceil(totalItems / itemsPerPage)));
 
+  // Reference to the scrollable container
+  let scrollContainer: HTMLDivElement;
+  let previousPageValue = $state(currentPage); // Track previous page
+
   // Theme-related properties - use functions to compute values on demand
   function getCurrentTheme() {
     return getThemeById($themeStore);
@@ -134,6 +138,14 @@
 
   $effect(() => {
     displayData = sortedData();
+  });
+
+  $effect(() => {
+    // Scroll to top when currentPage changes
+    if (scrollContainer && currentPage !== previousPageValue) {
+      scrollContainer.scrollTop = 0;
+    }
+    previousPageValue = currentPage; // Update after check
   });
 
   const flashDuration = 2000;
@@ -226,7 +238,7 @@
 </script>
 
 <div class="flex flex-col h-full">
-  <div class="flex-1 overflow-auto">
+  <div class="flex-1 overflow-auto" bind:this={scrollContainer}>
     <table class="w-full border-collapse min-w-[800px] md:min-w-0">
       <thead class="bg-kong-bg-dark sticky top-0 z-20 !backdrop-blur-[12px]">
         <tr class="border-b border-kong-border bg-kong-bg-dark">

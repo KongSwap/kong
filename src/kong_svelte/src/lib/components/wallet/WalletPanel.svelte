@@ -72,9 +72,7 @@
       props: () => ({
         walletId,
         isLoading: isLoadingBalances,
-        forceRefresh: lastRefreshed === Date.now(),
         onAction: handleTokenAction,
-        onRefresh: () => refreshBalances(true),
         onTokenAdded: handleTokenAdded,
         onBalancesLoaded: handleBalancesLoaded,
         showUsdValues

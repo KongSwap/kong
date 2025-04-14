@@ -131,9 +131,16 @@ export function createChartGradient(
   colorRgb: string, 
   height = 250
 ): CanvasGradient {
-  const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, `${colorRgb.replace('1)', isDarkMode ? '0.2)' : '0.15)')}`);
-  gradient.addColorStop(1, `${colorRgb.replace('1)', '0.02)')}`);
+  // Create gradient from bottom to top of the chart area
+  // Use the maximum height of the canvas to ensure it covers the entire chart
+  const canvasHeight = ctx.canvas.height || height;
+  const gradient = ctx.createLinearGradient(0, canvasHeight, 0, 0);
+  
+  // Start with more opacity at the top
+  gradient.addColorStop(0, `${colorRgb.replace('1)', '0.02)')}`); // Nearly transparent at bottom
+  gradient.addColorStop(0.7, `${colorRgb.replace('1)', isDarkMode ? '0.1)' : '0.08)')}`); // Middle blend
+  gradient.addColorStop(1, `${colorRgb.replace('1)', isDarkMode ? '0.2)' : '0.15)')}`); // More visible at top
+  
   return gradient;
 }
 
