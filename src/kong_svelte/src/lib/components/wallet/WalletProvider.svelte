@@ -106,7 +106,14 @@
       }
       
       // Add timeout to prevent hanging connections
-      const timeoutId = setTimeout(() => abortController.abort(), 30000);
+      const timeoutId = setTimeout(() => {
+        abortController.abort();
+        // Ensure connecting state is reset if timed out
+        connecting = false;
+        connectingWalletId = null;
+      }, 30000);
+      
+      // Clear timeout if connection is successful
       clearTimeout(timeoutId);
       
       if ($auth.isConnected) {
@@ -129,6 +136,15 @@
       connectingWalletId = null;
     }
   }
+
+  // Ensure state is reset when modal closes
+  $effect(() => {
+    if (!isOpen && (connecting || connectingWalletId)) {
+      connecting = false;
+      connectingWalletId = null;
+      abortController.abort();
+    }
+  });
 </script>
 
 <Modal
