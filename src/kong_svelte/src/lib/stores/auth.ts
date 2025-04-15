@@ -105,15 +105,23 @@ function createAuthStore(pnp: PNP) {
       }
     },
 
-    async connect(walletId: string, isAutoConnect = false) {
+    async connect(walletId: string, isRetry = false) {
       try {
         connectionError.set(null);
         const result = await pnp.connect(walletId);
 
         if (!result?.owner) {
-          await this.disconnect();
-          set({ isConnected: false, account: null, isInitialized: true });
-          throw new Error("Invalid connection result");
+          if (!isRetry) {
+            console.warn(`Connection attempt failed for ${walletId}, retrying once...`);
+            await pnp.disconnect();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return await this.connect(walletId, true);
+          } else {
+            console.error("Connection failed after retry.");
+            await this.disconnect();
+            set({ isConnected: false, account: null, isInitialized: true });
+            throw new Error("Invalid connection result after retry. Please try again. If the issue persists, reload the page.");
+          }
         }
 
         const owner = result.owner.toString();

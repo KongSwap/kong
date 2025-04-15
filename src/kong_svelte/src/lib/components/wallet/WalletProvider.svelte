@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { walletsList } from '@windoge98/plug-n-play';
   import { auth, selectedWalletId } from "$lib/stores/auth";
   import { isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
@@ -14,18 +13,18 @@
 
   interface WalletInfo {
     id: string;
-    name: string;
-    icon: string;
+    walletName: string;
+    logo: string;
     description?: string;
     recommended?: boolean;
     unsupported?: boolean;
   }
 
   // Map available wallets to our WalletInfo structure
-  const walletList: WalletInfo[] = walletsList.map(wallet => ({
+  const walletList: WalletInfo[] = auth.pnp.getEnabledWallets().map(wallet => ({
     id: wallet.id,
-    name: wallet.name === "Oisy Wallet" ? "OISY Wallet" : wallet.name,
-    icon: wallet.icon,
+    walletName: wallet.walletName,
+    logo: wallet.logo,
     description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined,
     recommended: wallet.id === 'oisy', // Mark OISY as recommended
     unsupported: null
@@ -69,7 +68,7 @@
 
   function updateFilteredWallets() {
     if (browser) {
-      filteredWallets = isPlugAvailable() ? walletList : walletList.filter(w => w.id !== 'plug');
+      filteredWallets = isPlugAvailable() ? auth.pnp.getEnabledWallets() : auth.pnp.getEnabledWallets().filter(w => w.id !== 'plug');
     }
   }
 
@@ -161,15 +160,15 @@
       <div class="flex flex-col gap-3 px-1">
         {#each filteredWallets as wallet}
           <button
-            class="relative flex items-center justify-between w-full px-4 py-4 rounded-xl border border-kong-text-primary/10 bg-kong-bg-dark/10 
+            class="group relative flex items-center justify-between w-full px-4 py-4 rounded-xl border border-kong-text-primary/10 bg-kong-bg-dark/10 
                    will-change-transform backface-hidden transition-[transform,border-color,background-color,box-shadow] duration-200 ease-out 
                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kong-primary 
                    disabled:opacity-50 disabled:cursor-not-allowed 
-                   hover:not(:disabled):border-kong-primary hover:not(:disabled):bg-kong-primary/25 hover:not(:disabled):translate-y-[-1px] hover:not(:disabled):shadow-[0_4px_24px_-2px_rgb(0_0_0_/_0.12),0_2px_8px_-2px_rgb(0_0_0_/_0.06)]
-                   active:not(:disabled):text-kong-bg-light active:not(:disabled):translate-y-0 active:not(:disabled):transition-transform active:not(:disabled):duration-100 active:not(:disabled):ease-linear
-                   {connectingWalletId === wallet.id ? 'border-kong-primary bg-kong-primary/15 text-kong-bg-light animate-pulse-slow' : ''}
+                   hover:not(:disabled):border-2 hover:border-kong-primary hover:not(:disabled):bg-kong-primary/25 hover:not(:disabled):translate-y-[-1px] hover:not(:disabled):shadow-[0_4px_24px_-2px_rgb(0_0_0_/_0.12),0_2px_8px_-2px_rgb(0_0_0_/_0.06),0_0_0_1px_rgb(var(--primary)_/_0.5)]
+                   active:not(:disabled):text-kong-text-primary active:not(:disabled):translate-y-0 active:not(:disabled):transition-transform active:not(:disabled):duration-100 active:not(:disabled):ease-linear focus:text-kong-text-primary
+                   {connectingWalletId === wallet.id ? 'border-kong-primary bg-kong-primary/15 animate-pulse-slow' : ''}
                    {wallet.recommended && connectingWalletId !== wallet.id && connectingWalletId !== null ? '' : 
-                     (wallet.recommended && connectingWalletId !== wallet.id ? 'recommended not-connecting bg-kong-primary/10 border-kong-primary/20 hover:not(:disabled):not(.connecting):bg-kong-primary/25 hover:not(:disabled):not(.connecting):border-kong-primary/30 hover:not(:disabled):not(.connecting):shadow-[0_4px_24px_-2px_rgb(var(--primary)/_0.15),0_2px_8px_-2px_rgb(var(--primary)/_0.1)]' : '')}"
+                     (wallet.recommended && connectingWalletId !== wallet.id ? 'recommended not-connecting bg-kong-primary/10 border-kong-primary/20 hover:not(.connecting):bg-kong-primary/25 hover:not(.connecting):border-kong-primary/30 hover:not(.connecting):shadow-[0_4px_24px_-2px_rgb(var(--primary)/_0.15),0_2px_8px_-2px_rgb(var(--primary)/_0.1),0_0_0_1px_rgb(var(--primary)_/_0.25)]' : '')}"
             on:click={() => handleConnect(wallet.id)}
             disabled={connecting}
             aria-busy={connectingWalletId === wallet.id}
@@ -177,8 +176,8 @@
             <div class="flex items-center gap-4">
               <div class="relative w-12 h-12">
                 <img 
-                  src={wallet.icon} 
-                  alt={wallet.name} 
+                  src={wallet.logo} 
+                  alt={wallet.walletName} 
                   class="w-12 h-12 rounded-xl transition-transform duration-200 dark:brightness-100 brightness-[0.85] transform translate-Z-0 group-hover:dark:brightness-100 group-hover:brightness-90" 
                 />
                 {#if connectingWalletId === wallet.id}
@@ -187,7 +186,7 @@
               </div>
               <div class="flex flex-col gap-1 flex-1 text-left">
                 <span class="font-medium text-lg text-left flex items-center gap-2">
-                  {wallet.name}
+                  {wallet.walletName}
                   {#if wallet.unsupported}
                     <span 
                       class="text-xs font-semibold px-1.5 py-0.5 rounded bg-kong-accent-yellow/20 text-kong-accent-yellow"
