@@ -49,7 +49,7 @@
   const totalItems = writable<number>(0);
   const totalPages = writable<number>(0);
   const currentPage = writable<number>(pageQuery);
-  const itemsPerPage = writable<number>(50);
+  const itemsPerPage = writable<number>(100);
   let isLoading = writable<boolean>(false);
   let liveUserPools = writable<BE.Pool[]>([]);
   const mobileSortColumn = writable("tvl");

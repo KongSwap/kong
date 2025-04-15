@@ -1,25 +1,36 @@
-import { Principal } from "@dfinity/principal";
+import type { PNPConfig, AdapterSpecificConfig } from '@windoge98/plug-n-play';
 import { createPNP, type PNP } from "@windoge98/plug-n-play";
-import {
-  idlFactory as kongBackendIDL,
-  canisterId as kongBackendCanisterId,
-} from "../../../../declarations/kong_backend";
+
+// Canister Imports
 import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
-import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
 import { idlFactory as kongDataIDL } from "../../../../declarations/kong_data";
+import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
 import { idlFactory as icpIDL } from "$lib/idls/icp.idl.js";
-import { idlFactory as predictionMarketsBackendIDL, canisterId as predictionMarketsBackendCanisterId } from "../../../../declarations/prediction_markets_backend";
-import { idlFactory as trollboxIDL, canisterId as trollboxCanisterId } from "../../../../declarations/trollbox";
+import {
+  canisterId as predictionMarketsBackendCanisterId,
+  idlFactory as predictionMarketsBackendIDL,
+} from "../../../../declarations/prediction_markets_backend";
+import {
+  canisterId as kongBackendCanisterId,
+  idlFactory as kongBackendIDL,
+} from "../../../../declarations/kong_backend";
+import {
+  canisterId as trollboxCanisterId,
+  idlFactory as trollboxIDL,
+} from "../../../../declarations/trollbox";
+
+// --- Types ---
 export type CanisterType =
   | "kong_backend"
   | "kong_faucet"
   | "icrc1"
   | "icrc2"
   | "kong_data"
-  | "xrc"
+  | "xrc" // Assuming 'xrc' might be used elsewhere, keeping it. ICP IDL is imported.
   | "prediction_markets_backend"
   | "trollbox";
 
+// --- Canister IDLs ---
 export const canisterIDLs = {
   kong_backend: kongBackendIDL,
   kong_faucet: kongFaucetIDL,
@@ -31,52 +42,62 @@ export const canisterIDLs = {
   trollbox: trollboxIDL,
 };
 
+// --- PNP Initialization ---
 let globalPnp: PNP | null = null;
 
 export function initializePNP(): PNP {
+  if (globalPnp) {
+    return globalPnp;
+  }
   try {
-    if (globalPnp) {
-      return globalPnp;
-    }
-
-    // Convert all canister IDs to Principal, but only if they are defined
-    const delegationTargets = [
-      kongBackendCanisterId ? Principal.fromText(kongBackendCanisterId) : undefined,
-      predictionMarketsBackendCanisterId ? Principal.fromText(predictionMarketsBackendCanisterId) : undefined,
-      trollboxCanisterId ? Principal.fromText(trollboxCanisterId) : undefined
-    ].filter(Boolean) as Principal[];
-    
-    const derivationOrigin = () => {
-
-      let httpPrefix = "https://";
-      let icp0Suffix = ".icp0.io";
-      if (process.env.DFX_NETWORK === "local") {
-        httpPrefix = "http://";
-        icp0Suffix = ".localhost:4943";
-      }
-
-      return httpPrefix + process.env.CANISTER_ID_KONG_SVELTE + icp0Suffix;
-    };
+    const isDev = process.env.DFX_NETWORK === "local";
+    const kongSvelteCanisterId = process.env.CANISTER_ID_KONG_SVELTE;
 
     globalPnp = createPNP({
-      hostUrl:
-        process.env.DFX_NETWORK === "local"
-          ? "http://localhost:4943"
-          : "https://icp0.io",
-      isDev: process.env.DFX_NETWORK === "local",
-      whitelist: [kongBackendCanisterId, predictionMarketsBackendCanisterId, trollboxCanisterId],
-      fetchRootKeys: process.env.DFX_NETWORK === "local",
-      timeout: 1000 * 60 * 60 * 4, // 4 hours
-      verifyQuerySignatures: process.env.DFX_NETWORK !== "local", 
-      identityProvider:
-        process.env.DFX_NETWORK !== "local"
-          ? "https://identity.ic0.app"
-          : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943",
-      persistSession: true,
-      derivationOrigin: derivationOrigin(),
-      delegationTimeout: BigInt(86400000000000), // 30 days
-      delegationTargets,
-    });
+      dfxNetwork: isDev ? "local" : "ic",
+      hostUrl: isDev ? "http://localhost:4943" : "https://icp0.io",
+      fetchRootKeys: isDev,
+      verifyQuerySignatures: !isDev,
+      derivationOrigin: (() => {
+        if (isDev) {
+          return undefined; // Let createPNP handle local derivation (uses window.location by default)
+        } else {
+          if (!kongSvelteCanisterId) {
+            console.warn(
+              "CANISTER_ID_KONG_SVELTE is not set for production derivation origin."
+            );
+            return undefined;
+          }
+          return `https://${kongSvelteCanisterId}.icp0.io`;
+        }
+      })(),
+      delegationTimeout: BigInt(30 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 30 days
+      delegationTargets: [
+        kongBackendCanisterId,
+        predictionMarketsBackendCanisterId,
+        trollboxCanisterId,
+      ].filter((id): id is string => !!id),
+      adapterConfigs: {
+        nns: {
+          enabled: true,
+          identityProvider: isDev
+            ? "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"
+            : "https://identity.ic0.app",
+        } as AdapterSpecificConfig,
+        plug: {
+          enabled: true,
+        } as AdapterSpecificConfig,
+        nfid: {
+          enabled: true,
+          rpcUrl: "https://nfid.one/rpc",
+        } as AdapterSpecificConfig,
+        oisy: {
+          enabled: true,
+          signerUrl: "https://oisy.com/sign",
+        } as AdapterSpecificConfig,
+      },
+      localStorageKey: "kongSwapPnpState",
+    } as PNPConfig);
 
     return globalPnp;
   } catch (error) {
@@ -86,10 +107,12 @@ export function initializePNP(): PNP {
 }
 
 export function getPnpInstance(): PNP {
+  // Ensures initialization happens if called before explicit initialization
   if (!globalPnp) {
     return initializePNP();
   }
   return globalPnp;
 }
 
+// --- Exported PNP Instance ---
 export const pnp = getPnpInstance();

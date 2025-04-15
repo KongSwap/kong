@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Get the kong_ledger canister ID
-KONG_LEDGER=$(dfx canister id kong_ledger)
+# Get the kskong_ledger canister ID
+KONG_LEDGER=$(dfx canister id kskong_ledger)
 
 # Array of principals to check
 principals=(

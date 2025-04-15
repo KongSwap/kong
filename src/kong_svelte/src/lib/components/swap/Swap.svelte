@@ -199,7 +199,7 @@
   onMount(async () => {
     if (browser) {
       try {
-        console.log('Swap.svelte onMount: Processing initial URL params.');
+        console.debug('Swap.svelte onMount: Processing initial URL params.');
         // Process initial URL params
         const initialSearchParams = new URL(window.location.href).searchParams;
         await handleUrlTokenParams(initialSearchParams);

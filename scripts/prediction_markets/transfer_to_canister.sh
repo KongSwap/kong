@@ -23,7 +23,7 @@ done
 MEMO_BYTES+="}"
 
 # Transfer tokens to the canister
-dfx canister call kong_ledger icrc1_transfer "(record { 
+dfx canister call kskong_ledger icrc1_transfer "(record { 
     to = record { owner = principal \"$CANISTER_ID\"; subaccount = null };
     amount = $AMOUNT;
     fee = opt 10_000;

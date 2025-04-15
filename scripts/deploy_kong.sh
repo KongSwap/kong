@@ -25,6 +25,19 @@ for cmd in rustc cargo npm dfx jq sha256sum; do
     fi
 done
 
+# Generate secrets
+bash "${PROJECT_ROOT}/scripts/generate_secrets.sh"
+
+# Source the generated secrets file if it exists
+if [ -f "${PROJECT_ROOT}/.secrets" ]; then
+  echo "Sourcing secrets from ${PROJECT_ROOT}/.secrets"
+  set -a # Automatically export all variables defined after this
+  source "${PROJECT_ROOT}/.secrets"
+  set +a # Stop automatically exporting variables
+else
+  echo "Warning: ${PROJECT_ROOT}/.secrets file not found after generation."
+fi
+
 # check wasm32-unknown-unknown target installed
 if ! rustup target list | grep -q "wasm32-unknown-unknown"; then
     echo "wasm32-unknown-unknown target not installed"
@@ -106,7 +119,7 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
         "deploy_ksicp_ledger.sh"
         "deploy_ksbtc_ledger.sh"
         "deploy_kseth_ledger.sh"
-        "deploy_kskong_ledger.sh"
+        "deploy_kong_ledger.sh"
     )
 
     for script in "${LEDGER_SCRIPTS[@]}"; do
@@ -120,6 +133,11 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
     [ -f "deploy_kong_faucet.sh" ] && {
         bash "deploy_kong_faucet.sh" "${NETWORK}"
     } || echo "Warning: deploy_kong_faucet.sh not found"
+
+    # deploy ic_siws_provider canister
+    [ -f "deploy_ic_siws_provider.sh" ] && {
+        bash "deploy_ic_siws_provider.sh" "${NETWORK}"
+    } || echo "Warning: deploy_ic_siws_provider.sh not found"
 
 	# mint test tokens to kong_faucet
     [ -f "faucet_mint.sh" ] && {

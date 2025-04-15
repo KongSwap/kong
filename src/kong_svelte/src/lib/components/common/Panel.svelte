@@ -67,11 +67,6 @@
   // Compute the interactive class based on interactive prop
   let interactiveClass = $derived(interactive ? 'interactive' : '');
   
-  // Function to render content
-  function renderContent() {
-    return children ? children() : () => content;
-  }
-  
   // Subscribe to theme changes
   $effect(() => {
     const unsubscribe = themeStore.subscribe(themeId => {
@@ -193,7 +188,6 @@
   content: '';
   position: absolute;
   inset: 0;
-  padding: 1px;
   @apply bg-gradient-to-br from-kong-text-primary/[0.04] via-kong-text-primary/[0.02] to-kong-text-primary/[0.01];
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);

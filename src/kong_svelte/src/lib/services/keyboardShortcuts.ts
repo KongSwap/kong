@@ -107,10 +107,7 @@ class KeyboardShortcutsService {
   }
 
   // Handle keydown events
-  private handleKeyDown(event: KeyboardEvent): void {
-    // Debug keyboard events
-    console.log(`[KeyboardShortcuts] Key pressed: ${event.key}, Shift: ${event.shiftKey}, Ctrl: ${event.ctrlKey}, Meta: ${event.metaKey}`);
-    
+  private handleKeyDown(event: KeyboardEvent): void {    
     // Skip if in input, textarea, or contentEditable
     if (
       event.target instanceof HTMLInputElement ||
