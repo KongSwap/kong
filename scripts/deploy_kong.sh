@@ -58,7 +58,7 @@ fi
 
 # Copy correct environment file using absolute path
 if [ -f "copy_env.sh" ]; then
-    echo "Running copy_env.sh from $SCRIPT_DIR"
+    echo "Running copy_env.sh from $PWD"
     bash "./copy_env.sh" "${NETWORK}"
     
     # Verify .env file after copy_env.sh
@@ -72,8 +72,8 @@ if [ -f "copy_env.sh" ]; then
         exit 1
     fi
 else 
-    echo "Warning: copy_env.sh not found in $SCRIPT_DIR"
-    ls -la "$SCRIPT_DIR"
+    echo "Warning: copy_env.sh not found in $PWD"
+    ls -la "$PWD"
     exit 1
 fi
 
@@ -81,10 +81,10 @@ fi
 [ "${NETWORK}" == "local" ] && dfx deploy internet_identity --network "${NETWORK}"
 
 # Deploy core canisters
+#  "deploy_kong_svelte.sh"
 CORE_CANISTERS_SCRIPTS=(
     "deploy_kong_backend.sh"
     "deploy_kong_data.sh"
-    "deploy_kong_svelte.sh"
     "deploy_prediction_markets.sh"
     "deploy_event_store.sh"
     "deploy_trollbox.sh"
@@ -124,7 +124,7 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 	# mint test tokens to kong_faucet
     [ -f "faucet_mint.sh" ] && {
         bash "faucet_mint.sh" "${NETWORK}"
-    } || echo "Warning: user_mint.sh not found"
+    } || echo "Warning: faucet_mint.sh not found"
 
 	# mint test tokens to kong_user1
     [ -f "user_mint.sh" ] && {

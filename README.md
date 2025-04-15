@@ -56,7 +56,7 @@ Create user identities for the project.
 
 ```bash
 # Navigate to the scripts directory
-cd scripts/local
+cd scripts
 
 # Run the identity creation script
 ./create_identity.sh
