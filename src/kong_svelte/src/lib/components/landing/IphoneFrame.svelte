@@ -1,7 +1,7 @@
 <script lang="ts">
     // Define the props using $props for Svelte 5
     let {
-        screenshotSrc = '/images/swapscreen.png', // Default screenshot
+        screenshotSrc = '/images/swapscreen.jpg', // Default screenshot
         gradientOverlay = 'from-purple-500/10 to-indigo-500/10', // Default gradient
         deviceWidthClasses = 'w-[240px] xs:w-[280px] sm:w-[310px] md:w-[360px]',
         deviceHeightClasses = 'h-[490px] xs:h-[560px] sm:h-[620px] md:h-[700px]',

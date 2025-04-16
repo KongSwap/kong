@@ -1,4 +1,4 @@
-import type { PNPConfig, AdapterSpecificConfig } from '@windoge98/plug-n-play';
+import type { PNPConfig } from '@windoge98/plug-n-play';
 import { createPNP, type PNP } from "@windoge98/plug-n-play";
 
 // Canister Imports
@@ -52,7 +52,7 @@ export function initializePNP(): PNP {
   try {
     const isDev = process.env.DFX_NETWORK === "local";
     const kongSvelteCanisterId = process.env.CANISTER_ID_KONG_SVELTE;
-
+    console.log("env", process.env);
     globalPnp = createPNP({
       dfxNetwork: isDev ? "local" : "ic",
       hostUrl: isDev ? "http://localhost:4943" : "https://icp0.io",
@@ -76,25 +76,40 @@ export function initializePNP(): PNP {
         kongBackendCanisterId,
         predictionMarketsBackendCanisterId,
         trollboxCanisterId,
+        process.env.CANISTER_ID_SIWS_PROVIDER,
+        "rh2pm-ryaaa-aaaan-qeniq-cai"
       ].filter((id): id is string => !!id),
+      siwsProviderCanisterId: 'guktk-fqaaa-aaaao-a4goa-cai',
       adapterConfigs: {
         nns: {
           enabled: true,
           identityProvider: isDev
             ? "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"
             : "https://identity.ic0.app",
-        } as AdapterSpecificConfig,
+        },
         plug: {
           enabled: true,
-        } as AdapterSpecificConfig,
+        },
         nfid: {
           enabled: true,
           rpcUrl: "https://nfid.one/rpc",
-        } as AdapterSpecificConfig,
+        },
         oisy: {
           enabled: true,
           signerUrl: "https://oisy.com/sign",
-        } as AdapterSpecificConfig,
+        },
+        phantomSiws: {
+          enabled: true,
+          config: {
+            // --- Required SIWS Config ---
+          },
+        },
+        solflareSiws: {
+          enabled: true,
+          config: {
+            // --- Required SIWS Config ---
+          },
+        },
       },
       localStorageKey: "kongSwapPnpState",
     } as PNPConfig);

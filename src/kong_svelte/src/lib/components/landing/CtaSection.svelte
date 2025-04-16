@@ -626,8 +626,10 @@
     
     <div class="flex flex-wrap gap-4 justify-center pointer-events-auto">
       <LandingButton 
-        onClick={navigateToSwap} 
-        buttonClass="inline-flex bg-[rgba(0,10,30,0.3)] py-6 px-8 text-[#00D8FF] border border-[rgba(0,216,255,0.4)] shadow-[0_0_10px_rgba(0,216,255,0.2),inset_0_0_5px_rgba(0,216,255,0.1)] hover:text-white hover:bg-[rgba(0,216,255,0.8)] hover:border-[rgba(0,216,255,0.8)] hover:shadow-[0_0_15px_rgba(0,216,255,0.5),0_0_30px_rgba(0,216,255,0.3),inset_0_0_10px_rgba(255,255,255,0.2)] active:shadow-[0_0_8px_rgba(0,216,255,0.3),inset_0_0_4px_rgba(0,216,255,0.1)]"
+        onClick={navigateToSwap}
+        buttonClass="text-base sm:text-lg px-5 bg-[#0D111F]/30 text-[#9370DB] border border-[#9370DB]/40 shadow-[0_0_10px_rgba(147,112,219,0.2),inset_0_0_5px_rgba(147,112,219,0.1)] backdrop-blur-md will-change-shadow hover:text-white hover:bg-[#9370DB]/80 hover:border-[#9370DB]/80 hover:shadow-[0_0_20px_rgba(147,112,219,0.6),0_0_35px_rgba(123,104,238,0.4)] hover:text-shadow sm:min-w-[180px] font-['Inter','Rajdhani','SF_Pro_Display',sans-serif] neon-button"
+        textClass="px-5 py-3 sm:py-2"
+        iconClass="w-5 h-5 sm:w-6 sm:h-6 ml-2 relative z-10"
       />
     </div>
   </div>
