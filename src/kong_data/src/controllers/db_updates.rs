@@ -4,7 +4,7 @@ use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableDBUpdateId
 use crate::stable_memory::DB_UPDATE_MAP;
 
 const MAX_BACKUP_DB_UPDATES: usize = 1_000;
-const MAX_REMOVE_DB_UPDATES: usize = 30_0000;
+const MAX_REMOVE_DB_UPDATES: usize = 20_000;
 
 #[query(hidden = true)]
 fn backup_db_updates(db_update_id: Option<u64>) -> Result<String, String> {
