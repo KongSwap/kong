@@ -54,13 +54,13 @@
   );
 
   // Define a type for valid tab IDs
-  type NavTabId = 'swap' | 'predict' | 'earn' | 'stats';
+  type NavTabId = 'swap' | 'predict' | 'earn' | 'stats' | 'launch';
 
   let isMobile = $state(false);
   let activeTab = $state<NavTabId>("swap");
   let navOpen = $state(false);
   let closeTimeout: ReturnType<typeof setTimeout>;
-  let activeDropdown = $state<Extract<NavTabId, 'swap' | 'earn' | 'stats'> | null>(null);
+  let activeDropdown = $state<Extract<NavTabId, 'swap' | 'earn' | 'stats' | 'launch'> | null>(null);
   let showWalletSidebar = $state(false);
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
@@ -86,7 +86,7 @@
   }
 
   // Filter tabs based on DFX_NETWORK
-  const allTabs = ["swap", "predict", "earn", "stats"] as const;
+  const allTabs = ["swap", "predict", "earn", "stats", "launch"] as const;
 
   function handleConnect() {
     // If user is not authenticated, show the wallet provider
@@ -287,9 +287,7 @@
       show: true
     }
   ]);
-  // --- End Refactoring ---
 
-  // --- Start Refactoring: Mobile Nav Groups ---
   const mobileNavGroups = $derived([
     { title: "SWAP", options: [
       { label: "Basic Swap", description: "Simple and intuitive token swapping interface", path: "/swap", icon: Wallet, comingSoon: false },
@@ -316,10 +314,12 @@
       { label: "Bubbles", description: "Visualize token price changes with bubbles", path: "/stats/bubbles", icon: ChartScatter, comingSoon: false },
       { label: "Leaderboards", description: "View trading leaderboards", path: "/stats/leaderboard", icon: Trophy, comingSoon: false },
     ] },
+    { title: "LAUNCH", options: [
+      { label: "Explore", description: "Explore launched tokens", path: "/launch/Explore", icon: ChartScatter, comingSoon: false },
+      { label: "Miners", description: "Manage your miners", path: "/launch/miners", icon: Joystick, comingSoon: false },
+    ] },
   ]);
-  // --- End Refactoring ---
 
-  // --- Start Refactoring: Desktop Nav Items Configuration ---
   const desktopNavItems = $derived(
     allTabs.map(tab => {
       switch (tab as NavTabId) {
@@ -364,11 +364,22 @@
             tabId: "predict" as const,
             defaultPath: "/predict",
           };
+        case "launch":
+          return {
+            type: "dropdown" as const,
+            label: "LAUNCH",
+            tabId: "launch" as const,
+            options: [
+              { label: "Explore", description: "Explore minable tokens", path: "/launch/explore", icon: ChartScatter, comingSoon: false },
+              { label: "Miners", description: "Manage your miners", path: "/launch/miners", icon: Joystick, comingSoon: false },
+            ],
+            defaultPath: "/launch/explore",
+          };
         default:
           return null; // Should not happen with current 'tabs' definition
       }
     }).filter(item => item !== null) as Array<
-      | { type: 'dropdown'; label: string; tabId: 'swap' | 'earn' | 'stats'; options: any[]; defaultPath: string; }
+      | { type: 'dropdown'; label: string; tabId: 'swap' | 'earn' | 'stats' | 'launch'; options: any[]; defaultPath: string; }
       | { type: 'link'; label: string; tabId: 'predict'; defaultPath: string; }
     >
   );
@@ -395,6 +406,8 @@
       "/stats": "stats",
       "/stats/bubbles": "stats",
       "/stats/leaderboard": "stats",
+      "/launch/tokens": "launch",
+      "/launch/miners": "launch",
     };
     let found = false;
     for (const prefix in pathMap) {
