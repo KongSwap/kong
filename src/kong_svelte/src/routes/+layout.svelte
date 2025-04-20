@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
+  import { onMount } from 'svelte';
   import "../app.css";
   import { page } from "$app/state";
   import Navbar from "$lib/components/nav/Navbar.svelte";
@@ -21,6 +22,7 @@
   import { allowanceStore } from "$lib/stores/allowanceStore";
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
+  import { connectWebSocket } from "$lib/api/canisters";
   import type { LayoutData } from './$types';
   import GlobalWalletProvider from "$lib/components/wallet/GlobalWalletProvider.svelte";
 
@@ -78,8 +80,8 @@
       // Initialize keyboard shortcuts
       keyboardShortcuts.initialize();
       
-      // Connect to WebSocket for canister events
-      connectWebSocket();
+      // Connect to WebSocket for canister events TODO!
+      // connectWebSocket();
     }
     
     // Initialize the app only if not already initializing
