@@ -391,7 +391,7 @@
   });
 </script>
 
-<Panel variant="solid" type="main" {className}>
+<Panel type="main" {className}>
   <div class="relative flex flex-col h-[300px]">
     {#if isLoadingTxns && !transactions.length}
       <div class="flex justify-center items-center p-4">

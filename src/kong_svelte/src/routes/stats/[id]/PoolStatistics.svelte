@@ -66,7 +66,7 @@
   );
 </script>
 
-<Panel variant="solid" type="main" className="p-4 relative" zIndex={1}>
+<Panel type="main" className="p-4 relative" zIndex={1}>
   <div class="flex flex-col gap-5">
     <!-- Pool Title Section -->
     <div>

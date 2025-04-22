@@ -420,7 +420,6 @@
 <section class="flex flex-col w-full px-2 max-h-[calc(100vh-15rem)] mt-4 h-[calc(100vh-6rem)]">
   <div class="z-10 flex flex-col lg:flex-row w-full mx-auto gap-4 max-w-[1300px] h-[calc(100vh-15rem)]">
     <Panel
-      variant="solid"
       type="main"
       className="content-panel flex-1 !p-0"
       height="100%"

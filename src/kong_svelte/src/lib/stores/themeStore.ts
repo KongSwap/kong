@@ -7,7 +7,7 @@ import { get } from 'svelte/store';
 import { auth } from '../stores/auth';
 
 // Define theme ID type based on available themes
-export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'win98light' | 'synthwave';
+export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'win98light' | 'synthwave' | 'dragginz';
 
 function createThemeStore() {
   const { subscribe, set } = writable<ThemeId>('dark');

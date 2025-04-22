@@ -363,7 +363,6 @@
 
               <!-- Chart Panel -->
               <Panel
-                variant="solid"
                 type="main"
                 className=""
               >
@@ -410,7 +409,6 @@
               <div class="lg:w-[70%] flex flex-col gap-6">
                 <!-- Chart Panel -->
                 <Panel
-                  variant="solid"
                   type="main"
                   className="!p-0"
                 >

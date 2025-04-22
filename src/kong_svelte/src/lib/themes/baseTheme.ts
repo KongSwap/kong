@@ -46,6 +46,7 @@ export interface ThemeColors {
   swapPanelShadow?: string;
   swapPanelInputsRounded?: boolean;
   transparentSwapPanel?: boolean;
+  transparentPanel?: boolean;
   swapPanelBorderStyle?: 'default' | 'win95' | 'none'; // Special border style presets
   statsTableTransparent?: boolean;   // Whether the stats table panel should be transparent or solid
   
@@ -226,6 +227,7 @@ export const baseTheme: ThemeDefinition = {
     swapPanelShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
     swapPanelInputsRounded: true,
     transparentSwapPanel: true, // Default to transparent swap panels
+    transparentPanel: true,
     swapPanelBorderStyle: 'default',
     statsTableTransparent: true, // Default to transparent stats table for modern look
     

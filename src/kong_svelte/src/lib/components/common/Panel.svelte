@@ -3,9 +3,10 @@
   import { fade, slide, type TransitionConfig } from 'svelte/transition';
   import { themeStore } from '../../stores/themeStore';
   import { getThemeById } from '../../themes/themeRegistry';
+  import { transparentPanel } from '../../stores/derivedThemeStore';
 
   let {
-    variant = "transparent",
+    variant = transparentPanel ? "transparent" : "solid",
     type = "main",
     width = "auto",
     height = "auto",

@@ -81,6 +81,8 @@ export const nordTheme: ThemeDefinition = {
     swapPanelBorder: '1px solid #4C566A', // Nord's border color
     swapPanelShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
     swapPanelInputsRounded: true,
+    transparentSwapPanel: false,
+    transparentPanel: false,
     
     // Borders - using Polar Night palette for borders
     border: '#4C566A',       // nord3 - Polar Night light

@@ -61,6 +61,8 @@ export const synthwaveTheme: ThemeDefinition = {
     swapPanelBorder: '1px solid rgba(255, 54, 171, 0.3)', // Pink border
     swapPanelShadow: '0 0 30px rgba(255, 54, 171, 0.15), 0 0 10px rgba(79, 10, 190, 0.2)', // Pink/purple glow
     swapPanelInputsRounded: true,
+    transparentSwapPanel: true,
+    transparentPanel: true,
     
     // Borders
     border: '#401C7A',      // Dark purple border

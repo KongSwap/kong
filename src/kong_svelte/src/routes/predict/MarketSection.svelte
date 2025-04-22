@@ -187,7 +187,6 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
       {#each markets as market (market.id)}
         <Panel
-          variant="solid"
           className="relative {isMarketResolved(market)
             ? 'opacity-100'
             : ''} group hover:bg-kong-bg-dark/10 transition-all duration-200 flex flex-col !min-h-[270px]"
