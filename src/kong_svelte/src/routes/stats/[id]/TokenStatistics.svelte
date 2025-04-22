@@ -10,7 +10,6 @@
     PlusCircle,
     ChevronDown,
   } from "lucide-svelte";
-  import { tooltip } from "$lib/actions/tooltip";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { cubicOut } from "svelte/easing";
   import { tweened } from "svelte/motion";
@@ -21,6 +20,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import Dropdown from '$lib/components/common/Dropdown.svelte';
 
   // Props using $props() for Svelte 5 runes mode
   const {
@@ -39,9 +39,7 @@
   let previousPrice: number | null = $state(null);
   let priceFlash: "up" | "down" | null = $state(null);
   let priceFlashTimeout: NodeJS.Timeout;
-  let showDropdown = $state(false);
-  let dropdownButtonRef = $state<HTMLButtonElement | null>(null);
-  let dropdownRef = $state<HTMLElement | null>(null);
+  let isAddressDropdownOpen = $state(false);
 
   // Live token data (replacing writable store)
   let liveToken: Kong.Token | null = $state(null);
@@ -77,22 +75,6 @@
       }
     } catch (error) {
       console.error("Error fetching token data:", error);
-    }
-  }
-
-  // Toggle dropdown
-  function toggleDropdown() {
-    showDropdown = !showDropdown;
-  }
-
-  // Handle click outside dropdown
-  function handleClickOutside(event: MouseEvent) {
-    if (!showDropdown) return;
-    const target = event.target as Node;
-    if (
-      !(dropdownButtonRef?.contains(target) || dropdownRef?.contains(target))
-    ) {
-      showDropdown = false;
     }
   }
 
@@ -145,9 +127,6 @@
       }
     }, 1000 * 10); // 10 seconds
 
-    document.addEventListener("click", handleClickOutside);
-    document.addEventListener("touchend", handleClickOutside);
-
     return () => {
       clearInterval(pollInterval);
       if (priceFlashTimeout) {
@@ -157,8 +136,6 @@
       volume24hMotion.set(0);
       totalSupplyMotion.set(0);
       circulatingSupplyMotion.set(0);
-      document.removeEventListener("click", handleClickOutside);
-      document.removeEventListener("touchend", handleClickOutside);
     };
   });
 
@@ -308,52 +285,56 @@
         Canister ID
       </div>
       <div class="relative w-full">
-        <ButtonV2
-          bind:element={dropdownButtonRef}
-          variant="outline"
-          size="sm"
-          className="!border-kong-border w-full bg-kong-bg-dark/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 !py-3"
-          on:click={toggleDropdown}
+        <Dropdown 
+          bind:open={isAddressDropdownOpen} 
+          position="bottom-right" 
+          width="w-full"
+          triggerClass="w-full p-0"
         >
-          <div class="flex items-center gap-2 justify-between w-full">
-            <span class="text-sm font-mono truncate">{token?.address}</span>
-            <ChevronDown class="w-4 h-4 flex-shrink-0" />
-          </div>
-        </ButtonV2>
-
-        <!-- Dropdown menu -->
-        {#if showDropdown}
-          <div
-            bind:this={dropdownRef}
-            class="absolute right-0 top-full mt-1.5 w-full bg-kong-bg-dark rounded-lg shadow-xl z-[999] border border-white/10 overflow-hidden"
-          >
+          <svelte:fragment slot="trigger">
+            <ButtonV2
+              variant="outline"
+              size="sm"
+              className="!border-kong-border w-full bg-kong-bg-dark/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 !py-3"
+            >
+              <div class="flex items-center gap-2 justify-between w-full">
+                <span class="text-sm font-mono truncate">{token?.address}</span>
+                <ChevronDown 
+                  class={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${isAddressDropdownOpen ? 'rotate-180' : ''}`} 
+                />
+              </div>
+            </ButtonV2>
+          </svelte:fragment>
+          
+          <svelte:fragment let:getItemClass>
             <button
-              class="w-full px-4 py-3 text-left hover:bg-kong-bg-secondary/20 flex items-center gap-2 transition-colors"
+              class={getItemClass()}
               on:click={() => {
                 copyToClipboard(token?.address);
-                toastStore.info("Token address copied to clipboard");
-                showDropdown = false;
+                isAddressDropdownOpen = false;
               }}
+              role="menuitem"
             >
-              <Copy class="w-4 h-4" />
-              <span>Copy Address</span>
+              <Copy class="w-4 h-4 group-hover:text-kong-primary" />
+              <span class="group-hover:text-kong-primary">Copy Address</span>
             </button>
             <div class="h-px w-full bg-white/5"></div>
             <button
-              class="w-full px-4 py-3 text-left hover:bg-kong-bg-secondary/20 flex items-center gap-2 transition-colors"
+              class={getItemClass()}
               on:click={() => {
                 window.open(
                   `https://nns.ic0.app/tokens/?import-ledger-id=${token?.address}`,
                   "_blank",
                 );
-                showDropdown = false;
+                isAddressDropdownOpen = false;
               }}
+              role="menuitem"
             >
-              <PlusCircle class="w-4 h-4" />
-              <span>Import to NNS</span>
+              <PlusCircle class="w-4 h-4 group-hover:text-kong-primary" />
+              <span class="group-hover:text-kong-primary">Import to NNS</span>
             </button>
-          </div>
-        {/if}
+          </svelte:fragment>
+        </Dropdown>
       </div>
     </div>
 

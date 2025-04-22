@@ -140,7 +140,7 @@
 /* Main panel styling - slightly different for primary panels */
 .panel.solid.main {
   @apply border-kong-border;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
 }
 
 /* Sidebar panel specific style */
