@@ -56,6 +56,7 @@
   const sortDirection = writable<"asc" | "desc">("desc");
   const favoriteTokenIds = writable<string[]>([]);
   const favoriteCount = writable<number>(0);
+  const isInitialRefreshCycleDone = writable<boolean>(false);
   
   // Local state
   let isMobile = false;
@@ -78,7 +79,8 @@
       return prices;
     });
 
-    if (prevPrice !== undefined && prevPrice !== currentPrice) {
+    // Only compare and flash after the initial refresh cycle is complete
+    if ($isInitialRefreshCycleDone && prevPrice !== undefined && prevPrice > 0 && currentPrice > 0 && prevPrice !== currentPrice) {
       const flashClass = currentPrice > prevPrice ? "flash-green" : "flash-red";
       
       // Clean up existing timeout to avoid memory leaks
@@ -191,11 +193,18 @@
       // Initial data load
       if (!isInitialLoadDone) {
         isInitialLoadDone = true;
+        isInitialRefreshCycleDone.set(false); // Reset flag on initial load
         refreshData(true);
       }
       
       // Set up refresh interval
-      refreshInterval = setInterval(() => refreshData(false), REFRESH_INTERVAL);
+      refreshInterval = setInterval(() => {
+        refreshData(false);
+        // Mark the initial refresh cycle as done after the first interval runs
+        if (!$isInitialRefreshCycleDone) {
+          isInitialRefreshCycleDone.set(true);
+        }
+      }, REFRESH_INTERVAL);
     }
   });
 
@@ -251,7 +260,7 @@
   // Handle favorites when auth changes
   $effect(() => {
     if ($auth.isConnected) {
-      favoriteStore.getCount().then(count => favoriteCount.set(count));
+      favoriteCount.set(favoriteStore.getCount());
       favoriteStore.loadFavorites().then(favorites => favoriteTokenIds.set(favorites));
     } else {
       favoriteTokenIds.set([]);

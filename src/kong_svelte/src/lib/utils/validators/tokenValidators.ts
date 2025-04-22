@@ -1,6 +1,5 @@
 import BigNumber from "bignumber.js";
-import { Principal } from "@dfinity/principal";
-import { decodeIcrcAccount, type IcrcAccount } from "@dfinity/ledger-icrc";
+import { decodeIcrcAccount } from "@dfinity/ledger-icrc";
 
 export function calculateMaxAmount(
   balance: bigint,
@@ -12,7 +11,7 @@ export function calculateMaxAmount(
     .minus(
       new BigNumber(tokenFee.toString()).dividedBy(
         new BigNumber(10).pow(tokenDecimals)
-      )
+      ).multipliedBy(2)
     )
     .toNumber();
 }

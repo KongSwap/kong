@@ -148,44 +148,6 @@
     previousPageValue = currentPage; // Update after check
   });
 
-  const flashDuration = 2000;
-  let flashTimeouts = $state(new Map());
-  let rowFlashStates = $state(new Map<string, { class: string, timeout: any }>());
-  let previousPrices = $state(new Map<string, number>());
-
-  $effect(() => {
-    data.forEach(row => {
-      const key = row[rowKey];
-      const currentPrice = Number(row.metrics?.price || 0);
-      const lastPrice = previousPrices.get(key);
-
-      if (lastPrice !== undefined && currentPrice !== lastPrice) {
-        updatePriceFlash(row, lastPrice);
-      }
-      
-      previousPrices.set(key, currentPrice);
-    });
-  });
-
-  function updatePriceFlash(row: any, previousPrice: number) {
-    const key = row[rowKey];
-    const currentPrice = Number(row.metrics?.price || 0);
-    
-    if (flashTimeouts.has(key)) {
-      clearTimeout(flashTimeouts.get(key));
-    }
-
-    const flashClass = currentPrice > previousPrice ? 'flash-green' : 'flash-red';
-    
-    const timeout = setTimeout(() => {
-      rowFlashStates.delete(key);
-      flashTimeouts.delete(key);
-    }, flashDuration);
-
-    flashTimeouts.set(key, timeout);
-    rowFlashStates.set(key, { class: flashClass, timeout });
-  }
-
   function toggleSort(column: string) {
     if (sortColumn === column) {
       sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
@@ -228,12 +190,6 @@
       sortColumn = defaultSort.column;
       sortDirection = defaultSort.direction;
     }
-
-    return () => {
-      rowFlashStates.forEach(state => {
-        if (state.timeout) clearTimeout(state.timeout);
-      });
-    };
   });
 </script>
 
@@ -264,7 +220,6 @@
           <tr
             class="h-[44px] border-b border-kong-border/50 hover:bg-kong-hover-bg-light transition-colors duration-200 
               {onRowClick ? 'cursor-pointer' : ''} 
-              {rowFlashStates.get(row[rowKey])?.class || ''} 
               {isKongRow?.(row) ? '!bg-kong-primary/15 hover:bg-kong-primary/30 border-kong-primary/30' : ''}"
             on:click={() => onRowClick?.(row)}
           >

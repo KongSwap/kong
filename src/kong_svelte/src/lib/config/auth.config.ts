@@ -106,7 +106,7 @@ export function initializePNP(): PNP {
         solflareSiws: {
           enabled: true,
         },
-        backpackSiws: {
+        coinbaseSiws: {
           enabled: true,
         },
       },

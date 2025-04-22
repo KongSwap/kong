@@ -168,7 +168,7 @@
       <div class="grid grid-cols-2 gap-x-8">
         <!-- TVL -->
         <div class="flex flex-col">
-          <div class="text-xs text-kong-text-primary/50 uppercase tracking-wider whitespace-nowrap mb-1">Total Value Locked</div>
+          <div class="text-xs text-kong-text-primary/50 uppercase tracking-wider whitespace-nowrap mb-1">Pool TVL</div>
           <div class="text-sm font-medium text-kong-text-primary">
             {formattedTvl}
           </div>

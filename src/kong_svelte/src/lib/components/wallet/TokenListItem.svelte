@@ -34,7 +34,7 @@
 			badgeText = 'SPL';
 			badgeVariant = 'blue';
 		} else if (standard === 'ICP') { // Assume others are ICP/ICRC for now
-			badgeText = token.standards.includes('ICRC-3') ? 'ICRC3': token.standards.includes('ICRC-2') ? 'ICRC2' : token.standards.includes('ICRC-1') ? 'ICRC1' : token.chain;
+			badgeText = token.standards.includes('ICRC-3') ? 'ICRC-3': token.standards.includes('ICRC-2') ? 'ICRC-2' : token.standards.includes('ICRC-1') ? 'ICRC-1' : token.chain;
 			badgeVariant = 'icrc';
 		} else {
 			badgeText = null; // Hide if standard is missing
@@ -107,7 +107,7 @@
 				{/if}
 			</div>
 			<div
-				class="text-xs {token.metrics.price_change_24h >= 0
+				class="text-xs {Number(token.metrics.price_change_24h) >= 0
 					? 'text-kong-accent-green'
 					: 'text-kong-accent-red'} font-medium mt-1 leading-tight"
 			>

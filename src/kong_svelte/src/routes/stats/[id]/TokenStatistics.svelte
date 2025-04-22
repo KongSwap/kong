@@ -378,7 +378,7 @@
           <div
             class="text-xs text-kong-text-primary/50 uppercase tracking-wider whitespace-nowrap mb-0.5"
           >
-            Total Token TVL
+            Total TVL
           </div>
           <div class="text-sm font-medium text-kong-text-primary">
             {formattedTotalTokenTvl}

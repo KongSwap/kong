@@ -116,7 +116,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
   };
 
   // Add compression plugins and terser for non-local environments
-  console.log("DFX_NETWORK", process.env.DFX_NETWORK)
   if (process.env.DFX_NETWORK !== "local") {
     basePlugins.push(
       viteCompression({

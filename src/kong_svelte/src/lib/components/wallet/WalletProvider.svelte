@@ -254,14 +254,26 @@
     if (!browser) return;
 
     // Get base wallet list
-    let newWallets = isPlugAvailable() 
+    let rawWallets = isPlugAvailable() 
       ? auth.pnp.getEnabledWallets() 
       : auth.pnp.getEnabledWallets().filter(w => w.id !== 'plug');
     
+    // Map raw wallets to WalletInfo structure
+    let mappedWallets = rawWallets.map(wallet => ({
+      id: wallet.id,
+      walletName: wallet.walletName,
+      logo: wallet.logo,
+      chain: wallet.chain,
+      description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined,
+      recommended: wallet.id === 'oisy', // Keep consistent with initial mapping
+      unsupported: null, // Keep consistent
+      website: getWalletWebsite(wallet.id)
+    }));
+
     // Apply search filter if there's a query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      newWallets = newWallets.filter(wallet => 
+      mappedWallets = mappedWallets.filter(wallet => 
         wallet.walletName.toLowerCase().includes(query) || 
         wallet.chain.toLowerCase().includes(query) || 
         (wallet.description && wallet.description.toLowerCase().includes(query))
@@ -269,8 +281,8 @@
     }
     
     // Update state in a single batch to avoid cascading updates
-    filteredWallets = newWallets;
-    const newGrouped = groupWalletsByChain(newWallets);
+    filteredWallets = mappedWallets; // Use mapped wallets here
+    const newGrouped = groupWalletsByChain(mappedWallets); // Use mapped wallets here
     groupedWalletsByChain = newGrouped;
     sortedChainsList = getSortedChains(Object.keys(newGrouped));
     
@@ -434,7 +446,7 @@
   isPadded={false}
 >
   <svelte:fragment slot="title">
-    <h2 class="text-3xl font-semibold modal-title">
+    <h2 class="text-2xl font-semibold modal-title">
       Connect Wallet
     </h2>
   </svelte:fragment>
@@ -494,11 +506,11 @@
   
   <!-- Wallet List -->
   <div class="wallet-list-container w-full h-full flex flex-col overflow-hidden">
-    <div class="wallet-list overflow-y-auto flex-1 scrollbar-custom px-4">
+    <div class="wallet-list overflow-y-auto flex-1 scrollbar-custom px-1">
       <!-- Recently Used Wallet Section -->
       {#if recentWallets.length > 0}
         <div class="recent-wallets mb-6" in:fade={{ duration: 300 }}>
-          <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium text-kong-text-primary flex items-center gap-2">
               <Clock size={14} class="text-kong-primary" />
               <span>Recently Used</span>
@@ -713,17 +725,18 @@
                               Unsupported
                             </span>
                           {/if}
-                          {#if wallet.recommended && !wallet.unsupported}
+                          {#if wallet.recommended}
                             <Badge variant="blue" size="xs">Recommended</Badge>
-                            {/if}
-                            {#if isRecentWallet && showRecentWalletsSection}
-                              <span class="text-xs text-kong-text-secondary">
-                                <Clock size={10} class="inline mr-0.5" />
-                                Recent
-                              </span>
                             {/if}
                           </div>
                           
+                          {#if isRecentWallet && showRecentWalletsSection}
+                          <span class="text-xs text-kong-text-secondary">
+                            <Clock size={10} class="inline mr-0.5" />
+                            Recent
+                          </span>
+                        {/if}
+                        
                           {#if wallet.description}
                             <span class="text-kong-text-secondary text-xs block mt-0.5 truncate">{wallet.description}</span>
                           {/if}

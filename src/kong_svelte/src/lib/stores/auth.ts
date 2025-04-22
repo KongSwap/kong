@@ -11,6 +11,7 @@ import { fetchBalances } from "$lib/api/balances";
 import { currentUserBalancesStore } from "$lib/stores/balancesStore";
 import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
 import { createNamespacedStore } from "$lib/config/localForage.config";
+import { trackEvent, AnalyticsEvent } from "$lib/utils/analytics";
 
 // Constants
 const AUTH_NAMESPACE = 'auth';
@@ -123,6 +124,11 @@ function createAuthStore(pnp: PNP) {
         const owner = result.owner;
         set({ isConnected: true, account: result, isInitialized: true });
         
+        // Track successful connection using the utility function
+        trackEvent(AnalyticsEvent.ConnectWallet, { 
+          wallet_id: walletId 
+        });
+
         // Update state and storage
         selectedWalletId.set(walletId);
         isConnected.set(true);
