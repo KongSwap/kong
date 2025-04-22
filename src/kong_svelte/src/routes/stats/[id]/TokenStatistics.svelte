@@ -3,7 +3,6 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
   import {
-    InfoIcon,
     Droplets,
     ArrowLeftRight,
     Copy,
@@ -17,7 +16,6 @@
   import { goto } from "$app/navigation";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import Badge from "$lib/components/common/Badge.svelte";
-  import { toastStore } from "$lib/stores/toastStore";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import Dropdown from '$lib/components/common/Dropdown.svelte';

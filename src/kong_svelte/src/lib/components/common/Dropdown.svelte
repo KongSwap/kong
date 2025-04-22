@@ -43,7 +43,6 @@
   }
 
   function closeDropdown() {
-    console.log('Dropdown: closeDropdown called'); // Log close
     if (isOpen) {
       if (open !== undefined) {
         open = false;
@@ -58,7 +57,6 @@
     if (!isOpen || !triggerRef || !contentRef) return;
     const target = event.target as Node;
     if (!triggerRef.contains(target) && !contentRef.contains(target)) {
-      console.log('Dropdown: handleClickOutside triggered close'); // Log click outside
       closeDropdown();
     } else {
       // console.log('Dropdown: handleClickOutside ignored (inside)');
@@ -67,7 +65,6 @@
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape' && isOpen) {
-      console.log('Dropdown: handleKeydown triggered close'); // Log escape key
       closeDropdown();
     }
   }

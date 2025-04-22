@@ -28,7 +28,6 @@
     
     // If not found, try to use the token object from the pool directly
     if (!foundToken) {
-      console.log(`Using fallback token for ${tokenId}`);
       // Create a minimal token object using available data
       const isToken0 = pool.address_0 === tokenId;
       const symbol = isToken0 ? pool.symbol_0 : pool.symbol_1;
@@ -79,11 +78,6 @@
     
     return { pool, matchingToken, tvl };
   }).sort((a, b) => b.tvl - a.tvl));
-
-  $effect(() => {
-    console.log('Is dropdown open:', isPoolSelectorOpen);
-    console.log('Pools available:', poolsWithTokens.length);
-  });
 
   // Remove handleButtonClick and handleDocumentClick as Dropdown handles this
 
