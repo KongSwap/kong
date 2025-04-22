@@ -48,7 +48,7 @@
       
       // Fetch KONG balance when modal is opened
       if ($auth.isConnected) {
-        const kongToken = $userTokens.tokens.find(token => token.canister_id === KONG_LEDGER_CANISTER_ID);
+        const kongToken = $userTokens.tokens.find(token => token.address === KONG_LEDGER_CANISTER_ID);
         if (kongToken) {
           refreshSingleBalance(kongToken, $auth.account?.owner || "", true);
         }

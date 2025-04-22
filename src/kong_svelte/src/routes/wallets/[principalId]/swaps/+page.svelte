@@ -35,8 +35,8 @@
   const walletData = derived(walletDataStore, $walletDataStore => $walletDataStore);
 
   // Helper function to find token by canister ID
-  function findToken(canisterId: string): FE.Token | undefined {
-    return $walletData?.tokens?.find((t) => t.canister_id === canisterId);
+  function findToken(address: string): Kong.Token | undefined {
+    return $walletData?.tokens?.find((t) => t.address === address);
   }
 
   async function loadPage(pageNumber: number, forPrincipal: string) {

@@ -41,7 +41,7 @@
   $effect(() => { currentThemeId = $themeStore; });
   
   // State stores
-  const tokenData = writable<FE.Token[]>([]);
+  const tokenData = writable<FE.StatsToken[]>([]);
   const totalCount = writable<number>(0);
   const currentPage = writable<number>(1);
   const searchTerm = writable<string>("");
@@ -65,15 +65,16 @@
   let lastSearchTerm = "";
   let lastUrlUpdate = '';
   let isInitialLoadDone = false;
+  let isUrlUpdateInProgress = false;
 
   // Update price flash animation states
-  function updatePriceFlash(token: FE.Token) {
+  function updatePriceFlash(token: Kong.Token) {
     const currentPrice = Number(token.metrics?.price || 0);
-    const prevPrice = $previousPrices.get(token.canister_id);
+    const prevPrice = $previousPrices.get(token.address);
 
     // First update the previous price to avoid race conditions
     previousPrices.update(prices => {
-      prices.set(token.canister_id, currentPrice);
+      prices.set(token.address, currentPrice);
       return prices;
     });
 
@@ -82,20 +83,20 @@
       
       // Clean up existing timeout to avoid memory leaks
       priceFlashStates.update(states => {
-        if (states.has(token.canister_id)) {
-          clearTimeout(states.get(token.canister_id)!.timeout);
+        if (states.has(token.address)) {
+          clearTimeout(states.get(token.address)!.timeout);
         }
         
         // Create a new timeout
         const timeout = setTimeout(() => {
           priceFlashStates.update(currentStates => {
-            currentStates.delete(token.canister_id);
+            currentStates.delete(token.address);
             return currentStates;
           });
         }, 2000);
         
         // Update with new animation state 
-        states.set(token.canister_id, { class: flashClass, timeout });
+        states.set(token.address, { class: flashClass, timeout });
         return states;
       });
     }
@@ -150,15 +151,15 @@
   $effect(() => {
     const currentDebouncedTerm = $debouncedSearchTerm;
     
-    if (currentDebouncedTerm !== undefined && currentDebouncedTerm !== lastSearchTerm) {
+    if (currentDebouncedTerm !== undefined && currentDebouncedTerm !== lastSearchTerm && !isUrlUpdateInProgress) {
       console.log("Search term changed from", lastSearchTerm, "to", currentDebouncedTerm);
       lastSearchTerm = currentDebouncedTerm;
       
       // Always reset to page 1 for new searches
       if ($currentPage !== 1) {
         console.log("Resetting to page 1 for new search");
+        lastPage = 1; // Update lastPage to prevent triggering page effect
         currentPage.set(1);
-        // No need to call refreshData here as the page change effect will handle it
       } else {
         console.log("Already on page 1, refreshing data");
         isPageChange.set(true); // Signal it's a page change type refresh
@@ -169,7 +170,7 @@
 
   // Handle page changes
   $effect(() => {
-    if ($currentPage !== lastPage) {
+    if ($currentPage !== lastPage && !isUrlUpdateInProgress) {
       console.log("Page changed from", lastPage, "to", $currentPage);
       isPageChange.set(true);
       lastPage = $currentPage;
@@ -210,12 +211,23 @@
       // Debounce URL updates to ensure we're not updating too frequently
       urlUpdateTimeout = setTimeout(() => {
         const url = new URL(window.location.href);
-        url.searchParams.set('page', $currentPage.toString());
         
-        if ($debouncedSearchTerm) {
-          url.searchParams.set('search', $debouncedSearchTerm);
-        } else {
-          url.searchParams.delete('search');
+        const currentPageString = $currentPage.toString();
+        const urlPageParam = url.searchParams.get('page') || '1';
+        
+        if (currentPageString !== urlPageParam) {
+          url.searchParams.set('page', currentPageString);
+        }
+        
+        const currentSearchTerm = $debouncedSearchTerm;
+        const urlSearchParam = url.searchParams.get('search') || '';
+        
+        if (currentSearchTerm !== urlSearchParam) {
+          if (currentSearchTerm) {
+            url.searchParams.set('search', currentSearchTerm);
+          } else {
+            url.searchParams.delete('search');
+          }
         }
         
         const newUrl = url.toString();
@@ -223,7 +235,14 @@
         // Only update URL if it actually changed to prevent excessive history API calls
         if (newUrl !== lastUrlUpdate) {
           lastUrlUpdate = newUrl;
-          goto(newUrl, { replaceState: true, keepFocus: true });
+          isUrlUpdateInProgress = true;
+          goto(newUrl, { replaceState: true, keepFocus: true })
+            .then(() => {
+              // Set a small delay to ensure URL update completes before allowing other effects
+              setTimeout(() => {
+                isUrlUpdateInProgress = false;
+              }, 50);
+            });
         }
       }, 50); // Short timeout to batch potential multiple changes
     }
@@ -232,10 +251,8 @@
   // Handle favorites when auth changes
   $effect(() => {
     if ($auth.isConnected) {
-      Promise.all([
-        Promise.resolve(favoriteStore.getCount()).then(count => favoriteCount.set(count)),
-        favoriteStore.loadFavorites().then(favorites => favoriteTokenIds.set(favorites))
-      ]);
+      favoriteStore.getCount().then(count => favoriteCount.set(count));
+      favoriteStore.loadFavorites().then(favorites => favoriteTokenIds.set(favorites));
     } else {
       favoriteTokenIds.set([]);
       favoriteCount.set(0);
@@ -246,6 +263,7 @@
   onDestroy(() => {
     if (searchTimeout) clearTimeout(searchTimeout);
     if (refreshInterval) clearInterval(refreshInterval);
+    if (urlUpdateTimeout) clearTimeout(urlUpdateTimeout);
   });
 
   // Initialize on mount
@@ -257,8 +275,11 @@
       const searchParam = urlParams.get('search') || '';
       
       // Set initial values
+      lastPage = pageParam; // Initialize lastPage first
       currentPage.set(pageParam);
+      
       if (searchParam) {
+        lastSearchTerm = searchParam; // Initialize lastSearchTerm first
         searchTerm.set(searchParam);
         debouncedSearchTerm.set(searchParam);
       }
@@ -276,23 +297,23 @@
     [tokenData, favoriteTokenIds, showFavoritesOnly],
     ([$tokenData, $favoriteTokenIds, $showFavoritesOnly]) => 
       $showFavoritesOnly 
-        ? $tokenData.filter(token => $favoriteTokenIds.includes(token.canister_id))
+        ? $tokenData.filter(token => $favoriteTokenIds.includes(token.address))
         : $tokenData
   );
 
   // Helper functions
-  function getTrendClass(token: FE.Token): string {
+  function getTrendClass(token: FE.StatsToken): string {
     const change = token?.metrics?.price_change_24h;
     if (!change) return "";
     return Number(change) > 0 ? "text-kong-text-accent-green" : 
            Number(change) < 0 ? "text-kong-accent-red" : "";
   }
 
-  function isTopVolume(token: FE.Token): boolean {
-    if (token.canister_id === CKUSDT_CANISTER_ID || token.canister_id === ICP_CANISTER_ID)
+  function isTopVolume(token: FE.StatsToken): boolean {
+    if (token.address === CKUSDT_CANISTER_ID || token.address === ICP_CANISTER_ID)
       return false;
       
-    return token.volumeRank && 
+    return token.volumeRank !== undefined && 
            token.volumeRank <= 7 && 
            Number(token.metrics?.volume_24h || 0) > 0;
   }
@@ -469,8 +490,8 @@
                 columns={tableColumns}
                 itemsPerPage={ITEMS_PER_PAGE}
                 defaultSort={{ column: 'market_cap', direction: 'desc' }}
-                onRowClick={(row) => goto(`/stats/${row.canister_id}`)}
-                isKongRow={(row) => row.canister_id === KONG_CANISTER_ID}
+                onRowClick={(row) => goto(`/stats/${row.address}`)}
+                isKongRow={(row) => row.address === KONG_CANISTER_ID}
                 totalItems={$showFavoritesOnly ? $filteredTokens.length : $totalCount}
                 currentPage={$currentPage}
                 onPageChange={(page) => currentPage.set(page)}
@@ -516,15 +537,15 @@
                 <!-- Scrollable content -->
                 <div class="flex-1 overflow-auto">
                   <div class="space-y-2.5 px-2 py-2">
-                    {#each $filteredTokens as token (token.canister_id)}
+                    {#each $filteredTokens as token (token.address)}
                       <button
                         class="w-full"
-                        on:click={() => goto(`/stats/${token.canister_id}`)}
+                        on:click={() => goto(`/stats/${token.address}`)}
                       >
                         <TokenCardMobile
                           {token}
                           isConnected={$auth.isConnected}
-                          isFavorite={$favoriteTokenIds.includes(token.canister_id)}
+                          isFavorite={$favoriteTokenIds.includes(token.address)}
                           trendClass={getTrendClass(token)}
                           showHotIcon={isTopVolume(token)}
                         />

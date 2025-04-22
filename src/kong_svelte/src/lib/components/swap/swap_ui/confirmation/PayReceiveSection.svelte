@@ -9,9 +9,9 @@
     import Panel from "$lib/components/common/Panel.svelte";
 
   const { payToken, payAmount, receiveToken, receiveAmount, routingPath = [] } = $props<{
-    payToken: FE.Token;
+    payToken: Kong.Token;
     payAmount: string;
-    receiveToken: FE.Token;
+    receiveToken: Kong.Token;
     receiveAmount: string;
     routingPath?: string[];
   }>();
@@ -34,7 +34,7 @@
       );
 
       const fetchedTokens = await Promise.all(tokenPromises);
-      tokens = fetchedTokens.filter((t): t is FE.Token => t !== undefined);
+      tokens = fetchedTokens.filter((t): t is Kong.Token => t !== undefined);
       prevRoutingPath = [...routingPath];
     } catch (error) {
       console.error("Error fetching tokens:", error);

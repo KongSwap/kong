@@ -87,7 +87,7 @@
   // Check if a token position is a whale position
   function isWhalePosition(tokenId: string, balance: string | bigint): boolean {
     const token = $walletDataStore.tokens?.find(
-      (t) => t.canister_id === tokenId,
+      (t) => t.address === tokenId,
     );
     if (!token || !token.metrics?.total_supply) return false;
 
@@ -106,7 +106,7 @@
     balance: string | bigint,
   ): number {
     const token = $walletDataStore.tokens?.find(
-      (t) => t.canister_id === tokenId,
+      (t) => t.address === tokenId,
     );
     if (!token || !token.metrics?.total_supply) return 0;
 
@@ -265,7 +265,7 @@
                 (a, b) => Number(b[1]?.in_usd || 0) - Number(a[1]?.in_usd || 0),
               )[0]}
               {@const token = $walletDataStore.tokens?.find(
-                (t) => t.canister_id === topAsset[0],
+                (t) => t.address === topAsset[0],
               )}
               {@const isWhale = isWhalePosition(
                 topAsset[0],
@@ -348,7 +348,7 @@
             .slice(0, 5) as [canisterId, balance], i}
             {#if $walletDataStore.tokens}
               {@const token = $walletDataStore.tokens.find(
-                (t) => t.canister_id === canisterId,
+                (t) => t.address === canisterId,
               )}
               {#if token}
                 <div
@@ -577,7 +577,7 @@
               .slice(0, 5) as [canisterId, balance], i}
               {#if $walletDataStore.tokens}
                 {@const token = $walletDataStore.tokens.find(
-                  (t) => t.canister_id === canisterId,
+                  (t) => t.address === canisterId,
                 )}
                 {@const isWhale = isWhalePosition(
                   canisterId,

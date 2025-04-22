@@ -65,9 +65,6 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
     tx_type: 'swap' | 'pool' | 'send' = 'swap'
   ): Promise<{ transactions: any[], has_more: boolean, next_cursor?: number }> {
     try {
-      // Debug log
-      console.log(`Fetching transactions for ${principalId}`, { cursor, limit, tx_type });
-      
       const queryParams = new URLSearchParams({
         limit: limit.toString(),
       });
@@ -77,14 +74,9 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
       }
       
       // Determine the appropriate endpoint based on transaction type
-      const url = getTransactionEndpoint(principalId, tx_type, queryParams);
-      console.log(`Fetching from URL: ${url}`);
-      
+      const url = getTransactionEndpoint(principalId, tx_type, queryParams);      
       const response = await fetch(url);
       const responseText = await response.text();
-      
-      // Debug log
-      console.log(`Response status: ${response.status}, response text length: ${responseText.length}`);
       
       // Handle empty response
       if (!responseText.trim()) {
@@ -96,9 +88,7 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
       }
       
       // Parse the response
-      const result = parseTransactionResponse(response, responseText, url);
-      console.log(`Parsed ${result.transactions.length} transactions, has_more: ${result.has_more}`);
-      return result;
+      return parseTransactionResponse(response, responseText, url);;
     } catch (error) {
       console.error("Error fetching user transactions:", {
         error,
@@ -123,11 +113,6 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
     let data;
     try {
       data = JSON.parse(responseText);
-      console.log("API response data structure:", {
-        hasItems: !!data?.items,
-        itemsLength: data?.items?.length,
-        firstItem: data?.items?.[0] ? Object.keys(data.items[0]) : null
-      });
     } catch (parseError) {
       console.error('Failed to parse response as JSON:', {
         error: parseError,
@@ -167,13 +152,11 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
       // Support different API response formats
       // If the response doesn't have an items array but is an array itself
       if (!data.items && Array.isArray(data)) {
-        console.log('API returned direct array format');
         data = { items: data, has_more: false };
       }
       
       // If the response isn't in the expected format but has transactions
       if (!data.items && data.transactions) {
-        console.log('API returned transactions object format');
         data = { 
           items: data.transactions, 
           has_more: data.has_more || false,
@@ -333,26 +316,7 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
 
     try {
       // Use the TransactionSerializer to process the response
-      const result = TransactionSerializer.serializeTransactionsResponse(data);
-      
-      // Log some details about the serialized result
-      console.log("Serialized transactions:", {
-        count: result.transactions.length,
-        types: result.transactions.map(t => t.tx_type),
-        firstTransaction: result.transactions[0] ? {
-          id: result.transactions[0].tx_id,
-          type: result.transactions[0].tx_type,
-          status: result.transactions[0].status,
-          // Safely format the timestamp
-          timestamp: result.transactions[0].timestamp ? 
-                    new Date(Number(result.transactions[0].timestamp) > 1e15 ? 
-                      Number(result.transactions[0].timestamp) / 1_000_000 : 
-                      Number(result.transactions[0].timestamp)
-                    ).toISOString() : 'no timestamp'
-        } : null
-      });
-      
-      return result;
+      return TransactionSerializer.serializeTransactionsResponse(data);
     } catch (serializerError) {
       console.error('Error during transaction serialization:', serializerError);
       // Return empty result instead of throwing

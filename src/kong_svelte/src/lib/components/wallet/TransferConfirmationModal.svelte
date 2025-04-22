@@ -26,7 +26,7 @@
     onClose: () => void;
     onConfirm: () => void;
     amount: string;
-    token: FE.Token;
+    token: Kong.Token;
     tokenFee: bigint;
     isValidating?: boolean;
     toPrincipal: string;

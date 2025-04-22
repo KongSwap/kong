@@ -15,6 +15,7 @@
     disabled = false, // Disable button
     testId = "",     // For testing
     isWalletButton = false, // Flag for wallet buttons
+    loading = false, // Loading state
     
     // Theme options - consolidated into a single theme object
     customBgColor = "",
@@ -68,11 +69,11 @@
 
   // Selected and disabled classes
   let selectedClass = "bg-kong-primary/60 border-kong-primary/90";
-  let disabledClass = "opacity-50 cursor-not-allowed pointer-events-none";
+  let disabledClass = "opacity-70 cursor-not-allowed pointer-events-none";
 </script>
 
 <button
-  class="{buttonClass} {className} {isSelected ? selectedClass : ''} {disabled ? disabledClass : ''}"
+  class="{buttonClass} {className} {isSelected ? selectedClass : ''} {disabled || loading ? disabledClass : ''}"
   class:use-theme-border={useThemeBorder}
   class:has-custom-style={hasCustomStyle}
   class:use-theme-variables={useThemeVariables}
@@ -80,22 +81,26 @@
   class:wallet-button={isWalletButton}
   style={buttonStyle}
   on:click={onClick}
-  {disabled}
+  disabled={disabled || loading}
   data-testid={testId || "navbar-button"}
   use:tooltip={tooltipProps}
   aria-label={tooltipText || label || "Button"}
 >
   <div class="relative">
-    {@render icon({ size: iconSize })}
-    {#if badgeCount > 0}
-      <span class="absolute {variant === 'mobile' ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10">
-        {badgeCount}
-      </span>
+    {#if loading}
+      <div class="spinner" style="width: {iconSize}px; height: {iconSize}px;"></div>
+    {:else}
+      {@render icon({ size: iconSize })}
+      {#if badgeCount > 0}
+        <span class="absolute {variant === 'mobile' ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10">
+          {badgeCount}
+        </span>
+      {/if}
     {/if}
   </div>
   
   {#if label && variant !== "mobile"}
-    <span>{label}</span>
+    <span>{loading ? undefined : label}</span>
   {/if}
   
   {@render children()}
@@ -184,6 +189,8 @@
     }
     
     .mobile-wallet-btn {
+      @apply w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
+    background-color: var(--primary-button-bg, rgba(0, 149, 235, 0.15)) !important;
       border-width: 2px !important;
       border-style: solid !important;
       border-color: #FDFFFF #818181 #818181 #FDFFFF !important;
@@ -193,9 +200,17 @@
     }
   }
   
-  /* Mobile wallet button */
-  :global(.mobile-wallet-btn) {
-    @apply w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
-    background-color: var(--primary-button-bg, rgba(0, 149, 235, 0.15)) !important;
+  /* Loading spinner */
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: currentColor;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 </style> 

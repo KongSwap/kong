@@ -5,14 +5,8 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { formatBalance } from "$lib/utils/numberFormatUtils";
 import { walletPoolListStore } from '$lib/stores/walletPoolListStore';
 
-// Define types
-export interface TokenBalance {
-  in_tokens: bigint;
-  in_usd: string;
-}
-
 export interface WalletData {
-  tokens: FE.Token[];
+  tokens: Kong.Token[];
   balances: Record<string, TokenBalance>;
   isLoading: boolean;
   error: string | null;
@@ -40,7 +34,7 @@ let initializationPromise: Promise<void> | null = null;
 
 // Token cache to avoid reloading tokens for every wallet
 let tokenCache: {
-  tokens: FE.Token[];
+  tokens: Kong.Token[];
   lastUpdated: number | null;
 } = {
   tokens: [],
@@ -122,7 +116,7 @@ export class WalletDataService {
         console.log(`Starting initialization for wallet ${principalId}`);
 
         // Load tokens first - use cache if available and not expired
-        let tokens: FE.Token[] = [];
+        let tokens: Kong.Token[] = [];
         
         if (
           tokenCache.tokens.length > 0 && 
@@ -327,7 +321,7 @@ export class WalletDataService {
    * Force refresh the token cache
    * This is useful when new tokens are added to the system
    */
-  public static async refreshTokenCache(): Promise<FE.Token[]> {
+  public static async refreshTokenCache(): Promise<Kong.Token[]> {
     console.log('Force refreshing token cache');
     try {
       const tokens = await this.loadAllTokens();
@@ -355,8 +349,8 @@ export class WalletDataService {
   /**
    * Load all tokens with pagination and retry logic
    */
-  public static async loadAllTokens(): Promise<FE.Token[]> {
-    let allTokens: FE.Token[] = [];
+  public static async loadAllTokens(): Promise<Kong.Token[]> {
+    let allTokens: Kong.Token[] = [];
     let currentPage = 1;
     let hasMorePages = true;
     const pageLimit = 75;
@@ -420,7 +414,7 @@ export class WalletDataService {
    */
   public static async loadWalletBalances(
     principalId: string,
-    tokens: FE.Token[],
+    tokens: Kong.Token[],
     options = { forceRefresh: false }
   ): Promise<Record<string, TokenBalance>> {
     if (!principalId || principalId === "anonymous") {
@@ -459,7 +453,7 @@ export class WalletDataService {
           // Process the balances
           for (const [canisterId, balance] of batchBalances.entries()) {
             if (balance !== undefined && balance !== null) {
-              const token = tokens.find(t => t.canister_id === canisterId);
+              const token = tokens.find(t => t.address === canisterId);
               if (token) {
                 const price = token?.metrics?.price || 0;
                 const tokenAmount = formatBalance(balance.toString(), token.decimals).replace(/,/g, '');
@@ -508,7 +502,7 @@ export class WalletDataService {
   /**
    * Load only token metadata without balances
    */
-  public static async loadTokensOnly(principalId: string): Promise<FE.Token[]> {
+  public static async loadTokensOnly(principalId: string): Promise<Kong.Token[]> {
     try {
       // Update store to indicate loading
       walletDataStore.update(state => ({
@@ -521,7 +515,7 @@ export class WalletDataService {
       console.log('Starting token metadata load for', principalId);
       
       // Check if we have tokens in the cache
-      let tokens: FE.Token[] = [];
+      let tokens: Kong.Token[] = [];
       
       if (
         tokenCache.tokens.length > 0 && 

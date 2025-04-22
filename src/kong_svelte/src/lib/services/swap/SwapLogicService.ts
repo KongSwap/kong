@@ -37,12 +37,12 @@ export class SwapLogicService {
     }));
   }
 
-  static handleSelectToken(type: "pay" | "receive", token: FE.Token) {
+  static handleSelectToken(type: "pay" | "receive", token: Kong.Token) {
     const state = get(swapState);
     
     if (
-      (type === "pay" && token?.canister_id === state.receiveToken?.canister_id) ||
-      (type === "receive" && token?.canister_id === state.payToken?.canister_id)
+      (type === "pay" && token?.address === state.receiveToken?.address) ||
+      (type === "receive" && token?.address === state.payToken?.address)
     ) {
       toastStore.error("Cannot select the same token for both sides");
       return;
@@ -67,9 +67,9 @@ export class SwapLogicService {
   }
 
   static async executeSwap(params: {
-    payToken: FE.Token;
+    payToken: Kong.Token;
     payAmount: string;
-    receiveToken: FE.Token;
+    receiveToken: Kong.Token;
     receiveAmount: string;
     userMaxSlippage: number;
     backendPrincipal: Principal;

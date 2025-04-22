@@ -84,8 +84,8 @@
           
           // Reload balances and pool list after successful pool creation
           await Promise.all([
-            loadBalance(token0.canister_id, true),
-            loadBalance(token1.canister_id, true),
+            loadBalance(token0.address, true),
+            loadBalance(token1.address, true),
             currentUserPoolsStore.initialize(),
           ]);
           
@@ -125,8 +125,8 @@
           
           // Reload balances and pool list after successful liquidity addition
           await Promise.all([
-            loadBalance(token0.canister_id, true),
-            loadBalance(token1.canister_id, true),
+            loadBalance(token0.address, true),
+            loadBalance(token1.address, true),
             currentUserPoolsStore.initialize(),
           ]);
           

@@ -125,7 +125,7 @@
     isThemeDropdownOpen = false;
     
     // Show success toast
-    toastStore.success('Theme applied successfully');
+    toastStore.info('Theme applied successfully');
   }
   
   // Load theme from storage - use the store's function to avoid duplication

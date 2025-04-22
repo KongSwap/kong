@@ -18,7 +18,6 @@
   import TransactionItem from "./TransactionItem.svelte";
   import PredictionItem from "./PredictionItem.svelte";
   import { processTransaction, formatAmount } from "$lib/utils/transactionUtils";
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
   import DownloadTransactionsModal from "./DownloadTransactionsModal.svelte";
   import { goto } from "$app/navigation";
 
@@ -28,7 +27,7 @@
   }>();
 
   // Create a store for tokens
-  const tokensStore = writable<FE.Token[]>([]);
+  const tokensStore = writable<Kong.Token[]>([]);
 
   // State variables
   let isLoading = false;

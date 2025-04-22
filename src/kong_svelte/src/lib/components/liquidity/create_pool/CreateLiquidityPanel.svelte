@@ -46,15 +46,15 @@
   const DEBOUNCE_DELAY = 150; // Reduce from 300ms to improve responsiveness
 
   // State variables
-  let token0: FE.Token = null;
-  let token1: FE.Token = null;
+  let token0: Kong.Token = null;
+  let token1: Kong.Token = null;
   let pool: BE.Pool = null;
   let poolExists: boolean = null;
   let token0Balance = "0";
   let token1Balance = "0";
   let initialLoadComplete = false;
   let authInitialized = false;
-  let showConfirmModal = false;
+  let showConfirmModal = false; 
   let isLoading = true; // Add loading state to prevent rendering before data is ready
   let isLoadingBalances = false; // Track balance loading state
   let lastBalanceLoadTime = 0; // Track when balances were last loaded
@@ -107,12 +107,12 @@
   };
 
   // Improved function to handle loading balances and updating the store
-  async function loadBalancesIfNecessary(tokens: (FE.Token | null)[], owner: string, forceRefresh = false) {
-    const validTokens = tokens.filter((t): t is FE.Token => t !== null);
+  async function loadBalancesIfNecessary(tokens: (Kong.Token | null)[], owner: string, forceRefresh = false) {
+    const validTokens = tokens.filter((t): t is Kong.Token => t !== null);
     if (validTokens.length < 2 || !owner) return; // Need two valid tokens and owner
 
     const currentTime = Date.now();
-    const tokenPairKey = validTokens.map(t => t.canister_id).sort().join('-');
+    const tokenPairKey = validTokens.map(t => t.address).sort().join('-');
 
     // Prevent loading the same token pair repeatedly in a short time window or too many attempts
     if (tokenPairKey === lastLoadedTokenPair &&
@@ -173,17 +173,17 @@
       }
       
       // Get default tokens as fallbacks
-      const defaultToken0 = $userTokens.tokens.find(token => token.canister_id === ICP_CANISTER_ID) || null;
-      const defaultToken1 = $userTokens.tokens.find(token => token.canister_id === CKUSDT_CANISTER_ID) || null;
+      const defaultToken0 = $userTokens.tokens.find(token => token.address === ICP_CANISTER_ID) || null;
+      const defaultToken1 = $userTokens.tokens.find(token => token.address === CKUSDT_CANISTER_ID) || null;
       
       // Set tokens with proper fallbacks
       liquidityStore.setToken(0, 
-        tokensFromUrl.find(token => token.canister_id === urlToken0) || 
+        tokensFromUrl.find(token => token.address === urlToken0) || 
         defaultToken0
       );
       
       liquidityStore.setToken(1, 
-        tokensFromUrl.find(token => token.canister_id === urlToken1) || 
+        tokensFromUrl.find(token => token.address === urlToken1) || 
         defaultToken1
       );
       
@@ -192,8 +192,8 @@
       console.error("Error loading initial tokens:", error);
       // Set default tokens if error occurs
       try {
-        const defaultToken0 = $userTokens.tokens.find(token => token.canister_id === ICP_CANISTER_ID) || null;
-        const defaultToken1 = $userTokens.tokens.find(token => token.canister_id === CKUSDT_CANISTER_ID) || null;
+        const defaultToken0 = $userTokens.tokens.find(token => token.address === ICP_CANISTER_ID) || null;
+        const defaultToken1 = $userTokens.tokens.find(token => token.address === CKUSDT_CANISTER_ID) || null;
         
         liquidityStore.setToken(0, defaultToken0);
         liquidityStore.setToken(1, defaultToken1);
@@ -272,8 +272,8 @@
   };
   
   $: {
-    const token0Id = $liquidityStore.token0?.canister_id;
-    const token1Id = $liquidityStore.token1?.canister_id;
+    const token0Id = $liquidityStore.token0?.address;
+    const token1Id = $liquidityStore.token1?.address;
     const livePoolsLength = $livePools.length;
     
     // Safely get a timestamp, falling back to the current time
@@ -329,14 +329,14 @@
           // This logic decides WHEN to call the load function
           if ($auth?.isInitialized && $auth?.account?.owner) {
             const owner = $auth.account.owner.toString();
-            const currentToken0Balance = $currentUserBalancesStore[token0.canister_id]?.in_tokens?.toString();
-            const currentToken1Balance = $currentUserBalancesStore[token1.canister_id]?.in_tokens?.toString();
+            const currentToken0Balance = $currentUserBalancesStore[token0.address]?.in_tokens?.toString();
+            const currentToken1Balance = $currentUserBalancesStore[token1.address]?.in_tokens?.toString();
 
             const needBalances = !currentToken0Balance || !currentToken1Balance || currentToken0Balance === "0" || currentToken1Balance === "0";
 
             if (needBalances && !isLoadingBalances) {
               // Check throttling before scheduling the load
-              const tokenPairKey = [token0.canister_id, token1.canister_id].sort().join('-');
+              const tokenPairKey = [token0.address, token1.address].sort().join('-');
               const currentTime = Date.now();
               const canLoadAgain =
                 tokenPairKey !== lastLoadedTokenPair ||
@@ -376,20 +376,20 @@
 
   // Reactive block to update local balance variables from the store
   $: {
-    if (token0?.canister_id) {
-      token0Balance = $currentUserBalancesStore[token0.canister_id]?.in_tokens?.toString() || "0";
+    if (token0?.address) {
+      token0Balance = $currentUserBalancesStore[token0.address]?.in_tokens?.toString() || "0";
     } else {
       token0Balance = "0";
     }
-    if (token1?.canister_id) {
-      token1Balance = $currentUserBalancesStore[token1.canister_id]?.in_tokens?.toString() || "0";
+    if (token1?.address) {
+      token1Balance = $currentUserBalancesStore[token1.address]?.in_tokens?.toString() || "0";
     } else {
       token1Balance = "0";
     }
   }
 
   // Token selection handler
-  function handleTokenSelect(index: 0 | 1, token: FE.Token) {
+  function handleTokenSelect(index: 0 | 1, token: Kong.Token) {
     const otherToken = index === 0 ? token1 : token0;
     const result = validateTokenSelect(
       token,
@@ -424,8 +424,8 @@
     // Update store and URL
     liquidityStore.setToken(index, result.newToken);
     updateQueryParams(
-      index === 0 ? result.newToken?.canister_id : $liquidityStore.token0?.canister_id,
-      index === 1 ? result.newToken?.canister_id : $liquidityStore.token1?.canister_id
+      index === 0 ? result.newToken?.address : $liquidityStore.token0?.address,
+      index === 1 ? result.newToken?.address : $liquidityStore.token1?.address
     );
     
     // Don't manually reset local token balances to "0" here.

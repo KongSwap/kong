@@ -38,7 +38,7 @@ export async function loadUserBalances(
         // OPTIMIZATION: Only load balances for ENABLED tokens during normal refresh
         const enabledTokenIds = get(userTokens.enabledTokens);
         const enabledTokens = get(userTokens.tokens).filter(token =>
-          token.canister_id && enabledTokenIds.has(token.canister_id)
+          token.address && enabledTokenIds.has(token.address)
         );
         
         if (enabledTokens.length > 0) {

@@ -36,6 +36,7 @@
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
   import { getAccountIds, getPrincipalString } from "$lib/utils/accountUtils";
+  import { isAuthenticating } from "$lib/stores/auth";
 
   // Computed directly where needed using themeStore rune
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
@@ -67,7 +68,7 @@
   // Compute account ID reactively
   let accountId = $derived(
     $auth.isConnected && $auth.account?.owner
-      ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
+      ? getAccountIds($auth.account.owner, $auth.account.subaccount).main
       : ""
   );
 
@@ -167,6 +168,7 @@
     label: null,
     type: 'standard' as const,
     isSelected: false,
+    loading: false,
   };
 
   const desktopNavButtons = $derived([
@@ -207,7 +209,7 @@
     {
       type: 'wallet' as const,
       icon: Wallet,
-      label: $auth.isConnected ? null : "Connect",
+      label: null,
       onClick: handleConnect,
       isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
       show: true,
@@ -215,7 +217,8 @@
       variant: 'primary' as const,
       isWalletButton: true,
       badgeCount: $notificationsStore.unreadCount,
-      tooltipText: $auth.isConnected ? "Wallet / Notifications" : "Connect Wallet"
+      tooltipText: $auth.isConnected ? "Wallet / Notifications" : "Connect Wallet",
+      loading: $isAuthenticating,
     }
   ]);
 
@@ -227,6 +230,7 @@
     isWalletButton: false,
     badgeCount: null,
     show: true,
+    loading: false,
   };
 
   const mobileHeaderButtons = $derived([
@@ -242,6 +246,7 @@
       isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
       isWalletButton: true,
       badgeCount: $notificationsStore.unreadCount,
+      loading: $isAuthenticating,
     }
   ]);
 
@@ -410,7 +415,7 @@
 
   // --- Start New Copy Functions ---
   function copyPrincipalId() {
-    const principalToCopy = getPrincipalString($auth?.account?.owner);
+    const principalToCopy = $auth?.account?.owner;
     if (principalToCopy) {
       copyToClipboard(principalToCopy);
     } else {
@@ -420,7 +425,7 @@
 
   function copyAccountId() {
     const currentAccountId = $auth.isConnected && $auth.account?.owner
-      ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
+      ? getAccountIds($auth.account.owner, $auth.account.subaccount).main
       : "";
     if (currentAccountId) {
       copyToClipboard(currentAccountId);
@@ -554,6 +559,7 @@
               onClick={button.onClick}
               isSelected={button.isSelected}
               variant={button.variant}
+              loading={button.loading}
               {...button.themeProps}
               isWalletButton={button.isWalletButton}
               badgeCount={button.badgeCount}
@@ -576,6 +582,7 @@
               isSelected={button.isSelected ?? false}
               isWalletButton={button.isWalletButton ?? false}
               badgeCount={button.badgeCount ?? null}
+              loading={button.loading}
             />
           {/if}
         {/each}
@@ -634,7 +641,7 @@
         </div>
       </nav>
 
-      <div class="p-4 border-t border-kong-border">
+      <div class="p-2 border-t border-kong-border">
         <NavbarButton
           icon={Wallet}
           label={$auth.isConnected ? "Wallet" : "Connect Wallet"}
@@ -642,10 +649,11 @@
           isSelected={showWalletSidebar && walletSidebarActiveTab === "wallet"}
           variant="primary"
           iconSize={20}
-          class="mobile-wallet-btn"
+          class="w-full !py-5 justify-center"
           {...walletButtonThemeProps}
           isWalletButton={true}
           badgeCount={$notificationsStore.unreadCount}
+          loading={$isAuthenticating}
         />
       </div>
     </div>

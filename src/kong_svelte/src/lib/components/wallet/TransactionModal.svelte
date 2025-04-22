@@ -6,7 +6,7 @@
   export let isOpen: boolean;
   export let onClose: () => void;
   export let transaction: any;
-  export let tokens: FE.Token[] = [];
+  export let tokens: Kong.Token[] = [];
 </script>
 
 <Modal
@@ -60,7 +60,7 @@
                     tokens={[
                       tokens.find(
                         (token) =>
-                          token.canister_id ===
+                          token.address ===
                           transaction.details.pay_token_canister,
                       ),
                     ]}
@@ -96,7 +96,7 @@
                     tokens={[
                       tokens.find(
                         (token) =>
-                          token.canister_id ===
+                          token.address ===
                           transaction.details.receive_token_canister,
                       ),
                     ]}
@@ -147,7 +147,7 @@
                     tokens={[
                       tokens.find(
                         (token) =>
-                          token.canister_id ===
+                          token.address ===
                           transaction.details.token_0_canister,
                       ),
                     ]}
@@ -183,7 +183,7 @@
                     tokens={[
                       tokens.find(
                         (token) =>
-                          token.canister_id ===
+                          token.address ===
                           transaction.details.token_1_canister,
                       ),
                     ]}
@@ -242,7 +242,7 @@
                     tokens={[
                       tokens.find(
                         (token) =>
-                          token.canister_id ===
+                          token.address ===
                           transaction.details.token_canister,
                       ),
                     ]}

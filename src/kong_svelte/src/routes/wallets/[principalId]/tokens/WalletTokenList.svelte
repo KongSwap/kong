@@ -17,7 +17,7 @@
     showOnlyWithBalance = true,
     isLoading = false,
   } = $props<{
-    tokens: FE.Token[];
+    tokens: Kong.Token[];
     showHeader: boolean;
     showOnlyWithBalance: boolean;
     isLoading: boolean;
@@ -40,7 +40,7 @@
   let formattedTokens = $derived(
     tokens
       .map((token) => {
-        const balance = walletData.balances[token.canister_id];
+        const balance = walletData.balances[token.address];
         const balanceAmount = balance?.in_tokens || BigInt(0);
         const totalSupply = token.metrics?.total_supply || "0";
 
@@ -140,7 +140,7 @@
     {:else}
       <!-- Grid Body -->
       <div class="divide-y divide-kong-border">
-        {#each formattedTokens as token (token.canister_id)}
+        {#each formattedTokens as token (token.address)}
           <div
             animate:flip={{ duration: 300 }}
             class="sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr,1fr] sm:gap-4 sm:items-center p-4 hover:bg-kong-bg-dark/30 transition-colors cursor-pointer"

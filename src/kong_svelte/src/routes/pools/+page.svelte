@@ -84,7 +84,7 @@
     const map = new Map();
     if ($tokens) {
       $tokens.forEach((token) => {
-        map.set(token.canister_id, token);
+        map.set(token.address, token);
       });
     }
     return map;

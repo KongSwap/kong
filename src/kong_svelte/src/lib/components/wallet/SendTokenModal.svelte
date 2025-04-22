@@ -46,7 +46,7 @@
 
   // Props and state
   let { token, isOpen = false, onClose = () => {}, onSuccess = () => {} } = $props<{
-    token: FE.Token;
+    token: Kong.Token;
     isOpen?: boolean;
     onClose?: () => void;
     onSuccess?: (txId: string) => void;
@@ -63,15 +63,15 @@
   let addressFocused = $state(false);
   let amountFocused = $state(false);
   let showConfirmation = $state(false);
-  let transferDetails = $state<{ amount: string; token: FE.Token; tokenFee: bigint; toPrincipal: string; } | null>(null);
+  let transferDetails = $state<{ amount: string; token: Kong.Token; tokenFee: bigint; toPrincipal: string; } | null>(null);
   let showSuccess = $state(false);
   let mounted = $state(false);
   let closing = $state(false);
   let usdValue = $state<string>("0.00");
 
   // Derive balance
-  const currentBalance = $derived($currentUserBalancesStore[token?.canister_id]?.in_tokens ?? BigInt(0));
-  const currentBalanceUsd = $derived($currentUserBalancesStore[token?.canister_id]?.in_usd ?? BigInt(0));
+  const currentBalance = $derived($currentUserBalancesStore[token?.address]?.in_tokens ?? BigInt(0));
+  const currentBalanceUsd = $derived($currentUserBalancesStore[token?.address]?.in_usd ?? BigInt(0));
   const authStore = $derived(auth);
   const maxAmount = $derived(calculateMaxAmount(currentBalance, token?.decimals, tokenFee));
   
@@ -149,7 +149,7 @@
   // Load token fee
   async function loadTokenFee() {
     try {
-      if (!token?.canister_id) {
+      if (!token?.address) {
         tokenFee = BigInt(10000); // Fallback
         return;
       }

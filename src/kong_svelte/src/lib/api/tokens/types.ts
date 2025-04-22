@@ -6,6 +6,7 @@ import type { PaginationParams, PaginatedApiResponse } from '../base/types';
 export interface TokensParams extends PaginationParams {
   search?: string;
   canister_id?: string;
+  address?: string;
 }
 
 /**
@@ -48,7 +49,7 @@ export interface TokensResponse extends PaginatedApiResponse<RawTokenData> {}
  * Processed token response with serialized tokens
  */
 export interface ProcessedTokensResponse {
-  tokens: FE.Token[];
+  tokens: Kong.Token[];
   total_count: number;
   page: number;
   limit: number;

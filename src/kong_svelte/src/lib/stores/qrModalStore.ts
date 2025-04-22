@@ -4,22 +4,24 @@ type QRModalState = {
   isOpen: boolean;
   qrData: string;
   title: string;
+  address: string;
 };
 
 function createQRModalStore() {
   const { subscribe, set, update } = writable<QRModalState>({
     isOpen: false,
     qrData: '',
-    title: ''
+    title: '',
+    address: ''
   });
 
   return {
     subscribe,
-    show: (qrData: string, title: string) => {
-      set({ isOpen: true, qrData, title });
+    show: (qrData: string, title: string, address: string) => {
+      set({ isOpen: true, qrData, title, address });
     },
     hide: () => {
-      set({ isOpen: false, qrData: '', title: '' });
+      set({ isOpen: false, qrData: '', title: '', address: '' });
     }
   };
 }

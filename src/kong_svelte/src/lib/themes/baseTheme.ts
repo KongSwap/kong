@@ -211,7 +211,7 @@ export const baseTheme: ThemeDefinition = {
     textDisabled: '#6B7280',
     textLight: '#141826',
     textDark: '#0D111F',
-    textOnPrimary: '#FFFFFF',
+    textOnPrimary: '#0D111F',
     textAccentGreen: '#05EC86', // Same as accent-green
     textAccentRed: '#FF4545',   // Same as accent-red
     textAccentBlue: '#0095EB',

@@ -8,8 +8,8 @@
   import { copyToClipboard } from "$lib/utils/clipboard";
 
   export let tx: FE.Transaction;
-  export let token: FE.Token;
-  export let formattedTokens: FE.Token[];
+  export let token: Kong.Token;
+  export let formattedTokens: Kong.Token[];
   export let isNew: boolean;
   export let mobile = false;
 
@@ -26,16 +26,16 @@
   $: walletAddress = typeof tx.user === 'object' && tx.user.principal_id ? formatPrincipalId(tx.user.principal_id) : String(tx.user || '');
 
   // Add a computed property to determine if this is a buy transaction
-  $: isBuyTransaction = tx.receive_token_id === token.token_id;
+  $: isBuyTransaction = tx.receive_token_id === token.id;
 
   const calculateTotalUsdValue = (
     tx: FE.Transaction
   ): string => {
     const payToken = formattedTokens?.find(
-      (t) => t.token_id === tx.pay_token_id,
+      (t) => t.id === tx.pay_token_id,
     );
     const receiveToken = formattedTokens?.find(
-      (t) => t.token_id === tx.receive_token_id,
+      (t) => t.id === tx.receive_token_id,
     );
     if (!payToken || !receiveToken) return "0.00";
 
@@ -80,10 +80,10 @@
         {formatToNonZeroDecimal(tx.pay_amount)}
         <TokenImages
           tooltip={{
-            text: formattedTokens?.find((t) => t.token_id === tx.pay_token_id)?.symbol,
+            text: formattedTokens?.find((t) => t.id === tx.pay_token_id)?.symbol,
             direction: "top"
           }}
-          tokens={[formattedTokens?.find((t) => t.token_id === tx.pay_token_id)].filter(Boolean)}
+          tokens={[formattedTokens?.find((t) => t.id === tx.pay_token_id)].filter(Boolean)}
           size={18}
         />
       </span>
@@ -95,10 +95,10 @@
         {formatToNonZeroDecimal(tx.receive_amount)}
         <TokenImages
           tooltip={{
-            text: formattedTokens?.find((t) => t.token_id === tx.receive_token_id)?.symbol,
+            text: formattedTokens?.find((t) => t.id === tx.receive_token_id)?.symbol,
             direction: "top"
           }}
-          tokens={[formattedTokens?.find((t) => t.token_id === tx.receive_token_id)].filter(Boolean)}
+          tokens={[formattedTokens?.find((t) => t.id === tx.receive_token_id)].filter(Boolean)}
           size={18}
         />
       </span>
@@ -169,7 +169,7 @@
         <span class="text-kong-text-primary/70">Paid:</span>
         {formatToNonZeroDecimal(tx.pay_amount)}
         <TokenImages
-          tokens={[formattedTokens?.find((t) => t.token_id === tx.pay_token_id)].filter(Boolean)}
+          tokens={[formattedTokens?.find((t) => t.id === tx.pay_token_id)].filter(Boolean)}
           size={14}
         />
       </div>
@@ -178,7 +178,7 @@
         <span class="text-kong-text-primary/70">Received:</span>
         {formatToNonZeroDecimal(tx.receive_amount)}
         <TokenImages
-          tokens={[formattedTokens?.find((t) => t.token_id === tx.receive_token_id)].filter(Boolean)}
+          tokens={[formattedTokens?.find((t) => t.id === tx.receive_token_id)].filter(Boolean)}
           size={14}
         />
       </div>

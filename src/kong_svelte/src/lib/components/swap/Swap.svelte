@@ -122,12 +122,12 @@
   );
 
   // More direct token lookup by canister ID
-  async function findTokenByCanisterId(canisterId: string): Promise<FE.Token | null> {
+  async function findTokenByCanisterId(canisterId: string): Promise<Kong.Token | null> {
     if (!canisterId) return null;
     
     // First check in userTokens
     if ($userTokens.tokens && $userTokens.tokens.length > 0) {
-      const token = $userTokens.tokens.find(t => t.canister_id === canisterId);
+      const token = $userTokens.tokens.find(t => t.address === canisterId);
       if (token) return token;
     }
     
@@ -159,8 +159,8 @@
       attempts++;
     }
 
-    const currentPayTokenId = $swapState.payToken?.canister_id;
-    const currentReceiveTokenId = $swapState.receiveToken?.canister_id;
+    const currentPayTokenId = $swapState.payToken?.address;
+    const currentReceiveTokenId = $swapState.receiveToken?.address;
 
     // Find tokens only if params exist and are different from current state
     const [fromToken, toToken] = await Promise.all([
@@ -172,7 +172,7 @@
     const newReceiveToken = toParam ? (await findTokenByCanisterId(toParam)) : $swapState.receiveToken;
 
     // Update state only if tokens actually changed
-    if (newPayToken?.canister_id !== currentPayTokenId || newReceiveToken?.canister_id !== currentReceiveTokenId) {
+    if (newPayToken?.address !== currentPayTokenId || newReceiveToken?.address !== currentReceiveTokenId) {
       console.log('Updating tokens from URL params:', { fromParam, toParam, newPayToken, newReceiveToken });
       swapState.update(state => ({
         ...state,
@@ -248,8 +248,8 @@
 
   // Modify the poolExists function to add more debugging
   function poolExists(
-    payToken: FE.Token | null,
-    receiveToken: FE.Token | null,
+    payToken: Kong.Token | null,
+    receiveToken: Kong.Token | null,
   ): boolean {
     if (!payToken || !receiveToken) {
       return false;
@@ -317,7 +317,7 @@
         payToken: $swapState.payToken,
         receiveToken: $swapState.receiveToken,
         payDecimals: Number(
-          getTokenDecimals($swapState.payToken.canister_id).toString(),
+          getTokenDecimals($swapState.payToken.address).toString(),
         ),
       });
 
@@ -551,9 +551,9 @@
       $swapState.receiveToken &&
       $swapState.payAmount &&
       ($swapState.payAmount !== previousPayAmount ||
-        $swapState.payToken?.canister_id !== previousPayToken?.canister_id ||
-        $swapState.receiveToken?.canister_id !==
-          previousReceiveToken?.canister_id)
+        $swapState.payToken?.address !== previousPayToken?.address ||
+        $swapState.receiveToken?.address !==
+          previousReceiveToken?.address)
     ) {
       previousPayAmount = $swapState.payAmount;
       previousPayToken = $swapState.payToken;
@@ -605,18 +605,18 @@
   // Add effect to check if user has sufficient balance
   $effect(() => {
     const checkBalance = async () => {
-      if ($auth.account?.owner && $swapState.payToken?.canister_id && $swapState.payAmount && $swapState.payAmount !== "0") {
+      if ($auth.account?.owner && $swapState.payToken?.address && $swapState.payAmount && $swapState.payAmount !== "0") {
         // Check if we have balance data for this token
-        if ($currentUserBalancesStore && $currentUserBalancesStore[$swapState.payToken.canister_id]) {
+        if ($currentUserBalancesStore && $currentUserBalancesStore[$swapState.payToken.address]) {
           try {
             // Convert payAmount to a number that can be compared with the BigInt
             const payAmount = parseFloat($swapState.payAmount);
             
             // Get the BigInt balance and convert to number for comparison
-            const balanceBigInt = $currentUserBalancesStore[$swapState.payToken.canister_id].in_tokens;
+            const balanceBigInt = $currentUserBalancesStore[$swapState.payToken.address].in_tokens;
             
             // Get token decimals (this is async)
-            const decimals = await getTokenDecimals($swapState.payToken.canister_id);
+            const decimals = await getTokenDecimals($swapState.payToken.address);
             const divisor = Math.pow(10, Number(decimals) || 8);
             const balanceAsNumber = Number(balanceBigInt) / divisor;
             

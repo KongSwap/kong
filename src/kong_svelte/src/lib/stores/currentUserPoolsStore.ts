@@ -28,8 +28,8 @@ interface ProcessedPool {
   address_0: string;
   address_1: string;
   searchableText: string;
-  token0?: FE.Token;
-  token1?: FE.Token;
+  token0?: Kong.Token;
+  token1?: Kong.Token;
   rolling_24h_apy?: number;
   rolling_24h_volume?: string;
 }
@@ -161,9 +161,9 @@ function createCurrentUserPoolsStore() {
     try {
       const fetchedTokens = await fetchTokensByCanisterId(tokenIds);
       const tokenMap = fetchedTokens.reduce((acc, token) => {
-        acc[token.canister_id] = token;
+        acc[token.address] = token;
         return acc;
-      }, {} as Record<string, FE.Token>);
+      }, {} as Record<string, Kong.Token>);
       
       update(s => ({
         ...s,
@@ -175,7 +175,7 @@ function createCurrentUserPoolsStore() {
     }
   }
 
-  function processPoolsWithTokens(pools: any[], tokens: Record<string, FE.Token>): ProcessedPool[] {
+  function processPoolsWithTokens(pools: any[], tokens: Record<string, Kong.Token>): ProcessedPool[] {
     return pools.map(pool => ({
       ...pool,
       searchableText: getPoolSearchData(pool, tokens),
@@ -191,7 +191,7 @@ function createCurrentUserPoolsStore() {
   }
 }
 
-function getPoolSearchData(pool: any, tokens: Record<string, FE.Token>): string {
+function getPoolSearchData(pool: any, tokens: Record<string, Kong.Token>): string {
   const searchTerms = [
     pool.symbol_0,
     pool.symbol_1,

@@ -11,9 +11,9 @@ export class SwapUrlService {
     }
 
     static async initializeFromUrl(
-        userTokens: FE.Token[], 
-        fetchTokensByCanisterId: (ids: string[]) => Promise<FE.Token[]>,
-        onTokensLoaded: (token0: FE.Token | null, token1: FE.Token | null) => void
+        userTokens: Kong.Token[], 
+        fetchTokensByCanisterId: (ids: string[]) => Promise<Kong.Token[]>,
+        onTokensLoaded: (token0: Kong.Token | null, token1: Kong.Token | null) => void
     ) {
         if (!browser || !userTokens.length) return;
 
@@ -24,8 +24,8 @@ export class SwapUrlService {
         if (!token0Id && !token1Id) return;
 
         const tokens = await fetchTokensByCanisterId([token0Id, token1Id]);
-        const token0 = token0Id ? tokens.find((t) => t.canister_id === token0Id) : null;
-        const token1 = token1Id ? tokens.find((t) => t.canister_id === token1Id) : null;
+        const token0 = token0Id ? tokens.find((t) => t.address === token0Id) : null;
+        const token1 = token1Id ? tokens.find((t) => t.address === token1Id) : null;
 
         if (token0 || token1) {
             onTokensLoaded(token0, token1);

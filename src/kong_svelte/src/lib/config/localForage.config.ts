@@ -13,6 +13,8 @@ export const STORAGE_KEYS = {
   USER_TOKENS: 'user_tokens',
   ALLOWANCES: 'allowances',
   RECENT_TRADES: 'recent_trades',
+  AUTH_NAMESPACE: 'auth',
+  RECENT_WALLETS_NAMESPACE: 'recent_wallets',
 };
 
 /**

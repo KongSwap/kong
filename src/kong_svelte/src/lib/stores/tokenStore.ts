@@ -27,7 +27,7 @@ export {
 };
 
 // Create a fallback empty store for balances in case the imported one is not available
-const fallbackBalancesStore = writable<Record<string, FE.TokenBalance>>({});
+const fallbackBalancesStore = writable<Record<string, TokenBalance>>({});
 const fallbackUserTokensStore = writable({ enabledTokens: {}, tokens: [], isAuthenticated: false });
 const fallbackUserPoolsStore = writable({ processedPools: [] });
 
@@ -77,8 +77,8 @@ export const portfolioValue = derived(
 
     // Calculate token values with proper null checking
     const tokenValue = ($userTokens.tokens || []).reduce((acc, token) => {
-      if (!token || !token.canister_id) return acc;
-      const balance = $storedBalances[token.canister_id]?.in_usd;
+      if (!token || !token.address) return acc;
+      const balance = $storedBalances[token.address]?.in_usd;
       if (balance && balance !== "0") {
         return acc + Number(balance);
       }
@@ -100,8 +100,8 @@ export const portfolioValue = derived(
   },
 );
 
-export const getTokenDecimals = async (canisterId: string) => {
-  const token = get(safeUserTokensStore).tokens.find(t => t.canister_id === canisterId) || await fetchTokensByCanisterId([canisterId])[0];
+export const getTokenDecimals = async (address: string) => {
+  const token = get(safeUserTokensStore).tokens.find(t => t.address === address) || await fetchTokensByCanisterId([address])[0];
   return token?.decimals || 0;
 };
 

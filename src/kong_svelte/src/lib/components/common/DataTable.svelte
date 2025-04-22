@@ -93,7 +93,7 @@
   }
 
   function isKongToken(row: any): boolean {
-    return row.canister_id === KONG_CANISTER_ID || 
+    return row.address === KONG_CANISTER_ID || 
            row.address_0 === KONG_CANISTER_ID || 
            row.address_1 === KONG_CANISTER_ID;
   }
@@ -260,7 +260,7 @@
         </tr>
       </thead>
       <tbody class={isTableTransparent() ? 'transparent-tbody' : 'solid-tbody'}>
-        {#each displayData as row (row[rowKey])}
+        {#each displayData as row, idx (idx)}
           <tr
             class="h-[44px] border-b border-kong-border/50 hover:bg-kong-hover-bg-light transition-colors duration-200 
               {onRowClick ? 'cursor-pointer' : ''} 

@@ -49,7 +49,7 @@
 
   // Helper for extracting and validating token ID
   function getTokenId(token: any): string | null {
-    return token?.canister_id || null;
+    return token?.address || null;
   }
 
   // UI state
@@ -75,7 +75,7 @@
     favoritesLoaded: false,
     favoriteTokens: new Map<string, boolean>(),
     loadedTokens: new Set<string>(),
-    apiSearchResults: [] as FE.Token[]
+    apiSearchResults: [] as Kong.Token[]
   });
 
   // Timers for debouncing
@@ -88,7 +88,7 @@
       ? Array.from($userTokens.tokenData.values()).filter((token) => {
           const tokenId = getTokenId(token);
           return tokenId && $userTokens.enabledTokens.has(tokenId);
-        }) as FE.Token[]
+        }) as Kong.Token[]
       : []
   );
   
@@ -102,18 +102,18 @@
   });
 
   // Helper functions for token state
-  function isApiToken(token: FE.Token): boolean {
-    return !!token && !$userTokens.enabledTokens.has(token.canister_id);
+  function isApiToken(token: Kong.Token): boolean {
+    return !!token && !$userTokens.enabledTokens.has(token.address);
   }
   
   function isFavoriteToken(tokenId: string): boolean {
     return state.favoriteTokens.get(tokenId) || false;
   }
 
-  function canSelectToken(token: FE.Token): boolean {
+  function canSelectToken(token: Kong.Token): boolean {
     return !(
-      otherPanelToken?.canister_id === token.canister_id ||
-      BLOCKED_TOKEN_IDS.includes(token.canister_id) ||
+      otherPanelToken?.address === token.address ||
+      BLOCKED_TOKEN_IDS.includes(token.address) ||
       isApiToken(token)
     );
   }
@@ -152,7 +152,7 @@
 
   // Consolidated filter and sort function
   function filterAndSortTokens(
-    tokens: FE.Token[],
+    tokens: Kong.Token[],
     query: string,
     filter: FilterType,
     hideZero: boolean,
@@ -160,46 +160,46 @@
     sortCol: string,
     sortDir: string,
     balances: Record<string, { in_tokens: bigint; in_usd: string }>,
-    currentToken: FE.Token | null
-  ): FE.Token[] {
+    currentToken: Kong.Token | null
+  ): Kong.Token[] {
     return tokens.filter(token => {
       // Basic validation
-      if (!token?.canister_id || !token?.symbol || !token?.name) return false;
+      if (!token?.address || !token?.symbol || !token?.name) return false;
       
       // Search query filter
       if (query && !token.symbol.toLowerCase().includes(query.toLowerCase()) && 
           !token.name.toLowerCase().includes(query.toLowerCase()) &&
-          !token.canister_id.toLowerCase().includes(query.toLowerCase())) {
+          !token.address.toLowerCase().includes(query.toLowerCase())) {
         return false;
       }
       
       // Standard filter (all, ck, favorites)
       if (filter === "ck" && !token.symbol.toLowerCase().startsWith("ck")) return false;
-      if (filter === "favorites" && !favorites.get(token.canister_id)) return false;
+      if (filter === "favorites" && !favorites.get(token.address)) return false;
       
       // Balance filter
       if (hideZero) {
-        const balance = balances[token.canister_id]?.in_tokens;
+        const balance = balances[token.address]?.in_tokens;
         if (!balance || balance <= BigInt(0)) return false;
       }
       
       return true;
     }).sort((a, b) => {
       // Sort by current token first
-      const aIsCurrent = currentToken?.canister_id === a.canister_id;
-      const bIsCurrent = currentToken?.canister_id === b.canister_id;
+      const aIsCurrent = currentToken?.address === a.address;
+      const bIsCurrent = currentToken?.address === b.address;
       if (aIsCurrent) return -1;
       if (bIsCurrent) return 1;
 
       // Sort by favorites first
-      const aFavorite = favorites.get(a.canister_id) || false;
-      const bFavorite = favorites.get(b.canister_id) || false;
+      const aFavorite = favorites.get(a.address) || false;
+      const bFavorite = favorites.get(b.address) || false;
       if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
 
       // Then sort by value if that's selected
       if (sortCol === 'value') {
-        const aBalance = balances[a.canister_id]?.in_usd || "0";
-        const bBalance = balances[b.canister_id]?.in_usd || "0";
+        const aBalance = balances[a.address]?.in_usd || "0";
+        const bBalance = balances[b.address]?.in_usd || "0";
         const aValue = Number(aBalance);
         const bValue = Number(bBalance);
         return sortDir === 'desc' ? bValue - aValue : aValue - bValue;
@@ -211,13 +211,13 @@
 
   // Get filtered and sorted tokens
   function getFilteredAndSortedTokens(
-    allTokens: FE.Token[],
-    apiTokens: FE.Token[],
-    currentToken: FE.Token | null
-  ): FE.Token[] {
+    allTokens: Kong.Token[],
+    apiTokens: Kong.Token[],
+    currentToken: Kong.Token | null
+  ): Kong.Token[] {
     // Deduplicate tokens from both sources
     const uniqueTokens = Array.from(new Map(
-      [...allTokens, ...apiTokens].map(token => [token.canister_id, token])
+      [...allTokens, ...apiTokens].map(token => [token.address, token])
     ).values());
     
     return filterAndSortTokens(
@@ -238,7 +238,7 @@
     browser ? getFilteredAndSortedTokens(baseFilteredTokens, state.apiSearchResults, currentToken) : []
   );
   
-  let enabledFilteredTokens = $derived(filteredTokens.filter(token => $userTokens.enabledTokens.has(token.canister_id)));
+  let enabledFilteredTokens = $derived(filteredTokens.filter(token => $userTokens.enabledTokens.has(token.address)));
   let apiFilteredTokens = $derived(filteredTokens.filter(token => isApiToken(token)));
   
   let enabledTokensVirtualState = $derived(
@@ -300,22 +300,22 @@
   }
 
   // Token-related actions
-  async function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
+  async function handleFavoriteClick(e: MouseEvent, token: Kong.Token) {
     e.preventDefault();
     e.stopPropagation();
     
-    const isFavorite = state.favoriteTokens.get(token.canister_id) || false;
+    const isFavorite = state.favoriteTokens.get(token.address) || false;
     await (isFavorite 
-      ? favoriteStore.removeFavorite(token.canister_id)
-      : favoriteStore.addFavorite(token.canister_id));
+      ? favoriteStore.removeFavorite(token.address)
+      : favoriteStore.addFavorite(token.address));
 
     // Update the local state
-    state.favoriteTokens.set(token.canister_id, !isFavorite);
+    state.favoriteTokens.set(token.address, !isFavorite);
     state.favoriteTokens = new Map(state.favoriteTokens); // Trigger reactivity
   }
   
-  function handleSelect(token: FE.Token) {
-    if (BLOCKED_TOKEN_IDS.includes(token.canister_id)) {
+  function handleSelect(token: Kong.Token) {
+    if (BLOCKED_TOKEN_IDS.includes(token.address)) {
       toastStore.warning(
         "BIL token is currently in read-only mode. Trading will resume when the ledger is stable.",
         { title: "Token Temporarily Unavailable", duration: 8000 }
@@ -330,16 +330,16 @@
     state.searchQuery = "";
   }
   
-  async function handleEnableToken(e: MouseEvent, token: FE.Token) {
+  async function handleEnableToken(e: MouseEvent, token: Kong.Token) {
     e.preventDefault();
     e.stopPropagation();
-    state.enablingTokenId = token.canister_id;
+    state.enablingTokenId = token.address;
 
     try {
       userTokens.enableToken(token);
       
-      if (isUserAuthenticated && !state.loadedTokens.has(token.canister_id)) {
-        state.loadedTokens.add(token.canister_id);
+      if (isUserAuthenticated && !state.loadedTokens.has(token.address)) {
+        state.loadedTokens.add(token.address);
         const principal = $auth.account?.owner?.toString();
 
         if (principal) {          
@@ -364,7 +364,7 @@
     }
   }
   
-  function handleTokenClick(e: MouseEvent | TouchEvent, token: FE.Token) {
+  function handleTokenClick(e: MouseEvent | TouchEvent, token: Kong.Token) {
     e.stopPropagation();
 
     if (isApiToken(token)) {
@@ -377,7 +377,7 @@
 
     // Load balance if needed before selecting
     if (isUserAuthenticated && $auth.account?.owner && 
-        !$currentUserBalancesStore[token.canister_id]) {
+        !$currentUserBalancesStore[token.address]) {
       void refreshSingleBalance(token, $auth.account.owner.toString(), false);
     }
 
@@ -385,7 +385,7 @@
     onClose();
   }
   
-  function handleCustomTokenAdded(event: CustomEvent<FE.Token>) {
+  function handleCustomTokenAdded(event: CustomEvent<Kong.Token>) {
     const newToken = event.detail;
     state.isAddNewTokenModalOpen = false;
     
@@ -412,13 +412,13 @@
 
       // Filter tokens that need balance loading
       const tokensNeedingBalances = visibleTokens.filter(
-        token => token.canister_id && 
-                !$currentUserBalancesStore[token.canister_id] && 
-                !state.loadedTokens.has(token.canister_id)
+        token => token.address && 
+                !$currentUserBalancesStore[token.address] && 
+                !state.loadedTokens.has(token.address)
       );
       
       if (tokensNeedingBalances.length > 0) {
-        tokensNeedingBalances.forEach(token => state.loadedTokens.add(token.canister_id));
+        tokensNeedingBalances.forEach(token => state.loadedTokens.add(token.address));
         void loadBalances(tokensNeedingBalances, principal, true);
       }
     }, 200);
@@ -435,8 +435,8 @@
     const matchingLocalTokens = baseFilteredTokens.filter(
       token => (token.symbol.toLowerCase().includes(query.toLowerCase()) ||
                token.name.toLowerCase().includes(query.toLowerCase()) ||
-               token.canister_id.toLowerCase().includes(query.toLowerCase())) &&
-               $userTokens.enabledTokens.has(token.canister_id)
+               token.address.toLowerCase().includes(query.toLowerCase())) &&
+               $userTokens.enabledTokens.has(token.address)
     );
 
     if (matchingLocalTokens.length >= 10) {
@@ -448,7 +448,7 @@
     try {
       const { tokens } = await fetchTokens({ search: query, limit: 20 });
       state.apiSearchResults = tokens.filter(
-        token => !$userTokens.enabledTokens.has(token.canister_id)
+        token => !$userTokens.enabledTokens.has(token.address)
       );
     } catch (error) {
       console.error("Error searching tokens:", error);
@@ -506,13 +506,13 @@
         setTimeout(() => {
           if (show && tokens.length > 0) {
             const tokensNeedingBalances = tokens.filter(
-              token => token.canister_id && 
-                      !$currentUserBalancesStore[token.canister_id] && 
-                      !state.loadedTokens.has(token.canister_id)
+              token => token.address && 
+                      !$currentUserBalancesStore[token.address] && 
+                      !state.loadedTokens.has(token.address)
             );
             
             if (tokensNeedingBalances.length > 0) {
-              tokensNeedingBalances.forEach(token => state.loadedTokens.add(token.canister_id));
+              tokensNeedingBalances.forEach(token => state.loadedTokens.add(token.address));
               void loadBalances(tokensNeedingBalances, $auth.account!.owner.toString(), false);
             }
           }
@@ -623,7 +623,7 @@
               {#if enabledFilteredTokens.length > 0}
                 <div class="space-y-2">
                   <div style="height: {enabledFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
-                    {#each enabledTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
+                    {#each enabledTokensVirtualState.visible as { item: token, index }, i (token.address)}
                       <div
                         style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
                       >
@@ -633,20 +633,20 @@
                           currentToken={currentToken}
                           otherPanelToken={otherPanelToken}
                           isApiToken={isApiToken(token)}
-                          isFavorite={isFavoriteToken(token.canister_id)}
+                          isFavorite={isFavoriteToken(token.address)}
                           enablingTokenId={state.enablingTokenId}
                           blockedTokenIds={BLOCKED_TOKEN_IDS}
                           balance={{
-                            loading: isUserAuthenticated && !$currentUserBalancesStore[token.canister_id],
-                            tokens: $currentUserBalancesStore[token.canister_id]
+                            loading: isUserAuthenticated && !$currentUserBalancesStore[token.address],
+                            tokens: $currentUserBalancesStore[token.address]
                               ? formatBalance(
-                                $currentUserBalancesStore[token.canister_id]?.in_tokens || 0n,
+                                $currentUserBalancesStore[token.address]?.in_tokens || 0n,
                                 token.decimals || 8
                               )
                               : "0",
-                            usd: $currentUserBalancesStore[token.canister_id]
+                            usd: $currentUserBalancesStore[token.address]
                               ? formatUsdValue(
-                                $currentUserBalancesStore[token.canister_id]?.in_usd || "0"
+                                $currentUserBalancesStore[token.address]?.in_usd || "0"
                               )
                               : "$0.00"
                           }}
@@ -674,7 +674,7 @@
                     </div>
                   {:else}
                     <div style="height: {apiFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
-                      {#each apiTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
+                      {#each apiTokensVirtualState.visible as { item: token, index }, i (token.address)}
                         <div
                           style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
                         >
@@ -684,20 +684,20 @@
                             currentToken={currentToken}
                             otherPanelToken={otherPanelToken}
                             isApiToken={true}
-                            isFavorite={isFavoriteToken(token.canister_id)}
+                            isFavorite={isFavoriteToken(token.address)}
                             enablingTokenId={state.enablingTokenId}
                             blockedTokenIds={BLOCKED_TOKEN_IDS}
                             balance={{
-                              loading: isUserAuthenticated && !$currentUserBalancesStore[token.canister_id],
-                              tokens: $currentUserBalancesStore[token.canister_id]
+                              loading: isUserAuthenticated && !$currentUserBalancesStore[token.address],
+                              tokens: $currentUserBalancesStore[token.address]
                                 ? formatBalance(
-                                  $currentUserBalancesStore[token.canister_id]?.in_tokens || 0n,
+                                  $currentUserBalancesStore[token.address]?.in_tokens || 0n,
                                   token.decimals || 8
                                 )
                                 : "0",
-                              usd: $currentUserBalancesStore[token.canister_id]
+                              usd: $currentUserBalancesStore[token.address]
                                 ? formatUsdValue(
-                                  $currentUserBalancesStore[token.canister_id]?.in_usd || "0"
+                                  $currentUserBalancesStore[token.address]?.in_usd || "0"
                                 )
                                 : "$0.00"
                             }}

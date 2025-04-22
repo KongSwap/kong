@@ -52,7 +52,7 @@ export function initializePNP(): PNP {
   try {
     const isDev = process.env.DFX_NETWORK === "local";
     const kongSvelteCanisterId = process.env.CANISTER_ID_KONG_SVELTE;
-    console.log("env", process.env);
+
     globalPnp = createPNP({
       dfxNetwork: isDev ? "local" : "ic",
       hostUrl: isDev ? "http://localhost:4943" : "https://icp0.io",
@@ -78,10 +78,10 @@ export function initializePNP(): PNP {
         trollboxCanisterId,
         process.env.CANISTER_ID_SIWS_PROVIDER,
         "rh2pm-ryaaa-aaaan-qeniq-cai"
-      ].filter((id): id is string => !!id),
+      ],
       siwsProviderCanisterId: 'guktk-fqaaa-aaaao-a4goa-cai',
-      adapterConfigs: {
-        nns: {
+      adapters: {
+        ii: {
           enabled: true,
           identityProvider: isDev
             ? "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"
@@ -101,14 +101,13 @@ export function initializePNP(): PNP {
         phantomSiws: {
           enabled: true,
           config: {
-            // --- Required SIWS Config ---
           },
         },
         solflareSiws: {
           enabled: true,
-          config: {
-            // --- Required SIWS Config ---
-          },
+        },
+        backpackSiws: {
+          enabled: true,
         },
       },
       localStorageKey: "kongSwapPnpState",

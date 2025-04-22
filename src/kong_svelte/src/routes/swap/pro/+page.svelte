@@ -5,8 +5,8 @@
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { ICP_CANISTER_ID, KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
 
-  let fromToken: FE.Token | null = null;
-  let toToken: FE.Token | null = null;
+  let fromToken: Kong.Token | null = null;
+  let toToken: Kong.Token | null = null;
 
   async function initializeTokens() {
     if(!browser) return;
@@ -17,8 +17,8 @@
       
       const tokens = await fetchTokensByCanisterId([fromCanisterId, toCanisterId]);
       
-      fromToken = tokens.find(t => t.canister_id === fromCanisterId) || null;
-      toToken = tokens.find(t => t.canister_id === toCanisterId) || null;
+      fromToken = tokens.find(t => t.address === fromCanisterId) || null;
+      toToken = tokens.find(t => t.address === toCanisterId) || null;
     } catch (error) {
       console.error("Error initializing tokens:", error);
     }

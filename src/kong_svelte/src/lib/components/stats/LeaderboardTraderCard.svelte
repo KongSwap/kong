@@ -25,7 +25,7 @@
     user: LeaderboardEntry;
     rank: number;
     expanded?: boolean;
-    tradedTokens?: FE.Token[] | undefined;
+    tradedTokens?: Kong.Token[] | undefined;
     loadingTokens?: boolean;
     tokenError?: string | null;
     userDetails?: { fee_level: number } | null;

@@ -8,6 +8,8 @@ members = [
     "src/sdk/rsKong",
     "src/prediction_markets_backend",
     "src/trollbox",
+    "src/ic_siws_provider",
+    "src/ic_siws"
 ]
 resolver = "2"
 

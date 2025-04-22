@@ -8,7 +8,7 @@
   $: price = Number(row.metrics?.price || 0);
   $: formattedPrice = formatUsdValue(price, true);
   $: tooltipContent = `$${price}`;
-  $: flashClass = priceFlashStates?.get(row.canister_id)?.class || '';
+  $: flashClass = priceFlashStates?.get(row.address)?.class || '';
 </script>
 
 <span 

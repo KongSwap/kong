@@ -4,23 +4,23 @@ import { auth } from "$lib/stores/auth";
 import { userTokens } from "$lib/stores/userTokens";
 
 // Create a store for balances
-export const currentUserBalancesStore = writable<Record<string, FE.TokenBalance>>({});
+export const currentUserBalancesStore = writable<Record<string, TokenBalance>>({});
 
 // Define a new implementation of loadBalances to avoid circular dependencies
 export const loadBalances = async (
-  tokens: FE.Token[],
+  tokens: Kong.Token[],
   principalId: string,
   forceRefresh = false
-): Promise<Record<string, FE.TokenBalance>> => {
+): Promise<Record<string, TokenBalance>> => {
   // For empty or invalid input, return empty results
   if (!tokens || tokens.length === 0 || !principalId || principalId === "anonymous") {
     return {};
   }
 
   try {
-    const results: Record<string, FE.TokenBalance> = {};
+    const results: Record<string, TokenBalance> = {};
     const balancesToUpdate: Array<{
-      canister_id: string;
+      address: string;
       in_tokens: bigint;
       in_usd: string;
     }> = [];
@@ -49,7 +49,7 @@ export const loadBalances = async (
         };
 
         balancesToUpdate.push({
-          canister_id: canisterId,
+          address: canisterId,
           in_tokens: balance.in_tokens,
           in_usd: balance.in_usd
         });
@@ -70,15 +70,15 @@ export const loadBalances = async (
 export const loadBalance = async (
   canisterId: string, 
   forceRefresh = false
-): Promise<FE.TokenBalance> => {
+): Promise<TokenBalance> => {
   // Helper function for default/empty balance
-  const emptyBalance = (): FE.TokenBalance => ({
+  const emptyBalance = (): TokenBalance => ({
     in_tokens: BigInt(0),
     in_usd: "0",
   });
 
   const authStore = get(auth);
-  const owner = authStore.account?.owner?.toString() || "anonymous";
+  const owner = authStore.account?.owner || "anonymous";
   const userTokensStore = get(userTokens);
 
   // Check database first if not forcing refresh
@@ -95,7 +95,7 @@ export const loadBalance = async (
   }
 
   // Find the token
-  const token = userTokensStore.tokens.find(t => t.canister_id === canisterId);
+  const token = userTokensStore.tokens.find(t => t.address === canisterId);
   if (!token) {
     console.warn(`Token not found for canister ID: ${canisterId}`);
     return emptyBalance();
@@ -113,10 +113,10 @@ export const loadBalance = async (
 
 // Wrapper for fetchBalances
 export const refreshBalances = async (
-  tokens: FE.Token[],
+  tokens: Kong.Token[],
   principalId: string,
   forceRefresh = false
-): Promise<Record<string, FE.TokenBalance>> => {
+): Promise<Record<string, TokenBalance>> => {
   return loadBalances(tokens, principalId, forceRefresh);
 };
 
@@ -125,8 +125,8 @@ export const isValidToken = (token: any): boolean => {
   return (
     token && 
     typeof token === 'object' && 
-    typeof token.canister_id === 'string' && 
-    token.canister_id.includes('-') &&  // Must have a subnet delimiter
+    typeof token.address === 'string' && 
+    token.address.includes('-') &&  // Must have a subnet delimiter
     typeof token.symbol === 'string' && 
     (typeof token.decimals === 'number' || typeof token.decimals === 'string')
   );
@@ -149,7 +149,7 @@ export const getStoredBalances = async (walletId: string) => {
         };
         return acc;
       },
-      {} as Record<string, FE.TokenBalance>,
+      {} as Record<string, TokenBalance>,
     );
   } catch (error) {
     console.error("Error getting stored balances:", error);
@@ -159,14 +159,14 @@ export const getStoredBalances = async (walletId: string) => {
 
 // Helper function to update balances in the store
 export const updateBalancesInStore = (entries: Array<{
-  canister_id: string;
+  address: string;
   in_tokens: bigint;
   in_usd: string;
 }>) => {
   if (entries.length > 0) {
     const newBalances = { ...get(currentUserBalancesStore) };
     entries.forEach(entry => {
-      newBalances[entry.canister_id] = {
+      newBalances[entry.address] = {
         in_tokens: entry.in_tokens,
         in_usd: entry.in_usd,
       };
@@ -183,10 +183,10 @@ function convertPrincipalToString(principalId: string | Principal): string {
 
 // Function to refresh a single token's balance
 export const refreshSingleBalance = async (
-  token: FE.Token,
+  token: Kong.Token,
   principalId: string | Principal,
   forceRefresh = true
-): Promise<FE.TokenBalance | null> => {
+): Promise<TokenBalance | null> => {
   if (!isValidToken(token) || !principalId) {
     console.warn('Cannot refresh balance - invalid token or missing principal');
     return null;
@@ -197,8 +197,8 @@ export const refreshSingleBalance = async (
     // Use loadBalances for a single token to leverage its retry logic
     const balances = await refreshBalances([token], principalIdString, forceRefresh);
     
-    if (balances && balances[token.canister_id]) {
-      return balances[token.canister_id];
+    if (balances && balances[token.address]) {
+      return balances[token.address];
     }
     return null;
   } catch (error) {
@@ -209,13 +209,13 @@ export const refreshSingleBalance = async (
 
 // Helper function to check if a user has sufficient balance for a transaction
 export const hasSufficientBalance = (
-  token: FE.Token,
+  token: Kong.Token,
   amount: string
 ): boolean => {
   if (!isValidToken(token) || !amount) return false;
   
   const store = get(currentUserBalancesStore);
-  const balance = store[token.canister_id];
+  const balance = store[token.address];
   
   if (!balance) return false;
   

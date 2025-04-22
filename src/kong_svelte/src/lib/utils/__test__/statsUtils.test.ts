@@ -25,7 +25,7 @@ function createMockPool(overrides: Partial<BE.Pool> = {}): BE.Pool {
     lp_token_symbol: '',
     name: '',
     rolling_24h_volume: 0n,
-    rolling_24h_apy: 0,
+    rolling_24h_apy: '0',
     address_0: '',
     address_1: '',
     symbol_0: '',
@@ -51,22 +51,22 @@ function createMockPool(overrides: Partial<BE.Pool> = {}): BE.Pool {
 
 describe('getPriceChangeClass', () => {
   it('should return empty string for undefined price change', () => {
-    const token = { metrics: {} } as FE.Token;
+    const token = { metrics: {} } as Kong.Token;
     expect(getPriceChangeClass(token)).toBe('');
   });
 
   it('should return green class for positive price change', () => {
-    const token = { metrics: { price_change_24h: '5.5' } } as FE.Token;
+    const token = { metrics: { price_change_24h: '5.5' } } as Kong.Token;
     expect(getPriceChangeClass(token)).toBe('text-kong-text-accent-green');
   });
 
   it('should return red class for negative price change', () => {
-    const token = { metrics: { price_change_24h: '-3.2' } } as FE.Token;
+    const token = { metrics: { price_change_24h: '-3.2' } } as Kong.Token;
     expect(getPriceChangeClass(token)).toBe('text-kong-accent-red');
   });
 
   it('should return empty string for zero price change', () => {
-    const token = { metrics: { price_change_24h: '0' } } as FE.Token;
+    const token = { metrics: { price_change_24h: '0' } } as Kong.Token;
     expect(getPriceChangeClass(token)).toBe('');
   });
 });
@@ -83,7 +83,7 @@ describe('formatPoolData', () => {
       symbol_0: 'BTC',
       symbol_1: 'USDT',
       price: 2,
-      rolling_24h_apy: 10.50
+      rolling_24h_apy: '10.50'
     })];
 
     const result = await formatPoolData(pools);

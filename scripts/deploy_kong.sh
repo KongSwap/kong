@@ -134,11 +134,6 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
         bash "deploy_kong_faucet.sh" "${NETWORK}"
     } || echo "Warning: deploy_kong_faucet.sh not found"
 
-    # deploy ic_siws_provider canister
-    [ -f "deploy_ic_siws_provider.sh" ] && {
-        bash "deploy_ic_siws_provider.sh" "${NETWORK}"
-    } || echo "Warning: deploy_ic_siws_provider.sh not found"
-
 	# mint test tokens to kong_faucet
     [ -f "faucet_mint.sh" ] && {
         bash "faucet_mint.sh" "${NETWORK}"

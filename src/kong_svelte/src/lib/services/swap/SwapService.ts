@@ -12,9 +12,9 @@ import { fetchTokensByCanisterId } from "$lib/api/tokens";
 
 interface SwapExecuteParams {
   swapId: string;
-  payToken: FE.Token;
+  payToken: Kong.Token;
   payAmount: string;
-  receiveToken: FE.Token;
+  receiveToken: Kong.Token;
   receiveAmount: string;
   userMaxSlippage: number;
   backendPrincipal: Principal;
@@ -40,14 +40,6 @@ interface RequestStatus {
 
 interface RequestResponse {
   Ok: RequestStatus[];
-}
-
-interface TokenInfo {
-  canister_id: string;
-  fee?: bigint;
-  fee_fixed: bigint;
-  icrc1?: boolean;
-  icrc2?: boolean;
 }
 
 // Base BigNumber configuration for internal calculations
@@ -144,12 +136,12 @@ export class SwapService {
    * Gets swap quote from backend
    */
   public static async swap_amounts(
-    payToken: FE.Token,
+    payToken: Kong.Token,
     payAmount: bigint,
-    receiveToken: FE.Token,
+    receiveToken: Kong.Token,
   ): Promise<BE.SwapQuoteResponse> {
     try {
-      if (!payToken?.canister_id || !receiveToken?.canister_id) {
+      if (!payToken?.address || !receiveToken?.address) {
         throw new Error("Invalid tokens provided for swap quote");
       }
       const actor = await auth.getActor(
@@ -158,9 +150,9 @@ export class SwapService {
         { anon: true },
       );
       return await actor.swap_amounts(
-        "IC." + payToken.canister_id,
+        "IC." + payToken.address,
         payAmount,
-        "IC." + receiveToken.canister_id,
+        "IC." + receiveToken.address,
       );
     } catch (error) {
       console.error("Error getting swap amounts:", error);
@@ -172,9 +164,9 @@ export class SwapService {
    * Gets quote details including price, fees, etc.
    */
   public static async getQuoteDetails(params: {
-    payToken: FE.Token;
+    payToken: Kong.Token;
     payAmount: bigint;
-    receiveToken: FE.Token;
+    receiveToken: Kong.Token;
   }): Promise<{
     receiveAmount: string;
     price: string;
@@ -194,11 +186,11 @@ export class SwapService {
       throw new Error(quote.Err);
     }
 
-    const tokens = await fetchTokensByCanisterId([params.payToken.canister_id, params.receiveToken.canister_id]);
+    const tokens = await fetchTokensByCanisterId([params.payToken.address, params.receiveToken.address]);
     const receiveToken = tokens.find(
-      (t) => t.canister_id === params.receiveToken.canister_id,
+      (t) => t.address === params.receiveToken.address,
     );
-    const payToken = tokens.find((t) => t.canister_id === params.payToken.canister_id);
+    const payToken = tokens.find((t) => t.address === params.payToken.address);
     if (!receiveToken) throw new Error("Receive token not found");
 
     const receiveAmount = SwapService.fromBigInt(
@@ -285,8 +277,8 @@ export class SwapService {
     const swapId = params.swapId;
     try {
       // Add check for blocked tokens at the start
-      if (BLOCKED_TOKEN_IDS.includes(params.payToken.canister_id) || 
-          BLOCKED_TOKEN_IDS.includes(params.receiveToken.canister_id)) {
+      if (BLOCKED_TOKEN_IDS.includes(params.payToken.address) || 
+          BLOCKED_TOKEN_IDS.includes(params.receiveToken.address)) {
         toastStore.warning(
           "BIL token is currently in read-only mode. Trading will resume when the ledger is stable.",
           {
@@ -330,13 +322,13 @@ export class SwapService {
         `Swapping ${params.payAmount} ${params.payToken.symbol} to ${params.receiveAmount} ${params.receiveToken.symbol}...`,
         { duration: 20000 },
       );
-      if (payToken.icrc2) {
+      if (payToken.standards.includes("ICRC-2")) {
         const requiredAllowance = payAmount;
         approvalId = await IcrcService.checkAndRequestIcrc2Allowances(
           payToken,
           requiredAllowance,
         );
-      } else if (payToken.icrc1) {
+      } else if (payToken.standards.includes("ICRC-1")) {
         const result = await IcrcService.transfer(
           payToken,
           params.backendPrincipal,
@@ -401,14 +393,14 @@ export class SwapService {
    * Fetches the swap quote based on the provided amount and tokens.
    */
   public static async getSwapQuote(
-    payToken: FE.Token,
-    receiveToken: FE.Token,
+    payToken: Kong.Token,
+    receiveToken: Kong.Token,
     payAmount: string,
   ): Promise<{ receiveAmount: string; slippage: number }> {
     try {
       // Add check for blocked tokens at the start
-      if (BLOCKED_TOKEN_IDS.includes(payToken.canister_id) || 
-          BLOCKED_TOKEN_IDS.includes(receiveToken.canister_id)) {
+      if (BLOCKED_TOKEN_IDS.includes(payToken.address) || 
+          BLOCKED_TOKEN_IDS.includes(receiveToken.address)) {
         throw new Error("Token temporarily unavailable - BIL is in read-only mode");
       }
 
@@ -464,7 +456,7 @@ export class SwapService {
    * @returns A BigNumber representing the maximum transferable amount.
    */
   public static calculateMaxAmount(
-    tokenInfo: TokenInfo,
+    tokenInfo: Kong.Token,
     formattedBalance: string,
     decimals: number = 8,
     isIcrc1: boolean = false,

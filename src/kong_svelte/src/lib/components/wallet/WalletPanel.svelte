@@ -109,7 +109,7 @@
 
   // Handle token actions (send, receive, swap, info)
   function handleTokenAction(action: "send" | "receive" | "swap" | "info", token: any) {
-    if (!token?.token?.canister_id && action !== "send") {
+    if (!token?.token?.address && action !== "send") {
       console.error(`Cannot perform ${action}: Invalid token canister ID`);
       return;
     }
@@ -119,9 +119,9 @@
       selectedTokenForAction = token;
       showSendTokenModal = true;
     } else if (action === "swap") {
-      navigateAndClose(`/swap?from=${token.token?.canister_id}&to=ryjl3-tyaaa-aaaaa-aaaba-cai`);
+      navigateAndClose(`/swap?from=${token.token?.address}&to=ryjl3-tyaaa-aaaaa-aaaba-cai`);
     } else if (action === "info") {
-      navigateAndClose(`/stats/${token.token?.canister_id}`);
+      navigateAndClose(`/stats/${token.token?.address}`);
     } else {
       // For other actions, call the callback
       onTokenAction(action, token);
@@ -211,7 +211,7 @@
   }
 
   // Handle token added by the user
-  function handleTokenAdded(newToken: any) {
+  function handleTokenAdded(newToken: Kong.Token) {
     // Load balance for the newly added token
     if (walletId) {
       loadBalances([newToken], walletId, true)

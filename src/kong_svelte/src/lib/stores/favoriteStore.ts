@@ -64,8 +64,8 @@ function createFavoriteStore() {
     
     try {
       const key = getStorageKey(currentWalletId);
-      const storedFavorites = await storage.getItem<{canister_id: string, timestamp: number}[]>(key) || [];
-      const ids = storedFavorites.map(fav => fav.canister_id);
+      const storedFavorites = await storage.getItem<{address: string, timestamp: number}[]>(key) || [];
+      const ids = storedFavorites.map(fav => fav.address);
       
       // Update the store with loaded data
       store.update(state => ({
@@ -99,17 +99,17 @@ function createFavoriteStore() {
     
     try {
       const key = getStorageKey(currentWalletId);
-      const storedFavorites = await storage.getItem<{canister_id: string, timestamp: number}[]>(key) || [];
+      const storedFavorites = await storage.getItem<{address: string, timestamp: number}[]>(key) || [];
       
       // Check if already exists
-      const existing = storedFavorites.find(fav => fav.canister_id === canisterId);
+      const existing = storedFavorites.find(fav => fav.address === canisterId);
       if (existing) {
         return true; // Already favorited
       }
       
       // Add new favorite
       storedFavorites.push({
-        canister_id: canisterId,
+        address: canisterId,
         timestamp: Date.now(),
       });
       
@@ -146,10 +146,10 @@ function createFavoriteStore() {
     
     try {
       const key = getStorageKey(currentWalletId);
-      const storedFavorites = await storage.getItem<{canister_id: string, timestamp: number}[]>(key) || [];
+      const storedFavorites = await storage.getItem<{address: string, timestamp: number}[]>(key) || [];
       
       // Find if exists
-      const index = storedFavorites.findIndex(fav => fav.canister_id === canisterId);
+      const index = storedFavorites.findIndex(fav => fav.address === canisterId);
       if (index === -1) {
         return false; // Not found
       }

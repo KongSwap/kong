@@ -2,7 +2,6 @@ import { Principal } from "@dfinity/principal";
 import { fetchAllTokens } from "$lib/api/tokens";
 import { userTokens } from "$lib/stores/userTokens";
 import { get } from "svelte/store";
-import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { 
   CKUSDT_CANISTER_ID, 
   ICP_CANISTER_ID,
@@ -31,13 +30,13 @@ const ESSENTIAL_TOKEN_IDS = [
  * - Essential tokens are always kept, regardless of balance
  * 
  * @param principalId - The user's principal ID
- * @returns {Promise<{tokensToAdd: FE.Token[], tokensToRemove: string[], stats: {added: number, removed: number}}>} 
+ * @returns {Promise<{tokensToAdd: Kong.Token[], tokensToRemove: string[], stats: {added: number, removed: number}}>} 
  *          - Lists of tokens to add/remove and stats
  */
 export async function syncTokens(
   principalId: string | Principal
 ): Promise<{
-  tokensToAdd: FE.Token[],
+  tokensToAdd: Kong.Token[],
   tokensToRemove: string[],
   stats: {added: number, removed: number}
 }> {
@@ -60,22 +59,22 @@ export async function syncTokens(
 
     // Get current user tokens state
     const currentUserTokens = get(userTokens);
-    const currentTokenIds = new Set(currentUserTokens.tokens.map(t => t.canister_id));
+    const currentTokenIds = new Set(currentUserTokens.tokens.map(t => t.address));
     
     // Create a map to track tokens that should be enabled
-    const shouldBeEnabled = new Map<string, FE.Token>();
+    const shouldBeEnabled = new Map<string, Kong.Token>();
     
     // Track essential tokens found in the token list
-    const essentialTokensFound = new Map<string, FE.Token>();
+    const essentialTokensFound = new Map<string, Kong.Token>();
     
     // Arrays to track tokens that would be added or removed
-    const tokensToAdd: FE.Token[] = [];
+    const tokensToAdd: Kong.Token[] = [];
     const tokensToRemove: string[] = [];
     
     // First, identify essential tokens in the all tokens list
     for (const token of allTokens) {
-      if (token.canister_id && ESSENTIAL_TOKEN_IDS.includes(token.canister_id)) {
-        essentialTokensFound.set(token.canister_id, token);
+      if (token.address && ESSENTIAL_TOKEN_IDS.includes(token.address)) {
+        essentialTokensFound.set(token.address, token);
       }
     }
     
@@ -90,23 +89,23 @@ export async function syncTokens(
         console.log("batchBalances", batchBalances);
         // Process each token in the batch
         for (const token of tokenBatch) {
-          if (!token.canister_id) continue;
+          if (!token.address) continue;
           
           // Check if token is essential
-          const isEssentialToken = ESSENTIAL_TOKEN_IDS.includes(token.canister_id);
+          const isEssentialToken = ESSENTIAL_TOKEN_IDS.includes(token.address);
           
           // For normal tokens, check balance
-          const balance = batchBalances[token.canister_id];
+          const balance = batchBalances[token.address];
           const hasBalance = balance !== undefined && balance !== null && 
                             (balance.in_tokens !== undefined && balance.in_tokens > BigInt(0));
           
           // Token should be enabled if it has balance OR is an essential token
           if (hasBalance || isEssentialToken) {
-            shouldBeEnabled.set(token.canister_id, token);
+            shouldBeEnabled.set(token.address, token);
             
             // If it's an essential token, make sure we have it in our tracking
             if (isEssentialToken) {
-              essentialTokensFound.set(token.canister_id, token);
+              essentialTokensFound.set(token.address, token);
             }
           }
         }
@@ -168,7 +167,7 @@ export async function syncTokens(
  * @returns Stats about tokens added and removed
  */
 export async function applyTokenChanges(
-  tokensToAdd: FE.Token[],
+  tokensToAdd: Kong.Token[],
   tokensToRemove: string[]
 ): Promise<{added: number, removed: number}> {
   let tokensAdded = 0;

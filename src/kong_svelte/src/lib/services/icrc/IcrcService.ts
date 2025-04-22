@@ -98,14 +98,14 @@ export class IcrcService {
   }
 
   public static async getIcrc1Balance(
-    token: FE.Token,
+    token: Kong.Token,
     principal: Principal,
     subaccount?: number[] | undefined,
     separateBalances: boolean = false,
   ): Promise<{ default: bigint; subaccount: bigint } | bigint> {
     try {
       const actor = await createAnonymousActorHelper(
-        token.canister_id,
+        token.address,
         canisterIDLs.icrc1,
       );
 
@@ -139,13 +139,13 @@ export class IcrcService {
   }
 
   public static async batchGetBalances(
-    tokens: FE.Token[],
+    tokens: Kong.Token[],
     principal: Principal,
   ): Promise<Map<string, bigint>> {
     // Add request deduplication with a shorter window and token-specific keys
     const requestKeys = tokens.map(
       (token) =>
-        `${token.canister_id}-${principal.toString()}-${Date.now() - (Date.now() % 5000)}`,
+        `${token.address}-${principal.toString()}-${Date.now() - (Date.now() % 5000)}`,
     );
 
     // Check if any of these exact tokens are already being fetched
@@ -186,7 +186,7 @@ export class IcrcService {
   >();
 
   private static async _batchGetBalances(
-    tokens: FE.Token[],
+    tokens: Kong.Token[],
     principal: Principal,
   ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
@@ -196,11 +196,11 @@ export class IcrcService {
 
     // Group tokens by subnet to minimize subnet key fetches
     const tokensBySubnet = tokens.reduce((acc, token) => {
-      const subnet = token.canister_id.split("-")[1];
+      const subnet = token.address.split("-")[1];
       if (!acc.has(subnet)) acc.set(subnet, []);
       acc.get(subnet).push(token);
       return acc;
-    }, new Map<string, FE.Token[]>());
+    }, new Map<string, Kong.Token[]>());
 
     // Process subnets in parallel with a higher concurrency limit
     const subnetEntries = Array.from(tokensBySubnet.entries());
@@ -231,7 +231,7 @@ export class IcrcService {
             if (result) {
               const { token, balance } = result;
               results.set(
-                token.canister_id,
+                token.address,
                 typeof balance === "bigint" ? balance : balance.default,
               );
             }
@@ -245,12 +245,12 @@ export class IcrcService {
   }
 
   public static async checkAndRequestIcrc2Allowances(
-    token: FE.Token,
+    token: Kong.Token,
     payAmount: bigint,
     spender: string = KONG_BACKEND_PRINCIPAL,
   ): Promise<bigint | null> {
-    if (!token?.canister_id) {
-      throw new Error("Invalid token: missing canister_id");
+    if (!token?.address) {
+      throw new Error("Invalid token: missing address");
     }
 
     try {
@@ -265,7 +265,7 @@ export class IcrcService {
 
       // Check current allowance
       const currentAllowance = allowanceStore.getAllowance(
-        token.canister_id,
+        token.address,
         auth.pnp.account.owner.toString(),
         spender,
       );
@@ -291,7 +291,7 @@ export class IcrcService {
       };
 
       const approveActor = auth.pnp.getActor(
-        token.canister_id,
+        token.address,
         canisterIDLs.icrc2,
         {
           anon: false,
@@ -300,8 +300,8 @@ export class IcrcService {
       );
 
       const result = await approveActor.icrc2_approve(approveArgs);
-      allowanceStore.addAllowance(token.canister_id, {
-        address: token.canister_id,
+      allowanceStore.addAllowance(token.address, {
+        address: token.address,
         wallet_address: auth.pnp.account.owner.toString(),
         spender: spender,
         amount: approveArgs.amount,
@@ -325,12 +325,12 @@ export class IcrcService {
   }
 
   public static async checkIcrc2Allowance(
-    token: FE.Token,
+    token: Kong.Token,
     owner: Principal,
     spender: Principal,
   ): Promise<bigint> {
     try {
-      const actor = auth.getActor(token.canister_id, canisterIDLs.icrc2, {
+      const actor = auth.getActor(token.address, canisterIDLs.icrc2, {
         anon: true,
         requiresSigning: false,
       });
@@ -341,8 +341,8 @@ export class IcrcService {
           subaccount: [],
         },
       });
-      allowanceStore.addAllowance(token.canister_id, {
-        address: token.canister_id,
+      allowanceStore.addAllowance(token.address, {
+        address: token.address,
         wallet_address: owner.toString(),
         spender: spender.toString(),
         amount: BigInt(result.allowance),
@@ -354,9 +354,9 @@ export class IcrcService {
     }
   }
 
-  public static async getTokenFee(token: FE.Token): Promise<bigint> {
+  public static async getTokenFee(token: Kong.Token): Promise<bigint> {
     try {
-      const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, {
+      const actor = await auth.getActor(token.address, canisterIDLs.icrc1, {
         anon: true,
         requiresSigning: false,
       });
@@ -368,7 +368,7 @@ export class IcrcService {
   }
 
   public static async transfer(
-    token: FE.Token,
+    token: Kong.Token,
     to: string | Principal | IcrcAccount,
     amount: bigint,
     opts: {
@@ -390,7 +390,7 @@ export class IcrcService {
         if (wallet === "oisy") {
           return { Err: "Oisy subaccount transfer is temporarily disabled." };
         }
-        const ledgerActor = auth.getActor(token.canister_id, canisterIDLs.ICP, {
+        const ledgerActor = auth.getActor(token.address, canisterIDLs.ICP, {
           anon: false,
           requiresSigning: true,
         });
@@ -419,7 +419,7 @@ export class IcrcService {
       }
 
       // For all ICRC standard transfers (Principal or ICRC1 Account)
-      const actor = auth.getActor(token.canister_id, canisterIDLs["icrc1"], {
+      const actor = auth.getActor(token.address, canisterIDLs["icrc1"], {
         anon: false,
         requiresSigning: true,
       });

@@ -8,16 +8,16 @@ import { debounce } from '$lib/utils/debounce';
 
 // Define types for sync operations
 interface SyncTokensResult {
-  tokensToAdd: FE.Token[];
-  tokensToRemove: FE.Token[];
+  tokensToAdd: Kong.Token[];
+  tokensToRemove: Kong.Token[];
   syncStatus: { added: number; removed: number } | null;
 }
 
 // Define updated state interface using Set for enabled tokens
 interface UserTokensState {
   enabledTokens: Set<string>;
-  tokens: FE.Token[];
-  tokenData: Map<string, FE.Token>;
+  tokens: Kong.Token[];
+  tokenData: Map<string, Kong.Token>;
   isAuthenticated: boolean;
   lastUpdated: number;
 }
@@ -31,7 +31,7 @@ const userTokensStorage = createNamespacedStore(STORAGE_KEY_PREFIX);
 const principalStorage = createNamespacedStore('principals');
 
 // Cache for token details to avoid redundant fetches
-const tokenDetailsCache = new Map<string, FE.Token>();
+const tokenDetailsCache = new Map<string, Kong.Token>();
 
 // Memoization utility
 function memoize<T>(fn: (...args: any[]) => T): (...args: any[]) => T {
@@ -76,7 +76,7 @@ function deserializeState(serialized: any): UserTokensState {
   if (!serialized) {
     return {
       enabledTokens: new Set<string>(),
-      tokenData: new Map<string, FE.Token>(),
+      tokenData: new Map<string, Kong.Token>(),
       tokens: [],
       isAuthenticated: false,
       lastUpdated: Date.now(),
@@ -84,13 +84,13 @@ function deserializeState(serialized: any): UserTokensState {
   }
 
   const enabledTokens = new Set<string>(serialized.enabledTokens || []);
-  const tokenData = new Map<string, FE.Token>();
+  const tokenData = new Map<string, Kong.Token>();
 
   // Add tokens to tokenData Map
   if (Array.isArray(serialized.tokenData)) {
-    serialized.tokenData.forEach((token: FE.Token) => {
-      if (token && token.canister_id) {
-        tokenData.set(token.canister_id, token);
+    serialized.tokenData.forEach((token: Kong.Token) => {
+      if (token && token.address) {
+        tokenData.set(token.address, token);
       }
     });
   }
@@ -111,7 +111,7 @@ function createUserTokensStore() {
   // Default initial state
   const defaultState: UserTokensState = {
     enabledTokens: new Set<string>(),
-    tokenData: new Map<string, FE.Token>(),
+    tokenData: new Map<string, Kong.Token>(),
     tokens: [],
     isAuthenticated: false,
     lastUpdated: Date.now(),
@@ -187,13 +187,13 @@ function createUserTokensStore() {
         
         // Create new state with defaults
         const enabledTokensSet = new Set<string>();
-        const tokenDataMap = new Map<string, FE.Token>();
+        const tokenDataMap = new Map<string, Kong.Token>();
         
         defaultTokensList.forEach(token => {
-          enabledTokensSet.add(token.canister_id);
-          tokenDataMap.set(token.canister_id, token);
+          enabledTokensSet.add(token.address);
+          tokenDataMap.set(token.address, token);
           // Update cache
-          tokenDetailsCache.set(token.canister_id, token);
+          tokenDetailsCache.set(token.address, token);
         });
         
         const newState: UserTokensState = {
@@ -265,31 +265,31 @@ function createUserTokensStore() {
   }
 
   // Optimized token filtering logic with search index
-  const createSearchIndex = memoize((tokens: FE.Token[]) => {
+  const createSearchIndex = memoize((tokens: Kong.Token[]) => {
     return tokens.reduce<Record<string, string>>((acc, token) => {
-      if (token && token.canister_id) {
-        const searchTerms = `${token.symbol || ''} ${token.name || ''} ${token.canister_id}`.toLowerCase();
-        acc[token.canister_id] = searchTerms;
+      if (token && token.address) {
+        const searchTerms = `${token.symbol || ''} ${token.name || ''} ${token.address}`.toLowerCase();
+        acc[token.address] = searchTerms;
       }
       return acc;
     }, {});
   });
 
   // Memoized search function using the search index
-  const searchTokens = memoize((query: string, tokens: FE.Token[]): FE.Token[] => {
+  const searchTokens = memoize((query: string, tokens: Kong.Token[]): Kong.Token[] => {
     if (!query) return tokens;
     
     const searchIndex = createSearchIndex(tokens);
     const lowerQuery = query.toLowerCase();
     
     return tokens.filter(token => {
-      const terms = searchIndex[token.canister_id];
+      const terms = searchIndex[token.address];
       return terms && terms.includes(lowerQuery);
     });
   });
 
   // Lazy load token details
-  const getTokenDetails = async (canisterId: string): Promise<FE.Token | null> => {
+  const getTokenDetails = async (canisterId: string): Promise<Kong.Token | null> => {
     // Check cache first
     if (tokenDetailsCache.has(canisterId)) {
       return tokenDetailsCache.get(canisterId) || null;
@@ -379,9 +379,9 @@ function createUserTokensStore() {
         const newTokenData = new Map(state.tokenData);
         
         tokens.forEach(token => {
-          if (token && token.canister_id) {
-            newTokenData.set(token.canister_id, token);
-            tokenDetailsCache.set(token.canister_id, token);
+          if (token && token.address) {
+            newTokenData.set(token.address, token);
+            tokenDetailsCache.set(token.address, token);
           }
         });
         
@@ -411,7 +411,7 @@ function createUserTokensStore() {
     reset: () => {
       const newState = {
         enabledTokens: new Set<string>(),
-        tokenData: new Map<string, FE.Token>(),
+        tokenData: new Map<string, Kong.Token>(),
         tokens: [],
         isAuthenticated: false,
         lastUpdated: Date.now(),
@@ -456,11 +456,11 @@ function createUserTokensStore() {
       });
     },
     
-    enableToken: async (token: FE.Token) => {
-      if (!token || !token.canister_id) return;
+    enableToken: async (token: Kong.Token) => {
+      if (!token || !token.address) return;
       
       state.update(state => {
-        console.log(`[UserTokens] enableToken called for ${token.symbol} (${token.canister_id})`);
+        console.log(`[UserTokens] enableToken called for ${token.symbol} (${token.address})`);
         console.log('[UserTokens] State BEFORE enable:', Array.from(state.enabledTokens));
 
         // Create copies of current state
@@ -468,11 +468,11 @@ function createUserTokensStore() {
         const newTokenData = new Map(state.tokenData);
         
         // Update state
-        newEnabledTokens.add(token.canister_id);
-        newTokenData.set(token.canister_id, token);
+        newEnabledTokens.add(token.address);
+        newTokenData.set(token.address, token);
         
         // Update cache
-        tokenDetailsCache.set(token.canister_id, token);
+        tokenDetailsCache.set(token.address, token);
         
         const newState = {
           ...state,
@@ -487,7 +487,7 @@ function createUserTokensStore() {
       });
     },
     
-    enableTokens: async (tokens: FE.Token[]) => {
+    enableTokens: async (tokens: Kong.Token[]) => {
       if (!tokens.length) return;
       
       state.update(state => {
@@ -497,10 +497,10 @@ function createUserTokensStore() {
         
         // Update state with batch operations
         tokens.forEach(token => {
-          if (token && token.canister_id) {
-            newEnabledTokens.add(token.canister_id);
-            newTokenData.set(token.canister_id, token);
-            tokenDetailsCache.set(token.canister_id, token);
+          if (token && token.address) {
+            newEnabledTokens.add(token.address);
+            newTokenData.set(token.address, token);
+            tokenDetailsCache.set(token.address, token);
           }
         });
         
@@ -582,7 +582,7 @@ function createUserTokensStore() {
         const currentState = get(state);
         const tokensToRemoveObjects = syncResults.tokensToRemove
           .map(canisterId => currentState.tokenData.get(canisterId))
-          .filter((token): token is FE.Token => token !== undefined);
+          .filter((token): token is Kong.Token => token !== undefined);
         
         return {
           tokensToAdd: syncResults.tokensToAdd,
@@ -599,10 +599,10 @@ function createUserTokensStore() {
       }
     },
     
-    applyTokenSync: async (tokensToAdd: FE.Token[], tokensToRemove: FE.Token[]): Promise<{ added: number; removed: number }> => {
+    applyTokenSync: async (tokensToAdd: Kong.Token[], tokensToRemove: Kong.Token[]): Promise<{ added: number; removed: number }> => {
       try {
         // Extract canister IDs from tokensToRemove for the API call
-        const tokensToRemoveIds = tokensToRemove.map(token => token.canister_id);
+        const tokensToRemoveIds = tokensToRemove.map(token => token.address);
         
         // Apply the changes via API
         const result = await applyTokenChanges(tokensToAdd, tokensToRemoveIds);
@@ -614,10 +614,10 @@ function createUserTokensStore() {
           
           // Add new tokens
           tokensToAdd.forEach(token => {
-            if (token && token.canister_id) {
-              newEnabledTokens.add(token.canister_id);
-              newTokenData.set(token.canister_id, token);
-              tokenDetailsCache.set(token.canister_id, token);
+            if (token && token.address) {
+              newEnabledTokens.add(token.address);
+              newTokenData.set(token.address, token);
+              tokenDetailsCache.set(token.address, token);
             }
           });
           

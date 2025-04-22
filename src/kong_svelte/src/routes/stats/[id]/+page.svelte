@@ -2,38 +2,28 @@
   import { page } from "$app/stores";
   import { onMount } from "svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { fetchPoolsForCanister } from "$lib/stores/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
+  import { AlertTriangle } from 'lucide-svelte';
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import { goto } from "$app/navigation";
   import {
     CKUSDC_CANISTER_ID,
     CKUSDT_CANISTER_ID,
   } from "$lib/constants/canisterConstants";
-  import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
-  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import {
-    Droplets,
-    ArrowLeftRight,
-    Copy,
-    PlusCircle,
-    ChevronDown,
-  } from "lucide-svelte";
   import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
   import TokenStatistics from "./TokenStatistics.svelte";
   import { GOVERNANCE_CANISTER_IDS } from "$lib/utils/snsUtils";
-  import { copyToClipboard } from "$lib/utils/clipboard";
-  import { toastStore } from "$lib/stores/toastStore";
   import { tokenData } from "$lib/stores/tokenData";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { browser } from "$app/environment";
-  import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import PoolStatistics from "./PoolStatistics.svelte";
+  import { snsService } from '$lib/utils/snsUtils';
 
   // Token and loading states
   let isTokenLoading = $state(true);
   let isPoolsLoading = $state(false);
-  let token = $state<FE.Token | undefined>(undefined);
+  let token = $state<Kong.Token | undefined>(undefined);
   let chartInstance = $state(0);
   let chartMounted = $state(false);
   let isChartDataReady = $state(false);
@@ -45,6 +35,8 @@
   let relevantPools = $state<BE.Pool[]>([]);
 
   // UI states
+  let hasActiveProposals = $state(false);
+  let checkingProposals = $state(false);
   let activeTab = $state<"overview" | "governance">("overview");
   let showDropdown = $state(false);
   let dropdownButtonRef = $state<HTMLButtonElement | null>(null);
@@ -58,6 +50,8 @@
     // Reset UI state
     activeTab = "overview";
     showDropdown = false;
+    hasActiveProposals = false;
+    checkingProposals = false;
     
     const fetchToken = async () => {
       try {
@@ -74,6 +68,11 @@
         if (fetchedTokens?.length > 0) {
           token = fetchedTokens[0];
           isTokenLoading = false;
+          
+          // After token is loaded, check for governance proposals if applicable
+          if (token?.address && GOVERNANCE_CANISTER_IDS[token.address]) {
+            checkActiveProposals(GOVERNANCE_CANISTER_IDS[token.address]);
+          }
           return;
         }
 
@@ -81,7 +80,6 @@
         const data = $tokenData;
         if (data?.length > 0) {
           const foundToken =
-            data.find((t) => t.canister_id === pageId) ||
             data.find((t) => t.address === pageId);
           if (foundToken) {
             token = foundToken;
@@ -99,14 +97,14 @@
 
   // Fetch pools when token changes
   $effect(() => {
-    if (token?.canister_id) {
+    if (token?.address) {
       // Reset selection state
       hasManualSelection = false;
       initialPoolSet = false;
       selectedPool = undefined;
       isPoolsLoading = true;
 
-      fetchPoolsForCanister(token.canister_id)
+      fetchPoolsForCanister(token.address)
         .then((pools) => {
           const poolsWithTvl = pools.filter((p) => Number(p.tvl) > 0);
           // Sort by volume
@@ -117,7 +115,7 @@
           // Auto-select pool if no manual selection
           if (!hasManualSelection && relevantPools.length > 0) {
             // For CKUSDT, prioritize the CKUSDC/CKUSDT pool
-            if (token.canister_id === CKUSDT_CANISTER_ID) {
+            if (token.address === CKUSDT_CANISTER_ID) {
               const ckusdcPool = relevantPools.find((p) => {
                 const isCorrectPair =
                   (p.address_0 === CKUSDC_CANISTER_ID &&
@@ -160,16 +158,17 @@
 
   // Handle chart data readiness
   $effect(() => {
-    if (!token || !selectedPool) {
+    // Restore check for token and selectedPool
+    if (!token || !selectedPool) { 
       if (isChartDataReady) isChartDataReady = false;
       return;
     }
 
-    // Check if data is ready for chart
+    // Check if core data is ready for chart
     const dataReady = Boolean(
       selectedPool.pool_id &&
         (selectedPool.symbol_0 || selectedPool.token0?.symbol) &&
-        (selectedPool.symbol_1 || selectedPool.token1?.symbol),
+        (selectedPool.symbol_1 || selectedPool.token1?.symbol)
     );
 
     if (dataReady !== isChartDataReady) {
@@ -191,7 +190,7 @@
     }
     
     const foundToken = $tokenData.find(
-      (t) => t.address === pageId || t.canister_id === pageId
+      (t) => t.address === pageId || t.address === pageId
     );
     if (!foundToken) {
       marketCapRank = null;
@@ -203,7 +202,7 @@
         (Number(a.metrics.market_cap) || 0),
     );
     const rank = sortedTokens.findIndex(
-      (t) => t.canister_id === foundToken.canister_id,
+      (t) => t.address === foundToken.address,
     );
     marketCapRank = rank !== -1 ? rank + 1 : null;
   });
@@ -244,14 +243,14 @@
   function getChartSymbol() {
     if (!token || !selectedPool) return "";
     
-    const quoteSymbol = selectedPool.address_0 === token.canister_id
+    const quoteSymbol = selectedPool.address_0 === token.address
       ? selectedPool.token1?.symbol ||
         selectedPool.symbol_1 ||
-        $tokenData?.find(t => t.canister_id === selectedPool.address_1)?.symbol ||
+        $tokenData?.find(t => t.address === selectedPool.address_1)?.symbol ||
         "Unknown"
       : selectedPool.token0?.symbol ||
         selectedPool.symbol_0 ||
-        $tokenData?.find(t => t.canister_id === selectedPool.address_0)?.symbol ||
+        $tokenData?.find(t => t.address === selectedPool.address_0)?.symbol ||
         "Unknown";
         
     return `${token.symbol}/${quoteSymbol}`;
@@ -261,28 +260,29 @@
   function getQuoteToken() {
     if (!selectedPool) return undefined;
     
-    if (selectedPool.address_0 === token?.canister_id) {
+    if (selectedPool.address_0 === token?.address) {
       return selectedPool.token1 ||
-        $tokenData?.find(t => t.canister_id === selectedPool.address_1) ||
-        ({
-          canister_id: selectedPool.address_1,
-          symbol: selectedPool.symbol_1,
-          name: selectedPool.symbol_1 || "Unknown",
-          address: selectedPool.address_1,
-          token_id: 999999,
-        } as FE.Token);
+        $tokenData?.find(t => t.address === selectedPool.address_1)
     } else {
       return selectedPool.token0 ||
-        $tokenData?.find(t => t.canister_id === selectedPool.address_0) ||
-        ({
-          canister_id: selectedPool.address_0,
-          symbol: selectedPool.symbol_0,
-          name: selectedPool.symbol_0 || "Unknown",
-          address: selectedPool.address_0,
-          token_id: 999999,
-        } as FE.Token);
+        $tokenData?.find(t => t.address === selectedPool.address_0)
     }
   }
+
+  // Function to check for active proposals
+  async function checkActiveProposals(governanceId: string) {
+    checkingProposals = true;
+    try {
+      // Fetch first 5 proposals to check for any 'open' ones
+      const result = await snsService.getProposals(governanceId, 5);
+       hasActiveProposals = result.proposals.some(p => p.status === 'open');
+     } catch (error) {
+       console.error("Error checking for active proposals:", error);
+       hasActiveProposals = false; // Assume none if error occurs
+     } finally {
+       checkingProposals = false;
+     }
+   }
 </script>
 
 <svelte:head>
@@ -306,102 +306,27 @@
       </button>
     </div>
   {:else}
+    <!-- Active Proposals Alert -->
+    {#if hasActiveProposals}
+      <div class="max-w-[1300px] mx-auto mb-4">
+        <div class="bg-kong-primary/10 border border-kong-primary/30 text-kong-primary rounded-lg p-3 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-2">
+            <AlertTriangle size={18} />
+            <span class="text-sm font-medium">Active governance proposals found.</span>
+          </div>
+          <button 
+            class="text-sm font-semibold hover:underline flex-shrink-0"
+            on:click={() => activeTab = 'governance'}
+          >
+            View Governance →
+          </button>
+        </div>
+      </div>
+    {/if}
+
     <div class="flex flex-col max-w-[1300px] mx-auto gap-4">
       <!-- Token Header -->
-      <div class="flex flex-col gap-4">
-        <!-- Token info row -->
-        <div class="flex items-center justify-between">
-          <!-- Left side with back button and token info -->
-          <div class="flex items-center gap-4 md:gap-x-0">
-            <button
-              title="Back"
-              aria-label="Back"
-              on:click={() => goto("/stats")}
-              class="flex min-h-[40px] md:min-h-[48px] flex-col items-center justify-center gap-2 pr-2.5 text-sm bg-kong-bg-secondary hover:bg-kong-bg-secondary/80 text-kong-text-primary/70 rounded-lg transition-colors duration-200 w-fit"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-3.5 w-3.5 md:h-4 md:w-4"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L4.414 9H17a1 1 0 110 2H4.414l5.293 5.293a1 1 0 010 1.414z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-            </button>
 
-            <div class="flex items-center gap-3 md:gap-x-0">
-              <TokenImages
-                tokens={token ? [token] : []}
-                size={36}
-                containerClass="md:w-12 md:h-12"
-              />
-              <div class="flex items-center gap-2">
-                <h1
-                  class="text-lg md:text-2xl font-bold text-kong-text-primary"
-                >
-                  {token?.name || "Loading..."}
-                </h1>
-                <div class="text-sm md:text-base text-[#8890a4]">
-                  ({token?.symbol || "..."})
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Desktop tabs -->
-          <div class="hidden md:flex items-center gap-2 text-[#8890a4]">
-            <button
-              role="tab"
-              id="overview-tab"
-              aria-controls="overview-panel"
-              aria-selected={activeTab === "overview"}
-              class="px-4 py-2 rounded-lg {activeTab === 'overview'
-                ? 'bg-kong-bg-secondary text-kong-text-primary'
-                : 'hover:text-kong-text-primary'}"
-              on:click={() => (activeTab = "overview")}
-            >
-              Overview
-            </button>
-
-            {#if token?.canister_id && GOVERNANCE_CANISTER_IDS[token.canister_id]}
-              <button
-                role="tab"
-                id="governance-tab"
-                aria-controls="governance-panel"
-                aria-selected={activeTab === "governance"}
-                class="px-4 py-2 rounded-lg {activeTab === 'governance'
-                  ? 'bg-kong-bg-secondary text-kong-text-primary'
-                  : 'hover:text-kong-text-primary'}"
-                on:click={() => (activeTab = "governance")}
-              >
-                Governance
-              </button>
-            {/if}
-          </div>
-        </div>
-
-        <!-- Mobile governance tab row -->
-        {#if token?.canister_id && GOVERNANCE_CANISTER_IDS[token.canister_id]}
-          <div class="md:hidden flex items-center gap-2 text-[#8890a4]">
-            <button
-              role="tab"
-              id="governance-tab-mobile"
-              aria-controls="governance-panel"
-              aria-selected={activeTab === "governance"}
-              class="px-4 py-2 rounded-lg flex-1 {activeTab === 'governance'
-                ? 'bg-kong-bg-secondary text-kong-text-primary'
-                : 'hover:text-kong-text-primary'}"
-              on:click={() => (activeTab = "governance")}
-            >
-              Governance
-            </button>
-          </div>
-        {/if}
-      </div>
 
       <!-- Tab Content -->
       {#if activeTab === "overview"}
@@ -415,100 +340,6 @@
           <div class="flex flex-col lg:flex-row gap-4">
             <!-- Mobile-first layout -->
             <div class="flex flex-col gap-4 w-full lg:hidden">
-              <!-- Pool Selector -->
-              <PoolSelector
-                {selectedPool}
-                {token}
-                formattedTokens={$tokenData}
-                {relevantPools}
-                isLoading={isPoolsLoading}
-                onPoolSelect={(pool) => {
-                  hasManualSelection = true;
-                  selectedPool = pool;
-                }}
-              />
-              
-              <!-- Action Buttons -->
-              <div class="flex items-center gap-2 justify-end">
-                <ButtonV2
-                  variant="solid"
-                  size="md"
-                  className="!w-1/2 text-nowrap flex justify-center"
-                  on:click={() =>
-                    goto(
-                      `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
-                    )}
-                >
-                  <div class="flex items-center gap-2">
-                    <Droplets class="w-4 h-4" /> Add Liquidity
-                  </div>
-                </ButtonV2>
-                <ButtonV2
-                  variant="solid"
-                  size="md"
-                  className="!w-1/2 text-nowrap flex justify-center"
-                  on:click={() =>
-                    goto(
-                      `/swap?from=${selectedPool?.address_1}&to=${selectedPool?.address_0}`,
-                    )}
-                >
-                  <div class="flex items-center gap-2">
-                    <ArrowLeftRight class="w-4 h-4" /> Swap
-                  </div>
-                </ButtonV2>
-              </div>
-
-              <!-- Token address dropdown -->
-              <div class="flex items-center gap-2">
-                <div class="relative w-full">
-                  <ButtonV2
-                    bind:element={dropdownButtonRef}
-                    variant="outline"
-                    size="md"
-                    className="!border-kong-border w-full text-nowrap bg-kong-bg-dark hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 p-3"
-                    on:click={() => (showDropdown = !showDropdown)}
-                  >
-                    <div class="flex items-center gap-2 justify-between w-full">
-                      {token?.address}
-                      <ChevronDown class="w-4 h-4" />
-                    </div>
-                  </ButtonV2>
-
-                  <!-- Dropdown menu -->
-                  {#if showDropdown}
-                    <div
-                      bind:this={dropdownRef}
-                      class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-dark rounded-lg shadow-xl z-50 border border-white/10"
-                    >
-                      <button
-                        class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-t-lg"
-                        on:click={() => {
-                          copyToClipboard(token?.address);
-                          toastStore.info("Token address copied to clipboard");
-                          showDropdown = false;
-                        }}
-                      >
-                        <Copy class="w-4 h-4" />
-                        Copy
-                      </button>
-                      <button
-                        class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-b-lg"
-                        on:click={() => {
-                          window.open(
-                            `https://nns.ic0.app/tokens/?import-ledger-id=${token?.canister_id}`,
-                            "_blank",
-                          );
-                          showDropdown = false;
-                        }}
-                      >
-                        <PlusCircle class="w-4 h-4" />
-                        Import to NNS
-                      </button>
-                    </div>
-                  {/if}
-                </div>
-              </div>
-
               <!-- Token Statistics -->
               <TokenStatistics
                 {token}
@@ -516,23 +347,49 @@
                 {selectedPool}
                 {totalTokenTvl}
               />
+              
+              <!-- Pool Statistics -->
+              {#if selectedPool}
+                <PoolStatistics 
+                  {selectedPool} 
+                  {token} 
+                  {relevantPools}
+                  onPoolSelect={(pool) => {
+                    hasManualSelection = true;
+                    selectedPool = pool;
+                  }}
+                />
+              {/if}
 
               <!-- Chart Panel -->
               <Panel
-                variant="transparent"
+                variant="solid"
                 type="main"
-                className="!p-0 border-none"
+                className=""
               >
                 <div class="h-[450px] min-h-[400px] w-full">
                   {#if isChartDataReady}
-                    <div class="h-full w-full">
-                      <TradingViewChart
-                        poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
-                        symbol={getChartSymbol()}
-                        quoteToken={getQuoteToken()}
-                        baseToken={token}
-                      />
-                    </div>
+                    {@const currentBaseToken = token}
+                    {@const currentQuoteToken = getQuoteToken()}
+                    {#if currentBaseToken && currentQuoteToken} 
+                      <div class="h-full w-full">
+                        {#key chartInstance}
+                          <TradingViewChart
+                            poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
+                            symbol={getChartSymbol()}
+                            quoteToken={currentQuoteToken}
+                            baseToken={currentBaseToken}
+                          />
+                        {/key}
+                      </div>
+                    {:else}
+                      <div class="flex items-center justify-center h-full">
+                         <div class="loader"></div>
+                         <div class="ml-3 text-kong-text-secondary">
+                           Loading token data for chart...
+                         </div>
+                       </div>
+                    {/if}
                   {:else}
                     <div class="flex items-center justify-center h-full">
                       <div class="loader"></div>
@@ -542,7 +399,7 @@
               </Panel>
 
               <!-- Transactions Panel -->
-              {#if token && token.canister_id === $page.params.id}
+              {#if token && token.address === $page.params.id}
                 <TransactionFeed {token} className="w-full !p-0" />
               {/if}
             </div>
@@ -553,20 +410,33 @@
               <div class="lg:w-[70%] flex flex-col gap-6">
                 <!-- Chart Panel -->
                 <Panel
-                  variant="transparent"
+                  variant="solid"
                   type="main"
-                  className="!p-0 border-none"
+                  className="!p-0"
                 >
                   <div class="h-[450px] min-h-[400px] w-full">
                     {#if isChartDataReady}
-                      <div class="h-full w-full">
-                        <TradingViewChart
-                          poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
-                          symbol={getChartSymbol()}
-                          quoteToken={getQuoteToken()}
-                          baseToken={token}
-                        />
-                      </div>
+                      {@const currentBaseToken = token}
+                      {@const currentQuoteToken = getQuoteToken()}
+                      {#if currentBaseToken && currentQuoteToken} 
+                        <div class="h-full w-full">
+                          {#key chartInstance}
+                            <TradingViewChart
+                              poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
+                              symbol={getChartSymbol()}
+                              quoteToken={currentQuoteToken}
+                              baseToken={currentBaseToken}
+                            />
+                          {/key}
+                        </div>
+                      {:else}
+                        <div class="flex items-center justify-center h-full">
+                           <div class="loader"></div>
+                           <div class="ml-3 text-kong-text-secondary">
+                             Loading token data for chart...
+                           </div>
+                         </div>
+                      {/if}
                     {:else}
                       <div class="flex items-center justify-center h-full">
                         <div class="loader"></div>
@@ -576,119 +446,39 @@
                 </Panel>
 
                 <!-- Transactions Panel -->
-                {#if token && token.canister_id === $page.params.id}
+                {#if token && token.address === $page.params.id}
                   <TransactionFeed {token} className="w-full !p-0" />
                 {/if}
               </div>
 
               <!-- Right Column - Stats -->
               <div class="lg:w-[30%] flex flex-col gap-4">
-                <PoolSelector
-                  {selectedPool}
-                  {token}
-                  formattedTokens={$tokenData}
-                  {relevantPools}
-                  isLoading={isPoolsLoading}
-                  onPoolSelect={(pool) => {
-                    hasManualSelection = true;
-                    selectedPool = pool;
-                  }}
-                />
-                
-                <!-- Action Buttons -->
-                <div class="flex items-center gap-2 justify-end w-full">
-                  <ButtonV2
-                    variant="solid"
-                    size="md"
-                    className="!w-1/2 text-nowrap flex justify-center"
-                    on:click={() =>
-                      goto(
-                        `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
-                      )}
-                  >
-                    <div class="flex items-center gap-2">
-                      <Droplets class="w-4 h-4" /> Add Liquidity
-                    </div>
-                  </ButtonV2>
-                  <ButtonV2
-                    variant="solid"
-                    size="md"
-                    className="!w-1/2 text-nowrap flex justify-center"
-                    on:click={() =>
-                      goto(
-                        `/swap?from=${selectedPool?.address_1}&to=${selectedPool?.address_0}`,
-                      )}
-                  >
-                    <div class="flex items-center gap-2">
-                      <ArrowLeftRight class="w-4 h-4" /> Swap
-                    </div>
-                  </ButtonV2>
-                </div>
-                
-                <!-- Token address dropdown -->
-                <div class="flex items-center gap-2">
-                  <div class="relative w-full">
-                    <ButtonV2
-                      bind:element={dropdownButtonRef}
-                      variant="outline"
-                      size="md"
-                      className="!border-kong-border w-full text-nowrap bg-kong-bg-dark/60 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 p-3"
-                      on:click={() => (showDropdown = !showDropdown)}
-                    >
-                      <div class="flex items-center gap-2 justify-between w-full">
-                        {token?.address}
-                        <ChevronDown class="w-4 h-4" />
-                      </div>
-                    </ButtonV2>
-
-                    <!-- Dropdown menu -->
-                    {#if showDropdown}
-                      <div
-                        bind:this={dropdownRef}
-                        class="absolute right-0 top-full mt-1 w-48 bg-kong-bg-dark rounded-lg shadow-xl z-50 border border-white/10"
-                      >
-                        <button
-                          class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-t-lg"
-                          on:click={() => {
-                            copyToClipboard(token?.address);
-                            toastStore.info("Token address copied to clipboard");
-                            showDropdown = false;
-                          }}
-                        >
-                          <Copy class="w-4 h-4" />
-                          Copy
-                        </button>
-                        <button
-                          class="w-full px-4 py-2 text-left hover:bg-kong-bg-dark/50 flex items-center gap-2 rounded-b-lg"
-                          on:click={() => {
-                            window.open(
-                              `https://nns.ic0.app/tokens/?import-ledger-id=${token?.canister_id}`,
-                              "_blank",
-                            );
-                            showDropdown = false;
-                          }}
-                        >
-                          <PlusCircle class="w-4 h-4" />
-                          Import to NNS
-                        </button>
-                      </div>
-                    {/if}
-                  </div>
-                </div>
-                
                 <TokenStatistics
                   {token}
                   marketCapRank={token?.metrics?.market_cap_rank ?? null}
                   {selectedPool}
                   {totalTokenTvl}
                 />
+                
+                <!-- Pool Statistics -->
+                {#if selectedPool}
+                  <PoolStatistics 
+                    {selectedPool} 
+                    {token} 
+                    {relevantPools}
+                    onPoolSelect={(pool) => {
+                      hasManualSelection = true;
+                      selectedPool = pool;
+                    }}
+                  />
+                {/if}
               </div>
             </div>
           </div>
         </div>
       {/if}
 
-      {#if activeTab === "governance" && token?.canister_id && GOVERNANCE_CANISTER_IDS[token.canister_id]}
+      {#if activeTab === "governance" && token?.address && GOVERNANCE_CANISTER_IDS[token.address]}
         <div
           role="tabpanel"
           id="governance-panel"
@@ -700,13 +490,13 @@
             <!-- Left Column - Proposals -->
             <div class="lg:w-[70%]">
               <SNSProposals
-                governanceCanisterId={GOVERNANCE_CANISTER_IDS[token.canister_id]}
+                governanceCanisterId={GOVERNANCE_CANISTER_IDS[token.address]}
               />
             </div>
 
             <!-- Right Column - Stats -->
             <div class="lg:w-[30%] flex flex-col gap-4">
-              <Panel variant="transparent" type="main">
+              <Panel variant="solid" type="main">
                 <div class="flex flex-col gap-4">
                   <h2 class="text-lg font-semibold">About Governance</h2>
                   <div class="text-kong-text-secondary">
@@ -721,7 +511,7 @@
                     </ul>
                   </div>
                   <a
-                    href={`https://nns.ic0.app/proposals/?u=${token.canister_id}`}
+                    href={`https://nns.ic0.app/proposals/?u=${token.address}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="text-kong-primary hover:underline mt-2"

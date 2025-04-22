@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { formatBalance } from '$lib/utils/numberFormatUtils';
 	import { Coins, Loader2, RefreshCw, Shuffle, Settings } from "lucide-svelte";
 	import TokenDropdown from "./TokenDropdown.svelte";
 	import { userTokens } from "$lib/stores/userTokens";
@@ -18,29 +17,38 @@
 	import { analyzeUserTokens, applyTokenSync } from "$lib/services/tokenSyncService";
 	import { loadUserBalances, setLastRefreshed } from "$lib/services/balanceService";
 	import TokenListItem from "./TokenListItem.svelte";
+	import { auth } from "$lib/stores/auth";
 
-	// Define props using the $props syntax
-	type TokenBalance = {
-		symbol: string;
+	// Define a type that combines a token with its balance information
+	interface TokenWithBalance {
+		token: Kong.Token;
+		in_tokens: bigint;
+		in_usd: string;
+	}
+	
+	// Solana SPL token type from provider (adjust if needed)
+	type SplTokenBalance = {
+		amount: string;
+		decimals: number;
+		logo?: string;
+		mint: string;
 		name: string;
-		balance: string;
+		symbol: string;
 		usdValue: number;
-		icon: string;
-		change24h: number;
-		token: FE.Token;
+		uiAmount: number;
 	};
 
 	type WalletTokensListProps = {
 		isLoading?: boolean;
 		walletId?: string;
 		// Optional pre-processed token balances (for backward compatibility)
-		tokenBalances?: TokenBalance[];
+		tokenBalances?: Kong.Token[];
 		// Callback props instead of event dispatchers
 		onAction?: (
 			action: 'send' | 'receive' | 'swap' | 'info' | 'add_lp',
-			token: TokenBalance
+			token: TokenWithBalance
 		) => void;
-		onTokenAdded?: (token: FE.Token) => void;
+		onTokenAdded?: (token: Kong.Token) => void;
 		onBalancesLoaded?: () => void;
 		showUsdValues?: boolean; // <-- Add prop for USD visibility
 	};
@@ -55,6 +63,13 @@
 		showUsdValues = true // <-- Destructure with default
 	}: WalletTokensListProps = $props();
 
+	// --- Solana State ---
+	// let solNativeBalance = $state<number | null>(null);
+	// let splTokens = $state<SplTokenBalance[]>([]);
+	// let isLoadingSolana = $state(false);
+	// let solanaLoadError = $state<string | null>(null);
+	// --------------------
+
 	// Process tokens with balance information when we need to do it internally
 	const processedTokenBalances = $derived(
 		// If tokenBalances were provided, use them (backward compatibility)
@@ -62,45 +77,70 @@
 		// Otherwise process them internally
 		(() => {
 			const currentEnabled = $userTokens.enabledTokens;
-			const tokenDataMap = $userTokens.tokenData; // Use the derived Map directly
+			const tokenDataMap = $userTokens.tokenData;
 
-			// Iterate over enabled tokens, look up data, process, and filter out any missing tokens
-			const processed = Array.from(currentEnabled)
+			// --- Process ICP Tokens ---
+			const icpProcessed = Array.from(currentEnabled)
 				.map(canisterId => {
-					const token = tokenDataMap.get(canisterId); // Use the derived Map
+					const token = tokenDataMap.get(canisterId);
 					if (!token) {
 						console.warn(`[WalletTokensList] Enabled token ${canisterId} not found in tokenData map during derived recalc.`);
 						return null; // Skip if token data isn't available for some reason
 					}
 
-					const balanceInfo = $currentUserBalancesStore?.[token.canister_id];
-					// Use the existing default logic which should be fine
-					const effectiveBalanceInfo = balanceInfo || {
-						in_tokens: 0n,
-						in_usd: "0",
-					};
+					const balanceInfo = $currentUserBalancesStore[token.address];
+					
+					// If this token doesn't have balance info yet, just return the token
+					if (!balanceInfo) {
+						return token;
+					}
 
-					// Safely convert in_usd to number, handling non-numeric strings
-					const usdValue = effectiveBalanceInfo.in_usd
-						? parseFloat(effectiveBalanceInfo.in_usd)
-						: 0;
-
-					return {
-						symbol: token.symbol,
-						name: token.name,
-						balance: formatBalance(effectiveBalanceInfo.in_tokens, token.decimals || 0),
-						usdValue: isNaN(usdValue) ? 0 : usdValue,
-						icon: token.logo_url || "",
-						change24h: token.metrics?.price_change_24h
-							? parseFloat(token.metrics.price_change_24h)
-							: 0,
-						token: token, // Store the original token object for TokenImages
-					};
+					return token;
 				})
-				.filter((item): item is TokenBalance => item !== null); // Filter out any nulls (missing tokens)
+				.filter(Boolean); // Filter out any nulls (missing tokens)
 
+			// --- Process Solana Tokens ---
+			// const solProcessed: Kong.Token[] = [];
+			
+			// Add SPL tokens
+			// splTokens.forEach(spl => {
+			// 	// Placeholder token for SPL
+			// 	const splToken: Kong.Token = {
+			// 		id: 0,
+			// 		name: spl.name,
+			// 		symbol: spl.symbol,
+			// 		address: spl.mint,
+			// 		chain: 'Solana',
+			// 		fee: 0,
+			// 		fee_fixed: '0',
+			// 		token_type: 'SPL',
+			// 		standards: ['SPL'],
+			// 		decimals: Number(spl.decimals),
+			// 		metrics: {
+			// 			price: String(spl.usdValue / spl.uiAmount),
+			// 			price_change_24h: '0',
+			// 			total_supply: '0',
+			// 			market_cap: '0',
+			// 			volume_24h: '0',
+			// 			tvl: '0',
+			// 			updated_at: new Date().toISOString()
+			// 		},
+			// 		logo_url: spl.logo || ''
+			// 	};
+				
+			// 	solProcessed.push(splToken);
+			// });
 
-			const sorted = processed.sort((a, b) => b.usdValue - a.usdValue); // Sort by value, highest first
+			// --- Combine and Sort ---
+			const combined = [...icpProcessed]; // Use only ICP tokens for now
+			
+			// Sort by USD value - we'll get USD values from the store
+			const sorted = combined.sort((a, b) => {
+				const aUsdValue = Number($currentUserBalancesStore[a.address]?.in_usd || '0');
+				const bUsdValue = Number($currentUserBalancesStore[b.address]?.in_usd || '0');
+				return bUsdValue - aUsdValue;
+			});
+			
 			return sorted;
 		})()
 	);
@@ -116,10 +156,56 @@
 	let showManageTokensModal = $state(false);
 	let showSyncConfirmModal = $state(false);
 	let showReceiveTokenModal = $state(false);
-	let tokenSyncCandidates = $state<{tokensToAdd: FE.Token[], tokensToRemove: FE.Token[]}>({
+	let tokenSyncCandidates = $state<{tokensToAdd: Kong.Token[], tokensToRemove: Kong.Token[]}>({
 		tokensToAdd: [],
 		tokensToRemove: []
 	});
+
+	// --- Fetch Solana Balances ---
+	// async function fetchSolanaBalances() {
+	// 	if (!auth.pnp?.provider?.getSolBalance || !auth.pnp?.provider?.getSplTokenBalances) {
+	// 		console.log("[WalletTokensList] Solana provider methods not available.");
+	// 		return;
+	// 	}
+		
+	// 	isLoadingSolana = true;
+	// 	solanaLoadError = null;
+		
+	// 	try {
+	// 		const [solBalance, splBalances] = await Promise.all([
+	// 			auth.pnp.provider.getSolBalance(),
+	// 			auth.pnp.provider.getSplTokenBalances()
+	// 		]);
+			
+	// 		console.log('[WalletTokensList] SOL Balance:', solBalance);
+	// 		console.log('[WalletTokensList] SPL Balances:', splBalances);
+			
+	// 		// Ensure solBalance is a number (or handle potential errors)
+	// 		if (typeof solBalance === 'number') {
+	// 			solNativeBalance = solBalance;
+	// 		} else {
+	// 			console.warn('[WalletTokensList] Received non-number SOL balance:', solBalance);
+	// 			solNativeBalance = 0; // Default to 0 if invalid
+	// 		}
+			
+	// 		// Ensure splBalances is an array (or handle potential errors)
+	// 		if (Array.isArray(splBalances)) {
+	// 			splTokens = splBalances;
+	// 		} else {
+	// 			console.warn('[WalletTokensList] Received non-array SPL balances:', splBalances);
+	// 			splTokens = []; // Default to empty array if invalid
+	// 		}
+			
+	// 	} catch (error) {
+	// 		console.error("Error fetching Solana balances:", error);
+	// 		solanaLoadError = error instanceof Error ? error.message : "Failed to load Solana balances";
+	// 		solNativeBalance = null; // Reset on error
+	// 		splTokens = [];         // Reset on error
+	// 	} finally {
+	// 		isLoadingSolana = false;
+	// 	}
+	// }
+	// ---------------------------
 
 	// Run a thorough token discovery process that finds tokens with balances
 	async function runTokenDiscovery() {
@@ -131,7 +217,7 @@
 		
 		try {
 			// 1. First, load a fresh list of all available tokens (with caching)
-			let allAvailableTokens: FE.Token[];
+			let allAvailableTokens: Kong.Token[];
 			const now = Date.now();
 
 			// Use the service function to check if cache refresh is needed
@@ -147,7 +233,7 @@
 			// Use the service function to discover tokens
 			const enabledTokenIds = $userTokens.enabledTokens;
 			const currentEnabledTokens = $userTokens.tokens
-				.filter(token => token.canister_id && enabledTokenIds.has(token.canister_id));
+				.filter(token => token.address && enabledTokenIds.has(token.address));
 			
 			const discoveryResult = await discoverTokens(
 				walletId,
@@ -320,7 +406,7 @@
 	}
 
 	// Handle when a new token is added
-	function handleNewTokenAdded(event: CustomEvent<FE.Token>) {
+	function handleNewTokenAdded(event: CustomEvent<Kong.Token>) {
 		const newToken = event.detail;
 		// Call the onTokenAdded callback from props
 		onTokenAdded(newToken);
@@ -329,7 +415,7 @@
 	}
 
 	// For dropdown - use $state for proper reactivity in Svelte 5
-	let selectedToken = $state<TokenBalance | null>(null);
+	let selectedToken = $state<TokenWithBalance | null>(null);
 	let selectedTokenId = $state<string | null>(null);
 	let selectedTokenElement = $state<HTMLElement | null>(null);
 	let showDropdown = $state(false);
@@ -340,20 +426,33 @@
 	// ---------------------------
 
 	// Handle token click to show dropdown
-	function handleTokenClick(event: MouseEvent, token: TokenBalance) {
+	function handleTokenClick(event: MouseEvent, token: Kong.Token) {
 		// Prevent opening dropdown if syncing or already selected
 		if (isSyncing) return;
 		
+		// Get balance information for this token
+		const balanceInfo = $currentUserBalancesStore[token.address];
+		const tokenBalance = {
+			in_tokens: balanceInfo?.in_tokens || BigInt(0),
+			in_usd: balanceInfo?.in_usd || '0'
+		};
+		
+		// Create a merged token with balance info
+		const tokenWithBalance = {
+			token,
+			...tokenBalance
+		};
+		
 		// If clicking the same token that's already open, close it
-		if (selectedTokenId === token.token?.canister_id && showDropdown) {
+		if (selectedTokenId === token.address && showDropdown) {
 			closeDropdown();
 			return;
 		}
 		
 		const target = event.currentTarget as HTMLElement;
 		selectedTokenElement = target;
-		selectedToken = token;
-		selectedTokenId = token.token?.canister_id || null;
+		selectedToken = tokenWithBalance;
+		selectedTokenId = token.address;
 		showDropdown = true;
 		
 		// Add click outside listener
@@ -402,7 +501,7 @@
 				 shouldCloseDropdown = false; // Keep open
 				 break;
 			case 'add_lp':
-				const token0Id = selectedToken.token?.canister_id;
+				const token0Id = selectedToken.token.address;
 				if (!token0Id) {
 					console.error("Cannot Add LP: Selected token has no canister ID.");
 					toastStore.error("Cannot create LP link: Missing token ID.");
@@ -423,6 +522,16 @@
 					 shouldCloseDropdown = true; // Close on error
 					 break;
 				}
+
+				// Check if either token is SOL Native or an SPL token
+				// const isSolanaToken = (id: string) => id === 'SOL_NATIVE' || splTokens.some(spl => spl.mint === id);
+				
+				// if (isSolanaToken(token0Id) || isSolanaToken(token1Id)) {
+				// 	console.warn("[WalletTokensList] Add LP action is not yet implemented for Solana tokens.");
+				// 	toastStore.warning("Add LP for Solana tokens is not yet available.");
+				// 	shouldCloseDropdown = true; // Close dropdown as action is not supported
+				// 	break;
+				// }
 
 				const url = `/pools/add?token0=${token0Id}&token1=${token1Id}`;
 				console.log('Navigating to Add LP:', url);
@@ -466,13 +575,27 @@
 		}
 	});
 
+	// Effect to load Solana balances when provider is ready
+	// $effect(() => {
+	// 	if ($auth.isConnected && auth?.pnp?.activeWallet?.chain === 'SOL' && auth.pnp?.provider?.getSolBalance && auth.pnp?.provider?.getSplTokenBalances) {
+	// 		console.log("[WalletTokensList] Solana provider available, fetching balances.");
+	// 		fetchSolanaBalances();
+	// 	} else {
+	// 		// Reset if disconnected or provider changes
+	// 		solNativeBalance = null;
+	// 		splTokens = [];
+	// 		isLoadingSolana = false;
+	// 		solanaLoadError = null;
+	// 	}
+	// });
+
 	// Close the receive token modal
 	function closeReceiveTokenModal() {
 		showReceiveTokenModal = false;
 	}
 	
 	// --- Token Discovery Cache ---
-	let allAvailableTokensCache: FE.Token[] = [];
+	let allAvailableTokensCache: Kong.Token[] = [];
 	let allAvailableTokensCacheTimestamp = 0;
 	// ---------------------------
 
@@ -491,22 +614,22 @@
 	}
 </script>
 
-<div class="py-2">
-	<div class="flex items-center justify-between mb-3 px-4">
+<div class="py-3">
+	<div class="px-4 mb-3 flex items-center justify-between">
 		{#if isLoading || isLoadingBalances}
 			<div class="text-xs text-kong-text-secondary flex items-center gap-1.5">
 				<Loader2 size={12} class="animate-spin" />
 				<span>Refreshing balances...</span>
 			</div>
 		{:else}
-			<div class="text-xs text-kong-text-secondary">
-				{processedTokenBalances.length} token{processedTokenBalances.length !== 1 ? 's' : ''}
+			<div class="text-xs font-medium text-kong-text-secondary uppercase tracking-wide">
+				{processedTokenBalances.length} asset{processedTokenBalances.length !== 1 ? 's' : ''}
 			</div>
 		{/if}
 		
-		<div class="flex gap-2">    
+		<div class="flex items-center gap-2">    
 			<button 
-				class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-light/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-dark/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 				on:click={handleSyncButtonClick}
 				disabled={isSyncing || isLoading || isLoadingBalances}
 			>
@@ -531,7 +654,7 @@
 				</div>
 			{/if}
 			<button 
-			class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-light/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+			class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-dark/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 			on:click={handleRefresh}
 			disabled={isLoading || isLoadingBalances}
 		>
@@ -543,11 +666,11 @@
 
 	{#if balanceLoadError}
 		<div class="text-xs text-kong-accent-red mt-1 px-4 mb-2">
-			Error: {balanceLoadError}
+			Error loading ICP balances: {balanceLoadError}
 		</div>
 	{/if}
 
-	{#if processedTokenBalances.length === 0}
+	{#if processedTokenBalances.length === 0 && !isLoading && !isLoadingBalances}
 		<div class="py-10 text-center">
 			<div
 				class="p-5 rounded-full bg-kong-text-primary/5 inline-block mb-3 mx-auto"
@@ -575,20 +698,24 @@
 				</div>
 			{/if}
 			<div class="space-y-0">
-				{#each processedTokenBalances as tokenBalance (tokenBalance.token.canister_id)}
-					<div>
+				{#each processedTokenBalances as token (token.address)}
+					<div
+						class:opacity-30={showDropdown && selectedTokenId !== token.address}
+						class:pointer-events-none={showDropdown && selectedTokenId !== token.address}
+						class="transition-opacity duration-200"
+					>
 						<TokenListItem 
-							token={tokenBalance}
-							isActive={showDropdown && selectedTokenId === tokenBalance.token?.canister_id}
+							token={token}
+							isActive={showDropdown && selectedTokenId === token.address}
 							isSyncing={isSyncing}
 							showUsdValues={showUsdValues}
-							onClick={(e) => handleTokenClick(e, tokenBalance)}
+							onClick={(e) => handleTokenClick(e, token)}
 						/>
 						
 						<!-- Token Actions Row - Expanded underneath the token -->
-						{#if selectedTokenId === tokenBalance.token?.canister_id && showDropdown}
+						{#if selectedTokenId === token.address && showDropdown}
 							<div 
-								class="px-4 py-3 border-b border-kong-border/30 bg-gradient-to-b from-kong-accent-blue/5 to-kong-bg-light/10" 
+								class="px-4 py-3 border-b border-kong-border/30 bg-kong-bg-light" 
 								transition:slide={{ duration: 200 }}
 							>
 								<TokenDropdown 
@@ -606,7 +733,7 @@
 				<!-- Token Management Buttons -->
 				<div class="p-4 flex justify-center gap-3">
 					<button
-						class="flex items-center gap-2 py-2 px-4 bg-kong-bg-light/10 hover:bg-kong-bg-light/20 text-kong-text-primary rounded-md transition-colors"
+						class="flex items-center gap-2 py-2 px-4 bg-kong-bg-dark/10 hover:bg-kong-bg-dark/20 text-kong-text-primary rounded-md transition-colors"
 						on:click={openManageTokensModal}
 					>
 						<Settings size={16} />

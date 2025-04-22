@@ -1,0 +1,40 @@
+[package]
+name = "ic_siws"
+version = "0.0.2"
+edition = "2021"
+authors = ["Kristofer Lund <kristofer@kristoferlund.se>"]
+description = "Integrate Solana wallet-based authentication (SIWS) with applications on the Internet Computer (ICP) platform."
+license = "MIT"
+homepage = "https://github.com/kristoferlund/ic-siws"
+repository = "https://github.com/kristoferlund/ic-siws"
+keywords = ["solana", "wallet", "internet-computer", "authentication", "siws"]
+categories = ["authentication", "cryptography::cryptocurrencies"]
+
+[dependencies]
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = "1.0.66"
+serde_bytes = "0.11"
+serde_cbor = "0.11"
+candid = "0.10.13"
+hex = "0.4.3"
+ic-cdk = "0.17.1"
+ic-cdk-timers = { version = "0.11.0", optional = true }
+ic-certified-map = "0.4.0"
+url = "2.4.1"
+time = { version = "0.3.36", features = ["formatting"] }
+rand_chacha = { version = "0.9.0", optional = true }
+getrandom = { version = "0.2.15", features = ["custom"] }
+sha2 = "0.10.8"
+simple_asn1 = "0.6.2"
+thiserror = "2.0.12"
+bs58 = "0.5.1"
+ed25519-dalek = "2.1.1"
+
+[dev-dependencies]
+tokio = { version = "1.44.2", features = ["full"] }
+rand = "0.9.1"
+hex-literal = "1.0.0"
+solana-sdk = "2.2.2"
+
+[features]
+nonce = ["rand_chacha", "ic-cdk-timers"]

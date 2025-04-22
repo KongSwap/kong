@@ -32,7 +32,7 @@ export function isValidNumber(value: string): boolean {
  * Calculates the maximum amount considering transfer fees.
  */
 export async function calculateMaxAmount(
-    token: FE.Token, 
+    token: Kong.Token, 
     rawBalance: string, 
     feeMultiplier: number = 1
 ): Promise<string> {
@@ -84,8 +84,8 @@ export function formatWithCommas(value: string): string {
 export function hasInsufficientBalance(
     amount0: string,
     amount1: string,
-    token0: FE.Token,
-    token1: FE.Token
+    token0: Kong.Token,
+    token1: Kong.Token
 ): boolean {
     if (!token0 || !token1) return false;
     try {
@@ -94,8 +94,8 @@ export function hasInsufficientBalance(
 
         // Grab balances from our token store
         const storeValue = get(currentUserBalancesStore);
-        const balance0 = storeValue[token0.canister_id];
-        const balance1 = storeValue[token1.canister_id];
+        const balance0 = storeValue[token0.address];
+        const balance1 = storeValue[token1.address];
 
         if (!balance0 || !balance1) return true;
 
@@ -126,8 +126,8 @@ export function hasInsufficientBalance(
  * Gets the appropriate button text based on form state
  */
 export function getButtonText(
-    token0: FE.Token | null,
-    token1: FE.Token | null,
+    token0: Kong.Token | null,
+    token1: Kong.Token | null,
     poolExists: boolean,
     hasInsufficientBalance: boolean,
     amount0: string,
@@ -146,8 +146,8 @@ export function getButtonText(
  * Calculates and formats the pool ratio between two tokens
  */
 export function calculatePoolRatio(
-    token0: FE.Token | null,
-    token1: FE.Token | null,
+    token0: Kong.Token | null,
+    token1: Kong.Token | null,
     amount0: string,
     amount1: string
 ): string {
@@ -165,8 +165,8 @@ export function calculatePoolRatio(
  * Calculates and formats the USD ratio between two tokens
  */
 export function calculateUsdRatio(
-    token0: FE.Token | null,
-    token1: FE.Token | null
+    token0: Kong.Token | null,
+    token1: Kong.Token | null
 ): string {
     if (token0?.metrics.price && token1?.metrics.price) {
         const ratio = new BigNumber(token0.metrics.price).dividedBy(token1.metrics.price);
@@ -234,15 +234,15 @@ export function processLiquidityInput(
  * Validates if a pool exists for the given token pair
  */
 export function findPool(
-    token0: FE.Token | null,
-    token1: FE.Token | null,
+    token0: Kong.Token | null,
+    token1: Kong.Token | null,
     pools: BE.Pool[]
 ): BE.Pool | null {
     if (!token0 || !token1) return null;
     
     return pools.find(p => 
-        (p.address_0 === token0.canister_id && p.address_1 === token1.canister_id) ||
-        (p.address_0 === token1.canister_id && p.address_1 === token0.canister_id)
+        (p.address_0 === token0.address && p.address_1 === token1.address) ||
+        (p.address_0 === token1.address && p.address_1 === token0.address)
     ) || null;
 }
 
@@ -250,8 +250,8 @@ export function findPool(
  * Validates if the form inputs are valid for submission
  */
 export function validateLiquidityForm(
-    token0: FE.Token | null,
-    token1: FE.Token | null,
+    token0: Kong.Token | null,
+    token1: Kong.Token | null,
     amount0: string,
     amount1: string,
     error: string | null,
@@ -270,35 +270,35 @@ export function validateLiquidityForm(
 }
 
 export function getPoolForTokenPair(
-    token0: FE.Token | null,
-    token1: FE.Token | null,
+    token0: Kong.Token | null,
+    token1: Kong.Token | null,
     pools: BE.Pool[]
 ): BE.Pool | null {
     if (!token0 || !token1) return null;
     
     return pools.find(p => 
-        (p.address_0 === token0.canister_id && p.address_1 === token1.canister_id) ||
-        (p.address_0 === token1.canister_id && p.address_1 === token0.canister_id)
+        (p.address_0 === token0.address && p.address_1 === token1.address) ||
+        (p.address_0 === token1.address && p.address_1 === token0.address)
     ) || null;
 }
 
 export interface TokenPairState {
-    token0: FE.Token | null;
-    token1: FE.Token | null;
+    token0: Kong.Token | null;
+    token1: Kong.Token | null;
     amount0: string;
     amount1: string;
     error: string | null;
 }
 
 export function validateTokenSelect(
-    selectedToken: FE.Token,
-    otherToken: FE.Token | null,
+    selectedToken: Kong.Token,
+    otherToken: Kong.Token | null,
     allowedTokens: string[],
     defaultToken: string,
-    tokens: FE.Token[]
+    tokens: Kong.Token[]
 ): { 
     isValid: boolean;
-    newToken: FE.Token | null;
+    newToken: Kong.Token | null;
     error?: string;
 } {
     if (!otherToken) { return { isValid: true, newToken: selectedToken };}
@@ -328,8 +328,8 @@ export function validateTokenSelect(
  */
 export async function calculateToken1FromPoolRatio(
   amount0: string,
-  token0: FE.Token,
-  token1: FE.Token,
+  token0: Kong.Token,
+  token1: Kong.Token,
   pool: BE.Pool
 ): Promise<string> {
   try {
@@ -391,8 +391,8 @@ export async function calculateToken1FromPoolRatio(
  */
 export async function calculateToken0FromPoolRatio(
   amount1: string,
-  token0: FE.Token,
-  token1: FE.Token,
+  token0: Kong.Token,
+  token1: Kong.Token,
   pool: BE.Pool
 ): Promise<string> {
   try {
@@ -538,7 +538,7 @@ export function calculateToken0FromPrice(
  * @returns Calculated token amount
  */
 export function calculateAmountFromPercentage(
-  token: FE.Token,
+  token: Kong.Token,
   balance: string,
   percentage: number
 ): string {

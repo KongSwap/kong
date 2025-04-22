@@ -2,23 +2,12 @@
 /// <reference path="./types/index.d.ts" />
 
 declare global {
-  interface CanisterIdIcpLedger {
-    [key: string]: any;
-  }
-  
-  const CANISTER_ID_ICP_LEDGER: CanisterIdIcpLedger;
-
   interface Result<T> {
     Ok?: T;
     Err?: string;
   }
   
   namespace FE {
-    interface TokenBalance {
-      in_tokens: bigint;
-      in_usd: string;
-    }
-    
     interface Transaction {
       type: 'send' | 'receive';
       amount: string;

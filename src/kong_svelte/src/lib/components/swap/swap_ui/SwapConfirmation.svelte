@@ -11,9 +11,9 @@
   import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import BigNumber from "bignumber.js";
 
-  export let payToken: FE.Token;
+  export let payToken: Kong.Token;
   export let payAmount: string;
-  export let receiveToken: FE.Token;
+  export let receiveToken: Kong.Token;
   export let receiveAmount: string;
   export let routingPath: string[] = [];
   export let userMaxSlippage: number;
@@ -166,7 +166,7 @@
 
         if (quote.Ok.txs.length > 0) {
           currentRoutingPath = [
-            payToken.canister_id,
+            payToken.address,
             ...quote.Ok.txs.map((tx) => tx.receive_address),
           ];
 

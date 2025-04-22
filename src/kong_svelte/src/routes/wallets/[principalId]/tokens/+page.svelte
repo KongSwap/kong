@@ -25,7 +25,7 @@
 
   // Reactive calculations for overview metrics
   let tokensWithBalance = $derived(walletData.tokens.filter(token => {
-    const balance = walletData.balances[token.canister_id];
+    const balance = walletData.balances[token.address];
     return balance && Number(balance.in_tokens || "0") > 0;
   }) || []);
 

@@ -34,7 +34,7 @@
     isLoading = false,
   } = $props<{
     title: string;
-    token: FE.Token;
+    token: Kong.Token;
     amount: string;
     onAmountChange: (event: CustomEvent) => void;
     disabled: boolean;
@@ -210,7 +210,7 @@
           return;
         }
 
-        const balance = $currentUserBalancesStore[token.canister_id]?.in_tokens;
+        const balance = $currentUserBalancesStore[token.address]?.in_tokens;
         if (!balance) {
           console.error("Balance not available for token", token.symbol);
           toastStore.error(`Balance not available for ${token.symbol}`);
@@ -502,10 +502,10 @@
               class:hover:text-yellow-500={title === 'You Pay' && !disabled}
               on:click={handleMaxClick}
             >
-              {#if token && token.canister_id && $currentUserBalancesStore}
-                {#if $currentUserBalancesStore[token.canister_id]}
+              {#if token && token.address && $currentUserBalancesStore}
+                {#if $currentUserBalancesStore[token.address]}
                   {formatTokenBalance(
-                    ($currentUserBalancesStore[token.canister_id]?.in_tokens || 0).toString(),
+                    ($currentUserBalancesStore[token.address]?.in_tokens || 0).toString(),
                     token.decimals || DEFAULT_DECIMALS
                   )}
                   {token.symbol || ''}

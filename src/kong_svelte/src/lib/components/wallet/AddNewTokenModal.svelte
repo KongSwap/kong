@@ -22,11 +22,11 @@
   let isAddingCustomToken = $state(false);
   let customTokenError = $state("");
   let isLoadingPreview = $state(false);
-  let previewToken = $state<FE.Token | null>(null);
+  let previewToken = $state<Kong.Token | null>(null);
   let lastPreviewedCanisterId = $state("");
 
   const dispatch = createEventDispatcher<{
-    tokenAdded: FE.Token;
+    tokenAdded: Kong.Token;
   }>();
 
   // Reset form when modal opens
@@ -190,7 +190,7 @@
       }
       
       // If we have a preview token, use it for the UI
-      let tokenToAdd: FE.Token;
+      let tokenToAdd: Kong.Token;
       
       if (previewToken) {
         tokenToAdd = previewToken;
@@ -295,7 +295,7 @@
             <div class="grid grid-cols-2 gap-x-4 gap-y-2">
               <div class="flex flex-col">
                 <span class="text-xs text-kong-text-secondary">Canister ID</span>
-                <span class="text-sm text-kong-text-primary truncate">{previewToken.canister_id}</span>
+                <span class="text-sm text-kong-text-primary truncate">{previewToken.address}</span>
               </div>
               <div class="flex flex-col">
                 <span class="text-xs text-kong-text-secondary">Decimals</span>
@@ -309,9 +309,9 @@
                 <span class="text-xs text-kong-text-secondary">Standards</span>
                 <span class="text-sm text-kong-text-primary truncate">
                   {[
-                    previewToken.icrc1 ? 'ICRC-1' : '',
-                    previewToken.icrc2 ? 'ICRC-2' : '',
-                    previewToken.icrc3 ? 'ICRC-3' : ''
+                    previewToken.standards.includes('ICRC-1') ? 'ICRC-1' : '',
+                    previewToken.standards.includes('ICRC-2') ? 'ICRC-2' : '',
+                    previewToken.standards.includes('ICRC-3') ? 'ICRC-3' : ''
                   ].filter(Boolean).join(', ') || 'None'}
                 </span>
               </div>

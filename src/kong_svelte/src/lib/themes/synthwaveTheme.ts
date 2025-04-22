@@ -47,7 +47,7 @@ export const synthwaveTheme: ThemeDefinition = {
     textDisabled: '#7E6D9E',     // Muted purple
     textLight: '#FFFFFF',        // White text
     textDark: '#16004A',         // Dark text
-    textOnPrimary: '#FFFFFF',    // White text on primary
+    textOnPrimary: '#16004A',    // White text on primary
     textAccentGreen: '#36F9B3',  // Same as accent green
     textAccentRed: '#FF3864',    // Same as accent red
     textAccentBlue: '#4D6CFA',   // Same as accent blue

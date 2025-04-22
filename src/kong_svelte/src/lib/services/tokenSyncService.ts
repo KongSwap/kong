@@ -7,8 +7,8 @@ import { userTokens } from "$lib/stores/userTokens";
  * @returns Object with counts of added and removed tokens
  */
 export async function applyTokenSync(
-  tokensToAdd: FE.Token[],
-  tokensToRemove: FE.Token[]
+  tokensToAdd: Kong.Token[],
+  tokensToRemove: Kong.Token[]
 ): Promise<{ added: number; removed: number }> {
   try {
     // Use the userTokens store to apply the changes
@@ -32,8 +32,8 @@ export async function applyTokenSync(
 export async function analyzeUserTokens(
   walletId: string
 ): Promise<{
-  tokensToAdd: FE.Token[];
-  tokensToRemove: FE.Token[];
+  tokensToAdd: Kong.Token[];
+  tokensToRemove: Kong.Token[];
   syncStatus: { added: number; removed: number } | null;
 }> {
   try {

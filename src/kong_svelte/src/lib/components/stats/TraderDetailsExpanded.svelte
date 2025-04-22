@@ -6,7 +6,7 @@
   import { formatVolume } from '$lib/utils/numberFormatUtils';
   
   export let user: LeaderboardEntry;
-  export let tradedTokens: FE.Token[] | undefined = undefined;
+  export let tradedTokens: Kong.Token[] | undefined = undefined;
   export let loadingTokens: boolean = false;
   export let tokenError: string | null = null;
   export let userDetails: { fee_level: number } | null = null;

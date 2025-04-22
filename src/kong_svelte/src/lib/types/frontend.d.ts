@@ -1,59 +1,42 @@
 declare global {
-  namespace FE {
-    interface TokenBalance {
-      in_tokens: bigint;
-      in_usd: string;
-    }
-
+  namespace Kong {
     interface Token {
-      canister_id: string;
-      address: string;
+      id: number; // Unique identifier for the token (same astoken_id on FE.IcrcToken)
       name: string;
       symbol: string;
+      address: string; // Address of the token (canister_id for ICRC tokens, mint for SPL tokens)
       fee: number;
       fee_fixed: string;
       decimals: number;
-      token: string;
-      token_type: string;
-      token_id: number;
-      chain: string;
-      icrc1: boolean;
-      icrc2: boolean;
-      icrc3: boolean;
-      pool_symbol: string;
-      pools: any[];
-      metrics: {
-        total_supply: string;
-        price: string;
-        previous_price?: string;
-        volume_24h: string;
-        market_cap: string;
-        formatted_market_cap?: string;
-        tvl: string;
-        updated_at: string;
-        price_change_24h?: string;
-        previous_price?: number;
-        market_cap_rank?: number;
-      };
+      token_type: 'IC' | 'LP' | 'SPL';
+      chain: 'ICP' | 'Solana';
+      standards: string[];
       logo_url: string;
-      total_24h_volume: string;
-      balance: string;
+      metrics: FE.TokenMetrics;
       timestamp?: number;
-      isFavorite?: boolean;
-      formattedBalance?: string;
-      formattedUsdValue?: string;
+    }
+  }
+  namespace FE {
+
+    interface StatsToken extends Kong.Token {
       volumeRank?: number;
+      tvlRank?: number;
+      priceChangeRank?: number;
+      marketCapRank?: number;
     }
 
     interface TokenMetrics {
-      price: string;
-      volume_24h: string;
       total_supply: string;
+      price: string;
+      previous_price?: string;
+      volume_24h: string;
       market_cap: string;
+      formatted_market_cap?: string;
       tvl: string;
+      price_change_24h?: string;
+      previous_price?: number;
+      market_cap_rank?: number;
       updated_at: string;
-      price_change_24h: string;
-      previous_price: string;
     }
 
     interface Transaction {

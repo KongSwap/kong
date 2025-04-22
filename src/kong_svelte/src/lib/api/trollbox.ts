@@ -65,7 +65,7 @@ async function processMessageTokens(message: Message): Promise<Message> {
             const tokens = await tokensApi.fetchTokensByCanisterId(canisterIdsToFetch);
             tokens.forEach(token => {
                 // Update cache
-                tokenCache[token.canister_id] = {
+                tokenCache[token.address] = {
                     symbol: token.symbol,
                     price: formatToNonZeroDecimal(token.metrics.price),
                     price_change_24h: formatToNonZeroDecimal(token.metrics.price_change_24h || 0),

@@ -1,5 +1,5 @@
 // Import the API_URL from '../index';
-import { TokenSerializer } from '$lib/serializers/TokenSerializer';
+import { IcrcTokenSerializer } from '$lib/serializers/tokens/IcrcTokenSerializer';
 import type { 
   TokensParams, 
   TokensResponse, 
@@ -67,7 +67,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<ProcessedToken
     }
     
     // Serialize the tokens
-    const serializedTokens = TokenSerializer.serializeTokens(tokens);
+    const serializedTokens = IcrcTokenSerializer.serializeTokens(tokens);
 
     // Return the processed response
     return {
@@ -87,7 +87,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<ProcessedToken
  * Fetches all tokens with pagination handling
  * Use this when you need all tokens regardless of pagination limits
  */
-export const fetchAllTokens = async (params?: Omit<TokensParams, 'page' | 'limit'>): Promise<FE.Token[]> => {
+export const fetchAllTokens = async (params?: Omit<TokensParams, 'page' | 'limit'>): Promise<Kong.Token[]> => {
   try {
     // Ensure we're in a browser environment
     if (!browser) {
@@ -135,7 +135,7 @@ export const fetchAllTokens = async (params?: Omit<TokensParams, 'page' | 'limit
 /**
  * Fetches tokens by canister IDs
  */
-export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE.Token[]> => {
+export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<Kong.Token[]> => {
   try {
     // Ensure we're in a browser environment
     if (!browser) {
@@ -166,7 +166,7 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<FE
     const tokens = Array.isArray(data) ? data : data.items || [];
     
     // Serialize the tokens
-    return TokenSerializer.serializeTokens(tokens);
+    return IcrcTokenSerializer.serializeTokens(tokens);
   } catch (error) {
     console.error('Error fetching tokens by canister ID:', error);
     throw error;
@@ -203,7 +203,7 @@ export const faucetClaim = async (): Promise<void> => {
     canisterIDLs.kong_faucet,
     { anon: false, requiresSigning: false },
   );
-  const result = await actor.claim();
+  const result = await (actor as any).claim();
 
   if (result.Ok) {
     toastStore.success("Tokens minted successfully");
@@ -216,7 +216,7 @@ export const faucetClaim = async (): Promise<void> => {
 /**
  * Fetches token metadata from a canister
  */
-export const fetchTokenMetadata = async (canisterId: string): Promise<FE.Token | null> => {
+export const fetchTokenMetadata = async (canisterId: string): Promise<Kong.Token | null> => {
   try {
     // Ensure we're in a browser environment
     if (!browser) {
@@ -237,7 +237,7 @@ export const fetchTokenMetadata = async (canisterId: string): Promise<FE.Token |
     const rawTokenData = createRawTokenData(canisterId, tokenData, tokenId);
 
     // Use the TokenSerializer to process the token data
-    return TokenSerializer.serializeTokenMetadata(rawTokenData);
+    return IcrcTokenSerializer.serializeTokenMetadata(rawTokenData);
   } catch (error) {
     console.error('Error fetching token metadata:', error);
     toastStore.error('Error fetching token metadata');
@@ -295,7 +295,7 @@ const createRawTokenData = (canisterId: string, tokenData: any, tokenId: number)
       price_change_24h: "0"
     },
     balance: "0",
-    logo_url: TokenSerializer.extractLogoFromMetadata(metadata as Array<[string, any]>),
+    logo_url: IcrcTokenSerializer.extractLogoFromMetadata(metadata as Array<[string, any]>),
     token_type: "IC",
     token_id: tokenId,
     chain: "IC",

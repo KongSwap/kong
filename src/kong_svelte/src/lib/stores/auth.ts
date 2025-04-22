@@ -21,30 +21,22 @@ const STORAGE_KEYS = {
   CONNECTION_RETRY_COUNT: "connectionRetryCount",
 } as const;
 
-// Create namespaced store
+// Create namespaced store and exports
 const authStorage = createNamespacedStore(AUTH_NAMESPACE);
-
-// Create stores with initial states
 export const selectedWalletId = writable<string | null>(null);
 export const isConnected = writable<boolean>(false);
 export const connectionError = writable<string | null>(null);
-
-// Type definitions and IDLs
+export const isAuthenticating = writable<boolean>(false);
 export type CanisterType = PnpCanisterType;
 export const canisterIDLs = pnpCanisterIDLs;
 
 function createAuthStore(pnp: PNP) {
-  const store = writable({
-    isConnected: false,
-    account: null,
-    isInitialized: false,
-  });
-
+  const store = writable({ isConnected: false, account: null, isInitialized: false });
   const { subscribe, set } = store;
 
-  // Storage operations using localForage
+  // Storage operations
   const storage = {
-    get: async (key: keyof typeof STORAGE_KEYS) => {
+    async get(key: keyof typeof STORAGE_KEYS) {
       if (!browser) return null;
       try {
         return await authStorage.getItem<string>(STORAGE_KEYS[key]);
@@ -54,7 +46,7 @@ function createAuthStore(pnp: PNP) {
       }
     },
     
-    set: async (key: keyof typeof STORAGE_KEYS, value: string) => {
+    async set(key: keyof typeof STORAGE_KEYS, value: string) {
       if (!browser) return;
       try {
         await authStorage.setItem(STORAGE_KEYS[key], value);
@@ -63,7 +55,7 @@ function createAuthStore(pnp: PNP) {
       }
     },
     
-    clear: async () => {
+    async clear() {
       if (!browser) return;
       try {
         for (const key of Object.values(STORAGE_KEYS)) {
@@ -73,6 +65,14 @@ function createAuthStore(pnp: PNP) {
         console.error('Error clearing storage:', error);
       }
     },
+  };
+
+  // Helper to update store state on disconnect or error
+  const resetState = (err: string | null = null) => {
+    set({ isConnected: false, account: null, isInitialized: true });
+    selectedWalletId.set(null);
+    isConnected.set(false);
+    connectionError.set(err);
   };
 
   const storeObj = {
@@ -86,16 +86,12 @@ function createAuthStore(pnp: PNP) {
         const lastWallet = await storage.get("LAST_WALLET");
         if (!lastWallet || lastWallet === "plug") return;
 
-        const hasAttempted = sessionStorage.getItem(
-          STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED,
-        );
+        const hasAttempted = sessionStorage.getItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED);
         const wasConnected = await storage.get("WAS_CONNECTED");
 
-        if (hasAttempted && !wasConnected) {
-          return;
+        if (!(hasAttempted && !wasConnected)) {
+          await this.connect(lastWallet, true);
         }
-
-        await this.connect(lastWallet, true);
       } catch (error) {
         console.warn("Auto-connect failed:", error);
         await storage.clear();
@@ -108,6 +104,7 @@ function createAuthStore(pnp: PNP) {
     async connect(walletId: string, isRetry = false) {
       try {
         connectionError.set(null);
+        isAuthenticating.set(true);
         const result = await pnp.connect(walletId);
 
         if (!result?.owner) {
@@ -116,29 +113,30 @@ function createAuthStore(pnp: PNP) {
             await pnp.disconnect();
             await new Promise(resolve => setTimeout(resolve, 500));
             return await this.connect(walletId, true);
-          } else {
-            console.error("Connection failed after retry.");
-            await this.disconnect();
-            set({ isConnected: false, account: null, isInitialized: true });
-            throw new Error("Invalid connection result after retry. Please try again. If the issue persists, reload the page.");
           }
+          
+          console.error("Connection failed after retry.");
+          await this.disconnect();
+          throw new Error("Invalid connection result after retry. Please try again. If the issue persists, reload the page.");
         }
 
-        const owner = result.owner.toString();
+        const owner = result.owner;
         set({ isConnected: true, account: result, isInitialized: true });
-
+        
         // Update state and storage
         selectedWalletId.set(walletId);
         isConnected.set(true);
-        await storage.set("LAST_WALLET", walletId);
-        await storage.set("WAS_CONNECTED", "true");
+        await Promise.all([
+          storage.set("LAST_WALLET", walletId),
+          storage.set("WAS_CONNECTED", "true")
+        ]);
 
+        // Load balances in background
         setTimeout(async () => {
           try {
             const { userTokens } = await import("$lib/stores/userTokens");
             await userTokens.setPrincipal(owner);
-            const userTokensStore = get(userTokens);
-            await fetchBalances(userTokensStore.tokens, owner, true);
+            await fetchBalances(get(userTokens).tokens, owner, true);
           } catch (error) {
             console.error("Error loading balances:", error);
           }
@@ -146,17 +144,17 @@ function createAuthStore(pnp: PNP) {
 
         return result;
       } catch (error) {
-        this.handleConnectionError(error);
+        console.error("Connection error:", error);
+        resetState(error.message);
         throw error;
+      } finally {
+        isAuthenticating.set(false);
       }
     },
 
     async disconnect() {
       await pnp.disconnect();
-      set({ isConnected: false, account: null, isInitialized: true });
-      selectedWalletId.set(null);
-      isConnected.set(false);
-      connectionError.set(null);
+      resetState(null);
       currentUserBalancesStore.set({});
       currentUserPoolsStore.reset();
       
@@ -164,16 +162,7 @@ function createAuthStore(pnp: PNP) {
       const { userTokens } = await import("$lib/stores/userTokens");
       userTokens.setPrincipal(null);
       
-      // Clear storage completely and await its completion
       await storage.clear();
-    },
-
-    handleConnectionError(error: any) {
-      console.error("Connection error:", error);
-      set({ isConnected: false, account: null, isInitialized: true });
-      connectionError.set(error.message);
-      selectedWalletId.set(null);
-      isConnected.set(false);
     },
 
     getActor(
@@ -181,14 +170,8 @@ function createAuthStore(pnp: PNP) {
       idl: any,
       options: { anon?: boolean; requiresSigning?: boolean } = {},
     ) {
-      if (options.anon) {
-        return createAnonymousActorHelper(canisterId, idl);
-      }
-
-      if (!pnp.isWalletConnected()) {
-        throw new Error("Anonymous user");
-      }
-
+      if (options.anon) return createAnonymousActorHelper(canisterId, idl);
+      if (!pnp.isWalletConnected()) throw new Error("Anonymous user");
       return pnp.getActor(canisterId, idl, options);
     },
   };
@@ -197,26 +180,22 @@ function createAuthStore(pnp: PNP) {
 }
 
 export type AuthStore = ReturnType<typeof createAuthStore>;
-
-// Create singleton auth store instance
 export const auth = createAuthStore(pnp);
 
 // Helper functions
 export function requireWalletConnection(): void {
-  if (!pnp.isWalletConnected()) {
-    throw new Error("Wallet is not connected.");
-  }
+  if (!pnp.isWalletConnected()) throw new Error("Wallet is not connected.");
 }
 
 export const connectWallet = async (walletId: string) => {
   try {
-    // If already connected to a wallet, disconnect first and wait for it to complete
-    if (get(isConnected)) {
-      await auth.disconnect();
-    }
+    isAuthenticating.set(true);
+    if (get(isConnected)) await auth.disconnect();
     return await auth.connect(walletId);
   } catch (error) {
     console.error("Failed to connect wallet:", error);
     throw error;
+  } finally {
+    isAuthenticating.set(false);
   }
 };

@@ -2,9 +2,9 @@
   import Portal from "svelte-portal";
   import TokenSelectorDropdown from "$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte";
   
-  export let token0: FE.Token | null;
-  export let token1: FE.Token | null;
-  export let onTokenSelect: (index: 0 | 1, token: FE.Token) => void;
+  export let token0: Kong.Token | null;
+  export let token1: Kong.Token | null;
+  export let onTokenSelect: (index: 0 | 1, token: Kong.Token) => void;
   export let secondaryTokenIds: string[];
 
   let showToken0Selector = false;

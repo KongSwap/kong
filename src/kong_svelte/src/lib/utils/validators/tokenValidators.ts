@@ -125,9 +125,3 @@ export function formatTokenInput(
 
   return formattedValue;
 }
-
-export function getInitialBalances(tokenSymbol: string): TokenBalances {
-  return tokenSymbol === "ICP"
-    ? { default: BigInt(0), subaccount: BigInt(0) }
-    : { default: BigInt(0) };
-} 

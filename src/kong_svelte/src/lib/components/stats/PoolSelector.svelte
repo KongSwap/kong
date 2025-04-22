@@ -5,13 +5,14 @@
   import { livePools, isLoadingPools, loadPools } from "$lib/stores/poolStore";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
 
-  const { selectedPool, token, formattedTokens, onPoolSelect, isLoading, relevantPools: propRelevantPools } = $props<{
+  const { selectedPool, token, formattedTokens, onPoolSelect, isLoading, relevantPools: propRelevantPools, integrationMode = false } = $props<{
     selectedPool: BE.Pool | undefined;
-    token: FE.Token;
-    formattedTokens: FE.Token[];
+    token: Kong.Token;
+    formattedTokens: Kong.Token[];
     onPoolSelect: (pool: BE.Pool) => void;
     relevantPools?: BE.Pool[];
     isLoading?: boolean;
+    integrationMode?: boolean;
   }>();
 
   let isPoolSelectorOpen = $state(false);
@@ -20,8 +21,8 @@
   // Pre-compute token lookups
   function getMatchingToken(pool: BE.Pool) {
     // First try to find by canister ID
-    const tokenId = pool.address_0 === token.canister_id ? pool.address_1 : pool.address_0;
-    const foundToken = formattedTokens?.find(t => t.canister_id === tokenId);
+    const tokenId = pool.address_0 === token.address ? pool.address_1 : pool.address_0;
+    const foundToken = formattedTokens?.find(t => t.address === tokenId);
     
     // If not found, try to use the token object from the pool directly
     if (!foundToken) {
@@ -37,7 +38,6 @@
       
       // Cast to unknown first to avoid type errors as recommended by TypeScript
       return {
-        canister_id: tokenId,
         symbol: symbol || 'Unknown',
         address: tokenId,
         name: symbol || 'Unknown',
@@ -45,7 +45,7 @@
         logo_url: poolToken?.logo_url || `/tokens/${tokenId}.webp`,
         // Add a "placeholder" flag to help with debugging
         _placeholder: true
-      } as unknown as FE.Token;
+      } as unknown as Kong.Token;
     }
     
     return foundToken;
@@ -55,7 +55,7 @@
   let relevantPools = $derived(
     propRelevantPools || 
     $livePools.filter(pool => 
-      pool.address_0 === token.canister_id || pool.address_1 === token.canister_id
+      pool.address_0 === token.address || pool.address_1 === token.address
     )
   );
 
@@ -103,9 +103,9 @@
   function getPoolPairText(pool: BE.Pool) {
     if (!pool) return '';
     
-    const token1Symbol = pool.address_0 === token.canister_id 
-      ? (pool.symbol_1 || formattedTokens?.find(t => t.canister_id === pool.address_1)?.symbol || 'Unknown')
-      : (pool.symbol_0 || formattedTokens?.find(t => t.canister_id === pool.address_0)?.symbol || 'Unknown');
+    const token1Symbol = pool.address_0 === token.address 
+      ? (pool.symbol_1 || formattedTokens?.find(t => t.address === pool.address_1)?.symbol || 'Unknown')
+      : (pool.symbol_0 || formattedTokens?.find(t => t.address === pool.address_0)?.symbol || 'Unknown');
     
     return `${token.symbol} / ${token1Symbol}`;
   }
@@ -116,7 +116,7 @@
     <button
       type="button"
       on:click={handleButtonClick}
-      class="w-full flex items-center justify-between p-3 bg-kong-bg-dark hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 border border-kong-border"
+      class="w-full flex items-center justify-between p-3 {integrationMode ? 'bg-kong-bg-dark hover:bg-kong-bg-secondary/20 border-0' : 'bg-kong-bg-dark hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 border border-kong-border'} {$panelRoundness} transition-all duration-200"
     >
       {#if $isLoadingPools}
         <div class="flex items-center gap-2">
@@ -128,37 +128,29 @@
           <TokenImages
             tokens={[
               token,
-              selectedPool.address_0 === token.canister_id
-                ? (formattedTokens.find(t => t.canister_id === selectedPool.address_1) || {
-                    canister_id: selectedPool.address_1,
+              selectedPool.address_0 === token.address
+                ? (formattedTokens.find(t => t.address === selectedPool.address_1) || {
+                    address: selectedPool.address_1,
                     symbol: selectedPool.symbol_1,
                     name: selectedPool.symbol_1 || 'Unknown',
-                    address: selectedPool.address_1,
                     // Add logo_url to ensure image can be displayed
                     // @ts-ignore - token1 may exist on extended Pool objects from API
                     logo_url: (selectedPool as any).token1?.logo_url || `/tokens/${selectedPool.address_1}.webp`
-                  } as unknown as FE.Token)
-                : (formattedTokens.find(t => t.canister_id === selectedPool.address_0) || {
-                    canister_id: selectedPool.address_0,
+                  } as unknown as Kong.Token)
+                : (formattedTokens.find(t => t.address === selectedPool.address_0) || {
+                    address: selectedPool.address_0,
                     symbol: selectedPool.symbol_0,
                     name: selectedPool.symbol_0 || 'Unknown',
-                    address: selectedPool.address_0,
                     // Add logo_url to ensure image can be displayed
                     // @ts-ignore - token0 may exist on extended Pool objects from API
                     logo_url: (selectedPool as any).token0?.logo_url || `/tokens/${selectedPool.address_0}.webp`
-                  } as unknown as FE.Token)
+                  } as unknown as Kong.Token)
             ].filter(Boolean)}
-            size={20}
-            overlap={true}
-            containerClass=""
-            imageWrapperClass=""
+            size={22}
             tooltip={{ text: "", direction: "top" }}
           />
           <span class="text-kong-text-primary font-medium">
             {getPoolPairText(selectedPool)}
-          </span>
-          <span class="text-kong-text-primary/50 text-sm">
-            Pool #{selectedPool.pool_id}
           </span>
         </div>
       {:else}
@@ -180,7 +172,7 @@
     
     {#if isPoolSelectorOpen}
       <div
-        class="absolute top-full left-0 right-0 mt-1 z-[999] bg-kong-bg-dark rounded-lg shadow-xl max-h-[400px] overflow-y-auto border border-white/10"
+        class="absolute top-full left-0 right-0 mt-1 z-[999] bg-kong-bg-dark rounded-lg shadow-xl max-h-[400px] overflow-y-auto border border-white/10 {integrationMode ? 'w-[calc(100%+2px)] -ml-[1px]' : ''}"
         on:click|stopPropagation
       >
         {#if $isLoadingPools}
@@ -209,7 +201,7 @@
                 />
                 <span class="text-kong-text-primary text-nowrap">
                   {token.symbol} / {matchingToken?.symbol || 
-                    (pool.address_0 === token.canister_id ? pool.symbol_1 : pool.symbol_0) || 
+                    (pool.address_0 === token.address ? pool.symbol_1 : pool.symbol_0) || 
                     (((pool as any).token1?.symbol || (pool as any).token0?.symbol) || 
                     'Unknown')}
                 </span>

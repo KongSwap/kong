@@ -42,7 +42,7 @@
             }
             
             isLoadingBets = true;
-            const principal = auth.pnp.account.owner.toString();
+            const principal = auth.pnp.account.owner;
             
             // Validate principal format
             try {
@@ -169,7 +169,7 @@
             }
 
             // Find the KONG token from our tokens list
-            const kongToken = tokens.find(t => t.canister_id === KONG_LEDGER_CANISTER_ID);
+            const kongToken = tokens.find(t => t.address === KONG_LEDGER_CANISTER_ID);
             if (!kongToken) {
                 throw new Error("KONG token not found");
             }

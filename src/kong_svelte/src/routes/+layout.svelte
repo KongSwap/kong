@@ -30,7 +30,7 @@
   }>();
   
   let initializationPromise = $state<Promise<void> | null>(null);
-  let defaultTokens = $state<FE.Token[]>([]);
+  let defaultTokens = $state<Kong.Token[]>([]);
   let themeReady = $state(false);
   
   async function init() {

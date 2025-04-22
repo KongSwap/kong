@@ -8,8 +8,8 @@
   import { BigNumber } from "bignumber.js";
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
 
-  export let token0: FE.Token | null = null;
-  export let token1: FE.Token | null = null;
+  export let token0: Kong.Token | null = null;
+  export let token1: Kong.Token | null = null;
   export let layout: "vertical" | "horizontal" = "vertical";
 
   // For debouncing token changes
@@ -71,20 +71,6 @@
   $: hasPosition = !!userPool && userPool.id != null;
   $: hasTokens = !!token0Symbol && !!token1Symbol;
   
-  // Helper function to get token decimals
-  function getTokenDecimals(
-    token: FE.Token | null | string, 
-    userPoolToken: any,
-    tokenIndex: number
-  ): number {
-    if (typeof token === 'object' && token?.decimals) {
-      return token.decimals;
-    } else if (userPoolToken?.decimals) {
-      return userPoolToken.decimals;
-    }
-    // Default values - most ICP tokens use 8, ckUSDT uses 6
-    return tokenIndex === 0 ? 8 : 6;
-  }
   
   // Initialize store when connected
   onMount(async () => {

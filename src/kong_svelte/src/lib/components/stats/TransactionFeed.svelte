@@ -12,7 +12,7 @@
   import { goto } from "$app/navigation";
 
   // Create a store for tokens
-  const tokensStore = writable<FE.Token[]>([]);
+  const tokensStore = writable<Kong.Token[]>([]);
 
   // Function to load tokens
   async function loadTokens() {
@@ -43,8 +43,8 @@
   let mobile = $derived(browser ? window.innerWidth < 768 : false);
 
   // Declare our state variables
-  let { token, className = "" } = $props<{
-    token: FE.Token;
+  let { token, className = "!border-none" } = $props<{
+    token: Kong.Token;
     className?: string;
   }>();
   let transactions = $state<FE.Transaction[]>([]);
@@ -70,7 +70,7 @@
 
   // Single effect to handle token changes and refresh
   $effect(() => {
-    const currentTokenId = token?.token_id;
+    const currentTokenId = token?.id;
 
     // Clear any existing intervals
     if (refreshInterval) {
@@ -129,7 +129,7 @@
     isRefresh: boolean = false,
   ) => {
     // Don't start a new request if token has changed
-    if (token?.token_id !== previousTokenId) {
+    if (token?.id !== previousTokenId) {
       return;
     }
 
@@ -172,7 +172,7 @@
           currentAbortController = new AbortController();
 
           try {
-            if (!token?.token_id) {
+            if (!token?.id) {
               return;
             }
 
@@ -188,7 +188,7 @@
             }
 
             const newTransactions = await fetchTransactions(
-              token.canister_id,
+              token.address,
               page,
               pageSize,
               { signal: currentAbortController.signal },
@@ -297,7 +297,7 @@
   const pageSize = 20;
 
   // Derived values
-  let ckusdtToken = $state<FE.Token | undefined>(undefined);
+  let ckusdtToken = $state<Kong.Token | undefined>(undefined);
   $effect(() => {
     const found = $tokensStore?.find((t) => t.symbol === "ckUSDT");
     if (found) {
@@ -307,11 +307,11 @@
 
   $effect(() => {
     const found = $tokensStore?.find(
-      (t) => t.address === tokenAddress || t.canister_id === tokenAddress,
+      (t) => t.address === tokenAddress || t.address === tokenAddress,
     );
 
     // Only update token if we find a different token ID
-    if (found && found.token_id !== token?.token_id) {
+    if (found && found.id !== token?.id) {
       token = found;
     }
   });
@@ -325,14 +325,14 @@
 
   // Watch for token changes
   $effect(() => {
-    const newTokenId = token?.token_id ?? null;
-    // Add additional check for token canister_id to prevent false changes
+    const newTokenId = token?.id ?? null;
+    // Add additional check for token address to prevent false changes
     if (
       newTokenId !== currentTokenId ||
-      token?.canister_id !== currentTokenCanister
+      token?.address !== currentTokenCanister
     ) {
       currentTokenId = newTokenId;
-      currentTokenCanister = token?.canister_id;
+      currentTokenCanister = token?.address;
 
       if (newTokenId !== null) {
         transactions = [];
@@ -366,10 +366,8 @@
   }
 
   const calculateTotalUsdValue = (tx: FE.Transaction): string => {
-    const payToken = $tokensStore?.find((t) => t.token_id === tx.pay_token_id);
-    const receiveToken = $tokensStore?.find(
-      (t) => t.token_id === tx.receive_token_id,
-    );
+    const payToken = $tokensStore?.find((t) => t.id === tx.pay_token_id);
+    const receiveToken = $tokensStore?.find((t) => t.id === tx.receive_token_id);
     if (!payToken || !receiveToken) return "0.00";
 
     // Calculate USD value from pay side
@@ -393,7 +391,7 @@
   });
 </script>
 
-<Panel variant="transparent" type="main" {className}>
+<Panel variant="solid" type="main" {className}>
   <div class="relative flex flex-col h-[300px]">
     {#if isLoadingTxns && !transactions.length}
       <div class="flex justify-center items-center p-4">
@@ -451,7 +449,7 @@
                         <span
                           class="text-sm font-medium text-kong-text-primary"
                         >
-                          {#if tx.receive_token_id === token.token_id}
+                          {#if tx.receive_token_id === token.id}
                             <span
                               class="bg-kong-accent-green/20 text-kong-text-accent-green px-2 py-0.5 rounded-full text-xs"
                             >
@@ -485,7 +483,7 @@
                           >
                             {tx.pay_amount}
                             {$tokensStore.find(
-                              (t) => t.token_id === tx.pay_token_id,
+                              (t) => t.id === tx.pay_token_id,
                             )?.symbol}
                           </span>
                         </div>
@@ -498,7 +496,7 @@
                           >
                             {tx.receive_amount}
                             {$tokensStore.find(
-                              (t) => t.token_id === tx.receive_token_id,
+                              (t) => t.id === tx.receive_token_id,
                             )?.symbol}
                           </span>
                         </div>

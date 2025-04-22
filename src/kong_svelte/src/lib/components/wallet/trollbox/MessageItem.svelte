@@ -104,7 +104,7 @@
         const tokens = await fetchTokensByCanisterId(canisterIds);
         const newCache = new Map(tokenCache);
         tokens.forEach((token) => {
-          newCache.set(token.canister_id, token);
+          newCache.set(token.address, token);
         });
         tokenCache = newCache; // Trigger reactivity by assigning new Map
       } catch (error) {

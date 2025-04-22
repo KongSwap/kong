@@ -10,7 +10,7 @@ export const win98Theme: ThemeDefinition = {
   colors: {
     // Background colors
     bgDark: '#C3C3C3',      // Windows 98 light gray
-    bgLight: '#FDFFFF',     // Windows 98 highlight color
+    bgLight: '#e0e0e0',     // Windows 98 highlight color
     
     // Primary and secondary colors
     primary: '#010081',     // Windows 98 blue

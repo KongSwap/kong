@@ -20,8 +20,8 @@ interface SwapStatus {
     lastPayAmount?: BigNumber;
     expectedReceiveAmount?: BigNumber;
     minReceiveAmount?: BigNumber;
-    payToken?: FE.Token;
-    receiveToken?: FE.Token;
+    payToken?: Kong.Token;
+    receiveToken?: Kong.Token;
     payDecimals?: number;
     receiveDecimals?: number;
     lastQuote?: any;
@@ -40,9 +40,9 @@ interface SwapStatus {
     receive_amount?: bigint;
     details?: {
         payAmount: string;
-        payToken: FE.Token;
+        payToken: Kong.Token;
         receiveAmount: string;
-        receiveToken: FE.Token;
+        receiveToken: Kong.Token;
     };
 }
 
@@ -55,8 +55,8 @@ function createSwapStatusStore() {
             lastPayAmount?: string | number | BigNumber;
             expectedReceiveAmount?: string | number | BigNumber;
             minReceiveAmount?: string | number | BigNumber;
-            payToken?: FE.Token;
-            receiveToken?: FE.Token;
+            payToken?: Kong.Token;
+            receiveToken?: Kong.Token;
             payDecimals?: number;
             receiveDecimals?: number;
             priceImpact?: string | number | BigNumber;
@@ -100,8 +100,8 @@ function createSwapStatusStore() {
             status: string;
             isProcessing: boolean;
             error: string | null;
-            payToken: FE.Token;
-            receiveToken: FE.Token;
+            payToken: Kong.Token;
+            receiveToken: Kong.Token;
             payDecimals: number;
             payAmount: string | number | BigNumber;
             receiveAmount: string | number | BigNumber;
@@ -119,9 +119,9 @@ function createSwapStatusStore() {
             };
             details: {
                 payAmount: string;
-                payToken: FE.Token;
+                payToken: Kong.Token;
                 receiveAmount: string;
-                receiveToken: FE.Token;
+                receiveToken: Kong.Token;
             };
         }>) => {
             update(swaps => {

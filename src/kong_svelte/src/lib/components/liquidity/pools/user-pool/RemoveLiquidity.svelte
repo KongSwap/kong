@@ -113,8 +113,8 @@
           isComplete = true;
           // Toast is handled within pollRequestStatus now
           await Promise.all([
-            loadBalance(token0.canister_id, true),
-            loadBalance(token1.canister_id, true),
+            loadBalance(token0.address, true),
+            loadBalance(token1.address, true),
             currentUserPoolsStore.reset(),
             new Promise(resolve => setTimeout(resolve, 100)),
             currentUserPoolsStore.initialize(),
@@ -148,8 +148,8 @@
       // Error handling remains largely the same, but rely on pollRequestStatus for toast errors
       await Promise.all([
         currentUserPoolsStore.initialize(), // Refresh pool data
-        loadBalance(token0?.canister_id, true), // Refresh balances
-        loadBalance(token1?.canister_id, true),
+        loadBalance(token0?.address, true), // Refresh balances
+        loadBalance(token1?.address, true),
       ]);
       console.error("Error removing liquidity:", err);
       // Update local error state if not already handled by a toast
