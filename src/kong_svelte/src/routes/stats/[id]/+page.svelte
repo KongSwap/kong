@@ -494,7 +494,7 @@
 
             <!-- Right Column - Stats -->
             <div class="lg:w-[30%] flex flex-col gap-4">
-              <Panel variant="solid" type="main">
+              <Panel type="main">
                 <div class="flex flex-col gap-4">
                   <h2 class="text-lg font-semibold">About Governance</h2>
                   <div class="text-kong-text-secondary">

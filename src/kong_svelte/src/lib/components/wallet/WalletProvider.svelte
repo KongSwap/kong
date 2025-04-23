@@ -37,6 +37,7 @@
     ExternalLink,
     Clock,
     Trash2,
+    PlugZap,
   } from "lucide-svelte";
   import { fly, fade, slide } from "svelte/transition";
   import { quintOut } from "svelte/easing";
@@ -470,7 +471,10 @@
   isPadded={false}
 >
   <svelte:fragment slot="title">
-    <h2 class="text-2xl font-semibold modal-title">Connect Wallet</h2>
+    <h2 class="text-2xl font-semibold modal-title flex items-center gap-2">
+      <PlugZap size={20} class="text-kong-primary" />
+      Connect Wallet
+    </h2>
   </svelte:fragment>
 
   <!-- Error Message -->

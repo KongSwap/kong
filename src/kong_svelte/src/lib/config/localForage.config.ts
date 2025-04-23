@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   RECENT_TRADES: 'recent_trades',
   AUTH_NAMESPACE: 'auth',
   RECENT_WALLETS_NAMESPACE: 'recent_wallets',
+  THEME: 'theme',
 };
 
 /**

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme-initializing="true">
   <head>
     <!-- Google Tag Manager -->
     <script>
@@ -35,6 +35,66 @@
     />
     <meta name="author" content="KongSwap" />
     <meta name="robots" content="index, follow" />
+
+    <!-- Inline Theme Initialization - Fast loading -->
+    <script>
+      (function() {
+        // Get user ID from session or localStorage if available
+        let userId = 'default';
+        try {
+          // Try to get from sessionStorage if user previously logged in
+          const authData = localStorage.getItem('kong_storage_auth');
+          if (authData) {
+            const parsed = JSON.parse(authData);
+            if (parsed && parsed.principalId) {
+              userId = parsed.principalId;
+            }
+          }
+        } catch (e) {
+          console.error('Error getting user ID for theme:', e);
+        }
+        
+        // Try to load theme from localStorage with proper keys
+        let initialTheme = null;
+        try {
+          // Try user-specific theme
+          const userThemeJson = localStorage.getItem(`theme_${userId}`);
+          if (userThemeJson) {
+            initialTheme = JSON.parse(userThemeJson);
+          }
+          
+          // If no user theme, try the default
+          if (!initialTheme) {
+            const defaultThemeJson = localStorage.getItem('theme');
+            if (defaultThemeJson) {
+              initialTheme = JSON.parse(defaultThemeJson);
+            }
+          }
+        } catch (e) {
+          console.error('Error loading theme:', e);
+        }
+        
+        // Immediately check system preference if no theme found
+        if (!initialTheme) {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          initialTheme = prefersDark ? 'dark' : 'light'; 
+        }
+        
+        // Apply theme class right away
+        document.documentElement.classList.add(initialTheme);
+        
+        // Add basic inline styles to prevent flash
+        const style = document.createElement('style');
+        style.textContent = `
+          body { 
+            background-color: ${initialTheme === 'dark' ? '#0E111B' : '#f5f7fa'}; 
+            color: ${initialTheme === 'dark' ? '#ffffff' : '#111827'}; 
+            transition: background-color 0.2s ease-in-out;
+          }
+        `;
+        document.head.appendChild(style);
+      })();
+    </script>
 
     <!-- Structured Data (Schema.org) -->
     <script type="application/ld+json">

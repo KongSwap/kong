@@ -21,7 +21,7 @@ export const dragginzTheme: ThemeDefinition = {
     
     // Accent colors
     accentBlue: '#22C9D3',   // Cyan blue
-    accentRed: '#FF5722',    // Dragon orange/red
+    accentRed: '#FF1744',    // Brighter, cooler red for contrast
     accentGreen: '#4BEA80',  // Brighter mystical green (like the baby dragon)
     accentYellow: '#FFB74D', // Warm yellow
     accentPurple: '#9C64A6', // Mystical purple
@@ -30,7 +30,7 @@ export const dragginzTheme: ThemeDefinition = {
     // Hover variants
     accentGreenHover: '#3AD970',
     accentBlueHover: '#1BA8B1',
-    accentRedHover: '#E64A19',
+    accentRedHover: '#D50000',   // Darker version of the brighter red
     accentYellowHover: '#FFA726',
     
     // Text colors
@@ -44,12 +44,12 @@ export const dragginzTheme: ThemeDefinition = {
     textAccentRed: '#FF5722',
     textAccentBlue: '#22C9D3',
     
-    // Font settings - adding a fantasy-style font option
-    fontFamily: "'Exo 2', 'Space Grotesk', 'Avenir Next', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    // Font settings - updating to a more fantasy-style font that fits the MMO theme
+    fontFamily: "'Caudex', 'Almendra', 'Exo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     
     // UI settings - more rounded panels for a softer fantasy feel
-    panelRoundness: 'rounded-xl',
-    swapPanelRoundness: 'rounded-2xl',
+    panelRoundness: 'rounded',
+    swapPanelRoundness: 'rounded',
     swapPanelBorder: '1px solid rgba(255, 255, 255, 0.2)',
     swapPanelShadow: '0 10px 35px rgba(0, 0, 0, 0.4), 0 0 15px rgba(34, 201, 211, 0.15)',
     swapPanelInputsRounded: true,
@@ -80,7 +80,7 @@ export const dragginzTheme: ThemeDefinition = {
     tokenSelectorItemActiveBg: '#346259',
     tokenSelectorSearchBg: '#2C534A',
     tokenSelectorBorder: '1px solid rgba(255, 255, 255, 0.2)',
-    tokenSelectorRoundness: 'rounded-xl',
+    tokenSelectorRoundness: 'rounded',
     tokenSelectorShadow: '0 12px 35px rgba(0, 0, 0, 0.45), 0 0 15px rgba(34, 201, 211, 0.15)',
     
     // Plugin Manager colors
@@ -117,7 +117,7 @@ export const dragginzTheme: ThemeDefinition = {
     buttonBorder: '1px solid rgba(255, 255, 255, 0.25)',
     buttonBorderColor: 'rgba(255, 255, 255, 0.3)',
     buttonShadow: '0 8px 25px rgba(0, 0, 0, 0.3), 0 0 10px rgba(34, 201, 211, 0.15)',
-    buttonRoundness: 'rounded-xl',
+    buttonRoundness: 'rounded',
     
     // Primary button styling - vibrant orange like the dragon
     primaryButtonBg: 'rgba(255, 87, 34, 0.95)',
@@ -139,12 +139,12 @@ export const dragginzTheme: ThemeDefinition = {
     swapButtonReadyGlowStart: 'rgba(75, 234, 128, 0.7)',
     swapButtonReadyGlowEnd: 'rgba(58, 217, 112, 0.8)',
     swapButtonTextColor: '#FFFFFF',
-    swapButtonRoundness: 'rounded-xl',
+    swapButtonRoundness: 'rounded',
     swapButtonShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 87, 34, 0.25)',
     
     // Background configuration
     backgroundType: 'pattern',
-    backgroundImage: '/backgrounds/dragginzbg1.png',
+    backgroundImage: '/backgrounds/dragginzbg1.jpg',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',

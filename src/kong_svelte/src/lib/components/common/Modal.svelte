@@ -249,12 +249,12 @@
       >
         <Panel
           width="100%"
-          height="100%"
+          height={modalHeight}
           className="flex flex-col overflow-hidden {className} {isPadded ? 'px-4' : ''}"
         >
           <div
             class="modal-content flex flex-col overflow-hidden"
-            style="min-height: {minHeight};"
+            style="min-height: {minHeight}; max-height: {modalHeight !== 'auto' ? modalHeight : 'none'};"
           >
             {#if loading}
               <div class="loading-overlay">

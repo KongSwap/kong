@@ -7,6 +7,7 @@
   import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
 
   export let row: FE.StatsToken;
+  export let isHovered = false;
   
   let isFavorite = false;
 
@@ -51,8 +52,8 @@
     </button>
   {/if}
   <TokenImages tokens={[row]} containerClass="self-center" size={24} />
-  <span class="token-name">{row.name}</span>
-  <span class="token-symbol">{row.symbol}</span>
+  <span class="token-name {isHovered ? '!text-kong-primary' : ''}">{row.name}</span>
+  <span class="token-symbol {isHovered ? '!text-kong-primary' : ''}">{row.symbol}</span>
   <div class="flex gap-1 items-center">
     {#if isTopVolume}
       <div use:tooltip={{ text: `#${row.volumeRank} by Volume`, direction: "top" }}>

@@ -32,6 +32,7 @@
   let initializationPromise = $state<Promise<void> | null>(null);
   let defaultTokens = $state<Kong.Token[]>([]);
   let themeReady = $state(false);
+  let loadingTimeout: number | null = $state(null);
   
   async function init() {
     const promise = (async () => {
@@ -62,18 +63,37 @@
   $effect.root(() => {
     // Initialize theme
     if (browser) {
-      themeStore.initTheme();
-      
-      // Check if theme is ready
-      const checkThemeReady = () => {
-        if (document.documentElement.getAttribute('data-theme-ready') === 'true') {
+      // Check if theme is ready immediately - it might be ready from the inline script
+      if (document.documentElement.getAttribute('data-theme-ready') === 'true') {
+        themeReady = true;
+      } else {
+        // Setup a timeout to hide loading spinner if it takes too long
+        loadingTimeout = window.setTimeout(() => {
+          // Force show content after 2 seconds even if theme isn't fully ready
           themeReady = true;
-        } else {
-          setTimeout(checkThemeReady, 10);
-        }
-      };
-      
-      checkThemeReady();
+          document.documentElement.setAttribute('data-theme-ready', 'true');
+          console.log('[Layout] Forced theme ready due to timeout');
+        }, 2000);
+        
+        // Start theme initialization 
+        themeStore.initTheme();
+        
+        // Check if theme is ready
+        const checkThemeReady = () => {
+          if (document.documentElement.getAttribute('data-theme-ready') === 'true') {
+            themeReady = true;
+            if (loadingTimeout) {
+              clearTimeout(loadingTimeout);
+              loadingTimeout = null;
+            }
+          } else {
+            // Check more frequently (faster response)
+            setTimeout(checkThemeReady, 5);
+          }
+        };
+        
+        checkThemeReady();
+      }
       
       // Initialize keyboard shortcuts
       keyboardShortcuts.initialize();
@@ -91,6 +111,9 @@
       if (browser) {  
         keyboardShortcuts.destroy();
         allowanceStore.destroy();
+        if (loadingTimeout) {
+          clearTimeout(loadingTimeout);
+        }
       }
     };
   });
@@ -122,15 +145,26 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: #0D111F;
+      background-color: var(--bg-dark, #0D111F);
       z-index: 9999;
       opacity: 1;
-      transition: opacity 0.3s ease-out;
+      transition: opacity 0.2s ease-out;
     }
     
     html[data-theme-ready="true"] .theme-loading {
       opacity: 0;
       pointer-events: none;
+    }
+
+    /* Faster fade-out for loading spinner */
+    @media (prefers-reduced-motion: no-preference) {
+      html[data-theme-ready="true"] .theme-loading {
+        animation: fadeOut 0.2s forwards;
+      }
+      
+      @keyframes fadeOut {
+        to { opacity: 0; visibility: hidden; }
+      }
     }
   </style>
 </svelte:head>
@@ -142,7 +176,7 @@
   url={data.metadata.url} 
 />
 
-{#if browser}
+{#if browser && !themeReady}
   <div class="theme-loading">
     <!-- Simple loading spinner -->
     <div class="loading-spinner"></div>

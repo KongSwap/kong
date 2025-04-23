@@ -52,18 +52,16 @@
     return token?.address || null;
   }
 
-  // UI state
-  let dropdownElement: HTMLDivElement | null = $state(null);
+  // Individual reactive state variables
+  let searchInput: HTMLInputElement | null = $state(null);
+  let searchQuery = $state("");
   let scrollContainer: HTMLDivElement | null = $state(null);
-  
-  // UI state with reactivity
+  let containerHeight = $state(0);
+  let scrollTop = $state(0);
+
+  // Grouped UI state
   let state = $state({
-    searchInput: null as HTMLInputElement | null,
     dropdownElement: null as HTMLDivElement | null,
-    scrollContainer: null as HTMLDivElement | null,
-    searchQuery: "",
-    scrollTop: 0,
-    containerHeight: 0,
     hideZeroBalances: false,
     isMobile: false,
     sortDirection: "desc",
@@ -222,7 +220,7 @@
     
     return filterAndSortTokens(
       uniqueTokens,
-      state.searchQuery,
+      searchQuery,
       state.standardFilter,
       state.hideZeroBalances,
       state.favoriteTokens,
@@ -244,8 +242,8 @@
   let enabledTokensVirtualState = $derived(
     virtualScroll({
       items: enabledFilteredTokens,
-      containerHeight: state.containerHeight,
-      scrollTop: state.scrollTop,
+      containerHeight: containerHeight,
+      scrollTop: scrollTop,
       itemHeight: TOKEN_ITEM_HEIGHT,
       buffer: 5,
     })
@@ -254,8 +252,8 @@
   let apiTokensVirtualState = $derived(
     virtualScroll({
       items: apiFilteredTokens,
-      containerHeight: state.containerHeight,
-      scrollTop: state.scrollTop,
+      containerHeight: containerHeight,
+      scrollTop: scrollTop,
       itemHeight: TOKEN_ITEM_HEIGHT,
       buffer: 5,
     })
@@ -274,18 +272,18 @@
   // UI Event handlers
   function setStandardFilter(filter: FilterType) {
     state.standardFilter = filter;
-    state.searchQuery = "";
-    state.scrollTop = 0;
+    searchQuery = "";
+    scrollTop = 0;
   }
   
   function handleScroll(e: Event) {
-    state.scrollTop = (e.target as HTMLElement).scrollTop;
+    scrollTop = (e.target as HTMLElement).scrollTop;
     clearTimeout(scrollDebounceTimer);
     scrollDebounceTimer = setTimeout(loadVisibleTokenBalances, 200);
   }
   
   function handleClickOutside(event: MouseEvent) {
-    if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
+    if (state.dropdownElement && !state.dropdownElement.contains(event.target as Node)) {
       onClose();
     }
   }
@@ -327,7 +325,7 @@
     if (isApiToken(token)) userTokens.enableToken(token);
 
     onSelect(token);
-    state.searchQuery = "";
+    searchQuery = "";
   }
   
   async function handleEnableToken(e: MouseEvent, token: Kong.Token) {
@@ -478,8 +476,8 @@
   // Reactive effects
   $effect(() => {
     // Search effect
-    if (browser && state.searchQuery) {
-      void debouncedApiSearch(state.searchQuery);
+    if (browser && searchQuery) {
+      void debouncedApiSearch(searchQuery);
     } else {
       state.apiSearchResults = [];
     }
@@ -524,7 +522,7 @@
 
       // Focus search and add event listeners
       setTimeout(() => {
-        state.searchInput?.focus();
+        searchInput?.focus();
         window.addEventListener("click", handleClickOutside);
         window.addEventListener("keydown", handleKeydown);
       }, 0);
@@ -553,7 +551,7 @@
   <div class="fixed inset-0 bg-kong-bg-dark/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
     <div
       class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] h-[min(600px,85vh)] bg-kong-token-selector-bg {expandDirection} {state.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1 rounded-xl'}"
-      bind:this={dropdownElement}
+      bind:this={state.dropdownElement}
       on:click|stopPropagation
       transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}
     >
@@ -579,8 +577,8 @@
             <div class="z-10 pb-3">
               <div class="relative flex items-center px-4">
                 <input
-                  bind:this={state.searchInput}
-                  bind:value={state.searchQuery}
+                  bind:this={searchInput}
+                  bind:value={searchQuery}
                   type="text"
                   placeholder="Search by name, symbol, canister ID, or standard"
                   class="flex-1 border-none text-kong-text-primary text-base rounded-md px-4 py-3 outline-none placeholder:text-kong-text-secondary bg-kong-token-selector-search-bg" 
@@ -613,8 +611,8 @@
           <!-- Scrollable Token List -->
           <div
             class="scrollable-section bg-kong-bg-dark flex-1 overflow-y-auto relative z-10 touch-pan-y overscroll-contain will-change-transform"
-            bind:this={state.scrollContainer}
-            bind:clientHeight={state.containerHeight}
+            bind:this={scrollContainer}
+            bind:clientHeight={containerHeight}
             on:scroll={handleScroll}
             style="-webkit-overflow-scrolling: touch;"
           >

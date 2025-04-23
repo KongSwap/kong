@@ -4,6 +4,7 @@
 
   export let row: any;
   export let priceFlashStates: Map<string, { class: string; timeout: ReturnType<typeof setTimeout> }>;
+  export let isHovered = false;
   
   $: price = Number(row.metrics?.price || 0);
   $: formattedPrice = formatUsdValue(price, true);
@@ -13,7 +14,7 @@
 
 <span 
   use:tooltip={{ text: tooltipContent, direction: "bottom" }}
-  class="cursor-help {flashClass} transition-colors duration-200"
+  class="cursor-help {flashClass} transition-colors duration-200 {isHovered ? 'text-kong-primary' : ''}"
 >
   {formattedPrice}
 </span>
