@@ -8,13 +8,14 @@
   import { tick } from "svelte";
   import { X } from "lucide-svelte";
   import { modalStack } from "$lib/stores/modalStore";
+  import { transparentPanel } from "$lib/stores/derivedThemeStore";
 
   // Props
   let {
     isOpen = false,
     modalKey = Math.random().toString(36).substr(2, 9),
     title = "",
-    variant = "solid",
+    variant = transparentPanel ? "transparent" : "solid",
     width = "600px",
     height = "auto",
     minHeight = "auto",
@@ -247,7 +248,6 @@
         transition:fade={{ duration: 150, delay: 100, easing: cubicOut }}
       >
         <Panel
-          variant="solid"
           width="100%"
           height="100%"
           className="flex flex-col overflow-hidden {className} {isPadded ? 'px-4' : ''}"

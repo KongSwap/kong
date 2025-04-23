@@ -47,7 +47,7 @@
   
   let buttonStyle = $derived(generateButtonStyle());
   
-  // Compute tooltip props with proper type casting
+  // Compute tooltip props with proper type casting - only when tooltipText exists
   let tooltipProps = $derived(tooltipText ? { 
     text: tooltipText, 
     direction: tooltipDirection as "top" | "bottom" | "left" | "right" 
@@ -83,7 +83,7 @@
   on:click={onClick}
   disabled={disabled || loading}
   data-testid={testId || "navbar-button"}
-  use:tooltip={tooltipProps}
+  use:tooltip={tooltipText ? tooltipProps : null}
   aria-label={tooltipText || label || "Button"}
 >
   <div class="relative">

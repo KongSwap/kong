@@ -31,3 +31,4 @@ export const swapPanelBorderStyle = derived(themeColors, ($colors) => ($colors a
 export const swapPanelInputsRounded = derived(themeColors, ($colors) => (($colors as any)?.swapPanelInputsRounded ?? true));
 export const transparentSwapPanel = derived(themeColors, ($colors) => (($colors as any)?.transparentSwapPanel ?? true)); 
 export const transparentPanel = derived(themeColors, ($colors) => (($colors as any)?.transparentPanel ?? true)); 
+export const colorScheme = derived(currentTheme, ($currentTheme) => $currentTheme?.colorScheme ?? 'light');

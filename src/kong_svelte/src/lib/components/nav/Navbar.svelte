@@ -40,17 +40,18 @@
 
   // Computed directly where needed using themeStore rune
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
-
-  // Define logo paths
-  const defaultLogoPath = "/titles/logo-white-wide.png";
-  const invertedLogoPath = "/titles/logo-black-wide.png"; // Adjust if necessary
-
-  // Derive logoSrc based on theme's invert property
-  const logoSrc = $derived(
-    browser && getThemeById($themeStore)?.colors?.logoInvert === 1
-      ? invertedLogoPath
-      : defaultLogoPath
-  );
+  
+  // Define if current theme is light and should have inverted logo
+  const isLightTheme = $derived(browser && 
+    (getThemeById($themeStore)?.colors?.logoInvert === 1 || 
+     $themeStore.includes('light') ||
+     $themeStore === 'win98light'));
+  
+  // Define logo paths - use only one logo path
+  const logoPath = "/titles/logo-white-wide.png";
+  
+  // No longer need logoSrc as we'll use the single path directly
+  // and apply CSS inversion when needed via the light-logo class
 
   // Define a type for valid tab IDs
   type NavTabId = 'swap' | 'predict' | 'earn' | 'stats';
@@ -176,7 +177,7 @@
       ...baseDesktopIconButton,
       icon: SettingsIcon,
       onClick: () => goto("/settings"),
-      tooltipText: "Settings",
+      tooltipText: "",
       show: true,
       themeProps: standardButtonThemeProps, // Theme props are reactive
     },
@@ -184,7 +185,7 @@
       ...baseDesktopIconButton,
       icon: Search,
       onClick: handleOpenSearch,
-      tooltipText: "Search",
+      tooltipText: "",
       show: true,
       themeProps: standardButtonThemeProps,
     },
@@ -454,10 +455,7 @@
         >
           <Menu
             size={20}
-            color={browser &&
-            getThemeById($themeStore)?.colors?.logoInvert === 1
-              ? "black"
-              : "white"}
+            color={isLightTheme ? "black" : "white"}
           />
         </button>
       {:else}
@@ -466,11 +464,10 @@
           on:click={() => goto("/")}
         >
           <img
-            src={logoSrc}
+            src={logoPath}
             alt="Kong Logo"
             class="h-[30px] transition-all duration-200 navbar-logo"
-            class:light-logo={browser &&
-              getThemeById($themeStore)?.colors?.logoInvert === 1}
+            class:light-logo={isLightTheme}
             on:error={(e) => {
               const img = e.target as HTMLImageElement;
               const textElement = img.nextElementSibling as HTMLElement;
@@ -526,11 +523,10 @@
           on:click={() => goto("/")}
         >
           <img
-            src={logoSrc}
+            src={logoPath}
             alt="Kong Logo"
             class="h-8 transition-all duration-200 navbar-logo mobile-navbar-logo"
-            class:light-logo={browser &&
-              getThemeById($themeStore)?.colors?.logoInvert === 1}
+            class:light-logo={isLightTheme}
             on:error={(e) => {
               const img = e.target as HTMLImageElement;
               const textElement = img.nextElementSibling as HTMLElement;
@@ -551,7 +547,7 @@
     <div class="flex items-center gap-1.5">
       {#if !isMobile}
         <!-- Refactored Icon Buttons -->
-        {#each desktopNavButtons as button (button.tooltipText)}
+        {#each desktopNavButtons as button, index (index)}
           {#if button.show}
             <NavbarButton
               icon={button.icon}
@@ -600,12 +596,11 @@
     >
       <div class="flex items-center justify-between p-5 border-b border-kong-border max-[375px]:p-4">
         <img
-          src={logoSrc}
+          src={logoPath}
           alt="Kong Logo"
           class="navbar-logo h-9 !transition-all !duration-200"
-          class:light-logo={browser &&
-            getThemeById($themeStore)?.colors?.logoInvert === 1}
-          style={browser && getThemeById($themeStore)?.colors?.logoInvert === 1 ? '--logo-brightness: 0.2' : ''}
+          class:light-logo={isLightTheme}
+          style={isLightTheme ? '--logo-brightness: 0.2' : ''}
         />
         <button class="w-9 h-9 flex items-center justify-center rounded-full text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/10 hover:bg-kong-text-primary/15 transition-colors duration-200" on:click={() => (navOpen = false)}>
           <X size={16} />
@@ -670,6 +665,7 @@
   /* Logo styles using CSS vars - Keep */
   .light-logo {
     @apply invert brightness-[var(--logo-brightness,0.8)] transition-all duration-200;
+    filter: invert(1) brightness(var(--logo-brightness, 0.2));
   }
 
   /* Keep only for text-shadow on active state */

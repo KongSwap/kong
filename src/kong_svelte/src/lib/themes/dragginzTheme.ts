@@ -5,7 +5,8 @@ export const dragginzTheme: ThemeDefinition = {
   id: 'dragginz',
   name: 'Dragginz',
   colorScheme: 'dark',
-  author: 'Kong Team',
+  author: 'Shill Gates',
+  authorLink: 'https://windoge98.com',
   colors: {
     // Background colors
     bgDark: '#0A1F19',       // Deep forest green

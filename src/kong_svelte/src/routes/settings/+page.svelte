@@ -474,7 +474,7 @@
     <!-- Wrap Slippage and Settings Grid in a new grid container -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <!-- Slippage Section -->
-      <Panel variant="solid" type="main" className="space-y-4">
+      <Panel type="main" className="space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="text-kong-text-primary font-medium text-base">Slippage Tolerance</h3>
         </div>
@@ -542,7 +542,7 @@
       <!-- Settings Grid (Preferences & Data) -->
       <div class="settings-grid">
         <!-- Combined Application Settings Panel -->
-        <Panel variant="solid" className="space-y-4">
+        <Panel className="space-y-4">
           <h3 class="text-kong-text-primary font-medium text-base">Application Settings</h3>
           
           <!-- Sound Section -->
@@ -605,7 +605,6 @@
       {#each themes as theme}
         <!-- Theme Card using Panel -->
         <Panel 
-          variant="solid" 
           interactive={true}
           className={`
             ${currentThemeId === theme.id ? 'active border-kong-primary border-2 bg-kong-primary/15' : ''}

@@ -6,6 +6,7 @@ import { auth } from "$lib/stores/auth";
 import { SwapService } from "./SwapService";
 import { swapState } from "./SwapStateService";
 import { userTokens } from "$lib/stores/userTokens";
+import { trackEvent, AnalyticsEvent } from "$lib/utils/analytics";
 
 interface SwapStatus {
   status: string;
@@ -119,6 +120,15 @@ export class SwapMonitor {
                 token1?.decimals || 0,
               );
 
+              // Track successful swap event
+              trackEvent(AnalyticsEvent.SwapCompleted, {
+                pay_token: token0?.symbol,
+                pay_amount: formattedPayAmount,
+                receive_token: token1?.symbol,
+                receive_amount: formattedReceiveAmount,
+                duration_ms: Date.now() - this.startTime
+              });
+
               swapStatusStore.updateSwap(swapId, {
                 status: "Success",
                 isProcessing: false,
@@ -166,6 +176,15 @@ export class SwapMonitor {
                 error: "Swap failed",
               });
               toastStore.error("Swap failed");
+              
+              // Track failed swap event
+              trackEvent(AnalyticsEvent.SwapFailed, {
+                pay_token: swapStatus.pay_symbol,
+                receive_token: swapStatus.receive_symbol,
+                error: "Swap failed",
+                duration_ms: Date.now() - this.startTime
+              });
+              
               return;
             }
           }

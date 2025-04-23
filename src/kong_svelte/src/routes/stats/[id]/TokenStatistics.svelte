@@ -158,8 +158,8 @@
       <div class="flex-shrink-0">
         <TokenImages
           tokens={token ? [token] : []}
-          size={82}
-          containerClass="w-[82px] h-[82px] !p-0"
+          size={76}
+          containerClass="w-[76px] h-[76px] !p-0"
         />
       </div>
 

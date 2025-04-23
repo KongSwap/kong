@@ -5,6 +5,8 @@ export enum AnalyticsEvent {
   ConnectWallet = 'connect_wallet',
   // Add other event names here
   // Example: SwapCompleted = 'swap_completed',
+  SwapCompleted = 'swap_completed',
+  SwapFailed = 'swap_failed',
 }
 
 // Extend Window interface for gtag

@@ -195,7 +195,7 @@
 
 <div class="flex flex-col h-full">
   <div class="flex-1 overflow-auto" bind:this={scrollContainer}>
-    <table class="w-full border-collapse min-w-[800px] md:min-w-0">
+    <table class="w-full border-collapse md:min-w-0">
       <thead class="bg-kong-bg-dark sticky top-0 z-20 !backdrop-blur-[12px]">
         <tr class="border-b border-kong-border bg-kong-bg-dark">
           {#each columns as column (column.key)}
@@ -218,9 +218,9 @@
       <tbody class={isTableTransparent() ? 'transparent-tbody' : 'solid-tbody'}>
         {#each displayData as row, idx (idx)}
           <tr
-            class="h-[44px] border-b border-kong-border/50 hover:bg-kong-hover-bg-light transition-colors duration-200 
+            class="h-[44px] border-b border-kong-border/50 transition-colors duration-200 
               {onRowClick ? 'cursor-pointer' : ''} 
-              {isKongRow?.(row) ? '!bg-kong-primary/15 hover:bg-kong-primary/30 border-kong-primary/30' : ''}"
+              {isKongRow?.(row) ? '!bg-kong-primary/15 border-kong-primary/30 hover:bg-kong-primary hover:border hover:border-kong-primary/80' : 'hover:bg-kong-hover-bg-dark/80 hover:backdrop-blur-md hover:z-50 hover:!border hover:border-kong-hover-bg-dark'}"
             on:click={() => onRowClick?.(row)}
           >
             {#each columns as column (column.key)}
@@ -338,12 +338,21 @@
     background-color: transparent;
   }
   
+  .transparent-tbody tr:hover {
+    background-color: rgba(var(--hover-bg-light), 0.15);
+    box-shadow: inset 0 0 0 1px rgba(var(--primary), 0.1);
+  }
+  
   .solid-tbody tr {
     background-color: var(--kong-bg-dark);
   }
   
   .solid-tbody tr:nth-child(even) {
     background-color: var(--kong-bg-light);
+  }
+  
+  .solid-tbody tr:hover {
+    background-color: rgba(var(--hover-bg-light), 0.3);
   }
   
   .flash-green {

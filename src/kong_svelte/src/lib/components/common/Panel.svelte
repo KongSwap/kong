@@ -153,8 +153,7 @@
 
 /* Transparent panel styling */
 .panel.transparent {
-  @apply bg-kong-bg-dark/85;
-  backdrop-filter: blur(12px);
+  @apply bg-kong-bg-dark/90 backdrop-blur-md;
   @apply border border-kong-border/50;
   @apply shadow-sm;
 }
@@ -181,7 +180,7 @@
 .panel.transparent:hover,
 .panel.transparent:has(.panel:hover) {
   @apply border-kong-border/70;
-  @apply bg-kong-bg-dark/90;
+  @apply bg-kong-bg-dark/90 backdrop-blur-md;
 }
 
 /* Premium edge highlight for solid variant - uses theme text color */
