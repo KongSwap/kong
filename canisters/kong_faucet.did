@@ -1,6 +1,0 @@
-type ClaimResult = variant { Ok : text; Err : text };
-
-service : {
-    icrc1_name : () -> (text) query;
-    claim : () -> (ClaimResult);
-}
