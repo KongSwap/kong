@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tooltip } from "$lib/actions/tooltip";
+  import { panelRoundness } from "$lib/stores/derivedThemeStore";
   
   // Props with Svelte 5 runes
   let {
@@ -61,10 +62,10 @@
   // Compute button classes
   let buttonClass = $derived(
     variant === "primary" 
-      ? "h-[30px] px-3 flex items-center gap-1.5 rounded-md text-xs font-semibold text-kong-text-primary/95 bg-kong-primary/40 border border-kong-primary/80 transition-all duration-150 hover:bg-kong-primary/60 hover:border-kong-primary/90"
+      ? `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-semibold text-kong-text-primary/95 bg-kong-primary/40 border border-kong-primary/80 transition-all duration-150 hover:bg-kong-primary/60 hover:border-kong-primary/90`
       : variant === "mobile"
-      ? "h-[34px] w-[34px] flex items-center justify-center rounded-md text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40"
-      : "h-[34px] px-2.5 flex items-center gap-1.5 rounded-md text-xs font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
+      ? `h-[34px] w-[34px] flex items-center justify-center ${$panelRoundness} text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40`
+      : `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light`
   );
 
   // Selected and disabled classes
@@ -73,7 +74,7 @@
 </script>
 
 <button
-  class="{buttonClass} {className} {isSelected ? selectedClass : ''} {disabled || loading ? disabledClass : ''}"
+  class="{buttonClass} {className} {isSelected ? selectedClass : ''} {disabled || loading ? disabledClass : ''} {$panelRoundness}"
   class:use-theme-border={useThemeBorder}
   class:has-custom-style={hasCustomStyle}
   class:use-theme-variables={useThemeVariables}
@@ -126,7 +127,6 @@
       color: var(--button-text, #FFFFFF);
       border: var(--button-border, 1px solid) var(--button-border-color, rgba(255, 255, 255, 0.1));
       box-shadow: var(--button-shadow, none);
-      border-radius: var(--button-roundness, 0.375rem);
       
       &:hover:not(.disabled) {
         background-color: var(--button-hover-bg, #232735);

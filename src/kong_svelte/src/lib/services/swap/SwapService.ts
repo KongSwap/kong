@@ -9,7 +9,6 @@ import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { requireWalletConnection } from "$lib/stores/auth";
 import { SwapMonitor } from "./SwapMonitor";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
-import { trackEvent, AnalyticsEvent } from "$lib/utils/analytics";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -375,12 +374,6 @@ export class SwapService {
         SwapMonitor.monitorTransaction(result?.Ok, swapId, toastId);
       } else {
         console.error("Swap error:", result.Err);
-        trackEvent(AnalyticsEvent.SwapFailed, {
-          pay_token: params.payToken.symbol,
-          receive_token: params.receiveToken.symbol,
-          amount: params.payAmount,
-          error: result.Err
-        });
         return false;
       }
       return result.Ok;
@@ -392,12 +385,6 @@ export class SwapService {
       });
       console.error("Swap execution failed:", error);
       toastStore.error(error instanceof Error ? error.message : "Swap failed");
-      trackEvent(AnalyticsEvent.SwapFailed, {
-        pay_token: params.payToken.symbol,
-        receive_token: params.receiveToken.symbol,
-        amount: params.payAmount,
-        error: error instanceof Error ? error.message : "Swap failed"
-      });
       return false;
     }
   }

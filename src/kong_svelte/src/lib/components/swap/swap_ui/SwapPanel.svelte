@@ -17,7 +17,8 @@
     swapPanelShadow, 
     swapPanelBorderStyle, 
     swapPanelInputsRounded, 
-    transparentSwapPanel 
+    transparentSwapPanel,
+    panelRoundness
   } from "$lib/stores/derivedThemeStore";
   
   let isWin95Border = $derived($swapPanelBorderStyle === 'win95');
@@ -358,7 +359,7 @@
         <div class="flex items-center gap-2">
           {#if panelType === "pay"}
             <button
-              class="onramp-button font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1.5 sm:px-3"
+              class="onramp-button {$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1.5 sm:px-3"
               on:click={(e) => {
                 e.preventDefault();
                 window.open("https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp", '_blank', 'width=500,height=650');

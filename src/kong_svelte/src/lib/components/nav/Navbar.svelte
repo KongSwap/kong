@@ -31,7 +31,6 @@
   import { userTokens } from "$lib/stores/userTokens";
   import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
   import { getThemeById } from "$lib/themes/themeRegistry";
-  import { writable } from "svelte/store";
   import NavbarButton from "./NavbarButton.svelte";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { copyToClipboard } from "$lib/utils/clipboard";
@@ -49,8 +48,9 @@
      $themeStore === 'win98light'));
   
   // Define logo paths - use only one logo path
-  const logoPath = "/titles/logo-white-wide.png";
-  
+  const logoPath = "/images/kongface-white.svg";
+  const mobileLogoPath = "/titles/logo-white-wide.png";
+
   // No longer need logoSrc as we'll use the single path directly
   // and apply CSS inversion when needed via the light-logo class
 
@@ -448,7 +448,7 @@
 
 <div class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
   <div class="mx-auto h-16 flex items-center justify-between px-6">
-    <div class="flex items-center gap-10">
+    <div class="flex items-center gap-4">
       {#if isMobile}
         <button
           class="h-[34px] w-[34px] flex items-center justify-center"
@@ -467,7 +467,7 @@
           <img
             src={logoPath}
             alt="Kong Logo"
-            class="h-[30px] transition-all duration-200 navbar-logo"
+            class="h-[40px] transition-all duration-200 navbar-logo"
             class:light-logo={isLightTheme}
             on:error={(e) => {
               const img = e.target as HTMLImageElement;
@@ -524,7 +524,7 @@
           on:click={() => goto("/")}
         >
           <img
-            src={logoPath}
+            src={mobileLogoPath}
             alt="Kong Logo"
             class="h-8 transition-all duration-200 navbar-logo mobile-navbar-logo"
             class:light-logo={isLightTheme}
@@ -597,7 +597,7 @@
     >
       <div class="flex items-center justify-between p-5 border-b border-kong-border max-[375px]:p-4">
         <img
-          src={logoPath}
+          src={mobileLogoPath}
           alt="Kong Logo"
           class="navbar-logo h-9 !transition-all !duration-200"
           class:light-logo={isLightTheme}

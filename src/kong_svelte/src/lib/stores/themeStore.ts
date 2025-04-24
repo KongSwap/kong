@@ -153,19 +153,8 @@ function createThemeStore() {
   async function saveThemeToStorage(themeId: ThemeId) {
     if (browser) {
       try {
-        // Get wallet ID or default to 'default'
         const walletId = getUserId();
-        
-        // Create a theme key with the wallet ID
-        const themeKey = `${THEME_KEY}_${walletId}`;
-        
-        console.log(`[Theme] Saving theme "${themeId}" to localStorage`);
-        
-        // Save directly to localStorage for maximum performance
-        localStorage.setItem(`${THEME_KEY}`, JSON.stringify(themeId));
-        localStorage.setItem(themeKey, JSON.stringify(themeId));
-        
-        console.log(`[Theme] Theme saved successfully to localStorage`);
+        localStorage.setItem(`${THEME_KEY}_${walletId}`, JSON.stringify(themeId));
         return true;
       } catch (error) {
         console.error('Failed to save theme to localStorage:', error);
@@ -186,15 +175,10 @@ function createThemeStore() {
         const walletId = getUserId();
         
         // First try user-specific theme
-        const themeKey = `${THEME_KEY}_${walletId}`;
-        console.log(`[Theme] Loading theme from localStorage key "${themeKey}"`);
-        
-        // Try to get from localStorage
-        const userThemeJson = localStorage.getItem(themeKey);
+        const userThemeJson = localStorage.getItem(`${THEME_KEY}_${walletId}`);
         
         if (userThemeJson) {
           const userTheme = JSON.parse(userThemeJson) as ThemeId;
-          console.log(`[Theme] Found user theme in localStorage: "${userTheme}"`);
           return userTheme;
         }
         
@@ -203,17 +187,13 @@ function createThemeStore() {
         const defaultThemeJson = localStorage.getItem(THEME_KEY);
         if (defaultThemeJson) {
           const defaultTheme = JSON.parse(defaultThemeJson) as ThemeId;
-          console.log(`[Theme] Found default theme in localStorage: "${defaultTheme}"`);
           return defaultTheme;
         }
         
         // If still no theme, try the global default
-        const globalKey = `${THEME_KEY}_default`;
-        console.log(`[Theme] No default theme found, trying global key "${globalKey}"`);
-        const globalDefaultJson = localStorage.getItem(globalKey);
+        const globalDefaultJson = localStorage.getItem(`${THEME_KEY}_default`);
         if (globalDefaultJson) {
           const globalDefault = JSON.parse(globalDefaultJson) as ThemeId;
-          console.log(`[Theme] Found global theme in localStorage: "${globalDefault}"`);
           return globalDefault;
         }
         
@@ -297,11 +277,8 @@ function createThemeStore() {
    */
   function initTheme() {
     if (browser) {
-      console.log('[Theme] Initializing theme');
-
       // Check if theme was already initialized in app.html
       const isInitializing = document.documentElement.getAttribute('data-theme-initializing') === 'true';
-      console.log(`[Theme] Theme initializing from app.html: ${isInitializing}`);
       
       // Mark as not ready until we fully initialize
       document.documentElement.setAttribute('data-theme-ready', 'false');
@@ -309,21 +286,18 @@ function createThemeStore() {
       try {
         // Directly get theme from localStorage for maximum speed
         const walletId = getUserId();
-        const themeKey = `${THEME_KEY}_${walletId}`;
         
         // Try user-specific theme first
         let themeToApply: ThemeId | null = null;
-        const userThemeJson = localStorage.getItem(themeKey);
+        const userThemeJson = localStorage.getItem(`${THEME_KEY}_${walletId}`);
         
         if (userThemeJson) {
           themeToApply = JSON.parse(userThemeJson) as ThemeId;
-          console.log(`[Theme] Found user theme in localStorage: "${themeToApply}"`);
         } else {
           // Try default theme
           const defaultThemeJson = localStorage.getItem(THEME_KEY);
           if (defaultThemeJson) {
             themeToApply = JSON.parse(defaultThemeJson) as ThemeId;
-            console.log(`[Theme] Found default theme in localStorage: "${themeToApply}"`);
           }
         }
         
@@ -331,11 +305,9 @@ function createThemeStore() {
         if (!themeToApply) {
           const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           themeToApply = prefersDark ? 'dark' : 'light';
-          console.log(`[Theme] Using system preference theme: "${themeToApply}"`);
         }
         
         // Apply the theme immediately
-        console.log(`[Theme] Applying theme: ${themeToApply}`);
         applyThemeStyles(themeToApply);
         set(themeToApply);
         
@@ -351,13 +323,11 @@ function createThemeStore() {
         
         // Mark theme as ready
         document.documentElement.setAttribute('data-theme-ready', 'true');
-        console.log('[Theme] Theme ready');
         
       } catch (error) {
         console.error('Error initializing theme:', error);
         
         // Fallback to dark theme
-        console.log('[Theme] Error loading theme, falling back to dark theme');
         applyThemeStyles('dark');
         set('dark');
         

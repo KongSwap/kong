@@ -50,7 +50,7 @@
   let startX = $state(0);
   let currentX = $state(0);
   let isDragging = $state(false);
-  let modalElement: HTMLDivElement;
+  let modalElement: HTMLDivElement = $state(null);
   let zIndex = $state(99999);
   
   const SLIDE_THRESHOLD = 100; // pixels to trigger close

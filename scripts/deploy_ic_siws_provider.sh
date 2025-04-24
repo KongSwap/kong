@@ -98,11 +98,6 @@ dfx deploy ic_siws_provider --network "$network" --argument "(
         statement = opt \"Connect to KongSwap\";
         sign_in_expires_in = opt 300000000000;
         session_expires_in = opt 604800000000000;
-        targets = opt vec {
-            \"$ic_siws_provider_id\";
-            \"$kong_backend_id\";
-            \"$trollbox_id\";
-            \"$prediction_markets_id\";
-        };
+        targets = null;
     }
-)"
+)" --mode reinstall

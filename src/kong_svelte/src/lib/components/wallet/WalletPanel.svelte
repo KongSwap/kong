@@ -30,6 +30,7 @@
   import WalletHistoryList from "$lib/components/wallet/WalletHistoryList.svelte";
   import SendTokenModal from "$lib/components/wallet/SendTokenModal.svelte";
   import { calculatePortfolioValue } from "$lib/utils/portfolioUtils";
+  import { loadUserBalances, setLastRefreshed } from "$lib/services/balanceService";
 
   // Props type definition
   type WalletPanelProps = {
@@ -182,12 +183,13 @@
     // Update last refreshed timestamp to trigger reactive updates
     lastRefreshed = Date.now();
     
-    // Load balances for the current wallet ID if available
-    if (walletId && $userTokens?.tokens?.length > 0) {
-      loadBalances($userTokens.tokens, walletId, forceRefresh)
+    // Use the same loadUserBalances service function as WalletTokensList
+    if (walletId) {
+      loadUserBalances(walletId, forceRefresh)
         .then(() => {
           isLoadingBalances = false;
           isRefreshing = false;
+          setLastRefreshed(Date.now());
           
           // Immediately recalculate portfolio value using shared utility
           const calculated = calculatePortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);

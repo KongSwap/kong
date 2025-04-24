@@ -6,66 +6,10 @@ import { allowanceStore } from "$lib/stores/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { type IcrcAccount } from "@dfinity/ledger-icrc";
-
-// Error types for better handling
-const enum ErrorType {
-  CORS = "CORS",
-  RATE_LIMIT = "RATE_LIMIT",
-  NETWORK = "NETWORK",
-  AUTH = "AUTH",
-  UNKNOWN = "UNKNOWN",
-}
+import { get } from "svelte/store";
 
 export class IcrcService {
   private static readonly MAX_CONCURRENT_REQUESTS = 5;
-
-  private static classifyError(error: any): ErrorType {
-    if (!error) return ErrorType.UNKNOWN;
-    const message = error.message?.toLowerCase() || "";
-
-    if (
-      message.includes("cors") ||
-      message.includes("access-control-allow-origin")
-    ) {
-      return ErrorType.CORS;
-    }
-    if (message.includes("429") || message.includes("too many requests")) {
-      return ErrorType.RATE_LIMIT;
-    }
-    if (
-      message.includes("network") ||
-      message.includes("failed to fetch") ||
-      message.includes("net::")
-    ) {
-      return ErrorType.NETWORK;
-    }
-    if (message.includes("wallet") || message.includes("authentication")) {
-      return ErrorType.AUTH;
-    }
-    return ErrorType.UNKNOWN;
-  }
-
-  private static handleError(methodName: string, error: any) {
-    console.error(`Error in ${methodName}:`, error);
-    const errorType = this.classifyError(error);
-
-    if (errorType === ErrorType.AUTH) {
-      throw new Error(
-        "Please connect your wallet to proceed with this operation.",
-      );
-    }
-
-    // Let the retry mechanism handle these types of errors
-    if (
-      errorType === ErrorType.CORS ||
-      errorType === ErrorType.NETWORK ||
-      errorType === ErrorType.RATE_LIMIT
-    ) {
-      throw error;
-    }
-
-    throw error;
-  }
 
   private static async withConcurrencyLimit<T>(
     operations: (() => Promise<T>)[],
@@ -255,7 +199,8 @@ export class IcrcService {
 
     try {
       const expiresAt =
-        BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000);
+        BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000); // 29 days
+      const authStore = get(auth);
 
       // Calculate total amount including fee
       const tokenFee = token.fee_fixed
@@ -266,11 +211,14 @@ export class IcrcService {
       // Check current allowance
       const currentAllowance = allowanceStore.getAllowance(
         token.address,
-        auth.pnp.account.owner.toString(),
+        authStore.account.owner.toString(),
         spender,
       );
 
+      console.log("checkAndRequestIcrc2Allowances currentAllowance", currentAllowance);
+
       if (currentAllowance && currentAllowance.amount >= totalAmount) {
+        console.log("currentAllowance", currentAllowance);
         return currentAllowance.amount;
       }
 
@@ -290,7 +238,7 @@ export class IcrcService {
         },
       };
 
-      const approveActor = auth.pnp.getActor(
+      const approveActor = auth.getActor(
         token.address,
         canisterIDLs.icrc2,
         {
@@ -302,7 +250,7 @@ export class IcrcService {
       const result = await approveActor.icrc2_approve(approveArgs);
       allowanceStore.addAllowance(token.address, {
         address: token.address,
-        wallet_address: auth.pnp.account.owner.toString(),
+        wallet_address: authStore.account.owner.toString(),
         spender: spender,
         amount: approveArgs.amount,
         timestamp: Date.now(),
@@ -321,36 +269,6 @@ export class IcrcService {
       console.error("ICRC2 approve error:", error);
       toastStore.error(`Failed to approve ${token.symbol}: ${error.message}`);
       throw error;
-    }
-  }
-
-  public static async checkIcrc2Allowance(
-    token: Kong.Token,
-    owner: Principal,
-    spender: Principal,
-  ): Promise<bigint> {
-    try {
-      const actor = auth.getActor(token.address, canisterIDLs.icrc2, {
-        anon: true,
-        requiresSigning: false,
-      });
-      const result = await actor.icrc2_allowance({
-        account: { owner, subaccount: [] },
-        spender: {
-          owner: spender,
-          subaccount: [],
-        },
-      });
-      allowanceStore.addAllowance(token.address, {
-        address: token.address,
-        wallet_address: owner.toString(),
-        spender: spender.toString(),
-        amount: BigInt(result.allowance),
-        timestamp: Date.now(),
-      });
-      return BigInt(result.allowance);
-    } catch (error) {
-      this.handleError("checkIcrc2Allowance", error);
     }
   }
 

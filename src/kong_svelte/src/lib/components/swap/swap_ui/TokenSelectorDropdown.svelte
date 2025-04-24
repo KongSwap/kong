@@ -60,7 +60,7 @@
   let scrollTop = $state(0);
 
   // Grouped UI state
-  let state = $state({
+  let selectorState = $state({
     dropdownElement: null as HTMLDivElement | null,
     hideZeroBalances: false,
     isMobile: false,
@@ -94,7 +94,7 @@
   $effect(() => {
     if ($currentUserBalancesStore) {
       Object.keys($currentUserBalancesStore).forEach(tokenId => {
-        state.loadedTokens.add(tokenId);
+        selectorState.loadedTokens.add(tokenId);
       });
     }
   });
@@ -105,7 +105,7 @@
   }
   
   function isFavoriteToken(tokenId: string): boolean {
-    return state.favoriteTokens.get(tokenId) || false;
+    return selectorState.favoriteTokens.get(tokenId) || false;
   }
 
   function canSelectToken(token: Kong.Token): boolean {
@@ -145,7 +145,7 @@
     baseFilteredTokens.filter((t) => t.symbol.toLowerCase().startsWith("ck")).length
   );
   let favoritesCount = $derived(
-    Array.from(state.favoriteTokens.values()).filter(Boolean).length
+    Array.from(selectorState.favoriteTokens.values()).filter(Boolean).length
   );
 
   // Consolidated filter and sort function
@@ -221,11 +221,11 @@
     return filterAndSortTokens(
       uniqueTokens,
       searchQuery,
-      state.standardFilter,
-      state.hideZeroBalances,
-      state.favoriteTokens,
-      state.sortColumn,
-      state.sortDirection,
+      selectorState.standardFilter,
+      selectorState.hideZeroBalances,
+      selectorState.favoriteTokens,
+      selectorState.sortColumn,
+      selectorState.sortDirection,
       $currentUserBalancesStore,
       currentToken
     );
@@ -233,7 +233,7 @@
 
   // Derived lists and virtual scroll states
   let filteredTokens = $derived(
-    browser ? getFilteredAndSortedTokens(baseFilteredTokens, state.apiSearchResults, currentToken) : []
+    browser ? getFilteredAndSortedTokens(baseFilteredTokens, selectorState.apiSearchResults, currentToken) : []
   );
   
   let enabledFilteredTokens = $derived(filteredTokens.filter(token => $userTokens.enabledTokens.has(token.address)));
@@ -271,7 +271,7 @@
 
   // UI Event handlers
   function setStandardFilter(filter: FilterType) {
-    state.standardFilter = filter;
+    selectorState.standardFilter = filter;
     searchQuery = "";
     scrollTop = 0;
   }
@@ -283,7 +283,7 @@
   }
   
   function handleClickOutside(event: MouseEvent) {
-    if (state.dropdownElement && !state.dropdownElement.contains(event.target as Node)) {
+    if (selectorState.dropdownElement && !selectorState.dropdownElement.contains(event.target as Node)) {
       onClose();
     }
   }
@@ -302,14 +302,14 @@
     e.preventDefault();
     e.stopPropagation();
     
-    const isFavorite = state.favoriteTokens.get(token.address) || false;
+    const isFavorite = selectorState.favoriteTokens.get(token.address) || false;
     await (isFavorite 
       ? favoriteStore.removeFavorite(token.address)
       : favoriteStore.addFavorite(token.address));
 
     // Update the local state
-    state.favoriteTokens.set(token.address, !isFavorite);
-    state.favoriteTokens = new Map(state.favoriteTokens); // Trigger reactivity
+    selectorState.favoriteTokens.set(token.address, !isFavorite);
+    selectorState.favoriteTokens = new Map(selectorState.favoriteTokens); // Trigger reactivity
   }
   
   function handleSelect(token: Kong.Token) {
@@ -331,13 +331,13 @@
   async function handleEnableToken(e: MouseEvent, token: Kong.Token) {
     e.preventDefault();
     e.stopPropagation();
-    state.enablingTokenId = token.address;
+    selectorState.enablingTokenId = token.address;
 
     try {
       userTokens.enableToken(token);
       
-      if (isUserAuthenticated && !state.loadedTokens.has(token.address)) {
-        state.loadedTokens.add(token.address);
+      if (isUserAuthenticated && !selectorState.loadedTokens.has(token.address)) {
+        selectorState.loadedTokens.add(token.address);
         const principal = $auth.account?.owner?.toString();
 
         if (principal) {          
@@ -358,7 +358,7 @@
     } catch (error) {
       console.warn(`Error enabling token ${token.symbol}:`, error);
     } finally {
-      state.enablingTokenId = null;
+      selectorState.enablingTokenId = null;
     }
   }
   
@@ -385,7 +385,7 @@
   
   function handleCustomTokenAdded(event: CustomEvent<Kong.Token>) {
     const newToken = event.detail;
-    state.isAddNewTokenModalOpen = false;
+    selectorState.isAddNewTokenModalOpen = false;
     
     if (newToken && canSelectToken(newToken)) {
       handleSelect(newToken);
@@ -412,11 +412,11 @@
       const tokensNeedingBalances = visibleTokens.filter(
         token => token.address && 
                 !$currentUserBalancesStore[token.address] && 
-                !state.loadedTokens.has(token.address)
+                !selectorState.loadedTokens.has(token.address)
       );
       
       if (tokensNeedingBalances.length > 0) {
-        tokensNeedingBalances.forEach(token => state.loadedTokens.add(token.address));
+        tokensNeedingBalances.forEach(token => selectorState.loadedTokens.add(token.address));
         void loadBalances(tokensNeedingBalances, principal, true);
       }
     }, 200);
@@ -425,7 +425,7 @@
   // API search
   const debouncedApiSearch = debounce(async (query: string) => {
     if (!browser || !query || query.length < 2) {
-      state.apiSearchResults = [];
+      selectorState.apiSearchResults = [];
       return;
     }
 
@@ -438,27 +438,27 @@
     );
 
     if (matchingLocalTokens.length >= 10) {
-      state.apiSearchResults = [];
+      selectorState.apiSearchResults = [];
       return;
     }
 
-    state.isSearching = true;
+    selectorState.isSearching = true;
     try {
       const { tokens } = await fetchTokens({ search: query, limit: 20 });
-      state.apiSearchResults = tokens.filter(
+      selectorState.apiSearchResults = tokens.filter(
         token => !$userTokens.enabledTokens.has(token.address)
       );
     } catch (error) {
       console.error("Error searching tokens:", error);
-      state.apiSearchResults = [];
+      selectorState.apiSearchResults = [];
     } finally {
-      state.isSearching = false;
+      selectorState.isSearching = false;
     }
   }, 300);
 
   // Async loaders
   async function loadFavorites() {
-    if (!browser || state.favoritesLoaded) return;
+    if (!browser || selectorState.favoritesLoaded) return;
 
     await favoriteStore.loadFavorites();
 
@@ -469,8 +469,8 @@
     });
 
     await Promise.all(promises);
-    state.favoriteTokens = newFavorites;
-    state.favoritesLoaded = true;
+    selectorState.favoriteTokens = newFavorites;
+    selectorState.favoritesLoaded = true;
   }
 
   // Reactive effects
@@ -479,15 +479,15 @@
     if (browser && searchQuery) {
       void debouncedApiSearch(searchQuery);
     } else {
-      state.apiSearchResults = [];
+      selectorState.apiSearchResults = [];
     }
   });
 
   $effect(() => {
     // Mobile detection
     if (browser) {
-      state.isMobile = window.innerWidth <= 768;
-      const handleResize = () => state.isMobile = window.innerWidth <= 768;
+      selectorState.isMobile = window.innerWidth <= 768;
+      const handleResize = () => selectorState.isMobile = window.innerWidth <= 768;
       window.addEventListener("resize", handleResize);
       return () => window.removeEventListener("resize", handleResize);
     }
@@ -506,11 +506,11 @@
             const tokensNeedingBalances = tokens.filter(
               token => token.address && 
                       !$currentUserBalancesStore[token.address] && 
-                      !state.loadedTokens.has(token.address)
+                      !selectorState.loadedTokens.has(token.address)
             );
             
             if (tokensNeedingBalances.length > 0) {
-              tokensNeedingBalances.forEach(token => state.loadedTokens.add(token.address));
+              tokensNeedingBalances.forEach(token => selectorState.loadedTokens.add(token.address));
               void loadBalances(tokensNeedingBalances, $auth.account!.owner.toString(), false);
             }
           }
@@ -550,8 +550,8 @@
 {#if show}
   <div class="fixed inset-0 bg-kong-bg-dark/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
     <div
-      class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] h-[min(600px,85vh)] bg-kong-token-selector-bg {expandDirection} {state.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1 rounded-xl'}"
-      bind:this={state.dropdownElement}
+      class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] h-[min(600px,85vh)] bg-kong-token-selector-bg {expandDirection} {selectorState.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1 rounded-xl'}"
+      bind:this={selectorState.dropdownElement}
       on:click|stopPropagation
       transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}
     >
@@ -593,12 +593,12 @@
                 {#each FILTER_TABS as tab}
                   <button
                     on:click={() => setStandardFilter(tab.id as FilterType)}
-                    class="flex-1 px-3 py-2 flex items-center justify-center gap-2 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium bg-kong-bg-dark/30 rounded-2xl {state.standardFilter === tab.id ? 'text-white font-semibold bg-kong-primary text-kong-bg-light hover:bg-kong-primary' : 'hover:bg-kong-bg-light/60'}"
+                    class="flex-1 px-3 py-2 flex items-center justify-center gap-2 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium bg-kong-bg-dark/30 rounded-2xl {selectorState.standardFilter === tab.id ? 'text-white font-semibold bg-kong-primary text-kong-bg-light hover:bg-kong-primary' : 'hover:bg-kong-bg-light/60'}"
                     aria-label="Show {tab.label.toLowerCase()} tokens"
                   >
                     <span class="relative z-10">{tab.label}</span>
                     <span
-                      class="text-kong-text-on-primary text-xs px-2 py-1 rounded-full bg-kong-bg-dark/50 min-w-[1.5rem] text-center transition-all duration-200 {state.standardFilter === tab.id ? 'bg-kong-primary/10 text-kong-bg-light' : ''}"
+                      class="text-kong-text-on-primary text-xs px-2 py-1 rounded-full bg-kong-bg-dark/50 min-w-[1.5rem] text-center transition-all duration-200 {selectorState.standardFilter === tab.id ? 'bg-kong-primary/10 text-kong-bg-light' : ''}"
                     >
                       {getTabCount(tab.id)}
                     </span>
@@ -632,7 +632,7 @@
                           otherPanelToken={otherPanelToken}
                           isApiToken={isApiToken(token)}
                           isFavorite={isFavoriteToken(token.address)}
-                          enablingTokenId={state.enablingTokenId}
+                          enablingTokenId={selectorState.enablingTokenId}
                           blockedTokenIds={BLOCKED_TOKEN_IDS}
                           balance={{
                             loading: isUserAuthenticated && !$currentUserBalancesStore[token.address],
@@ -659,13 +659,13 @@
               {/if}
 
               <!-- API Search Results -->
-              {#if apiFilteredTokens.length > 0 || state.isSearching}
+              {#if apiFilteredTokens.length > 0 || selectorState.isSearching}
                 <div class="space-y-2 mt-4">
                   <div class="p-2 text-sm font-medium text-kong-text-secondary rounded-lg border border-kong-border/10 backdrop-blur-sm mx-2 my-2 bg-kong-token-selector-item-bg">
                     <span>Available Tokens</span>
                   </div>
                   
-                  {#if state.isSearching}
+                  {#if selectorState.isSearching}
                     <div class="flex items-center justify-center gap-2 p-4 text-sm text-kong-text-primary/70">
                       <span class="w-4 h-4 rounded-full border-2 border-kong-text-primary/20 border-t-kong-text-primary animate-spin"></span>
                       <span>Searching...</span>
@@ -683,7 +683,7 @@
                             otherPanelToken={otherPanelToken}
                             isApiToken={true}
                             isFavorite={isFavoriteToken(token.address)}
-                            enablingTokenId={state.enablingTokenId}
+                            enablingTokenId={selectorState.enablingTokenId}
                             blockedTokenIds={BLOCKED_TOKEN_IDS}
                             balance={{
                               loading: isUserAuthenticated && !$currentUserBalancesStore[token.address],
@@ -711,7 +711,7 @@
               {/if}
               
               <!-- No Tokens Found Message -->
-              {#if filteredTokens.length === 0 && !state.isSearching}
+              {#if filteredTokens.length === 0 && !selectorState.isSearching}
                 <div class="flex items-center justify-center p-8 text-kong-text-secondary text-sm flex-col gap-4">
                   <span>No tokens found</span>
                 </div>
@@ -721,7 +721,7 @@
               <div class="px-2 py-3 mt-2">
                 <button 
                   class="group w-full hover:bg-kong-primary hover:text-kong-bg-light flex items-center justify-center gap-2 py-3 px-4 text-kong-text-primary font-medium rounded-lg border border-kong-border/30 transition-all duration-200 hover:border-kong-primary/40 bg-kong-token-selector-item-bg"
-                  on:click|stopPropagation={() => state.isAddNewTokenModalOpen = true}
+                  on:click|stopPropagation={() => selectorState.isAddNewTokenModalOpen = true}
                 >
                   <div class="flex items-center justify-center w-5 h-5 rounded-full text-kong-bg-light font-bold bg-kong-primary group-hover:text-kong-primary group-hover:bg-kong-bg-light">+</div>
                   <span>Add New Token</span>
@@ -770,7 +770,7 @@
 
 <!-- Add New Token Modal -->
 <AddNewTokenModal 
-  isOpen={state.isAddNewTokenModalOpen}
-  onClose={() => state.isAddNewTokenModalOpen = false}
+  isOpen={selectorState.isAddNewTokenModalOpen}
+  onClose={() => selectorState.isAddNewTokenModalOpen = false}
   on:tokenAdded={handleCustomTokenAdded}
 />
