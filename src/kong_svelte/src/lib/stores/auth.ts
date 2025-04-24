@@ -34,6 +34,7 @@ export const canisterIDLs = pnpCanisterIDLs;
 function createAuthStore(pnp: PNP) {
   const store = writable({ isConnected: false, account: null, isInitialized: false });
   const { subscribe, set } = store;
+  let isStoreInitialized = false;
 
   // Storage operations
   const storage = {
@@ -81,7 +82,8 @@ function createAuthStore(pnp: PNP) {
     pnp,
 
     async initialize() {
-      if (!browser) return;
+      if (!browser || isStoreInitialized) return;
+      isStoreInitialized = true;
 
       try {
         const lastWallet = await storage.get("LAST_WALLET");
@@ -97,6 +99,7 @@ function createAuthStore(pnp: PNP) {
         console.warn("Auto-connect failed:", error);
         await storage.clear();
         connectionError.set(error.message);
+        isStoreInitialized = false;
       } finally {
         sessionStorage.setItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED, "true");
       }

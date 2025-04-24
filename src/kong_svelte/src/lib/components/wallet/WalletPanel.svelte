@@ -5,7 +5,7 @@
   import localforage from "localforage";
   import {
     Coins,
-    LayoutGrid,
+    Droplet,
     Clock,
     User,
     Copy,
@@ -31,6 +31,7 @@
   import SendTokenModal from "$lib/components/wallet/SendTokenModal.svelte";
   import { calculatePortfolioValue } from "$lib/utils/portfolioUtils";
   import { loadUserBalances, setLastRefreshed } from "$lib/services/balanceService";
+  import { get } from "svelte/store";
 
   // Props type definition
   type WalletPanelProps = {
@@ -61,7 +62,7 @@
   // Define tabs configuration
   const tabsConfig = [
     { id: 'tokens', label: 'Tokens', icon: Coins },
-    { id: 'pools', label: 'Pools', icon: LayoutGrid },
+    { id: 'pools', label: 'Pools', icon: Droplet },
     { id: 'history', label: 'History', icon: Clock },
     { id: 'addresses', label: 'Addresses', icon: User }
   ];
@@ -84,13 +85,9 @@
       props: () => ({
         liquidityPools: $currentUserPoolsStore?.filteredPools || [],
         isLoading: isLoadingBalances || $currentUserPoolsStore?.loading,
-        onRefresh: () => {
-          // Only refresh if data hasn't been loaded yet
-          if (!$currentUserPoolsStore?.filteredPools?.length) {
-            currentUserPoolsStore.initialize();
-          }
-        },
-        showUsdValues
+        onRefresh: refreshPoolsData,
+        showUsdValues,
+        isRefreshing
       })
     },
     history: {
@@ -183,32 +180,49 @@
     // Update last refreshed timestamp to trigger reactive updates
     lastRefreshed = Date.now();
     
-    // Use the same loadUserBalances service function as WalletTokensList
+    // Refresh pools data if in pools section, without resetting first
+    if (activeSection === 'pools') {
+      // currentUserPoolsStore.reset(); // Remove reset
+      currentUserPoolsStore.initialize();
+    }
+    
+    // Refresh token balances
     if (walletId) {
       loadUserBalances(walletId, forceRefresh)
         .then(() => {
-          isLoadingBalances = false;
-          isRefreshing = false;
+          // Balance loading handled within loadUserBalances
+        })
+        .catch((err) => {
+          console.error("Error refreshing token balances:", err);
+        })
+        .finally(() => {
+          // Consolidate state updates after both potentially finish
+          // Check if pools are still loading separately
+          const poolsLoading = get(currentUserPoolsStore).loading;
+          if (!poolsLoading) {
+            isLoadingBalances = false; // Only set if token balances are done
+            isRefreshing = false; // Only set if both are done or tokens errored
+          }
           setLastRefreshed(Date.now());
-          
-          // Immediately recalculate portfolio value using shared utility
+
+          // Recalculate portfolio value after potentially new data
           const calculated = calculatePortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
           if (calculated > 0) {
             lastKnownPortfolioValue = calculated;
             totalPortfolioValue = calculated;
+          } else if (lastKnownPortfolioValue > 0) {
+             totalPortfolioValue = lastKnownPortfolioValue;
+          } else {
+             totalPortfolioValue = 0;
           }
-        })
-        .catch((err) => {
-          console.error("Error refreshing balances:", err);
-          isLoadingBalances = false;
-          isRefreshing = false;
         });
     } else {
-      // If no wallet ID or tokens, just end the loading state after a brief delay
-      setTimeout(() => {
-        isLoadingBalances = false;
-        isRefreshing = false;
-      }, 500);
+      // If no wallet ID, just end the loading state for balances
+      isLoadingBalances = false;
+      // If pools aren't refreshing, also set isRefreshing to false
+      if (activeSection !== 'pools' || !get(currentUserPoolsStore).loading) {
+          isRefreshing = false;
+      }
     }
   }
 
@@ -280,6 +294,21 @@
   function toggleUsdVisibility() {
     showUsdValues = !showUsdValues;
   }
+
+  // Add a function to refresh pools data
+  function refreshPoolsData() {
+    if (activeSection === 'pools') {
+      isRefreshing = true; // Indicate refresh start
+      // currentUserPoolsStore.reset(); // Remove reset
+      currentUserPoolsStore.initialize()
+        .finally(() => {
+          // Check if token balances are also refreshing before setting isRefreshing to false
+          if (!isLoadingBalances) { 
+             isRefreshing = false;
+          }
+        });
+    }
+  }
 </script>
 
 <!-- Fixed portfolio overview section -->
@@ -295,14 +324,12 @@
         }}>Total Portfolio Value</span>
         <div class="flex items-center gap-2">
           <button
-            class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all {isRefreshing
-              ? 'animate-spin'
-              : ''}"
+            class="p-1 {isRefreshing ? 'text-kong-primary bg-kong-primary/10' : 'text-kong-text-secondary/60 hover:text-kong-primary hover:bg-kong-bg-light/20'} rounded-full transition-all"
             onclick={() => refreshBalances(true)}
             disabled={isRefreshing}
-            use:tooltip={{ text: "Refresh balance data", direction: "bottom" }}
+            use:tooltip={{ text: isRefreshing ? "Refreshing..." : "Refresh balance data", direction: "bottom" }}
           >
-            <RefreshCw size={12} />
+            <RefreshCw size={12} class={isRefreshing ? 'animate-spin' : ''} />
           </button>
           <button
             class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all"

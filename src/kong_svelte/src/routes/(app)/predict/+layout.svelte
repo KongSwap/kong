@@ -11,7 +11,7 @@
   {@render children?.()}
 </div>
 
-<div class="container mx-auto max-w-[1300px] text-kong-text-primary my-4 flex justify-center mt-10">
+<div class="container mx-auto text-kong-text-primary my-4 flex justify-center my-10">
   <ButtonV2 variant="transparent" size="lg" className="!text-kong-text-secondary" on:click={() => {
     goto("/predict/tos");
   }}>

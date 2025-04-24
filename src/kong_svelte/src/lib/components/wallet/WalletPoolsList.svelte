@@ -17,6 +17,7 @@
     // Optional callback function for refreshing data
     onRefresh = undefined,
     showUsdValues = true,
+    isRefreshing = false,
   } = $props<{
     liquidityPools?: Array<{
       id: string;
@@ -30,6 +31,7 @@
     isLoading?: boolean;
     onRefresh?: (() => void) | undefined;
     showUsdValues?: boolean;
+    isRefreshing?: boolean;
   }>();
   
   // State for user pools from store
@@ -66,7 +68,7 @@
   // Common function to refresh pools data
   async function refreshPoolsData(errorMsg = "Failed to refresh your liquidity positions. Please try again.") {
     try {
-      currentUserPoolsStore.reset();
+      // Don't reset the store until we have new data
       await currentUserPoolsStore.initialize();
       if (onRefresh) onRefresh();
       return true;
@@ -79,9 +81,9 @@
   
   // Function to refresh user pools with callback
   async function handleRefresh() {
-    if (hasCompletedInitialLoad) {
+    if (hasCompletedInitialLoad && onRefresh) {
       errorMessage = null;
-      await refreshPoolsData();
+      onRefresh();
     }
   }
   
@@ -154,16 +156,19 @@
   <div class="px-4 mb-3 flex items-center justify-between">
     <div class="text-xs font-medium text-kong-text-secondary uppercase tracking-wide">Your Liquidity Positions</div>
     <button 
-      class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-light/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      class="text-xs px-2 py-1 rounded flex items-center gap-1.5 transition-colors {isRefreshing || $currentUserPoolsStore.loading
+        ? 'text-kong-primary bg-kong-primary/10 opacity-100 cursor-not-allowed' 
+        : 'text-kong-text-secondary/70 hover:text-kong-primary hover:bg-kong-bg-light/20'}"
       on:click={handleRefresh}
-      disabled={$currentUserPoolsStore.loading}
+      disabled={isRefreshing || $currentUserPoolsStore.loading}
+      aria-busy={isRefreshing || $currentUserPoolsStore.loading}
     >
-      <RefreshCw size={12} class={$currentUserPoolsStore.loading ? 'animate-spin' : ''} />
-      <span>Refresh</span>
+      <RefreshCw size={12} class={(isRefreshing || $currentUserPoolsStore.loading) ? 'animate-spin' : ''} />
+      <span>{(isRefreshing || $currentUserPoolsStore.loading) ? 'Refreshing...' : 'Refresh'}</span>
     </button>
   </div>
   
-  {#if isLoadingPools || isLoading}
+  {#if isLoadingPools && !$currentUserPoolsStore.filteredPools.length || isLoading && !liquidityPools.length}
     <div class="py-10 text-center">
       <div class="animate-pulse flex flex-col items-center gap-4">
         <div class="w-16 h-16 bg-kong-text-primary/10 rounded-full"></div>
@@ -330,7 +335,10 @@
   
   {#if $currentUserPoolsStore.loading && hasCompletedInitialLoad}
     <div class="px-4 py-2 mt-2 flex justify-center">
-      <div class="text-xs text-kong-text-secondary animate-pulse">Refreshing pools...</div>
+      <div class="text-xs text-kong-text-secondary animate-pulse flex items-center gap-1.5">
+        <RefreshCw size={12} class="animate-spin" />
+        <span>Refreshing pools...</span>
+      </div>
     </div>
   {/if}
 </div>

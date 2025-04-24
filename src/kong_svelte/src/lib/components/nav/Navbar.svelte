@@ -446,7 +446,7 @@
   }
 </script>
 
-<div class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
+<div id="navbar" class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
   <div class="mx-auto h-16 flex items-center justify-between px-6">
     <div class="flex items-center gap-4">
       {#if isMobile}
@@ -462,7 +462,7 @@
       {:else}
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          on:click={() => goto("/")}
+          on:click={() => goto("/swap")}
         >
           <img
             src={logoPath}
@@ -521,7 +521,7 @@
       >
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          on:click={() => goto("/")}
+          on:click={() => goto("/swap")}
         >
           <img
             src={mobileLogoPath}

@@ -2,8 +2,8 @@ import localForage from 'localforage';
 import { browser } from '$app/environment';
 
 // Configuration constants
-const STORAGE_NAME = 'kong_storage';
-const STORAGE_VERSION = 1.0;
+const STORAGE_NAME = 'kongswap_storage';
+const STORAGE_VERSION = 1.1;
 const STORAGE_DESCRIPTION = 'KongSwap Local Storage';
 
 // Storage keys/namespaces
@@ -36,7 +36,7 @@ export function configureStorage() {
       version: STORAGE_VERSION,
       description: STORAGE_DESCRIPTION,
       storeName: 'kong_main_store',
-      size: 10485760 // 10MB
+      size: 25600000 // 25MB
     });
 
     console.log('[Storage] LocalForage configured successfully');

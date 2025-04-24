@@ -276,6 +276,7 @@ export class SwapService {
   ): Promise<bigint | false> {
     const swapId = params.swapId;
     try {
+      requireWalletConnection();
       // Add check for blocked tokens at the start
       if (BLOCKED_TOKEN_IDS.includes(params.payToken.address) || 
           BLOCKED_TOKEN_IDS.includes(params.receiveToken.address)) {
@@ -293,8 +294,6 @@ export class SwapService {
         });
         return false;
       }
-
-      requireWalletConnection();
       const payToken = params.payToken
 
       if (!payToken) {
@@ -322,6 +321,7 @@ export class SwapService {
         `Swapping ${params.payAmount} ${params.payToken.symbol} to ${params.receiveAmount} ${params.receiveToken.symbol}...`,
         { duration: 20000 },
       );
+      console.log("payToken.standards", payToken.standards.includes("ICRC-2"));
       if (payToken.standards.includes("ICRC-2")) {
         const requiredAllowance = payAmount;
         approvalId = await IcrcService.checkAndRequestIcrc2Allowances(

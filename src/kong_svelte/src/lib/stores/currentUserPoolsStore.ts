@@ -63,14 +63,9 @@ function createCurrentUserPoolsStore() {
       // Get current state to check if we already have data
       const currentState = get({ subscribe });
       
-      // If we already have processed pools and we're not in a loading state, skip initialization
-      if (currentState.processedPools.length > 0 && !currentState.loading) {
-        return;
-      }
+      // Set loading state, but don't reset the pools data yet
+      update(s => ({ ...s, loading: true, error: null }));
       
-      // Reset state first
-      set(initialState);
-      update(s => ({ ...s, loading: true }));
       try {
         const currentAuth = get(auth);
         const actor = createAnonymousActorHelper(
@@ -83,32 +78,21 @@ function createCurrentUserPoolsStore() {
         );
                 
         if (response.Ok) {
-          // Match UserPoolList's processing
+          // Process the new raw data
           const rawPools = response.Ok.map(pool => pool.LP);
-          const poolsWithIds = rawPools.map(pool => ({
-            ...pool
-          }));
           
-          // Initial processing without tokens
-          update(s => ({
-            ...s,
-            processedPools: poolsWithIds.map(p => ({
-              ...p,
-              searchableText: '',
-              token0: undefined,
-              token1: undefined
-            }))
-          }));
+          // Fetch tokens for the new pools
+          await fetchTokensForPools(rawPools); 
+          // Note: fetchTokensForPools now handles updating processedPools and filteredPools internally
           
-          // Fetch tokens and update again
-          await fetchTokensForPools(poolsWithIds);
-          
-          // Make sure filteredPools is updated
-          currentUserPoolsStore.updateFilteredPools();
+        } else {
+          // Handle potential errors from the backend response structure if needed
+          handleError("Failed to load user pools: Backend returned an error structure", response);
         }
       } catch (error) {
         handleError("Failed to load user pools", error);
       } finally {
+        // Set loading to false regardless of success or error
         update(s => ({ ...s, loading: false }));
       }
     },
@@ -152,7 +136,20 @@ function createCurrentUserPoolsStore() {
 
   // Private methods
   async function fetchTokensForPools(pools: any[]): Promise<void> {
-    if (pools.length === 0) return;
+    // Store the current search query and sort direction before updating
+    const currentState = get({ subscribe });
+    const currentSearchQuery = currentState.searchQuery;
+    const currentSortDirection = currentState.sortDirection;
+
+    if (pools.length === 0) {
+      // If the new fetch results in zero pools, update the state accordingly
+      update(s => ({
+        ...s,
+        processedPools: [],
+        filteredPools: []
+      }));
+      return;
+    }
     
     const tokenIds = [...new Set(pools.flatMap(pool => 
       [pool.address_0, pool.address_1]
@@ -165,10 +162,15 @@ function createCurrentUserPoolsStore() {
         return acc;
       }, {} as Record<string, Kong.Token>);
       
+      // Process the new pools with the fetched tokens
+      const newProcessedPools = processPoolsWithTokens(pools, tokenMap);
+      
+      // Update the state with the new processed pools and apply current filter/sort
       update(s => ({
         ...s,
-        processedPools: processPoolsWithTokens(pools, tokenMap),
-        filteredPools: sortPools(filterPools(processPoolsWithTokens(pools, tokenMap), s.searchQuery), s.sortDirection)
+        processedPools: newProcessedPools,
+        // Re-apply filter and sort based on the *new* data and *current* settings
+        filteredPools: sortPools(filterPools(newProcessedPools, currentSearchQuery), currentSortDirection)
       }));
     } catch (error) {
       handleError("Failed to load token information", error);

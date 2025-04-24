@@ -343,7 +343,7 @@ export async function pollRequestStatus(
   token1Symbol?: string,
 ): Promise<any> {
   let attempts = 0;
-  const MAX_ATTEMPTS = 20;
+  const MAX_ATTEMPTS = 50;
   let lastStatus = '';
   let toastId: string | number | undefined;
 
@@ -433,7 +433,7 @@ export async function pollRequestStatus(
       }
 
       attempts++;
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 600));
     }
 
     // Timeout case
