@@ -126,7 +126,7 @@
   {/each}
 
   {#each pendingMessages as pending, index (`pending-${pending.id}-${index}`)}
-    <PendingMessageItem {pending} avatar={$auth.account.owner.toString() || 'pending'} />
+    <PendingMessageItem {pending} avatar={$auth.account.owner || 'pending'} />
   {/each}
 </div>
 

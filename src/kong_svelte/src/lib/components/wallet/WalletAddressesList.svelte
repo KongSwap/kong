@@ -8,6 +8,7 @@
   import QRModal from "$lib/components/common/QRModal.svelte";
   import { qrModalStore } from "$lib/stores/qrModalStore";
   import qrcode from 'qrcode';
+  import WalletListHeader from "./WalletListHeader.svelte";
   
   // Props for the component
   let { 
@@ -21,7 +22,6 @@
   // Account data
   let principalId = $state('');
   let subaccount = $state('');
-  let isConnected = $state(false);
   
   // Copy feedback state
   let copiedAddressId: string | null = $state(null);
@@ -61,9 +61,8 @@
   onMount(() => {
     updateAccountData();
     const unsubscribe = auth.subscribe(async state => {
-      isConnected = state.isConnected;
       updateAccountData();
-      if (state.isConnected && auth?.pnp?.activeWallet?.chain === 'SOL' && auth.pnp?.provider?.getAddresses) {
+      if ($auth.isConnected && auth?.pnp?.activeWallet?.chain === 'SOL' && auth.pnp?.provider?.getAddresses) {
         walletAddresses = await auth.pnp.provider.getAddresses();
         updateDisplayAddresses();
       }
@@ -163,15 +162,19 @@
   // --- End QR Code Functionality ---
 </script>
 
-<div class="py-4">
-  <div class="px-4 mb-4 text-xs font-medium text-kong-text-secondary uppercase tracking-wide flex items-center justify-between">
-    <span>Connected with {auth.pnp?.provider?.walletName || 'Wallet'}</span>
-    {#if hasWalletConnection}
-      <span class="text-[10px] bg-kong-bg-light/30 px-2 py-0.5 rounded-full">
-        {Object.values(groupedAddresses).flat().length} Addresses
-      </span>
-    {/if}
-  </div>
+<div>
+  <WalletListHeader
+    title={`Connected with ${auth.pnp?.provider?.walletName || 'Wallet'}`}
+    isLoading={isLoading}
+  >
+    <svelte:fragment slot="actions">
+      {#if hasWalletConnection}
+        <span class="text-[10px] bg-kong-bg-light/30 px-2 py-0.5 rounded-full">
+          {Object.values(groupedAddresses).flat().length} Addresses
+        </span>
+      {/if}
+    </svelte:fragment>
+  </WalletListHeader>
   
   {#if isLoading}
     <div class="py-6 px-4">

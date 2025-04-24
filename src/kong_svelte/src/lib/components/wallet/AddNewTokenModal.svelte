@@ -204,7 +204,7 @@
       
       // Load balance for the newly enabled token if user is connected
       if ($auth.account?.owner) {
-        loadBalances([tokenToAdd], $auth.account.owner.toString(), true)
+        loadBalances([tokenToAdd], $auth.account.owner, true)
           .catch(e => console.error("Failed to load balances:", e));
       }
       

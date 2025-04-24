@@ -258,7 +258,7 @@
   }
   
   $: if ($auth?.isInitialized && $auth?.account?.owner && $userTokens.tokens.length > 0 && !isLoading) {
-    loadBalancesIfNecessary($userTokens.tokens, $auth.account.owner.toString(), true);
+    loadBalancesIfNecessary($userTokens.tokens, $auth.account.owner, true);
   }
   
   // Use effect instead of reactive blocks for complex logic
@@ -328,7 +328,7 @@
           // Trigger balance loading if necessary
           // This logic decides WHEN to call the load function
           if ($auth?.isInitialized && $auth?.account?.owner) {
-            const owner = $auth.account.owner.toString();
+            const owner = $auth.account.owner;
             const currentToken0Balance = $currentUserBalancesStore[token0.address]?.in_tokens?.toString();
             const currentToken1Balance = $currentUserBalancesStore[token1.address]?.in_tokens?.toString();
 
@@ -356,7 +356,7 @@
                   if (token0 && token1 && $auth.account?.owner && !isLoadingBalances) { // Re-check state
                     console.log("Executing debounced balance load from reactive block");
                     // Pass false for forceRefresh, let throttling handle repeats
-                    loadBalancesIfNecessary([token0, token1], $auth.account.owner.toString(), false);
+                    loadBalancesIfNecessary([token0, token1], $auth.account.owner, false);
                   }
                   balanceLoadingTimer = null;
                 }, 150); // Slightly longer debounce for reactive triggers
@@ -457,7 +457,7 @@
       if ($auth?.isInitialized && $auth?.account?.owner) {
           console.log("Triggering balance load after token select");
           // Force refresh might be desired here, or rely on throttling logic
-          loadBalancesIfNecessary([token0, token1], $auth.account.owner.toString(), true);
+          loadBalancesIfNecessary([token0, token1], $auth.account.owner, true);
       }
     }
   }

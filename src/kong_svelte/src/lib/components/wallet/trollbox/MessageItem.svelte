@@ -63,7 +63,7 @@
   // Derived values
   let isCurrentUser = $derived(
     $auth.isConnected &&
-      $auth.account.owner.toString() === message.principal.toText(),
+      $auth.account.owner === message.principal.toText(),
   );
   let isBanned = $derived(bannedUsers.has(message.principal.toText()));
   let banTimeLeft = $derived(

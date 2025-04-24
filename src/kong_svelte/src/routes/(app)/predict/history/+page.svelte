@@ -20,7 +20,7 @@
     try {
       if ($auth.isConnected) {
         console.log("User is connected", $auth);
-        history = await getUserHistory($auth.account.owner.toString());
+        history = await getUserHistory($auth.account.owner);
         console.log("Histosry", history);
       }
     } catch (e) {
@@ -38,7 +38,7 @@
   async function getHistory() {
     try {
       loading = true;
-      history = await getUserHistory($auth.account.owner.toString());      
+      history = await getUserHistory($auth.account.owner);      
     } catch (e) {
       console.error("Failed to load history:", e);
       error = e instanceof Error ? e.message : "Failed to load prediction history";

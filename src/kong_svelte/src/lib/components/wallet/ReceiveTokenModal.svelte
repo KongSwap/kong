@@ -13,7 +13,7 @@
 
   // Props type definition
   type ReceiveTokenModalProps = {
-    token: any;
+    token?: Kong.Token;
     isOpen?: boolean;
     onClose?: () => void;
   };
@@ -123,12 +123,14 @@
   function closeEnlargedQrCode() {
     enlargedQrCode = null;
   }
+
+  const openModal = $derived(isOpen && token !== undefined);
 </script>
 
 <Modal
-  isOpen={isOpen}
+  isOpen={openModal}
   onClose={handleClose}
-  title="Receive {token.name}"
+  title="Receive {token?.name}"
   width="480px"
   variant="transparent"
   height="auto"
@@ -194,7 +196,7 @@
         </p>
       </div>
 
-      {#if token.symbol === "ICP" && accountId}
+      {#if token?.symbol === "ICP" && accountId}
         <!-- Account ID for ICP -->
         <div class="bg-kong-bg-light/10 rounded-lg border border-kong-border/30 p-4">
           <div class="flex justify-between items-center mb-2">

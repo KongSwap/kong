@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Coins, Loader2, RefreshCw, Shuffle, Settings } from "lucide-svelte";
+	import { Coins, Shuffle, Settings } from "lucide-svelte";
 	import TokenDropdown from "./TokenDropdown.svelte";
 	import { userTokens } from "$lib/stores/userTokens";
 	import { currentUserBalancesStore } from "$lib/stores/balancesStore";
@@ -17,7 +17,7 @@
 	import { analyzeUserTokens, applyTokenSync } from "$lib/services/tokenSyncService";
 	import { loadUserBalances, setLastRefreshed } from "$lib/services/balanceService";
 	import TokenListItem from "./TokenListItem.svelte";
-	import { auth } from "$lib/stores/auth";
+	import WalletListHeader from "./WalletListHeader.svelte";
 
 	// Define a type that combines a token with its balance information
 	interface TokenWithBalance {
@@ -614,20 +614,16 @@
 	}
 </script>
 
-<div class="py-3">
-	<div class="px-4 mb-3 flex items-center justify-between">
-		{#if isLoading || isLoadingBalances}
-			<div class="text-xs text-kong-text-secondary flex items-center gap-1.5">
-				<Loader2 size={12} class="animate-spin" />
-				<span>Refreshing balances...</span>
-			</div>
-		{:else}
-			<div class="text-xs font-medium text-kong-text-secondary uppercase tracking-wide">
-				{processedTokenBalances.length} asset{processedTokenBalances.length !== 1 ? 's' : ''}
-			</div>
-		{/if}
-		
-		<div class="flex items-center gap-2">    
+<!-- Component container without scrolling behavior -->
+<div>
+	<!-- Fixed header that doesn't scroll -->
+	<WalletListHeader 
+		title="Assets"
+		count={processedTokenBalances.length}
+		isLoading={isLoading || isLoadingBalances}
+		onRefresh={handleRefresh}
+	>
+		<svelte:fragment slot="actions">
 			<button 
 				class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-dark/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 				on:click={handleSyncButtonClick}
@@ -653,96 +649,91 @@
 					{/if}
 				</div>
 			{/if}
-			<button 
-			class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-dark/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-			on:click={handleRefresh}
-			disabled={isLoading || isLoadingBalances}
-		>
-			<RefreshCw size={12} class={isLoading || isLoadingBalances ? 'animate-spin' : ''} />
-			<span>Refresh</span>
-		</button>
-		</div>
-	</div>
+		</svelte:fragment>
+	</WalletListHeader>
 
-	{#if balanceLoadError}
-		<div class="text-xs text-kong-accent-red mt-1 px-4 mb-2">
-			Error loading ICP balances: {balanceLoadError}
-		</div>
-	{/if}
-
-	{#if processedTokenBalances.length === 0 && !isLoading && !isLoadingBalances}
-		<div class="py-10 text-center">
-			<div
-				class="p-5 rounded-full bg-kong-text-primary/5 inline-block mb-3 mx-auto"
-				style="box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.03);"
-			>
-				<Coins size={24} class="text-kong-primary/40" />
+	<!-- Scrollable content area -->
+	<div class="overflow-y-auto scrollbar-thin" style="max-height: calc(100vh - 250px);">
+		{#if balanceLoadError}
+			<div class="text-xs text-kong-accent-red mt-1 px-4 mb-2">
+				Error loading ICP balances: {balanceLoadError}
 			</div>
-			<p class="text-base font-medium text-kong-text-primary">
-				{isLoading || isLoadingBalances ? "Loading balances..." : "No Tokens Found"}
-			</p>
-			<p class="text-sm text-kong-text-secondary/70 mt-1 max-w-[280px] mx-auto">
-				{isLoading || isLoadingBalances
-					? "Please wait while we fetch your token balances."
-					: "You may not have any tokens yet or need to connect your wallet."}
-			</p>
-		</div>
-	{:else}
-		<div class="relative"> 
-			{#if isSyncing}
-				<div 
-					class="absolute inset-0 flex flex-col items-center justify-start pt-10 bg-kong-bg-dark/80 rounded-md z-10"
-					transition:fade={{ duration: 150 }}
+		{/if}
+
+		{#if processedTokenBalances.length === 0 && !isLoading && !isLoadingBalances}
+			<div class="py-10 text-center">
+				<div
+					class="p-5 rounded-full bg-kong-text-primary/5 inline-block mb-3 mx-auto"
+					style="box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.03);"
 				>
-					<LoadingIndicator text="Syncing tokens..." size={18} />
+					<Coins size={24} class="text-kong-primary/40" />
 				</div>
-			{/if}
-			<div class="space-y-0">
-				{#each processedTokenBalances as token (token.address)}
-					<div
-						class:opacity-30={showDropdown && selectedTokenId !== token.address}
-						class:pointer-events-none={showDropdown && selectedTokenId !== token.address}
-						class="transition-opacity duration-200"
+				<p class="text-base font-medium text-kong-text-primary">
+					{isLoading || isLoadingBalances ? "Loading balances..." : "No Tokens Found"}
+				</p>
+				<p class="text-sm text-kong-text-secondary/70 mt-1 max-w-[280px] mx-auto">
+					{isLoading || isLoadingBalances
+						? "Please wait while we fetch your token balances."
+						: "You may not have any tokens yet or need to connect your wallet."}
+				</p>
+			</div>
+		{:else}
+			<div class="relative"> 
+				{#if isSyncing}
+					<div 
+						class="absolute inset-0 flex flex-col items-center justify-start pt-10 bg-kong-bg-dark/80 rounded-md z-10"
+						transition:fade={{ duration: 150 }}
 					>
-						<TokenListItem 
-							token={token}
-							isActive={showDropdown && selectedTokenId === token.address}
-							isSyncing={isSyncing}
-							showUsdValues={showUsdValues}
-							onClick={(e) => handleTokenClick(e, token)}
-						/>
-						
-						<!-- Token Actions Row - Expanded underneath the token -->
-						{#if selectedTokenId === token.address && showDropdown}
-							<div 
-								class="px-4 py-3 border-b border-kong-border/30 bg-kong-bg-light" 
-								transition:slide={{ duration: 200 }}
-							>
-								<TokenDropdown 
-									token={selectedToken} 
-									expanded={true}
-									visible={showDropdown}
-									onClose={closeDropdown}
-									onAction={handleDropdownAction}
-								/>
-							</div>
-						{/if}
+						<LoadingIndicator text="Syncing tokens..." size={18} />
 					</div>
-				{/each}
-				
-				<!-- Token Management Buttons -->
-				<div class="p-4 flex justify-center gap-3">
-					<button
-						class="flex items-center gap-2 py-2 px-4 bg-kong-bg-dark/10 hover:bg-kong-bg-dark/20 text-kong-text-primary rounded-md transition-colors"
-						on:click={openManageTokensModal}
-					>
-						<Settings size={16} />
-						<span>Manage Tokens</span>
-					</button>
+				{/if}
+				<div class="space-y-0">
+					{#each processedTokenBalances as token (token.address)}
+						<div
+							class:opacity-30={showDropdown && selectedTokenId !== token.address}
+							class:pointer-events-none={showDropdown && selectedTokenId !== token.address}
+							class="transition-opacity duration-200"
+						>
+							<TokenListItem 
+								token={token}
+								isActive={showDropdown && selectedTokenId === token.address}
+								isSyncing={isSyncing}
+								showUsdValues={showUsdValues}
+								onClick={(e) => handleTokenClick(e, token)}
+							/>
+							
+							<!-- Token Actions Row - Expanded underneath the token -->
+							{#if selectedTokenId === token.address && showDropdown}
+								<div 
+									class="px-4 py-3 border-b border-kong-border/30 bg-kong-bg-light" 
+									transition:slide={{ duration: 200 }}
+								>
+									<TokenDropdown 
+										token={selectedToken} 
+										expanded={true}
+										visible={showDropdown}
+										onClose={closeDropdown}
+										onAction={handleDropdownAction}
+									/>
+								</div>
+							{/if}
+						</div>
+					{/each}
+					
+					<!-- Token Management Buttons -->
+					<div class="p-4 flex justify-center gap-3">
+						<button
+							class="flex items-center gap-2 py-2 px-4 bg-kong-bg-dark/10 hover:bg-kong-bg-dark/20 text-kong-text-primary rounded-md transition-colors"
+							on:click={openManageTokensModal}
+						>
+							<Settings size={16} />
+							<span>Manage Tokens</span>
+						</button>
+					</div>
 				</div>
 			</div>
-		</div>
-	{/if}
+		{/if}
+	</div>
 	
 	<!-- Sync Confirmation Modal -->
 	<SyncConfirmModal 
@@ -760,11 +751,13 @@
 	/>
 	
 	<!-- Add Token Modal -->
-	<AddNewTokenModal 
-		isOpen={showAddTokenModal} 
-		onClose={closeAddTokenModal}
-		on:tokenAdded={handleNewTokenAdded}
-	/>
+	{#if showAddTokenModal}
+		<AddNewTokenModal 
+			isOpen={showAddTokenModal} 
+			onClose={closeAddTokenModal}
+			on:tokenAdded={handleNewTokenAdded}
+		/>
+	{/if}
 	
 	<!-- Manage Tokens Modal -->
 	<ManageTokensModal
@@ -773,7 +766,7 @@
 	/>
 
 	<!-- Receive Token Modal -->
-	{#if selectedToken && showReceiveTokenModal}
+	{#if selectedToken}
 		<ReceiveTokenModal 
 			token={selectedToken.token}
 			isOpen={showReceiveTokenModal}
@@ -781,3 +774,19 @@
 		/>
 	{/if}
 </div>
+
+<style>
+  /* Scrollbar styling */
+  :global(.scrollbar-thin::-webkit-scrollbar) {
+    width: 0.375rem; /* w-1.5 */
+  }
+
+  :global(.scrollbar-thin::-webkit-scrollbar-track) {
+    background-color: transparent; /* bg-transparent */
+  }
+
+  :global(.scrollbar-thin::-webkit-scrollbar-thumb) {
+    background-color: var(--kong-border); /* bg-kong-border */
+    border-radius: 9999px; /* rounded-full */
+  }
+</style>

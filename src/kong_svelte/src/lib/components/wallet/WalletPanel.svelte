@@ -275,7 +275,7 @@
 
     // Get the current wallet ID
     if ($auth?.account?.owner) {
-      walletId = $auth.account.owner.toString();
+      walletId = $auth.account.owner;
       
       // Set loading state and trigger balance refresh when component mounts
       isLoadingBalances = true;
@@ -405,10 +405,7 @@
 </div>
 
 <!-- Scrollable content area for tab content -->
-<div
-  class="overflow-y-auto scrollbar-thin"
-  style="height: calc(100vh - 144px);"
->
+<div>
   <!-- Tab Content: Dynamically show the appropriate component -->
   {#if tabComponents[activeSection]}
     {@const tabData = tabComponents[activeSection]}

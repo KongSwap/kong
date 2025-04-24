@@ -376,7 +376,7 @@
     // Load balance if needed before selecting
     if (isUserAuthenticated && $auth.account?.owner && 
         !$currentUserBalancesStore[token.address]) {
-      void refreshSingleBalance(token, $auth.account.owner.toString(), false);
+      void refreshSingleBalance(token, $auth.account.owner, false);
     }
 
     handleSelect(token);
