@@ -4,6 +4,12 @@
   import { fade, scale } from "svelte/transition";
   import { Pickaxe, Network, Rocket, Coins, Loader2, CheckCircle2, X } from "lucide-svelte";
   import Panel from "$lib/components/common/Panel.svelte";
+  import { auth, requireWalletConnection } from "$lib/stores/auth";
+  import { IcrcService } from "$lib/services/icrc/IcrcService";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { get } from "svelte/store";
+  import { userTokens } from "$lib/stores/userTokens";
+  import { idlFactory as launchpadIDL, canisterId as launchpadCanisterId } from "@declarations/launchpad";
 
   // Miner configs
   const miners = [
@@ -11,7 +17,7 @@
       id: 1,
       name: "ICP Miner",
       description: "Can only mine ICP tokens.",
-      price: 100,
+      price: 125,
       token: "KONG",
       icon: Pickaxe,
       tokens: [
@@ -21,7 +27,7 @@
     {
       id: 2,
       name: "Multichain Miner",
-      description: "Future support for SOL, SUI, ETH, BTC (coming soon)",
+      description: "Future support for SOL, SUI, ETH, BTC coins(coming soon)",
       price: 250,
       token: "KONG",
       icon: Rocket,
@@ -60,22 +66,34 @@
   }
 
   async function deploy_miner() {
-    isDeploying = true;
-    progressStep = 1;
-    progressText = "Sending payment...";
-    await new Promise((r) => setTimeout(r, 2000));
-    progressStep = 2;
-    progressText = "Payment received, creating canister...";
-    await new Promise((r) => setTimeout(r, 1000));
-    progressStep = 3;
-    progressText = "Installing miner module...";
-    await new Promise((r) => setTimeout(r, 1000));
-    progressStep = 4;
-    progressText = "Finalizing...";
-    await new Promise((r) => setTimeout(r, 4000));
-    progressStep = 5;
-    progressText = "Done! Miner launched.";
-    deployDone = true;
+    try {
+      requireWalletConnection();
+      isDeploying = true;
+      progressStep = 1;
+      progressText = "Approving KONG tokens...";
+      const tokensList = get(userTokens.tokens);
+      const kongToken = tokensList.find(t => t.symbol === "KONG");
+      if (!kongToken) throw new Error("KONG token not found");
+      const amount = BigInt(selectedMiner.price) * BigInt(10 ** (kongToken.decimals || 8));
+      await IcrcService.checkAndRequestIcrc2Allowances(kongToken, amount, launchpadCanisterId);
+      progressStep = 2;
+      progressText = "Creating miner canister...";
+      const launchpadActor = auth.getActor(launchpadCanisterId, launchpadIDL, { requiresSigning: true });
+      const { account } = get(auth);
+      if (!account?.owner) throw new Error("Wallet not connected");
+      const result = await launchpadActor.create_miner(account.owner, []);
+      if ("Err" in result) throw new Error(result.Err);
+      progressStep = 3;
+      progressText = "Finalizing...";
+      deployDone = true;
+      const newCanister = result.Ok;
+      toastStore.success(`Miner deployed: ${newCanister.toText()}`);
+    } catch (error) {
+      progressText = `Error: ${error.message}`;
+      toastStore.error(`Deployment failed: ${error.message}`);
+    } finally {
+      isDeploying = false;
+    }
   }
 </script>
 

@@ -3,6 +3,12 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { onMount } from "svelte";
   import { Pickaxe, Network, Rocket, Coins, Laugh, Flame, Zap } from "lucide-svelte";
+  import { auth, requireWalletConnection } from "$lib/stores/auth";
+  import { IcrcService } from "$lib/services/icrc/IcrcService";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { idlFactory as launchpadIDL, canisterId as launchpadCanisterId } from "@declarations/launchpad";
+  import { get } from "svelte/store";
+  import { userTokens } from "$lib/stores/userTokens";
 
   // Dummy tokens data (match explore page)
   const demoTokens = [
@@ -200,9 +206,33 @@
 
   let tokenId: string = '';
   let token: any = null;
+  let deploying = false;
 
   $: tokenId = $page.params.tokenId;
   $: token = demoTokens.find(t => t.symbol.toLowerCase() === tokenId?.toLowerCase());
+
+  async function deployMiner() {
+    try {
+      requireWalletConnection();
+      deploying = true;
+      const tokensList = get(userTokens.tokens);
+      const kongToken = tokensList.find(t => t.symbol === "KONG");
+      if (!kongToken) throw new Error("KONG token not found");
+      const amount = BigInt(125) * BigInt(10 ** (kongToken.decimals || 8));
+      await IcrcService.checkAndRequestIcrc2Allowances(kongToken, amount, launchpadCanisterId);
+      const launchpadActor = auth.getActor(launchpadCanisterId, launchpadIDL, { requiresSigning: true });
+      const { account } = get(auth);
+      if (!account?.owner) throw new Error("Wallet not connected");
+      const result = await launchpadActor.create_miner(account.owner, []);
+      if ("Err" in result) throw new Error(result.Err);
+      const minerId = result.Ok;
+      toastStore.success(`Miner deployed: ${minerId.toText()}`);
+    } catch (error) {
+      toastStore.error(`Failed to deploy miner: ${error.message}`);
+    } finally {
+      deploying = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -271,7 +301,9 @@
     <span class="text-kong-text-secondary font-medium">Next Halving:</span> <span class="font-mono">{token.nextHalving}</span>
   </div>
   <div class="mt-4 flex gap-3">
-    <button class="block w-full p-3 bg-blue-500 text-white font-medium cursor-pointer transition-colors duration-200 hover:bg-blue-600 disabled:bg-blue-500/50 disabled:cursor-not-allowed rounded-md">🚀 Start Mining</button>
+    <button on:click={deployMiner} disabled={deploying} class="block w-full p-3 bg-blue-500 text-white font-medium cursor-pointer transition-colors duration-200 hover:bg-blue-600 disabled:bg-blue-500/50 disabled:cursor-not-allowed rounded-md">
+      {deploying ? 'Deploying...' : '🚀 Start Mining'}
+    </button>
     <button class="block w-full p-3 bg-blue-500 text-white font-medium cursor-pointer transition-colors duration-200 hover:bg-blue-600 disabled:bg-blue-500/50 disabled:cursor-not-allowed rounded-md">👷‍♂️ Your Miners ({token.userMiners})</button>
   </div>
 </Panel>
@@ -319,5 +351,3 @@
 {:else}
   <div class="min-h-screen flex items-center justify-center text-kong-text-secondary">Token not found.</div>
 {/if}
-
-
