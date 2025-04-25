@@ -33,20 +33,15 @@
     X,
     Search,
     AlertCircle,
-    Info,
     ExternalLink,
     Clock,
     Trash2,
     LogIn,
   } from "lucide-svelte";
-  import { fly, fade, slide } from "svelte/transition";
+  import { fly, fade } from "svelte/transition";
   import { quintOut } from "svelte/easing";
-  import { onMount, tick } from "svelte";
-
-  // Storage configuration
-  const authStorage = createNamespacedStore(STORAGE_KEYS.AUTH_NAMESPACE);
-  const RECENT_WALLETS_KEY = "recentWallets";
-  const MAX_RECENT_WALLETS = 5;
+  import { onMount } from "svelte";
+  import { recentWalletsStore, type RecentWallet } from "$lib/stores/recentWalletsStore";
 
   interface WalletInfo {
     id: string;
@@ -59,15 +54,14 @@
     website?: string;
   }
 
-  interface RecentWallet {
+  interface ClickedWalletInfo {
     id: string;
-    timestamp: number;
+    source: 'recent' | 'all';
   }
 
-  // Map available wallets to our WalletInfo structure
-  const walletList: WalletInfo[] = auth.pnp
-    .getEnabledWallets()
-    .map((wallet) => ({
+  // Helper function to map raw wallet data to WalletInfo structure
+  function mapRawWalletToInfo(wallet: any): WalletInfo {
+    return {
       id: wallet.id,
       walletName: wallet.walletName,
       logo: wallet.logo,
@@ -76,7 +70,13 @@
       recommended: wallet.id === "oisy", // Mark OISY as recommended
       unsupported: null,
       website: wallet.website,
-    }));
+    };
+  }
+
+  // Map available wallets using the helper function
+  const walletList: WalletInfo[] = auth.pnp
+    .getEnabledWallets()
+    .map(mapRawWalletToInfo);
 
   // Props
   const {
@@ -92,6 +92,7 @@
   // State
   let connecting = $state(false);
   let connectingWalletId = $state<string | null>(null);
+  let clickedWalletInfo = $state<ClickedWalletInfo | null>(null);
   let abortController = $state(new AbortController());
   let isOnMobile = $state(false);
   let filteredWallets = $state(walletList);
@@ -102,11 +103,9 @@
   let searchInputRef = $state<HTMLInputElement | null>(null);
   let connectingTimeout = $state<number | null>(null);
   let focusedWalletIndex = $state(-1);
-  let recentWallets = $state<RecentWallet[]>([]);
   let showClearConfirm = $state(false);
   let showRecentWalletsSection = $state(true);
   let walletDataLoaded = $state(false);
-  let showDebugInfo = $state(false);
 
   // Group wallets by chain
   function groupWalletsByChain(
@@ -144,10 +143,10 @@
     errorMessage = null;
     connecting = false;
     connectingWalletId = null;
+    clickedWalletInfo = null;
     searchQuery = "";
     focusedWalletIndex = -1;
     showClearConfirm = false;
-    showDebugInfo = false;
     onClose();
   }
 
@@ -177,8 +176,9 @@
     if (browser) {
       isOnMobile = isMobileBrowser();
 
-      // Initialize IndexedDB (localForage)
-      await initializeStorage();
+      // Initialize the recent wallets store
+      await recentWalletsStore.initialize(); 
+      walletDataLoaded = true; // Mark as loaded after initialization
 
       setTimeout(() => {
         if (searchInputRef) searchInputRef.focus();
@@ -186,126 +186,51 @@
     }
   });
 
-  // Retry initialization with exponential backoff - Simplified
-  async function initializeStorage() {
-    // Removed retryCount, maxRetries
-    // const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
-
-    try {
-      // Directly attempt to load wallets
-      await loadRecentWallets();
-    } catch (err) {
-      // Log error, loadRecentWallets already handles its own errors
-      console.error("Error during initializeStorage wrapper:", err);
-    }
-  }
-
-  async function loadRecentWallets() {
-    try {
-      // Only try to load from localForage
-      const stored = await authStorage.getItem(RECENT_WALLETS_KEY);
-
-      if (stored && Array.isArray(stored) && stored.length > 0) {
-        recentWallets = stored;
-        walletDataLoaded = true;
-        console.log(
-          "Loaded recent wallets from localForage (IndexedDB):",
-          stored.length,
-        );
-        return; // Successfully loaded
-      }
-
-      console.log("No recent wallet data found in localForage");
-      walletDataLoaded = true;
-    } catch (err) {
-      console.warn("Could not load recent wallets from localForage:", err);
-      walletDataLoaded = true; // Mark as loaded even if there was an error
-    }
-  }
-
-  async function saveRecentWallets() {
-    try {
-      // Create a plain JS copy to remove Svelte proxies before saving
-      const plainWallets = JSON.parse(JSON.stringify(recentWallets));
-      await authStorage.setItem(RECENT_WALLETS_KEY, plainWallets);
-      console.log("Saved recent wallets to localForage:", plainWallets.length);
-      return true;
-    } catch (err) {
-      // Use console.error for better visibility
-      console.error("Could not save recent wallets to localForage:", err);
-      return false;
-    }
-  }
-
-  async function clearAllRecentWallets() {
-    recentWallets = [];
-    showClearConfirm = false;
-    try {
-      await authStorage.removeItem(RECENT_WALLETS_KEY);
-      console.log("Cleared wallet data from localForage");
-    } catch (err) {
-      console.warn("Could not clear recent wallets from localForage:", err);
-    }
-  }
-
-  async function removeRecentWallet(walletId: string) {
-    // Update state immediately
-    recentWallets = recentWallets.filter((wallet) => wallet.id !== walletId);
-
-    // Save changes to localForage
-    await saveRecentWallets();
-  }
-
   $effect(() => {
     if (browser) {
       isOnMobile = isMobileBrowser();
     }
   });
 
-  // Effect for handling filteredWallets based on searchQuery and plug availability
-  $effect(() => {
+  // Function to update filtered wallets based on search query
+  function updateFilteredWallets(query: string) {
     if (!browser) return;
 
     // Get base wallet list
-    let rawWallets = isPlugAvailable()
-      ? auth.pnp.getEnabledWallets()
-      : auth.pnp.getEnabledWallets().filter((w) => w.id !== "plug");
+    let rawWallets = auth.pnp.getEnabledWallets();
 
-    // Map raw wallets to WalletInfo structure
-    let mappedWallets = rawWallets.map((wallet) => ({
-      id: wallet.id,
-      walletName: wallet.walletName,
-      logo: wallet.logo,
-      chain: wallet.chain,
-      googleSignIn: wallet.id === "nfid" ? "Sign in with Google" : undefined,
-      recommended: wallet.id === "oisy", // Keep consistent with initial mapping
-      unsupported: null, // Keep consistent
-      website: wallet.website,
-    }));
+    // Map raw wallets using the helper function
+    let mappedWallets = rawWallets.map(mapRawWalletToInfo);
 
     // Apply search filter if there's a query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
+    if (query.trim()) {
+      const lowerQuery = query.toLowerCase().trim();
       mappedWallets = mappedWallets.filter(
         (wallet) =>
-          wallet.walletName.toLowerCase().includes(query) ||
-          wallet.chain.toLowerCase().includes(query) ||
+          wallet.walletName.toLowerCase().includes(lowerQuery) ||
+          wallet.chain.toLowerCase().includes(lowerQuery) ||
           (wallet.googleSignIn &&
-            wallet.googleSignIn.toLowerCase().includes(query)),
+            wallet.googleSignIn.toLowerCase().includes(lowerQuery)),
       );
     }
 
-    // Update state in a single batch to avoid cascading updates
-    filteredWallets = mappedWallets; // Use mapped wallets here
-    const newGrouped = groupWalletsByChain(mappedWallets); // Use mapped wallets here
+    // Update state in a single batch
+    filteredWallets = mappedWallets;
+    const newGrouped = groupWalletsByChain(mappedWallets);
     groupedWalletsByChain = newGrouped;
     sortedChainsList = getSortedChains(Object.keys(newGrouped));
 
-    // Always show recent wallets section
-    showRecentWalletsSection = true;
-
     // Reset focused wallet index when filter changes
     focusedWalletIndex = -1;
+  }
+
+  // Effect for handling filteredWallets based on searchQuery
+  $effect(() => {
+    updateFilteredWallets(searchQuery);
+
+    // Note: showRecentWalletsSection = true; was moved here
+    // This ensures it updates even if updateFilteredWallets returns early (though currently it doesn't)
+    showRecentWalletsSection = true;
   });
 
   // Cleanup on destroy
@@ -324,11 +249,31 @@
     };
   });
 
-  async function handleConnect(walletId: string) {
+  // Helper function to reset connection-related state
+  function resetConnectionState() {
+    connecting = false;
+    connectingWalletId = null;
+    clickedWalletInfo = null;
+    abortController.abort(); // Abort any ongoing fetch/process
+    if (connectingTimeout) {
+      clearTimeout(connectingTimeout);
+      connectingTimeout = null;
+    }
+  }
+
+  async function handleConnect(walletId: string, source: 'recent' | 'all') {
     if (!walletId || connecting || !browser) return;
 
     errorMessage = null;
     connectingWalletId = walletId;
+    clickedWalletInfo = { id: walletId, source };
+
+    // Check if connecting to Plug and if it's available
+    if (walletId === "plug" && !isPlugAvailable()) {
+      errorMessage = "Plug Wallet extension is not installed or available. Please install it to connect.";
+      connectingWalletId = null; // Reset connecting ID as we are not proceeding
+      return; // Stop the connection process
+    }
 
     // Reset abort controller for new connection attempt
     abortController = new AbortController();
@@ -339,35 +284,15 @@
 
       // Add timeout to prevent hanging connections
       connectingTimeout = window.setTimeout(() => {
-        abortController.abort();
+        abortController.abort(); // Ensure abort is called before reset
         errorMessage = "Connection timeout. Please try again.";
-        connecting = false;
-        connectingWalletId = null;
+        resetConnectionState(); // Use helper function
       }, 30000) as unknown as number;
 
       await auth.connect(walletId);
 
-      // Update recent wallets list
-      const now = Date.now();
-      // Remove this wallet if it's already in the list, then add it to the top
-      const updatedWallets = [
-        { id: walletId, timestamp: now },
-        ...recentWallets.filter((w) => w.id !== walletId),
-      ].slice(0, MAX_RECENT_WALLETS); // Keep only the MAX_RECENT_WALLETS most recent
-
-      recentWallets = updatedWallets;
-
-      // Save to storage - ONLY localForage
-      try {
-        await saveRecentWallets();
-      } catch (error) {
-        console.warn("Could not save wallets to localForage:", error);
-      }
-
-      if (connectingTimeout) {
-        clearTimeout(connectingTimeout);
-        connectingTimeout = null;
-      }
+      // Update recent wallets list using the store
+      await recentWalletsStore.add(walletId); 
 
       if ($auth.isConnected) {
         onLogin();
@@ -383,25 +308,14 @@
         selectedWalletId.set("");
       }
     } finally {
-      connecting = false;
-      connectingWalletId = null;
-      if (connectingTimeout) {
-        clearTimeout(connectingTimeout);
-        connectingTimeout = null;
-      }
+      resetConnectionState(); // Use helper function
     }
   }
 
   // Ensure state is reset when modal closes
   $effect(() => {
-    if (!isOpen && (connecting || connectingWalletId)) {
-      connecting = false;
-      connectingWalletId = null;
-      abortController.abort();
-      if (connectingTimeout) {
-        clearTimeout(connectingTimeout);
-        connectingTimeout = null;
-      }
+    if (!isOpen && (connecting || connectingWalletId || clickedWalletInfo)) {
+      resetConnectionState(); // Use helper function
     }
   });
 
@@ -441,7 +355,7 @@
       focusedWalletIndex < allWallets.length
     ) {
       event.preventDefault();
-      handleConnect(allWallets[focusedWalletIndex].id);
+      handleConnect(allWallets[focusedWalletIndex].id, 'all');
     } else if (event.key === "Escape") {
       if (showClearConfirm) {
         showClearConfirm = false;
@@ -526,7 +440,10 @@
           </button>
           <button
             class="px-4 py-2 rounded-lg bg-kong-accent-red text-white hover:bg-kong-accent-red-hover transition-colors"
-            on:click={clearAllRecentWallets}
+            on:click={() => {
+              recentWalletsStore.clearAll();
+              showClearConfirm = false;
+            }}
           >
             Clear All
           </button>
@@ -541,7 +458,7 @@
   >
     <div class="wallet-list overflow-y-auto flex-1 scrollbar-custom px-1 sm:px-2">
       <!-- Recently Used Wallet Section -->
-      {#if recentWallets.length > 0}
+      {#if $recentWalletsStore.length > 0}
         <div class="recent-wallets mb-6 px-2 sm:px-0" in:fade={{ duration: 300 }}>
           <div class="flex items-center justify-between mb-2">
             <h3
@@ -551,7 +468,7 @@
               <span>Recently Used</span>
             </h3>
 
-            {#if recentWallets.length > 1}
+            {#if $recentWalletsStore.length > 1}
               <button
                 class="text-xs text-kong-text-secondary hover:text-kong-accent-red flex items-center gap-1.5 px-2 py-1 rounded hover:bg-kong-accent-red/10 transition-colors"
                 on:click={() => (showClearConfirm = true)}
@@ -563,7 +480,7 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {#each recentWallets as recentWallet, i (recentWallet.id)}
+            {#each $recentWalletsStore as recentWallet, i (recentWallet.id)}
               {@const wallet = getWalletById(recentWallet.id)}
               {#if wallet}
                 <div
@@ -580,19 +497,14 @@
                         hover:border-kong-primary/100 hover:bg-kong-primary/10 hover:translate-y-[-2px] hover:shadow-lg
                         active:translate-y-0 active:shadow-md
                         cursor-pointer
-                        {connectingWalletId === wallet.id
-                      ? 'animate-pulse-slow'
-                      : ''}"
-                    on:click={() => !connecting && handleConnect(wallet.id)}
-                    on:keydown={(e) =>
-                      e.key === "Enter" &&
-                      !connecting &&
-                      handleConnect(wallet.id)}
-                    role="button"
-                    tabindex="0"
-                    aria-busy={connectingWalletId === wallet.id}
-                    class:opacity-50={connecting &&
-                      connectingWalletId !== wallet.id}
+                        {clickedWalletInfo?.id === wallet.id && clickedWalletInfo?.source === 'recent'
+                          ? 'animate-pulse-slow'
+                          : connecting && !(clickedWalletInfo?.id === wallet.id && clickedWalletInfo?.source === 'recent')
+                          ? 'opacity-40 cursor-not-allowed pointer-events-none grayscale brightness-75'
+                          : ''}"
+                        on:click={() => !connecting && handleConnect(wallet.id, 'recent')}
+                        aria-busy={clickedWalletInfo?.id === wallet.id && clickedWalletInfo?.source === 'recent'}
+                        aria-disabled={connecting && !(clickedWalletInfo?.id === wallet.id && clickedWalletInfo?.source === 'recent')}
                   >
                     <div
                       class="wallet-logo relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 rounded-lg overflow-hidden transition-transform duration-300 scale-105"
@@ -605,11 +517,6 @@
                         alt={wallet.walletName}
                         class="w-full h-full rounded-lg transition-all duration-300 dark:brightness-100 object-contain z-10 relative"
                       />
-                      {#if connectingWalletId === wallet.id}
-                        <div
-                          class="absolute top-0 left-0 w-full h-full rounded-full border-2 border-transparent border-t-kong-accent-green border-r-kong-accent-green/30 border-b-kong-accent-green/10 animate-spin"
-                        ></div>
-                      {/if}
                     </div>
 
                     <div class="wallet-info flex-1 text-left min-w-0">
@@ -637,7 +544,7 @@
                       <button
                         class="remove-wallet flex items-center justify-center w-7 h-7 rounded-full text-kong-text-secondary hover:text-kong-accent-red hover:bg-kong-accent-red/10 transition-all duration-200"
                         on:click|stopPropagation={() =>
-                          removeRecentWallet(wallet.id)}
+                          recentWalletsStore.remove(wallet.id)}
                         use:tooltip={{
                           text: "Remove from history",
                           direction: "left",
@@ -761,7 +668,7 @@
                       (w) => w.id === wallet.id,
                     )}
                     {@const isFocused = isWalletFocused(wallet.id)}
-                    {@const isRecentWallet = recentWallets.some(
+                    {@const isRecentWallet = $recentWalletsStore.some(
                       (rw) => rw.id === wallet.id,
                     )}
 
@@ -772,27 +679,28 @@
                           hover:border-kong-primary/100 hover:bg-kong-primary/10 hover:translate-y-[-2px] hover:shadow-lg
                           active:translate-y-0 active:shadow-md
                           cursor-pointer
-                          {connectingWalletId === wallet.id
-                        ? 'animate-pulse-slow'
-                        : ''}
+                          {clickedWalletInfo?.id === wallet.id && clickedWalletInfo?.source === 'all'
+                            ? 'animate-pulse-slow'
+                            : connecting && !(clickedWalletInfo?.id === wallet.id && clickedWalletInfo?.source === 'all')
+                            ? 'opacity-40 cursor-not-allowed pointer-events-none grayscale brightness-75'
+                            : ''}
                           {isFocused
                         ? 'border-kong-primary bg-kong-primary/5 ring-1 ring-kong-primary/50'
                         : ''}
                           {isRecentWallet
                         ? 'opacity-60 hover:opacity-100'
-                        : ''}"
+                        : ''} "
                       style="--border-glow: rgba(var(--primary), 0.8);"
-                      on:click={() => !connecting && handleConnect(wallet.id)}
+                      on:click={() => !connecting && handleConnect(wallet.id, 'all')}
                       on:keydown={(e) =>
                         e.key === "Enter" &&
                         !connecting &&
-                        handleConnect(wallet.id)}
+                        handleConnect(wallet.id, 'all')}
                       role="button"
                       tabindex="0"
-                      aria-busy={connectingWalletId === wallet.id}
+                      aria-busy={clickedWalletInfo?.id === wallet.id && clickedWalletInfo?.source === 'all'}
+                      aria-disabled={connecting && !(clickedWalletInfo?.id === wallet.id && clickedWalletInfo?.source === 'all')}
                       data-wallet-index={walletIndex}
-                      class:opacity-50={connecting &&
-                        connectingWalletId !== wallet.id}
                       in:fade={{ duration: 200, delay: i * 50 }}
                     >
                       <div
@@ -807,11 +715,6 @@
                           class="w-full h-full rounded-lg transition-all duration-300 dark:brightness-100 object-contain hover:scale-110 z-10 relative"
                           loading="lazy"
                         />
-                        {#if connectingWalletId === wallet.id}
-                          <div
-                            class="absolute top-0 left-0 w-full h-full rounded-full border-2 border-transparent border-t-kong-accent-green border-r-kong-accent-green/30 border-b-kong-accent-green/10 animate-spin"
-                          ></div>
-                        {/if}
                       </div>
 
                       <div class="wallet-info flex-1 text-left min-w-0">
@@ -994,49 +897,6 @@
     }
   }
 
-  .wallet-card.recommended {
-    background: linear-gradient(
-      135deg,
-      rgba(var(--primary), 0.1),
-      rgba(var(--primary), 0.05)
-    );
-    border-color: rgb(var(--primary) / 0.4) !important;
-    position: relative;
-  }
-
-  .wallet-card.recommended::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      90deg,
-      rgba(var(--primary), 0) 0%,
-      rgba(var(--primary), 0.2) 50%,
-      rgba(var(--primary), 0) 100%
-    );
-    background-size: 200% 100%;
-    animation: shine 3s infinite linear;
-    pointer-events: none;
-    opacity: 0.6;
-  }
-
-  /* Add glow effect to recommended wallets */
-  .wallet-card.recommended::after {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--primary), 0.6) 0%,
-      rgba(var(--primary), 0.2) 50%,
-      rgba(var(--primary), 0) 100%
-    );
-    border-radius: inherit;
-    z-index: -1;
-    opacity: 0.5;
-    filter: blur(4px);
-  }
-
   /* Logo hover effect - simplified */
   .wallet-logo {
     transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1);
@@ -1152,6 +1012,31 @@
     overflow: hidden;
   }
 
+  /* Disabled wallet card styling */
+  .wallet-card[aria-disabled="true"] {
+    position: relative;
+  }
+
+  .wallet-card[aria-disabled="true"]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-color: rgba(var(--bg-dark), 0.4);
+    border-radius: inherit;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .wallet-card[aria-disabled="true"] * {
+    pointer-events: none;
+  }
+
+  .wallet-card[aria-disabled="true"]:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: rgb(var(--border)) !important;
+  }
+
   /* Responsive adjustments */
   @media (max-width: 640px) {
     .wallet-list {
@@ -1166,6 +1051,40 @@
     .wallet-logo {
       width: 2rem !important;
       height: 2rem !important;
+    }
+  }
+
+  .wallet-card[aria-busy="true"] {
+    position: relative;
+    z-index: 5;
+    border-color: rgb(var(--accent-green)) !important;
+    background-color: rgba(var(--accent-green), 0.05) !important;
+    box-shadow: 0 0 0 1px rgba(var(--accent-green), 0.3), 
+                0 8px 16px -4px rgba(var(--accent-green), 0.3) !important;
+  }
+
+  .wallet-card[aria-busy="true"]::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: linear-gradient(45deg, 
+                rgba(var(--accent-green), 0.1),
+                rgba(var(--accent-green), 0.2),
+                rgba(var(--accent-green), 0.1));
+    z-index: -1;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% {
+      opacity: 0.6;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.6;
     }
   }
 </style>
