@@ -226,9 +226,7 @@ export class WalletDataService {
         ...state,
         isLoading: true,
         error: null
-      }));
-      
-      console.log(`Refreshing balances for wallet ${principalId}`);
+      }));      
       
       // Use existing tokens from the store
       const tokens = currentState.tokens;
@@ -429,9 +427,7 @@ export class WalletDataService {
 
     try {      
       // Convert principal to Principal type if it's a string
-      const principal = typeof principalId === "string" 
-        ? Principal.fromText(principalId) 
-        : principalId;
+      const principal = principalId;
 
       // Process tokens in smaller batches to prevent 503 errors
       const BATCH_SIZE = 50;

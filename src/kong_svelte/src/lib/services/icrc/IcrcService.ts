@@ -84,12 +84,12 @@ export class IcrcService {
 
   public static async batchGetBalances(
     tokens: Kong.Token[],
-    principal: Principal,
+    principal: string,
   ): Promise<Map<string, bigint>> {
     // Add request deduplication with a shorter window and token-specific keys
     const requestKeys = tokens.map(
       (token) =>
-        `${token.address}-${principal.toString()}-${Date.now() - (Date.now() % 5000)}`,
+        `${token.address}-${principal}-${Date.now() - (Date.now() % 5000)}`,
     );
 
     // Check if any of these exact tokens are already being fetched
@@ -110,7 +110,7 @@ export class IcrcService {
     requestKeys.forEach((key) => {
       this.pendingRequests.set(key, promise);
       // Clean up after 5 seconds
-      setTimeout(() => this.pendingRequests.delete(key), 200);
+      setTimeout(() => this.pendingRequests.delete(key), 250);
     });
 
     try {
@@ -131,7 +131,7 @@ export class IcrcService {
 
   private static async _batchGetBalances(
     tokens: Kong.Token[],
-    principal: Principal,
+    principal: string,
   ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
     const subaccount = auth.pnp?.account?.subaccount
@@ -155,7 +155,7 @@ export class IcrcService {
             try {
               const balance = await this.getIcrc1Balance(
                 token,
-                principal,
+                Principal.fromText(principal),
                 subaccount,
               );
               return { token, balance };
@@ -169,7 +169,7 @@ export class IcrcService {
           });
 
           // Increase concurrency limit for token balance fetching
-          const balances = await this.withConcurrencyLimit(operations, 25);
+          const balances = await this.withConcurrencyLimit(operations, 30);
 
           balances.forEach((result) => {
             if (result) {
@@ -206,19 +206,16 @@ export class IcrcService {
       const tokenFee = token.fee_fixed
         ? BigInt(token.fee_fixed.toString().replace("_", ""))
         : 0n;
-      const totalAmount = payAmount + tokenFee;
+      const totalAmount = payAmount + tokenFee * 2n;
 
       // Check current allowance
       const currentAllowance = allowanceStore.getAllowance(
         token.address,
-        authStore.account.owner.toString(),
+        authStore.account.owner,
         spender,
       );
 
-      console.log("checkAndRequestIcrc2Allowances currentAllowance", currentAllowance);
-
-      if (currentAllowance && currentAllowance.amount >= totalAmount) {
-        console.log("currentAllowance", currentAllowance);
+      if (currentAllowance && currentAllowance.amount > totalAmount) {
         return currentAllowance.amount;
       }
 
@@ -238,19 +235,15 @@ export class IcrcService {
         },
       };
 
-      const approveActor = auth.getActor(
-        token.address,
-        canisterIDLs.icrc2,
-        {
-          anon: false,
-          requiresSigning: true,
-        },
-      );
+      const approveActor = auth.getActor(token.address, canisterIDLs.icrc2, {
+        anon: false,
+        requiresSigning: true,
+      });
 
       const result = await approveActor.icrc2_approve(approveArgs);
       allowanceStore.addAllowance(token.address, {
         address: token.address,
-        wallet_address: authStore.account.owner.toString(),
+        wallet_address: authStore.account.owner,
         spender: spender,
         amount: approveArgs.amount,
         timestamp: Date.now(),
@@ -325,11 +318,11 @@ export class IcrcService {
             ? [{ timestamp_nanos: opts.createdAtTime }]
             : [],
         };
-        
+
         const result = await ledgerActor.transfer(transfer_args);
-        if ('Err' in result) {
+        if ("Err" in result) {
           const stringifiedError = JSON.stringify(result.Err, (_, value) =>
-             typeof value === 'bigint' ? value.toString() : value
+            typeof value === "bigint" ? value.toString() : value,
           );
           return { Err: JSON.parse(stringifiedError) };
         }
@@ -375,7 +368,7 @@ export class IcrcService {
     } catch (error) {
       console.error("Transfer error:", error);
       const stringifiedError = JSON.stringify(error, (_, value) =>
-        typeof value === 'bigint' ? value.toString() : value
+        typeof value === "bigint" ? value.toString() : value,
       );
       return { Err: JSON.parse(stringifiedError) };
     }

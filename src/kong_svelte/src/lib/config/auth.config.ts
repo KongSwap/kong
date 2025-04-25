@@ -105,10 +105,7 @@ export function initializePNP(): PNP {
         },
         solflareSiws: {
           enabled: true,
-        },
-        coinbaseSiws: {
-          enabled: true,
-        },
+        }
       },
       localStorageKey: "kongSwapPnpState",
     } as PNPConfig);

@@ -171,7 +171,7 @@
   url={data.metadata.url}
 />
 
-{#if browser && !themeReady}
+{#if !themeReady}
   <div class="theme-loading">
     <!-- Simple loading spinner -->
     <div class="loading-spinner"></div>

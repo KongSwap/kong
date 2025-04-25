@@ -199,7 +199,7 @@ export async function isAdmin(): Promise<boolean> {
         const actor = createAnonymousActorHelper(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox);
         
         // Call is_admin with principal as a string instead of a Principal object
-        const result = await actor.is_admin(authState.account.owner.toString());
+        const result = await actor.is_admin(authState.account.owner);
         
         // Cache the result
         isAdminCache = result;

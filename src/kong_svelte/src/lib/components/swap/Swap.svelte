@@ -46,9 +46,6 @@
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-
-  // Theme-specific styling data
-  // let theme = $derived(getThemeById($themeStore));
   
   // Types
   type PanelType = "pay" | "receive";
@@ -341,15 +338,7 @@
         return false;
       }
 
-      // Show success toast with swap details
-      toastStore.success(
-        `Swapped ${paidAmountStr} ${paySymbol} for ${receivedAmountStr} ${receiveSymbol}`, 
-        { title: "Trade Completed" }
-      );
-
-      // Reset state after successful swap
       resetSwapState();
-
       return true;
     } catch (error) {
       console.error("Swap execution failed:", error);

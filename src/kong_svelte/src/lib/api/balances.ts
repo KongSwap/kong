@@ -56,7 +56,7 @@ export async function fetchBalance(
 
 async function processBatch(
   batch: Kong.Token[],
-  principal: Principal,
+  principal: string,
 ): Promise<Map<string, bigint>> {
   try {
     const batchBalances = await IcrcService.batchGetBalances(batch, principal);
@@ -81,7 +81,7 @@ export async function fetchBalances(
   }
 
   try {
-    const principal = convertPrincipalId(principalId);
+    const principal = principalId;
     const results = new Map<string, bigint>();
 
     // Process tokens in batches

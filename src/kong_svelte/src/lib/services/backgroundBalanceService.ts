@@ -1,7 +1,5 @@
 import { browser } from '$app/environment';
 import { initWorker, runInBackground, terminateWorker } from './backgroundWorkerService';
-import type { BalanceWorkerTaskTypes } from '$lib/workers/balanceWorker';
-import { fetchBalance, fetchBalances } from '$lib/api/balances';
 
 // Worker constants
 const BALANCE_WORKER_ID = 'balance-worker';

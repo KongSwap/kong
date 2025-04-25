@@ -52,7 +52,7 @@
   
   // Update account data and addresses
   function updateAccountData() {
-    principalId = auth.pnp?.account?.owner ? (typeof auth.pnp.account.owner === 'string' ? auth.pnp.account.owner : auth.pnp.account.owner.toString()) : '';
+    principalId = auth.pnp.account.owner;
     subaccount = auth.pnp?.account?.subaccount || '';
     updateDisplayAddresses();
   }
@@ -78,7 +78,7 @@
       if (address) displayAddresses.push({ id, name, address, chain: formatChainName(chain), type, isActive });
     };
 
-    addAddress('icp-principal', 'Principal', walletAddresses.icp?.owner?.toString() || principalId, 'Internet Computer', 'principal', undefined);
+    addAddress('icp-principal', 'Principal', walletAddresses.icp?.owner || principalId, 'Internet Computer', 'principal', undefined);
     addAddress('icp-subaccount', 'Account ID', walletAddresses.icp?.subaccount || subaccount, 'Internet Computer', 'subaccount', undefined);
 
     Object.entries(walletAddresses)
@@ -162,14 +162,13 @@
   // --- End QR Code Functionality ---
 </script>
 
-<div>
   <WalletListHeader
     title={`Connected with ${auth.pnp?.provider?.walletName || 'Wallet'}`}
     isLoading={isLoading}
   >
     <svelte:fragment slot="actions">
       {#if hasWalletConnection}
-        <span class="text-[10px] bg-kong-bg-light/30 px-2 py-0.5 rounded-full">
+        <span class="text-[10px] bg-kong-bg-light/30 px-2 rounded-full">
           {Object.values(groupedAddresses).flat().length} Addresses
         </span>
       {/if}
@@ -241,7 +240,6 @@
       {/each}
     </div>
   {/if}
-</div>
 
 <QRModal />
 

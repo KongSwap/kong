@@ -70,8 +70,8 @@ export class TransactionSerializer extends BaseSerializer {
     if (!rawTx) return null;
 
     // Find the tokens in the response
-    const token0 = tokens.find((t: any) => t.id === tokens[0]?.id);
-    const token1 = tokens.find((t: any) => t.id === tokens[1]?.id);
+    const token0 = tokens.find((t: any) => t.token_id === tokens[0]?.token_id);
+    const token1 = tokens.find((t: any) => t.token_id === tokens[1]?.token_id);
     const lpToken = tokens.find((t: any) => t.token_type === 'Lp');
 
     // Format amounts based on token decimals
@@ -128,8 +128,8 @@ export class TransactionSerializer extends BaseSerializer {
     if (!rawTx) return null;
 
     // Find the tokens in the response
-    const payToken = tokens.find((t: any) => t.id === rawTx.pay_token_id);
-    const receiveToken = tokens.find((t: any) => t.id === rawTx.receive_token_id);
+    const payToken = tokens.find((t: any) => t.token_id === rawTx.pay_token_id);
+    const receiveToken = tokens.find((t: any) => t.token_id === rawTx.receive_token_id);
 
     // Format amounts based on token decimals
     const formattedPayAmount = this.formatTokenAmount(
@@ -177,8 +177,8 @@ export class TransactionSerializer extends BaseSerializer {
 
     // Find the token in the response
     const token = tokens.find((t: any) => 
-      t.id === rawTx.id || 
-      t.address === rawTx.token_canister
+      (rawTx.id && t.token_id === rawTx.id) || 
+      (rawTx.token_canister && t.address === rawTx.token_canister)
     );
 
     // Format amount based on token decimals

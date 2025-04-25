@@ -103,7 +103,7 @@
 				{#if showUsdValues}
 					{formatCurrency(Number(tokenUsdValue))}
 				{:else}
-					$ ****
+					$****
 				{/if}
 			</div>
 			<div

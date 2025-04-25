@@ -2,6 +2,7 @@ declare global {
   namespace Kong {
     interface Token {
       id: number; // Unique identifier for the token (same astoken_id on FE.IcrcToken)
+      token_id?: number; // Identifier used in transaction API responses
       name: string;
       symbol: string;
       address: string; // Address of the token (canister_id for ICRC tokens, mint for SPL tokens)

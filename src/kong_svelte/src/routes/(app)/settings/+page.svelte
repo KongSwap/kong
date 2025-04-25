@@ -99,7 +99,7 @@
   $effect(() => {
     const currentAuthState = {
       isConnected: $auth.isConnected,
-      principalId: $auth.account?.owner?.toString() || null
+      principalId: $auth.account?.owner || null
     };
     
     // Check if auth state has changed
@@ -107,7 +107,6 @@
         (previousAuthState.isConnected !== currentAuthState.isConnected || 
          previousAuthState.principalId !== currentAuthState.principalId)) {
       
-      console.log('Auth state changed, reloading user settings');
       loadUserSettings();
       loadThemeFromStorage();
       
@@ -118,14 +117,10 @@
   
   // Apply a theme when selected
   async function applyTheme(themeId: string) {
-    console.log('Applying theme:', themeId);
     
     try {
       // Get user ID for debugging
-      const userId = $auth?.account?.owner?.toString() || 'default';
-      console.log(`[Settings] Applying theme "${themeId}" for user "${userId}"`);
-      
-      // Apply the theme
+      const userId = $auth?.account?.owner || 'default';      
       await themeStore.setTheme(themeId as ThemeId);
       
       // Force update UI
@@ -134,7 +129,6 @@
       
       // Show success toast
       toastStore.info('Theme applied successfully');
-      console.log(`[Settings] Theme "${themeId}" applied successfully`);
     } catch (error) {
       console.error('[Settings] Error applying theme:', error);
       toastStore.error('Failed to apply theme');
@@ -154,7 +148,7 @@
   // Function to get settings from localForage
   async function getSettings() {
     if (browser) {
-      const walletId = $auth?.account?.owner?.toString() || 'default';
+      const walletId = $auth?.account?.owner || 'default';
       const settingsKey = `${SETTINGS_KEY}_${walletId}`;
       
       try {
@@ -184,7 +178,7 @@
   async function saveSettings(settings: any) {
     if (browser) {
       try {
-        const walletId = $auth?.account?.owner?.toString() || 'default';
+        const walletId = $auth?.account?.owner || 'default';
         const settingsKey = `${SETTINGS_KEY}_${walletId}`;
         
         // Add timestamp
@@ -220,7 +214,7 @@
   async function initializeSlippageFromStorage() {
     if (browser) {
       try {
-        const walletId = $auth?.account?.owner?.toString() || 'default';
+        const walletId = $auth?.account?.owner || 'default';
         const slippageKey = `slippage_${walletId}`;
         
         const storedSlippage = await slippageStorage.getItem(slippageKey);
@@ -243,7 +237,7 @@
   async function saveSlippageToStorage(value: number) {
     if (browser) {
       try {
-        const walletId = $auth?.account?.owner?.toString() || 'default';
+        const walletId = $auth?.account?.owner || 'default';
         const slippageKey = `slippage_${walletId}`;
         
         await slippageStorage.setItem(slippageKey, value);
@@ -368,7 +362,7 @@
       if (browser) {
         try {
           // Get the wallet ID
-          const walletId = $auth?.account?.owner?.toString() || 'default';
+          const walletId = $auth?.account?.owner || 'default';
           const favoritesKey = `${FAVORITES_KEY}_${walletId}`;
           
           // Clear favorites from storage
@@ -620,7 +614,8 @@
         <Panel 
           interactive={true}
           className={`
-            ${currentThemeId === theme.id ? 'active border-kong-primary border-2 bg-kong-primary/15' : ''}
+            ${currentThemeId === theme.id ? 'active text-kong-text-primary border-kong-primary border-2 bg-kong-primary/30' : ''}
+            hover:!bg-kong-primary/20
           `}
           on:click={() => applyTheme(theme.id)}
           on:keydown={(e) => e.key === 'Enter' && applyTheme(theme.id)}
@@ -643,14 +638,14 @@
           </div>
           
           <!-- Theme info -->
-          <h3 class="font-bold {currentThemeId === theme.id ? 'text-kong-text-on-primary' : 'text-kong-text-primary'}">{theme.name}</h3>
+          <h3 class="font-bold {currentThemeId === theme.id ? 'text-kong-text-primary' : 'text-kong-text-primary'}">{theme.name}</h3>
           <div class="flex justify-between items-center mt-2">
             {#if theme.author}
-              <span class="text-sm {currentThemeId === theme.id ? 'text-kong-text-on-primary/80' : 'text-kong-text-secondary'}">
+              <span class="text-sm {currentThemeId === theme.id ? 'text-kong-text-primary/80' : 'text-kong-text-secondary'}">
                 {#if theme.authorLink}
                   <a 
                     href={theme.authorLink} 
-                    class="hover:underline {currentThemeId === theme.id ? 'text-kong-text-on-primary' : 'text-kong-primary'}"
+                    class="hover:underline {currentThemeId === theme.id ? 'text-kong-text-primary' : 'text-kong-primary'}"
                     target="_blank" 
                     rel="noopener noreferrer"
                     on:click|stopPropagation
@@ -662,7 +657,7 @@
                 {/if}
               </span>
             {:else}
-              <span class="text-sm {currentThemeId === theme.id ? 'text-kong-text-on-primary/80' : 'text-kong-text-secondary'}">—</span>
+              <span class="text-sm {currentThemeId === theme.id ? 'text-kong-text-primary/80' : 'text-kong-text-secondary'}">—</span>
             {/if}
             {#if currentThemeId === theme.id}
               <span class="text-xs px-2 py-1 bg-kong-primary text-white rounded-full">Active</span>

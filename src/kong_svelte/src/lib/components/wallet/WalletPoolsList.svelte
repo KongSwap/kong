@@ -163,7 +163,7 @@
   />
   
   <!-- Scrollable content area -->
-  <div class="overflow-y-auto scrollbar-thin" style="max-height: calc(100vh - 250px);">
+  <div class="overflow-y-auto scrollbar-thin" style="max-height: calc(100vh - 225px);">
     {#if isLoadingPools && !$currentUserPoolsStore.filteredPools.length || isLoading && !liquidityPools.length}
       <div class="py-10 text-center">
         <div class="animate-pulse flex flex-col items-center gap-4">
@@ -237,7 +237,7 @@
                   {#if showUsdValues}
                     {formatCurrency(pool.usd_balance || "0")}
                   {:else}
-                    $ ****
+                    $****
                   {/if}
                 </div>
               </div>
@@ -305,7 +305,7 @@
                   {#if showUsdValues}
                     {formatCurrency(pool.value)}
                   {:else}
-                    $ ****
+                    $****
                   {/if}
                 </div>
               </div>

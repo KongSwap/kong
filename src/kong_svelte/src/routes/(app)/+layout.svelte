@@ -10,7 +10,6 @@
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
-  import type { LayoutData } from "../$types";
   import GlobalWalletProvider from "$lib/components/wallet/GlobalWalletProvider.svelte";
   import { goto } from "$app/navigation";
   

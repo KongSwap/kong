@@ -51,6 +51,7 @@
 		onTokenAdded?: (token: Kong.Token) => void;
 		onBalancesLoaded?: () => void;
 		showUsdValues?: boolean; // <-- Add prop for USD visibility
+		onRefresh?: () => void; // <-- Add onRefresh prop from parent
 	};
 
 	let { 
@@ -60,7 +61,8 @@
 		onAction = () => {},
 		onTokenAdded = () => {},
 		onBalancesLoaded = () => {},
-		showUsdValues = true // <-- Destructure with default
+		showUsdValues = true, // <-- Destructure with default
+		onRefresh = undefined // <-- Destructure onRefresh prop
 	}: WalletTokensListProps = $props();
 
 	// --- Solana State ---
@@ -271,9 +273,24 @@
 		}
 	}
 
+	// Handle refresh button click
+	function handleRefresh() {
+		console.log('🔄 WalletTokensList: handleRefresh clicked, walletId:', walletId);
+		if (onRefresh) {
+			onRefresh();
+		} else if (walletId) {
+			loadUserBalancesWrapper(true);
+		} else {
+			console.warn('⚠️ WalletTokensList: No walletId available for refresh');
+		}
+	}
+
 	// Load user balances function - uses the service
 	async function loadUserBalancesWrapper(forceRefresh = false) {
-		if (!walletId) return;
+		if (!walletId) {
+			console.log('⚠️ WalletTokensList: No walletId available in loadUserBalancesWrapper');
+			return;
+		}
 
 		balanceLoadError = null;
 		isLoadingBalances = true;
@@ -285,10 +302,13 @@
 				const refreshTimestamp = Date.now();
 				lastRefreshed = refreshTimestamp;
 				setLastRefreshed(refreshTimestamp);
+				console.log('✅ WalletTokensList: Balances loaded successfully, calling onBalancesLoaded');
 				onBalancesLoaded();
+			} else {
+				console.log('⚠️ WalletTokensList: No balances were loaded');
 			}
 		} catch (err) {
-			console.error("Error loading balances:", err);
+			console.error("❌ WalletTokensList: Error loading balances:", err);
 			balanceLoadError =
 				err instanceof Error ? err.message : "Failed to load balances";
 		} finally {
@@ -553,13 +573,6 @@
 		}
 	}
 
-	// Handle refresh button click
-	function handleRefresh() {
-		if (walletId) {
-			loadUserBalancesWrapper(true);
-		}
-	}
-
 	// Effect to load balances when walletId becomes available or changes
 	let previousWalletId: string | undefined = undefined;
 	$effect.pre(() => {
@@ -570,7 +583,6 @@
 	$effect(() => {
 		// Run only if walletId is now truthy AND different from the previous value
 		if (walletId && walletId !== previousWalletId) {
-			console.log(`[WalletTokensList] walletId changed from ${previousWalletId} to ${walletId}, triggering initial load.`);
 			loadUserBalancesWrapper(false); // Use false, let internal logic decide if refresh needed
 		}
 	});
@@ -621,7 +633,7 @@
 		title="Assets"
 		count={processedTokenBalances.length}
 		isLoading={isLoading || isLoadingBalances}
-		onRefresh={handleRefresh}
+		onRefresh={onRefresh || handleRefresh}
 	>
 		<svelte:fragment slot="actions">
 			<button 
@@ -653,7 +665,7 @@
 	</WalletListHeader>
 
 	<!-- Scrollable content area -->
-	<div class="overflow-y-auto scrollbar-thin" style="max-height: calc(100vh - 250px);">
+	<div class="overflow-y-auto scrollbar-thin" style="max-height: calc(100vh - 225px);">
 		{#if balanceLoadError}
 			<div class="text-xs text-kong-accent-red mt-1 px-4 mb-2">
 				Error loading ICP balances: {balanceLoadError}

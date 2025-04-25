@@ -21,7 +21,6 @@
   } from "$lib/stores/balancesStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/stores/auth";
-  import { tooltip } from "$lib/actions/tooltip";
   import { truncateAddress } from "$lib/utils/principalUtils";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import WalletTokensList from "$lib/components/wallet/WalletTokensList.svelte";
@@ -31,7 +30,6 @@
   import SendTokenModal from "$lib/components/wallet/SendTokenModal.svelte";
   import { calculatePortfolioValue } from "$lib/utils/portfolioUtils";
   import { loadUserBalances, setLastRefreshed } from "$lib/services/balanceService";
-  import { get } from "svelte/store";
 
   // Props type definition
   type WalletPanelProps = {
@@ -71,14 +69,19 @@
   const tabComponents = {
     tokens: {
       component: WalletTokensList,
-      props: () => ({
-        walletId,
-        isLoading: isLoadingBalances,
-        onAction: handleTokenAction,
-        onTokenAdded: handleTokenAdded,
-        onBalancesLoaded: handleBalancesLoaded,
-        showUsdValues
-      })
+      props: () => {
+        return ({
+          walletId,
+          isLoading: isLoadingBalances,
+          onAction: handleTokenAction,
+          onTokenAdded: handleTokenAdded,
+          onBalancesLoaded: handleBalancesLoaded,
+          showUsdValues,
+          onRefresh: () => {
+            refreshBalances(true);
+          }
+        });
+      }
     },
     pools: {
       component: WalletPoolsList,
@@ -180,9 +183,14 @@
     // Update last refreshed timestamp to trigger reactive updates
     lastRefreshed = Date.now();
     
+    // Add a safety timeout to reset loading state after 30 seconds
+    const safetyTimeout = setTimeout(() => {
+      isRefreshing = false;
+      isLoadingBalances = false;
+    }, 15000);
+    
     // Refresh pools data if in pools section, without resetting first
     if (activeSection === 'pools') {
-      // currentUserPoolsStore.reset(); // Remove reset
       currentUserPoolsStore.initialize();
     }
     
@@ -196,14 +204,16 @@
           console.error("Error refreshing token balances:", err);
         })
         .finally(() => {
-          // Consolidate state updates after both potentially finish
-          // Check if pools are still loading separately
-          const poolsLoading = get(currentUserPoolsStore).loading;
-          if (!poolsLoading) {
-            isLoadingBalances = false; // Only set if token balances are done
-            isRefreshing = false; // Only set if both are done or tokens errored
+          // Always reset token loading state regardless of pools
+          isLoadingBalances = false;
+          
+          // Reset refresh state if this specific operation initiated it
+          if (!(activeSection === 'pools')) {
+            isRefreshing = false;
           }
+          
           setLastRefreshed(Date.now());
+          clearTimeout(safetyTimeout);
 
           // Recalculate portfolio value after potentially new data
           const calculated = calculatePortfolioValue($currentUserBalancesStore, $currentUserPoolsStore?.filteredPools || []);
@@ -219,10 +229,8 @@
     } else {
       // If no wallet ID, just end the loading state for balances
       isLoadingBalances = false;
-      // If pools aren't refreshing, also set isRefreshing to false
-      if (activeSection !== 'pools' || !get(currentUserPoolsStore).loading) {
-          isRefreshing = false;
-      }
+      isRefreshing = false;
+      clearTimeout(safetyTimeout);
     }
   }
 
@@ -299,13 +307,18 @@
   function refreshPoolsData() {
     if (activeSection === 'pools') {
       isRefreshing = true; // Indicate refresh start
-      // currentUserPoolsStore.reset(); // Remove reset
+      
+      // Add a safety timeout to reset loading state after 30 seconds
+      const safetyTimeout = setTimeout(() => {
+        isRefreshing = false;
+      }, 30000);
+      
       currentUserPoolsStore.initialize()
         .finally(() => {
-          // Check if token balances are also refreshing before setting isRefreshing to false
-          if (!isLoadingBalances) { 
-             isRefreshing = false;
-          }
+          // Always reset refreshing state when pools are done,
+          // regardless of token balance loading state
+          isRefreshing = false;
+          clearTimeout(safetyTimeout);
         });
     }
   }
@@ -327,14 +340,12 @@
             class="p-1 {isRefreshing ? 'text-kong-primary bg-kong-primary/10' : 'text-kong-text-secondary/60 hover:text-kong-primary hover:bg-kong-bg-light/20'} rounded-full transition-all"
             onclick={() => refreshBalances(true)}
             disabled={isRefreshing}
-            use:tooltip={{ text: isRefreshing ? "Refreshing..." : "Refresh balance data", direction: "bottom" }}
           >
             <RefreshCw size={12} class={isRefreshing ? 'animate-spin' : ''} />
           </button>
           <button
             class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all"
             onclick={toggleUsdVisibility}
-            use:tooltip={{ text: showUsdValues ? "Hide balances and USD values" : "Show balances and USD values", direction: "bottom" }}
           >
             {#if showUsdValues}
               <EyeOff size={12} />
@@ -349,10 +360,9 @@
           class="text-xs text-kong-text-secondary font-mono flex items-center gap-1 cursor-pointer group"
           title="Click to copy your Principal ID"
           onclick={() => handleCopyPrincipal(walletId)}
-          use:tooltip={{ text: "Copy Principal ID", direction: "bottom" }}
         >
           <span class="group-hover:text-kong-primary transition-colors"
-            >{truncateAddress($auth?.account?.owner?.toString())}</span
+            >{truncateAddress($auth?.account?.owner)}</span
           >
           {#if hasCopiedPrincipal}
             <Check size={11} class="text-kong-accent-green" />
@@ -371,7 +381,7 @@
       {#if isLoadingBalances && Object.keys($currentUserBalancesStore || {}).length === 0}
         <span class="opacity-50">Loading...</span>
       {:else if !showUsdValues}
-        $ ****
+        $****
       {:else}
         ${(isNaN(totalPortfolioValue) ? 0 : totalPortfolioValue).toLocaleString(undefined, {
           minimumFractionDigits: 2,

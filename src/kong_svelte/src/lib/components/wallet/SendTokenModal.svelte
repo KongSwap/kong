@@ -162,7 +162,7 @@
 
   // Refresh balance
   async function refreshBalanceOnMount() {
-    const principalId = authStore.pnp?.account?.owner?.toString();
+    const principalId = authStore.pnp?.account?.owner;
     if (token && principalId && principalId !== "anonymous") {
       try {
         await refreshSingleBalance(token, principalId, false);
@@ -272,7 +272,7 @@
         const txId = result.Ok.toString();
         
         // Update balance
-        const principalId = authStore.pnp?.account?.owner?.toString();
+        const principalId = authStore.pnp?.account?.owner;
         await refreshSingleBalance(token, principalId, true);
         
         // Reset form for next transaction

@@ -225,7 +225,7 @@
               if (currentToken0 && currentToken1) {
                 await loadBalancesIfNecessary(
                   [currentToken0, currentToken1],
-                  authState.account.owner.toString(),
+                  authState.account.owner,
                   true // Force refresh on initial load
                 );
               }
@@ -281,7 +281,7 @@
       ? $currentUserBalancesStore.lastUpdated 
       : Date.now();
       
-    const authOwner = $auth?.account?.owner?.toString();
+    const authOwner = $auth?.account?.owner;
     
     // Check if anything meaningful has changed to avoid unnecessary executions
     const hasChanged = 

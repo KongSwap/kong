@@ -11,9 +11,11 @@
   import Badge from "$lib/components/common/Badge.svelte";
   import { getTransactionIcon } from "$lib/utils/transactionUtils";
 
-  // Props
-  export let tx: any;
-  export let onClick: () => void;
+  let { tx, onClick } = $props();
+
+  $effect(() => {
+    console.log(tx);
+  });
 
   // Get icon component based on type name
   function getIconComponent(iconName: string) {

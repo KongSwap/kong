@@ -29,7 +29,7 @@ export class ClaimsService {
       }
 
       const actor = createAnonymousActorHelper(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend);
-      const principalId = authState.account?.owner?.toString();
+      const principalId = authState.account?.owner;
       
       if (!principalId) {
         return { claims: [], error: "Principal ID not found" };

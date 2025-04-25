@@ -1,5 +1,4 @@
 <script lang="ts">
-	// import { createEventDispatcher } from 'svelte'; // Remove dispatcher
 	import { Plus, Minus } from 'lucide-svelte';
 	import Modal from '$lib/components/common/Modal.svelte';
 	import TokenImages from '$lib/components/common/TokenImages.svelte';
@@ -9,7 +8,7 @@
 		tokensToRemove: Kong.Token[];
 	};
 
-	type $$Props = {
+	type SyncProps = {
 		isOpen: boolean;
 		candidates: SyncCandidates;
 		onConfirm: () => Promise<void>; // Add onConfirm prop
@@ -21,9 +20,7 @@
 		candidates = { tokensToAdd: [], tokensToRemove: [] },
 		onConfirm, // Destructure props
 		onCancel   // Destructure props
-	}: $$Props = $props();
-
-	// const dispatch = createEventDispatcher<{ confirm: void; cancel: void }>(); // Remove dispatcher
+	}: SyncProps = $props();
 
 	async function handleConfirm() { // Make async
 		console.log("[SyncConfirmModal] handleConfirm called via prop");
@@ -36,7 +33,6 @@
 		onCancel(); // Call the prop
 		// Parent decides if/when to close the modal
 	}
-
 </script>
 
 <Modal

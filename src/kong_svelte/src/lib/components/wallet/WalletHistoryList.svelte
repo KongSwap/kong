@@ -345,6 +345,8 @@
     {/each}
   </div>
 
+  <div class="max-h-[calc(100vh-260px)] overflow-y-auto scrollbar-thin">
+
   <!-- Loading state -->
   {#if isLoading && ((!transactions.length && selectedFilter !== "predict") || (selectedFilter === "predict" && !predictions))}
     <div class="py-10 text-center">
@@ -437,4 +439,5 @@
       {/if}
     </div>
   {/if}
+  </div>
 </div>

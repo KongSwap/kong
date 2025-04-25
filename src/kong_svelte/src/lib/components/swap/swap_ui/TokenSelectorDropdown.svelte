@@ -338,7 +338,7 @@
       
       if (isUserAuthenticated && !selectorState.loadedTokens.has(token.address)) {
         selectorState.loadedTokens.add(token.address);
-        const principal = $auth.account?.owner?.toString();
+        const principal = $auth.account?.owner;
 
         if (principal) {          
           setTimeout(async () => {
@@ -397,7 +397,7 @@
   function loadVisibleTokenBalances() {
     if (!browser || !isUserAuthenticated) return;
 
-    const principal = $auth.account?.owner?.toString();
+    const principal = $auth.account?.owner;
     if (!principal) return;
 
     clearTimeout(loadBalancesDebounceTimer);
@@ -511,7 +511,7 @@
             
             if (tokensNeedingBalances.length > 0) {
               tokensNeedingBalances.forEach(token => selectorState.loadedTokens.add(token.address));
-              void loadBalances(tokensNeedingBalances, $auth.account!.owner.toString(), false);
+              void loadBalances(tokensNeedingBalances, $auth.account.owner, false);
             }
           }
         }, 500);

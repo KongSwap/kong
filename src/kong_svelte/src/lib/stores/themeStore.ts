@@ -21,7 +21,7 @@ function createThemeStore() {
     if (browser) {
       try {
         const authState = get(auth);
-        return authState?.account?.owner?.toString() || 'default';
+        return authState?.account?.owner || 'default';
       } catch (error) {
         console.error('Failed to get user ID:', error);
         return 'default';
@@ -347,7 +347,7 @@ function createThemeStore() {
     auth.subscribe((authState) => {
       const currentAuthState = {
         isConnected: authState.isConnected,
-        principalId: authState.account?.owner?.toString() || null
+        principalId: authState.account?.owner || null
       };
       
       // Check if auth state has changed in a meaningful way

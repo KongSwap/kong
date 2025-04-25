@@ -219,7 +219,7 @@
       variant: 'primary' as const,
       isWalletButton: true,
       badgeCount: $notificationsStore.unreadCount,
-      tooltipText: $auth.isConnected ? "Wallet / Notifications" : "Connect Wallet",
+      tooltipText: null,
       loading: $isAuthenticating,
     }
   ]);

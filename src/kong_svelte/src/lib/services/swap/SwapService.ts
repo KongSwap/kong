@@ -297,7 +297,6 @@ export class SwapService {
       const payToken = params.payToken
 
       if (!payToken) {
-        console.error("Pay token not found:", params.payToken);
         throw new Error(`Pay token ${params.payToken.symbol} not found`);
       }
 
@@ -309,19 +308,16 @@ export class SwapService {
       const receiveToken = params.receiveToken
 
       if (!receiveToken) {
-        console.error("Receive token not found:", params.receiveToken);
-        throw new Error(
-          `Receive token ${params.receiveToken.symbol} not found`,
-        );
+        throw new Error(`Receive token ${params.receiveToken.symbol} not found`);
       }
 
       let txId: bigint | false;
       let approvalId: bigint | false;
       const toastId = toastStore.info(
         `Swapping ${params.payAmount} ${params.payToken.symbol} to ${params.receiveAmount} ${params.receiveToken.symbol}...`,
-        { duration: 20000 },
+        { duration: 15000 }, // 15 seconds
       );
-      console.log("payToken.standards", payToken.standards.includes("ICRC-2"));
+
       if (payToken.standards.includes("ICRC-2")) {
         const requiredAllowance = payAmount;
         approvalId = await IcrcService.checkAndRequestIcrc2Allowances(

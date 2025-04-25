@@ -24,8 +24,8 @@
   }
 </script>
 
-<div class="px-4 py-2  flex items-center justify-between">
-  <div class="text-xs font-medium text-kong-text-secondary uppercase tracking-wide">
+<div class="px-4 flex items-center justify-between shadow">
+  <div class="text-xs py-3 font-medium text-kong-text-secondary uppercase tracking-wide">
     {title}
     {#if count !== undefined}
       {count} {count !== 1 ? title.toLowerCase() : title.toLowerCase().replace(/s$/, '')}

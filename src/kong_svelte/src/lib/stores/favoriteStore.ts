@@ -28,7 +28,7 @@ function createFavoriteStore() {
    */
   const getCurrentWalletId = (): string => {
     const wallet = get(auth);
-    return wallet?.account?.owner?.toString() || "anonymous";
+    return wallet?.account?.owner || "anonymous";
   };
   
   /**

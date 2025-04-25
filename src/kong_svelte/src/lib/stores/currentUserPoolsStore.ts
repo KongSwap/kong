@@ -74,7 +74,7 @@ function createCurrentUserPoolsStore() {
         );
         
         const response = await actor.user_balances(
-          currentAuth?.account?.owner?.toString() || ''
+          currentAuth?.account?.owner || ''
         );
                 
         if (response.Ok) {
