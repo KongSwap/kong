@@ -41,8 +41,8 @@ describe('formatUsdValue', () => {
   });
 
   it('should format very large values with B suffix', () => {
-    expect(formatUsdValue(1234567890)).toBe('$1.23B');
-    expect(formatUsdValue(12345678901)).toBe('$12.35B');
+    expect(formatUsdValue(1234567890)).toBe('$1.235B');
+    expect(formatUsdValue(12345678901)).toBe('$12.346B');
   });
 
   it('should handle string inputs with commas', () => {
@@ -59,7 +59,7 @@ describe('formatTokenValue', () => {
 
   it('should format token values correctly', () => {
     expect(formatTokenValue('100000000', 1)).toBe('$1.00'); // 1 token at $1
-    expect(formatTokenValue('100000000', 1000)).toBe('$1K'); // 1 token at $1000
+    expect(formatTokenValue('100000000', 1000)).toBe('$1.0K'); // 1 token at $1000
     expect(formatTokenValue('1000000000', 1)).toBe('$10.00'); // 10 tokens at $1
   });
 

@@ -11,8 +11,8 @@ vi.mock('$lib/stores/userTokens', () => ({
   userTokens: {
     subscribe: vi.fn((callback) => {
       callback({ tokens: [
-        { canister_id: 'token1', metrics: { price: '100' } },
-        { canister_id: 'token2', metrics: { price: '50' } }
+        { address: 'token1', metrics: { price: '100' } },
+        { address: 'token2', metrics: { price: '50' } }
       ]});
       return { unsubscribe: vi.fn() };
     })
@@ -45,6 +45,7 @@ function createMockPool(overrides: Partial<BE.Pool> = {}): BE.Pool {
     lp_fee_bps: 0,
     tvl: 0n,
     is_removed: false,
+    lp_token_id: '',
     ...overrides
   };
 }
