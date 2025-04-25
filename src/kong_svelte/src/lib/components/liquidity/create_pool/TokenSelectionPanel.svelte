@@ -60,6 +60,7 @@
           otherPanelToken={token1}
           onSelect={(token) => onTokenSelect(0, token)}
           onClose={() => (showToken0Selector = false)}
+          title="Base Token"
         />
       </Portal>
     {/if}
@@ -73,6 +74,7 @@
           onSelect={(token) => onTokenSelect(1, token)}
           onClose={() => (showToken1Selector = false)}
           allowedCanisterIds={secondaryTokenIds}
+          title="Quote Token"
         />
       </Portal>
     {/if}

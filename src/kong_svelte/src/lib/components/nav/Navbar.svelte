@@ -18,7 +18,7 @@
     Search,
     Trophy,
     Bell,
-    PlugZap,
+    LogIn,
   } from "lucide-svelte";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { page } from "$app/state";
@@ -210,7 +210,7 @@
     // Wallet Button (Specific properties)
     {
       type: 'wallet' as const,
-      icon: $auth.isConnected ? Wallet : PlugZap,
+      icon: $auth.isConnected ? Wallet : LogIn,
       label: null,
       onClick: handleConnect,
       isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",

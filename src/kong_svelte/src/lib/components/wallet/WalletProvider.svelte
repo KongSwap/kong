@@ -37,7 +37,7 @@
     ExternalLink,
     Clock,
     Trash2,
-    PlugZap,
+    LogIn,
   } from "lucide-svelte";
   import { fly, fade, slide } from "svelte/transition";
   import { quintOut } from "svelte/easing";
@@ -472,7 +472,7 @@
 >
   <svelte:fragment slot="title">
     <h2 class="text-2xl font-semibold modal-title flex items-center gap-2">
-      <PlugZap size={20} class="text-kong-primary" />
+      <LogIn size={20} class="text-kong-primary" />
       Connect Wallet
     </h2>
   </svelte:fragment>

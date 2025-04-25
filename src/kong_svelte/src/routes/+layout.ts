@@ -15,6 +15,11 @@ const routeMetadata = {
     description: 'KongSwap is the most advanced multi-chain DeFi platform in the world, providing a fully on-chain, DAO owned, and permissionless DeFi experience.',
     image: defaultImage 
   },
+  '/home': {
+    title: 'KongSwap - Rumble in the crypto jungle with the most advanced multi-chain DeFi platform in the world!',
+    description: 'KongSwap is the most advanced multi-chain DeFi platform in the world, providing a fully on-chain, DAO owned, and permissionless DeFi experience.',
+    image: defaultImage 
+  },
   '/predict': {
     title: 'Prediction Markets - KongSwap',
     description: 'Trade on prediction markets with KongSwap',

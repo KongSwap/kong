@@ -23,11 +23,39 @@
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
     <meta name="viewport" content="width=device-width" />
     <meta name="theme-color" content="#0E111B" />
-    <title>KongSwap - Rumble in the crypto jungle with the most advanced multi-chain DeFi platform in the world!</title>
+    <title>
+      KongSwap - Rumble in the crypto jungle with the most advanced multi-chain DeFi platform in the world!
+    </title>
     <meta
       name="description"
       content="KongSwap is the most advanced multi-chain DeFi platform in the world, providing a fully on-chain, DAO owned, and permissionless DeFi experience."
     />
+    <!-- Open Graph Tags -->
+    <meta property="og:locale" content="en" />
+    <meta
+      property="og:title"
+      content="KongSwap - Rumble in the crypto jungle"
+    />
+    <meta
+      property="og:description"
+      content="KongSwap is the fastest decentralized exchange for the Internet Computer. Trade ICP, ckUSDT, and more with ease."
+    />
+    <meta property="og:url" content="https://kongswap.io" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/images/banner.webp" />
+    <meta property="og:logo" content="/titles/kong_logo.png" />
+
+    <!-- Twitter Card Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="KongSwap - Rumble in the crypto jungle"
+    />
+    <meta
+      name="twitter:description"
+      content="KongSwap is the fastest decentralized exchange for the Internet Computer. Trade ICP, ckUSDT, and more with ease."
+    />
+    <meta name="twitter:image" content="/images/banner.webp" />
 
     <meta
       name="keywords"
@@ -38,12 +66,12 @@
 
     <!-- Inline Theme Initialization - Fast loading -->
     <script>
-      (function() {
+      (function () {
         // Get user ID from session or localStorage if available
-        let userId = 'default';
+        let userId = "default";
         try {
           // Try to get from sessionStorage if user previously logged in
-          const authData = localStorage.getItem('kong_storage_auth');
+          const authData = localStorage.getItem("kong_storage_auth");
           if (authData) {
             const parsed = JSON.parse(authData);
             if (parsed && parsed.principalId) {
@@ -51,9 +79,9 @@
             }
           }
         } catch (e) {
-          console.error('Error getting user ID for theme:', e);
+          console.error("Error getting user ID for theme:", e);
         }
-        
+
         // Try to load theme from localStorage with proper keys
         let initialTheme = null;
         try {
@@ -62,33 +90,35 @@
           if (userThemeJson) {
             initialTheme = JSON.parse(userThemeJson);
           }
-          
+
           // If no user theme, try the default
           if (!initialTheme) {
-            const defaultThemeJson = localStorage.getItem('theme');
+            const defaultThemeJson = localStorage.getItem("theme");
             if (defaultThemeJson) {
               initialTheme = JSON.parse(defaultThemeJson);
             }
           }
         } catch (e) {
-          console.error('Error loading theme:', e);
+          console.error("Error loading theme:", e);
         }
-        
+
         // Immediately check system preference if no theme found
         if (!initialTheme) {
-          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          initialTheme = prefersDark ? 'dark' : 'light'; 
+          const prefersDark = window.matchMedia(
+            "(prefers-color-scheme: dark)",
+          ).matches;
+          initialTheme = prefersDark ? "dark" : "light";
         }
-        
+
         // Apply theme class right away
         document.documentElement.classList.add(initialTheme);
-        
+
         // Add basic inline styles to prevent flash
-        const style = document.createElement('style');
+        const style = document.createElement("style");
         style.textContent = `
           body { 
-            background-color: ${initialTheme === 'dark' ? '#0E111B' : '#f5f7fa'}; 
-            color: ${initialTheme === 'dark' ? '#ffffff' : '#111827'}; 
+            background-color: ${initialTheme === "dark" ? "#0E111B" : "#f5f7fa"}; 
+            color: ${initialTheme === "dark" ? "#ffffff" : "#111827"}; 
             transition: background-color 0.2s ease-in-out;
           }
         `;
