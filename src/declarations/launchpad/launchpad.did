@@ -1,0 +1,45 @@
+type ChainType = variant { BTC; ICP; SOL; SUI };
+type MinerInfo = record {
+  creator : principal;
+  canister_id : principal;
+  pow_backend_id : principal;
+};
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : nat; Err : text };
+type Result_2 = variant { Ok : principal; Err : text };
+type Result_3 = variant { Ok : nat; Err : text };
+type Result_4 = variant { Ok : vec blob; Err : text };
+type Result_5 = variant { Ok : bool; Err : text };
+type TokenInfo = record {
+  creator : principal;
+  ticker : text;
+  name : text;
+  canister_id : principal;
+  total_supply : nat64;
+};
+service : () -> {
+  add_trusted_hash : (blob) -> (Result);
+  claim_kong : (nat) -> (Result_1);
+  create_miner : (principal, opt principal) -> (Result_2);
+  create_token : (
+      text,
+      text,
+      nat64,
+      opt text,
+      opt nat8,
+      opt nat64,
+      nat64,
+      nat64,
+      nat64,
+      ChainType,
+      opt principal,
+    ) -> (Result_2);
+  get_top_up_quote : (nat) -> (Result_3) query;
+  hashes_for_kong : (nat) -> (Result_3);
+  list_miners : () -> (vec MinerInfo) query;
+  list_tokens : () -> (vec TokenInfo) query;
+  list_trusted_hashes : () -> (Result_4) query;
+  remove_trusted_hash : (blob) -> (Result_5);
+  top_up_miner : (principal, nat) -> (Result_3);
+  validate_hash : (blob) -> (bool) query;
+}
