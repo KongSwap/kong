@@ -3,9 +3,10 @@
   import { fade, slide, type TransitionConfig } from 'svelte/transition';
   import { themeStore } from '../../stores/themeStore';
   import { getThemeById } from '../../themes/themeRegistry';
+  import { transparentPanel } from '../../stores/derivedThemeStore';
 
   let {
-    variant = "transparent",
+    variant = transparentPanel ? "transparent" : "solid",
     type = "main",
     width = "auto",
     height = "auto",
@@ -140,7 +141,7 @@
 /* Main panel styling - slightly different for primary panels */
 .panel.solid.main {
   @apply border-kong-border;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
 }
 
 /* Sidebar panel specific style */
@@ -152,8 +153,7 @@
 
 /* Transparent panel styling */
 .panel.transparent {
-  @apply bg-kong-bg-dark/85;
-  backdrop-filter: blur(12px);
+  @apply bg-kong-bg-dark/90 backdrop-blur-md;
   @apply border border-kong-border/50;
   @apply shadow-sm;
 }
@@ -180,7 +180,7 @@
 .panel.transparent:hover,
 .panel.transparent:has(.panel:hover) {
   @apply border-kong-border/70;
-  @apply bg-kong-bg-dark/90;
+  @apply bg-kong-bg-dark/90 backdrop-blur-md;
 }
 
 /* Premium edge highlight for solid variant - uses theme text color */

@@ -1,15 +1,14 @@
 <script lang="ts">
-	// import { createEventDispatcher } from 'svelte'; // Remove dispatcher
 	import { Plus, Minus } from 'lucide-svelte';
 	import Modal from '$lib/components/common/Modal.svelte';
 	import TokenImages from '$lib/components/common/TokenImages.svelte';
 
 	type SyncCandidates = {
-		tokensToAdd: FE.Token[];
-		tokensToRemove: FE.Token[];
+		tokensToAdd: Kong.Token[];
+		tokensToRemove: Kong.Token[];
 	};
 
-	type $$Props = {
+	type SyncProps = {
 		isOpen: boolean;
 		candidates: SyncCandidates;
 		onConfirm: () => Promise<void>; // Add onConfirm prop
@@ -21,9 +20,7 @@
 		candidates = { tokensToAdd: [], tokensToRemove: [] },
 		onConfirm, // Destructure props
 		onCancel   // Destructure props
-	}: $$Props = $props();
-
-	// const dispatch = createEventDispatcher<{ confirm: void; cancel: void }>(); // Remove dispatcher
+	}: SyncProps = $props();
 
 	async function handleConfirm() { // Make async
 		console.log("[SyncConfirmModal] handleConfirm called via prop");
@@ -36,7 +33,6 @@
 		onCancel(); // Call the prop
 		// Parent decides if/when to close the modal
 	}
-
 </script>
 
 <Modal
@@ -59,7 +55,7 @@
 					</h4>
 					<div class="bg-kong-bg-light/10 p-3 rounded-md text-sm max-h-40 overflow-y-auto scrollbar-custom">
 						<ul class="space-y-2">
-							{#each candidates.tokensToAdd as token (token.canister_id)}
+							{#each candidates.tokensToAdd as token (token.address)}
 								<li class="flex items-center gap-2">
 									<TokenImages
 										tokens={[token]}
@@ -82,7 +78,7 @@
 					</h4>
 					<div class="bg-kong-bg-light/10 p-3 rounded-md text-sm max-h-40 overflow-y-auto scrollbar-custom">
 						<ul class="space-y-2">
-							{#each candidates.tokensToRemove as token (token.canister_id)}
+							{#each candidates.tokensToRemove as token (token.address)}
 								<li class="flex items-center gap-2">
 									<TokenImages
 										tokens={[token]}

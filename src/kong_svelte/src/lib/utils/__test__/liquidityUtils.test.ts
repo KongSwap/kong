@@ -85,8 +85,8 @@ describe('formatWithCommas', () => {
 
 describe('calculatePoolRatio', () => {
   it('should calculate pool ratios correctly', () => {
-    const token0 = { symbol: 'BTC' } as FE.Token;
-    const token1 = { symbol: 'USDT' } as FE.Token;
+    const token0 = { symbol: 'BTC' } as Kong.Token;
+    const token1 = { symbol: 'USDT' } as Kong.Token;
     
     expect(calculatePoolRatio(token0, token1, '1', '50000')).toBe('1 BTC = 50000.000000 USDT');
     expect(calculatePoolRatio(token0, token1, '0', '50000')).toBe('');
@@ -96,8 +96,8 @@ describe('calculatePoolRatio', () => {
 
 describe('calculateUsdRatio', () => {
   it('should calculate USD ratios correctly', () => {
-    const token0 = { symbol: 'BTC', metrics: { price: '50000' } } as FE.Token;
-    const token1 = { symbol: 'USDT', metrics: { price: '1' } } as FE.Token;
+    const token0 = { symbol: 'BTC', metrics: { price: '50000' } } as Kong.Token;
+    const token1 = { symbol: 'USDT', metrics: { price: '1' } } as Kong.Token;
     
     expect(calculateUsdRatio(token0, token1)).toBe('1 BTC ≈ $50000.00');
     expect(calculateUsdRatio(null, token1)).toBe('');
@@ -137,8 +137,8 @@ describe('processLiquidityInput', () => {
 
 describe('findPool', () => {
   it('should find matching pools', () => {
-    const token0 = { canister_id: 'token0-id' } as FE.Token;
-    const token1 = { canister_id: 'token1-id' } as FE.Token;
+    const token0 = { address: 'token0-id' } as Kong.Token;
+    const token1 = { address: 'token1-id' } as Kong.Token;
     const pools = [
       { address_0: 'token0-id', address_1: 'token1-id' } as BE.Pool,
       { address_0: 'token2-id', address_1: 'token3-id' } as BE.Pool
@@ -152,8 +152,8 @@ describe('findPool', () => {
 
 describe('validateLiquidityForm', () => {
   it('should validate liquidity form correctly', () => {
-    const token0 = { canister_id: 'token0-id' } as FE.Token;
-    const token1 = { canister_id: 'token1-id' } as FE.Token;
+    const token0 = { address: 'token0-id' } as Kong.Token;
+    const token1 = { address: 'token1-id' } as Kong.Token;
     const pool = { address_0: 'token0-id', address_1: 'token1-id' } as BE.Pool;
 
     expect(validateLiquidityForm(
@@ -193,7 +193,7 @@ describe('calculateMaxAmount', () => {
     const token = {
       fee_fixed: '1000',
       decimals: 6,
-    } as FE.Token;
+    } as Kong.Token;
     
     expect(await calculateMaxAmount(token, '100000000', 1)).toBe('99.999000');
     expect(await calculateMaxAmount(token, '2000', 2)).toBe('0');
@@ -203,14 +203,14 @@ describe('calculateMaxAmount', () => {
     const token = {
       fee_fixed: '1000',
       decimals: 6,
-    } as FE.Token;
+    } as Kong.Token;
 
     await expect(calculateMaxAmount(token, '500', 1)).rejects.toThrow('Insufficient balance to cover fees');
     
     const tokenWithoutFee = {
       ...token,
       fee_fixed: undefined
-    } as unknown as FE.Token;
+    } as unknown as Kong.Token;
     
     await expect(calculateMaxAmount(tokenWithoutFee, '1000', 1))
       .rejects.toThrow('Could not determine token fee');
@@ -220,18 +220,16 @@ describe('calculateMaxAmount', () => {
 describe('hasInsufficientBalance', () => {
   it('should correctly check for insufficient balances', () => {
     const token0 = {
-      canister_id: 'token0-id',
       address: 'token0-id',
       decimals: 6,
       fee_fixed: '1000'
-    } as FE.Token;
+    } as Kong.Token;
 
     const token1 = {
-      canister_id: 'token1-id',
       address: 'token1-id',
       decimals: 6,
       fee_fixed: '1000'
-    } as FE.Token;
+    } as Kong.Token;
 
     // Test with amounts less than balances => should be sufficient:
     expect(hasInsufficientBalance('100000', '100000', token0, token1)).toBe(false);
@@ -242,13 +240,13 @@ describe('hasInsufficientBalance', () => {
   });
 
   it('should handle missing tokens', () => {
-    expect(hasInsufficientBalance('100', '100', null as unknown as FE.Token, null as unknown as FE.Token)).toBe(false);
+    expect(hasInsufficientBalance('100', '100', null as unknown as Kong.Token, null as unknown as Kong.Token)).toBe(false);
   });
 });
 
 describe('getButtonText', () => {
-  const token0 = { symbol: 'BTC' } as FE.Token;
-  const token1 = { symbol: 'USDT' } as FE.Token;
+  const token0 = { symbol: 'BTC' } as Kong.Token;
+  const token1 = { symbol: 'USDT' } as Kong.Token;
 
   it('should return appropriate button text based on form state', () => {
     // Test various states
@@ -300,8 +298,8 @@ describe('formatLargeNumber', () => {
 
 describe('getPoolForTokenPair', () => {
   it('should find matching pools', () => {
-    const token0 = { canister_id: 'token0-id' } as FE.Token;
-    const token1 = { canister_id: 'token1-id' } as FE.Token;
+    const token0 = { address: 'token0-id' } as Kong.Token;
+    const token1 = { address: 'token1-id' } as Kong.Token;
     const pools = [
       { address_0: 'token0-id', address_1: 'token1-id' } as BE.Pool,
       { address_0: 'token2-id', address_1: 'token3-id' } as BE.Pool
@@ -316,10 +314,10 @@ describe('getPoolForTokenPair', () => {
 
 describe('validateTokenSelect', () => {
   it('should validate token selection correctly', () => {
-    const icp = { symbol: 'ICP', canister_id: 'icp-id' } as FE.Token;
-    const ckusdt = { symbol: 'ckUSDT', canister_id: 'ckusdt-id' } as FE.Token;
-    const btc = { symbol: 'BTC', canister_id: 'btc-id' } as FE.Token;
-    const eth = { symbol: 'ETH', canister_id: 'eth-id' } as FE.Token;
+    const icp = { symbol: 'ICP', address: 'icp-id' } as Kong.Token;
+    const ckusdt = { symbol: 'ckUSDT', address: 'ckusdt-id' } as Kong.Token;
+    const btc = { symbol: 'BTC', address: 'btc-id' } as Kong.Token;
+    const eth = { symbol: 'ETH', address: 'eth-id' } as Kong.Token;
     const tokens = [icp, ckusdt, btc, eth];
     const allowedTokens = ['ICP', 'ckUSDT'];
     
@@ -389,7 +387,7 @@ describe('calculateAmountFromPercentage', () => {
     const token = { 
       decimals: 6,
       fee: 0.001 // 0.1%
-    } as FE.Token;
+    } as Kong.Token;
     
     // 50% of 1000 tokens should be 500
     expect(calculateAmountFromPercentage(token, '1000000000', 50)).toBe('500.000000');
@@ -405,10 +403,10 @@ describe('calculateAmountFromPercentage', () => {
     const token = { 
       decimals: 6,
       fee: 0.001
-    } as FE.Token;
+    } as Kong.Token;
     
     expect(calculateAmountFromPercentage(token, '0', 50)).toBe('0');
-    expect(calculateAmountFromPercentage(null as unknown as FE.Token, '1000000000', 50)).toBe('0');
+    expect(calculateAmountFromPercentage(null as unknown as Kong.Token, '1000000000', 50)).toBe('0');
     expect(calculateAmountFromPercentage(token, '', 50)).toBe('0');
     
     // Balance less than fee
@@ -419,9 +417,9 @@ describe('calculateAmountFromPercentage', () => {
 describe('calculateTokenUsdValue', () => {
   it('should calculate USD value for a token amount', () => {
     const token = { 
-      canister_id: 'token-id',
+      address: 'token-id',
       metrics: { price: '50000' }
-    } as FE.Token;
+    } as Kong.Token;
     
     // 1 token at price $50000 should be $50000
     expect(calculateTokenUsdValue('1', token)).toBe('50,000.00');
@@ -435,18 +433,18 @@ describe('calculateTokenUsdValue', () => {
   
   it('should handle invalid inputs', () => {
     const token = { 
-      canister_id: 'token-id',
+      address: 'token-id',
       metrics: { price: '50000' }
-    } as FE.Token;
+    } as Kong.Token;
     
     expect(calculateTokenUsdValue('', token)).toBe('0');
     expect(calculateTokenUsdValue('invalid', token)).toBe('0');
     expect(calculateTokenUsdValue('1', null)).toBe('0');
     
     const tokenWithoutPrice = { 
-      canister_id: 'token-id',
+      address: 'token-id',
       metrics: {}
-    } as FE.Token;
+    } as Kong.Token;
     expect(calculateTokenUsdValue('1', tokenWithoutPrice)).toBe('0');
   });
 });

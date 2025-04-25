@@ -46,8 +46,8 @@ declare global {
       timestamp?: number;
       ts?: number;
       is_removed: boolean;
-      token0?: FE.Token;
-      token1?: FE.Token;
+      token0?: Kong.Token;
+      token1?: Kong.Token;
     }
   }
 }

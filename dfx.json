@@ -164,11 +164,20 @@
     },
     "ic_siws_provider": {
       "type": "custom",
-      "candid": "https://github.com/kristoferlund/ic-siws/releases/download/v0.0.1/ic_siws_provider.did",
-      "wasm": "https://github.com/kristoferlund/ic-siws/releases/download/v0.0.1/ic_siws_provider.wasm.gz",
+      "candid": "src/ic_siws_provider/ic_siws_provider.did",
+      "main": "src/ic_siws_provider/src/lib.rs",
+      "wasm": "target/wasm32-unknown-unknown/release/ic_siws_provider.wasm",
+      "package": "ic_siws_provider",
+      "build": "sh scripts/build_rust_canister.sh ic_siws_provider",
+      "specified_id": "guktk-fqaaa-aaaao-a4goa-cai",
       "declarations": {
         "node_compatibility": true
-      }
+      },
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     }
   },
   "defaults": {

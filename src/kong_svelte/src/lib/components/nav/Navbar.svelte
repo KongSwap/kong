@@ -18,6 +18,7 @@
     Search,
     Trophy,
     Bell,
+    LogIn,
   } from "lucide-svelte";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { page } from "$app/state";
@@ -30,26 +31,28 @@
   import { userTokens } from "$lib/stores/userTokens";
   import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
   import { getThemeById } from "$lib/themes/themeRegistry";
-  import { writable } from "svelte/store";
   import NavbarButton from "./NavbarButton.svelte";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
   import { getAccountIds, getPrincipalString } from "$lib/utils/accountUtils";
+  import { isAuthenticating } from "$lib/stores/auth";
 
   // Computed directly where needed using themeStore rune
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
+  
+  // Define if current theme is light and should have inverted logo
+  const isLightTheme = $derived(browser && 
+    (getThemeById($themeStore)?.colors?.logoInvert === 1 || 
+     $themeStore.includes('light') ||
+     $themeStore === 'win98light'));
+  
+  // Define logo paths - use only one logo path
+  const logoPath = "/images/kongface-white.svg";
+  const mobileLogoPath = "/titles/logo-white-wide.png";
 
-  // Define logo paths
-  const defaultLogoPath = "/titles/logo-white-wide.png";
-  const invertedLogoPath = "/titles/logo-black-wide.png"; // Adjust if necessary
-
-  // Derive logoSrc based on theme's invert property
-  const logoSrc = $derived(
-    browser && getThemeById($themeStore)?.colors?.logoInvert === 1
-      ? invertedLogoPath
-      : defaultLogoPath
-  );
+  // No longer need logoSrc as we'll use the single path directly
+  // and apply CSS inversion when needed via the light-logo class
 
   // Define a type for valid tab IDs
   type NavTabId = 'swap' | 'predict' | 'earn' | 'stats';
@@ -67,7 +70,7 @@
   // Compute account ID reactively
   let accountId = $derived(
     $auth.isConnected && $auth.account?.owner
-      ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
+      ? getAccountIds($auth.account.owner, $auth.account.subaccount).main
       : ""
   );
 
@@ -167,6 +170,7 @@
     label: null,
     type: 'standard' as const,
     isSelected: false,
+    loading: false,
   };
 
   const desktopNavButtons = $derived([
@@ -174,7 +178,7 @@
       ...baseDesktopIconButton,
       icon: SettingsIcon,
       onClick: () => goto("/settings"),
-      tooltipText: "Settings",
+      tooltipText: "",
       show: true,
       themeProps: standardButtonThemeProps, // Theme props are reactive
     },
@@ -182,7 +186,7 @@
       ...baseDesktopIconButton,
       icon: Search,
       onClick: handleOpenSearch,
-      tooltipText: "Search",
+      tooltipText: "",
       show: true,
       themeProps: standardButtonThemeProps,
     },
@@ -206,8 +210,8 @@
     // Wallet Button (Specific properties)
     {
       type: 'wallet' as const,
-      icon: Wallet,
-      label: $auth.isConnected ? null : "Connect",
+      icon: $auth.isConnected ? Wallet : LogIn,
+      label: null,
       onClick: handleConnect,
       isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
       show: true,
@@ -215,7 +219,8 @@
       variant: 'primary' as const,
       isWalletButton: true,
       badgeCount: $notificationsStore.unreadCount,
-      tooltipText: $auth.isConnected ? "Wallet / Notifications" : "Connect Wallet"
+      tooltipText: null,
+      loading: $isAuthenticating,
     }
   ]);
 
@@ -227,6 +232,7 @@
     isWalletButton: false,
     badgeCount: null,
     show: true,
+    loading: false,
   };
 
   const mobileHeaderButtons = $derived([
@@ -242,6 +248,7 @@
       isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
       isWalletButton: true,
       badgeCount: $notificationsStore.unreadCount,
+      loading: $isAuthenticating,
     }
   ]);
 
@@ -410,7 +417,7 @@
 
   // --- Start New Copy Functions ---
   function copyPrincipalId() {
-    const principalToCopy = getPrincipalString($auth?.account?.owner);
+    const principalToCopy = $auth?.account?.owner;
     if (principalToCopy) {
       copyToClipboard(principalToCopy);
     } else {
@@ -420,7 +427,7 @@
 
   function copyAccountId() {
     const currentAccountId = $auth.isConnected && $auth.account?.owner
-      ? getAccountIds(getPrincipalString($auth.account.owner), $auth.account.subaccount).main
+      ? getAccountIds($auth.account.owner, $auth.account.subaccount).main
       : "";
     if (currentAccountId) {
       copyToClipboard(currentAccountId);
@@ -439,9 +446,9 @@
   }
 </script>
 
-<div class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
+<div id="navbar" class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
   <div class="mx-auto h-16 flex items-center justify-between px-6">
-    <div class="flex items-center gap-10">
+    <div class="flex items-center gap-4">
       {#if isMobile}
         <button
           class="h-[34px] w-[34px] flex items-center justify-center"
@@ -449,23 +456,19 @@
         >
           <Menu
             size={20}
-            color={browser &&
-            getThemeById($themeStore)?.colors?.logoInvert === 1
-              ? "black"
-              : "white"}
+            color={isLightTheme ? "black" : "white"}
           />
         </button>
       {:else}
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          on:click={() => goto("/")}
+          on:click={() => goto("/swap")}
         >
           <img
-            src={logoSrc}
+            src={logoPath}
             alt="Kong Logo"
-            class="h-[30px] transition-all duration-200 navbar-logo"
-            class:light-logo={browser &&
-              getThemeById($themeStore)?.colors?.logoInvert === 1}
+            class="h-[40px] transition-all duration-200 navbar-logo"
+            class:light-logo={isLightTheme}
             on:error={(e) => {
               const img = e.target as HTMLImageElement;
               const textElement = img.nextElementSibling as HTMLElement;
@@ -518,14 +521,13 @@
       >
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          on:click={() => goto("/")}
+          on:click={() => goto("/swap")}
         >
           <img
-            src={logoSrc}
+            src={mobileLogoPath}
             alt="Kong Logo"
             class="h-8 transition-all duration-200 navbar-logo mobile-navbar-logo"
-            class:light-logo={browser &&
-              getThemeById($themeStore)?.colors?.logoInvert === 1}
+            class:light-logo={isLightTheme}
             on:error={(e) => {
               const img = e.target as HTMLImageElement;
               const textElement = img.nextElementSibling as HTMLElement;
@@ -546,7 +548,7 @@
     <div class="flex items-center gap-1.5">
       {#if !isMobile}
         <!-- Refactored Icon Buttons -->
-        {#each desktopNavButtons as button (button.tooltipText)}
+        {#each desktopNavButtons as button, index (index)}
           {#if button.show}
             <NavbarButton
               icon={button.icon}
@@ -554,6 +556,7 @@
               onClick={button.onClick}
               isSelected={button.isSelected}
               variant={button.variant}
+              loading={button.loading}
               {...button.themeProps}
               isWalletButton={button.isWalletButton}
               badgeCount={button.badgeCount}
@@ -576,6 +579,7 @@
               isSelected={button.isSelected ?? false}
               isWalletButton={button.isWalletButton ?? false}
               badgeCount={button.badgeCount ?? null}
+              loading={button.loading}
             />
           {/if}
         {/each}
@@ -593,12 +597,11 @@
     >
       <div class="flex items-center justify-between p-5 border-b border-kong-border max-[375px]:p-4">
         <img
-          src={logoSrc}
+          src={mobileLogoPath}
           alt="Kong Logo"
           class="navbar-logo h-9 !transition-all !duration-200"
-          class:light-logo={browser &&
-            getThemeById($themeStore)?.colors?.logoInvert === 1}
-          style={browser && getThemeById($themeStore)?.colors?.logoInvert === 1 ? '--logo-brightness: 0.2' : ''}
+          class:light-logo={isLightTheme}
+          style={isLightTheme ? '--logo-brightness: 0.2' : ''}
         />
         <button class="w-9 h-9 flex items-center justify-center rounded-full text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/10 hover:bg-kong-text-primary/15 transition-colors duration-200" on:click={() => (navOpen = false)}>
           <X size={16} />
@@ -634,7 +637,7 @@
         </div>
       </nav>
 
-      <div class="p-4 border-t border-kong-border">
+      <div class="p-2 border-t border-kong-border">
         <NavbarButton
           icon={Wallet}
           label={$auth.isConnected ? "Wallet" : "Connect Wallet"}
@@ -642,10 +645,11 @@
           isSelected={showWalletSidebar && walletSidebarActiveTab === "wallet"}
           variant="primary"
           iconSize={20}
-          class="mobile-wallet-btn"
+          class="w-full !py-5 justify-center"
           {...walletButtonThemeProps}
           isWalletButton={true}
           badgeCount={$notificationsStore.unreadCount}
+          loading={$isAuthenticating}
         />
       </div>
     </div>
@@ -662,6 +666,7 @@
   /* Logo styles using CSS vars - Keep */
   .light-logo {
     @apply invert brightness-[var(--logo-brightness,0.8)] transition-all duration-200;
+    filter: invert(1) brightness(var(--logo-brightness, 0.2));
   }
 
   /* Keep only for text-shadow on active state */

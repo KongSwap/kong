@@ -29,7 +29,7 @@ export class ClaimsService {
       }
 
       const actor = createAnonymousActorHelper(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend);
-      const principalId = authState.account?.owner?.toString();
+      const principalId = authState.account?.owner;
       
       if (!principalId) {
         return { claims: [], error: "Principal ID not found" };
@@ -120,7 +120,7 @@ export class ClaimsService {
       .filter(Boolean) as string[];
   }
 
-  private static async fetchTokenDetails(tokenIdentifiers: string[]): Promise<Record<string, FE.Token>> {
+  private static async fetchTokenDetails(tokenIdentifiers: string[]): Promise<Record<string, Kong.Token>> {
     if (tokenIdentifiers.length === 0) return {};
     
     try {
@@ -128,13 +128,13 @@ export class ClaimsService {
       return tokens.reduce((acc, token) => {
         if (token) {
           acc[token.symbol] = token;
-          if (token.canister_id) {
-            const canisterId = Array.isArray(token.canister_id) ? token.canister_id[0] : token.canister_id;
+          if (token.address) {
+            const canisterId = Array.isArray(token.address) ? token.address[0] : token.address;
             acc[canisterId] = token;
           }
         }
         return acc;
-      }, {} as Record<string, FE.Token>);
+      }, {} as Record<string, Kong.Token>);
     } catch (err) {
       console.error("Error fetching token details:", err);
       return {};
@@ -143,7 +143,7 @@ export class ClaimsService {
 
   private static enhanceClaimsWithTokenDetails(
     claims: Claim[], 
-    tokenDetailsMap: Record<string, FE.Token>
+    tokenDetailsMap: Record<string, Kong.Token>
   ): Claim[] {
     return claims.map(claim => {
       const claimCanisterId = Array.isArray(claim.canister_id) ? claim.canister_id[0] : claim.canister_id;

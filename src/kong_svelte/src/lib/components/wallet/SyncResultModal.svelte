@@ -2,7 +2,7 @@
 	import { Check, AlertCircle, Plus, Minus, Shuffle } from 'lucide-svelte';
 	import Modal from '$lib/components/common/Modal.svelte';
 
-	type $$Props = {
+	type SyncResultModalProps = {
 		isOpen: boolean;
 		syncStatus: { added: number; removed: number } | null;
 		onClose: () => void;
@@ -12,7 +12,7 @@
 		isOpen = $bindable(), 
 		syncStatus = $bindable(null),
 		onClose
-	}: $$Props = $props();
+	}: SyncResultModalProps = $props();
 </script>
 
 <Modal

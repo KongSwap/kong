@@ -11,8 +11,8 @@ vi.mock('$lib/stores/userTokens', () => ({
   userTokens: {
     subscribe: vi.fn((callback) => {
       callback({ tokens: [
-        { canister_id: 'token1', metrics: { price: '100' } },
-        { canister_id: 'token2', metrics: { price: '50' } }
+        { address: 'token1', metrics: { price: '100' } },
+        { address: 'token2', metrics: { price: '50' } }
       ]});
       return { unsubscribe: vi.fn() };
     })
@@ -25,7 +25,7 @@ function createMockPool(overrides: Partial<BE.Pool> = {}): BE.Pool {
     lp_token_symbol: '',
     name: '',
     rolling_24h_volume: 0n,
-    rolling_24h_apy: 0,
+    rolling_24h_apy: '0',
     address_0: '',
     address_1: '',
     symbol_0: '',
@@ -45,28 +45,29 @@ function createMockPool(overrides: Partial<BE.Pool> = {}): BE.Pool {
     lp_fee_bps: 0,
     tvl: 0n,
     is_removed: false,
+    lp_token_id: '',
     ...overrides
   };
 }
 
 describe('getPriceChangeClass', () => {
   it('should return empty string for undefined price change', () => {
-    const token = { metrics: {} } as FE.Token;
+    const token = { metrics: {} } as Kong.Token;
     expect(getPriceChangeClass(token)).toBe('');
   });
 
   it('should return green class for positive price change', () => {
-    const token = { metrics: { price_change_24h: '5.5' } } as FE.Token;
+    const token = { metrics: { price_change_24h: '5.5' } } as Kong.Token;
     expect(getPriceChangeClass(token)).toBe('text-kong-text-accent-green');
   });
 
   it('should return red class for negative price change', () => {
-    const token = { metrics: { price_change_24h: '-3.2' } } as FE.Token;
+    const token = { metrics: { price_change_24h: '-3.2' } } as Kong.Token;
     expect(getPriceChangeClass(token)).toBe('text-kong-accent-red');
   });
 
   it('should return empty string for zero price change', () => {
-    const token = { metrics: { price_change_24h: '0' } } as FE.Token;
+    const token = { metrics: { price_change_24h: '0' } } as Kong.Token;
     expect(getPriceChangeClass(token)).toBe('');
   });
 });
@@ -83,7 +84,7 @@ describe('formatPoolData', () => {
       symbol_0: 'BTC',
       symbol_1: 'USDT',
       price: 2,
-      rolling_24h_apy: 10.50
+      rolling_24h_apy: '10.50'
     })];
 
     const result = await formatPoolData(pools);

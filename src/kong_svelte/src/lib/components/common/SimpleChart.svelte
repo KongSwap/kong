@@ -24,8 +24,8 @@
     Tooltip
   );
 
-  export let baseToken: FE.Token;
-  export let quoteToken: FE.Token;
+  export let baseToken: Kong.Token;
+  export let quoteToken: Kong.Token;
   export let price_change_24h: number | null = null;
   
   // Set up event dispatcher for token info
@@ -59,7 +59,7 @@
   }
 
   async function initChart() {
-    if (!canvas || !baseToken?.token_id || !quoteToken?.token_id) {
+    if (!canvas || !baseToken?.id || !quoteToken?.id) {
       return;
     }
     isLoading = true;
@@ -73,12 +73,12 @@
 
     try {
       // Determine token IDs for the API call
-      let baseId = baseToken.token_id || 1;
-      let quoteId = quoteToken.token_id || 1;
+      let baseId = baseToken.id || 1;
+      let quoteId = quoteToken.id || 1;
       
       // Special case for ICP token
       if (baseToken.symbol === "ICP") {
-        baseId = baseToken.token_id || 1;
+        baseId = baseToken.id || 1;
         // Let quote token know we're using it
         dispatch('quoteTokenUsed', quoteToken);
       }

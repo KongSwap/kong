@@ -34,8 +34,7 @@
     "@kong/cli": "file:src/cli"
   },
   "workspaces": [
-    "src/kong_svelte",
-    "src/cli"
+    "src/kong_svelte"
   ],
   "type": "module"
 }

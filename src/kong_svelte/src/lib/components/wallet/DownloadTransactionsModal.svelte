@@ -59,7 +59,7 @@
     }
 
     isLoading = true;
-    const principal = $auth.account.owner.toString();
+    const principal = $auth.account.owner;
     let allTransactions = [];
 
     try {

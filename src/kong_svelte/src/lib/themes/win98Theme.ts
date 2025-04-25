@@ -10,7 +10,7 @@ export const win98Theme: ThemeDefinition = {
   colors: {
     // Background colors
     bgDark: '#C3C3C3',      // Windows 98 light gray
-    bgLight: '#FDFFFF',     // Windows 98 highlight color
+    bgLight: '#e0e0e0',     // Windows 98 highlight color
     
     // Primary and secondary colors
     primary: '#010081',     // Windows 98 blue
@@ -53,6 +53,7 @@ export const win98Theme: ThemeDefinition = {
     swapPanelShadow: 'inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #808080, inset 2px 2px 0 #D4D0C8, inset -2px -2px 0 #404040', // Win95 3D border effect
     swapPanelInputsRounded: false, // Square inputs for Windows 98 style
     transparentSwapPanel: false, // Solid background for Win98 panels
+    transparentPanel: false, // Solid background for Win98 panels
     swapPanelBorderStyle: 'win95', // Use the Win95 border style
     statsTableTransparent: false, // Use solid background for Win98 stats table
     

@@ -1,4 +1,4 @@
-import type { PNPConfig, AdapterSpecificConfig } from '@windoge98/plug-n-play';
+import type { PNPConfig } from '@windoge98/plug-n-play';
 import { createPNP, type PNP } from "@windoge98/plug-n-play";
 
 // Canister Imports
@@ -76,25 +76,36 @@ export function initializePNP(): PNP {
         kongBackendCanisterId,
         predictionMarketsBackendCanisterId,
         trollboxCanisterId,
-      ].filter((id): id is string => !!id),
-      adapterConfigs: {
-        nns: {
+        process.env.CANISTER_ID_SIWS_PROVIDER,
+        "rh2pm-ryaaa-aaaan-qeniq-cai"
+      ],
+      siwsProviderCanisterId: 'guktk-fqaaa-aaaao-a4goa-cai',
+      adapters: {
+        ii: {
           enabled: true,
           identityProvider: isDev
             ? "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"
             : "https://identity.ic0.app",
-        } as AdapterSpecificConfig,
+        },
         plug: {
           enabled: true,
-        } as AdapterSpecificConfig,
+        },
         nfid: {
           enabled: true,
           rpcUrl: "https://nfid.one/rpc",
-        } as AdapterSpecificConfig,
+        },
         oisy: {
           enabled: true,
           signerUrl: "https://oisy.com/sign",
-        } as AdapterSpecificConfig,
+        },
+        phantomSiws: {
+          enabled: true,
+          config: {
+          },
+        },
+        solflareSiws: {
+          enabled: true,
+        }
       },
       localStorageKey: "kongSwapPnpState",
     } as PNPConfig);

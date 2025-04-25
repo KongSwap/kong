@@ -20,7 +20,7 @@ function getCurrentPortfolioDetails() {
   let tokenValue24h = 0;
   
   walletData.tokens.forEach(token => {
-    const balanceData = walletData.balances?.[token.canister_id];
+    const balanceData = walletData.balances?.[token.address];
     if (balanceData && token.metrics) {
       const currentValue = Number(balanceData.in_usd);
       const priceChange = parseFloat(token.metrics.price_change_24h) || 0;

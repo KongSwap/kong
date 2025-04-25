@@ -21,12 +21,12 @@ const ESSENTIAL_TOKEN_IDS = [
  */
 export async function discoverTokens(
   walletId: string,
-  allAvailableTokens: FE.Token[],
+  allAvailableTokens: Kong.Token[],
   enabledTokenIds: Set<string>,
-  currentEnabledTokens: FE.Token[]
+  currentEnabledTokens: Kong.Token[]
 ): Promise<{
-  tokensToAdd: FE.Token[];
-  tokensToRemove: FE.Token[];
+  tokensToAdd: Kong.Token[];
+  tokensToRemove: Kong.Token[];
   syncStatus: { added: number; removed: number } | null;
 }> {
   if (!walletId || !allAvailableTokens.length) {
@@ -55,8 +55,8 @@ export async function discoverTokens(
 
       // Find tokens with non-zero balances in this batch
       const batchTokensWithBalance = batch.filter(token => {
-        if (!token.canister_id) return false;
-        const balance = batchBalances[token.canister_id];
+        if (!token.address) return false;
+        const balance = batchBalances[token.address];
         return balance && balance.in_tokens > 0n;
       });
       
@@ -72,17 +72,17 @@ export async function discoverTokens(
     
     // Find which tokens should be added (have balance but aren't enabled)
     const tokensToAdd = tokensWithBalance.filter(token => 
-      token.canister_id && !enabledTokenIds.has(token.canister_id)
+      token.address && !enabledTokenIds.has(token.address)
     );
     
     // Find tokens with zero balance (potential removal candidates)
     const tokensToRemove = currentEnabledTokens.filter(token => {
       // Skip essential tokens that should never be removed
-      if (!token.canister_id) return false;
-      if (ESSENTIAL_TOKEN_IDS.includes(token.canister_id)) return false;
+      if (!token.address) return false;
+      if (ESSENTIAL_TOKEN_IDS.includes(token.address)) return false;
 
       // Check if it has zero balance using the combined fetched balance data
-      const balance = allFetchedBalances.get(token.canister_id);
+      const balance = allFetchedBalances.get(token.address);
       
       // Check if balance exists AND is explicitly zero
       const isExplicitlyZero = balance && (

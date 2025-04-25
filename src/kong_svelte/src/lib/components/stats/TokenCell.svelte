@@ -6,25 +6,26 @@
 	import { favoriteStore } from "$lib/stores/favoriteStore";
   import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
 
-  export let row: any;
+  export let row: FE.StatsToken;
+  export let isHovered = false;
   
   let isFavorite = false;
 
-  $: isExcludedToken = row.canister_id === CKUSDT_CANISTER_ID || row.canister_id === ICP_CANISTER_ID;
-  $: isTopVolume = !isExcludedToken && row.volumeRank && row.volumeRank <= 5 && Number(row.metrics?.volume_24h || 0) > 0;
-  $: isTopTVL = !isExcludedToken && row.tvlRank && row.tvlRank <= 5 && Number(row.metrics?.tvl || 0) > 0;
-  $: isTopGainer = !isExcludedToken && row.priceChangeRank && row.priceChangeRank <= 3 && Number(row.metrics?.price_change_24h || 0) > 0;
-  $: isTopLoser = !isExcludedToken && row.priceChangeRank && row.priceChangeRank <= 3 && Number(row.metrics?.price_change_24h || 0) < 0;
+  $: isExcludedToken = row.address === CKUSDT_CANISTER_ID || row.address === ICP_CANISTER_ID;
+  $: isTopVolume = !isExcludedToken && row.volumeRank !== undefined && row.volumeRank <= 5 && Number(row.metrics?.volume_24h || 0) > 0;
+  $: isTopTVL = !isExcludedToken && row.tvlRank !== undefined && row.tvlRank <= 5 && Number(row.metrics?.tvl || 0) > 0;
+  $: isTopGainer = !isExcludedToken && row.priceChangeRank !== undefined && row.priceChangeRank <= 3 && Number(row.metrics?.price_change_24h || 0) > 0;
+  $: isTopLoser = !isExcludedToken && row.priceChangeRank !== undefined && row.priceChangeRank <= 3 && Number(row.metrics?.price_change_24h || 0) < 0;
 
   $: if ($auth.isConnected) {
-    favoriteStore.isFavorite(row.canister_id).then(fav => isFavorite = fav);
+    favoriteStore.isFavorite(row.address).then(fav => isFavorite = fav);
   }
 
   async function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
     if (!$auth.isConnected) return;
     
-    const success = await favoriteStore.toggleFavorite(row.canister_id);
+    const success = await favoriteStore.toggleFavorite(row.address);
     if (success) {
       isFavorite = !isFavorite;
     }
@@ -51,8 +52,8 @@
     </button>
   {/if}
   <TokenImages tokens={[row]} containerClass="self-center" size={24} />
-  <span class="token-name">{row.name}</span>
-  <span class="token-symbol">{row.symbol}</span>
+  <span class="token-name {isHovered ? '!text-kong-primary' : ''}">{row.name}</span>
+  <span class="token-symbol {isHovered ? '!text-kong-primary' : ''}">{row.symbol}</span>
   <div class="flex gap-1 items-center">
     {#if isTopVolume}
       <div use:tooltip={{ text: `#${row.volumeRank} by Volume`, direction: "top" }}>

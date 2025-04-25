@@ -24,7 +24,7 @@ export interface VolumeLeaderboardResponse {
  */
 export async function fetchVolumeLeaderboard(
   period: 'day' | 'week' | 'month' = 'day',
-  limit: number = 10
+  limit: number = 20
 ): Promise<LeaderboardEntry[] | VolumeLeaderboardResponse> {
   if (!browser) {
     throw new Error("API calls can only be made in the browser");

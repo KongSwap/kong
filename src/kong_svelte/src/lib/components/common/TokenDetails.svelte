@@ -4,15 +4,15 @@
   import TransferConfirmationModal from "$lib/components/wallet/TransferConfirmationModal.svelte";
   import { createEventDispatcher } from "svelte";
 
-  export let token: FE.Token;
+  export let token: Kong.Token;
 
   const dispatch = createEventDispatcher();
-  type TokenWithAmount = FE.Token & { amount?: string };
+  type TokenWithAmount = Kong.Token & { amount?: string };
   let activeTab: "send" | "receive" = "send";
   let showConfirmation = false;
   let transferDetails: {
     amount: string;
-    token: FE.Token;
+    token: Kong.Token;
     tokenFee: bigint;
     isValidating: boolean;
     toPrincipal: string;

@@ -65,7 +65,7 @@ export class TransactionSerializer extends BaseSerializer {
    * @param tokens - The tokens involved
    * @returns Formatted liquidity transaction
    */
-  private static serializeLiquidityTransaction(tx: any, tokens: any[]): any {
+  private static serializeLiquidityTransaction(tx: any, tokens: Kong.Token[]): any {
     const rawTx = tx.raw_json?.[`${tx.tx_type}Tx`];
     if (!rawTx) return null;
 
@@ -100,12 +100,12 @@ export class TransactionSerializer extends BaseSerializer {
       status: rawTx.status || 'Success',
       timestamp: rawTx.ts.toString(),
       details: {
-        token_0_id: token0?.token_id,
-        token_1_id: token1?.token_id,
-        token_0_symbol: token0?.symbol || `Token ${token0?.token_id}`,
-        token_1_symbol: token1?.symbol || `Token ${token1?.token_id}`,
-        token_0_canister: token0?.canister_id || '',
-        token_1_canister: token1?.canister_id || '',
+        token_0_id: token0?.id,
+        token_1_id: token1?.id,
+        token_0_symbol: token0?.symbol || `Token ${token0?.id}`,
+        token_1_symbol: token1?.symbol || `Token ${token1?.id}`,
+        token_0_canister: token0?.address || '',
+        token_1_canister: token1?.address || '',
         amount_0: formattedAmount0,
         amount_1: formattedAmount1,
         lp_token_symbol: lpToken?.symbol || '',
@@ -123,7 +123,7 @@ export class TransactionSerializer extends BaseSerializer {
    * @param tokens - The tokens involved
    * @returns Formatted swap transaction
    */
-  private static serializeSwapTransaction(tx: any, tokens: any[]): any {
+  private static serializeSwapTransaction(tx: any, tokens: Kong.Token[]): any {
     const rawTx = tx.raw_json?.SwapTx;
     if (!rawTx) return null;
 
@@ -157,8 +157,8 @@ export class TransactionSerializer extends BaseSerializer {
         slippage: rawTx.slippage?.toString() || "0",
         pay_token_symbol: payToken?.symbol || `Token ${rawTx.pay_token_id}`,
         receive_token_symbol: receiveToken?.symbol || `Token ${rawTx.receive_token_id}`,
-        pay_token_canister: payToken?.canister_id || '',
-        receive_token_canister: receiveToken?.canister_id || '',
+        pay_token_canister: payToken?.address || '',
+        receive_token_canister: receiveToken?.address || '',
         gas_fee: this.formatTokenAmount(rawTx.gas_fee, payToken?.decimals || 8),
         lp_fee: this.formatTokenAmount(rawTx.lp_fee, payToken?.decimals || 8)
       }
@@ -171,14 +171,14 @@ export class TransactionSerializer extends BaseSerializer {
    * @param tokens - The tokens involved
    * @returns Formatted send transaction
    */
-  private static serializeSendTransaction(tx: any, tokens: any[]): any {
+  private static serializeSendTransaction(tx: any, tokens: Kong.Token[]): any {
     const rawTx = tx.raw_json?.SendTx || tx;
     if (!rawTx) return null;
 
     // Find the token in the response
     const token = tokens.find((t: any) => 
-      t.token_id === rawTx.token_id || 
-      t.canister_id === rawTx.token_canister
+      (rawTx.id && t.token_id === rawTx.id) || 
+      (rawTx.token_canister && t.address === rawTx.token_canister)
     );
 
     // Format amount based on token decimals
@@ -194,9 +194,9 @@ export class TransactionSerializer extends BaseSerializer {
       timestamp: rawTx.ts?.toString() || rawTx.timestamp?.toString() || Date.now().toString(),
       details: {
         amount: formattedAmount,
-        token_id: rawTx.token_id || '',
+        token_id: rawTx.id || '',
         token_symbol: token?.symbol || rawTx.token_symbol || 'Unknown',
-        token_canister: token?.canister_id || rawTx.token_canister || '',
+        token_canister: token?.address || rawTx.token_canister || '',
         from: rawTx.from || tx.from || '',
         to: rawTx.to || tx.to || '',
         fee: this.formatTokenAmount(rawTx.fee, token?.decimals || 8)

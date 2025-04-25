@@ -50,6 +50,8 @@ export const plainBlackTheme: ThemeDefinition = {
     swapPanelBorder: '2px solid rgba(255, 255, 255, 0.3)', // Bright border for contrast
     swapPanelShadow: 'none', // No shadow for brutalist style
     swapPanelInputsRounded: false, // Sharp corners for all elements
+    transparentSwapPanel: false,
+    transparentPanel: false,
     
     // Borders
     border: '#333333',

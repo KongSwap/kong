@@ -16,36 +16,23 @@ export const idlFactory = ({ IDL }) => {
     'chain_id' : IDL.Opt(IDL.Text),
     'sign_in_expires_in' : IDL.Opt(IDL.Nat64),
   });
-  const Principal = IDL.Vec(IDL.Nat8);
-  const Address = IDL.Text;
-  const GetAddressResponse = IDL.Variant({ 'Ok' : Address, 'Err' : IDL.Text });
-  const GetPrincipalResponse = IDL.Variant({
-    'Ok' : Principal,
-    'Err' : IDL.Text,
-  });
-  const PublicKey = IDL.Vec(IDL.Nat8);
-  const SessionKey = PublicKey;
-  const Timestamp = IDL.Nat64;
+  const Result = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
+  const Result_1 = IDL.Variant({ 'Ok' : IDL.Vec(IDL.Nat8), 'Err' : IDL.Text });
   const Delegation = IDL.Record({
-    'pubkey' : PublicKey,
+    'pubkey' : IDL.Vec(IDL.Nat8),
     'targets' : IDL.Opt(IDL.Vec(IDL.Principal)),
-    'expiration' : Timestamp,
+    'expiration' : IDL.Nat64,
   });
   const SignedDelegation = IDL.Record({
     'signature' : IDL.Vec(IDL.Nat8),
     'delegation' : Delegation,
   });
-  const GetDelegationResponse = IDL.Variant({
-    'Ok' : SignedDelegation,
-    'Err' : IDL.Text,
-  });
-  const SiwsSignature = IDL.Text;
-  const CanisterPublicKey = PublicKey;
+  const Result_2 = IDL.Variant({ 'Ok' : SignedDelegation, 'Err' : IDL.Text });
   const LoginDetails = IDL.Record({
-    'user_canister_pubkey' : CanisterPublicKey,
-    'expiration' : Timestamp,
+    'user_canister_pubkey' : IDL.Vec(IDL.Nat8),
+    'expiration' : IDL.Nat64,
   });
-  const LoginResponse = IDL.Variant({ 'Ok' : LoginDetails, 'Err' : IDL.Text });
+  const Result_3 = IDL.Variant({ 'Ok' : LoginDetails, 'Err' : IDL.Text });
   const SiwsMessage = IDL.Record({
     'uri' : IDL.Text,
     'issued_at' : IDL.Nat64,
@@ -53,29 +40,26 @@ export const idlFactory = ({ IDL }) => {
     'statement' : IDL.Text,
     'version' : IDL.Nat32,
     'chain_id' : IDL.Text,
-    'address' : Address,
+    'address' : IDL.Text,
     'nonce' : IDL.Text,
     'expiration_time' : IDL.Nat64,
   });
-  const PrepareLoginResponse = IDL.Variant({
-    'Ok' : SiwsMessage,
-    'Err' : IDL.Text,
-  });
+  const Result_4 = IDL.Variant({ 'Ok' : SiwsMessage, 'Err' : IDL.Text });
   return IDL.Service({
-    'get_address' : IDL.Func([Principal], [GetAddressResponse], ['query']),
-    'get_caller_address' : IDL.Func([], [GetAddressResponse], ['query']),
-    'get_principal' : IDL.Func([Address], [GetPrincipalResponse], ['query']),
+    'get_address' : IDL.Func([IDL.Vec(IDL.Nat8)], [Result], ['query']),
+    'get_caller_address' : IDL.Func([], [Result], ['query']),
+    'get_principal' : IDL.Func([IDL.Text], [Result_1], ['query']),
     'siws_get_delegation' : IDL.Func(
-        [Address, SessionKey, Timestamp],
-        [GetDelegationResponse],
+        [IDL.Text, IDL.Vec(IDL.Nat8), IDL.Nat64],
+        [Result_2],
         ['query'],
       ),
     'siws_login' : IDL.Func(
-        [SiwsSignature, Address, SessionKey],
-        [LoginResponse],
+        [IDL.Text, IDL.Text, IDL.Vec(IDL.Nat8)],
+        [Result_3],
         [],
       ),
-    'siws_prepare_login' : IDL.Func([Address], [PrepareLoginResponse], []),
+    'siws_prepare_login' : IDL.Func([IDL.Text], [Result_4], []),
   });
 };
 export const init = ({ IDL }) => {

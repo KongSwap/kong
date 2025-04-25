@@ -10,9 +10,19 @@ const defaultImage = 'https://kongswap.io/images/banner.webp';
 
 // Define metadata for specific routes
 const routeMetadata = {
+  '': {
+    title: 'KongSwap - Rumble in the crypto jungle with the most advanced multi-chain DeFi platform in the world!',
+    description: 'KongSwap is the most advanced multi-chain DeFi platform in the world, providing a fully on-chain, DAO owned, and permissionless DeFi experience.',
+    image: defaultImage 
+  },
   '/': {
-    title: 'KongSwap - The Leading Fully On-Chain DeFi platform',
-    description: 'Trade tokens with lightning speed and security on KongSwap, the premier decentralized exchange on the Internet Computer.',
+    title: 'KongSwap - Rumble in the crypto jungle with the most advanced multi-chain DeFi platform in the world!',
+    description: 'KongSwap is the most advanced multi-chain DeFi platform in the world, providing a fully on-chain, DAO owned, and permissionless DeFi experience.',
+    image: defaultImage 
+  },
+  '/home': {
+    title: 'KongSwap - Rumble in the crypto jungle with the most advanced multi-chain DeFi platform in the world!',
+    description: 'KongSwap is the most advanced multi-chain DeFi platform in the world, providing a fully on-chain, DAO owned, and permissionless DeFi experience.',
     image: defaultImage 
   },
   '/predict': {

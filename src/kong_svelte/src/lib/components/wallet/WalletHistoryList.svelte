@@ -1,9 +1,7 @@
 <script lang="ts">
-  import { fade } from "svelte/transition";
-  import { onMount, onDestroy, createEventDispatcher } from "svelte";
+  import { onMount, createEventDispatcher } from "svelte";
   import {
     Clock,
-    RefreshCw,
     Download,
     Loader2,
     TrendingUp,
@@ -14,13 +12,13 @@
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { fetchUserTransactions } from "$lib/api/users";
   import { getUserHistory } from "$lib/api/predictionMarket";
-  import TransactionModal from "./TransactionModal.svelte";
-  import TransactionItem from "./TransactionItem.svelte";
-  import PredictionItem from "./PredictionItem.svelte";
+  import TransactionModal from "$lib/components/wallet/TransactionModal.svelte";
+  import TransactionItem from "$lib/components/wallet/TransactionItem.svelte";
+  import PredictionItem from "$lib/components/wallet/PredictionItem.svelte";
   import { processTransaction, formatAmount } from "$lib/utils/transactionUtils";
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import DownloadTransactionsModal from "./DownloadTransactionsModal.svelte";
+  import DownloadTransactionsModal from "$lib/components/wallet/DownloadTransactionsModal.svelte";
   import { goto } from "$app/navigation";
+  import WalletListHeader from "$lib/components/wallet/WalletListHeader.svelte";
 
   // Event dispatcher
   const dispatch = createEventDispatcher<{
@@ -28,7 +26,7 @@
   }>();
 
   // Create a store for tokens
-  const tokensStore = writable<FE.Token[]>([]);
+  const tokensStore = writable<Kong.Token[]>([]);
 
   // State variables
   let isLoading = false;
@@ -108,7 +106,7 @@
     error = null;
 
     try {
-      const principal = $auth.account.owner.toString();
+      const principal = $auth.account.owner;
       predictions = await getUserHistory(principal);
     } catch (err) {
       console.error("Error loading predictions:", err);
@@ -139,7 +137,7 @@
       return;
     }
 
-    const principal = $auth.account.owner.toString();
+    const principal = $auth.account.owner;
     
     if (!loadMore) {
       isLoading = true;
@@ -312,39 +310,25 @@
   onClose={() => (showDownloadModal = false)}
 />
 
-<div class="py-3">
+<div>
   <!-- Header with filters -->
-  <div class="px-4 mb-2 flex items-center justify-between">
-    <div
-      class="text-xs font-medium text-kong-text-secondary uppercase tracking-wide"
-    >
-      Transaction History
-    </div>
-
-    <div class="flex items-center gap-2">
-      <!-- Refresh button -->
+  <WalletListHeader
+    title="Transaction History"
+    isLoading={isLoading}
+    onRefresh={handleRefresh}
+  >
+    <svelte:fragment slot="actions">
+      <!-- Download options dropdown button -->
       <button
         class="p-1.5 rounded-md text-kong-text-secondary hover:text-kong-primary hover:bg-kong-text-primary/5 transition-colors"
-        on:click={handleRefresh}
+        on:click={() => showDownloadModal = true}
         disabled={isLoading}
-        title="Refresh transaction history"
+        title="Download transaction history"
       >
-        <RefreshCw size={14} class={isLoading ? "animate-spin" : ""} />
+        <Download size={14} />
       </button>
-
-      <!-- Download options dropdown button -->
-      <div class="relative">
-        <button
-          class="p-1.5 rounded-md text-kong-text-secondary hover:text-kong-primary hover:bg-kong-text-primary/5 transition-colors"
-          on:click={() => showDownloadModal = true}
-          disabled={isLoading}
-          title="Download transaction history"
-        >
-          <Download size={14} />
-        </button>
-      </div>
-    </div>
-  </div>
+    </svelte:fragment>
+  </WalletListHeader>
 
   <!-- Filter tabs -->
   <div class="px-4 mb-3 flex items-center gap-1.5 flex-wrap">
@@ -360,6 +344,8 @@
       </button>
     {/each}
   </div>
+
+  <div class="max-h-[calc(100vh-260px)] overflow-y-auto scrollbar-thin">
 
   <!-- Loading state -->
   {#if isLoading && ((!transactions.length && selectedFilter !== "predict") || (selectedFilter === "predict" && !predictions))}
@@ -453,4 +439,5 @@
       {/if}
     </div>
   {/if}
+  </div>
 </div>

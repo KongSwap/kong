@@ -7,26 +7,18 @@
 	import { tooltip } from "$lib/actions/tooltip";
 	import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
 
-	interface StatsToken extends FE.Token {
-		marketCapRank?: number;
-		volumeRank?: number;
-		tvlRank?: number;
-		priceChangeRank?: number;
-		isHot?: boolean;
-	}
-
-	export let token: StatsToken;
+	export let token: FE.StatsToken;
 	export let isConnected: boolean;
 	export let isFavorite: boolean;
 	export let trendClass: string;
 	export let showHotIcon = false;
 
-	$: isExcludedToken = token.canister_id === CKUSDT_CANISTER_ID || token.canister_id === ICP_CANISTER_ID;
-	$: isTopVolume = !isExcludedToken && token.volumeRank && token.volumeRank <= 5 && Number(token.metrics?.volume_24h || 0) > 0;
-	$: isTopTVL = !isExcludedToken && token.tvlRank && token.tvlRank <= 5 && Number(token.metrics?.tvl || 0) > 0;
-	$: isTopGainer = !isExcludedToken && token.priceChangeRank && token.priceChangeRank <= 3 && Number(token.metrics?.price_change_24h || 0) > 0;
-	$: isTopLoser = !isExcludedToken && token.priceChangeRank && token.priceChangeRank <= 3 && Number(token.metrics?.price_change_24h || 0) < 0;
-	$: isKongToken = token.canister_id === KONG_CANISTER_ID;
+	$: isExcludedToken = token.address === CKUSDT_CANISTER_ID || token.address === ICP_CANISTER_ID;
+	$: isTopVolume = !isExcludedToken && token.volumeRank !== undefined && token.volumeRank <= 5 && Number(token.metrics?.volume_24h || 0) > 0;
+	$: isTopTVL = !isExcludedToken && token.tvlRank !== undefined && token.tvlRank <= 5 && Number(token.metrics?.tvl || 0) > 0;
+	$: isTopGainer = !isExcludedToken && token.priceChangeRank !== undefined && token.priceChangeRank <= 3 && Number(token.metrics?.price_change_24h || 0) > 0;
+	$: isTopLoser = !isExcludedToken && token.priceChangeRank !== undefined && token.priceChangeRank <= 3 && Number(token.metrics?.price_change_24h || 0) < 0;
+	$: isKongToken = token.address === KONG_CANISTER_ID;
 </script>
 
 <div class="w-full bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-dark/40 backdrop-blur-sm border {isKongToken ? 'border-kong-primary/50' : 'border-kong-border/30'} rounded-xl hover:border-[#60A5FA]/30 hover:bg-kong-bg-dark/60 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-sm">
@@ -37,7 +29,7 @@
 				{#if isConnected}
 					<button
 						class="absolute -right-2 -bottom-2 w-5 h-5 flex items-center justify-center rounded-full bg-kong-bg-dark/80 border border-kong-border/30 hover:bg-kong-bg-dark active:scale-95 transition-all duration-150"
-						on:click|stopPropagation={() => favoriteStore.toggleFavorite(token.canister_id)}
+						on:click|stopPropagation={() => favoriteStore.toggleFavorite(token.address)}
 					>
 						{#if isFavorite}
 							<Star class="w-3 h-3" color="yellow" fill="yellow" />

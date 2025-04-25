@@ -11,9 +11,9 @@
   import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import BigNumber from "bignumber.js";
 
-  export let payToken: FE.Token;
+  export let payToken: Kong.Token;
   export let payAmount: string;
-  export let receiveToken: FE.Token;
+  export let receiveToken: Kong.Token;
   export let receiveAmount: string;
   export let routingPath: string[] = [];
   export let userMaxSlippage: number;
@@ -166,7 +166,7 @@
 
         if (quote.Ok.txs.length > 0) {
           currentRoutingPath = [
-            payToken.canister_id,
+            payToken.address,
             ...quote.Ok.txs.map((tx) => tx.receive_address),
           ];
 
@@ -246,13 +246,12 @@
         class:processing={isLoading}
         class:shine-animation={!isLoading}
         class:warning={showPriceImpactWarning}
-        class="swap-button relative w-full py-3 px-4 rounded-xl border border-kong-border/20 cursor-pointer transform transition-all duration-200 overflow-hidden sm:rounded-lg sm:py-2.5 disabled:opacity-70 disabled:cursor-not-allowed"
-        style="background: linear-gradient(135deg, rgb(var(--accent-blue) / 0.95) 0%, rgb(var(--accent-purple) / 0.95) 100%); box-shadow: 0 2px 6px rgb(var(--accent-blue) / 0.2);"
+        class="swap-button relative w-full py-3 px-4 border cursor-pointer transform transition-all duration-200 overflow-hidden sm:py-2.5 disabled:opacity-70 disabled:cursor-not-allowed"
         on:click={handleConfirm}
         disabled={isLoading}
       >
         <div class="relative z-[1] flex items-center justify-center gap-2">
-          <span class="text-base font-medium text-white text-center sm:text-xl" style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+          <span class="text-base font-medium text-center sm:text-xl" style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
             {#if isLoading}
               Processing...
             {:else if showPriceImpactWarning}
@@ -278,24 +277,45 @@
 
 <style lang="postcss">
   /* Apply styles directly to the single Panel */
-  .flex-col > :global(div.panel) {
+  :global(.panel) {
     @apply relative rounded-md transition-all duration-200 w-full;
+  }
+
+  /* Base Swap Button Styles using Theme Variables */
+  .swap-button {
+    border-radius: var(--swap-button-roundness);
+    border-color: var(--swap-button-border-color);
+    color: var(--swap-button-text-color);
+    background: linear-gradient(135deg, var(--swap-button-primary-gradient-start) 0%, var(--swap-button-primary-gradient-end) 100%);
+    box-shadow: var(--swap-button-shadow);
   }
 
   .swap-button.warning {
     background: linear-gradient(
       135deg,
-      rgb(var(--accent-yellow) / 0.95) 0%,
-      rgb(var(--accent-red) / 0.95) 100%
-    ) !important;
+      var(--swap-button-error-gradient-start) 0%,
+      var(--swap-button-error-gradient-end) 100%
+    ) !important; /* Important to override base */
+     box-shadow: var(--swap-button-shadow); /* Use theme variable */
+  }
+  
+  .swap-button.processing {
+    background: linear-gradient(
+      135deg,
+      var(--swap-button-processing-gradient-start) 0%,
+      var(--swap-button-processing-gradient-end) 100%
+    ) !important; /* Important to override base */
+    animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+     box-shadow: var(--swap-button-shadow); /* Use theme variable */
   }
 
-  /* Keep non-Tailwind styles and animations */
+
+  /* Keep non-Tailwind styles and animations, but use theme variables */
   .button-glow {
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
     background: radial-gradient(
       circle at var(--x, 50%) var(--y, 50%),
-      rgba(255, 255, 255, 0.2),
+      var(--swap-button-glow-color),
       rgba(255, 255, 255, 0) 70%
     );
   }
@@ -304,15 +324,8 @@
     @apply opacity-100;
   }
 
-  .swap-button.processing {
-    animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  /* Processing animation remains */
+  /* @keyframes spin defined elsewhere or via Tailwind */
 
   @keyframes pulse {
     0%, 100% {
@@ -328,7 +341,7 @@
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(255, 255, 255, 0.2),
+      var(--swap-button-shine-color),
       transparent
     );
     transform: skewX(-20deg);
@@ -339,11 +352,12 @@
   }
 
   .ready-glow {
-    @apply absolute inset-[-2px] rounded-[18px] opacity-0 transition-opacity duration-300;
+    @apply absolute inset-[-2px] opacity-0 transition-opacity duration-300;
+     border-radius: var(--swap-button-roundness); /* Match button roundness, removed fallback */
     background: linear-gradient(
       135deg,
-      rgb(var(--accent-blue) / 0.5),
-      rgb(var(--accent-purple) / 0.5)
+       var(--swap-button-ready-glow-start),
+       var(--swap-button-ready-glow-end)
     );
     filter: blur(8px);
   }

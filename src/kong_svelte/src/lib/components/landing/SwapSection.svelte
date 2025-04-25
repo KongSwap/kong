@@ -275,7 +275,7 @@
     <div class="flex-1 flex justify-center items-center relative z-10 order-2 md:order-1 transform translate-y-12 opacity-0 transition-all duration-1000 ease-out {animationClass}">
       <!-- Use the IphoneFrame component -->
       <IphoneFrame 
-        screenshotSrc="/images/swapscreen.png" 
+        screenshotSrc="/images/swapscreen.jpg" 
         gradientOverlay="from-purple-500/10 to-indigo-500/10"
         reflectionColor="from-purple-500/20"
       />

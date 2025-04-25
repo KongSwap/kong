@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tooltip } from "$lib/actions/tooltip";
+  import { panelRoundness } from "$lib/stores/derivedThemeStore";
   
   // Props with Svelte 5 runes
   let {
@@ -15,6 +16,7 @@
     disabled = false, // Disable button
     testId = "",     // For testing
     isWalletButton = false, // Flag for wallet buttons
+    loading = false, // Loading state
     
     // Theme options - consolidated into a single theme object
     customBgColor = "",
@@ -46,7 +48,7 @@
   
   let buttonStyle = $derived(generateButtonStyle());
   
-  // Compute tooltip props with proper type casting
+  // Compute tooltip props with proper type casting - only when tooltipText exists
   let tooltipProps = $derived(tooltipText ? { 
     text: tooltipText, 
     direction: tooltipDirection as "top" | "bottom" | "left" | "right" 
@@ -60,19 +62,19 @@
   // Compute button classes
   let buttonClass = $derived(
     variant === "primary" 
-      ? "h-[30px] px-3 flex items-center gap-1.5 rounded-md text-xs font-semibold text-kong-text-primary/95 bg-kong-primary/40 border border-kong-primary/80 transition-all duration-150 hover:bg-kong-primary/60 hover:border-kong-primary/90"
+      ? `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-semibold text-kong-text-primary/95 bg-kong-primary/40 border border-kong-primary/80 transition-all duration-150 hover:bg-kong-primary/60 hover:border-kong-primary/90`
       : variant === "mobile"
-      ? "h-[34px] w-[34px] flex items-center justify-center rounded-md text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40"
-      : "h-[34px] px-2.5 flex items-center gap-1.5 rounded-md text-xs font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
+      ? `h-[34px] w-[34px] flex items-center justify-center ${$panelRoundness} text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40`
+      : `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light`
   );
 
   // Selected and disabled classes
   let selectedClass = "bg-kong-primary/60 border-kong-primary/90";
-  let disabledClass = "opacity-50 cursor-not-allowed pointer-events-none";
+  let disabledClass = "opacity-70 cursor-not-allowed pointer-events-none";
 </script>
 
 <button
-  class="{buttonClass} {className} {isSelected ? selectedClass : ''} {disabled ? disabledClass : ''}"
+  class="{buttonClass} {className} {isSelected ? selectedClass : ''} {disabled || loading ? disabledClass : ''} {$panelRoundness}"
   class:use-theme-border={useThemeBorder}
   class:has-custom-style={hasCustomStyle}
   class:use-theme-variables={useThemeVariables}
@@ -80,22 +82,26 @@
   class:wallet-button={isWalletButton}
   style={buttonStyle}
   on:click={onClick}
-  {disabled}
+  disabled={disabled || loading}
   data-testid={testId || "navbar-button"}
-  use:tooltip={tooltipProps}
+  use:tooltip={tooltipText ? tooltipProps : null}
   aria-label={tooltipText || label || "Button"}
 >
   <div class="relative">
-    {@render icon({ size: iconSize })}
-    {#if badgeCount > 0}
-      <span class="absolute {variant === 'mobile' ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10">
-        {badgeCount}
-      </span>
+    {#if loading}
+      <div class="spinner" style="width: {iconSize}px; height: {iconSize}px;"></div>
+    {:else}
+      {@render icon({ size: iconSize })}
+      {#if badgeCount > 0}
+        <span class="absolute {variant === 'mobile' ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10">
+          {badgeCount}
+        </span>
+      {/if}
     {/if}
   </div>
   
   {#if label && variant !== "mobile"}
-    <span>{label}</span>
+    <span>{loading ? undefined : label}</span>
   {/if}
   
   {@render children()}
@@ -121,7 +127,6 @@
       color: var(--button-text, #FFFFFF);
       border: var(--button-border, 1px solid) var(--button-border-color, rgba(255, 255, 255, 0.1));
       box-shadow: var(--button-shadow, none);
-      border-radius: var(--button-roundness, 0.375rem);
       
       &:hover:not(.disabled) {
         background-color: var(--button-hover-bg, #232735);
@@ -184,6 +189,8 @@
     }
     
     .mobile-wallet-btn {
+      @apply w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
+    background-color: var(--primary-button-bg, rgba(0, 149, 235, 0.15)) !important;
       border-width: 2px !important;
       border-style: solid !important;
       border-color: #FDFFFF #818181 #818181 #FDFFFF !important;
@@ -193,9 +200,17 @@
     }
   }
   
-  /* Mobile wallet button */
-  :global(.mobile-wallet-btn) {
-    @apply w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
-    background-color: var(--primary-button-bg, rgba(0, 149, 235, 0.15)) !important;
+  /* Loading spinner */
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: currentColor;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 </style> 

@@ -47,7 +47,7 @@ export const synthwaveTheme: ThemeDefinition = {
     textDisabled: '#7E6D9E',     // Muted purple
     textLight: '#FFFFFF',        // White text
     textDark: '#16004A',         // Dark text
-    textOnPrimary: '#FFFFFF',    // White text on primary
+    textOnPrimary: '#16004A',    // White text on primary
     textAccentGreen: '#36F9B3',  // Same as accent green
     textAccentRed: '#FF3864',    // Same as accent red
     textAccentBlue: '#4D6CFA',   // Same as accent blue
@@ -61,6 +61,8 @@ export const synthwaveTheme: ThemeDefinition = {
     swapPanelBorder: '1px solid rgba(255, 54, 171, 0.3)', // Pink border
     swapPanelShadow: '0 0 30px rgba(255, 54, 171, 0.15), 0 0 10px rgba(79, 10, 190, 0.2)', // Pink/purple glow
     swapPanelInputsRounded: true,
+    transparentSwapPanel: true,
+    transparentPanel: true,
     
     // Borders
     border: '#401C7A',      // Dark purple border

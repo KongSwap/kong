@@ -4,7 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { getPriceChangeClass } from '$lib/utils/statsUtils';
 
-  export let tokens: FE.Token[] = [];
+  export let tokens: Kong.Token[] = [];
   export let selectedIndex = -1;
   export let startIndex = 0;
 
@@ -27,7 +27,7 @@
     return `${numericChange >= 0 ? '+' : ''}${numericChange.toFixed(2)}%`;
   }
 
-  function handleSelect(token: FE.Token) {
+  function handleSelect(token: Kong.Token) {
     dispatch('select', token);
   }
 
@@ -39,7 +39,7 @@
     dispatch('touchmove', event);
   }
 
-  function handleTouchEnd(token: FE.Token, event: TouchEvent) {
+  function handleTouchEnd(token: Kong.Token, event: TouchEvent) {
     dispatch('touchend', { token, event });
   }
 </script>

@@ -23,7 +23,7 @@ const calculatePercentageChange = (newValue: number, oldValue: number): number =
 
 export const calculatePerformanceMetrics = (
   history: PortfolioHistory[],
-  tokens: FE.Token[]
+  tokens: Kong.Token[]
 ): PerformanceMetrics => {
   // Sort history by timestamp to ensure correct ordering
   const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
@@ -38,7 +38,7 @@ export const calculatePerformanceMetrics = (
   // Filter tokens to only include ones the user actually owns
   const balances = get(currentUserBalancesStore);
   const ownedTokens = tokens.filter(t => {
-    const balance = balances[t.canister_id];
+    const balance = balances[t.address];
     return balance && Number(balance.in_usd) > 0;
   });
   

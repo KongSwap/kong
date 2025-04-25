@@ -3,10 +3,9 @@
   import { handleFormattedNumberInput } from "$lib/utils/formUtils";
   import Panel from "$lib/components/common/Panel.svelte";
   import { BigNumber } from "bignumber.js";
-  import { toastStore } from "$lib/stores/toastStore";
 
-  export let token0: FE.Token | null;
-  export let token1: FE.Token | null;
+  export let token0: Kong.Token | null;
+  export let token1: Kong.Token | null;
   export let amount0: string;
   export let amount1: string;
   export let token0Balance: string;

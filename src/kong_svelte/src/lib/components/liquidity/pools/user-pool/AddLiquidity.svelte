@@ -31,12 +31,12 @@
   const DEBOUNCE_DELAY = 500; // 750ms debounce delay
 
   // Get token balances
-  $: token0Balance = token0?.canister_id
-    ? $currentUserBalancesStore[token0.canister_id]?.in_tokens?.toString() ||
+  $: token0Balance = token0?.address
+    ? $currentUserBalancesStore[token0.address]?.in_tokens?.toString() ||
       "0"
     : "0";
-  $: token1Balance = token1?.canister_id
-    ? $currentUserBalancesStore[token1.canister_id]?.in_tokens?.toString() ||
+  $: token1Balance = token1?.address
+    ? $currentUserBalancesStore[token1.address]?.in_tokens?.toString() ||
       "0"
     : "0";
 
@@ -110,9 +110,9 @@
           if (!amount0) return;
 
           const result = await calculateLiquidityAmounts(
-            token0.canister_id,
+            token0.address,
             amount0,
-            token1.canister_id,
+            token1.address,
           );
 
           if (result.Ok) {
@@ -152,9 +152,9 @@
 
           // Use the pool service to calculate the corresponding token0 amount
           const result = await calculateLiquidityAmounts(
-            token1.canister_id,
+            token1.address,
             amount1,
-            token0.canister_id,
+            token0.address,
           );
 
           if (result.Ok) {
