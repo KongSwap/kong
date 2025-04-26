@@ -29,7 +29,7 @@
     "@dicebear/collection": "^9.2.2",
     "@dicebear/core": "^9.2.2",
     "@dicebear/identicon": "9.2.2",
-    "@windoge98/plug-n-play": "0.0.61-siws",
+    "@windoge98/plug-n-play": "0.0.61-siws-1",
     "bignumber.js": "9.1.2",
     "chart.js": "4.4.8",
     "chartjs-adapter-date-fns": "3.0.0",
@@ -41,8 +41,7 @@
     "hyperid": "3.3.0",
     "localforage": "^1.10.0",
     "qrcode": "1.5.4",
-    "svelte-tiny-virtual-list": "2.1.2",
-    "three": "^0.175.0"
+ "three": "0.176.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "3.0.8",

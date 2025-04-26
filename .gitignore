@@ -140,3 +140,4 @@ settings.*.json
 canister_ids.json
 
 *.env.doppler
+.cursor/rules/svelte-frontend-rules.mdc
