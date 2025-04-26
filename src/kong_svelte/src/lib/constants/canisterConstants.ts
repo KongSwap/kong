@@ -37,7 +37,7 @@ const defaultTokens = () => {
 
 export const DEFAULT_TOKENS = defaultTokens();
 
-export const CKUSDT_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_KSUSDT_LEDGER : process.env.CANISTER_ID_CKUSDT_LEDGER;
+export const CKUSDT_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_KSUSDT_LEDGER : "cngnf-vqaaa-aaaar-qag4q-cai";
 // @ts-ignore
 export const ICP_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_KSICP_LEDGER : process.env.CANISTER_ID_ICP_LEDGER;
 

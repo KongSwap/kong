@@ -1,15 +1,21 @@
+import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
 import { loadBalances } from "$lib/stores/balancesStore";
 
+
 // Constants for token discovery
-const BATCH_SIZE = 25;
-const ESSENTIAL_TOKEN_IDS = [
-  "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP
-  "o7oak-iyaaa-aaaaq-aadzq-cai", // KONG
-  "mxzaz-hqaaa-aaaar-qaada-cai", // CKBTC
-  "ss2fx-dyaaa-aaaar-qacoq-cai", // CKETH
-  "djua2-fiaaa-aaaar-qaazq-cai", // CKUSDC
-  "aanaa-xaaaa-aaaah-aaeiq-cai", // CKUSDT
-];
+const BATCH_SIZE = 30;
+// Export essential tokens list to be used across files
+export const ESSENTIAL_TOKEN_IDS = [
+  DEFAULT_TOKENS.icp, // ICP
+  DEFAULT_TOKENS.kong, // KONG
+  DEFAULT_TOKENS.ckbtc, // CKBTC
+  DEFAULT_TOKENS.cketh, // CKETH
+  DEFAULT_TOKENS.ckusdc, // CKUSDC
+  DEFAULT_TOKENS.ckusdt, // CKUSDT
+  DEFAULT_TOKENS.exe, // EXE
+  DEFAULT_TOKENS.dkp // DKP
+].filter(Boolean);
+
 
 /**
  * Discovers tokens with balance for a given wallet
@@ -121,7 +127,7 @@ export async function discoverTokens(
 export function shouldRefreshTokenCache(
   cacheTimestamp: number,
   cacheData: any[],
-  cacheDuration: number = 30000
+  cacheDuration: number = 5000
 ): boolean {
   const now = Date.now();
   return now - cacheTimestamp > cacheDuration || !cacheData.length;
