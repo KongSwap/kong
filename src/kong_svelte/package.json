@@ -29,7 +29,7 @@
     "@dicebear/collection": "^9.2.2",
     "@dicebear/core": "^9.2.2",
     "@dicebear/identicon": "9.2.2",
-    "@windoge98/plug-n-play": "0.0.61-siws-3",
+    "@windoge98/plug-n-play": "0.0.61-siws-4",
     "bignumber.js": "9.1.2",
     "chart.js": "4.4.8",
     "chartjs-adapter-date-fns": "3.0.0",
