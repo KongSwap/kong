@@ -183,10 +183,9 @@
           throw new Error(`Failed to add token: ${addTokenResult.Err}`);
         }
       } catch (canisterError) {
-        console.error("Error calling add_token canister function:", canisterError);
+        console.warn("Error calling add_token canister function:", canisterError);
         // Continue with the process even if the canister call fails
         // This allows users to still add tokens to their local list
-        toastStore.warning(`Token added locally only. Backend registration failed: ${canisterError.message}`);
       }
       
       // If we have a preview token, use it for the UI
