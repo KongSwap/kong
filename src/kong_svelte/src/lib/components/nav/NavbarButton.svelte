@@ -38,7 +38,6 @@
     
     if (customBgColor) styles.push(`--btn-bg-color: ${customBgColor}`);
     if (customHoverBgColor) styles.push(`--btn-hover-bg-color: ${customHoverBgColor}`);
-    if (customTextColor) styles.push(`--btn-text-color: ${customTextColor}`);
     if (customBorderStyle) styles.push(`--btn-border-style: ${customBorderStyle}`);
     if (customBorderColor) styles.push(`--btn-border-color: ${customBorderColor}`);
     if (customShadow) styles.push(`--btn-shadow: ${customShadow}`);
@@ -111,7 +110,6 @@
   /* Custom styling for theme variables - can't be easily converted to Tailwind */
   button.has-custom-style {
     background-color: var(--btn-bg-color, unset) !important;
-    color: var(--btn-text-color, unset) !important;
     border: var(--btn-border-style, 1px solid) var(--btn-border-color, unset) !important;
     box-shadow: var(--btn-shadow, unset) !important;
   }
@@ -130,7 +128,7 @@
     
     &.is-primary {
       background-color: var(--primary-button-bg, #0095EB);
-      color: var(--primary-button-text, #FFFFFF);
+      color: var(--text-light, #FFFFFF);
       border: var(--primary-button-border, 1px solid) var(--primary-button-border-color, rgba(255, 255, 255, 0.1));
       
       &:hover:not(.disabled) {
@@ -173,12 +171,11 @@
     button.wallet-button {
       &.is-primary {
         background-color: var(--primary-button-bg, #010081) !important;
-        color: var(--primary-button-text, #FFFFFF) !important;
+        color: var(--text-light, #FFFFFF) !important;
       }
       
       &:not(.is-primary) {
         background-color: var(--button-bg, #C3C3C3) !important;
-        color: var(--button-text, #000000) !important;
       }
     }
     
