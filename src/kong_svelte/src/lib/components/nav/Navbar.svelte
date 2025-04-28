@@ -157,7 +157,8 @@
 
   const walletButtonThemeProps = $derived({
     useThemeBorder: isWin98Theme,
-    customBgColor: browser ? getThemeById($themeStore)?.colors?.primaryButtonBg : undefined,
+    customBgColor: browser ? getThemeById($themeStore)?.colors?.primary : undefined,
+    customTextColor: 'var(--color-kong-text-light)',
     customBorderStyle: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorder : undefined,
     customBorderColor: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorderColor : undefined
   });

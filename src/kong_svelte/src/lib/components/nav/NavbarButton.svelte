@@ -38,7 +38,6 @@
     
     if (customBgColor) styles.push(`--btn-bg-color: ${customBgColor}`);
     if (customHoverBgColor) styles.push(`--btn-hover-bg-color: ${customHoverBgColor}`);
-    if (customTextColor) styles.push(`--btn-text-color: ${customTextColor}`);
     if (customBorderStyle) styles.push(`--btn-border-style: ${customBorderStyle}`);
     if (customBorderColor) styles.push(`--btn-border-color: ${customBorderColor}`);
     if (customShadow) styles.push(`--btn-shadow: ${customShadow}`);
@@ -111,7 +110,6 @@
   /* Custom styling for theme variables - can't be easily converted to Tailwind */
   button.has-custom-style {
     background-color: var(--btn-bg-color, unset) !important;
-    color: var(--btn-text-color, unset) !important;
     border: var(--btn-border-style, 1px solid) var(--btn-border-color, unset) !important;
     box-shadow: var(--btn-shadow, unset) !important;
   }
@@ -123,19 +121,14 @@
   /* Theme variables */
   button.use-theme-variables:not(.has-custom-style) {
     &:not(.is-primary) {
-      background-color: var(--button-bg, #111523);
-      color: var(--button-text, #FFFFFF);
+      @apply bg-kong-bg-dark text-kong-text-primary hover:bg-kong-bg-light hover:text-kong-text-primary;
       border: var(--button-border, 1px solid) var(--button-border-color, rgba(255, 255, 255, 0.1));
       box-shadow: var(--button-shadow, none);
-      
-      &:hover:not(.disabled) {
-        background-color: var(--button-hover-bg, #232735);
-      }
     }
     
     &.is-primary {
       background-color: var(--primary-button-bg, #0095EB);
-      color: var(--primary-button-text, #FFFFFF);
+      color: var(--text-light, #FFFFFF);
       border: var(--primary-button-border, 1px solid) var(--primary-button-border-color, rgba(255, 255, 255, 0.1));
       
       &:hover:not(.disabled) {
@@ -146,19 +139,18 @@
   
   /* Wallet button */
   button.wallet-button {
-    background-color: var(--btn-bg-color, var(--primary-button-bg, var(--button-bg, #0095EB))) !important;
-    color: var(--btn-text-color, var(--primary-button-text, var(--button-text, #FFFFFF))) !important;
+    @apply !bg-kong-primary !text-kong-text-light;
     
     &.is-primary {
       background-color: var(--btn-bg-color, var(--primary-button-bg, #0095EB)) !important;
     }
     
     &:not(.is-primary) {
-      background-color: var(--btn-bg-color, var(--button-bg, rgba(255, 255, 255, 0.1))) !important;
+      @apply !bg-kong-primary hover:!text-kong-text-light;
     }
     
     &:hover:not(.disabled) {
-      background-color: var(--btn-hover-bg-color, var(--primary-button-hover-bg, var(--button-hover-bg, #0086D3))) !important;
+      @apply !bg-kong-primary/90 !text-kong-text-light;
       opacity: 0.9;
     }
   }
@@ -179,12 +171,11 @@
     button.wallet-button {
       &.is-primary {
         background-color: var(--primary-button-bg, #010081) !important;
-        color: var(--primary-button-text, #FFFFFF) !important;
+        color: var(--text-light, #FFFFFF) !important;
       }
       
       &:not(.is-primary) {
         background-color: var(--button-bg, #C3C3C3) !important;
-        color: var(--button-text, #000000) !important;
       }
     }
     

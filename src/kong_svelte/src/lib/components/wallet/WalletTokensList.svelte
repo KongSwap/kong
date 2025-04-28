@@ -604,6 +604,9 @@
 	// Close the receive token modal
 	function closeReceiveTokenModal() {
 		showReceiveTokenModal = false;
+		// Reset the selected token to allow reopening the modal
+		selectedToken = null;
+		selectedTokenId = null;
 	}
 	
 	// --- Token Discovery Cache ---

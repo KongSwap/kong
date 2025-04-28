@@ -18,6 +18,9 @@ import {
   canisterId as trollboxCanisterId,
   idlFactory as trollboxIDL,
 } from "../../../../declarations/trollbox";
+import {
+  canisterId as siwsProviderCanisterId,
+} from "../../../../declarations/ic_siws_provider"; 
 
 // --- Types ---
 export type CanisterType =
@@ -44,6 +47,12 @@ export const canisterIDLs = {
 
 // --- PNP Initialization ---
 let globalPnp: PNP | null = null;
+
+const delegationTargets = [
+  kongBackendCanisterId,
+  predictionMarketsBackendCanisterId,
+  trollboxCanisterId
+]
 
 export function initializePNP(): PNP {
   if (globalPnp) {
@@ -72,14 +81,8 @@ export function initializePNP(): PNP {
         }
       })(),
       delegationTimeout: BigInt(30 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 30 days
-      delegationTargets: [
-        kongBackendCanisterId,
-        predictionMarketsBackendCanisterId,
-        trollboxCanisterId,
-        process.env.CANISTER_ID_SIWS_PROVIDER,
-        "rh2pm-ryaaa-aaaan-qeniq-cai"
-      ],
-      siwsProviderCanisterId: 'guktk-fqaaa-aaaao-a4goa-cai',
+      delegationTargets,
+      siwsProviderCanisterId,
       adapters: {
         ii: {
           enabled: true,
@@ -100,8 +103,6 @@ export function initializePNP(): PNP {
         },
         phantomSiws: {
           enabled: true,
-          config: {
-          },
         },
         solflareSiws: {
           enabled: true,

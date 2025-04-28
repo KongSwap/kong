@@ -210,7 +210,7 @@ export const baseTheme: ThemeDefinition = {
     textPrimary: '#FFFFFF',
     textSecondary: '#B0B6C5', // Brighter secondary text
     textDisabled: '#6B7280',
-    textLight: '#141826',
+    textLight: '#ffffff',
     textDark: '#0D111F',
     textOnPrimary: '#0D111F',
     textAccentGreen: '#05EC86', // Same as accent-green

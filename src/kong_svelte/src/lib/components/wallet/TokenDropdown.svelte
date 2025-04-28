@@ -154,9 +154,7 @@
   });
   
   // Handle action click - optimize by using switch instead of multiple if/else
-  function handleAction(action: 'send' | 'receive' | 'swap' | 'info' | 'copy' | 'add_lp') {
-    console.log(`Action clicked: ${action}`);
-    
+  function handleAction(action: 'send' | 'receive' | 'swap' | 'info' | 'copy' | 'add_lp') {    
     switch(action) {
       case 'copy':
         if (token.token?.address) {

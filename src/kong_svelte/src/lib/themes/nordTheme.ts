@@ -106,6 +106,22 @@ export const nordTheme: ThemeDefinition = {
     pmAccent: '#B48EAD',     // nord15 - Aurora purple
     pmTextSecondary: '#D8DEE9', // nord4 - Snow Storm medium
     
+    // Swap Button styling - using Nord colors
+    swapButtonPrimaryGradientStart: '#88C0D0', // nord8 - Frost light blue
+    swapButtonPrimaryGradientEnd: '#81A1C1',   // nord9 - Frost medium blue
+    swapButtonErrorGradientStart: '#BF616A',   // nord11 - Aurora red
+    swapButtonErrorGradientEnd: '#B3555E',     // Darker red
+    swapButtonProcessingGradientStart: '#B48EAD', // nord15 - Aurora purple
+    swapButtonProcessingGradientEnd: '#A57A9C',   // Darker purple
+    swapButtonBorderColor: 'rgba(216, 222, 233, 0.2)', // nord4 with transparency
+    swapButtonGlowColor: 'rgba(136, 192, 208, 0.5)', // nord8 with transparency
+    swapButtonShineColor: 'rgba(236, 239, 244, 0.3)', // nord6 with transparency
+    swapButtonReadyGlowStart: '#A3BE8C', // nord14 - Aurora green
+    swapButtonReadyGlowEnd: '#97B67E',   // Darker green
+    swapButtonTextColor: '#ECEFF4', // nord0 - Dark text for contrast
+    swapButtonRoundness: 'rounded-md', // Matching panel roundness
+    swapButtonShadow: '0 4px 12px rgba(46, 52, 64, 0.2)', // nord0 with transparency
+    
     // Background configuration
     backgroundType: 'pattern',
     backgroundOpacity: 0.2, // Reduced opacity so it doesn't overpower the UI
