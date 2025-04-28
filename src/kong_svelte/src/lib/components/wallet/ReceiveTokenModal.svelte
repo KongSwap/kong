@@ -197,7 +197,7 @@
           <div
             class="bg-kong-bg-light/30 rounded border border-kong-border/50 p-2.5 pr-10 text-sm text-kong-text-secondary break-all font-mono"
           >
-            {principal || "Loading..."}
+            {$auth.account?.owner || "Loading..."}
           </div>
           <button
             class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-kong-text-secondary hover:text-kong-primary transition-colors"

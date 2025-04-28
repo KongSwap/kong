@@ -102,6 +102,22 @@ export const synthwaveTheme: ThemeDefinition = {
     primaryButtonBorder: '1px solid', // Standard border width
     primaryButtonBorderColor: 'rgba(255, 54, 171, 0.7)', // More pronounced pink border
     
+    // Swap Button styling - refined retro-futuristic neon style
+    swapButtonPrimaryGradientStart: '#FF36AB', // Hot pink start
+    swapButtonPrimaryGradientEnd: '#E62E98',   // Slightly darker pink end for more cohesive look
+    swapButtonErrorGradientStart: '#FF3864',   // Bright red/pink start
+    swapButtonErrorGradientEnd: '#E62954',     // Darker red end
+    swapButtonProcessingGradientStart: '#9D54FF', // Purple start
+    swapButtonProcessingGradientEnd: '#7A1F7C',   // Darker purple end
+    swapButtonBorderColor: 'rgba(255, 54, 171, 0.6)', // More visible pink border
+    swapButtonGlowColor: 'rgba(255, 54, 171, 0.8)', // Softer pink glow
+    swapButtonShineColor: 'rgba(255, 255, 255, 0.3)', // White shine for better contrast
+    swapButtonReadyGlowStart: '#9D54FF', // Bright purple start
+    swapButtonReadyGlowEnd: '#7A1F7C',   // Darker purple end
+    swapButtonTextColor: '#FFFFFF', // White text
+    swapButtonRoundness: 'rounded-md', // Matching panel roundness
+    swapButtonShadow: '0 0 20px rgba(255, 54, 171, 0.5), 0 0 10px rgba(157, 84, 255, 0.3)', // Enhanced pink/purple glow
+    
     // Background configuration - sunset gradient
     backgroundType: 'gradient',
     backgroundGradient: 'linear-gradient(135deg, #16004A 0%, #2F0B68 25%, #5B1A9A 50%, #7A1F7C 75%, #AA307F 100%)',

@@ -41,6 +41,8 @@ export const lightTheme: ThemeDefinition = {
     textAccentRed: '#DC2626',   // Red 600
     textAccentBlue: '#2563EB',  // Blue 600
     textOnPrimary: '#fff',
+    textLight: '#FFFFFF',      // White for light text needs
+    textDark: '#1E293B',       // Slate 800 for dark text needs
     transparentSwapPanel: false,
     transparentPanel: false,
     
@@ -83,6 +85,22 @@ export const lightTheme: ThemeDefinition = {
     pmBorder: '#E2E8F0',
     pmAccent: '#8B5CF6',     // Modern purple
     pmTextSecondary: '#475569',
+    
+    // Swap Button styling - Modern Light theme
+    swapButtonPrimaryGradientStart: '#2563EB', // Modern blue
+    swapButtonPrimaryGradientEnd: '#1D4ED8',   // Darker blue
+    swapButtonErrorGradientStart: '#EF4444',   // Modern red
+    swapButtonErrorGradientEnd: '#DC2626',     // Darker red
+    swapButtonProcessingGradientStart: '#8B5CF6', // Modern purple
+    swapButtonProcessingGradientEnd: '#7C3AED',   // Darker purple
+    swapButtonBorderColor: 'rgba(59, 130, 246, 0.3)', // Blue border with transparency
+    swapButtonGlowColor: 'rgba(37, 99, 235, 0.4)',  // Primary blue glow
+    swapButtonShineColor: 'rgba(255, 255, 255, 0.6)', // White shine
+    swapButtonReadyGlowStart: '#10B981', // Modern green
+    swapButtonReadyGlowEnd: '#059669',   // Darker green
+    swapButtonTextColor: '#FFFFFF', // White text for contrast
+    swapButtonRoundness: 'rounded-xl', // Match swap panel roundness
+    swapButtonShadow: '0 4px 12px rgba(37, 99, 235, 0.2)', // Subtle blue shadow
     
     // Chart text color
     chartTextColor: '#1E293B',
