@@ -18,7 +18,7 @@
   import Badge from "$lib/components/common/Badge.svelte";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
-  import Dropdown from '$lib/components/common/Dropdown.svelte';
+  import Dropdown from "$lib/components/common/Dropdown.svelte";
 
   // Props using $props() for Svelte 5 runes mode
   const {
@@ -283,9 +283,9 @@
         Canister ID
       </div>
       <div class="relative w-full">
-        <Dropdown 
-          bind:open={isAddressDropdownOpen} 
-          position="bottom-right" 
+        <Dropdown
+          bind:open={isAddressDropdownOpen}
+          position="bottom-right"
           width="w-full"
           triggerClass="w-full p-0"
         >
@@ -297,13 +297,13 @@
             >
               <div class="flex items-center gap-2 justify-between w-full">
                 <span class="text-sm font-mono truncate">{token?.address}</span>
-                <ChevronDown 
-                  class={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${isAddressDropdownOpen ? 'rotate-180' : ''}`} 
+                <ChevronDown
+                  class={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${isAddressDropdownOpen ? "rotate-180" : ""}`}
                 />
               </div>
             </ButtonV2>
           </svelte:fragment>
-          
+
           <svelte:fragment let:getItemClass>
             <button
               class={getItemClass()}
@@ -367,32 +367,18 @@
 
       <!-- Row 2: Selected Pool TVL & Total Supply -->
       <div class="grid grid-cols-2 gap-x-6">
-        <!-- Selected Pool TVL -->
-        {#if selectedPool}
-          <div class="flex flex-col">
-            <div
-              class="text-xs text-kong-text-primary/50 uppercase tracking-wider whitespace-nowrap mb-0.5"
-            >
-              Current Pool TVL
-            </div>
-            <div class="text-sm font-medium text-kong-text-primary">
-              {formattedSelectedPoolTvl}
-            </div>
+        <!-- If no pool selected, show Total Supply here instead -->
+        <div class="flex flex-col">
+          <div
+            class="text-xs text-kong-text-primary/50 uppercase tracking-wider whitespace-nowrap mb-0.5"
+          >
+            Total Supply
           </div>
-        {:else}
-          <!-- If no pool selected, show Total Supply here instead -->
-          <div class="flex flex-col">
-            <div
-              class="text-xs text-kong-text-primary/50 uppercase tracking-wider whitespace-nowrap mb-0.5"
-            >
-              Total Supply
-            </div>
-            <div class="text-sm font-medium text-kong-text-primary">
-              {formatUsdValue(totalSupplyTweened)}
-              {activeToken?.symbol || ""}
-            </div>
+          <div class="text-sm font-medium text-kong-text-primary">
+            {formatUsdValue(totalSupplyTweened)}
+            {activeToken?.symbol || ""}
           </div>
-        {/if}
+        </div>
 
         <!-- Circulating Supply -->
         <div class="flex flex-col">
@@ -407,26 +393,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Row 3: If Pool Selected, show Total Supply here -->
-      {#if selectedPool}
-        <div class="grid grid-cols-2 gap-x-6">
-          <!-- Total Supply -->
-          <div class="flex flex-col">
-            <div
-              class="text-xs text-kong-text-primary/50 uppercase tracking-wider whitespace-nowrap mb-0.5"
-            >
-              Total Supply
-            </div>
-            <div class="text-sm font-medium text-kong-text-primary">
-              {formatUsdValue(totalSupplyTweened)}
-              {activeToken?.symbol || ""}
-            </div>
-          </div>
-          <!-- Placeholder -->
-          <div></div>
-        </div>
-      {/if}
     </div>
   </div>
 </Panel>
