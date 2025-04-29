@@ -225,7 +225,7 @@
     <Panel variant="transparent" type="secondary">
       <div class="flex items-center justify-center gap-3 p-4 sm:p-3">
         <div class="w-8 h-8 rounded-full bg-kong-error/10 text-kong-error flex items-center justify-center text-xl font-bold">!</div>
-        <p class="text-kong-error text-sm flex-1">{error}</p>
+        <p class="text-kong-error text-sm flex-1 sm:text-base">{error}</p>
       </div>
     </Panel>
   {:else if payToken && receiveToken}
@@ -284,7 +284,7 @@
       </button>
       
       {#if showPriceImpactWarning}
-        <div class="text-xs text-center mt-2 text-kong-warning sm:mt-1.5">
+        <div class="text-xs text-center mt-2 text-kong-warning sm:text-sm sm:mt-1.5">
           Warning: Price impact is high. Your trade may execute at an unfavorable rate.
         </div>
       {/if}

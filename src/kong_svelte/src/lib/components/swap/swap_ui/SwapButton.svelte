@@ -140,11 +140,11 @@
   }
   
   function getErrorStyle(): string {
-    return `background: linear-gradient(135deg, ${getErrorGradientStart()} 0%, ${getErrorGradientEnd()} 100%); box-shadow: none;`;
+    return `background: linear-gradient(135deg, ${getErrorGradientStart()} 0%, ${getErrorGradientEnd()} 100%); border-color: ${getBorderColor()}; box-shadow: none; opacity: 1;`;
   }
   
   function getProcessingStyle(): string {
-    return `background: linear-gradient(135deg, ${getProcessingGradientStart()} 0%, ${getProcessingGradientEnd()} 100%); cursor: wait; opacity: 0.8;`;
+    return `background: linear-gradient(135deg, ${getProcessingGradientStart()} 0%, ${getProcessingGradientEnd()} 100%); border-color: ${getBorderColor()}; cursor: wait; opacity: 0.8;`;
   }
 </script>
 

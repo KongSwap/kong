@@ -146,7 +146,7 @@
     <!-- Arrow Separator -->
     <div class="arrow-separator">
       <div class="arrow-circle">
-        <ArrowDown size={18} strokeWidth={2.5} class="sm:size-4" />
+        <ArrowDown size={16} strokeWidth={2.5} class="size-4 sm:size-5" />
       </div>
     </div>
 
@@ -203,14 +203,14 @@
               >
                 <TokenImages
                   tokens={[token]}
-                  size={24}
-                  containerClass="node-image sm:size-5"
+                  size={20}
+                  containerClass="node-image size-5 sm:size-6"
                 />
                 <div class="node-symbol">{token.symbol}</div>
               </div>
               {#if i < tokens.length - 1}
                 <div class="node-connector">
-                  <ChevronRight size={16} class="sm:size-4" />
+                  <ChevronRight size={14} class="size-3.5 sm:size-4" />
                 </div>
               {/if}
             </div>
@@ -239,7 +239,7 @@
 
   /* Token Header */
   .token-header {
-    @apply absolute top-2 left-3 text-xs font-medium text-kong-text-secondary bg-kong-bg-dark/70 px-2 py-0.5 rounded-lg sm:text-[10px] sm:top-1.5 sm:left-2 sm:py-0;
+    @apply absolute top-2 left-3 text-[10px] font-medium text-kong-text-secondary bg-kong-bg-dark/70 px-2 py-0.5 rounded-lg sm:text-xs sm:top-1.5 sm:left-2 sm:py-0;
   }
 
   /* Token Content Layout */
@@ -264,7 +264,7 @@
 
   /* Token USD Value */
   .token-usd-value {
-    @apply text-sm text-kong-text-secondary sm:text-xs;
+    @apply text-xs text-kong-text-secondary sm:text-sm;
   }
 
   /* Arrow Separator */
@@ -285,12 +285,12 @@
 
   /* Rate Label */
   .rate-label {
-    @apply text-sm text-kong-text-secondary sm:text-xs;
+    @apply text-xs text-kong-text-secondary sm:text-sm;
   }
 
   /* Rate Value */
   .rate-value {
-    @apply text-sm font-medium text-kong-text-primary sm:text-xs;
+    @apply text-xs font-medium text-kong-text-primary sm:text-sm;
   }
 
   /* Route Toggle Button */
@@ -302,12 +302,12 @@
 
   /* Route Label */
   .route-label {
-    @apply text-sm text-kong-text-secondary sm:text-xs;
+    @apply text-xs text-kong-text-secondary sm:text-sm;
   }
 
   /* Hop Count Badge */
   .hop-count {
-    @apply text-xs bg-kong-primary/20 text-kong-primary px-2 py-0.5 rounded-full sm:text-[10px] sm:px-1.5 sm:py-0;
+    @apply text-[10px] bg-kong-primary/20 text-kong-primary px-2 py-0.5 rounded-full sm:text-xs sm:px-1.5 sm:py-0;
   }
 
   /* Toggle Icon */
@@ -344,7 +344,7 @@
 
   /* Node Symbol */
   .node-symbol {
-    @apply text-xs text-kong-text-primary sm:text-[10px];
+    @apply text-[10px] text-kong-text-primary sm:text-xs;
   }
 
   /* Node Connector */

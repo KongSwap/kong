@@ -38,7 +38,7 @@
       <div class="flex items-center gap-2 sm:gap-1">
         <span class="detail-label">Price Impact</span>
         {#if showPriceImpactWarning}
-          <AlertTriangle size={14} class="text-kong-warning sm:size-3.5" />
+          <AlertTriangle size={14} class="text-kong-warning size-3.5 sm:size-4" />
         {/if}
       </div>
       <span class="detail-value" class:warning-text={showPriceImpactWarning}>
@@ -143,12 +143,12 @@
 
   /* Detail Label */
   .detail-label {
-    @apply text-sm text-kong-text-secondary sm:text-xs;
+    @apply text-xs text-kong-text-secondary sm:text-base;
   }
 
   /* Detail Value */
   .detail-value {
-    @apply text-sm font-medium text-kong-text-primary sm:text-xs;
+    @apply text-xs font-medium text-kong-text-primary sm:text-base;
   }
 
   /* Highlighted Value */
@@ -184,7 +184,7 @@
 
   /* Fee Detail Label */
   .fee-detail-label {
-    @apply text-xs text-kong-text-secondary flex items-center gap-1.5 sm:text-[10px] sm:gap-1;
+    @apply text-[10px] text-kong-text-secondary flex items-center gap-1.5 sm:text-sm sm:gap-1;
   }
 
   /* Fee Dot Indicator */
@@ -209,7 +209,7 @@
 
   /* Fee Amount */
   .fee-amount {
-    @apply text-xs text-kong-text-primary sm:text-[10px];
+    @apply text-[10px] text-kong-text-primary sm:text-sm;
   }
 
   /* Mobile Responsive Styles */

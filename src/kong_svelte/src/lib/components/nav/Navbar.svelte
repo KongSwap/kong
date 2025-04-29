@@ -448,7 +448,7 @@
 </script>
 
 <div id="navbar" class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
-  <div class="mx-auto h-16 flex items-center justify-between px-6">
+  <div class="mx-auto h-16 flex items-center justify-between md:px-6 px-4">
     <div class="flex items-center gap-4">
       {#if isMobile}
         <button

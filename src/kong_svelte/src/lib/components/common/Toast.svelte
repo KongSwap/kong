@@ -228,7 +228,7 @@
 
   @media (max-width: 640px) {
     .toast-wrapper {
-      @apply fixed top-4 right-0 left-0 px-4;
+      @apply fixed bottom-4 right-0 left-0 px-4;
       max-width: none;
     }
 
