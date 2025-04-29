@@ -4,6 +4,7 @@
   import { userTokens } from "$lib/stores/userTokens";
   import { slide } from "svelte/transition";
   import Panel from "$lib/components/common/Panel.svelte";
+  import { AlertTriangle } from "lucide-svelte";
 
   const { 
     gasFees = [], 
@@ -30,145 +31,203 @@
   );
 </script>
 
-<div class="p-4">
-  <div class="fees-container">
-    <div class="settings-group">
-      <div class="setting-row">
-        <div class="flex items-center gap-2">
-          <span class="label">Price Impact</span>
-          {#if showPriceImpactWarning}
-            <span class="warning-icon" title="High price impact may result in unfavorable rates">⚠️</span>
-          {/if}
-        </div>
-        <span class="value" class:warning={showPriceImpactWarning}>
-          {priceImpact.toFixed(2)}%
-        </span>
+<div class="fees-section">
+  <!-- Price Impact Card -->
+  <div class="detail-card" class:warning={showPriceImpactWarning}>
+    <div class="detail-row">
+      <div class="flex items-center gap-2 sm:gap-1">
+        <span class="detail-label">Price Impact</span>
+        {#if showPriceImpactWarning}
+          <AlertTriangle size={14} class="text-kong-warning sm:size-3.5" />
+        {/if}
       </div>
-      <div class="setting-row">
-        <span class="label">Max Slippage</span>
-        <span class="value highlight">{userMaxSlippage}%</span>
-      </div>
+      <span class="detail-value" class:warning-text={showPriceImpactWarning}>
+        {priceImpact.toFixed(2)}%
+      </span>
     </div>
   </div>
-</div>
 
-<div class="p-4">
-  <div class="fees-container">
-    <div class="settings-group">
-      <div 
-        class="setting-row"
-        class:expanded={isExpanded}
-        on:click={() => isExpanded = !isExpanded}
-        role="button"
-        tabindex="0"
-      >
-        <div class="flex items-center gap-2">
-          <span class="label">Network Fee + LP Fee</span>
-          {#if showPriceImpactWarning}
-            <span class="warning-icon" title="High price impact may result in unfavorable rates">⚠️</span>
-          {/if}
+  <!-- Slippage Card -->
+  <div class="detail-card">
+    <div class="detail-row">
+      <span class="detail-label">Max Slippage</span>
+      <span class="detail-value highlight">{userMaxSlippage}%</span>
+    </div>
+  </div>
+
+  <!-- Fees Card with expandable details -->
+  <div 
+    class="detail-card fees"
+    class:expanded={isExpanded}
+  >
+    <div 
+      class="detail-row cursor-pointer"
+      on:click={() => isExpanded = !isExpanded}
+      role="button"
+      tabindex="0"
+    >
+      <span class="detail-label">Network + LP Fees</span>
+      <div class="flex items-center gap-2 sm:gap-1.5">
+        <span class="detail-value">-${formatToNonZeroDecimal(totalFeesUsd)}</span>
+        <div class="expand-button">{isExpanded ? '−' : '+'}</div>
+      </div>
+    </div>
+
+    <!-- Expanded Fee Details -->
+    {#if isExpanded}
+      <div class="fee-details" transition:slide={{ duration: 150 }}>
+        <!-- Network Fee -->
+        <div class="fee-detail-row">
+          <span class="fee-detail-label">
+            <div class="fee-dot network"></div>
+            Network Fee
+          </span>
+          <div class="fee-detail-values">
+            {#each gasFees as fee}
+              {#if new BigNumber(fee.amount).gt(0)}
+                <span class="fee-amount">-{fee.amount} {fee.token}</span>
+              {/if}
+            {/each}
+          </div>
         </div>
-        <div class="fee-total">
-          <span class="value">-${formatToNonZeroDecimal(totalFeesUsd)}</span>
-          <span class="expand-icon">{isExpanded ? '−' : '+'}</span>
+        
+        <!-- LP Fee -->
+        <div class="fee-detail-row">
+          <span class="fee-detail-label">
+            <div class="fee-dot lp"></div>
+            LP Fee
+          </span>
+          <div class="fee-detail-values">
+            {#each lpFees as fee}
+              {#if new BigNumber(fee.amount).gt(0)}
+                <span class="fee-amount">-{fee.amount} {fee.token}</span>
+              {/if}
+            {/each}
+          </div>
         </div>
       </div>
-
-      <!-- Expanded Details -->
-      {#if isExpanded}
-        <div transition:slide>
-          <Panel variant="transparent" type="secondary" className="mt-2">
-            <div class="detail-row">
-              <span class="label">Network Fee</span>
-              <div class="fee-values">
-                {#each gasFees as fee}
-                  {#if new BigNumber(fee.amount).gt(0)}
-                    <span class="value">-{fee.amount} {fee.token}</span>
-                  {/if}
-                {/each}
-              </div>
-            </div>
-            <div class="detail-row">
-              <span class="label">LP Fee</span>
-              <div class="fee-values">
-                {#each lpFees as fee}
-                  {#if new BigNumber(fee.amount).gt(0)}
-                    <span class="value">-{fee.amount} {fee.token}</span>
-                  {/if}
-                {/each}
-              </div>
-            </div>
-          </Panel>
-        </div>
-      {/if}
-    </div>
+    {/if}
   </div>
 </div>
 
 <style lang="postcss">
-  .fees-container {
-    @apply space-y-4;
+  /* Main Container */
+  .fees-section {
+    @apply flex flex-col gap-3 sm:gap-2 sm:px-0;
   }
 
-  .fee-total {
-    @apply flex items-center gap-2;
+  /* Detail Card Common Styles */
+  .detail-card {
+    @apply bg-kong-bg-dark/30 rounded-lg border border-kong-border/20 p-3 transition-all duration-200 sm:p-2.5;
   }
 
-  .expand-icon {
-    @apply text-kong-text-secondary text-lg leading-none;
+  /* Warning Card State */
+  .detail-card.warning {
+    @apply border-kong-warning/30 bg-kong-warning/5;
   }
 
+  /* Expanded Card State */
+  .detail-card.expanded {
+    @apply border-kong-border/40;
+  }
+
+  /* Fees Card Special Styling */
+  .detail-card.fees {
+    @apply hover:border-kong-border/40 cursor-pointer;
+  }
+
+  /* Detail Row Layout */
   .detail-row {
-    @apply flex justify-between items-center py-2;
+    @apply flex items-center justify-between;
   }
 
-  .settings-group {
-    @apply space-y-3;
+  /* Detail Label */
+  .detail-label {
+    @apply text-sm text-kong-text-secondary sm:text-xs;
   }
 
-  .setting-row {
-    @apply flex justify-between items-center cursor-pointer py-1;
+  /* Detail Value */
+  .detail-value {
+    @apply text-sm font-medium text-kong-text-primary sm:text-xs;
   }
 
-  .label {
-    @apply text-sm text-kong-text-secondary;
+  /* Highlighted Value */
+  .detail-value.highlight {
+    @apply text-kong-primary;
   }
 
-  .value {
-    @apply text-sm text-kong-text-primary;
-  }
-
-  .value.highlight {
-    @apply font-medium text-kong-primary;
-  }
-
-  .value.warning {
+  /* Warning Text */
+  .warning-text {
     @apply text-kong-warning;
   }
 
-  .warning-icon {
-    @apply text-kong-warning text-xs;
+  /* Warning Message */
+  .warning-message {
+    @apply text-xs text-kong-warning mt-2 bg-kong-warning/10 p-1.5 rounded sm:text-[10px] sm:p-1 sm:mt-1.5;
   }
 
-  .fee-values {
-    @apply flex flex-col items-end gap-1;
+  /* Expand Button */
+  .expand-button {
+    @apply w-5 h-5 flex items-center justify-center text-kong-text-secondary 
+           bg-kong-bg-dark/50 rounded-full border border-kong-border/30 text-sm sm:w-4 sm:h-4 sm:text-xs;
   }
 
+  /* Fee Details Container */
+  .fee-details {
+    @apply mt-3 pt-3 border-t border-kong-border/20 space-y-2 sm:mt-2 sm:pt-2 sm:space-y-1.5;
+  }
+
+  /* Fee Detail Row */
+  .fee-detail-row {
+    @apply flex items-center justify-between;
+  }
+
+  /* Fee Detail Label */
+  .fee-detail-label {
+    @apply text-xs text-kong-text-secondary flex items-center gap-1.5 sm:text-[10px] sm:gap-1;
+  }
+
+  /* Fee Dot Indicator */
+  .fee-dot {
+    @apply w-2 h-2 rounded-full sm:w-1.5 sm:h-1.5;
+  }
+
+  /* Network Fee Dot */
+  .fee-dot.network {
+    @apply bg-kong-accent-blue;
+  }
+
+  /* LP Fee Dot */
+  .fee-dot.lp {
+    @apply bg-kong-accent-purple;
+  }
+
+  /* Fee Detail Values Container */
+  .fee-detail-values {
+    @apply flex flex-col items-end gap-1 sm:gap-0.5;
+  }
+
+  /* Fee Amount */
+  .fee-amount {
+    @apply text-xs text-kong-text-primary sm:text-[10px];
+  }
+
+  /* Mobile Responsive Styles */
   @media (max-width: 640px) {
-    .p-4 {
-      @apply p-3;
+    /* Improve touch targets */
+    .detail-card.fees {
+      @apply min-h-[42px] active:bg-kong-bg-dark/40;
+      -webkit-tap-highlight-color: transparent;
     }
-
-    .label, .value {
-      @apply text-xs;
+    
+    /* Reduce visual complexity */
+    .detail-card {
+      @apply border-opacity-30;
     }
-
-    .expand-icon {
-      @apply text-base;
-    }
-
-    .detail-row {
-      @apply py-1.5;
+    
+    /* Ensure proper spacing */
+    .fees-section {
+      @apply pb-1;
     }
   }
 </style>

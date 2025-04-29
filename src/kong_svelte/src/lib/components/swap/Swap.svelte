@@ -747,7 +747,6 @@
       receiveToken={$swapState.receiveToken}
       receiveAmount={$swapState.receiveAmount}
       userMaxSlippage={$settingsStore.max_slippage}
-      routingPath={$swapState.routingPath}
       onConfirm={handleSwap}
       onClose={() => {
         swapState.setShowConfirmation(false);

@@ -4,29 +4,44 @@
   import { SwapService } from "$lib/services/swap/SwapService";
   import PayReceiveSection from "./confirmation/PayReceiveSection.svelte";
   import FeesSection from "./confirmation/FeesSection.svelte";
-  import { onMount, onDestroy } from "svelte";
   import { fade } from "svelte/transition";
   import { toastStore } from "$lib/stores/toastStore";
-  import { createEventDispatcher } from "svelte";
   import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import BigNumber from "bignumber.js";
+    import { panelRoundness } from "$lib/stores/derivedThemeStore";
 
-  export let payToken: Kong.Token;
-  export let payAmount: string;
-  export let receiveToken: Kong.Token;
-  export let receiveAmount: string;
-  export let routingPath: string[] = [];
-  export let userMaxSlippage: number;
-  export let onClose: () => void;
-  export let onConfirm: () => Promise<boolean>;
+  const { 
+    payToken,
+    payAmount: initialPayAmount,
+    receiveToken,
+    receiveAmount: initialReceiveAmount,
+    userMaxSlippage,
+    onClose,
+    onConfirm
+  } = $props<{
+    payToken: Kong.Token;
+    payAmount: string;
+    receiveToken: Kong.Token;
+    receiveAmount: string;
+    userMaxSlippage: number;
+    onClose: () => void;
+    onConfirm: () => Promise<boolean>;
+  }>();
 
-  // New state variables for enhanced functionality
-  let quoteValiditySeconds = 30;
-  let priceImpact = 0;
-  let estimatedTime = '1-2 minutes';
-  let exchangeRate = '0';
-  let showPriceImpactWarning = false;
-  let countdownInterval: ReturnType<typeof setInterval>;
+  // State variables
+  let payAmount = $state(initialPayAmount);
+  let receiveAmount = $state(initialReceiveAmount);
+  let priceImpact = $state(0);
+  let exchangeRate = $state('0');
+  let showPriceImpactWarning = $state(false);
+  let countdownInterval = $state<ReturnType<typeof setInterval> | null>(null);
+  let gasFees = $state<Fee[]>([]);
+  let lpFees = $state<Fee[]>([]);
+  let currentRoutingPath = $state<string[]>([]);
+  let isLoading = $state(false);
+  let error = $state("");
+  let quoteUpdateInterval = $state<ReturnType<typeof setInterval> | null>(null);
+  const QUOTE_UPDATE_INTERVAL = 2000; // 2 seconds
 
   interface Fee {
     amount: string;
@@ -34,22 +49,10 @@
     decimals: number;
   }
 
-  let gasFees: Fee[] = [];
-  let lpFees: Fee[] = [];
-  let currentRoutingPath: string[] = [];
-
-  let isLoading = false;
-  let error = "";
-  let quoteUpdateInterval: ReturnType<typeof setInterval>;
-  const QUOTE_UPDATE_INTERVAL = 2000; // 2 seconds
-
-  const dispatch = createEventDispatcher<{
-    quoteUpdate: { receiveAmount: string };
-  }>();
-
-  onMount(async () => {
+  // Initialize and cleanup
+  $effect.root(() => {
     cleanComponent();
-    await updateQuote(); // Initial quote update
+    updateQuote(); // Initial quote update
 
     // Set up periodic quote updates
     quoteUpdateInterval = setInterval(async () => {
@@ -58,7 +61,25 @@
         await updateQuote();
       }
     }, QUOTE_UPDATE_INTERVAL);
+
+    // Cleanup function
+    return () => {
+      cleanComponent();
+      if (quoteUpdateInterval) {
+        clearInterval(quoteUpdateInterval);
+      }
+      if (countdownInterval) clearInterval(countdownInterval);
+    };
   });
+
+  function cleanComponent() {
+    isLoading = false;
+    error = "";
+    if (quoteUpdateInterval) {
+      clearInterval(quoteUpdateInterval);
+      quoteUpdateInterval = null;
+    }
+  }
 
   async function handleConfirm() {
     if (isLoading) {
@@ -68,6 +89,7 @@
     // Clear the quote update interval when starting the swap
     if (quoteUpdateInterval) {
       clearInterval(quoteUpdateInterval);
+      quoteUpdateInterval = null;
     }
 
     isLoading = true;
@@ -84,22 +106,6 @@
       return false;
     } finally {
       isLoading = false;
-    }
-  }
-
-  onDestroy(() => {
-    cleanComponent();
-    if (quoteUpdateInterval) {
-      clearInterval(quoteUpdateInterval);
-    }
-    if (countdownInterval) clearInterval(countdownInterval);
-  });
-
-  function cleanComponent() {
-    isLoading = false;
-    error = "";
-    if (quoteUpdateInterval) {
-      clearInterval(quoteUpdateInterval);
     }
   }
 
@@ -162,7 +168,12 @@
         showPriceImpactWarning = priceImpact > 2;
 
         updateExchangeRate();
-        dispatch("quoteUpdate", { receiveAmount });
+        
+        // Dispatch event using new pattern
+        const event = new CustomEvent('quoteUpdate', {
+          detail: { receiveAmount }
+        });
+        dispatchEvent(event);
 
         if (quote.Ok.txs.length > 0) {
           currentRoutingPath = [
@@ -209,49 +220,50 @@
   isPadded={true}
   width="500px"
 >
-<div class="flex flex-col gap-3 h-full max-h-[80vh] sm:max-h-[70vh]">
+<div class="flex flex-col gap-4 h-full max-h-[80vh] sm:max-h-[85vh]">
   {#if error}
-    <Panel variant="transparent" type="secondary" unpadded={false}>
-      <div class="flex flex-col items-center justify-center gap-2 p-3 text-center sm:p-2 sm:gap-1">
-        <div class="w-10 h-10 rounded-full bg-kong-bg-dark text-kong-error flex items-center justify-center text-xl font-bold sm:w-8 sm:h-8 sm:text-lg">!</div>
-        <p class="text-kong-error text-sm max-w-[300px] sm:text-xs">{error}</p>
+    <Panel variant="transparent" type="secondary">
+      <div class="flex items-center justify-center gap-3 p-4 sm:p-3">
+        <div class="w-8 h-8 rounded-full bg-kong-error/10 text-kong-error flex items-center justify-center text-xl font-bold">!</div>
+        <p class="text-kong-error text-sm flex-1">{error}</p>
       </div>
     </Panel>
   {:else if payToken && receiveToken}
-    <div class="flex-1 overflow-y-auto pr-1 sm:pr-0 scrollbar-custom">
-      <div class="flex flex-col w-full rounded-md transition-all duration-300" transition:fade={{ duration: 200 }}>
-        <div class="flex flex-col">
-          <Panel variant="transparent" type="secondary" unpadded={true}>
-            <PayReceiveSection
-              {payToken}
-              {payAmount}
-              {receiveToken}
-              {receiveAmount}
-              routingPath={currentRoutingPath}
-            />
-            <hr class="border-t border-kong-border/30 my-2" />
-            <FeesSection
-              {gasFees}
-              {lpFees}
-              {userMaxSlippage}
-              {priceImpact}
-              {showPriceImpactWarning}
-            />
-          </Panel>
+    <div class="flex-1 overflow-y-auto pr-2 sm:pr-0.5 scrollbar-custom">
+      <div class="flex flex-col w-full rounded-xl transition-all duration-300" transition:fade={{ duration: 200 }}>
+        <div class="flex flex-col gap-y-4 sm:gap-y-3 pb-1">
+          <!-- Main swap information card -->
+          <PayReceiveSection
+            {payToken}
+            {payAmount}
+            {receiveToken}
+            {receiveAmount}
+            routingPath={currentRoutingPath}
+          />
+          
+          <!-- Fees and impact information card -->
+          <FeesSection
+            {gasFees}
+            {lpFees}
+            {userMaxSlippage}
+            {priceImpact}
+            {showPriceImpactWarning}
+          />
         </div>
       </div>
     </div>
-    <div class="w-full sticky bottom-0 bg-kong-bg-dark z-10 pt-2 pb-1 sm:border-t sm:border-kong-border/10">
+    
+    <!-- Action button with improved styling -->
+    <div class="w-full sticky bottom-0 bg-kong-bg-dark z-10 pt-3 sm:pt-2">
       <button
         class:processing={isLoading}
-        class:shine-animation={!isLoading}
         class:warning={showPriceImpactWarning}
-        class="swap-button relative w-full py-3 px-4 border cursor-pointer transform transition-all duration-200 overflow-hidden sm:py-2.5 disabled:opacity-70 disabled:cursor-not-allowed"
+        class="swap-confirm-button {$panelRoundness} relative w-full py-3.5 px-4 border cursor-pointer transform transition-all duration-200 overflow-hidden sm:py-3.5 sm:text-base disabled:opacity-70 disabled:cursor-not-allowed"
         on:click={handleConfirm}
         disabled={isLoading}
       >
         <div class="relative z-[1] flex items-center justify-center gap-2">
-          <span class="text-base font-medium text-center sm:text-xl" style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+          <span class="text-lg font-medium text-center sm:text-base" style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);">
             {#if isLoading}
               Processing...
             {:else if showPriceImpactWarning}
@@ -261,52 +273,84 @@
             {/if}
           </span>
           {#if isLoading}
-            <div class="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin sm:w-3.5 sm:h-3.5"></div>
+            <div class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin sm:w-4 sm:h-4"></div>
           {/if}
         </div>
+        
         {#if !isLoading}
           <div class="button-glow"></div>
-          <div class="shine-effect"></div>
-          <div class="ready-glow"></div>
+          <div class="button-shine"></div>
         {/if}
       </button>
+      
+      {#if showPriceImpactWarning}
+        <div class="text-xs text-center mt-2 text-kong-warning sm:mt-1.5">
+          Warning: Price impact is high. Your trade may execute at an unfavorable rate.
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
 </Modal>
 
 <style lang="postcss">
-  /* Apply styles directly to the single Panel */
   :global(.panel) {
-    @apply relative rounded-md transition-all duration-200 w-full;
+    @apply relative rounded-xl shadow-md transition-all duration-200 w-full;
   }
 
-  /* Base Swap Button Styles using Theme Variables */
-  .swap-button {
-    border-radius: var(--swap-button-roundness);
-    border-color: var(--swap-button-border-color);
-    color: var(--swap-button-text-color);
-    background: linear-gradient(135deg, var(--swap-button-primary-gradient-start) 0%, var(--swap-button-primary-gradient-end) 100%);
-    box-shadow: var(--swap-button-shadow);
+  /* Base Swap Button Styles */
+  .swap-confirm-button {
+    border: 1px solid rgba(var(--primary), 0.3);
+    color: var(--swap-button-text-color, white);
+    background: linear-gradient(135deg, 
+      var(--swap-button-primary-gradient-start, rgba(var(--primary), 0.9)) 0%, 
+      var(--swap-button-primary-gradient-end, rgba(var(--primary), 0.7)) 100%);
+    box-shadow: var(--swap-button-shadow, 0 4px 12px rgba(var(--primary), 0.15), 0 1px 2px rgba(0, 0, 0, 0.1));
   }
 
-  .swap-button.warning {
+  .swap-confirm-button:hover {
+    background: linear-gradient(135deg, 
+      var(--swap-button-primary-gradient-start, rgba(var(--primary), 1)) 0%, 
+      var(--swap-button-primary-gradient-end, rgba(var(--primary), 0.8)) 100%);
+    border-color: rgba(var(--primary), 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(var(--primary), 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .swap-confirm-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(var(--primary), 0.15), 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  .swap-confirm-button.warning {
+    border: 1px solid rgba(var(--accent-yellow), 0.5);
     background: linear-gradient(
       135deg,
-      var(--swap-button-error-gradient-start) 0%,
-      var(--swap-button-error-gradient-end) 100%
-    ) !important;
-    box-shadow: var(--swap-button-shadow);
+      var(--swap-button-error-gradient-start, rgba(var(--accent-yellow), 0.9)) 0%,
+      var(--swap-button-error-gradient-end, rgba(var(--accent-yellow), 0.7)) 100%
+    );
+    box-shadow: 0 4px 12px rgba(var(--accent-yellow), 0.15), 0 1px 2px rgba(0, 0, 0, 0.1);
   }
   
-  .swap-button.processing {
+  .swap-confirm-button.warning:hover {
+    border-color: rgba(var(--accent-yellow), 0.7);
     background: linear-gradient(
       135deg,
-      var(--swap-button-processing-gradient-start) 0%,
-      var(--swap-button-processing-gradient-end) 100%
-    ) !important;
+      var(--swap-button-error-gradient-start, rgba(var(--accent-yellow), 1)) 0%,
+      var(--swap-button-error-gradient-end, rgba(var(--accent-yellow), 0.8)) 100%
+    );
+    box-shadow: 0 6px 16px rgba(var(--accent-yellow), 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .swap-confirm-button.processing {
+    border: 1px solid rgba(var(--accent-blue), 0.5);
+    background: linear-gradient(
+      135deg,
+      var(--swap-button-processing-gradient-start, rgba(var(--accent-blue), 0.8)) 0%,
+      var(--swap-button-processing-gradient-end, rgba(var(--accent-blue), 0.6)) 100%
+    );
+    box-shadow: 0 4px 12px rgba(var(--accent-blue), 0.15), 0 1px 2px rgba(0, 0, 0, 0.1);
     animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: var(--swap-button-shadow);
   }
 
   /* Button glow effect */
@@ -314,13 +358,62 @@
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
     background: radial-gradient(
       circle at var(--x, 50%) var(--y, 50%),
-      var(--swap-button-glow-color),
+      var(--swap-button-glow-color, rgba(255, 255, 255, 0.3)),
       rgba(255, 255, 255, 0) 70%
     );
   }
 
-  .swap-button:hover .button-glow {
+  .swap-confirm-button:hover .button-glow {
     @apply opacity-30;
+  }
+  
+  .swap-confirm-button.warning .button-glow {
+    background: radial-gradient(
+      circle at var(--x, 50%) var(--y, 50%),
+      rgba(var(--accent-yellow), 0.3),
+      rgba(255, 255, 255, 0) 70%
+    );
+  }
+
+  /* Button shine effect */
+  .button-shine {
+    @apply absolute top-0 left-[-100%] w-1/3 h-full pointer-events-none;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--swap-button-shine-color, rgba(255, 255, 255, 0.4)),
+      transparent
+    );
+    transform: skewX(-20deg);
+  }
+  
+  .swap-confirm-button:not(.warning):not(.processing) .button-shine {
+    animation: shine 3s infinite ease-in-out;
+  }
+
+  .swap-confirm-button.warning .button-shine {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    animation: none;
+  }
+
+  .swap-confirm-button.processing .button-shine {
+    display: none;
+  }
+
+  @keyframes shine {
+    0%, 100% {
+      left: -100%;
+      opacity: 0.7;
+    }
+    50% {
+      left: 200%;
+      opacity: 0.3;
+    }
   }
 
   @keyframes pulse {
@@ -328,58 +421,7 @@
       opacity: 0.95;
     }
     50% {
-      opacity: 0.75;
-    }
-  }
-
-  .shine-effect {
-    @apply absolute top-0 left-[-100%] w-1/2 h-full pointer-events-none;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      var(--swap-button-shine-color),
-      transparent
-    );
-    transform: skewX(-20deg);
-    opacity: 0.6;
-  }
-
-  .shine-animation .shine-effect {
-    animation: shine 4s infinite;
-  }
-
-  .ready-glow {
-    @apply absolute inset-[-1px] opacity-0 transition-opacity duration-300;
-    border-radius: var(--swap-button-roundness);
-    background: linear-gradient(
-      135deg,
-      var(--swap-button-ready-glow-start),
-      var(--swap-button-ready-glow-end)
-    );
-    filter: blur(6px);
-  }
-
-  .shine-animation .ready-glow {
-    animation: pulse-glow 2.5s ease-in-out infinite;
-  }
-
-  @keyframes shine {
-    0%, 100% {
-      left: -100%;
-    }
-    40%, 60% {
-      left: 200%;
-    }
-  }
-
-  @keyframes pulse-glow {
-    0%, 100% {
-      opacity: 0;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.25;
-      transform: scale(1.01);
+      opacity: 0.7;
     }
   }
 
@@ -403,5 +445,19 @@
     }
     scrollbar-width: thin;
     scrollbar-color: rgb(var(--accent-blue) / 0.7) rgb(var(--bg-dark) / 0.5);
+  }
+
+  /* Mobile-specific improvements */
+  @media (max-width: 640px) {
+    /* Improve button touch area */
+    .swap-confirm-button {
+      min-height: 56px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Reduce shadows for better performance */
+    :global(.panel) {
+      @apply shadow-sm;
+    }
   }
 </style>

@@ -5,7 +5,7 @@
   import { onMount } from "svelte";
   import { slide } from "svelte/transition";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  import { ChevronRight, ChevronsDown } from "lucide-svelte";
+  import { ChevronRight, ChevronsDown, ArrowDown } from "lucide-svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import BigNumber from "bignumber.js";
 
@@ -128,103 +128,90 @@
 </script>
 
 <div class="section">
-  <div class="tokens-container">
-    <Panel unpadded={false} variant="transparent">
-      <div class="token-info">
-        <div class="flex items-center gap-3">
-          <TokenImages
-            tokens={[props.payToken]}
-            size={40}
-            containerClass="token-image"
-          />
-          <div class="token-details">
-            <span class="type">You Pay</span>
-            <div class="amount-container">
-              <span class="amount">{formattedPayAmount} {props.payToken?.symbol}</span>
-            </div>
-            <span class="usd-value"
-              >${payTokenUsdValue}</span
-            >
-          </div>
+  <div class="token-swap-container">
+    <!-- Pay Token Section -->
+    <div class="token-card pay">
+      <div class="token-header">You Pay</div>
+      <div class="token-content">
+        <div class="token-img-container">
+          <TokenImages tokens={[props.payToken]} size={42} containerClass="token-image sm:size-10" />
+        </div>
+        <div class="token-details">
+          <div class="token-amount">{formattedPayAmount} {props.payToken?.symbol}</div>
+          <div class="token-usd-value">${payTokenUsdValue}</div>
         </div>
       </div>
-    </Panel>
-
-    <div class="arrow-container">
-      <ChevronsDown color="rgb(var(--text-secondary))" />
     </div>
 
-    <Panel unpadded={false} variant="transparent">
-      <div class="token-info">
-        <div class="flex items-center gap-3">
-          <TokenImages
-            tokens={[props.receiveToken]}
-            size={40}
-            containerClass="token-image"
-          />
-          <div class="token-details">
-            <span class="type">You Receive</span>
-            <div class="amount-container">
-              <span class="amount">{formattedReceiveAmount} {props.receiveToken?.symbol}</span>
-            </div>
-            <span class="usd-value"
-              >${receiveTokenUsdValue}</span
-            >
-          </div>
+    <!-- Arrow Separator -->
+    <div class="arrow-separator">
+      <div class="arrow-circle">
+        <ArrowDown size={18} strokeWidth={2.5} class="sm:size-4" />
+      </div>
+    </div>
+
+    <!-- Receive Token Section -->
+    <div class="token-card receive">
+      <div class="token-header">You Receive</div>
+      <div class="token-content">
+        <div class="token-img-container">
+          <TokenImages tokens={[props.receiveToken]} size={42} containerClass="token-image sm:size-10" />
+        </div>
+        <div class="token-details">
+          <div class="token-amount">{formattedReceiveAmount} {props.receiveToken?.symbol}</div>
+          <div class="token-usd-value">${receiveTokenUsdValue}</div>
         </div>
       </div>
-    </Panel>
+    </div>
 
-    <div class="exchange-rate text-right mt-1 mr-2">
-      1 {props.payToken?.symbol} = {exchangeRate}
-      {props.receiveToken?.symbol}
+    <!-- Exchange Rate Info -->
+    <div class="exchange-rate">
+      <div class="rate-label">Exchange Rate</div>
+      <div class="rate-value">1 {props.payToken?.symbol} = {exchangeRate} {props.receiveToken?.symbol}</div>
     </div>
   </div>
 
   {#if tokens.length > 0}
-    <div
-      class="route-toggle"
+    <!-- Route Toggle Button -->
+    <button 
+      class="route-toggle" 
       on:click={() => (showRoutes = !showRoutes)}
-      role="button"
-      tabindex="0"
+      aria-label="Toggle route view"
     >
       <div class="flex items-center gap-2">
-        <span class="text-sm text-kong-text-secondary">View Route</span>
-        <span class="hop-count"
-          >{tokens.length - 1} hop{tokens.length > 2 ? "s" : ""}</span
-        >
+        <span class="route-label">View Route</span>
+        <span class="hop-count">{tokens.length - 1} hop{tokens.length > 2 ? "s" : ""}</span>
       </div>
-      <span class="text-kong-text-secondary text-lg"
-        >{showRoutes ? "−" : "+"}</span
-      >
-    </div>
+      <span class="toggle-icon">{showRoutes ? "−" : "+"}</span>
+    </button>
 
+    <!-- Route Visualization -->
     {#if showRoutes}
-      <div transition:slide={{ duration: 200 }}>
-        <div class="route-line py-2">
+      <div class="route-visualization" transition:slide={{ duration: 200 }}>
+        <div class="route-path">
           {#each tokens as token, i}
             <div
-              class="token-group"
+              class="token-node"
               on:mouseenter={() => (hoveredIndex = i)}
               on:mouseleave={() => (hoveredIndex = null)}
             >
               <div
-                class="token-block"
+                class="token-node-content"
                 class:active={hoveredIndex === i}
                 role="button"
                 tabindex="0"
               >
-                <div class="token-inner">
-                  <TokenImages
-                    tokens={[token]}
-                    size={24}
-                    containerClass="token-image bg-kong-text-primary/10 rounded-full"
-                  />
-                  <div class="token-symbol">{token.symbol}</div>
-                </div>
+                <TokenImages
+                  tokens={[token]}
+                  size={24}
+                  containerClass="node-image sm:size-5"
+                />
+                <div class="node-symbol">{token.symbol}</div>
               </div>
               {#if i < tokens.length - 1}
-                <ChevronRight color="rgb(var(--text-secondary))" size={16} />
+                <div class="node-connector">
+                  <ChevronRight size={16} class="sm:size-4" />
+                </div>
               {/if}
             </div>
           {/each}
@@ -234,105 +221,159 @@
   {/if}
 </div>
 
-<style lang="postcss" scoped>
+<style lang="postcss">
+  /* Main Container */
   .section {
-    @apply p-4;
+    @apply mt-2 flex flex-col gap-4 sm:gap-3;
   }
 
-  .tokens-container {
-    @apply flex flex-col gap-1;
+  /* Token Swap Container */
+  .token-swap-container {
+    @apply flex flex-col gap-3 sm:gap-2 w-full;
   }
 
-  .token-info {
-    @apply flex-1 min-w-0;
+  /* Token Card Common Styles */
+  .token-card {
+    @apply relative bg-kong-bg-dark/30 border border-kong-border/20 rounded-xl p-4 transition-all duration-200 hover:border-kong-border/40 sm:p-3;
   }
 
+  /* Token Header */
+  .token-header {
+    @apply absolute top-2 left-3 text-xs font-medium text-kong-text-secondary bg-kong-bg-dark/70 px-2 py-0.5 rounded-lg sm:text-[10px] sm:top-1.5 sm:left-2 sm:py-0;
+  }
+
+  /* Token Content Layout */
+  .token-content {
+    @apply flex items-center gap-4 pt-4 sm:gap-3 sm:pt-3;
+  }
+
+  /* Token Image Container */
+  .token-img-container {
+    @apply flex-shrink-0 bg-kong-bg-dark/40 rounded-full p-1 sm:p-0.5;
+  }
+
+  /* Token Details Layout */
   .token-details {
-    @apply flex flex-col gap-1;
+    @apply flex flex-col gap-1 min-w-0 flex-1 sm:gap-0.5;
   }
 
-  .type {
-    @apply text-sm text-kong-text-secondary;
+  /* Token Amount */
+  .token-amount {
+    @apply text-lg font-medium text-kong-text-primary truncate sm:text-base;
   }
 
-  .amount-container {
+  /* Token USD Value */
+  .token-usd-value {
+    @apply text-sm text-kong-text-secondary sm:text-xs;
+  }
+
+  /* Arrow Separator */
+  .arrow-separator {
+    @apply flex justify-center -my-6 sm:-my-4;
+  }
+
+  /* Arrow Circle */
+  .arrow-circle {
+    @apply flex items-center justify-center w-8 h-8 rounded-full bg-kong-bg-dark border border-kong-primary/20 z-10 text-kong-primary sm:w-6 sm:h-6;
+    box-shadow: 0 2px 8px rgba(var(--primary), 0.15);
+  }
+
+  /* Exchange Rate Container */
+  .exchange-rate {
+    @apply flex items-center justify-between p-3 bg-kong-bg-dark/20 rounded-lg border border-kong-border/10 sm:p-2;
+  }
+
+  /* Rate Label */
+  .rate-label {
+    @apply text-sm text-kong-text-secondary sm:text-xs;
+  }
+
+  /* Rate Value */
+  .rate-value {
+    @apply text-sm font-medium text-kong-text-primary sm:text-xs;
+  }
+
+  /* Route Toggle Button */
+  .route-toggle {
+    @apply flex items-center justify-between w-full p-3 bg-kong-bg-dark/20 
+           border border-kong-border/10 rounded-lg cursor-pointer transition-all duration-200
+           hover:bg-kong-bg-dark/40 hover:border-kong-border/30 sm:p-2;
+  }
+
+  /* Route Label */
+  .route-label {
+    @apply text-sm text-kong-text-secondary sm:text-xs;
+  }
+
+  /* Hop Count Badge */
+  .hop-count {
+    @apply text-xs bg-kong-primary/20 text-kong-primary px-2 py-0.5 rounded-full sm:text-[10px] sm:px-1.5 sm:py-0;
+  }
+
+  /* Toggle Icon */
+  .toggle-icon {
+    @apply text-lg leading-none text-kong-text-secondary sm:text-base;
+  }
+
+  /* Route Visualization */
+  .route-visualization {
+    @apply bg-kong-bg-dark/10 rounded-lg border border-kong-border/10 p-3 mt-1 overflow-hidden sm:p-2;
+  }
+
+  /* Route Path */
+  .route-path {
+    @apply flex flex-wrap items-center justify-center gap-1;
+  }
+
+  /* Token Node */
+  .token-node {
     @apply flex items-center;
   }
 
-  .amount {
-    @apply text-xl font-medium text-kong-text-primary;
+  /* Token Node Content */
+  .token-node-content {
+    @apply flex flex-col items-center gap-1 px-3 py-2 bg-kong-bg-dark/30 
+           border border-kong-border/20 rounded-lg transition-all duration-200
+           hover:border-kong-primary/30 hover:bg-kong-bg-dark/40 sm:px-2 sm:py-1 sm:gap-0.5;
   }
 
-  .usd-value {
-    @apply text-sm text-kong-text-secondary;
+  /* Node Image */
+  .node-image {
+    @apply rounded-full bg-kong-bg-dark/40 p-0.5;
   }
 
-  .arrow-container {
-    @apply flex flex-col items-center justify-center py-1 gap-1;
-  }
-  .exchange-rate {
-    @apply text-sm text-kong-text-secondary;
+  /* Node Symbol */
+  .node-symbol {
+    @apply text-xs text-kong-text-primary sm:text-[10px];
   }
 
-  .route-toggle {
-    @apply flex items-center justify-between p-2 mt-2 cursor-pointer rounded-lg 
-           hover:bg-kong-bg-dark/50 transition-colors duration-200;
+  /* Node Connector */
+  .node-connector {
+    @apply flex items-center justify-center text-kong-text-secondary mx-1 sm:mx-0.5;
   }
 
-  .hop-count {
-    @apply text-xs text-kong-text-secondary px-1.5 py-0.5 rounded-lg;
+  /* Active Token Node */
+  .token-node-content.active {
+    @apply border-kong-primary/50 bg-kong-bg-dark/50 transform -translate-y-0.5;
+    box-shadow: 0 2px 6px rgba(var(--primary), 0.1);
   }
 
-  .route-line {
-    @apply flex items-center flex-wrap justify-center gap-2 overflow-visible py-2;
-    max-width: 100%;
-  }
-
-  .token-group {
-    @apply flex items-center gap-2;
-  }
-
-  .token-block {
-    @apply bg-kong-bg-dark/50 border border-kong-border/50 rounded-lg px-3 py-2 transition-all duration-200;
-  }
-
-  .token-block.active {
-    @apply border-kong-primary bg-kong-bg-dark transform -translate-y-px;
-  }
-
-  .token-inner {
-    @apply flex items-center gap-2 whitespace-nowrap flex-col w-[42px];
-  }
-
-  .token-symbol {
-    @apply text-sm text-kong-text-primary;
-  }
-
+  /* Mobile Responsive Styles */
   @media (max-width: 640px) {
-    .section {
-      @apply p-3;
+    /* Improve touch targets */
+    .route-toggle, .token-node-content {
+      @apply active:bg-kong-bg-dark/60;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .amount {
-      @apply text-lg;
+    /* Optimize for smaller screens */
+    .token-card {
+      @apply border-opacity-30;
     }
 
-    .type,
-    .usd-value,
-    .exchange-rate {
-      @apply text-xs;
-    }
-
-    .token-block {
-      @apply px-2 py-1.5;
-    }
-
-    .token-symbol {
-      @apply text-xs;
-    }
-
-    .route-toggle {
-      @apply p-1.5;
+    /* Fix any clipping issues */
+    .token-swap-container {
+      @apply pb-1;
     }
   }
 </style>
