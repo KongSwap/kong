@@ -295,8 +295,8 @@
       135deg,
       var(--swap-button-error-gradient-start) 0%,
       var(--swap-button-error-gradient-end) 100%
-    ) !important; /* Important to override base */
-     box-shadow: var(--swap-button-shadow); /* Use theme variable */
+    ) !important;
+    box-shadow: var(--swap-button-shadow);
   }
   
   .swap-button.processing {
@@ -304,13 +304,12 @@
       135deg,
       var(--swap-button-processing-gradient-start) 0%,
       var(--swap-button-processing-gradient-end) 100%
-    ) !important; /* Important to override base */
+    ) !important;
     animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
-     box-shadow: var(--swap-button-shadow); /* Use theme variable */
+    box-shadow: var(--swap-button-shadow);
   }
 
-
-  /* Keep non-Tailwind styles and animations, but use theme variables */
+  /* Button glow effect */
   .button-glow {
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
     background: radial-gradient(
@@ -321,18 +320,15 @@
   }
 
   .swap-button:hover .button-glow {
-    @apply opacity-100;
+    @apply opacity-30;
   }
-
-  /* Processing animation remains */
-  /* @keyframes spin defined elsewhere or via Tailwind */
 
   @keyframes pulse {
     0%, 100% {
-      opacity: 0.9;
+      opacity: 0.95;
     }
     50% {
-      opacity: 0.7;
+      opacity: 0.75;
     }
   }
 
@@ -345,32 +341,33 @@
       transparent
     );
     transform: skewX(-20deg);
+    opacity: 0.6;
   }
 
   .shine-animation .shine-effect {
-    animation: shine 3s infinite;
+    animation: shine 4s infinite;
   }
 
   .ready-glow {
-    @apply absolute inset-[-2px] opacity-0 transition-opacity duration-300;
-     border-radius: var(--swap-button-roundness); /* Match button roundness, removed fallback */
+    @apply absolute inset-[-1px] opacity-0 transition-opacity duration-300;
+    border-radius: var(--swap-button-roundness);
     background: linear-gradient(
       135deg,
-       var(--swap-button-ready-glow-start),
-       var(--swap-button-ready-glow-end)
+      var(--swap-button-ready-glow-start),
+      var(--swap-button-ready-glow-end)
     );
-    filter: blur(8px);
+    filter: blur(6px);
   }
 
   .shine-animation .ready-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
+    animation: pulse-glow 2.5s ease-in-out infinite;
   }
 
   @keyframes shine {
     0%, 100% {
       left: -100%;
     }
-    35%, 65% {
+    40%, 60% {
       left: 200%;
     }
   }
@@ -381,8 +378,8 @@
       transform: scale(1);
     }
     50% {
-      opacity: 0.5;
-      transform: scale(1.02);
+      opacity: 0.25;
+      transform: scale(1.01);
     }
   }
 
