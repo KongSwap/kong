@@ -6,9 +6,11 @@
   import { slide } from "svelte/transition";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { ChevronRight, ChevronsDown } from "lucide-svelte";
-    import Panel from "$lib/components/common/Panel.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
+  import BigNumber from "bignumber.js";
 
-  const { payToken, payAmount, receiveToken, receiveAmount, routingPath = [] } = $props<{
+  // Access props directly using $props() instead of destructuring
+  const props = $props<{
     payToken: Kong.Token;
     payAmount: string;
     receiveToken: Kong.Token;
@@ -20,29 +22,102 @@
   let prevRoutingPath = $state([]);
   let hoveredIndex = $state<number | null>(null);
   let showRoutes = $state(false);
+  
+  // Format a number for display with commas as thousands separators
+  function formatWithCommas(value: string | undefined): string {
+    if (!value) return "0";
+    
+    try {
+      // Handle potential existing commas by removing them first
+      const cleanValue = value.toString().replace(/,/g, '');
+      
+      // Split by decimal point
+      const parts = cleanValue.split('.');
+      
+      // Format the integer part with commas
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      
+      // Return with decimal part if it exists
+      return parts.length > 1 ? parts.join('.') : parts[0];
+    } catch (error) {
+      console.error("Error formatting with commas:", error);
+      return value.toString();
+    }
+  }
+  
+  // Format pay and receive amounts
+  let formattedPayAmount = $derived(formatWithCommas(props.payAmount));
+  let formattedReceiveAmount = $derived(formatWithCommas(props.receiveAmount));
+  
+  function calculateUsdValue(amount: string | undefined, price: string | undefined): string {
+    if (!amount || !price) return "0";
+    
+    try {
+      // Remove commas before parsing
+      const cleanAmount = String(amount).replace(/,/g, '');
+      const cleanPrice = String(price);
+      
+      // Calculate directly with JavaScript
+      const result = parseFloat(cleanAmount) * parseFloat(cleanPrice);
+      if (isNaN(result)) return "0";
+      
+      // Format and return the result
+      return formatToNonZeroDecimal(result.toString());
+    } catch (error) {
+      console.error("Error calculating USD value:", error);
+      return "0";
+    }
+  }
+  
+  function calculateExchangeRate(receiveAmount: string | undefined, payAmount: string | undefined): string {
+    if (!receiveAmount || !payAmount) return "0";
+    
+    try {
+      // Remove commas before parsing
+      const cleanReceiveAmount = String(receiveAmount).replace(/,/g, '');
+      const cleanPayAmount = String(payAmount).replace(/,/g, '');
+      
+      // Calculate directly with JavaScript
+      const result = parseFloat(cleanReceiveAmount) / parseFloat(cleanPayAmount);
+      if (isNaN(result)) return "0";
+      
+      // Format and return the result
+      return formatToNonZeroDecimal(result.toString());
+    } catch (error) {
+      console.error("Error calculating exchange rate:", error);
+      return "0";
+    }
+  }
+  
+  // Calculate USD values and exchange rate
+  let payTokenUsdValue = $derived(calculateUsdValue(props.payAmount, props.payToken?.metrics?.price));
+  let receiveTokenUsdValue = $derived(calculateUsdValue(props.receiveAmount, props.receiveToken?.metrics?.price));
+  let exchangeRate = $derived(calculateExchangeRate(props.receiveAmount, props.payAmount));
 
   async function updateTokens() {
-    if (JSON.stringify(prevRoutingPath) === JSON.stringify(routingPath)) {
+    const currentRoutingPath = props.routingPath ?? [];
+    if (JSON.stringify(prevRoutingPath) === JSON.stringify(currentRoutingPath)) {
       return;
     }
 
-    if (!routingPath || !$userTokens?.tokens?.length) return;
+    if (!currentRoutingPath || !$userTokens?.tokens?.length) return;
 
     try {
-      const tokenPromises = routingPath.map((canisterId) =>
+      const tokenPromises = currentRoutingPath.map((canisterId) =>
         fetchTokensByCanisterId([canisterId]).then((tokens) => tokens[0]),
       );
 
       const fetchedTokens = await Promise.all(tokenPromises);
       tokens = fetchedTokens.filter((t): t is Kong.Token => t !== undefined);
-      prevRoutingPath = [...routingPath];
+      prevRoutingPath = [...currentRoutingPath];
     } catch (error) {
       console.error("Error fetching tokens:", error);
     }
   }
 
   $effect(() => {
-    if (JSON.stringify(prevRoutingPath) !== JSON.stringify(routingPath)) {
+    const currentRoutingPath = props.routingPath ?? [];
+    if (JSON.stringify(prevRoutingPath) !== JSON.stringify(currentRoutingPath)) {
       updateTokens();
     }
   });
@@ -58,19 +133,17 @@
       <div class="token-info">
         <div class="flex items-center gap-3">
           <TokenImages
-            tokens={[payToken]}
+            tokens={[props.payToken]}
             size={40}
             containerClass="token-image"
           />
           <div class="token-details">
             <span class="type">You Pay</span>
             <div class="amount-container">
-              <span class="amount">{payAmount} {payToken?.symbol}</span>
+              <span class="amount">{formattedPayAmount} {props.payToken?.symbol}</span>
             </div>
             <span class="usd-value"
-              >${formatToNonZeroDecimal(
-                Number(payAmount) * Number(payToken?.metrics.price),
-              )}</span
+              >${payTokenUsdValue}</span
             >
           </div>
         </div>
@@ -85,19 +158,17 @@
       <div class="token-info">
         <div class="flex items-center gap-3">
           <TokenImages
-            tokens={[receiveToken]}
+            tokens={[props.receiveToken]}
             size={40}
             containerClass="token-image"
           />
           <div class="token-details">
             <span class="type">You Receive</span>
             <div class="amount-container">
-              <span class="amount">{receiveAmount} {receiveToken?.symbol}</span>
+              <span class="amount">{formattedReceiveAmount} {props.receiveToken?.symbol}</span>
             </div>
             <span class="usd-value"
-              >${formatToNonZeroDecimal(
-                Number(receiveAmount) * Number(receiveToken?.metrics.price),
-              )}</span
+              >${receiveTokenUsdValue}</span
             >
           </div>
         </div>
@@ -105,10 +176,8 @@
     </Panel>
 
     <div class="exchange-rate text-right mt-1 mr-2">
-      1 {payToken?.symbol} = {formatToNonZeroDecimal(
-        Number(receiveAmount) / Number(payAmount),
-      )}
-      {receiveToken?.symbol}
+      1 {props.payToken?.symbol} = {exchangeRate}
+      {props.receiveToken?.symbol}
     </div>
   </div>
 

@@ -41,7 +41,7 @@
   let isLoading = false;
   let error = "";
   let quoteUpdateInterval: ReturnType<typeof setInterval>;
-  const QUOTE_UPDATE_INTERVAL = 1000; // 1 second
+  const QUOTE_UPDATE_INTERVAL = 2000; // 2 seconds
 
   const dispatch = createEventDispatcher<{
     quoteUpdate: { receiveAmount: string };
