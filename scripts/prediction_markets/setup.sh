@@ -9,7 +9,7 @@ echo "Done."
 
 dfx identity use minter
 
-echo "Deploying kskong_ledger..."
+echo "Deploying kong_ledger..."
 ./deploy_kong_ledger.sh local
 
 dfx identity use default
