@@ -147,7 +147,7 @@ export class SwapService {
       const actor = await auth.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { anon: true },
+        { anon: true, requiresSigning: false },
       );
       return await actor.swap_amounts(
         "IC." + payToken.address,

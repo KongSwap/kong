@@ -354,7 +354,7 @@ export async function pollRequestStatus(
       const actor = await auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { anon: true }
+        { anon: true, requiresSigning: false }
       );
       const result = await (actor as any).requests([requestId]);
 
