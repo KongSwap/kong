@@ -18,6 +18,7 @@ use crate::market::get_all_markets::GetAllMarketsArgs;
 use crate::market::get_all_markets::GetAllMarketsResult;
 use crate::market::get_market_by_status::GetMarketsByStatusArgs;
 use crate::market::get_market_by_status::GetMarketsByStatusResult;
+use crate::market::estimate_return_types::{EstimatedReturn, TimeWeightPoint, BetPayoutRecord};
 use crate::nat::*;
 use crate::resolution::resolution::*;
 use crate::user::user::*;
@@ -36,10 +37,11 @@ pub mod nat;
 pub mod resolution;
 pub mod stable_memory;
 pub mod user;
+pub mod utils;
 
 // Constants
-const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
-// const KONG_LEDGER_ID: &str = "br5f7-7uaaa-aaaaa-qaaca-cai"; ///For Local testing
+// const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
+const KONG_LEDGER_ID: &str = "aiewf-lx777-77775-aaaca-cai"; ///For Local testing
 
 #[init]
 fn init() {

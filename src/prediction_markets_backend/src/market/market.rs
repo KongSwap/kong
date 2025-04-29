@@ -43,6 +43,8 @@ pub struct Market {
     pub bet_counts: Vec<StorableNat>,    // Number of bets for each outcome
     pub bet_count_percentages: Vec<f64>, // Percentage of total bets for each outcome
     pub resolved_by: Option<Principal>,  // Principal ID of the admin who resolved the market
+    pub uses_time_weighting: bool,       // Whether this market uses time-weighted rewards
+    pub time_weight_alpha: Option<f64>,  // Alpha parameter for exponential decay (default: 0.1)
 }
 
 impl Storable for Market {

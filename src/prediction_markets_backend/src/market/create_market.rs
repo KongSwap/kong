@@ -17,7 +17,7 @@ pub fn max_market_id() -> u64 {
 
 /// Creates a new prediction market
 #[update]
-fn create_market(
+pub fn create_market(
     question: String,
     category: MarketCategory,
     rules: String,
@@ -25,6 +25,8 @@ fn create_market(
     resolution_method: ResolutionMethod,
     end_time_secs: MarketEndTime,
     image_url: Option<String>,
+    uses_time_weighting: Option<bool>,
+    time_weight_alpha: Option<f64>,
 ) -> Result<MarketId, String> {
     // Validate inputs
     if question.is_empty() {
@@ -76,6 +78,8 @@ fn create_market(
                 bet_counts: vec![StorableNat::from(0u64); outcome_count],
                 bet_count_percentages: vec![0.0; outcome_count],
                 resolved_by: None,
+                uses_time_weighting: uses_time_weighting.unwrap_or(false),
+                time_weight_alpha: time_weight_alpha,
             },
         );
         market_id

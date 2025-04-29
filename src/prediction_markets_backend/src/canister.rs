@@ -7,6 +7,10 @@ use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 
 use super::delegation::*;
 use super::stable_memory::*;
+use super::market::estimate_return::*;
+use super::market::estimate_return_types::*;
+use super::market::transaction_records::*;
+use super::nat::*;
 
 // Helper function to get current time in nanoseconds
 pub fn get_current_time() -> u64 {
@@ -167,4 +171,114 @@ fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
     ];
 
     Icrc28TrustedOriginsResponse { trusted_origins }
+}
+
+/// Estimate the potential return for a bet
+#[query]
+pub fn estimate_bet_return(
+    market_id: u64,
+    outcome_index: u64,
+    bet_amount: u64,
+    current_time: u64
+) -> EstimatedReturn {
+    let market_id = StorableNat::from(market_id);
+    let outcome_index = StorableNat::from(outcome_index);
+    let bet_amount = StorableNat::from(bet_amount);
+    let current_time = StorableNat::from(current_time);
+    
+    MARKETS.with(|markets| {
+        let markets = markets.borrow();
+        if let Some(market) = markets.get(&market_id) {
+            match super::market::estimate_return::estimate_bet_return(
+                &market,
+                outcome_index.clone(),
+                bet_amount.clone(),
+                current_time.clone()
+            ) {
+                Ok(estimate) => estimate,
+                Err(_) => {
+                    // Return a default estimate on error
+                    EstimatedReturn {
+                        market_id,
+                        outcome_index,
+                        bet_amount,
+                        current_market_pool: StorableNat::from(0u64),
+                        current_outcome_pool: StorableNat::from(0u64),
+                        scenarios: vec![],
+                        uses_time_weighting: false,
+                        time_weight_alpha: None,
+                        current_time,
+                    }
+                }
+            }
+        } else {
+            // Return a default estimate if market not found
+            EstimatedReturn {
+                market_id,
+                outcome_index,
+                bet_amount,
+                current_market_pool: StorableNat::from(0u64),
+                current_outcome_pool: StorableNat::from(0u64),
+                scenarios: vec![],
+                uses_time_weighting: false,
+                time_weight_alpha: None,
+                current_time,
+            }
+        }
+    })
+}
+
+/// Generate data points for visualizing the time weight curve
+#[query]
+pub fn generate_time_weight_curve(
+    market_id: u64,
+    points: u64
+) -> Vec<TimeWeightPoint> {
+    let market_id = StorableNat::from(market_id);
+    
+    MARKETS.with(|markets| {
+        let markets = markets.borrow();
+        if let Some(market) = markets.get(&market_id) {
+            match super::market::estimate_return::generate_time_weight_curve(&market, points as usize) {
+                Ok(curve) => curve,
+                Err(_) => vec![]
+            }
+        } else {
+            vec![]
+        }
+    })
+}
+
+/// Simulate the weight of a bet at a specified future time
+#[query]
+pub fn simulate_future_weight(
+    market_id: u64,
+    bet_time: u64,
+    future_time: u64
+) -> f64 {
+    let market_id = StorableNat::from(market_id);
+    let bet_time = StorableNat::from(bet_time);
+    let future_time = StorableNat::from(future_time);
+    
+    MARKETS.with(|markets| {
+        let markets = markets.borrow();
+        if let Some(market) = markets.get(&market_id) {
+            match super::market::estimate_return::simulate_future_weight(&market, bet_time.clone(), future_time.clone()) {
+                Ok(weight) => weight,
+                Err(_) => 1.0
+            }
+        } else {
+            1.0
+        }
+    })
+}
+
+/// Get payout records for a market
+#[query]
+pub fn get_market_payout_records(market_id: u64) -> Vec<BetPayoutRecord> {
+    let market_id = StorableNat::from(market_id);
+    
+    // This is a placeholder - you'll need to implement actual storage for payout records
+    // For now, we return an empty vector
+    vec![]
 }

@@ -15,6 +15,18 @@ type BetError = variant {
   InsufficientBalance;
   BalanceUpdateFailed;
 };
+type BetPayoutRecord = record {
+  bet_amount : nat;
+  bonus_amount : opt nat;
+  time_weight : opt float64;
+  market_id : nat;
+  user : principal;
+  payout_amount : nat;
+  original_contribution_returned : nat;
+  timestamp : nat;
+  was_time_weighted : bool;
+  outcome_index : nat;
+};
 type ConsentInfo = record {
   metadata : ConsentMessageMetadata;
   consent_message : ConsentMessage;
@@ -65,6 +77,26 @@ type Distribution = record {
   outcome_index : nat;
 };
 type ErrorInfo = record { description : text };
+type EstimatedReturn = record {
+  bet_amount : nat;
+  uses_time_weighting : bool;
+  current_outcome_pool : nat;
+  current_market_pool : nat;
+  market_id : nat;
+  scenarios : vec EstimatedReturnScenario;
+  time_weight_alpha : opt float64;
+  current_time : nat;
+  outcome_index : nat;
+};
+type EstimatedReturnScenario = record {
+  probability : float64;
+  max_return : nat;
+  time_weight : opt float64;
+  time_weighted : bool;
+  min_return : nat;
+  expected_return : nat;
+  scenario : text;
+};
 type GetAllMarketsArgs = record {
   status_filter : opt MarketStatus;
   start : nat;
@@ -86,6 +118,7 @@ type Market = record {
   bet_count_percentages : vec float64;
   status : MarketStatus;
   outcome_pools : vec nat;
+  uses_time_weighting : bool;
   creator : principal;
   outcome_percentages : vec float64;
   question : text;
@@ -96,6 +129,7 @@ type Market = record {
   total_pool : nat;
   outcomes : vec text;
   resolution_method : ResolutionMethod;
+  time_weight_alpha : opt float64;
   category : MarketCategory;
   rules : text;
   resolved_by : opt principal;
@@ -165,6 +199,11 @@ type StatsResult = record {
   total_active_markets : nat;
   total_markets : nat;
 };
+type TimeWeightPoint = record {
+  weight : float64;
+  absolute_time : nat;
+  relative_time : float64;
+};
 type UserBetInfo = record {
   outcome_text : text;
   bet_amount : nat;
@@ -189,11 +228,16 @@ service : () -> {
       ResolutionMethod,
       MarketEndTime,
       opt text,
+      opt bool,
+      opt float64,
     ) -> (Result);
+  estimate_bet_return : (nat64, nat64, nat64, nat64) -> (EstimatedReturn) query;
+  generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
   get_all_categories : () -> (vec text) query;
   get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
+  get_market_payout_records : (nat64) -> (vec BetPayoutRecord) query;
   get_markets_by_status : (GetMarketsByStatusArgs) -> (
       GetMarketsByStatusResult,
     ) query;
@@ -210,5 +254,6 @@ service : () -> {
   place_bet : (nat, nat, nat) -> (Result_4);
   resolve_via_admin : (nat, vec nat) -> (Result_5);
   resolve_via_oracle : (nat, vec nat, blob) -> (Result_5);
+  simulate_future_weight : (nat64, nat64, nat64) -> (float64) query;
   void_market : (nat) -> (Result_5);
 }

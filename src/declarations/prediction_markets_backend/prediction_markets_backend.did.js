@@ -21,6 +21,31 @@ export const idlFactory = ({ IDL }) => {
     'Duration' : IDL.Nat,
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
+  const EstimatedReturnScenario = IDL.Record({
+    'probability' : IDL.Float64,
+    'max_return' : IDL.Nat,
+    'time_weight' : IDL.Opt(IDL.Float64),
+    'time_weighted' : IDL.Bool,
+    'min_return' : IDL.Nat,
+    'expected_return' : IDL.Nat,
+    'scenario' : IDL.Text,
+  });
+  const EstimatedReturn = IDL.Record({
+    'bet_amount' : IDL.Nat,
+    'uses_time_weighting' : IDL.Bool,
+    'current_outcome_pool' : IDL.Nat,
+    'current_market_pool' : IDL.Nat,
+    'market_id' : IDL.Nat,
+    'scenarios' : IDL.Vec(EstimatedReturnScenario),
+    'time_weight_alpha' : IDL.Opt(IDL.Float64),
+    'current_time' : IDL.Nat,
+    'outcome_index' : IDL.Nat,
+  });
+  const TimeWeightPoint = IDL.Record({
+    'weight' : IDL.Float64,
+    'absolute_time' : IDL.Nat,
+    'relative_time' : IDL.Float64,
+  });
   const MarketStatus = IDL.Variant({
     'Disputed' : IDL.Null,
     'Open' : IDL.Null,
@@ -46,6 +71,7 @@ export const idlFactory = ({ IDL }) => {
     'bet_count_percentages' : IDL.Vec(IDL.Float64),
     'status' : MarketStatus,
     'outcome_pools' : IDL.Vec(IDL.Nat),
+    'uses_time_weighting' : IDL.Bool,
     'creator' : IDL.Principal,
     'outcome_percentages' : IDL.Vec(IDL.Float64),
     'question' : IDL.Text,
@@ -56,6 +82,7 @@ export const idlFactory = ({ IDL }) => {
     'total_pool' : IDL.Nat,
     'outcomes' : IDL.Vec(IDL.Text),
     'resolution_method' : ResolutionMethod,
+    'time_weight_alpha' : IDL.Opt(IDL.Float64),
     'category' : MarketCategory,
     'rules' : IDL.Text,
     'resolved_by' : IDL.Opt(IDL.Principal),
@@ -70,6 +97,18 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Principal,
     'timestamp' : IDL.Nat,
     'amount' : IDL.Nat,
+    'outcome_index' : IDL.Nat,
+  });
+  const BetPayoutRecord = IDL.Record({
+    'bet_amount' : IDL.Nat,
+    'bonus_amount' : IDL.Opt(IDL.Nat),
+    'time_weight' : IDL.Opt(IDL.Float64),
+    'market_id' : IDL.Nat,
+    'user' : IDL.Principal,
+    'payout_amount' : IDL.Nat,
+    'original_contribution_returned' : IDL.Nat,
+    'timestamp' : IDL.Nat,
+    'was_time_weighted' : IDL.Bool,
     'outcome_index' : IDL.Nat,
   });
   const GetMarketsByStatusArgs = IDL.Record({
@@ -220,9 +259,21 @@ export const idlFactory = ({ IDL }) => {
           ResolutionMethod,
           MarketEndTime,
           IDL.Opt(IDL.Text),
+          IDL.Opt(IDL.Bool),
+          IDL.Opt(IDL.Float64),
         ],
         [Result],
         [],
+      ),
+    'estimate_bet_return' : IDL.Func(
+        [IDL.Nat64, IDL.Nat64, IDL.Nat64, IDL.Nat64],
+        [EstimatedReturn],
+        ['query'],
+      ),
+    'generate_time_weight_curve' : IDL.Func(
+        [IDL.Nat64, IDL.Nat64],
+        [IDL.Vec(TimeWeightPoint)],
+        ['query'],
       ),
     'get_all_categories' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
     'get_all_markets' : IDL.Func(
@@ -232,6 +283,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'get_market' : IDL.Func([IDL.Nat], [IDL.Opt(Market)], ['query']),
     'get_market_bets' : IDL.Func([IDL.Nat], [IDL.Vec(Bet)], ['query']),
+    'get_market_payout_records' : IDL.Func(
+        [IDL.Nat64],
+        [IDL.Vec(BetPayoutRecord)],
+        ['query'],
+      ),
     'get_markets_by_status' : IDL.Func(
         [GetMarketsByStatusArgs],
         [GetMarketsByStatusResult],
@@ -267,6 +323,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat, IDL.Vec(IDL.Nat), IDL.Vec(IDL.Nat8)],
         [Result_5],
         [],
+      ),
+    'simulate_future_weight' : IDL.Func(
+        [IDL.Nat64, IDL.Nat64, IDL.Nat64],
+        [IDL.Float64],
+        ['query'],
       ),
     'void_market' : IDL.Func([IDL.Nat], [Result_5], []),
   });

@@ -17,6 +17,18 @@ export type BetError = { 'MarketNotFound' : null } |
   { 'InvalidOutcome' : null } |
   { 'InsufficientBalance' : null } |
   { 'BalanceUpdateFailed' : null };
+export interface BetPayoutRecord {
+  'bet_amount' : bigint,
+  'bonus_amount' : [] | [bigint],
+  'time_weight' : [] | [number],
+  'market_id' : bigint,
+  'user' : Principal,
+  'payout_amount' : bigint,
+  'original_contribution_returned' : bigint,
+  'timestamp' : bigint,
+  'was_time_weighted' : boolean,
+  'outcome_index' : bigint,
+}
 export interface ConsentInfo {
   'metadata' : ConsentMessageMetadata,
   'consent_message' : ConsentMessage,
@@ -68,6 +80,26 @@ export interface Distribution {
   'outcome_index' : bigint,
 }
 export interface ErrorInfo { 'description' : string }
+export interface EstimatedReturn {
+  'bet_amount' : bigint,
+  'uses_time_weighting' : boolean,
+  'current_outcome_pool' : bigint,
+  'current_market_pool' : bigint,
+  'market_id' : bigint,
+  'scenarios' : Array<EstimatedReturnScenario>,
+  'time_weight_alpha' : [] | [number],
+  'current_time' : bigint,
+  'outcome_index' : bigint,
+}
+export interface EstimatedReturnScenario {
+  'probability' : number,
+  'max_return' : bigint,
+  'time_weight' : [] | [number],
+  'time_weighted' : boolean,
+  'min_return' : bigint,
+  'expected_return' : bigint,
+  'scenario' : string,
+}
 export interface GetAllMarketsArgs {
   'status_filter' : [] | [MarketStatus],
   'start' : bigint,
@@ -94,6 +126,7 @@ export interface Market {
   'bet_count_percentages' : Array<number>,
   'status' : MarketStatus,
   'outcome_pools' : Array<bigint>,
+  'uses_time_weighting' : boolean,
   'creator' : Principal,
   'outcome_percentages' : Array<number>,
   'question' : string,
@@ -104,6 +137,7 @@ export interface Market {
   'total_pool' : bigint,
   'outcomes' : Array<string>,
   'resolution_method' : ResolutionMethod,
+  'time_weight_alpha' : [] | [number],
   'category' : MarketCategory,
   'rules' : string,
   'resolved_by' : [] | [Principal],
@@ -178,6 +212,11 @@ export interface StatsResult {
   'total_active_markets' : bigint,
   'total_markets' : bigint,
 }
+export interface TimeWeightPoint {
+  'weight' : number,
+  'absolute_time' : bigint,
+  'relative_time' : number,
+}
 export interface UserBetInfo {
   'outcome_text' : string,
   'bet_amount' : bigint,
@@ -203,13 +242,24 @@ export interface _SERVICE {
       ResolutionMethod,
       MarketEndTime,
       [] | [string],
+      [] | [boolean],
+      [] | [number],
     ],
     Result
+  >,
+  'estimate_bet_return' : ActorMethod<
+    [bigint, bigint, bigint, bigint],
+    EstimatedReturn
+  >,
+  'generate_time_weight_curve' : ActorMethod<
+    [bigint, bigint],
+    Array<TimeWeightPoint>
   >,
   'get_all_categories' : ActorMethod<[], Array<string>>,
   'get_all_markets' : ActorMethod<[GetAllMarketsArgs], GetAllMarketsResult>,
   'get_market' : ActorMethod<[bigint], [] | [Market]>,
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
+  'get_market_payout_records' : ActorMethod<[bigint], Array<BetPayoutRecord>>,
   'get_markets_by_status' : ActorMethod<
     [GetMarketsByStatusArgs],
     GetMarketsByStatusResult
@@ -234,6 +284,7 @@ export interface _SERVICE {
     [bigint, Array<bigint>, Uint8Array | number[]],
     Result_5
   >,
+  'simulate_future_weight' : ActorMethod<[bigint, bigint, bigint], number>,
   'void_market' : ActorMethod<[bigint], Result_5>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
