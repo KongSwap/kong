@@ -1,20 +1,26 @@
-use candid::{CandidType, Deserialize, Principal, decode_one};
+use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::{caller, query, update};
-use std::time::{SystemTime, UNIX_EPOCH};
+use ic_cdk::api::time;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
-use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
+use icrc_ledger_types::icrc21::requests::{ConsentMessageRequest, ConsentMessageMetadata};
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
+use candid::decode_one;
 
 use super::delegation::*;
-use super::stable_memory::*;
-use super::market::estimate_return::*;
+use super::market::create_market::*;
+use super::market::get_market::*;
+use super::market::get_market_by_status::*;
+use super::market::get_stats::*;
+use super::market::market::*;
 use super::market::estimate_return_types::*;
-use super::market::transaction_records::*;
 use super::nat::*;
+use super::stable_memory::*;
 
 // Helper function to get current time in nanoseconds
 pub fn get_current_time() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos() as u64
+    time()
 }
 
 // We'll implement our own simple hash function since we don't have sha2
@@ -273,12 +279,45 @@ pub fn simulate_future_weight(
     })
 }
 
+// Thread-local storage for market payout records
+thread_local! {
+    static MARKET_PAYOUTS: RefCell<BTreeMap<StorableNat, Vec<BetPayoutRecord>>> = 
+        RefCell::new(BTreeMap::new());
+}
+
+/// Record a payout for a market
+pub fn record_market_payout(payout: BetPayoutRecord) {
+    let market_id = payout.market_id.clone();
+    
+    MARKET_PAYOUTS.with(|payouts| {
+        let mut payouts = payouts.borrow_mut();
+        
+        // Get existing payouts or create a new vector
+        let mut market_payouts = if let Some(existing) = payouts.get(&market_id) {
+            existing.clone()
+        } else {
+            Vec::new()
+        };
+        
+        // Add the new payout record
+        market_payouts.push(payout);
+        
+        // Update the storage
+        payouts.insert(market_id, market_payouts);
+    });
+}
+
 /// Get payout records for a market
 #[query]
 pub fn get_market_payout_records(market_id: u64) -> Vec<BetPayoutRecord> {
     let market_id = StorableNat::from(market_id);
     
-    // This is a placeholder - you'll need to implement actual storage for payout records
-    // For now, we return an empty vector
-    vec![]
+    MARKET_PAYOUTS.with(|payouts| {
+        let payouts = payouts.borrow();
+        if let Some(market_payouts) = payouts.get(&market_id) {
+            market_payouts.clone()
+        } else {
+            vec![]
+        }
+    })
 }

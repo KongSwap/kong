@@ -2,6 +2,8 @@ use candid::{Nat, Principal};
 
 use super::resolution::*;
 use super::transfer_kong::*;
+use crate::canister::{get_current_time, record_market_payout};
+use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::market::market::*;
 use crate::nat::*;
 use crate::stable_memory::*;
@@ -149,8 +151,26 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<Storable
                 ic_cdk::println!("Transferring {} tokens to {}", transfer_amount.to_u64(), user.to_string());
 
                 // Transfer winnings to the bettor
-                match transfer_kong(user, transfer_amount).await {
-                    Ok(_) => ic_cdk::println!("Transfer successful"),
+                match transfer_kong(user, transfer_amount.clone()).await {
+                    Ok(_) => {
+                        ic_cdk::println!("Transfer successful");
+                        
+                        // Record the payout
+                        let payout_record = BetPayoutRecord {
+                            market_id: market.id.clone(),
+                            user,
+                            bet_amount: bet_amount.clone(),
+                            payout_amount: transfer_amount.clone(),
+                            timestamp: StorableNat::from(get_current_time()),
+                            outcome_index: StorableNat::from(0u64), // We don't have this info here, using 0 as default
+                            was_time_weighted: true,
+                            time_weight: Some(weight),
+                            original_contribution_returned: bet_amount.clone(),
+                            bonus_amount: Some(StorableNat::from(bonus_share as u64)),
+                        };
+                        
+                        record_market_payout(payout_record);
+                    },
                     Err(e) => {
                         ic_cdk::println!("Transfer failed: {}", e);
                         return Err(ResolutionError::TransferError(e));
@@ -188,8 +208,26 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<Storable
                 ic_cdk::println!("Transferring {} tokens to {}", transfer_amount.to_u64(), bet.user.to_string());
 
                 // Transfer winnings to the bettor
-                match transfer_kong(bet.user, transfer_amount).await {
-                    Ok(_) => ic_cdk::println!("Transfer successful"),
+                match transfer_kong(bet.user, transfer_amount.clone()).await {
+                    Ok(_) => {
+                        ic_cdk::println!("Transfer successful");
+                        
+                        // Record the payout
+                        let payout_record = BetPayoutRecord {
+                            market_id: market.id.clone(),
+                            user: bet.user,
+                            bet_amount: bet.amount.clone(),
+                            payout_amount: transfer_amount.clone(),
+                            timestamp: StorableNat::from(get_current_time()),
+                            outcome_index: bet.outcome_index.clone(),
+                            was_time_weighted: false,
+                            time_weight: None,
+                            original_contribution_returned: bet.amount.clone(),
+                            bonus_amount: None,
+                        };
+                        
+                        record_market_payout(payout_record);
+                    },
                     Err(e) => {
                         ic_cdk::println!("Transfer failed: {}", e);
                         return Err(ResolutionError::TransferError(e));

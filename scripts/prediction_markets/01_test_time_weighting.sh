@@ -163,20 +163,30 @@ echo "Checking payout records..."
 dfx canister call prediction_markets_backend get_market_payout_records "($MARKET_ID)"
 
 # Check individual user rewards
-echo "Checking Alice's reward..."
+echo "Checking market payouts..."
+dfx identity use default
+dfx canister call prediction_markets_backend get_market_payout_records \
+  "($MARKET_ID)"
+
+# Switch to Alice to see her rewards
+echo "Checking Alice's rewards..."
 dfx identity use alice
-dfx canister call prediction_markets_backend get_user_payouts \
-  "(principal \"$(dfx identity get-principal)\")"
+dfx canister call prediction_markets_backend get_user_history "(principal \"$(dfx identity get-principal)\")"
 
-echo "Checking Bob's reward..."
+# Switch to Bob to see his rewards
+echo "Checking Bob's rewards..."
 dfx identity use bob
-dfx canister call prediction_markets_backend get_user_payouts \
-  "(principal \"$(dfx identity get-principal)\")"
+dfx canister call prediction_markets_backend get_user_history "(principal \"$(dfx identity get-principal)\")"
 
-echo "Checking Carol's reward..."
+# Switch to Carol to see her rewards
+echo "Checking Carol's rewards..."
 dfx identity use carol
-dfx canister call prediction_markets_backend get_user_payouts \
-  "(principal \"$(dfx identity get-principal)\")"
+dfx canister call prediction_markets_backend get_user_history "(principal \"$(dfx identity get-principal)\")"
+
+# Switch to Dave to see his rewards
+echo "Checking Dave's rewards..."
+dfx identity use dave
+dfx canister call prediction_markets_backend get_user_history "(principal \"$(dfx identity get-principal)\")"
 
 # switch back to default identity
 dfx identity use default
