@@ -49,9 +49,9 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 	amount=$amount;
 },)"
 
-# 5,000,000 ksKONG
+# 5,000,000 KONG
 amount=500_000_000_000_000
-token="kskong"
+token="kong"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {

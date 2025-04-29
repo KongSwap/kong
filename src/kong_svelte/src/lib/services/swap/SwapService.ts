@@ -258,7 +258,7 @@ export class SwapService {
       const actor = await auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { anon: true },
+        { anon: true, requiresSigning: false },
       );
       const result = await actor.requests(requestIds);
       return result;

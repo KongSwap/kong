@@ -114,11 +114,11 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 
     # Deploy test token ledger canisters
     LEDGER_SCRIPTS=(
-        "deploy_ksusdt_ledger.sh"
-        "deploy_ksicp_ledger.sh"
-        "deploy_ksbtc_ledger.sh"
-        "deploy_kseth_ledger.sh"
-        "deploy_kong_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_ksusdt_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_ksicp_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_ksbtc_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_kseth_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_kong_ledger.sh"
     )
 
     for script in "${LEDGER_SCRIPTS[@]}"; do
@@ -140,7 +140,7 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 
 	# mint test tokens to kong_user1
     [ -f "user_mint.sh" ] && {
-        bash "user_mint.sh" "${NETWORK}"
+        bash "${PROJECT_ROOT}/scripts/user_mint.sh" "${NETWORK}"
     } || echo "Warning: user_mint.sh not found"
 
     # deploy tokens and pools

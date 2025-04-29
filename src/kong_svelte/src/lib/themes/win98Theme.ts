@@ -33,15 +33,15 @@ export const win98Theme: ThemeDefinition = {
     accentYellowHover: '#E6E600', // Darker yellow
     
     // Text colors
-    textPrimary: '#000000',  // Windows 98 text
+    textPrimary: '#ffffff',  // Windows 98 text
     textSecondary: '#323232', // Windows 98 dark gray
     textDisabled: '#818181', // Windows 98 dark gray
     textAccentGreen: '#008000', // More vibrant forest green
     textAccentRed: '#B00000',   // More vibrant deep red
     textAccentBlue: '#00008B',  // Darker blue for better contrast on gray
-    textOnPrimary: '#fff',
-    textLight: '#fff',
-    textDark: '#000',
+    textOnPrimary: '#ffffff',
+    textLight: '#ffffff',
+    textDark: '#000000',
     
     // Font settings - Using Windows 98-style font
     fontFamily: "'Comic Sans MS', 'MS Sans Serif', 'Segoe UI', Arial, sans-serif",
