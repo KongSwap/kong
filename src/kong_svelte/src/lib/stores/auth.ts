@@ -1,5 +1,6 @@
 import { get, writable } from "svelte/store";
 import { type PNP } from "@windoge98/plug-n-play";
+import { Principal } from "@dfinity/principal"; // <-- Add this import
 import {
   pnp,
   canisterIDLs as pnpCanisterIDLs,
@@ -124,8 +125,30 @@ function createAuthStore(pnp: PNP) {
           throw new Error("Invalid connection result after retry. Please try again. If the issue persists, reload the page.");
         }
 
-        const owner = result.owner;
-        set({ isConnected: true, account: result, isInitialized: true });
+        // Ensure owner is a Principal object before setting the store
+        let principalOwner: Principal;
+        if (result.owner && typeof result.owner === 'object' && typeof result.owner.toText === 'function') {
+          // Already a Principal object (or compatible)
+          principalOwner = result.owner;
+        } else if (result.owner && typeof result.owner === 'string') {
+          // Convert from string if necessary
+          try {
+            principalOwner = Principal.fromText(result.owner);
+          } catch (e) {
+            console.error("Failed to convert owner string to Principal:", e);
+            throw new Error("Invalid owner principal format received from wallet.");
+          }
+        } else {
+           console.error("Unexpected owner format received:", result.owner);
+           throw new Error("Unexpected owner format received from wallet.");
+        }
+
+        // Update the store state, ensuring account.owner is the Principal
+        set({ 
+          isConnected: true, 
+          account: { ...result, owner: principalOwner }, // Store the Principal object
+          isInitialized: true 
+        });
         
         // Track successful connection using the utility function
         trackEvent(AnalyticsEvent.ConnectWallet, { 
@@ -144,8 +167,11 @@ function createAuthStore(pnp: PNP) {
         setTimeout(async () => {
           try {
             const { userTokens } = await import("$lib/stores/userTokens");
-            await userTokens.setPrincipal(owner);
-            await fetchBalances(get(userTokens).tokens, owner, true);
+            // Use principalOwner which is in scope and is the correct Principal object
+            // Convert Principal to string for functions expecting string representation
+            const ownerString = principalOwner.toText();
+            await userTokens.setPrincipal(ownerString); 
+            await fetchBalances(get(userTokens).tokens, ownerString, true); 
           } catch (error) {
             console.error("Error loading balances:", error);
           }

@@ -19,8 +19,12 @@ import {
   idlFactory as trollboxIDL,
 } from "../../../../declarations/trollbox";
 import {
+  canisterId as launchpadCanisterId, // Added launchpad canister ID import
+  idlFactory as launchpadIDL, // Added launchpad IDL factory import
+} from "../../../../declarations/launchpad";
+import {
   canisterId as siwsProviderCanisterId,
-} from "../../../../declarations/ic_siws_provider"; 
+} from "../../../../declarations/ic_siws_provider";
 
 // --- Types ---
 export type CanisterType =
@@ -31,7 +35,8 @@ export type CanisterType =
   | "kong_data"
   | "xrc" // Assuming 'xrc' might be used elsewhere, keeping it. ICP IDL is imported.
   | "prediction_markets_backend"
-  | "trollbox";
+  | "trollbox"
+  | "launchpad"; // Added launchpad type
 
 // --- Canister IDLs ---
 export const canisterIDLs = {
@@ -43,6 +48,7 @@ export const canisterIDLs = {
   ICP: icpIDL,
   prediction_markets_backend: predictionMarketsBackendIDL,
   trollbox: trollboxIDL,
+  launchpad: launchpadIDL, // Added launchpad IDL mapping
 };
 
 // --- PNP Initialization ---
@@ -51,7 +57,8 @@ let globalPnp: PNP | null = null;
 const delegationTargets = [
   kongBackendCanisterId,
   predictionMarketsBackendCanisterId,
-  trollboxCanisterId
+  trollboxCanisterId,
+  launchpadCanisterId, // Added launchpad canister ID to delegation targets
 ]
 
 export function initializePNP(): PNP {

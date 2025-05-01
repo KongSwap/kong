@@ -3,7 +3,8 @@
     "compilerOptions": {
         "baseUrl": ".",
         "paths": {
-            "$lib/*": ["src/lib/*"]
+            "$lib/*": ["src/kong_svelte/src/lib/*"], // Adjusted for svelte app location
+            "$declarations/*": ["src/declarations/*"] // Added declarations alias
         }
     }
-} 
+}
