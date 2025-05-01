@@ -13,7 +13,8 @@
     onShowDropdown, 
     onHideDropdown, 
     onTabChange, 
-    defaultPath 
+    defaultPath, 
+    tabId 
   } = $props<{
     label: string;
     options: Array<{
@@ -25,17 +26,18 @@
     }>;
     isActive: boolean;
     activeDropdown: string | null;
-    onShowDropdown: (type: string) => void;
+    onShowDropdown: () => void;
     onHideDropdown: () => void;
     onTabChange: (tab: string) => void;
     defaultPath: string;
+    tabId: string;
   }>();
 
   // Handle click on a dropdown option
   const handleOptionClick = async (option: typeof options[number]) => {
     if (!option.comingSoon) {
       onHideDropdown();
-      onTabChange(label.toLowerCase());
+      onTabChange(tabId);
       await goto(option.path);
     }
   };
@@ -43,18 +45,18 @@
 
 <div 
   class="nav-dropdown"
-  on:mouseenter={() => onShowDropdown(label.toLowerCase())}
+  on:mouseenter={() => onShowDropdown()}
   on:mouseleave={onHideDropdown}
 >
   <button
     class="nav-link {isActive ? 'active' : ''}"
-    on:click={() => goto(defaultPath)}
+    on:click={() => { onTabChange(tabId); goto(defaultPath); }}
   >
     {label}
     <ChevronDown size={16} />
   </button>
   
-  {#if activeDropdown === label.toLowerCase()}
+  {#if activeDropdown === tabId}
     <div class="absolute top-full left-[-20px] min-w-[500px] p-3 bg-kong-bg-dark border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
       <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">{label} OPTIONS</div>
       {#each options as option}
@@ -109,4 +111,4 @@
   @apply text-kong-primary;
   text-shadow: 0 0px 30px theme(colors.kong.primary);
 }
-</style> 
+</style>

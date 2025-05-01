@@ -55,13 +55,13 @@
   // and apply CSS inversion when needed via the light-logo class
 
   // Define a type for valid tab IDs
-  type NavTabId = 'swap' | 'predict' | 'earn' | 'stats';
+  type NavTabId = 'swap' | 'predict' | 'earn' | 'stats' | 'launch'; // Added 'launch'
 
   let isMobile = $state(false);
   let activeTab = $state<NavTabId>("swap");
   let navOpen = $state(false);
   let closeTimeout: ReturnType<typeof setTimeout>;
-  let activeDropdown = $state<Extract<NavTabId, 'swap' | 'earn' | 'stats'> | null>(null);
+  let activeDropdown = $state<Extract<NavTabId, 'swap' | 'earn' | 'stats' | 'launch'> | null>(null); // Added 'launch' to Extract
   let showWalletSidebar = $state(false);
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
@@ -87,7 +87,7 @@
   }
 
   // Filter tabs based on DFX_NETWORK
-  const allTabs = ["swap", "predict", "earn", "stats"] as const;
+  const allTabs = ["swap", "predict", "earn", "stats", "launch"] as const; // Added 'launch'
 
   function handleConnect() {
     // If user is not authenticated, show the wallet provider
@@ -322,6 +322,11 @@
       { label: "Bubbles", description: "Visualize token price changes with bubbles", path: "/stats/bubbles", icon: ChartScatter, comingSoon: false },
       { label: "Leaderboards", description: "View trading leaderboards", path: "/stats/leaderboard", icon: Trophy, comingSoon: false },
     ] },
+    { title: "LAUNCHPAD", options: [
+      { label: "Explore", description: "Discover new projects and tokens", path: "/launch/explore", icon: Search, comingSoon: false },
+      { label: "Create Token", description: "Launch your own ICRC token", path: "/launch/create-token", icon: Coins, comingSoon: false },
+      { label: "Start Mining", description: "Set up liquidity mining pools", path: "/launch/start-mining", icon: Award, comingSoon: false },
+    ] },
   ]);
   // --- End Refactoring ---
 
@@ -370,11 +375,23 @@
             tabId: "predict" as const,
             defaultPath: "/predict",
           };
+        case "launch": // Added launch case
+          return {
+            type: "dropdown" as const,
+            label: "LAUNCHPAD",
+            tabId: "launch" as const,
+            options: [
+              { label: "Explore", description: "Discover new projects and tokens", path: "/launch/explore", icon: Search, comingSoon: false },
+              { label: "Create Token", description: "Launch your own ICRC token", path: "/launch/create-token", icon: Coins, comingSoon: false },
+              { label: "Start Mining", description: "Set up liquidity mining pools", path: "/launch/start-mining", icon: Award, comingSoon: false },
+            ],
+            defaultPath: "/launch/explore",
+          };
         default:
           return null; // Should not happen with current 'tabs' definition
       }
     }).filter(item => item !== null) as Array<
-      | { type: 'dropdown'; label: string; tabId: 'swap' | 'earn' | 'stats'; options: any[]; defaultPath: string; }
+      | { type: 'dropdown'; label: string; tabId: 'swap' | 'earn' | 'stats' | 'launch'; options: any[]; defaultPath: string; } // Corrected type
       | { type: 'link'; label: string; tabId: 'predict'; defaultPath: string; }
     >
   );
@@ -401,6 +418,10 @@
       "/stats": "stats",
       "/stats/bubbles": "stats",
       "/stats/leaderboard": "stats",
+      "/launch": "launch",
+      "/launch/explore": "launch",
+      "/launch/create-token": "launch",
+      "/launch/start-mining": "launch",
     };
     let found = false;
     for (const prefix in pathMap) {
@@ -497,6 +518,7 @@
                 onHideDropdown={() => { closeTimeout = setTimeout(() => { activeDropdown = null; }, 150); }}
                 onTabChange={(tab) => activeTab = tab as NavTabId}
                 defaultPath={navItem.defaultPath}
+                tabId={navItem.tabId}
               />
             {:else if navItem.type === "link"}
               <button
