@@ -324,9 +324,9 @@
     ] },
     { title: "LAUNCHPAD", options: [
       { label: "Explore", description: "Discover new projects and tokens", path: "/launch/explore", icon: Search, comingSoon: false },
-      { label: "Create Token", description: "Launch your own ICRC token", path: "/launch/create-token", icon: Coins, comingSoon: false },
+      { label: "Create Token", description: "Launch your own PoW ICRC token", path: "/launch/create-token", icon: Coins, comingSoon: false },
       { label: "Create Miner", description: "Deploy a new miner canister", path: "/launch/create-miner", icon: Award, comingSoon: false }, // Added Create Miner
-      { label: "Start Mining", description: "Set up liquidity mining pools", path: "/launch/start-mining", icon: Award, comingSoon: false },
+      // Removed Start Mining: { label: "Start Mining", description: "Set up liquidity mining pools", path: "/launch/start-mining", icon: Award, comingSoon: false },
     ] },
   ]);
   // --- End Refactoring ---
@@ -383,9 +383,8 @@
             tabId: "launch" as const,
             options: [
               { label: "Explore", description: "Discover new projects and tokens", path: "/launch/explore", icon: Search, comingSoon: false },
-              { label: "Create Token", description: "Launch your own ICRC token", path: "/launch/create-token", icon: Coins, comingSoon: false },
+              { label: "Create Token", description: "Launch your own PoW ICRC token", path: "/launch/create-token", icon: Coins, comingSoon: false },
               { label: "Create Miner", description: "Deploy a new miner canister", path: "/launch/create-miner", icon: Award, comingSoon: false }, // Added Create Miner
-              { label: "Start Mining", description: "Set up liquidity mining pools", path: "/launch/start-mining", icon: Award, comingSoon: false },
             ],
             defaultPath: "/launch/explore",
           };
