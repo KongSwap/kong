@@ -8,13 +8,14 @@
   import { tick } from "svelte";
   import { X } from "lucide-svelte";
   import { modalStack } from "$lib/stores/modalStore";
+  import { transparentPanel } from "$lib/stores/derivedThemeStore";
 
   // Props
   let {
     isOpen = false,
     modalKey = Math.random().toString(36).substr(2, 9),
     title = "",
-    variant = "solid",
+    variant = transparentPanel ? "transparent" : "solid",
     width = "600px",
     height = "auto",
     minHeight = "auto",
@@ -49,7 +50,7 @@
   let startX = $state(0);
   let currentX = $state(0);
   let isDragging = $state(false);
-  let modalElement: HTMLDivElement;
+  let modalElement: HTMLDivElement = $state(null);
   let zIndex = $state(99999);
   
   const SLIDE_THRESHOLD = 100; // pixels to trigger close
@@ -95,7 +96,7 @@
       const updateDimensions = () => {
         isMobile = window.innerWidth <= 768;
         modalWidth = isMobile ? "100%" : width;
-        modalHeight = isMobile ? "auto" : height;
+        modalHeight = height;
       };
       updateDimensions();
       window.addEventListener("resize", updateDimensions);
@@ -234,7 +235,7 @@
 
       <div
         bind:this={modalElement}
-        class="relative will-change-transform max-w-full {isPadded ? 'px-4' : ''} max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
+        class="relative px-4 will-change-transform max-w-full max-h-screen md:max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
         style="width: {modalWidth}; z-index: {zIndex + 1};"
         on:mousedown={handleDragStart}
         on:mousemove={handleDragMove}
@@ -247,14 +248,13 @@
         transition:fade={{ duration: 150, delay: 100, easing: cubicOut }}
       >
         <Panel
-          variant="solid"
           width="100%"
-          height="100%"
-          className="flex flex-col overflow-hidden {className}"
+          height={modalHeight}
+          className="flex flex-col overflow-hidden {className} {isPadded ? 'px-4' : ''}"
         >
           <div
-            class="flex flex-col overflow-hidden modal-content"
-            style="min-height: {minHeight};"
+            class="modal-content flex flex-col overflow-hidden"
+            style="min-height: {minHeight}; max-height: {modalHeight !== 'auto' ? modalHeight : 'none'};"
           >
             {#if loading}
               <div class="loading-overlay">
@@ -265,9 +265,9 @@
             <div class="drag-handle touch-pan-x"></div>
 
             <header
-              class="flex items-center justify-between flex-shrink-0 px-3 pt-3 pb-4"
+              class="flex justify-between items-center flex-shrink-0 pb-2"
             >
-              <!-- Check for all title rendering options -->
+              <!-- Title can be provided via slot or prop -->
               <div class="flex-grow">
                 <slot name="title">
                   <h2 class="text-lg font-semibold modal-title">
@@ -278,7 +278,7 @@
                 </slot>
               </div>
               <button
-                class="!flex !items-center hover:text-kong-accent-red !border-0 !shadow-none group relative ml-2"
+                class="!flex !items-center hover:text-kong-accent-red !border-0 !shadow-none group relative"
                 on:click={(e) => handleClose(e)}
                 aria-label="Close modal"
               >
@@ -308,11 +308,6 @@
     transition: all 0.15s ease;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     width: 40px;
-  }
-
-  :global(.modal-content) {
-    max-height: inherit;
-    height: 100%;
   }
 
   :global(#portal-target) {

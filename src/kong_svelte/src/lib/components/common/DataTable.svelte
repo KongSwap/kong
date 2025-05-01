@@ -45,6 +45,11 @@
   let sortColumn = $state(defaultSort.column || '');
   let sortDirection = $state<'asc' | 'desc'>(defaultSort.direction || 'desc');
   let totalPages = $derived(Math.max(1, Math.ceil(totalItems / itemsPerPage)));
+  let hoveredRowIndex = $state<number | null>(null);
+
+  // Reference to the scrollable container
+  let scrollContainer: HTMLDivElement;
+  let previousPageValue = $state(currentPage); // Track previous page
 
   // Theme-related properties - use functions to compute values on demand
   function getCurrentTheme() {
@@ -89,7 +94,7 @@
   }
 
   function isKongToken(row: any): boolean {
-    return row.canister_id === KONG_CANISTER_ID || 
+    return row.address === KONG_CANISTER_ID || 
            row.address_0 === KONG_CANISTER_ID || 
            row.address_1 === KONG_CANISTER_ID;
   }
@@ -136,43 +141,13 @@
     displayData = sortedData();
   });
 
-  const flashDuration = 2000;
-  let flashTimeouts = $state(new Map());
-  let rowFlashStates = $state(new Map<string, { class: string, timeout: any }>());
-  let previousPrices = $state(new Map<string, number>());
-
   $effect(() => {
-    data.forEach(row => {
-      const key = row[rowKey];
-      const currentPrice = Number(row.metrics?.price || 0);
-      const lastPrice = previousPrices.get(key);
-
-      if (lastPrice !== undefined && currentPrice !== lastPrice) {
-        updatePriceFlash(row, lastPrice);
-      }
-      
-      previousPrices.set(key, currentPrice);
-    });
-  });
-
-  function updatePriceFlash(row: any, previousPrice: number) {
-    const key = row[rowKey];
-    const currentPrice = Number(row.metrics?.price || 0);
-    
-    if (flashTimeouts.has(key)) {
-      clearTimeout(flashTimeouts.get(key));
+    // Scroll to top when currentPage changes
+    if (scrollContainer && currentPage !== previousPageValue) {
+      scrollContainer.scrollTop = 0;
     }
-
-    const flashClass = currentPrice > previousPrice ? 'flash-green' : 'flash-red';
-    
-    const timeout = setTimeout(() => {
-      rowFlashStates.delete(key);
-      flashTimeouts.delete(key);
-    }, flashDuration);
-
-    flashTimeouts.set(key, timeout);
-    rowFlashStates.set(key, { class: flashClass, timeout });
-  }
+    previousPageValue = currentPage; // Update after check
+  });
 
   function toggleSort(column: string) {
     if (sortColumn === column) {
@@ -211,23 +186,25 @@
     return value > 0 ? 'text-kong-text-accent-green' : value < 0 ? 'text-kong-accent-red' : '';
   }
 
+  function onRowMouseEnter(index: number) {
+    hoveredRowIndex = index;
+  }
+  
+  function onRowMouseLeave() {
+    hoveredRowIndex = null;
+  }
+
   onMount(() => {
     if (defaultSort.column) {
       sortColumn = defaultSort.column;
       sortDirection = defaultSort.direction;
     }
-
-    return () => {
-      rowFlashStates.forEach(state => {
-        if (state.timeout) clearTimeout(state.timeout);
-      });
-    };
   });
 </script>
 
 <div class="flex flex-col h-full">
-  <div class="flex-1 overflow-auto">
-    <table class="w-full border-collapse min-w-[800px] md:min-w-0">
+  <div class="flex-1 overflow-auto" bind:this={scrollContainer}>
+    <table class="w-full border-collapse md:min-w-0">
       <thead class="bg-kong-bg-dark sticky top-0 z-20 !backdrop-blur-[12px]">
         <tr class="border-b border-kong-border bg-kong-bg-dark">
           {#each columns as column (column.key)}
@@ -248,13 +225,14 @@
         </tr>
       </thead>
       <tbody class={isTableTransparent() ? 'transparent-tbody' : 'solid-tbody'}>
-        {#each displayData as row (row[rowKey])}
+        {#each displayData as row, idx (idx)}
           <tr
-            class="h-[44px] border-b border-kong-border/50 hover:bg-kong-hover-bg-light transition-colors duration-200 
+            class="h-[44px] border-b border-kong-border/50 transition-colors duration-200 hover:!text-kong-primary
               {onRowClick ? 'cursor-pointer' : ''} 
-              {rowFlashStates.get(row[rowKey])?.class || ''} 
-              {isKongRow?.(row) ? '!bg-kong-primary/15 hover:bg-kong-primary/30 border-kong-primary/30' : ''}"
+              {isKongRow?.(row) ? '!bg-kong-primary/15 border-kong-primary/30 hover:bg-kong-primary hover:border hover:border-kong-primary/80' : 'hover:bg-kong-hover-bg-dark/80 hover:backdrop-blur-md hover:z-50 hover:!border hover:border-kong-hover-bg-dark'}"
             on:click={() => onRowClick?.(row)}
+            on:mouseenter={() => onRowMouseEnter(idx)}
+            on:mouseleave={onRowMouseLeave}
           >
             {#each columns as column (column.key)}
               {@const value = getValue(row, column.key)}
@@ -263,7 +241,7 @@
                 class="py-2 px-4 {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'}"
               >
                 {#if column.component}
-                  <svelte:component this={column.component} row={row} {...(column.componentProps || {})} />
+                  <svelte:component this={column.component} row={row} isHovered={hoveredRowIndex === idx} {...(column.componentProps || {})} />
                 {:else}
                   <div class="inline-block w-full {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
                     {formattedValue}
@@ -371,12 +349,21 @@
     background-color: transparent;
   }
   
+  .transparent-tbody tr:hover {
+    background-color: rgba(var(--hover-bg-light), 0.15);
+    box-shadow: inset 0 0 0 1px rgba(var(--primary), 0.1);
+  }
+  
   .solid-tbody tr {
     background-color: var(--kong-bg-dark);
   }
   
   .solid-tbody tr:nth-child(even) {
     background-color: var(--kong-bg-light);
+  }
+  
+  .solid-tbody tr:hover {
+    background-color: rgba(var(--hover-bg-light), 0.3);
   }
   
   .flash-green {

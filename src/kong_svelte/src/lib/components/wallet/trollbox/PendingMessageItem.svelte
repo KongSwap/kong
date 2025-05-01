@@ -43,7 +43,7 @@
       try {
         const tokens = await fetchTokensByCanisterId(canisterIds);
         tokens.forEach(token => {
-          tokenCache.set(token.canister_id, token);
+          tokenCache.set(token.address, token);
         });
       } catch (error) {
         console.error('Error fetching token data:', error);

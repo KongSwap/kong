@@ -5,6 +5,6 @@
     "port": 5432,
     "user": "postgres",
     "password": "",
-    "db_name": "kong-apis2"
+    "db_name": "kong-apis"
   }
 }

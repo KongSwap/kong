@@ -7,7 +7,7 @@
   import { tooltip } from "$lib/actions/tooltip";
 
   // Define proper types for the pool data
-  type Token = FE.Token;
+  type Token = Kong.Token;
 
   type Pool = {
     pool_id: string;
@@ -33,8 +33,8 @@
   let tokens = $derived([pool.token0, pool.token1].filter(Boolean) as Token[]);
 
   let isKongPool = $derived(
-    pool.token0?.canister_id === KONG_CANISTER_ID || 
-    pool.token1?.canister_id === KONG_CANISTER_ID
+    pool.token0?.address === KONG_CANISTER_ID || 
+    pool.token1?.address === KONG_CANISTER_ID
   );
 
   // Calculate top pools metrics

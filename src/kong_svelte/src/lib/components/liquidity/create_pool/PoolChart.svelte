@@ -19,8 +19,8 @@
   let currentPool = $derived(
     $liquidityStore.token0 && $liquidityStore.token1 
       ? $livePools.find(p => 
-          (p.address_0 === $liquidityStore.token0?.canister_id && p.address_1 === $liquidityStore.token1?.canister_id) ||
-          (p.address_1 === $liquidityStore.token0?.canister_id && p.address_0 === $liquidityStore.token1?.canister_id)
+          (p.address_0 === $liquidityStore.token0?.address && p.address_1 === $liquidityStore.token1?.address) ||
+          (p.address_1 === $liquidityStore.token0?.address && p.address_0 === $liquidityStore.token1?.address)
         )
       : null
   );
@@ -35,8 +35,8 @@
   // Only refresh chart when the pool or token pair changes, not on every amount change
   $effect(() => {
     if (currentPool) {
-      const token0Id = $liquidityStore.token0?.canister_id || null;
-      const token1Id = $liquidityStore.token1?.canister_id || null;
+      const token0Id = $liquidityStore.token0?.address || null;
+      const token1Id = $liquidityStore.token1?.address || null;
       
       // Only fetch new data if tokens have changed
       if (token0Id !== previousToken0Id || token1Id !== previousToken1Id) {

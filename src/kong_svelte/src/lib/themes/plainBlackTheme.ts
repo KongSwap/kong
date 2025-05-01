@@ -40,6 +40,8 @@ export const plainBlackTheme: ThemeDefinition = {
     textAccentGreen: '#05EC86', // Same as accent-green
     textAccentRed: '#FF4545',   // Same as accent-red
     textAccentBlue: '#0095EB',
+    textLight: '#FFFFFF',      // White for light text needs
+    textDark: '#121212',       // Very dark gray for dark text needs
     
     // Font settings
     fontFamily: "'IBM Plex Mono', monospace",
@@ -50,6 +52,8 @@ export const plainBlackTheme: ThemeDefinition = {
     swapPanelBorder: '2px solid rgba(255, 255, 255, 0.3)', // Bright border for contrast
     swapPanelShadow: 'none', // No shadow for brutalist style
     swapPanelInputsRounded: false, // Sharp corners for all elements
+    transparentSwapPanel: false,
+    transparentPanel: false,
     
     // Borders
     border: '#333333',
@@ -69,6 +73,22 @@ export const plainBlackTheme: ThemeDefinition = {
     pmBorder: '#282828',
     pmAccent: '#6F5DFB', // Same as accent-purple
     pmTextSecondary: '#9EA4BA',
+    
+    // Swap Button styling - Brutalist plain black
+    swapButtonPrimaryGradientStart: '#0095EB', // Kong's brand blue
+    swapButtonPrimaryGradientEnd: '#0086D3',   // Darker blue
+    swapButtonErrorGradientStart: '#FF4545',   // Vibrant red
+    swapButtonErrorGradientEnd: '#EB3737',     // Darker red
+    swapButtonProcessingGradientStart: '#6F5DFB', // Vibrant purple
+    swapButtonProcessingGradientEnd: '#5B49D5',   // Darker purple
+    swapButtonBorderColor: 'rgba(255, 255, 255, 0.5)', // White border for high contrast
+    swapButtonGlowColor: 'rgba(0, 149, 235, 0.6)',  // Blue glow
+    swapButtonShineColor: 'rgba(255, 255, 255, 0.3)', // White shine
+    swapButtonReadyGlowStart: '#05EC86', // Vibrant green
+    swapButtonReadyGlowEnd: '#04CE75',   // Darker green
+    swapButtonTextColor: '#FFFFFF', // White text
+    swapButtonRoundness: 'rounded-none', // Sharp corners
+    swapButtonShadow: 'none', // No shadow
     
     // Background configuration
     backgroundType: 'solid',

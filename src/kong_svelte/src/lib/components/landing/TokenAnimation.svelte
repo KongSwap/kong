@@ -107,27 +107,6 @@
       // onError callback
       (err) => {
         console.error("Error loading texture:", err);
-        
-        // Fallback to a different path if the first one fails
-        const fallbackTexture = textureLoader.load('/assets/kong_logo.png', 
-          (texture) => {
-            console.log("Fallback texture loaded");
-            texture.flipY = false;
-            texture.minFilter = THREE.LinearFilter;
-            texture.magFilter = THREE.LinearFilter;
-            
-            // Add repeat and offset to scale the texture properly
-            texture.repeat.set(1.0, 1.0);
-            texture.offset.set(0, 0);
-            texture.needsUpdate = true;
-            
-            // Update all materials with fallback texture
-            materials.forEach(material => {
-              material.map = texture;
-              material.needsUpdate = true;
-            });
-          }
-        );
       }
     );
     

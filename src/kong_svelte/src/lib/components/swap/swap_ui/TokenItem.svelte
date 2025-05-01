@@ -3,10 +3,10 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
 
   const props = $props<{
-    token: FE.Token;
+    token: Kong.Token;
     index: number;
-    currentToken: FE.Token | null;
-    otherPanelToken: FE.Token | null;
+    currentToken: Kong.Token | null;
+    otherPanelToken: Kong.Token | null;
     isApiToken: boolean;
     isFavorite: boolean;
     enablingTokenId: string | null;
@@ -22,9 +22,9 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
   class="token-item"
-  class:selected={props.currentToken?.canister_id === props.token.canister_id}
-  class:disabled={props.otherPanelToken?.canister_id === props.token.canister_id}
-  class:blocked={props.blockedTokenIds.includes(props.token.canister_id)}
+  class:selected={props.currentToken?.address === props.token.address}
+  class:disabled={props.otherPanelToken?.address === props.token.address}
+  class:blocked={props.blockedTokenIds.includes(props.token.address)}
   class:not-enabled={props.isApiToken}
   on:click={props.onTokenClick}
 >
@@ -64,9 +64,9 @@
       <button
         class="enable-token-button"
         on:click={props.onEnableClick}
-        disabled={props.enablingTokenId === props.token.canister_id}
+        disabled={props.enablingTokenId === props.token.address}
       >
-        {#if props.enablingTokenId === props.token.canister_id}
+        {#if props.enablingTokenId === props.token.address}
           <div class="button-spinner" />
         {:else}
           Enable
@@ -87,7 +87,7 @@
         {/if}
       </span>
       <!-- Selected indicator -->
-      {#if props.currentToken?.canister_id === props.token.canister_id}
+      {#if props.currentToken?.address === props.token.address}
         <div class="selected-indicator">
           <svg
             xmlns="http://www.w3.org/2000/svg"

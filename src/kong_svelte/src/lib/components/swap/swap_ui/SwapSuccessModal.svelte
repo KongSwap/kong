@@ -9,9 +9,9 @@
 
   export let show = false;
   export let payAmount: string = "0";
-  export let payToken: FE.Token | null = null;
+  export let payToken: Kong.Token | null = null;
   export let receiveAmount: string = "0";
-  export let receiveToken: FE.Token | null = null;
+  export let receiveToken: Kong.Token | null = null;
   export let onClose: () => void;
 
   // Validate tokens are defined
@@ -39,7 +39,7 @@
     const tradeDetails = 
       `🍌 Trade completed on KongSwap!\n\n` +
       `Swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol}\n\n` +
-      `Trade now: https://www.kongswap.io/swap?from=${payToken.canister_id}&to=${receiveToken.canister_id}\n`
+      `Trade now: https://www.kongswap.io/swap?from=${payToken.address}&to=${receiveToken.address}\n`
     try {
       await navigator.clipboard.writeText(tradeDetails);
       toastStore.success('Trade details copied to clipboard');
@@ -56,7 +56,7 @@
     const formattedReceivedAmount = formatBalance(receiveAmount, receiveToken.decimals).toString();
 
     const tweetText = encodeURIComponent(
-      `🍌 Just swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol} on @KongSwap!\n\nTrade now: https://www.kongswap.io/swap?from=${payToken.canister_id}&to=${receiveToken.canister_id}`
+      `🍌 Just swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol} on @KongSwap!\n\nTrade now: https://www.kongswap.io/swap?from=${payToken.address}&to=${receiveToken.address}`
     );
     window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
   }

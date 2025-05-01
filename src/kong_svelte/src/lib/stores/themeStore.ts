@@ -2,17 +2,16 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { getThemeById, generateThemeVariables, getAllThemes, registerTheme } from '../themes/themeRegistry';
 import type { ThemeDefinition } from '../themes/baseTheme';
-import { createNamespacedStore } from '../config/localForage.config';
+import { STORAGE_KEYS } from '../config/localForage.config';
 import { get } from 'svelte/store';
 import { auth } from '../stores/auth';
 
 // Define theme ID type based on available themes
-export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'win98light' | 'synthwave';
+export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'win98light' | 'synthwave' | 'dragginz';
 
 function createThemeStore() {
   const { subscribe, set } = writable<ThemeId>('dark');
-  const THEME_KEY = 'theme';
-  const themeStorage = createNamespacedStore(THEME_KEY);
+  const THEME_KEY = STORAGE_KEYS.THEME;
   let previousAuthState = { isConnected: false, principalId: null };
   
   /**
@@ -22,7 +21,7 @@ function createThemeStore() {
     if (browser) {
       try {
         const authState = get(auth);
-        return authState?.account?.owner?.toString() || 'default';
+        return authState?.account?.owner || 'default';
       } catch (error) {
         console.error('Failed to get user ID:', error);
         return 'default';
@@ -117,6 +116,22 @@ function createThemeStore() {
        ${theme.colors.primaryButtonText ? `--primary-button-text: ${theme.colors.primaryButtonText};` : ''}
        ${theme.colors.primaryButtonBorder ? `--primary-button-border: ${theme.colors.primaryButtonBorder};` : ''}
        ${theme.colors.primaryButtonBorderColor ? `--primary-button-border-color: ${theme.colors.primaryButtonBorderColor};` : ''}
+       
+       /* Swap button styling variables */
+       ${theme.colors.swapButtonPrimaryGradientStart ? `--swap-button-primary-gradient-start: ${theme.colors.swapButtonPrimaryGradientStart};` : ''}
+       ${theme.colors.swapButtonPrimaryGradientEnd ? `--swap-button-primary-gradient-end: ${theme.colors.swapButtonPrimaryGradientEnd};` : ''}
+       ${theme.colors.swapButtonErrorGradientStart ? `--swap-button-error-gradient-start: ${theme.colors.swapButtonErrorGradientStart};` : ''}
+       ${theme.colors.swapButtonErrorGradientEnd ? `--swap-button-error-gradient-end: ${theme.colors.swapButtonErrorGradientEnd};` : ''}
+       ${theme.colors.swapButtonProcessingGradientStart ? `--swap-button-processing-gradient-start: ${theme.colors.swapButtonProcessingGradientStart};` : ''}
+       ${theme.colors.swapButtonProcessingGradientEnd ? `--swap-button-processing-gradient-end: ${theme.colors.swapButtonProcessingGradientEnd};` : ''}
+       ${theme.colors.swapButtonBorderColor ? `--swap-button-border-color: ${theme.colors.swapButtonBorderColor};` : ''}
+       ${theme.colors.swapButtonGlowColor ? `--swap-button-glow-color: ${theme.colors.swapButtonGlowColor};` : ''}
+       ${theme.colors.swapButtonShineColor ? `--swap-button-shine-color: ${theme.colors.swapButtonShineColor};` : ''}
+       ${theme.colors.swapButtonReadyGlowStart ? `--swap-button-ready-glow-start: ${theme.colors.swapButtonReadyGlowStart};` : ''}
+       ${theme.colors.swapButtonReadyGlowEnd ? `--swap-button-ready-glow-end: ${theme.colors.swapButtonReadyGlowEnd};` : ''}
+       ${theme.colors.swapButtonTextColor ? `--swap-button-text-color: ${theme.colors.swapButtonTextColor};` : ''}
+       ${theme.colors.swapButtonRoundness ? `--swap-button-roundness: ${theme.colors.swapButtonRoundness};` : ''}
+       ${theme.colors.swapButtonShadow ? `--swap-button-shadow: ${theme.colors.swapButtonShadow};` : ''}
       `
     );
   }
@@ -132,27 +147,17 @@ function createThemeStore() {
   }
 
   /**
-   * Save theme to storage using localForage
+   * Save theme to storage using localStorage
    * @param themeId The ID of the theme to save
    */
   async function saveThemeToStorage(themeId: ThemeId) {
     if (browser) {
       try {
-        // Get wallet ID or default to 'default'
         const walletId = getUserId();
-        
-        // Create a theme key with the wallet ID
-        const themeKey = `${THEME_KEY}_${walletId}`;
-        
-        // Save to localForage
-        await themeStorage.setItem(themeKey, themeId);
-        
-        // Also save to default key for quick access
-        await themeStorage.setItem(THEME_KEY, themeId);
-        
+        localStorage.setItem(`${THEME_KEY}_${walletId}`, JSON.stringify(themeId));
         return true;
       } catch (error) {
-        console.error('Failed to save theme to storage:', error);
+        console.error('Failed to save theme to localStorage:', error);
         return false;
       }
     }
@@ -160,7 +165,7 @@ function createThemeStore() {
   }
   
   /**
-   * Load theme from storage using localForage
+   * Load theme from storage using localStorage
    * @returns Promise with the stored theme ID or null if not found
    */
   async function loadThemeFromStorage(): Promise<ThemeId | null> {
@@ -170,26 +175,31 @@ function createThemeStore() {
         const walletId = getUserId();
         
         // First try user-specific theme
-        const themeKey = `${THEME_KEY}_${walletId}`;
-        const userTheme = await themeStorage.getItem<ThemeId>(themeKey);
+        const userThemeJson = localStorage.getItem(`${THEME_KEY}_${walletId}`);
         
-        if (userTheme) {
+        if (userThemeJson) {
+          const userTheme = JSON.parse(userThemeJson) as ThemeId;
           return userTheme;
         }
         
         // If no user theme, try the default theme
-        const defaultTheme = await themeStorage.getItem<ThemeId>(THEME_KEY);
-        if (defaultTheme) {
+        console.log(`[Theme] No user theme found, trying default key "${THEME_KEY}"`);
+        const defaultThemeJson = localStorage.getItem(THEME_KEY);
+        if (defaultThemeJson) {
+          const defaultTheme = JSON.parse(defaultThemeJson) as ThemeId;
           return defaultTheme;
         }
         
         // If still no theme, try the global default
-        const globalDefault = await themeStorage.getItem<ThemeId>(`${THEME_KEY}_default`);
-        if (globalDefault) {
+        const globalDefaultJson = localStorage.getItem(`${THEME_KEY}_default`);
+        if (globalDefaultJson) {
+          const globalDefault = JSON.parse(globalDefaultJson) as ThemeId;
           return globalDefault;
         }
+        
+        console.log(`[Theme] No theme found in localStorage, will use system preference`);
       } catch (error) {
-        console.error('Failed to load theme from storage:', error);
+        console.error('Failed to load theme from localStorage:', error);
       }
     }
     return null;
@@ -263,64 +273,72 @@ function createThemeStore() {
   }
 
   /**
-   * Initialize the theme from localForage or system preference
+   * Initialize the theme from localStorage or system preference
    */
   function initTheme() {
     if (browser) {
-      // Check if theme is already initializing from app.html
+      // Check if theme was already initialized in app.html
       const isInitializing = document.documentElement.getAttribute('data-theme-initializing') === 'true';
       
-      // Start with data-theme-ready="false" to hide content during loading
+      // Mark as not ready until we fully initialize
       document.documentElement.setAttribute('data-theme-ready', 'false');
       
-      // If not initializing from app.html, set a quick theme
-      if (!isInitializing) {
-        // Use system preference for immediate display to prevent flashing
-        const quickTheme = getQuickTheme();
-        const theme = getThemeById(quickTheme);
-        const themeClass = theme.colorScheme === 'light' ? 'light' : 'dark';
-        document.documentElement.classList.remove('light', 'dark');
-        document.documentElement.classList.add(themeClass);
-      } else {
-        // Clear the initializing attribute
-        document.documentElement.removeAttribute('data-theme-initializing');
-      }
-      
-      // Then load from localForage (async)
-      loadThemeFromStorage().then(savedTheme => {
-        const availableThemes = getAllThemes().map(theme => theme.id);
+      try {
+        // Directly get theme from localStorage for maximum speed
+        const walletId = getUserId();
         
-        // Determine which theme to use
-        let themeToApply: ThemeId;
-        if (savedTheme && availableThemes.includes(savedTheme)) {
-          themeToApply = savedTheme;
+        // Try user-specific theme first
+        let themeToApply: ThemeId | null = null;
+        const userThemeJson = localStorage.getItem(`${THEME_KEY}_${walletId}`);
+        
+        if (userThemeJson) {
+          themeToApply = JSON.parse(userThemeJson) as ThemeId;
         } else {
-          // Default based on system preference
+          // Try default theme
+          const defaultThemeJson = localStorage.getItem(THEME_KEY);
+          if (defaultThemeJson) {
+            themeToApply = JSON.parse(defaultThemeJson) as ThemeId;
+          }
+        }
+        
+        // If no theme found in localStorage, use system preference
+        if (!themeToApply) {
           const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           themeToApply = prefersDark ? 'dark' : 'light';
         }
         
-        // Apply color scheme class early to prevent flashing
-        const theme = getThemeById(themeToApply);
-        const themeClass = theme.colorScheme === 'light' ? 'light' : 'dark';
-        document.documentElement.classList.remove('light', 'dark');
-        document.documentElement.classList.add(themeClass);
+        // Apply the theme immediately
+        applyThemeStyles(themeToApply);
+        set(themeToApply);
         
-        // Apply full theme 
-        setTimeout(() => {
-          setTheme(themeToApply);
-          
-          // Mark theme as ready after styles are applied
-          setTimeout(() => {
-            document.documentElement.setAttribute('data-theme-ready', 'true');
-          }, 50);
-        }, 10);
-      }).catch(error => {
+        // Save the theme if it was from system preference
+        if (!userThemeJson && !localStorage.getItem(THEME_KEY)) {
+          saveThemeToStorage(themeToApply);
+        }
+        
+        // Clear initializing attribute if needed
+        if (isInitializing) {
+          document.documentElement.removeAttribute('data-theme-initializing');
+        }
+        
+        // Mark theme as ready
+        document.documentElement.setAttribute('data-theme-ready', 'true');
+        
+      } catch (error) {
         console.error('Error initializing theme:', error);
         
-        // Fallback to dark theme in case of error
-        setTheme('dark');
-      });
+        // Fallback to dark theme
+        applyThemeStyles('dark');
+        set('dark');
+        
+        // Clear initializing attribute if needed
+        if (isInitializing) {
+          document.documentElement.removeAttribute('data-theme-initializing');
+        }
+        
+        // Mark as ready even in case of error
+        document.documentElement.setAttribute('data-theme-ready', 'true');
+      }
     }
   }
 
@@ -329,7 +347,7 @@ function createThemeStore() {
     auth.subscribe((authState) => {
       const currentAuthState = {
         isConnected: authState.isConnected,
-        principalId: authState.account?.owner?.toString() || null
+        principalId: authState.account?.owner || null
       };
       
       // Check if auth state has changed in a meaningful way

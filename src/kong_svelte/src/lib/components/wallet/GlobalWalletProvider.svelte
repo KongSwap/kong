@@ -14,12 +14,17 @@
       walletProviderStore.handleLoginSuccess();
     }
   }
+  
+  // Ensure clean close of the modal
+  function handleClose() {
+    walletProviderStore.close();
+  }
 </script>
 
 {#if browser}
   <WalletProvider
     isOpen={isOpen}
-    onClose={() => walletProviderStore.close()}
+    onClose={handleClose}
     onLogin={handleLogin}
   />
 {/if} 

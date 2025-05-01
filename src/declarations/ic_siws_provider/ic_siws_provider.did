@@ -1,0 +1,48 @@
+type Delegation = record {
+  pubkey : blob;
+  targets : opt vec principal;
+  expiration : nat64;
+};
+type LoginDetails = record { user_canister_pubkey : blob; expiration : nat64 };
+type Result = variant { Ok : text; Err : text };
+type Result_1 = variant { Ok : blob; Err : text };
+type Result_2 = variant { Ok : SignedDelegation; Err : text };
+type Result_3 = variant { Ok : LoginDetails; Err : text };
+type Result_4 = variant { Ok : SiwsMessage; Err : text };
+type RuntimeFeature = variant {
+  IncludeUriInSeed;
+  DisablePrincipalToSolMapping;
+  DisableSolToPrincipalMapping;
+};
+type SettingsInput = record {
+  uri : text;
+  runtime_features : opt vec RuntimeFeature;
+  domain : text;
+  statement : opt text;
+  scheme : opt text;
+  salt : text;
+  session_expires_in : opt nat64;
+  targets : opt vec text;
+  chain_id : opt text;
+  sign_in_expires_in : opt nat64;
+};
+type SignedDelegation = record { signature : blob; delegation : Delegation };
+type SiwsMessage = record {
+  uri : text;
+  issued_at : nat64;
+  domain : text;
+  statement : text;
+  version : nat32;
+  chain_id : text;
+  address : text;
+  nonce : text;
+  expiration_time : nat64;
+};
+service : (SettingsInput) -> {
+  get_address : (blob) -> (Result) query;
+  get_caller_address : () -> (Result) query;
+  get_principal : (text) -> (Result_1) query;
+  siws_get_delegation : (text, blob, nat64) -> (Result_2) query;
+  siws_login : (text, text, blob) -> (Result_3);
+  siws_prepare_login : (text) -> (Result_4);
+}

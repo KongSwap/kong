@@ -30,6 +30,7 @@
     expandDirection = "down",
     allowedCanisterIds = [],
     restrictToSecondaryTokens = false,
+    title = "Tokens",
   } = props;
 
   // Constants
@@ -49,21 +50,19 @@
 
   // Helper for extracting and validating token ID
   function getTokenId(token: any): string | null {
-    return token?.canister_id || null;
+    return token?.address || null;
   }
 
-  // UI state
-  let dropdownElement: HTMLDivElement | null = $state(null);
+  // Individual reactive state variables
+  let searchInput: HTMLInputElement | null = $state(null);
+  let searchQuery = $state("");
   let scrollContainer: HTMLDivElement | null = $state(null);
-  
-  // UI state with reactivity
-  let state = $state({
-    searchInput: null as HTMLInputElement | null,
+  let containerHeight = $state(0);
+  let scrollTop = $state(0);
+
+  // Grouped UI state
+  let selectorState = $state({
     dropdownElement: null as HTMLDivElement | null,
-    scrollContainer: null as HTMLDivElement | null,
-    searchQuery: "",
-    scrollTop: 0,
-    containerHeight: 0,
     hideZeroBalances: false,
     isMobile: false,
     sortDirection: "desc",
@@ -75,7 +74,7 @@
     favoritesLoaded: false,
     favoriteTokens: new Map<string, boolean>(),
     loadedTokens: new Set<string>(),
-    apiSearchResults: [] as FE.Token[]
+    apiSearchResults: [] as Kong.Token[]
   });
 
   // Timers for debouncing
@@ -88,7 +87,7 @@
       ? Array.from($userTokens.tokenData.values()).filter((token) => {
           const tokenId = getTokenId(token);
           return tokenId && $userTokens.enabledTokens.has(tokenId);
-        }) as FE.Token[]
+        }) as Kong.Token[]
       : []
   );
   
@@ -96,24 +95,24 @@
   $effect(() => {
     if ($currentUserBalancesStore) {
       Object.keys($currentUserBalancesStore).forEach(tokenId => {
-        state.loadedTokens.add(tokenId);
+        selectorState.loadedTokens.add(tokenId);
       });
     }
   });
 
   // Helper functions for token state
-  function isApiToken(token: FE.Token): boolean {
-    return !!token && !$userTokens.enabledTokens.has(token.canister_id);
+  function isApiToken(token: Kong.Token): boolean {
+    return !!token && !$userTokens.enabledTokens.has(token.address);
   }
   
   function isFavoriteToken(tokenId: string): boolean {
-    return state.favoriteTokens.get(tokenId) || false;
+    return selectorState.favoriteTokens.get(tokenId) || false;
   }
 
-  function canSelectToken(token: FE.Token): boolean {
+  function canSelectToken(token: Kong.Token): boolean {
     return !(
-      otherPanelToken?.canister_id === token.canister_id ||
-      BLOCKED_TOKEN_IDS.includes(token.canister_id) ||
+      otherPanelToken?.address === token.address ||
+      BLOCKED_TOKEN_IDS.includes(token.address) ||
       isApiToken(token)
     );
   }
@@ -147,12 +146,12 @@
     baseFilteredTokens.filter((t) => t.symbol.toLowerCase().startsWith("ck")).length
   );
   let favoritesCount = $derived(
-    Array.from(state.favoriteTokens.values()).filter(Boolean).length
+    Array.from(selectorState.favoriteTokens.values()).filter(Boolean).length
   );
 
   // Consolidated filter and sort function
   function filterAndSortTokens(
-    tokens: FE.Token[],
+    tokens: Kong.Token[],
     query: string,
     filter: FilterType,
     hideZero: boolean,
@@ -160,46 +159,46 @@
     sortCol: string,
     sortDir: string,
     balances: Record<string, { in_tokens: bigint; in_usd: string }>,
-    currentToken: FE.Token | null
-  ): FE.Token[] {
+    currentToken: Kong.Token | null
+  ): Kong.Token[] {
     return tokens.filter(token => {
       // Basic validation
-      if (!token?.canister_id || !token?.symbol || !token?.name) return false;
+      if (!token?.address || !token?.symbol || !token?.name) return false;
       
       // Search query filter
       if (query && !token.symbol.toLowerCase().includes(query.toLowerCase()) && 
           !token.name.toLowerCase().includes(query.toLowerCase()) &&
-          !token.canister_id.toLowerCase().includes(query.toLowerCase())) {
+          !token.address.toLowerCase().includes(query.toLowerCase())) {
         return false;
       }
       
       // Standard filter (all, ck, favorites)
       if (filter === "ck" && !token.symbol.toLowerCase().startsWith("ck")) return false;
-      if (filter === "favorites" && !favorites.get(token.canister_id)) return false;
+      if (filter === "favorites" && !favorites.get(token.address)) return false;
       
       // Balance filter
       if (hideZero) {
-        const balance = balances[token.canister_id]?.in_tokens;
+        const balance = balances[token.address]?.in_tokens;
         if (!balance || balance <= BigInt(0)) return false;
       }
       
       return true;
     }).sort((a, b) => {
       // Sort by current token first
-      const aIsCurrent = currentToken?.canister_id === a.canister_id;
-      const bIsCurrent = currentToken?.canister_id === b.canister_id;
+      const aIsCurrent = currentToken?.address === a.address;
+      const bIsCurrent = currentToken?.address === b.address;
       if (aIsCurrent) return -1;
       if (bIsCurrent) return 1;
 
       // Sort by favorites first
-      const aFavorite = favorites.get(a.canister_id) || false;
-      const bFavorite = favorites.get(b.canister_id) || false;
+      const aFavorite = favorites.get(a.address) || false;
+      const bFavorite = favorites.get(b.address) || false;
       if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
 
       // Then sort by value if that's selected
       if (sortCol === 'value') {
-        const aBalance = balances[a.canister_id]?.in_usd || "0";
-        const bBalance = balances[b.canister_id]?.in_usd || "0";
+        const aBalance = balances[a.address]?.in_usd || "0";
+        const bBalance = balances[b.address]?.in_usd || "0";
         const aValue = Number(aBalance);
         const bValue = Number(bBalance);
         return sortDir === 'desc' ? bValue - aValue : aValue - bValue;
@@ -211,23 +210,23 @@
 
   // Get filtered and sorted tokens
   function getFilteredAndSortedTokens(
-    allTokens: FE.Token[],
-    apiTokens: FE.Token[],
-    currentToken: FE.Token | null
-  ): FE.Token[] {
+    allTokens: Kong.Token[],
+    apiTokens: Kong.Token[],
+    currentToken: Kong.Token | null
+  ): Kong.Token[] {
     // Deduplicate tokens from both sources
     const uniqueTokens = Array.from(new Map(
-      [...allTokens, ...apiTokens].map(token => [token.canister_id, token])
+      [...allTokens, ...apiTokens].map(token => [token.address, token])
     ).values());
     
     return filterAndSortTokens(
       uniqueTokens,
-      state.searchQuery,
-      state.standardFilter,
-      state.hideZeroBalances,
-      state.favoriteTokens,
-      state.sortColumn,
-      state.sortDirection,
+      searchQuery,
+      selectorState.standardFilter,
+      selectorState.hideZeroBalances,
+      selectorState.favoriteTokens,
+      selectorState.sortColumn,
+      selectorState.sortDirection,
       $currentUserBalancesStore,
       currentToken
     );
@@ -235,17 +234,17 @@
 
   // Derived lists and virtual scroll states
   let filteredTokens = $derived(
-    browser ? getFilteredAndSortedTokens(baseFilteredTokens, state.apiSearchResults, currentToken) : []
+    browser ? getFilteredAndSortedTokens(baseFilteredTokens, selectorState.apiSearchResults, currentToken) : []
   );
   
-  let enabledFilteredTokens = $derived(filteredTokens.filter(token => $userTokens.enabledTokens.has(token.canister_id)));
+  let enabledFilteredTokens = $derived(filteredTokens.filter(token => $userTokens.enabledTokens.has(token.address)));
   let apiFilteredTokens = $derived(filteredTokens.filter(token => isApiToken(token)));
   
   let enabledTokensVirtualState = $derived(
     virtualScroll({
       items: enabledFilteredTokens,
-      containerHeight: state.containerHeight,
-      scrollTop: state.scrollTop,
+      containerHeight: containerHeight,
+      scrollTop: scrollTop,
       itemHeight: TOKEN_ITEM_HEIGHT,
       buffer: 5,
     })
@@ -254,8 +253,8 @@
   let apiTokensVirtualState = $derived(
     virtualScroll({
       items: apiFilteredTokens,
-      containerHeight: state.containerHeight,
-      scrollTop: state.scrollTop,
+      containerHeight: containerHeight,
+      scrollTop: scrollTop,
       itemHeight: TOKEN_ITEM_HEIGHT,
       buffer: 5,
     })
@@ -273,19 +272,19 @@
 
   // UI Event handlers
   function setStandardFilter(filter: FilterType) {
-    state.standardFilter = filter;
-    state.searchQuery = "";
-    state.scrollTop = 0;
+    selectorState.standardFilter = filter;
+    searchQuery = "";
+    scrollTop = 0;
   }
   
   function handleScroll(e: Event) {
-    state.scrollTop = (e.target as HTMLElement).scrollTop;
+    scrollTop = (e.target as HTMLElement).scrollTop;
     clearTimeout(scrollDebounceTimer);
     scrollDebounceTimer = setTimeout(loadVisibleTokenBalances, 200);
   }
   
   function handleClickOutside(event: MouseEvent) {
-    if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
+    if (selectorState.dropdownElement && !selectorState.dropdownElement.contains(event.target as Node)) {
       onClose();
     }
   }
@@ -300,22 +299,22 @@
   }
 
   // Token-related actions
-  async function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
+  async function handleFavoriteClick(e: MouseEvent, token: Kong.Token) {
     e.preventDefault();
     e.stopPropagation();
     
-    const isFavorite = state.favoriteTokens.get(token.canister_id) || false;
+    const isFavorite = selectorState.favoriteTokens.get(token.address) || false;
     await (isFavorite 
-      ? favoriteStore.removeFavorite(token.canister_id)
-      : favoriteStore.addFavorite(token.canister_id));
+      ? favoriteStore.removeFavorite(token.address)
+      : favoriteStore.addFavorite(token.address));
 
     // Update the local state
-    state.favoriteTokens.set(token.canister_id, !isFavorite);
-    state.favoriteTokens = new Map(state.favoriteTokens); // Trigger reactivity
+    selectorState.favoriteTokens.set(token.address, !isFavorite);
+    selectorState.favoriteTokens = new Map(selectorState.favoriteTokens); // Trigger reactivity
   }
   
-  function handleSelect(token: FE.Token) {
-    if (BLOCKED_TOKEN_IDS.includes(token.canister_id)) {
+  function handleSelect(token: Kong.Token) {
+    if (BLOCKED_TOKEN_IDS.includes(token.address)) {
       toastStore.warning(
         "BIL token is currently in read-only mode. Trading will resume when the ledger is stable.",
         { title: "Token Temporarily Unavailable", duration: 8000 }
@@ -327,20 +326,20 @@
     if (isApiToken(token)) userTokens.enableToken(token);
 
     onSelect(token);
-    state.searchQuery = "";
+    searchQuery = "";
   }
   
-  async function handleEnableToken(e: MouseEvent, token: FE.Token) {
+  async function handleEnableToken(e: MouseEvent, token: Kong.Token) {
     e.preventDefault();
     e.stopPropagation();
-    state.enablingTokenId = token.canister_id;
+    selectorState.enablingTokenId = token.address;
 
     try {
       userTokens.enableToken(token);
       
-      if (isUserAuthenticated && !state.loadedTokens.has(token.canister_id)) {
-        state.loadedTokens.add(token.canister_id);
-        const principal = $auth.account?.owner?.toString();
+      if (isUserAuthenticated && !selectorState.loadedTokens.has(token.address)) {
+        selectorState.loadedTokens.add(token.address);
+        const principal = $auth.account?.owner;
 
         if (principal) {          
           setTimeout(async () => {
@@ -360,11 +359,11 @@
     } catch (error) {
       console.warn(`Error enabling token ${token.symbol}:`, error);
     } finally {
-      state.enablingTokenId = null;
+      selectorState.enablingTokenId = null;
     }
   }
   
-  function handleTokenClick(e: MouseEvent | TouchEvent, token: FE.Token) {
+  function handleTokenClick(e: MouseEvent | TouchEvent, token: Kong.Token) {
     e.stopPropagation();
 
     if (isApiToken(token)) {
@@ -377,17 +376,17 @@
 
     // Load balance if needed before selecting
     if (isUserAuthenticated && $auth.account?.owner && 
-        !$currentUserBalancesStore[token.canister_id]) {
-      void refreshSingleBalance(token, $auth.account.owner.toString(), false);
+        !$currentUserBalancesStore[token.address]) {
+      void refreshSingleBalance(token, $auth.account.owner, false);
     }
 
     handleSelect(token);
     onClose();
   }
   
-  function handleCustomTokenAdded(event: CustomEvent<FE.Token>) {
+  function handleCustomTokenAdded(event: CustomEvent<Kong.Token>) {
     const newToken = event.detail;
-    state.isAddNewTokenModalOpen = false;
+    selectorState.isAddNewTokenModalOpen = false;
     
     if (newToken && canSelectToken(newToken)) {
       handleSelect(newToken);
@@ -399,7 +398,7 @@
   function loadVisibleTokenBalances() {
     if (!browser || !isUserAuthenticated) return;
 
-    const principal = $auth.account?.owner?.toString();
+    const principal = $auth.account?.owner;
     if (!principal) return;
 
     clearTimeout(loadBalancesDebounceTimer);
@@ -412,13 +411,13 @@
 
       // Filter tokens that need balance loading
       const tokensNeedingBalances = visibleTokens.filter(
-        token => token.canister_id && 
-                !$currentUserBalancesStore[token.canister_id] && 
-                !state.loadedTokens.has(token.canister_id)
+        token => token.address && 
+                !$currentUserBalancesStore[token.address] && 
+                !selectorState.loadedTokens.has(token.address)
       );
       
       if (tokensNeedingBalances.length > 0) {
-        tokensNeedingBalances.forEach(token => state.loadedTokens.add(token.canister_id));
+        tokensNeedingBalances.forEach(token => selectorState.loadedTokens.add(token.address));
         void loadBalances(tokensNeedingBalances, principal, true);
       }
     }, 200);
@@ -427,7 +426,7 @@
   // API search
   const debouncedApiSearch = debounce(async (query: string) => {
     if (!browser || !query || query.length < 2) {
-      state.apiSearchResults = [];
+      selectorState.apiSearchResults = [];
       return;
     }
 
@@ -435,32 +434,32 @@
     const matchingLocalTokens = baseFilteredTokens.filter(
       token => (token.symbol.toLowerCase().includes(query.toLowerCase()) ||
                token.name.toLowerCase().includes(query.toLowerCase()) ||
-               token.canister_id.toLowerCase().includes(query.toLowerCase())) &&
-               $userTokens.enabledTokens.has(token.canister_id)
+               token.address.toLowerCase().includes(query.toLowerCase())) &&
+               $userTokens.enabledTokens.has(token.address)
     );
 
     if (matchingLocalTokens.length >= 10) {
-      state.apiSearchResults = [];
+      selectorState.apiSearchResults = [];
       return;
     }
 
-    state.isSearching = true;
+    selectorState.isSearching = true;
     try {
       const { tokens } = await fetchTokens({ search: query, limit: 20 });
-      state.apiSearchResults = tokens.filter(
-        token => !$userTokens.enabledTokens.has(token.canister_id)
+      selectorState.apiSearchResults = tokens.filter(
+        token => !$userTokens.enabledTokens.has(token.address)
       );
     } catch (error) {
       console.error("Error searching tokens:", error);
-      state.apiSearchResults = [];
+      selectorState.apiSearchResults = [];
     } finally {
-      state.isSearching = false;
+      selectorState.isSearching = false;
     }
   }, 300);
 
   // Async loaders
   async function loadFavorites() {
-    if (!browser || state.favoritesLoaded) return;
+    if (!browser || selectorState.favoritesLoaded) return;
 
     await favoriteStore.loadFavorites();
 
@@ -471,25 +470,25 @@
     });
 
     await Promise.all(promises);
-    state.favoriteTokens = newFavorites;
-    state.favoritesLoaded = true;
+    selectorState.favoriteTokens = newFavorites;
+    selectorState.favoritesLoaded = true;
   }
 
   // Reactive effects
   $effect(() => {
     // Search effect
-    if (browser && state.searchQuery) {
-      void debouncedApiSearch(state.searchQuery);
+    if (browser && searchQuery) {
+      void debouncedApiSearch(searchQuery);
     } else {
-      state.apiSearchResults = [];
+      selectorState.apiSearchResults = [];
     }
   });
 
   $effect(() => {
     // Mobile detection
     if (browser) {
-      state.isMobile = window.innerWidth <= 768;
-      const handleResize = () => state.isMobile = window.innerWidth <= 768;
+      selectorState.isMobile = window.innerWidth <= 768;
+      const handleResize = () => selectorState.isMobile = window.innerWidth <= 768;
       window.addEventListener("resize", handleResize);
       return () => window.removeEventListener("resize", handleResize);
     }
@@ -506,14 +505,14 @@
         setTimeout(() => {
           if (show && tokens.length > 0) {
             const tokensNeedingBalances = tokens.filter(
-              token => token.canister_id && 
-                      !$currentUserBalancesStore[token.canister_id] && 
-                      !state.loadedTokens.has(token.canister_id)
+              token => token.address && 
+                      !$currentUserBalancesStore[token.address] && 
+                      !selectorState.loadedTokens.has(token.address)
             );
             
             if (tokensNeedingBalances.length > 0) {
-              tokensNeedingBalances.forEach(token => state.loadedTokens.add(token.canister_id));
-              void loadBalances(tokensNeedingBalances, $auth.account!.owner.toString(), false);
+              tokensNeedingBalances.forEach(token => selectorState.loadedTokens.add(token.address));
+              void loadBalances(tokensNeedingBalances, $auth.account.owner, false);
             }
           }
         }, 500);
@@ -524,7 +523,7 @@
 
       // Focus search and add event listeners
       setTimeout(() => {
-        state.searchInput?.focus();
+        searchInput?.focus();
         window.addEventListener("click", handleClickOutside);
         window.addEventListener("keydown", handleKeydown);
       }, 0);
@@ -552,14 +551,14 @@
 {#if show}
   <div class="fixed inset-0 bg-kong-bg-dark/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
     <div
-      class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] h-[min(600px,85vh)] bg-kong-token-selector-bg {expandDirection} {state.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1 rounded-xl'}"
-      bind:this={dropdownElement}
+      class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] bg-kong-token-selector-bg {expandDirection} {selectorState.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1 rounded-xl'}"
+      bind:this={selectorState.dropdownElement}
       on:click|stopPropagation
       transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}
     >
       <div class="relative bg-kong-bg-dark flex flex-col h-full">
         <header class="px-4 py-3 flex justify-between items-center bg-kong-bg-dark">
-          <h2 class="text-kong-text-primary text-xl font-semibold">Tokens</h2>
+          <h2 class="text-kong-text-primary text-xl font-semibold">{title}</h2>
           <button class="text-kong-text-secondary hover:bg-kong-border/10 p-1 rounded" on:click|stopPropagation={closeWithCleanup}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -576,45 +575,49 @@
         <div class="flex-1 flex flex-col overflow-hidden relative">
           <div class="relative z-20 flex-shrink-0">
             <!-- Search Input -->
-            <div class="z-10 pb-3">
-              <div class="relative flex items-center px-4">
-                <input
-                  bind:this={state.searchInput}
-                  bind:value={state.searchQuery}
-                  type="text"
-                  placeholder="Search by name, symbol, canister ID, or standard"
-                  class="flex-1 border-none text-kong-text-primary text-base rounded-md px-4 py-3 outline-none placeholder:text-kong-text-secondary bg-kong-token-selector-search-bg" 
-                  on:click|stopPropagation
-                />
+            {#if allowedCanisterIds.length === 0}
+              <div class="z-10 pb-3">
+                <div class="relative flex items-center px-4">
+                  <input
+                    bind:this={searchInput}
+                    bind:value={searchQuery}
+                    type="text"
+                    placeholder="Search by name, symbol, canister ID, or standard"
+                    class="flex-1 border-none text-kong-text-primary text-base rounded-md px-4 py-3 outline-none placeholder:text-kong-text-secondary bg-kong-token-selector-search-bg" 
+                    on:click|stopPropagation
+                  />
+                </div>
               </div>
-            </div>
+            {/if}
 
             <!-- Filter Tabs -->
-            <div class="pb-2 shadow-md z-20">
-              <div class="px-4 flex w-full mb-1 gap-2">
-                {#each FILTER_TABS as tab}
-                  <button
-                    on:click={() => setStandardFilter(tab.id as FilterType)}
-                    class="flex-1 px-3 py-2 flex items-center justify-center gap-2 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium bg-kong-bg-dark/30 rounded-2xl {state.standardFilter === tab.id ? 'text-white font-semibold bg-kong-primary text-kong-bg-light hover:bg-kong-primary' : 'hover:bg-kong-bg-light/60'}"
-                    aria-label="Show {tab.label.toLowerCase()} tokens"
-                  >
-                    <span class="relative z-10">{tab.label}</span>
-                    <span
-                      class="text-kong-text-on-primary text-xs px-2 py-1 rounded-full bg-kong-bg-dark/50 min-w-[1.5rem] text-center transition-all duration-200 {state.standardFilter === tab.id ? 'bg-kong-primary/10 text-kong-bg-light' : ''}"
+            {#if allowedCanisterIds.length === 0}
+              <div class="pb-2 shadow-md z-20">
+                <div class="px-4 flex w-full mb-1 gap-2">
+                  {#each FILTER_TABS as tab}
+                    <button
+                      on:click={() => setStandardFilter(tab.id as FilterType)}
+                      class="flex-1 px-3 py-2 flex items-center justify-center gap-2 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium bg-kong-bg-dark/30 rounded-2xl {selectorState.standardFilter === tab.id ? 'text-white font-semibold bg-kong-primary text-kong-bg-light hover:bg-kong-primary' : 'hover:bg-kong-bg-light/60'}"
+                      aria-label="Show {tab.label.toLowerCase()} tokens"
                     >
-                      {getTabCount(tab.id)}
-                    </span>
-                  </button>
-                {/each}
+                      <span class="relative z-10">{tab.label}</span>
+                      <span
+                        class="text-kong-text-on-primary text-xs px-2 py-1 rounded-full bg-kong-bg-dark/50 min-w-[1.5rem] text-center transition-all duration-200 {selectorState.standardFilter === tab.id ? 'bg-kong-primary/10 text-kong-bg-light' : ''}"
+                      >
+                        {getTabCount(tab.id)}
+                      </span>
+                    </button>
+                  {/each}
+                </div>
               </div>
-            </div>
+            {/if}
           </div>
 
           <!-- Scrollable Token List -->
           <div
-            class="scrollable-section bg-kong-bg-dark flex-1 overflow-y-auto relative z-10 touch-pan-y overscroll-contain will-change-transform"
-            bind:this={state.scrollContainer}
-            bind:clientHeight={state.containerHeight}
+            class="scrollable-section bg-kong-bg-dark flex-1 overflow-y-auto relative z-10 touch-pan-y overscroll-contain will-change-transform max-h-[450px]"
+            bind:this={scrollContainer}
+            bind:clientHeight={containerHeight}
             on:scroll={handleScroll}
             style="-webkit-overflow-scrolling: touch;"
           >
@@ -623,7 +626,7 @@
               {#if enabledFilteredTokens.length > 0}
                 <div class="space-y-2">
                   <div style="height: {enabledFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
-                    {#each enabledTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
+                    {#each enabledTokensVirtualState.visible as { item: token, index }, i (token.address)}
                       <div
                         style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
                       >
@@ -633,20 +636,20 @@
                           currentToken={currentToken}
                           otherPanelToken={otherPanelToken}
                           isApiToken={isApiToken(token)}
-                          isFavorite={isFavoriteToken(token.canister_id)}
-                          enablingTokenId={state.enablingTokenId}
+                          isFavorite={isFavoriteToken(token.address)}
+                          enablingTokenId={selectorState.enablingTokenId}
                           blockedTokenIds={BLOCKED_TOKEN_IDS}
                           balance={{
-                            loading: isUserAuthenticated && !$currentUserBalancesStore[token.canister_id],
-                            tokens: $currentUserBalancesStore[token.canister_id]
+                            loading: isUserAuthenticated && !$currentUserBalancesStore[token.address],
+                            tokens: $currentUserBalancesStore[token.address]
                               ? formatBalance(
-                                $currentUserBalancesStore[token.canister_id]?.in_tokens || 0n,
+                                $currentUserBalancesStore[token.address]?.in_tokens || 0n,
                                 token.decimals || 8
                               )
                               : "0",
-                            usd: $currentUserBalancesStore[token.canister_id]
+                            usd: $currentUserBalancesStore[token.address]
                               ? formatUsdValue(
-                                $currentUserBalancesStore[token.canister_id]?.in_usd || "0"
+                                $currentUserBalancesStore[token.address]?.in_usd || "0"
                               )
                               : "$0.00"
                           }}
@@ -661,20 +664,20 @@
               {/if}
 
               <!-- API Search Results -->
-              {#if apiFilteredTokens.length > 0 || state.isSearching}
+              {#if apiFilteredTokens.length > 0 || selectorState.isSearching}
                 <div class="space-y-2 mt-4">
                   <div class="p-2 text-sm font-medium text-kong-text-secondary rounded-lg border border-kong-border/10 backdrop-blur-sm mx-2 my-2 bg-kong-token-selector-item-bg">
                     <span>Available Tokens</span>
                   </div>
                   
-                  {#if state.isSearching}
+                  {#if selectorState.isSearching}
                     <div class="flex items-center justify-center gap-2 p-4 text-sm text-kong-text-primary/70">
                       <span class="w-4 h-4 rounded-full border-2 border-kong-text-primary/20 border-t-kong-text-primary animate-spin"></span>
                       <span>Searching...</span>
                     </div>
                   {:else}
                     <div style="height: {apiFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
-                      {#each apiTokensVirtualState.visible as { item: token, index }, i (token.canister_id)}
+                      {#each apiTokensVirtualState.visible as { item: token, index }, i (token.address)}
                         <div
                           style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
                         >
@@ -684,20 +687,20 @@
                             currentToken={currentToken}
                             otherPanelToken={otherPanelToken}
                             isApiToken={true}
-                            isFavorite={isFavoriteToken(token.canister_id)}
-                            enablingTokenId={state.enablingTokenId}
+                            isFavorite={isFavoriteToken(token.address)}
+                            enablingTokenId={selectorState.enablingTokenId}
                             blockedTokenIds={BLOCKED_TOKEN_IDS}
                             balance={{
-                              loading: isUserAuthenticated && !$currentUserBalancesStore[token.canister_id],
-                              tokens: $currentUserBalancesStore[token.canister_id]
+                              loading: isUserAuthenticated && !$currentUserBalancesStore[token.address],
+                              tokens: $currentUserBalancesStore[token.address]
                                 ? formatBalance(
-                                  $currentUserBalancesStore[token.canister_id]?.in_tokens || 0n,
+                                  $currentUserBalancesStore[token.address]?.in_tokens || 0n,
                                   token.decimals || 8
                                 )
                                 : "0",
-                              usd: $currentUserBalancesStore[token.canister_id]
+                              usd: $currentUserBalancesStore[token.address]
                                 ? formatUsdValue(
-                                  $currentUserBalancesStore[token.canister_id]?.in_usd || "0"
+                                  $currentUserBalancesStore[token.address]?.in_usd || "0"
                                 )
                                 : "$0.00"
                             }}
@@ -713,22 +716,24 @@
               {/if}
               
               <!-- No Tokens Found Message -->
-              {#if filteredTokens.length === 0 && !state.isSearching}
+              {#if filteredTokens.length === 0 && !selectorState.isSearching}
                 <div class="flex items-center justify-center p-8 text-kong-text-secondary text-sm flex-col gap-4">
                   <span>No tokens found</span>
                 </div>
               {/if}
 
-              <!-- Add New Token Button -->
-              <div class="px-2 py-3 mt-2">
-                <button 
-                  class="group w-full hover:bg-kong-primary hover:text-kong-bg-light flex items-center justify-center gap-2 py-3 px-4 text-kong-text-primary font-medium rounded-lg border border-kong-border/30 transition-all duration-200 hover:border-kong-primary/40 bg-kong-token-selector-item-bg"
-                  on:click|stopPropagation={() => state.isAddNewTokenModalOpen = true}
-                >
-                  <div class="flex items-center justify-center w-5 h-5 rounded-full text-kong-bg-light font-bold bg-kong-primary group-hover:text-kong-primary group-hover:bg-kong-bg-light">+</div>
-                  <span>Add New Token</span>
-                </button>
-              </div>
+              <!-- Add New Token Button (Correct location) -->
+              {#if allowedCanisterIds.length === 0}
+                <div class="px-2 py-3 mt-2">
+                  <button 
+                    class="group w-full hover:bg-kong-primary hover:text-kong-bg-light flex items-center justify-center gap-2 py-3 px-4 text-kong-text-primary font-medium rounded-lg border border-kong-border/30 transition-all duration-200 hover:border-kong-primary/40 bg-kong-token-selector-item-bg"
+                    on:click|stopPropagation={() => selectorState.isAddNewTokenModalOpen = true}
+                  >
+                    <div class="flex items-center justify-center w-5 h-5 rounded-full text-kong-bg-light font-bold bg-kong-primary group-hover:text-kong-primary group-hover:bg-kong-bg-light">+</div>
+                    <span>Add New Token</span>
+                  </button>
+                </div>
+              {/if}
             </div>
           </div>
         </div>
@@ -772,7 +777,7 @@
 
 <!-- Add New Token Modal -->
 <AddNewTokenModal 
-  isOpen={state.isAddNewTokenModalOpen}
-  onClose={() => state.isAddNewTokenModalOpen = false}
+  isOpen={selectorState.isAddNewTokenModalOpen}
+  onClose={() => selectorState.isAddNewTokenModalOpen = false}
   on:tokenAdded={handleCustomTokenAdded}
 />

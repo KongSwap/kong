@@ -19,7 +19,7 @@ function createSettingsStore() {
   async function initializeStore() {
     if (browser) {
       const pnp = get(auth);
-      const walletId = pnp?.account?.owner?.toString();
+      const walletId = pnp?.account?.owner;
       if (!walletId) {
         console.error('Wallet ID is not available.');
         return;
@@ -54,7 +54,7 @@ function createSettingsStore() {
     
     try {
       const pnp = get(auth);
-      const walletId = pnp?.account?.owner?.toString();
+      const walletId = pnp?.account?.owner;
       if (!walletId) {
         console.error('Wallet ID is not available to save settings');
         return;
@@ -84,7 +84,7 @@ function createSettingsStore() {
     if (!browser) return;
     
     const pnp = get(auth);
-    const walletId = pnp?.account?.owner?.toString();
+    const walletId = pnp?.account?.owner;
     if (!walletId) return;
     
     try {

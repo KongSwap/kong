@@ -46,6 +46,7 @@ export interface ThemeColors {
   swapPanelShadow?: string;
   swapPanelInputsRounded?: boolean;
   transparentSwapPanel?: boolean;
+  transparentPanel?: boolean;
   swapPanelBorderStyle?: 'default' | 'win95' | 'none'; // Special border style presets
   statsTableTransparent?: boolean;   // Whether the stats table panel should be transparent or solid
   
@@ -209,9 +210,9 @@ export const baseTheme: ThemeDefinition = {
     textPrimary: '#FFFFFF',
     textSecondary: '#B0B6C5', // Brighter secondary text
     textDisabled: '#6B7280',
-    textLight: '#141826',
+    textLight: '#ffffff',
     textDark: '#0D111F',
-    textOnPrimary: '#FFFFFF',
+    textOnPrimary: '#0D111F',
     textAccentGreen: '#05EC86', // Same as accent-green
     textAccentRed: '#FF4545',   // Same as accent-red
     textAccentBlue: '#0095EB',
@@ -226,6 +227,7 @@ export const baseTheme: ThemeDefinition = {
     swapPanelShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
     swapPanelInputsRounded: true,
     transparentSwapPanel: true, // Default to transparent swap panels
+    transparentPanel: true,
     swapPanelBorderStyle: 'default',
     statsTableTransparent: true, // Default to transparent stats table for modern look
     
@@ -298,16 +300,16 @@ export const baseTheme: ThemeDefinition = {
     
     // Swap Button styling
     swapButtonPrimaryGradientStart: '#0095EB',
-    swapButtonPrimaryGradientEnd: '#0086D3',
-    swapButtonErrorGradientStart: '#FF4545',
-    swapButtonErrorGradientEnd: '#EB3737',
-    swapButtonProcessingGradientStart: '#6F5DFB',
-    swapButtonProcessingGradientEnd: '#9EA4BA',
-    swapButtonBorderColor: 'rgba(255, 255, 255, 0.2)',
-    swapButtonGlowColor: '#00A7FF',
-    swapButtonShineColor: '#0090DC',
-    swapButtonReadyGlowStart: '#05EC86',
-    swapButtonReadyGlowEnd: '#04CE75',
+    swapButtonPrimaryGradientEnd: '#0072B1',
+    swapButtonErrorGradientStart: '#E85373',
+    swapButtonErrorGradientEnd: '#C23758',
+    swapButtonProcessingGradientStart: '#6B8CFF',
+    swapButtonProcessingGradientEnd: '#4563DB',
+    swapButtonBorderColor: 'rgba(255, 255, 255, 0.15)',
+    swapButtonGlowColor: '#0095EB',
+    swapButtonShineColor: '#00BFFF',
+    swapButtonReadyGlowStart: '#0095EB',
+    swapButtonReadyGlowEnd: '#006699',
     swapButtonTextColor: '#FFFFFF',
     swapButtonRoundness: 'rounded-lg',
     swapButtonShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',

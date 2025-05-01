@@ -174,27 +174,8 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                                     Err("Expired transfer timestamp")?
                                 }
                                 return Ok(()); // success
-                            } else if let Some(burn) = transaction.burn {
-                                // burn for LP token with remove liquidity
-                                let from = burn.from;
-                                if from != caller_id() {
-                                    Err("Burn does not match caller")?
-                                }
-                                // burns have to be back to the backend canister
-                                // make sure spender is None so not an icrc2_transfer_from transaction
-                                let spender = burn.spender;
-                                if spender.is_some() {
-                                    Err("Invalid burn spender")?
-                                }
-                                let burn_amount = burn.amount;
-                                if burn_amount != *amount {
-                                    Err(format!("Invalid burn amount: rec {:?} exp {:?}", burn_amount, amount))?
-                                }
-                                let timestamp = transaction.timestamp;
-                                if timestamp < ts_start {
-                                    Err("Expired burn timestamp")?
-                                }
-                                return Ok(()); // success
+                            } else if let Some(_burn) = transaction.burn {
+                                // not used
                             } else if let Some(_mint) = transaction.mint {
                                 // not used
                             } else if let Some(_approve) = transaction.approve {
@@ -242,25 +223,8 @@ pub async fn verify_block_id(
                         for transaction in transactions.into_iter() {
                             if let Some(_mint) = transaction.mint {
                                 // not used
-                            } else if let Some(burn) = transaction.burn {
-                                // when burning LP tokens
-                                let from = burn.from;
-                                let spender = burn.spender;
-                                let burn_amount = burn.amount;
-                                if from != caller_id() {
-                                    Err("Burn from does not match caller")?
-                                }
-                                if let Some(spender) = spender {
-                                    if spender != kong_settings_map::get().kong_backend {
-                                        Err("Burn spender does not match Kong backend")?
-                                    }
-                                } else {
-                                    Err("Missing burn spender")?
-                                }
-                                if burn_amount != *amount {
-                                    Err(format!("Invalid burn amount: rec {:?} exp {:?}", burn_amount, amount))?
-                                }
-                                return Ok(()); // success
+                            } else if let Some(_burn) = transaction.burn {
+                                // not used
                             } else if let Some(transfer) = transaction.transfer {
                                 if *transaction_type == TransactionType::Transfer || *transaction_type == TransactionType::TransferFrom {
                                     let from = transfer.from;

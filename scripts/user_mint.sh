@@ -3,8 +3,8 @@
 network="--network $1"
 identity="--identity kong_token_minter"
 
-to_principal_id=$(dfx identity get-principal $network --identity kong)
-# to_principal_id=$(dfx identity get-principal $network --identity kong_user1)
+# to_principal_id=$(dfx identity get-principal $network --identity kong)
+to_principal_id=$(dfx identity get-principal $network --identity kong_user1)
 # to_principal_id=$(dfx identity get-principal $network --identity kong_user2)
 # to_principal_id=jum6j-nhmrj-nuoi5-lccjt-3ftxs-dw5u6-enrtt-7432h-iaa4z-pnzoo-oqe
 # to_principal_id=4s7ce-nntbc-oebfq-damfd-6fuxi-nydjp-fozv6-fherl-djnrj-xtgie-2qe
@@ -49,9 +49,9 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 	amount=$amount;
 },)"
 
-# 5,000,000 ksKONG
+# 5,000,000 KONG
 amount=500_000_000_000_000
-token="kskong"
+token="kong"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {

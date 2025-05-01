@@ -27,7 +27,7 @@
 
   interface SearchResult {
     type: 'user' | 'token';
-    data: UserData | FE.Token;
+    data: UserData | Kong.Token;
   }
 
   const dispatch = createEventDispatcher();
@@ -167,9 +167,9 @@
       // Navigate to user page or handle user selection
       goto(`/wallets/${user.principal_id}`);
     } else {
-      const token = result.data as FE.Token;
+      const token = result.data as Kong.Token;
       // Navigate to token page or handle token selection
-      goto(`/stats/${token.canister_id}`);
+      goto(`/stats/${token.address}`);
     }
     closeSearch();
   }
@@ -264,7 +264,7 @@
   // Derived values
   const tokenResults = $derived(searchResults
     .filter(r => r.type === 'token')
-    .map(r => r.data as FE.Token));
+    .map(r => r.data as Kong.Token));
     
   const userResults = $derived(searchResults
     .filter(r => r.type === 'user')

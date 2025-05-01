@@ -79,7 +79,7 @@
   });
 </script>
 
-<Panel variant="solid" type="main" >
+<Panel type="main" >
   <div class="flex flex-col gap-4">
     <h2 class="text-lg font-semibold">Governance Proposals</h2>
     

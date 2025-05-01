@@ -8,8 +8,8 @@
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import TokenInfo from "./TokenInfo.svelte";
 
-  export let initialFromToken: FE.Token | null = null;
-  export let initialToToken: FE.Token | null = null;
+  export let initialFromToken: Kong.Token | null = null;
+  export let initialToToken: Kong.Token | null = null;
   export let currentMode: "normal" | "pro" = "pro";
 
   let fromToken = initialFromToken;
@@ -34,17 +34,17 @@
 
   // Get the pool based on selected tokens
   $: selectedPool = $livePools?.find(p => {
-    if (!fromToken?.canister_id || !toToken?.canister_id) return null;
+    if (!fromToken?.address || !toToken?.address) return null;
     
-    return (p.address_0 === fromToken.canister_id && p.address_1 === toToken.canister_id) ||
-           (p.address_1 === fromToken.canister_id && p.address_0 === toToken.canister_id);
+    return (p.address_0 === fromToken.address && p.address_1 === toToken.address) ||
+           (p.address_1 === fromToken.address && p.address_0 === toToken.address);
   });
 
-  let baseToken: FE.Token | null = null;
-  let quoteToken: FE.Token | null = null;
+  let baseToken: Kong.Token | null = null;
+  let quoteToken: Kong.Token | null = null;
   $: {
-    baseToken = selectedPool?.address_0 === fromToken?.canister_id ? fromToken : toToken;
-    quoteToken = selectedPool?.address_0 === toToken?.canister_id ? fromToken : toToken;
+    baseToken = selectedPool?.address_0 === fromToken?.address ? fromToken : toToken;
+    quoteToken = selectedPool?.address_0 === toToken?.address ? fromToken : toToken;
   }
 
   // Handle token selection changes

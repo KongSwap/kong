@@ -2,9 +2,9 @@
   import Portal from "svelte-portal";
   import TokenSelectorDropdown from "$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte";
   
-  export let token0: FE.Token | null;
-  export let token1: FE.Token | null;
-  export let onTokenSelect: (index: 0 | 1, token: FE.Token) => void;
+  export let token0: Kong.Token | null;
+  export let token1: Kong.Token | null;
+  export let onTokenSelect: (index: 0 | 1, token: Kong.Token) => void;
   export let secondaryTokenIds: string[];
 
   let showToken0Selector = false;
@@ -60,6 +60,7 @@
           otherPanelToken={token1}
           onSelect={(token) => onTokenSelect(0, token)}
           onClose={() => (showToken0Selector = false)}
+          title="Base Token"
         />
       </Portal>
     {/if}
@@ -73,6 +74,7 @@
           onSelect={(token) => onTokenSelect(1, token)}
           onClose={() => (showToken1Selector = false)}
           allowedCanisterIds={secondaryTokenIds}
+          title="Quote Token"
         />
       </Portal>
     {/if}
@@ -82,13 +84,13 @@
     @apply flex-1 flex items-center justify-center;
     @apply bg-white/[0.02] hover:bg-white/[0.04];
     @apply rounded-xl px-4 py-3;
-    @apply border border-white/[0.03];
+    @apply border border-kong-border;
     @apply transition-all duration-200;
     backdrop-filter: blur(11px);
   }
 
   .token-selector-button:hover {
-    @apply border-white/[0.06];
+    @apply border-kong-border-light;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }

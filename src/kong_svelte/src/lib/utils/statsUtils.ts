@@ -3,7 +3,7 @@ import { userTokens } from '$lib/stores/userTokens';
 import { get } from 'svelte/store';
 import BigNumber from 'bignumber.js';
 
-export function getPriceChangeClass(token: FE.Token): string {
+export function getPriceChangeClass(token: Kong.Token): string {
   if (!token?.metrics?.price_change_24h) return '';
   const change = Number(token?.metrics?.price_change_24h);
   if (change > 0) return 'text-kong-text-accent-green';
@@ -16,7 +16,7 @@ export async function formatPoolData(pools: BE.Pool[]): Promise<BE.Pool[]> {
   const poolsMap = await Promise.all(pools.map(async (pool, index) => {
     const apy = formatToNonZeroDecimal(pool.rolling_24h_apy);
     const userTokensStore = get(userTokens);
-    const baseToken = userTokensStore.tokens.find(t => t.canister_id === pool.address_1);
+    const baseToken = userTokensStore.tokens.find(t => t.address === pool.address_1);
     return {
       ...pool,
       price_usd: (Number(pool.price) * Number(baseToken?.metrics.price)).toString(),
@@ -85,8 +85,8 @@ export function updateTradingViewPriceScale(widget: any, pool: BE.Pool) {
  * Find the best pool for a given token pair
  */
 export function findBestPoolForTokens(
-  quoteToken: FE.Token | undefined, 
-  baseToken: FE.Token | undefined, 
+  quoteToken: Kong.Token | undefined, 
+  baseToken: Kong.Token | undefined, 
   pools: BE.Pool[], 
   currentPoolId?: number
 ): { pool_id: number } | null {
@@ -95,8 +95,8 @@ export function findBestPoolForTokens(
   }
 
   try {
-    const qId = quoteToken.canister_id;
-    const bId = baseToken.canister_id;
+    const qId = quoteToken.address;
+    const bId = baseToken.address;
     
     // First look for direct pool
     const directPool = pools.find(p => 

@@ -16,33 +16,33 @@ export function getCreatePoolButtonText(
   return "Create Pool";
 }
 
-export const doesPoolExist = (token0: FE.Token | null, token1: FE.Token | null, pools: BE.Pool[]) => {
+export const doesPoolExist = (token0: Kong.Token | null, token1: Kong.Token | null, pools: BE.Pool[]) => {
   if (!token0 || !token1) return null;
   
   return pools.some(p => 
-    (p.address_0 === token0.canister_id && p.address_1 === token1.canister_id) ||
-    (p.address_0 === token1.canister_id && p.address_1 === token0.canister_id)
+    (p.address_0 === token0.address && p.address_1 === token1.address) ||
+    (p.address_0 === token1.address && p.address_1 === token0.address)
   );
 }
 
-export const getDefaultToken = (token: string, tokens: FE.Token[]) => {
-  return tokens.find(t => t.canister_id === CKUSDT_CANISTER_ID);
+export const getDefaultToken = (token: string, tokens: Kong.Token[]) => {
+  return tokens.find(t => t.address === CKUSDT_CANISTER_ID);
 }
 
 export function validateTokenSelect(
-  selectedToken: FE.Token,
-  otherToken: FE.Token | null,
+  selectedToken: Kong.Token,
+  otherToken: Kong.Token | null,
   allowedTokens: string[],
   defaultToken: string,
-  tokens: FE.Token[]
+  tokens: Kong.Token[]
 ): { 
   isValid: boolean;
-  newToken: FE.Token | null;
+  newToken: Kong.Token | null;
   error?: string;
 } {
   if (!otherToken) { return { isValid: true, newToken: selectedToken };}
   const hasAllowedToken = allowedTokens.includes(selectedToken.symbol) || allowedTokens.includes(otherToken.symbol);
-  const isDifferentTokens = selectedToken.canister_id !== otherToken.canister_id;
+  const isDifferentTokens = selectedToken.address !== otherToken.address;
   const isValid = hasAllowedToken && isDifferentTokens
 
   if (!isValid) {

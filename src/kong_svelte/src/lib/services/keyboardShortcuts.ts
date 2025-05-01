@@ -40,7 +40,7 @@ class KeyboardShortcutsService {
     window.addEventListener('keydown', this.handleKeyDown.bind(this));
     
     this.isInitialized = true;
-    // console.log('[KeyboardShortcuts] Service initialized');
+    console.log('[KeyboardShortcuts] Service initialized');
   }
 
   // Register default shortcuts
@@ -67,7 +67,7 @@ class KeyboardShortcutsService {
       },
       description: 'Show keyboard shortcuts',
       action: () => {
-        // console.log('[KeyboardShortcuts] Opening keyboard shortcuts help');
+        console.log('[KeyboardShortcuts] Opening keyboard shortcuts help');
         keyboardShortcutsStore.openHelp();
       },
       scope: 'global'
@@ -107,10 +107,7 @@ class KeyboardShortcutsService {
   }
 
   // Handle keydown events
-  private handleKeyDown(event: KeyboardEvent): void {
-    // Debug keyboard events
-    // console.log(`[KeyboardShortcuts] Key pressed: ${event.key}, Shift: ${event.shiftKey}, Ctrl: ${event.ctrlKey}, Meta: ${event.metaKey}`);
-    
+  private handleKeyDown(event: KeyboardEvent): void {    
     // Skip if in input, textarea, or contentEditable
     if (
       event.target instanceof HTMLInputElement ||
@@ -137,7 +134,7 @@ class KeyboardShortcutsService {
     // Execute matching shortcuts
     if (matchingShortcuts.length > 0) {
       event.preventDefault();
-      // console.log(`[KeyboardShortcuts] Executing shortcuts:`, matchingShortcuts);
+      console.log(`[KeyboardShortcuts] Executing shortcuts:`, matchingShortcuts);
       matchingShortcuts.forEach(shortcut => {
         shortcut.action();
       });

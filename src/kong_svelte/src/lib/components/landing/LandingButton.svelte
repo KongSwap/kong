@@ -2,7 +2,7 @@
   import type { MouseEventHandler } from 'svelte/elements';
 
   let {
-    text = 'LAUNCH APP',
+    text = 'LAUNCH',
     onClick = () => {},
     buttonClass = '', // Allow passing extra classes
     textClass = '',

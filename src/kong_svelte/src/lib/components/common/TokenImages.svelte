@@ -3,7 +3,7 @@
 
   // Define props using the $props rune
   type TokenImagesProps = {
-    tokens: FE.Token[];
+    tokens: Kong.Token[];
     size: number;
     containerClass?: string;
     imageWrapperClass?: string;
@@ -34,7 +34,7 @@
   const DEFAULT_IMAGE = "/tokens/not_verified.webp";
 
   // Filter out invalid tokens and memoize result
-  const validTokens = $derived(tokens.filter((token): token is FE.Token => {
+  const validTokens = $derived(tokens.filter((token): token is Kong.Token => {
     return token && typeof token === "object";
   }));
   
@@ -56,29 +56,19 @@
   // Handle image error with proper typing
   function handleImageError(
     e: Event & { currentTarget: EventTarget & HTMLImageElement },
-    token: FE.Token
+    token: Kong.Token
   ) {
     console.error(`Failed to load image: ${e.currentTarget.src}`);
-    imageLoadingStatus[token.canister_id || token.symbol] = false;
+    imageLoadingStatus[token.address || token.symbol] = false;
   }
 
   // Handle image loading success
-  function handleImageLoad(token: FE.Token) {
-    imageLoadingStatus[token.canister_id || token.symbol] = true;
+  function handleImageLoad(token: Kong.Token) {
+    imageLoadingStatus[token.address || token.symbol] = true;
   }
 
-  // Helper to get token alt text
-  function getTokenAlt(token: FE.Token): string {
-    return token.symbol ?? token.name ?? "Unknown Token";
-  }
-  
-  // Helper to get token symbol for fallback
-  function getTokenSymbol(token: FE.Token): string {
-    return token.symbol || '?';
-  }
-  
   // Check if image exists for a token
-  function hasValidImage(token: FE.Token): boolean {
+  function hasValidImage(token: Kong.Token): boolean {
     return !!(token.logo_url || DEFAULT_IMAGE);
   }
 </script>
@@ -100,7 +90,7 @@
           class="w-full h-full rounded-full bg-transparent ring-2 ring-kong-bg-dark ring-opacity-40"
           src={token?.logo_url ||
             DEFAULT_IMAGE}
-          alt={getTokenAlt(token)}
+          alt={token.name}
           loading="eager"
           on:error={(e) => handleImageError(e as (Event & { currentTarget: EventTarget & HTMLImageElement }), token)}
           on:load={() => handleImageLoad(token)}
@@ -111,14 +101,14 @@
             class="font-bold text-kong-primary truncate max-w-[80%] text-center" 
             style="font-size: min(calc({size}px * 0.3), .75rem);"
           >
-            {getTokenSymbol(token)}
+            {token.symbol}
           </span>
         </div>
       {:else}
         <img
           class="w-full h-full rounded-full bg-transparent ring-2 ring-kong-bg-dark ring-opacity-40"
           src={DEFAULT_IMAGE}
-          alt={getTokenAlt(token)}
+          alt={token.name}
           loading="eager"
         />
       {/if}

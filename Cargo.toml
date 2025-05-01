@@ -10,6 +10,8 @@ members = [
     "src/miner",
     "src/token_backend",
     "src/trollbox",
+    "src/ic_siws_provider",
+    "src/ic_siws"
 ]
 resolver = "2"
 

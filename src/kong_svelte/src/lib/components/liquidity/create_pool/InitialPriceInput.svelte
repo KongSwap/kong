@@ -1,8 +1,8 @@
 <script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
   
-  export let token0: FE.Token | null;
-  export let token1: FE.Token | null;
+  export let token0: Kong.Token | null;
+  export let token1: Kong.Token | null;
   export let onPriceChange: (value: string) => void;
 
   let displayValue = "";

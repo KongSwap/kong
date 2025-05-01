@@ -3,8 +3,8 @@ import { livePools } from '$lib/stores/poolStore';
 import { writable } from 'svelte/store';
 
 interface LiquidityState {
-    token0: FE.Token | null;
-    token1: FE.Token | null;
+    token0: Kong.Token | null;
+    token1: Kong.Token | null;
     amount0: string;
     amount1: string;
     initialPrice: string;
@@ -39,7 +39,7 @@ function createLiquidityStore() {
 
     return {
         subscribe,
-        setToken: (index: 0 | 1, token: FE.Token) => {
+        setToken: (index: 0 | 1, token: Kong.Token) => {
             const pools = get(livePools);
 
             update(s => {

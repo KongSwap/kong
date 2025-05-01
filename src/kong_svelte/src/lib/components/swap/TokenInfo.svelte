@@ -3,7 +3,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { copyToClipboard } from "$lib/utils/clipboard";
 
-  export let token: FE.Token | null = null;
+  export let token: Kong.Token | null = null;
 </script>
 
 <Panel variant="transparent" type="main" className="token-info-panel">
@@ -36,11 +36,11 @@
         </div>
         <div class="stat-item">
           <button
-            class="truncate stat-value canister-id"
-            on:click={() => copyToClipboard(token.canister_id)}
+            class="stat-value truncate canister-id"
+            on:click={() => copyToClipboard(token.address)}
             title="Click to copy"
           >
-            {token.canister_id}
+            {token.address}
           </button>
           <span class="stat-label">Canister ID</span>
         </div>

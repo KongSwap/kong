@@ -1,16 +1,16 @@
 import { writable } from 'svelte/store';
 
 // Initialize the token store with an empty array
-const { subscribe, set, update } = writable<FE.Token[]>([]);
+const { subscribe, set, update } = writable<Kong.Token[]>([]);
 
 // Create the token store with additional methods
 export const tokenStore = {
     subscribe,
     set,
     // Update specific token data
-    updateToken: (updatedToken: FE.Token) => {
+    updateToken: (updatedToken: Kong.Token) => {
         update(tokens => {
-            const index = tokens.findIndex(t => t.canister_id === updatedToken.canister_id);
+            const index = tokens.findIndex(t => t.address === updatedToken.address);
             if (index !== -1) {
                 tokens[index] = updatedToken;
             } else {
@@ -20,10 +20,10 @@ export const tokenStore = {
         });
     },
     // Update multiple tokens at once
-    updateTokens: (updatedTokens: FE.Token[]) => {
+    updateTokens: (updatedTokens: Kong.Token[]) => {
         update(tokens => {
             updatedTokens.forEach(updatedToken => {
-                const index = tokens.findIndex(t => t.canister_id === updatedToken.canister_id);
+                const index = tokens.findIndex(t => t.address === updatedToken.address);
                 if (index !== -1) {
                     tokens[index] = updatedToken;
                 } else {

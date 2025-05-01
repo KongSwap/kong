@@ -4,6 +4,7 @@ import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { auth, requireWalletConnection, canisterIDLs } from "$lib/stores/auth";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { toastStore } from "$lib/stores/toastStore";
+import { IcrcTokenSerializer } from "$lib/serializers/tokens/IcrcTokenSerializer";
 
 export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total_count: number, total_pages: number, page: number, limit: number}> => {
   try {
@@ -86,16 +87,20 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
         pool.raw_json.StablePool = stablePool;
       }
 
+      // Serialize nested token objects
+      const serializedToken0 = item.token0 ? IcrcTokenSerializer.serializeTokenMetadata(item.token0) : null;
+      const serializedToken1 = item.token1 ? IcrcTokenSerializer.serializeTokenMetadata(item.token1) : null;
+
       // Return a flat structure combining pool data with token details.
       return {
         ...pool,
         lp_token_id: item.pool.lp_token_id,
-        symbol_0: item.token0?.symbol,
-        address_0: item.token0?.canister_id,
-        symbol_1: item.token1?.symbol,
-        address_1: item.token1?.canister_id,
-        token0: item.token0,
-        token1: item.token1
+        symbol_0: serializedToken0?.symbol,
+        address_0: serializedToken0?.address,
+        symbol_1: serializedToken1?.symbol,
+        address_1: serializedToken1?.address,
+        token0: serializedToken0,
+        token1: serializedToken1
       } as BE.Pool;
     };
 
@@ -214,7 +219,7 @@ export async function calculateRemoveLiquidityAmounts(
       { anon: true, requiresSigning: false },
     );
 
-    const result = await actor.remove_liquidity_amounts(
+    const result = await (actor as any).remove_liquidity_amounts(
       "IC." + token0CanisterId,
       "IC." + token1CanisterId,
       lpTokenBigInt,
@@ -237,9 +242,9 @@ export async function calculateRemoveLiquidityAmounts(
  * Add liquidity to a pool with ICRC2 approval
  */
 export async function addLiquidity(params: {
-  token_0: FE.Token;
+  token_0: Kong.Token;
   amount_0: bigint;
-  token_1: FE.Token;
+  token_1: Kong.Token;
   amount_1: bigint;
 }): Promise<bigint> {
   requireWalletConnection();
@@ -253,7 +258,7 @@ export async function addLiquidity(params: {
     let actor;
 
     // Handle ICRC2 tokens
-    if (params.token_0.icrc2 && params.token_1.icrc2) {
+    if (params.token_0.standards.includes("ICRC-2") && params.token_1.standards.includes("ICRC-2")) {
       const [_approval0, _approval1, actorResult] = await Promise.all([
         IcrcService.checkAndRequestIcrc2Allowances(
           params.token_0,
@@ -301,9 +306,9 @@ export async function addLiquidity(params: {
     }
 
     const addLiquidityArgs = {
-      token_0: "IC." + params.token_0.canister_id,
+      token_0: "IC." + params.token_0.address,
       amount_0: params.amount_0,
-      token_1: "IC." + params.token_1.canister_id,
+      token_1: "IC." + params.token_1.address,
       amount_1: params.amount_1,
       tx_id_0,
       tx_id_1,
@@ -338,7 +343,7 @@ export async function pollRequestStatus(
   token1Symbol?: string,
 ): Promise<any> {
   let attempts = 0;
-  const MAX_ATTEMPTS = 20;
+  const MAX_ATTEMPTS = 50;
   let lastStatus = '';
   let toastId: string | number | undefined;
 
@@ -349,9 +354,9 @@ export async function pollRequestStatus(
       const actor = await auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { anon: true }
+        { anon: true, requiresSigning: false }
       );
-      const result = await actor.requests([requestId]);
+      const result = await (actor as any).requests([requestId]);
 
       if (!result.Ok || result.Ok.length === 0) {
         if (toastId !== undefined) toastStore.dismiss(String(toastId));
@@ -428,7 +433,7 @@ export async function pollRequestStatus(
       }
 
       attempts++;
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 600));
     }
 
     // Timeout case
@@ -467,6 +472,7 @@ export async function removeLiquidity(params: {
   lpTokenAmount: number | bigint;
 }): Promise<string> {
   requireWalletConnection();
+  console.log("Removing liquidity", params);
   try {
     // Ensure we're using BigInt for the amount
     const lpTokenBigInt =
@@ -479,7 +485,7 @@ export async function removeLiquidity(params: {
       canisterIDLs.kong_backend,
       { anon: false, requiresSigning: false },
     );
-    const result = await actor.remove_liquidity_async({
+    const result = await (actor as any).remove_liquidity_async({
       token_0: "IC." + params.token0,
       token_1: "IC." + params.token1,
       remove_lp_token_amount: lpTokenBigInt,
@@ -495,7 +501,7 @@ export async function removeLiquidity(params: {
   }
 }
 
-export async function approveTokens(token: FE.Token, amount: bigint) {
+export async function approveTokens(token: Kong.Token, amount: bigint) {
   try {
     await IcrcService.checkAndRequestIcrc2Allowances(token, amount);
   } catch (error) {
@@ -505,9 +511,9 @@ export async function approveTokens(token: FE.Token, amount: bigint) {
 }
 
 export async function createPool(params: {
-  token_0: FE.Token;
+  token_0: Kong.Token;
   amount_0: bigint;
-  token_1: FE.Token;
+  token_1: Kong.Token;
   amount_1: bigint;
   initial_price: number;
 }) {
@@ -519,7 +525,7 @@ export async function createPool(params: {
     let actor;
 
     // Handle ICRC2 tokens
-    if (params.token_0.icrc2 && params.token_1.icrc2) {
+    if (params.token_0.standards.includes("ICRC-2") && params.token_1.standards.includes("ICRC-2")) {
       const [approval0, approval1, actorResult] = await Promise.all([
         IcrcService.checkAndRequestIcrc2Allowances(
           params.token_0,
@@ -565,9 +571,9 @@ export async function createPool(params: {
     }
 
     const result = await actor.add_pool({
-      token_0: "IC." + params.token_0.canister_id,
+      token_0: "IC." + params.token_0.address,
       amount_0: params.amount_0,
-      token_1: "IC." + params.token_1.canister_id,
+      token_1: "IC." + params.token_1.address,
       amount_1: params.amount_1,
       tx_id_0: tx_id_0,
       tx_id_1: tx_id_1,
@@ -606,7 +612,7 @@ export async function sendLpTokens(params: {
       { anon: false, requiresSigning: false },
     );
 
-    const result = await actor.send({
+    const result = await (actor as any).send({
       token: params.token,
       to_address: params.toAddress,
       amount: amountBigInt,

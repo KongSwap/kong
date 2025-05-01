@@ -1,7 +1,7 @@
 <script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
-  export let token0: FE.Token;
-  export let token1: FE.Token;
+  export let token0: Kong.Token;
+  export let token1: Kong.Token;
 </script>
 
 <Panel variant="transparent" className="!p-4">
@@ -21,20 +21,8 @@
 </Panel>
 
 <style lang="postcss">
-  .warning-container {
-    @apply bg-yellow-500/10 border border-yellow-500/50 rounded-xl p-4;
-  }
-
-  .warning-content {
-    @apply flex items-start gap-3;
-  }
-
   .warning-icon {
     @apply w-6 h-6 text-yellow-500 flex-shrink-0 mt-1;
-  }
-
-  .warning-text {
-    @apply flex-1;
   }
 
   .warning-title {

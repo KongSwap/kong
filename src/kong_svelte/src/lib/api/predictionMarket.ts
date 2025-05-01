@@ -48,7 +48,6 @@ export async function getAllMarkets(
       : [], // Default sorting (newest first) will be applied by the backend
   };
 
-  console.log("getAllMarkets args:", JSON.stringify(args, null, 2));
   const markets = await actor.get_all_markets(args);
   return markets;
 }
@@ -137,7 +136,7 @@ export async function createMarket(params: CreateMarketParams) {
 }
 
 export async function placeBet(
-  token: FE.Token,
+  token: Kong.Token,
   marketId: number,
   outcomeIndex: number,
   amount: string,
@@ -362,12 +361,12 @@ export async function getAllCategories() {
   return categories;
 }
 
-export async function isAdmin(principal: Principal) {
+export async function isAdmin(principal: string) {
   const actor = createAnonymousActorHelper(
     PREDICTION_MARKETS_CANISTER_ID,
     canisterIDLs.prediction_markets_backend,
   );
-  return await actor.is_admin(principal);
+  return await actor.is_admin(Principal.fromText(principal));
 }
 
 export async function getAdminPrincipals() {

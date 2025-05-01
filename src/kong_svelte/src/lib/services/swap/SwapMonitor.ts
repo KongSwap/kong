@@ -6,6 +6,7 @@ import { auth } from "$lib/stores/auth";
 import { SwapService } from "./SwapService";
 import { swapState } from "./SwapStateService";
 import { userTokens } from "$lib/stores/userTokens";
+import { trackEvent, AnalyticsEvent } from "$lib/utils/analytics";
 
 interface SwapStatus {
   status: string;
@@ -66,10 +67,7 @@ export class SwapMonitor {
                 
                 if (status.toLowerCase() === "swap success") {
                   toastStore.dismiss(toastId);
-                  const state = get(swapState);
-                  const token0 = state.payToken;
-                  const token1 = state.receiveToken;
-                  toastStore.info(`Swap of  ${token0?.symbol} for ${token1?.symbol} completed successfully`);
+                  toastStore.info(`Swap completed`);
                   swapState.setShowSuccessModal(true);
                 } else if (status === "Success") {
                   toastStore.info(`Balances updated!`);
@@ -119,6 +117,18 @@ export class SwapMonitor {
                 token1?.decimals || 0,
               );
 
+              // Show detailed toast with actual amounts
+              toastStore.success(`Swap of ${formattedPayAmount} ${swapStatus.pay_symbol} for ${formattedReceiveAmount} ${swapStatus.receive_symbol} completed successfully`);
+
+              // Track successful swap event
+              trackEvent(AnalyticsEvent.SwapCompleted, {
+                pay_token: token0?.symbol,
+                pay_amount: formattedPayAmount,
+                receive_token: token1?.symbol,
+                receive_amount: formattedReceiveAmount,
+                duration_ms: Date.now() - this.startTime
+              });
+
               swapStatusStore.updateSwap(swapId, {
                 status: "Success",
                 isProcessing: false,
@@ -140,7 +150,7 @@ export class SwapMonitor {
               const receiveToken = tokens.find(
                 (t) => t.symbol === swapStatus.receive_symbol,
               );
-              const walletId = auth?.pnp?.account?.owner?.toString();
+              const walletId = auth?.pnp?.account?.owner;
 
               if (!payToken || !receiveToken || !walletId) {
                 console.error("Missing token or wallet info for balance update");
@@ -150,7 +160,7 @@ export class SwapMonitor {
               try {
                 await loadBalances(
                   [payToken, receiveToken],
-                  walletId.toString(),
+                  walletId,
                   true
                 );
               } catch (error) {
@@ -166,6 +176,15 @@ export class SwapMonitor {
                 error: "Swap failed",
               });
               toastStore.error("Swap failed");
+              
+              // Track failed swap event
+              trackEvent(AnalyticsEvent.SwapFailed, {
+                pay_token: swapStatus.pay_symbol,
+                receive_token: swapStatus.receive_symbol,
+                error: "Swap failed",
+                duration_ms: Date.now() - this.startTime
+              });
+              
               return;
             }
           }

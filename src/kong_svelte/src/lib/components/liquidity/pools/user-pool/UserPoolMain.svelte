@@ -42,9 +42,9 @@
         pool.address_1,
       ]);
       token0 =
-        tokensData.find((t: any) => t.canister_id === pool.address_0) || null;
+        tokensData.find((t: any) => t.address === pool.address_0) || null;
       token1 =
-        tokensData.find((t: any) => t.canister_id === pool.address_1) || null;
+        tokensData.find((t: any) => t.address === pool.address_1) || null;
       
       // Initialize the liquidity store with the tokens
       if (token0 && token1) {
@@ -52,7 +52,7 @@
         liquidityStore.setToken(1, token1);
         
         // Load token balances
-        loadBalances([token0, token1], auth.pnp.account?.owner?.toString(), true);
+        loadBalances([token0, token1], auth.pnp.account?.owner, true);
       }
     } catch (e) {
       console.error("Error fetching token data by canister id:", e);

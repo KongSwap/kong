@@ -6,66 +6,10 @@ import { allowanceStore } from "$lib/stores/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { type IcrcAccount } from "@dfinity/ledger-icrc";
-
-// Error types for better handling
-const enum ErrorType {
-  CORS = "CORS",
-  RATE_LIMIT = "RATE_LIMIT",
-  NETWORK = "NETWORK",
-  AUTH = "AUTH",
-  UNKNOWN = "UNKNOWN",
-}
+import { get } from "svelte/store";
 
 export class IcrcService {
   private static readonly MAX_CONCURRENT_REQUESTS = 5;
-
-  private static classifyError(error: any): ErrorType {
-    if (!error) return ErrorType.UNKNOWN;
-    const message = error.message?.toLowerCase() || "";
-
-    if (
-      message.includes("cors") ||
-      message.includes("access-control-allow-origin")
-    ) {
-      return ErrorType.CORS;
-    }
-    if (message.includes("429") || message.includes("too many requests")) {
-      return ErrorType.RATE_LIMIT;
-    }
-    if (
-      message.includes("network") ||
-      message.includes("failed to fetch") ||
-      message.includes("net::")
-    ) {
-      return ErrorType.NETWORK;
-    }
-    if (message.includes("wallet") || message.includes("authentication")) {
-      return ErrorType.AUTH;
-    }
-    return ErrorType.UNKNOWN;
-  }
-
-  private static handleError(methodName: string, error: any) {
-    console.error(`Error in ${methodName}:`, error);
-    const errorType = this.classifyError(error);
-
-    if (errorType === ErrorType.AUTH) {
-      throw new Error(
-        "Please connect your wallet to proceed with this operation.",
-      );
-    }
-
-    // Let the retry mechanism handle these types of errors
-    if (
-      errorType === ErrorType.CORS ||
-      errorType === ErrorType.NETWORK ||
-      errorType === ErrorType.RATE_LIMIT
-    ) {
-      throw error;
-    }
-
-    throw error;
-  }
 
   private static async withConcurrencyLimit<T>(
     operations: (() => Promise<T>)[],
@@ -98,20 +42,14 @@ export class IcrcService {
   }
 
   public static async getIcrc1Balance(
-    token: FE.Token,
+    token: Kong.Token,
     principal: Principal,
     subaccount?: number[] | undefined,
     separateBalances: boolean = false,
   ): Promise<{ default: bigint; subaccount: bigint } | bigint> {
     try {
-      // Debug logging for local development
-      if (process.env.NODE_ENV === "development") {
-        console.debug(`[Balance] Fetching balance for ${token.symbol} (${token.canister_id})`);
-        console.debug(`[Balance] Principal: ${principal.toString()}`);
-      }
-      
       const actor = await createAnonymousActorHelper(
-        token.canister_id,
+        token.address,
         canisterIDLs.icrc1,
       );
 
@@ -145,13 +83,13 @@ export class IcrcService {
   }
 
   public static async batchGetBalances(
-    tokens: FE.Token[],
-    principal: Principal,
+    tokens: Kong.Token[],
+    principal: string,
   ): Promise<Map<string, bigint>> {
     // Add request deduplication with a shorter window and token-specific keys
     const requestKeys = tokens.map(
       (token) =>
-        `${token.canister_id}-${principal.toString()}-${Date.now() - (Date.now() % 5000)}`,
+        `${token.address}-${principal}-${Date.now() - (Date.now() % 5000)}`,
     );
 
     // Check if any of these exact tokens are already being fetched
@@ -172,7 +110,7 @@ export class IcrcService {
     requestKeys.forEach((key) => {
       this.pendingRequests.set(key, promise);
       // Clean up after 5 seconds
-      setTimeout(() => this.pendingRequests.delete(key), 200);
+      setTimeout(() => this.pendingRequests.delete(key), 250);
     });
 
     try {
@@ -192,8 +130,8 @@ export class IcrcService {
   >();
 
   private static async _batchGetBalances(
-    tokens: FE.Token[],
-    principal: Principal,
+    tokens: Kong.Token[],
+    principal: string,
   ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
     const subaccount = auth.pnp?.account?.subaccount
@@ -202,11 +140,11 @@ export class IcrcService {
 
     // Group tokens by subnet to minimize subnet key fetches
     const tokensBySubnet = tokens.reduce((acc, token) => {
-      const subnet = token.canister_id.split("-")[1];
+      const subnet = token.address.split("-")[1];
       if (!acc.has(subnet)) acc.set(subnet, []);
       acc.get(subnet).push(token);
       return acc;
-    }, new Map<string, FE.Token[]>());
+    }, new Map<string, Kong.Token[]>());
 
     // Process subnets in parallel with a higher concurrency limit
     const subnetEntries = Array.from(tokensBySubnet.entries());
@@ -217,7 +155,7 @@ export class IcrcService {
             try {
               const balance = await this.getIcrc1Balance(
                 token,
-                principal,
+                Principal.fromText(principal),
                 subaccount,
               );
               return { token, balance };
@@ -231,13 +169,13 @@ export class IcrcService {
           });
 
           // Increase concurrency limit for token balance fetching
-          const balances = await this.withConcurrencyLimit(operations, 25);
+          const balances = await this.withConcurrencyLimit(operations, 30);
 
           balances.forEach((result) => {
             if (result) {
               const { token, balance } = result;
               results.set(
-                token.canister_id,
+                token.address,
                 typeof balance === "bigint" ? balance : balance.default,
               );
             }
@@ -251,46 +189,44 @@ export class IcrcService {
   }
 
   public static async checkAndRequestIcrc2Allowances(
-    token: FE.Token,
+    token: Kong.Token,
     payAmount: bigint,
     spender: string = KONG_BACKEND_PRINCIPAL,
   ): Promise<bigint | null> {
-    if (!token?.canister_id) {
-      throw new Error("Invalid token: missing canister_id");
+    if (!token?.address) {
+      throw new Error("Invalid token: missing address");
     }
 
     try {
       const expiresAt =
-        BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000);
+        BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000); // 29 days
+      const authStore = get(auth);
 
       // Calculate total amount including fee
       const tokenFee = token.fee_fixed
         ? BigInt(token.fee_fixed.toString().replace("_", ""))
         : 0n;
-      const totalAmount = payAmount + tokenFee;
+      const totalAmount = payAmount + tokenFee * 2n;
 
       // Check current allowance
       const currentAllowance = allowanceStore.getAllowance(
-        token.canister_id,
-        auth.pnp.account.owner.toString(),
+        token.address,
+        authStore.account.owner,
         spender,
       );
 
-      if (currentAllowance && currentAllowance.amount >= totalAmount) {
+      if (currentAllowance && currentAllowance.amount > totalAmount) {
         return currentAllowance.amount;
       }
 
-      // Use a large allowance value (1 trillion tokens) instead of trying to parse total_supply
-      // This is a common practice for approvals - just use a very large number
-      // We multiply by 10^decimals to account for token decimals
-      const largeAllowance = 1000000000000n * BigInt(10 ** token.decimals);
-      
       const approveArgs = {
         fee: [],
         memo: [],
         from_subaccount: [],
         created_at_time: [],
-        amount: largeAllowance,
+        amount: token?.metrics?.total_supply
+          ? BigInt(token.metrics.total_supply.toString().replace("_", ""))
+          : totalAmount * 10n,
         expected_allowance: [],
         expires_at: [expiresAt],
         spender: {
@@ -299,19 +235,15 @@ export class IcrcService {
         },
       };
 
-      const approveActor = auth.pnp.getActor(
-        token.canister_id,
-        canisterIDLs.icrc2,
-        {
-          anon: false,
-          requiresSigning: true,
-        },
-      );
+      const approveActor = auth.getActor(token.address, canisterIDLs.icrc2, {
+        anon: false,
+        requiresSigning: true,
+      });
 
       const result = await approveActor.icrc2_approve(approveArgs);
-      allowanceStore.addAllowance(token.canister_id, {
-        address: token.canister_id,
-        wallet_address: auth.pnp.account.owner.toString(),
+      allowanceStore.addAllowance(token.address, {
+        address: token.address,
+        wallet_address: authStore.account.owner,
         spender: spender,
         amount: approveArgs.amount,
         timestamp: Date.now(),
@@ -333,39 +265,9 @@ export class IcrcService {
     }
   }
 
-  public static async checkIcrc2Allowance(
-    token: FE.Token,
-    owner: Principal,
-    spender: Principal,
-  ): Promise<bigint> {
+  public static async getTokenFee(token: Kong.Token): Promise<bigint> {
     try {
-      const actor = auth.getActor(token.canister_id, canisterIDLs.icrc2, {
-        anon: true,
-        requiresSigning: false,
-      });
-      const result = await actor.icrc2_allowance({
-        account: { owner, subaccount: [] },
-        spender: {
-          owner: spender,
-          subaccount: [],
-        },
-      });
-      allowanceStore.addAllowance(token.canister_id, {
-        address: token.canister_id,
-        wallet_address: owner.toString(),
-        spender: spender.toString(),
-        amount: BigInt(result.allowance),
-        timestamp: Date.now(),
-      });
-      return BigInt(result.allowance);
-    } catch (error) {
-      this.handleError("checkIcrc2Allowance", error);
-    }
-  }
-
-  public static async getTokenFee(token: FE.Token): Promise<bigint> {
-    try {
-      const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, {
+      const actor = await auth.getActor(token.address, canisterIDLs.icrc1, {
         anon: true,
         requiresSigning: false,
       });
@@ -377,7 +279,7 @@ export class IcrcService {
   }
 
   public static async transfer(
-    token: FE.Token,
+    token: Kong.Token,
     to: string | Principal | IcrcAccount,
     amount: bigint,
     opts: {
@@ -399,7 +301,7 @@ export class IcrcService {
         if (wallet === "oisy") {
           return { Err: "Oisy subaccount transfer is temporarily disabled." };
         }
-        const ledgerActor = auth.getActor(token.canister_id, canisterIDLs.ICP, {
+        const ledgerActor = auth.getActor(token.address, canisterIDLs.ICP, {
           anon: false,
           requiresSigning: true,
         });
@@ -416,11 +318,11 @@ export class IcrcService {
             ? [{ timestamp_nanos: opts.createdAtTime }]
             : [],
         };
-        
+
         const result = await ledgerActor.transfer(transfer_args);
-        if ('Err' in result) {
+        if ("Err" in result) {
           const stringifiedError = JSON.stringify(result.Err, (_, value) =>
-             typeof value === 'bigint' ? value.toString() : value
+            typeof value === "bigint" ? value.toString() : value,
           );
           return { Err: JSON.parse(stringifiedError) };
         }
@@ -428,7 +330,7 @@ export class IcrcService {
       }
 
       // For all ICRC standard transfers (Principal or ICRC1 Account)
-      const actor = auth.getActor(token.canister_id, canisterIDLs["icrc1"], {
+      const actor = auth.getActor(token.address, canisterIDLs["icrc1"], {
         anon: false,
         requiresSigning: true,
       });
@@ -466,7 +368,7 @@ export class IcrcService {
     } catch (error) {
       console.error("Transfer error:", error);
       const stringifiedError = JSON.stringify(error, (_, value) =>
-        typeof value === 'bigint' ? value.toString() : value
+        typeof value === "bigint" ? value.toString() : value,
       );
       return { Err: JSON.parse(stringifiedError) };
     }

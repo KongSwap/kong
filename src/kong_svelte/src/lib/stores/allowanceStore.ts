@@ -29,7 +29,7 @@ function createAllowanceStore() {
   const getCurrentWalletId = (): string => {
     const wallet = get(auth);
     // Type assertion to handle the unknown type
-    return (wallet as any)?.account?.owner?.toString() || "anonymous";
+    return (wallet as any)?.account?.owner || "anonymous";
   };
 
   // Generate the storage key for the current wallet

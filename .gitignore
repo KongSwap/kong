@@ -140,9 +140,4 @@ settings.*.json
 canister_ids.json
 
 *.env.doppler
-
-# personal files
-TODO.md
-
-# pocket-ic
-pocket-ic
+.cursor/rules/svelte-frontend-rules.mdc

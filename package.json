@@ -19,15 +19,14 @@
     "cli:build": "npm run build --workspace=@kong/cli"
   },
   "dependencies": {
-    "@dfinity/agent": "2.3.0",
-    "@dfinity/auth-client": "2.3.0",
-    "@dfinity/candid": "2.3.0",
-    "@dfinity/ic-management": "^6.0.5",
-    "@dfinity/identity": "2.3.0",
-    "@dfinity/ledger-icp": "2.6.10",
-    "@dfinity/nns": "8.3.1",
-    "@dfinity/principal": "2.3.0",
-    "@dfinity/utils": "^2.12.0",
+    "@dfinity/agent": "2.4.1",
+    "@dfinity/auth-client": "2.4.1",
+    "@dfinity/candid": "2.4.1",
+    "@dfinity/identity": "2.4.1",
+    "@dfinity/ledger-icp": "2.6.12",
+    "@dfinity/nns": "8.4.0",
+    "@dfinity/principal": "2.4.1",
+    "@dfinity/utils": "2.12.0",
     "@types/three": "^0.175.0",
     "three": "^0.175.0"
   },
@@ -35,9 +34,7 @@
     "@kong/cli": "file:src/cli"
   },
   "workspaces": [
-    "src/kong_svelte",
-    "src/cli"
+    "src/kong_svelte"
   ],
-  "type": "module",
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "type": "module"
 }

@@ -20,16 +20,6 @@ jobs:
         with:
           node-version: 22
 
-      - name: Cache node modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            kong_svelte/node_modules
-            kong_svelte/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('kong_svelte/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
       - name: Install kong_svelte dependencies
         run: npm -w kong_svelte install
 

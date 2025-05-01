@@ -3,19 +3,9 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { Principal } from "@dfinity/principal";
 
 // Constants
-const BATCH_SIZE = 25;
+const BATCH_SIZE = 40;
 const BATCH_DELAY_MS = 100;
 const DEFAULT_PRICE = 0;
-
-// Types
-interface TokenBalance {
-  in_tokens: bigint;
-  in_usd: string;
-}
-
-interface TokenWithTimestamp extends FE.Token {
-  timestamp?: number;
-}
 
 // Helper functions
 function convertPrincipalId(principalId: string | Principal): Principal {
@@ -40,12 +30,12 @@ function formatTokenBalance(balance: bigint | { default: bigint }, decimals: num
 
 // Main functions
 export async function fetchBalance(
-  token: FE.Token,
+  token: Kong.Token,
   principalId?: string,
   forceRefresh = false,
 ): Promise<TokenBalance> {
   try {
-    if (!token?.canister_id || !principalId) {
+    if (!token?.address || !principalId) {
       return {
         in_tokens: BigInt(0),
         in_usd: formatToNonZeroDecimal(0),
@@ -65,8 +55,8 @@ export async function fetchBalance(
 }
 
 async function processBatch(
-  batch: TokenWithTimestamp[],
-  principal: Principal,
+  batch: Kong.Token[],
+  principal: string,
 ): Promise<Map<string, bigint>> {
   try {
     const batchBalances = await IcrcService.batchGetBalances(batch, principal);
@@ -81,7 +71,7 @@ async function processBatch(
 }
 
 export async function fetchBalances(
-  tokens?: FE.Token[],
+  tokens?: Kong.Token[],
   principalId?: string,
   forceRefresh = false,
 ): Promise<Record<string, TokenBalance>> {
@@ -91,7 +81,7 @@ export async function fetchBalances(
   }
 
   try {
-    const principal = convertPrincipalId(principalId);
+    const principal = principalId;
     const results = new Map<string, bigint>();
 
     // Process tokens in batches
@@ -113,14 +103,14 @@ export async function fetchBalances(
 
     // Process results into final format
     return tokens.reduce((acc, token) => {
-      const balance = results.get(token.canister_id);
+      const balance = results.get(token.address);
       if (balance !== undefined) {
         const tokenBalance = formatTokenBalance(
           balance,
           token.decimals,
           token?.metrics?.price ?? DEFAULT_PRICE
         );
-        acc[token.canister_id] = tokenBalance;
+        acc[token.address] = tokenBalance;
       }
       return acc;
     }, {} as Record<string, TokenBalance>);

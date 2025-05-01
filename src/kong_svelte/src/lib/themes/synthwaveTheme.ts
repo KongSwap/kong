@@ -47,7 +47,7 @@ export const synthwaveTheme: ThemeDefinition = {
     textDisabled: '#7E6D9E',     // Muted purple
     textLight: '#FFFFFF',        // White text
     textDark: '#16004A',         // Dark text
-    textOnPrimary: '#FFFFFF',    // White text on primary
+    textOnPrimary: '#16004A',    // White text on primary
     textAccentGreen: '#36F9B3',  // Same as accent green
     textAccentRed: '#FF3864',    // Same as accent red
     textAccentBlue: '#4D6CFA',   // Same as accent blue
@@ -61,6 +61,8 @@ export const synthwaveTheme: ThemeDefinition = {
     swapPanelBorder: '1px solid rgba(255, 54, 171, 0.3)', // Pink border
     swapPanelShadow: '0 0 30px rgba(255, 54, 171, 0.15), 0 0 10px rgba(79, 10, 190, 0.2)', // Pink/purple glow
     swapPanelInputsRounded: true,
+    transparentSwapPanel: true,
+    transparentPanel: true,
     
     // Borders
     border: '#401C7A',      // Dark purple border
@@ -99,6 +101,22 @@ export const synthwaveTheme: ThemeDefinition = {
     primaryButtonText: '#FFFFFF',   // White text
     primaryButtonBorder: '1px solid', // Standard border width
     primaryButtonBorderColor: 'rgba(255, 54, 171, 0.7)', // More pronounced pink border
+    
+    // Swap Button styling - refined retro-futuristic neon style
+    swapButtonPrimaryGradientStart: '#FF36AB', // Hot pink start
+    swapButtonPrimaryGradientEnd: '#E62E98',   // Slightly darker pink end for more cohesive look
+    swapButtonErrorGradientStart: '#FF3864',   // Bright red/pink start
+    swapButtonErrorGradientEnd: '#E62954',     // Darker red end
+    swapButtonProcessingGradientStart: '#9D54FF', // Purple start
+    swapButtonProcessingGradientEnd: '#7A1F7C',   // Darker purple end
+    swapButtonBorderColor: 'rgba(255, 54, 171, 0.6)', // More visible pink border
+    swapButtonGlowColor: 'rgba(255, 54, 171, 0.8)', // Softer pink glow
+    swapButtonShineColor: 'rgba(255, 255, 255, 0.3)', // White shine for better contrast
+    swapButtonReadyGlowStart: '#9D54FF', // Bright purple start
+    swapButtonReadyGlowEnd: '#7A1F7C',   // Darker purple end
+    swapButtonTextColor: '#FFFFFF', // White text
+    swapButtonRoundness: 'rounded-md', // Matching panel roundness
+    swapButtonShadow: '0 0 20px rgba(255, 54, 171, 0.5), 0 0 10px rgba(157, 84, 255, 0.3)', // Enhanced pink/purple glow
     
     // Background configuration - sunset gradient
     backgroundType: 'gradient',

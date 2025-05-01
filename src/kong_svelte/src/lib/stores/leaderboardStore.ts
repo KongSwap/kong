@@ -22,7 +22,7 @@ interface FullLeaderboardResponse {
 interface LeaderboardState {
   leaderboardData: LeaderboardEntry[];
   expandedRowIndex: number | null;
-  tradedTokens: Record<number, FE.Token[]>;
+  tradedTokens: Record<number, Kong.Token[]>;
   loadingTokens: Record<number, boolean>;
   tokenErrors: Record<number, string | null>;
   userDetails: Record<number, UserDetails | null>;

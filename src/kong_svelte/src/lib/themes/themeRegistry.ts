@@ -6,6 +6,7 @@ import { plainBlackTheme } from './plainBlackTheme';
 import { nordTheme } from './nordTheme';
 import { lightTheme } from './lightTheme';
 import { synthwaveTheme } from './synthwaveTheme';
+import { dragginzTheme } from './dragginzTheme';
 
 // Collection of all available themes
 const themes: ThemeDefinition[] = [
@@ -15,6 +16,7 @@ const themes: ThemeDefinition[] = [
   plainBlackTheme, // Plain black theme
   nordTheme,       // Nord-inspired theme
   synthwaveTheme,  // Synthwave sunset theme
+  dragginzTheme,   // Dragginz fantasy theme
 ];
 
 /**

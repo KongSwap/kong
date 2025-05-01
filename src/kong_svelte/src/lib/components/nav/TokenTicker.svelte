@@ -9,7 +9,7 @@
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
 
-  let hoveredToken: FE.Token | null = null;
+  let hoveredToken: Kong.Token | null = null;
   let hoverTimeout: NodeJS.Timeout;
   let chartPosition = { x: 0, y: 0 };
   let isChartHovered = false;
@@ -19,13 +19,13 @@
     { class: string; timeout: NodeJS.Timeout }
   >();
   let isVisible = true;
-  let quoteToken: FE.Token | null = null;
-  let tickerTokens: FE.Token[] = [];
-  let icpToken: FE.Token | null = null;
-  let ckUSDCToken: FE.Token | null = null;
+  let quoteToken: Kong.Token | null = null;
+  let tickerTokens: Kong.Token[] = [];
+  let icpToken: Kong.Token | null = null;
+  let ckUSDCToken: Kong.Token | null = null;
   let actualQuoteToken: 'ckUSDT' | 'ICP' = 'ckUSDT';
   let previousPrices = new Map<string, number>();
-  let pendingUpdates = new Set<FE.Token>();
+  let pendingUpdates = new Set<Kong.Token>();
   let updateScheduled = false;
   let tickerWidth = 0;
   let contentWidth = 0;
@@ -48,8 +48,8 @@
       ckUSDCToken = tokens.find(t => t.symbol === "ckUSDC") || null;
 
       // Check for new tokens or rearrangement
-      const newTokenIds = sortedTokens.map(t => t.canister_id).join(',');
-      const currentTokenIds = tickerTokens.map(t => t.canister_id).join(',');
+      const newTokenIds = sortedTokens.map(t => t.address).join(',');
+      const currentTokenIds = tickerTokens.map(t => t.address).join(',');
       const hasNewTokens = newTokenIds !== currentTokenIds;
 
       // Handle price updates using the batch update mechanism
@@ -65,12 +65,12 @@
         tickerTokens = sortedTokens;
       } else {
         // Create a map of new token data by canister_id
-        const tokenMap = new Map(sortedTokens.map(t => [t.canister_id, t]));
+        const tokenMap = new Map(sortedTokens.map(t => [t.address, t]));
         
         // Update existing token data to preserve references where possible
         // but ensure metrics are updated
         tickerTokens = tickerTokens.map(token => {
-          const newData = tokenMap.get(token.canister_id);
+          const newData = tokenMap.get(token.address);
           if (newData && newData.metrics) {
             return { ...token, metrics: { ...newData.metrics } };
           }
@@ -94,7 +94,7 @@
 
   function processPendingUpdates() {
     pendingUpdates.forEach((token) => {
-      const prevPrice = previousPrices.get(token.canister_id);
+      const prevPrice = previousPrices.get(token.address);
       const currentPrice = Number(token.metrics?.price || 0);
 
       if (prevPrice !== undefined && prevPrice !== currentPrice) {
@@ -102,23 +102,23 @@
           currentPrice > prevPrice ? "flash-green" : "flash-red";
 
         // Clear existing timeout if any
-        if (priceFlashStates.has(token.canister_id)) {
-          clearTimeout(priceFlashStates.get(token.canister_id)!.timeout);
+        if (priceFlashStates.has(token.address)) {
+          clearTimeout(priceFlashStates.get(token.address)!.timeout);
         }
 
         // Set new flash state
         const timeout = setTimeout(() => {
-          if (priceFlashStates.has(token.canister_id)) {
-            priceFlashStates.delete(token.canister_id);
+          if (priceFlashStates.has(token.address)) {
+            priceFlashStates.delete(token.address);
             priceFlashStates = priceFlashStates; // Trigger reactivity
           }
         }, 2000);
 
-        priceFlashStates.set(token.canister_id, { class: flashClass, timeout });
+        priceFlashStates.set(token.address, { class: flashClass, timeout });
       }
       
       // Always update the previous price for next comparison
-      previousPrices.set(token.canister_id, currentPrice);
+      previousPrices.set(token.address, currentPrice);
     });
 
     pendingUpdates.clear();
@@ -127,7 +127,7 @@
     }
   }
 
-  function updatePriceFlash(token: FE.Token) {
+  function updatePriceFlash(token: Kong.Token) {
     pendingUpdates.add(token);
     scheduleUpdate();
   }
@@ -222,7 +222,7 @@
     };
   });
 
-  function handleMouseEnter(event: MouseEvent, token: FE.Token) {
+  function handleMouseEnter(event: MouseEvent, token: Kong.Token) {
     if (!isVisible) return;
 
     const element = event.currentTarget as HTMLElement;
@@ -277,11 +277,11 @@
       on:mouseenter={() => (isTickerHovered = true)}
       on:mouseleave={() => (isTickerHovered = false)}
     >
-      {#each tickerTokens as token, index (token.canister_id)}
+      {#each tickerTokens as token, index (token.address)}
         {#if token.metrics}
           <button
             class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(
-              token.canister_id,
+              token.address,
             )?.class || ''}"
             on:click={() => goto(`/stats/${token.address}`)}
             on:mouseenter={(e) => handleMouseEnter(e, token)}
@@ -308,11 +308,11 @@
           </button>
         {/if}
       {/each}
-      {#each tickerTokens as token, index (`${token.canister_id}-duplicate`)}
+      {#each tickerTokens as token, index (`${token.address}-duplicate`)}
         {#if token.metrics}
           <button
             class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(
-              token.canister_id,
+              token.address,
             )?.class || ''}"
             on:click={() => goto(`/stats/${token.address}`)}
             on:mouseenter={(e) => handleMouseEnter(e, token)}

@@ -140,11 +140,11 @@
   }
   
   function getErrorStyle(): string {
-    return `background: linear-gradient(135deg, ${getErrorGradientStart()} 0%, ${getErrorGradientEnd()} 100%); box-shadow: none;`;
+    return `background: linear-gradient(135deg, ${getErrorGradientStart()} 0%, ${getErrorGradientEnd()} 100%); border-color: ${getBorderColor()}; box-shadow: none; opacity: 1;`;
   }
   
   function getProcessingStyle(): string {
-    return `background: linear-gradient(135deg, ${getProcessingGradientStart()} 0%, ${getProcessingGradientEnd()} 100%); cursor: wait; opacity: 0.8;`;
+    return `background: linear-gradient(135deg, ${getProcessingGradientStart()} 0%, ${getProcessingGradientEnd()} 100%); border-color: ${getBorderColor()}; cursor: wait; opacity: 0.8;`;
   }
 </script>
 
@@ -158,7 +158,7 @@
 >
   <div class="relative z-10 flex items-center justify-center gap-2 w-full">
     {#if isProcessing || isLoading}
-      <div class="w-[22px] h-[22px] rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+      <div class="w-[22px] h-[22px] rounded-full border-2 border-white/10 border-t-white animate-spin"></div>
     {/if}
     <span class="font-semibold text-2xl tracking-wide flex items-center justify-center text-center overflow-hidden" style="color: {getTextColor()}; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);">
       {#if text.length > 20}

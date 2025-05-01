@@ -9,7 +9,6 @@
       "type": "custom",
       "build": "bash ./scripts/build_kong_backend.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_backend.wasm",
-      "specified_id": "2ipq2-uqaaa-aaaar-qailq-cai",
       "metadata": [
         {
           "name": "candid:service"
@@ -25,7 +24,6 @@
       "type": "custom",
       "build": "bash ./scripts/build_kong_data.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_data.wasm",
-      "specified_id": "cbefx-hqaaa-aaaar-qakrq-cai",
       "metadata": [
         {
           "name": "candid:service"
@@ -64,7 +62,6 @@
       "type": "custom",
       "build": "bash ./scripts/build_kong_faucet.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_faucet.wasm",
-      "specified_id": "ohr23-xqaaa-aaaar-qahqq-cai",
       "metadata": [
         {
           "name": "candid:service"
@@ -94,7 +91,6 @@
       "wasm": "target/wasm32-unknown-unknown/release/prediction_markets_backend.wasm",
       "package": "prediction_markets_backend",
       "build": "sh scripts/build_rust_canister.sh prediction_markets_backend",
-      "specified_id": "xidgj-jyaaa-aaaad-qghpq-cai",
       "declarations": {
         "node_compatibility": true
       },
@@ -156,7 +152,7 @@
         }
       ]
     },
-    "kskong_ledger": {
+    "kong_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
@@ -166,24 +162,21 @@
         }
       ]
     },
-    "token_backend": {
-      "candid": "src/token_backend/token_backend.did",
-      "package": "token_backend",
+    "ic_siws_provider": {
       "type": "custom",
-      "build": "sh scripts/build_rust_canister.sh token_backend",
-      "wasm": "target/wasm32-unknown-unknown/release/token_backend.wasm",
+      "candid": "src/ic_siws_provider/ic_siws_provider.did",
+      "main": "src/ic_siws_provider/src/lib.rs",
+      "wasm": "target/wasm32-unknown-unknown/release/ic_siws_provider.wasm",
+      "package": "ic_siws_provider",
+      "build": "sh scripts/build_rust_canister.sh ic_siws_provider",
+      "specified_id": "guktk-fqaaa-aaaao-a4goa-cai",
+      "declarations": {
+        "node_compatibility": true
+      },
       "metadata": [
-        { "name": "candid:service" }
-      ]
-    },
-    "miner": {
-      "candid": "src/miner/src/miner.did",
-      "package": "miner",
-      "type": "custom",
-      "build": "sh scripts/build_rust_canister.sh miner",
-      "wasm": "target/wasm32-unknown-unknown/release/miner.wasm",
-      "metadata": [
-        { "name": "candid:service" }
+        {
+          "name": "candid:service"
+        }
       ]
     }
   },

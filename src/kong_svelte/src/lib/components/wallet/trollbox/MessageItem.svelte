@@ -63,7 +63,7 @@
   // Derived values
   let isCurrentUser = $derived(
     $auth.isConnected &&
-      $auth.account.owner.toString() === message.principal.toText(),
+      $auth.account.owner === message.principal.toText(),
   );
   let isBanned = $derived(bannedUsers.has(message.principal.toText()));
   let banTimeLeft = $derived(
@@ -104,7 +104,7 @@
         const tokens = await fetchTokensByCanisterId(canisterIds);
         const newCache = new Map(tokenCache);
         tokens.forEach((token) => {
-          newCache.set(token.canister_id, token);
+          newCache.set(token.address, token);
         });
         tokenCache = newCache; // Trigger reactivity by assigning new Map
       } catch (error) {

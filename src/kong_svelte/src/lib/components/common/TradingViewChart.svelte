@@ -14,8 +14,8 @@
   const props = $props<{
     poolId?: number;
     symbol?: string;
-    quoteToken: FE.Token;
-    baseToken: FE.Token;
+    quoteToken: Kong.Token;
+    baseToken: Kong.Token;
   }>();
   
   // DOM elements and chart state
@@ -156,8 +156,8 @@
   $effect(() => {
     if (!state.isMounted) return;
     
-    const currentQuoteId = props.quoteToken?.canister_id;
-    const currentBaseId = props.baseToken?.canister_id;
+    const currentQuoteId = props.quoteToken?.address;
+    const currentBaseId = props.baseToken?.address;
     const hasTokenChange = 
       currentQuoteId !== state.previousTokenIds.quote || 
       currentBaseId !== state.previousTokenIds.base;
@@ -173,12 +173,10 @@
       // Use in-place update if possible
       if (chart && chart._ready && !hasTokenChange) {
         // If only pool changed but tokens are the same, we can do a lightweight update
-        console.log("[Chart] Pool changed, updating in place");
         state.isUpdatingChart = true;
         updateChartData();
       } else if (chart && hasTokenChange) {
         // If tokens changed, we need to recreate the chart
-        console.log("[Chart] Tokens changed, recreating chart");
         chart.remove();
         chartStore.set(null);
         debouncedFetchData();
@@ -239,7 +237,7 @@
   // Initialize chart
   const initChart = async () => {
     if (state.isInitializingChart || !chartContainer || 
-        !props.quoteToken?.token_id || !props.baseToken?.token_id) {
+        !props.quoteToken?.id || !props.baseToken?.id) {
       state.isLoading = false;
       state.isInitializingChart = false;
       return;
@@ -248,7 +246,7 @@
     state.isInitializingChart = true;
     
     try {
-      const dimensions = await checkDimensions();
+      const dimensions = await checkDimensions();      
       await loadTradingViewLibrary();
       
       // Get current price and configure chart
@@ -259,8 +257,8 @@
 
       // Create datafeed
       const datafeed = new KongDatafeed(
-        props.quoteToken.token_id, 
-        props.baseToken.token_id,
+        props.quoteToken.id, 
+        props.baseToken.id,
         price, quoteDecimals, baseDecimals
       );
 
@@ -295,11 +293,11 @@
         updateTradingViewTheme();
       });
 
-      widget.onError = () => {
+      widget.onError = (err) => {
         state.isLoading = state.isInitializingChart = false;
       };
     } catch (error) {
-      console.error("[Chart] Failed to initialize:", error);
+      console.error("[Chart Debug] Failed to initialize:", error);
       state.isLoading = state.isInitializingChart = false;
     }
   };
@@ -344,8 +342,8 @@
 
       if (!bestPool?.pool_id) {
         console.warn("[Chart] No valid pool found for tokens", {
-          quoteToken: props.quoteToken?.token_id,
-          baseToken: props.baseToken?.token_id,
+          quoteToken: props.quoteToken?.id,
+          baseToken: props.baseToken?.id,
           availablePools: state.pools.length
         });
         state.hasNoData = true;
@@ -359,9 +357,20 @@
       const now = Math.floor(Date.now() / 1000);
       const startTime = now - 90 * 24 * 60 * 60; // 90 days
       
+      // Ensure we have valid numeric IDs before fetching
+      const quoteTokenNumericId = props.quoteToken?.id;
+      const baseTokenNumericId = props.baseToken?.id;
+
+      if (typeof quoteTokenNumericId !== 'number' || typeof baseTokenNumericId !== 'number') {
+        state.hasNoData = true;
+        state.isLoading = false;
+        state.isFetchingData = false;
+        return; // Prevent API call with invalid IDs
+      }
+      
       const candleData = await fetchChartData(
-        props.quoteToken?.token_id || 1,
-        props.baseToken?.token_id || 10,
+        quoteTokenNumericId, // Pass numeric ID
+        baseTokenNumericId,  // Pass numeric ID
         startTime, now, "60" // 1 hour candles
       );
 
@@ -383,7 +392,7 @@
         }
       }
     } catch (error) {
-      console.error("[Chart] Failed to fetch data:", error);
+      console.error("[Chart Debug] Failed to fetch data:", error);
       state.hasNoData = true;
       if (chart?.remove) {
         chart.remove();

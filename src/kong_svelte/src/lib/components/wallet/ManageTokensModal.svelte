@@ -17,8 +17,8 @@
   }>();
 
   // State
-  let allTokens = $state<FE.Token[]>([]);
-  let filteredTokens = $state<FE.Token[]>([]);
+  let allTokens = $state<Kong.Token[]>([]);
+  let filteredTokens = $state<Kong.Token[]>([]);
   let searchQuery = $state("");
   let isLoading = $state(true);
   let activeTab = $state<"enabled" | "all">("enabled");
@@ -56,11 +56,11 @@
       // Mark which tokens have balances
       tokensWithBalances = new Set();
       for (const token of allTokens) {
-        if (!token.canister_id) continue;
+        if (!token.address) continue;
         
-        const balanceInfo = $currentUserBalancesStore?.[token.canister_id];
+        const balanceInfo = $currentUserBalancesStore?.[token.address];
         if (balanceInfo && balanceInfo.in_tokens > 0n) {
-          tokensWithBalances.add(token.canister_id);
+          tokensWithBalances.add(token.address);
         }
       }
     } catch (error) {
@@ -77,10 +77,10 @@
     // Filter tokens based on current tab and search query
     const filtered = allTokens.filter(token => {
       // Skip tokens without canister_id
-      if (!token.canister_id) return false;
+      if (!token.address) return false;
       
       // Check if token matches the active tab
-      const isEnabled = enabledTokenIds.has(token.canister_id);
+      const isEnabled = enabledTokenIds.has(token.address);
       if (activeTab === "enabled" && !isEnabled) return false;
       
       // Search filter
@@ -89,7 +89,7 @@
         return (
           token.name?.toLowerCase().includes(query) ||
           token.symbol?.toLowerCase().includes(query) ||
-          token.canister_id.toLowerCase().includes(query)
+          token.address.toLowerCase().includes(query)
         );
       }
       
@@ -98,15 +98,15 @@
     
     // Sort tokens: enabled first, then by name
     filtered.sort((a, b) => {
-      const aEnabled = enabledTokenIds.has(a.canister_id);
-      const bEnabled = enabledTokenIds.has(b.canister_id);
+      const aEnabled = enabledTokenIds.has(a.address);
+      const bEnabled = enabledTokenIds.has(b.address);
       
       if (aEnabled && !bEnabled) return -1;
       if (!aEnabled && bEnabled) return 1;
       
       // If both enabled or both disabled, sort by balance (descending)
-      const aHasBalance = tokensWithBalances.has(a.canister_id);
-      const bHasBalance = tokensWithBalances.has(b.canister_id);
+      const aHasBalance = tokensWithBalances.has(a.address);
+      const bHasBalance = tokensWithBalances.has(b.address);
       
       if (aHasBalance && !bHasBalance) return -1;
       if (!aHasBalance && bHasBalance) return 1;
@@ -119,42 +119,42 @@
     filteredTokens = filtered;
   }
   
-  function toggleToken(token: FE.Token) {
-    if (!token.canister_id) return;
+  function toggleToken(token: Kong.Token) {
+    if (!token.address) return;
     
     // Check if token is currently enabled using enabledTokens directly
-    const isCurrentlyEnabled = $userTokens.enabledTokens.has(token.canister_id);
+    const isCurrentlyEnabled = $userTokens.enabledTokens.has(token.address);
 
     if (isCurrentlyEnabled) {
-      userTokens.disableToken(token.canister_id);
+      userTokens.disableToken(token.address);
     } else {  
       userTokens.enableToken(token);
     }
   }
   
-  function getFormattedBalance(token: FE.Token): string {
-    if (!token.canister_id) return "0";
+  function getFormattedBalance(token: Kong.Token): string {
+    if (!token.address) return "0";
     
-    const balanceInfo = $currentUserBalancesStore?.[token.canister_id];
+    const balanceInfo = $currentUserBalancesStore?.[token.address];
     if (!balanceInfo || !balanceInfo.in_tokens) return "0";
     
     return formatBalance(balanceInfo.in_tokens, token.decimals || 0);
   }
   
   // Check if token is enabled
-  function isTokenEnabled(token: FE.Token): boolean {
-    if (!token.canister_id) return false;
-    return $userTokens.enabledTokens.has(token.canister_id);
+  function isTokenEnabled(token: Kong.Token): boolean {
+    if (!token.address) return false;
+    return $userTokens.enabledTokens.has(token.address);
   }
   
   // Check if token has a balance
-  function hasBalance(token: FE.Token): boolean {
-    if (!token.canister_id) return false;
-    return tokensWithBalances.has(token.canister_id);
+  function hasBalance(token: Kong.Token): boolean {
+    if (!token.address) return false;
+    return tokensWithBalances.has(token.address);
   }
   
   // Handle newly added token
-  function handleTokenAdded(event: CustomEvent<FE.Token>) {
+  function handleTokenAdded(event: CustomEvent<Kong.Token>) {
     showAddNewTokenModal = false;
     
     // Refresh token list
@@ -262,7 +262,7 @@
                     <span class="text-sm text-kong-text-secondary">{token.name}</span>
                   </div>
                   <div class="text-xs text-kong-text-secondary/70 font-mono mt-0.5">
-                    {token.canister_id}
+                    {token.address}
                   </div>
                 </div>
               </div>
