@@ -54,7 +54,8 @@
       );
       kongLedgerActor = await auth.getActor(
         KONG_LEDGER_CANISTER_ID,
-        canisterIDLs.icrc2
+        canisterIDLs.icrc2,
+        { anon: true, host: 'https://icp0.io' } // Use anonymous actor for fetching fee
       );
     } catch (error) {
       console.error("Error initializing actors:", error);

@@ -4,7 +4,7 @@ import { getIcHost, isLocalDevelopment, isDfxLocal } from "./environment";
 // In-memory cache for anonymous actors
 const actorCache = new Map<string, any>();
 
-export const createAnonymousActorHelper = (canisterId: string, idl: any) => {
+export const createAnonymousActorHelper = (canisterId: string, idl: any, host?: string) => {
   const cacheKey = `${canisterId}-${idl.name || "anonymous"}`;
   
   // Clear cache for testing/debugging in development
@@ -16,13 +16,13 @@ export const createAnonymousActorHelper = (canisterId: string, idl: any) => {
     return actorCache.get(cacheKey);
   }
 
-  // Get the host from our environment utility
-  const host = getIcHost();
+  // Get the host from our environment utility, or use the provided host
+  const agentHost = host || getIcHost();
   
-  console.debug(`[Actor] Creating agent for ${canisterId} with host ${host}`);
+  console.debug(`[Actor] Creating agent for ${canisterId} with host ${agentHost}`);
   
   const agent = HttpAgent.createSync({
-    host: host,
+    host: agentHost,
   });
 
   // Fetch root key in local development

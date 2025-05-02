@@ -48,7 +48,7 @@ function createAuthStore(pnp: PNP) {
         return null;
       }
     },
-    
+
     async set(key: keyof typeof STORAGE_KEYS, value: string) {
       if (!browser) return;
       try {
@@ -57,7 +57,7 @@ function createAuthStore(pnp: PNP) {
         console.error(`Error setting ${key} in storage:`, error);
       }
     },
-    
+
     async clear() {
       if (!browser) return;
       try {
@@ -119,7 +119,7 @@ function createAuthStore(pnp: PNP) {
             await new Promise(resolve => setTimeout(resolve, 500));
             return await this.connect(walletId, true);
           }
-          
+
           console.error("Connection failed after retry.");
           await this.disconnect();
           throw new Error("Invalid connection result after retry. Please try again. If the issue persists, reload the page.");
@@ -144,15 +144,15 @@ function createAuthStore(pnp: PNP) {
         }
 
         // Update the store state, ensuring account.owner is the Principal
-        set({ 
-          isConnected: true, 
+        set({
+          isConnected: true,
           account: { ...result, owner: principalOwner }, // Store the Principal object
-          isInitialized: true 
+          isInitialized: true
         });
-        
+
         // Track successful connection using the utility function
-        trackEvent(AnalyticsEvent.ConnectWallet, { 
-          wallet_id: walletId 
+        trackEvent(AnalyticsEvent.ConnectWallet, {
+          wallet_id: walletId
         });
 
         // Update state and storage
@@ -170,8 +170,8 @@ function createAuthStore(pnp: PNP) {
             // Use principalOwner which is in scope and is the correct Principal object
             // Convert Principal to string for functions expecting string representation
             const ownerString = principalOwner.toText();
-            await userTokens.setPrincipal(ownerString); 
-            await fetchBalances(get(userTokens).tokens, ownerString, true); 
+            await userTokens.setPrincipal(ownerString);
+            await fetchBalances(get(userTokens).tokens, ownerString, true);
           } catch (error) {
             console.error("Error loading balances:", error);
           }
@@ -192,20 +192,20 @@ function createAuthStore(pnp: PNP) {
       resetState(null);
       currentUserBalancesStore.set({});
       currentUserPoolsStore.reset();
-      
+
       // Set principal to null but don't reset tokens
       const { userTokens } = await import("$lib/stores/userTokens");
       userTokens.setPrincipal(null);
-      
+
       await storage.clear();
     },
 
     getActor(
       canisterId: string,
       idl: any,
-      options: { anon?: boolean; requiresSigning?: boolean } = {},
+      options: { anon?: boolean; requiresSigning?: boolean, host?: string } = {},
     ) {
-      if (options.anon) return createAnonymousActorHelper(canisterId, idl);
+      if (options.anon) return createAnonymousActorHelper(canisterId, idl, options.host);
       if (!pnp.isWalletConnected()) throw new Error("Anonymous user");
       return pnp.getActor(canisterId, idl, options);
     },

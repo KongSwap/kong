@@ -14,7 +14,7 @@ export const load: PageLoad = async ({ fetch }) => {
         const launchpadActor = await auth.getActor(
             launchpadCanisterId,
             canisterIDLs.launchpad,
-            { anon: true } // Use anonymous actor for query calls
+            { anon: true, host: 'https://icp0.io' } // Use anonymous actor for query calls
         ) as LaunchpadService; // Cast to the service type
 
         // Fetch tokens and miners

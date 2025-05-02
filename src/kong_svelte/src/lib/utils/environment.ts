@@ -4,32 +4,33 @@
 
 // Determine if we're running in a local development environment
 export const isLocalDevelopment = (): boolean => {
-  // Look for various indicators of a development environment
-  const isDev = process.env.NODE_ENV === 'development';
-  const isLocalHost = typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1'
-  );
-  
-  return isDev || isLocalHost;
+  // Check for the PUBLIC_DFX_NETWORK environment variable set by Vite
+  // Fallback to NODE_ENV for general development check if the specific DFX variable isn't set
+  return import.meta.env.PUBLIC_DFX_NETWORK === 'local' || process.env.NODE_ENV === 'development';
 };
 
 // Get the IC host URL based on environment
 export const getIcHost = (): string => {
-  if (isLocalDevelopment()) {
+  // Use the PUBLIC_DFX_NETWORK environment variable to determine the host
+  if (import.meta.env.PUBLIC_DFX_NETWORK === 'local') {
     return 'http://localhost:4943';
   }
+  // Default to mainnet if not explicitly local
   return 'https://icp0.io';
 };
 
 // Determine if the DFX environment is local or production
 export const isDfxLocal = (): boolean => {
-  // Custom variable that can be set in .env or build script
+  // Use the PUBLIC_DFX_NETWORK environment variable set by Vite
+  // Fallback to process.env.DFX_NETWORK if PUBLIC_DFX_NETWORK is not available (e.g., in Node.js environments)
+  if (typeof import.meta.env.PUBLIC_DFX_NETWORK !== 'undefined') {
+    return import.meta.env.PUBLIC_DFX_NETWORK === 'local';
+  }
   if (typeof process.env.DFX_NETWORK !== 'undefined') {
     return process.env.DFX_NETWORK !== 'ic';
   }
   
-  // Fallback to checking hostname
+  // Fallback to isLocalDevelopment if no DFX_NETWORK variable is set
   return isLocalDevelopment();
 };
 
@@ -40,4 +41,4 @@ export const resolveCanisterId = (canisterId: string, localId?: string): string 
     return localId;
   }
   return canisterId;
-}; 
+};
