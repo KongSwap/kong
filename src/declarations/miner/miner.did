@@ -69,3 +69,4 @@ service : (MinerInitArgs) -> {
   stop_mining : () -> (Result_1);
   top_up : (nat) -> (Result_3);
 }
+e

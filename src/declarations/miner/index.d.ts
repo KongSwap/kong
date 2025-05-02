@@ -7,7 +7,10 @@ import type {
 import type { Principal } from "@dfinity/principal";
 import type { IDL } from "@dfinity/candid";
 
-import { _SERVICE } from './miner.did';
+// Import types from the .did.d.ts file
+import type { _SERVICE, MinerInfo, MiningStats, Result_2 } from './miner.did'; 
+// Re-export the necessary types
+export type { _SERVICE, MinerInfo, MiningStats, Result_2 }; 
 
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const canisterId: string;
