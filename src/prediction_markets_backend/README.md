@@ -18,7 +18,8 @@ This canister implements a complete prediction markets platform where users can:
 1. **Market Management**
    - Well-designed market data structure with flexible resolution methods
    - Support for different categories (Crypto, Sports, Politics, Memes, etc.)
-   - Admin-controlled market creation with validation
+   - User and admin market creation with validation
+   - Market activation requiring minimum bet amount
    - Comprehensive market querying capabilities
 
 2. **Betting System**
@@ -29,8 +30,10 @@ This canister implements a complete prediction markets platform where users can:
 
 3. **Resolution & Payout**
    - Multiple resolution strategies (admin, oracle, decentralized)
+   - Dual approval resolution system for user-created markets
    - Automatic winner determination and payout distribution
    - Market voiding capabilities for edge cases
+   - Token burning mechanism for resolution disagreements
 
 4. **State Management**
    - Robust persistence using IC's stable structures
@@ -67,7 +70,7 @@ pub struct Market {
     pub outcomes: Vec<String>,
     pub resolution_method: ResolutionMethod,
     pub image_url: Option<String>,
-    pub status: MarketStatus,
+    pub status: MarketStatus,  // Now includes Pending and Active states
     pub created_at: Timestamp,
     pub end_time: Timestamp,
     pub total_pool: StorableNat,
@@ -79,6 +82,7 @@ pub struct Market {
     pub resolved_by: Option<Principal>,
     pub uses_time_weighting: bool,
     pub time_weight_alpha: Option<f64>,
+    pub creator_resolution: Option<ResolutionProposal>, // For dual resolution system
 }
 ```
 
@@ -106,6 +110,13 @@ pub enum ResolutionMethod {
     Decentralized {
         quorum: candid::Nat,
     },
+}
+
+// New structure for dual resolution system
+pub struct ResolutionProposal {
+    pub outcome_index: StorableNat,
+    pub resolution_data: Option<String>,
+    pub timestamp: Timestamp,
 }
 ```
 
@@ -381,12 +392,88 @@ Parameters: market_id
 4. **Configurable Parameters**: Allows market creators to adjust the alpha parameter
 5. **Backward Compatibility**: Works alongside traditional markets without disruption
 
-### Areas for Enhancement
+## User Market Creation & Dual Resolution
 
-- Documentation could be more comprehensive
-- Some hardcoded values could be parameterized
-- Error handling could be more robust in some areas
-- Admin controls could be more decentralized
+The system now supports user-created markets with a dual resolution mechanism to ensure fairness and prevent manipulation.
+
+### Core Concept
+
+Users can create their own prediction markets, but these markets require:
+
+1. An initial activation bet (minimum 3000 KONG) from the creator
+2. Admin approval for final resolution
+
+### Market Lifecycle
+
+1. **Creation**: User creates a market which starts in `Pending` status
+2. **Activation**: Creator must place an activation bet (≥ 3000 KONG) to change status to `Active`
+3. **Betting**: Other users can place bets only on `Active` markets
+4. **Resolution**: When the market ends, both creator and admin propose resolutions
+
+### Dual Resolution Process
+
+#### Agreement Scenario
+
+If the creator and admin agree on the outcome:
+- Market is resolved to that outcome
+- Winnings are distributed normally
+- Creator receives their activation bet back plus any winnings
+
+#### Disagreement Scenario
+
+If the creator and admin disagree on the outcome:
+- Market is voided for all regular bettors (they receive refunds)
+- Creator's activation bet (3000 KONG) is burned as a penalty
+- Tokens are sent to the KONG minter address, effectively removing them from circulation
+
+### Token Burning Mechanism
+
+```rust
+pub async fn burn_tokens(amount: TokenAmount) -> Result<(), String> {
+    // Select the appropriate minter principal based on environment
+    let minter_address = if KONG_LEDGER_ID == "o7oak-iyaaa-aaaaq-aadzq-cai" {
+        // Production environment
+        KONG_MINTER_PRINCIPAL_PROD
+    } else {
+        // Local or test environment
+        KONG_MINTER_PRINCIPAL_LOCAL
+    };
+    
+    // Transfer tokens to the minter address (burning them)
+    transfer_kong(amount, minter_address).await
+}
+```
+
+### API Endpoints
+
+```candid
+// User market creation (same as admin but restricted to Admin resolution method)
+create_market : (
+    text,                  // question
+    MarketCategory,        // category
+    text,                  // rules
+    vec text,              // outcomes
+    ResolutionMethod,      // resolution_method (must be Admin for user markets)
+    MarketEndTime,         // end_time
+    opt text,              // image_url
+    opt bool,              // uses_time_weighting
+    opt float64,           // time_weight_alpha
+) -> (Result);
+
+// Creator resolution proposal
+propose_resolution : (nat64, nat64, opt text) -> (Result);
+
+// Admin final resolution
+resolve_market : (nat64, nat64, opt text) -> (Result);
+```
+
+### Benefits
+
+1. **Decentralized Market Creation**: Any user can create markets
+2. **Quality Control**: Activation bet requirement ensures creator commitment
+3. **Dispute Resolution**: Dual approval system prevents manipulation
+4. **Economic Incentives**: Burning mechanism discourages bad behavior
+
 
 ## Running the project locally
 
@@ -394,10 +481,34 @@ If you want to test your project locally, you can use the following commands:
 
 ```bash
 # Starts the replica, running in the background
-dfx start --background
+dfx start --background --pocketic
 
 # Deploys your canisters to the replica and generates your candid interface
 dfx deploy prediction_markets_backend
+```
+
+### Testing Scripts
+
+The project includes various test scripts to validate functionality:
+
+```bash
+# Test user market creation and activation
+./scripts/prediction_markets/user_mkts/01_test_market_creation.sh
+
+# Test dual resolution system
+./scripts/prediction_markets/user_mkts/02_test_dual_resolution.sh
+
+# Test bet return estimation
+./scripts/prediction_markets/user_mkts/03_test_estimate_bet_return.sh
+
+# Test market payout records
+./scripts/prediction_markets/user_mkts/04_test_payout_records.sh
+
+# Test market creation method restrictions
+./scripts/prediction_markets/user_mkts/05_test_market_creation_restrictions.sh
+
+# Test time-weighted markets
+./scripts/prediction_markets/01_test_time_weighting.sh
 ```
 #deploy the kskong_ledger canister
 ```bash

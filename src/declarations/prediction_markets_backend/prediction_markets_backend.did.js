@@ -48,9 +48,10 @@ export const idlFactory = ({ IDL }) => {
   });
   const MarketStatus = IDL.Variant({
     'Disputed' : IDL.Null,
-    'Open' : IDL.Null,
     'Closed' : IDL.Vec(IDL.Nat),
+    'Active' : IDL.Null,
     'Voided' : IDL.Null,
+    'Pending' : IDL.Null,
   });
   const SortDirection = IDL.Variant({
     'Descending' : IDL.Null,
@@ -63,7 +64,7 @@ export const idlFactory = ({ IDL }) => {
   const GetAllMarketsArgs = IDL.Record({
     'status_filter' : IDL.Opt(MarketStatus),
     'start' : IDL.Nat,
-    'length' : IDL.Nat,
+    'length' : IDL.Nat64,
     'sort_option' : IDL.Opt(SortOption),
   });
   const Market = IDL.Record({
@@ -227,11 +228,15 @@ export const idlFactory = ({ IDL }) => {
   const Result_3 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
   const BetError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
+    'InsufficientActivationBet' : IDL.Null,
     'MarketClosed' : IDL.Null,
     'BetRecordingFailed' : IDL.Null,
+    'NotMarketCreator' : IDL.Null,
+    'InvalidMarketStatus' : IDL.Null,
     'TransferError' : IDL.Text,
     'MarketUpdateFailed' : IDL.Null,
     'InvalidOutcome' : IDL.Null,
+    'MarketNotActive' : IDL.Null,
     'InsufficientBalance' : IDL.Null,
     'BalanceUpdateFailed' : IDL.Null,
   });
@@ -239,14 +244,19 @@ export const idlFactory = ({ IDL }) => {
   const ResolutionError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
     'MarketStillOpen' : IDL.Null,
+    'InvalidMarketStatus' : IDL.Null,
     'TransferError' : IDL.Text,
+    'AwaitingAdminApproval' : IDL.Null,
     'InvalidOutcome' : IDL.Null,
     'InvalidMethod' : IDL.Null,
     'AlreadyResolved' : IDL.Null,
+    'ResolutionMismatch' : IDL.Null,
     'Unauthorized' : IDL.Null,
+    'AwaitingCreatorApproval' : IDL.Null,
     'UpdateFailed' : IDL.Null,
     'PayoutFailed' : IDL.Null,
     'VoidingFailed' : IDL.Null,
+    'ResolutionDisagreement' : IDL.Null,
   });
   const Result_5 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ResolutionError });
   return IDL.Service({

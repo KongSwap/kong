@@ -7,11 +7,15 @@ type Bet = record {
 };
 type BetError = variant {
   MarketNotFound;
+  InsufficientActivationBet;
   MarketClosed;
   BetRecordingFailed;
+  NotMarketCreator;
+  InvalidMarketStatus;
   TransferError : text;
   MarketUpdateFailed;
   InvalidOutcome;
+  MarketNotActive;
   InsufficientBalance;
   BalanceUpdateFailed;
 };
@@ -100,7 +104,7 @@ type EstimatedReturnScenario = record {
 type GetAllMarketsArgs = record {
   status_filter : opt MarketStatus;
   start : nat;
-  length : nat;
+  length : nat64;
   sort_option : opt SortOption;
 };
 type GetAllMarketsResult = record { markets : vec Market; total_count : nat };
@@ -156,7 +160,13 @@ type MarketResult = record {
   winning_outcomes : vec nat;
   bet_counts : vec nat;
 };
-type MarketStatus = variant { Disputed; Open; Closed : vec nat; Voided };
+type MarketStatus = variant {
+  Disputed;
+  Closed : vec nat;
+  Active;
+  Voided;
+  Pending;
+};
 type MarketsByStatus = record {
   resolved : vec MarketResult;
   active : vec Market;
@@ -165,14 +175,19 @@ type MarketsByStatus = record {
 type ResolutionError = variant {
   MarketNotFound;
   MarketStillOpen;
+  InvalidMarketStatus;
   TransferError : text;
+  AwaitingAdminApproval;
   InvalidOutcome;
   InvalidMethod;
   AlreadyResolved;
+  ResolutionMismatch;
   Unauthorized;
+  AwaitingCreatorApproval;
   UpdateFailed;
   PayoutFailed;
   VoidingFailed;
+  ResolutionDisagreement;
 };
 type ResolutionMethod = variant {
   Oracle : record {

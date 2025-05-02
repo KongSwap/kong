@@ -1,23 +1,21 @@
 use candid::Principal;
 use ic_cdk::query;
-use std::collections::HashMap;
 
 use super::user::*;
 
 use crate::market::market::*;
-use crate::market::transaction_records::*;
-use crate::nat::*;
 use crate::stable_memory::*;
 use crate::utils::time_weighting::*;
+use crate::types::{TokenAmount, StorableNat, Timestamp};
 
 /// Get betting history for a specific user
 #[query]
 pub fn get_user_history(user: Principal) -> UserHistory {
     let mut active_bets = Vec::new();
     let mut resolved_bets = Vec::new();
-    let mut total_wagered = StorableNat::from(0u64);
-    let mut total_winnings = StorableNat::from(0u64);
-    let mut total_active = StorableNat::from(0u64);
+    let mut total_wagered = TokenAmount::from(0u64);
+    let mut total_winnings = TokenAmount::from(0u64);
+    let mut total_active = TokenAmount::from(0u64);
 
     MARKETS.with(|markets| {
         let markets = markets.borrow();
@@ -32,7 +30,7 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                             total_wagered += bet.amount.clone();
 
                             match market.status {
-                                MarketStatus::Open => {
+                                MarketStatus::Active | MarketStatus::Pending => {
                                     total_active = total_active.clone() + bet.amount.clone();
                                     active_bets.push(UserBetInfo {
                                         market: market.clone(),
@@ -51,15 +49,15 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                                         if market.uses_time_weighting {
                                             // For time-weighted markets, we need to calculate the actual payout
                                             // based on the time-weighted formula
-                                            let market_created_at = market.created_at.to_u64();
-                                            let market_end_time = market.end_time.to_u64();
+                                            let market_created_at = market.created_at.to_u64() as f64;
+                                            let market_end_time = market.end_time.to_u64() as f64;
                                             let alpha = get_market_alpha(&market);
                                             
                                             // Calculate time-based weight for this bet
                                             let weight = calculate_time_weight(
-                                                market_created_at,
-                                                market_end_time,
-                                                bet.timestamp.to_u64(),
+                                                Timestamp::from(market_created_at as u64),
+                                                Timestamp::from(market_end_time as u64),
+                                                bet.timestamp.clone(),
                                                 alpha
                                             );
                                             
@@ -77,9 +75,9 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                                                     
                                                     // Calculate weight for this winning bet
                                                     let other_weight = calculate_time_weight(
-                                                        market_created_at,
-                                                        market_end_time,
-                                                        other_bet.timestamp.to_u64(),
+                                                        Timestamp::from(market_created_at as u64),
+                                                        Timestamp::from(market_end_time as u64),
+                                                        other_bet.timestamp.clone(),
                                                         alpha
                                                     );
                                                     

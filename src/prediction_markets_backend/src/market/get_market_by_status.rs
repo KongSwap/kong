@@ -38,7 +38,7 @@ pub fn get_markets_by_status(args: GetMarketsByStatusArgs) -> GetMarketsByStatus
 
         for (market_id, market) in markets.iter() {
             match market.status {
-                MarketStatus::Open => {
+                MarketStatus::Active | MarketStatus::Pending => {
                     // Get bet distribution for the market
                     let mut outcome_pools = vec![StorableNat::from(0u64); market.outcomes.len()];
                     BETS.with(|bets| {

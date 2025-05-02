@@ -1,5 +1,5 @@
 use crate::market::market::*;
-use crate::nat::*;
+use crate::types::Timestamp;
 
 /// Default alpha value for exponential weighting
 pub const DEFAULT_ALPHA: f64 = 0.1;
@@ -14,18 +14,18 @@ pub const DEFAULT_ALPHA: f64 = 0.1;
 /// - T: total market duration
 /// - α: parameter controlling decay rate (default: 0.1)
 pub fn calculate_time_weight(
-    market_created_at: u64,
-    market_end_time: u64,
-    bet_time: u64,
+    market_created_at: Timestamp,
+    market_end_time: Timestamp,
+    bet_time: Timestamp,
     alpha: f64
 ) -> f64 {
     // Handle edge cases
-    if market_end_time <= market_created_at {
+    if market_end_time.to_u64() <= market_created_at.to_u64() {
         return 1.0; // No time weighting if market duration is 0
     }
     
-    let market_duration = market_end_time - market_created_at;
-    let relative_time = (bet_time.saturating_sub(market_created_at)) as f64 
+    let market_duration = market_end_time.to_u64() - market_created_at.to_u64();
+    let relative_time = (bet_time.to_u64().saturating_sub(market_created_at.to_u64())) as f64 
                         / market_duration as f64;
                         
     // Clamp relative_time to [0, 1] to handle edge cases

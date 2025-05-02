@@ -2,11 +2,12 @@ use ic_cdk::query;
 
 use super::market::*;
 
-use crate::nat::*;
 use crate::stable_memory::*;
+use crate::types::{MarketId, TokenAmount, OutcomeIndex, StorableNat};
 
 use candid::CandidType;
 use serde::Deserialize;
+use num_traits::ToPrimitive;
 
 #[derive(CandidType, Deserialize)]
 pub enum SortDirection {
@@ -22,8 +23,8 @@ pub enum SortOption {
 
 #[derive(CandidType, Deserialize)]
 pub struct GetAllMarketsArgs {
-    pub start: StorableNat,
-    pub length: StorableNat,
+    pub start: MarketId,
+    pub length: u64,
     pub status_filter: Option<MarketStatus>,
     pub sort_option: Option<SortOption>,  // Changed from sort_by_total_pool to be more flexible
 }
@@ -47,10 +48,11 @@ pub fn get_all_markets(args: GetAllMarketsArgs) -> GetAllMarketsResult {
         for (id, market) in markets_ref.iter() {
             if let Some(status_filter) = &args.status_filter {
                 match (status_filter, &market.status) {
-                    (MarketStatus::Open, MarketStatus::Open) |
+                    (MarketStatus::Active, MarketStatus::Active) |
                     (MarketStatus::Closed(_), MarketStatus::Closed(_)) |
                     (MarketStatus::Disputed, MarketStatus::Disputed) |
-                    (MarketStatus::Voided, MarketStatus::Voided) => filtered_market_ids.push(id),
+                    (MarketStatus::Voided, MarketStatus::Voided) |
+                    (MarketStatus::Pending, MarketStatus::Pending) => filtered_market_ids.push(id),
                     _ => continue,
                 }
             } else {
@@ -88,7 +90,7 @@ pub fn get_all_markets(args: GetAllMarketsArgs) -> GetAllMarketsResult {
         
         // Apply pagination after sorting
         let start_idx = args.start.to_u64() as usize;
-        let length = args.length.to_u64() as usize;
+        let length = args.length as usize;
         
         let paginated_markets = all_markets
             .into_iter()

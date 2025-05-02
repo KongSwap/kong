@@ -10,6 +10,8 @@ use super::delegation::*;
 use crate::bet::bet::*;
 use crate::market::market::*;
 use crate::nat::*;
+use crate::resolution::resolution::ResolutionProposal;
+use crate::types::MarketId;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
@@ -57,6 +59,13 @@ thread_local! {
     pub static DELEGATIONS: RefCell<StableBTreeMap<Principal, DelegationVec, VirtualMemory<DefaultMemoryImpl>>> = RefCell::new(
         StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(5))),
+        )
+    );
+    
+    /// Stores resolution proposals for dual approval system
+    pub static RESOLUTION_PROPOSALS: RefCell<StableBTreeMap<MarketId, ResolutionProposal, Memory>> = RefCell::new(
+        StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(6))),
         )
     );
 }

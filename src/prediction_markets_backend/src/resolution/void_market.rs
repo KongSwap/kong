@@ -1,16 +1,15 @@
 use ic_cdk::update;
-use candid::Nat;
 
 use super::resolution::*;
 use super::transfer_kong::*;
 
 use crate::market::market::*;
-use crate::nat::*;
 use crate::stable_memory::*;
 use crate::controllers::admin::*;
+use crate::types::{MarketId, TokenAmount};
 
 lazy_static::lazy_static! {
-    static ref KONG_TRANSFER_FEE: StorableNat = StorableNat(Nat::from(10_000u64)); // 0.0001 KONG
+    static ref KONG_TRANSFER_FEE: TokenAmount = TokenAmount::from(10_000u64); // 0.0001 KONG
 }
 
 /// Voids a market and returns all bets to the users
@@ -31,7 +30,7 @@ pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
     })?;
 
     // Verify market is not already resolved
-    if !matches!(market.status, MarketStatus::Open | MarketStatus::Disputed) {
+    if !matches!(market.status, MarketStatus::Active | MarketStatus::Disputed) {
         return Err(ResolutionError::AlreadyResolved);
     }
 

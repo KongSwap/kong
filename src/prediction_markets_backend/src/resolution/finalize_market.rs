@@ -1,27 +1,27 @@
-use candid::{Nat, Principal};
+use candid::Principal;
 
 use super::resolution::*;
 use super::transfer_kong::*;
 use crate::canister::{get_current_time, record_market_payout};
 use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::market::market::*;
-use crate::nat::*;
 use crate::stable_memory::*;
 use crate::utils::time_weighting::*;
+use crate::types::{TokenAmount, OutcomeIndex, Timestamp, StorableNat};
 
 lazy_static::lazy_static! {
-    static ref KONG_TRANSFER_FEE: StorableNat = StorableNat(Nat::from(10_000u64)); // 0.0001 KONG
+    static ref KONG_TRANSFER_FEE: TokenAmount = TokenAmount::from(10_000u64); // 0.0001 KONG
 }
 
 /// Finalizes a market by distributing winnings to successful bettors
-pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<StorableNat>) -> Result<(), ResolutionError> {
+pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeIndex>) -> Result<(), ResolutionError> {
     ic_cdk::println!(
         "Finalizing market {} with winning outcomes {:?}",
         market.id.to_u64(),
         winning_outcomes.iter().map(|n| n.to_u64()).collect::<Vec<_>>()
     );
     // Validate market state
-    if !matches!(market.status, MarketStatus::Open) {
+    if !matches!(market.status, MarketStatus::Active) {
         return Err(ResolutionError::AlreadyResolved);
     }
 
@@ -62,14 +62,14 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<Storable
         // Check if this market uses time weighting
         if market.uses_time_weighting {
             // Use time-weighted distribution
-            let market_created_at = market.created_at.to_u64();
-            let market_end_time = market.end_time.to_u64();
+            let market_created_at = market.created_at.clone();
+            let market_end_time = market.end_time.clone();
             let alpha = get_market_alpha(market);
             
             ic_cdk::println!("Using time-weighted distribution with alpha: {}", alpha);
             
             // Calculate weighted contributions for each winning bet
-            let mut weighted_contributions: Vec<(Principal, StorableNat, f64, f64)> = Vec::new();
+            let mut weighted_contributions: Vec<(Principal, TokenAmount, f64, f64)> = Vec::new();
             let mut total_weighted_contribution: f64 = 0.0;
             
             for bet in &winning_bets {
@@ -77,9 +77,9 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<Storable
                 
                 // Calculate time-based weight
                 let weight = calculate_time_weight(
-                    market_created_at,
-                    market_end_time,
-                    bet.timestamp.to_u64(),
+                    market_created_at.clone(),
+                    market_end_time.clone(),
+                    bet.timestamp.clone(),
                     alpha
                 );
                 
@@ -125,7 +125,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<Storable
                 
                 // Total reward = original bet + share of bonus pool
                 let total_reward = bet_amount.to_u64() as f64 + bonus_share;
-                let winnings = StorableNat::from(total_reward as u64);
+                let winnings = TokenAmount::from(total_reward as u64);
                 
                 ic_cdk::println!(
                     "Processing weighted bet - User: {}, Original bet: {}, Weight: {}, Bonus share: {}, Total reward: {}",
@@ -161,12 +161,12 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<Storable
                             user,
                             bet_amount: bet_amount.clone(),
                             payout_amount: transfer_amount.clone(),
-                            timestamp: StorableNat::from(get_current_time()),
-                            outcome_index: StorableNat::from(0u64), // We don't have this info here, using 0 as default
+                            timestamp: Timestamp::from(get_current_time()),
+                            outcome_index: OutcomeIndex::from(0u64), // We don't have this info here, using 0 as default
                             was_time_weighted: true,
                             time_weight: Some(weight),
                             original_contribution_returned: bet_amount.clone(),
-                            bonus_amount: Some(StorableNat::from(bonus_share as u64)),
+                            bonus_amount: Some(TokenAmount::from(bonus_share as u64)),
                         };
                         
                         record_market_payout(payout_record);
@@ -183,7 +183,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<Storable
             
             for bet in winning_bets {
                 let share = bet.amount.to_f64() / total_winning_pool.to_f64();
-                let winnings = StorableNat::from((market.total_pool.to_u64() as f64 * share) as u64);
+                let winnings = TokenAmount::from((market.total_pool.to_u64() as f64 * share) as u64);
 
                 ic_cdk::println!(
                     "Processing winning bet - User: {}, Original bet: {}, Share: {}, Raw winnings: {}",
@@ -218,7 +218,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<Storable
                             user: bet.user,
                             bet_amount: bet.amount.clone(),
                             payout_amount: transfer_amount.clone(),
-                            timestamp: StorableNat::from(get_current_time()),
+                            timestamp: Timestamp::from(get_current_time()),
                             outcome_index: bet.outcome_index.clone(),
                             was_time_weighted: false,
                             time_weight: None,

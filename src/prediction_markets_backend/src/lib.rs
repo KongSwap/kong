@@ -5,8 +5,9 @@
 //! - Resolve markets through various methods (admin, oracle, or decentralized)
 //! - Automatically distribute winnings to successful bettors
 
-use candid::{Principal, decode_one};
-use ic_cdk::{init, post_upgrade, pre_upgrade};
+use candid::Principal;
+use ic_cdk::api::time;
+use ic_cdk_macros::{init, pre_upgrade, post_upgrade};
 
 use crate::bet::bet::*;
 use crate::canister::*;
@@ -19,7 +20,7 @@ use crate::market::get_all_markets::GetAllMarketsResult;
 use crate::market::get_market_by_status::GetMarketsByStatusArgs;
 use crate::market::get_market_by_status::GetMarketsByStatusResult;
 use crate::market::estimate_return_types::{EstimatedReturn, TimeWeightPoint, BetPayoutRecord};
-use crate::nat::*;
+// Standard types
 use crate::resolution::resolution::*;
 use crate::user::user::*;
 use crate::market::get_stats::*;
@@ -36,8 +37,12 @@ pub mod market;
 pub mod nat;
 pub mod resolution;
 pub mod stable_memory;
+pub mod types;
 pub mod user;
 pub mod utils;
+
+// Re-export common types for convenience
+pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount};
 
 // Constants
 // const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister

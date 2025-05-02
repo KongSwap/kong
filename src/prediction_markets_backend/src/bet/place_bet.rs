@@ -7,19 +7,21 @@ use num_traits::ToPrimitive;
 use super::bet::*;
 
 use crate::market::market::*;
-use crate::nat::*;
+use crate::nat::StorableNat;
 use crate::stable_memory::*;
 use crate::KONG_LEDGER_ID;
+use crate::types::{MarketId, TokenAmount, OutcomeIndex, min_activation_bet};
+use crate::controllers::admin::is_admin;
 
-// House fee is 0.1% (10 basis points) represented in NAT8
+// House fee is 0.1% (10 basis points) represented in basis points
 lazy_static::lazy_static! {
-    static ref HOUSE_FEE_RATE: StorableNat = StorableNat(candid::Nat::from(100_000u64)); // 0.001 * 10^8 = 100,000
+    static ref HOUSE_FEE_RATE: TokenAmount = TokenAmount::from(100_000u64); // 0.001 * 10^8 = 100,000
 }
 const FEES_ENABLED: bool = false;
 
 #[update]
 /// Places a bet on a specific market outcome using KONG tokens
-async fn place_bet(market_id: MarketId, outcome_index: StorableNat, amount: StorableNat) -> Result<(), BetError> {
+async fn place_bet(market_id: MarketId, outcome_index: OutcomeIndex, amount: TokenAmount) -> Result<(), BetError> {
     let user = ic_cdk::caller();
     let backend_canister_id = ic_cdk::api::id();
     let kong_ledger = Principal::from_text(KONG_LEDGER_ID).map_err(|e| BetError::TransferError(format!("Invalid ledger ID: {}", e)))?;
@@ -32,12 +34,38 @@ async fn place_bet(market_id: MarketId, outcome_index: StorableNat, amount: Stor
     })?;
 
     // Validate market state and outcome
-    if !matches!(market.status, MarketStatus::Open) {
-        return Err(BetError::MarketClosed);
-    }
     let outcome_idx = outcome_index.to_u64() as usize;
     if outcome_idx >= market.outcomes.len() {
         return Err(BetError::InvalidOutcome);
+    }
+    
+    // Handle market status
+    match market.status {
+        MarketStatus::Active => {
+            // Market is active, betting is allowed for everyone
+        },
+        MarketStatus::Pending => {
+            // Only the creator can place an activation bet on a pending market
+            if user != market.creator {
+                return Err(BetError::NotMarketCreator);
+            }
+            
+            // Ensure the bet meets the minimum activation threshold
+            if amount < min_activation_bet() {
+                return Err(BetError::InsufficientActivationBet);
+            }
+            
+            // Admins don't need to meet the minimum bet requirement
+            // This is a fallback, but shouldn't be needed as admin-created markets start as Active
+            if !is_admin(user) {
+                // For regular users, confirm the activation amount
+                ic_cdk::println!("Activating market {} with bet of {} KONG tokens", 
+                              market_id.to_u64(), amount.to_u64() / 1_000_000);
+            }
+        },
+        MarketStatus::Closed(_) => return Err(BetError::MarketClosed),
+        MarketStatus::Disputed => return Err(BetError::InvalidMarketStatus),
+        MarketStatus::Voided => return Err(BetError::InvalidMarketStatus),
     }
 
     // Transfer tokens from user to the canister using icrc2_transfer_from
@@ -119,6 +147,11 @@ async fn place_bet(market_id: MarketId, outcome_index: StorableNat, amount: Stor
         })
         .collect();
 
+    // If this is an activation bet from the creator, update the market status
+    if matches!(market.status, MarketStatus::Pending) && user == market.creator {
+        market.status = MarketStatus::Active;
+    }
+    
     // Update market in storage
     MARKETS.with(|markets| {
         let mut markets_ref = markets.borrow_mut();

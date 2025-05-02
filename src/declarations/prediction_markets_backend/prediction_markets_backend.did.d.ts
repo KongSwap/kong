@@ -10,11 +10,15 @@ export interface Bet {
   'outcome_index' : bigint,
 }
 export type BetError = { 'MarketNotFound' : null } |
+  { 'InsufficientActivationBet' : null } |
   { 'MarketClosed' : null } |
   { 'BetRecordingFailed' : null } |
+  { 'NotMarketCreator' : null } |
+  { 'InvalidMarketStatus' : null } |
   { 'TransferError' : string } |
   { 'MarketUpdateFailed' : null } |
   { 'InvalidOutcome' : null } |
+  { 'MarketNotActive' : null } |
   { 'InsufficientBalance' : null } |
   { 'BalanceUpdateFailed' : null };
 export interface BetPayoutRecord {
@@ -164,9 +168,10 @@ export interface MarketResult {
   'bet_counts' : Array<bigint>,
 }
 export type MarketStatus = { 'Disputed' : null } |
-  { 'Open' : null } |
   { 'Closed' : Array<bigint> } |
-  { 'Voided' : null };
+  { 'Active' : null } |
+  { 'Voided' : null } |
+  { 'Pending' : null };
 export interface MarketsByStatus {
   'resolved' : Array<MarketResult>,
   'active' : Array<Market>,
@@ -174,14 +179,19 @@ export interface MarketsByStatus {
 }
 export type ResolutionError = { 'MarketNotFound' : null } |
   { 'MarketStillOpen' : null } |
+  { 'InvalidMarketStatus' : null } |
   { 'TransferError' : string } |
+  { 'AwaitingAdminApproval' : null } |
   { 'InvalidOutcome' : null } |
   { 'InvalidMethod' : null } |
   { 'AlreadyResolved' : null } |
+  { 'ResolutionMismatch' : null } |
   { 'Unauthorized' : null } |
+  { 'AwaitingCreatorApproval' : null } |
   { 'UpdateFailed' : null } |
   { 'PayoutFailed' : null } |
-  { 'VoidingFailed' : null };
+  { 'VoidingFailed' : null } |
+  { 'ResolutionDisagreement' : null };
 export type ResolutionMethod = {
     'Oracle' : {
       'oracle_principals' : Array<Principal>,

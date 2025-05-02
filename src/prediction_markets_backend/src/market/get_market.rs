@@ -2,8 +2,9 @@ use ic_cdk::query;
 
 use super::market::*;
 
-use crate::nat::*;
+use crate::nat::StorableNat;
 use crate::stable_memory::*;
+use crate::types::{MarketId, TokenAmount, BetCount};
 
 /// Gets a specific market by its ID with detailed betting statistics
 #[query]
@@ -14,16 +15,16 @@ pub fn get_market(market_id: MarketId) -> Option<Market> {
 
             // Calculate outcome pools and bet counts
             let mut outcome_pools = vec![0u64; market.outcomes.len()];
-            let mut bet_counts = vec![StorableNat::from(0u64); market.outcomes.len()];
-            let mut total_bets = StorableNat::from(0u64);
+            let mut bet_counts = vec![BetCount::from(0u64); market.outcomes.len()];
+            let mut total_bets = BetCount::from(0u64);
 
             BETS.with(|bets| {
                 if let Some(bet_store) = bets.borrow().get(&market_id) {
                     for bet in bet_store.0.iter() {
                         let outcome_idx = bet.outcome_index.to_u64() as usize;
-                        outcome_pools[outcome_idx] = (StorableNat::from(outcome_pools[outcome_idx]) + bet.amount.clone()).to_u64();
-                        bet_counts[outcome_idx] = bet_counts[outcome_idx].clone() + StorableNat::from_u64(1);
-                        total_bets = total_bets.clone() + StorableNat::from_u64(1);
+                        outcome_pools[outcome_idx] = (TokenAmount::from(outcome_pools[outcome_idx]) + bet.amount.clone()).to_u64();
+                        bet_counts[outcome_idx] = bet_counts[outcome_idx].clone() + BetCount::from(1u64);
+                        total_bets = total_bets.clone() + BetCount::from(1u64);
                     }
                 }
             });

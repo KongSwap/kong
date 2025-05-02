@@ -3,7 +3,8 @@ use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
-use crate::nat::*;
+use crate::nat::{serialize_nat, deserialize_nat};
+use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex};
 
 /// Possible errors when placing a bet
 #[derive(CandidType, Debug)]
@@ -16,6 +17,10 @@ pub enum BetError {
     MarketUpdateFailed,
     BetRecordingFailed,
     TransferError(String),
+    MarketNotActive,              // Market is in pending status
+    InsufficientActivationBet,    // Bet amount is below the required activation threshold
+    NotMarketCreator,             // User is not the creator of the market
+    InvalidMarketStatus,          // Market is in an invalid state for betting
 }
 
 /// Represents a bet placed by a user
@@ -24,9 +29,9 @@ pub struct Bet {
     pub user: Principal,     // User who placed the bet
     pub market_id: MarketId, // Market being bet on
     #[serde(serialize_with = "serialize_nat", deserialize_with = "deserialize_nat")]
-    pub amount: StorableNat, // Amount of tokens bet (NAT8)
+    pub amount: TokenAmount, // Amount of tokens bet
     #[serde(serialize_with = "serialize_nat", deserialize_with = "deserialize_nat")]
-    pub outcome_index: StorableNat, // Index of the chosen outcome
+    pub outcome_index: OutcomeIndex, // Index of the chosen outcome
     pub timestamp: Timestamp, // When the bet was placed
 }
 

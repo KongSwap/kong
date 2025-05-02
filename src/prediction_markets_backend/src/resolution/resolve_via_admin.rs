@@ -1,15 +1,14 @@
 use ic_cdk::update;
 
-use super::finalize_market::*;
 use super::resolution::*;
-
+use super::finalize_market::finalize_market;
 use crate::controllers::admin::*;
-use crate::nat::*;
-use crate::stable_memory::*;
+use crate::stable_memory::MARKETS;
+use crate::types::{MarketId, OutcomeIndex};
 
 /// Resolves a market through admin decision
 #[update]
-async fn resolve_via_admin(market_id: MarketId, outcome_indices: Vec<StorableNat>) -> Result<(), ResolutionError> {
+async fn resolve_via_admin(market_id: MarketId, outcome_indices: Vec<OutcomeIndex>) -> Result<(), ResolutionError> {
     // Validate outcome indices are not empty
     if outcome_indices.is_empty() {
         return Err(ResolutionError::InvalidOutcome);

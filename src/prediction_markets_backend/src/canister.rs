@@ -8,19 +8,20 @@ use icrc_ledger_types::icrc21::requests::{ConsentMessageRequest, ConsentMessageM
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 use candid::decode_one;
 
+use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
+
 use super::delegation::*;
-use super::market::create_market::*;
-use super::market::get_market::*;
-use super::market::get_market_by_status::*;
-use super::market::get_stats::*;
-use super::market::market::*;
 use super::market::estimate_return_types::*;
-use super::nat::*;
 use super::stable_memory::*;
 
-// Helper function to get current time in nanoseconds
-pub fn get_current_time() -> u64 {
-    time()
+// Helper function to get current time in nanoseconds as a Timestamp type
+pub fn get_current_time() -> Timestamp {
+    Timestamp::from(time())
+}
+
+// Helper function to get current time in seconds
+pub fn get_current_time_seconds() -> Timestamp {
+    Timestamp::from(time() / NANOS_PER_SECOND)
 }
 
 // We'll implement our own simple hash function since we don't have sha2
@@ -111,7 +112,7 @@ pub fn icrc_34_delegate(request: DelegationRequest) -> Result<DelegationResponse
 
     let delegation = Delegation {
         target: caller_principal,
-        created: current_time,
+        created: current_time.to_u64(),
         expiration: request.expiration,
         targets_list_hash: targets_hash,
     };
@@ -187,10 +188,11 @@ pub fn estimate_bet_return(
     bet_amount: u64,
     current_time: u64
 ) -> EstimatedReturn {
-    let market_id = StorableNat::from(market_id);
-    let outcome_index = StorableNat::from(outcome_index);
-    let bet_amount = StorableNat::from(bet_amount);
-    let current_time = StorableNat::from(current_time);
+    // Convert primitive parameters to our type system
+    let market_id = MarketId::from(market_id);
+    let outcome_index = OutcomeIndex::from(outcome_index);
+    let bet_amount = TokenAmount::from(bet_amount);
+    let current_time = Timestamp::from(current_time);
     
     MARKETS.with(|markets| {
         let markets = markets.borrow();
@@ -208,8 +210,8 @@ pub fn estimate_bet_return(
                         market_id,
                         outcome_index,
                         bet_amount,
-                        current_market_pool: StorableNat::from(0u64),
-                        current_outcome_pool: StorableNat::from(0u64),
+                        current_market_pool: TokenAmount::from(0u64),
+                        current_outcome_pool: TokenAmount::from(0u64),
                         scenarios: vec![],
                         uses_time_weighting: false,
                         time_weight_alpha: None,
@@ -223,8 +225,8 @@ pub fn estimate_bet_return(
                 market_id,
                 outcome_index,
                 bet_amount,
-                current_market_pool: StorableNat::from(0u64),
-                current_outcome_pool: StorableNat::from(0u64),
+                current_market_pool: TokenAmount::from(0u64),
+                current_outcome_pool: TokenAmount::from(0u64),
                 scenarios: vec![],
                 uses_time_weighting: false,
                 time_weight_alpha: None,
@@ -240,7 +242,8 @@ pub fn generate_time_weight_curve(
     market_id: u64,
     points: u64
 ) -> Vec<TimeWeightPoint> {
-    let market_id = StorableNat::from(market_id);
+    // Convert market_id to our type system
+    let market_id = MarketId::from(market_id);
     
     MARKETS.with(|markets| {
         let markets = markets.borrow();
@@ -262,9 +265,10 @@ pub fn simulate_future_weight(
     bet_time: u64,
     future_time: u64
 ) -> f64 {
-    let market_id = StorableNat::from(market_id);
-    let bet_time = StorableNat::from(bet_time);
-    let future_time = StorableNat::from(future_time);
+    // Convert parameters to our type system
+    let market_id = MarketId::from(market_id);
+    let bet_time = Timestamp::from(bet_time);
+    let future_time = Timestamp::from(future_time);
     
     MARKETS.with(|markets| {
         let markets = markets.borrow();
@@ -281,7 +285,7 @@ pub fn simulate_future_weight(
 
 // Thread-local storage for market payout records
 thread_local! {
-    static MARKET_PAYOUTS: RefCell<BTreeMap<StorableNat, Vec<BetPayoutRecord>>> = 
+    static MARKET_PAYOUTS: RefCell<BTreeMap<MarketId, Vec<BetPayoutRecord>>> = 
         RefCell::new(BTreeMap::new());
 }
 
@@ -310,7 +314,8 @@ pub fn record_market_payout(payout: BetPayoutRecord) {
 /// Get payout records for a market
 #[query]
 pub fn get_market_payout_records(market_id: u64) -> Vec<BetPayoutRecord> {
-    let market_id = StorableNat::from(market_id);
+    // Convert market_id to our type system
+    let market_id = MarketId::from(market_id);
     
     MARKET_PAYOUTS.with(|payouts| {
         let payouts = payouts.borrow();
