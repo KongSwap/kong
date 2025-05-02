@@ -112,12 +112,17 @@
     muted: "bg-gradient-to-r from-white/10 to-white/20",
   };
 
-  const variantClasses = {
-    solid: solidThemeClasses[theme],
-    outline: outlineThemeClasses[theme],
-    transparent: transparentThemeClasses[theme],
-    shine: shineThemeClasses[theme],
-  };
+  // Use reactive derived variables for theme classes
+  let baseThemeClass = $derived(baseThemeClasses[theme]);
+  
+  let variantClass = $derived(
+    variant === 'solid' ? solidThemeClasses[theme] :
+    variant === 'outline' ? outlineThemeClasses[theme] :
+    variant === 'transparent' ? transparentThemeClasses[theme] :
+    shineThemeClasses[theme]
+  );
+                    
+  let sizeClass = $derived(sizeClasses[size]);
   
   function handleAnimationEnd() {
     if (animationIterations > 0) {
@@ -134,7 +139,7 @@
   bind:this={element}
   type={type}
   class="{$panelRoundness} font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed 
-    {baseThemeClasses[theme]} {variantClasses[variant]} {sizeClasses[size]} 
+    {baseThemeClass} {variantClass} {sizeClass} 
     {fullWidth ? 'w-full' : 'w-auto'} {uppercase ? 'uppercase' : ''} {className}"
   disabled={isDisabled}
   on:click
