@@ -1,0 +1,174 @@
+type AllInfoResult = variant { Ok : TokenAllInfo; Err : text };
+type ArchiveOptions = record {
+  num_blocks_to_archive : nat64;
+  max_transactions_per_response : opt nat64;
+  trigger_threshold : nat64;
+  more_controller_ids : opt vec principal;
+  max_message_size_bytes : opt nat64;
+  cycles_for_archive_creation : opt nat64;
+  node_max_memory_size_bytes : opt nat64;
+  controller_id : principal;
+};
+type BlockTemplate = record {
+  height : nat64;
+  difficulty : nat32;
+  prev_hash : blob;
+  version : nat32;
+  merkle_root : blob;
+  target : blob;
+  nonce : nat64;
+  timestamp : nat64;
+};
+type BlockTimeResult = variant { Ok : float64; Err : text };
+type ChainType = variant { BTC; ICP; SOL; SUI };
+type ConsentMessageRequest = record {
+  arg : blob;
+  method : text;
+  consent_preferences : ConsentPreferences;
+};
+type ConsentMessageResponse = variant {
+  Ok : record { consent_message : text; language : text };
+  Err : record { error_message : text; error_code : nat32 };
+};
+type ConsentPreferences = record { language : text };
+type DelegationError = variant {
+  InvalidExpiry : record { max : nat64; provided : nat64; current : nat64 };
+  Anonymous;
+  SystemError : text;
+  Unauthorized : text;
+  RateLimitExceeded : record { next_allowed : nat64 };
+  InvalidDelegationId : record { provided : blob; expected : blob };
+};
+type DelegationRequest = record { delegatee : principal; expiry : nat64 };
+type DelegationResponse = variant {
+  Ok : record { expiry : nat64; delegation_id : blob };
+  Err : record { error_message : text; error_code : nat32 };
+};
+type MetricsResult = variant { Ok : TokenMetrics; Err : text };
+type MinerInfo = record {
+  status : MinerStatus;
+  "principal" : principal;
+  registration_time : nat64;
+  stats : MinerStats;
+  last_status_change : nat64;
+};
+type MinerStats = record {
+  average_hashrate : float64;
+  blocks_mined : nat64;
+  best_hashrate : float64;
+  first_block_timestamp : opt nat64;
+  total_rewards : nat64;
+  last_hashrate_update : opt nat64;
+  total_hashes_processed : nat64;
+  last_block_timestamp : opt nat64;
+  hashrate_samples : vec record { nat64; float64 };
+  current_hashrate : float64;
+};
+type MinerStatus = variant { Inactive; Active };
+type MiningInfo = record {
+  block_time_target : nat64;
+  current_difficulty : nat32;
+  next_halving_interval : nat64;
+  current_block_reward : nat64;
+};
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : nat; Err : text };
+type Result_2 = variant { Ok : BlockTemplate; Err : text };
+type Result_3 = variant { Ok : TokenInfo; Err : text };
+type Result_4 = variant { Ok : vec SocialLink; Err : text };
+type Result_5 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_6 = variant { Ok : BlockTemplate; Err : SolutionError };
+type SocialLink = record { url : text; platform : text };
+type SolutionError = variant {
+  UnauthorizedMiner;
+  VerificationFailed;
+  NoBlockToMine;
+  DuplicateSolution;
+  Other : text;
+  StaleBlock;
+  InternalError : text;
+};
+type SupportedStandard = record { url : text; name : text };
+type TokenAllInfo = record {
+  decimals : nat8;
+  ticker : text;
+  average_block_time : opt float64;
+  transfer_fee : nat64;
+  logo : opt text;
+  name : text;
+  canister_id : principal;
+  ledger_id : opt principal;
+  circulating_supply : nat64;
+  total_supply : nat64;
+  current_block_height : nat64;
+  social_links : opt vec SocialLink;
+  current_block_reward : nat64;
+};
+type TokenInfo = record {
+  decimals : nat8;
+  ticker : text;
+  average_block_time : opt float64;
+  transfer_fee : nat64;
+  chain : ChainType;
+  logo : opt text;
+  name : text;
+  ledger_id : opt principal;
+  archive_options : opt ArchiveOptions;
+  total_supply : nat64;
+  current_block_height : nat64;
+  social_links : opt vec SocialLink;
+  current_block_reward : nat64;
+};
+type TokenInitArgs = record {
+  decimals : opt nat8;
+  initial_block_reward : nat64;
+  ticker : text;
+  block_time_target_seconds : nat64;
+  transfer_fee : opt nat64;
+  chain : ChainType;
+  logo : opt text;
+  name : text;
+  archive_options : opt ArchiveOptions;
+  halving_interval : nat64;
+  total_supply : nat64;
+  social_links : opt vec SocialLink;
+  launchpad_id : principal;
+};
+type TokenMetrics = record { circulating_supply : nat64; total_supply : nat64 };
+type TrustedOriginsResponse = record { trusted_origins : vec text };
+service : (TokenInitArgs) -> {
+  add_social_link : (text, text) -> (Result);
+  claim_rewards : () -> (Result_1);
+  cleanup_expired_delegations : () -> (nat64);
+  create_genesis_block : () -> (Result_2);
+  debug_print_module_hash : (principal) -> (Result);
+  deregister_miner : () -> (Result);
+  get_all_info : () -> (AllInfoResult) query;
+  get_auth_status : () -> (bool) query;
+  get_average_block_time : (opt nat64) -> (BlockTimeResult) query;
+  get_block_height : () -> (nat64) query;
+  get_block_time_target : () -> (nat64) query;
+  get_current_block : () -> (opt BlockTemplate) query;
+  get_info : () -> (Result_3) query;
+  get_metrics : () -> (MetricsResult) query;
+  get_miner_leaderboard : (opt nat32) -> (vec MinerInfo) query;
+  get_miner_stats : (principal) -> (opt MinerInfo) query;
+  get_miners : () -> (vec MinerInfo) query;
+  get_mining_difficulty : () -> (nat32) query;
+  get_mining_info : () -> (MiningInfo) query;
+  get_pending_rewards : () -> (vec record { principal; nat64 }) query;
+  get_social_links : () -> (Result_4) query;
+  icrc10_supported_standards : () -> (vec SupportedStandard) query;
+  icrc1_version : () -> (text) query;
+  icrc21_consent_message : (ConsentMessageRequest) -> (
+      ConsentMessageResponse,
+    ) query;
+  icrc28_trusted_origins : () -> (TrustedOriginsResponse) query;
+  icrc34_delegate : (DelegationRequest) -> (Result_5);
+  register_miner : () -> (Result);
+  remove_social_link : (nat64) -> (Result);
+  start_token : () -> (Result);
+  submit_solution : (nat64, blob, principal) -> (Result_6);
+  update_social_link : (nat64, text, text) -> (Result);
+  whoami : () -> (principal) query;
+}

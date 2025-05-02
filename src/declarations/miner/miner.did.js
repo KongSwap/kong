@@ -1,25 +1,31 @@
 export const idlFactory = ({ IDL }) => {
-  const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
-  const Result_1 = IDL.Variant({
-    'Ok' : IDL.Vec(IDL.Tuple(IDL.Principal, Result)),
-    'Err' : IDL.Text,
+  const MinerInitArgs = IDL.Record({
+    'pow_backend' : IDL.Principal,
+    'owner' : IDL.Principal,
+    'launchpad' : IDL.Principal,
   });
-  const CycleMeasurement = IDL.Record({
-    'balance' : IDL.Nat,
+  const Result = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
+  const Result_1 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
+  const BlockTemplate = IDL.Record({
+    'height' : IDL.Nat64,
+    'difficulty' : IDL.Nat32,
+    'prev_hash' : IDL.Vec(IDL.Nat8),
+    'version' : IDL.Nat32,
+    'merkle_root' : IDL.Vec(IDL.Nat8),
+    'target' : IDL.Vec(IDL.Nat8),
+    'nonce' : IDL.Nat64,
     'timestamp' : IDL.Nat64,
   });
-  const CycleUsageStats = IDL.Record({
-    'current_balance' : IDL.Nat,
-    'usage_last_15min' : IDL.Opt(IDL.Nat),
-    'measurements' : IDL.Vec(CycleMeasurement),
-    'estimated_remaining_time' : IDL.Opt(IDL.Text),
-    'usage_rate_per_hour' : IDL.Opt(IDL.Float64),
+  const MiningResult = IDL.Record({
+    'miner' : IDL.Principal,
+    'solution_hash' : IDL.Vec(IDL.Nat8),
+    'nonce' : IDL.Nat64,
+    'timestamp' : IDL.Nat64,
+    'block_height' : IDL.Nat64,
   });
   const MinerInfo = IDL.Record({
-    'speed_percentage' : IDL.Nat8,
-    'icrc_version' : IDL.Nat16,
+    'speed_percentage' : IDL.Nat16,
     'current_token' : IDL.Opt(IDL.Principal),
-    'chunks_per_refresh' : IDL.Nat64,
     'chunk_size' : IDL.Nat64,
     'is_mining' : IDL.Bool,
   });
@@ -27,53 +33,51 @@ export const idlFactory = ({ IDL }) => {
   const MiningStats = IDL.Record({
     'total_hashes' : IDL.Nat64,
     'blocks_mined' : IDL.Nat64,
-    'chunks_since_refresh' : IDL.Nat64,
     'total_rewards' : IDL.Nat64,
     'last_hash_rate' : IDL.Float64,
     'start_time' : IDL.Nat64,
   });
-  const HttpHeader = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
-  const HttpResponse = IDL.Record({
-    'status' : IDL.Nat,
+  const HttpRequest = IDL.Record({
+    'url' : IDL.Text,
+    'method' : IDL.Text,
     'body' : IDL.Vec(IDL.Nat8),
-    'headers' : IDL.Vec(HttpHeader),
+    'headers' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
   });
-  const TransformArgs = IDL.Record({
-    'context' : IDL.Vec(IDL.Nat8),
-    'response' : HttpResponse,
+  const HttpResponse = IDL.Record({
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
+    'status_code' : IDL.Nat16,
   });
+  const Result_3 = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
   return IDL.Service({
-    'check_api_config' : IDL.Func([], [IDL.Bool, IDL.Opt(IDL.Text)], ['query']),
-    'claim_all_rewards' : IDL.Func([], [Result_1], []),
     'claim_rewards' : IDL.Func([], [Result], []),
-    'claim_token_rewards' : IDL.Func([IDL.Principal], [Result], []),
-    'connect_token' : IDL.Func([IDL.Principal], [Result], []),
-    'disable_api_notifications' : IDL.Func([], [Result], []),
-    'disconnect_token' : IDL.Func([], [Result], []),
-    'enable_api_notifications' : IDL.Func([], [Result], []),
+    'connect_token' : IDL.Func([IDL.Principal], [Result_1], []),
+    'disconnect_token' : IDL.Func([], [Result_1], []),
+    'find_solution_in_range' : IDL.Func(
+        [BlockTemplate, IDL.Nat64, IDL.Nat64],
+        [IDL.Opt(MiningResult)],
+        ['query'],
+      ),
     'get_canister_id' : IDL.Func([], [IDL.Principal], ['query']),
-    'get_cycle_usage' : IDL.Func([], [CycleUsageStats], ['query']),
     'get_info' : IDL.Func([], [Result_2], ['query']),
-    'get_mining_stats' : IDL.Func([], [IDL.Opt(MiningStats)], ['query']),
-    'get_token_rewards' : IDL.Func(
-        [],
-        [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Nat64))],
-        ['query'],
-      ),
-    'icrc1_version' : IDL.Func([], [IDL.Nat16], ['query']),
-    'set_api_endpoint' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
-    'set_chunk_size' : IDL.Func([IDL.Nat64], [Result], []),
-    'set_chunks_per_refresh' : IDL.Func([IDL.Nat64], [], []),
-    'set_max_chunk_duration' : IDL.Func([IDL.Nat64], [], []),
-    'set_mining_speed' : IDL.Func([IDL.Nat8], [Result], []),
-    'set_template_refresh_interval' : IDL.Func([IDL.Nat64], [Result], []),
-    'start_mining' : IDL.Func([], [Result], []),
-    'stop_mining' : IDL.Func([], [Result], []),
-    'transform_http_response' : IDL.Func(
-        [TransformArgs],
-        [HttpResponse],
-        ['query'],
-      ),
+    'get_mining_stats' : IDL.Func([], [MiningStats], ['query']),
+    'get_remaining_hashes' : IDL.Func([], [IDL.Nat], ['query']),
+    'get_time_remaining_estimate' : IDL.Func([], [IDL.Text], ['query']),
+    'http_request' : IDL.Func([HttpRequest], [HttpResponse], ['query']),
+    'icrc1_version' : IDL.Func([], [IDL.Text], ['query']),
+    'set_chunk_size' : IDL.Func([IDL.Nat64], [Result_1], []),
+    'set_max_chunk_duration' : IDL.Func([IDL.Nat64], [Result_1], []),
+    'set_mining_speed' : IDL.Func([IDL.Nat16], [Result_1], []),
+    'start_mining' : IDL.Func([], [Result_1], []),
+    'stop_mining' : IDL.Func([], [Result_1], []),
+    'top_up' : IDL.Func([IDL.Nat], [Result_3], []),
   });
 };
-export const init = ({ IDL }) => { return [IDL.Record({})]; };
+export const init = ({ IDL }) => {
+  const MinerInitArgs = IDL.Record({
+    'pow_backend' : IDL.Principal,
+    'owner' : IDL.Principal,
+    'launchpad' : IDL.Principal,
+  });
+  return [MinerInitArgs];
+};

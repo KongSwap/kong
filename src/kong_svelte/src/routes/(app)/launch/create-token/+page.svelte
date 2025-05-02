@@ -75,7 +75,7 @@
       kongLedgerActor = await auth.getActor(
         KONG_LEDGER_CANISTER_ID,
         canisterIDLs.icrc2, // Use the ICRC2 IDL from config
-        { anon: true, host: 'https://icp0.io' } // Use anonymous actor for fetching fee
+        { anon: true } // Use anonymous actor for fetching fee
       );
     } catch (error) {
       console.error("Error initializing actors:", error);
@@ -124,17 +124,17 @@
 
     try {
       const callerPrincipal = $auth.account.owner;
-      const totalFee = TOKEN_CREATION_FEE + kongTransferFee;
+      // Approve token creation fee plus ICRC transfer fee
+      const approvalAmount = TOKEN_CREATION_FEE + kongTransferFee;
 
       // 1. Approve KONG spending
-      // Cannot update toast message with current store, just show info
-      toastStore.info(`Approving ${Number(totalFee) / 10**8} KONG...`);
+      toastStore.info(`Approving ${Number(approvalAmount) / 10**8} KONG...`);
       const approveArgs = {
         fee: [] as [], // Explicitly type empty arrays for optional Candid args
         memo: [] as [],
         from_subaccount: [] as [],
         created_at_time: [] as [],
-        amount: totalFee,
+        amount: approvalAmount, // Use the corrected approval amount
         expected_allowance: [] as [],
         expires_at: [] as [],
         spender: {
@@ -246,7 +246,7 @@
       {:else}
         <p class="text-sm text-kong-text-secondary">
           Create a new ICRC token on the launchpad. Cost: 500 KONG + network fee.
-          Your Principal: {$auth.account?.owner.toText()}
+          Your Principal: {$auth.account?.owner}
         </p>
 
         <form onsubmit={handleCreateToken} class="space-y-4">
@@ -298,7 +298,7 @@
           {/if}
 
           <ButtonV2
-            label={isLoading ? "Processing..." : `Create Token (${Number(TOKEN_CREATION_FEE + kongTransferFee) / 10**8} KONG)`}
+            label={isLoading ? "Processing..." : `Create Token (${Number(TOKEN_CREATION_FEE) / 10**8} KONG)`}
             type="submit"
             theme="primary"
             disabled={isLoading || !$auth.isConnected || !launchpadActor || !kongLedgerActor}

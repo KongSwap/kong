@@ -3,19 +3,15 @@
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import TextInput from "$lib/components/common/TextInput.svelte"; // Changed Input to TextInput
+  import TextInput from "$lib/components/common/TextInput.svelte";
   import { Principal } from "@dfinity/principal";
-  // Import canisterId using alias
   import { canisterId as launchpadCanisterId } from "$declarations/launchpad";
   import { canisterId as kongLedgerCanisterId } from "$declarations/kong_ledger";
-  // Import _SERVICE type directly from the .did.js file
   import type { _SERVICE as LaunchpadService } from "$declarations/launchpad/launchpad.did.js";
   import type { _SERVICE as LedgerService } from "$declarations/kong_ledger/kong_ledger.did.js";
-  import { canisterIDLs } from "$lib/config/auth.config"; // Import canisterIDLs map for getActor
+  import { canisterIDLs } from "$lib/config/auth.config";
   import type { ActorSubclass } from "@dfinity/agent";
-  import { toastStore } from "$lib/stores/toastStore"; // Use the project's toast store
-  import { goto } from "$app/navigation";
-  import { onMount } from "svelte"; // Using onMount temporarily for fee fetching
+  import { toastStore } from "$lib/stores/toastStore";
 
   // --- Constants ---
   const LAUNCHPAD_CANISTER_ID = launchpadCanisterId;
@@ -23,8 +19,8 @@
   const MINER_CREATION_FEE = 125n * 10n ** 8n; // 125 KONG (assuming 8 decimals)
 
   // --- State ---
-  let powBackendId = $state(""); // Required Principal ID
-  let ownerPrincipal = $state(""); // Optional Principal ID
+  let powBackendId = $state("");
+  let ownerPrincipal = $state("");
 
   let isLoading = $state(false);
   let kongTransferFee = $state(0n);
@@ -55,7 +51,7 @@
       kongLedgerActor = await auth.getActor(
         KONG_LEDGER_CANISTER_ID,
         canisterIDLs.icrc2,
-        { anon: true, host: 'https://icp0.io' } // Use anonymous actor for fetching fee
+        { anon: true } // Use anonymous actor for fetching fee
       );
     } catch (error) {
       console.error("Error initializing actors:", error);
@@ -101,16 +97,17 @@
 
     try {
       const callerPrincipal = $auth.account.owner;
-      const totalFee = MINER_CREATION_FEE + kongTransferFee;
+      // Approve miner creation fee plus ICRC transfer fee
+      const approvalAmount = MINER_CREATION_FEE + kongTransferFee;
 
       // 1. Approve KONG spending
-      toastStore.info(`Approving ${Number(totalFee) / 10**8} KONG...`); // Use toastStore API
+      toastStore.info(`Approving ${Number(approvalAmount) / 10**8} KONG...`); // Use toastStore API
       const approveArgs = {
         fee: [] as [], // Explicitly type empty arrays
         memo: [] as [],
         from_subaccount: [] as [],
         created_at_time: [] as [],
-        amount: totalFee,
+        amount: approvalAmount, // Use the corrected approval amount
         expected_allowance: [] as [],
         expires_at: [] as [],
         spender: {
@@ -194,7 +191,7 @@
       {:else}
         <p class="text-sm text-kong-text-secondary">
           Create a new Miner canister on the launchpad. Cost: 125 KONG + network fee.
-          Your Principal: {$auth.account?.owner.toText()}
+          Your Principal: {$auth.account?.owner}
         </p>
 
         <form onsubmit={handleCreateMiner} class="space-y-4">
@@ -206,7 +203,7 @@
           {/if}
 
           <ButtonV2
-            label={isLoading ? "Processing..." : `Create Miner (${Number(MINER_CREATION_FEE + kongTransferFee) / 10**8} KONG)`}
+            label={isLoading ? "Processing..." : `Create Miner (${Number(MINER_CREATION_FEE) / 10**8} KONG)`}
             type="submit"
             theme="primary"
             disabled={isLoading || !$auth.isConnected || !launchpadActor || !kongLedgerActor}
@@ -218,5 +215,4 @@
 </div>
 
 <style>
-  /* Add any specific styles if needed */
 </style>

@@ -1,6 +1,9 @@
 import { auth } from "$lib/stores/auth";
-import { canisterId as launchpadCanisterId } from "$declarations/launchpad";
-import { canisterIDLs } from "$lib/config/auth.config";
+import { 
+    canisterId as launchpadCanisterId, 
+    idlFactory as launchpadIDL // Import the IDL factory directly
+} from "$declarations/launchpad"; 
+// Remove import of canisterIDLs as it's not needed here for launchpad
 import type { _SERVICE as LaunchpadService } from "$declarations/launchpad/launchpad.did.js";
 import type { PageLoad } from "./$types";
 
@@ -10,12 +13,11 @@ export const load: PageLoad = async ({ fetch }) => {
     let error: string | null = null;
 
     try {
-        // Get the launchpad actor (anonymous call is sufficient for query methods)
         const launchpadActor = await auth.getActor(
             launchpadCanisterId,
-            canisterIDLs.launchpad,
-            { anon: true, host: 'https://icp0.io' } // Use anonymous actor for query calls
-        ) as LaunchpadService; // Cast to the service type
+            launchpadIDL,
+            { anon: true }
+        ) as LaunchpadService;
 
         // Fetch tokens and miners
         tokens = await launchpadActor.list_tokens();
