@@ -137,6 +137,9 @@ export function getButtonText(
 ): string {
     if (!token0 || !token1) return "Select Tokens";
     if (hasInsufficientBalance) return "Insufficient Balance";
+    if (token0.address === "6qfxa-ryaaa-aaaai-qbhsq-cai" || token1.address === "6qfxa-ryaaa-aaaai-qbhsq-cai") {
+        return "Temporarily disabled";
+    }
     if (!amount0 || !amount1) return "Enter Amounts";
     if (loading) return loadingState || "Loading...";
     return "Review Transaction";
@@ -244,29 +247,6 @@ export function findPool(
         (p.address_0 === token0.address && p.address_1 === token1.address) ||
         (p.address_0 === token1.address && p.address_1 === token0.address)
     ) || null;
-}
-
-/**
- * Validates if the form inputs are valid for submission
- */
-export function validateLiquidityForm(
-    token0: Kong.Token | null,
-    token1: Kong.Token | null,
-    amount0: string,
-    amount1: string,
-    error: string | null,
-    hasInsufficientBalance: boolean,
-    pool: BE.Pool | null
-): boolean {
-    return !!(
-        token0 && 
-        token1 && 
-        parseFloat(amount0.replace(/[,_]/g, '')) > 0 && 
-        parseFloat(amount1.replace(/[,_]/g, '')) > 0 && 
-        !error && 
-        !hasInsufficientBalance && 
-        pool !== null
-    );
 }
 
 export function getPoolForTokenPair(
