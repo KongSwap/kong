@@ -1,6 +1,4 @@
-import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
-import { TROLLBOX_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { canisterIDLs } from "$lib/config/auth.config";
+import { canisters, type TROLLBOX } from "$lib/config/auth.config";
 import { auth } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import * as tokensApi from "$lib/api/tokens";
@@ -93,13 +91,17 @@ async function processMessageTokens(message: Message): Promise<Message> {
 }
 
 export async function getMessages(params?: PaginationParams): Promise<MessagesPage> {
-    const actor = createAnonymousActorHelper(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox);
+    const actor = auth.pnp.getActor<TROLLBOX>({
+        canisterId: canisters.trollbox.canisterId,
+        idl: canisters.trollbox.idl,
+        anon: true,
+    });
     
     // Construct candid params according to the interface definition
     // PaginationParams = IDL.Record({ cursor: IDL.Opt(IDL.Nat64), limit: IDL.Opt(IDL.Nat64) })
     const candid_params = {
-        cursor: params?.cursor ? [params.cursor] : [], // IDL.Opt wraps value in array or empty array
-        limit: params?.limit ? [params.limit] : []     // IDL.Opt wraps value in array or empty array
+        cursor: params?.cursor ? [params.cursor] as [bigint] : [] as [],
+        limit: params?.limit ? [params.limit] as [bigint] : [] as []
     };
     
     const result = await actor.get_messages([candid_params]); // Wrap in array for IDL.Opt
@@ -114,7 +116,11 @@ export async function getMessages(params?: PaginationParams): Promise<MessagesPa
 }
 
 export async function getMessage(id: bigint): Promise<Message | null> {
-    const actor = createAnonymousActorHelper(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox);
+    const actor = auth.pnp.getActor<TROLLBOX>({
+        canisterId: canisters.trollbox.canisterId,
+        idl: canisters.trollbox.idl,
+        anon: true,
+    });
     const result = await actor.get_message(id);
     if (result.length === 0) return null;
     
@@ -123,7 +129,9 @@ export async function getMessage(id: bigint): Promise<Message | null> {
 }
 
 export async function createMessage(payload: MessagePayload): Promise<Message> {
-    const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
+    const actor = auth.pnp.getActor<TROLLBOX>({
+        canisterId: canisters.trollbox.canisterId,
+        idl: canisters.trollbox.idl,
         anon: false,
         requiresSigning: true,
     });
@@ -196,7 +204,11 @@ export async function isAdmin(): Promise<boolean> {
     }
     
     try {
-        const actor = createAnonymousActorHelper(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox);
+        const actor = auth.pnp.getActor<TROLLBOX>({
+            canisterId: canisters.trollbox.canisterId,
+            idl: canisters.trollbox.idl,
+            anon: true,
+        });
         
         // Call is_admin with principal as a string instead of a Principal object
         const result = await actor.is_admin(authState.account.owner);
@@ -222,7 +234,9 @@ export async function deleteMessage(messageId: bigint): Promise<boolean> {
     }
     
     try {
-        const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
+        const actor = auth.pnp.getActor<TROLLBOX>({
+            canisterId: canisters.trollbox.canisterId,
+            idl: canisters.trollbox.idl,
             anon: false,
             requiresSigning: true,
         });
@@ -253,7 +267,9 @@ export async function banUser(principal: Principal, days: bigint): Promise<boole
     }
     
     try {
-        const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
+        const actor = auth.pnp.getActor<TROLLBOX>({
+            canisterId: canisters.trollbox.canisterId,
+            idl: canisters.trollbox.idl,
             anon: false,
             requiresSigning: true,
         });
@@ -284,7 +300,9 @@ export async function unbanUser(principal: Principal): Promise<boolean> {
     }
     
     try {
-        const actor = auth.pnp.getActor(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox, {
+        const actor = auth.pnp.getActor<TROLLBOX>({
+            canisterId: canisters.trollbox.canisterId,
+            idl: canisters.trollbox.idl,
             anon: false,
             requiresSigning: true,
         });
@@ -310,7 +328,11 @@ export async function unbanUser(principal: Principal): Promise<boolean> {
  */
 export async function checkBanStatus(principal: Principal): Promise<bigint | null> {
     try {
-        const actor = createAnonymousActorHelper(TROLLBOX_CANISTER_ID, canisterIDLs.trollbox);
+        const actor = auth.pnp.getActor<TROLLBOX>({
+            canisterId: canisters.trollbox.canisterId,
+            idl: canisters.trollbox.idl,
+            anon: true,
+        });
         const result = await actor.check_ban_status(principal);
         
         // Return null if not banned, or the remaining ban time in seconds

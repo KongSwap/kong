@@ -4,11 +4,13 @@ import { Principal } from "@dfinity/principal";
 import BigNumber from "bignumber.js";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { swapStatusStore } from "$lib/stores/swapStore";
-import { auth, canisterIDLs } from "$lib/stores/auth";
+import { auth } from "$lib/stores/auth";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { requireWalletConnection } from "$lib/stores/auth";
 import { SwapMonitor } from "./SwapMonitor";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
+import { canisters, type KONG_BACKEND } from "$lib/config/auth.config";
+import type { RequestsResult, SwapAmountsResult } from "../../../../../declarations/kong_backend/kong_backend.did.d.ts";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -139,16 +141,16 @@ export class SwapService {
     payToken: Kong.Token,
     payAmount: bigint,
     receiveToken: Kong.Token,
-  ): Promise<BE.SwapQuoteResponse> {
+  ): Promise<SwapAmountsResult> {
     try {
       if (!payToken?.address || !receiveToken?.address) {
         throw new Error("Invalid tokens provided for swap quote");
       }
-      const actor = await auth.getActor(
-        KONG_BACKEND_CANISTER_ID,
-        canisterIDLs.kong_backend,
-        { anon: true, requiresSigning: false },
-      );
+      const actor = auth.pnp.getActor<KONG_BACKEND>({
+        canisterId: KONG_BACKEND_CANISTER_ID,
+        idl: canisters.kongBackend.idl,
+        anon: true,
+      });
       return await actor.swap_amounts(
         "IC." + payToken.address,
         payAmount,
@@ -227,21 +229,19 @@ export class SwapService {
     pay_token: string;
     pay_amount: bigint;
     receive_token: string;
-    receive_amount: bigint[];
-    max_slippage: number[];
-    receive_address?: string[];
-    referred_by?: string[];
-    pay_tx_id?: { BlockIndex: number }[];
+    receive_amount: [] | [bigint];
+    max_slippage: [] | [number];
+    receive_address: [] | [string];
+    referred_by: [] | [string];
+    pay_tx_id: [] | [{ BlockIndex: bigint }];
   }): Promise<BE.SwapAsyncResponse> {
     try {
-      const actor = auth.pnp.getActor(
-        KONG_BACKEND_CANISTER_ID,
-        canisterIDLs.kong_backend,
-        {
+      const actor = auth.pnp.getActor<KONG_BACKEND>({
+          canisterId: KONG_BACKEND_CANISTER_ID,
+          idl: canisters.kongBackend.idl,
           anon: false,
-          requiresSigning: auth.pnp.activeWallet.id === "plug",
-        },
-      );
+          requiresSigning: auth.pnp.adapter.id === "plug",
+        });
       const result = await actor.swap_async(params);
       return result;
     } catch (error) {
@@ -253,14 +253,16 @@ export class SwapService {
   /**
    * Gets request status
    */
-  public static async requests(requestIds: bigint[]): Promise<RequestResponse> {
+  public static async requests(requestIds: bigint[]): Promise<RequestsResult> {
     try {
-      const actor = await auth.pnp.getActor(
-        KONG_BACKEND_CANISTER_ID,
-        canisterIDLs.kong_backend,
-        { anon: true, requiresSigning: false },
-      );
-      const result = await actor.requests(requestIds);
+      const actor = auth.pnp.getActor<KONG_BACKEND>({
+        canisterId: KONG_BACKEND_CANISTER_ID,
+        idl: canisters.kongBackend.idl,
+        anon: true,
+        requiresSigning: false,
+      });
+      // Ensure we only pass a single-element array or empty array
+      const result = await actor.requests([requestIds[0]]);
       return result;
     } catch (error) {
       console.error("Error getting request status:", error);
@@ -357,11 +359,11 @@ export class SwapService {
         pay_token: "IC." + params.payToken.address,
         pay_amount: BigInt(payAmount),
         receive_token: "IC." + params.receiveToken.address,
-        receive_amount: [],
-        max_slippage: [params.userMaxSlippage],
-        receive_address: [],
-        referred_by: [],
-        pay_tx_id: txId ? [{ BlockIndex: Number(txId) }] : [],
+        receive_amount: [] as [] | [bigint],
+        max_slippage: [params.userMaxSlippage] as [] | [number],
+        receive_address: [] as [] | [string],
+        referred_by: [] as [] | [string],
+        pay_tx_id: txId ? [{ BlockIndex: BigInt(txId) }] as [] | [{ BlockIndex: bigint }] : [] as [] | [{ BlockIndex: bigint }],
       };
 
       const result = await SwapService.swap_async(swapParams);

@@ -589,7 +589,7 @@
 
 	// Effect to load Solana balances when provider is ready
 	// $effect(() => {
-	// 	if ($auth.isConnected && auth?.pnp?.activeWallet?.chain === 'SOL' && auth.pnp?.provider?.getSolBalance && auth.pnp?.provider?.getSplTokenBalances) {
+	// 	if ($auth.isConnected && auth?.pnp?.adapter?.chain === 'SOL' && auth.pnp?.provider?.getSolBalance && auth.pnp?.provider?.getSplTokenBalances) {
 	// 		console.log("[WalletTokensList] Solana provider available, fetching balances.");
 	// 		fetchSolanaBalances();
 	// 	} else {

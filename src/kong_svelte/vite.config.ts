@@ -66,7 +66,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         ],
       },
       workbox: {
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6MB
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.js$/,

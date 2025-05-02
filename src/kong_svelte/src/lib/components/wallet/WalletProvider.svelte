@@ -23,10 +23,6 @@
   import { auth, selectedWalletId } from "$lib/stores/auth";
   import { isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
-  import {
-    createNamespacedStore,
-    STORAGE_KEYS,
-  } from "$lib/config/localForage.config";
   import { tooltip } from "$lib/actions/tooltip";
   import Badge from "$lib/components/common/Badge.svelte";
   import {
@@ -65,7 +61,7 @@
       id: wallet.id,
       walletName: wallet.walletName,
       logo: wallet.logo,
-      chain: wallet.chain,
+      chain: wallet.chain || (wallet.id.includes("Siws") ? "SOL" : "ICP"), // Set chain correctly based on ID
       googleSignIn: wallet.id === "nfid" ? "Sign in with Google" : undefined,
       recommended: wallet.id === "oisy", // Mark OISY as recommended
       unsupported: null,
@@ -74,9 +70,18 @@
   }
 
   // Map available wallets using the helper function
-  const walletList: WalletInfo[] = auth.pnp
-    .getEnabledWallets()
-    .map(mapRawWalletToInfo);
+  const walletList: WalletInfo[] = (() => {
+    if (!browser) return [];
+    
+    // Get all wallets from adapters
+    const adapters = auth.pnp?.adapters || {};
+    const allWallets = Object.values(adapters)
+      .filter((adapter: any) => adapter.enabled !== false)
+      .map(mapRawWalletToInfo);
+      
+    console.log("All possible wallets:", allWallets);
+    return allWallets;
+  })();
 
   // Props
   const {
@@ -114,6 +119,7 @@
     const grouped: Record<string, WalletInfo[]> = {};
 
     wallets.forEach((wallet) => {
+      console.log("wallet:", wallet);
       if (!grouped[wallet.chain]) {
         grouped[wallet.chain] = [];
       }
@@ -135,7 +141,17 @@
 
   // Format chain name for display
   function formatChainName(chain: string): string {
-    return chain || "Other";
+    if (!chain) return "Other";
+    
+    // Map chain codes to display names
+    const chainMap: Record<string, string> = {
+      "ICP": "Internet Computer",
+      "SOL": "Solana",
+      "ETH": "Ethereum",
+      "BTC": "Bitcoin"
+    };
+    
+    return chainMap[chain] || chain;
   }
 
   function closeModal() {
@@ -197,13 +213,15 @@
     if (!browser) return;
 
     // Get base wallet list
-    let rawWallets = auth.pnp.getEnabledWallets();
+    const rawWallets = auth.pnp.getEnabledWallets() || [];
+    console.log("rawWallets:", rawWallets);
 
     // Map raw wallets using the helper function
     let mappedWallets = rawWallets.map(mapRawWalletToInfo);
-
     // Apply search filter if there's a query
+    console.log("query:", query)
     if (query.trim()) {
+      console.log("query:", query);
       const lowerQuery = query.toLowerCase().trim();
       mappedWallets = mappedWallets.filter(
         (wallet) =>

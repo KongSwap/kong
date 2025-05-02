@@ -1,11 +1,9 @@
 import { auth } from '$lib/stores/auth';
-import { canisterIDLs } from '../config/auth.config';
-import { KONG_BACKEND_CANISTER_ID } from '../constants/canisterConstants';
+import { canisters, type KONG_BACKEND } from '../config/auth.config';
 import type { Claim } from '../types/claims';
 import { toastStore } from '../stores/toastStore';
 import { fetchTokensByCanisterId } from '../api/tokens/TokenApiClient';
 import { get } from 'svelte/store';
-import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
 
 // Create a mapping from token symbols to canister IDs
 const SYMBOL_TO_CANISTER_ID: Record<string, string> = {
@@ -28,7 +26,12 @@ export class ClaimsService {
         return { claims: [], error: "Please connect your wallet to view claims" };
       }
 
-      const actor = createAnonymousActorHelper(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend);
+      const actor = auth.pnp.getActor<KONG_BACKEND>({
+        canisterId: canisters.kongBackend.canisterId,
+        idl: canisters.kongBackend.idl,
+        anon: false,
+        requiresSigning: false,
+      });
       const principalId = authState.account?.owner;
       
       if (!principalId) {
@@ -38,7 +41,10 @@ export class ClaimsService {
       const result = await actor.claims(principalId);
       
       if ('Ok' in result) {
-        const fetchedClaims = result.Ok;
+        const fetchedClaims = result.Ok.map(claim => ({
+          ...claim,
+          canister_id: claim.canister_id.length > 0 ? claim.canister_id[0] : ''
+        }));
         const tokenIdentifiers = this.getUniqueTokenIdentifiers(fetchedClaims);
         const tokenDetailsMap = await this.fetchTokenDetails(tokenIdentifiers);
         
@@ -56,7 +62,12 @@ export class ClaimsService {
   static async processClaim(claimId: bigint): Promise<{ success: boolean, error: string | null }> {
     try {
       console.log("Processing claim:", claimId);
-      const actor = auth.getActor(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend);
+      const actor = auth.pnp.getActor<KONG_BACKEND>({
+        canisterId: canisters.kongBackend.canisterId,
+        idl: canisters.kongBackend.idl,
+        anon: false,
+        requiresSigning: false,
+      });
       const result = await actor.claim(claimId);
       
       if ('Ok' in result) {
@@ -80,7 +91,12 @@ export class ClaimsService {
     let failureCount = 0;
     
     try {
-      const actor = auth.getActor(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend);
+      const actor = auth.pnp.getActor<KONG_BACKEND>({
+        canisterId: canisters.kongBackend.canisterId,
+        idl: canisters.kongBackend.idl,
+        anon: false,
+        requiresSigning: false,
+      });
       
       for (const claim of claims) {
         try {
