@@ -16,7 +16,7 @@
 
   /* ------------------------------------------------------------------
      CHEAP PUBLIC 13-NODE SUBNETS (research baked in – 2025-05-02 snapshot)
-       verified == true  → “Verified Application” subnet
+       verified == true  → "Verified Application" subnet
        load       → quick-and-dirty headroom hint you can tweak/refresh
   ------------------------------------------------------------------ */
   interface SubnetOption { id: string; verified: boolean; load: "low" | "med" | "high"; }
