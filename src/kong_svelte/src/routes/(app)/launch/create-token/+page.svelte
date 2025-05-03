@@ -349,8 +349,8 @@
       ) as LedgerService;
       // Check current allowance
       const allowanceArgs = {
-        account: { owner: callerPrincipal, subaccount: [] },
-        spender: { owner: Principal.fromText(LAUNCHPAD_CANISTER_ID), subaccount: [] }
+        account: { owner: callerPrincipal, subaccount: [] as [] }, // Explicitly type as empty tuple
+        spender: { owner: Principal.fromText(LAUNCHPAD_CANISTER_ID), subaccount: [] as [] } // Explicitly type as empty tuple
       };
 
       const allowanceRes = await authenticatedKongLedgerActor.icrc2_allowance(allowanceArgs);
@@ -396,9 +396,11 @@
       // text, text, nat64, opt text, opt nat8, opt nat64, nat64, nat64, nat64, ChainType, opt principal
       const ticker: string = typeof identity.ticker === 'string' ? identity.ticker : String(identity.ticker);
       const name: string = typeof identity.name === 'string' ? identity.name : String(identity.name);
-      const supply: bigint = BigInt(identity.totalSupply);
+      // Calculate supply in base units
+      const supply: bigint = BigInt(identity.totalSupply) * (10n ** BigInt(economics.decimals));
       const logo: [] | [string] = (identity.logo && typeof identity.logo === 'string') ? [identity.logo] : [];
       const decimals: [] | [number] = (typeof economics.decimals === 'number') ? [economics.decimals] : [];
+      // Calculate fee in base units (assuming input is also in base units, check TokenEconomics component if needed)
       const fee: [] | [bigint] = (economics.transferFee !== undefined && economics.transferFee !== null) ? [BigInt(economics.transferFee)] : [];
       const block_time_target_seconds: bigint = BigInt(advanced.blockTimeTargetSeconds);
       const halving_interval: bigint = BigInt(advanced.halvingInterval);
@@ -598,18 +600,18 @@
           </Panel>
           
         <!-- Step 2: Mining Schedule -->
-        {:else if currentStep === 2}
-          <Panel variant="solid" type="main" className="p-6 backdrop-blur-xl border-none">
-            <MiningCalculator
-              bind:blockReward={advanced.initialBlockReward}
-              bind:halvingBlocks={advanced.halvingInterval}
-              bind:blockTimeSeconds={advanced.blockTimeTargetSeconds}
-              bind:maxSupply={identity.totalSupply}
-              decimals={economics.decimals}
-              tokenTicker={identity.ticker}
-              tokenLogo={identity.logo}
-              name={identity.name}
-            />
+          {:else if currentStep === 2}
+            <Panel variant="solid" type="main" className="p-6 backdrop-blur-xl border-none">
+              <MiningCalculator
+                blockReward={Number(advanced.initialBlockReward)}
+                halvingBlocks={Number(advanced.halvingInterval)}
+                blockTimeSeconds={Number(advanced.blockTimeTargetSeconds)}
+                maxSupply={Number(identity.totalSupply)}
+                decimals={Number(economics.decimals)}
+                tokenTicker={identity.ticker}
+                tokenLogo={identity.logo}
+                name={identity.name}
+              />
           </Panel>
           
         <!-- Step 3: Social Links -->
@@ -689,7 +691,7 @@
               {/if}
             </ButtonV2>
           {:else}
-            <ButtonV2 type="submit" disabled={isLoading || !launchpadActor || !$auth.isConnected} isLoading={isLoading} variant="solid">
+            <ButtonV2 type="submit" disabled={isLoading || !launchpadActor || !$auth.isConnected} loading={isLoading} variant="solid">
               Create Token ({Number(TOKEN_CREATION_FEE) / (10 ** 8)} KONG)
             </ButtonV2>
           {/if}

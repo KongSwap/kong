@@ -30,7 +30,8 @@ const config = {
           path === "/swap" ||
           path === "/pools" ||
           path === "/stats" ||
-          path === "/predict"
+          path === "/predict" ||
+          path === "/launch"
         ) {
           return;
         }
