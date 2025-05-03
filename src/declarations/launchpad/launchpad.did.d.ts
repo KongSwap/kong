@@ -51,7 +51,6 @@ export interface _SERVICE {
     Result_2
   >,
   'get_top_up_quote' : ActorMethod<[bigint], Result_3>,
-  'hashes_for_kong' : ActorMethod<[bigint], Result_3>,
   'list_miners' : ActorMethod<[], Array<MinerInfo>>,
   'list_tokens' : ActorMethod<[], Array<TokenInfo>>,
   'list_trusted_hashes' : ActorMethod<[], Result_4>,

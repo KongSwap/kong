@@ -52,7 +52,6 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'get_top_up_quote' : IDL.Func([IDL.Nat], [Result_3], ['query']),
-    'hashes_for_kong' : IDL.Func([IDL.Nat], [Result_3], []),
     'list_miners' : IDL.Func([], [IDL.Vec(MinerInfo)], ['query']),
     'list_tokens' : IDL.Func([], [IDL.Vec(TokenInfo)], ['query']),
     'list_trusted_hashes' : IDL.Func([], [Result_4], ['query']),

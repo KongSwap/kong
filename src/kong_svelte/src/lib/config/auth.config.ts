@@ -24,6 +24,9 @@ import {
 import {
   idlFactory as launchpadIDL,
 } from "../../../../declarations/launchpad";
+import {
+  idlFactory as minerIDL,
+} from "../../../../declarations/miner"; // Added miner IDL import
 
 // --- Types ---
 export type CanisterType =
@@ -35,7 +38,8 @@ export type CanisterType =
   | "xrc" // Assuming 'xrc' might be used elsewhere, keeping it. ICP IDL is imported.
   | "prediction_markets_backend"
   | "trollbox"
-  | "launchpad"; // Added launchpad type
+  | "launchpad" // Added launchpad type
+  | "miner"; // Added miner type
 
 // --- Canister IDLs ---
 export const canisterIDLs = {
@@ -48,6 +52,7 @@ export const canisterIDLs = {
   prediction_markets_backend: predictionMarketsBackendIDL,
   trollbox: trollboxIDL,
   launchpad: launchpadIDL, // Added launchpad IDL
+  miner: minerIDL, // Added miner IDL
 };
 
 // --- PNP Initialization ---

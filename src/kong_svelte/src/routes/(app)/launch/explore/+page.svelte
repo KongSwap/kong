@@ -37,47 +37,6 @@
 </script>
 
 <div class="container mx-auto px-4 pt-0 pb-8">
-  <!-- Hero section with animated background -->
-  <div 
-    class="relative overflow-hidden rounded-xl mb-6 bg-kong-bg-dark/90 border border-kong-border/50 backdrop-blur-lg panel solid main"
-    in:fade={{ duration: 500 }}
-  >
-      <!-- Animated particles background -->
-      <div class="absolute inset-0 z-0">
-        <div class="absolute h-32 w-32 rounded-full bg-blue-500/20 blur-xl top-10 left-10 animate-pulse-slow"></div>
-        <div class="absolute h-24 w-24 rounded-full bg-purple-500/20 blur-xl bottom-10 right-20 animate-float"></div>
-        <div class="absolute h-16 w-16 rounded-full bg-orange-500/20 blur-xl top-20 right-40 animate-pulse-fast"></div>
-      </div>
-      
-      <!-- Content -->
-      <div class="relative z-10 p-6 md:p-10 flex flex-col md:flex-row items-center justify-between">
-        <div class="mb-6 md:mb-0 md:mr-6">
-          <h1 class="text-2xl md:text-3xl font-bold mb-2 text-kong-text-primary">Kong Launchpad Explorer</h1>
-          <p class="text-kong-text-secondary max-w-lg">
-            Discover new tokens and miners in the Kong ecosystem. Create your own token or miner to join the network.
-          </p>
-        </div>
-        
-        <div class="flex gap-3">
-          <button 
-            class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-lg flex items-center gap-2 transition-all shadow-glow-sm hover:shadow-glow-md"
-            on:click={handleCreateToken}
-          >
-            <Rocket size={16} />
-            Create Token
-          </button>
-          
-          <button 
-            class="px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-lg flex items-center gap-2 transition-all shadow-glow-sm hover:shadow-glow-md"
-            on:click={handleCreateMiner}
-          >
-            <Pickaxe size={16} />
-            Create Miner
-          </button>
-        </div>
-      </div>
-    </div>
-  
   <!-- Main content -->
   <div class="bg-kong-bg-dark/60 backdrop-blur-md border border-kong-border/50 rounded-xl overflow-hidden">
     <!-- Tabs and controls -->

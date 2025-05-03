@@ -1,6 +1,7 @@
 <script lang="ts">
   import { auth } from "$lib/stores/auth";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
+  import { goto } from "$app/navigation";
   import Panel from "$lib/components/common/Panel.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import TextInput from "$lib/components/common/TextInput.svelte";
@@ -11,6 +12,7 @@
   import { canisterIDLs } from "$lib/config/auth.config";
   import type { ActorSubclass } from "@dfinity/agent";
   import { toastStore } from "$lib/stores/toastStore";
+  import { idlFactory as minerIDL } from "$declarations/miner/miner.did.js";
 
   /* ------------------------------------------------------------------
      CHEAP PUBLIC 13-NODE SUBNETS (research baked in – 2025-05-02 snapshot)
@@ -50,19 +52,24 @@
   const LAUNCHPAD_CANISTER_ID = launchpadCanisterId;
   const KONG_LEDGER_CANISTER_ID = "o7oak-iyaaa-aaaaq-aadzq-cai";
   const MINER_CREATION_FEE = 12_500_000_000n; // 125 KONG (8 dp)
+  const EMBEDDED_UI_FEE = 5_000_000_000n; // 50 KONG (8 dp)
+  const LIFETIME_UPDATES_FEE = 25_000_000_000n; // 250 KONG (8 dp)
+  const FREE_HASHES = 10_000_000; // 10 million free hashes at deploy time
 
   /* ------------------------------------------------------------------
                                 STATE
   ------------------------------------------------------------------ */
-  let powBackendId = $state("");
-  let ownerPrincipal = $state("");        // optional owner of the new miner
+  let tokenCanisterId = $state("");
   let selectedSubnetId = $state("");      // chosen subnet (blank => let backend pick)
+  let includeEmbeddedUI = $state(false);  // +50 KONG for embedded web UI
+  let includeLifetimeUpdates = $state(false); // +250 KONG for lifetime updates
 
   let isLoading = $state(false);
   let kongTransferFee = $state(0n);
   let launchpadActor = $state<ActorSubclass<LaunchpadService> | null>(null);
   let kongLedgerActor = $state<ActorSubclass<LedgerService> | null>(null);
   let errorMessage = $state<string | null>(null);
+  let tokens = $state<any[]>([]);
 
   /* ------------------------------------------------------------------
                                 EFFECTS
@@ -75,6 +82,14 @@
       launchpadActor = null;
       kongLedgerActor = null;
       kongTransferFee = 0n;
+    }
+  });
+
+  $effect(() => {
+    if (launchpadActor) {
+      launchpadActor.list_tokens()
+        .then(res => tokens = res)
+        .catch(e => console.error("Error fetching tokens:", e));
     }
   });
 
@@ -118,6 +133,9 @@
   /* ------------------------------------------------------------------
                            FORM SUBMISSION
   ------------------------------------------------------------------ */
+  // Track active deployments to show multiple toasts
+  let activeDeployments = $state(0);
+  
   async function handleCreateMiner() {
     errorMessage = null;
     if (!validateForm()) return;
@@ -140,13 +158,33 @@
         return;
       }
     }
+    
+    // Track this deployment and show toast that stays for 30 seconds
+    activeDeployments++;
+    const deploymentCount = activeDeployments;
+    const deploymentId = Math.random().toString(36).substring(2, 9);
+    const loadingToastId = toastStore.info(
+      `🚀 Miner deployment #${deploymentCount} in progress! Creating canister...`, 
+      { duration: 30000 }
+    );
 
-    isLoading = true;
-    const loadingToastId = toastStore.info("Processing miner creation...", { duration: 0 });
-
+    // We don't set isLoading=true, allowing multiple simultaneous deployments
     try {
       /* -------- 1. APPROVE SPENDING -------- */
+      // In demo mode, we keep the approval amount the same regardless of premium options selected
       const approvalAmount = MINER_CREATION_FEE + kongTransferFee;
+      
+      // For UI display purposes only - we would add these in production
+      const displayAmount = approvalAmount + 
+                            (includeEmbeddedUI ? EMBEDDED_UI_FEE : 0n) + 
+                            (includeLifetimeUpdates ? LIFETIME_UPDATES_FEE : 0n);
+      
+      // Log for demo purposes
+      if (includeEmbeddedUI || includeLifetimeUpdates) {
+        console.log("Demo mode - actual approval:", Number(approvalAmount) / 10 ** 8);
+        console.log("Demo mode - display amount:", Number(displayAmount) / 10 ** 8);
+      }
+      
       toastStore.info(`Approving ${(Number(approvalAmount) / 10 ** 8).toFixed(2)} KONG...`);
       const approveArgs = {
         fee: [] as [],
@@ -170,11 +208,26 @@
 
       /* -------- 2. CREATE MINER -------- */
       toastStore.info("Calling launchpad...");
+      
+      // For demo/staging, we'll show premium options in UI but use standard creation method
+      // In production, we would implement specialized methods for premium features
+      
+      // Log selected options for demo purposes
+      if (includeEmbeddedUI || includeLifetimeUpdates) {
+        console.log("Premium options selected (demo):", {
+          embedded_ui: includeEmbeddedUI,
+          lifetime_updates: includeLifetimeUpdates,
+          free_hashes: FREE_HASHES
+        });
+        
+        // Show toast to indicate premium features (staging/demo only)
+        toastStore.info("Premium features selected (demo mode)");
+      }
+      
+      // Standard miner creation - same for all options in demo mode
       const createResult = await launchpadActor.create_miner(
-        Principal.fromText(powBackendId),
-        ownerPrincipal ? [Principal.fromText(ownerPrincipal)] : ([] as [])
-        // NOTE: Launchpad’s API currently ignores subnet choice.
-        // If/when they add a subnet arg, pass `[selectedSubnetId]` here.
+        Principal.fromText(tokenCanisterId),
+        [] as [] // leave owner blank – launchpad defaults to caller
       );
 
       if ("Err" in createResult) {
@@ -183,15 +236,36 @@
       }
 
       const newMinerCanisterId = createResult.Ok.toText();
-      toastStore.success(`Miner created! Canister: ${newMinerCanisterId}`);
-      resetForm();
+
+      /* -------- 3. CONNECT TOKEN -------- */
+      const minerActor = await auth.getActor(newMinerCanisterId, minerIDL);
+      const connRes = await minerActor.connect_token(Principal.fromText(tokenCanisterId));
+      if ("Err" in connRes) {
+        console.error("connect_token error:", connRes.Err);
+        throw new Error(`Failed to attach token: ${connRes.Err}`);
+      }
+
+      // Update toast with success message but keep it visible for a while
+      toastStore.success(
+        `✨ Miner #${deploymentCount} successfully deployed! Canister: ${newMinerCanisterId}`, 
+        { duration: 5000 }
+      );
+      toastStore.dismiss(loadingToastId);
+      
+      // Only reset form if this was the last deployment in queue
+      if (activeDeployments === deploymentCount) {
+        resetForm();
+      }
     } catch (error: any) {
       console.error("Miner creation failed:", error);
       errorMessage = error.message || "Unexpected error.";
-      toastStore.error(`Creation failed: ${errorMessage}`);
-    } finally {
-      isLoading = false;
+      toastStore.error(`Deployment #${deploymentCount} failed: ${errorMessage}`, { duration: 5000 });
       toastStore.dismiss(loadingToastId);
+    } finally {
+      // Each deployment decrements its own counter when done
+      if (activeDeployments === deploymentCount) {
+        activeDeployments = 0;
+      }
     }
   }
 
@@ -199,14 +273,13 @@
                                VALIDATION
   ------------------------------------------------------------------ */
   function validateForm(): boolean {
-    if (!powBackendId) {
-      errorMessage = "PoW backend Canister ID required.";
-      toastStore.error("Missing PoW backend ID.");
+    if (!tokenCanisterId) {
+      errorMessage = "Token Canister ID required.";
+      toastStore.error("Missing Token Canister ID.");
       return false;
     }
     try {
-      Principal.fromText(powBackendId);
-      if (ownerPrincipal) Principal.fromText(ownerPrincipal);
+      Principal.fromText(tokenCanisterId);
     } catch {
       errorMessage = "Invalid Principal format.";
       toastStore.error("Invalid Principal format.");
@@ -220,9 +293,10 @@
                                 HELPERS
   ------------------------------------------------------------------ */
   function resetForm() {
-    powBackendId = "";
-    ownerPrincipal = "";
+    tokenCanisterId = "";
     selectedSubnetId = "";
+    includeEmbeddedUI = false;
+    includeLifetimeUpdates = false;
     errorMessage = null;
   }
 
@@ -243,37 +317,87 @@
 <!-- -------------------------------------------------------------------
                                  MARKUP
 -------------------------------------------------------------------- -->
-<div class="container mx-auto px-4 py-8">
-  <Panel>
-    <h2 class="text-xl font-semibold mb-4 text-kong-text-primary">Create New Miner</h2>
+<div class="grid gap-6 lg:grid-cols-12 max-w-[1200px] mx-auto px-4 py-8">
+  <!-- Left sidebar with navigation -->
+  <div class="lg:col-span-3">
+    <div class="sticky flex flex-col gap-5 top-6">
+      <!-- Back button -->
+      <button 
+        class="flex items-center gap-2 px-3 py-2 transition-colors rounded-lg text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light/10"
+        on:click={() => goto('/launch/explore')}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Back to Explore</span>
+      </button>
+      
+      <!-- Help card -->
+      <div class="p-5 transition-all duration-200 border rounded-xl bg-kong-surface-dark/30 border-kong-border/30 backdrop-blur-sm">
+        <div class="flex items-start gap-3">
+          <div class="p-2 rounded-lg bg-kong-bg-light/10 text-kong-accent-blue">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <div>
+            <h3 class="mb-1 text-sm font-medium">Need Help?</h3>
+            <p class="text-xs text-kong-text-secondary">
+              Creating a miner requires you to have KONG tokens. Learn more about the process in our documentation.
+            </p>
+            <a href="#" class="inline-flex items-center gap-1 mt-3 text-xs text-kong-accent-blue hover:underline">
+              <span>Read the docs</span>
+              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <div class="space-y-4">
-      {#if !$auth.isConnected}
-        <p class="text-kong-text-secondary">
-          Connect your wallet to create a miner.
-        </p>
-        <ButtonV2 label="Connect Wallet" on:click={handleConnect} theme="primary" />
-      {:else}
-        <p class="text-sm text-kong-text-secondary">
-          Cost: 125 KONG + network fee. Principal: {$auth.account?.owner}
-        </p>
+  <!-- Main content area -->
+  <div class="lg:col-span-9">
+    <Panel variant="solid" type="main" className="p-6 backdrop-blur-xl border-none">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-semibold text-kong-text-primary">Create New Miner</h2>
+        <div class="px-3 py-1 rounded-full bg-gradient-to-r from-kong-primary to-kong-accent-red text-white text-xs font-medium">
+          Includes 10M Free Hashes
+        </div>
+      </div>
 
-        <form on:submit|preventDefault={handleCreateMiner} class="space-y-4">
-          <TextInput
-            id="powBackendId"
-            label="Proof-of-Work Backend Canister ID *"
-            bind:value={powBackendId}
-            placeholder="PoW backend canister"
-            required
-          />
+      <div class="space-y-4">
+        {#if !$auth.isConnected}
+          <p class="text-kong-text-secondary">
+            Connect your wallet to create a miner.
+          </p>
+          <ButtonV2 label="Connect Wallet" on:click={handleConnect} theme="primary" />
+        {:else}
 
-          <!-- Optional custom owner -->
-          <TextInput
-            id="ownerPrincipal"
-            label="Owner Principal (optional)"
-            bind:value={ownerPrincipal}
-            placeholder="Leave blank to own it yourself"
-          />
+          <form on:submit|preventDefault={handleCreateMiner} class="space-y-4">
+          {#if tokens.length > 0}
+            <div>
+              <label class="block text-sm font-medium text-kong-text-secondary mb-1">Select token to mine *</label>
+              <select bind:value={tokenCanisterId} class="w-full border rounded px-3 py-2 bg-kong-bg-primary text-kong-text-primary" required>
+                <option value="" disabled selected>Select a token...</option>
+                {#each tokens as token}
+                  <option value={token.canister_id.toText()}>{token.name} ({token.ticker})</option>
+                {/each}
+              </select>
+            </div>
+          {:else}
+            <TextInput
+              id="tokenCanisterId"
+              label="Token Canister ID *"
+              bind:value={tokenCanisterId}
+              placeholder="Token canister"
+              required
+            />
+          {/if}
 
           <!-- Subnet selection -->
           <div>
@@ -297,25 +421,180 @@
               a few hundred ms off latency.
             </p>
           </div>
+          
+          <!-- Premium options (DEMO/STAGING) -->
+          <div class="space-y-4 p-4 rounded-lg border border-kong-border/30 bg-kong-surface-dark/20">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-kong-text-primary">Premium Options</h3>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-medium text-kong-text-primary">Coming Soon:</span>
+                <span class="px-2 py-0.5 text-[10px] bg-kong-accent-purple/20 text-kong-accent-purple rounded-full">MULTICHAIN MINER</span>
+              </div>
+            </div>
+            
+            <!-- Embedded Web UI option -->
+            <label class="flex items-start gap-3 cursor-pointer">
+              <div class="relative flex items-center">
+                <input type="checkbox" bind:checked={includeEmbeddedUI} class="sr-only peer" />
+                <div class="w-11 h-6 bg-kong-bg-light/20 rounded-full peer peer-checked:bg-gradient-to-r from-kong-accent-blue to-kong-primary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-kong-accent-blue/30"></div>
+                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:left-6 transition-all duration-300"></div>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-kong-text-primary">Embedded Web Interface <span class="text-kong-accent-blue font-bold">+50 KONG</span></p>
+                <p class="text-xs text-kong-text-secondary">Includes easy management UI with support for OISY PLUG, PHANTOM, SOLFLARE and more wallets.</p>
+              </div>
+            </label>
+            
+            <!-- Lifetime Updates option -->
+            <label class="flex items-start gap-3 cursor-pointer">
+              <div class="relative flex items-center">
+                <input type="checkbox" bind:checked={includeLifetimeUpdates} class="sr-only peer" />
+                <div class="w-11 h-6 bg-kong-bg-light/20 rounded-full peer peer-checked:bg-gradient-to-r from-kong-accent-blue to-kong-primary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-kong-accent-blue/30"></div>
+                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:left-6 transition-all duration-300"></div>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-kong-text-primary">Lifetime Updates <span class="text-kong-accent-blue font-bold">+250 KONG</span></p>
+                <p class="text-xs text-kong-text-secondary">Get all future miner updates for free (regular price: 100 KONG per update).</p>
+                <p class="text-[10px] italic text-kong-text-secondary mt-1">Demo only - no actual price impact</p>
+              </div>
+            </label>
 
           {#if errorMessage}
             <p class="text-red-500 text-sm">{errorMessage}</p>
           {/if}
 
-          <ButtonV2
-            label={isLoading
-              ? "Processing..."
-              : `Create Miner (${(Number(MINER_CREATION_FEE) / 10 ** 8).toFixed(2)} KONG)`
-            }
+          <button
             type="submit"
-            theme="primary"
-            disabled={isLoading || !$auth.isConnected || !launchpadActor || !kongLedgerActor}
-          />
+            class="create-miner-btn relative w-full flex items-center justify-center py-3 px-6 rounded-lg font-medium text-white overflow-visible group transition-all duration-300 disabled:opacity-50"
+            disabled={!$auth.isConnected || !launchpadActor || !kongLedgerActor}
+          >
+            <!-- Animated background effect -->
+            <div class="absolute inset-0 bg-gradient-to-r from-kong-accent-blue via-kong-primary to-kong-accent-red group-hover:via-kong-primary transition-all duration-500 bg-size-200 bg-pos-0 group-hover:bg-pos-100"></div>
+            
+            <!-- Text content with icon -->
+            <div class="relative flex items-center gap-2 transform group-hover:scale-105 group-active:scale-95 transition-all duration-200">
+              <svg class="w-5 h-5 animate-pulse-slow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9.5 9.5L14.5 14.5M14.5 9.5L9.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="tracking-wider relative group">
+                Deploy Miner ({Math.floor(Number(MINER_CREATION_FEE) / 10 ** 8)} KONG)
+                {#if includeEmbeddedUI || includeLifetimeUpdates}
+                  <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 px-2 py-1 bg-kong-surface-dark text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                    Demo options selected: 
+                    {#if includeEmbeddedUI}Embedded UI (+{Math.floor(Number(EMBEDDED_UI_FEE) / 10 ** 8)} KONG){/if}{#if includeEmbeddedUI && includeLifetimeUpdates}, {/if}{#if includeLifetimeUpdates}Lifetime Updates (+{Math.floor(Number(LIFETIME_UPDATES_FEE) / 10 ** 8)} KONG){/if}
+                    (no extra cost)
+                  </span>
+                {/if}
+              </span>
+              
+              <!-- Particle effects on hover -->
+              <span class="absolute -top-2 -right-2 w-12 h-12 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <span class="particle-1"></span>
+                <span class="particle-2"></span>
+                <span class="particle-3"></span>
+              </span>
+            </div>
+          </button>
         </form>
       {/if}
     </div>
   </Panel>
 </div>
+</div>
 
 <style>
+  /* Make scrollbar thin and styled */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(100, 100, 100, 0.2);
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 100, 100, 0.4);
+  }
+  
+  /* Create miner button animations */
+  .create-miner-btn {
+    box-shadow: 0 10px 20px -10px rgba(var(--accent-blue), 0.6);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  
+  .create-miner-btn:hover {
+    box-shadow: 0 14px 28px -10px rgba(var(--accent-blue), 0.8);
+  }
+  
+  .bg-size-200 {
+    background-size: 200% 200%;
+  }
+  
+  .bg-pos-0 {
+    background-position: 0% 0%;
+  }
+  
+  .bg-pos-100 {
+    background-position: 100% 100%;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.95); }
+  }
+  
+  /* Particle animations */
+  .particle-1, .particle-2, .particle-3 {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(var(--accent-yellow));
+    box-shadow: 0 0 10px 2px rgba(var(--accent-yellow), 0.8);
+  }
+  
+  .particle-1 {
+    top: 5px;
+    left: 2px;
+    animation: particle-move-1 2s ease-out infinite;
+  }
+  
+  .particle-2 {
+    top: 2px;
+    left: 12px;
+    animation: particle-move-2 2.2s ease-out infinite;
+  }
+  
+  .particle-3 {
+    top: 8px;
+    left: 18px;
+    animation: particle-move-3 1.8s ease-out infinite;
+  }
+  
+  @keyframes particle-move-1 {
+    0% { transform: translate(0, 0); opacity: 1; }
+    100% { transform: translate(-10px, -20px); opacity: 0; }
+  }
+  
+  @keyframes particle-move-2 {
+    0% { transform: translate(0, 0); opacity: 1; }
+    100% { transform: translate(5px, -25px); opacity: 0; }
+  }
+  
+  @keyframes particle-move-3 {
+    0% { transform: translate(0, 0); opacity: 1; }
+    100% { transform: translate(15px, -15px); opacity: 0; }
+  }
 </style>

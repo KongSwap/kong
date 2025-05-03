@@ -268,7 +268,7 @@
 </script>
 
 <div class="transform-gpu group/card">
-  <div class="relative w-full overflow-hidden rounded-xl bg-kong-bg-light bg-opacity-10 backdrop-blur-sm shadow-inner-white transition-all duration-200 hover:scale-102 hover:z-10 hover:shadow-2xl border border-kong-bg-secondary/20 hover:border-kong-accent-blue/50">
+  <div class="relative w-full overflow-hidden rounded-xl bg-kong-bg-light bg-opacity-10 backdrop-blur-sm shadow-inner-white transition-all duration-200 hover:scale-[1.02] hover:z-10 hover:shadow-2xl border border-kong-border/20 hover:border-kong-accent-blue/50">
     <!-- Top-right chain type ribbon -->
     {#if token.chain}
       {@const chainName = Object.keys(token.chain)[0]}
@@ -282,12 +282,12 @@
       on:click={handleTokenClick}
     >
       <!-- Card content -->
-      <div class="relative z-10 p-5">
-        <div class="flex gap-4">
+      <div class="relative z-10 p-4 lg:p-5">
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-5">
           <!-- Left side: SVG progress ring + logo -->
-          <div class="relative flex-shrink-0">
+          <div class="relative flex-shrink-0 self-center sm:self-auto">
             <!-- SVG progress ring -->
-            <svg class="w-20 h-20" viewBox="0 0 100 100">
+            <svg class="w-16 h-16 sm:w-20 sm:h-20" viewBox="0 0 100 100">
               <!-- Background circle -->
               <circle cx="50" cy="50" r="36" fill="transparent" stroke="rgba(255,255,255,0.05)" stroke-width="4" />
               
@@ -320,7 +320,7 @@
             </svg>
             
             <!-- Logo or ticker inside the ring -->
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full overflow-hidden border-2 border-black/5 shadow-inner-white">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-black/5 shadow-inner-white">
               {#if token.logo && ((Array.isArray(token.logo) && token.logo.length > 0 && token.logo[0]) || typeof token.logo === 'string')}
                 <img
                   src={Array.isArray(token.logo) ? token.logo[0] : token.logo}
@@ -342,13 +342,13 @@
           </div>
           
           <!-- Right side: Token details -->
-          <div class="flex-1 space-y-1.5">
+          <div class="flex-1 space-y-1.5 text-center sm:text-left">
             <!-- Token name and ticker -->
             <div>
-              <h3 class="font-alumni font-bold tracking-wider text-xl text-white group-hover:text-kong-accent-blue transition-colors duration-200">
+              <h3 class="font-alumni font-bold tracking-wider text-xl text-white group-hover:text-kong-accent-blue transition-colors duration-200 line-clamp-1 hover:line-clamp-none">
                 {token.name || "Unnamed Token"}
               </h3>
-              <div class="flex items-center gap-1.5 mt-0.5">
+              <div class="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 mt-0.5">
                 <!-- Token ticker -->
                 <span class="px-1.5 py-0.5 rounded-full bg-kong-bg-secondary/30 text-xs font-play tracking-tight text-white/90">
                   {token.ticker || "???"}
@@ -370,74 +370,60 @@
             
             <!-- Token halving countdown -->
             {#if blocksToHalving > 0}
-              <div class="flex items-center gap-1.5 px-2 py-1 bg-gradient-to-r from-kong-accent-green/20 via-kong-accent-yellow/20 to-kong-accent-red/20 rounded-md backdrop-blur-sm">
-                <Clock size={14} class="text-white/70" />
-                <span class="text-xs font-bold uppercase tracking-wide text-white/80">Halving in</span>
-                <span class="font-play text-sm text-white/90 ml-auto">{timeToHalving || `${formatCompactNumber(blocksToHalving, 0)} blocks`}</span>
+              <div class="flex items-center justify-between gap-2 px-3 py-1.5 bg-gradient-to-r from-kong-accent-blue/15 via-kong-accent-yellow/15 to-kong-accent-red/15 rounded-md backdrop-blur-sm border border-kong-border/20 mt-1 w-full overflow-hidden">
+                <Clock size={15} class="text-kong-accent-yellow" />
+                <span class="text-xs font-bold uppercase tracking-wide text-kong-text-primary whitespace-nowrap">Halving in</span>
+                <span class="font-play text-sm text-kong-text-primary ml-auto truncate">{timeToHalving || `${formatCompactNumber(blocksToHalving, 0)} blocks`}</span>
               </div>
             {/if}
           </div>
         </div>
         
         <!-- Mining stats grid -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5 mt-4">
-          <!-- Daily emission -->
-          <div class="bg-kong-bg-dark/20 rounded p-2 flex flex-col justify-between h-full">
-            <div class="flex items-center gap-1.5">
-              <span class="p-1 rounded-full bg-kong-accent-blue/10"><Flame size={10} class="text-kong-accent-blue" /></span>
-              <span class="text-[10px] uppercase tracking-wide font-bold text-white/60">Daily Emission</span>
-            </div>
-            <div class="font-play text-sm text-white/90 pl-1.5 mt-1">
-              {#if dailyEmissionRate && token.decimals}
-                {formatCompactNumber(dailyEmissionRate / Math.pow(10, Number(token.decimals)), 2)}
-              {:else}
-                {formatCompactNumber(dailyEmissionRate / Math.pow(10, 8), 2)}
-              {/if}
-            </div>
-          </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
           
           <!-- Block Time -->
-          <div class="bg-kong-bg-dark/20 rounded p-2 flex flex-col justify-between h-full">
-            <div class="flex items-center gap-1.5">
-              <span class="p-1 rounded-full bg-orange-500/10"><Clock size={10} class="text-orange-500" /></span>
-              <span class="text-[10px] uppercase tracking-wide font-bold text-white/60">Block Time</span>
+          <div class="bg-kong-surface-dark/30 hover:bg-kong-surface-dark/40 rounded-lg p-4 flex flex-col justify-between h-full border border-kong-border/10 transition-colors duration-200">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded-full bg-kong-accent-yellow/15"><Clock size={12} class="text-kong-accent-yellow" /></span>
+              <span class="text-xs uppercase tracking-wide font-medium text-kong-text-secondary truncate">Block Time</span>
             </div>
-            <div class="font-play text-sm text-white/90 pl-1.5 mt-1">
+            <div class="font-play text-sm text-kong-text-primary pl-1 mt-2">
               {formatBlockTime(blockTime)}
             </div>
           </div>
           
           <!-- Network Difficulty -->
-          <div class="bg-kong-bg-dark/20 rounded p-2 flex flex-col justify-between h-full">
-            <div class="flex items-center gap-1.5">
-              <span class="p-1 rounded-full bg-kong-accent-yellow/10"><Hash size={10} class="text-kong-accent-yellow" /></span>
-              <span class="text-[10px] uppercase tracking-wide font-bold text-white/60">Difficulty</span>
+          <div class="bg-kong-surface-dark/30 hover:bg-kong-surface-dark/40 rounded-lg p-4 flex flex-col justify-between h-full border border-kong-border/10 transition-colors duration-200">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded-full bg-kong-accent-purple/15"><Hash size={12} class="text-kong-accent-purple" /></span>
+              <span class="text-xs uppercase tracking-wide font-medium text-kong-text-secondary truncate">Difficulty</span>
             </div>
-            <div class="font-play text-sm text-white/90 pl-1.5 mt-1">
+            <div class="font-play text-sm text-kong-text-primary pl-1 mt-2">
               {formatCompactNumber(difficulty, 2)}
             </div>
           </div>
           
           <!-- Miners -->
-          <div class="bg-kong-bg-dark/20 rounded p-2 flex flex-col justify-between h-full">
-            <div class="flex items-center gap-1.5">
-              <span class="p-1 rounded-full bg-kong-accent-green/10"><Server size={10} class="text-kong-accent-green" /></span>
-              <span class="text-[10px] uppercase tracking-wide font-bold text-white/60">Miners</span>
+          <div class="bg-kong-surface-dark/30 hover:bg-kong-surface-dark/40 rounded-lg p-4 flex flex-col justify-between h-full border border-kong-border/10 transition-colors duration-200">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded-full bg-kong-accent-green/15"><Server size={12} class="text-kong-accent-green" /></span>
+              <span class="text-xs uppercase tracking-wide font-medium text-kong-text-secondary truncate">Miners</span>
             </div>
-            <div class="font-play text-sm text-white/90 pl-1.5 mt-1">
+            <div class="font-play text-sm text-kong-text-primary pl-1 mt-2">
               {minerCount > 0 ? `${minerCount} online` : '--'}
             </div>
           </div>
         </div>
         
         <!-- Block height and extra info -->
-        <div class="flex items-center justify-between mt-3">
-          <div class="text-xs text-white/50 font-play">
+        <div class="flex items-center justify-between mt-3 sm:mt-4 px-1">
+          <div class="text-xs text-kong-text-secondary font-play bg-kong-surface-dark/20 px-2 py-1 rounded-md">
             Block #{formatCompactNumber(blockHeight, 0)}
           </div>
           
-          <div class="flex items-center gap-1.5">
-            <ArrowRight size={14} class="text-kong-accent-blue opacity-70 group-hover:opacity-100 transition-opacity" />
+          <div class="flex items-center gap-1.5 bg-kong-accent-blue/10 p-1 rounded-full transition-all duration-200 group-hover:bg-kong-accent-blue/20">
+            <ArrowRight size={16} class="text-kong-accent-blue opacity-80 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
       </div>

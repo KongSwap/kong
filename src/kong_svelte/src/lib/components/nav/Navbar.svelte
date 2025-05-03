@@ -19,6 +19,7 @@
     Trophy,
     Bell,
     LogIn,
+    Rocket,
   } from "lucide-svelte";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { page } from "$app/state";
@@ -179,15 +180,23 @@
       ...baseDesktopIconButton,
       icon: SettingsIcon,
       onClick: () => goto("/settings"),
-      tooltipText: "",
+      tooltipText: "Settings",
       show: true,
       themeProps: standardButtonThemeProps, // Theme props are reactive
     },
     {
       ...baseDesktopIconButton,
+      icon: Rocket,
+      onClick: () => goto("/launch/my-dashboard"),
+      tooltipText: "Launch",
+      show: true,
+      themeProps: standardButtonThemeProps,
+    },
+    {
+      ...baseDesktopIconButton,
       icon: Search,
       onClick: handleOpenSearch,
-      tooltipText: "",
+      tooltipText: "Search",
       show: true,
       themeProps: standardButtonThemeProps,
     },

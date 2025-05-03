@@ -3,6 +3,13 @@
   import type { Principal } from '@dfinity/principal';
   import { ChevronDown, AlertTriangle } from 'lucide-svelte';
 
+  // Basic parameters
+  export let totalSupply: string = ""; // String to handle bigint
+  export let blockTimeTargetSeconds: string = "60"; 
+  export let halvingInterval: string = "210000";
+  export let initialBlockReward: string = "5000000000";
+  export let ownerPrincipal: string = "";
+
   export let archiveOptions: ArchiveOptions = {
     num_blocks_to_archive: 1000000n,
     max_transactions_per_response: [] as [] | [bigint],
@@ -31,6 +38,99 @@
 </script>
 
 <div class="space-y-4">
+  <!-- Total Supply - The most fundamental token mining parameter -->
+  <div class="p-4 border rounded-lg bg-kong-bg-light/30 border-kong-border/20">
+    <label for="total-supply" class="block mb-2 text-sm font-medium text-kong-text-primary">
+      Total Supply <span class="text-kong-accent-red">*</span>
+    </label>
+    
+    <div class="flex">
+      <input
+        id="total-supply"
+        type="text" 
+        bind:value={totalSupply}
+        class="w-full px-4 py-3 font-mono text-sm border rounded-lg bg-kong-bg-light border-kong-border/30 focus:ring-2 focus:ring-kong-primary/50"
+        placeholder="e.g., 21000000"
+        pattern="^[0-9]*$"
+      />
+    </div>
+    
+    <div class="flex justify-between mt-2 text-xs text-kong-text-secondary">
+      <span class="flex items-center gap-1.5">
+        {#if !totalSupply}
+          <span class="w-2 h-2 rounded-full bg-kong-accent-red/80 animate-pulse"></span>
+          Required
+        {:else}
+          <span class="w-2 h-2 rounded-full bg-kong-primary/80"></span>
+          {totalSupply.length} digits
+        {/if}
+      </span>
+      <span>Total maximum supply of tokens (in whole units)</span>
+    </div>
+  </div>
+
+  <!-- Block Time, Halving, Rewards -->
+  <div class="p-4 border rounded-lg bg-kong-bg-light/30 border-kong-border/20">
+    <h3 class="mb-4 text-base font-medium text-kong-text-primary">Mining Parameters</h3>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <!-- Block Time -->
+      <div>
+        <label for="block-time" class="block mb-2 text-sm font-medium text-kong-text-secondary">
+          Block Time (seconds)
+        </label>
+        <input 
+          id="block-time"
+          type="text" 
+          bind:value={blockTimeTargetSeconds}
+          class="w-full px-3 py-2 font-mono text-sm border rounded-lg bg-kong-bg-light border-kong-border/30 focus:ring-2 focus:ring-kong-primary/50" 
+          placeholder="60"
+        />
+      </div>
+      
+      <!-- Halving Interval -->
+      <div>
+        <label for="halving-interval" class="block mb-2 text-sm font-medium text-kong-text-secondary">
+          Halving Interval (blocks)
+        </label>
+        <input 
+          id="halving-interval"
+          type="text" 
+          bind:value={halvingInterval}
+          class="w-full px-3 py-2 font-mono text-sm border rounded-lg bg-kong-bg-light border-kong-border/30 focus:ring-2 focus:ring-kong-primary/50" 
+          placeholder="210000" 
+        />
+      </div>
+      
+      <!-- Initial Block Reward -->
+      <div class="sm:col-span-2">
+        <label for="block-reward" class="block mb-2 text-sm font-medium text-kong-text-secondary">
+          Initial Block Reward (base units)
+        </label>
+        <input 
+          id="block-reward"
+          type="text" 
+          bind:value={initialBlockReward}
+          class="w-full px-3 py-2 font-mono text-sm border rounded-lg bg-kong-bg-light border-kong-border/30 focus:ring-2 focus:ring-kong-primary/50" 
+          placeholder="5000000000" 
+        />
+      </div>
+      
+      <!-- Owner Principal -->
+      <div class="sm:col-span-2">
+        <label for="owner-principal" class="block mb-2 text-sm font-medium text-kong-text-secondary">
+          Owner Principal (optional)
+        </label>
+        <input 
+          id="owner-principal"
+          type="text" 
+          bind:value={ownerPrincipal}
+          class="w-full px-3 py-2 font-mono text-sm border rounded-lg bg-kong-bg-light border-kong-border/30 focus:ring-2 focus:ring-kong-primary/50" 
+          placeholder="Leave blank to use caller principal" 
+        />
+        <p class="mt-1 text-xs text-kong-text-secondary/70">If left blank, the caller will be the owner.</p>
+      </div>
+    </div>
+  </div>
   <button
     class="flex items-center justify-between w-full gap-4 p-4 text-left transition-colors rounded-lg bg-kong-bg-secondary/50 hover:bg-kong-bg-secondary"
     on:click={() => isExpanded = !isExpanded}

@@ -17,7 +17,7 @@
 </script>
 
 <!-- Combined Token Info Grid with Cyberpunk Aesthetic -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mt-4 pt-3 border-t border-kong-accent-blue/30">
+<div class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-2.5 mt-4 pt-3 border-t border-kong-accent-blue/30">
   <!-- Mining ID Panel -->
   <div class="group/field relative overflow-hidden bg-kong-bg-dark/30 backdrop-blur-sm border border-kong-bg-secondary/20 hover:border-kong-accent-blue/50 rounded transition-all duration-200 cursor-pointer shadow-inner-white">
     <button 
@@ -39,7 +39,7 @@
       </div>
 
       <div class="flex items-center justify-between">
-        <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5">
+        <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5 truncate">
           <span class="p-1 rounded-full bg-kong-accent-blue/10 flex items-center justify-center"><Rocket size={10} class="text-kong-accent-blue" /></span> 
           Mining ID
         </p>
@@ -48,7 +48,7 @@
         </span>
       </div>
       <div class="mt-1">
-        <p class="font-play text-xs text-ellipsis overflow-hidden break-all">
+        <p class="font-play text-xs text-ellipsis overflow-hidden truncate">
           {token.principal.toString().substring(0, 12)}...
         </p>
       </div>
@@ -85,7 +85,7 @@
       </div>
 
       <div class="flex items-center justify-between">
-        <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5">
+        <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5 truncate">
           <span class="p-1 rounded-full bg-kong-accent-green/10 flex items-center justify-center"><Rocket size={10} class="text-kong-accent-green" /></span>
           Ledger ID
         </p>
@@ -97,7 +97,7 @@
       </div>
       <div class="mt-1">
         {#if token.ledger_id?.[0]}
-          <p class="font-play text-xs text-ellipsis overflow-hidden break-all">
+          <p class="font-play text-xs text-ellipsis overflow-hidden truncate">
             {token.ledger_id[0].toString().substring(0, 12)}...
           </p>
           
@@ -126,12 +126,12 @@
         </div>
 
         <div class="flex items-center justify-between">
-          <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5">
+          <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5 truncate">
             <span class="p-1 rounded-full bg-kong-accent-yellow/10 flex items-center justify-center"><Clock size={10} class="text-kong-accent-yellow" /></span>
             Block Time
           </p>
         </div>
-        <p class="mt-1 font-play text-sm text-white/90">
+        <p class="mt-1 font-play text-sm text-white/90 truncate">
           {token.formattedBlockTime}
         </p>
       </div>
@@ -148,12 +148,12 @@
         </div>
 
         <div class="flex items-center justify-between">
-          <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5">
+          <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5 truncate">
             <span class="p-1 rounded-full bg-orange-500/10 flex items-center justify-center"><Target size={10} class="text-orange-500" /></span>
             Block Reward
           </p>
         </div>
-        <p class="mt-1 font-play text-sm text-white/90">
+        <p class="mt-1 font-play text-sm text-white/90 truncate">
           {token.formattedBlockReward}
         </p>
       </div>
@@ -167,12 +167,12 @@
         </div>
 
         <div class="flex items-center justify-between">
-          <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5">
+          <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5 truncate">
             <span class="p-1 rounded-full bg-orange-500/10 flex items-center justify-center"><Target size={10} class="text-orange-500" /></span>
             Block Reward
           </p>
         </div>
-        <p class="mt-1 font-play text-sm text-white/90">
+        <p class="mt-1 font-play text-sm text-white/90 truncate">
           {token.current_block_reward.toString()}
         </p>
       </div>
@@ -186,12 +186,12 @@
         </div>
 
         <div class="flex items-center justify-between">
-          <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5">
+          <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5 truncate">
             <span class="p-1 rounded-full bg-orange-500/10 flex items-center justify-center"><Target size={10} class="text-orange-500" /></span>
             Block Reward
           </p>
         </div>
-        <p class="mt-1 font-play text-sm text-white/90">
+        <p class="mt-1 font-play text-sm text-white/90 truncate">
           Unknown
         </p>
       </div>
@@ -208,12 +208,12 @@
         </div>
 
         <div class="flex items-center justify-between">
-          <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5">
+          <p class="text-xs uppercase tracking-wide font-bold text-white/70 flex items-center gap-1.5 truncate">
             <span class="p-1 rounded-full bg-kong-accent-purple/10 flex items-center justify-center"><Activity size={10} class="text-kong-accent-purple" /></span>
             Block Height
           </p>
         </div>
-        <p class="mt-1 font-play text-sm text-white/90">
+        <p class="mt-1 font-play text-sm text-white/90 truncate">
           {token.current_block_height.toLocaleString()}
         </p>
       </div>

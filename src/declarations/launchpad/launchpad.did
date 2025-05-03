@@ -35,7 +35,6 @@ service : () -> {
       opt principal,
     ) -> (Result_2);
   get_top_up_quote : (nat) -> (Result_3) query;
-  hashes_for_kong : (nat) -> (Result_3);
   list_miners : () -> (vec MinerInfo) query;
   list_tokens : () -> (vec TokenInfo) query;
   list_trusted_hashes : () -> (Result_4) query;

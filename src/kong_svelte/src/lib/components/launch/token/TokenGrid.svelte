@@ -270,7 +270,7 @@
   <!-- Sort controls -->
   {#if !loading && !loadingTokenInfo && enhancedTokens.length > 0}
     <Panel variant="transparent" type="main" className="sort-panel bg-transparent">
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap gap-2 justify-center sm:justify-start">
         <button 
           class={`px-3 py-1 rounded-lg text-xs flex items-center gap-1 ${sortField === 'name' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-kong-bg-secondary/30 text-kong-text-secondary'}`}
           on:click={() => handleSortChange('name')}
@@ -332,10 +332,10 @@
 
   <!-- Loading state -->
   {#if loading || loadingTokenInfo}
-    <div class="flex justify-center py-8">
+    <div class="flex justify-center py-4 md:py-6 lg:py-8">
       <div class="animate-pulse-fast">
         <div class="h-10 w-40 bg-kong-bg-secondary/30 rounded-lg mb-4"></div>
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
           {#each Array(6) as _, i}
             <div class="h-44 bg-kong-bg-secondary/20 rounded-xl"></div>
           {/each}
@@ -343,15 +343,15 @@
       </div>
     </div>
   {:else if filteredTokens.length === 0}
-    <div class="flex flex-col items-center justify-center py-12 text-kong-text-secondary">
+    <div class="flex flex-col items-center justify-center py-8 md:py-12 text-kong-text-secondary">
       <div class="text-5xl mb-3">🔍</div>
       <p class="text-lg font-semibold">No tokens found</p>
       <p class="text-sm">Try adjusting your search or filters</p>
     </div>
   {:else}
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8 py-2">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8 py-2">
       {#each filteredTokens as token (token.principal.toString())}
-        <div class="transition-transform duration-300 transform hover:scale-[1.04] hover:z-10 hover:shadow-2xl">
+        <div class="transition-transform duration-300 transform hover:scale-[1.02] hover:z-10 hover:shadow-2xl">
           <TokenCard {token}>
             <div slot="token-info">
               <TokenInfoGrid {token} />

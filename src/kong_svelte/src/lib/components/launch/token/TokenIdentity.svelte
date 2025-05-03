@@ -4,7 +4,7 @@
   
   // Basic token parameters
   export let name: string = "";
-  export let symbol: string = "";
+  export let ticker: string = "";
   export let logo: string = "";
 
   // Logo file handling
@@ -121,7 +121,7 @@
           </div>
           <input
             type="text"
-            bind:value={symbol}
+            bind:value={ticker}
             class="w-full py-3 pl-10 pr-4 font-mono text-sm font-medium uppercase transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
             placeholder="e.g., BTC, ETH, USDC"
             maxlength="10"
@@ -133,7 +133,7 @@
         </div>
         
         <!-- Symbol Examples -->
-        {#if !symbol}
+        {#if !ticker}
           <div class="flex flex-wrap gap-2 mt-3">
             <div class="px-3 py-1 text-xs border rounded-lg bg-kong-bg-dark/50 border-kong-border/30 text-kong-text-secondary">
               e.g., KONG
@@ -149,17 +149,19 @@
         
         <div class="flex justify-between mt-2 text-xs text-kong-text-secondary/50">
           <span class="flex items-center gap-1.5">
-            {#if symbol.length === 0}
+            {#if ticker.length === 0}
               <span class="w-2 h-2 rounded-full bg-kong-accent-red/80 animate-pulse"></span>
               Required
             {:else}
               <span class="w-2 h-2 rounded-full bg-kong-primary/80"></span>
-              {symbol.length}/10
+              {ticker.length}/10
             {/if}
           </span>
           <span>Short ticker symbol (e.g., BTC)</span>
         </div>
       </div>
+
+
     </div>
 
     <!-- Right Column: Logo -->
@@ -213,4 +215,7 @@
       </div>
     </div>
   </div>
-</div> 
+</div>
+
+<!-- Chain Selection Dropdown Slot -->
+<slot name="chain-dropdown"></slot>

@@ -51,7 +51,7 @@
       name: "Rapid Bitcoin",
       description: "Bitcoin economics with much faster block times",
       blockReward: 50,
-      halvingBlocks: 210000,
+      halvingBlocks: 0,
       blockTimeSeconds: 60,
       maxSupply: 21000000,
       category: 'fast',
@@ -82,24 +82,24 @@
     {
       id: "hyper-fast",
       name: "Lightning Fast",
-      description: "Extremely fast blocks for high-frequency mining",
-      blockReward: 10,
-      halvingBlocks: 3000000,
-      blockTimeSeconds: 5,
-      maxSupply: 30000000,
+      description: "Fast mining with 90-second block times",
+      blockReward: 1000,
+      halvingBlocks: 210000,
+      blockTimeSeconds: 30,
+      maxSupply: 210000000,
       category: 'fast',
       icon: "🚀"
     },
     {
-      id: "slow-burn",
-      name: "Steady Miner",
-      description: "Slow and steady with high rewards",
-      blockReward: 500,
-      halvingBlocks: 50000,
-      blockTimeSeconds: 900,
-      maxSupply: 25000000,
+      id: "bitcoin-standard",
+      name: "Bitcoin Standard",
+      description: "Classic Bitcoin emission schedule",
+      blockReward: 50,
+      halvingBlocks: 210000,
+      blockTimeSeconds: 600,
+      maxSupply: 21000000,
       category: 'slow',
-      icon: "🐢"
+      icon: "₿"
     },
     {
       id: "bitcoin-slow",
@@ -115,24 +115,24 @@
     {
       id: "balanced",
       name: "Balanced",
-      description: "Balanced parameters for steady emission",
+      description: "Balanced mining with 120-second block times",
       blockReward: 100,
       halvingBlocks: 250000,
-      blockTimeSeconds: 60,
+      blockTimeSeconds: 120,
       maxSupply: 50000000,
       category: 'balanced',
       icon: "⚖️"
     },
     {
-      id: "goldcoin",
-      name: "Gold Standard",
-      description: "Medium-paced mining with balanced rewards",
-      blockReward: 50,
-      halvingBlocks: 210000,
+      id: "balanced-plus",
+      name: "Stable Flow",
+      description: "Balanced mining with 150-second block times",
+      blockReward: 10,
+      halvingBlocks: 0,
       blockTimeSeconds: 180,
-      maxSupply: 21000000,
+      maxSupply: 40000000,
       category: 'balanced',
-      icon: "🔶"
+      icon: "⚖️"
     },
     {
       id: "eth-classic",
@@ -218,6 +218,10 @@
   let incompleteMiningWarning = false;
   let circulationYears = "0";
   let showAllPeriods = false;
+  
+  // Add variables for timeline visualization
+  let totalDuration = 0;
+  let cumulativeDurations: number[] = [];
 
   // Calculate in base units to avoid floating point issues
   let minimumUnit = 1 / (10 ** decimals);
@@ -247,6 +251,10 @@
     effectiveHalvingLimit = 0;
     effectiveHalvingLimitReached = false;
     transferFeeLimitReached = false;
+    
+    // Reset timeline visualization variables
+    totalDuration = 0;
+    cumulativeDurations = [];
 
     if (maxSupply && blockReward && halvingBlocks >= 0 && blockTimeSeconds) {
       // First, check if the initial reward is already below transfer fee
@@ -344,6 +352,14 @@
       
       // Calculate years for display if needed
       circulationYears = (circulationDays / 365).toFixed(1);
+      
+      // Calculate cumulative durations for timeline visualization
+      totalDuration = timeline.reduce((sum, period) => sum + period.durationDays, 0);
+      cumulativeDurations = timeline.reduce((acc, period, idx) => {
+        const prevTotal = idx > 0 ? acc[idx-1] : 0;
+        acc.push(prevTotal + period.durationDays);
+        return acc;
+      }, [] as number[]);
     }
   }
 
@@ -528,7 +544,7 @@
     <div class="flex items-center gap-3">
       <div class="w-1.5 h-6 rounded-full bg-kong-primary animate-pulse"></div>
       <h3 class="text-xl font-bold font-space-grotesk text-kong-text-primary">
-        {isCustomView ? "Mining Dynamics Simulator" : "Select Mining Profile"}
+        {isCustomView ? "Mining Dynamics Simulator (this shit is broken and needs ui ux clean up todo)" : "Select Mining Profile"}
       </h3>
     </div>
     {#if isCustomView}
@@ -721,231 +737,8 @@
       </div>
     {/if}
 
-    <div class="grid gap-8 lg:grid-cols-2">
-      <!-- Left Column - Inputs -->
-      <div class="space-y-6">
-
-        <div class="space-y-4">
-          <!-- Block Reward Input -->
-          <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium text-kong-text-primary/80">Block Reward</label>
-              <div class="flex items-center gap-1">
-                <button 
-                  on:click={() => blockReward = Math.max(1, blockReward / 2)} 
-                  class="w-6 h-6 font-bold transition-colors rounded-full text-kong-text-secondary hover:bg-kong-bg-dark/70 hover:text-kong-text-primary"
-                >
-                  -
-                </button>
-                <button 
-                  on:click={() => blockReward = blockReward * 2} 
-                  class="w-6 h-6 font-bold transition-colors rounded-full text-kong-text-secondary hover:bg-kong-bg-dark/70 hover:text-kong-text-primary"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-            
-            <div class="flex items-center mb-2">
-              <input
-                type="range"
-                bind:value={blockReward}
-                min="1"
-                max="10000"
-                step="1"
-                class="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-kong-bg-dark/70 accent-kong-primary"
-              />
-              <div class="flex items-center justify-center w-20 h-8 ml-3 font-mono text-sm rounded bg-kong-bg-dark/70 text-kong-primary">
-                {blockReward}
-              </div>
-            </div>
-            
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <svg class="w-5 h-5 text-kong-text-secondary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <input
-                type="number"
-                bind:value={blockReward}
-                min="0"
-                step="1"
-                class="w-full py-3 pl-10 pr-4 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
-                placeholder="e.g., 50, 100, 1000"
-              />
-            </div>
-            
-            <div class="flex items-center justify-between mt-2 text-xs">
-              <div class="flex items-center gap-1.5 text-kong-text-secondary/70">
-                <span class="w-2 h-2 rounded-full bg-kong-primary/80 animate-pulse"></span>
-                <span>{blockReward.toLocaleString()} {tokenTicker || "tokens"}/block</span>
-              </div>
-              <div class="px-2 py-0.5 rounded bg-kong-bg-dark/30 text-kong-text-secondary/70">
-                {((blockReward * blockTimeSeconds) * 24 * 60 * 60 / blockTimeSeconds).toLocaleString()} daily emission
-              </div>
-            </div>
-          </div>
-
-          <!-- Halving Blocks Input -->
-          <div class="p-4 rounded-xl bg-kong-bg-light/30 border-kong-border/20">
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium text-kong-text-primary/80">Halving Interval</label>
-              <div class="flex items-center gap-2">
-                <button 
-                  on:click={() => halvingBlocks = 0} 
-                  class={`px-2 py-0.5 text-xs rounded-lg transition-all duration-200 ${halvingBlocks === 0 ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary hover:text-kong-text-primary'}`}
-                >
-                  None
-                </button>
-              </div>
-            </div>
-            
-            <div class="p-3 mb-3 rounded-lg bg-gradient-to-r from-kong-bg-dark/50 to-kong-bg-light/10">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-xs text-kong-text-secondary/70">Continuous</span>
-                <span class="text-xs font-medium text-kong-primary">Periodic Halvings</span>
-              </div>
-              <input
-                type="range"
-                bind:value={halvingBlocks}
-                min="0"
-                max="1000000"
-                step="10000"
-                disabled={halvingBlocks === 0}
-                class="w-full h-2 mt-2 rounded-lg appearance-none cursor-pointer bg-kong-bg-dark/70 accent-kong-primary"
-              />
-              <div class="flex items-center justify-between mt-1">
-                <span class="text-xs text-kong-text-secondary/70">Fixed Rate</span>
-                <span class="text-xs text-kong-text-secondary/70">Deflationary</span>
-              </div>
-            </div>
-            
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <svg class="w-5 h-5 text-kong-text-secondary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <input
-                type="number"
-                bind:value={halvingBlocks}
-                class="w-full py-3 pl-10 pr-4 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
-                min="0"
-                placeholder="e.g., 210000 (like Bitcoin)"
-              />
-            </div>
-            
-            <div class="flex items-center justify-between mt-2">
-              {#if halvingBlocks > 0}
-                <div class="flex items-center gap-1.5 text-xs text-kong-accent-blue">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                  <span>Every {(halvingBlocks * blockTimeSeconds / 86400).toFixed(1)} days</span>
-                </div>
-                <div class="px-2 py-0.5 text-xs rounded bg-kong-bg-dark/30 text-kong-text-secondary/70">
-                  {totalHalvings} halvings needed
-                </div>
-              {:else}
-                <div class="text-xs text-kong-accent-green">Continuous emission (no halvings)</div>
-                <div class="px-2 py-0.5 text-xs rounded bg-kong-bg-dark/30 text-kong-text-secondary/70">
-                  Fixed rate
-                </div>
-              {/if}
-            </div>
-          </div>
-
-          <!-- Block Time Input -->
-          <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium text-kong-text-primary/80">Block Time Target</label>
-              <div class="text-xs text-kong-accent-blue">Auto-adjusting</div>
-            </div>
-            
-            <div class="p-3 mb-3 border rounded-lg bg-gradient-to-r from-kong-bg-dark/50 to-kong-bg-light/10 border-kong-border/10">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-xs text-kong-text-secondary/70">Fast</span>
-                <span class="text-xs text-kong-text-secondary/70">Medium</span>
-                <span class="text-xs text-kong-text-secondary/70">Slow</span>
-              </div>
-              <input
-                type="range"
-                bind:value={blockTimeSeconds}
-                min="3"
-                max="600"
-                step="1"
-                class="w-full h-2 mt-2 rounded-lg appearance-none cursor-pointer bg-kong-bg-dark/70 accent-kong-primary"
-              />
-              <div class="flex items-center justify-between mt-1">
-                <span class="text-xs font-medium text-kong-accent-green">3s</span>
-                <span class="text-xs font-medium text-kong-primary">30s</span>
-                <span class="text-xs font-medium text-kong-accent-red">10m</span>
-              </div>
-            </div>
-            
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <svg class="w-5 h-5 text-kong-text-secondary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-              </div>
-              <input
-                type="number"
-                bind:value={blockTimeSeconds}
-                class="w-full py-3 pl-10 pr-4 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
-                min="3"
-                placeholder="e.g., 30, 60, 600"
-              />
-            </div>
-            
-            <div class="flex flex-wrap items-center justify-between gap-2 mt-2">
-              <div class="flex items-center gap-1.5 text-xs">
-                <span class="w-2 h-2 rounded-full animate-pulse" class:bg-kong-accent-green={blockTimeSeconds < 30} class:bg-kong-primary={blockTimeSeconds >= 30 && blockTimeSeconds <= 120} class:bg-kong-accent-red={blockTimeSeconds > 120}></span>
-                <span class="text-kong-text-secondary/70">
-                  {#if blockTimeSeconds < 60}
-                    {blockTimeSeconds} seconds per block
-                  {:else}
-                    {Math.floor(blockTimeSeconds / 60)} minute{Math.floor(blockTimeSeconds / 60) !== 1 ? 's' : ''} per block
-                  {/if}
-                </span>
-              </div>
-              <div class="px-2 py-0.5 text-xs rounded bg-kong-bg-dark/30 text-kong-text-secondary/70">
-                ~{Math.floor(86400 / blockTimeSeconds).toLocaleString()} blocks daily
-              </div>
-            </div>
-          </div>
-
-          <!-- Supply Settings -->
-          <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium text-kong-text-primary/80">Total Supply</label>
-            </div>
-            
-            <div class="relative mb-3">
-              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <svg class="w-5 h-5 text-kong-text-secondary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <input
-                type="number"
-                bind:value={maxSupply}
-                class="w-full py-3 pl-10 pr-4 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
-                min="1"
-                placeholder="e.g., 21000000"
-              />
-            </div>
-            
-            <div class="flex items-center justify-between text-xs text-kong-text-secondary/70">
-              <div>Manually set supply</div>
-              <span>{formatNumber(maxSupply)} {tokenTicker}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Column - Visualizations -->
+    <div class="space-y-8">
+      <!-- Top: Token & Stats -->
       <div class="p-6 border rounded-xl bg-gradient-to-br from-kong-bg-dark/50 to-kong-bg-light/10 border-kong-border/20">
         <!-- Supply Overview with Token Preview -->
         <div class="mb-6">
@@ -999,9 +792,13 @@
               {#if halvingBlocks > 0}
                 {#each Array(Math.min(5, totalHalvings)) as _, i}
                   <div 
-                    class="absolute top-0 h-full border-l border-kong-text-secondary/30"
-                    style="left: {Math.min(100, (100 / (2 ** (i + 1))))}%;"
-                  ></div>
+                    class="absolute left-[-6px] w-3 h-3 rounded-full bg-kong-accent-blue" 
+                    style="top: {(cumulativeDurations[i-1] / totalDuration) * 100}%;"
+                  >
+                    <div class="absolute left-4 transform -translate-y-1/2 px-1.5 py-0.5 text-[10px] rounded bg-kong-bg-dark/80 text-kong-accent-blue whitespace-nowrap">
+                      Halving {i}
+                    </div>
+                  </div>
                 {/each}
               {/if}
             </div>
@@ -1041,36 +838,6 @@
                     {effectiveHalvingLimit} economically viable
                   </div>
                 {/if}
-              </div>
-            </div>
-            
-            <!-- Daily Output -->
-            <div class="overflow-hidden border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
-              <div class="px-3 py-2 text-center">
-                <span class="text-xs font-medium text-kong-text-secondary/70">Daily Output</span>
-                <div class="flex items-center justify-center gap-1 mt-1">
-                  <span class="text-xl font-bold text-kong-primary">
-                    {formatNumber(Math.floor(86400 / blockTimeSeconds) * blockReward)}
-                  </span>
-                  <span class="text-xs text-kong-text-secondary/70">
-                    {tokenTicker}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Final Reward -->
-            <div class="overflow-hidden border rounded-lg bg-gradient-to-br from-kong-bg-dark/80 to-kong-bg-light/5 border-kong-border/20">
-              <div class="px-3 py-2 text-center">
-                <span class="text-xs font-medium text-kong-text-secondary/70">Final Reward</span>
-                <div class="flex items-center justify-center gap-1 mt-1">
-                  <span class="text-lg font-bold text-kong-accent-yellow">
-                    {formatNumber(finalReward)}
-                  </span>
-                  <span class="text-xs text-kong-text-secondary/70">
-                    {tokenTicker}
-                  </span>
-                </div>
               </div>
             </div>
           </div>
@@ -1136,7 +903,7 @@
               {#if timeline.length > 1}
                 <button 
                   on:click={() => showAllPeriods = !showAllPeriods}
-                  class="flex items-center gap-1 px-2 py-1 text-xs transition-colors rounded-lg text-kong-text-secondary hover:text-kong-text-primary bg-kong-bg-dark/30 hover:bg-kong-bg-dark/50"
+                  class="flex items-center justify-center w-full gap-1 py-2 text-xs transition-all duration-200 border rounded-lg bg-kong-bg-dark/30 border-kong-border/20 hover:bg-kong-bg-dark/50 text-kong-text-secondary hover:text-kong-text-primary"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={showAllPeriods ? "M19 9l-7 7-7-7" : "M9 5l7 7-7 7"} />
@@ -1152,24 +919,15 @@
               <div class="absolute bottom-0 left-[-6px] w-3 h-3 rounded-full bg-kong-accent-green"></div>
               
               {#if halvingBlocks > 0 && timeline.length > 1}
-                {@const totalDuration = timeline.reduce((sum, period) => sum + period.durationDays, 0)}
-                {@const cumulativeDurations = timeline.reduce((acc, period, idx) => {
-                  const prevTotal = idx > 0 ? acc[idx-1] : 0;
-                  acc.push(prevTotal + period.durationDays);
-                  return acc;
-                }, [])}
-                
                 {#each timeline.slice(0, timeline.length - 1) as _, i}
-                  {#if i > 0}
-                    <div 
-                      class="absolute left-[-6px] w-3 h-3 rounded-full bg-kong-accent-blue" 
-                      style="top: {(cumulativeDurations[i-1] / totalDuration) * 100}%;"
-                    >
-                      <div class="absolute left-4 transform -translate-y-1/2 px-1.5 py-0.5 text-[10px] rounded bg-kong-bg-dark/80 text-kong-accent-blue whitespace-nowrap">
-                        Halving {i}
-                      </div>
+                  <div 
+                    class="absolute left-[-6px] w-3 h-3 rounded-full bg-kong-accent-blue" 
+                    style="top: {(cumulativeDurations[i-1] / totalDuration) * 100}%;"
+                  >
+                    <div class="absolute left-4 transform -translate-y-1/2 px-1.5 py-0.5 text-[10px] rounded bg-kong-bg-dark/80 text-kong-accent-blue whitespace-nowrap">
+                      Halving {i}
                     </div>
-                  {/if}
+                  </div>
                 {/each}
               {/if}
             </div>
@@ -1240,6 +998,224 @@
             </div>
           </div>
         {/if}
+      </div>
+      <!-- Bottom: Configuration Fields -->
+      <div class="space-y-6">
+        <!-- Block Reward Input -->
+        <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-medium text-kong-text-primary/80">Block Reward</label>
+            <div class="flex items-center gap-1">
+              <button 
+                on:click={() => blockReward = Math.max(1, blockReward / 2)} 
+                class="w-6 h-6 font-bold transition-colors rounded-full text-kong-text-secondary hover:bg-kong-bg-dark/70 hover:text-kong-text-primary"
+              >
+                -
+              </button>
+              <button 
+                on:click={() => blockReward = blockReward * 2} 
+                class="w-6 h-6 font-bold transition-colors rounded-full text-kong-text-secondary hover:bg-kong-bg-dark/70 hover:text-kong-text-primary"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          
+          <div class="flex items-center mb-2">
+            <input
+              type="range"
+              bind:value={blockReward}
+              min="1"
+              max="10000"
+              step="1"
+              class="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-kong-bg-dark/70 accent-kong-primary"
+            />
+            <div class="flex items-center justify-center w-20 h-8 ml-3 font-mono text-sm rounded bg-kong-bg-dark/70 text-kong-primary">
+              {blockReward}
+            </div>
+          </div>
+          
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg class="w-5 h-5 text-kong-text-secondary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <input
+              type="number"
+              bind:value={blockReward}
+              min="0"
+              step="1"
+              class="w-full py-3 pl-10 pr-4 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
+              placeholder="e.g., 50, 100, 1000"
+            />
+          </div>
+          
+          <div class="flex items-center justify-between mt-2 text-xs">
+            <div class="flex items-center gap-1.5 text-kong-text-secondary/70">
+              <span class="w-2 h-2 rounded-full bg-kong-primary/80 animate-pulse"></span>
+              <span>{blockReward.toLocaleString()} {tokenTicker || "tokens"}/block</span>
+            </div>
+            <div class="px-2 py-0.5 rounded bg-kong-bg-dark/30 text-kong-text-secondary/70">
+              {((blockReward * blockTimeSeconds) * 24 * 60 * 60 / blockTimeSeconds).toLocaleString()} daily emission
+            </div>
+          </div>
+        </div>
+
+        <!-- Halving Blocks Input -->
+        <div class="p-4 rounded-xl bg-kong-bg-light/30 border-kong-border/20">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-medium text-kong-text-primary/80">Halving Interval</label>
+            <div class="flex items-center gap-2">
+              <button 
+                on:click={() => halvingBlocks = 0} 
+                class={`px-2 py-0.5 text-xs rounded-lg transition-all duration-200 ${halvingBlocks === 0 ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary hover:text-kong-text-primary'}`}
+              >
+                None
+              </button>
+            </div>
+          </div>
+          
+          <div class="p-3 mb-3 rounded-lg bg-gradient-to-r from-kong-bg-dark/50 to-kong-bg-light/10">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-xs text-kong-text-secondary/70">Continuous</span>
+              <span class="text-xs font-medium text-kong-primary">Periodic Halvings</span>
+            </div>
+            <input
+              type="range"
+              bind:value={halvingBlocks}
+              min="0"
+              max="1000000"
+              step="10000"
+              class="w-full h-2 mt-2 rounded-lg appearance-none cursor-pointer bg-kong-bg-dark/70 accent-kong-primary"
+            />
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-xs text-kong-text-secondary/70">Fixed Rate</span>
+              <span class="text-xs text-kong-text-secondary/70">Deflationary</span>
+            </div>
+          </div>
+          
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg class="w-5 h-5 text-kong-text-secondary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <input
+              type="number"
+              bind:value={halvingBlocks}
+              class="w-full py-3 pl-10 pr-4 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
+              min="0"
+              placeholder="e.g., 210000 (like Bitcoin)"
+            />
+          </div>
+          
+          <div class="flex items-center justify-between mt-2">
+            {#if halvingBlocks > 0}
+              <div class="flex items-center gap-1.5 text-xs text-kong-accent-blue">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>Every {(halvingBlocks * blockTimeSeconds / 86400).toFixed(1)} days</span>
+              </div>
+              <div class="px-2 py-0.5 text-xs rounded bg-kong-bg-dark/30 text-kong-text-secondary/70">
+                {totalHalvings} halvings needed
+              </div>
+            {:else}
+              <div class="text-xs text-kong-accent-green">Continuous emission (no halvings)</div>
+              <div class="px-2 py-0.5 text-xs rounded bg-kong-bg-dark/30 text-kong-text-secondary/70">
+                Fixed rate
+              </div>
+            {/if}
+          </div>
+        </div>
+
+        <!-- Block Time Input -->
+        <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-medium text-kong-text-primary/80">Block Time Target</label>
+            <div class="text-xs text-kong-accent-blue">Auto-adjusting</div>
+          </div>
+          
+          <div class="p-3 mb-3 border rounded-lg bg-gradient-to-r from-kong-bg-dark/50 to-kong-bg-light/10 border-kong-border/10">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-xs text-kong-text-secondary/70">Fast</span>
+              <span class="text-xs text-kong-text-secondary/70">Medium</span>
+              <span class="text-xs text-kong-text-secondary/70">Slow</span>
+            </div>
+            <input
+              type="range"
+              bind:value={blockTimeSeconds}
+              min="3"
+              max="600"
+              step="1"
+              class="w-full h-2 mt-2 rounded-lg appearance-none cursor-pointer bg-kong-bg-dark/70 accent-kong-primary"
+            />
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-xs font-medium text-kong-accent-green">3s</span>
+              <span class="text-xs font-medium text-kong-primary">30s</span>
+              <span class="text-xs font-medium text-kong-accent-red">10m</span>
+            </div>
+          </div>
+          
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg class="w-5 h-5 text-kong-text-secondary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <input
+              type="number"
+              bind:value={blockTimeSeconds}
+              class="w-full py-3 pl-10 pr-4 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
+              min="3"
+              placeholder="e.g., 30, 60, 600"
+            />
+          </div>
+          
+          <div class="flex flex-wrap items-center justify-between gap-2 mt-2">
+            <div class="flex items-center gap-1.5 text-xs">
+              <span class="w-2 h-2 rounded-full animate-pulse" class:bg-kong-accent-green={blockTimeSeconds < 30} class:bg-kong-primary={blockTimeSeconds >= 30 && blockTimeSeconds <= 120} class:bg-kong-accent-red={blockTimeSeconds > 120}></span>
+              <span class="text-kong-text-secondary/70">
+                {#if blockTimeSeconds < 60}
+                  {blockTimeSeconds} seconds per block
+                {:else}
+                  {Math.floor(blockTimeSeconds / 60)} minute{Math.floor(blockTimeSeconds / 60) !== 1 ? 's' : ''} per block
+                {/if}
+              </span>
+            </div>
+            <div class="px-2 py-0.5 text-xs rounded bg-kong-bg-dark/30 text-kong-text-secondary/70">
+              ~{Math.floor(86400 / blockTimeSeconds).toLocaleString()} blocks daily
+            </div>
+          </div>
+        </div>
+
+        <!-- Supply Settings -->
+        <div class="p-4 border rounded-xl bg-kong-bg-light/30 border-kong-border/20">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-medium text-kong-text-primary/80">Total Supply</label>
+          </div>
+          
+          <div class="relative mb-3">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg class="w-5 h-5 text-kong-text-secondary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <input
+              type="number"
+              bind:value={maxSupply}
+              class="w-full py-3 pl-10 pr-4 text-sm transition-all duration-200 border rounded-xl bg-kong-bg-light border-kong-border/30 placeholder:text-kong-text-secondary/50 focus:ring-2 focus:ring-kong-primary/50"
+              min="1"
+              placeholder="e.g., 21000000"
+            />
+          </div>
+          
+          <div class="flex items-center justify-between text-xs text-kong-text-secondary/70">
+            <div>Manually set supply</div>
+            <span>{formatNumber(maxSupply)} {tokenTicker}</span>
+          </div>
+        </div>
       </div>
     </div>
   {/if}
