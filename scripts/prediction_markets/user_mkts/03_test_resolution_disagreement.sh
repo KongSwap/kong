@@ -23,13 +23,29 @@ ALICE_PRINCIPAL=$(dfx identity get-principal)
 echo "Using Alice's principal: $ALICE_PRINCIPAL"
 
 RESULT=$(dfx canister call prediction_markets_backend create_market \
-  "(\"Will SOL price exceed $500 by end of 2025?\", variant { Crypto }, \"Standard rules apply\", \
+  "(\"Will SOL price exceed $ 500 by end of 2025?\", variant { Crypto }, \"Standard rules apply\", \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
-  variant { Duration = 300 : nat }, null, null, null)")
+  variant { Duration = 61 : nat }, null, opt true, opt 0.1)")
 
-# Extract market ID
-MARKET_ID=$(echo $RESULT | grep -o '[0-9]\+' | head -1)
-echo "Market created with ID: $MARKET_ID"
+# Extract market ID and check for success
+if [[ $RESULT == *"Ok"* ]]; then
+    MARKET_ID=$(echo $RESULT | grep -o '[0-9]\+' | head -1)
+    echo "Market created with ID: $MARKET_ID"
+    
+    # Verify market exists
+    echo "Verifying market exists..."
+    MARKET_CHECK=$(dfx canister call prediction_markets_backend get_market "($MARKET_ID)")
+    if [[ $MARKET_CHECK == "(null)" ]]; then
+        echo "ERROR: Market not found after creation. This could indicate a canister state issue."
+        exit 1
+    else
+        echo "Market verified successfully."
+    fi
+else
+    echo "ERROR: Failed to create market"
+    echo "$RESULT"
+    exit 1
+fi
 
 # Step 2: Alice places activation bet (3000 KONG) on "Yes"
 echo -e "\n==== Step 2: Alice placing activation bet (3000 KONG) on 'Yes' ===="
@@ -102,8 +118,8 @@ dfx canister call prediction_markets_backend get_market "($MARKET_ID)"
 
 # Step 6: Fast forward time (market must end before resolution)
 echo -e "\n==== Step 6: Fast forwarding time (waiting for market to end) ===="
-echo "Waiting 5 minutes for market to end..."
-sleep 310
+echo "Waiting 1 minute for market to end..."
+sleep 60
 
 # Step 7: Check balances before resolution disagreement
 echo -e "\n==== Step 7: Checking balances before resolution disagreement ===="
@@ -120,19 +136,19 @@ dfx identity use carol
 dfx canister call ${KONG_LEDGER} icrc1_balance_of "(record { owner = principal \"$CAROL_PRINCIPAL\"; })"
 
 # Step 8: Alice (creator) proposes resolution with "Yes" as winner
-echo -e "\n==== Step 8: Alice (creator) proposing resolution with 'Yes' as winner ===="
+echo -e "\n==== Step 8: Alice (creator) proposing resolution with 'Yes' as winner ====" 
 dfx identity use alice
 echo "Alice proposing resolution..."
-dfx canister call prediction_markets_backend propose_resolution "($MARKET_ID, vec { 0 : nat })"
+dfx canister call prediction_markets_backend resolve_via_admin "($MARKET_ID, vec { 0 : nat })"
 
 # Step 9: Admin proposes different resolution with "No" as winner (creating disagreement)
-echo -e "\n==== Step 9: Admin proposing different resolution with 'No' as winner ===="
+echo -e "\n==== Step 9: Admin proposing different resolution with 'No' as winner ====" 
 dfx identity use default
 DEFAULT_PRINCIPAL=$(dfx identity get-principal)
 echo "Using Admin's principal: $DEFAULT_PRINCIPAL"
 
 echo "Admin proposing different resolution (creating disagreement)..."
-dfx canister call prediction_markets_backend propose_resolution "($MARKET_ID, vec { 1 : nat })"
+dfx canister call prediction_markets_backend resolve_via_admin "($MARKET_ID, vec { 1 : nat })"
 
 # Step 10: Check market status after disagreement (should be voided)
 echo -e "\n==== Step 10: Checking market status after disagreement (should be voided) ===="

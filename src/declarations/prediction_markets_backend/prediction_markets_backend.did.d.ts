@@ -202,16 +202,16 @@ export type ResolutionMethod = {
   { 'Admin' : null };
 export type Result = { 'Ok' : bigint } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : ConsentInfo } |
+export type Result_1 = { 'Ok' : null } |
+  { 'Err' : ResolutionError };
+export type Result_2 = { 'Ok' : ConsentInfo } |
   { 'Err' : ErrorInfo };
-export type Result_2 = { 'Ok' : DelegationResponse } |
-  { 'Err' : DelegationError };
-export type Result_3 = { 'Ok' : null } |
+export type Result_3 = { 'Ok' : DelegationResponse } |
   { 'Err' : DelegationError };
 export type Result_4 = { 'Ok' : null } |
-  { 'Err' : BetError };
+  { 'Err' : DelegationError };
 export type Result_5 = { 'Ok' : null } |
-  { 'Err' : ResolutionError };
+  { 'Err' : BetError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
 export type SortDirection = { 'Descending' : null } |
   { 'Ascending' : null };
@@ -261,6 +261,7 @@ export interface _SERVICE {
     [bigint, bigint, bigint, bigint],
     EstimatedReturn
   >,
+  'force_resolve_market' : ActorMethod<[bigint, Array<bigint>], Result_1>,
   'generate_time_weight_curve' : ActorMethod<
     [bigint, bigint],
     Array<TimeWeightPoint>
@@ -278,24 +279,25 @@ export interface _SERVICE {
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],
-    Result_1
+    Result_2
   >,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
-  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_2>,
-  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_2>,
+  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_3>,
+  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_3>,
   'icrc_34_revoke_delegation' : ActorMethod<
     [RevokeDelegationRequest],
-    Result_3
+    Result_4
   >,
   'is_admin' : ActorMethod<[Principal], boolean>,
-  'place_bet' : ActorMethod<[bigint, bigint, bigint], Result_4>,
-  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_5>,
+  'place_bet' : ActorMethod<[bigint, bigint, bigint], Result_5>,
+  'propose_resolution' : ActorMethod<[bigint, Array<bigint>], Result_1>,
+  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_1>,
   'resolve_via_oracle' : ActorMethod<
     [bigint, Array<bigint>, Uint8Array | number[]],
-    Result_5
+    Result_1
   >,
   'simulate_future_weight' : ActorMethod<[bigint, bigint, bigint], number>,
-  'void_market' : ActorMethod<[bigint], Result_5>,
+  'void_market' : ActorMethod<[bigint], Result_1>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

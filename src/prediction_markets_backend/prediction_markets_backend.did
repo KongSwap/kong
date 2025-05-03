@@ -198,11 +198,11 @@ type ResolutionMethod = variant {
   Admin;
 };
 type Result = variant { Ok : nat; Err : text };
-type Result_1 = variant { Ok : ConsentInfo; Err : ErrorInfo };
-type Result_2 = variant { Ok : DelegationResponse; Err : DelegationError };
-type Result_3 = variant { Ok; Err : DelegationError };
-type Result_4 = variant { Ok; Err : BetError };
-type Result_5 = variant { Ok; Err : ResolutionError };
+type Result_1 = variant { Ok; Err : ResolutionError };
+type Result_2 = variant { Ok : ConsentInfo; Err : ErrorInfo };
+type Result_3 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_4 = variant { Ok; Err : DelegationError };
+type Result_5 = variant { Ok; Err : BetError };
 type RevokeDelegationRequest = record { targets : vec principal };
 type SortDirection = variant { Descending; Ascending };
 type SortOption = variant {
@@ -247,6 +247,7 @@ service : () -> {
       opt float64,
     ) -> (Result);
   estimate_bet_return : (nat64, nat64, nat64, nat64) -> (EstimatedReturn) query;
+  force_resolve_market : (nat, vec nat) -> (Result_1);
   generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
   get_all_categories : () -> (vec text) query;
   get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
@@ -259,16 +260,17 @@ service : () -> {
   get_stats : () -> (StatsResult) query;
   get_user_history : (principal) -> (UserHistory) query;
   icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
-      Result_1,
+      Result_2,
     ) query;
   icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
-  icrc_34_delegate : (DelegationRequest) -> (Result_2);
-  icrc_34_get_delegation : (DelegationRequest) -> (Result_2) query;
-  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_3);
+  icrc_34_delegate : (DelegationRequest) -> (Result_3);
+  icrc_34_get_delegation : (DelegationRequest) -> (Result_3) query;
+  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_4);
   is_admin : (principal) -> (bool) query;
-  place_bet : (nat, nat, nat) -> (Result_4);
-  resolve_via_admin : (nat, vec nat) -> (Result_5);
-  resolve_via_oracle : (nat, vec nat, blob) -> (Result_5);
+  place_bet : (nat, nat, nat) -> (Result_5);
+  propose_resolution : (nat, vec nat) -> (Result_1);
+  resolve_via_admin : (nat, vec nat) -> (Result_1);
+  resolve_via_oracle : (nat, vec nat, blob) -> (Result_1);
   simulate_future_weight : (nat64, nat64, nat64) -> (float64) query;
-  void_market : (nat) -> (Result_5);
+  void_market : (nat) -> (Result_1);
 }

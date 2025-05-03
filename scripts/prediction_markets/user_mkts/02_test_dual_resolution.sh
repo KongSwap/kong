@@ -27,9 +27,25 @@ RESULT=$(dfx canister call prediction_markets_backend create_market \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
   variant { Duration = 300 : nat }, null, opt true, opt 0.1)")
 
-# Extract market ID
-MARKET_ID=$(echo $RESULT | grep -o '[0-9]\+' | head -1)
-echo "Market created with ID: $MARKET_ID"
+# Extract market ID and check for success
+if [[ $RESULT == *"Ok"* ]]; then
+    MARKET_ID=$(echo $RESULT | grep -o '[0-9]\+' | head -1)
+    echo "Market created with ID: $MARKET_ID"
+    
+    # Verify market exists
+    echo "Verifying market exists..."
+    MARKET_CHECK=$(dfx canister call prediction_markets_backend get_market "($MARKET_ID)")
+    if [[ $MARKET_CHECK == "(null)" ]]; then
+        echo "ERROR: Market not found after creation. This could indicate a canister state issue."
+        exit 1
+    else
+        echo "Market verified successfully."
+    fi
+else
+    echo "ERROR: Failed to create market"
+    echo "$RESULT"
+    exit 1
+fi
 
 # Step 2: Alice places activation bet (3000 KONG) on "Yes"
 echo -e "\n==== Step 2: Alice placing activation bet (3000 KONG) on 'Yes' ===="

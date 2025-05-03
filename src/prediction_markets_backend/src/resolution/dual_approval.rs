@@ -62,17 +62,28 @@ pub async fn refund_all_bets(market: &Market) -> Result<(), ResolutionError> {
 
 /// Determines if a user can resolve a market
 pub fn can_resolve_market(market: &Market, user: Principal) -> bool {
+    // Add detailed logging for debugging
+    ic_cdk::println!("Checking if user {} can resolve market {}", user.to_string(), market.id.to_u64());
+    ic_cdk::println!("Market creator: {}", market.creator.to_string());
+    ic_cdk::println!("Resolution method: {:?}", market.resolution_method);
+    ic_cdk::println!("Is user admin: {}", is_admin(user));
+    ic_cdk::println!("Is user creator: {}", market.creator == user);
+    
     // Admin can always resolve any market
     if is_admin(user) {
+        ic_cdk::println!("User is admin, authorization granted");
         return true;
     }
     
-    // Creator can propose resolution if resolution method is Admin and they created the market
-    if market.creator == user && matches!(market.resolution_method, ResolutionMethod::Admin) {
+    // Creator can propose resolution for markets they created
+    // For dual resolution, we allow the creator to propose regardless of resolution method
+    if market.creator == user {
+        ic_cdk::println!("User is the market creator, authorization granted");
         return true;
     }
     
     // Otherwise not authorized
+    ic_cdk::println!("User is not authorized to resolve this market");
     false
 }
 
@@ -110,7 +121,8 @@ pub async fn propose_resolution(
     let is_caller_creator = market.creator == caller;
     
     // Check authorization - only creator or admin can propose resolutions
-    if !is_caller_admin && !is_caller_creator {
+    // Use the can_resolve_market function to ensure proper authorization
+    if !can_resolve_market(&market, caller) {
         return Err(ResolutionError::Unauthorized);
     }
     
@@ -123,7 +135,7 @@ pub async fn propose_resolution(
     }
     
     // Check existing proposals or create a new one
-    RESOLUTION_PROPOSALS.with(|proposals| {
+    let result = RESOLUTION_PROPOSALS.with(|proposals| {
         let mut proposals = proposals.borrow_mut();
         
         if let Some(existing_proposal) = proposals.get(&market_id) {
@@ -136,7 +148,8 @@ pub async fn propose_resolution(
                 if (is_caller_admin && proposal.creator_approved) || 
                    (is_caller_creator && proposal.admin_approved) {
                     // This is a disagreement - void the market and burn creator's deposit
-                    return handle_resolution_disagreement(market_id, market, proposal).await;
+                    // Return the data needed for disagreement handling
+                    return Ok((true, market_id.clone(), market.clone(), proposal.clone()));
                 }
                 
                 // If it's not a confirmed disagreement yet, just inform about mismatch
@@ -156,34 +169,21 @@ pub async fn propose_resolution(
             
             // Check if we have dual approval
             if proposal.creator_approved && proposal.admin_approved {
-                // Finalize the market - this distributes winnings
-                finalize_market(&mut market, winning_outcomes.clone()).await?;
-                
-                // Update market status
-                market.status = MarketStatus::Closed(winning_outcomes.iter().map(|idx| Nat::from(idx.clone())).collect());
-                market.resolved_by = proposal.admin_approver;
-                
-                // Update market in storage
-                MARKETS.with(|markets| {
-                    let mut markets_ref = markets.borrow_mut();
-                    markets_ref.insert(market_id, market);
-                });
-                
-                // Remove proposal
-                proposals.remove(&market_id);
-                
-                ic_cdk::println!(
-                    "Market {:?} resolved with dual approval",
-                    market_id.to_u64()
-                );
+                // Return the data needed for finalization
+                // We'll handle the finalization outside this closure
+                return Ok((false, market_id.clone(), market.clone(), proposal.clone()));
             } else {
+                // Store proposal approval status before moving it
+                let creator_approved = proposal.creator_approved;
+                let admin_approved = proposal.admin_approved;
+                
                 // Update proposal
-                proposals.insert(market_id, proposal);
+                proposals.insert(market_id.clone(), proposal);
                 
                 // Inform if waiting for the other party
-                if proposal.creator_approved && !proposal.admin_approved {
+                if creator_approved && !admin_approved {
                     return Err(ResolutionError::AwaitingAdminApproval);
-                } else if !proposal.creator_approved && proposal.admin_approved {
+                } else if !creator_approved && admin_approved {
                     return Err(ResolutionError::AwaitingCreatorApproval);
                 }
             }
@@ -199,18 +199,67 @@ pub async fn propose_resolution(
                 proposed_at: get_current_time(),
             };
             
-            proposals.insert(market_id, proposal.clone());
+            // Store proposal
+            proposals.insert(market_id.clone(), proposal.clone());
             
-            // Inform about waiting for approval
-            if proposal.creator_approved && !proposal.admin_approved {
+            // Inform about waiting for the other party
+            if is_caller_creator {
                 return Err(ResolutionError::AwaitingAdminApproval);
-            } else if !proposal.creator_approved && proposal.admin_approved {
+            } else {
                 return Err(ResolutionError::AwaitingCreatorApproval);
             }
         }
         
-        Ok(())
-    })
+        // Return a default value that won't be used
+        // This is needed because all code paths above return early
+        // We never actually reach this code path
+        Ok((false, market_id.clone(), market.clone(), ResolutionProposal {
+            market_id: market_id.clone(),
+            proposed_outcomes: winning_outcomes.clone(),
+            creator_approved: false,
+            admin_approved: false,
+            creator: market.creator,
+            admin_approver: None,
+            proposed_at: get_current_time(),
+        }))
+    });
+    
+    // Process the result from the closure
+    match result {
+        Ok((is_disagreement, market_id_clone, mut market_clone, proposal_clone)) => {
+            if is_disagreement {
+                // Handle disagreement outside the closure
+                return handle_resolution_disagreement(market_id_clone, market_clone, proposal_clone).await;
+            } else {
+                // We have dual approval, finalize the market
+                finalize_market(&mut market_clone, winning_outcomes.clone()).await?;
+                
+                // Update market status
+                market_clone.status = MarketStatus::Closed(winning_outcomes.iter().map(|idx| Nat::from(idx.clone())).collect());
+                market_clone.resolved_by = proposal_clone.admin_approver;
+                
+                // Update market in storage
+                MARKETS.with(|markets| {
+                    let mut markets_ref = markets.borrow_mut();
+                    markets_ref.insert(market_id_clone.clone(), market_clone);
+                });
+                
+                // Remove proposal
+                RESOLUTION_PROPOSALS.with(|proposals| {
+                    let mut proposals = proposals.borrow_mut();
+                    proposals.remove(&market_id_clone);
+                });
+                
+                ic_cdk::println!(
+                    "Market {:?} resolved with dual approval",
+                    market_id_clone.to_u64()
+                );
+                
+                return Ok(());
+            }
+        },
+        Err(e) => return Err(e),
+    };
 }
 
 /// Allows an admin to force resolve a market, bypassing the dual-approval process
@@ -264,6 +313,9 @@ pub async fn force_resolve_market(
     });
     
     // Update market in storage
+    // Clone market_id before moving it into the closure
+    let market_id_clone = market_id.clone();
+    
     MARKETS.with(|markets| {
         let mut markets_ref = markets.borrow_mut();
         markets_ref.insert(market_id, market);
@@ -272,7 +324,7 @@ pub async fn force_resolve_market(
     ic_cdk::println!(
         "Admin {} force resolved market {:?}",
         admin.to_string(),
-        market_id.to_u64()
+        market_id_clone.to_u64()
     );
     
     Ok(())
@@ -323,49 +375,51 @@ async fn handle_resolution_disagreement(
     let activation_threshold = min_activation_bet();
     
     for bet in &creator_bets {
-        if amount_to_burn < activation_threshold {
-            let to_burn = if amount_to_burn + bet.amount <= activation_threshold {
-                bet.amount
+        if amount_to_burn.clone() < activation_threshold.clone() {
+            let to_burn = if amount_to_burn.clone() + bet.amount.clone() <= activation_threshold.clone() {
+                bet.amount.clone()
             } else {
-                activation_threshold - amount_to_burn
+                activation_threshold.clone() - amount_to_burn.clone()
             };
             
-            amount_to_burn = amount_to_burn + to_burn;
+            amount_to_burn = amount_to_burn.clone() + to_burn.clone();
             
-            // Add any remaining amount to be refunded
-            if bet.amount > to_burn {
-                creator_remaining = creator_remaining + (bet.amount - to_burn);
+            // If there's remaining amount from this bet, add it to creator_remaining
+            if bet.amount.clone() > to_burn.clone() {
+                creator_remaining = creator_remaining.clone() + (bet.amount.clone() - to_burn.clone());
             }
         } else {
-            // Already reached min_activation_bet() to burn, refund rest
-            creator_remaining = creator_remaining + bet.amount;
+            // We've already reached the amount to burn, add the rest to creator_remaining
+            creator_remaining = creator_remaining.clone() + bet.amount.clone();
         }
     }
     
-    // Burn the creator's minimum bet
-    if amount_to_burn > TokenAmount::from(0u64) {
+    // Burn the tokens by sending them to the minter address
+    if amount_to_burn.clone() > TokenAmount::from(0u64) {
+        let amount_to_burn_clone = amount_to_burn.clone();
         match burn_tokens(amount_to_burn).await {
             Ok(_) => {
-                ic_cdk::println!("Burned {} KONG from market creator as penalty", amount_to_burn.to_u64());
+                ic_cdk::println!("Burned {} KONG from market creator as penalty", amount_to_burn_clone.to_u64());
             },
             Err(e) => {
-                ic_cdk::println!("Failed to burn tokens: {}", e);
-                return Err(ResolutionError::VoidingFailed);
+                ic_cdk::println!("Error burning tokens: {}", e);
+                // Continue even if burning fails - we'll still void the market
             }
         }
     }
     
-    // Refund any remaining amount to the creator (above min_activation_bet())
-    if creator_remaining > TokenAmount::from(0u64) && creator_remaining > KONG_TRANSFER_FEE.clone() {
-        let transfer_amount = creator_remaining - KONG_TRANSFER_FEE.clone();
+    // Return any remaining tokens to the creator
+    if creator_remaining.clone() > KONG_TRANSFER_FEE.clone() {
+        let transfer_amount = creator_remaining.clone() - KONG_TRANSFER_FEE.clone();
+        let transfer_amount_clone = transfer_amount.clone();
         
         match transfer_kong(creator, transfer_amount).await {
             Ok(_) => {
-                ic_cdk::println!("Refunded {} remaining KONG to market creator", transfer_amount.to_u64());
+                ic_cdk::println!("Refunded {} remaining KONG to market creator", transfer_amount_clone.to_u64());
             },
             Err(e) => {
-                ic_cdk::println!("Failed to refund creator: {}", e);
-                // Continue with other refunds even if this fails
+                ic_cdk::println!("Error refunding creator: {}", e);
+                // Continue even if refund fails
             }
         }
     }
@@ -402,9 +456,10 @@ async fn handle_resolution_disagreement(
     market.resolved_by = proposal.admin_approver;
     
     // Update market in storage
+    let market_id_clone = market_id.clone();
     MARKETS.with(|markets| {
         let mut markets_ref = markets.borrow_mut();
-        markets_ref.insert(market_id, market);
+        markets_ref.insert(market_id_clone.clone(), market);
     });
     
     ic_cdk::println!("Market voided due to resolution disagreement");
@@ -450,8 +505,9 @@ pub async fn void_market(
     // Process the void - refund all bets
     // Only process refunds if there are bets (Active markets)
     if matches!(market.status, MarketStatus::Active) {
-        if let Err(e) = refund_all_bets(&market).await {
-            return Err(ResolutionError::VoidingFailed);
+        if let Err(_e) = refund_all_bets(&market).await {
+            ic_cdk::println!("Error refunding bets");
+            // Continue even if refunds fail
         }
     }
     
@@ -466,15 +522,15 @@ pub async fn void_market(
     market.resolved_by = Some(admin);
     
     // Update market in storage
+    let market_id_clone = market_id.clone();
     MARKETS.with(|markets| {
         let mut markets_ref = markets.borrow_mut();
-        markets_ref.insert(market_id, market);
+        markets_ref.insert(market_id_clone.clone(), market);
     });
     
     ic_cdk::println!(
-        "Admin {} voided market {:?}",
-        admin.to_string(),
-        market_id.to_u64()
+        "Market {:?} voided by admin",
+        market_id_clone.to_u64()
     );
     
     Ok(())

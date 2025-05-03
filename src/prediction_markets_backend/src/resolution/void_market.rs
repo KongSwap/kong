@@ -14,7 +14,7 @@ lazy_static::lazy_static! {
 
 /// Voids a market and returns all bets to the users
 /// This is used when no resolution can be determined or in case of market manipulation
-#[update]
+/// Note: The actual #[update] function is defined in dual_approval.rs
 pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
     let admin = ic_cdk::caller();
 
