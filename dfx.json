@@ -122,7 +122,7 @@
         }
       ]
     },
-    "ksicp_ledger": {
+    "icp_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icp_ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ledger-canister.wasm.gz",

@@ -79,7 +79,7 @@ export const nordTheme: ThemeDefinition = {
     panelRoundness: 'rounded-md', // Slightly less rounded corners for Nord's minimalist style
     swapPanelRoundness: 'rounded-lg', // Slightly more rounded for swap panels
     swapPanelBorder: '1px solid #4C566A', // Nord's border color
-    swapPanelShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+    swapPanelShadow: 'shadow-sm',
     swapPanelInputsRounded: true,
     transparentSwapPanel: false,
     transparentPanel: false,

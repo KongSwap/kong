@@ -224,7 +224,7 @@ export const baseTheme: ThemeDefinition = {
     panelRoundness: 'rounded-lg', // Default panel roundness
     swapPanelRoundness: 'rounded-xl', // Swap panels are slightly more rounded
     swapPanelBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    swapPanelShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
+    swapPanelShadow: 'shadow-sm',
     swapPanelInputsRounded: true,
     transparentSwapPanel: true, // Default to transparent swap panels
     transparentPanel: true,

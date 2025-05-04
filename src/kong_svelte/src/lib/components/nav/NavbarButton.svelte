@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tooltip } from "$lib/actions/tooltip";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import { X } from "lucide-svelte";
   
   // Props with Svelte 5 runes
   let {
@@ -17,6 +18,7 @@
     testId = "",     // For testing
     isWalletButton = false, // Flag for wallet buttons
     loading = false, // Loading state
+    clickableDuringLoading = false, // Allow clicking during loading state
     
     // Theme options - consolidated into a single theme object
     customBgColor = "",
@@ -64,7 +66,7 @@
       ? `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-semibold text-kong-text-primary/95 bg-kong-primary/40 border border-kong-primary/80 transition-all duration-150 hover:bg-kong-primary/60 hover:border-kong-primary/90`
       : variant === "mobile"
       ? `h-[34px] w-[34px] flex items-center justify-center ${$panelRoundness} text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40`
-      : `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light`
+      : `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-medium text-kong-text-secondary bg-kong-bg-dark border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-bg-light hover:border-kong-border-light`
   );
 
   // Selected and disabled classes
@@ -73,7 +75,7 @@
 </script>
 
 <button
-  class="{buttonClass} {className} {isSelected ? selectedClass : ''} {disabled || loading ? disabledClass : ''} {$panelRoundness}"
+  class="{buttonClass} {className} {isSelected ? selectedClass : ''} {disabled ? disabledClass : ''} {$panelRoundness}"
   class:use-theme-border={useThemeBorder}
   class:has-custom-style={hasCustomStyle}
   class:use-theme-variables={useThemeVariables}
@@ -81,14 +83,23 @@
   class:wallet-button={isWalletButton}
   style={buttonStyle}
   on:click={onClick}
-  disabled={disabled || loading}
+  disabled={disabled}
   data-testid={testId || "navbar-button"}
   use:tooltip={tooltipText ? tooltipProps : null}
   aria-label={tooltipText || label || "Button"}
 >
-  <div class="relative">
+  <div class="relative group">
     {#if loading}
-      <div class="spinner" style="width: {iconSize}px; height: {iconSize}px;"></div>
+      <div class="spinner" style="width: {iconSize}px; height: {iconSize}px;">
+        {#if isWalletButton}
+          <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <X size={iconSize} />
+          </div>
+          <div class="absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-200">
+            <div class="spinner-inner"></div>
+          </div>
+        {/if}
+      </div>
     {:else}
       {@render icon({ size: iconSize })}
       {#if badgeCount > 0}
@@ -195,6 +206,12 @@
   .spinner {
     width: 18px;
     height: 18px;
+    position: relative;
+  }
+
+  .spinner-inner {
+    width: 100%;
+    height: 100%;
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
     border-top-color: currentColor;

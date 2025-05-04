@@ -11,11 +11,11 @@ import type {
 import { ApiClient } from '../base/ApiClient';
 import { API_URL } from '../index';
 import { browser } from '$app/environment';
-import { auth, canisterIDLs } from '$lib/stores/auth';
+import { auth } from '$lib/stores/auth';
 import { toastStore } from '$lib/stores/toastStore';
-import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
 import { userTokens } from '$lib/stores/userTokens';
 import { get } from 'svelte/store';
+import { canisters, type ICRC2_LEDGER, type KONG_FAUCET } from '$lib/config/auth.config';
 
 // Lazy initialization of API client to prevent SSR issues
 const getApiClient = () => {
@@ -198,14 +198,15 @@ export const addToken = async (canisterId: string): Promise<any> => {
  * Claims tokens from the faucet
  */
 export const faucetClaim = async (): Promise<void> => {
-  const actor = auth.pnp.getActor(
-    process.env.CANISTER_ID_KONG_FAUCET,
-    canisterIDLs.kong_faucet,
-    { anon: false, requiresSigning: false },
-  );
-  const result = await (actor as any).claim();
+  const actor = auth.pnp.getActor<KONG_FAUCET>({
+    canisterId: canisters.kongFaucet.canisterId,
+    idl: canisters.kongFaucet.idl,
+    anon: false,
+    requiresSigning: false,
+  });
+  const result = await actor.claim();
 
-  if (result.Ok) {
+  if ('Ok' in result) {
     toastStore.success("Tokens minted successfully");
   } else {
     console.error("Error minting tokens:", result.Err);
@@ -223,7 +224,11 @@ export const fetchTokenMetadata = async (canisterId: string): Promise<Kong.Token
       throw new Error("API calls can only be made in the browser");
     }
 
-    const actor = await createAnonymousActorHelper(canisterId, canisterIDLs.icrc2);
+    const actor = auth.pnp.getActor<ICRC2_LEDGER>({
+      canisterId: canisterId,
+      idl: canisters.icrc2.idl,
+      anon: true,
+    });
     if (!actor) {
       throw new Error('Failed to create token actor');
     }

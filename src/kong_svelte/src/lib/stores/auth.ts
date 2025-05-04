@@ -1,11 +1,9 @@
 import { get, writable } from "svelte/store";
-import { type PNP } from "@windoge98/plug-n-play";
+import { type PnpInterface } from "@windoge98/plug-n-play";
 import {
   pnp,
-  canisterIDLs as pnpCanisterIDLs,
-  type CanisterType as PnpCanisterType,
+  canisters as pnpCanisters,
 } from "$lib/config/auth.config";
-import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
 import { fetchBalances } from "$lib/api/balances";
 import { currentUserBalancesStore } from "$lib/stores/balancesStore";
@@ -28,10 +26,9 @@ export const selectedWalletId = writable<string | null>(null);
 export const isConnected = writable<boolean>(false);
 export const connectionError = writable<string | null>(null);
 export const isAuthenticating = writable<boolean>(false);
-export type CanisterType = PnpCanisterType;
-export const canisterIDLs = pnpCanisterIDLs;
+export const canisters = pnpCanisters;
 
-function createAuthStore(pnp: PNP) {
+function createAuthStore(pnp: PnpInterface) {
   const store = writable({ isConnected: false, account: null, isInitialized: false });
   const { subscribe, set } = store;
   let isStoreInitialized = false;
@@ -166,22 +163,15 @@ function createAuthStore(pnp: PNP) {
       resetState(null);
       currentUserBalancesStore.set({});
       currentUserPoolsStore.reset();
-      
+      isConnected.set(false);
+      selectedWalletId.set(null);
+      isAuthenticating.set(false);
+      connectionError.set(null);
       // Set principal to null but don't reset tokens
       const { userTokens } = await import("$lib/stores/userTokens");
       userTokens.setPrincipal(null);
       
       await storage.clear();
-    },
-
-    getActor(
-      canisterId: string,
-      idl: any,
-      options: { anon?: boolean; requiresSigning?: boolean } = {},
-    ) {
-      if (options.anon) return createAnonymousActorHelper(canisterId, idl);
-      if (!pnp.isWalletConnected()) throw new Error("Anonymous user");
-      return pnp.getActor(canisterId, idl, options);
     },
   };
 
@@ -193,7 +183,7 @@ export const auth = createAuthStore(pnp);
 
 // Helper functions
 export function requireWalletConnection(): void {
-  if (!pnp.isWalletConnected()) throw new Error("Wallet is not connected.");
+  if (!pnp.isAuthenticated()) throw new Error("Wallet is not connected.");
 }
 
 export const connectWallet = async (walletId: string) => {

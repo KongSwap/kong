@@ -1,11 +1,11 @@
 pub const ICP_TOKEN_ID: u32 = 2;
 pub const ICP_SYMBOL: &str = if cfg!(any(feature = "local", feature = "staging")) {
-    "ksICP"
+    "ICP"
 } else {
     "ICP"
 };
 pub const ICP_SYMBOL_WITH_CHAIN: &str = if cfg!(any(feature = "local", feature = "staging")) {
-    "IC.ksICP"
+    "IC.ICP"
 } else {
     "IC.ICP"
 };

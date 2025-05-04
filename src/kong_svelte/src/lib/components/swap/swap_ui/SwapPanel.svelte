@@ -342,12 +342,12 @@
   width="auto"
   type="main"
   className="w-full max-w-2xl !p-4 !h-full {isWin95Border ? 'win95-panel' : ''}"
+  shadow={$swapPanelShadow}
   roundness={$swapPanelRoundness}
   isSwapPanel={true}
 >
   <div
     class="flex flex-col min-h-[165px] max-h-[220px] box-border relative"
-    style="--swap-panel-border: {$swapPanelBorder}; --swap-panel-shadow: {$swapPanelShadow};"
   >
     <header>
       <div class="flex items-center justify-between gap-4 min-h-[1rem] mb-5">
