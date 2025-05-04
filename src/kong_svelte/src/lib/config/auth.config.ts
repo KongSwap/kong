@@ -123,8 +123,8 @@ export function initializePNP(): PNP {
     return globalPnp;
   }
   try {
-
-    globalPnp = createPNP({
+    // Create a stable configuration object
+    const config = {
       dfxNetwork: isDev ? "local" : "ic",
       hostUrl: isDev ? "http://localhost:4943" : "https://icp0.io",
       fetchRootKeys: isDev,
@@ -159,17 +159,36 @@ export function initializePNP(): PNP {
         },
         walletconnectSiws: {
           enabled: true,
-          projectId: "77b77ffe1132244fe4a3ce38f01885d7", // Must be provided by the user
+          projectId: "77b77ffe1132244fe4a3ce38f01885d7",
           appName: "KongSwap",
           appDescription: 'Next gen multi-chain DeFi',
           appUrl: 'https://kongswap.io',
           appIcons: ['https://kongswap.io/titles/kong_logo.png'],
-          onSignatureRequired: (message: string) => showSignatureModal(message),
-          onSignatureComplete: () => hideSignatureModal(),
+          onSignatureRequired: (message: string) => {
+            if (typeof window !== 'undefined') {
+              showSignatureModal(message);
+            }
+          },
+          onSignatureComplete: () => {
+            if (typeof window !== 'undefined') {
+              hideSignatureModal();
+            }
+          },
         },
       },
       localStorageKey: "kongSwapPnpState",
-    } as GlobalPnpConfig);
+    } as GlobalPnpConfig;
+
+    // Initialize PNP with the stable config
+    globalPnp = createPNP(config);
+
+    // Ensure WalletConnect adapter is properly initialized
+    if (globalPnp.adapter?.walletconnectSiws) {
+      const wcAdapter = globalPnp.adapter.walletconnectSiws;
+      if (typeof wcAdapter.initialize === 'function') {
+        wcAdapter.initialize();
+      }
+    }
 
     return globalPnp;
   } catch (error) {

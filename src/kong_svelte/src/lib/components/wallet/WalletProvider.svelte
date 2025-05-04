@@ -57,8 +57,11 @@
 
   // Helper function to map raw wallet data to WalletInfo structure
   function mapRawWalletToInfo(wallet: any): WalletInfo {
+    // Normalize wallet ID for WalletConnect
+    const normalizedId = wallet.id === 'walletconnectSiws' ? 'walletconnect' : wallet.id;
+    
     return {
-      id: wallet.id,
+      id: normalizedId,
       walletName: wallet.walletName,
       logo: wallet.logo,
       chain: wallet.chain || (wallet.id.includes("Siws") ? "SOL" : "ICP"), // Set chain correctly based on ID
@@ -67,6 +70,16 @@
       unsupported: null,
       website: wallet.website,
     };
+  }
+
+  // Helper function to normalize wallet ID for lookup
+  function normalizeWalletId(walletId: string): string {
+    return walletId === 'walletconnectSiws' ? 'walletconnect' : walletId;
+  }
+
+  // Helper function to denormalize wallet ID for connection
+  function denormalizeWalletId(walletId: string): string {
+    return walletId === 'walletconnect' ? 'walletconnectSiws' : walletId;
   }
 
   // Map available wallets using the helper function
@@ -185,14 +198,12 @@
     });
   }
 
-  // Initialize on mount with retries
+  // Initialize on mount
   onMount(async () => {
     if (browser) {
       isOnMobile = isMobileBrowser();
-
-      // Initialize the recent wallets store
-      await recentWalletsStore.initialize(); 
-      walletDataLoaded = true; // Mark as loaded after initialization
+      await recentWalletsStore.initialize();
+      walletDataLoaded = true;
 
       setTimeout(() => {
         if (searchInputRef) searchInputRef.focus();
@@ -200,21 +211,33 @@
     }
   });
 
+  // Effect to update wallet list when auth changes
   $effect(() => {
-    if (browser) {
-      isOnMobile = isMobileBrowser();
+    if (browser && auth.pnp) {
+      // Get enabled wallets directly from PNP
+      const enabledWallets = auth.pnp.getEnabledWallets() || [];
+      
+      // Map the wallets
+      const allWallets = enabledWallets.map(mapRawWalletToInfo);
+      
+      // Update the filtered wallets
+      filteredWallets = allWallets;
+      const newGrouped = groupWalletsByChain(allWallets);
+      groupedWalletsByChain = newGrouped;
+      sortedChainsList = getSortedChains(Object.keys(newGrouped));
     }
   });
 
   // Function to update filtered wallets based on search query
   function updateFilteredWallets(query: string) {
-    if (!browser) return;
+    if (!browser || !auth.pnp) return;
 
     // Get base wallet list
     const rawWallets = auth.pnp.getEnabledWallets() || [];
 
     // Map raw wallets using the helper function
     let mappedWallets = rawWallets.map(mapRawWalletToInfo);
+    
     // Apply search filter if there's a query
     if (query.trim()) {
       const lowerQuery = query.toLowerCase().trim();
@@ -240,9 +263,6 @@
   // Effect for handling filteredWallets based on searchQuery
   $effect(() => {
     updateFilteredWallets(searchQuery);
-
-    // Note: showRecentWalletsSection = true; was moved here
-    // This ensures it updates even if updateFilteredWallets returns early (though currently it doesn't)
     showRecentWalletsSection = true;
   });
 
@@ -278,11 +298,14 @@
     if (!walletId || connecting || !browser) return;
 
     errorMessage = null;
-    connectingWalletId = walletId;
+    // Denormalize wallet ID for connection
+    const denormalizedWalletId = denormalizeWalletId(walletId);
+    
+    connectingWalletId = denormalizedWalletId;
     clickedWalletInfo = { id: walletId, source };
 
     // Check if connecting to Plug and if it's available
-    if (walletId === "plug" && !isPlugAvailable()) {
+    if (denormalizedWalletId === "plug" && !isPlugAvailable()) {
       errorMessage = "Plug Wallet extension is not installed or available. Please install it to connect.";
       connectingWalletId = null; // Reset connecting ID as we are not proceeding
       return; // Stop the connection process
@@ -302,9 +325,9 @@
         resetConnectionState(); // Use helper function
       }, 30000) as unknown as number;
 
-      await auth.connect(walletId);
+      await auth.connect(denormalizedWalletId);
 
-      // Update recent wallets list using the store
+      // Update recent wallets list using the normalized ID
       await recentWalletsStore.add(walletId); 
 
       if ($auth.isConnected) {
@@ -339,7 +362,8 @@
 
   // Get wallet info by ID
   function getWalletById(walletId: string): WalletInfo | undefined {
-    return walletList.find((wallet) => wallet.id === walletId);
+    const normalizedId = normalizeWalletId(walletId);
+    return filteredWallets.find((wallet) => wallet.id === normalizedId);
   }
 
   // Get all wallets as a flat array for keyboard navigation

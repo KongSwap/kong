@@ -50,7 +50,7 @@ export const win98Theme: ThemeDefinition = {
     panelRoundness: 'rounded', // Subtle roundness for the Windows 98 look
     swapPanelRoundness: 'rounded-none', // No rounded corners for Windows 98 style
     swapPanelBorder: 'none', // Turn off standard border - using shadow for 3D effect
-    swapPanelShadow: 'inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #808080, inset 2px 2px 0 #D4D0C8, inset -2px -2px 0 #404040', // Win95 3D border effect
+    swapPanelShadow: 'shadow-sm', // Win95 3D border effect
     swapPanelInputsRounded: false, // Square inputs for Windows 98 style
     transparentSwapPanel: false, // Solid background for Win98 panels
     transparentPanel: false, // Solid background for Win98 panels

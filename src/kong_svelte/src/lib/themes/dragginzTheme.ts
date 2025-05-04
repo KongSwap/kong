@@ -51,7 +51,7 @@ export const dragginzTheme: ThemeDefinition = {
     panelRoundness: 'rounded',
     swapPanelRoundness: 'rounded',
     swapPanelBorder: '1px solid rgba(255, 255, 255, 0.2)',
-    swapPanelShadow: '0 10px 35px rgba(0, 0, 0, 0.4), 0 0 15px rgba(34, 201, 211, 0.15)',
+    swapPanelShadow: 'shadow-sm',
     swapPanelInputsRounded: true,
     transparentSwapPanel: true,
     transparentPanel: true,
