@@ -127,7 +127,6 @@ export const nordTheme: ThemeDefinition = {
     backgroundOpacity: 0.2, // Reduced opacity so it doesn't overpower the UI
     enableNebula: false,
     enableStars: false,
-    enableSkyline: false,
     nebulaOpacity: 0.2,
   }
 }; 

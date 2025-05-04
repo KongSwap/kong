@@ -95,7 +95,6 @@ export const plainBlackTheme: ThemeDefinition = {
     backgroundSolid: '#000000', // Pure black background
     enableNebula: false,
     enableStars: true,
-    enableSkyline: false,
     starsOpacity: 1 // Higher opacity for stars in pure black theme
   }
 }; 

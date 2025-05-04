@@ -159,7 +159,6 @@ export interface ThemeColors {
   // Special effects
   enableNebula?: boolean;
   enableStars?: boolean;
-  enableSkyline?: boolean;
   nebulaOpacity?: number;
   starsOpacity?: number;
 }
@@ -329,7 +328,6 @@ export const baseTheme: ThemeDefinition = {
     enableParallax: false,
     enableNebula: true,
     enableStars: true,
-    enableSkyline: true,
     nebulaOpacity: 0.3,
     starsOpacity: 0.8
   }

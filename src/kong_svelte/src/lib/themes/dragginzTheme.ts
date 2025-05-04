@@ -153,7 +153,6 @@ export const dragginzTheme: ThemeDefinition = {
     parallaxStrength: 0, // Slightly reduced for subtlety
     enableNebula: false,
     enableStars: true,
-    enableSkyline: false,
     starsOpacity: 0.6
   }
 }; 

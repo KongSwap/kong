@@ -125,15 +125,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         algorithm: 'gzip',
         ext: '.gz',
       }),
-      viteCompression({
-        verbose: true,
-        disable: false,
-        threshold: 5200,
-        algorithm: 'brotliCompress',
-        ext: '.br',
-      })
     );
-
     // Add terser options for production
     Object.assign(buildOptions, {
       minify: 'terser',

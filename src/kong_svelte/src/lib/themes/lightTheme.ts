@@ -111,6 +111,5 @@ export const lightTheme: ThemeDefinition = {
     backgroundOpacity: 1,
     enableNebula: false,
     enableStars: false,
-    enableSkyline: false
   }
 }; 

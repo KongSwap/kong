@@ -153,6 +153,5 @@ export const win98Theme: ThemeDefinition = {
     // Disable special effects for authentic Windows 98 look
     enableNebula: false,
     enableStars: false,
-    enableSkyline: false
   }
 }; 
