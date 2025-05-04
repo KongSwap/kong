@@ -29,6 +29,3 @@ pub mod tokens;
 pub mod transfers;
 pub mod user;
 pub mod user_balances;
-
-pub const APP_NAME: &str = "Kong Swap";
-pub const APP_VERSION: &str = "v0.0.20";
