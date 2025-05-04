@@ -124,7 +124,6 @@ export const synthwaveTheme: ThemeDefinition = {
     backgroundOpacity: 1,
     enableNebula: true,      // Enable nebula effect
     enableStars: true,       // Enable stars
-    enableSkyline: true,     // Enable skyline for 80s city vibe
     nebulaOpacity: 0.4,      // Subtle nebula
     starsOpacity: 0.7        // Visible stars
   }
