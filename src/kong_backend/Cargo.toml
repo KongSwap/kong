@@ -6,7 +6,7 @@ description = "Kong Swap backend canister"
 
 [lib]
 name = "kong_backend"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [features]
 local = []

@@ -2,7 +2,7 @@ pub mod common;
 
 use anyhow::Result;
 use candid::{decode_one, encode_one, Principal};
-use kong_backend::ic::get_time::get_time;
+use kong_backend::{APP_NAME, APP_VERSION};
 use pocket_ic::PocketIc;
 use std::fs;
 
@@ -34,5 +34,6 @@ fn test_icrc1_name() {
     };
     let result = decode_one::<String>(&response).expect("Failed to decode icrc1_name response");
 
-    assert_eq!(result, "Kong Swap v0.0.20".to_string());
+    let icrc1_name = format!("{} {}", APP_NAME, APP_VERSION);
+    assert_eq!(result, icrc1_name, "icrc1_name should be equal to the app name and version");
 }
