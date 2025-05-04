@@ -1,5 +1,5 @@
 import { get, writable } from "svelte/store";
-import { type PNP } from "@windoge98/plug-n-play";
+import { type PnpInterface } from "@windoge98/plug-n-play";
 import {
   pnp,
   canisters as pnpCanisters,
@@ -28,7 +28,7 @@ export const connectionError = writable<string | null>(null);
 export const isAuthenticating = writable<boolean>(false);
 export const canisters = pnpCanisters;
 
-function createAuthStore(pnp: PNP) {
+function createAuthStore(pnp: PnpInterface) {
   const store = writable({ isConnected: false, account: null, isInitialized: false });
   const { subscribe, set } = store;
   let isStoreInitialized = false;
@@ -163,7 +163,10 @@ function createAuthStore(pnp: PNP) {
       resetState(null);
       currentUserBalancesStore.set({});
       currentUserPoolsStore.reset();
-      
+      isConnected.set(false);
+      selectedWalletId.set(null);
+      isAuthenticating.set(false);
+      connectionError.set(null);
       // Set principal to null but don't reset tokens
       const { userTokens } = await import("$lib/stores/userTokens");
       userTokens.setPrincipal(null);

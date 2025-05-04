@@ -33,7 +33,7 @@ export const win98Theme: ThemeDefinition = {
     accentYellowHover: '#E6E600', // Darker yellow
     
     // Text colors
-    textPrimary: '#ffffff',  // Windows 98 text
+    textPrimary: '#000000',  // Windows 98 text
     textSecondary: '#323232', // Windows 98 dark gray
     textDisabled: '#818181', // Windows 98 dark gray
     textAccentGreen: '#008000', // More vibrant forest green

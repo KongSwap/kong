@@ -79,7 +79,6 @@
       .filter((adapter: any) => adapter.enabled !== false)
       .map(mapRawWalletToInfo);
       
-    console.log("All possible wallets:", allWallets);
     return allWallets;
   })();
 
@@ -119,7 +118,6 @@
     const grouped: Record<string, WalletInfo[]> = {};
 
     wallets.forEach((wallet) => {
-      console.log("wallet:", wallet);
       if (!grouped[wallet.chain]) {
         grouped[wallet.chain] = [];
       }
@@ -214,14 +212,11 @@
 
     // Get base wallet list
     const rawWallets = auth.pnp.getEnabledWallets() || [];
-    console.log("rawWallets:", rawWallets);
 
     // Map raw wallets using the helper function
     let mappedWallets = rawWallets.map(mapRawWalletToInfo);
     // Apply search filter if there's a query
-    console.log("query:", query)
     if (query.trim()) {
-      console.log("query:", query);
       const lowerQuery = query.toLowerCase().trim();
       mappedWallets = mappedWallets.filter(
         (wallet) =>
@@ -410,7 +405,7 @@
   </svelte:fragment>
 
   <!-- Error Message -->
-  {#if errorMessage}
+  {#if errorMessage && !connecting}
     <div
       in:fly={{ y: -20, duration: 300, easing: quintOut }}
       out:fade={{ duration: 200 }}

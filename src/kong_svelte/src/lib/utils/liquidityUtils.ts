@@ -365,7 +365,7 @@ export async function calculateToken1FromPoolRatio(
       token1.symbol
     );
     
-    if (!result.Ok) {
+    if ('Err' in result) {
       throw new Error("Failed to calculate liquidity amounts");
     }
     
@@ -435,7 +435,7 @@ export async function calculateToken0FromPoolRatio(
       token1.symbol
     );
     
-    if (!result.Ok) {
+    if ('Err' in result) {
       throw new Error("Failed to calculate liquidity amounts");
     }
     

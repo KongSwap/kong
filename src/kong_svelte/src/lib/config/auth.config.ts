@@ -20,14 +20,18 @@ import type { _SERVICE as _ICRC2_SERVICE } from '../../../../declarations/kong_l
 import { idlFactory as icpIDL } from '../../../../declarations/icp_ledger/icp_ledger.did.js';
 import type { _SERVICE as _ICP_SERVICE } from '../../../../declarations/icp_ledger/icp_ledger.did.d.ts';
 import { IDL } from '@dfinity/candid';
+import { signatureModalStore } from "$lib/stores/signatureModalStore";
 
-export type KONG_BACKEND = _KONG_SERVICE;
-export type KONG_FAUCET = _KONG_FAUCET_SERVICE;
-export type KONG_DATA = _KONG_DATA_SERVICE;
-export type ICP_LEDGER = _ICP_SERVICE;
-export type ICRC2_LEDGER = _ICRC2_SERVICE;
-export type PREDICTION_MARKETS = _PREDICTION_MARKETS_BACKEND_SERVICE;
-export type TROLLBOX = _TROLLBOX_SERVICE;
+// Consolidated canister types
+export type CanisterType = {
+  KONG_BACKEND: _KONG_SERVICE;
+  KONG_FAUCET: _KONG_FAUCET_SERVICE;
+  KONG_DATA: _KONG_DATA_SERVICE;
+  ICP_LEDGER: _ICP_SERVICE;
+  ICRC2_LEDGER: _ICRC2_SERVICE;
+  PREDICTION_MARKETS: _PREDICTION_MARKETS_BACKEND_SERVICE;
+  TROLLBOX: _TROLLBOX_SERVICE;
+}
 
 export type CanisterConfigs = {
   [key: string]: {
@@ -41,40 +45,40 @@ export const canisters: CanisterConfigs = {
   kongBackend: {
     canisterId: kongBackendCanisterId,
     idl: kongBackendIDL,
-    type: {} as KONG_BACKEND,
+    type: {} as CanisterType['KONG_BACKEND'],
   },
     kongFaucet: {
     canisterId: kongFaucetCanisterId,
     idl: kongFaucetIDL,
-    type: {} as KONG_FAUCET,
+    type: {} as CanisterType['KONG_FAUCET'],
   },
   kongData: {
     canisterId: kongDataCanisterId,
     idl: kongDataIDL,
-    type: {} as KONG_DATA,
+    type: {} as CanisterType['KONG_DATA'],
   },
   predictionMarkets: {
     canisterId: predictionMarketsBackendCanisterId,
     idl: predictionMarketsBackendIDL,
-    type: {} as PREDICTION_MARKETS,
+    type: {} as CanisterType['PREDICTION_MARKETS'],
   },
   trollbox: {
     canisterId: trollboxCanisterId,
     idl: trollboxIDL,
-    type: {} as TROLLBOX,
+    type: {} as CanisterType['TROLLBOX'],
   },
   icp: {
     canisterId: icpCanisterId,
     idl: icpIDL,
-    type: {} as ICP_LEDGER,
+    type: {} as CanisterType['ICP_LEDGER'],
   },
   icrc1: {
     idl: icrc2IDL,
-    type: {} as ICRC2_LEDGER,
+    type: {} as CanisterType['ICRC2_LEDGER'],
   },
   icrc2: {
     idl: icrc2IDL,
-    type: {} as ICRC2_LEDGER,
+    type: {} as CanisterType['ICRC2_LEDGER'],
   },
 }
 
@@ -103,6 +107,16 @@ const derivationOrigin = (() => {
     return `https://${kongSvelteCanisterId}.icp0.io`;
   }
 })()
+
+// Function to show signature modal
+function showSignatureModal(message: string, onSignatureComplete?: () => void) {
+  signatureModalStore.show(message, onSignatureComplete);
+}
+
+// Function to hide signature modal
+function hideSignatureModal() {
+  signatureModalStore.hide();
+}
 
 export function initializePNP(): PNP {
   if (globalPnp) {
@@ -143,13 +157,15 @@ export function initializePNP(): PNP {
         solflareSiws: {
           enabled: true,
         },
-        walletconnect: {
+        walletconnectSiws: {
           enabled: true,
-          walletConnectProjectId: "77b77ffe1132244fe4a3ce38f01885d7", // Must be provided by the user
+          projectId: "77b77ffe1132244fe4a3ce38f01885d7", // Must be provided by the user
           appName: "KongSwap",
           appDescription: 'Next gen multi-chain DeFi',
           appUrl: 'https://kongswap.io',
           appIcons: ['https://kongswap.io/titles/kong_logo.png'],
+          onSignatureRequired: (message: string) => showSignatureModal(message),
+          onSignatureComplete: () => hideSignatureModal(),
         },
       },
       localStorageKey: "kongSwapPnpState",

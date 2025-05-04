@@ -1,7 +1,7 @@
 import { writable, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { auth } from "$lib/stores/auth";
-import { canisters, type KONG_BACKEND } from "$lib/config/auth.config";
+import { canisters, type CanisterType } from "$lib/config/auth.config";
 
 interface PoolListState {
   processedPools: ProcessedPool[];
@@ -103,7 +103,7 @@ function createWalletPoolListStore() {
       // Create a promise for this loading operation
       poolLoadingPromise = new Promise<void>(async (resolve) => {
         try {
-          const actor = auth.pnp.getActor<KONG_BACKEND>({
+          const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
             canisterId: canisters.kongBackend.canisterId,
             idl: canisters.kongBackend.idl,
             anon: true,
