@@ -34,6 +34,8 @@
     type: 'standard' as const,
     isSelected: false,
     loading: false,
+    iconSize: 18,
+    class: "",
   };
 
   // Base config for mobile header buttons
@@ -103,6 +105,9 @@
       ...baseMobileHeaderButton,
       icon: Search,
       onClick: handleOpenSearch,
+      tooltipText: "",
+      label: null,
+      class: "",
     },
     {
       ...baseMobileHeaderButton,
@@ -110,6 +115,8 @@
       onClick: copyPrincipalId,
       tooltipText: "Copy Principal ID",
       show: $auth.isConnected,
+      label: null,
+      class: "",
     },
     {
       ...baseMobileHeaderButton,
@@ -126,6 +133,9 @@
       badgeCount: $notificationsStore.unreadCount,
       loading: $isAuthenticating,
       disabled: false,
+      tooltipText: "",
+      label: null,
+      class: "",
     }
   ]);
 
@@ -136,6 +146,8 @@
       onClick: () => goto("/settings"),
       tooltipText: "",
       show: true,
+      label: null,
+      class: "",
     },
     {
       ...baseDesktopIconButton,
@@ -143,6 +155,8 @@
       onClick: handleOpenSearch,
       tooltipText: "",
       show: true,
+      label: null,
+      class: "",
     },
     {
       ...baseDesktopIconButton,
@@ -150,6 +164,8 @@
       onClick: claimTokens,
       tooltipText: "Claim test tokens",
       show: showFaucetOption,
+      label: null,
+      class: "",
     },
     {
       ...baseDesktopIconButton,
@@ -158,6 +174,8 @@
       onClick: copyPrincipalId,
       tooltipText: "Copy Principal ID",
       show: $auth.isConnected,
+      label: null,
+      class: "",
     },
     // Wallet Button (Specific properties)
     {
@@ -177,6 +195,9 @@
       tooltipText: null,
       loading: $isAuthenticating,
       disabled: false,
+      label: null,
+      class: "",
+      iconSize: 18,
     }
   ]);
 
@@ -206,9 +227,10 @@
               {/if}
             </div>
           {:else}
-            {@render button.icon({ size: button.iconSize || 18 })}
+            {@const Icon = button.icon}
+            <Icon size={button.iconSize || 18} />
             {#if button.badgeCount > 0}
-              <span class="absolute {isMobile ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h-4 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10">
+              <span class="absolute {isMobile ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h- z-20 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10">
                 {button.badgeCount}
               </span>
             {/if}
