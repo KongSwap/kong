@@ -451,10 +451,9 @@
           break;
         case 'claim':
           result = await minerActor.claim_rewards();
-          if (result && 'Ok' in result && result.Ok > 0n) {
-             successMessage = `Successfully claimed ${formatRewards(result.Ok)}!`;
-          } else if (result && 'Ok' in result && result.Ok === 0n) {
-             successMessage = `Claim successful, but no rewards to claim.`;
+          if (result && 'Ok' in result) {
+             const blockIndex = result.Ok as bigint;
+             successMessage = `Claim submitted! Block index: ${blockIndex}`;
           }
           break;
         case 'set_speed':
