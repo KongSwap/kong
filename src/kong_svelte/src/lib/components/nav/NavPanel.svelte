@@ -230,7 +230,7 @@
             {@const Icon = button.icon}
             <Icon size={button.iconSize || 18} />
             {#if button.badgeCount > 0}
-              <span class="absolute {isMobile ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h- z-20 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10">
+              <span class="absolute {isMobile ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h- z-20 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center">
                 {button.badgeCount}
               </span>
             {/if}
