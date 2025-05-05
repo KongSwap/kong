@@ -46,7 +46,7 @@ pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetC
 
 // Constants
 // const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
-const KONG_LEDGER_ID: &str = "aiewf-lx777-77775-aaaca-cai"; ///For Local testing
+const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai"; ///For Local testing
 
 #[init]
 fn init() {
