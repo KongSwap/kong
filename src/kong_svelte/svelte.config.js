@@ -1,6 +1,6 @@
 import adapter from "@sveltejs/adapter-static";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
-import tailwindcss from "@tailwindcss/postcss";
+import tailwindcss from "tailwindcss";
 import autoprefixer from "autoprefixer";
 
 /** @type {import('@sveltejs/kit').Config} */
@@ -10,7 +10,7 @@ const config = {
       pages: "dist",
       assets: "dist",
       fallback: "index.html",
-      precompress: true,
+      precompress: false,
       strict: false,
     }),
     files: {
