@@ -35,6 +35,8 @@ pub struct EstimatedReturn {
     pub uses_time_weighting: bool,
     pub time_weight_alpha: Option<f64>,
     pub current_time: Timestamp,
+    pub platform_fee_percentage: Option<u64>,
+    pub estimated_platform_fee: Option<TokenAmount>,
 }
 
 /// Record of a bet payout, including time-weighting details if applicable
@@ -50,4 +52,5 @@ pub struct BetPayoutRecord {
     pub time_weight: Option<f64>,
     pub original_contribution_returned: TokenAmount,
     pub bonus_amount: Option<TokenAmount>,
+    pub platform_fee_amount: Option<TokenAmount>,
 }

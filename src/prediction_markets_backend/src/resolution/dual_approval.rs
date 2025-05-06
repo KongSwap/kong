@@ -67,9 +67,15 @@ pub fn can_resolve_market(market: &Market, user: Principal) -> bool {
     ic_cdk::println!("Market creator: {}", market.creator.to_string());
     ic_cdk::println!("Resolution method: {:?}", market.resolution_method);
     ic_cdk::println!("Is user admin: {}", is_admin(user));
+    ic_cdk::println!("Is creator admin: {}", is_admin(market.creator));
     ic_cdk::println!("Is user creator: {}", market.creator == user);
     
+    // Check if market was created by an admin
+    let _is_admin_created_market = is_admin(market.creator);
+    
     // Admin can always resolve any market
+    // - Admin-created markets can be resolved by any admin directly
+    // - User-created markets require dual approval (admin + creator)
     if is_admin(user) {
         ic_cdk::println!("User is admin, authorization granted");
         return true;
@@ -88,6 +94,7 @@ pub fn can_resolve_market(market: &Market, user: Principal) -> bool {
 }
 
 /// Proposes resolution for a market (implements dual-approval for user-created markets)
+/// For admin-created markets, admin resolution is direct without dual approval
 #[update]
 pub async fn propose_resolution(
     market_id: MarketId, 
@@ -119,11 +126,45 @@ pub async fn propose_resolution(
     }
     
     let is_caller_creator = market.creator == caller;
+    let is_market_creator_admin = is_admin(market.creator);
     
     // Check authorization - only creator or admin can propose resolutions
     // Use the can_resolve_market function to ensure proper authorization
     if !can_resolve_market(&market, caller) {
         return Err(ResolutionError::Unauthorized);
+    }
+    
+    // Special case: For admin-created markets, any admin can resolve directly without dual approval
+    if is_market_creator_admin && is_caller_admin {
+        ic_cdk::println!(
+            "Admin {} directly resolving admin-created market {}",
+            caller.to_string(),
+            market_id.to_u64()
+        );
+        
+        // Finalize the market directly - skip the dual approval process
+        finalize_market(&mut market, winning_outcomes.clone()).await?;
+        
+        // Update market status
+        market.status = MarketStatus::Closed(winning_outcomes.iter().map(|idx| Nat::from(idx.clone())).collect());
+        market.resolved_by = Some(caller);
+        
+        // Clone market_id before using it (to avoid ownership issues)
+        let market_id_clone = market_id.clone();
+        
+        // Update market in storage
+        MARKETS.with(|markets| {
+            let mut markets_ref = markets.borrow_mut();
+            markets_ref.insert(market_id_clone.clone(), market);
+        });
+        
+        // Remove any existing resolution proposals
+        RESOLUTION_PROPOSALS.with(|proposals| {
+            let mut proposals = proposals.borrow_mut();
+            proposals.remove(&market_id_clone);
+        });
+        
+        return Ok(());
     }
     
     // Validate outcome indices are valid for this market
@@ -469,13 +510,21 @@ async fn handle_resolution_disagreement(
 }
 
 /// Resolve the market through admin decision
-/// This is a wrapper around propose_resolution for backward compatibility
+/// For admin-created markets: immediate resolution by any admin
+/// For user-created markets: requires dual approval between creator and admin
 #[update]
 pub async fn resolve_via_admin(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
 ) -> Result<(), ResolutionError> {
-    // For backwards compatibility, we'll treat this as an admin-initiated resolution proposal
+    let caller = ic_cdk::caller();
+    
+    // Only admins can call this function
+    if !is_admin(caller) {
+        return Err(ResolutionError::Unauthorized);
+    }
+    
+    // Use the propose_resolution function which will automatically handle admin vs user markets
     propose_resolution(market_id, winning_outcomes).await
 }
 

@@ -3,11 +3,14 @@ use candid::Principal;
 use super::resolution::*;
 use super::transfer_kong::*;
 use crate::canister::{get_current_time, record_market_payout};
-use crate::market::estimate_return_types::BetPayoutRecord;
+use crate::constants::PLATFORM_FEE_PERCENTAGE;
+use crate::market::bet::*;
 use crate::market::market::*;
+use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::stable_memory::*;
+use crate::types::{MarketId, TokenAmount, OutcomeIndex, Timestamp, StorableNat};
 use crate::utils::time_weighting::*;
-use crate::types::{TokenAmount, OutcomeIndex, Timestamp, StorableNat};
+use crate::utils::fee_utils::{calculate_platform_fee, calculate_amount_after_fee};
 
 lazy_static::lazy_static! {
     static ref KONG_TRANSFER_FEE: TokenAmount = TokenAmount::from(10_000u64); // 0.0001 KONG
@@ -40,6 +43,28 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
 
     ic_cdk::println!("Total winning pool: {}", total_winning_pool.to_u64());
     ic_cdk::println!("Total market pool: {}", market.total_pool.to_u64());
+    
+    // Calculate platform fee (1% of total winning pool)
+    let platform_fee = calculate_platform_fee(&TokenAmount::from(total_winning_pool.clone()));
+    let remaining_pool = calculate_amount_after_fee(&TokenAmount::from(total_winning_pool.clone()));
+    
+    ic_cdk::println!("Platform fee ({}%): {} KONG", PLATFORM_FEE_PERCENTAGE, platform_fee.to_u64() / 1_000_000);
+    ic_cdk::println!("Remaining pool for distribution (99%): {} KONG", remaining_pool.to_u64() / 1_000_000);
+    
+    // Burn the platform fee by transferring to minter
+    if platform_fee.to_u64() > KONG_TRANSFER_FEE.to_u64() {
+        match burn_tokens(platform_fee.clone()).await {
+            Ok(_) => {
+                ic_cdk::println!("Successfully burned platform fee of {} KONG", platform_fee.to_u64() / 1_000_000);
+            },
+            Err(e) => {
+                ic_cdk::println!("Error burning platform fee: {}. Continuing with distribution.", e);
+                // Continue with distribution even if burning fails
+            }
+        }
+    } else {
+        ic_cdk::println!("Platform fee too small to burn (less than transfer fee). Skipping burn.");
+    }
 
     if total_winning_pool > 0u64 {
         // Get all winning bets
@@ -101,11 +126,17 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 );
             }
             
+            // Use the remaining pool (99%) after platform fee deduction
+            let remaining_pool_f64 = remaining_pool.to_u64() as f64;
+            
             // Total guaranteed return = sum of all winning bet amounts
             let total_guaranteed_return = total_winning_pool.to_u64() as f64;
             
-            // Bonus pool = total pool minus guaranteed returns
-            let bonus_pool = market.total_pool.to_u64() as f64 - total_guaranteed_return;
+            // Calculate the adjusted guaranteed return (99% of original)
+            let adjusted_guaranteed_return = remaining_pool_f64 * (total_guaranteed_return / total_winning_pool.to_u64() as f64);
+            
+            // Bonus pool = remaining pool (99% of total) minus adjusted guaranteed returns
+            let bonus_pool = market.total_pool.to_u64() as f64 * 0.99 - adjusted_guaranteed_return;
             
             ic_cdk::println!(
                 "Total winning pool: {}, Total weighted contribution: {}, Bonus pool: {}",
@@ -156,6 +187,16 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                         ic_cdk::println!("Transfer successful");
                         
                         // Record the payout
+                        // Calculate proportional platform fee for this bet
+                        let user_platform_fee = if total_reward > 0.0 {
+                            // Calculate proportional fee based on this user's share of rewards
+                            let user_share = total_reward / remaining_pool_f64;
+                            let user_fee = platform_fee.to_u64() as f64 * user_share;
+                            Some(TokenAmount::from(user_fee as u64))
+                        } else {
+                            None
+                        };
+                        
                         let payout_record = BetPayoutRecord {
                             market_id: market.id.clone(),
                             user,
@@ -167,6 +208,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                             time_weight: Some(weight),
                             original_contribution_returned: bet_amount.clone(),
                             bonus_amount: Some(TokenAmount::from(bonus_share as u64)),
+                            platform_fee_amount: user_platform_fee,
                         };
                         
                         record_market_payout(payout_record);
@@ -178,12 +220,16 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 }
             }
         } else {
-            // Original distribution logic for non-time-weighted markets
-            ic_cdk::println!("Using original distribution method (no time weighting)");
+            // Original distribution logic for non-time-weighted markets, adjusted for platform fee
+            ic_cdk::println!("Using original distribution method (no time weighting) with 1% platform fee");
+            
+            // Use the remaining pool (99%) after platform fee deduction
+            let remaining_pool_f64 = remaining_pool.to_u64() as f64;
             
             for bet in winning_bets {
                 let share = bet.amount.to_f64() / total_winning_pool.to_f64();
-                let winnings = TokenAmount::from((market.total_pool.to_u64() as f64 * share) as u64);
+                // Calculate winnings based on 99% of the total pool
+                let winnings = TokenAmount::from((remaining_pool_f64 * share) as u64);
 
                 ic_cdk::println!(
                     "Processing winning bet - User: {}, Original bet: {}, Share: {}, Raw winnings: {}",
@@ -194,8 +240,8 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 );
 
                 // Account for transfer fee
-                let transfer_amount = if winnings > KONG_TRANSFER_FEE.clone() {
-                    winnings - KONG_TRANSFER_FEE.clone()
+                let transfer_amount = if winnings.clone() > KONG_TRANSFER_FEE.clone() {
+                    winnings.clone() - KONG_TRANSFER_FEE.clone()
                 } else {
                     ic_cdk::println!(
                         "Skipping transfer - winnings {} less than fee {}",
@@ -213,6 +259,16 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                         ic_cdk::println!("Transfer successful");
                         
                         // Record the payout
+                        // Calculate proportional platform fee for this bet
+                        let user_platform_fee = if winnings.to_u64() > 0 {
+                            // Calculate proportional fee based on this user's share of rewards
+                            let user_share = winnings.to_u64() as f64 / remaining_pool_f64;
+                            let user_fee = platform_fee.to_u64() as f64 * user_share;
+                            Some(TokenAmount::from(user_fee as u64))
+                        } else {
+                            None
+                        };
+                        
                         let payout_record = BetPayoutRecord {
                             market_id: market.id.clone(),
                             user: bet.user,
@@ -224,6 +280,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                             time_weight: None,
                             original_contribution_returned: bet.amount.clone(),
                             bonus_amount: None,
+                            platform_fee_amount: user_platform_fee,
                         };
                         
                         record_market_payout(payout_record);

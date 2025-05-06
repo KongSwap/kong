@@ -9,3 +9,4 @@ pub mod estimate_return;
 pub mod estimate_return_types;
 pub mod transaction_records;
 pub mod activity_metrics;
+pub mod bet;

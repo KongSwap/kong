@@ -13,7 +13,7 @@ touch "${root_dir}/canister_ids.all.json"
 # Ensure the file has valid JSON if empty
 [ ! -s "${root_dir}/canister_ids.all.json" ] && echo '{}' > "${root_dir}/canister_ids.all.json"
 
-TOKEN_SYMBOL="ICP"
+TOKEN_SYMBOL="ksICP"
 TOKEN_LEDGER=$(echo ${TOKEN_SYMBOL}_ledger | tr '[:upper:]' '[:lower:]')
 TOKEN_NAME="Internet Computer Protocol"
 TOKEN_DECIMALS=8

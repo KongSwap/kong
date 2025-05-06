@@ -23,6 +23,7 @@ type BetPayoutRecord = record {
   bet_amount : nat;
   bonus_amount : opt nat;
   time_weight : opt float64;
+  platform_fee_amount : opt nat;
   market_id : nat;
   user : principal;
   payout_amount : nat;
@@ -85,8 +86,10 @@ type EstimatedReturn = record {
   bet_amount : nat;
   uses_time_weighting : bool;
   current_outcome_pool : nat;
+  estimated_platform_fee : opt nat;
   current_market_pool : nat;
   market_id : nat;
+  platform_fee_percentage : opt nat64;
   scenarios : vec EstimatedReturnScenario;
   time_weight_alpha : opt float64;
   current_time : nat;

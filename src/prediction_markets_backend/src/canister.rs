@@ -11,8 +11,11 @@ use candid::decode_one;
 use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
 
 use super::delegation::*;
-use super::market::estimate_return_types::*;
-use super::stable_memory::*;
+use crate::market::estimate_return_types::*;
+use crate::market::estimate_return::*;
+use crate::market::market::*;
+use crate::constants::PLATFORM_FEE_PERCENTAGE;
+use crate::stable_memory::*;
 
 // Helper function to get current time in nanoseconds as a Timestamp type
 pub fn get_current_time() -> Timestamp {
@@ -216,6 +219,8 @@ pub fn estimate_bet_return(
                         uses_time_weighting: false,
                         time_weight_alpha: None,
                         current_time,
+                        platform_fee_percentage: Some(PLATFORM_FEE_PERCENTAGE),
+                        estimated_platform_fee: Some(TokenAmount::from(0u64)),
                     }
                 }
             }
@@ -231,6 +236,8 @@ pub fn estimate_bet_return(
                 uses_time_weighting: false,
                 time_weight_alpha: None,
                 current_time,
+                platform_fee_percentage: Some(PLATFORM_FEE_PERCENTAGE),
+                estimated_platform_fee: Some(TokenAmount::from(0u64)),
             }
         }
     })

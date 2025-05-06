@@ -31,6 +31,7 @@ use icrc_ledger_types::icrc21::errors::ErrorInfo;
 pub mod bet;
 pub mod canister;
 pub mod category;
+pub mod constants;
 pub mod controllers;
 pub mod delegation;
 pub mod market;

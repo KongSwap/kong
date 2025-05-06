@@ -2,6 +2,8 @@ use crate::market::market::*;
 use crate::market::estimate_return_types::*;
 use crate::nat::StorableNat;
 use crate::utils::time_weighting::*;
+use crate::utils::fee_utils::{calculate_platform_fee, calculate_amount_after_fee};
+use crate::constants::PLATFORM_FEE_PERCENTAGE;
 use crate::stable_memory::*;
 use crate::types::{TokenAmount, OutcomeIndex, Timestamp};
 
@@ -136,7 +138,15 @@ pub fn estimate_bet_return(
         time_weight: None,
     };
     
-    // Create the final estimate
+    // Apply platform fee to winning scenario expected return
+    let raw_expected_return = TokenAmount::from(winning_return.expected_return.clone());
+    let platform_fee = calculate_platform_fee(&raw_expected_return);
+    let expected_return_after_fee = calculate_amount_after_fee(&raw_expected_return);
+    
+    // Update winning scenario with fee-adjusted return
+    winning_return.expected_return = StorableNat::from(expected_return_after_fee.to_u64());
+    
+    // Create the final estimate, including platform fee information
     let estimate = EstimatedReturn {
         market_id: market.id.clone(),
         outcome_index: outcome_index.clone(),
@@ -147,6 +157,8 @@ pub fn estimate_bet_return(
         uses_time_weighting: market.uses_time_weighting,
         time_weight_alpha: market.time_weight_alpha,
         current_time: current_time.clone(),
+        platform_fee_percentage: Some(PLATFORM_FEE_PERCENTAGE),
+        estimated_platform_fee: Some(platform_fee),
     };
     
     Ok(estimate)

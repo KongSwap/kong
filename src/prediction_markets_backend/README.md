@@ -27,11 +27,13 @@ This canister implements a complete prediction markets platform where users can:
    - Secure bet recording in stable storage
    - Pool-based odds calculation
    - Automatic fee handling (configurable)
+   - 1% platform fee on winning pools
 
 3. **Resolution & Payout**
    - Multiple resolution strategies (admin, oracle, decentralized)
    - Dual approval resolution system for user-created markets
    - Automatic winner determination and payout distribution
+   - 1% platform fee collected from winning pools and sent to minter for burning
    - Market voiding capabilities for edge cases
    - Token burning mechanism for resolution disagreements
 
@@ -53,6 +55,15 @@ This canister implements a complete prediction markets platform where users can:
 - Follows modern Rust patterns for safety and maintainability
 - Uses Candid for interface definition
 - Integrates with ICRC token standards
+
+### Platform Fee System
+
+- 1% platform fee applied to all winning pools
+- Fee is automatically calculated and deducted during market finalization
+- Fee tokens are sent to the minter account for burning
+- Remaining 99% of winnings are distributed to users who made correct predictions
+- Fee is transparently displayed in estimated returns
+- Implemented in a non-retroactive manner to protect existing markets
 
 ## Detailed Technical Specifications
 
