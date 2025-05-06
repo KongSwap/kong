@@ -143,24 +143,24 @@ dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json
     on_kong = opt true;
 })" | jq
 
-# 5. Add KONG/ksUSDT pool
-KONG_SYMBOL="KONG"
-KONG_KSUSDT_PRICE=0.01
-KONG_KSUSDT_PRICE=${KONG_KSUSDT_PRICE//_/}        # remove underscore
-KONG_AMOUNT=100_000_000_000_000        # 1,000,000 KONG
-KONG_AMOUNT=${KONG_AMOUNT//_/}        # remove underscore
-KONG_CHAIN="IC"
-KONG_LEDGER=$(dfx canister id ${NETWORK} ${IDENTITY} $(echo ${KONG_SYMBOL} | tr '[:upper:]' '[:lower:]')_ledger)
-KONG_DECIMALS=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG_LEDGER} icrc1_decimals '()' | awk -F"[^0-9]*" '{print $2}')
-KONG_DECIMALS=$(echo "10^${KONG_DECIMALS}" | bc)
-KONG_KSUSDT_DECIMALS=$(echo "${KONG_DECIMALS} / ${KSUSDT_DECIMALS}" | bc -l) # convert KONG to ksUSDT precision
-KONG_FEE=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
-KONG_FEE=${KONG_FEE//_/}
-KSUSDT_AMOUNT=$(echo "scale=0; ${KONG_AMOUNT} * ${KONG_KSUSDT_PRICE} / ${KONG_KSUSDT_DECIMALS}" | bc -l)
+# 5. Add ksKONG/ksUSDT pool
+KSKONG_SYMBOL="ksKONG"
+KSKONG_KSUSDT_PRICE=0.01
+KSKONG_KSUSDT_PRICE=${KSKONG_KSUSDT_PRICE//_/}        # remove underscore
+KSKONG_AMOUNT=100_000_000_000_000        # 1,000,000 KONG
+KSKONG_AMOUNT=${KSKONG_AMOUNT//_/}        # remove underscore
+KSKONG_CHAIN="IC"
+KSKONG_LEDGER=$(dfx canister id ${NETWORK} ${IDENTITY} $(echo ${KSKONG_SYMBOL} | tr '[:upper:]' '[:lower:]')_ledger)
+KSKONG_DECIMALS=$(dfx canister call ${NETWORK} ${IDENTITY} ${KSKONG_LEDGER} icrc1_decimals '()' | awk -F"[^0-9]*" '{print $2}')
+KSKONG_DECIMALS=$(echo "10^${KSKONG_DECIMALS}" | bc)
+KSKONG_KSUSDT_DECIMALS=$(echo "${KSKONG_DECIMALS} / ${KSUSDT_DECIMALS}" | bc -l) # convert KONG to ksUSDT precision
+KSKONG_FEE=$(dfx canister call ${NETWORK} ${IDENTITY} ${KSKONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
+KSKONG_FEE=${KSKONG_FEE//_/}
+KSUSDT_AMOUNT=$(echo "scale=0; ${KSKONG_AMOUNT} * ${KSKONG_KSUSDT_PRICE} / ${KSKONG_KSUSDT_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # 60 seconds from now
 
-dfx canister call ${NETWORK} ${IDENTITY} ${KONG_LEDGER} icrc2_approve "(record {
-    amount = $(echo "${KONG_AMOUNT} + ${KONG_FEE}" | bc);
+dfx canister call ${NETWORK} ${IDENTITY} ${KSKONG_LEDGER} icrc2_approve "(record {
+    amount = $(echo "${KSKONG_AMOUNT} + ${KSKONG_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
@@ -176,31 +176,31 @@ dfx canister call ${NETWORK} ${IDENTITY} ${KSUSDT_LEDGER} icrc2_approve "(record
 })"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
-    token_0 = \"${KONG_CHAIN}.${KONG_LEDGER}\";
-    amount_0 = ${KONG_AMOUNT};
+    token_0 = \"${KSKONG_CHAIN}.${KSKONG_LEDGER}\";
+    amount_0 = ${KSKONG_AMOUNT};
     token_1 = \"${KSUSDT_CHAIN}.${KSUSDT_LEDGER}\";
     amount_1 = ${KSUSDT_AMOUNT};
     on_kong = opt true;
 })" | jq
 
-# 6. Add KONG/ICP pool
-KONG_SYMBOL="KONG"
-KONG_ICP_PRICE=0.001333
-KONG_ICP_PRICE=${KONG_ICP_PRICE//_/}  # remove underscore
-KONG_AMOUNT=100_000_000_000_000        # 1,000,000 KONG
-KONG_AMOUNT=${KONG_AMOUNT//_/}        # remove underscore
-KONG_CHAIN="IC"
-KONG_LEDGER=$(dfx canister id ${NETWORK} ${IDENTITY} $(echo ${KONG_SYMBOL} | tr '[:upper:]' '[:lower:]')_ledger)
-KONG_DECIMALS=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG_LEDGER} icrc1_decimals '()' | awk -F"[^0-9]*" '{print $2}')
-KONG_DECIMALS=$(echo "10^${KONG_DECIMALS}" | bc)
-KONG_ICP_DECIMALS=$(echo "${KONG_DECIMALS} / ${ICP_DECIMALS}" | bc -l) # convert KONG to ICP precision
-KONG_FEE=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
-KONG_FEE=${KONG_FEE//_/}
-ICP_AMOUNT=$(echo "scale=0; ${KONG_AMOUNT} * ${KONG_ICP_PRICE} / ${KONG_ICP_DECIMALS}" | bc -l)
+# 6. Add ksKONG/ksICP pool
+KSKONG_SYMBOL="ksKONG"
+KSKONG_KSICP_PRICE=0.001333
+KSKONG_KSICP_PRICE=${KSKONG_KSICP_PRICE//_/}  # remove underscore
+KSKONG_AMOUNT=100_000_000_000_000        # 1,000,000 KONG
+KSKONG_AMOUNT=${KSKONG_AMOUNT//_/}        # remove underscore
+KSKONG_CHAIN="IC"
+KSKONG_LEDGER=$(dfx canister id ${NETWORK} ${IDENTITY} $(echo ${KSKONG_SYMBOL} | tr '[:upper:]' '[:lower:]')_ledger)
+KSKONG_DECIMALS=$(dfx canister call ${NETWORK} ${IDENTITY} ${KSKONG_LEDGER} icrc1_decimals '()' | awk -F"[^0-9]*" '{print $2}')
+KSKONG_DECIMALS=$(echo "10^${KSKONG_DECIMALS}" | bc)
+KSKONG_KSICP_DECIMALS=$(echo "${KSKONG_DECIMALS} / ${KSICP_DECIMALS}" | bc -l) # convert KONG to ksICP precision
+KSKONG_FEE=$(dfx canister call ${NETWORK} ${IDENTITY} ${KSKONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
+KSKONG_FEE=${KSKONG_FEE//_/}
+KSICP_AMOUNT=$(echo "scale=0; ${KSKONG_AMOUNT} * ${KSKONG_KSICP_PRICE} / ${KSKONG_KSICP_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # 60 seconds from now
 
-dfx canister call ${NETWORK} ${IDENTITY} ${KONG_LEDGER} icrc2_approve "(record {
-    amount = $(echo "${KONG_AMOUNT} + ${KONG_FEE}" | bc);
+dfx canister call ${NETWORK} ${IDENTITY} ${KSKONG_LEDGER} icrc2_approve "(record {
+    amount = $(echo "${KSKONG_AMOUNT} + ${KSKONG_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
@@ -216,9 +216,9 @@ dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
 })"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
-    token_0 = \"${KONG_CHAIN}.${KONG_LEDGER}\";
-    amount_0 = ${KONG_AMOUNT};
-    token_1 = \"${ICP_CHAIN}.${ICP_LEDGER}\";
-    amount_1 = ${ICP_AMOUNT};
+    token_0 = \"${KSKONG_CHAIN}.${KSKONG_LEDGER}\";
+    amount_0 = ${KSKONG_AMOUNT};
+    token_1 = \"${KSICP_CHAIN}.${KSICP_LEDGER}\";
+    amount_1 = ${KSICP_AMOUNT};
     on_kong = opt true;
 })" | jq

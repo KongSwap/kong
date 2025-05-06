@@ -118,7 +118,7 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
         "${PROJECT_ROOT}/scripts/deploy_icp_ledger.sh"
         "${PROJECT_ROOT}/scripts/deploy_ksbtc_ledger.sh"
         "${PROJECT_ROOT}/scripts/deploy_kseth_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_kong_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_kskong_ledger.sh"
     )
 
     for script in "${LEDGER_SCRIPTS[@]}"; do
@@ -140,7 +140,7 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 
 	# mint test tokens to kong_user1
     [ -f "user_mint.sh" ] && {
-        bash "${PROJECT_ROOT}/scripts/user_mint.sh" "${NETWORK}"
+        bash "user_mint.sh" "${NETWORK}"
     } || echo "Warning: user_mint.sh not found"
 
     # deploy tokens and pools

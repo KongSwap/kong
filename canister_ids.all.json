@@ -77,6 +77,12 @@
     "staging_fe": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "staging": ""
   },
+  "kskong_ledger": {
+    "ic": "",
+    "local": "uxrrr-q7777-77774-qaaaq-cai",
+    "staging_fe": "",
+    "staging": "uxrrr-q7777-77774-qaaaq-cai"
+  },
   "internet_identity": {
     "local": "rdmx6-jaaaa-aaaaa-aaadq-cai",
     "staging_fe": "rdmx6-jaaaa-aaaaa-aaadq-cai",
