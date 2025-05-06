@@ -1,7 +1,7 @@
 use candid::{CandidType, Principal};
 use serde::{Deserialize, Serialize};
 
-use crate::types::{MarketId, TokenAmount, OutcomeIndex, Timestamp};
+use crate::types::{MarketId, TokenAmount, OutcomeIndex, Timestamp, TokenIdentifier};
 
 /// Data point for time weight curve visualization
 #[derive(CandidType, Deserialize, Clone, Debug)]
@@ -53,4 +53,8 @@ pub struct BetPayoutRecord {
     pub original_contribution_returned: TokenAmount,
     pub bonus_amount: Option<TokenAmount>,
     pub platform_fee_amount: Option<TokenAmount>,
+    pub token_id: TokenIdentifier,              // The token used for this payout
+    pub token_symbol: String,                   // Token symbol for display
+    pub platform_fee_percentage: u64,           // Fee percentage charged (100 for 1%, 200 for 2%)
+    pub transaction_id: Option<candid::Nat>,    // Ledger transaction ID for the payout
 }

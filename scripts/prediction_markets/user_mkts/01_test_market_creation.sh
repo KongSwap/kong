@@ -26,7 +26,7 @@ echo -e "\n==== Step 1: Creating market as regular user (Alice) ===="
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will BTC reach $ 100k in 2025?\", variant { Crypto }, \"Standard rules apply\", \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
-  variant { Duration = 600 : nat }, null, null, null)")
+  variant { Duration = 120 : nat }, null, null, null)")
 
 # Extract market ID and check for success
 if [[ $RESULT == *"Ok"* ]]; then

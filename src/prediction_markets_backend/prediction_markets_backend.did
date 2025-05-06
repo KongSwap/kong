@@ -1,4 +1,5 @@
 type Bet = record {
+  token_id : text;
   market_id : nat;
   user : principal;
   timestamp : nat;
@@ -20,11 +21,15 @@ type BetError = variant {
   BalanceUpdateFailed;
 };
 type BetPayoutRecord = record {
+  transaction_id : opt nat;
   bet_amount : nat;
   bonus_amount : opt nat;
   time_weight : opt float64;
   platform_fee_amount : opt nat;
+  token_id : text;
+  token_symbol : text;
   market_id : nat;
+  platform_fee_percentage : nat64;
   user : principal;
   payout_amount : nat;
   original_contribution_returned : nat;
@@ -129,6 +134,7 @@ type Market = record {
   creator : principal;
   outcome_percentages : vec float64;
   question : text;
+  token_id : text;
   image_url : opt text;
   resolution_data : opt text;
   created_at : nat;
@@ -200,12 +206,13 @@ type ResolutionMethod = variant {
   Decentralized : record { quorum : nat };
   Admin;
 };
-type Result = variant { Ok : nat; Err : text };
-type Result_1 = variant { Ok; Err : ResolutionError };
-type Result_2 = variant { Ok : ConsentInfo; Err : ErrorInfo };
-type Result_3 = variant { Ok : DelegationResponse; Err : DelegationError };
-type Result_4 = variant { Ok; Err : DelegationError };
-type Result_5 = variant { Ok; Err : BetError };
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : nat; Err : text };
+type Result_2 = variant { Ok; Err : ResolutionError };
+type Result_3 = variant { Ok : ConsentInfo; Err : ErrorInfo };
+type Result_4 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_5 = variant { Ok; Err : DelegationError };
+type Result_6 = variant { Ok; Err : BetError };
 type RevokeDelegationRequest = record { targets : vec principal };
 type SortDirection = variant { Descending; Ascending };
 type SortOption = variant {
@@ -221,6 +228,15 @@ type TimeWeightPoint = record {
   weight : float64;
   absolute_time : nat;
   relative_time : float64;
+};
+type TokenInfo = record {
+  id : text;
+  is_kong : bool;
+  decimals : nat8;
+  transfer_fee : nat;
+  name : text;
+  fee_percentage : nat64;
+  symbol : text;
 };
 type UserBetInfo = record {
   outcome_text : text;
@@ -238,6 +254,7 @@ type UserHistory = record {
   resolved_bets : vec UserBetInfo;
 };
 service : () -> {
+  add_supported_token : (TokenInfo) -> (Result);
   create_market : (
       text,
       MarketCategory,
@@ -248,9 +265,12 @@ service : () -> {
       opt text,
       opt bool,
       opt float64,
-    ) -> (Result);
-  estimate_bet_return : (nat64, nat64, nat64, nat64) -> (EstimatedReturn) query;
-  force_resolve_market : (nat, vec nat) -> (Result_1);
+      opt text,
+    ) -> (Result_1);
+  estimate_bet_return : (nat64, nat64, nat64, nat64, opt text) -> (
+      EstimatedReturn,
+    ) query;
+  force_resolve_market : (nat, vec nat) -> (Result_2);
   generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
   get_all_categories : () -> (vec text) query;
   get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
@@ -261,19 +281,22 @@ service : () -> {
       GetMarketsByStatusResult,
     ) query;
   get_stats : () -> (StatsResult) query;
+  get_supported_tokens : () -> (vec TokenInfo) query;
+  get_token_fee_percentage : (text) -> (opt nat64) query;
   get_user_history : (principal) -> (UserHistory) query;
   icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
-      Result_2,
+      Result_3,
     ) query;
   icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
-  icrc_34_delegate : (DelegationRequest) -> (Result_3);
-  icrc_34_get_delegation : (DelegationRequest) -> (Result_3) query;
-  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_4);
+  icrc_34_delegate : (DelegationRequest) -> (Result_4);
+  icrc_34_get_delegation : (DelegationRequest) -> (Result_4) query;
+  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_5);
   is_admin : (principal) -> (bool) query;
-  place_bet : (nat, nat, nat) -> (Result_5);
-  propose_resolution : (nat, vec nat) -> (Result_1);
-  resolve_via_admin : (nat, vec nat) -> (Result_1);
-  resolve_via_oracle : (nat, vec nat, blob) -> (Result_1);
+  place_bet : (nat, nat, nat, opt text) -> (Result_6);
+  propose_resolution : (nat, vec nat) -> (Result_2);
+  resolve_via_admin : (nat, vec nat) -> (Result_2);
+  resolve_via_oracle : (nat, vec nat, blob) -> (Result_2);
   simulate_future_weight : (nat64, nat64, nat64) -> (float64) query;
-  void_market : (nat) -> (Result_1);
+  update_token_config : (text, TokenInfo) -> (Result);
+  void_market : (nat) -> (Result_2);
 }

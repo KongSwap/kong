@@ -10,8 +10,10 @@ use crate::market::market::*;
 use crate::nat::StorableNat;
 use crate::stable_memory::*;
 use crate::KONG_LEDGER_ID;
-use crate::types::{MarketId, TokenAmount, OutcomeIndex, min_activation_bet};
+use crate::types::{MarketId, TokenAmount, OutcomeIndex, min_activation_bet, TokenIdentifier, calculate_platform_fee};
 use crate::controllers::admin::is_admin;
+use crate::token::registry::{get_token_info, is_supported_token};
+use crate::token::registry::KONG_LEDGER_ID_LOCAL;
 
 // House fee is 0.1% (10 basis points) represented in basis points
 lazy_static::lazy_static! {
@@ -20,18 +22,48 @@ lazy_static::lazy_static! {
 const FEES_ENABLED: bool = false;
 
 #[update]
-/// Places a bet on a specific market outcome using KONG tokens
-async fn place_bet(market_id: MarketId, outcome_index: OutcomeIndex, amount: TokenAmount) -> Result<(), BetError> {
+/// Places a bet on a specific market outcome using tokens
+async fn place_bet(
+    market_id: MarketId, 
+    outcome_index: OutcomeIndex, 
+    amount: TokenAmount,
+    token_id: Option<TokenIdentifier>
+) -> Result<(), BetError> {
     let user = ic_cdk::caller();
     let backend_canister_id = ic_cdk::api::id();
-    let kong_ledger = Principal::from_text(KONG_LEDGER_ID).map_err(|e| BetError::TransferError(format!("Invalid ledger ID: {}", e)))?;
     let market_id_clone = market_id.clone();
-
+    
     // Get market and validate state
     let market = MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
         markets_ref.get(&market_id_clone).ok_or(BetError::MarketNotFound)
     })?;
+    
+    // Determine which token to use
+    // If token_id is provided, use that. Otherwise, use the market's token_id
+    let token_id = token_id.unwrap_or_else(|| market.token_id.clone());
+    
+    // Validate the token is supported
+    if !is_supported_token(&token_id) {
+        return Err(BetError::TransferError(format!("Unsupported token: {}", token_id)));
+    }
+    
+    // Get token info for the transfer
+    let token_info = get_token_info(&token_id)
+        .ok_or_else(|| BetError::TransferError(format!("Token info not found for: {}", token_id)))?;
+    
+    // Validate token matches market's token
+    if token_id != market.token_id {
+        return Err(BetError::TransferError(
+            format!("Token mismatch: Bet uses {}, but market uses {}", token_id, market.token_id)
+        ));
+    }
+    
+    // Get token ledger canister ID
+    let token_ledger = Principal::from_text(&token_id)
+        .map_err(|e| BetError::TransferError(format!("Invalid token ledger ID: {}", e)))?;
+
+    // Outcome validation already handled above
 
     // Validate market state and outcome
     let outcome_idx = outcome_index.to_u64() as usize;
@@ -50,8 +82,9 @@ async fn place_bet(market_id: MarketId, outcome_index: OutcomeIndex, amount: Tok
                 return Err(BetError::NotMarketCreator);
             }
             
-            // Ensure the bet meets the minimum activation threshold
-            if amount < min_activation_bet() {
+            // Ensure the bet meets the minimum activation threshold for this token
+            let min_activation = min_activation_bet(&token_id);
+            if amount < min_activation {
                 return Err(BetError::InsufficientActivationBet);
             }
             
@@ -59,8 +92,10 @@ async fn place_bet(market_id: MarketId, outcome_index: OutcomeIndex, amount: Tok
             // This is a fallback, but shouldn't be needed as admin-created markets start as Active
             if !is_admin(user) {
                 // For regular users, confirm the activation amount
-                ic_cdk::println!("Activating market {} with bet of {} KONG tokens", 
-                              market_id.to_u64(), amount.to_u64() / 1_000_000);
+                ic_cdk::println!("Activating market {} with bet of {} {} tokens", 
+                              market_id.to_u64(), 
+                              amount.to_u64() / 10u64.pow(token_info.decimals as u32),
+                              token_info.symbol);
             }
         },
         MarketStatus::Closed(_) => return Err(BetError::MarketClosed),
@@ -85,7 +120,7 @@ async fn place_bet(market_id: MarketId, outcome_index: OutcomeIndex, amount: Tok
         memo: None,
         created_at_time: None,
     };
-    match ic_cdk::call::<(TransferFromArgs,), (Result<Nat, TransferFromError>,)>(kong_ledger, "icrc2_transfer_from", (args,)).await {
+    match ic_cdk::call::<(TransferFromArgs,), (Result<Nat, TransferFromError>,)>(token_ledger, "icrc2_transfer_from", (args,)).await {
         Ok((Ok(_block_index),)) => Ok(()),
         Ok((Err(e),)) => Err(BetError::TransferError(format!(
             "Transfer failed: {:?}. Make sure you have approved the prediction market canister to spend your tokens using icrc2_approve",
@@ -100,13 +135,14 @@ async fn place_bet(market_id: MarketId, outcome_index: OutcomeIndex, amount: Tok
         markets_ref.get(&market_id_clone).ok_or(BetError::MarketNotFound)
     })?;
 
-    // Calculate house fee (NAT8 arithmetic)
-    let (fee_amount, bet_amount) = if FEES_ENABLED {
-        let fee = amount.clone() * HOUSE_FEE_RATE.clone() / 100_000_000u64;
-        (fee.clone(), amount - fee)
+    // Calculate token-specific platform fee
+    let fee_amount = if FEES_ENABLED {
+        calculate_platform_fee(&amount, &token_id)
     } else {
-        (StorableNat::from(0u64), amount)
+        StorableNat::from(0u64)
     };
+    
+    let bet_amount = amount.clone() - fee_amount.clone();
 
     // Update fee balance
     FEE_BALANCE.with(|fees| {
@@ -169,6 +205,7 @@ async fn place_bet(market_id: MarketId, outcome_index: OutcomeIndex, amount: Tok
             amount: bet_amount, // Store the actual bet amount without fee
             outcome_index,
             timestamp: StorableNat::from(ic_cdk::api::time()),
+            token_id: token_id.clone(),
         };
 
         bet_store.0.push(new_bet);

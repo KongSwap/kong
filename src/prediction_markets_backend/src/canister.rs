@@ -8,7 +8,8 @@ use icrc_ledger_types::icrc21::requests::{ConsentMessageRequest, ConsentMessageM
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 use candid::decode_one;
 
-use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
+use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND, TokenIdentifier};
+use crate::token::registry::{TokenInfo, get_all_supported_tokens, get_token_info, add_supported_token as add_token, update_token_config as update_token};
 
 use super::delegation::*;
 use crate::market::estimate_return_types::*;
@@ -189,7 +190,9 @@ pub fn estimate_bet_return(
     market_id: u64,
     outcome_index: u64,
     bet_amount: u64,
-    current_time: u64
+    current_time: u64,
+    // token_id is now optional and unused, keeping for API compatibility
+    _token_id: Option<String>,
 ) -> EstimatedReturn {
     // Convert primitive parameters to our type system
     let market_id = MarketId::from(market_id);
@@ -319,6 +322,42 @@ pub fn record_market_payout(payout: BetPayoutRecord) {
 }
 
 /// Get payout records for a market
+#[query]
+pub fn get_supported_tokens() -> Vec<TokenInfo> {
+    get_all_supported_tokens()
+}
+
+#[query]
+pub fn get_token_fee_percentage(token_id: String) -> Option<u64> {
+    get_token_info(&token_id).map(|info| info.fee_percentage)
+}
+
+#[update]
+pub fn add_supported_token(token_info: TokenInfo) -> Result<(), String> {
+    // Check caller is admin
+    if !crate::controllers::admin::is_admin(ic_cdk::caller()) {
+        return Err("Unauthorized: caller is not an admin".to_string());
+    }
+    
+    add_token(token_info);
+    Ok(())
+}
+
+#[update]
+pub fn update_token_config(token_id: String, token_info: TokenInfo) -> Result<(), String> {
+    // Check caller is admin
+    if !crate::controllers::admin::is_admin(ic_cdk::caller()) {
+        return Err("Unauthorized: caller is not an admin".to_string());
+    }
+    
+    if token_id != token_info.id {
+        return Err("Token ID mismatch".to_string());
+    }
+    
+    update_token(token_info);
+    Ok(())
+}
+
 #[query]
 pub fn get_market_payout_records(market_id: u64) -> Vec<BetPayoutRecord> {
     // Convert market_id to our type system

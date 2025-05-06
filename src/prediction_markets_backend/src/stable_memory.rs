@@ -69,3 +69,25 @@ thread_local! {
         )
     );
 }
+
+/// Restores the stable memory state after an upgrade
+/// This function is called by post_upgrade in lib.rs
+pub fn restore() {
+    // The stable memory is automatically preserved across upgrades
+    // This function is here to provide a hook for any additional
+    // restoration steps that might be needed in the future
+    
+    ic_cdk::println!("Stable memory state restored");
+    
+    // Update the market ID counter to match the highest market ID
+    if let Some((max_id, _)) = MARKETS.with(|markets| {
+        let markets_ref = markets.borrow();
+        markets_ref.iter().last()
+    }) {
+        // Ensure the MARKET_ID atomic counter starts above the highest existing ID
+        crate::market::create_market::MARKET_ID.store(
+            max_id.to_u64(),
+            std::sync::atomic::Ordering::SeqCst
+        );
+    }
+}

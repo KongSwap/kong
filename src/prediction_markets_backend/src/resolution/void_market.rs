@@ -1,16 +1,13 @@
 use ic_cdk::update;
 
 use super::resolution::*;
-use super::transfer_kong::*;
 
 use crate::market::market::*;
 use crate::stable_memory::*;
 use crate::controllers::admin::*;
-use crate::types::{MarketId, TokenAmount};
-
-lazy_static::lazy_static! {
-    static ref KONG_TRANSFER_FEE: TokenAmount = TokenAmount::from(10_000u64); // 0.0001 KONG
-}
+use crate::types::{MarketId, TokenAmount, TokenIdentifier};
+use crate::token::registry::{get_token_info, is_supported_token};
+use crate::token::transfer::transfer_token;
 
 /// Voids a market and returns all bets to the users
 /// This is used when no resolution can be determined or in case of market manipulation
@@ -48,27 +45,41 @@ pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
 
     ic_cdk::println!("Found {} bets to refund", bets.len());
 
-    // Return all bets to users
+    // Return all bets to users using the appropriate token for each bet
     for bet in bets {
-        let transfer_amount = if bet.amount > KONG_TRANSFER_FEE.clone() {
-            bet.amount - KONG_TRANSFER_FEE.clone()
+        // Get token info for the bet's token
+        let token_id = &bet.token_id;
+        let token_info = match get_token_info(token_id) {
+            Some(info) => info,
+            None => {
+                ic_cdk::println!("Unsupported token: {}, skipping refund", token_id);
+                continue;
+            }
+        };
+        
+        // Check if bet amount exceeds transfer fee for this token
+        let transfer_amount = if bet.amount > token_info.transfer_fee {
+            bet.amount - token_info.transfer_fee.clone()
         } else {
             ic_cdk::println!(
                 "Skipping transfer - bet amount {} less than fee {}",
                 bet.amount.to_u64(),
-                KONG_TRANSFER_FEE.to_u64()
+                token_info.transfer_fee.to_u64()
             );
             continue; // Skip if bet amount is less than transfer fee
         };
 
-        ic_cdk::println!("Returning {} tokens to {}", transfer_amount.to_u64(), bet.user.to_string());
+        ic_cdk::println!("Returning {} {} tokens to {}", 
+                        transfer_amount.to_u64() / 10u64.pow(token_info.decimals as u32),
+                        token_info.symbol,
+                        bet.user.to_string());
 
-        // Transfer tokens back to the bettor
-        match transfer_kong(bet.user, transfer_amount).await {
+        // Transfer tokens back to the bettor using the appropriate token
+        match transfer_token(bet.user, transfer_amount, token_id, None).await {
             Ok(_) => ic_cdk::println!("Transfer successful"),
             Err(e) => {
-                ic_cdk::println!("Transfer failed: {}", e);
-                return Err(ResolutionError::TransferError(e));
+                ic_cdk::println!("Transfer failed: {:?}", e);
+                return Err(ResolutionError::TransferError(format!("Failed to transfer tokens: {:?}", e)));
             }
         }
     }

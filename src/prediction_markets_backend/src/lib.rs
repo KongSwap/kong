@@ -24,6 +24,7 @@ use crate::market::estimate_return_types::{EstimatedReturn, TimeWeightPoint, Bet
 use crate::resolution::resolution::*;
 use crate::user::user::*;
 use crate::market::get_stats::*;
+use crate::token::registry::TokenInfo;
 use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
 use icrc_ledger_types::icrc21::responses::ConsentInfo; 
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
@@ -38,16 +39,20 @@ pub mod market;
 pub mod nat;
 pub mod resolution;
 pub mod stable_memory;
+pub mod token;
 pub mod types;
 pub mod user;
 pub mod utils;
 
 // Re-export common types for convenience
-pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount};
+pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount, TokenIdentifier};
 
 // Constants
 // const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
 const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai"; ///For Local testing
+
+// We don't need import the registry functions here
+// since we're not using them directly in the post_upgrade function
 
 #[init]
 fn init() {
@@ -63,7 +68,11 @@ fn pre_upgrade() {
 /// Called after canister upgrade to restore state
 #[post_upgrade]
 fn post_upgrade() {
-    MARKET_ID.store(max_market_id(), std::sync::atomic::Ordering::SeqCst);
+    stable_memory::restore();
+    ic_cdk::println!("Successfully restored stable memory in post_upgrade");
+    
+    // No need to run migrations for existing markets as requested by the user
+    // New markets will automatically use the new token system, while existing ones remain unchanged
 }
 
 // Export Candid interface

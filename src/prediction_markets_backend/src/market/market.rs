@@ -3,9 +3,10 @@ use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
+use crate::types::{MarketId, Timestamp, TokenAmount, PoolAmount, BetCount, TokenIdentifier, OutcomeIndex};
+
 use crate::category::market_category::*;
 use crate::resolution::resolution::*;
-use crate::types::{MarketId, Timestamp, TokenAmount, PoolAmount, BetCount, OutcomeIndex};
 
 /// Represents the current status of a market
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -46,6 +47,7 @@ pub struct Market {
     pub resolved_by: Option<Principal>,  // Principal ID of the admin who resolved the market
     pub uses_time_weighting: bool,       // Whether this market uses time-weighted rewards
     pub time_weight_alpha: Option<f64>,  // Alpha parameter for exponential decay (default: 0.1)
+    pub token_id: TokenIdentifier,       // The token used for this market
 }
 
 impl Storable for Market {

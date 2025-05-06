@@ -3,6 +3,8 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use ic_cdk::query;
 
+use crate::resolution::transfer_kong;
+
 const DEFAULT_ADMIN_PRINCIPALS: [&str; 7] = [
     "4jxje-hbmra-4otqc-6hor3-cpwlh-sqymk-6h4ef-42sqn-o3ip5-s3mxk-uae",
     "6rjil-isfbu-gsmpe-ffvcl-v3ifl-xqgkr-en2ir-pbr54-cetku-syp4i-bae",
@@ -34,4 +36,28 @@ thread_local! {
 #[query]
 pub fn is_admin(principal: Principal) -> bool {
     ADMIN_PRINCIPALS.with(|admins| admins.borrow().contains(&principal))
+}
+
+/// Get the minter account principal for fee collection
+pub fn get_minter_account_from_storage() -> Principal {
+    // Use the same minter address for all tokens as defined in transfer_kong.rs
+    let minter_address = if crate::KONG_LEDGER_ID == "o7oak-iyaaa-aaaaq-aadzq-cai" {
+        // Production environment
+        crate::resolution::transfer_kong::KONG_MINTER_PRINCIPAL_PROD
+    } else {
+        // Local or test environment
+        crate::resolution::transfer_kong::KONG_MINTER_PRINCIPAL_LOCAL
+    };
+    
+    if let Ok(minter) = Principal::from_text(minter_address) {
+        return minter;
+    }
+    
+    // Fallback to the first admin principal if conversion fails
+    if let Ok(admin) = Principal::from_text(DEFAULT_ADMIN_PRINCIPALS[0]) {
+        return admin;
+    }
+    
+    // Final fallback to canister ID
+    ic_cdk::api::id()
 }

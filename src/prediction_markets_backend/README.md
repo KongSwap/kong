@@ -1,6 +1,6 @@
 # Prediction Markets Backend
 
-A decentralized prediction markets system built as a canister smart contract for the Internet Computer (IC).
+A decentralized prediction markets system built as a canister smart contract for the Internet Computer (IC) with multi-token support.
 
 ## Code Review & Architecture
 
@@ -23,19 +23,20 @@ This canister implements a complete prediction markets platform where users can:
    - Comprehensive market querying capabilities
 
 2. **Betting System**
-   - ICRC-2 token integration with KONG tokens
-   - Secure bet recording in stable storage
+   - Multi-token support with ICRC-1 token integration (KONG, ICP, ckUSDT, ckUSDC, ckBTC, DKP, GLDT)
+   - Token-specific activation fees for user-created markets
+   - Secure bet recording in stable storage with token information
    - Pool-based odds calculation
-   - Automatic fee handling (configurable)
-   - 1% platform fee on winning pools
+   - Automatic fee handling with token-specific fee percentages
+   - Configurable platform fee per token type (1-5% depending on token)
 
 3. **Resolution & Payout**
    - Multiple resolution strategies (admin, oracle, decentralized)
    - Dual approval resolution system for user-created markets
-   - Automatic winner determination and payout distribution
-   - 1% platform fee collected from winning pools and sent to minter for burning
-   - Market voiding capabilities for edge cases
-   - Token burning mechanism for resolution disagreements
+   - Automatic winner determination and payout distribution in the market's native token
+   - Token-specific platform fees collected from winning pools and sent to minter
+   - Market voiding capabilities with refunds in the original token
+   - Token burning mechanism for resolution disagreements using the market's token
 
 4. **State Management**
    - Robust persistence using IC's stable structures
@@ -56,14 +57,39 @@ This canister implements a complete prediction markets platform where users can:
 - Uses Candid for interface definition
 - Integrates with ICRC token standards
 
-### Platform Fee System
+### Multi-Token and Fee System
 
-- 1% platform fee applied to all winning pools
+#### Supported Tokens
+
+- KONG: Native platform token (1% fee)
+- ICP: Internet Computer Protocol token (2% fee)
+- ckUSDT: Chain key USD Tether token (2% fee)
+- ckUSDC: Chain key USD Coin token (2% fee)
+- ckBTC: Chain key Bitcoin token (2% fee)
+- DKP: Dragginz Kingdom Points token (2% fee)
+- GLDT: Gold token (2% fee)
+
+#### Token-Specific Activation Fees
+
+User-created markets require a minimum activation fee based on the token:
+- KONG: 3000 KONG
+- ICP: 25 ICP
+- ckUSDT: 100 ckUSDT
+- ckUSDC: 100 ckUSDC
+- ckBTC: 0.001 ckBTC
+- DKP: 70000 DKP
+- GLDT: 100 GLDT
+
+#### Platform Fee System
+
+- Token-specific platform fees (1-2%) applied to all winning pools
+  - KONG: 1% platform fee
+  - All other tokens: 2% platform fee
 - Fee is automatically calculated and deducted during market finalization
-- Fee tokens are sent to the minter account for burning
-- Remaining 99% of winnings are distributed to users who made correct predictions
+- Fee tokens are sent to the minter account for collection
+- Remaining percentage of winnings is distributed to users who made correct predictions
 - Fee is transparently displayed in estimated returns
-- Implemented in a non-retroactive manner to protect existing markets
+- Fee percentages can be updated via admin interfaces
 
 ## Detailed Technical Specifications
 
@@ -81,7 +107,7 @@ pub struct Market {
     pub outcomes: Vec<String>,
     pub resolution_method: ResolutionMethod,
     pub image_url: Option<String>,
-    pub status: MarketStatus,  // Now includes Pending and Active states
+    pub status: MarketStatus,
     pub created_at: Timestamp,
     pub end_time: Timestamp,
     pub total_pool: StorableNat,
@@ -93,7 +119,8 @@ pub struct Market {
     pub resolved_by: Option<Principal>,
     pub uses_time_weighting: bool,
     pub time_weight_alpha: Option<f64>,
-    pub creator_resolution: Option<ResolutionProposal>, // For dual resolution system
+    pub creator_resolution: Option<ResolutionProposal>,
+    pub token_id: TokenIdentifier, // Token used for this market's bets
 }
 ```
 

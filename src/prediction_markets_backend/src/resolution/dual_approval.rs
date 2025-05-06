@@ -3,18 +3,14 @@ use ic_cdk::update;
 
 use super::finalize_market::*;
 use super::resolution::*;
-use super::transfer_kong::*;
 use crate::controllers::admin::*;
 use crate::market::market::*;
-use crate::nat::StorableNat;
 use crate::stable_memory::*;
-use crate::types::{MarketId, TokenAmount, OutcomeIndex, Timestamp, min_activation_bet};
+use crate::types::{MarketId, TokenAmount, OutcomeIndex, min_activation_bet};
 use crate::canister::get_current_time;
 use crate::bet::bet::Bet;
-
-lazy_static::lazy_static! {
-    static ref KONG_TRANSFER_FEE: TokenAmount = TokenAmount::from(10_000u64); // 0.0001 KONG
-}
+use crate::token::registry::get_token_info;
+use crate::token::transfer::{transfer_token, burn_tokens};
 
 /// Refunds all bets when a market is voided
 pub async fn refund_all_bets(market: &Market) -> Result<(), ResolutionError> {
@@ -36,24 +32,37 @@ pub async fn refund_all_bets(market: &Market) -> Result<(), ResolutionError> {
 
     ic_cdk::println!("Found {} bets to refund", bets.len());
 
-    // Return all bets to users
+    // For each bet, refund the tokens back to the user
+    let token_id = &market.token_id;
+    let token_info = get_token_info(token_id).unwrap_or_else(|| panic!("Invalid token ID"));
+    let token_symbol = token_info.symbol.clone();
+    let transfer_fee = &token_info.transfer_fee;
+    
     for bet in bets {
-        let transfer_amount = if bet.amount > KONG_TRANSFER_FEE.clone() {
-            bet.amount - KONG_TRANSFER_FEE.clone()
+        // Ensure we don't try to transfer less than the transfer fee
+        let transfer_amount = if bet.amount > transfer_fee.clone() {
+            bet.amount - transfer_fee.clone()
         } else {
             ic_cdk::println!(
-                "Skipping transfer - bet amount {} less than fee {}",
-                bet.amount.to_u64(),
-                KONG_TRANSFER_FEE.to_u64()
+                "Cannot refund bet of {} {} to {}: amount is less than transfer fee of {}",
+                bet.amount.to_u64() / 10u64.pow(token_info.decimals as u32),
+                token_symbol,
+                bet.user.to_string(),
+                transfer_fee.to_u64() / 10u64.pow(token_info.decimals as u32)
             );
             continue; // Skip if bet amount is less than transfer fee
         };
 
-        ic_cdk::println!("Returning {} tokens to {}", transfer_amount.to_u64(), bet.user.to_string());
+        ic_cdk::println!(
+            "Returning {} {} to {}", 
+            transfer_amount.to_u64() / 10u64.pow(token_info.decimals as u32), 
+            token_symbol,
+            bet.user.to_string()
+        );
 
-        if let Err(e) = transfer_kong(bet.user, transfer_amount).await {
+        if let Err(e) = transfer_token(bet.user, transfer_amount, token_id, None).await {
             // If transfer fails, log it but continue with others
-            ic_cdk::println!("Error refunding bet to {}: {}", bet.user.to_string(), e);
+            ic_cdk::println!("Error refunding bet to {}: {:?}", bet.user.to_string(), e);
         }
     }
 
@@ -410,10 +419,10 @@ async fn handle_resolution_disagreement(
         }
     }
     
-    // Calculate the total amount to burn (up to min_activation_bet())
+    // Calculate the total amount to burn (up to min_activation_bet() for this token)
     let mut amount_to_burn = TokenAmount::from(0u64);
     let mut creator_remaining = TokenAmount::from(0u64);
-    let activation_threshold = min_activation_bet();
+    let activation_threshold = min_activation_bet(&market.token_id);
     
     for bet in &creator_bets {
         if amount_to_burn.clone() < activation_threshold.clone() {
@@ -438,51 +447,80 @@ async fn handle_resolution_disagreement(
     // Burn the tokens by sending them to the minter address
     if amount_to_burn.clone() > TokenAmount::from(0u64) {
         let amount_to_burn_clone = amount_to_burn.clone();
-        match burn_tokens(amount_to_burn).await {
+        let token_id = &market.token_id;
+        let token_info = get_token_info(token_id).unwrap_or_else(|| panic!("Invalid token ID"));
+        
+        // Get token symbol for logging
+        let token_symbol = token_info.symbol.clone();
+        
+        match burn_tokens(token_id, amount_to_burn).await {
             Ok(_) => {
-                ic_cdk::println!("Burned {} KONG from market creator as penalty", amount_to_burn_clone.to_u64());
+                // Display amount in token's native format
+                let display_amount = amount_to_burn_clone.to_u64() / 10u64.pow(token_info.decimals as u32);
+                ic_cdk::println!("Burned {} {} from market creator as penalty", display_amount, token_symbol);
             },
             Err(e) => {
-                ic_cdk::println!("Error burning tokens: {}", e);
+                ic_cdk::println!("Error burning tokens: {:?}", e);
                 // Continue even if burning fails - we'll still void the market
             }
         }
     }
     
     // Return any remaining tokens to the creator
-    if creator_remaining.clone() > KONG_TRANSFER_FEE.clone() {
-        let transfer_amount = creator_remaining.clone() - KONG_TRANSFER_FEE.clone();
-        let transfer_amount_clone = transfer_amount.clone();
+    if creator_remaining.clone() > TokenAmount::from(0u64) {
+        let token_id = &market.token_id;
+        let token_info = get_token_info(token_id).unwrap_or_else(|| panic!("Invalid token ID"));
         
-        match transfer_kong(creator, transfer_amount).await {
-            Ok(_) => {
-                ic_cdk::println!("Refunded {} remaining KONG to market creator", transfer_amount_clone.to_u64());
-            },
-            Err(e) => {
-                ic_cdk::println!("Error refunding creator: {}", e);
-                // Continue even if refund fails
+        // Check if amount exceeds transfer fee
+        if creator_remaining.clone() > token_info.transfer_fee.clone() {
+            let transfer_amount = creator_remaining.clone() - token_info.transfer_fee.clone();
+            let transfer_amount_clone = transfer_amount.clone();
+            let token_symbol = token_info.symbol.clone();
+            
+            match transfer_token(creator, transfer_amount, token_id, None).await {
+                Ok(_) => {
+                    // Display amount in token's native format
+                    let display_amount = transfer_amount_clone.to_u64() / 10u64.pow(token_info.decimals as u32);
+                    ic_cdk::println!("Refunded {} {} remaining to market creator", display_amount, token_symbol);
+                },
+                Err(e) => {
+                    ic_cdk::println!("Error refunding creator: {:?}", e);
+                    // Continue even if refund fails
+                }
             }
         }
     }
     
     // Refund all other users' bets
     for bet in other_bets {
-        let transfer_amount = if bet.amount > KONG_TRANSFER_FEE.clone() {
-            bet.amount - KONG_TRANSFER_FEE.clone()
+        let token_id = &market.token_id;
+        let token_info = get_token_info(token_id).unwrap_or_else(|| panic!("Invalid token ID"));
+        let token_symbol = token_info.symbol.clone();
+        let transfer_fee = &token_info.transfer_fee;
+        
+        let transfer_amount = if bet.amount > transfer_fee.clone() {
+            bet.amount - transfer_fee.clone()
         } else {
             ic_cdk::println!(
-                "Skipping transfer - bet amount {} less than fee {}",
-                bet.amount.to_u64(),
-                KONG_TRANSFER_FEE.to_u64()
+                "Cannot refund bet of {} {} to {}: amount is less than transfer fee of {}",
+                bet.amount.to_u64() / 10u64.pow(token_info.decimals as u32),
+                token_symbol,
+                bet.user.to_string(),
+                transfer_fee.to_u64() / 10u64.pow(token_info.decimals as u32)
             );
             continue; // Skip if bet amount is less than transfer fee
         };
         
-        ic_cdk::println!("Returning {} tokens to {}", transfer_amount.to_u64(), bet.user.to_string());
+        ic_cdk::println!(
+            "Returning {} {} to {}", 
+            transfer_amount.to_u64() / 10u64.pow(token_info.decimals as u32),
+            token_symbol,
+            bet.user.to_string()
+        );
         
-        if let Err(e) = transfer_kong(bet.user, transfer_amount).await {
+        if let Err(e) = transfer_token(bet.user, transfer_amount, token_id, None).await {
             // If transfer fails, log it but continue with others
-            ic_cdk::println!("Error refunding bet to {}: {}", bet.user.to_string(), e);
+            ic_cdk::println!("Error refunding bet to {}: {:?}", bet.user.to_string(), e);
         }
     }
     

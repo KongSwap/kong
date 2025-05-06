@@ -2,6 +2,8 @@ use ic_cdk::update;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use super::market::*;
+use crate::token::registry::{TokenIdentifier, get_token_info, is_supported_token};
+use crate::token::registry::KONG_LEDGER_ID_LOCAL;
 
 use crate::category::market_category::*;
 use crate::controllers::admin::*;
@@ -33,6 +35,7 @@ pub fn create_market(
     image_url: Option<String>,
     uses_time_weighting: Option<bool>,
     time_weight_alpha: Option<f64>,
+    token_id: Option<TokenIdentifier>,
 ) -> Result<MarketId, String> {
     // Validate inputs
     if question.is_empty() {
@@ -43,6 +46,12 @@ pub fn create_market(
     }
     if outcomes.len() > 10 {
         return Err("Market cannot have more than 10 outcomes".to_string());
+    }
+    
+    // Validate token ID if provided
+    let token_id = token_id.unwrap_or_else(|| KONG_LEDGER_ID_LOCAL.to_string());
+    if !is_supported_token(&token_id) {
+        return Err(format!("Unsupported token: {}", token_id));
     }
 
     // Get current time and caller principal
@@ -90,6 +99,7 @@ pub fn create_market(
                 resolved_by: None,
                 uses_time_weighting: uses_time_weighting.unwrap_or(true), // all new prediction markets use time-weighting as default type
                 time_weight_alpha: time_weight_alpha,
+                token_id,
             },
         );
         market_id

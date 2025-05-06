@@ -1,4 +1,14 @@
 export const idlFactory = ({ IDL }) => {
+  const TokenInfo = IDL.Record({
+    'id' : IDL.Text,
+    'is_kong' : IDL.Bool,
+    'decimals' : IDL.Nat8,
+    'transfer_fee' : IDL.Nat,
+    'name' : IDL.Text,
+    'fee_percentage' : IDL.Nat64,
+    'symbol' : IDL.Text,
+  });
+  const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
   const MarketCategory = IDL.Variant({
     'AI' : IDL.Null,
     'Memes' : IDL.Null,
@@ -20,7 +30,7 @@ export const idlFactory = ({ IDL }) => {
     'SpecificDate' : IDL.Nat,
     'Duration' : IDL.Nat,
   });
-  const Result = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
+  const Result_1 = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
   const EstimatedReturnScenario = IDL.Record({
     'probability' : IDL.Float64,
     'max_return' : IDL.Nat,
@@ -60,7 +70,7 @@ export const idlFactory = ({ IDL }) => {
     'VoidingFailed' : IDL.Null,
     'ResolutionDisagreement' : IDL.Null,
   });
-  const Result_1 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ResolutionError });
+  const Result_2 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ResolutionError });
   const TimeWeightPoint = IDL.Record({
     'weight' : IDL.Float64,
     'absolute_time' : IDL.Nat,
@@ -96,6 +106,7 @@ export const idlFactory = ({ IDL }) => {
     'creator' : IDL.Principal,
     'outcome_percentages' : IDL.Vec(IDL.Float64),
     'question' : IDL.Text,
+    'token_id' : IDL.Text,
     'image_url' : IDL.Opt(IDL.Text),
     'resolution_data' : IDL.Opt(IDL.Text),
     'created_at' : IDL.Nat,
@@ -114,6 +125,7 @@ export const idlFactory = ({ IDL }) => {
     'total_count' : IDL.Nat,
   });
   const Bet = IDL.Record({
+    'token_id' : IDL.Text,
     'market_id' : IDL.Nat,
     'user' : IDL.Principal,
     'timestamp' : IDL.Nat,
@@ -121,11 +133,15 @@ export const idlFactory = ({ IDL }) => {
     'outcome_index' : IDL.Nat,
   });
   const BetPayoutRecord = IDL.Record({
+    'transaction_id' : IDL.Opt(IDL.Nat),
     'bet_amount' : IDL.Nat,
     'bonus_amount' : IDL.Opt(IDL.Nat),
     'time_weight' : IDL.Opt(IDL.Float64),
     'platform_fee_amount' : IDL.Opt(IDL.Nat),
+    'token_id' : IDL.Text,
+    'token_symbol' : IDL.Text,
     'market_id' : IDL.Nat,
+    'platform_fee_percentage' : IDL.Nat64,
     'user' : IDL.Principal,
     'payout_amount' : IDL.Nat,
     'original_contribution_returned' : IDL.Nat,
@@ -215,7 +231,7 @@ export const idlFactory = ({ IDL }) => {
     'consent_message' : ConsentMessage,
   });
   const ErrorInfo = IDL.Record({ 'description' : IDL.Text });
-  const Result_2 = IDL.Variant({ 'Ok' : ConsentInfo, 'Err' : ErrorInfo });
+  const Result_3 = IDL.Variant({ 'Ok' : ConsentInfo, 'Err' : ErrorInfo });
   const Icrc28TrustedOriginsResponse = IDL.Record({
     'trusted_origins' : IDL.Vec(IDL.Text),
   });
@@ -239,14 +255,14 @@ export const idlFactory = ({ IDL }) => {
     'StorageError' : IDL.Text,
     'Expired' : IDL.Null,
   });
-  const Result_3 = IDL.Variant({
+  const Result_4 = IDL.Variant({
     'Ok' : DelegationResponse,
     'Err' : DelegationError,
   });
   const RevokeDelegationRequest = IDL.Record({
     'targets' : IDL.Vec(IDL.Principal),
   });
-  const Result_4 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
+  const Result_5 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
   const BetError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
     'InsufficientActivationBet' : IDL.Null,
@@ -261,8 +277,9 @@ export const idlFactory = ({ IDL }) => {
     'InsufficientBalance' : IDL.Null,
     'BalanceUpdateFailed' : IDL.Null,
   });
-  const Result_5 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
+  const Result_6 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
   return IDL.Service({
+    'add_supported_token' : IDL.Func([TokenInfo], [Result], []),
     'create_market' : IDL.Func(
         [
           IDL.Text,
@@ -274,18 +291,19 @@ export const idlFactory = ({ IDL }) => {
           IDL.Opt(IDL.Text),
           IDL.Opt(IDL.Bool),
           IDL.Opt(IDL.Float64),
+          IDL.Opt(IDL.Text),
         ],
-        [Result],
+        [Result_1],
         [],
       ),
     'estimate_bet_return' : IDL.Func(
-        [IDL.Nat64, IDL.Nat64, IDL.Nat64, IDL.Nat64],
+        [IDL.Nat64, IDL.Nat64, IDL.Nat64, IDL.Nat64, IDL.Opt(IDL.Text)],
         [EstimatedReturn],
         ['query'],
       ),
     'force_resolve_market' : IDL.Func(
         [IDL.Nat, IDL.Vec(IDL.Nat)],
-        [Result_1],
+        [Result_2],
         [],
       ),
     'generate_time_weight_curve' : IDL.Func(
@@ -312,10 +330,16 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'get_stats' : IDL.Func([], [StatsResult], ['query']),
+    'get_supported_tokens' : IDL.Func([], [IDL.Vec(TokenInfo)], ['query']),
+    'get_token_fee_percentage' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(IDL.Nat64)],
+        ['query'],
+      ),
     'get_user_history' : IDL.Func([IDL.Principal], [UserHistory], ['query']),
     'icrc21_canister_call_consent_message' : IDL.Func(
         [ConsentMessageRequest],
-        [Result_2],
+        [Result_3],
         ['query'],
       ),
     'icrc28_trusted_origins' : IDL.Func(
@@ -323,28 +347,32 @@ export const idlFactory = ({ IDL }) => {
         [Icrc28TrustedOriginsResponse],
         ['query'],
       ),
-    'icrc_34_delegate' : IDL.Func([DelegationRequest], [Result_3], []),
+    'icrc_34_delegate' : IDL.Func([DelegationRequest], [Result_4], []),
     'icrc_34_get_delegation' : IDL.Func(
         [DelegationRequest],
-        [Result_3],
+        [Result_4],
         ['query'],
       ),
     'icrc_34_revoke_delegation' : IDL.Func(
         [RevokeDelegationRequest],
-        [Result_4],
+        [Result_5],
         [],
       ),
     'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
-    'place_bet' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [Result_5], []),
-    'propose_resolution' : IDL.Func(
-        [IDL.Nat, IDL.Vec(IDL.Nat)],
-        [Result_1],
+    'place_bet' : IDL.Func(
+        [IDL.Nat, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Text)],
+        [Result_6],
         [],
       ),
-    'resolve_via_admin' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [Result_1], []),
+    'propose_resolution' : IDL.Func(
+        [IDL.Nat, IDL.Vec(IDL.Nat)],
+        [Result_2],
+        [],
+      ),
+    'resolve_via_admin' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [Result_2], []),
     'resolve_via_oracle' : IDL.Func(
         [IDL.Nat, IDL.Vec(IDL.Nat), IDL.Vec(IDL.Nat8)],
-        [Result_1],
+        [Result_2],
         [],
       ),
     'simulate_future_weight' : IDL.Func(
@@ -352,7 +380,8 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Float64],
         ['query'],
       ),
-    'void_market' : IDL.Func([IDL.Nat], [Result_1], []),
+    'update_token_config' : IDL.Func([IDL.Text, TokenInfo], [Result], []),
+    'void_market' : IDL.Func([IDL.Nat], [Result_2], []),
   });
 };
 export const init = ({ IDL }) => { return []; };

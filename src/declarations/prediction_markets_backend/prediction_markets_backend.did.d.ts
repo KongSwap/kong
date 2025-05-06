@@ -3,6 +3,7 @@ import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
 export interface Bet {
+  'token_id' : string,
   'market_id' : bigint,
   'user' : Principal,
   'timestamp' : bigint,
@@ -22,11 +23,15 @@ export type BetError = { 'MarketNotFound' : null } |
   { 'InsufficientBalance' : null } |
   { 'BalanceUpdateFailed' : null };
 export interface BetPayoutRecord {
+  'transaction_id' : [] | [bigint],
   'bet_amount' : bigint,
   'bonus_amount' : [] | [bigint],
   'time_weight' : [] | [number],
   'platform_fee_amount' : [] | [bigint],
+  'token_id' : string,
+  'token_symbol' : string,
   'market_id' : bigint,
+  'platform_fee_percentage' : bigint,
   'user' : Principal,
   'payout_amount' : bigint,
   'original_contribution_returned' : bigint,
@@ -137,6 +142,7 @@ export interface Market {
   'creator' : Principal,
   'outcome_percentages' : Array<number>,
   'question' : string,
+  'token_id' : string,
   'image_url' : [] | [string],
   'resolution_data' : [] | [string],
   'created_at' : bigint,
@@ -203,17 +209,19 @@ export type ResolutionMethod = {
   } |
   { 'Decentralized' : { 'quorum' : bigint } } |
   { 'Admin' : null };
-export type Result = { 'Ok' : bigint } |
+export type Result = { 'Ok' : null } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : null } |
+export type Result_1 = { 'Ok' : bigint } |
+  { 'Err' : string };
+export type Result_2 = { 'Ok' : null } |
   { 'Err' : ResolutionError };
-export type Result_2 = { 'Ok' : ConsentInfo } |
+export type Result_3 = { 'Ok' : ConsentInfo } |
   { 'Err' : ErrorInfo };
-export type Result_3 = { 'Ok' : DelegationResponse } |
-  { 'Err' : DelegationError };
-export type Result_4 = { 'Ok' : null } |
+export type Result_4 = { 'Ok' : DelegationResponse } |
   { 'Err' : DelegationError };
 export type Result_5 = { 'Ok' : null } |
+  { 'Err' : DelegationError };
+export type Result_6 = { 'Ok' : null } |
   { 'Err' : BetError };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
 export type SortDirection = { 'Descending' : null } |
@@ -229,6 +237,15 @@ export interface TimeWeightPoint {
   'weight' : number,
   'absolute_time' : bigint,
   'relative_time' : number,
+}
+export interface TokenInfo {
+  'id' : string,
+  'is_kong' : boolean,
+  'decimals' : number,
+  'transfer_fee' : bigint,
+  'name' : string,
+  'fee_percentage' : bigint,
+  'symbol' : string,
 }
 export interface UserBetInfo {
   'outcome_text' : string,
@@ -246,6 +263,7 @@ export interface UserHistory {
   'resolved_bets' : Array<UserBetInfo>,
 }
 export interface _SERVICE {
+  'add_supported_token' : ActorMethod<[TokenInfo], Result>,
   'create_market' : ActorMethod<
     [
       string,
@@ -257,14 +275,15 @@ export interface _SERVICE {
       [] | [string],
       [] | [boolean],
       [] | [number],
+      [] | [string],
     ],
-    Result
+    Result_1
   >,
   'estimate_bet_return' : ActorMethod<
-    [bigint, bigint, bigint, bigint],
+    [bigint, bigint, bigint, bigint, [] | [string]],
     EstimatedReturn
   >,
-  'force_resolve_market' : ActorMethod<[bigint, Array<bigint>], Result_1>,
+  'force_resolve_market' : ActorMethod<[bigint, Array<bigint>], Result_2>,
   'generate_time_weight_curve' : ActorMethod<
     [bigint, bigint],
     Array<TimeWeightPoint>
@@ -279,28 +298,31 @@ export interface _SERVICE {
     GetMarketsByStatusResult
   >,
   'get_stats' : ActorMethod<[], StatsResult>,
+  'get_supported_tokens' : ActorMethod<[], Array<TokenInfo>>,
+  'get_token_fee_percentage' : ActorMethod<[string], [] | [bigint]>,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],
-    Result_2
+    Result_3
   >,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
-  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_3>,
-  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_3>,
+  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_4>,
+  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_4>,
   'icrc_34_revoke_delegation' : ActorMethod<
     [RevokeDelegationRequest],
-    Result_4
+    Result_5
   >,
   'is_admin' : ActorMethod<[Principal], boolean>,
-  'place_bet' : ActorMethod<[bigint, bigint, bigint], Result_5>,
-  'propose_resolution' : ActorMethod<[bigint, Array<bigint>], Result_1>,
-  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_1>,
+  'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_6>,
+  'propose_resolution' : ActorMethod<[bigint, Array<bigint>], Result_2>,
+  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_2>,
   'resolve_via_oracle' : ActorMethod<
     [bigint, Array<bigint>, Uint8Array | number[]],
-    Result_1
+    Result_2
   >,
   'simulate_future_weight' : ActorMethod<[bigint, bigint, bigint], number>,
-  'void_market' : ActorMethod<[bigint], Result_1>,
+  'update_token_config' : ActorMethod<[string, TokenInfo], Result>,
+  'void_market' : ActorMethod<[bigint], Result_2>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

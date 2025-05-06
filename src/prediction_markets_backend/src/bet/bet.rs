@@ -3,6 +3,8 @@ use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
+use crate::token::registry::TokenIdentifier;
+
 use crate::nat::{serialize_nat, deserialize_nat};
 use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex};
 
@@ -33,6 +35,7 @@ pub struct Bet {
     #[serde(serialize_with = "serialize_nat", deserialize_with = "deserialize_nat")]
     pub outcome_index: OutcomeIndex, // Index of the chosen outcome
     pub timestamp: Timestamp, // When the bet was placed
+    pub token_id: TokenIdentifier, // The token used for this bet
 }
 
 /// Wrapper around Vec<Bet> that implements Storable trait for stable storage
