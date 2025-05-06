@@ -1,5 +1,5 @@
 use anyhow::Result;
-use candid::{CandidType, Principal, encode_one};
+use candid::{encode_one, CandidType, Principal};
 use icrc_ledger_types::icrc1::account::Account;
 use pocket_ic::PocketIc;
 use std::fs;
@@ -65,14 +65,10 @@ pub enum LedgerArg {
     Upgrade(UpgradeArgs),
 }
 
-pub fn create_icp_ledger(
-    ic: &PocketIc,
-    controller: &Option<Principal>,
-    ledger_arg: &LedgerArg,
-) -> Result<Principal> {
+pub fn create_icp_ledger(ic: &PocketIc, controller: &Option<Principal>, ledger_arg: &LedgerArg) -> Result<Principal> {
     let icp_ledger = create_canister(ic, controller, &None);
     let wasm_module = fs::read(IC_ICRC1_LEDGER_WASM)?;
-    let args = encode_one(ledger_arg).unwrap();
+    let args = encode_one(ledger_arg)?;
     ic.install_canister(icp_ledger, wasm_module, args, *controller);
     Ok(icp_ledger)
 }
