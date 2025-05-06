@@ -10,7 +10,7 @@
     onResolved: () => void;
   }>();
 
-  let selectedOutcome: number | null = $state(null);
+  let selectedOutcome: bigint | null = $state(null);
   let isSubmitting = $state(false);
 
   function close() {
@@ -28,7 +28,7 @@
     try {
       isSubmitting = true;
       await resolveMarketViaAdmin(market.id, selectedOutcome);
-      toastStore.success("Market resolved successfully");
+      toastStore.success(`Market "${market.question}" resolved to ${selectedOutcome} successfully`);
       onResolved();
       close();
     } catch (error) {
@@ -48,8 +48,8 @@
       <h3 class="text-sm font-medium mb-2">Select Winning Outcome:</h3>
       {#each market?.outcomes || [] as outcome, index}
         <button
-          class="w-full p-2 text-left rounded border {selectedOutcome === index ? 'border-kong-accent-green bg-kong-accent-green/10' : 'border-kong-pm-border hover:border-kong-accent-green/50'} transition-colors"
-          on:click={() => selectedOutcome = index}
+          class="w-full p-2 text-left rounded border {selectedOutcome === BigInt(index) ? 'border-kong-accent-green bg-kong-accent-green/10' : 'border-kong-pm-border hover:border-kong-accent-green/50'} transition-colors"
+          on:click={() => selectedOutcome = BigInt(index)}
         >
           {outcome}
         </button>

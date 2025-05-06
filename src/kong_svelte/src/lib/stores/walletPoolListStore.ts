@@ -1,8 +1,7 @@
-import { writable, derived, get } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
-import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
-import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { canisterIDLs } from "$lib/stores/auth";
+import { auth } from "$lib/stores/auth";
+import { canisters, type CanisterType } from "$lib/config/auth.config";
 
 interface PoolListState {
   processedPools: ProcessedPool[];
@@ -16,10 +15,10 @@ interface ProcessedPool {
   id: string;
   symbol_0: string;
   symbol_1: string;
-  balance: string;
-  usd_balance: string;
-  amount_0: string;
-  amount_1: string;
+  balance: number;
+  usd_balance: number;
+  amount_0: number;
+  amount_1: number;
   name?: string;
   address_0: string;
   address_1: string;
@@ -104,16 +103,14 @@ function createWalletPoolListStore() {
       // Create a promise for this loading operation
       poolLoadingPromise = new Promise<void>(async (resolve) => {
         try {
-          console.log(`Fetching pools for wallet: ${walletId}`);
-          const actor = createAnonymousActorHelper(
-            KONG_BACKEND_CANISTER_ID, 
-            canisterIDLs.kong_backend
-          );
+          const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
+            canisterId: canisters.kongBackend.canisterId,
+            idl: canisters.kongBackend.idl,
+            anon: true,
+          });
           
-          const response = await actor.user_balances(walletId);
-          console.log("response", response);
-          
-          if (response.Ok) {
+          const response = await actor.user_balances(walletId);          
+          if ('Ok' in response) {
             const rawPools = response.Ok.map(pool => pool.LP);
             const poolsWithIds = rawPools.map(pool => ({
               ...pool,
@@ -127,15 +124,13 @@ function createWalletPoolListStore() {
             
             await fetchTokensForPools(poolsWithIds, update);
             
-            console.log(`Successfully loaded ${poolsWithIds.length} pools for wallet: ${walletId}`);
-            
             // Final update with success state
             update(s => ({ 
               ...s, 
               loading: false,
               lastUpdated: Date.now()
             }));
-          } else if (response.Err) {
+          } else if ('Err' in response) {
             console.error("Error from backend:", response.Err);
             update(s => ({ 
               ...s, 

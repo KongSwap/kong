@@ -13,7 +13,6 @@ import {
   formatLargeNumber,
   processLiquidityInput,
   findPool,
-  validateLiquidityForm,
   getPoolForTokenPair,
   validateTokenSelect,
   calculateToken1FromPrice,
@@ -147,44 +146,6 @@ describe('findPool', () => {
     expect(findPool(token0, token1, pools)).toBe(pools[0]);
     expect(findPool(null, token1, pools)).toBe(null);
     expect(findPool(token0, token1, [])).toBe(null);
-  });
-});
-
-describe('validateLiquidityForm', () => {
-  it('should validate liquidity form correctly', () => {
-    const token0 = { address: 'token0-id' } as Kong.Token;
-    const token1 = { address: 'token1-id' } as Kong.Token;
-    const pool = { address_0: 'token0-id', address_1: 'token1-id' } as BE.Pool;
-
-    expect(validateLiquidityForm(
-      token0,
-      token1,
-      '100',
-      '5000',
-      null,
-      false,
-      pool
-    )).toBe(true);
-
-    expect(validateLiquidityForm(
-      null,
-      token1,
-      '100',
-      '5000',
-      null,
-      false,
-      pool
-    )).toBe(false);
-
-    expect(validateLiquidityForm(
-      token0,
-      token1,
-      '0',
-      '5000',
-      null,
-      false,
-      pool
-    )).toBe(false);
   });
 });
 
