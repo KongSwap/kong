@@ -115,7 +115,7 @@
             token1.address,
           );
 
-          if (result.Ok) {
+          if ('Ok' in result) {
             // Convert the BigInt amount to display format
             const amount1Display = (
               Number(result.Ok.amount_1) / Math.pow(10, token1.decimals)
@@ -157,7 +157,7 @@
             token0.address,
           );
 
-          if (result.Ok) {
+          if ('Ok' in result) {
             // When we pass token1 first, the result.Ok.amount_0 is what we need
             // This is because the backend swaps the order internally if needed
             const amount0Display = (

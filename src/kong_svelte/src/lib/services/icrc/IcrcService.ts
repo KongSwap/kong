@@ -1,5 +1,5 @@
 import { auth } from "$lib/stores/auth";
-import { canisters, type ICP_LEDGER, type ICRC2_LEDGER } from "$lib/config/auth.config";
+import { canisters, type CanisterType } from "$lib/config/auth.config";
 import { Principal } from "@dfinity/principal";
 import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "$lib/stores/allowanceStore";
@@ -49,7 +49,7 @@ export class IcrcService {
     separateBalances: boolean = false,
   ): Promise<{ default: bigint; subaccount: bigint } | bigint> {
     try {
-      const actor = auth.pnp.getActor<ICRC2_LEDGER>({
+      const actor = auth.pnp.getActor<CanisterType["ICRC2_LEDGER"]>({
         canisterId: token.address,
         idl: canisters.icrc2.idl,
         anon: true,
@@ -210,15 +210,27 @@ export class IcrcService {
         : 0n;
       const totalAmount = payAmount + tokenFee * 2n;
 
-      // Check current allowance
-      const currentAllowance = allowanceStore.getAllowance(
-        token.address,
-        authStore.account.owner,
-        spender,
-      );
+      const allowanceActor = auth.pnp.getActor<CanisterType["ICRC2_LEDGER"]>({
+        canisterId: token.address,
+        idl: canisters.icrc2.idl,
+        anon: true,
+      })
 
-      if (currentAllowance && currentAllowance.amount > totalAmount) {
-        return currentAllowance.amount;
+      // Check current allowance
+      const currentAllowance = await allowanceActor.icrc2_allowance({
+        account: {
+          owner: Principal.fromText(authStore.account.owner),
+          subaccount: [],
+        },
+        spender: { 
+          owner: Principal.fromText(spender),
+          subaccount: [],
+        },
+      })
+      const isExpired = currentAllowance.expires_at.length > 0 && currentAllowance.expires_at[0] < BigInt(Date.now() * 1000);
+
+      if (currentAllowance && !isExpired && currentAllowance.allowance > totalAmount) {
+        return currentAllowance.allowance;
       }
 
       const approveArgs: ApproveArgs = {
@@ -237,7 +249,7 @@ export class IcrcService {
         },
       };
 
-      const approveActor = auth.pnp.getActor<ICRC2_LEDGER>({
+      const approveActor = auth.pnp.getActor<CanisterType["ICRC2_LEDGER"]>({
         canisterId: token.address,
         idl: canisters.icrc2.idl,
         anon: false,
@@ -245,6 +257,7 @@ export class IcrcService {
       })
 
       const result = await approveActor.icrc2_approve(approveArgs);
+
       allowanceStore.addAllowance(token.address, {
         address: token.address,
         wallet_address: authStore.account.owner,
@@ -271,7 +284,7 @@ export class IcrcService {
 
   public static async getTokenFee(token: Kong.Token): Promise<bigint> {
     try {
-      const actor = auth.pnp.getActor<ICRC2_LEDGER>({
+      const actor = auth.pnp.getActor<CanisterType["ICRC2_LEDGER"]>({
         canisterId: token.address,
         idl: canisters.icrc2.idl,
         anon: true,
@@ -306,7 +319,7 @@ export class IcrcService {
         if (wallet === "oisy") {
           return { Err: "Oisy subaccount transfer is temporarily disabled." };
         }
-        const ledgerActor = auth.pnp.getActor<ICP_LEDGER>({
+        const ledgerActor = auth.pnp.getActor<CanisterType["ICP_LEDGER"]>({
           canisterId: token.address,
           idl: canisters.icp.idl,
           requiresSigning: true,
@@ -336,7 +349,7 @@ export class IcrcService {
       }
 
       // For all ICRC standard transfers (Principal or ICRC1 Account)
-      const actor = auth.pnp.getActor<ICRC2_LEDGER>({
+      const actor = auth.pnp.getActor<CanisterType["ICRC2_LEDGER"]>({
         canisterId: token.address,
         idl: canisters.icrc2.idl,
         anon: false,
