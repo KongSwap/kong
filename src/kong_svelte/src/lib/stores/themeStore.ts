@@ -77,7 +77,6 @@ function createThemeStore() {
       `--background-type: ${theme.colors.backgroundType};
        --enable-nebula: ${theme.colors.enableNebula ? 1 : 0};
        --enable-stars: ${theme.colors.enableStars ? 1 : 0};
-       --enable-skyline: ${theme.colors.enableSkyline ? 1 : 0};
        --font-family: ${theme.colors.fontFamily || 'inherit'};
        ${theme.colors.nebulaOpacity ? `--nebula-opacity: ${theme.colors.nebulaOpacity};` : ''}
        ${theme.colors.starsOpacity ? `--stars-opacity: ${theme.colors.starsOpacity};` : ''}

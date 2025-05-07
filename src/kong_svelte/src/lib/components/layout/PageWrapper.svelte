@@ -57,7 +57,7 @@
   }
   
   // Helper function to determine if a theme feature is enabled
-  function isEnabled(feature: 'enableNebula' | 'enableStars' | 'enableSkyline'): boolean {
+  function isEnabled(feature: 'enableNebula' | 'enableStars'): boolean {
     return currentTheme?.colors[feature] === true;
   }
   
@@ -212,11 +212,6 @@
             opacity: {currentTheme.colors.starsOpacity || 0.8};
           "
         ></div>
-      {/if}
-
-      <!-- Skyline -->
-      {#if currentTheme && isEnabled('enableSkyline')}
-        <div class="skyline"></div>
       {/if}
     </div>
   {/if}

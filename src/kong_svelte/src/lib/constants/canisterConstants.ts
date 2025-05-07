@@ -6,7 +6,7 @@ export const DEFAULT_TOKEN = 'ICP';
 const defaultTokens = () => {
   if (process.env.DFX_NETWORK === 'local') {
     return {
-      icp: process.env.CANISTER_ID_KSICP_LEDGER,
+      icp: process.env.CANISTER_ID_ICP_LEDGER,
       ckusdt: process.env.CANISTER_ID_KSUSDT_LEDGER,
       kong: process.env.CANISTER_ID_KONG_LEDGER,
     };
@@ -39,7 +39,7 @@ export const DEFAULT_TOKENS = defaultTokens();
 
 export const CKUSDT_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_KSUSDT_LEDGER : "cngnf-vqaaa-aaaar-qag4q-cai";
 // @ts-ignore
-export const ICP_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_KSICP_LEDGER : process.env.CANISTER_ID_ICP_LEDGER;
+export const ICP_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_ICP_LEDGER : process.env.CANISTER_ID_ICP_LEDGER;
 
 export const KONG_BACKEND_PRINCIPAL = process.env.CANISTER_ID_KONG_BACKEND || '2ipq2-uqaaa-aaaar-qailq-cai';
 export const KONG_DATA_PRINCIPAL = process.env.CANISTER_ID_KONG_DATA || 'cbefx-hqaaa-aaaar-qakrq-cai';

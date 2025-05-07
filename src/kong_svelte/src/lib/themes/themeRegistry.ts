@@ -192,7 +192,6 @@ export function generateThemeVariables(theme: ThemeDefinition): string {
   }
   css += `--enable-nebula: ${colors.enableNebula ? 1 : 0};\n`;
   css += `--enable-stars: ${colors.enableStars ? 1 : 0};\n`;
-  css += `--enable-skyline: ${colors.enableSkyline ? 1 : 0};\n`;
   
   if (colors.nebulaOpacity !== undefined) {
     css += `--nebula-opacity: ${colors.nebulaOpacity};\n`;

@@ -6,6 +6,7 @@ import {
 // Remove import of canisterIDLs as it's not needed here for launchpad
 import type { _SERVICE as LaunchpadService } from "$declarations/launchpad/launchpad.did.js";
 import type { PageLoad } from "./$types";
+import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 
 export const load: PageLoad = async ({ fetch }) => {
     let tokens: any[] = [];
@@ -13,10 +14,10 @@ export const load: PageLoad = async ({ fetch }) => {
     let error: string | null = null;
 
     try {
-        const launchpadActor = await auth.getActor(
+        // Create anonymous actor directly instead of using auth.getActor with anon option
+        const launchpadActor = createAnonymousActorHelper(
             launchpadCanisterId,
-            launchpadIDL,
-            { anon: true }
+            launchpadIDL
         ) as LaunchpadService;
 
         // Fetch tokens and miners

@@ -21,6 +21,7 @@
     isSwapPanel = false,
     isSidebar = false,
     interactive = false,
+    shadow = "shadow-none",
     
     // Transition props
     transition = null,
@@ -40,6 +41,7 @@
     unpadded?: boolean;
     animated?: boolean;
     isSwapPanel?: boolean;
+    shadow?: string;
     isSidebar?: boolean;
     interactive?: boolean;
     transition?: 'fade' | 'slide' | null;
@@ -81,7 +83,7 @@
 
 {#if transition === 'slide'}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:slide={params}
     on:click
@@ -95,7 +97,7 @@
   </div>
 {:else if transition === 'fade'}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:fade={params}
     on:click
@@ -109,7 +111,7 @@
   </div>
 {:else}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     on:click
     on:keydown
@@ -134,14 +136,11 @@
 /* Base solid panel styling - uses theme variables */
 .panel.solid {
   @apply bg-kong-bg-dark border border-kong-border;
-  @apply shadow;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 /* Main panel styling - slightly different for primary panels */
 .panel.solid.main {
   @apply border-kong-border;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
 }
 
 /* Sidebar panel specific style */
@@ -155,7 +154,6 @@
 .panel.transparent {
   @apply bg-kong-bg-dark/90 backdrop-blur-md;
   @apply border border-kong-border/50;
-  @apply shadow-sm;
 }
 
 /* Interactive panel styles */
@@ -206,13 +204,4 @@
   pointer-events: none;
 }
 
-/* Special styling for swap panels */
-.panel.transparent.swap-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(to right bottom, rgba(255, 255, 255, 0.03), transparent);
-  pointer-events: none;
-}
 </style>

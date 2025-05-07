@@ -2,7 +2,7 @@
 pub const CKUSDT: &str = "ksUSDT";
 pub const CKUSDT_LEDGER: &str = "zdzgz-siaaa-aaaar-qaiba-cai";
 
-pub const ICP: &str = "ksICP";
+pub const ICP: &str = "ICP";
 pub const ICP_LEDGER: &str = "nppha-riaaa-aaaal-ajf2q-cai";
 
 pub const CKBTC: &str = "ksBTC";

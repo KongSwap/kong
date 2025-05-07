@@ -56,11 +56,3 @@ pub async fn get_supported_standards(ledger: &Principal) -> Result<Vec<StandardR
             .map_err(|e| e.1),
     }
 }
-
-#[allow(dead_code)]
-pub async fn get_total_supply(ledger: &Principal) -> Result<Nat, String> {
-    ic_cdk::call::<(), (Nat,)>(*ledger, "icrc1_total_supply", ())
-        .await
-        .map(|(supply,)| supply)
-        .map_err(|e| e.1)
-}

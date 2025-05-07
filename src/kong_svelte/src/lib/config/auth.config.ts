@@ -1,95 +1,147 @@
-import type { PNPConfig } from '@windoge98/plug-n-play';
+import type { GlobalPnpConfig } from '@windoge98/plug-n-play';
 import { createPNP, type PNP } from "@windoge98/plug-n-play";
 
 // Canister Imports
-import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
-import { idlFactory as kongDataIDL } from "../../../../declarations/kong_data";
-import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
-import { idlFactory as icpIDL } from "$lib/idls/icp.idl.js";
-import {
-  canisterId as predictionMarketsBackendCanisterId,
-  idlFactory as predictionMarketsBackendIDL,
-} from "../../../../declarations/prediction_markets_backend";
-import {
-  canisterId as kongBackendCanisterId,
-  idlFactory as kongBackendIDL,
-} from "../../../../declarations/kong_backend";
-import {
-  canisterId as trollboxCanisterId,
-  idlFactory as trollboxIDL,
-} from "../../../../declarations/trollbox";
-import {
-  canisterId as siwsProviderCanisterId,
-} from "../../../../declarations/ic_siws_provider";
-import {
-  idlFactory as launchpadIDL,
-} from "../../../../declarations/launchpad";
-import {
-  idlFactory as minerIDL,
-} from "../../../../declarations/miner"; // Added miner IDL import
+import { idlFactory as kongFaucetIDL, canisterId as kongFaucetCanisterId } from "../../../../declarations/kong_faucet";
+import type { _SERVICE as _KONG_FAUCET_SERVICE } from '../../../../declarations/kong_faucet/kong_faucet.did.d.ts';
+import { idlFactory as kongDataIDL, canisterId as kongDataCanisterId } from "../../../../declarations/kong_data";
+import type { _SERVICE as _KONG_DATA_SERVICE } from '../../../../declarations/kong_data/kong_data.did.d.ts';
+import { canisterId as predictionMarketsBackendCanisterId } from "../../../../declarations/prediction_markets_backend";
+import { idlFactory as predictionMarketsBackendIDL } from '../../../../declarations/prediction_markets_backend';
+import type { _SERVICE as _PREDICTION_MARKETS_BACKEND_SERVICE } from '../../../../declarations/prediction_markets_backend/prediction_markets_backend.did.d.ts';
+import {canisterId as kongBackendCanisterId, idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
+import type { _SERVICE as _KONG_SERVICE } from '../../../../declarations/kong_backend/kong_backend.did.d.ts';
+import { canisterId as trollboxCanisterId, idlFactory as trollboxIDL } from "../../../../declarations/trollbox";
+import type { _SERVICE as _TROLLBOX_SERVICE } from '../../../../declarations/trollbox/trollbox.did.d.ts';
+import { canisterId as siwsProviderCanisterId } from "../../../../declarations/ic_siws_provider"; 
+import { canisterId as icpCanisterId } from "../../../../declarations/icp_ledger";
+import { idlFactory as icrc2IDL } from '../../../../declarations/kong_ledger/kong_ledger.did.js';
+import type { _SERVICE as _ICRC2_SERVICE } from '../../../../declarations/kong_ledger/kong_ledger.did.d.ts';
+import { idlFactory as icpIDL } from '../../../../declarations/icp_ledger/icp_ledger.did.js';
+import type { _SERVICE as _ICP_SERVICE } from '../../../../declarations/icp_ledger/icp_ledger.did.d.ts';
+import { IDL } from '@dfinity/candid';
+import { signatureModalStore } from "$lib/stores/signatureModalStore";
+import { idlFactory as launchpadIDL, canisterId as launchpadCanisterId } from "../../../../declarations/launchpad";
+import { idlFactory as minerIDL, canisterId as minerCanisterId } from "../../../../declarations/miner";
 
-// --- Types ---
-export type CanisterType =
-  | "kong_backend"
-  | "kong_faucet"
-  | "icrc1"
-  | "icrc2"
-  | "kong_data"
-  | "xrc" // Assuming 'xrc' might be used elsewhere, keeping it. ICP IDL is imported.
-  | "prediction_markets_backend"
-  | "trollbox"
-  | "launchpad" // Added launchpad type
-  | "miner"; // Added miner type
+// Consolidated canister types
+export type CanisterType = {
+  KONG_BACKEND: _KONG_SERVICE;
+  KONG_FAUCET: _KONG_FAUCET_SERVICE;
+  KONG_DATA: _KONG_DATA_SERVICE;
+  ICP_LEDGER: _ICP_SERVICE;
+  ICRC2_LEDGER: _ICRC2_SERVICE;
+  PREDICTION_MARKETS: _PREDICTION_MARKETS_BACKEND_SERVICE;
+  TROLLBOX: _TROLLBOX_SERVICE;
+  LAUNCHPAD: any;
+  MINER: any;
+}
 
-// --- Canister IDLs ---
-export const canisterIDLs = {
-  kong_backend: kongBackendIDL,
-  kong_faucet: kongFaucetIDL,
-  icrc1: icrc2IDL,
-  icrc2: icrc2IDL,
-  kong_data: kongDataIDL,
-  ICP: icpIDL,
-  prediction_markets_backend: predictionMarketsBackendIDL,
-  trollbox: trollboxIDL,
-  launchpad: launchpadIDL, // Added launchpad IDL
-  miner: minerIDL, // Added miner IDL
+export type CanisterConfigs = {
+  [key: string]: {
+    canisterId?: string;
+    idl: IDL.InterfaceFactory;
+    type?: any;
+  };
 };
+
+export const canisters: CanisterConfigs = {
+  kongBackend: {
+    canisterId: kongBackendCanisterId,
+    idl: kongBackendIDL,
+    type: {} as CanisterType['KONG_BACKEND'],
+  },
+  kongFaucet: {
+    canisterId: kongFaucetCanisterId,
+    idl: kongFaucetIDL,
+    type: {} as CanisterType['KONG_FAUCET'],
+  },
+  kongData: {
+    canisterId: kongDataCanisterId,
+    idl: kongDataIDL,
+    type: {} as CanisterType['KONG_DATA'],
+  },
+  predictionMarkets: {
+    canisterId: predictionMarketsBackendCanisterId,
+    idl: predictionMarketsBackendIDL,
+    type: {} as CanisterType['PREDICTION_MARKETS'],
+  },
+  trollbox: {
+    canisterId: trollboxCanisterId,
+    idl: trollboxIDL,
+    type: {} as CanisterType['TROLLBOX'],
+  },
+  icp: {
+    canisterId: icpCanisterId,
+    idl: icpIDL,
+    type: {} as CanisterType['ICP_LEDGER'],
+  },
+  icrc1: {
+    idl: icrc2IDL,
+    type: {} as CanisterType['ICRC2_LEDGER'],
+  },
+  icrc2: {
+    idl: icrc2IDL,
+    type: {} as CanisterType['ICRC2_LEDGER'],
+  },
+  launchpad: {
+    canisterId: launchpadCanisterId,
+    idl: launchpadIDL,
+  },
+  miner: {
+    canisterId: minerCanisterId,
+    idl: minerIDL,
+  },
+}
 
 // --- PNP Initialization ---
 let globalPnp: PNP | null = null;
+const isDev = process.env.DFX_NETWORK === "local";
+const kongSvelteCanisterId = process.env.CANISTER_ID_KONG_SVELTE;
 
 const delegationTargets = [
   kongBackendCanisterId,
   predictionMarketsBackendCanisterId,
-  trollboxCanisterId
+  trollboxCanisterId,
+  kongDataCanisterId
 ]
+
+const derivationOrigin = (() => {
+  if (isDev) {
+    return undefined; // Let createPNP handle local derivation (uses window.location by default)
+  } else {
+    if (!kongSvelteCanisterId) {
+      console.warn(
+        "CANISTER_ID_KONG_SVELTE is not set for production derivation origin."
+      );
+      return undefined;
+    }
+    return `https://${kongSvelteCanisterId}.icp0.io`;
+  }
+})()
+
+// Function to show signature modal
+function showSignatureModal(message: string, onSignatureComplete?: () => void) {
+  signatureModalStore.show(message, onSignatureComplete);
+}
+
+// Function to hide signature modal
+function hideSignatureModal() {
+  signatureModalStore.hide();
+}
 
 export function initializePNP(): PNP {
   if (globalPnp) {
     return globalPnp;
   }
   try {
-    const isDev = process.env.DFX_NETWORK === "local";
-    const kongSvelteCanisterId = process.env.CANISTER_ID_KONG_SVELTE;
-
-    globalPnp = createPNP({
+    // Create a stable configuration object
+    const config = {
       dfxNetwork: isDev ? "local" : "ic",
       hostUrl: isDev ? "http://localhost:4943" : "https://icp0.io",
       fetchRootKeys: isDev,
       verifyQuerySignatures: !isDev,
-      derivationOrigin: (() => {
-        if (isDev) {
-          return undefined; // Let createPNP handle local derivation (uses window.location by default)
-        } else {
-          if (!kongSvelteCanisterId) {
-            console.warn(
-              "CANISTER_ID_KONG_SVELTE is not set for production derivation origin."
-            );
-            return undefined;
-          }
-          return `https://${kongSvelteCanisterId}.icp0.io`;
-        }
-      })(),
+      derivationOrigin,
       delegationTimeout: BigInt(30 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 30 days
       delegationTargets,
       siwsProviderCanisterId,
@@ -116,10 +168,39 @@ export function initializePNP(): PNP {
         },
         solflareSiws: {
           enabled: true,
-        }
+        },
+        walletconnectSiws: {
+          enabled: true,
+          projectId: "77b77ffe1132244fe4a3ce38f01885d7",
+          appName: "KongSwap",
+          appDescription: 'Next gen multi-chain DeFi',
+          appUrl: 'https://kongswap.io',
+          appIcons: ['https://kongswap.io/titles/kong_logo.png'],
+          onSignatureRequired: (message: string) => {
+            if (typeof window !== 'undefined') {
+              showSignatureModal(message);
+            }
+          },
+          onSignatureComplete: () => {
+            if (typeof window !== 'undefined') {
+              hideSignatureModal();
+            }
+          },
+        },
       },
       localStorageKey: "kongSwapPnpState",
-    } as PNPConfig);
+    } as GlobalPnpConfig;
+
+    // Initialize PNP with the stable config
+    globalPnp = createPNP(config);
+
+    // Ensure WalletConnect adapter is properly initialized
+    if (globalPnp.adapter?.walletconnectSiws) {
+      const wcAdapter = globalPnp.adapter.walletconnectSiws;
+      if (typeof wcAdapter.initialize === 'function') {
+        wcAdapter.initialize();
+      }
+    }
 
     return globalPnp;
   } catch (error) {

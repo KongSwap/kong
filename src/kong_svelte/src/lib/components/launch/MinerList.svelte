@@ -121,8 +121,7 @@
         <span>Mining Status:</span>
         <span class="font-medium text-kong-text-primary">{minerInfo.is_mining ? 'Active' : 'Inactive'}</span>
 
-        <span>Mining Speed:</span>
-        <span class="font-medium text-kong-text-primary">{minerInfo.speed_percentage}%</span>
+        <!-- Mining Speed display removed as speed_percentage was removed from miner struct -->
 
         <span>Chunk Size:</span>
         <span class="font-medium text-kong-text-primary">{minerInfo.chunk_size.toString()}</span>

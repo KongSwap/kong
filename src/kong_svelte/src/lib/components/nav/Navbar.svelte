@@ -38,6 +38,7 @@
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
   import { getAccountIds, getPrincipalString } from "$lib/utils/accountUtils";
   import { isAuthenticating } from "$lib/stores/auth";
+  import NavPanel from "./NavPanel.svelte";
 
   // Computed directly where needed using themeStore rune
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
@@ -91,17 +92,11 @@
   const allTabs = ["swap", "predict", "earn", "stats", "launch"] as const; // Added 'launch'
 
   function handleConnect() {
-    // If user is not authenticated, show the wallet provider
     if (!$auth.isConnected) {
       walletProviderStore.open();
       return;
     }
-
-    // Otherwise, show the wallet sidebar
-    // If there are unread notifications, open the notifications tab first
-    // Otherwise, open the wallet tab
-    const activeTab =
-      $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
+    const activeTab = $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
     toggleWalletSidebar(activeTab);
   }
 
@@ -176,63 +171,63 @@
   };
 
   const desktopNavButtons = $derived([
-    {
-      ...baseDesktopIconButton,
-      icon: SettingsIcon,
-      onClick: () => goto("/settings"),
-      tooltipText: "Settings",
-      show: true,
-      themeProps: standardButtonThemeProps, // Theme props are reactive
-    },
-    {
-      ...baseDesktopIconButton,
-      icon: Rocket,
-      onClick: () => goto("/launch/my-dashboard"),
-      tooltipText: "Launch",
-      show: true,
-      themeProps: standardButtonThemeProps,
-    },
-    {
-      ...baseDesktopIconButton,
-      icon: Search,
-      onClick: handleOpenSearch,
-      tooltipText: "Search",
-      show: true,
-      themeProps: standardButtonThemeProps,
-    },
-    {
-      ...baseDesktopIconButton,
-      icon: Droplet,
-      onClick: claimTokens,
-      tooltipText: "Claim test tokens",
-      show: showFaucetOption,
-      themeProps: standardButtonThemeProps,
-    },
-    {
-      ...baseDesktopIconButton,
-      type: 'copy',
-      icon: Copy,
-      onClick: copyPrincipalId,
-      tooltipText: "Copy Principal ID",
-      show: $auth.isConnected,
-      themeProps: standardButtonThemeProps,
-    },
-    // Wallet Button (Specific properties)
-    {
-      type: 'wallet' as const,
-      icon: $auth.isConnected ? Wallet : LogIn,
-      label: null,
-      onClick: handleConnect,
-      isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
-      show: true,
-      themeProps: walletButtonThemeProps, // Theme props are reactive
-      variant: 'primary' as const,
-      isWalletButton: true,
-      badgeCount: $notificationsStore.unreadCount,
-      tooltipText: null,
-      loading: $isAuthenticating,
-    }
-  ]);
+  {
+    ...baseDesktopIconButton,
+    icon: SettingsIcon,
+    onClick: () => goto("/settings"),
+    tooltipText: "Settings",
+    show: true,
+    themeProps: standardButtonThemeProps,
+  },
+  {
+    ...baseDesktopIconButton,
+    icon: Rocket,
+    onClick: () => goto("/launch/my-dashboard"),
+    tooltipText: "Launch",
+    show: true,
+    themeProps: standardButtonThemeProps,
+  },
+  {
+    ...baseDesktopIconButton,
+    icon: Search,
+    onClick: handleOpenSearch,
+    tooltipText: "Search",
+    show: true,
+    themeProps: standardButtonThemeProps,
+  },
+  {
+    ...baseDesktopIconButton,
+    icon: Droplet,
+    onClick: claimTokens,
+    tooltipText: "Claim test tokens",
+    show: showFaucetOption,
+    themeProps: standardButtonThemeProps,
+  },
+  {
+    ...baseDesktopIconButton,
+    type: 'copy',
+    icon: Copy,
+    onClick: copyPrincipalId,
+    tooltipText: "Copy Principal ID",
+    show: $auth.isConnected,
+    themeProps: standardButtonThemeProps,
+  },
+  // Wallet Button (Specific properties)
+  {
+    type: 'wallet' as const,
+    icon: $auth.isConnected ? Wallet : LogIn,
+    label: null,
+    onClick: handleConnect,
+    isSelected: showWalletSidebar && walletSidebarActiveTab === "wallet",
+    show: true,
+    themeProps: walletButtonThemeProps, // Theme props are reactive
+    variant: 'primary' as const,
+    isWalletButton: true,
+    badgeCount: $notificationsStore.unreadCount,
+    tooltipText: null,
+    loading: $isAuthenticating,
+  }
+]);
 
   // Base config for mobile header buttons
   const baseMobileHeaderButton = {
@@ -250,6 +245,11 @@
       ...baseMobileHeaderButton,
       icon: Search,
       onClick: handleOpenSearch,
+    },
+    {
+      ...baseMobileHeaderButton,
+      icon: Rocket,
+      onClick: () => goto("/launch/my-dashboard"),
     },
     {
       ...baseMobileHeaderButton,
@@ -302,7 +302,6 @@
       show: true
     }
   ]);
-  // --- End Refactoring ---
 
   // --- Start Refactoring: Mobile Nav Groups ---
   const mobileNavGroups = $derived([
@@ -338,7 +337,6 @@
       // Removed Start Mining: { label: "Start Mining", description: "Set up liquidity mining pools", path: "/launch/start-mining", icon: Award, comingSoon: false },
     ] },
   ]);
-  // --- End Refactoring ---
 
   // --- Start Refactoring: Desktop Nav Items Configuration ---
   const desktopNavItems = $derived(
@@ -405,7 +403,6 @@
       | { type: 'link'; label: string; tabId: 'predict'; defaultPath: string; }
     >
   );
-  // --- End Refactoring ---
 
   async function claimTokens() {
     await faucetClaim();
@@ -578,44 +575,13 @@
       </div>
     {/if}
 
-    <div class="flex items-center gap-1.5">
+    <div class="flex items-center gap-2">
       {#if !isMobile}
         <!-- Refactored Icon Buttons -->
-        {#each desktopNavButtons as button, index (index)}
-          {#if button.show}
-            <NavbarButton
-              icon={button.icon}
-              label={button.label}
-              onClick={button.onClick}
-              isSelected={button.isSelected}
-              variant={button.variant}
-              loading={button.loading}
-              {...button.themeProps}
-              isWalletButton={button.isWalletButton}
-              badgeCount={button.badgeCount}
-              tooltipText={button.tooltipText}
-              class="navbar-icon !px-3"
-            />
-          {/if}
-        {/each}
-
+        <NavPanel />
       {:else}
         <!-- Mobile Header Buttons -->
-        {#each mobileHeaderButtons as button}
-          {#if button.show}
-            <NavbarButton
-              icon={button.icon}
-              onClick={button.onClick}
-              variant={button.variant}
-              iconSize={button.iconSize}
-              {...standardButtonThemeProps}
-              isSelected={button.isSelected ?? false}
-              isWalletButton={button.isWalletButton ?? false}
-              badgeCount={button.badgeCount ?? null}
-              loading={button.loading}
-            />
-          {/if}
-        {/each}
+        <NavPanel isMobile={true} />
       {/if}
     </div>
   </div>

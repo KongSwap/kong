@@ -36,7 +36,7 @@
   let availableTokens = $state<LaunchpadTokenInfo[]>([]);
   let isLoadingTokens = $state(false);
   let tokensError = $state<string | null>(null);
-  let minerInputs = $state<Record<string, { chunkSize: string; speed: string; topUp: string }>>({});
+  let minerInputs = $state<Record<string, { chunkSize: string; topUp: string }>>({});
   let isTokenModalOpen = $state(false);
   let selectedMinerPrincipal = $state<Principal | null>(null);
   let selectedMinerIndex = $state<number>(-1);
@@ -110,16 +110,13 @@
       if (!minerInputs[principalStr]) {
          minerInputs[principalStr] = {
            chunkSize: miner.info?.chunk_size?.toString() ?? '',
-           speed: miner.info?.speed_percentage?.toString() ?? '',
            topUp: ''
          };
       } else {
         if (!minerInputs[principalStr].chunkSize && miner.info?.chunk_size) {
           minerInputs[principalStr].chunkSize = miner.info.chunk_size.toString();
         }
-        if (!minerInputs[principalStr].speed && miner.info?.speed_percentage) {
-           minerInputs[principalStr].speed = miner.info.speed_percentage.toString();
-        }
+
         if (minerInputs[principalStr].topUp === undefined) {
           (minerInputs[principalStr] as any).topUp = '';
         }
@@ -425,7 +422,7 @@
   }
 
   async function handleMinerAction(
-    action: 'start' | 'stop' | 'claim' | 'set_speed' | 'set_chunk' | 'connect_token' | 'disconnect_token' | 'top_up',
+    action: 'start' | 'stop' | 'claim' | 'set_chunk' | 'connect_token' | 'disconnect_token' | 'top_up',
     principal: Principal,
     index: number,
     value?: any
@@ -456,13 +453,7 @@
              successMessage = `Claim submitted! Block index: ${blockIndex}`;
           }
           break;
-        case 'set_speed':
-          const speed = parseInt(value, 10);
-          if (isNaN(speed) || speed < 0 || speed > 100) {
-            throw new Error("Invalid speed percentage (must be 0-100).");
-          }
-          result = await minerActor.set_mining_speed(speed);
-          break;
+        // set_speed case removed as speed_percentage was removed from miner struct
         case 'set_chunk':
            const chunkSize = BigInt(value);
            if (chunkSize <= 0n) {
@@ -796,26 +787,7 @@
                   
                   <!-- Controls Section -->
                   <div class="p-4 bg-kong-bg-dark border-t border-kong-border flex flex-wrap md:flex-nowrap gap-4">
-                    <!-- Speed Control -->
-                    <div class="flex items-center gap-2 flex-1 min-w-[250px]">
-                      <div class="w-20 text-xs text-kong-text-secondary shrink-0">Speed %</div>
-                      <div class="flex-1 flex items-center gap-2">
-                        <input type="range" min="0" max="100" step="1"
-                          class="flex-1 h-2 bg-kong-bg-secondary rounded-lg appearance-none cursor-pointer accent-kong-primary"
-                          value={minerInputs[getPrincipalText(miner.principal)]?.speed}
-                          oninput={(e:any) => minerInputs[getPrincipalText(miner.principal)].speed = e.target.value}
-                        />
-                        <input type="number" min="0" max="100" step="1"
-                          class="w-16 px-2 py-1 text-xs bg-kong-bg-light border border-kong-border rounded text-kong-text-primary text-center"
-                          value={minerInputs[getPrincipalText(miner.principal)]?.speed}
-                          oninput={(e:any) => minerInputs[getPrincipalText(miner.principal)].speed = e.target.value}
-                        />
-                        <button class="px-2 py-1 text-xs rounded bg-kong-primary hover:bg-kong-primary/90 text-white"
-                          onclick={() => handleMinerAction('set_speed', miner.principal, index, minerInputs[getPrincipalText(miner.principal)].speed)}>
-                          Set
-                        </button>
-                      </div>
-                    </div>
+                    <!-- Speed Control removed as speed_percentage was removed from miner struct -->
                     
                     <!-- Chunk Size Control -->
                     <div class="flex items-center gap-2 flex-1 min-w-[250px]">
