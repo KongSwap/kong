@@ -3,7 +3,7 @@ import { auth, requireWalletConnection } from "$lib/stores/auth";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { toastStore } from "$lib/stores/toastStore";
 import { IcrcTokenSerializer } from "$lib/serializers/tokens/IcrcTokenSerializer";
-import { canisters, type KONG_BACKEND } from "$lib/config/auth.config";
+import { canisters, type CanisterType } from "$lib/config/auth.config";
 import type { AddLiquiditAmountsResult } from "../../../../declarations/kong_backend/kong_backend.did";
 
 export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total_count: number, total_pages: number, page: number, limit: number}> => {
@@ -178,7 +178,7 @@ export async function calculateLiquidityAmounts(
   token1Symbol: string,
 ): Promise<AddLiquiditAmountsResult> {
   try {
-    const actor = auth.pnp.getActor<KONG_BACKEND>({
+    const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
       canisterId: canisters.kongBackend.canisterId,
       idl: canisters.kongBackend.idl,
       anon: true,
@@ -270,7 +270,7 @@ export async function addLiquidity(params: {
           params.token_1,
           params.amount_1,
         ),
-        auth.pnp.getActor<KONG_BACKEND>({
+        auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
           canisterId: canisters.kongBackend.canisterId,
           idl: canisters.kongBackend.idl,
           anon: false,
@@ -295,7 +295,7 @@ export async function addLiquidity(params: {
           canisters.kongBackend.canisterId,
           params.amount_1,
         ),
-        auth.pnp.getActor<KONG_BACKEND>({
+        auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
           canisterId: canisters.kongBackend.canisterId,
           idl: canisters.kongBackend.idl,
           anon: false,
@@ -355,7 +355,7 @@ export async function pollRequestStatus(
     toastId = toastStore.info("Processing transaction..."); // Generic initial message
 
     while (attempts < MAX_ATTEMPTS) {
-      const actor = auth.pnp.getActor<KONG_BACKEND>({
+      const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
         canisterId: canisters.kongBackend.canisterId,
         idl: canisters.kongBackend.idl,
         anon: true,
@@ -485,7 +485,7 @@ export async function removeLiquidity(params: {
         ? BigInt(Math.floor(params.lpTokenAmount * 1e8))
         : params.lpTokenAmount;
 
-    const actor = auth.pnp.getActor<KONG_BACKEND>({
+    const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
       canisterId: canisters.kongBackend.canisterId,
       idl: canisters.kongBackend.idl,
       anon: false,
@@ -541,7 +541,7 @@ export async function createPool(params: {
           params.token_1,
           params.amount_1,
         ),
-        auth.pnp.getActor<KONG_BACKEND>({
+        auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
           canisterId: canisters.kongBackend.canisterId,
           idl: canisters.kongBackend.idl,
           anon: false,
@@ -566,7 +566,7 @@ export async function createPool(params: {
           canisters.kongBackend.canisterId,
           params.amount_1,
         ),
-        auth.pnp.getActor<KONG_BACKEND>({
+        auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
           canisterId: canisters.kongBackend.canisterId,
           idl: canisters.kongBackend.idl,
           anon: false,
@@ -616,7 +616,7 @@ export async function sendLpTokens(params: {
       ? BigInt(Math.floor(params.amount * 1e8))
       : params.amount;
 
-    const actor = auth.pnp.getActor<KONG_BACKEND>({
+    const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
       canisterId: canisters.kongBackend.canisterId,
       idl: canisters.kongBackend.idl,
       anon: false,
