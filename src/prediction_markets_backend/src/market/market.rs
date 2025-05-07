@@ -161,6 +161,7 @@ impl Storable for Market {
 /// This structure records the payout details for a single winning bet,
 /// tracking who receives what amount and for which outcome.
 #[derive(CandidType, Deserialize)]
+#[derive(Clone)]
 pub struct Distribution {
     /// Principal ID of the user receiving the payout
     pub user: Principal,
@@ -181,7 +182,7 @@ pub struct Distribution {
 /// This structure contains all information about a resolved market,
 /// including the original market data, winning outcomes, and the
 /// distribution of winnings to successful bettors.
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Clone)]
 pub struct MarketResult {
     /// The complete market data
     pub market: Market,

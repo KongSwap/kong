@@ -33,15 +33,13 @@ use crate::category::market_category::*;
 use crate::delegation::*;
 use crate::market::create_market::*;
 use crate::market::market::*;
-use crate::market::get_all_markets::GetAllMarketsArgs;
-use crate::market::get_all_markets::GetAllMarketsResult;
 use crate::market::get_market_by_status::GetMarketsByStatusArgs;
 use crate::market::get_market_by_status::GetMarketsByStatusResult;
+
 use crate::market::estimate_return_types::{EstimatedReturn, TimeWeightPoint, BetPayoutRecord};
 // Standard types
 use crate::resolution::resolution::*;
 use crate::user::user::*;
-use crate::market::get_stats::*;
 use crate::token::registry::TokenInfo;
 use crate::transaction_recovery::FailedTransaction;
 use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;

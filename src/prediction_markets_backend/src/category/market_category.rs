@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter, Result};
 use strum::EnumIter;
 
 /// Represents different categories of prediction markets
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug, EnumIter)]
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug, EnumIter, PartialEq)]
 pub enum MarketCategory {
     Crypto,      // Cryptocurrency related predictions
     Memes,       // Internet culture and meme predictions

@@ -76,26 +76,22 @@ export const idlFactory = ({ IDL }) => {
     'absolute_time' : IDL.Nat,
     'relative_time' : IDL.Float64,
   });
+  const FailedTransaction = IDL.Record({
+    'resolved' : IDL.Bool,
+    'token_id' : IDL.Text,
+    'retry_count' : IDL.Nat8,
+    'market_id' : IDL.Opt(IDL.Nat),
+    'recipient' : IDL.Principal,
+    'error' : IDL.Text,
+    'timestamp' : IDL.Nat64,
+    'amount' : IDL.Nat,
+  });
   const MarketStatus = IDL.Variant({
     'Disputed' : IDL.Null,
     'Closed' : IDL.Vec(IDL.Nat),
     'Active' : IDL.Null,
     'Voided' : IDL.Null,
     'Pending' : IDL.Null,
-  });
-  const SortDirection = IDL.Variant({
-    'Descending' : IDL.Null,
-    'Ascending' : IDL.Null,
-  });
-  const SortOption = IDL.Variant({
-    'TotalPool' : SortDirection,
-    'CreatedAt' : SortDirection,
-  });
-  const GetAllMarketsArgs = IDL.Record({
-    'status_filter' : IDL.Opt(MarketStatus),
-    'start' : IDL.Nat,
-    'length' : IDL.Nat64,
-    'sort_option' : IDL.Opt(SortOption),
   });
   const Market = IDL.Record({
     'id' : IDL.Nat,
@@ -119,20 +115,6 @@ export const idlFactory = ({ IDL }) => {
     'rules' : IDL.Text,
     'resolved_by' : IDL.Opt(IDL.Principal),
     'bet_counts' : IDL.Vec(IDL.Nat),
-  });
-  const GetAllMarketsResult = IDL.Record({
-    'markets' : IDL.Vec(Market),
-    'total_count' : IDL.Nat,
-  });
-  const FailedTransaction = IDL.Record({
-    'resolved' : IDL.Bool,
-    'token_id' : IDL.Text,
-    'retry_count' : IDL.Nat8,
-    'market_id' : IDL.Opt(IDL.Nat),
-    'recipient' : IDL.Principal,
-    'error' : IDL.Text,
-    'timestamp' : IDL.Nat64,
-    'amount' : IDL.Nat,
   });
   const Bet = IDL.Record({
     'token_id' : IDL.Text,
@@ -158,6 +140,16 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : IDL.Nat,
     'was_time_weighted' : IDL.Bool,
     'outcome_index' : IDL.Nat,
+  });
+  const GetMarketsByCreatorArgs = IDL.Record({
+    'creator' : IDL.Principal,
+    'start' : IDL.Nat,
+    'length' : IDL.Nat,
+    'sort_by_creation_time' : IDL.Bool,
+  });
+  const GetMarketsByCreatorResult = IDL.Record({
+    'total' : IDL.Nat,
+    'markets' : IDL.Vec(Market),
   });
   const GetMarketsByStatusArgs = IDL.Record({
     'start' : IDL.Nat,
@@ -190,11 +182,6 @@ export const idlFactory = ({ IDL }) => {
     'total_resolved' : IDL.Nat,
     'total_expired_unresolved' : IDL.Nat,
     'markets_by_status' : MarketsByStatus,
-  });
-  const StatsResult = IDL.Record({
-    'total_bets' : IDL.Nat,
-    'total_active_markets' : IDL.Nat,
-    'total_markets' : IDL.Nat,
   });
   const UserBetInfo = IDL.Record({
     'outcome_text' : IDL.Text,
@@ -290,6 +277,29 @@ export const idlFactory = ({ IDL }) => {
   const Result_6 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
   const Result_7 = IDL.Variant({ 'Ok' : IDL.Nat64, 'Err' : IDL.Text });
   const Result_8 = IDL.Variant({ 'Ok' : IDL.Opt(IDL.Nat), 'Err' : IDL.Text });
+  const SortField = IDL.Variant({
+    'TotalPool' : IDL.Null,
+    'CreationTime' : IDL.Null,
+    'EndTime' : IDL.Null,
+    'TotalBets' : IDL.Null,
+  });
+  const SortDirection = IDL.Variant({
+    'Descending' : IDL.Null,
+    'Ascending' : IDL.Null,
+  });
+  const SearchMarketsArgs = IDL.Record({
+    'include_resolved' : IDL.Bool,
+    'sort_field' : IDL.Opt(SortField),
+    'token_id' : IDL.Opt(IDL.Text),
+    'query' : IDL.Text,
+    'start' : IDL.Nat,
+    'length' : IDL.Nat,
+    'sort_direction' : IDL.Opt(SortDirection),
+  });
+  const SearchMarketsResult = IDL.Record({
+    'total' : IDL.Nat,
+    'markets' : IDL.Vec(Market),
+  });
   return IDL.Service({
     'add_supported_token' : IDL.Func([TokenInfo], [Result], []),
     'create_market' : IDL.Func(
@@ -324,11 +334,6 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'get_all_categories' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
-    'get_all_markets' : IDL.Func(
-        [GetAllMarketsArgs],
-        [GetAllMarketsResult],
-        ['query'],
-      ),
     'get_all_transactions' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Nat64, FailedTransaction))],
@@ -341,12 +346,16 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(BetPayoutRecord)],
         ['query'],
       ),
+    'get_markets_by_creator' : IDL.Func(
+        [GetMarketsByCreatorArgs],
+        [GetMarketsByCreatorResult],
+        ['query'],
+      ),
     'get_markets_by_status' : IDL.Func(
         [GetMarketsByStatusArgs],
         [GetMarketsByStatusResult],
         ['query'],
       ),
-    'get_stats' : IDL.Func([], [StatsResult], ['query']),
     'get_supported_tokens' : IDL.Func([], [IDL.Vec(TokenInfo)], ['query']),
     'get_token_fee_percentage' : IDL.Func(
         [IDL.Text],
@@ -410,6 +419,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'retry_market_transactions' : IDL.Func([IDL.Nat], [IDL.Vec(Result_7)], []),
     'retry_transaction' : IDL.Func([IDL.Nat64], [Result_8], []),
+    'search_markets' : IDL.Func(
+        [SearchMarketsArgs],
+        [SearchMarketsResult],
+        ['query'],
+      ),
     'simulate_future_weight' : IDL.Func(
         [IDL.Nat64, IDL.Nat64, IDL.Nat64],
         [IDL.Float64],

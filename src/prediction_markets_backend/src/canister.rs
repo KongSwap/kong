@@ -370,3 +370,19 @@ pub fn get_market_payout_records(market_id: u64) -> Vec<BetPayoutRecord> {
         }
     })
 }
+
+/// Get markets created by a specific user with pagination and sorting
+#[query]
+pub fn get_markets_by_creator(args: crate::market::get_markets_by_creator::GetMarketsByCreatorArgs) 
+    -> crate::market::get_markets_by_creator::GetMarketsByCreatorResult 
+{
+    crate::market::get_markets_by_creator::get_markets_by_creator(args)
+}
+
+/// Search for markets by text in the question with optional filtering and sorting
+#[query]
+pub fn search_markets(args: crate::market::search_markets::SearchMarketsArgs) 
+    -> crate::market::search_markets::SearchMarketsResult 
+{
+    crate::market::search_markets::search_markets(args)
+}

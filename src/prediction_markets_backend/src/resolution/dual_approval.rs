@@ -280,7 +280,7 @@ pub async fn propose_resolution(
     });
     
     // Handle dual approval based on whether a proposal already exists
-    match existing_proposal {
+    let _ = match existing_proposal {
         // First resolution step: No proposal exists yet, so create one
         None => {
             // Create a new resolution proposal recording who proposed it and with what outcomes
