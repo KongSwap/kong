@@ -18,6 +18,7 @@ pub enum TokenTransferError {
     InvalidAmount,
     CallerNotAuthenticated,
     InternalError(String),
+    InsufficientFunds,       // Added for handling cases where amount is less than fee
 }
 
 /// Transfer tokens from the caller to a recipient
@@ -116,7 +117,21 @@ pub async fn burn_tokens(
     if !token_info.is_kong {
         // For non-KONG tokens, transfer to the minter account instead of burning
         let minter_account = get_minter_account_from_storage();
-        return transfer_token(minter_account, amount, token_id, None).await;
+        
+        // Deduct the transfer fee from the amount to avoid the canister paying it twice
+        let transfer_fee = token_info.transfer_fee.clone();
+        let amount_clone = amount.clone(); // Clone amount before using it in operations
+        let adjusted_amount = if amount_clone > transfer_fee {
+            amount_clone - transfer_fee
+        } else {
+            ic_cdk::println!("Amount to burn {} is less than transfer fee {}, skipping", 
+                          amount.to_u64(), transfer_fee.to_u64());
+            return Err(TokenTransferError::InsufficientFunds);
+        };
+        
+        ic_cdk::println!("Burning tokens by transferring {} to minter (original amount: {})", 
+                       adjusted_amount.to_u64(), amount.to_u64());
+        return transfer_token(minter_account, adjusted_amount, token_id, None).await;
     }
 
     // Get the burn address for KONG (use the minter addresses defined in transfer_kong.rs)

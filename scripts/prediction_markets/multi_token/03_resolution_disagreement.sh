@@ -63,13 +63,13 @@ ALICE_PRINCIPAL=$(dfx identity get-principal)
 echo "Creating market as Alice (${ALICE_PRINCIPAL})..."
 
 # The activation threshold for ksUSDT is 100 USDT (100000000 with 6 decimals)
-ACTIVATION_AMOUNT=100000000
+ACTIVATION_AMOUNT=150000000
 
 echo "Creating a new market with ksUSDT tokens as user..."
 RESULT=$(dfx canister call prediction_markets_backend create_market \
-  "(\"Will ETH reach $10,000 by the end of 2025?\", variant { Crypto }, \
-  \"Prediction on Ethereum price. Market resolves YES if ETH reaches $10,000 on any major exchange before the end of 2025.\", \
-  vec { \"Yes\"; \"No\" }, variant { User }, \
+  "(\"Will ETH reach $ 10,000 by the end of 2025?\", variant { Crypto }, \
+  \"Prediction on Ethereum price. Market resolves YES if ETH reaches $ 10,000 on any major exchange before the end of 2025.\", \
+  vec { \"Yes\"; \"No\" }, variant { Admin }, \
   variant { Duration = 120 : nat }, null, null, null, \
   opt \"${KSUSDT_TOKEN_ID}\")")
 
@@ -130,10 +130,10 @@ echo "Getting all bets for market ${MARKET_ID}..."
 dfx canister call prediction_markets_backend get_market_bets "(${MARKET_ID})"
 
 # Step 6: Create resolution disagreement
-# Wait for market to close (120 seconds from creation)
-echo "Waiting for market to close (120 seconds total)..."
-echo "This will take approximately 80 more seconds from now..."
-sleep 80
+# Wait for market to close (120 seconds from creation plus a buffer)
+echo "Waiting for market to close (120 seconds total plus buffer)..."
+echo "This will take approximately 130 seconds from now..."
+sleep 120
 
 # First, Alice (creator) proposes resolution with "Yes" as winning outcome
 dfx identity use ${ALICE_IDENTITY}
@@ -158,12 +158,10 @@ done
 # Step 7: Check market status to verify it was voided
 echo "Checking market status after resolution disagreement..."
 dfx canister call prediction_markets_backend get_all_markets "(record {
-  offset = 0;
-  limit = 10;
-  filter = null;
-  sort_by = null;
-  direction = null;
-  include_resolved = true;
+  status_filter = null;
+  start = 0;
+  length = 10;
+  sort_option = null;
 })" | grep -A 30 "id = ${MARKET_ID} : nat"
 
 # Step 8: Check user histories to verify refunds
