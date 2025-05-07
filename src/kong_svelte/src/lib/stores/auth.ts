@@ -12,6 +12,7 @@ import { currentUserBalancesStore } from "$lib/stores/balancesStore";
 import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
 import { createNamespacedStore } from "$lib/config/localForage.config";
 import { trackEvent, AnalyticsEvent } from "$lib/utils/analytics";
+import { Actor } from "@dfinity/agent";
 
 // Constants
 const AUTH_NAMESPACE = 'auth';
@@ -181,7 +182,21 @@ function createAuthStore(pnp: PNP) {
     ) {
       if (options.anon) return createAnonymousActorHelper(canisterId, idl);
       if (!pnp.isWalletConnected()) throw new Error("Anonymous user");
-      return pnp.getActor(canisterId, idl, options);
+
+      const actor = pnp.getActor(canisterId, idl, options);
+
+      // In local development ensure the agent trusts the replica certificate
+      if (process.env.DFX_NETWORK !== "ic") {
+        try {
+          // @ts-ignore - agentOf is not in type defs
+          const agent = Actor.agentOf(actor);
+          agent?.fetchRootKey?.();
+        } catch (err) {
+          console.warn("fetchRootKey failed", err);
+        }
+      }
+
+      return actor;
     },
   };
 

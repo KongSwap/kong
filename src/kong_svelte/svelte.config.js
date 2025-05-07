@@ -22,6 +22,7 @@ const config = {
       $declarations: "../declarations",
       "$declarations/*": "../declarations/*",
     },
+    trailingSlash: 'always',
     prerender: {
       origin: 'https://kongswap.io',
       handleHttpError: ({ path, referrer, message }) => {

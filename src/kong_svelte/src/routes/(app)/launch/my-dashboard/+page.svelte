@@ -483,7 +483,7 @@
           if (!kongLedgerActor) throw new Error('Ledger actor not initialized');
           if (!value) throw new Error('Amount required');
           if (kongTransferFee === 0n) await fetchKongFee();
-
+          
           // Convert and approve KONG transfer
           const amountKong = parseFloat(String(value));
           if (isNaN(amountKong) || amountKong <= 0) throw new Error('Invalid amount');
