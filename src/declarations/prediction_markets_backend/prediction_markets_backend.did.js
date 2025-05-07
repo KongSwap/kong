@@ -124,6 +124,16 @@ export const idlFactory = ({ IDL }) => {
     'markets' : IDL.Vec(Market),
     'total_count' : IDL.Nat,
   });
+  const FailedTransaction = IDL.Record({
+    'resolved' : IDL.Bool,
+    'token_id' : IDL.Text,
+    'retry_count' : IDL.Nat8,
+    'market_id' : IDL.Opt(IDL.Nat),
+    'recipient' : IDL.Principal,
+    'error' : IDL.Text,
+    'timestamp' : IDL.Nat64,
+    'amount' : IDL.Nat,
+  });
   const Bet = IDL.Record({
     'token_id' : IDL.Text,
     'market_id' : IDL.Nat,
@@ -278,6 +288,8 @@ export const idlFactory = ({ IDL }) => {
     'BalanceUpdateFailed' : IDL.Null,
   });
   const Result_6 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
+  const Result_7 = IDL.Variant({ 'Ok' : IDL.Nat64, 'Err' : IDL.Text });
+  const Result_8 = IDL.Variant({ 'Ok' : IDL.Opt(IDL.Nat), 'Err' : IDL.Text });
   return IDL.Service({
     'add_supported_token' : IDL.Func([TokenInfo], [Result], []),
     'create_market' : IDL.Func(
@@ -317,6 +329,11 @@ export const idlFactory = ({ IDL }) => {
         [GetAllMarketsResult],
         ['query'],
       ),
+    'get_all_transactions' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Nat64, FailedTransaction))],
+        ['query'],
+      ),
     'get_market' : IDL.Func([IDL.Nat], [IDL.Opt(Market)], ['query']),
     'get_market_bets' : IDL.Func([IDL.Nat], [IDL.Vec(Bet)], ['query']),
     'get_market_payout_records' : IDL.Func(
@@ -334,6 +351,21 @@ export const idlFactory = ({ IDL }) => {
     'get_token_fee_percentage' : IDL.Func(
         [IDL.Text],
         [IDL.Opt(IDL.Nat64)],
+        ['query'],
+      ),
+    'get_transactions_by_market' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(IDL.Tuple(IDL.Nat64, FailedTransaction))],
+        ['query'],
+      ),
+    'get_transactions_by_recipient' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(IDL.Tuple(IDL.Nat64, FailedTransaction))],
+        ['query'],
+      ),
+    'get_unresolved_transactions' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Nat64, FailedTransaction))],
         ['query'],
       ),
     'get_user_history' : IDL.Func([IDL.Principal], [UserHistory], ['query']),
@@ -359,6 +391,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
+    'mark_transaction_resolved' : IDL.Func([IDL.Nat64], [Result], []),
     'place_bet' : IDL.Func(
         [IDL.Nat, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Text)],
         [Result_6],
@@ -375,6 +408,8 @@ export const idlFactory = ({ IDL }) => {
         [Result_2],
         [],
       ),
+    'retry_market_transactions' : IDL.Func([IDL.Nat], [IDL.Vec(Result_7)], []),
+    'retry_transaction' : IDL.Func([IDL.Nat64], [Result_8], []),
     'simulate_future_weight' : IDL.Func(
         [IDL.Nat64, IDL.Nat64, IDL.Nat64],
         [IDL.Float64],

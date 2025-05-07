@@ -4,8 +4,49 @@ use crate::market::market::*;
 use crate::stable_memory::*;
 use crate::controllers::admin::*;
 use crate::types::MarketId;
-use crate::token::registry::get_token_info;
-use crate::token::transfer::transfer_token;
+use crate::token::registry::{get_token_info, TokenIdentifier};
+use crate::token::transfer::{transfer_token, TokenTransferError};
+use crate::transaction_recovery::record_failed_transaction;
+
+/// Helper function with retry logic specifically for void market refunds
+async fn refund_with_retry(
+    user: candid::Principal, 
+    amount: crate::types::TokenAmount,
+    token_id: &TokenIdentifier,
+    retry_count: u8,
+    market_id: &MarketId
+) -> Result<Option<candid::Nat>, TokenTransferError> {
+    let mut attempts = 0;
+    let max_attempts = retry_count + 1; // Initial attempt + retries
+    
+    loop {
+        attempts += 1;
+        match transfer_token(user, amount.clone(), token_id, None).await {
+            Ok(tx_id) => return Ok(Some(tx_id)),
+            Err(e) if e.is_retryable() && attempts < max_attempts => {
+                ic_cdk::println!("Refund attempt {} failed with retryable error: {}. Retrying...", 
+                               attempts, e.detailed_message());
+                // In a real implementation, you'd use a timer, but for simplicity we retry immediately
+            },
+            Err(e) => {
+                ic_cdk::println!("Refund failed after {} attempts: {}",
+                               attempts, e.detailed_message());
+                
+                // Record the failed transaction for potential recovery later
+                let tx_id = record_failed_transaction(
+                    Some(market_id.clone()),
+                    user,
+                    amount,
+                    token_id.clone(),
+                    e.detailed_message()
+                );
+                
+                ic_cdk::println!("Recorded failed refund as transaction {}", tx_id);
+                return Err(e);
+            }
+        }
+    }
+}
 
 /// Voids a market and returns all bets to the users
 /// This is used when no resolution can be determined or in case of market manipulation
@@ -72,12 +113,19 @@ pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
                         token_info.symbol,
                         bet.user.to_string());
 
-        // Transfer tokens back to the bettor using the appropriate token
-        match transfer_token(bet.user, transfer_amount, token_id, None).await {
-            Ok(_) => ic_cdk::println!("Transfer successful"),
+        // Transfer tokens back to the bettor using our retry helper
+        // Using 2 retries for recoverable errors
+        match refund_with_retry(bet.user, transfer_amount, token_id, 2, &market_id).await {
+            Ok(Some(tx_id)) => {
+                ic_cdk::println!("Refund successful (Transaction ID: {})", tx_id);
+            },
+            Ok(None) => {
+                ic_cdk::println!("Refund completed but no transaction ID returned");
+            },
             Err(e) => {
-                ic_cdk::println!("Transfer failed: {:?}", e);
-                return Err(ResolutionError::TransferError(format!("Failed to transfer tokens: {:?}", e)));
+                // Instead of failing the entire market voiding, log the error and continue with other refunds
+                ic_cdk::println!("Refund failed: {}. Continuing with other refunds.", e.detailed_message());
+                // Record the failure in the log but don't abort the market voiding process
             }
         }
     }

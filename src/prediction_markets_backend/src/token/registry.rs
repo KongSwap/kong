@@ -162,6 +162,13 @@ pub fn get_all_supported_tokens() -> Vec<TokenInfo> {
     })
 }
 
+/// Get list of all supported token identifiers
+pub fn get_supported_token_identifiers() -> Vec<TokenIdentifier> {
+    TOKEN_REGISTRY.with(|registry| {
+        registry.borrow().keys().cloned().collect()
+    })
+}
+
 // For admin to add new supported tokens
 pub fn add_supported_token(token_info: TokenInfo) {
     TOKEN_REGISTRY.with(|registry| {

@@ -112,6 +112,16 @@ export interface EstimatedReturnScenario {
   'expected_return' : bigint,
   'scenario' : string,
 }
+export interface FailedTransaction {
+  'resolved' : boolean,
+  'token_id' : string,
+  'retry_count' : number,
+  'market_id' : [] | [bigint],
+  'recipient' : Principal,
+  'error' : string,
+  'timestamp' : bigint,
+  'amount' : bigint,
+}
 export interface GetAllMarketsArgs {
   'status_filter' : [] | [MarketStatus],
   'start' : bigint,
@@ -223,6 +233,10 @@ export type Result_5 = { 'Ok' : null } |
   { 'Err' : DelegationError };
 export type Result_6 = { 'Ok' : null } |
   { 'Err' : BetError };
+export type Result_7 = { 'Ok' : bigint } |
+  { 'Err' : string };
+export type Result_8 = { 'Ok' : [] | [bigint] } |
+  { 'Err' : string };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
 export type SortDirection = { 'Descending' : null } |
   { 'Ascending' : null };
@@ -290,6 +304,7 @@ export interface _SERVICE {
   >,
   'get_all_categories' : ActorMethod<[], Array<string>>,
   'get_all_markets' : ActorMethod<[GetAllMarketsArgs], GetAllMarketsResult>,
+  'get_all_transactions' : ActorMethod<[], Array<[bigint, FailedTransaction]>>,
   'get_market' : ActorMethod<[bigint], [] | [Market]>,
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
   'get_market_payout_records' : ActorMethod<[bigint], Array<BetPayoutRecord>>,
@@ -300,6 +315,18 @@ export interface _SERVICE {
   'get_stats' : ActorMethod<[], StatsResult>,
   'get_supported_tokens' : ActorMethod<[], Array<TokenInfo>>,
   'get_token_fee_percentage' : ActorMethod<[string], [] | [bigint]>,
+  'get_transactions_by_market' : ActorMethod<
+    [bigint],
+    Array<[bigint, FailedTransaction]>
+  >,
+  'get_transactions_by_recipient' : ActorMethod<
+    [Principal],
+    Array<[bigint, FailedTransaction]>
+  >,
+  'get_unresolved_transactions' : ActorMethod<
+    [],
+    Array<[bigint, FailedTransaction]>
+  >,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],
@@ -313,6 +340,7 @@ export interface _SERVICE {
     Result_5
   >,
   'is_admin' : ActorMethod<[Principal], boolean>,
+  'mark_transaction_resolved' : ActorMethod<[bigint], Result>,
   'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_6>,
   'propose_resolution' : ActorMethod<[bigint, Array<bigint>], Result_2>,
   'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_2>,
@@ -320,6 +348,8 @@ export interface _SERVICE {
     [bigint, Array<bigint>, Uint8Array | number[]],
     Result_2
   >,
+  'retry_market_transactions' : ActorMethod<[bigint], Array<Result_7>>,
+  'retry_transaction' : ActorMethod<[bigint], Result_8>,
   'simulate_future_weight' : ActorMethod<[bigint, bigint, bigint], number>,
   'update_token_config' : ActorMethod<[string, TokenInfo], Result>,
   'void_market' : ActorMethod<[bigint], Result_2>,

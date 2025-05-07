@@ -6,7 +6,7 @@ use crate::types::TokenAmount;
 use crate::controllers::admin::get_minter_account_from_storage;
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
-use crate::token::registry::{TokenIdentifier, get_token_info, is_supported_token};
+use crate::token::registry::{TokenIdentifier, get_token_info, is_supported_token, get_supported_token_identifiers};
 
 /// Error types for token transfers
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
@@ -19,6 +19,43 @@ pub enum TokenTransferError {
     CallerNotAuthenticated,
     InternalError(String),
     InsufficientFunds,       // Added for handling cases where amount is less than fee
+    RetryableError(String),  // For temporary issues that could be retried
+    PermanentError(String),  // For issues that will persist without intervention
+    LedgerRejection(String), // Specifically for when the ledger rejects the transfer
+    NetworkError(String),    // For network/communication issues
+    TokenSpecificError(String), // For token-specific error conditions
+}
+
+/// Helper methods for TokenTransferError
+impl TokenTransferError {
+    /// Returns true if the error is potentially recoverable through retrying
+    pub fn is_retryable(&self) -> bool {
+        matches!(self, 
+            TokenTransferError::RetryableError(_) | 
+            TokenTransferError::NetworkError(_) |
+            // Some call errors might be retryable
+            TokenTransferError::CallError(_)
+        )
+    }
+    
+    /// Returns a detailed error message suitable for logging
+    pub fn detailed_message(&self) -> String {
+        match self {
+            TokenTransferError::TransferFailure(msg) => format!("Transfer failed: {}", msg),
+            TokenTransferError::TransferError(msg) => format!("Token transfer error: {}", msg),
+            TokenTransferError::CallError(msg) => format!("Canister call error: {}", msg),
+            TokenTransferError::UnsupportedToken(msg) => format!("Unsupported token: {}", msg),
+            TokenTransferError::InvalidAmount => "Invalid amount specified for transfer".to_string(),
+            TokenTransferError::CallerNotAuthenticated => "Caller not authenticated".to_string(),
+            TokenTransferError::InternalError(msg) => format!("Internal error: {}", msg),
+            TokenTransferError::InsufficientFunds => "Insufficient funds to complete transfer".to_string(),
+            TokenTransferError::RetryableError(msg) => format!("Temporary error (can retry): {}", msg),
+            TokenTransferError::PermanentError(msg) => format!("Permanent error (cannot retry): {}", msg),
+            TokenTransferError::LedgerRejection(msg) => format!("Ledger rejected transaction: {}", msg),
+            TokenTransferError::NetworkError(msg) => format!("Network error: {}", msg),
+            TokenTransferError::TokenSpecificError(msg) => format!("Token-specific error: {}", msg),
+        }
+    }
 }
 
 /// Transfer tokens from the caller to a recipient
@@ -28,24 +65,33 @@ pub async fn transfer_token(
     token_id: &TokenIdentifier,
     custom_fee: Option<TokenAmount> // Add optional custom fee parameter
 ) -> Result<candid::Nat, TokenTransferError> {
-    // Verify the token is supported
+    // Verify the token is supported with improved error message
     if !is_supported_token(token_id) {
+        let supported_tokens = get_supported_token_identifiers();
         return Err(TokenTransferError::UnsupportedToken(
-            format!("Token {} is not supported", token_id)
+            format!("Token {} is not supported. Supported tokens: {:?}", 
+                token_id, supported_tokens)
         ));
     }
 
-    // Get token info for transfer
-    let token_info = get_token_info(token_id)
-        .ok_or(TokenTransferError::UnsupportedToken(
-            format!("Token {} info not found", token_id)
-        ))?;
+    // Get token info with improved error handling
+    let token_info = match get_token_info(token_id) {
+        Some(info) => info,
+        None => return Err(TokenTransferError::UnsupportedToken(
+            format!("Token {} info not found in registry", token_id)
+        ))
+    };
 
     // Prepare transfer arguments
     let fee = match custom_fee {
         Some(fee) => fee.clone().into(), // Use custom fee if provided
         None => token_info.transfer_fee.clone().into() // Use default token fee otherwise
     };
+    
+    // Validate amount is greater than fee
+    if amount <= token_info.transfer_fee {
+        return Err(TokenTransferError::InsufficientFunds);
+    }
     
     let transfer_args = TransferArg {
         from_subaccount: None,
@@ -65,18 +111,75 @@ pub async fn transfer_token(
             format!("Invalid token principal: {}", e)
         ))?;
 
-    // Make the transfer call
+    // Improved logging with token symbol and amount in human-readable format
+    ic_cdk::println!("Preparing to transfer {} {} to {}", 
+                  amount.to_u64() as f64 / 10f64.powf(token_info.decimals as f64),
+                  token_info.symbol, 
+                  recipient.to_string());
+    
+    // Make the transfer call with enhanced error handling
     match call::call::<(TransferArg,), (Result<candid::Nat, TransferError>,)>(token_canister, "icrc1_transfer", (transfer_args,)).await {
         Ok((Ok(block_index),)) => {
             ic_cdk::println!("Transfer successful with transaction ID: {}", block_index);
             Ok(block_index)
         },
-        Ok((Err(e),)) => Err(TokenTransferError::TransferError(
-            format!("Transfer failed: {:?}", e)
-        )),
-        Err((code, message)) => Err(TokenTransferError::CallError(
-            format!("Transfer call failed: {:?} - {}", code, message)
-        )),
+        Ok((Err(e),)) => {
+            // Enhanced error categorization based on ICRC1 error type
+            match e {
+                TransferError::BadFee { expected_fee } => {
+                    Err(TokenTransferError::TokenSpecificError(
+                        format!("Incorrect fee provided. Expected: {:?}", expected_fee)
+                    ))
+                },
+                TransferError::BadBurn { min_burn_amount } => {
+                    Err(TokenTransferError::TokenSpecificError(
+                        format!("Insufficient burn amount. Minimum: {:?}", min_burn_amount)
+                    ))
+                },
+                TransferError::InsufficientFunds { balance: _ } => {
+                    Err(TokenTransferError::InsufficientFunds)
+                },
+                TransferError::TooOld => {
+                    Err(TokenTransferError::PermanentError(
+                        "Transaction timestamp too old".to_string()
+                    ))
+                },
+                TransferError::CreatedInFuture { ledger_time } => {
+                    Err(TokenTransferError::RetryableError(
+                        format!("Transaction timestamp in future. Current ledger time: {:?}", ledger_time)
+                    ))
+                },
+                TransferError::Duplicate { duplicate_of } => {
+                    Err(TokenTransferError::PermanentError(
+                        format!("Duplicate transfer. Original: {:?}", duplicate_of)
+                    ))
+                },
+                TransferError::TemporarilyUnavailable => {
+                    Err(TokenTransferError::RetryableError(
+                        "Ledger temporarily unavailable".to_string()
+                    ))
+                },
+                TransferError::GenericError { error_code, message } => {
+                    Err(TokenTransferError::LedgerRejection(
+                        format!("Ledger error {}: {}", error_code, message)
+                    ))
+                }
+            }
+        },
+        Err((code, message)) => {
+            // Categorize call errors as retryable or permanent
+            // RejectionCode::SysFatal is 5, RejectionCode::SysTransient is 4
+            // Use debug format since RejectionCode doesn't implement Display
+            if matches!(code, ic_cdk::api::call::RejectionCode::SysTransient | ic_cdk::api::call::RejectionCode::SysFatal) {
+                Err(TokenTransferError::RetryableError(
+                    format!("Temporary transfer failure (code: {:?}): {}", code, message)
+                ))
+            } else {
+                Err(TokenTransferError::CallError(
+                    format!("Transfer call failed (code: {:?}): {}", code, message)
+                ))
+            }
+        }
     }
 }
 

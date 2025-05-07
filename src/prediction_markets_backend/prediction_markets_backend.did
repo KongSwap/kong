@@ -109,6 +109,16 @@ type EstimatedReturnScenario = record {
   expected_return : nat;
   scenario : text;
 };
+type FailedTransaction = record {
+  resolved : bool;
+  token_id : text;
+  retry_count : nat8;
+  market_id : opt nat;
+  recipient : principal;
+  error : text;
+  timestamp : nat64;
+  amount : nat;
+};
 type GetAllMarketsArgs = record {
   status_filter : opt MarketStatus;
   start : nat;
@@ -213,6 +223,8 @@ type Result_3 = variant { Ok : ConsentInfo; Err : ErrorInfo };
 type Result_4 = variant { Ok : DelegationResponse; Err : DelegationError };
 type Result_5 = variant { Ok; Err : DelegationError };
 type Result_6 = variant { Ok; Err : BetError };
+type Result_7 = variant { Ok : nat64; Err : text };
+type Result_8 = variant { Ok : opt nat; Err : text };
 type RevokeDelegationRequest = record { targets : vec principal };
 type SortDirection = variant { Descending; Ascending };
 type SortOption = variant {
@@ -274,6 +286,7 @@ service : () -> {
   generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
   get_all_categories : () -> (vec text) query;
   get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
+  get_all_transactions : () -> (vec record { nat64; FailedTransaction }) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
   get_market_payout_records : (nat64) -> (vec BetPayoutRecord) query;
@@ -283,6 +296,15 @@ service : () -> {
   get_stats : () -> (StatsResult) query;
   get_supported_tokens : () -> (vec TokenInfo) query;
   get_token_fee_percentage : (text) -> (opt nat64) query;
+  get_transactions_by_market : (nat) -> (
+      vec record { nat64; FailedTransaction },
+    ) query;
+  get_transactions_by_recipient : (principal) -> (
+      vec record { nat64; FailedTransaction },
+    ) query;
+  get_unresolved_transactions : () -> (
+      vec record { nat64; FailedTransaction },
+    ) query;
   get_user_history : (principal) -> (UserHistory) query;
   icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
       Result_3,
@@ -292,10 +314,13 @@ service : () -> {
   icrc_34_get_delegation : (DelegationRequest) -> (Result_4) query;
   icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_5);
   is_admin : (principal) -> (bool) query;
+  mark_transaction_resolved : (nat64) -> (Result);
   place_bet : (nat, nat, nat, opt text) -> (Result_6);
   propose_resolution : (nat, vec nat) -> (Result_2);
   resolve_via_admin : (nat, vec nat) -> (Result_2);
   resolve_via_oracle : (nat, vec nat, blob) -> (Result_2);
+  retry_market_transactions : (nat) -> (vec Result_7);
+  retry_transaction : (nat64) -> (Result_8);
   simulate_future_weight : (nat64, nat64, nat64) -> (float64) query;
   update_token_config : (text, TokenInfo) -> (Result);
   void_market : (nat) -> (Result_2);

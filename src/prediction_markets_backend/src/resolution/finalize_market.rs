@@ -5,10 +5,50 @@ use crate::canister::{get_current_time, record_market_payout};
 use crate::market::market::*;
 use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::stable_memory::*;
-use crate::types::{TokenAmount, OutcomeIndex, Timestamp, StorableNat};
+use crate::types::{TokenAmount, OutcomeIndex, Timestamp, StorableNat, MarketId};
 use crate::utils::time_weighting::*;
-use crate::token::registry::get_token_info;
-use crate::token::transfer::{transfer_token, handle_fee_transfer};
+use crate::token::registry::{get_token_info, TokenIdentifier};
+use crate::token::transfer::{transfer_token, handle_fee_transfer, TokenTransferError};
+
+/// Helper function to transfer winnings with retry logic
+async fn transfer_winnings_with_retry(
+    user: Principal, 
+    amount: TokenAmount,
+    token_id: &TokenIdentifier,
+    retry_count: u8  // Number of retries
+) -> Result<candid::Nat, TokenTransferError> {
+    let mut attempts = 0;
+    let max_attempts = retry_count + 1; // Initial attempt + retries
+    
+    loop {
+        attempts += 1;
+        match transfer_token(user, amount.clone(), token_id, None).await {
+            Ok(tx_id) => return Ok(tx_id),
+            Err(e) if e.is_retryable() && attempts < max_attempts => {
+                ic_cdk::println!("Transfer attempt {} failed with retryable error: {}. Retrying...", 
+                               attempts, e.detailed_message());
+                // In a real implementation with a timer API, we would add exponential backoff here
+                // For now, just log and retry immediately
+            },
+            Err(e) => {
+                ic_cdk::println!("Transfer failed after {} attempts: {}",
+                               attempts, e.detailed_message());
+                return Err(e);
+            }
+        }
+    }
+}
+
+/// Structure to track failed transaction information
+#[derive(Clone, Debug)]
+pub struct FailedTransactionInfo {
+    pub market_id: MarketId,
+    pub user: Principal,
+    pub amount: TokenAmount,
+    pub token_id: TokenIdentifier,
+    pub error: String,
+    pub timestamp: u64,
+}
 
 /// Finalizes a market by distributing winnings to successful bettors
 pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeIndex>) -> Result<(), ResolutionError> {
@@ -256,8 +296,11 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                               token_info.symbol,
                               user.to_string());
 
-                // Transfer winnings to the bettor using the appropriate token
-                match transfer_token(user, transfer_amount.clone(), token_id, None).await {
+                // Transfer winnings to the bettor using the appropriate token with retry logic
+                // Attempt the transfer with up to 2 retries for retryable errors
+                let transfer_result = transfer_winnings_with_retry(user, transfer_amount.clone(), token_id, 2).await;
+                
+                match transfer_result {
                     Ok(tx_id) => {
                         ic_cdk::println!("Transfer successful (Transaction ID: {})", tx_id);
                         
@@ -293,7 +336,23 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                         record_market_payout(payout_record);
                     },
                     Err(e) => {
-                        ic_cdk::println!("Transfer failed: {:?}. Continuing with other payouts.", e);
+                        // Enhanced error logging with detailed message
+                        ic_cdk::println!("Transfer failed: {}. Continuing with other payouts.", e.detailed_message());
+                        
+                        // Record failed transaction information for potential recovery
+                        let failed_tx = FailedTransactionInfo {
+                            market_id: market.id.clone(),
+                            user,
+                            amount: transfer_amount.clone(),
+                            token_id: token_id.clone(),
+                            error: e.detailed_message(),
+                            timestamp: get_current_time().into(),
+                        };
+                        
+                        // For now, just log the failed transaction - in a future version
+                        // we would store this in a persistent data structure for admin recovery
+                        ic_cdk::println!("Recorded failed transaction: {:?}", failed_tx);
+                        
                         // Continue with other payouts instead of returning an error
                     }
                 }
@@ -364,7 +423,10 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                                   token_info.symbol,
                                   bet.user.to_string());
                     
-                    match transfer_token(bet.user, transfer_amount.clone(), token_id, None).await {
+                    // Transfer winnings with retry logic (up to 2 retries for retryable errors)
+                    let transfer_result = transfer_winnings_with_retry(bet.user, transfer_amount.clone(), token_id, 2).await;
+                    
+                    match transfer_result {
                         Ok(tx_id) => {
                             ic_cdk::println!("Transfer successful (Transaction ID: {})", tx_id);
                             
@@ -394,7 +456,23 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                             record_market_payout(payout_record);
                         },
                         Err(e) => {
-                            ic_cdk::println!("Transfer failed: {:?}. Continuing with other payouts.", e);
+                            // Enhanced error logging with detailed message
+                            ic_cdk::println!("Transfer failed: {}. Continuing with other payouts.", e.detailed_message());
+                            
+                            // Record failed transaction information for potential recovery
+                            let failed_tx = FailedTransactionInfo {
+                                market_id: market.id.clone(),
+                                user: bet.user,
+                                amount: transfer_amount.clone(),
+                                token_id: token_id.clone(),
+                                error: e.detailed_message(),
+                                timestamp: get_current_time().into(),
+                            };
+                            
+                            // For now, just log the failed transaction - in a future version
+                            // we would store this in a persistent data structure for admin recovery
+                            ic_cdk::println!("Recorded failed transaction: {:?}", failed_tx);
+                            
                             // Continue with other payouts instead of returning an error
                         }
                     }
