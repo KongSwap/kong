@@ -1,3 +1,19 @@
+//! # Token Transfer Module
+//!
+//! This module handles all token transfer operations for the Kong Swap prediction markets platform.
+//! It provides a unified interface for transferring different token types (KONG, ICP, etc.) while
+//! handling the specific requirements and error conditions of each token standard.
+//!
+//! ## Key Features
+//!
+//! - **Multi-token Support**: Transfers for ICRC-1 compliant tokens with proper error handling
+//! - **Fee Management**: Handling of transfer fees with custom fee options
+//! - **Error Classification**: Categorization of errors as retryable or permanent
+//! - **Token Burning**: Special handling for burning KONG tokens during fee collection
+//!
+//! The module is designed to be resilient against temporary failures in the distributed
+//! Internet Computer environment, with comprehensive retry logic and error reporting.
+
 use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::api::call;
 use serde::Serialize;
@@ -9,26 +25,64 @@ use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
 use crate::token::registry::{TokenIdentifier, get_token_info, is_supported_token, get_supported_token_identifiers};
 
 /// Error types for token transfers
+/// 
+/// This comprehensive error enum categorizes all possible failure modes
+/// when transferring tokens. It distinguishes between retryable errors
+/// (which may succeed on a subsequent attempt) and permanent errors
+/// (which require intervention to resolve).
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub enum TokenTransferError {
+    /// Generic transfer failure with details
     TransferFailure(String),
-    TransferError(String),    // Added for handling ICRC1 transfer errors
-    CallError(String),       // Added for handling IC call errors
+    
+    /// Specific ICRC1 token standard transfer errors
+    TransferError(String),
+    
+    /// Errors from the IC call mechanism
+    CallError(String),
+    
+    /// Attempted transfer with an unsupported token type
     UnsupportedToken(String),
+    
+    /// Transfer amount is invalid (e.g., negative or zero)
     InvalidAmount,
+    
+    /// Authentication error (caller not authorized)
     CallerNotAuthenticated,
+    
+    /// Internal system error unrelated to the token
     InternalError(String),
-    InsufficientFunds,       // Added for handling cases where amount is less than fee
-    RetryableError(String),  // For temporary issues that could be retried
-    PermanentError(String),  // For issues that will persist without intervention
-    LedgerRejection(String), // Specifically for when the ledger rejects the transfer
-    NetworkError(String),    // For network/communication issues
-    TokenSpecificError(String), // For token-specific error conditions
+    
+    /// Insufficient funds to complete the transfer (including fees)
+    InsufficientFunds,
+    
+    /// Temporary error that might succeed on retry
+    RetryableError(String),
+    
+    /// Permanent error that requires intervention to fix
+    PermanentError(String),
+    
+    /// Explicit rejection from the token ledger canister
+    LedgerRejection(String),
+    
+    /// Network or communication failures
+    NetworkError(String),
+    
+    /// Errors specific to a particular token's implementation
+    TokenSpecificError(String)
 }
 
 /// Helper methods for TokenTransferError
 impl TokenTransferError {
-    /// Returns true if the error is potentially recoverable through retrying
+    /// Determines if the error is potentially recoverable through retrying
+    ///
+    /// This method identifies error types that may be resolved by simply
+    /// retrying the operation later, such as network errors or temporary
+    /// unavailability. It's used by recovery systems to determine which
+    /// failed transactions should be automatically retried.
+    ///
+    /// # Returns
+    /// * `bool` - True if the error might be resolved by retrying
     pub fn is_retryable(&self) -> bool {
         matches!(self, 
             TokenTransferError::RetryableError(_) | 
@@ -38,7 +92,15 @@ impl TokenTransferError {
         )
     }
     
-    /// Returns a detailed error message suitable for logging
+    /// Returns a detailed error message suitable for logging and diagnostics
+    ///
+    /// This method generates human-readable error messages that include
+    /// both the error category and specific details. These messages are
+    /// used for logging, transaction recovery records, and administrative
+    /// troubleshooting.
+    ///
+    /// # Returns
+    /// * `String` - Formatted error message with detailed information
     pub fn detailed_message(&self) -> String {
         match self {
             TokenTransferError::TransferFailure(msg) => format!("Transfer failed: {}", msg),
@@ -58,12 +120,31 @@ impl TokenTransferError {
     }
 }
 
-/// Transfer tokens from the caller to a recipient
+/// Transfers tokens from the canister to a recipient
+///
+/// This function handles the transfer of any supported token type to the specified
+/// recipient. It performs validation, constructs the appropriate transfer arguments,
+/// and handles the response from the token ledger canister, including comprehensive
+/// error handling and classification.
+///
+/// # Parameters
+/// * `recipient` - Principal ID of the token recipient
+/// * `amount` - Amount of tokens to transfer (must be greater than the transfer fee)
+/// * `token_id` - Identifier of the token type to transfer
+/// * `custom_fee` - Optional custom fee to use instead of the token's default fee
+///
+/// # Returns
+/// * `Result<candid::Nat, TokenTransferError>` - On success, returns the block index
+///   of the successful transfer. On failure, returns a categorized error.
+///
+/// # Error Handling
+/// This function categorizes errors as either retryable or permanent, facilitating
+/// automatic recovery through the transaction recovery system.
 pub async fn transfer_token(
     recipient: Principal,
     amount: TokenAmount,
     token_id: &TokenIdentifier,
-    custom_fee: Option<TokenAmount> // Add optional custom fee parameter
+    custom_fee: Option<TokenAmount>
 ) -> Result<candid::Nat, TokenTransferError> {
     // Verify the token is supported with improved error message
     if !is_supported_token(token_id) {
@@ -118,11 +199,18 @@ pub async fn transfer_token(
                   recipient.to_string());
     
     // Make the transfer call with enhanced error handling
+    // CRITICAL FIX: Properly handling the nested Result structure from ICRC-1 token transfers
+    // The outer Result is from the IC call mechanism, the inner Result is from the token contract
+    // Previously this was incorrectly typed as Result<(candid::Nat,), _> which caused payouts to fail
     match call::call::<(TransferArg,), (Result<candid::Nat, TransferError>,)>(token_canister, "icrc1_transfer", (transfer_args,)).await {
+        // Successful call with successful transfer - both outer and inner Results are Ok
         Ok((Ok(block_index),)) => {
             ic_cdk::println!("Transfer successful with transaction ID: {}", block_index);
             Ok(block_index)
         },
+        // Successful call but failed transfer - outer Result is Ok, inner Result is Err
+        // This is the critical part that was fixed to properly handle nested Result structures
+        // from ICRC-1 token transfers, previously causing payouts to fail
         Ok((Err(e),)) => {
             // Enhanced error categorization based on ICRC1 error type
             match e {
@@ -154,6 +242,8 @@ pub async fn transfer_token(
                         format!("Duplicate transfer. Original: {:?}", duplicate_of)
                     ))
                 },
+                // This error is explicitly categorized as retryable to enable
+                // automatic recovery through the transaction recovery system
                 TransferError::TemporarilyUnavailable => {
                     Err(TokenTransferError::RetryableError(
                         "Ledger temporarily unavailable".to_string()
@@ -183,7 +273,21 @@ pub async fn transfer_token(
     }
 }
 
-/// Handle fee transfers based on token type
+/// Handles platform fee transfers based on token type
+///
+/// This function processes platform fees collected from market operations.
+/// The behavior differs by token type:
+/// - For KONG tokens: Burns the tokens (removing them from circulation)
+/// - For other tokens: Transfers fees to the designated fee collection account
+///
+/// # Parameters
+/// * `fee_amount` - Amount of tokens to process as fees
+/// * `token_id` - Identifier of the token type
+///
+/// # Returns
+/// * `Result<Option<candid::Nat>, TokenTransferError>` - On success, returns the optional 
+///   block index of the transfer/burn operation. For some operations, no block index is returned.
+///   On failure, returns a categorized error.
 pub async fn handle_fee_transfer(
     fee_amount: TokenAmount,
     token_id: &TokenIdentifier
@@ -206,7 +310,25 @@ pub async fn handle_fee_transfer(
     }
 }
 
-/// Burn tokens (only applicable for KONG)
+/// Burns tokens by transferring them to the burn address
+/// 
+/// This function is specifically designed for burning KONG tokens as part of
+/// the platform's fee management. It removes tokens from circulation by transferring
+/// them to a designated burn address (all zeros). Note that this operation is only
+/// applicable for KONG tokens - other tokens collect fees to the minter account instead.
+/// 
+/// # Parameters
+/// * `token_id` - Identifier of the token to burn (should be KONG)
+/// * `amount` - Amount of tokens to burn
+/// 
+/// # Returns
+/// * `Result<candid::Nat, TokenTransferError>` - On success, returns the block index
+///   of the burn transaction. On failure, returns a categorized error.
+/// 
+/// # Token-Specific Behavior
+/// While this function can technically be called with any token, it should only
+/// be used with KONG tokens as part of the platform's economic model. Other tokens
+/// should use the standard fee collection mechanism.
 pub async fn burn_tokens(
     token_id: &TokenIdentifier,
     amount: TokenAmount
@@ -262,7 +384,27 @@ pub async fn burn_tokens(
     Ok(block_index)
 }
 
-/// Calculate the amount after platform fee
+/// Calculates the net token amount after deducting platform fees
+/// 
+/// This helper function determines the actual amount a user will receive after
+/// platform fees are deducted. It uses the token's configured fee percentage
+/// to calculate the appropriate fee amount based on the transaction size.
+/// 
+/// # Parameters
+/// * `amount` - Gross amount before fee deduction
+/// * `token_id` - Identifier of the token to calculate fees for
+/// 
+/// # Returns
+/// * `TokenAmount` - Net amount after fee deduction
+/// 
+/// # Fee Calculation
+/// Fees are calculated based on the token's fee_percentage configuration:
+/// - 1% = 100 (fee_percentage value)
+/// - 2% = 200
+/// - etc.
+/// 
+/// # Edge Cases
+/// If the token is not found in the registry, the original amount is returned unchanged.
 pub fn calculate_amount_after_fee(
     amount: &TokenAmount,
     token_id: &TokenIdentifier

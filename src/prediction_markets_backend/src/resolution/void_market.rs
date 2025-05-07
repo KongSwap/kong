@@ -1,3 +1,15 @@
+//! # Market Voiding Module
+//! 
+//! This module implements the logic for voiding prediction markets and refunding all bets to users.
+//! Voiding is used in several scenarios:
+//! 
+//! 1. When a market is determined to be invalid or impossible to resolve
+//! 2. When there's disagreement between a creator and admin about the resolution 
+//! 3. When admins need to cancel a market for policy or technical reasons
+//! 
+//! The voiding process ensures all users receive refunds of their original bets, with robust
+//! error handling and retry mechanisms to handle transient failures in the distributed system.
+
 use super::resolution::*;
 
 use crate::market::market::*;
@@ -9,6 +21,22 @@ use crate::token::transfer::{transfer_token, TokenTransferError};
 use crate::transaction_recovery::record_failed_transaction;
 
 /// Helper function with retry logic specifically for void market refunds
+/// 
+/// This function attempts to refund tokens to users with a configurable retry mechanism
+/// for handling transient errors. When all retries are exhausted, it records the failed
+/// transaction for later recovery through the transaction recovery system.
+/// 
+/// # Parameters
+/// * `user` - Principal ID of the refund recipient
+/// * `amount` - Amount of tokens to refund
+/// * `token_id` - Identifier for the token type to refund
+/// * `retry_count` - Maximum number of retry attempts
+/// * `market_id` - ID of the market being voided (for transaction recovery tracking)
+/// 
+/// # Returns
+/// * `Result<Option<candid::Nat>, TokenTransferError>` - On success, returns the optional
+///   transaction ID. On failure, returns a token transfer error after recording the
+///   failed transaction for later recovery.
 async fn refund_with_retry(
     user: candid::Principal, 
     amount: crate::types::TokenAmount,
@@ -49,8 +77,30 @@ async fn refund_with_retry(
 }
 
 /// Voids a market and returns all bets to the users
-/// This is used when no resolution can be determined or in case of market manipulation
-/// Note: The actual #[update] function is defined in dual_approval.rs
+/// 
+/// This function handles the complete market voiding process, including:
+/// 1. Validation of the caller's permissions and market state
+/// 2. Retrieval of all bets associated with the market
+/// 3. Refunding tokens to all bettors using the original token types
+/// 4. Handling failed refunds with retry logic and transaction recovery
+/// 5. Updating the market status to Voided
+/// 
+/// The function is designed to be resilient against individual refund failures.
+/// Even if some refunds fail, the process continues to ensure that as many users
+/// as possible receive their refunds, with failed cases recorded for later recovery.
+/// 
+/// Note: The actual #[update] function is defined in dual_approval.rs. This function
+/// contains the core implementation called from there.
+/// 
+/// # Parameters
+/// * `market_id` - ID of the market to void
+/// 
+/// # Returns
+/// * `Result<(), ResolutionError>` - Success or an error reason if the process fails
+/// 
+/// # Security
+/// Only admins can call this function directly. Market creators can trigger
+/// the voiding process indirectly through resolution disagreements.
 pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
     let admin = ic_cdk::caller();
 
@@ -85,6 +135,8 @@ pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
     ic_cdk::println!("Found {} bets to refund", bets.len());
 
     // Return all bets to users using the appropriate token for each bet
+    // Process each bet independently to ensure that failures in one refund
+    // don't prevent other users from receiving their refunds
     for bet in bets {
         // Get token info for the bet's token
         let token_id = &bet.token_id;
@@ -97,6 +149,8 @@ pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
         };
         
         // Check if bet amount exceeds transfer fee for this token
+        // Users only receive their bet minus the transfer fee, ensuring
+        // the transfer operation has enough funds to cover its costs
         let transfer_amount = if bet.amount > token_info.transfer_fee {
             bet.amount - token_info.transfer_fee.clone()
         } else {
@@ -114,7 +168,8 @@ pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
                         bet.user.to_string());
 
         // Transfer tokens back to the bettor using our retry helper
-        // Using 2 retries for recoverable errors
+        // Using 2 retries for recoverable errors to improve reliability while
+        // preventing excessive resource consumption on non-recoverable errors
         match refund_with_retry(bet.user, transfer_amount, token_id, 2, &market_id).await {
             Ok(Some(tx_id)) => {
                 ic_cdk::println!("Refund successful (Transaction ID: {})", tx_id);
@@ -130,14 +185,18 @@ pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
         }
     }
 
-    // Update market status to Voided
+    // Update market status to Voided - this happens even if some refunds failed
+    // to prevent future resolution attempts on this market
     market.status = MarketStatus::Voided;
     
-    // Update market in storage
+    // Update market in storage with the new voided status
     MARKETS.with(|markets| {
         let mut markets_ref = markets.borrow_mut();
         markets_ref.insert(market_id, market);
     });
+    
+    // Return success, even if some individual refunds failed
+    // The transaction recovery system will handle any failed refunds
 
     Ok(())
 }

@@ -1,3 +1,32 @@
+//! # Transaction Recovery Module
+//! 
+//! This module handles the recording, tracking, and recovery of failed token transactions
+//! in the Kong Swap prediction markets system. It provides a resilient error-handling layer
+//! that maintains system integrity even when token transfers encounter issues.
+//! 
+//! ## Key Capabilities
+//! 
+//! - **Failed Transaction Recording**: Captures detailed information about token transfers
+//!   that fail during market resolution, including recipient, amount, and error details
+//! - **Recovery Mechanisms**: Provides both automated and admin-triggered retry capabilities
+//!   to ensure users eventually receive their payouts
+//! - **Flexible Querying**: Allows filtering transactions by market ID, recipient, or status
+//!   to facilitate targeted recovery operations
+//! - **Administrative Controls**: Enables administrators to manually resolve transactions
+//!   when alternate compensation methods have been used
+//! 
+//! ## Critical System Role
+//! 
+//! The recovery system is particularly essential for the platform's reliability because:
+//! 
+//! 1. **Multi-Token Support**: Each token type has different transfer mechanisms and failure modes
+//! 2. **Distributed Environment**: The Internet Computer architecture requires robust error handling
+//! 3. **Time-Weighted Payouts**: Complex payout calculations must be preserved even if transfers fail
+//! 4. **Dual Approval Process**: Market resolution may involve multiple stakeholders and transaction stages
+//! 
+//! By maintaining a persistent record of failed transactions, this module ensures that no user
+//! loses their rightful winnings due to temporary network issues or token contract failures.
+
 use candid::{CandidType, Deserialize, Principal};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -10,25 +39,69 @@ use crate::controllers::admin::is_admin;
 use ic_cdk::{query, update};
 
 /// Record of a failed transaction for potential recovery
+/// 
+/// This structure stores all relevant information about a failed transaction
+/// to facilitate later recovery attempts. It includes the recipient, amount,
+/// token details, error information, and tracking metadata for resolution status.
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct FailedTransaction {
+    /// Optional market ID associated with this transaction (None for non-market transactions)
     pub market_id: Option<MarketId>,
+    /// Principal ID of the user who should receive the tokens
     pub recipient: Principal,
+    /// Amount of tokens to be transferred (in raw token units including decimals)
     pub amount: TokenAmount,
+    /// Identifier for the token type being transferred
     pub token_id: TokenIdentifier,
+    /// Detailed error message explaining why the transaction failed
     pub error: String,
+    /// Transaction creation timestamp (nanoseconds since 1970-01-01) - also used as unique ID
     pub timestamp: u64,
+    /// Number of times the system has attempted to retry this transaction
     pub retry_count: u8,
+    /// Whether this transaction has been successfully resolved
     pub resolved: bool,
 }
 
 // Stable storage for failed transactions
+// Uses a thread-local HashMap with transaction timestamp as the key
 thread_local! {
+    /// In-memory store of all failed transactions, keyed by timestamp
+    /// This data structure is preserved across canister upgrades
     static FAILED_TRANSACTIONS: RefCell<HashMap<u64, FailedTransaction>> = 
         RefCell::new(HashMap::new());
 }
 
-/// Record a failed transaction for later recovery
+/// Records a failed token transfer transaction for later recovery attempts
+/// 
+/// When a token transfer fails (e.g., during market resolution or user withdrawals),
+/// this function creates a persistent record in stable memory. The record captures all
+/// details needed to retry the transaction later, using the current timestamp as a
+/// unique identifier.
+/// 
+/// ## Common Failure Scenarios
+/// 
+/// - **Network Congestion**: Temporary IC network issues
+/// - **Token Contract Errors**: Issues with the underlying token canister
+/// - **Balance Discrepancies**: Insufficient funds in the canister
+/// - **Rate Limiting**: Too many simultaneous transfers to the token canister
+/// 
+/// ## Recovery Process Flow
+/// 
+/// 1. Transaction fails in the transfer module
+/// 2. This function records the failure details
+/// 3. Admins can later query and retry failed transactions
+/// 4. Successful retries update the record to 'resolved'
+/// 
+/// # Parameters
+/// * `market_id` - Optional ID of the market associated with this transaction
+/// * `recipient` - Principal ID of the intended token recipient
+/// * `amount` - Amount of tokens that failed to transfer (in raw token units)
+/// * `token_id` - Identifier for the token type that failed to transfer
+/// * `error` - Detailed error message explaining the failure reason
+/// 
+/// # Returns
+/// * `u64` - Unique transaction ID (timestamp) that can be used for retry operations
 pub fn record_failed_transaction(
     market_id: Option<MarketId>,
     recipient: Principal,
@@ -58,7 +131,14 @@ pub fn record_failed_transaction(
     tx_id
 }
 
-/// Query for all unresolved transactions
+/// Query for all unresolved (pending) transactions that need recovery
+/// 
+/// Returns a list of all failed transactions that haven't been successfully
+/// resolved yet. This is typically used by administrators to identify
+/// which transactions need attention.
+/// 
+/// # Returns
+/// * `Vec<(u64, FailedTransaction)>` - List of transaction IDs and their details
 #[query]
 pub fn get_unresolved_transactions() -> Vec<(u64, FailedTransaction)> {
     FAILED_TRANSACTIONS.with(|txs| {
@@ -70,7 +150,14 @@ pub fn get_unresolved_transactions() -> Vec<(u64, FailedTransaction)> {
     })
 }
 
-/// Query for all transactions (resolved and unresolved)
+/// Query for all transactions (both resolved and unresolved)
+/// 
+/// Returns the complete history of failed transactions, including those
+/// that have been successfully resolved and those still pending.
+/// Useful for auditing and system health monitoring.
+/// 
+/// # Returns
+/// * `Vec<(u64, FailedTransaction)>` - Complete list of transaction records
 #[query]
 pub fn get_all_transactions() -> Vec<(u64, FailedTransaction)> {
     FAILED_TRANSACTIONS.with(|txs| {
@@ -81,7 +168,17 @@ pub fn get_all_transactions() -> Vec<(u64, FailedTransaction)> {
     })
 }
 
-/// Query for transactions by market ID
+/// Query for transactions associated with a specific market
+/// 
+/// Retrieves all failed transactions (resolved and unresolved) that are
+/// related to a particular prediction market. This is useful when troubleshooting
+/// issues with payouts for a specific market.
+/// 
+/// # Parameters
+/// * `market_id` - ID of the market to query transactions for
+/// 
+/// # Returns
+/// * `Vec<(u64, FailedTransaction)>` - List of transaction records for the specified market
 #[query]
 pub fn get_transactions_by_market(market_id: MarketId) -> Vec<(u64, FailedTransaction)> {
     FAILED_TRANSACTIONS.with(|txs| {
@@ -93,7 +190,17 @@ pub fn get_transactions_by_market(market_id: MarketId) -> Vec<(u64, FailedTransa
     })
 }
 
-/// Query for transactions by recipient
+/// Query for transactions intended for a specific user
+/// 
+/// Retrieves all failed transactions (resolved and unresolved) where
+/// the specified principal is the intended recipient of the tokens.
+/// Useful for investigating user reports of missing payouts or funds.
+/// 
+/// # Parameters
+/// * `recipient` - Principal ID of the user to query transactions for
+/// 
+/// # Returns
+/// * `Vec<(u64, FailedTransaction)>` - List of transaction records for the recipient
 #[query]
 pub fn get_transactions_by_recipient(recipient: Principal) -> Vec<(u64, FailedTransaction)> {
     FAILED_TRANSACTIONS.with(|txs| {
@@ -105,7 +212,40 @@ pub fn get_transactions_by_recipient(recipient: Principal) -> Vec<(u64, FailedTr
     })
 }
 
-/// Retry a specific transaction - admin only
+/// Attempts to retry a specific failed transaction (admin only)
+/// 
+/// This function attempts to execute a previously failed transaction by
+/// retrying the token transfer. It provides an essential recovery mechanism
+/// for ensuring users receive their winnings, even after initial transfer failures.
+/// 
+/// ## Retry Process
+/// 
+/// 1. Validates the caller is an administrator
+/// 2. Retrieves the transaction details from stable storage
+/// 3. Attempts the token transfer using the original parameters
+/// 4. Updates the transaction record based on the result:
+///    - Success: Marks as resolved and returns block index
+///    - Failure: Increments retry count and updates error message
+/// 
+/// This function is particularly important for recovering from transient issues
+/// in the token transfer system, such as temporary network congestion or rate
+/// limiting by token canisters.
+/// 
+/// ## Error Handling
+/// 
+/// The function properly processes errors from the token transfer system,
+/// distinguishing between permanent errors (which won't benefit from retry)
+/// and temporary errors (which may succeed on subsequent attempts).
+/// 
+/// # Parameters
+/// * `tx_id` - ID of the transaction to retry
+/// 
+/// # Returns
+/// * `Result<Option<candid::Nat>, String>` - On success, returns the block index of the
+///   successful transaction. On failure, returns an error message.
+/// 
+/// # Access Control
+/// * Only canister administrators can call this function
 #[update]
 pub async fn retry_transaction(tx_id: u64) -> Result<Option<candid::Nat>, String> {
     let admin = ic_cdk::caller();
@@ -162,7 +302,38 @@ pub async fn retry_transaction(tx_id: u64) -> Result<Option<candid::Nat>, String
     }
 }
 
-/// Retry all unresolved transactions for a market - admin only
+/// Attempts to retry all unresolved transactions for a specific market (admin only)
+/// 
+/// This function performs a batch retry operation for all unresolved transactions
+/// associated with a particular market. It's particularly valuable for market resolution
+/// scenarios where multiple payouts may have failed due to a common issue.
+/// 
+/// ## Use Cases
+/// 
+/// - **Post-Resolution Recovery**: After a market is resolved, retry all failed payouts
+/// - **Token Contract Recovery**: After a token canister issue is fixed, process backlog
+/// - **Network Recovery**: After network congestion subsides, clear pending transactions
+/// 
+/// This function is especially important for time-weighted markets where complex payout
+/// calculations across multiple users may result in several failed transfers. The batch
+/// retry ensures that all users have an opportunity to receive their winnings without
+/// requiring individual transaction processing.
+/// 
+/// ## Implementation Notes
+/// 
+/// Each transaction is processed independently, so individual failures don't prevent
+/// other transactions from being retried. This maximizes the chance of successful
+/// recovery even when some transfers continue to fail.
+/// 
+/// # Parameters
+/// * `market_id` - ID of the market whose transactions should be retried
+/// 
+/// # Returns
+/// * `Vec<Result<u64, String>>` - Vector of results for each transaction retry attempt.
+///   Successful retries contain the transaction ID, failures contain error messages.
+/// 
+/// # Access Control
+/// * Only canister administrators can call this function
 #[update]
 pub async fn retry_market_transactions(market_id: MarketId) -> Vec<Result<u64, String>> {
     let admin = ic_cdk::caller();
@@ -193,7 +364,38 @@ pub async fn retry_market_transactions(market_id: MarketId) -> Vec<Result<u64, S
     results
 }
 
-/// Mark a transaction as resolved without retrying - admin only
+/// Marks a transaction as resolved without attempting to retry it (admin only)
+/// 
+/// This function allows administrators to manually mark a transaction as resolved
+/// without attempting to retry the token transfer. It provides a necessary escape
+/// hatch for scenarios where automatic retry isn't appropriate or possible.
+/// 
+/// ## Manual Resolution Scenarios
+/// 
+/// - **Alternative Compensation**: User was compensated through a different mechanism
+/// - **Permanently Failed**: Transaction that cannot succeed (e.g., user blacklisted)
+/// - **Disputed Resolution**: Transactions related to disputed or voided markets
+/// - **Account Migration**: User has moved to a new principal ID
+/// 
+/// This function complements the automatic retry mechanisms by providing administrators
+/// flexibility to handle edge cases and special situations. The original error message
+/// is preserved with an additional note indicating manual resolution, maintaining
+/// a complete audit trail.
+/// 
+/// ## Security Considerations
+/// 
+/// The function requires administrator privileges to prevent unauthorized resolution
+/// of pending payouts. This ensures that only authorized personnel can decide when
+/// a transaction should be marked as resolved without retry.
+/// 
+/// # Parameters
+/// * `tx_id` - ID of the transaction to mark as resolved
+/// 
+/// # Returns
+/// * `Result<(), String>` - Success or an error message if the operation failed
+/// 
+/// # Access Control
+/// * Only canister administrators can call this function
 #[update]
 pub fn mark_transaction_resolved(tx_id: u64) -> Result<(), String> {
     let admin = ic_cdk::caller();

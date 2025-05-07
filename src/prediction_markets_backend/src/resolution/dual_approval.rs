@@ -1,3 +1,19 @@
+//! # Dual Approval Resolution System
+//! 
+//! This module implements the market resolution system for Kong Swap prediction markets.
+//! It supports two distinct resolution flows based on the market creator type:
+//! 
+//! 1. **Admin-Created Markets**: Can be resolved directly by any admin without requiring
+//!    dual approval. When an admin resolves an admin-created market, the resolution is immediate.
+//! 
+//! 2. **User-Created Markets**: Require dual approval between the creator and an admin.
+//!    The creator proposes a resolution first, then an admin must confirm with the same
+//!    resolution. If there's a disagreement (admin proposes different outcomes), the market
+//!    is voided and the creator's deposit is burned.
+//!
+//! This implementation ensures proper governance while maintaining efficiency for
+//! admin-operated markets.
+
 use candid::{Principal, Nat};
 use ic_cdk::update;
 
@@ -13,6 +29,18 @@ use crate::token::registry::get_token_info;
 use crate::token::transfer::{transfer_token, burn_tokens};
 
 /// Refunds all bets when a market is voided
+/// 
+/// This function processes refunds for all bets placed on a voided market.
+/// For each bet, it transfers the original bet amount (minus transfer fee)
+/// back to the user who placed the bet. Failed transfers are logged but don't
+/// stop the process - this ensures all users have an opportunity to receive
+/// their refunds.
+/// 
+/// # Parameters
+/// * `market` - Reference to the Market that is being voided
+/// 
+/// # Returns
+/// * `Result<(), ResolutionError>` - Success indicator or error reason if the process fails
 pub async fn refund_all_bets(market: &Market) -> Result<(), ResolutionError> {
     // Implementation will refund all bets to users
     ic_cdk::println!(
@@ -69,7 +97,19 @@ pub async fn refund_all_bets(market: &Market) -> Result<(), ResolutionError> {
     Ok(())
 }
 
-/// Determines if a user can resolve a market
+/// Determines if a user has authorization to resolve or propose resolution for a market
+/// 
+/// This function implements the authorization logic for market resolution:
+/// - Admins can always resolve any market (admin-created directly, user-created via dual approval)
+/// - Market creators can propose resolutions for markets they created
+/// - The resolution method specified in the market is considered
+/// 
+/// # Parameters
+/// * `market` - Reference to the Market being resolved
+/// * `user` - Principal ID of the user attempting to resolve the market
+/// 
+/// # Returns
+/// * `bool` - True if the user is authorized to resolve/propose for this market
 pub fn can_resolve_market(market: &Market, user: Principal) -> bool {
     // Add detailed logging for debugging
     ic_cdk::println!("Checking if user {} can resolve market {}", user.to_string(), market.id.to_u64());
@@ -102,8 +142,30 @@ pub fn can_resolve_market(market: &Market, user: Principal) -> bool {
     false
 }
 
-/// Proposes resolution for a market (implements dual-approval for user-created markets)
-/// For admin-created markets, admin resolution is direct without dual approval
+/// Proposes or executes a resolution for a market
+/// 
+/// This function implements the dual resolution system with two distinct resolution flows:
+/// 
+/// 1. **Admin-Created Markets**: When an admin calls this function for a market created by any admin,
+///    the resolution is immediate. The market is finalized directly without requiring a second approval.
+/// 
+/// 2. **User-Created Markets**: Requires dual approval between the creator and an admin.
+///    - When a creator proposes first, it's recorded as a proposal waiting for admin confirmation
+///    - When an admin proposes first, it's recorded as a proposal waiting for creator confirmation
+///    - When the second party proposes matching outcomes, the market is finalized
+///    - When the second party proposes different outcomes, the market is voided and creator's deposit burned
+/// 
+/// # Parameters
+/// * `market_id` - ID of the market to resolve
+/// * `winning_outcomes` - Vector of outcome indices that won (multiple allowed for multi-select markets)
+/// 
+/// # Returns
+/// * `Result<(), ResolutionError>` - Success or failure with error reason
+/// 
+/// # Security
+/// Only market creators and admins can call this function. For admin-created markets,
+/// only admins can resolve. For user-created markets, both the creator and an admin
+/// must agree on the outcome.
 #[update]
 pub async fn propose_resolution(
     market_id: MarketId, 
@@ -134,24 +196,36 @@ pub async fn propose_resolution(
         return Err(ResolutionError::MarketStillOpen);
     }
     
-    let is_caller_creator = market.creator == caller;
-    let is_market_creator_admin = is_admin(market.creator);
+    // Determine the caller's role in relation to this market
+    // This information is crucial for implementing the correct resolution flow
+    let is_caller_creator = market.creator == caller;  // Is caller the creator of this market?
+    let is_market_creator_admin = is_admin(market.creator);  // Was this market created by an admin?
     
     // Check authorization - only creator or admin can propose resolutions
     // Use the can_resolve_market function to ensure proper authorization
+    // Verify the caller has permission to resolve
+    // This is a critical security check that enforces the dual approval governance model
+    // - For admin-created markets: Only admins can resolve directly
+    // - For user-created markets: Creator proposes first, then admin confirms
     if !can_resolve_market(&market, caller) {
         return Err(ResolutionError::Unauthorized);
     }
     
     // Special case: For admin-created markets, any admin can resolve directly without dual approval
+    // RESOLUTION FLOW #1: Admin-Created Markets with Direct Resolution
+    //
+    // If this market was created by an admin AND an admin is resolving it,
+    // we can bypass the dual approval process and resolve the market immediately.
+    // This optimizes the flow for official/admin markets while maintaining security.
+    //
+    // Admin-created markets don't require dual approval because:
+    // 1. They're considered official platform markets
+    // 2. Admins are trusted entities in the governance system
+    // 3. It enables faster resolution for standardized markets
     if is_market_creator_admin && is_caller_admin {
-        ic_cdk::println!(
-            "Admin {} directly resolving admin-created market {}",
-            caller.to_string(),
-            market_id.to_u64()
-        );
+        ic_cdk::println!("Admin resolving admin-created market: bypassing dual approval");
         
-        // Finalize the market directly - skip the dual approval process
+        // Direct finalization - no proposal stage required
         finalize_market(&mut market, winning_outcomes.clone()).await?;
         
         // Update market status
@@ -184,61 +258,32 @@ pub async fn propose_resolution(
         }
     }
     
-    // Check existing proposals or create a new one
-    let result = RESOLUTION_PROPOSALS.with(|proposals| {
-        let mut proposals = proposals.borrow_mut();
-        
-        if let Some(existing_proposal) = proposals.get(&market_id) {
-            let mut proposal = existing_proposal.clone();
-            
-            // Check if proposed outcomes match
-            if proposal.proposed_outcomes != winning_outcomes {
-                // If outcomes don't match and both creator and admin have submitted proposals,
-                // this is a disagreement that requires the market to be voided
-                if (is_caller_admin && proposal.creator_approved) || 
-                   (is_caller_creator && proposal.admin_approved) {
-                    // This is a disagreement - void the market and burn creator's deposit
-                    // Return the data needed for disagreement handling
-                    return Ok((true, market_id.clone(), market.clone(), proposal.clone()));
-                }
-                
-                // If it's not a confirmed disagreement yet, just inform about mismatch
-                return Err(ResolutionError::ResolutionMismatch);
-            }
-            
-            // Handle creator approval
-            if is_caller_creator && !proposal.creator_approved {
-                proposal.creator_approved = true;
-            }
-            
-            // Handle admin approval
-            if is_caller_admin && !proposal.admin_approved {
-                proposal.admin_approved = true;
-                proposal.admin_approver = Some(caller);
-            }
-            
-            // Check if we have dual approval
-            if proposal.creator_approved && proposal.admin_approved {
-                // Return the data needed for finalization
-                // We'll handle the finalization outside this closure
-                return Ok((false, market_id.clone(), market.clone(), proposal.clone()));
-            } else {
-                // Store proposal approval status before moving it
-                let creator_approved = proposal.creator_approved;
-                let admin_approved = proposal.admin_approved;
-                
-                // Update proposal
-                proposals.insert(market_id.clone(), proposal);
-                
-                // Inform if waiting for the other party
-                if creator_approved && !admin_approved {
-                    return Err(ResolutionError::AwaitingAdminApproval);
-                } else if !creator_approved && admin_approved {
-                    return Err(ResolutionError::AwaitingCreatorApproval);
-                }
-            }
-        } else {
-            // Create new proposal
+    // RESOLUTION FLOW #2: User-Created Markets with Dual Approval
+    //
+    // For markets created by regular users, we implement a dual approval system
+    // to protect against fraudulent resolutions. This requires both the market
+    // creator and an admin to agree on the same outcomes.
+    //
+    // The flow works as follows:
+    // 1. First party (creator or admin) proposes a resolution with outcomes
+    // 2. Second party (admin or creator) confirms with the same outcomes
+    // 3. If outcomes match, market is finalized
+    // 4. If outcomes differ, market is voided and creator's deposit is burned
+    //
+    // This ensures accountability for user-created markets while protecting
+    // against manipulation or incorrect resolutions.
+    
+    // Check if a proposal already exists for this market
+    let existing_proposal = RESOLUTION_PROPOSALS.with(|proposals| {
+        // Use clone() on the Option instead of cloned() which is for iterators
+        proposals.borrow().get(&market_id).clone()
+    });
+    
+    // Handle dual approval based on whether a proposal already exists
+    match existing_proposal {
+        // First resolution step: No proposal exists yet, so create one
+        None => {
+            // Create a new resolution proposal recording who proposed it and with what outcomes
             let proposal = ResolutionProposal {
                 market_id: market_id.clone(),
                 proposed_outcomes: winning_outcomes.clone(),
@@ -246,70 +291,97 @@ pub async fn propose_resolution(
                 admin_approved: is_caller_admin,
                 creator: market.creator,
                 admin_approver: if is_caller_admin { Some(caller) } else { None },
-                proposed_at: get_current_time(),
+                proposed_at: get_current_time()
             };
             
-            // Store proposal
-            proposals.insert(market_id.clone(), proposal.clone());
+            // Store the proposal in stable memory so it persists across canister upgrades
+            RESOLUTION_PROPOSALS.with(|proposals| {
+                let mut proposals = proposals.borrow_mut();
+                proposals.insert(market_id.clone(), proposal.clone());
+            });
             
-            // Inform about waiting for the other party
+            // Provide appropriate feedback based on who initiated the proposal
             if is_caller_creator {
-                return Err(ResolutionError::AwaitingAdminApproval);
+                ic_cdk::println!("Market creator proposed resolution, waiting for admin confirmation");
+                Ok(())
             } else {
-                return Err(ResolutionError::AwaitingCreatorApproval);
-            }
-        }
-        
-        // Return a default value that won't be used
-        // This is needed because all code paths above return early
-        // We never actually reach this code path
-        Ok((false, market_id.clone(), market.clone(), ResolutionProposal {
-            market_id: market_id.clone(),
-            proposed_outcomes: winning_outcomes.clone(),
-            creator_approved: false,
-            admin_approved: false,
-            creator: market.creator,
-            admin_approver: None,
-            proposed_at: get_current_time(),
-        }))
-    });
-    
-    // Process the result from the closure
-    match result {
-        Ok((is_disagreement, market_id_clone, mut market_clone, proposal_clone)) => {
-            if is_disagreement {
-                // Handle disagreement outside the closure
-                return handle_resolution_disagreement(market_id_clone, market_clone, proposal_clone).await;
-            } else {
-                // We have dual approval, finalize the market
-                finalize_market(&mut market_clone, winning_outcomes.clone()).await?;
-                
-                // Update market status
-                market_clone.status = MarketStatus::Closed(winning_outcomes.iter().map(|idx| Nat::from(idx.clone())).collect());
-                market_clone.resolved_by = proposal_clone.admin_approver;
-                
-                // Update market in storage
-                MARKETS.with(|markets| {
-                    let mut markets_ref = markets.borrow_mut();
-                    markets_ref.insert(market_id_clone.clone(), market_clone);
-                });
-                
-                // Remove proposal
-                RESOLUTION_PROPOSALS.with(|proposals| {
-                    let mut proposals = proposals.borrow_mut();
-                    proposals.remove(&market_id_clone);
-                });
-                
-                ic_cdk::println!(
-                    "Market {:?} resolved with dual approval",
-                    market_id_clone.to_u64()
-                );
-                
-                return Ok(());
+                ic_cdk::println!("Admin proposed resolution, waiting for creator confirmation");
+                Ok(())
             }
         },
-        Err(e) => return Err(e),
+        // Second resolution step: Proposal exists, now checking for agreement/disagreement
+        Some(proposal) => {
+            // Check who previously approved this proposal
+            let creator_already_approved = proposal.creator_approved;
+            let admin_already_approved = proposal.admin_approved;
+            
+            // DUAL APPROVAL SCENARIO 1: Creator proposed first, now admin reviewing
+            if creator_already_approved && is_caller_admin && !admin_already_approved {
+                ic_cdk::println!("Admin reviewing creator's resolution proposal");
+                
+                // Check if admin's outcomes match creator's proposed outcomes
+                if proposal.proposed_outcomes == winning_outcomes {
+                    // AGREEMENT: Both creator and admin agree on outcomes
+                    ic_cdk::println!("Admin confirms creator's resolution outcomes. Finalizing market.");
+                    
+                    // Remove proposal since we're processing it
+                    RESOLUTION_PROPOSALS.with(|proposals| {
+                        let mut proposals = proposals.borrow_mut();
+                        proposals.remove(&market_id);
+                    });
+                    
+                    // Finalize the market with the agreed outcomes
+                    return super::finalize_market::finalize_market(&mut market, winning_outcomes).await;
+                } else {
+                    // DISAGREEMENT: Admin disagrees with creator's proposed outcomes
+                    ic_cdk::println!("Admin disagrees with creator's resolution. Voiding market.");
+                    
+                    // In case of disagreement, void the market and burn creator's deposit
+                    // as a penalty for incorrect resolution
+                    return handle_resolution_disagreement(market_id, market, proposal).await;
+                }
+            }
+            
+            // DUAL APPROVAL SCENARIO 2: Admin proposed first, now creator reviewing
+            else if admin_already_approved && is_caller_creator && !creator_already_approved {
+                ic_cdk::println!("Creator reviewing admin's resolution proposal");
+                
+                // Check if creator's outcomes match admin's proposed outcomes
+                if proposal.proposed_outcomes == winning_outcomes {
+                    // AGREEMENT: Both admin and creator agree on outcomes
+                    ic_cdk::println!("Creator confirms admin's resolution outcomes. Finalizing market.");
+                    
+                    // Remove proposal since we're processing it
+                    RESOLUTION_PROPOSALS.with(|proposals| {
+                        let mut proposals = proposals.borrow_mut();
+                        proposals.remove(&market_id);
+                    });
+                    
+                    // Finalize the market with the agreed outcomes
+                    return super::finalize_market::finalize_market(&mut market, winning_outcomes).await;
+                } else {
+                    // DISAGREEMENT: Creator disagrees with admin's proposed outcomes
+                    ic_cdk::println!("Creator disagrees with admin's resolution. Voiding market.");
+                    
+                    // In case of disagreement, void the market and burn creator's deposit
+                    // as a penalty for incorrect resolution
+                    return handle_resolution_disagreement(market_id, market, proposal).await;
+                }
+            } else {
+                // Edge case: this covers scenarios like both parties already approved,
+                // or other unexpected states. Included for security and completeness.
+                ic_cdk::println!("Unexpected approval state: creator_approved={}, admin_approved={}, caller_is_creator={}, caller_is_admin={}", 
+                              creator_already_approved, admin_already_approved, is_caller_creator, is_caller_admin);
+                Err(ResolutionError::Unauthorized)
+            }
+        },
     };
+
+    // Given dual approval paths should have returned earlier, so if we reach here,
+    // we assume we're waiting for admin approval in the dual approval flow.
+    // Use AwaitingAdminApproval from the ResolutionError enum instead of the
+    // non-existent AwaitingApproval variant.
+    Err(ResolutionError::AwaitingAdminApproval)
 }
 
 /// Allows an admin to force resolve a market, bypassing the dual-approval process
@@ -381,7 +453,22 @@ pub async fn force_resolve_market(
 }
 
 /// Handle resolution disagreement by voiding the market
-/// Burns the creator's 3000 KONG minimum bet and refunds all other bets
+/// 
+/// When there's a disagreement between the market creator and admin about the
+/// correct market resolution outcomes, this function:
+/// 1. Burns the creator's minimum bet deposit (3000 KONG) as a penalty
+/// 2. Refunds all other bets to their respective users
+/// 3. Marks the market as voided due to resolution disagreement
+/// 
+/// This ensures accountability while protecting users who placed bets on the market.
+/// 
+/// # Parameters
+/// * `market_id` - ID of the market with resolution disagreement
+/// * `market` - The market data structure to be updated
+/// * `proposal` - The resolution proposal containing disagreement details
+/// 
+/// # Returns
+/// * `Result<(), ResolutionError>` - Success or error reason if the process fails
 async fn handle_resolution_disagreement(
     market_id: MarketId,
     mut market: Market,
@@ -548,8 +635,22 @@ async fn handle_resolution_disagreement(
 }
 
 /// Resolve the market through admin decision
+/// 
+/// This is a public API endpoint that aliases to the propose_resolution function, maintaining
+/// backward compatibility while ensuring the dual approval system is followed.
+/// 
 /// For admin-created markets: immediate resolution by any admin
 /// For user-created markets: requires dual approval between creator and admin
+/// 
+/// # Parameters
+/// * `market_id` - ID of the market to resolve
+/// * `winning_outcomes` - Vector of outcome indices that won
+/// 
+/// # Returns
+/// * `Result<(), ResolutionError>` - Success or error reason if the resolution fails
+/// 
+/// # Security
+/// Only market creators and admins can call this function successfully.
 #[update]
 pub async fn resolve_via_admin(
     market_id: MarketId, 
@@ -566,7 +667,21 @@ pub async fn resolve_via_admin(
     propose_resolution(market_id, winning_outcomes).await
 }
 
-/// Voids a market, refunding all bets
+/// Voids a market and refunds all bets to users
+/// 
+/// This function allows admins to void a market (due to ambiguous resolution,
+/// technical issues, or other reasons) and ensure all users receive refunds of
+/// their original bets. Unlike the disagreement handler, this does not burn
+/// the creator's deposit.
+/// 
+/// # Parameters
+/// * `market_id` - ID of the market to void
+/// 
+/// # Returns
+/// * `Result<(), ResolutionError>` - Success or error reason if the process fails
+/// 
+/// # Security
+/// Only admins can call this function.
 #[update]
 pub async fn void_market(
     market_id: MarketId

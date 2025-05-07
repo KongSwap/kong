@@ -1,3 +1,20 @@
+//! # Bet Placement Module
+//! 
+//! This module implements the core betting functionality for the Kong Swap prediction markets
+//! platform. It handles token transfers, market state updates, and bet recording with support
+//! for multiple token types and time-weighted distributions.
+//! 
+//! ## Key Features
+//! 
+//! - **Multi-token Support**: Users can place bets using various token types (KONG, ICP, etc.)
+//! - **Time-weighted Rewards**: Bet timestamps are recorded for time-weighted distributions
+//! - **Market Activation**: First bet by creator activates pending markets
+//! - **Dynamic Fee Calculation**: Token-specific platform fees
+//! 
+//! The bet placement process includes token transfer validation, market state verification,
+//! and record-keeping for later payout calculations. For time-weighted markets, the system
+//! records the timestamp of each bet to determine reward weights during market resolution.
+
 use candid::{Nat, Principal};
 use ic_cdk::update;
 use icrc_ledger_types::icrc1::account::Account;
@@ -13,14 +30,50 @@ use crate::types::{MarketId, TokenAmount, OutcomeIndex, min_activation_bet, Toke
 use crate::controllers::admin::is_admin;
 use crate::token::registry::{get_token_info, is_supported_token};
 
-// House fee is 0.1% (10 basis points) represented in basis points
+// House fee constant and configuration
 lazy_static::lazy_static! {
+    /// House fee is 0.1% (10 basis points) represented in basis points
+    /// 
+    /// This fee rate is applied to bet amounts when fees are enabled in the system.
+    /// For KONG tokens, fees are burned. For other tokens, fees are collected in a
+    /// central treasury account controlled by the platform administrators.
     static ref HOUSE_FEE_RATE: TokenAmount = TokenAmount::from(100_000u64); // 0.001 * 10^8 = 100,000
 }
+
+/// Global switch to enable/disable platform fees
+/// 
+/// When set to false, no fees are collected on any bets. This can be used
+/// during promotional periods or for testing environments.
 const FEES_ENABLED: bool = false;
 
-#[update]
 /// Places a bet on a specific market outcome using tokens
+/// 
+/// This function allows users to place bets on prediction markets using ICRC-2 compliant tokens.
+/// The bet amount is transferred from the user to the canister, and the market state is updated
+/// to reflect the new bet. For time-weighted markets, the bet timestamp is recorded to later
+/// determine reward weights based on betting time.
+/// 
+/// # Prerequisites
+/// - User must have approved the prediction markets canister to spend their tokens using
+///   the `icrc2_approve` method on the token ledger canister
+/// - Market must be in Active state (or Pending if the caller is the creator)
+/// - Token type must match the market's token type
+/// 
+/// # Parameters
+/// * `market_id` - ID of the market to bet on
+/// * `outcome_index` - Index of the outcome being bet on
+/// * `amount` - Amount of tokens to bet (raw token units including decimals)
+/// * `token_id` - Optional token identifier; if omitted, uses the market's token
+/// 
+/// # Returns
+/// * `Result<(), BetError>` - Success or failure with detailed error reason
+/// 
+/// # State Changes
+/// - Transfers tokens from user to canister
+/// - Updates market pools and percentages
+/// - Records the bet with timestamp for time-weighted calculations
+/// - Activates market if this is the activation bet from creator
+#[update]
 async fn place_bet(
     market_id: MarketId, 
     outcome_index: OutcomeIndex, 
@@ -153,8 +206,13 @@ async fn place_bet(
     });
 
     // Update market pool with bet amount (excluding fee)
+    // This updates the total tokens in the market and recalculates outcome percentages
+    // These percentages are used for UI display and odd calculations
     market.total_pool += bet_amount.clone();
     market.outcome_pools[outcome_idx] = market.outcome_pools[outcome_idx].clone() + bet_amount.clone();
+    
+    // Recalculate outcome percentages after adding the new bet
+    // Formula: outcome_percentage[i] = outcome_pool[i] / total_pool
     market.outcome_percentages = market
         .outcome_pools
         .iter()
@@ -181,9 +239,16 @@ async fn place_bet(
         })
         .collect();
 
-    // If this is an activation bet from the creator, update the market status
+    // Market Activation Logic
+    // If this is an activation bet from the creator, update the market status from Pending to Active
+    // User-created markets start as Pending and require this activation bet to become available
+    // Admin-created markets start as Active and don't require this step
     if matches!(market.status, MarketStatus::Pending) && user == market.creator {
         market.status = MarketStatus::Active;
+        ic_cdk::println!("Market {} activated by creator bet of {} {}", 
+                      market_id.to_u64(),
+                      amount.to_u64() / 10u64.pow(token_info.decimals as u32),
+                      token_info.symbol);
     }
     
     // Update market in storage
@@ -192,22 +257,31 @@ async fn place_bet(
         markets_ref.insert(market_id_clone.clone(), market);
     });
 
-    // Record the bet
+    // Record the bet in stable memory
+    // This information is crucial for several purposes:
+    // 1. Computing rewards during market resolution
+    // 2. Calculating time-weighted distributions (using the timestamp)
+    // 3. Generating user bet history and statistics
     BETS.with(|bets| {
         let mut bets = bets.borrow_mut();
         let mut bet_store = bets.get(&market_id_clone).unwrap_or_default();
 
         let new_bet = Bet {
-            user,
-            market_id: market_id_clone.clone(),
-            amount: bet_amount, // Store the actual bet amount without fee
-            outcome_index,
-            timestamp: StorableNat::from(ic_cdk::api::time()),
-            token_id: token_id.clone(),
+            user,                               // User who placed the bet
+            market_id: market_id_clone.clone(), // Market being bet on
+            amount: bet_amount,                // Actual bet amount (excluding platform fee)
+            outcome_index,                     // Selected outcome
+            timestamp: StorableNat::from(ic_cdk::api::time()), // Current time for time-weighting
+            token_id: token_id.clone(),        // Token type used for the bet
         };
 
+        // Add the bet to the market's bet store
         bet_store.0.push(new_bet);
         bets.insert(market_id_clone, bet_store);
+        
+        // For time-weighted markets, the timestamp is particularly important
+        // as it determines the weight factor during payout calculations
+        // Earlier bets receive higher weights using the formula: w(t) = α^(t/T)
     });
 
     Ok(())

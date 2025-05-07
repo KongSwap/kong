@@ -1,3 +1,19 @@
+//! # Token Registry Module
+//! 
+//! This module manages the configuration and registration of all tokens supported by the
+//! Kong Swap prediction markets platform. It provides a centralized registry of token metadata,
+//! including fee structures, decimal places, and transfer fees.
+//! 
+//! The token registry supports:
+//! - Multiple token types (KONG, ICP, ckBTC, ckUSDT, etc.)
+//! - Different fee structures per token
+//! - Special handling for the native KONG token
+//! - Dynamic addition and removal of supported tokens
+//! 
+//! Each token has specific configuration parameters that control how it behaves
+//! in the prediction markets system, including fee calculations and minimum
+//! transfer amounts.
+
 use candid::{CandidType, Deserialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -5,19 +21,49 @@ use serde::Serialize;
 
 use crate::types::{TokenAmount, StorableNat};
 
-/// Token identifier type
+/// Token identifier type, represented as a canister Principal ID in string form
+/// 
+/// This type is used to identify tokens throughout the system. It corresponds to
+/// the canister ID of the token's ledger canister on the Internet Computer.
 pub type TokenIdentifier = String;
 
-/// Structure to represent token metadata
+/// Structure to represent token metadata and configuration parameters
+/// 
+/// This structure defines all the properties and configuration values for a token
+/// supported by the Kong Swap platform. It includes both display information (name, symbol)
+/// and operational parameters (fee structure, decimal places).
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct TokenInfo {
-    pub id: TokenIdentifier,           // Canister ID of the token
-    pub name: String,                  // Human-readable name
-    pub symbol: String,                // Token symbol
-    pub decimals: u8,                  // Token decimal places
-    pub fee_percentage: u64,           // Fee percentage (1% = 100, 2% = 200)
-    pub is_kong: bool,                 // Whether this is the KONG token
-    pub transfer_fee: TokenAmount,     // Transfer fee for this token
+    /// Canister ID of the token's ledger on the Internet Computer
+    /// This is the unique identifier for the token and must match the actual canister ID
+    pub id: TokenIdentifier,
+    
+    /// Human-readable name of the token (e.g., "Kong Swap Token")
+    /// Used primarily for UI display and logs
+    pub name: String,
+    
+    /// Token symbol (e.g., "KONG", "ICP", "ckBTC")
+    /// Used for display in the UI and logs
+    pub symbol: String,
+    
+    /// Number of decimal places used by this token
+    /// Critical for proper amount formatting and arithmetic operations
+    /// For example: 8 for KONG/ICP/BTC (1 token = 10^8 units), 6 for USDT/USDC
+    pub decimals: u8,
+    
+    /// Platform fee percentage in basis points (1% = 100, 2% = 200)
+    /// Used to calculate the fee taken from market profits
+    /// KONG has a reduced fee (1%) compared to other tokens (2%)
+    pub fee_percentage: u64,
+    
+    /// Whether this is the KONG token (native platform token)
+    /// KONG tokens receive special treatment (e.g., fees are burned rather than collected)
+    pub is_kong: bool,
+    
+    /// Minimum transfer fee required by this token's ledger
+    /// This is deducted from transfers and ensures the minimum viable transaction amount
+    /// Example: 10_000 (0.0001 KONG) for KONG tokens, 1_000 (0.001 USDT) for ckUSDT
+    pub transfer_fee: TokenAmount,
 }
 
 // Thread-local registry of supported tokens
@@ -143,40 +189,97 @@ thread_local! {
     });
 }
 
-// Functions to interact with the token registry
+/// Functions to interact with the token registry
+
+/// Retrieves the configuration information for a specific token
+/// 
+/// This function looks up a token by its identifier (canister ID) and returns
+/// its full configuration if found, or None if the token is not supported.
+/// 
+/// # Parameters
+/// * `token_id` - The canister ID of the token to look up
+/// 
+/// # Returns
+/// * `Option<TokenInfo>` - Token configuration if found, None otherwise
 pub fn get_token_info(token_id: &TokenIdentifier) -> Option<TokenInfo> {
     TOKEN_REGISTRY.with(|registry| {
         registry.borrow().get(token_id).cloned()
     })
 }
 
+/// Checks if a token is supported by the platform
+/// 
+/// This function verifies whether a token with the given ID is registered
+/// and available for use in prediction markets.
+/// 
+/// # Parameters
+/// * `token_id` - The canister ID of the token to check
+/// 
+/// # Returns
+/// * `bool` - True if the token is supported, false otherwise
 pub fn is_supported_token(token_id: &TokenIdentifier) -> bool {
     TOKEN_REGISTRY.with(|registry| {
         registry.borrow().contains_key(token_id)
     })
 }
 
+/// Retrieves configuration information for all supported tokens
+/// 
+/// This function returns a list of all tokens currently registered in the system,
+/// including their complete configuration details. Used for UI display and administrative purposes.
+/// 
+/// # Returns
+/// * `Vec<TokenInfo>` - List of all supported token configurations
 pub fn get_all_supported_tokens() -> Vec<TokenInfo> {
     TOKEN_REGISTRY.with(|registry| {
         registry.borrow().values().cloned().collect()
     })
 }
 
-/// Get list of all supported token identifiers
+/// Gets a list of all supported token identifiers (canister IDs)
+/// 
+/// This function returns just the canister IDs of all supported tokens without
+/// the full configuration details. Useful for validation and UI requirements.
+/// 
+/// # Returns
+/// * `Vec<TokenIdentifier>` - List of all supported token canister IDs
 pub fn get_supported_token_identifiers() -> Vec<TokenIdentifier> {
     TOKEN_REGISTRY.with(|registry| {
         registry.borrow().keys().cloned().collect()
     })
 }
 
-// For admin to add new supported tokens
+/// Adds a new token to the supported tokens registry (admin only)
+/// 
+/// This function registers a new token for use in the prediction markets platform.
+/// It requires administrative access and should be called through a proper
+/// admin-controlled interface.
+/// 
+/// # Parameters
+/// * `token_info` - Complete token configuration including ID, name, symbol, and fee structure
+/// 
+/// # Security
+/// This function must only be callable by canister administrators
 pub fn add_supported_token(token_info: TokenInfo) {
     TOKEN_REGISTRY.with(|registry| {
         registry.borrow_mut().insert(token_info.id.clone(), token_info);
     });
 }
 
-// For admin to update an existing token configuration
+/// Updates the configuration of an existing supported token (admin only)
+/// 
+/// This function allows administrators to modify the parameters of a token
+/// that is already registered in the system. For example, to adjust the fee
+/// percentage or transfer fee.
+/// 
+/// # Parameters
+/// * `token_info` - Updated token configuration
+/// 
+/// # Behavior
+/// Only updates the token if it already exists in the registry
+/// 
+/// # Security
+/// This function must only be callable by canister administrators
 pub fn update_token_config(token_info: TokenInfo) {
     TOKEN_REGISTRY.with(|registry| {
         let mut registry_ref = registry.borrow_mut();
@@ -186,13 +289,27 @@ pub fn update_token_config(token_info: TokenInfo) {
     });
 }
 
-// For admin to remove supported tokens
+/// Removes a token from the supported tokens registry (admin only)
+/// 
+/// This function deregisters a token from the system, preventing it from
+/// being used in new prediction markets. Existing markets using this token
+/// should be handled carefully.
+/// 
+/// # Parameters
+/// * `token_id` - Canister ID of the token to be removed
+/// 
+/// # Security
+/// This function must only be callable by canister administrators
 pub fn remove_supported_token(token_id: TokenIdentifier) {
     TOKEN_REGISTRY.with(|registry| {
         registry.borrow_mut().remove(&token_id);
     });
 }
 
-// Constants for production vs local environments
-pub const KONG_LEDGER_ID_PROD: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";  // Production KONG
-pub const KONG_LEDGER_ID_LOCAL: &str = "umunu-kh777-77774-qaaca-cai";  // Local testing KONG
+/// Constants for production vs local environments
+
+/// Canister ID for the KONG token ledger in production environment
+pub const KONG_LEDGER_ID_PROD: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";
+
+/// Canister ID for the KONG token ledger in local testing environment
+pub const KONG_LEDGER_ID_LOCAL: &str = "umunu-kh777-77774-qaaca-cai";
