@@ -205,7 +205,7 @@
   const buttons = $derived(isMobile ? mobileHeaderButtons : desktopButtons);
 </script>
 
-<div class="flex items-center {isMobile ? '' : 'bg-kong-bg-dark/50 border border-kong-border/50'} {$panelRoundness} overflow-hidden">
+<div class="flex items-center overflow-visible {isMobile ? '' : 'bg-kong-bg-dark/50 border border-kong-border/50'} {$panelRoundness} overflow-hidden">
   {#each buttons as button}
     {#if button.show !== false}
       <button

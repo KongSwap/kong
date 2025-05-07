@@ -1,4 +1,4 @@
-import { canisters, type TROLLBOX } from "$lib/config/auth.config";
+import { canisters, type CanisterType } from "$lib/config/auth.config";
 import { auth } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import * as tokensApi from "$lib/api/tokens";
@@ -91,7 +91,7 @@ async function processMessageTokens(message: Message): Promise<Message> {
 }
 
 export async function getMessages(params?: PaginationParams): Promise<MessagesPage> {
-    const actor = auth.pnp.getActor<TROLLBOX>({
+    const actor = auth.pnp.getActor<CanisterType['TROLLBOX']>({
         canisterId: canisters.trollbox.canisterId,
         idl: canisters.trollbox.idl,
         anon: true,
@@ -116,7 +116,7 @@ export async function getMessages(params?: PaginationParams): Promise<MessagesPa
 }
 
 export async function getMessage(id: bigint): Promise<Message | null> {
-    const actor = auth.pnp.getActor<TROLLBOX>({
+    const actor = auth.pnp.getActor<CanisterType['TROLLBOX']>({
         canisterId: canisters.trollbox.canisterId,
         idl: canisters.trollbox.idl,
         anon: true,
@@ -129,7 +129,7 @@ export async function getMessage(id: bigint): Promise<Message | null> {
 }
 
 export async function createMessage(payload: MessagePayload): Promise<Message> {
-    const actor = auth.pnp.getActor<TROLLBOX>({
+    const actor = auth.pnp.getActor<CanisterType['TROLLBOX']>({
         canisterId: canisters.trollbox.canisterId,
         idl: canisters.trollbox.idl,
         anon: false,
@@ -204,7 +204,7 @@ export async function isAdmin(): Promise<boolean> {
     }
     
     try {
-        const actor = auth.pnp.getActor<TROLLBOX>({
+        const actor = auth.pnp.getActor<CanisterType['TROLLBOX']>({
             canisterId: canisters.trollbox.canisterId,
             idl: canisters.trollbox.idl,
             anon: true,
@@ -234,7 +234,7 @@ export async function deleteMessage(messageId: bigint): Promise<boolean> {
     }
     
     try {
-        const actor = auth.pnp.getActor<TROLLBOX>({
+        const actor = auth.pnp.getActor<CanisterType['TROLLBOX']>({
             canisterId: canisters.trollbox.canisterId,
             idl: canisters.trollbox.idl,
             anon: false,
@@ -267,7 +267,7 @@ export async function banUser(principal: Principal, days: bigint): Promise<boole
     }
     
     try {
-        const actor = auth.pnp.getActor<TROLLBOX>({
+        const actor = auth.pnp.getActor<CanisterType['TROLLBOX']>({
             canisterId: canisters.trollbox.canisterId,
             idl: canisters.trollbox.idl,
             anon: false,
@@ -300,7 +300,7 @@ export async function unbanUser(principal: Principal): Promise<boolean> {
     }
     
     try {
-        const actor = auth.pnp.getActor<TROLLBOX>({
+        const actor = auth.pnp.getActor<CanisterType['TROLLBOX']>({
             canisterId: canisters.trollbox.canisterId,
             idl: canisters.trollbox.idl,
             anon: false,
@@ -328,7 +328,7 @@ export async function unbanUser(principal: Principal): Promise<boolean> {
  */
 export async function checkBanStatus(principal: Principal): Promise<bigint | null> {
     try {
-        const actor = auth.pnp.getActor<TROLLBOX>({
+        const actor = auth.pnp.getActor<CanisterType['TROLLBOX']>({
             canisterId: canisters.trollbox.canisterId,
             idl: canisters.trollbox.idl,
             anon: true,
