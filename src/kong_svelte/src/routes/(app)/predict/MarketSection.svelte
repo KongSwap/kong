@@ -132,7 +132,7 @@
     }
     
     try {
-      await voidMarketViaAdmin(market.id.toString());
+      await voidMarketViaAdmin(BigInt(market.id));
       await onMarketResolved();
     } catch (error) {
       console.error("Failed to void market:", error);
