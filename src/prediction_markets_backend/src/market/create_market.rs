@@ -2,7 +2,7 @@ use ic_cdk::update;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use super::market::*;
-use crate::token::registry::{TokenIdentifier, get_token_info, is_supported_token};
+use crate::token::registry::{TokenIdentifier, is_supported_token};
 use crate::token::registry::KONG_LEDGER_ID_LOCAL;
 
 use crate::category::market_category::*;

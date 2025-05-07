@@ -1,12 +1,10 @@
-use ic_cdk::update;
-
 use super::resolution::*;
 
 use crate::market::market::*;
 use crate::stable_memory::*;
 use crate::controllers::admin::*;
-use crate::types::{MarketId, TokenAmount, TokenIdentifier};
-use crate::token::registry::{get_token_info, is_supported_token};
+use crate::types::MarketId;
+use crate::token::registry::get_token_info;
 use crate::token::transfer::transfer_token;
 
 /// Voids a market and returns all bets to the users

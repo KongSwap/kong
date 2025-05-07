@@ -51,7 +51,7 @@ pub fn get_markets_by_status(args: GetMarketsByStatusArgs) -> GetMarketsByStatus
                     });
 
                     // Create a modified market with outcome pool information
-                    let mut market = market.clone();
+                    let market = market.clone();
                     // Keep market rules in the response
 
                     if now < market.end_time {
@@ -62,14 +62,14 @@ pub fn get_markets_by_status(args: GetMarketsByStatusArgs) -> GetMarketsByStatus
                 }
                 MarketStatus::Disputed => {
                     // Add disputed markets to expired_unresolved since they need admin attention
-                    let mut market = market.clone();
+                    let market = market.clone();
                     // Keep market rules in the response
                     result.expired_unresolved.push(market);
                 }
                 MarketStatus::Voided => {
                     // Add voided markets to resolved since they are no longer active
                     // but don't have any distributions
-                    let mut market = market.clone();
+                    let market = market.clone();
                     
                     // Create an empty market result for voided markets
                     result.resolved.push(MarketResult {
@@ -144,7 +144,7 @@ pub fn get_markets_by_status(args: GetMarketsByStatusArgs) -> GetMarketsByStatus
                         })
                         .collect();
 
-                    let mut market = market.clone();
+                    let market = market.clone();
                     // Keep market rules in the response
 
                     result.resolved.push(MarketResult {

@@ -8,13 +8,11 @@ use icrc_ledger_types::icrc21::requests::{ConsentMessageRequest, ConsentMessageM
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 use candid::decode_one;
 
-use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND, TokenIdentifier};
+use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
 use crate::token::registry::{TokenInfo, get_all_supported_tokens, get_token_info, add_supported_token as add_token, update_token_config as update_token};
 
 use super::delegation::*;
 use crate::market::estimate_return_types::*;
-use crate::market::estimate_return::*;
-use crate::market::market::*;
 use crate::constants::PLATFORM_FEE_PERCENTAGE;
 use crate::stable_memory::*;
 

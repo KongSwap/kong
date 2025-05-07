@@ -2,15 +2,13 @@ use candid::Principal;
 
 use super::resolution::*;
 use crate::canister::{get_current_time, record_market_payout};
-use crate::market::bet::*;
 use crate::market::market::*;
 use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::stable_memory::*;
-use crate::types::{MarketId, TokenAmount, OutcomeIndex, Timestamp, StorableNat, TokenIdentifier};
+use crate::types::{TokenAmount, OutcomeIndex, Timestamp, StorableNat};
 use crate::utils::time_weighting::*;
-use crate::token::registry::{get_token_info, is_supported_token};
+use crate::token::registry::get_token_info;
 use crate::token::transfer::{transfer_token, handle_fee_transfer};
-use crate::types::calculate_platform_fee;
 
 /// Finalizes a market by distributing winnings to successful bettors
 pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeIndex>) -> Result<(), ResolutionError> {

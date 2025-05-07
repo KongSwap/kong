@@ -9,7 +9,6 @@ use super::delegation::*;
 
 use crate::bet::bet::*;
 use crate::market::market::*;
-use crate::nat::*;
 use crate::resolution::resolution::ResolutionProposal;
 use crate::types::MarketId;
 

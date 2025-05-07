@@ -54,7 +54,7 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                                             let alpha = get_market_alpha(&market);
                                             
                                             // Calculate time-based weight for this bet
-                                            let weight = calculate_time_weight(
+                                            let _weight = calculate_time_weight(
                                                 Timestamp::from(market_created_at as u64),
                                                 Timestamp::from(market_end_time as u64),
                                                 bet.timestamp.clone(),

@@ -10,7 +10,7 @@ pub fn platform_fee_percentage() -> StorableNat {
 
 /// Helper to calculate percentage of an amount
 pub fn calculate_percentage(amount: &StorableNat, percentage: u64) -> StorableNat {
-    let percentage_nat = StorableNat::from(percentage);
+    let _percentage_nat = StorableNat::from(percentage);
     let hundred = 100u64;
     
     // Convert StorableNat to u64, perform division, then convert back

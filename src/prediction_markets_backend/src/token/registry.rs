@@ -1,4 +1,4 @@
-use candid::{CandidType, Deserialize, Principal};
+use candid::{CandidType, Deserialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use serde::Serialize;

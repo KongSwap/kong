@@ -3,8 +3,6 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use ic_cdk::query;
 
-use crate::resolution::transfer_kong;
-
 const DEFAULT_ADMIN_PRINCIPALS: [&str; 7] = [
     "4jxje-hbmra-4otqc-6hor3-cpwlh-sqymk-6h4ef-42sqn-o3ip5-s3mxk-uae",
     "6rjil-isfbu-gsmpe-ffvcl-v3ifl-xqgkr-en2ir-pbr54-cetku-syp4i-bae",

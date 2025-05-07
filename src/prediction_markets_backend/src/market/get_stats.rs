@@ -2,7 +2,7 @@ use ic_cdk::query;
 use candid::CandidType;
 use serde::Deserialize;
 
-use crate::types::{MarketId, TokenAmount, StorableNat};
+use crate::types::StorableNat;
 use crate::stable_memory::*;
 use super::market::MarketStatus; // Import MarketStatus
 

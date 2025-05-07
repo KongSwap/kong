@@ -9,11 +9,9 @@ use super::bet::*;
 use crate::market::market::*;
 use crate::nat::StorableNat;
 use crate::stable_memory::*;
-use crate::KONG_LEDGER_ID;
 use crate::types::{MarketId, TokenAmount, OutcomeIndex, min_activation_bet, TokenIdentifier, calculate_platform_fee};
 use crate::controllers::admin::is_admin;
 use crate::token::registry::{get_token_info, is_supported_token};
-use crate::token::registry::KONG_LEDGER_ID_LOCAL;
 
 // House fee is 0.1% (10 basis points) represented in basis points
 lazy_static::lazy_static! {

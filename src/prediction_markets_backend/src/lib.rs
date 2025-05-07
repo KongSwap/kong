@@ -6,7 +6,6 @@
 //! - Automatically distribute winnings to successful bettors
 
 use candid::Principal;
-use ic_cdk::api::time;
 use ic_cdk_macros::{init, pre_upgrade, post_upgrade};
 
 use crate::bet::bet::*;

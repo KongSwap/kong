@@ -3,11 +3,10 @@ use ic_cdk::query;
 use super::market::*;
 
 use crate::stable_memory::*;
-use crate::types::{MarketId, TokenAmount, OutcomeIndex, StorableNat};
+use crate::types::{MarketId, StorableNat};
 
 use candid::CandidType;
 use serde::Deserialize;
-use num_traits::ToPrimitive;
 
 #[derive(CandidType, Deserialize)]
 pub enum SortDirection {
