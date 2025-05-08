@@ -54,10 +54,10 @@ fn deploy_ksusdt_ledger(ic: &PocketIc) -> Result<Principal> {
 #[test]
 fn test_ksusdt_ledger_icrc1_name() {
     let ic = PocketIc::new();
-    let ksicp_ledger = deploy_ksusdt_ledger(&ic).expect("Failed to deploy ksicp ledger");
+    let ksusdt_ledger = deploy_ksusdt_ledger(&ic).expect("Failed to deploy ksusdt ledger");
 
-    let args = encode_one((ksicp_ledger,)).expect("Failed to encode arguments");
-    let Ok(response) = ic.query_call(ksicp_ledger, Principal::anonymous(), "icrc1_name", args) else {
+    let args = encode_one((ksusdt_ledger,)).expect("Failed to encode arguments");
+    let Ok(response) = ic.query_call(ksusdt_ledger, Principal::anonymous(), "icrc1_name", args) else {
         panic!("Failed to query icrc1_name");
     };
     let result = decode_one::<String>(&response).expect("Failed to decode icrc1_name response");

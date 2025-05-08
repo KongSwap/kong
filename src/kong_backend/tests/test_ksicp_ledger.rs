@@ -72,3 +72,22 @@ fn test_ksicp_ledger_icrc1_name() {
         result, expected_icrc1_name
     );
 }
+
+#[test]
+fn test_ksicp_ledger_icrc1_decimals() {
+    let ic = PocketIc::new();
+    let ksicp_ledger = deploy_ksicp_ledger(&ic).expect("Failed to deploy ksicp ledger");
+
+    let args = encode_one((ksicp_ledger,)).expect("Failed to encode arguments");
+    let Ok(response) = ic.query_call(ksicp_ledger, Principal::anonymous(), "icrc1_decimals", args) else {
+        panic!("Failed to query icrc1_decimals");
+    };
+    let result = decode_one::<u8>(&response).expect("Failed to decode icrc1_decimals response");
+
+    let expected_icrc1_decimals = KSICP_DECIMALS;
+    assert_eq!(
+        result, expected_icrc1_decimals,
+        "icrc1_decimals got {}, should be {}",
+        result, expected_icrc1_decimals
+    );
+}
