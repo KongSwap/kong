@@ -10,7 +10,7 @@ export const lightTheme: ThemeDefinition = {
   colors: {
     // Background colors
     bgDark: '#F5F7FA',      // Light gray/blue
-    bgLight: '#FFFFFF',     // White
+    bgLight: '#f5f5f5',     // White
     hoverBgLight: '#EEF1F5', // Slightly darker for hover
     
     // Primary and secondary colors
@@ -53,7 +53,7 @@ export const lightTheme: ThemeDefinition = {
     panelRoundness: 'rounded-lg', // Modern rounded corners
     swapPanelRoundness: 'rounded-xl', // Slightly more rounded for swap panels
     swapPanelBorder: '1px solid rgba(203, 213, 225, 0.5)', // Light border
-    swapPanelShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)', // Modern shadow
+    swapPanelShadow: 'shadow-sm', // Modern shadow
     swapPanelInputsRounded: true, // Rounded inputs
     
     // Borders
@@ -100,17 +100,16 @@ export const lightTheme: ThemeDefinition = {
     swapButtonReadyGlowEnd: '#059669',   // Darker green
     swapButtonTextColor: '#FFFFFF', // White text for contrast
     swapButtonRoundness: 'rounded-xl', // Match swap panel roundness
-    swapButtonShadow: '0 4px 12px rgba(37, 99, 235, 0.2)', // Subtle blue shadow
+    swapButtonShadow: '0 4px 8px rgba(37, 99, 235, 0.2)', // Subtle blue shadow
     
     // Chart text color
     chartTextColor: '#1E293B',
     
     // Background configuration
     backgroundType: 'gradient',
-    backgroundGradient: 'linear-gradient(180deg, rgb(241, 245, 249) 0%, rgb(248, 250, 252) 100%)',
+    backgroundGradient: 'linear-gradient(135deg, rgba(235, 241, 250, 1) 0%, rgba(229, 237, 248, 1) 50%, rgba(242, 247, 255, 1) 100%)',
     backgroundOpacity: 1,
     enableNebula: false,
     enableStars: false,
-    enableSkyline: false
   }
 }; 

@@ -8,8 +8,8 @@
   import { debounce } from "$lib/utils/debounce";
   import { fade } from "svelte/transition";
   import BigNumber from "bignumber.js";
-  import { canisterIDLs } from "$lib/config/auth.config";
-    import { fetchTokenMetadata } from "$lib/api/tokens/TokenApiClient";
+  import { canisters, type KONG_BACKEND } from "$lib/config/auth.config";
+  import { fetchTokenMetadata } from "$lib/api/tokens/TokenApiClient";
 
   // Props
   const props = $props<{
@@ -172,10 +172,12 @@
     try {
       try {
         // Call the add_token canister function directly
-        const kongBackendActor = auth.getActor(
-          process.env.CANISTER_ID_KONG_BACKEND,
-          canisterIDLs.kong_backend
-        );
+        const kongBackendActor = auth.pnp.getActor<KONG_BACKEND>({
+          canisterId: canisters.kongBackend.canisterId,
+          idl: canisters.kongBackend.idl,
+          anon: false,
+          requiresSigning: false,
+        });
         
         const addTokenResult = await kongBackendActor.add_token({ token: formattedCanisterId });
         

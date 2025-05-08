@@ -525,32 +525,8 @@ dfx start --background --pocketic
 dfx deploy prediction_markets_backend
 ```
 
-### Testing Scripts
-
-The project includes various test scripts to validate functionality:
-
 ```bash
-# Test user market creation and activation
-./scripts/prediction_markets/user_mkts/01_test_market_creation.sh
-
-# Test dual resolution system
-./scripts/prediction_markets/user_mkts/02_test_dual_resolution.sh
-
-# Test bet return estimation
-./scripts/prediction_markets/user_mkts/03_test_estimate_bet_return.sh
-
-# Test market payout records
-./scripts/prediction_markets/user_mkts/04_test_payout_records.sh
-
-# Test market creation method restrictions
-./scripts/prediction_markets/user_mkts/05_test_market_creation_restrictions.sh
-
-# Test time-weighted markets
-./scripts/prediction_markets/01_test_time_weighting.sh
-```
-#deploy the kskong_ledger canister
-```bash
-dfx deploy kskong_ledger
+dfx deploy kong_ledger
 ```
 
 #mint tokens for the selected profiles (change the principals in the mint_kong.sh script to send to your identities)  

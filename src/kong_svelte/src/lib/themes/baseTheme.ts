@@ -159,7 +159,6 @@ export interface ThemeColors {
   // Special effects
   enableNebula?: boolean;
   enableStars?: boolean;
-  enableSkyline?: boolean;
   nebulaOpacity?: number;
   starsOpacity?: number;
 }
@@ -224,7 +223,7 @@ export const baseTheme: ThemeDefinition = {
     panelRoundness: 'rounded-lg', // Default panel roundness
     swapPanelRoundness: 'rounded-xl', // Swap panels are slightly more rounded
     swapPanelBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    swapPanelShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
+    swapPanelShadow: 'shadow-sm',
     swapPanelInputsRounded: true,
     transparentSwapPanel: true, // Default to transparent swap panels
     transparentPanel: true,
@@ -300,16 +299,16 @@ export const baseTheme: ThemeDefinition = {
     
     // Swap Button styling
     swapButtonPrimaryGradientStart: '#0095EB',
-    swapButtonPrimaryGradientEnd: '#0086D3',
-    swapButtonErrorGradientStart: '#FF4545',
-    swapButtonErrorGradientEnd: '#EB3737',
-    swapButtonProcessingGradientStart: '#6F5DFB',
-    swapButtonProcessingGradientEnd: '#9EA4BA',
-    swapButtonBorderColor: 'rgba(255, 255, 255, 0.2)',
-    swapButtonGlowColor: '#00A7FF',
-    swapButtonShineColor: '#0090DC',
-    swapButtonReadyGlowStart: '#05EC86',
-    swapButtonReadyGlowEnd: '#04CE75',
+    swapButtonPrimaryGradientEnd: '#0072B1',
+    swapButtonErrorGradientStart: '#E85373',
+    swapButtonErrorGradientEnd: '#C23758',
+    swapButtonProcessingGradientStart: '#6B8CFF',
+    swapButtonProcessingGradientEnd: '#4563DB',
+    swapButtonBorderColor: 'rgba(255, 255, 255, 0.15)',
+    swapButtonGlowColor: '#0095EB',
+    swapButtonShineColor: '#00BFFF',
+    swapButtonReadyGlowStart: '#0095EB',
+    swapButtonReadyGlowEnd: '#006699',
     swapButtonTextColor: '#FFFFFF',
     swapButtonRoundness: 'rounded-lg',
     swapButtonShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
@@ -329,7 +328,6 @@ export const baseTheme: ThemeDefinition = {
     enableParallax: false,
     enableNebula: true,
     enableStars: true,
-    enableSkyline: true,
     nebulaOpacity: 0.3,
     starsOpacity: 0.8
   }

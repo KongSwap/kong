@@ -114,11 +114,11 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 
     # Deploy test token ledger canisters
     LEDGER_SCRIPTS=(
-        "deploy_ksusdt_ledger.sh"
-        "deploy_ksicp_ledger.sh"
-        "deploy_ksbtc_ledger.sh"
-        "deploy_kseth_ledger.sh"
-        "deploy_kong_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_ksusdt_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_icp_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_ksbtc_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_kseth_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_kskong_ledger.sh"
     )
 
     for script in "${LEDGER_SCRIPTS[@]}"; do

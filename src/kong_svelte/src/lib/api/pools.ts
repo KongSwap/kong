@@ -1,10 +1,10 @@
 import { API_URL } from "$lib/api/index";
-import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
-import { auth, requireWalletConnection, canisterIDLs } from "$lib/stores/auth";
+import { auth, requireWalletConnection } from "$lib/stores/auth";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { toastStore } from "$lib/stores/toastStore";
 import { IcrcTokenSerializer } from "$lib/serializers/tokens/IcrcTokenSerializer";
+import { canisters, type CanisterType } from "$lib/config/auth.config";
+import type { AddLiquiditAmountsResult } from "../../../../declarations/kong_backend/kong_backend.did";
 
 export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total_count: number, total_pages: number, page: number, limit: number}> => {
   try {
@@ -176,19 +176,20 @@ export async function calculateLiquidityAmounts(
   token0Symbol: string,
   amount0: bigint,
   token1Symbol: string,
-): Promise<any> {
+): Promise<AddLiquiditAmountsResult> {
   try {
-    const actor = createAnonymousActorHelper(
-      KONG_BACKEND_CANISTER_ID,
-      canisterIDLs.kong_backend,
-    );
+    const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
+      canisterId: canisters.kongBackend.canisterId,
+      idl: canisters.kongBackend.idl,
+      anon: true,
+    });
     const result = await actor.add_liquidity_amounts(
       "IC." + token0Symbol,
       amount0,
       "IC." + token1Symbol,
     );
 
-    if (!result.Ok) {
+    if ('Err' in result) {
       throw new Error(result.Err || "Failed to calculate liquidity amounts");
     }
 
@@ -213,11 +214,12 @@ export async function calculateRemoveLiquidityAmounts(
         ? BigInt(Math.floor(lpTokenAmount * 1e8))
         : lpTokenAmount;
 
-    const actor = await auth.pnp.getActor(
-      KONG_BACKEND_CANISTER_ID,
-      canisterIDLs.kong_backend,
-      { anon: true, requiresSigning: false },
-    );
+    const actor = await auth.pnp.getActor({
+      canisterId: canisters.kongBackend.canisterId,
+      idl: canisters.kongBackend.idl,
+      anon: true,
+      requiresSigning: false,
+    });
 
     const result = await (actor as any).remove_liquidity_amounts(
       "IC." + token0CanisterId,
@@ -268,7 +270,9 @@ export async function addLiquidity(params: {
           params.token_1,
           params.amount_1,
         ),
-        auth.pnp.getActor(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend, {
+        auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
+          canisterId: canisters.kongBackend.canisterId,
+          idl: canisters.kongBackend.idl,
           anon: false,
           requiresSigning: false,
         }),
@@ -278,22 +282,22 @@ export async function addLiquidity(params: {
       tx_id_0 = [];
       tx_id_1 = [];
       actor = actorResult;
-
-
     } else {
       // Handle ICRC1 tokens
       const [transfer0Result, transfer1Result, actorResult] = await Promise.all([
         IcrcService.transfer(
           params.token_0,
-          KONG_BACKEND_CANISTER_ID,
+          canisters.kongBackend.canisterId,
           params.amount_0,
         ),
         IcrcService.transfer(
           params.token_1,
-          KONG_BACKEND_CANISTER_ID,
+          canisters.kongBackend.canisterId,
           params.amount_1,
         ),
-        auth.pnp.getActor(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend, {
+        auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
+          canisterId: canisters.kongBackend.canisterId,
+          idl: canisters.kongBackend.idl,
           anon: false,
           requiresSigning: false,
         }),
@@ -351,14 +355,15 @@ export async function pollRequestStatus(
     toastId = toastStore.info("Processing transaction..."); // Generic initial message
 
     while (attempts < MAX_ATTEMPTS) {
-      const actor = await auth.pnp.getActor(
-        KONG_BACKEND_CANISTER_ID,
-        canisterIDLs.kong_backend,
-        { anon: true }
-      );
-      const result = await (actor as any).requests([requestId]);
+      const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
+        canisterId: canisters.kongBackend.canisterId,
+        idl: canisters.kongBackend.idl,
+        anon: true,
+        requiresSigning: false,
+      });
+      const result = await actor.requests([requestId]);
 
-      if (!result.Ok || result.Ok.length === 0) {
+      if ('Err' in result) {
         if (toastId !== undefined) toastStore.dismiss(String(toastId));
         throw new Error("Failed to get request status");
       }
@@ -480,11 +485,12 @@ export async function removeLiquidity(params: {
         ? BigInt(Math.floor(params.lpTokenAmount * 1e8))
         : params.lpTokenAmount;
 
-    const actor = await auth.pnp.getActor(
-      KONG_BACKEND_CANISTER_ID,
-      canisterIDLs.kong_backend,
-      { anon: false, requiresSigning: false },
-    );
+    const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
+      canisterId: canisters.kongBackend.canisterId,
+      idl: canisters.kongBackend.idl,
+      anon: false,
+      requiresSigning: false,
+    });
     const result = await (actor as any).remove_liquidity_async({
       token_0: "IC." + params.token0,
       token_1: "IC." + params.token1,
@@ -535,7 +541,9 @@ export async function createPool(params: {
           params.token_1,
           params.amount_1,
         ),
-        auth.pnp.getActor(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend, {
+        auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
+          canisterId: canisters.kongBackend.canisterId,
+          idl: canisters.kongBackend.idl,
           anon: false,
           requiresSigning: false,
         }),
@@ -550,15 +558,17 @@ export async function createPool(params: {
       const [transfer0Result, transfer1Result, actorResult] = await Promise.all([
         IcrcService.transfer(
           params.token_0,
-          KONG_BACKEND_CANISTER_ID,
+          canisters.kongBackend.canisterId,
           params.amount_0,
         ),
         IcrcService.transfer(
           params.token_1,
-          KONG_BACKEND_CANISTER_ID,
+          canisters.kongBackend.canisterId,
           params.amount_1,
         ),
-        auth.pnp.getActor(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend, {
+        auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
+          canisterId: canisters.kongBackend.canisterId,
+          idl: canisters.kongBackend.idl,
           anon: false,
           requiresSigning: false,
         }),
@@ -606,11 +616,12 @@ export async function sendLpTokens(params: {
       ? BigInt(Math.floor(params.amount * 1e8))
       : params.amount;
 
-    const actor = await auth.pnp.getActor(
-      KONG_BACKEND_CANISTER_ID,
-      canisterIDLs.kong_backend,
-      { anon: false, requiresSigning: false },
-    );
+    const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
+      canisterId: canisters.kongBackend.canisterId,
+      idl: canisters.kongBackend.idl,
+      anon: false,
+      requiresSigning: false,
+    });
 
     const result = await (actor as any).send({
       token: params.token,

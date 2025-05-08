@@ -62,7 +62,7 @@
     updateAccountData();
     const unsubscribe = auth.subscribe(async state => {
       updateAccountData();
-      if ($auth.isConnected && auth?.pnp?.activeWallet?.chain === 'SOL' && auth.pnp?.provider?.getAddresses) {
+      if ($auth.isConnected && auth?.pnp?.adapter?.chain === 'SOL' && auth.pnp?.provider?.getAddresses) {
         walletAddresses = await auth.pnp.provider.getAddresses();
         updateDisplayAddresses();
       }

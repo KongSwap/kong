@@ -19,9 +19,9 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 	amount=$amount;
 },)"
 
-# 100,000 ksICP
+# 100,000 ICP
 amount=10_000_000_000_000
-token="ksicp"
+token="icp"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {

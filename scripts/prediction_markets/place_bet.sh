@@ -19,28 +19,6 @@ TOKEN_ID=${4:-"umunu-kh777-77774-qaaca-cai"} # Default to KONG if not specified
 # Get token ledger canister ID based on token ID
 PREDICTION_MARKETS_CANISTER=$(dfx canister id prediction_markets_backend)
 
-# Determine which ledger to use based on TOKEN_ID
-if [ "$TOKEN_ID" = "umunu-kh777-77774-qaaca-cai" ]; then
-    # KONG token
-    TOKEN_LEDGER=$(dfx canister id kskong_ledger)
-    TOKEN_SYMBOL="KONG"
-elif [ "$TOKEN_ID" = "ulvla-h7777-77774-qaacq-cai" ]; then
-    # ksICP token (local testing)
-    TOKEN_LEDGER=$(dfx canister id ksicp_ledger)
-    TOKEN_SYMBOL="ksICP"
-elif [ "$TOKEN_ID" = "ryjl3-tyaaa-aaaaa-aaaba-cai" ]; then
-    # ICP token (production)
-    TOKEN_LEDGER=$(dfx canister id icp_ledger)
-    TOKEN_SYMBOL="ICP"
-else
-    # For other tokens, use the token ID directly
-    TOKEN_LEDGER=$TOKEN_ID
-    TOKEN_SYMBOL="TOKEN"
-fi
-
-# Get token fee
-TOKEN_FEE=$(dfx canister call ${TOKEN_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
-TOKEN_FEE=${TOKEN_FEE//_/}
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # approval expires 60 seconds from now
 
 echo "Approving ${AMOUNT} ${TOKEN_SYMBOL} tokens for transfer from ${TOKEN_LEDGER}..."

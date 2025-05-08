@@ -47,12 +47,6 @@
     "staging_fe": "ryjl3-tyaaa-aaaaa-aaaba-cai",
     "staging": ""
   },
-  "ksicp_ledger": {
-    "ic": "",
-    "local": "nppha-riaaa-aaaal-ajf2q-cai",
-    "staging_fe": "",
-    "staging": "nppha-riaaa-aaaal-ajf2q-cai"
-  },
   "btc_ledger": {
     "ic": "mxzaz-hqaaa-aaaar-qaada-cai",
     "local": "",
@@ -77,11 +71,17 @@
     "staging_fe": "",
     "staging": "zr7ra-6yaaa-aaaar-qaica-cai"
   },
-  "kskong_ledger": {
+  "kong_ledger": {
     "ic": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "local": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "staging_fe": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "staging": ""
+  },
+  "kskong_ledger": {
+    "ic": "",
+    "local": "uxrrr-q7777-77774-qaaaq-cai",
+    "staging_fe": "",
+    "staging": "uxrrr-q7777-77774-qaaaq-cai"
   },
   "internet_identity": {
     "local": "rdmx6-jaaaa-aaaaa-aaadq-cai",
