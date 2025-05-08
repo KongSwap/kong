@@ -2,9 +2,10 @@ use candid::{CandidType, Nat, Principal};
 use ic_ledger_types::{query_blocks, AccountIdentifier, Block, GetBlocksArgs, Operation, Subaccount, Tokens};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::allowance::{Allowance, AllowanceArgs};
-use icrc_ledger_types::icrc3::blocks::{GetBlocksRequest, GetBlocksResult, ICRC3GenericBlock};
+use icrc_ledger_types::icrc3::blocks::{GetBlocksRequest, GetBlocksResult};
 use icrc_ledger_types::icrc3::transactions::{GetTransactionsRequest, GetTransactionsResponse};
 use icrc_ledger_types::icrc::generic_value::ICRC3Value;
+use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -14,6 +15,7 @@ use crate::helpers::nat_helpers::nat_to_u64;
 use crate::ic::get_time::get_time;
 use crate::ic::id::{caller_account_id, caller_id};
 use crate::stable_kong_settings::kong_settings_map;
+use crate::stable_token::ic_token::ICToken;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 
@@ -272,22 +274,16 @@ fn get_verification_methods(token_address: &str, ic_token: &ICToken) -> Vec<Veri
 
 // Verify using TAGGR's special ICRC3 implementation
 async fn verify_transfer_taggr(token: &StableToken, block_id: &Nat, amount: &Nat, ts_start: u64) -> Result<(), String> {
-    // Configure timeout for TAGGR verification (shorter than standard)
-    let timeout_option = ic_cdk::api::call::CallOptions {
-        timeout_nanosseconds: Some(3_000_000_000), // 3 seconds
-    };
-    
     // TAGGR requires special u64 encoding
     let taggr_args = vec![TaggrGetBlocksArgs {
         start: nat_to_u64(block_id).ok_or_else(|| format!("Block id {:?} too large for u64", block_id))?,
         length: 1,
     }];
     
-    let blocks_result = match ic_cdk::api::call::call_with_options::<(Vec<TaggrGetBlocksArgs>,), (GetBlocksResult,)>(
-        token.canister_id().ok_or("Invalid principal id")?.clone(),
+    let blocks_result = match ic_cdk::call::<(Vec<TaggrGetBlocksArgs>,), (GetBlocksResult,)>(
+        *token.canister_id().ok_or("Invalid principal id")?,
         "icrc3_get_blocks",
         (taggr_args,),
-        timeout_option
     ).await {
         Ok(result) => Ok(result),
         Err(err) => {
@@ -347,7 +343,7 @@ async fn verify_transfer_taggr(token: &StableToken, block_id: &Nat, amount: &Nat
                 // Verify sender (from)
                 if let Some(ICRC3Value::Array(from_arr)) = tx.get("from") {
                     if let Some(from) = try_decode_account(from_arr) {
-                        if from.owner != caller_id() {
+                        if from.owner != caller_id().owner {
                             return Err("Transfer from does not match caller".to_string());
                         }
                     } else {
@@ -402,22 +398,16 @@ async fn verify_transfer_taggr(token: &StableToken, block_id: &Nat, amount: &Nat
 
 // Verify using standard ICRC3 implementation
 async fn verify_transfer_icrc3(token: &StableToken, block_id: &Nat, amount: &Nat, ts_start: u64) -> Result<(), String> {
-    // Configure timeout for ICRC3 verification
-    let timeout_option = ic_cdk::api::call::CallOptions {
-        timeout_nanosseconds: Some(5_000_000_000), // 5 seconds
-    };
-    
     // Standard ICRC3 encoding
     let blocks_args = vec![GetBlocksRequest {
         start: block_id.clone(),
         length: Nat::from(1u64),
     }];
     
-    let blocks_result = match ic_cdk::api::call::call_with_options::<(Vec<GetBlocksRequest>,), (GetBlocksResult,)>(
-        token.canister_id().ok_or("Invalid principal id")?.clone(),
+    let blocks_result = match ic_cdk::call::<(Vec<GetBlocksRequest>,), (GetBlocksResult,)>(
+        *token.canister_id().ok_or("Invalid principal id")?,
         "icrc3_get_blocks",
         (blocks_args,),
-        timeout_option
     ).await {
         Ok(result) => Ok(result),
         Err(err) => {
@@ -476,7 +466,7 @@ async fn verify_transfer_icrc3(token: &StableToken, block_id: &Nat, amount: &Nat
                 // Verify sender (from)
                 if let Some(ICRC3Value::Array(from_arr)) = tx.get("from") {
                     if let Some(from) = try_decode_account(from_arr) {
-                        if from.owner != caller_id() {
+                        if from.owner != caller_id().owner {
                             return Err("Transfer from does not match caller".to_string());
                         }
                     } else {
@@ -531,10 +521,7 @@ async fn verify_transfer_icrc3(token: &StableToken, block_id: &Nat, amount: &Nat
 
 // Verify using ICP ledger's query_blocks method
 async fn verify_transfer_icp(token: &StableToken, block_id: &Nat, amount: &Nat, ts_start: u64) -> Result<(), String> {
-    // Configure timeout for ICP verification (can be longer since it's critical)
-    let timeout_option = ic_cdk::api::call::CallOptions {
-        timeout_nanosseconds: Some(10_000_000_000), // 10 seconds - ICP is important enough to wait
-    };
+    // No timeout config needed, using standard call
     
     let block_args = GetBlocksArgs {
         start: nat_to_u64(block_id).ok_or_else(|| format!("ICP ledger block id {:?} not found", block_id))?,
@@ -596,16 +583,10 @@ async fn verify_transfer_icp(token: &StableToken, block_id: &Nat, amount: &Nat, 
 
 // Verify using custom get_transaction method (Wumbo, Damonic, Clown)
 async fn verify_transfer_get_transaction(token: &StableToken, block_id: &Nat, amount: &Nat, ts_start: u64) -> Result<(), String> {
-    // Configure timeout for get_transaction verification
-    let timeout_option = ic_cdk::api::call::CallOptions {
-        timeout_nanosseconds: Some(4_000_000_000), // 4 seconds
-    };
-    
-    let transaction_response = match ic_cdk::api::call::call_with_options::<(Nat,), (Option<Transaction1>,)>(
-        token.canister_id().ok_or("Invalid principal id")?.clone(),
+    let transaction_response = match ic_cdk::call::<(Nat,), (Option<Transaction1>,)>(
+        *token.canister_id().ok_or("Invalid principal id")?,
         "get_transaction",
         (block_id.clone(),),
-        timeout_option
     ).await {
         Ok(response) => Ok(response),
         Err(e) => Err(format!("get_transaction failed: {}", e.1)),
@@ -615,7 +596,7 @@ async fn verify_transfer_get_transaction(token: &StableToken, block_id: &Nat, am
         Some(transaction) => {
             if let Some(transfer) = transaction.transfer {
                 let from = transfer.from;
-                if from != caller_id() {
+                if from.owner != caller_id().owner {
                     return Err("Transfer from does not match caller".to_string());
                 }
                 let to = transfer.to;
@@ -641,21 +622,15 @@ async fn verify_transfer_get_transaction(token: &StableToken, block_id: &Nat, am
 
 // Verify using ICRC3 get_transactions method
 async fn verify_transfer_get_transactions(token: &StableToken, block_id: &Nat, amount: &Nat, ts_start: u64) -> Result<(), String> {
-    // Configure timeout for get_transactions verification
-    let timeout_option = ic_cdk::api::call::CallOptions {
-        timeout_nanosseconds: Some(5_000_000_000), // 5 seconds
-    };
-    
     let block_args = GetTransactionsRequest {
         start: block_id.clone(),
         length: Nat::from(1_u32),
     };
     
-    let get_transactions_response = match ic_cdk::api::call::call_with_options::<(GetTransactionsRequest,), (GetTransactionsResponse,)>(
-        token.canister_id().ok_or("Invalid principal id")?.clone(),
+    let get_transactions_response = match ic_cdk::call::<(GetTransactionsRequest,), (GetTransactionsResponse,)>(
+        *token.canister_id().ok_or("Invalid principal id")?,
         "get_transactions",
         (block_args,),
-        timeout_option
     ).await {
         Ok(response) => Ok(response),
         Err(e) => Err(format!("get_transactions failed: {}", e.1)),
@@ -669,7 +644,7 @@ async fn verify_transfer_get_transactions(token: &StableToken, block_id: &Nat, a
     for transaction in transactions.into_iter() {
         if let Some(transfer) = transaction.transfer {
             let from = transfer.from;
-            if from != caller_id() {
+            if from.owner != caller_id().owner {
                 return Err("Transfer from does not match caller".to_string());
             }
             let to = transfer.to;
@@ -792,7 +767,7 @@ pub async fn verify_block_id(
                                                 if let Some(ICRC3Value::Array(from_arr)) = tx.get("from") {
                                                     if let Some(from) = try_decode_account(from_arr) {
                                                         // Validation error - sender mismatch is a hard failure
-                                                        if from.owner != caller_id() {
+                                                        if from.owner != caller_id().owner {
                                                             return Err("Transfer from does not match caller".to_string());
                                                         }
                                                     } else {
@@ -896,7 +871,7 @@ pub async fn verify_block_id(
                                                 if let Some(ICRC3Value::Array(from_arr)) = tx.get("from") {
                                                     if let Some(from) = try_decode_account(from_arr) {
                                                         // Validation error - sender mismatch is a hard failure
-                                                        if from.owner != caller_id() {
+                                                        if from.owner != caller_id().owner {
                                                             return Err("Approve from does not match caller".to_string());
                                                         }
                                                     } else {
@@ -1004,7 +979,7 @@ pub async fn verify_block_id(
                                     let to = transfer.to;
                                     let spender = transfer.spender;
                                     let transfer_amount = transfer.amount;
-                                    if from != caller_id() {
+                                    if from.owner != caller_id().owner {
                                         Err("Transfer from does not match caller")?
                                     }
                                     if to != kong_settings_map::get().kong_backend {
@@ -1030,7 +1005,7 @@ pub async fn verify_block_id(
                                     let spender = approve.spender;
                                     let approve_amount = approve.amount;
                                     let expires_at = approve.expires_at;
-                                    if from != caller_id() {
+                                    if from.owner != caller_id().owner {
                                         Err("Approve from does not match caller")?
                                     }
                                     if spender != kong_settings_map::get().kong_backend {
