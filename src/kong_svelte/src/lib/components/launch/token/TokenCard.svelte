@@ -5,6 +5,8 @@
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { onMount, onDestroy } from "svelte";
   import * as powBackendAPI from "$lib/api/powBackend";
+  import Panel from "$lib/components/common/Panel.svelte";
+  import { auth } from "$lib/stores/auth";
   
   export let token;
 
@@ -162,87 +164,73 @@
         return;
       }
 
-      const actor = auth.getActor(token.principal, tokenIdlFactory, { anon: true });
-      if (!actor) {
-        console.warn('Could not create actor for token', token.name || 'unknown');
-        return;
-      }
-      
-      if (typeof actor.get_mining_info === 'function') {
-        try {
-          const miningInfo = await actor.get_mining_info();
-          if (miningInfo) {
-            difficulty = miningInfo.current_difficulty;
-            nextHalvingInterval = miningInfo.next_halving_interval;
-            blockReward = miningInfo.current_block_reward;
-            
-            // Calculate next halving block
-            // Ensure blockHeight and nextHalvingInterval are treated as numbers for this calculation
-            const currentHeightNum = typeof blockHeight === 'bigint' ? Number(blockHeight) : blockHeight;
-            const halvingIntervalNum = typeof nextHalvingInterval === 'bigint' ? Number(nextHalvingInterval) : nextHalvingInterval;
+      const principalText = token.principal.toString();
 
-            if (currentHeightNum > 0 && halvingIntervalNum > 0) {
-              nextHalvingBlock = Math.ceil(currentHeightNum / halvingIntervalNum) * halvingIntervalNum;
-              
-              // Estimate time to halving
-              if (blockTime > 0) {
-                // blocksToHalving is already calculated considering BigInts
-                const secondsToHalving = blocksToHalving * blockTime; 
-                timeToHalving = formatTimeDuration(secondsToHalving);
-              }
+      try {
+        // Get mining info
+        const miningInfo = await powBackendAPI.getMiningInfo(principalText);
+        if (miningInfo) {
+          difficulty = miningInfo.current_difficulty;
+          nextHalvingInterval = miningInfo.next_halving_interval;
+          blockReward = miningInfo.current_block_reward;
+          
+          // Calculate next halving block
+          const currentHeightNum = typeof blockHeight === 'bigint' ? Number(blockHeight) : blockHeight;
+          const halvingIntervalNum = typeof nextHalvingInterval === 'bigint' ? Number(nextHalvingInterval) : nextHalvingInterval;
+
+          if (currentHeightNum > 0 && halvingIntervalNum > 0) {
+            nextHalvingBlock = Math.ceil(currentHeightNum / halvingIntervalNum) * halvingIntervalNum;
+            
+            // Estimate time to halving
+            if (blockTime > 0) {
+              const secondsToHalving = blocksToHalving * blockTime; 
+              timeToHalving = formatTimeDuration(secondsToHalving);
             }
           }
-        } catch (miningInfoError) {
-          console.warn('Error fetching mining info:', miningInfoError);
         }
+      } catch (miningInfoError) {
+        console.warn('Error fetching mining info:', miningInfoError);
       }
       
-      // Get miners count
-      if (typeof actor.get_miners === 'function') {
-        try {
-          const miners = await actor.get_miners();
-          if (miners && Array.isArray(miners)) {
-            minerCount = miners.filter(m => m && m.status && m.status.hasOwnProperty('Active')).length;
-          }
-        } catch (minersError) {
-          console.warn('Error fetching miners:', minersError);
+      try {
+        // Get miners count
+        const miners = await powBackendAPI.getMiners(principalText);
+        if (miners && Array.isArray(miners)) {
+          minerCount = miners.filter(m => m && m.status && m.status.hasOwnProperty('Active')).length;
         }
+      } catch (minersError) {
+        console.warn('Error fetching miners:', minersError);
       }
       
-      // Update block height and time
-      if (typeof actor.get_block_height === 'function') {
-        try {
-          const height = await actor.get_block_height();
-          if (typeof height === 'number' || typeof height === 'bigint') {
-            blockHeight = height;
-          }
-        } catch (heightError) {
-          console.warn('Error fetching block height:', heightError);
+      try {
+        // Update block height
+        const height = await powBackendAPI.getBlockHeight(principalText);
+        if (typeof height === 'number' || typeof height === 'bigint') {
+          blockHeight = height;
         }
+      } catch (heightError) {
+        console.warn('Error fetching block height:', heightError);
       }
       
-      if (typeof actor.get_average_block_time === 'function') {
-        try {
-          const result = await actor.get_average_block_time([10]);
-          if (result && result.Ok) {
-            blockTime = result.Ok;
-          }
-        } catch (blockTimeError) {
-          console.warn('Error fetching block time:', blockTimeError);
+      try {
+        // Update block time
+        const avgBlockTime = await powBackendAPI.getAverageBlockTime(principalText, 10n);
+        if (avgBlockTime) {
+          blockTime = avgBlockTime;
         }
+      } catch (blockTimeError) {
+        console.warn('Error fetching block time:', blockTimeError);
       }
       
-      // Update circulation
-      if (typeof actor.get_metrics === 'function') {
-        try {
-          const metricsResult = await actor.get_metrics();
-          if (metricsResult && metricsResult.Ok) {
-            circulatingSupply = metricsResult.Ok.circulating_supply;
-            totalSupply = metricsResult.Ok.total_supply;
-          }
-        } catch (metricsError) {
-          console.warn('Error fetching metrics:', metricsError);
+      try {
+        // Update circulation and total supply
+        const metrics = await powBackendAPI.getMetrics(principalText);
+        if (metrics) {
+          circulatingSupply = metrics.circulating_supply;
+          totalSupply = metrics.total_supply;
         }
+      } catch (metricsError) {
+        console.warn('Error fetching metrics:', metricsError);
       }
     } catch (error) {
       console.error("Error in fetchMiningInfo:", error);
@@ -266,182 +254,185 @@
   });
 </script>
 
-<div class="transform-gpu group/card">
-  <div class="relative w-full overflow-hidden rounded-xl bg-kong-bg-light bg-opacity-10 backdrop-blur-sm shadow-inner-white transition-all duration-200 hover:scale-[1.02] hover:z-10 hover:shadow-2xl border border-kong-border/20 hover:border-kong-accent-blue/50">
-    <!-- Top-right chain type ribbon -->
+<Panel
+  className="group/card transition-all duration-200 hover:scale-[1.02] hover:z-10 !p-0 !m-0 h-full"
+  variant="solid"
+  roundness="rounded-xl"
+  interactive={true}
+  shadow="shadow-md hover:shadow-lg"
+>
+  <button
+    class="w-full h-full text-left relative overflow-hidden outline-none"
+    on:click={handleTokenClick}
+  >
+    <!-- Top-right chain type badge -->
     {#if token.chain}
       {@const chainName = Object.keys(token.chain)[0]}
-      <div class="absolute -right-12 top-4 rotate-45 z-20 py-1 px-10 text-xs font-bold tracking-wider font-play bg-kong-accent-blue text-white">
+      <div class="absolute top-0 right-0 py-1 px-2 text-xs font-medium rounded-bl-md bg-kong-accent-blue/90 text-white z-10">
         {chainName || 'UNKNOWN'}
       </div>
     {/if}
 
-    <button
-      class="w-full text-left relative overflow-hidden group"
-      on:click={handleTokenClick}
-    >
-      <!-- Card content -->
-      <div class="relative z-10 p-4 lg:p-5">
-        <div class="flex flex-col sm:flex-row gap-3 sm:gap-5">
-          <!-- Left side: SVG progress ring + logo -->
-          <div class="relative flex-shrink-0 self-center sm:self-auto">
-            <!-- SVG progress ring -->
-            <svg class="w-16 h-16 sm:w-20 sm:h-20" viewBox="0 0 100 100">
-              <!-- Background circle -->
-              <circle cx="50" cy="50" r="36" fill="transparent" stroke="rgba(255,255,255,0.05)" stroke-width="4" />
+    <!-- Card content -->
+    <div class="p-4 sm:p-5">
+      <!-- Header section with coin and title -->
+      <div class="flex items-center gap-4 mb-4">
+        <!-- Token logo/icon -->
+        <div class="relative flex-shrink-0">
+          <div class="w-14 h-14 rounded-full overflow-hidden border-2 border-kong-border/20 shadow-inner-white flex items-center justify-center bg-kong-bg-dark">
+            {#if token.logo && ((Array.isArray(token.logo) && token.logo.length > 0 && token.logo[0]) || typeof token.logo === 'string')}
+              <img
+                src={Array.isArray(token.logo) ? token.logo[0] : token.logo}
+                alt={token.name}
+                class="w-full h-full object-cover"
+              />
+            {:else}
+              <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-kong-accent-blue/30 to-kong-accent-green/30">
+                {#if token.ticker}
+                  <span class="font-play text-base font-bold text-white">{token.ticker.substring(0, 2)}</span>
+                {:else}
+                  <Zap size={20} class="text-white" />
+                {/if}
+              </div>
+            {/if}
+          </div>
+          
+          <!-- Mining progress ring overlaid -->
+          <div class="absolute -inset-1">
+            <svg viewBox="0 0 100 100" class="w-16 h-16">
+              <!-- Background track -->
+              <circle cx="50" cy="50" r="44" fill="transparent" stroke="rgba(255,255,255,0.05)" stroke-width="3" />
               
-              <!-- Progress arc with gradient -->
+              <!-- Progress arc -->
               <circle 
                 cx="50" 
                 cy="50" 
-                r="36" 
+                r="44" 
                 fill="transparent" 
-                stroke-width="4"
-                stroke-dasharray={getProgressDashArray(miningProgress)}
+                stroke-width="3"
+                stroke-dasharray={`${2 * Math.PI * 44 * miningProgress / 100} ${2 * Math.PI * 44}`}
                 stroke-dashoffset="0"
                 stroke-linecap="round"
-                class="transition-all duration-700 ease-out"
-                style="transform: rotate(-90deg); transform-origin: center; stroke: url(#progress-gradient);"
+                class="transition-all duration-500 ease-out"
+                style="transform: rotate(-90deg); transform-origin: center;"
+                stroke="url(#progress-gradient-{token.principal.toString()})"
               />
-              
-              <!-- Progress text -->
-              <text x="50" y="50" text-anchor="middle" dominant-baseline="middle" class="font-play text-[10px] fill-white opacity-80">
-                {miningProgress}%
-              </text>
               
               <!-- Define gradient based on progress -->
               <defs>
-                <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <linearGradient id="progress-gradient-{token.principal.toString()}" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" class="{progressColor.split(' ')[0]} stop-color" />
                   <stop offset="100%" class="{progressColor.split(' ')[1]} stop-color" />
                 </linearGradient>
               </defs>
             </svg>
-            
-            <!-- Logo or ticker inside the ring -->
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-black/5 shadow-inner-white">
-              {#if token.logo && ((Array.isArray(token.logo) && token.logo.length > 0 && token.logo[0]) || typeof token.logo === 'string')}
-                <img
-                  src={Array.isArray(token.logo) ? token.logo[0] : token.logo}
-                  alt={token.name}
-                  class="w-full h-full object-cover"
-                />
-              {:else}
-                <div class={`flex items-center justify-center w-full h-full bg-gradient-to-br ${token.randomGradient}`}>
-                  <div class={`${token.randomAnimation}`}>
-                    {#if token.ticker}
-                      <span class="font-play text-base font-bold text-white">{token.ticker.substring(0, 2)}</span>
-                    {:else}
-                      <Zap size={20} class="text-white" />
-                    {/if}
-                  </div>
-                </div>
-              {/if}
-            </div>
-          </div>
-          
-          <!-- Right side: Token details -->
-          <div class="flex-1 space-y-1.5 text-center sm:text-left">
-            <!-- Token name and ticker -->
-            <div>
-              <h3 class="font-alumni font-bold tracking-wider text-xl text-white group-hover:text-kong-accent-blue transition-colors duration-200 line-clamp-1 hover:line-clamp-none">
-                {token.name || "Unnamed Token"}
-              </h3>
-              <div class="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 mt-0.5">
-                <!-- Token ticker -->
-                <span class="px-1.5 py-0.5 rounded-full bg-kong-bg-secondary/30 text-xs font-play tracking-tight text-white/90">
-                  {token.ticker || "???"}
-                </span>
-                
-                <!-- Chain type if available -->
-                {#if token.chain}
-                  <span class="px-1.5 py-0.5 rounded-full bg-kong-bg-secondary/30 text-xs font-play tracking-tight text-kong-accent-blue/90">
-                    {token.chain}
-                  </span>
-                {/if}
-                
-                <!-- ICRC standards -->
-                <span class="px-1.5 py-0.5 rounded-full bg-kong-bg-secondary/30 text-xs font-play tracking-tight text-kong-accent-green/90">
-                  ICRC-1/2/3
-                </span>
-              </div>
-            </div>
-            
-            <!-- Token halving countdown -->
-            {#if blocksToHalving > 0}
-              <div class="flex items-center justify-between gap-2 px-3 py-1.5 bg-gradient-to-r from-kong-accent-blue/15 via-kong-accent-yellow/15 to-kong-accent-red/15 rounded-md backdrop-blur-sm border border-kong-border/20 mt-1 w-full overflow-hidden">
-                <Clock size={15} class="text-kong-accent-yellow" />
-                <span class="text-xs font-bold uppercase tracking-wide text-kong-text-primary whitespace-nowrap">Halving in</span>
-                <span class="font-play text-sm text-kong-text-primary ml-auto truncate">{timeToHalving || `${formatCompactNumber(blocksToHalving, 0)} blocks`}</span>
-              </div>
-            {/if}
           </div>
         </div>
         
-        <!-- Mining stats grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-          
-          <!-- Block Time -->
-          <div class="bg-kong-surface-dark/30 hover:bg-kong-surface-dark/40 rounded-lg p-4 flex flex-col justify-between h-full border border-kong-border/10 transition-colors duration-200">
-            <div class="flex items-center gap-2">
-              <span class="p-1.5 rounded-full bg-kong-accent-yellow/15"><Clock size={12} class="text-kong-accent-yellow" /></span>
-              <span class="text-xs uppercase tracking-wide font-medium text-kong-text-secondary truncate">Block Time</span>
-            </div>
-            <div class="font-play text-sm text-kong-text-primary pl-1 mt-2">
-              {formatBlockTime(blockTime)}
-            </div>
+        <!-- Title and badges -->
+        <div class="flex-1 min-w-0">
+          <!-- Token name with progress percentage -->
+          <div class="flex items-center justify-between">
+            <h3 class="font-alumni font-bold tracking-wider text-xl text-white group-hover/card:text-kong-accent-blue transition-colors duration-200 line-clamp-1 hover:line-clamp-none">
+              {token.name || "Unnamed Token"}
+            </h3>
+            <!-- Progress percentage -->
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold tabular-nums bg-gradient-to-r {progressColor} bg-opacity-20 text-white">
+              {miningProgress}%
+            </span>
           </div>
           
-          <!-- Network Difficulty -->
-          <div class="bg-kong-surface-dark/30 hover:bg-kong-surface-dark/40 rounded-lg p-4 flex flex-col justify-between h-full border border-kong-border/10 transition-colors duration-200">
-            <div class="flex items-center gap-2">
-              <span class="p-1.5 rounded-full bg-kong-accent-purple/15"><Hash size={12} class="text-kong-accent-purple" /></span>
-              <span class="text-xs uppercase tracking-wide font-medium text-kong-text-secondary truncate">Difficulty</span>
-            </div>
-            <div class="font-play text-sm text-kong-text-primary pl-1 mt-2">
-              {formatCompactNumber(difficulty, 2)}
-            </div>
-          </div>
-          
-          <!-- Miners -->
-          <div class="bg-kong-surface-dark/30 hover:bg-kong-surface-dark/40 rounded-lg p-4 flex flex-col justify-between h-full border border-kong-border/10 transition-colors duration-200">
-            <div class="flex items-center gap-2">
-              <span class="p-1.5 rounded-full bg-kong-accent-green/15"><Server size={12} class="text-kong-accent-green" /></span>
-              <span class="text-xs uppercase tracking-wide font-medium text-kong-text-secondary truncate">Miners</span>
-            </div>
-            <div class="font-play text-sm text-kong-text-primary pl-1 mt-2">
-              {minerCount > 0 ? `${minerCount} online` : '--'}
-            </div>
-          </div>
-        </div>
-        
-        <!-- Block height and extra info -->
-        <div class="flex items-center justify-between mt-3 sm:mt-4 px-1">
-          <div class="text-xs text-kong-text-secondary font-play bg-kong-surface-dark/20 px-2 py-1 rounded-md">
-            Block #{formatCompactNumber(blockHeight, 0)}
-          </div>
-          
-          <div class="flex items-center gap-1.5 bg-kong-accent-blue/10 p-1 rounded-full transition-all duration-200 group-hover:bg-kong-accent-blue/20">
-            <ArrowRight size={16} class="text-kong-accent-blue opacity-80 group-hover:opacity-100 transition-opacity" />
+          <!-- Token badges/tags -->
+          <div class="flex flex-wrap gap-1.5 mt-1">
+            <!-- Token ticker -->
+            <span class="px-2 py-0.5 rounded-md bg-kong-bg-light/30 text-xs font-medium text-white/90">
+              {token.ticker || "???"}
+            </span>
+            
+            <!-- ICRC standards -->
+            <span class="px-2 py-0.5 rounded-md bg-kong-bg-light/30 text-xs font-medium text-kong-accent-green/90">
+              ICRC-1/2/3
+            </span>
+            
+            <!-- Block height -->
+            <span class="px-2 py-0.5 rounded-md bg-kong-bg-light/30 text-xs font-medium text-kong-text-secondary">
+              Block #{formatCompactNumber(blockHeight, 0)}
+            </span>
           </div>
         </div>
       </div>
-    </button>
-  </div>
-</div>
+      
+      <!-- Halving countdown if applicable -->
+      {#if blocksToHalving > 0}
+        <div class="mb-4 p-3 rounded-md bg-gradient-to-r from-kong-accent-blue/10 via-kong-accent-yellow/5 to-kong-accent-red/10 border border-kong-border/30">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <Clock size={16} class="text-kong-accent-yellow" />
+              <span class="text-sm font-medium text-kong-text-primary">Halving in:</span>
+            </div>
+            <div class="font-play text-sm font-bold text-kong-accent-yellow">
+              {timeToHalving || `${formatCompactNumber(blocksToHalving, 0)} blocks`}
+            </div>
+          </div>
+        </div>
+      {/if}
+      
+      <!-- Mining stats grid -->
+      <div class="grid grid-cols-3 gap-3">
+        <!-- Stats cards using similar pattern to prediction markets -->
+        
+        <!-- Block Time -->
+        <div class="flex flex-col p-3 rounded-md bg-kong-bg-light/5 border border-kong-border/10 transition-colors hover:bg-kong-bg-light/10">
+          <div class="flex items-center gap-2 mb-1">
+            <div class="p-1.5 rounded-full bg-kong-accent-yellow/10">
+              <Clock size={12} class="text-kong-accent-yellow" />
+            </div>
+            <span class="text-xs uppercase font-medium text-kong-text-secondary">Block Time</span>
+          </div>
+          <div class="font-play text-sm font-bold text-kong-text-primary mt-1">
+            {formatBlockTime(blockTime)}
+          </div>
+        </div>
+        
+        <!-- Network Difficulty -->
+        <div class="flex flex-col p-3 rounded-md bg-kong-bg-light/5 border border-kong-border/10 transition-colors hover:bg-kong-bg-light/10">
+          <div class="flex items-center gap-2 mb-1">
+            <div class="p-1.5 rounded-full bg-kong-accent-purple/10">
+              <Hash size={12} class="text-kong-accent-purple" />
+            </div>
+            <span class="text-xs uppercase font-medium text-kong-text-secondary">Difficulty</span>
+          </div>
+          <div class="font-play text-sm font-bold text-kong-text-primary mt-1">
+            {formatCompactNumber(difficulty, 2)}
+          </div>
+        </div>
+        
+        <!-- Miners -->
+        <div class="flex flex-col p-3 rounded-md bg-kong-bg-light/5 border border-kong-border/10 transition-colors hover:bg-kong-bg-light/10">
+          <div class="flex items-center gap-2 mb-1">
+            <div class="p-1.5 rounded-full bg-kong-accent-green/10">
+              <Server size={12} class="text-kong-accent-green" />
+            </div>
+            <span class="text-xs uppercase font-medium text-kong-text-secondary">Miners</span>
+          </div>
+          <div class="font-play text-sm font-bold text-kong-text-primary mt-1">
+            {minerCount > 0 ? minerCount : '--'}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Footer with view details indicator -->
+      <div class="mt-4 flex items-center justify-end">
+        <div class="flex items-center gap-1.5 text-sm text-kong-accent-blue transition-colors group-hover/card:text-kong-accent-blue/80">
+          <span class="font-medium">View Details</span>
+          <ArrowRight size={16} class="transition-transform group-hover/card:translate-x-1" />
+        </div>
+      </div>
+    </div>
+  </button>
+</Panel>
 
 <style>
-  /* Keyframes and animations */
-  @keyframes spin-slow {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  @keyframes pulse-fast {
-    0%, 100% { opacity: 0.7; }
-    50% { opacity: 1; }
-  }
-  
   /* Tailwind gradient text fallback */
   .from-kong-accent-blue.stop-color { stop-color: rgb(0, 149, 235); }
   .to-kong-accent-blue.stop-color { stop-color: rgb(0, 149, 235); }
@@ -449,34 +440,4 @@
   .to-kong-accent-green.stop-color { stop-color: rgb(0, 203, 160); }
   .from-orange-500.stop-color { stop-color: rgb(249, 115, 22); }
   .to-kong-accent-red.stop-color { stop-color: rgb(255, 59, 59); }
-
-  
-  @keyframes glow {
-    0%, 100% { filter: brightness(1); }
-    50% { filter: brightness(1.2); }
-  }
-  
-  .animate-pulse-fast {
-    animation: pulse-fast 1.5s ease-in-out infinite;
-  }
-  
-  .animate-pulse-subtle {
-    animation: pulse-subtle 2s ease-in-out infinite;
-  }
-  
-  .animate-bounce {
-    animation: bounce 1.5s ease-in-out infinite;
-  }
-  
-  .animate-spin-slow {
-    animation: spin-slow 3s linear infinite;
-  }
-  
-  .animate-glow {
-    animation: glow 2s ease-in-out infinite;
-  }
-  
-  .shadow-glow {
-    box-shadow: 0 0 15px rgba(249, 115, 22, 0.3);
-  }
 </style>

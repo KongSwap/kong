@@ -614,6 +614,54 @@ export async function getPendingRewards(powBackendId: string): Promise<[Principa
 }
 
 /**
+ * Gets the list of all miners
+ */
+export async function getMiners(powBackendId: string): Promise<MinerInfo[]> {
+  try {
+    const actor = auth.pnp.getActor<CanisterType['POW_BACKEND']>({
+      canisterId: powBackendId,
+      idl: canisters.powBackend.idl,
+      anon: true,
+    });
+    
+    return await actor.get_miners();
+  } catch (error) {
+    console.error("Failed to get miners", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(`Failed to get miners: ${JSON.stringify(error)}`);
+  }
+}
+
+/**
+ * Gets the metrics for the token
+ */
+export async function getMetrics(powBackendId: string): Promise<TokenMetrics> {
+  try {
+    const actor = auth.pnp.getActor<CanisterType['POW_BACKEND']>({
+      canisterId: powBackendId,
+      idl: canisters.powBackend.idl,
+      anon: true,
+    });
+    
+    const result = await actor.get_metrics();
+    
+    if ("Err" in result) {
+      throw new Error(`Failed to get metrics: ${result.Err}`);
+    }
+    
+    return result.Ok;
+  } catch (error) {
+    console.error("Failed to get metrics", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(`Failed to get metrics: ${JSON.stringify(error)}`);
+  }
+}
+
+/**
  * Submits a solution for mining
  */
 export async function submitSolution(

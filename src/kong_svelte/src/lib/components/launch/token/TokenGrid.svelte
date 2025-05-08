@@ -2,7 +2,7 @@
   import { SortAsc, SortDesc } from "lucide-svelte";
   import { onMount } from "svelte";
   import { auth } from "$lib/stores/auth";
-  import { idlFactory as tokenIdlFactory } from "../../../../../../../src/declarations/pow_backend/pow_backend.did.js";
+  import * as powBackendAPI from "$lib/api/powBackend";
   import TokenCard from "./TokenCard.svelte";
   import TokenInfoGrid from "./TokenInfoGrid.svelte";
   import Panel from "$lib/components/common/Panel.svelte";
@@ -51,12 +51,9 @@
     return animations[Math.floor(Math.random() * animations.length)];
   }
 
-  // Get token info from canister - using the pow_backend get_all_info function
+  // Get token info from canister - using the powBackendAPI
   async function getTokenInfo(token) {
     try {
-      // Create actor - anonymous for public data
-      const actor = auth.getActor(token.canister_id, tokenIdlFactory, { anon: true });
-      
       let tokenInfo = {
         ...token,
         principal: token.canister_id,
@@ -66,28 +63,10 @@
         randomAnimation: token.randomAnimation || getRandomAnimation(),
       };
       
-      // Try to use get_all_info first, if available
       try {
-        if (typeof actor.get_all_info === 'function') {
-          const allInfoResult = await actor.get_all_info();
-          
-          if (allInfoResult.Err) {
-            console.error("Error fetching token info:", allInfoResult.Err);
-            return tokenInfo;
-          }
-          
-          // Extract the comprehensive token info
-          const allInfo = allInfoResult.Ok;
-
-          // --- DEBUG: Log the chain info received ---
-          console.log(`Token ${token.canister_id}: Received chain info:`, allInfo.chain);
-          // --- END DEBUG ---
-          
-          // Add error handling for missing fields
-          if (!allInfo) {
-            console.error("Invalid response from get_all_info");
-            return tokenInfo;
-          }
+        // Try to use getAllTokenInfo first for comprehensive info
+        try {
+          const allInfo = await powBackendAPI.getAllTokenInfo(token.canister_id);
           
           // Construct the enhanced token object with safe property access
           tokenInfo = {
@@ -101,7 +80,7 @@
             transfer_fee: allInfo.transfer_fee || 0,
             social_links: allInfo.social_links,
             chain: allInfo.chain, // Add the chain field
-            // Use pre-formatted values from get_all_info with fallbacks
+            // Use pre-formatted values with fallbacks
             averageBlockTime: allInfo.average_block_time,
             formattedBlockTime: allInfo.average_block_time ?
               formatBlockTime(Number(allInfo.average_block_time)) : undefined,
@@ -109,7 +88,8 @@
             miningProgress: allInfo.mining_progress_percentage,
             formattedBlockReward: formatBlockReward(allInfo.current_block_reward, allInfo.decimals),
             current_block_height: allInfo.current_block_height || 0,
-            current_block_reward: allInfo.current_block_reward || 0
+            current_block_reward: allInfo.current_block_reward || 0,
+            circulating_supply: allInfo.circulating_supply || 0
           };
           
           // Process logo - support both string and array formats
@@ -119,17 +99,58 @@
             tokenInfo.logo = [allInfo.logo];
           }
           
-          return tokenInfo;
-        } else {
-          // If get_all_info is not available, return basic token info
-          return tokenInfo;
+        } catch (error) {
+          // If getAllTokenInfo fails, try to get basic info
+          console.log("getAllTokenInfo failed, using basic info", error);
+          
+          const basicInfo = await powBackendAPI.getTokenInfo(token.canister_id);
+          
+          tokenInfo = {
+            ...tokenInfo,
+            name: basicInfo.name || token.name || "Unknown Token",
+            ticker: basicInfo.ticker || token.ticker || "???",
+            total_supply: basicInfo.total_supply || 0,
+            logo: basicInfo.logo,
+            decimals: basicInfo.decimals || 8,
+            transfer_fee: basicInfo.transfer_fee || 0,
+            ledger_id: basicInfo.ledger_id ? [basicInfo.ledger_id] : undefined,
+            chain: basicInfo.chain
+          };
+          
+          // Process logo - support both string and array formats
+          if (basicInfo.logo && typeof basicInfo.logo === 'string') {
+            tokenInfo.logo = [basicInfo.logo];
+          } else if (basicInfo.logo) {
+            tokenInfo.logo = [basicInfo.logo];
+          }
+          
+          // Try to get additional metrics separately
+          try {
+            const metrics = await powBackendAPI.getMetrics(token.canister_id);
+            tokenInfo.circulating_supply = metrics.circulating_supply || 0;
+            tokenInfo.current_block_height = metrics.current_block_height || 0;
+            tokenInfo.miningProgress = metrics.mining_progress_percentage || 0;
+          } catch (metricsError) {
+            console.log("Failed to get metrics:", metricsError);
+          }
+          
+          // Try to get average block time separately
+          try {
+            const blockTime = await powBackendAPI.getAverageBlockTime(token.canister_id, 10);
+            tokenInfo.averageBlockTime = blockTime;
+            tokenInfo.formattedBlockTime = formatBlockTime(blockTime);
+          } catch (blockTimeError) {
+            console.log("Failed to get block time:", blockTimeError);
+          }
         }
+        
+        return tokenInfo;
       } catch (error) {
-        console.error("Error with get_all_info:", error);
+        console.error("Error fetching token info details:", error);
         return tokenInfo;
       }
     } catch (error) {
-      console.error("Error fetching token info:", error);
+      console.error("Error in getTokenInfo:", error);
       // Return basic token with random visuals on error
       return {
         ...token,
@@ -349,15 +370,9 @@
       <p class="text-sm">Try adjusting your search or filters</p>
     </div>
   {:else}
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8 py-2">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 py-2">
       {#each filteredTokens as token (token.principal.toString())}
-        <div class="transition-transform duration-300 transform hover:scale-[1.02] hover:z-10 hover:shadow-2xl">
-          <TokenCard {token}>
-            <div slot="token-info">
-              <TokenInfoGrid {token} />
-            </div>
-          </TokenCard>
-        </div>
+        <TokenCard {token} />
       {/each}
     </div>
   {/if}
