@@ -59,7 +59,7 @@ export const synthwaveTheme: ThemeDefinition = {
     panelRoundness: 'rounded-md', // Less rounded corners
     swapPanelRoundness: 'rounded-lg', // Slightly more rounded for swap panels
     swapPanelBorder: '1px solid rgba(255, 54, 171, 0.3)', // Pink border
-    swapPanelShadow: '0 0 30px rgba(255, 54, 171, 0.15), 0 0 10px rgba(79, 10, 190, 0.2)', // Pink/purple glow
+    swapPanelShadow: 'shadow', // Pink/purple glow
     swapPanelInputsRounded: true,
     transparentSwapPanel: true,
     transparentPanel: true,
@@ -124,7 +124,6 @@ export const synthwaveTheme: ThemeDefinition = {
     backgroundOpacity: 1,
     enableNebula: true,      // Enable nebula effect
     enableStars: true,       // Enable stars
-    enableSkyline: true,     // Enable skyline for 80s city vibe
     nebulaOpacity: 0.4,      // Subtle nebula
     starsOpacity: 0.7        // Visible stars
   }

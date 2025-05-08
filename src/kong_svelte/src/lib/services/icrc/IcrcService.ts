@@ -1,12 +1,13 @@
 import { auth } from "$lib/stores/auth";
-import { canisterIDLs } from "$lib/config/auth.config";
+import { canisters, type ICP_LEDGER, type ICRC2_LEDGER } from "$lib/config/auth.config";
 import { Principal } from "@dfinity/principal";
 import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "$lib/stores/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
-import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
-import { type IcrcAccount } from "@dfinity/ledger-icrc";
 import { get } from "svelte/store";
+import { type IcrcAccount } from "@dfinity/ledger-icrc";
+import type { ApproveArgs } from "@dfinity/ledger-icrc/dist/candid/icrc_ledger";
+import type { TransferArgs } from "@dfinity/ledger-icp/dist/candid/ledger";
 
 export class IcrcService {
   private static readonly MAX_CONCURRENT_REQUESTS = 5;
@@ -48,10 +49,11 @@ export class IcrcService {
     separateBalances: boolean = false,
   ): Promise<{ default: bigint; subaccount: bigint } | bigint> {
     try {
-      const actor = await createAnonymousActorHelper(
-        token.address,
-        canisterIDLs.icrc1,
-      );
+      const actor = auth.pnp.getActor<ICRC2_LEDGER>({
+        canisterId: token.address,
+        idl: canisters.icrc2.idl,
+        anon: true,
+      });
 
       // Get default balance with retry logic
       const defaultBalance = await actor.icrc1_balance_of({
@@ -219,7 +221,7 @@ export class IcrcService {
         return currentAllowance.amount;
       }
 
-      const approveArgs = {
+      const approveArgs: ApproveArgs = {
         fee: [],
         memo: [],
         from_subaccount: [],
@@ -235,10 +237,12 @@ export class IcrcService {
         },
       };
 
-      const approveActor = auth.getActor(token.address, canisterIDLs.icrc2, {
+      const approveActor = auth.pnp.getActor<ICRC2_LEDGER>({
+        canisterId: token.address,
+        idl: canisters.icrc2.idl,
         anon: false,
         requiresSigning: true,
-      });
+      })
 
       const result = await approveActor.icrc2_approve(approveArgs);
       allowanceStore.addAllowance(token.address, {
@@ -267,9 +271,10 @@ export class IcrcService {
 
   public static async getTokenFee(token: Kong.Token): Promise<bigint> {
     try {
-      const actor = await auth.getActor(token.address, canisterIDLs.icrc1, {
+      const actor = auth.pnp.getActor<ICRC2_LEDGER>({
+        canisterId: token.address,
+        idl: canisters.icrc2.idl,
         anon: true,
-        requiresSigning: false,
       });
       return await actor.icrc1_fee();
     } catch (error) {
@@ -297,16 +302,17 @@ export class IcrcService {
         to.length === 64 &&
         !to.includes("-")
       ) {
-        const wallet = auth.pnp.activeWallet.id;
+        const wallet = auth.pnp.adapter.id;
         if (wallet === "oisy") {
           return { Err: "Oisy subaccount transfer is temporarily disabled." };
         }
-        const ledgerActor = auth.getActor(token.address, canisterIDLs.ICP, {
-          anon: false,
+        const ledgerActor = auth.pnp.getActor<ICP_LEDGER>({
+          canisterId: token.address,
+          idl: canisters.icp.idl,
           requiresSigning: true,
         });
 
-        const transfer_args = {
+        const transfer_args: TransferArgs = {
           to: this.hex2Bytes(to),
           amount: { e8s: amount },
           fee: { e8s: opts.fee ?? BigInt(token.fee_fixed ?? 10000) },
@@ -330,7 +336,9 @@ export class IcrcService {
       }
 
       // For all ICRC standard transfers (Principal or ICRC1 Account)
-      const actor = auth.getActor(token.address, canisterIDLs["icrc1"], {
+      const actor = auth.pnp.getActor<ICRC2_LEDGER>({
+        canisterId: token.address,
+        idl: canisters.icrc2.idl,
         anon: false,
         requiresSigning: true,
       });

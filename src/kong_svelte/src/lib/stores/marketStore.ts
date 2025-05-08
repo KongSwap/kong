@@ -112,11 +112,11 @@ function createMarketStore() {
         // Determine status filter for API
         let apiStatusFilter = undefined;
         if (statusFilter === 'open') {
-          apiStatusFilter = 'Open';
+          apiStatusFilter = "Open";
         } else if (statusFilter === 'resolved') {
-          apiStatusFilter = 'Closed';
+          apiStatusFilter = "Closed";
         } else if (statusFilter === 'voided') {
-          apiStatusFilter = 'Voided';
+          apiStatusFilter = "Voided";
         }
         
         const allMarketsResult = await getAllMarkets({
@@ -131,7 +131,11 @@ function createMarketStore() {
         // without categorizing them
         update(state => ({
           ...state,
-          markets: allMarketsResult.markets || [],
+          markets: (allMarketsResult.markets || []).map(market => ({
+            ...market,
+            resolution_data: market.resolution_data?.[0] ?? "",
+            resolved_by: market.resolved_by?.[0] ?? null
+          })),
           loading: false,
           error: null
         }));

@@ -47,12 +47,6 @@
     "staging_fe": "ryjl3-tyaaa-aaaaa-aaaba-cai",
     "staging": ""
   },
-  "ksicp_ledger": {
-    "ic": "",
-    "local": "nppha-riaaa-aaaal-ajf2q-cai",
-    "staging_fe": "",
-    "staging": "nppha-riaaa-aaaal-ajf2q-cai"
-  },
   "btc_ledger": {
     "ic": "mxzaz-hqaaa-aaaar-qaada-cai",
     "local": "",

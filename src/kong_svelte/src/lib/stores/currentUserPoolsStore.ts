@@ -1,8 +1,8 @@
 import { writable, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
-import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
-import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { canisterIDLs, auth } from "$lib/stores/auth";
+import { auth } from "$lib/stores/auth";
+import { canisters } from '$lib/config/auth.config';
+import type { KONG_BACKEND } from '$lib/config/auth.config';
 
 interface PoolListState {
   processedPools: ProcessedPool[];
@@ -59,32 +59,28 @@ function createCurrentUserPoolsStore() {
       set(initialState);
     },
 
-    initialize: async () => {
-      // Get current state to check if we already have data
-      const currentState = get({ subscribe });
-      
+    initialize: async () => {      
       // Set loading state, but don't reset the pools data yet
       update(s => ({ ...s, loading: true, error: null }));
       
       try {
         const currentAuth = get(auth);
-        const actor = createAnonymousActorHelper(
-          KONG_BACKEND_CANISTER_ID, 
-          canisterIDLs.kong_backend
-        );
+        const actor = auth.pnp.getActor<KONG_BACKEND>({
+          canisterId: canisters.kongBackend.canisterId,
+          idl: canisters.kongBackend.idl,
+          anon: true,
+        });
         
         const response = await actor.user_balances(
           currentAuth?.account?.owner || ''
         );
                 
-        if (response.Ok) {
+        if ('Ok' in response) {
           // Process the new raw data
           const rawPools = response.Ok.map(pool => pool.LP);
           
           // Fetch tokens for the new pools
           await fetchTokensForPools(rawPools); 
-          // Note: fetchTokensForPools now handles updating processedPools and filteredPools internally
-          
         } else {
           // Handle potential errors from the backend response structure if needed
           handleError("Failed to load user pools: Backend returned an error structure", response);

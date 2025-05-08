@@ -1,16 +1,15 @@
-import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
-import { PREDICTION_MARKETS_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { canisterIDLs } from "$lib/config/auth.config";
+import { canisters, type CanisterType } from "$lib/config/auth.config";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { auth } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import { notificationsStore } from "$lib/stores/notificationsStore";
 
-export async function getMarket(marketId: number) {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
+export async function getMarket(marketId: bigint) {
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: true,
+  });
   const market = await actor.get_market(marketId);
   return market;
 }
@@ -26,26 +25,29 @@ export async function getAllMarkets(
     };
   } = {},
 ) {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: true,
+  });
 
   const args = {
-    start: options.start ?? 0,
-    length: options.length ?? 100,
+    start: BigInt(options.start ?? 0),
+    length: BigInt(options.length ?? 100),
     status_filter: options.statusFilter
       ? options.statusFilter === "Closed"
-        ? [{ Closed: [] }] // For Closed, we need an empty array, not null
-        : [{ [options.statusFilter]: null }]
-      : [],
+        ? [{ Closed: [] }] as [any]
+        : options.statusFilter === "Open"
+          ? [{ Open: null }] as [any]
+          : options.statusFilter === "Voided"
+            ? [{ Voided: null }] as [any]
+            : [] as []
+      : [] as [],
     sort_option: options.sortOption
-      ? [
-          {
-            [options.sortOption.type]: { [options.sortOption.direction]: null },
-          },
-        ]
-      : [], // Default sorting (newest first) will be applied by the backend
+      ? [{
+          [options.sortOption.type]: { [options.sortOption.direction]: null },
+        }] as [any] // Ensure it's a tuple with exactly one element
+      : [] as [], // Default sorting (newest first) will be applied by the backend
   };
 
   const markets = await actor.get_all_markets(args);
@@ -53,31 +55,34 @@ export async function getAllMarkets(
 }
 
 export async function getMarketsByStatus() {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: true,
+  });
   const marketsByStatus = await actor.get_markets_by_status({
-    start: 0,
-    length: 100,
+    start: 0n,
+    length: 100n,
   });
   return marketsByStatus;
 }
 
-export async function getMarketBets(marketId: number) {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
+export async function getMarketBets(marketId: bigint) {
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: true,
+  });
   const bets = await actor.get_market_bets(marketId);
   return bets;
 }
 
 export async function getUserHistory(principal: string) {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: true,
+  });
   try {
     const principalObj = Principal.fromText(principal);
     const history = await actor.get_user_history(principalObj);
@@ -87,15 +92,6 @@ export async function getUserHistory(principal: string) {
     console.error("Error in getUserHistory:", error);
     throw error;
   }
-}
-
-export async function getUserBalance(principal: string) {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
-  const balance = await actor.get_balance(principal);
-  return balance;
 }
 
 export interface CreateMarketParams {
@@ -109,14 +105,12 @@ export interface CreateMarketParams {
 }
 
 export async function createMarket(params: CreateMarketParams) {
-  const actor = auth.pnp.getActor(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-    {
-      anon: false,
-      requiresSigning: false,
-    },
-  );
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: false,
+    requiresSigning: false,
+  });
   const result = await actor.create_market(
     params.question,
     params.category,
@@ -137,8 +131,8 @@ export async function createMarket(params: CreateMarketParams) {
 
 export async function placeBet(
   token: Kong.Token,
-  marketId: number,
-  outcomeIndex: number,
+  marketId: bigint,
+  outcomeIndex: bigint,
   amount: string,
 ) {
   try {
@@ -149,18 +143,16 @@ export async function placeBet(
     await IcrcService.checkAndRequestIcrc2Allowances(
       token,
       largeAllowance,
-      PREDICTION_MARKETS_CANISTER_ID,
+      canisters.predictionMarkets.canisterId,
     );
 
     // Place the bet using an authenticated actor
-    const actor = auth.pnp.getActor(
-      PREDICTION_MARKETS_CANISTER_ID,
-      canisterIDLs.prediction_markets_backend,
-      {
-        anon: false,
-        requiresSigning: false,
-      },
-    );
+    const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+      canisterId: canisters.predictionMarkets.canisterId,
+      idl: canisters.predictionMarkets.idl,
+      anon: false,
+      requiresSigning: false,
+    });
 
     // Convert amount string to BigInt and verify it's not zero
     const bigIntAmount = BigInt(amount);
@@ -177,17 +169,16 @@ export async function placeBet(
         throw new Error(`Transfer failed: ${result.Err.TransferError}`);
       }
 
-      switch (result.Err) {
-        case "MarketNotFound":
-          throw new Error("Market not found");
-        case "MarketClosed":
-          throw new Error("Market is closed");
-        case "InvalidOutcome":
-          throw new Error("Invalid outcome selected");
-        case "InsufficientBalance":
-          throw new Error("Insufficient KONG balance");
-        default:
-          throw new Error(`Bet failed: ${JSON.stringify(result.Err)}`);
+      if ("MarketNotFound" in result.Err) {
+        throw new Error("Market not found");
+      } else if ("MarketClosed" in result.Err) {
+        throw new Error("Market is closed");
+      } else if ("InvalidOutcome" in result.Err) {
+        throw new Error("Invalid outcome selected");
+      } else if ("InsufficientBalance" in result.Err) {
+        throw new Error("Insufficient KONG balance");
+      } else {
+        throw new Error(`Bet failed: ${JSON.stringify(result.Err)}`);
       }
     }
 
@@ -207,36 +198,36 @@ export async function placeBet(
 }
 
 export async function resolveMarketViaAdmin(
-  marketId: string,
-  winningOutcome: number,
+  marketId: bigint,
+  winningOutcome: bigint,
 ): Promise<void> {
   try {
-    const actor = auth.pnp.getActor(
-      PREDICTION_MARKETS_CANISTER_ID,
-      canisterIDLs.prediction_markets_backend,
-      { anon: false, requiresSigning: false },
-    );
+    const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+      canisterId: canisters.predictionMarkets.canisterId,
+      idl: canisters.predictionMarkets.idl,
+      anon: false,
+      requiresSigning: false,
+    });
 
     // Convert marketId from string to number
-    const marketIdNumber = Number(marketId);
+    const marketIdNumber = marketId;
     const result = await actor.resolve_via_admin(marketIdNumber, [
       winningOutcome,
     ]);
 
     if ("Err" in result) {
-      switch (result.Err) {
-        case "MarketNotFound":
-          throw new Error("Market not found");
-        case "MarketStillOpen":
-          throw new Error("Market is still open");
-        case "AlreadyResolved":
-          throw new Error("Market has already been resolved");
-        case "Unauthorized":
-          throw new Error("You are not authorized to resolve this market");
-        default:
-          throw new Error(
-            `Failed to resolve market: ${JSON.stringify(result.Err)}`,
-          );
+      if ("MarketNotFound" in result.Err) {
+        throw new Error("Market not found");
+      } else if ("MarketStillOpen" in result.Err) {
+        throw new Error("Market is still open");
+      } else if ("AlreadyResolved" in result.Err) {
+        throw new Error("Market has already been resolved");
+      } else if ("Unauthorized" in result.Err) {
+        throw new Error("You are not authorized to resolve this market");
+      } else {
+        throw new Error(
+          `Failed to resolve market: ${JSON.stringify(result.Err)}`,
+        );
       }
     }
     notificationsStore.add({
@@ -250,34 +241,34 @@ export async function resolveMarketViaAdmin(
   }
 }
 
-export async function voidMarketViaAdmin(marketId: string): Promise<void> {
+export async function voidMarketViaAdmin(marketId: bigint): Promise<void> {
   try {
-    const actor = auth.pnp.getActor(
-      PREDICTION_MARKETS_CANISTER_ID,
-      canisterIDLs.prediction_markets_backend,
-      { anon: false, requiresSigning: false },
-    );
+    const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+      canisterId: canisters.predictionMarkets.canisterId,
+      idl: canisters.predictionMarkets.idl,
+      anon: false,
+      requiresSigning: false,
+    });
 
     // Convert marketId from string to number
-    const marketIdNumber = Number(marketId);
+    const marketIdNumber = marketId;
     const result = await actor.void_market(marketIdNumber);
 
     if ("Err" in result) {
-      switch (result.Err) {
-        case "MarketNotFound":
-          throw new Error("Market not found");
-        case "MarketStillOpen":
-          throw new Error("Market is still open");
-        case "AlreadyResolved":
-          throw new Error("Market has already been resolved");
-        case "Unauthorized":
-          throw new Error("You are not authorized to void this market");
-        case "VoidingFailed":
-          throw new Error("Failed to void the market");
-        default:
-          throw new Error(
-            `Failed to void market: ${JSON.stringify(result.Err)}`,
-          );
+      if ("MarketNotFound" in result.Err) {
+        throw new Error("Market not found");
+      } else if ("MarketStillOpen" in result.Err) {
+        throw new Error("Market is still open");
+      } else if ("AlreadyResolved" in result.Err) {
+        throw new Error("Market has already been resolved");
+      } else if ("Unauthorized" in result.Err) {
+        throw new Error("You are not authorized to void this market");
+      } else if ("VoidingFailed" in result.Err) {
+        throw new Error("Failed to void the market");
+      } else {
+        throw new Error(
+          `Failed to void market: ${JSON.stringify(result.Err)}`,
+        );
       }
     }
     notificationsStore.add({
@@ -292,15 +283,16 @@ export async function voidMarketViaAdmin(marketId: string): Promise<void> {
 }
 
 export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: true,
+  });
 
   // The backend API expects start and length parameters
   const marketsByStatus = await actor.get_markets_by_status({
-    start: 0,
-    length: 100,
+    start: 0n,
+    length: 100n,
   });
 
   // Combine bets from all markets
@@ -344,35 +336,30 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
 }
 
 export async function getPredictionMarketStats() {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: true,
+  });
   const stats = await actor.get_stats();
   return stats;
 }
 
 export async function getAllCategories() {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: true,
+  });
   const categories = await actor.get_all_categories();
   return categories;
 }
 
 export async function isAdmin(principal: string) {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: true,
+  });
   return await actor.is_admin(Principal.fromText(principal));
-}
-
-export async function getAdminPrincipals() {
-  const actor = createAnonymousActorHelper(
-    PREDICTION_MARKETS_CANISTER_ID,
-    canisterIDLs.prediction_markets_backend,
-  );
-  return await actor.get_admin_principals();
 }
