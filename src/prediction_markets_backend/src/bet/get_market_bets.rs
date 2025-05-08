@@ -2,8 +2,8 @@ use ic_cdk::query;
 
 use super::bet::*;
 
-use crate::nat::*;
 use crate::stable_memory::*;
+use crate::types::MarketId;
 
 /// Gets all bets for a specific market
 #[query]

@@ -3,6 +3,7 @@ use ic_stable_structures::{storable::Bound, Storable};
 use num_traits::{CheckedAdd, CheckedMul, ToPrimitive, Zero};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::fmt;
 use std::ops::{Add, Div, Mul, Sub};
 use std::str::FromStr;
 
@@ -47,6 +48,13 @@ impl PartialOrd for StorableNat {
 impl Ord for StorableNat {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0 .0.to_u64().unwrap_or(0).cmp(&other.0 .0.to_u64().unwrap_or(0))
+    }
+}
+
+// Implement Display to allow .to_string() calls
+impl fmt::Display for StorableNat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0 .0.to_u64().unwrap_or(0))
     }
 }
 
@@ -189,6 +197,7 @@ impl Storable for StorableNat {
     const BOUND: Bound = Bound::Unbounded;
 }
 
+// Legacy type definition - use types.rs module for new code
 pub type MarketId = StorableNat;
 pub type Timestamp = StorableNat;
 

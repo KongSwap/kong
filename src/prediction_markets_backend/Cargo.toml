@@ -25,3 +25,5 @@ icrc-ledger-types = "0.1.8"
 
 [dev-dependencies]
 candid-extractor = "0.1.5"
+pocket-ic = "9.0.0"
+flate2 = "1.0"

@@ -66,7 +66,7 @@ impl MarketActivityMetrics {
     }
 
     /// Record a new bet in the activity metrics
-    pub fn record_bet(&mut self, user: Principal, amount: StorableNat, timestamp: u64) {
+    pub fn record_bet(&mut self, _user: Principal, amount: StorableNat, timestamp: u64) {
         // Update overall metrics
         self.total_bets += 1;
         self.total_volume = self.total_volume.clone() + amount.clone();
