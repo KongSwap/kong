@@ -3,6 +3,8 @@ pub mod add_liquidity_amounts;
 pub mod add_pool;
 pub mod add_token;
 pub mod canister;
+#[cfg(not(feature = "prod"))]
+pub mod canister_test;
 pub mod chains;
 pub mod claims;
 pub mod controllers;

@@ -397,7 +397,7 @@ async fn verify_transfer_taggr(token: &StableToken, block_id: &Nat, amount: &Nat
 }
 
 // Verify using standard ICRC3 implementation
-async fn verify_transfer_icrc3(token: &StableToken, block_id: &Nat, amount: &Nat, ts_start: u64) -> Result<(), String> {
+pub async fn verify_transfer_icrc3(token: &StableToken, block_id: &Nat, amount: &Nat, ts_start: u64) -> Result<(), String> {
     // Standard ICRC3 encoding
     let blocks_args = vec![GetBlocksRequest {
         start: block_id.clone(),
@@ -621,7 +621,7 @@ async fn verify_transfer_get_transaction(token: &StableToken, block_id: &Nat, am
 }
 
 // Verify using ICRC3 get_transactions method
-async fn verify_transfer_get_transactions(token: &StableToken, block_id: &Nat, amount: &Nat, ts_start: u64) -> Result<(), String> {
+pub async fn verify_transfer_get_transactions(token: &StableToken, block_id: &Nat, amount: &Nat, ts_start: u64) -> Result<(), String> {
     let block_args = GetTransactionsRequest {
         start: block_id.clone(),
         length: Nat::from(1_u32),

@@ -2,8 +2,8 @@ pub mod common;
 
 use candid::{decode_one, encode_one, Principal};
 
-use common::identity::{get_identity_from_pem_file, get_new_identity};
-use common::setup::{setup_ic_environment, CONTROLLER_PEM_FILE};
+use common::identity::get_new_identity;
+use common::setup::setup_ic_environment;
 
 #[test]
 fn test_controllers_as_anonymous() {
@@ -57,9 +57,11 @@ fn test_controllers_as_user() {
 #[test]
 fn test_controllers_as_controller() {
     let (ic, kong_backend) = setup_ic_environment().expect("Failed to setup IC environment");
-
-    let controller_identity = get_identity_from_pem_file(CONTROLLER_PEM_FILE).expect("Failed to get controller identity");
-    let controller_principal_id = controller_identity.sender().expect("Failed to get controller principal id");
+    
+    // Get the controller from PocketIc
+    let controllers = ic.get_controllers(kong_backend);
+    assert!(!controllers.is_empty(), "Failed to get controllers");
+    let controller_principal_id = controllers[0];
 
     let args = encode_one(()).expect("Failed to encode arguments for status");
     let response = match ic.query_call(kong_backend, controller_principal_id, "status", args) {
