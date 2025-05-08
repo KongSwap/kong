@@ -413,6 +413,9 @@
   $effect(() => {
     // Use page rune directly
     const path = page.url.pathname;
+    // Remove trailing slash for consistent matching
+    const normalizedPath = path.endsWith('/') ? path.slice(0, -1) : path;
+    
     // Use a mapping for clarity and potential extension
     // Ensure all paths from desktopNavItems and mobileNavGroups are covered
     const pathMap: { [key: string]: NavTabId } = {
@@ -428,11 +431,14 @@
       "/launch": "launch",
       "/launch/explore": "launch",
       "/launch/create-token": "launch",
+      "/launch/create-miner": "launch", // Added missing route
+      "/launch/my-dashboard": "launch", // Added missing route
       "/launch/start-mining": "launch",
+      "/launch/token": "launch", // Added for dynamic token routes
     };
     let found = false;
     for (const prefix in pathMap) {
-      if (path.startsWith(prefix)) {
+      if (normalizedPath === prefix || normalizedPath.startsWith(prefix + '/')) {
         activeTab = pathMap[prefix];
         found = true;
         break; // Exit loop once found

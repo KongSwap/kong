@@ -6,13 +6,13 @@
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import TextInput from "$lib/components/common/TextInput.svelte";
   import { Principal } from "@dfinity/principal";
-  import { canisterId as launchpadCanisterId } from "$declarations/launchpad";
-  import type { _SERVICE as LaunchpadService } from "$declarations/launchpad/launchpad.did.js";
-  import type { _SERVICE as LedgerService } from "$declarations/kong_ledger/kong_ledger.did.js";
+  import { canisterId as launchpadCanisterId } from "../../../../declarations/launchpad";
+  import type { _SERVICE as LaunchpadService } from "../../../../declarations/launchpad/launchpad.did.js";
+  import type { _SERVICE as LedgerService } from "../../../../declarations/kong_ledger/kong_ledger.did.js";
   import { canisterIDLs } from "$lib/config/auth.config";
   import type { ActorSubclass } from "@dfinity/agent";
   import { toastStore } from "$lib/stores/toastStore";
-  import { idlFactory as minerIDL } from "$declarations/miner/miner.did.js";
+  import { idlFactory as minerIDL } from "../../../../declarations/miner/miner.did.js";
 
   /* ------------------------------------------------------------------
      CHEAP PUBLIC 13-NODE SUBNETS (research baked in – 2025-05-02 snapshot)

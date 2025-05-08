@@ -19,8 +19,6 @@ const config = {
     alias: {
       $lib: "src/lib",
       "$lib/*": "src/lib/*",
-      $declarations: "../declarations",
-      "$declarations/*": "../declarations/*",
     },
     prerender: {
       origin: 'https://kongswap.io',
@@ -31,7 +29,8 @@ const config = {
           path === "/pools" ||
           path === "/stats" ||
           path === "/predict" ||
-          path === "/launch"
+          path === "/launch" ||
+          path === "/launch/explore"
         ) {
           return;
         }
@@ -58,34 +57,6 @@ const config = {
         );
       },
     },
-    csp: {
-      directives: {
-        'connect-src': [
-          'self',
-          'blob:',
-          'http://localhost:*',
-          'https://seashell-app-tva2e.ondigitalocean.app',
-          'https://icp0.io',
-          'https://*.icp0.io',
-          'https://icp-api.io',
-          'https://ic0.app',
-          'https://kongswap.io',
-          'https://www.kongswap.i',
-          'https://oisy.com',
-          'https://beta.oisy.com',
-          'https://api.kongswap.io',
-          'https://api.coincap.io',
-          'https://o4508554870325248.ingest.us.sentry.io',
-          'https://www.google-analytics.com',
-          'https://*.google-analytics.com',
-          'https://cdn.jsdelivr.net',
-          'https://api.floppa.ai',
-          'wss://api.floppa.ai',
-          'https://ic-api.internetcomputer.org',
-          'https://*.internetcomputer.org'
-        ],
-      }
-    }
   },
   preprocess: vitePreprocess({
     typescript: true,

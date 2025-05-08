@@ -2,9 +2,9 @@ import { auth } from "$lib/stores/auth";
 import { 
     canisterId as launchpadCanisterId, 
     idlFactory as launchpadIDL // Import the IDL factory directly
-} from "$declarations/launchpad"; 
+} from "../../../../declarations/launchpad"; 
 // Remove import of canisterIDLs as it's not needed here for launchpad
-import type { _SERVICE as LaunchpadService } from "$declarations/launchpad/launchpad.did.js";
+import type { _SERVICE as LaunchpadService } from "../../../../declarations/launchpad/launchpad.did.js";
 import type { PageLoad } from "./$types";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 

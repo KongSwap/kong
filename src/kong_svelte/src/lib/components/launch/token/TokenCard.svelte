@@ -5,7 +5,7 @@
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { onMount, onDestroy } from "svelte";
   import { auth } from "$lib/stores/auth";
-  import { idlFactory as tokenIdlFactory } from "$declarations/pow_backend/pow_backend.did.js";
+  import { idlFactory as tokenIdlFactory } from "../../../../../declarations/pow_backend/pow_backend.did.js";
   
   export let token;
 

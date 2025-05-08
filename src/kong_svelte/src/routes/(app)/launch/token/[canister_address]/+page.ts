@@ -1,7 +1,7 @@
 export const prerender = false;
 
 import { auth } from "$lib/stores/auth";
-import { idlFactory as tokenIdlFactory } from "$declarations/pow_backend/pow_backend.did.js";
+import { idlFactory as tokenIdlFactory } from "../../../../../declarations/pow_backend/pow_backend.did.js";
 import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ params }) => {

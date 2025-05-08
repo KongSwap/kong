@@ -17,10 +17,10 @@
   import SocialLinks from "$lib/components/launch/token/SocialLinks.svelte";
 
   // Canister plumbing
-  import { canisterId as launchpadCanisterId } from "$declarations/launchpad";
-  import { canisterId as kongLedgerCanisterId } from "$declarations/kong_ledger";
-  import type { _SERVICE as LaunchpadService, ChainType } from "$declarations/launchpad/launchpad.did.js";
-  import type { _SERVICE as LedgerService } from "$declarations/kong_ledger/kong_ledger.did.js";
+  import { canisterId as launchpadCanisterId } from "../../../../declarations/launchpad";
+  import { canisterId as kongLedgerCanisterId } from "../../../../declarations/kong_ledger";
+  import type { _SERVICE as LaunchpadService, ChainType } from "../../../../declarations/launchpad/launchpad.did.js";
+  import type { _SERVICE as LedgerService } from "../../../../declarations/kong_ledger/kong_ledger.did.js";
   import { canisterIDLs } from "$lib/config/auth.config";
   import type { ActorSubclass } from "@dfinity/agent";
 

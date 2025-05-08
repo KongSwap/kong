@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ArchiveOptions } from "$declarations/token_backend/token_backend.did";
+  import type { ArchiveOptions } from "../../../../../declarations/token_backend/token_backend.did";
   import type { Principal } from '@dfinity/principal';
   import { ChevronDown, AlertTriangle } from 'lucide-svelte';
 

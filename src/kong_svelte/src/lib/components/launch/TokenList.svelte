@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth';
-  import { canisterId as launchpadCanisterId, idlFactory as launchpadIDL } from '$declarations/launchpad';
+  import { canisterId as launchpadCanisterId, idlFactory as launchpadIDL } from '../../../../declarations/launchpad';
   import TokenGrid from "./token/TokenGrid.svelte";
 
   export let searchQuery = "";

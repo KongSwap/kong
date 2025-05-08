@@ -6,11 +6,11 @@
   import LoadingSpinner from "$lib/components/common/LoadingSpinner.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import { Principal } from "@dfinity/principal";
-  import { canisterId as launchpadCanisterId } from "$declarations/launchpad";
-  import type { _SERVICE as LaunchpadService, TokenInfo as LaunchpadTokenInfo } from "$declarations/launchpad/launchpad.did.js";
-  import type { _SERVICE as MinerService, MinerInfo, MiningStats } from "$declarations/miner/miner.did.js";
-  import type { _SERVICE as LedgerService } from "$declarations/kong_ledger/kong_ledger.did.js";
-  import type { ApproveArgs } from "$declarations/kong_ledger/kong_ledger.did";
+  import { canisterId as launchpadCanisterId } from "../../../../declarations/launchpad";
+  import type { _SERVICE as LaunchpadService, TokenInfo as LaunchpadTokenInfo } from "../../../../../declarations/launchpad/launchpad.did.js";
+  import type { _SERVICE as MinerService, MinerInfo, MiningStats } from "../../../../../declarations/miner/miner.did.js";
+  import type { _SERVICE as LedgerService } from "../../../../../declarations/kong_ledger/kong_ledger.did.js";
+  import type { ApproveArgs } from "../../../../../declarations/kong_ledger/kong_ledger.did";
   import { canisterIDLs } from "$lib/config/auth.config";
   import type { ActorSubclass } from "@dfinity/agent";
   import { toastStore } from "$lib/stores/toastStore";
