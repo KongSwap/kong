@@ -263,7 +263,7 @@
 >
   <button
     class="w-full h-full text-left relative overflow-hidden outline-none"
-    on:click={handleTokenClick}
+    onclick={handleTokenClick}
   >
     <!-- Top-right chain type badge -->
     {#if token.chain}

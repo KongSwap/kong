@@ -19,6 +19,7 @@
     Search,
     Wallet,
     X,
+    Rocket,
   } from "lucide-svelte";
   import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
 
@@ -111,6 +112,14 @@
     },
     {
       ...baseMobileHeaderButton,
+      icon: Rocket,
+      onClick: () => goto("/launch/my-dashboard"),
+      tooltipText: "My Dashboard",
+      label: null,
+      class: "",
+    },
+    {
+      ...baseMobileHeaderButton,
       icon: Copy,
       onClick: copyPrincipalId,
       tooltipText: "Copy Principal ID",
@@ -145,6 +154,15 @@
       icon: SettingsIcon,
       onClick: () => goto("/settings"),
       tooltipText: "",
+      show: true,
+      label: null,
+      class: "",
+    },
+    {
+      ...baseDesktopIconButton,
+      icon: Rocket,
+      onClick: () => goto("/launch/my-dashboard"),
+      tooltipText: "My Dashboard",
       show: true,
       label: null,
       class: "",
@@ -210,7 +228,7 @@
     {#if button.show !== false}
       <button
         class="nav-panel-button {button.class || ''} {button.isSelected ? 'selected' : ''} {button.isWalletButton ? 'wallet-button' : ''} {isMobile ? 'mobile' : ''}"
-        on:click={button.onClick}
+        onclick={button.onClick}
         use:tooltip={button.tooltipText ? { text: button.tooltipText, direction: 'bottom' } : null}
         aria-label={button.tooltipText || button.label || "Button"}
       >

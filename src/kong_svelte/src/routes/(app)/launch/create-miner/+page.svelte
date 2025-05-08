@@ -12,6 +12,7 @@
   import * as launchpadAPI from "$lib/api/launchpad";
   import * as minerAPI from "$lib/api/miner";
   import type { _SERVICE as LedgerService } from "../../../../declarations/kong_ledger/kong_ledger.did.js";
+  import { onDestroy } from "svelte";
 
   /* ------------------------------------------------------------------
      CHEAP PUBLIC 13-NODE SUBNETS (research baked in – 2025-05-02 snapshot)
@@ -69,27 +70,80 @@
   let kongLedgerActor = $state<ActorSubclass<LedgerService> | null>(null);
   let errorMessage = $state<string | null>(null);
   let tokens = $state<any[]>([]);
+  
+  // Controllers for async operations
+  let actorController: AbortController | null = null;
+  let feeController: AbortController | null = null;
+  let tokensController: AbortController | null = null;
 
   /* ------------------------------------------------------------------
                                 EFFECTS
   ------------------------------------------------------------------ */
   $effect(() => {
     if ($auth.isConnected && $auth.account?.owner) {
+      // Cancel previous operations if they exist
+      if (actorController) actorController.abort();
+      if (feeController) feeController.abort();
+      
+      // Initialize with fresh controllers
       initializeActors();
       fetchKongFee();
     } else {
+      // Clean up when disconnected
+      if (actorController) {
+        actorController.abort();
+        actorController = null;
+      }
+      if (feeController) {
+        feeController.abort();
+        feeController = null;
+      }
+      
       launchpadActor = null;
       kongLedgerActor = null;
       kongTransferFee = 0n;
     }
+    
+    // Clean up when effect is re-run
+    return () => {
+      if (actorController) {
+        actorController.abort();
+        actorController = null;
+      }
+      if (feeController) {
+        feeController.abort();
+        feeController = null;
+      }
+    };
   });
 
   $effect(() => {
     if ($auth.isConnected) {
+      // Cancel previous tokens fetch if it exists
+      if (tokensController) tokensController.abort();
+      
+      // Create new controller for this fetch operation
+      tokensController = new AbortController();
+      const signal = tokensController.signal;
+      
       launchpadAPI.listTokens()
-        .then(res => tokens = res)
-        .catch(e => console.error("Error fetching tokens:", e));
+        .then(res => {
+          // Only update state if not aborted
+          if (!signal.aborted) tokens = res;
+        })
+        .catch(e => {
+          // Only log error if not aborted
+          if (!signal.aborted) console.error("Error fetching tokens:", e);
+        });
     }
+    
+    // Clean up when effect is re-run
+    return () => {
+      if (tokensController) {
+        tokensController.abort();
+        tokensController = null;
+      }
+    };
   });
 
   /* ------------------------------------------------------------------
@@ -97,17 +151,31 @@
   ------------------------------------------------------------------ */
   async function initializeActors() {
     if (!$auth.isConnected) return;
+    
+    // Create new controller for this operation
+    actorController = new AbortController();
+    const signal = actorController.signal;
+    
     try {
       // We only need to initialize the kong ledger actor directly
       // since we'll use the API utilities for launchpad and miner
-      kongLedgerActor = await auth.getActor(
-        KONG_LEDGER_CANISTER_ID,
-        canisters.icrc2.idl
-      );
+      kongLedgerActor = auth.pnp.getActor({
+        canisterId: KONG_LEDGER_CANISTER_ID,
+        idl: canisters.icrc2.idl,
+        anon: false,
+        requiresSigning: false
+      });
+      
+      // Check if operation was aborted
+      if (signal.aborted) return;
+      
     } catch (error) {
-      console.error("Actor init error:", error);
-      errorMessage = "Failed to initialize actors (wallet?).";
-      toastStore.error("Actor initialization failed.");
+      // Only handle error if not aborted
+      if (!signal.aborted) {
+        console.error("Actor init error:", error);
+        errorMessage = "Failed to initialize actors (wallet?).";
+        toastStore.error("Actor initialization failed.");
+      }
     }
   }
 
@@ -116,14 +184,26 @@
   ------------------------------------------------------------------ */
   async function fetchKongFee() {
     if (!kongLedgerActor) return;
+    
+    // Create new controller for this operation
+    feeController = new AbortController();
+    const signal = feeController.signal;
+    
     try {
       const feeResult = await kongLedgerActor.icrc1_fee();
+      
+      // Check if operation was aborted
+      if (signal.aborted) return;
+      
       kongTransferFee = feeResult;
       console.log("KONG transfer fee:", kongTransferFee);
     } catch (error) {
-      console.error("Fee fetch error:", error);
-      errorMessage = "Failed to fetch KONG fee.";
-      toastStore.error("Could not fetch KONG fee.");
+      // Only handle error if not aborted
+      if (!signal.aborted) {
+        console.error("Fee fetch error:", error);
+        errorMessage = "Failed to fetch KONG fee.";
+        toastStore.error("Could not fetch KONG fee.");
+      }
     }
   }
 
@@ -297,6 +377,22 @@
       return String(obj);
     }
   }
+  
+  // Clean up all controllers when component is destroyed
+  onDestroy(() => {
+    if (actorController) {
+      actorController.abort();
+      actorController = null;
+    }
+    if (feeController) {
+      feeController.abort();
+      feeController = null;
+    }
+    if (tokensController) {
+      tokensController.abort();
+      tokensController = null;
+    }
+  });
 </script>
 
 <!-- -------------------------------------------------------------------

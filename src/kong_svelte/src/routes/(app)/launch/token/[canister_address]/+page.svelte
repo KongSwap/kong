@@ -60,7 +60,7 @@
       <!-- Back Button -->
       <button 
         class="flex items-center gap-2 px-3 py-2 transition-colors rounded-lg text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light/10"
-        on:click={() => goto('/launch/explore')}
+        onclick={() => goto('/launch/explore')}
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -119,21 +119,54 @@
               <table class="min-w-full bg-kong-bg-secondary/80 text-sm rounded-lg">
                 <thead>
                   <tr class="bg-kong-bg-dark/80">
-                    <th class="px-4 py-2 text-left font-semibold text-kong-text-secondary">Rank</th>
-                    <th class="px-4 py-2 text-left font-semibold text-kong-text-secondary">Principal</th>
-                    <th class="px-4 py-2 text-left font-semibold text-kong-text-secondary">Blocks Mined</th>
-                    <th class="px-4 py-2 text-left font-semibold text-kong-text-secondary">Total Rewards</th>
-                    <th class="px-4 py-2 text-left font-semibold text-kong-text-secondary">Hashrate</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Rank</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Miner</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Status</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Blocks Mined</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Total Rewards</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Hashrate</th>
+                    <th class="px-4 py-3 text-center font-semibold text-kong-text-secondary">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {#each minerStats as miner, i}
-                    <tr class="odd:bg-kong-bg-light/10 even:bg-kong-bg-dark/10 hover:bg-orange-500/10 transition">
-                      <td class="px-4 py-2 font-bold text-orange-400">{i + 1}</td>
-                      <td class="px-4 py-2 font-mono text-white truncate max-w-[180px]">{miner.principal.toString()}</td>
-                      <td class="px-4 py-2">{formatNumber(miner.stats.blocks_mined, 0)}</td>
-                      <td class="px-4 py-2">{decimalize(miner.stats.total_rewards, token.decimals)}</td>
-                      <td class="px-4 py-2">{formatNumber(miner.stats.average_hashrate, 2)}</td>
+                    <tr class="odd:bg-kong-bg-light/10 even:bg-kong-bg-dark/10 hover:bg-kong-accent-blue/5 transition cursor-pointer" onclick={() => goto(`/launch/miner/${miner.principal.toString()}?token=${canister_address}`)}>
+                      <td class="px-4 py-3 font-bold text-kong-accent-blue">#{i + 1}</td>
+                      <td class="px-4 py-3 max-w-[180px]">
+                        <div class="flex items-center gap-2">
+                          <div class="w-8 h-8 rounded-full bg-kong-bg-secondary/50 flex items-center justify-center">
+                            <div class="w-5 h-5 rounded-full bg-gradient-to-br from-kong-accent-blue to-kong-accent-purple flex items-center justify-center text-white text-xs font-bold">
+                              {i + 1}
+                            </div>
+                          </div>
+                          <div class="font-mono text-xs text-kong-text-secondary truncate">
+                            {miner.principal.toString().substring(0, 5)}...{miner.principal.toString().slice(-5)}
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3">
+                        <span class="inline-flex px-2 py-1 text-xs rounded-full font-medium {miner.info?.is_mining 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-yellow-500/20 text-yellow-400'}">
+                          {miner.info?.is_mining ? 'Mining' : 'Stopped'}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 font-medium">{formatNumber(miner.stats.blocks_mined, 0)}</td>
+                      <td class="px-4 py-3 font-medium">{decimalize(miner.stats.total_rewards, token.decimals)}</td>
+                      <td class="px-4 py-3 font-medium">{formatNumber(miner.stats.average_hashrate, 2)} H/s</td>
+                      <td class="px-4 py-3 text-center">
+                        <a 
+                          href={`/launch/miner/${miner.principal.toString()}?token=${canister_address}`}
+                          class="inline-flex items-center justify-center p-1.5 rounded-full bg-kong-bg-light/20 hover:bg-kong-bg-light/40 text-kong-accent-blue transition-colors"
+                          title="View Miner Details"
+                          onclick={(e) => e.stopPropagation()}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </a>
+                      </td>
                     </tr>
                   {/each}
                 </tbody>

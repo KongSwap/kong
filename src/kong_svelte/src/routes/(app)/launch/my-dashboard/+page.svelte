@@ -16,6 +16,7 @@
   import type { ActorSubclass } from "@dfinity/agent";
   import { toastStore } from "$lib/stores/toastStore";
   import { onDestroy } from "svelte";
+  import { Server } from "lucide-svelte";
 
   interface MinerData {
     principal: Principal;
@@ -89,6 +90,11 @@
 
   const REFRESH_INTERVAL = 30_000;
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
+  let fetchAttempts = $state(0);
+  let maxFetchAttempts = 2; // Maximum number of fetch attempts
+  let backendOffline = $state(false);
+  let feeAttempts = $state(0);
+  const maxFeeAttempts = 1; // Only try once to avoid spamming
 
   $effect.pre(() => {
     if ($auth.isConnected && $auth.account?.owner) {
@@ -100,9 +106,32 @@
   });
 
   async function fetchData() {
-    fetchGlobalMinersList();
-    fetchUserMinersList();
-    fetchAvailableTokens();
+    if (fetchAttempts >= maxFetchAttempts) {
+      backendOffline = true;
+      if (refreshIntervalId) {
+        clearInterval(refreshIntervalId);
+        refreshIntervalId = null;
+      }
+      return;
+    }
+    
+    fetchAttempts++;
+    try {
+      await Promise.all([
+        fetchGlobalMinersList(),
+        fetchUserMinersList(),
+        fetchAvailableTokens()
+      ]);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      if (fetchAttempts >= maxFetchAttempts) {
+        backendOffline = true;
+        if (refreshIntervalId) {
+          clearInterval(refreshIntervalId);
+          refreshIntervalId = null;
+        }
+      }
+    }
   }
 
   $effect(() => {
@@ -130,9 +159,20 @@
   });
 
   $effect(() => {
-    if ($auth.isConnected) {
+    if ($auth.isConnected && !backendOffline) {
       if (refreshIntervalId) clearInterval(refreshIntervalId);
-      refreshIntervalId = setInterval(fetchUserMinersList, REFRESH_INTERVAL);
+      refreshIntervalId = setInterval(() => {
+        // Only attempt to fetch if we haven't reached max attempts
+        if (fetchAttempts < maxFetchAttempts) {
+          fetchUserMinersList();
+        } else {
+          // If we've reached max attempts, clear the interval
+          if (refreshIntervalId) {
+            clearInterval(refreshIntervalId);
+            refreshIntervalId = null;
+          }
+        }
+      }, REFRESH_INTERVAL);
     } else if (refreshIntervalId) {
       clearInterval(refreshIntervalId);
       refreshIntervalId = null;
@@ -148,29 +188,38 @@
   async function initializeLedgerActor() {
     if (!$auth.isConnected) return;
     try {
-      kongLedgerActor = await auth.getActor(
-        KONG_LEDGER_CANISTER_ID,
-        canisters.icrc2.idl
-      );
+      kongLedgerActor = auth.pnp.getActor({
+        canisterId: KONG_LEDGER_CANISTER_ID,
+        idl: canisters.icrc2.idl,
+        anon: false,
+        requiresSigning: false
+      });
       await fetchKongFee();
     } catch (err) {
       console.error("Ledger actor init error", err);
       toastStore.error("Failed to init KONG ledger actor");
     }
   }
-
+  
   async function fetchKongFee() {
-    if (!kongLedgerActor) return;
+    if (!kongLedgerActor || feeAttempts >= maxFeeAttempts) return;
+    
+    feeAttempts++;
     try {
       const feeRes = await kongLedgerActor.icrc1_fee();
       kongTransferFee = feeRes;
     } catch (e) {
       console.error("Fee fetch error", e);
-      toastStore.error("Could not fetch KONG fee");
+      // Only show error toast on first attempt
+      if (feeAttempts === 1) {
+        toastStore.error("Could not fetch KONG fee");
+      }
     }
   }
 
   async function fetchAvailableTokens() {
+    if (backendOffline || fetchAttempts >= maxFetchAttempts) return;
+    
     isLoadingTokens = true;
     tokensError = null;
     console.log("Fetching available PoW tokens...");
@@ -186,14 +235,26 @@
     } catch (error: any) {
       console.error("Error fetching available tokens:", error);
       tokensError = `Failed to fetch token list: ${error.message || "Unknown error"}`;
-      toastStore.error(tokensError);
+      
+      // Only show toast error on first attempt to avoid spamming
+      if (fetchAttempts === 1) {
+        toastStore.error(tokensError);
+      }
+      
       availableTokens = [];
+      
+      // If we've reached maximum attempts, mark backend as offline
+      if (fetchAttempts >= maxFetchAttempts) {
+        backendOffline = true;
+      }
     } finally {
       isLoadingTokens = false;
     }
   }
 
   async function fetchGlobalMinersList() {
+    if (backendOffline || fetchAttempts >= maxFetchAttempts) return;
+    
     isLoadingGlobal = true;
     globalError = null;
     console.log("[DEBUG] Fetching global miners list...");
@@ -222,6 +283,12 @@
       } else throw new Error("Invalid global miners format");
     } catch (err: any) {
       globalError = err.message;
+      console.error("Error fetching global miners:", err);
+      
+      // If we've reached maximum attempts, mark backend as offline
+      if (fetchAttempts >= maxFetchAttempts) {
+        backendOffline = true;
+      }
     } finally {
       isLoadingGlobal = false;
     }
@@ -262,6 +329,8 @@
   }
 
   async function fetchUserMinersList() {
+    if (backendOffline || fetchAttempts >= maxFetchAttempts) return;
+    
     isLoadingMinersList = true;
     listError = null;
     console.log("Fetching user miners list...");
@@ -295,6 +364,11 @@
     } catch (error: any) {
       console.error("Error fetching miners:", error);
       listError = error.message;
+      
+      // If we've reached maximum attempts, mark backend as offline
+      if (fetchAttempts >= maxFetchAttempts) {
+        backendOffline = true;
+      }
     } finally {
       isLoadingMinersList = false;
     }
@@ -401,6 +475,9 @@
         case 'top_up':
           if (!kongLedgerActor) throw new Error('Ledger actor not initialized');
           if (!value) throw new Error('Amount required');
+          
+          // Reset fee attempt counter to allow fetching again when explicitly trying to top up
+          feeAttempts = 0;
           if (kongTransferFee === 0n) await fetchKongFee();
           
           // Convert and approve KONG transfer
@@ -462,6 +539,11 @@
     availableTokens = [];
     isLoadingTokens = false;
     tokensError = null;
+    
+    // Reset attempt counters and offline status
+    fetchAttempts = 0;
+    feeAttempts = 0;
+    backendOffline = false;
   }
 
   function handleConnect() {
@@ -529,6 +611,32 @@
       <p class="text-kong-text-secondary mb-4">Connect your wallet to view the mining dashboard.</p>
       <ButtonV2 label="Connect Wallet" onclick={handleConnect} theme="primary" />
     </Panel>
+  {:else if backendOffline}
+    <Panel>
+      <div class="p-6 text-center">
+        <div class="mb-4 flex justify-center">
+          <Server size={48} class="text-kong-accent-red opacity-50" />
+        </div>
+        <h2 class="text-xl font-bold text-kong-text-primary mb-2">Launchpad Service Unavailable</h2>
+        <p class="text-kong-text-secondary mb-6">We're having trouble connecting to the launchpad services. This might be because the services are offline or experiencing issues.</p>
+        <div class="flex justify-center gap-4">
+          <ButtonV2 
+            label="Reload Page" 
+            onclick={() => window.location.reload()} 
+            theme="primary" 
+          />
+          <ButtonV2 
+            label="Try Again" 
+            onclick={() => {
+              backendOffline = false;
+              fetchAttempts = 0;
+              fetchData();
+            }} 
+            theme="secondary" 
+          />
+        </div>
+      </div>
+    </Panel>
   {:else}
     <Panel>
       <div class="flex justify-between items-center mb-4">
@@ -582,35 +690,89 @@
           <h3 class="text-lg font-medium mb-3 text-kong-text-primary">{showAllMiners ? 'All Miners' : 'Your Miners'}</h3>
           
           {#if showAllMiners}
-            <!-- ALL MINERS LIST VIEW -->
-            <div class="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
-              {#each userMiners as miner}
-                <div class="flex items-center bg-kong-bg-light rounded-lg px-4 py-3 shadow hover:bg-kong-bg-secondary transition">
-                  <div class="flex-1">
-                    <div class="font-mono text-xs text-kong-text-secondary">
-                      {getPrincipalText(miner.principal).substring(0, 5)}...{getPrincipalText(miner.principal).slice(-3)}
-                    </div>
-                    <div class="text-sm text-kong-text-primary">
-                      Owner: {miner.isYours ? 'You' : 'Other'}
-                    </div>
-                  </div>
-                  <div class="flex-1 text-xs">
-                    <span class={miner.info?.is_mining ? 'text-green-500' : 'text-yellow-500'}>
-                      {miner.info ? (miner.info.is_mining ? 'Mining' : 'Stopped') : 'Unknown'}
-                    </span>
-                  </div>
-                  <div class="flex-1 text-xs">{miner.stats ? formatHashrate(miner.stats.last_hash_rate) : 'N/A'}</div>
-                  <div class="flex-1 text-xs">{miner.stats ? miner.stats.blocks_mined.toString() : 'N/A'}</div>
-                  <div class="flex-1 text-xs">{miner.stats ? formatRewards(miner.stats.total_rewards) : 'N/A'}</div>
-                  <div class="flex-1 text-xs">{formatBigInt(miner.remainingHashes)}</div>
-                  <div class="flex-1 text-xs">{miner.timeRemaining ?? 'N/A'}</div>
-                  {#if miner.isYours}
-                    <div class="ml-2">
-                      <span class="inline-block w-2 h-2 rounded-full bg-green-500" title="Your Miner"></span>
-                    </div>
-                  {/if}
-                </div>
-              {/each}
+            <!-- ALL MINERS TABLE VIEW -->
+            <div class="overflow-x-auto rounded-lg">
+              <table class="min-w-full bg-kong-bg-secondary/50 text-sm rounded-lg">
+                <thead>
+                  <tr class="bg-kong-bg-dark/80">
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Miner</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Status</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Hashrate</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Blocks</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Rewards</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Remaining</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">ETA</th>
+                    <th class="px-4 py-3 text-left font-semibold text-kong-text-secondary">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each userMiners as miner, index}
+                    <tr class="odd:bg-kong-bg-light/10 even:bg-kong-bg-dark/10 hover:bg-kong-accent-blue/5 transition cursor-pointer" onclick={() => goto(`/launch/miner/${miner.principal.toText()}`)}>
+                      <td class="px-4 py-3">
+                        <div class="flex items-center gap-2">
+                          <div class="flex-shrink-0">
+                            <div class="w-8 h-8 rounded-full bg-kong-bg-secondary flex items-center justify-center">
+                              {#if miner.isYours}
+                                <span class="inline-block w-4 h-4 rounded-full bg-gradient-to-r from-green-400 to-green-600" title="Your Miner"></span>
+                              {:else}
+                                <span class="inline-block w-4 h-4 rounded-full bg-gradient-to-r from-gray-400 to-gray-600" title="Other Miner"></span>
+                              {/if}
+                            </div>
+                          </div>
+                          <div>
+                            <div class="font-mono text-xs text-kong-text-secondary">
+                              {getPrincipalText(miner.principal).substring(0, 5)}...{getPrincipalText(miner.principal).slice(-3)}
+                            </div>
+                            <div class="text-xs text-kong-text-secondary">
+                              {miner.isYours ? 'Your Miner' : 'Other'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3">
+                        <span class="inline-flex px-2 py-1 text-xs rounded-full font-medium {miner.info?.is_mining ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}">
+                          {miner.info ? (miner.info.is_mining ? 'Mining' : 'Stopped') : 'Unknown'}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 font-medium">{miner.stats ? formatHashrate(miner.stats.last_hash_rate) : 'N/A'}</td>
+                      <td class="px-4 py-3 font-medium">{miner.stats ? miner.stats.blocks_mined.toString() : 'N/A'}</td>
+                      <td class="px-4 py-3 font-medium">{miner.stats ? formatRewards(miner.stats.total_rewards) : 'N/A'}</td>
+                      <td class="px-4 py-3 font-medium">{formatBigInt(miner.remainingHashes)}</td>
+                      <td class="px-4 py-3 font-medium">{miner.timeRemaining ?? 'N/A'}</td>
+                      <td class="px-4 py-3">
+                        <div class="flex gap-1">
+                          {#if miner.isYours}
+                            <button 
+                              class="p-1 rounded bg-kong-bg-secondary/50 hover:bg-kong-bg-secondary text-kong-accent-blue"
+                              onclick={(e) => { e.stopPropagation(); goto(`/launch/miner/${miner.principal.toText()}`); }}
+                              title="View Details">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                            <button 
+                              class="p-1 rounded bg-kong-bg-secondary/50 hover:bg-kong-bg-secondary text-kong-accent-green"
+                              onclick={(e) => { e.stopPropagation(); handleMinerAction(miner.info?.is_mining ? 'stop' : 'start', miner.principal, index); }}
+                              title={miner.info?.is_mining ? "Stop Mining" : "Start Mining"}>
+                              {#if miner.info?.is_mining}
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              {:else}
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              {/if}
+                            </button>
+                          {/if}
+                        </div>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
             </div>
           {:else}
             <!-- MY MINERS ROW VIEW -->

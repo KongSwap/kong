@@ -22,6 +22,7 @@
   import type { ChainType } from "../../../../declarations/launchpad/launchpad.did.js";
   import type { _SERVICE as LedgerService } from "../../../../declarations/kong_ledger/kong_ledger.did.js";
   import type { ActorSubclass } from "@dfinity/agent";
+  import { onDestroy } from "svelte";
 
   // ────────────────────────────────────────────────────────────────────────────
   // Constants & Types
@@ -234,25 +235,54 @@
   let isLoading = $state(false);
   let errorMessage = $state<string | null>(null);
 
+  let initActorController: AbortController | null = null;
+  
   async function initActors() {
     if (!$auth.isConnected || !$auth.account?.owner) return;
+    
+    // Cancel any previous initialization
+    if (initActorController) {
+      initActorController.abort();
+    }
+    
+    // Create new abort controller for this initialization
+    initActorController = new AbortController();
+    const signal = initActorController.signal;
+    
     try {
       isLoading = true;
+      
       // We only need to initialize the kong ledger actor directly since we use the API for launchpad
-      kongLedgerActor = await auth.getActor(
-        KONG_LEDGER_CANISTER_ID,
-        canisters.icrc2.idl // Use ICRC2 for fee + approve
-      );
+      kongLedgerActor = auth.pnp.getActor({
+        canisterId: KONG_LEDGER_CANISTER_ID,
+        idl: canisters.icrc2.idl, // Use ICRC2 for fee + approve
+        anon: false,
+        requiresSigning: false
+      });
+      
+      // Check if aborted before continuing
+      if (signal.aborted) return;
+      
       // Fetch fee using the authenticated actor now
       kongTransferFee = await kongLedgerActor.icrc1_fee();
+      
+      // Check if aborted after fee fetch
+      if (signal.aborted) return;
+      
       console.log("KONG Transfer Fee:", kongTransferFee);
     } catch (e) {
-      console.error("Actor/Fee init error:", e);
-      errorMessage = "Failed to initialize network actors or fetch fee.";
-      toastStore.error(errorMessage);
-      kongLedgerActor = null;
+      // Only handle errors if not aborted
+      if (!signal.aborted) {
+        console.error("Actor/Fee init error:", e);
+        errorMessage = "Failed to initialize network actors or fetch fee.";
+        toastStore.error(errorMessage);
+        kongLedgerActor = null;
+      }
     } finally {
-      isLoading = false;
+      // Only update loading state if not aborted
+      if (!signal.aborted) {
+        isLoading = false;
+      }
     }
   }
 
@@ -261,8 +291,29 @@
     if ($auth.isConnected && $auth.account?.owner) {
       initActors();
     } else {
+      // Clean up previous initialization
+      if (initActorController) {
+        initActorController.abort();
+        initActorController = null;
+      }
       kongLedgerActor = null;
       kongTransferFee = 0n;
+    }
+    
+    // Cleanup on effect destruction
+    return () => {
+      if (initActorController) {
+        initActorController.abort();
+        initActorController = null;
+      }
+    };
+  });
+  
+  // Additional cleanup when component is destroyed
+  onDestroy(() => {
+    if (initActorController) {
+      initActorController.abort();
+      initActorController = null;
     }
   });
 
@@ -336,10 +387,12 @@
       const approvalAmount = TOKEN_CREATION_FEE + kongTransferFee;
 
       // 1. Ensure sufficient allowance
-      const authenticatedKongLedgerActor = await auth.getActor(
-        KONG_LEDGER_CANISTER_ID,
-        canisterIDLs.icrc2
-      ) as LedgerService;
+      const authenticatedKongLedgerActor = auth.pnp.getActor({
+        canisterId: KONG_LEDGER_CANISTER_ID,
+        idl: canisters.icrc2.idl,
+        anon: false,
+        requiresSigning: false
+      });
       // Check current allowance
       const allowanceArgs = {
         account: { owner: callerPrincipal, subaccount: [] as [] }, // Explicitly type as empty tuple
