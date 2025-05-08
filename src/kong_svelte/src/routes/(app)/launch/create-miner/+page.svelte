@@ -6,13 +6,12 @@
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import TextInput from "$lib/components/common/TextInput.svelte";
   import { Principal } from "@dfinity/principal";
-  import { canisterId as launchpadCanisterId } from "../../../../declarations/launchpad";
-  import type { _SERVICE as LaunchpadService } from "../../../../declarations/launchpad/launchpad.did.js";
-  import type { _SERVICE as LedgerService } from "../../../../declarations/kong_ledger/kong_ledger.did.js";
-  import { canisterIDLs } from "$lib/config/auth.config";
+  import { canisters } from "$lib/config/auth.config";
   import type { ActorSubclass } from "@dfinity/agent";
   import { toastStore } from "$lib/stores/toastStore";
-  import { idlFactory as minerIDL } from "../../../../declarations/miner/miner.did.js";
+  import * as launchpadAPI from "$lib/api/launchpad";
+  import * as minerAPI from "$lib/api/miner";
+  import type { _SERVICE as LedgerService } from "../../../../declarations/kong_ledger/kong_ledger.did.js";
 
   /* ------------------------------------------------------------------
      CHEAP PUBLIC 13-NODE SUBNETS (research baked in – 2025-05-02 snapshot)
@@ -49,7 +48,7 @@
   /* ------------------------------------------------------------------
                                CONSTANTS
   ------------------------------------------------------------------ */
-  const LAUNCHPAD_CANISTER_ID = launchpadCanisterId;
+  const LAUNCHPAD_CANISTER_ID = canisters.launchpad.canisterId!;
   const KONG_LEDGER_CANISTER_ID = "o7oak-iyaaa-aaaaq-aadzq-cai";
   const MINER_CREATION_FEE = 12_500_000_000n; // 125 KONG (8 dp)
   const EMBEDDED_UI_FEE = 5_000_000_000n; // 50 KONG (8 dp)
@@ -86,8 +85,8 @@
   });
 
   $effect(() => {
-    if (launchpadActor) {
-      launchpadActor.list_tokens()
+    if ($auth.isConnected) {
+      launchpadAPI.listTokens()
         .then(res => tokens = res)
         .catch(e => console.error("Error fetching tokens:", e));
     }
@@ -99,13 +98,11 @@
   async function initializeActors() {
     if (!$auth.isConnected) return;
     try {
-      launchpadActor = await auth.getActor(
-        LAUNCHPAD_CANISTER_ID,
-        canisterIDLs.launchpad
-      );
+      // We only need to initialize the kong ledger actor directly
+      // since we'll use the API utilities for launchpad and miner
       kongLedgerActor = await auth.getActor(
         KONG_LEDGER_CANISTER_ID,
-        canisterIDLs.icrc2
+        canisters.icrc2.idl
       );
     } catch (error) {
       console.error("Actor init error:", error);
@@ -142,7 +139,6 @@
     if (
       !$auth.isConnected ||
       !$auth.account?.owner ||
-      !launchpadActor ||
       !kongLedgerActor
     ) {
       errorMessage = "Please connect your wallet first.";
@@ -225,25 +221,14 @@
       }
       
       // Standard miner creation - same for all options in demo mode
-      const createResult = await launchpadActor.create_miner(
-        Principal.fromText(tokenCanisterId),
-        [] as [] // leave owner blank – launchpad defaults to caller
+      const createResult = await launchpadAPI.createMiner(
+        Principal.fromText(tokenCanisterId)
       );
 
-      if ("Err" in createResult) {
-        console.error("Creation error:", createResult.Err);
-        throw new Error(`Miner creation failed: ${safeStringify(createResult.Err)}`);
-      }
-
-      const newMinerCanisterId = createResult.Ok.toText();
+      const newMinerCanisterId = createResult.toText();
 
       /* -------- 3. CONNECT TOKEN -------- */
-      const minerActor = await auth.getActor(newMinerCanisterId, minerIDL);
-      const connRes = await minerActor.connect_token(Principal.fromText(tokenCanisterId));
-      if ("Err" in connRes) {
-        console.error("connect_token error:", connRes.Err);
-        throw new Error(`Failed to attach token: ${connRes.Err}`);
-      }
+      await minerAPI.connectToken(newMinerCanisterId, tokenCanisterId);
 
       // Update toast with success message but keep it visible for a while
       toastStore.success(

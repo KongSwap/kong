@@ -23,6 +23,8 @@ import { IDL } from '@dfinity/candid';
 import { signatureModalStore } from "$lib/stores/signatureModalStore";
 import { idlFactory as launchpadIDL, canisterId as launchpadCanisterId } from "../../../../declarations/launchpad";
 import { idlFactory as minerIDL, canisterId as minerCanisterId } from "../../../../declarations/miner";
+import { idlFactory as powBackendIDL, canisterId as powBackendCanisterId } from "../../../../declarations/pow_backend";
+import type { _SERVICE as _POW_BACKEND_SERVICE } from '../../../../declarations/pow_backend/pow_backend.did.d.ts';
 
 // Consolidated canister types
 export type CanisterType = {
@@ -33,8 +35,9 @@ export type CanisterType = {
   ICRC2_LEDGER: _ICRC2_SERVICE;
   PREDICTION_MARKETS: _PREDICTION_MARKETS_BACKEND_SERVICE;
   TROLLBOX: _TROLLBOX_SERVICE;
-  LAUNCHPAD: any;
-  MINER: any;
+  LAUNCHPAD: any; // TODO: Replace with proper type when available
+  MINER: any; // TODO: Replace with proper type when available 
+  POW_BACKEND: _POW_BACKEND_SERVICE;
 }
 
 export type CanisterConfigs = {
@@ -87,10 +90,17 @@ export const canisters: CanisterConfigs = {
   launchpad: {
     canisterId: launchpadCanisterId,
     idl: launchpadIDL,
+    type: {} as CanisterType['LAUNCHPAD'], 
   },
   miner: {
     canisterId: minerCanisterId,
     idl: minerIDL,
+    type: {} as CanisterType['MINER'],
+  },
+  powBackend: {
+    canisterId: powBackendCanisterId,
+    idl: powBackendIDL,
+    type: {} as CanisterType['POW_BACKEND'],
   },
 }
 
@@ -103,7 +113,8 @@ const delegationTargets = [
   kongBackendCanisterId,
   predictionMarketsBackendCanisterId,
   trollboxCanisterId,
-  kongDataCanisterId
+  kongDataCanisterId,
+  powBackendCanisterId
 ]
 
 const derivationOrigin = (() => {

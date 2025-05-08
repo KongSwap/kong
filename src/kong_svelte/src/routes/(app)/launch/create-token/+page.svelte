@@ -17,19 +17,17 @@
   import SocialLinks from "$lib/components/launch/token/SocialLinks.svelte";
 
   // Canister plumbing
-  import { canisterId as launchpadCanisterId } from "../../../../declarations/launchpad";
-  import { canisterId as kongLedgerCanisterId } from "../../../../declarations/kong_ledger";
-  import type { _SERVICE as LaunchpadService, ChainType } from "../../../../declarations/launchpad/launchpad.did.js";
+  import { canisters } from "$lib/config/auth.config";
+  import * as launchpadAPI from "$lib/api/launchpad";
+  import type { ChainType } from "../../../../declarations/launchpad/launchpad.did.js";
   import type { _SERVICE as LedgerService } from "../../../../declarations/kong_ledger/kong_ledger.did.js";
-  import { canisterIDLs } from "$lib/config/auth.config";
   import type { ActorSubclass } from "@dfinity/agent";
 
   // ────────────────────────────────────────────────────────────────────────────
   // Constants & Types
   // ────────────────────────────────────────────────────────────────────────────
-  const LAUNCHPAD_CANISTER_ID = launchpadCanisterId;
-  const KONG_LEDGER_CANISTER_ID =
-    kongLedgerCanisterId || "o7oak-iyaaa-aaaaq-aadzq-cai";
+  const LAUNCHPAD_CANISTER_ID = canisters.launchpad.canisterId!;
+  const KONG_LEDGER_CANISTER_ID = "o7oak-iyaaa-aaaaq-aadzq-cai";
   const TOKEN_CREATION_FEE = 500n * 10n ** 8n; // 500 KONG, 8 decimals
 
   type SocialLink = { platform: string; url: string };
@@ -240,13 +238,10 @@
     if (!$auth.isConnected || !$auth.account?.owner) return;
     try {
       isLoading = true;
-      launchpadActor = await auth.getActor(
-        LAUNCHPAD_CANISTER_ID,
-        canisterIDLs.launchpad
-      );
+      // We only need to initialize the kong ledger actor directly since we use the API for launchpad
       kongLedgerActor = await auth.getActor(
         KONG_LEDGER_CANISTER_ID,
-        canisterIDLs.icrc2 // Use ICRC2 for fee + approve
+        canisters.icrc2.idl // Use ICRC2 for fee + approve
       );
       // Fetch fee using the authenticated actor now
       kongTransferFee = await kongLedgerActor.icrc1_fee();
@@ -255,7 +250,6 @@
       console.error("Actor/Fee init error:", e);
       errorMessage = "Failed to initialize network actors or fetch fee.";
       toastStore.error(errorMessage);
-      launchpadActor = null; // Ensure actors are null on error
       kongLedgerActor = null;
     } finally {
       isLoading = false;
@@ -267,7 +261,6 @@
     if ($auth.isConnected && $auth.account?.owner) {
       initActors();
     } else {
-      launchpadActor = null;
       kongLedgerActor = null;
       kongTransferFee = 0n;
     }
@@ -310,7 +303,7 @@
         toastStore.error(errorMessage); goToStep(2); return;
     }
 
-    if (!$auth.isConnected || !$auth.account?.owner || !launchpadActor || !kongLedgerActor) {
+    if (!$auth.isConnected || !$auth.account?.owner || !kongLedgerActor) {
       errorMessage = "Please connect your wallet first.";
       toastStore.error(errorMessage);
       return;
@@ -414,29 +407,25 @@
         block_time_target_seconds, halving_interval, initial_block_reward, chain, subnet
       });
 
-      const createResult = await launchpadActor.create_token(
-        ticker,
-        name,
-        supply,
-        logo,
-        decimals,
-        fee,
-        block_time_target_seconds,
-        halving_interval,
-        initial_block_reward,
-        chain,
-        subnet
-      );
-
-      if ("Err" in createResult) {
-        console.error("Token Creation Error:", createResult.Err);
-        throw new Error(`Token creation failed: ${JSON.stringify(createResult.Err)}`);
-      }
-
-      const newTokenCanisterId = createResult.Ok.toText();
-      toastStore.success(`Token created successfully! Canister ID: ${newTokenCanisterId}`);
+      // Use the launchpad API to create the token
+    const newTokenCanisterId = await launchpadAPI.createToken(
+      name,
+      ticker,
+      supply,
+      identity.logo,
+      economics.decimals,
+      economics.transferFee ? BigInt(economics.transferFee) : undefined,
+      block_time_target_seconds,
+      halving_interval,
+      initial_block_reward,
+      chain,
+      advanced.ownerPrincipal ? Principal.fromText(advanced.ownerPrincipal) : undefined
+    );
+    
+    const tokenId = newTokenCanisterId.toText();
+      toastStore.success(`Token created successfully! Canister ID: ${tokenId}`);
       // Redirect to a confirmation or details page
-      goto(`/launch/token/${newTokenCanisterId}`); // Example redirect
+      goto(`/launch/token/${tokenId}`); // Example redirect
 
     } catch (error: any) {
       console.error("Token creation process failed:", error);
@@ -691,7 +680,7 @@
               {/if}
             </ButtonV2>
           {:else}
-            <ButtonV2 type="submit" disabled={isLoading || !launchpadActor || !$auth.isConnected} loading={isLoading} variant="solid">
+            <ButtonV2 type="submit" disabled={isLoading || !$auth.isConnected} loading={isLoading} variant="solid">
               Create Token ({Number(TOKEN_CREATION_FEE) / (10 ** 8)} KONG)
             </ButtonV2>
           {/if}

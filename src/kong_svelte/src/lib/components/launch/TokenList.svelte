@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { auth } from '$lib/stores/auth';
-  import { canisterId as launchpadCanisterId, idlFactory as launchpadIDL } from '../../../../declarations/launchpad';
+  import * as launchpadAPI from "$lib/api/launchpad";
   import TokenGrid from "./token/TokenGrid.svelte";
 
   export let searchQuery = "";
@@ -11,8 +10,7 @@
   onMount(async () => {
     loading = true;
     try {
-      const actor = auth.getActor(launchpadCanisterId, launchpadIDL, { anon: true });
-      tokens = await actor.list_tokens();
+      tokens = await launchpadAPI.listTokens();
       console.log(tokens);
     } catch (error) {
       console.error('Failed to load tokens', error);

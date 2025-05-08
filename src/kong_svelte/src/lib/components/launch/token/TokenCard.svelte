@@ -4,8 +4,7 @@
   import { goto } from "$app/navigation";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { onMount, onDestroy } from "svelte";
-  import { auth } from "$lib/stores/auth";
-  import { idlFactory as tokenIdlFactory } from "../../../../../declarations/pow_backend/pow_backend.did.js";
+  import * as powBackendAPI from "$lib/api/powBackend";
   
   export let token;
 

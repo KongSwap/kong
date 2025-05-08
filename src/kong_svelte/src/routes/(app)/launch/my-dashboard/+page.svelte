@@ -6,12 +6,13 @@
   import LoadingSpinner from "$lib/components/common/LoadingSpinner.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import { Principal } from "@dfinity/principal";
-  import { canisterId as launchpadCanisterId } from "../../../../declarations/launchpad";
-  import type { _SERVICE as LaunchpadService, TokenInfo as LaunchpadTokenInfo } from "../../../../../declarations/launchpad/launchpad.did.js";
-  import type { _SERVICE as MinerService, MinerInfo, MiningStats } from "../../../../../declarations/miner/miner.did.js";
+  import { canisters } from "$lib/config/auth.config";
+  import * as launchpadAPI from "$lib/api/launchpad";
+  import * as minerAPI from "$lib/api/miner";
+  import type { TokenInfo as LaunchpadTokenInfo } from "../../../../../declarations/launchpad/launchpad.did.js";
+  import type { MinerInfo, MiningStats } from "../../../../../declarations/miner/miner.did.js";
   import type { _SERVICE as LedgerService } from "../../../../../declarations/kong_ledger/kong_ledger.did.js";
   import type { ApproveArgs } from "../../../../../declarations/kong_ledger/kong_ledger.did";
-  import { canisterIDLs } from "$lib/config/auth.config";
   import type { ActorSubclass } from "@dfinity/agent";
   import { toastStore } from "$lib/stores/toastStore";
   import { onDestroy } from "svelte";
@@ -67,6 +68,7 @@
   });
 
   const KONG_LEDGER_CANISTER_ID = "o7oak-iyaaa-aaaaq-aadzq-cai";
+  const LAUNCHPAD_CANISTER_ID = canisters.launchpad.canisterId!;
   let kongLedgerActor = $state<ActorSubclass<LedgerService> | null>(null);
   let kongTransferFee = $state<bigint>(0n);
 
@@ -90,19 +92,18 @@
 
   $effect.pre(() => {
     if ($auth.isConnected && $auth.account?.owner) {
-      initializeLaunchpadActor();
+      initializeLedgerActor();
+      fetchData();
     } else {
       resetState();
     }
   });
 
-  $effect(() => {
-    if (launchpadActor) {
-      fetchGlobalMinersList();
-      fetchUserMinersList();
-      fetchAvailableTokens();
-    }
-  });
+  async function fetchData() {
+    fetchGlobalMinersList();
+    fetchUserMinersList();
+    fetchAvailableTokens();
+  }
 
   $effect(() => {
     userMiners.forEach((miner, index) => {
@@ -129,7 +130,7 @@
   });
 
   $effect(() => {
-    if ($auth.isConnected && launchpadActor) {
+    if ($auth.isConnected) {
       if (refreshIntervalId) clearInterval(refreshIntervalId);
       refreshIntervalId = setInterval(fetchUserMinersList, REFRESH_INTERVAL);
     } else if (refreshIntervalId) {
@@ -142,29 +143,14 @@
     if (refreshIntervalId) clearInterval(refreshIntervalId);
   });
 
-  async function initializeLaunchpadActor() {
-    if (!$auth.isConnected || !$auth.account?.owner) return;
-    try {
-      const actor = await auth.getActor(
-        launchpadCanisterId,
-        canisterIDLs.launchpad
-      );
-      launchpadActor = actor;
-      console.log("Launchpad actor initialized");
-      initializeLedgerActor();
-    } catch (error) {
-      console.error("Error initializing launchpad actor:", error);
-      listError = "Failed to initialize launchpad connection.";
-      toastStore.error(listError);
-    }
-  }
+  // We no longer need to initialize the launchpad actor since we use the API
 
   async function initializeLedgerActor() {
     if (!$auth.isConnected) return;
     try {
       kongLedgerActor = await auth.getActor(
         KONG_LEDGER_CANISTER_ID,
-        canisterIDLs.icrc2
+        canisters.icrc2.idl
       );
       await fetchKongFee();
     } catch (err) {
@@ -185,12 +171,11 @@
   }
 
   async function fetchAvailableTokens() {
-    if (!launchpadActor) return;
     isLoadingTokens = true;
     tokensError = null;
     console.log("Fetching available PoW tokens...");
     try {
-      const result = await launchpadActor.list_tokens();
+      const result = await launchpadAPI.listTokens();
       console.log("Raw available tokens result:", result);
       if (Array.isArray(result)) {
         availableTokens = result;
@@ -209,12 +194,11 @@
   }
 
   async function fetchGlobalMinersList() {
-    if (!launchpadActor) return;
     isLoadingGlobal = true;
     globalError = null;
     console.log("[DEBUG] Fetching global miners list...");
     try {
-      const result = await launchpadActor.list_miners();
+      const result = await launchpadAPI.listMiners();
       console.log("[DEBUG] Global miners raw result:", result);
       if (Array.isArray(result)) {
         console.log("[DEBUG] Number of global miners:", result.length);
@@ -244,58 +228,55 @@
   }
 
   async function fetchGlobalMinerDetails(principal: Principal, index: number) {
+    const principalText = principal.toText();
+    
     try {
-      const minerActor = await auth.getActor(
-        principal.toText(),
-        canisterIDLs.miner
-      );
-
       try {
-        const infoResult = await minerActor.get_info();
-        if ('Ok' in infoResult) {
-          globalMiners[index].info = infoResult.Ok;
-        }
+        const info = await minerAPI.getMinerInfo(principalText);
+        globalMiners[index].info = info;
       } catch (infoError: any) {
-        console.error(`Error fetching info for global miner ${principal.toText()}:`, infoError);
+        console.error(`Error fetching info for global miner ${principalText}:`, infoError);
       }
 
       try {
-        const statsResult = await minerActor.get_mining_stats();
-        globalMiners[index].stats = statsResult;
+        const stats = await minerAPI.getMiningStats(principalText);
+        globalMiners[index].stats = stats;
         
         try {
-          const timeEst = await minerActor.get_time_remaining_estimate();
+          const timeEst = await minerAPI.getTimeRemainingEstimate(principalText);
+          globalMiners[index].timeRemaining = timeEst;
           // Parse average rate from time estimate string and set last_hash_rate
           const avgMatch = timeEst.match(/avg\s+([\d.]+)\s+hashes\/s/i);
           if (avgMatch && globalMiners[index].stats) {
             globalMiners[index].stats.last_hash_rate = parseFloat(avgMatch[1]);
           }
         } catch (trErr: any) {
-          console.error(`Error fetching time estimate for global miner ${principal.toText()}:`, trErr);
+          console.error(`Error fetching time estimate for global miner ${principalText}:`, trErr);
         }
       } catch (statsError: any) {
-        console.error(`Error fetching stats for global miner ${principal.toText()}:`, statsError);
+        console.error(`Error fetching stats for global miner ${principalText}:`, statsError);
       }
     } catch (actorError: any) {
-      console.error(`Error getting actor for global miner ${principal.toText()}:`, actorError);
+      console.error(`Error getting details for global miner ${principalText}:`, actorError);
     }
   }
 
   async function fetchUserMinersList() {
-    if (!launchpadActor) return;
     isLoadingMinersList = true;
     listError = null;
     console.log("Fetching user miners list...");
     console.log("[DEBUG] Connected user principal:", getPrincipalText($auth.account?.owner));
     try {
-      // call filtered if available
-      const fetchFn = (launchpadActor as any).list_miners_filtered
-        ? (launchpadActor as any).list_miners_filtered($auth.account.owner!)
-        : launchpadActor.list_miners();
-      const result = await fetchFn;
+      // Get all miners since we don't have a filtered API yet
+      const result = await launchpadAPI.listMiners();
       console.log("[DEBUG] Raw miners list result:", result);
       if (Array.isArray(result)) {
         console.log("[DEBUG] Number of miners returned from backend:", result.length);
+        // Get user principal in consistent format
+        const userPrincipalText = getPrincipalText($auth.account?.owner);
+        console.log("[DEBUG] User principal for filtering:", userPrincipalText);
+        
+        // For now, add all miners (keeping the debug behavior)
         userMiners = result.map((item: any) => ({
           principal: item.canister_id,
           info: null,
@@ -306,101 +287,58 @@
           statsError: null,
           isLoadingInfo: false,
           isLoadingStats: false,
-          isYours: comparePrincipals(item.creator, $auth.account.owner)
+          isYours: comparePrincipals(item.creator, $auth.account?.owner)
         }));
+        
+        console.log("[DEBUG] All miners with isYours flag:", userMiners);
       } else throw new Error("Invalid user miners format");
     } catch (error: any) {
-      console.error("Error fetching filtered miners, falling back:", error);
-      // fallback: fetch all then client-side filter
-      try {
-        const all = await launchpadActor.list_miners();
-        console.log("[DEBUG] All miners list:", all);
-        
-        // Get user principal in consistent format
-        const userPrincipalText = getPrincipalText($auth.account.owner);
-        console.log("[DEBUG] User principal for filtering:", userPrincipalText);
-        
-        // Log each miner's creator for comparison
-        all.forEach((m: any) => {
-          const creatorText = getPrincipalText(m.creator);
-          console.log(`[DEBUG] Miner ${getPrincipalText(m.canister_id)} creator: ${creatorText}`);
-          console.log(`[DEBUG] Principal comparison: ${creatorText} === ${userPrincipalText} ? ${comparePrincipals(m.creator, $auth.account.owner)}`);
-        });
-        
-        // Add all miners to userMiners for now (debug mode)
-        // This will help us see if miners exist but filtering is the issue
-        userMiners = all
-          .map((item: any) => ({
-            principal: item.canister_id,
-            info: null,
-            stats: null,
-            remainingHashes: null,
-            timeRemaining: null,
-            infoError: null,
-            statsError: null,
-            isLoadingInfo: false,
-            isLoadingStats: false,
-            isYours: comparePrincipals(item.creator, $auth.account.owner)
-          }));
-          
-        console.log("[DEBUG] All miners added to userMiners for debugging:", userMiners);
-        
-        console.log("[DEBUG] Filtered user miners:", userMiners);
-      } catch (e: any) {
-        listError = e.message;
-      }
+      console.error("Error fetching miners:", error);
+      listError = error.message;
     } finally {
       isLoadingMinersList = false;
     }
   }
 
   async function fetchMinerDetails(principal: Principal, index: number) {
-    console.log(`Fetching details for miner ${index}: ${principal.toText()}`);
+    const principalText = principal.toText();
+    console.log(`Fetching details for miner ${index}: ${principalText}`);
     userMiners[index].isLoadingInfo = true;
     userMiners[index].isLoadingStats = true;
     userMiners[index].infoError = null;
     userMiners[index].statsError = null;
 
     try {
-      const minerActor = await auth.getActor(
-        principal.toText(),
-        canisterIDLs.miner
-      );
-
       try {
-        const infoResult = await minerActor.get_info();
-        if ('Ok' in infoResult) {
-          userMiners[index].info = infoResult.Ok;
-        } else {
-          throw new Error(infoResult.Err);
-        }
+        const info = await minerAPI.getMinerInfo(principalText);
+        userMiners[index].info = info;
       } catch (infoError: any) {
-        console.error(`Error fetching info for miner ${principal.toText()}:`, infoError);
+        console.error(`Error fetching info for miner ${principalText}:`, infoError);
         userMiners[index].infoError = `Info fetch failed: ${infoError.message || "Unknown error"}`;
       } finally {
         userMiners[index].isLoadingInfo = false;
       }
 
       try {
-        const statsResult = await minerActor.get_mining_stats();
-        userMiners[index].stats = statsResult;
+        const stats = await minerAPI.getMiningStats(principalText);
+        userMiners[index].stats = stats;
       } catch (statsError: any) {
-        console.error(`Error fetching stats for miner ${principal.toText()}:`, statsError);
+        console.error(`Error fetching stats for miner ${principalText}:`, statsError);
         userMiners[index].statsError = `Stats fetch failed: ${statsError.message || "Unknown error"}`;
       } finally {
         userMiners[index].isLoadingStats = false;
       }
 
-      // New: remaining hashes and time estimate
+      // Get remaining hashes and time estimate
       try {
-        const remaining = await minerActor.get_remaining_hashes();
+        const remaining = await minerAPI.getRemainingHashes(principalText);
         userMiners[index].remainingHashes = remaining;
       } catch (rhErr: any) {
-        console.error(`Error fetching remaining hashes for miner ${principal.toText()}:`, rhErr);
+        console.error(`Error fetching remaining hashes for miner ${principalText}:`, rhErr);
       }
 
       try {
-        const timeEst = await minerActor.get_time_remaining_estimate();
+        const timeEst = await minerAPI.getTimeRemainingEstimate(principalText);
         userMiners[index].timeRemaining = timeEst;
         // Parse average rate from time estimate string and set last_hash_rate
         const avgMatch = timeEst.match(/avg\s+([\d.]+)\s+hashes\/s/i);
@@ -408,11 +346,11 @@
           userMiners[index].stats.last_hash_rate = parseFloat(avgMatch[1]);
         }
       } catch (trErr: any) {
-        console.error(`Error fetching time estimate for miner ${principal.toText()}:`, trErr);
+        console.error(`Error fetching time estimate for miner ${principalText}:`, trErr);
       }
 
     } catch (actorError: any) {
-      console.error(`Error getting actor for miner ${principal.toText()}:`, actorError);
+      console.error(`Error getting miner details for ${principalText}:`, actorError);
       const errorMsg = `Actor fetch failed: ${actorError.message || "Unknown error"}`;
       userMiners[index].infoError = errorMsg;
       userMiners[index].statsError = errorMsg;
@@ -427,49 +365,39 @@
     index: number,
     value?: any
   ) {
+    const principalText = principal.toText();
     const actionLabel = action.replace('_', ' ');
     const actionToastId = toastStore.info(`Processing ${actionLabel}...`, { duration: 0 });
     let successMessage = `${actionLabel.charAt(0).toUpperCase() + actionLabel.slice(1)} successful!`;
 
     try {
-      const minerActor = await auth.getActor(
-        principal.toText(),
-        canisterIDLs.miner
-      );
-
-      let result: { Ok?: any; Err?: string };
-
       switch (action) {
         case 'start':
-          result = await minerActor.start_mining();
+          await minerAPI.startMining(principalText);
           break;
         case 'stop':
-          result = await minerActor.stop_mining();
+          await minerAPI.stopMining(principalText);
           break;
         case 'claim':
-          result = await minerActor.claim_rewards();
-          if (result && 'Ok' in result) {
-             const blockIndex = result.Ok as bigint;
-             successMessage = `Claim submitted! Block index: ${blockIndex}`;
-          }
+          const result = await minerAPI.claimRewards(principalText);
+          successMessage = `Claim submitted! Amount: ${result.toString()}`;
           break;
-        // set_speed case removed as speed_percentage was removed from miner struct
         case 'set_chunk':
-           const chunkSize = BigInt(value);
-           if (chunkSize <= 0n) {
-             throw new Error("Chunk size must be a positive number.");
-           }
-           result = await minerActor.set_chunk_size(chunkSize);
-           break;
+          const chunkSize = BigInt(value);
+          if (chunkSize <= 0n) {
+            throw new Error("Chunk size must be a positive number.");
+          }
+          await minerAPI.setChunkSize(principalText, chunkSize);
+          break;
         case 'connect_token':
-           if (!value || !(value instanceof Principal)) {
-             throw new Error("Invalid token principal provided.");
-           }
-           result = await minerActor.connect_token(value);
-           break;
+          if (!value || !(value instanceof Principal)) {
+            throw new Error("Invalid token principal provided.");
+          }
+          await minerAPI.connectToken(principalText, value.toText());
+          break;
         case 'disconnect_token':
-           result = await minerActor.disconnect_token();
-           break;
+          await minerAPI.disconnectToken(principalText);
+          break;
         case 'top_up':
           if (!kongLedgerActor) throw new Error('Ledger actor not initialized');
           if (!value) throw new Error('Amount required');
@@ -489,32 +417,25 @@
             amount: approveAmount,
             expected_allowance: [] as [],
             expires_at: [] as [],
-            spender: { owner: Principal.fromText(launchpadCanisterId), subaccount: [] as [] },
+            spender: { owner: Principal.fromText(LAUNCHPAD_CANISTER_ID), subaccount: [] as [] },
           };
           const apprRes = await kongLedgerActor.icrc2_approve(approveArgs);
           if ('Err' in apprRes) throw new Error(`Approval failed: ${apprRes.Err}`);
           toastStore.success('KONG approved');
 
-          if (!launchpadActor) throw new Error('Launchpad actor not initialized');
           // Call launchpad to top-up miner by principal
-          result = await launchpadActor.top_up_miner(principal, amountBig);
+          await launchpadAPI.topUpMiner(principal, amountBig);
           successMessage = 'Top-up via Launchpad successful!';
           break;
         default:
-           throw new Error(`Unknown action: ${action}`);
+          throw new Error(`Unknown action: ${action}`);
       }
 
-      if (result && 'Ok' in result) {
-        toastStore.success(successMessage);
-        fetchMinerDetails(principal, index);
-      } else if (result && 'Err' in result) {
-        throw new Error(result.Err);
-      } else {
-         throw new Error("Received unexpected or undefined result from miner action.");
-      }
+      toastStore.success(successMessage);
+      fetchMinerDetails(principal, index);
 
     } catch (error: any) {
-      console.error(`Error performing ${actionLabel} on miner ${principal.toText()}:`, error);
+      console.error(`Error performing ${actionLabel} on miner ${principalText}:`, error);
       toastStore.error(`${actionLabel.charAt(0).toUpperCase() + actionLabel.slice(1)} failed: ${error.message || "Unknown error"}`);
     } finally {
       toastStore.dismiss(actionToastId);
@@ -535,7 +456,6 @@
    }
 
   function resetState() {
-    launchpadActor = null;
     userMiners = [];
     isLoadingMinersList = true;
     listError = null;

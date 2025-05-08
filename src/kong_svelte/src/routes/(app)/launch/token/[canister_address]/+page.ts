@@ -1,7 +1,6 @@
 export const prerender = false;
 
-import { auth } from "$lib/stores/auth";
-import { idlFactory as tokenIdlFactory } from "../../../../../declarations/pow_backend/pow_backend.did.js";
+import * as powBackendAPI from "$lib/api/powBackend";
 import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ params }) => {
@@ -11,36 +10,25 @@ export const load: PageLoad = async ({ params }) => {
   let minerStats: any = null;
 
   try {
-    const actor = auth.getActor(canister_address, tokenIdlFactory, { anon: true });
-    // Get comprehensive token info
-    if (typeof actor.get_all_info === "function") {
-      const info = await actor.get_all_info();
-      if (info.Ok) {
-        token = {
-          ...info.Ok,
-          canister_address
-        };
-      } else {
-        error = info.Err || "Unknown error fetching token info";
-      }
-    } else {
-      // Fallback to get_info
-      const info = await actor.get_info();
-      if (info.Ok) {
-        token = {
-          ...info.Ok,
-          canister_address
-        };
-      } else {
-        error = info.Err || "Unknown error fetching token info";
-      }
+    // Get comprehensive token info using the powBackend API
+    try {
+      const allInfo = await powBackendAPI.getAllTokenInfo(canister_address);
+      token = {
+        ...allInfo,
+        canister_address
+      };
+    } catch (e) {
+      // Fallback to basic info if getAllTokenInfo is not available
+      const info = await powBackendAPI.getTokenInfo(canister_address);
+      token = {
+        ...info,
+        canister_address
+      };
     }
 
-    // Get miner leaderboard if available
+    // Get miner leaderboard
     try {
-      if (typeof actor.get_miner_leaderboard === "function") {
-        minerStats = await actor.get_miner_leaderboard([10]); // Top 10 miners
-      }
+      minerStats = await powBackendAPI.getMinerLeaderboard(canister_address, 10); // Top 10 miners
     } catch (e) {
       console.warn("Could not fetch miner stats:", e);
     }
