@@ -288,12 +288,8 @@ async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat
 
     match verify_transfer(token, tx_id, amount).await {
         Ok(_) => {
-            // contain() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after verify_transfer()
-            if transfer_map::contain(token_id, tx_id) {
-                let e = format!("Duplicate block id #{}", tx_id);
-                request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
-                Err(e)?
-            }
+            // The double-spend check is now performed early in verify_transfer()
+            // so we can directly insert the transfer
             let transfer_id = transfer_map::insert(&StableTransfer {
                 transfer_id: 0,
                 request_id,
