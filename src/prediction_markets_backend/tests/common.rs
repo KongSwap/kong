@@ -282,6 +282,12 @@ pub fn setup_complete_test_environment() -> (PocketIc, Principal, Principal) {
         Err(e) => panic!("Failed to register token ledger: {:?}", e),
     };
 
+    // Mint tokens to test users (50,000 KONG tokens each)
+    println!("\nMinting tokens to test users during environment setup...");
+    let mint_amount = 5_000_000_000_000u64; // 50,000 KONG tokens (with 8 decimals)
+    let (success_count, total_count) = mint_tokens_to_test_users(&pic, token_canister_id, Some(mint_amount));
+    println!("✅ Minted tokens to {}/{} test users", success_count, total_count);
+
     // Return both canister IDs
     (pic, pm_canister_id, token_canister_id)
 }
@@ -327,7 +333,7 @@ pub fn mint_tokens_to_test_users(
     }
 
     let admin_principal = Principal::from_text(ADMIN_PRINCIPALS[0]).unwrap();
-    let default_amount = 50_000_000_000u64; // 500 KONG (with 8 decimals)
+    let default_amount = 5_000_000_000_000u64; // 50'000 KONG (with 8 decimals)
     let mint_amount = amount.unwrap_or(default_amount);
     
     // Query minting account from token ledger
@@ -367,9 +373,25 @@ pub fn mint_tokens_to_test_users(
     let total_count = TEST_USER_PRINCIPALS.len();
 
     // Mint tokens to each test user
-    for user_principal_str in TEST_USER_PRINCIPALS.iter() {
-        let user_principal = Principal::from_text(user_principal_str).unwrap();
-        println!("Minting {} tokens to user {}", mint_amount as f64 / 100_000_000.0, user_principal_str);
+    for (i, user_principal_str) in TEST_USER_PRINCIPALS.iter().enumerate() {
+        // Get user name (Alice, Bob, Carol, Dave)
+        let user_name = match i {
+            0 => "Alice",
+            1 => "Bob",
+            2 => "Carol",
+            3 => "Dave",
+            _ => "Unknown User"
+        };
+        
+        let user_principal = match Principal::from_text(user_principal_str) {
+            Ok(principal) => principal,
+            Err(err) => {
+                println!("  ❌ Invalid principal for {}: {}", user_name, err);
+                continue;
+            }
+        };
+        
+        println!("  ⚙️ Minting {} tokens to {}", mint_amount as f64 / 5_000_000_000_000.0, user_name);
         
         // Create transfer arguments for minting tokens
         let transfer_args = TransferArgs {
@@ -388,36 +410,35 @@ pub fn mint_tokens_to_test_users(
         let encoded_args = encode_one(transfer_args)
             .expect("Failed to encode transfer arguments");
         
-        // Execute transfer (mint) operation
+        // Execute transfer operation
         let mint_result = pic.update_call(
             token_canister_id,
-            minting_principal,  // Use the minting account as caller
-            "icrc1_transfer",
-            encoded_args
+            minting_principal,  // We need minting authority
+            "icrc1_transfer",    // Standard ICRC1 transfer call
+            encoded_args,
         );
-        
+
+        // Process result
         match mint_result {
             Ok(response) => {
-                // Try to decode the transfer result to see if it was successful
                 match decode_one::<Result<Nat, TransferError>>(&response) {
                     Ok(Ok(block_index)) => {
-                        println!("  ✅ Successfully minted tokens to {} (block index: {})", user_principal_str, block_index);
+                        println!("    ✅ Successfully minted tokens to {} (block index: {})", user_name, block_index);
                         success_count += 1;
                     },
                     Ok(Err(err)) => {
-                        println!("  ❌ Transfer error for {}: {:?}", user_principal_str, err);
+                        println!("    ❌ Transfer error for {}: {:?}", user_name, err);
                     },
                     Err(err) => {
-                        println!("  ❌ Failed to decode transfer response for {}: {}", user_principal_str, err);
+                        println!("    ❌ Failed to decode mint response for {}: {}", user_name, err);
                     }
                 }
             }
-            Err(err) => {
-                println!("  ❌ Failed to execute mint operation for {}: {:?}", user_principal_str, err);
+            Err(e) => {
+                println!("    ❌ Failed to mint tokens to {}: {:?}", user_name, e);
             }
         }
     }
 
-    println!("Minted tokens to {}/{} test users", success_count, total_count);
     (success_count, total_count)
 }
