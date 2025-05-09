@@ -66,7 +66,7 @@ pub enum LedgerArg {
 }
 
 pub fn create_icp_ledger(ic: &PocketIc, controller: &Option<Principal>, ledger_arg: &LedgerArg) -> Result<Principal> {
-    let icp_ledger = create_canister(ic, controller, &None);
+    let icp_ledger = create_canister(ic, controller, &None, None); // Added None for canister_id
     let wasm_module = fs::read(IC_ICRC1_LEDGER_WASM)?;
     let args = encode_one(ledger_arg)?;
     ic.install_canister(icp_ledger, wasm_module, args, *controller);

@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use candid::{decode_one, encode_one, Principal};
 use pocket_ic::PocketIc;
+use ic_ledger_types::{AccountIdentifier, Subaccount};
 
 #[path = "common/mod.rs"]
 mod common;
@@ -22,14 +23,29 @@ pub fn create_test_icp_ledger(
     // From src/kong_backend/src/ic/icp.rs: ICP_ADDRESS
     let icp_canister_id = Principal::from_text("nppha-riaaa-aaaal-ajf2q-cai").unwrap();
     
+    // Create AccountIdentifier from controller Principal with explicit [0;32] subaccount
+    // Always use an explicit zero subaccount for consistency with Kong's verifier
+    let zero_sub = Some([0u8; 32]);
+    let controller_account = Account {
+        owner: *controller,
+        subaccount: zero_sub,
+    };
+    // Use the explicit subaccount for the AccountIdentifier
+    let subaccount = Subaccount(controller_account.subaccount.unwrap());
+    let controller_account_identifier = AccountIdentifier::new(&controller_account.owner, &subaccount);
+    
     // Build init args for the ICP ledger using types from common::icp_ledger
     let init_args = InitArgs {
-        minting_account: controller.to_text(), // Use the controller's text representation
+        minting_account: controller_account_identifier.to_hex(), // Use the hex string representation of AccountIdentifier
         icrc1_minting_account: Some(Account {
             owner: *controller,
-            subaccount: None,
+            subaccount: zero_sub, // Use consistent zero_sub for all accounts
         }),
-        initial_values: Vec::new(),
+        // Pre-mint tokens to the minting account so it has funds to transfer
+        initial_values: vec![(
+            controller_account_identifier.to_hex(),
+            Tokens { e8s: 1_000_000_000_000 }, // 10,000 ICP
+        )],
         max_message_size_bytes: Some(1024 * 1024), // 1MB
         transaction_window: Some(Duration {
             secs: 24 * 60 * 60, // 24 hours
