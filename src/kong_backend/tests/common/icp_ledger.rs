@@ -72,3 +72,26 @@ pub fn create_icp_ledger(ic: &PocketIc, controller: &Option<Principal>, ledger_a
     ic.install_canister(icp_ledger, wasm_module, args, *controller);
     Ok(icp_ledger)
 }
+
+pub fn create_icp_ledger_with_id(
+    ic: &PocketIc,
+    controller: &Principal,
+    canister_id: Principal,
+    ledger_arg: &LedgerArg,
+) -> Result<Principal> {
+    // 1. Create the canister at the requested ID (fails if it already exists)
+    ic.create_canister_with_id(Some(*controller), None, canister_id)
+        .map_err(|e| anyhow::anyhow!("Failed to create canister {canister_id}: {e}"))?;
+
+    // Provide cycles so that the ledger can execute
+    ic.add_cycles(canister_id, 10_000_000_000_000);
+
+    // 2. Read the ledger Wasm and encode init args
+    let wasm_module = fs::read(IC_ICRC1_LEDGER_WASM)?;
+    let args = encode_one(ledger_arg)?;
+
+    // 3. Install the ledger
+    ic.install_canister(canister_id, wasm_module, args, Some(*controller));
+
+    Ok(canister_id)
+}

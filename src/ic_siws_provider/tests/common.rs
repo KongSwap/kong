@@ -9,7 +9,7 @@ use ic_agent::{
     Identity,
 };
 use ic_siws::{delegation::SignedDelegation, login::LoginDetails, siws::SiwsMessage};
-use pocket_ic::{PocketIc, WasmResult};
+use pocket_ic::{PocketIc, results::WasmResult};
 use rand::Rng;
 use serde::Deserialize;
 use solana_sdk::signature::{Keypair, Signer};
