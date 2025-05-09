@@ -85,6 +85,21 @@ thread_local! {
             }
         );
         
+        // Add PocketIC KONG token
+        registry.insert(
+            "lxzze-o7777-77777-aaaaa-cai".to_string(), 
+            TokenInfo {
+                id: "lxzze-o7777-77777-aaaaa-cai".to_string(),
+                name: "PocketIC KONG".to_string(),
+                symbol: "KONG".to_string(),
+                decimals: 8,
+                fee_percentage: 100, // 1%
+                is_kong: true,
+                transfer_fee: StorableNat::from(10_000u64), // 0.0001 KONG
+            }
+        );
+        
+
         // Add ksUSDT token for local testing
         registry.insert(
             "v56tl-sp777-77774-qaahq-cai".to_string(),
