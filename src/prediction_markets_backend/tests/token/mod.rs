@@ -1,4 +1,3 @@
-// Token module tests - placeholders for future tests
-// You can uncomment and implement these as needed
+// Token module tests for Kong Swap token integration
 
-// pub mod multi_token_tests;
+pub mod ledger_test;  // Token ledger integration tests
