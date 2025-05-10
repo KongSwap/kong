@@ -179,33 +179,6 @@
         }
       ]
     },
-    "solana_rpc": {
-      "type": "custom",
-      "candid": "wasm/ic-solana-rpc.did",
-      "wasm": "wasm/ic-solana-rpc.wasm.gz",
-      "declarations": {
-        "node_compatibility": true
-      },
-      "metadata": [
-        {
-          "name": "candid:service"
-        }
-      ]
-    },
-    "solana_wallet": {
-      "type": "custom",
-      "candid": "wasm/ic-solana-wallet.did",
-      "wasm": "wasm/ic-solana-wallet.wasm.gz",
-      "declarations": {
-        "node_compatibility": true
-      },
-      "metadata": [
-        {
-          "name": "candid:service"
-        }
-      ]
-    }
-  },
   "defaults": {
     "build": {
       "args": "",
