@@ -17,7 +17,7 @@ prod = []
 candid = "0.10.10"
 futures = "0.3.30"
 getrandom = { version = "0.2.15", features = ["custom"] }
-ic-cdk = "0.17.0"
+ic-cdk = { version = "0.17.0", features = ["transform-closure"] }
 ic-cdk-timers = "0.11.0"
 ic-ledger-types = "0.14.0"
 ic-stable-structures = "0.6.6"
@@ -36,6 +36,13 @@ itertools = "0.13.0"
 ic-cdk-macros = "0.17.1"
 anyhow = "1.0.98"
 ciborium = "0.2.2"
+bs58 = "0.5.1"
+
+# Solana integration dependencies
+ed25519-dalek = "=1.0.1"   # Pin to a specific version that works
+sha2 = "0.10.8"           # Keep for general hashing utilities
+curve25519-dalek = "4.1.3" # Keep for compatibility with ic-solana
+num_enum = "0.7.2"        # For Solana SDK types
 
 [dev-dependencies]
 ed25519-consensus = "2.1.0"

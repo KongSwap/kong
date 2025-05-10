@@ -30,6 +30,7 @@ pub struct ExpectedBalance {
 /// token balance check
 /// actual_balance: the actual balance in the backend canister
 /// expected_balance: the expected balance stored in stable memory
+/// //TODO correctly handle SOL
 pub async fn check_token_balance(token: &StableToken) -> Result<(StableToken, Nat, ExpectedBalance, Int), String> {
     let kong_backend = kong_settings_map::get().kong_backend;
     let token_id = token.token_id();

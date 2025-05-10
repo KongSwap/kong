@@ -145,7 +145,7 @@ async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, Stab
     // use specified address or default to caller's principal id
     let to_address = match args.receive_address {
         Some(ref address) => get_address(&receive_token, address)?,
-        None => Address::PrincipalId(caller_id()),
+        None => Address::PrincipalId(caller_id().owner),
     };
     if nat_is_zero(&pay_amount) {
         Err("Pay amount is zero".to_string())?;

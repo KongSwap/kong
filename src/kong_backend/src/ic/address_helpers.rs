@@ -1,6 +1,5 @@
 use candid::Principal;
 use ic_ledger_types::AccountIdentifier;
-use icrc_ledger_types::icrc1::account::Account;
 use regex::Regex;
 use std::sync::OnceLock;
 
@@ -27,9 +26,7 @@ pub fn get_address(token: &StableToken, address: &str) -> Result<Address, String
         if !token.is_icrc1() {
             return Err("Principal Id requires ICRC1 token".to_string());
         }
-        Ok(Address::PrincipalId(Account::from(
-            Principal::from_text(address).map_err(|e| e.to_string())?,
-        )))
+        Ok(Address::PrincipalId(Principal::from_text(address).map_err(|e| e.to_string())?))
     } else if regrex_account_id.is_match(address) {
         if is_icp_token_id(token.token_id()) {
             return Err("Account Id supported only for ICP token".to_string());

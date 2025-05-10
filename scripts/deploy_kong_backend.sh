@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 
+SUB_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 NETWORK="--network $1"
 IDENTITY="--identity kong"
 KONG_BACKEND=kong_backend
 
 if [ "$1" == "ic" ]; then
-    bash create_canister_id.sh ic
+    bash "${SUB_SCRIPT_DIR}/create_canister_id.sh" ic
     KONG_BUILDENV="ic" dfx build ${KONG_BACKEND} ${NETWORK}
-    bash gzip_kong_backend.sh ic
+    bash "${SUB_SCRIPT_DIR}/gzip_kong_backend.sh" ic
 elif [ "$1" == "staging" ]; then
-    bash create_canister_id.sh staging
+    bash "${SUB_SCRIPT_DIR}/create_canister_id.sh" staging
     KONG_BUILDENV="staging" dfx deploy ${KONG_BACKEND} ${NETWORK} ${IDENTITY}
 elif [ "$1" == "local" ]; then
     original_dir=$(pwd)

@@ -24,6 +24,7 @@ impl Storable for StableTokenId {
 pub enum StableToken {
     LP(LPToken), // LP tokens
     IC(ICToken), // IC tokens
+    SOL(super::sol_token::SOLToken), // Solana tokens
 }
 
 impl Storable for StableToken {

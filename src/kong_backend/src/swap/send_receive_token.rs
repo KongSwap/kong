@@ -13,6 +13,7 @@ use crate::stable_request::{reply::Reply, request_map, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_tx::{stable_tx::StableTx, swap_tx::SwapTx, tx_map};
+use icrc_ledger_types::icrc1::account::Account;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn send_receive_token(
@@ -38,10 +39,12 @@ pub async fn send_receive_token(
     request_map::update_status(request_id, StatusCode::SendReceiveToken, None);
 
     // send ICP using icp_transfer or ICRC1 using icrc1_transfer
-    match match to_address {
+    let transfer_result = match to_address {
         Address::AccountId(to_account_id) => icp_transfer(receive_amount, to_account_id, receive_token, None).await,
-        Address::PrincipalId(to_principal_id) => icrc1_transfer(receive_amount, to_principal_id, receive_token, None).await,
-    } {
+        Address::PrincipalId(to_principal_id) => icrc1_transfer(receive_amount, &Account::from(*to_principal_id), receive_token, None).await,
+        Address::Raw(_) => Err("Raw address type not supported for send_receive_token".to_string()),
+    };
+    match transfer_result {
         Ok(tx_id) => {
             // insert_transfer() will use the latest state of DEPOSIT_MAP so no reentrancy issues after icp_transfer() or icrc1_transfer()
             let transfer_id = transfer_map::insert(&StableTransfer {

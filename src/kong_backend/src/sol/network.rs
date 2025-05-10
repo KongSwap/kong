@@ -1,0 +1,87 @@
+use anyhow::Result;
+use candid::{CandidType, Deserialize};
+use serde::Serialize;
+use std::fmt;
+
+use crate::ic::network::ICNetwork;
+
+use super::error::SolanaError;
+
+// Known program IDs on Solana network
+pub const SYSTEM_PROGRAM_ID: &str = "11111111111111111111111111111111";
+pub const MEMO_PROGRAM_ID: &str = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
+pub const TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+pub const ASSOCIATED_TOKEN_PROGRAM_ID: &str = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+pub const SYSVAR_RENT_PROGRAM_ID: &str = "SysvarRent111111111111111111111111111111111";
+
+#[derive(CandidType, Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum SolanaNetwork {
+    Mainnet,
+    Devnet,
+}
+
+impl fmt::Display for SolanaNetwork {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SolanaNetwork::Mainnet => write!(f, "Mainnet"),
+            SolanaNetwork::Devnet => write!(f, "Devnet"),
+        }
+    }
+}
+
+impl SolanaNetwork {
+    // Create a new SolanaNetwork from a string
+    pub fn new(network: &str) -> Self {
+        match network.to_lowercase().as_str() {
+            "mainnet" | "mainnet-beta" => SolanaNetwork::Mainnet,
+            _ => SolanaNetwork::Devnet, // Default to Devnet
+        }
+    }
+
+    pub fn bs58_encode_public_key(public_key: &[u8]) -> String {
+        bs58::encode(public_key).into_string()
+    }
+
+    pub fn bs58_decode_public_key(public_key: &str) -> Result<[u8; 32]> {
+        let public_key = bs58::decode(public_key).into_vec().map_err(|_| {
+            SolanaError::InvalidPublicKeyFormat("Invalid public key format.".to_string())
+        })?;
+
+        let validated_public_key = SolanaNetwork::validate_public_key(&public_key)?;
+
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&validated_public_key);
+        Ok(arr)
+    }
+
+    pub async fn get_canister_public_key() -> Result<String> {
+        let derivation_path = ICNetwork::get_canister_derivation_path();
+        let public_key_bytes = ICNetwork::get_schnorr_public_key(derivation_path)
+            .await
+            .map_err(|e| SolanaError::PublicKeyRetrievalError(e.to_string()))?;
+        let validated_public_key = SolanaNetwork::validate_public_key(&public_key_bytes)?;
+        Ok(SolanaNetwork::bs58_encode_public_key(&validated_public_key))
+    }
+
+    pub fn validate_public_key(public_key: &[u8]) -> Result<Vec<u8>> {
+        // Ed25519 public keys are 32 bytes long
+        if public_key.len() != 32 {
+            Err(SolanaError::InvalidPublicKeyFormat(
+                "Public key must be 32 bytes long.".to_string(),
+            ))?;
+        }
+
+        Ok(public_key.to_vec())
+    }
+
+    pub fn validate_tx_signature(tx_signature: &[u8]) -> Result<Vec<u8>> {
+        // Ed25519 signatures are 64 bytes long
+        if tx_signature.len() != 64 {
+            Err(SolanaError::InvalidSignature(
+                "Transaction signature must be 64 bytes long.".to_string(),
+            ))?;
+        }
+
+        Ok(tx_signature.to_vec())
+    }
+}

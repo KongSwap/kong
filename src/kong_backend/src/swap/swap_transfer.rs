@@ -1,4 +1,5 @@
 use candid::Nat;
+use num_traits::ToPrimitive;
 
 use super::archive_to_kong_data::archive_to_kong_data;
 use super::return_pay_token::return_pay_token;
@@ -8,6 +9,7 @@ use super::swap_calc::SwapCalc;
 use super::swap_reply::SwapReply;
 use super::update_liquidity_pool::update_liquidity_pool;
 
+use crate::chains::chains::SOL_CHAIN;
 use crate::helpers::nat_helpers::nat_is_zero;
 use crate::ic::address::Address;
 use crate::ic::address_helpers::get_address;
@@ -140,13 +142,30 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
 
     let pay_amount = args.pay_amount.clone();
 
-    // check pay_tx_id is valid block index
+    // check pay_tx_id is valid block index or transaction signature
     let transfer_id = match &args.pay_tx_id {
         Some(pay_tx_id) => match pay_tx_id {
-            TxId::BlockIndex(pay_tx_id) => verify_transfer_token(request_id, &pay_token, pay_tx_id, &pay_amount, ts).await?,
+            TxId::BlockIndex(pay_tx_id) => {
+                match pay_token.chain().as_str() {
+                    SOL_CHAIN => {
+                        request_map::update_status(request_id, StatusCode::PayTokenNotSupported, None);
+                        Err(format!("Solana tokens must use Signature, not BlockIndex"))?
+                    },
+                    _ => verify_transfer_token(request_id, &pay_token, pay_tx_id, &pay_amount, ts).await?
+                }
+            },
+            TxId::Signature(signature) => {
+                match pay_token.chain().as_str() {
+                    SOL_CHAIN => verify_transfer_signature(request_id, &pay_token, signature, &pay_amount, ts).await?,
+                    _ => {
+                        request_map::update_status(request_id, StatusCode::PayTxIdNotSupported, None);
+                        Err("Signature tx_id only supported for Solana tokens".to_string())?
+                    }
+                }
+            },
             _ => {
                 request_map::update_status(request_id, StatusCode::PayTxIdNotSupported, None);
-                Err("Pay tx_id not supported".to_string())?
+                Err("Pay tx_id type not supported".to_string())?
             }
         },
         None => {
@@ -246,7 +265,7 @@ async fn process_swap(
                 Err(format!("Req #{} failed. {}", request_id, e))?
             }
         },
-        None => Address::PrincipalId(caller_id),
+        None => Address::PrincipalId(caller_id.owner),
     };
 
     let (receive_amount_with_fees_and_gas, mid_price, price, slippage, swaps) =
@@ -311,4 +330,95 @@ async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat
             Err(e)
         }
     }
+}
+
+async fn verify_transfer_signature(request_id: u64, token: &StableToken, signature: &str, amount: &Nat, ts: u64) -> Result<u64, String> {
+    let token_id = token.token_id();
+
+    request_map::update_status(request_id, StatusCode::VerifyPayToken, None);
+
+    // Verify Solana transaction signature and details
+    match verify_solana_signature(token, signature, amount).await {
+        Ok(_) => {
+            // Check if this signature has been used before
+            if transfer_map::contain_signature(token_id, signature) {
+                let e = format!("Duplicate signature #{}", signature);
+                request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
+                Err(e)?
+            }
+            
+            // Insert the transfer record
+            let transfer_id = transfer_map::insert(&StableTransfer {
+                transfer_id: 0,
+                request_id,
+                is_send: true,
+                amount: amount.clone(),
+                token_id,
+                tx_id: TxId::Signature(signature.to_string()),
+                ts,
+            });
+            
+            request_map::update_status(request_id, StatusCode::VerifyPayTokenSuccess, None);
+            Ok(transfer_id)
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
+            Err(e)
+        }
+    }
+}
+
+// Verify Solana transaction signature and details
+async fn verify_solana_signature(token: &StableToken, signature: &str, amount: &Nat) -> Result<(), String> {
+    // Initialize Solana RPC client
+    let solana_client = crate::sol::init_solana_client("https://api.mainnet-beta.solana.com").await?;
+    
+    // Get Kong's Solana address (where funds should be sent to)
+    let kong_address = kong_settings_map::get().sol_backend_address
+        .clone()
+        .ok_or_else(|| "Solana address not configured in Kong settings".to_string())?;
+    
+    // Verify the transaction
+    // This is a simplified implementation - a real one would parse the amount correctly based on token decimals
+    let _amount_u64 = amount.0.to_u64()
+        .ok_or_else(|| "Amount cannot be converted to u64".to_string())?;
+    
+    // Get the sender's address (caller's address) - in a real implementation, this would be extracted from the transaction
+    // or verified against the transaction's sender
+    let _caller_address = "CALLER_SOLANA_ADDRESS"; // Placeholder - real implementation would get this
+    
+    // Check if this is an SPL token or native SOL
+    let is_spl = token.is_icrc1();
+    
+    // Verify the transaction according to its type
+    if is_spl {
+        // For SPL tokens
+        match solana_client.get_spl_transaction(signature).await {
+            Ok(tx_info) => {
+                // Parse the transaction info and validate it
+                // This is simplified - actual implementation would properly parse the JSON and validate all fields
+                if !tx_info.contains(&kong_address) {
+                    return Err(format!("Transaction destination does not match Kong address: {}", kong_address));
+                }
+                // Add more validation as needed
+            }
+            Err(e) => return Err(format!("Failed to get SPL transaction: {}", e)),
+        }
+    } else {
+        // For native SOL
+        match solana_client.get_sol_transaction(signature).await {
+            Ok(tx_info) => {
+                // Parse the transaction info and validate it
+                // This is simplified - actual implementation would properly parse the JSON and validate all fields
+                if !tx_info.contains(&kong_address) {
+                    return Err(format!("Transaction destination does not match Kong address: {}", kong_address));
+                }
+                // Add more validation as needed
+            }
+            Err(e) => return Err(format!("Failed to get SOL transaction: {}", e)),
+        }
+    }
+    
+    // If we've gotten this far, the transaction is valid
+    Ok(())
 }

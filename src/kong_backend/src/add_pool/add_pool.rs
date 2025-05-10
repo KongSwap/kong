@@ -147,11 +147,17 @@ async fn check_arguments(
     let token_1 = match args.token_1.as_str() {
         token if is_ckusdt(token) => token_map::get_ckusdt()?,
         token if is_icp(token) => token_map::get_icp()?,
-        _ => Err(format!(
-            "Token_1 must be {} or {}",
-            kong_settings_map::get().ckusdt_symbol,
-            kong_settings_map::get().icp_symbol
-        ))?,
+        received_token_1_str => {
+            let settings = kong_settings_map::get();
+            Err(format!(
+                "Token_1 validation failed. Received token_1: '{}'. Expected it to match symbol '{}' (configured as '{}') or symbol '{}' (configured as '{}'). Review 'is_ckusdt'/'is_icp' or settings.",
+                received_token_1_str,
+                settings.ckusdt_symbol,
+                settings.ckusdt_address_with_chain, // Assuming is_ckusdt compares against this
+                settings.icp_symbol,
+                settings.icp_address_with_chain     // Assuming is_icp compares against this
+            ))
+        }?,
     };
 
     // token_0, check if it exists already or needs to be added
@@ -286,9 +292,9 @@ async fn process_add_pool(
         )
         .await;
         if transfer_0.is_err() {
-            return Err(format!("Req #{} failed. {}", request_id, transfer_0.unwrap_err()));
+            return Err(format!("Req #{} AddPool: Token 0 transfer/verification failed. Reason: {}", request_id, transfer_0.unwrap_err()));
         } else {
-            return Err(format!("Req #{} failed. {}", request_id, transfer_1.unwrap_err()));
+            return Err(format!("Req #{} AddPool: Token 1 transfer/verification failed. Reason: {}", request_id, transfer_1.unwrap_err()));
         };
     }
 
@@ -316,7 +322,7 @@ async fn process_add_pool(
                 ts,
             )
             .await;
-            Err(format!("Req #{} failed. {}", request_id, e))?
+            Err(format!("Req #{} AddPool: Failed to add LP token. Reason: {}", request_id, e))?
         }
     };
 
@@ -349,7 +355,7 @@ async fn process_add_pool(
                 ts,
             )
             .await;
-            Err(format!("Req #{} failed. {}", request_id, e))?
+            Err(format!("Req #{} AddPool: Failed to add new pool. Reason: {}", request_id, e))?
         }
     };
 
@@ -641,7 +647,7 @@ async fn return_token(
                 token.token_id(),
                 amount,
                 Some(request_id),
-                Some(Address::PrincipalId(*to_principal_id)),
+                Some(Address::PrincipalId(to_principal_id.owner)),
                 ts,
             );
             let claim_id = claim_map::insert(&claim);

@@ -524,7 +524,7 @@ async fn return_token(
                 token_id,
                 amount,
                 Some(request_id),
-                Some(Address::PrincipalId(*to_principal_id)),
+                Some(Address::PrincipalId(to_principal_id.owner)),
                 ts,
             );
             let claim_id = claim_map::insert(&claim);

@@ -42,7 +42,7 @@ async fn claim(claim_id: u64) -> Result<ClaimReply, String> {
     // if to_address is not provided, use the caller's principal id
     let to_address = match &claim.to_address {
         Some(address) => address.clone(),
-        None => Address::PrincipalId(caller_id()),
+        None => Address::PrincipalId(caller_id().owner),
     };
 
     // register new request for this claim

@@ -12,3 +12,8 @@ pub mod management;
 pub mod transfer;
 pub mod verify;
 pub mod wumbo;
+
+// Added for Solana support
+pub mod error;
+pub mod network;
+pub mod schnorr;

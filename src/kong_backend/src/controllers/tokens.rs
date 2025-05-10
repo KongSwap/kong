@@ -40,6 +40,9 @@ fn suspend_token(symbol: String) -> Result<String, String> {
         StableToken::LP(_) => return Err("Cannot suspend LP tokens".to_string()),
         StableToken::IC(token) => {
             token_map::remove(token.token_id)?;
+        },
+        StableToken::SOL(token) => {
+            token_map::remove(token.token_id)?;
         }
     }
 
@@ -52,6 +55,9 @@ fn unsuspend_token(symbol: String) -> Result<String, String> {
     match token {
         StableToken::LP(_) => return Err("Cannot unsuspend LP tokens".to_string()),
         StableToken::IC(token) => {
+            token_map::unremove(token.token_id)?;
+        },
+        StableToken::SOL(token) => {
             token_map::unremove(token.token_id)?;
         }
     }

@@ -26,7 +26,7 @@ for cmd in rustc cargo npm dfx jq sha256sum; do
 done
 
 # Generate secrets
-bash "${PROJECT_ROOT}/scripts/generate_secrets.sh"
+bash "${SCRIPT_DIR}/generate_secrets.sh"
 
 # Source the generated secrets file if it exists
 if [ -f "${PROJECT_ROOT}/.secrets" ]; then
@@ -70,9 +70,9 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 fi
 
 # Copy correct environment file using absolute path
-if [ -f "copy_env.sh" ]; then
+if [ -f "${SCRIPT_DIR}/copy_env.sh" ]; then
     echo "Running copy_env.sh from $SCRIPT_DIR"
-    bash "./copy_env.sh" "${NETWORK}"
+    bash "${SCRIPT_DIR}/copy_env.sh" "${NETWORK}"
     
     # Verify .env file after copy_env.sh
     if [ -f "${PROJECT_ROOT}/.env" ]; then
@@ -85,28 +85,21 @@ if [ -f "copy_env.sh" ]; then
         exit 1
     fi
 else 
-    echo "Warning: copy_env.sh not found in $SCRIPT_DIR"
-    ls -la "$SCRIPT_DIR"
+    echo "Warning: copy_env.sh not found in ${SCRIPT_DIR}"
+    ls -la "${SCRIPT_DIR}"
     exit 1
 fi
-
-# Deploy internet identity canister
-[ "${NETWORK}" == "local" ] && dfx deploy internet_identity --network "${NETWORK}"
 
 # Deploy core canisters
 CORE_CANISTERS_SCRIPTS=(
     "deploy_kong_backend.sh"
-    "deploy_kong_data.sh"
-    "deploy_kong_svelte.sh"
-    "deploy_prediction_markets.sh"
-    "deploy_trollbox.sh"
 )
 
 for script in "${CORE_CANISTERS_SCRIPTS[@]}"; do
-    [ -f "${script}" ] && {
-        echo "Running ${script}"
-        bash "${script}" "${NETWORK}"
-    } || echo "Warning: ${script} not found"
+    [ -f "${SCRIPT_DIR}/${script}" ] && {
+        echo "Running ${SCRIPT_DIR}/${script}"
+        bash "${SCRIPT_DIR}/${script}" "${NETWORK}"
+    } || echo "Warning: ${SCRIPT_DIR}/${script} not found"
 done
 
 # Deploy test token ledgers, faucet, mint and create tokens and pools for local/staging
@@ -114,43 +107,38 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 
     # Deploy test token ledger canisters
     LEDGER_SCRIPTS=(
-        "${PROJECT_ROOT}/scripts/deploy_ksusdt_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_icp_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_ksbtc_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_kseth_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_kskong_ledger.sh"
+        "deploy_ksusdt_ledger.sh"
+        "deploy_icp_ledger.sh"
+        "deploy_ksbtc_ledger.sh"
+        "deploy_kseth_ledger.sh"
+        "deploy_kskong_ledger.sh"
     )
 
-    for script in "${LEDGER_SCRIPTS[@]}"; do
-        [ -f "${script}" ] && {
-            echo "Running ${script}"
-            bash "${script}" "${NETWORK}"
-        } || echo "Warning: ${script} not found"
+    for script_name in "${LEDGER_SCRIPTS[@]}"; do
+        full_script_path="${SCRIPT_DIR}/${script_name}"
+        [ -f "${full_script_path}" ] && {
+            echo "Running ${full_script_path}"
+            bash "${full_script_path}" "${NETWORK}"
+        } || echo "Warning: ${full_script_path} not found"
     done
 
     # deploy test token faucet canister
-    [ -f "deploy_kong_faucet.sh" ] && {
-        bash "deploy_kong_faucet.sh" "${NETWORK}"
-    } || echo "Warning: deploy_kong_faucet.sh not found"
+    [ -f "${SCRIPT_DIR}/deploy_kong_faucet.sh" ] && {
+        bash "${SCRIPT_DIR}/deploy_kong_faucet.sh" "${NETWORK}"
+    } || echo "Warning: ${SCRIPT_DIR}/deploy_kong_faucet.sh not found"
 
 	# mint test tokens to kong_faucet
-    [ -f "faucet_mint.sh" ] && {
-        bash "faucet_mint.sh" "${NETWORK}"
-    } || echo "Warning: user_mint.sh not found"
+    [ -f "${SCRIPT_DIR}/faucet_mint.sh" ] && {
+        bash "${SCRIPT_DIR}/faucet_mint.sh" "${NETWORK}"
+    } || echo "Warning: ${SCRIPT_DIR}/faucet_mint.sh not found" # Note: original warning message was for user_mint.sh, keeping as is for now.
 
 	# mint test tokens to kong_user1
-    [ -f "user_mint.sh" ] && {
-        bash "user_mint.sh" "${NETWORK}"
-    } || echo "Warning: user_mint.sh not found"
+    [ -f "${SCRIPT_DIR}/user_mint.sh" ] && {
+        bash "${SCRIPT_DIR}/user_mint.sh" "${NETWORK}"
+    } || echo "Warning: ${SCRIPT_DIR}/user_mint.sh not found"
 
     # deploy tokens and pools
-    [ -f "deploy_tokens_pools.sh" ] && {
-        bash "deploy_tokens_pools.sh" "${NETWORK}"
-    } || echo "Warning: deploy_tokens_pools.sh not found"
-fi
-
-if [[ "${NETWORK}" == "ic" ]]; then
-    # calculate sha256 for SNS proposal
-    echo "SHA256 for kong_backend.wasm.gz:"
-    sha256sum "${DFX_ROOT}"/ic/canisters/kong_backend/kong_backend.wasm.gz
+    [ -f "${SCRIPT_DIR}/deploy_tokens_pools.sh" ] && {
+        bash "${SCRIPT_DIR}/deploy_tokens_pools.sh" "${NETWORK}"
+    } || echo "Warning: ${SCRIPT_DIR}/deploy_tokens_pools.sh not found"
 fi

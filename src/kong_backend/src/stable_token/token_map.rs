@@ -2,10 +2,11 @@ use wildmatch::WildMatch;
 
 use super::ic_token::ICToken;
 use super::lp_token::LPToken;
+use super::sol_token::SOLToken;
 use super::token::Token;
 use super::token_map;
 
-use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
+use crate::chains::chains::{IC_CHAIN, LP_CHAIN, SOL_CHAIN};
 use crate::ic::address_helpers::is_principal_id;
 use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
@@ -17,7 +18,9 @@ use crate::stable_token::stable_token::{StableToken, StableTokenId};
 /// if symbol is on a single chain, get the chain and return Chain.Symbol
 pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
     // check if symbol already has chain prefix, if so just return as is
-    if symbol.starts_with(&format!("{}.", IC_CHAIN)) || symbol.starts_with(&format!("{}.", LP_CHAIN)) {
+    if symbol.starts_with(&format!("{}.", IC_CHAIN)) ||
+       symbol.starts_with(&format!("{}.", LP_CHAIN)) ||
+       symbol.starts_with(&format!("{}.", SOL_CHAIN)) {
         return Ok(symbol.to_string());
     }
 
@@ -41,7 +44,9 @@ pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
 
 pub fn address_with_chain(address: &str) -> Result<String, String> {
     // check if address already has chain prefix, if so just return as is
-    if address.starts_with(&format!("{}.", IC_CHAIN)) || address.starts_with(&format!("{}.", LP_CHAIN)) {
+    if address.starts_with(&format!("{}.", IC_CHAIN)) ||
+       address.starts_with(&format!("{}.", LP_CHAIN)) ||
+       address.starts_with(&format!("{}.", SOL_CHAIN)) {
         return Ok(address.to_string());
     }
 
@@ -68,6 +73,8 @@ pub fn get_chain(token: &str) -> Option<String> {
         Some(IC_CHAIN.to_string())
     } else if token.starts_with(LP_CHAIN) {
         Some(LP_CHAIN.to_string())
+    } else if token.starts_with(SOL_CHAIN) {
+        Some(SOL_CHAIN.to_string())
     } else {
         None
     }
@@ -192,6 +199,7 @@ pub fn insert(token: &StableToken) -> Result<u32, String> {
         let insert_token = match token {
             StableToken::LP(token) => StableToken::LP(LPToken { token_id, ..token.clone() }),
             StableToken::IC(token) => StableToken::IC(ICToken { token_id, ..token.clone() }),
+            StableToken::SOL(token) => StableToken::SOL(SOLToken { token_id, ..token.clone() }),
         };
         map.insert(StableTokenId(token_id), insert_token.clone());
         insert_token
@@ -213,6 +221,7 @@ pub fn remove(token_id: u32) -> Result<(), String> {
     let remove_token = match token {
         StableToken::IC(token) => &StableToken::IC(ICToken { is_removed: true, ..token }),
         StableToken::LP(token) => &StableToken::LP(LPToken { is_removed: true, ..token }),
+        StableToken::SOL(token) => &StableToken::SOL(SOLToken { is_removed: true, ..token }),
     };
     update(remove_token);
 
@@ -229,6 +238,10 @@ pub fn unremove(token_id: u32) -> Result<(), String> {
             ..token
         }),
         StableToken::LP(token) => &StableToken::LP(LPToken {
+            is_removed: false,
+            ..token
+        }),
+        StableToken::SOL(token) => &StableToken::SOL(SOLToken {
             is_removed: false,
             ..token
         }),

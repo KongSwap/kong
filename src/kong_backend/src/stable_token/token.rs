@@ -1,7 +1,7 @@
 use candid::{Nat, Principal};
 
 use super::stable_token::StableToken;
-use super::stable_token::StableToken::{IC, LP};
+use super::stable_token::StableToken::{IC, LP, SOL};
 
 use crate::helpers::nat_helpers::nat_zero;
 
@@ -29,6 +29,7 @@ impl Token for StableToken {
         match self {
             LP(token) => token.token_id,
             IC(token) => token.token_id,
+            SOL(token) => token.token_id,
         }
     }
 
@@ -36,6 +37,7 @@ impl Token for StableToken {
         match self {
             LP(token) => token.name().to_string(),
             IC(token) => token.name.to_string(),
+            SOL(token) => token.name.clone(),
         }
     }
 
@@ -43,6 +45,7 @@ impl Token for StableToken {
         match self {
             LP(token) => token.chain(),
             IC(token) => token.chain(),
+            SOL(token) => token.chain(),
         }
     }
 
@@ -51,6 +54,7 @@ impl Token for StableToken {
             // for LP tokens, use address as it's used as the unique identifier
             LP(token) => token.address.to_string(),
             IC(token) => token.canister_id.to_string(),
+            SOL(token) => token.address.clone(),
         }
     }
 
@@ -62,6 +66,7 @@ impl Token for StableToken {
         match self {
             LP(_) => None,
             IC(token) => Some(&token.canister_id),
+            SOL(_) => None, // Solana tokens don't have a canister_id
         }
     }
 
@@ -69,6 +74,7 @@ impl Token for StableToken {
         match self {
             LP(token) => token.symbol.to_string(),
             IC(token) => token.symbol.to_string(),
+            SOL(token) => token.symbol.clone(),
         }
     }
 
@@ -80,6 +86,7 @@ impl Token for StableToken {
         match self {
             LP(token) => token.decimals,
             IC(token) => token.decimals,
+            SOL(token) => token.decimals,
         }
     }
 
@@ -87,6 +94,7 @@ impl Token for StableToken {
         match self {
             LP(_) => nat_zero(),
             IC(token) => token.fee.clone(),
+            SOL(token) => token.fee.clone(),
         }
     }
 
@@ -94,6 +102,7 @@ impl Token for StableToken {
         match self {
             LP(_) => false,
             IC(token) => token.icrc1,
+            SOL(token) => token.spl, // SPL tokens are equivalent to ICRC1
         }
     }
 
@@ -101,6 +110,7 @@ impl Token for StableToken {
         match self {
             LP(_) => false,
             IC(token) => token.icrc2,
+            SOL(_) => false, // Solana doesn't directly support ICRC2
         }
     }
 
@@ -108,6 +118,7 @@ impl Token for StableToken {
         match self {
             LP(_) => false,
             IC(token) => token.icrc3,
+            SOL(_) => false, // Solana doesn't directly support ICRC3
         }
     }
 
@@ -115,6 +126,7 @@ impl Token for StableToken {
         match self {
             LP(token) => token.is_removed,
             IC(token) => token.is_removed,
+            SOL(token) => token.is_removed,
         }
     }
 }

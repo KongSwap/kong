@@ -1,10 +1,11 @@
 use candid::Nat;
+use icrc_ledger_types::icrc1::account::Account;
 
 use super::claim_reply::ClaimReply;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
 use crate::ic::{
-    address::Address::{self, AccountId, PrincipalId},
+    address::Address::{self, AccountId, PrincipalId, Raw},
     transfer::{icp_transfer, icrc1_transfer},
 };
 use crate::stable_claim::claim_map;
@@ -83,10 +84,28 @@ async fn send_claim(
     request_map::update_status(request_id, StatusCode::ClaimToken, None);
 
     let amount_with_gas = nat_subtract(amount, &token.fee()).unwrap_or(nat_zero());
-    match match to_address {
-        AccountId(to_account_id) => icp_transfer(&amount_with_gas, to_account_id, token, None).await,
-        PrincipalId(to_principal_id) => icrc1_transfer(&amount_with_gas, to_principal_id, token, None).await,
-    } {
+
+    let transfer_result: Result<TxId, String> = match to_address {
+        AccountId(to_account_id) => {
+            icp_transfer(&amount_with_gas, to_account_id, token, None).await
+                .map(|block_index| TxId::BlockIndex(Nat::from(block_index)))
+        }
+        PrincipalId(to_principal_id) => {
+            let recipient_account = Account { owner: to_principal_id.clone(), subaccount: None };
+            icrc1_transfer(&amount_with_gas, &recipient_account, token, None).await
+                .map(|block_index| TxId::BlockIndex(Nat::from(block_index)))
+        }
+        Raw(raw_address) => {
+            if token.chain() == "SOL" {
+                crate::sol::transfer::transfer(token, &Address::Raw(raw_address.clone()), &amount_with_gas).await
+                    .map(|signature| TxId::Signature(signature))
+            } else {
+                Err(format!("Raw address not supported for chain: {}", token.chain()))
+            }
+        }
+    };
+
+    match transfer_result {
         Ok(tx_id) => {
             let transfer_id = transfer_map::insert(&StableTransfer {
                 transfer_id: 0,
@@ -94,7 +113,7 @@ async fn send_claim(
                 is_send: false,
                 amount: amount_with_gas,
                 token_id: token.token_id(),
-                tx_id: TxId::BlockIndex(tx_id),
+                tx_id, // Use the TxId directly
                 ts,
             });
             transfer_ids.push(transfer_id);

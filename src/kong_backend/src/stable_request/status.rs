@@ -107,6 +107,12 @@ pub enum StatusCode {
     SendLPTokenToUser,
     SendLPTokenToUserSuccess,
     SendLPTokenToUserFailed,
+    // Solana specific
+    PayTokenNotSupported,
+    SolanaTransactionNotFound,
+    SolanaTransactionVerificationFailed,
+    SolanaTransactionNotConfirmed,
+    SolanaRpcError,
     // general
     Success,
     Failed,
@@ -196,6 +202,12 @@ impl std::fmt::Display for StatusCode {
             StatusCode::SendLPTokenToUser => write!(f, "Sending LP token to user"),
             StatusCode::SendLPTokenToUserSuccess => write!(f, "LP token sent to user"),
             StatusCode::SendLPTokenToUserFailed => write!(f, "Failed sending LP token to user"),
+            // Solana specific
+            StatusCode::PayTokenNotSupported => write!(f, "Pay token type not supported"),
+            StatusCode::SolanaTransactionNotFound => write!(f, "Solana transaction not found"),
+            StatusCode::SolanaTransactionVerificationFailed => write!(f, "Failed to verify Solana transaction"),
+            StatusCode::SolanaTransactionNotConfirmed => write!(f, "Solana transaction not confirmed"),
+            StatusCode::SolanaRpcError => write!(f, "Solana RPC error"),
             StatusCode::Success => write!(f, "Success"),
             StatusCode::Failed => write!(f, "Failed"),
         }

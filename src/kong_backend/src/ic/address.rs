@@ -1,6 +1,5 @@
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use ic_ledger_types::AccountIdentifier;
-use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
 
@@ -8,7 +7,8 @@ use std::fmt::{self, Display, Formatter};
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub enum Address {
     AccountId(AccountIdentifier),
-    PrincipalId(Account),
+    PrincipalId(Principal),
+    Raw(String),
 }
 
 impl Display for Address {
@@ -16,6 +16,7 @@ impl Display for Address {
         match self {
             Address::AccountId(account_id) => write!(f, "{}", account_id),
             Address::PrincipalId(principal_id) => write!(f, "{}", principal_id),
+            Address::Raw(raw) => write!(f, "{}", raw),
         }
     }
 }

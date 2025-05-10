@@ -47,6 +47,17 @@ pub struct StableKongSettings {
     pub txs_archive_interval_secs: u64,
     pub transfers_archive_interval_secs: u64,
     pub archive_to_kong_data: bool,
+
+    // Solana specific settings
+    pub sol_enabled: bool,                         // Whether Solana integration is enabled
+    pub sol_backend_address: Option<String>,       // Kong's Solana wallet address for receiving funds
+    pub sol_private_key: Option<Vec<u8>>,          // Kong's Solana private key (secure storage needed)
+    pub sol_rpc_endpoint: Option<String>,          // Solana RPC endpoint URL
+    pub sol_network: Option<String>,               // "mainnet-beta" or "devnet"
+    pub sol_wsol_address: Option<String>,          // Wrapped SOL token address
+    pub sol_token_program_id: Option<String>,      // Solana Token Program ID
+    pub sol_system_program_id: Option<String>,     // Solana System Program ID
+    pub sol_transaction_timeout_secs: Option<u64>, // Timeout for Solana transactions
 }
 
 impl Default for StableKongSettings {
@@ -100,7 +111,79 @@ impl Default for StableKongSettings {
             txs_archive_interval_secs: 3600,             // archive txs every hour
             transfers_archive_interval_secs: 3600,       // archive transfers every hour
             archive_to_kong_data: false,                 // replicate to kong_data
+
+            // Solana default settings
+            sol_enabled: false,                          // Disabled by default
+            sol_backend_address: None,                   // Must be set by admin
+            sol_private_key: None,                       // Must be set securely by admin
+            sol_rpc_endpoint: Some("https://api.mainnet-beta.solana.com".to_string()), // Default mainnet RPC
+            sol_network: Some("mainnet-beta".to_string()), // Default to mainnet
+            sol_wsol_address: Some("So11111111111111111111111111111111111111112".to_string()), // Wrapped SOL address
+            sol_token_program_id: Some("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".to_string()), // Solana Token Program
+            sol_system_program_id: Some("11111111111111111111111111111111".to_string()), // Solana System Program
+            sol_transaction_timeout_secs: Some(120),     // 2 minutes timeout
         }
+    }
+}
+
+// Implementation of Solana-specific methods
+impl StableKongSettings {
+    // Enable or disable Solana integration
+    pub fn set_solana_enabled(&mut self, enabled: bool) {
+        self.sol_enabled = enabled;
+    }
+
+    // Update Solana backend address (the address that receives funds)
+    pub fn set_sol_backend_address(&mut self, address: Option<String>) {
+        self.sol_backend_address = address;
+    }
+
+    // Update Solana RPC endpoint
+    pub fn set_sol_rpc_endpoint(&mut self, endpoint: Option<String>) {
+        self.sol_rpc_endpoint = endpoint;
+    }
+
+    // Update Solana network (mainnet-beta or devnet)
+    pub fn set_sol_network(&mut self, network: Option<String>) {
+        self.sol_network = network;
+    }
+
+    // Update Wrapped SOL token address
+    pub fn set_sol_wsol_address(&mut self, address: Option<String>) {
+        self.sol_wsol_address = address;
+    }
+
+    // Update Solana token program ID
+    pub fn set_sol_token_program_id(&mut self, program_id: Option<String>) {
+        self.sol_token_program_id = program_id;
+    }
+
+    // Update Solana system program ID
+    pub fn set_sol_system_program_id(&mut self, program_id: Option<String>) {
+        self.sol_system_program_id = program_id;
+    }
+
+    // Update Solana transaction timeout
+    pub fn set_sol_transaction_timeout(&mut self, timeout_secs: Option<u64>) {
+        self.sol_transaction_timeout_secs = timeout_secs;
+    }
+
+    // NEVER expose this function in the public API - should only be used in secure contexts
+    // and potentially only during canister initialization
+    pub fn set_sol_private_key(&mut self, key: Option<Vec<u8>>) {
+        self.sol_private_key = key;
+    }
+
+    // Get all Solana settings as a tuple (except private key)
+    pub fn get_sol_settings(&self) -> (bool, Option<String>, Option<String>, Option<String>, Option<String>, Option<u64>) {
+        (
+            self.sol_enabled,
+            self.sol_backend_address.clone(),
+            self.sol_rpc_endpoint.clone(),
+            self.sol_network.clone(),
+            self.sol_wsol_address.clone(),
+            self.sol_transaction_timeout_secs
+        )
     }
 }
 

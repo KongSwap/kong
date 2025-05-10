@@ -1,11 +1,13 @@
 use super::tokens_reply::TokensReply;
+use num_traits::ToPrimitive; // Added for .to_u64()
 
 use super::ic_reply::ICReply;
 use super::lp_reply::LPReply;
+use super::sol_reply::SOLReply;
 
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::stable_token::StableToken::{IC, LP};
+use crate::stable_token::stable_token::StableToken::{IC, LP, SOL};
 use crate::stable_token::token::Token;
 
 pub fn to_token_reply(token: &StableToken) -> TokensReply {
@@ -38,6 +40,15 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             icrc2: ic_token.icrc2,
             icrc3: ic_token.icrc3,
             is_removed: token.is_removed(),
+        }),
+        SOL(sol_token) => TokensReply::SOL(SOLReply {
+            id: token_id.to_string(),
+            name: token.name(),
+            symbol: token.symbol(),
+            decimals: token.decimals(),
+            fee: sol_token.fee.0.to_u64().unwrap_or(0), // Convert Nat to u64
+            min_amount: 0u64, // Default value as min_amount is not on SOLToken
+            address: token.address(),
         }),
     }
 }

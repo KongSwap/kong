@@ -19,6 +19,22 @@ pub fn contain(token_id: u32, block_id: &Nat) -> bool {
     })
 }
 
+pub fn contain_signature(token_id: u32, signature: &str) -> bool {
+    TRANSFER_MAP.with(|m| {
+        m.borrow()
+            .iter()
+            .any(|(_, v)| v.token_id == token_id && v.tx_id == TxId::Signature(signature.to_string()))
+    })
+}
+
+pub fn contain_tx_id(token_id: u32, tx_id: &TxId) -> bool {
+    TRANSFER_MAP.with(|m| {
+        m.borrow()
+            .iter()
+            .any(|(_, v)| v.token_id == token_id && v.tx_id == *tx_id)
+    })
+}
+
 pub fn insert(transfer: &StableTransfer) -> u64 {
     TRANSFER_MAP.with(|m| {
         let mut map = m.borrow_mut();

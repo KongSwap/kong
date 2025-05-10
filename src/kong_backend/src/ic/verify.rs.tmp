@@ -1,0 +1,17 @@
+// Placeholder to get the real implementation later
+pub fn verify_signature(
+    sig_type: u8,
+    message: &[u8],
+    signature: &[u8],
+    public_key: &[u8],
+) -> Result<(), VerifyError> {
+    // Mock implementation that always succeeds
+    Ok(())
+}
+
+#[derive(Debug)]
+pub enum VerifyError {
+    InvalidSignature,
+    UnsupportedAlgorithm,
+    InvalidPublicKey,
+}
