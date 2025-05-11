@@ -3,6 +3,7 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { auth } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import { notificationsStore } from "$lib/stores/notificationsStore";
+import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
 
 export async function getMarket(marketId: bigint) {
   const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
@@ -31,31 +32,29 @@ export async function getAllMarkets(
     anon: true,
   });
 
+  const statusFilterValue: [] | [MarketStatus] = options.statusFilter
+    ? [
+        options.statusFilter === "Open" ? { Active: null } as MarketStatus :
+        options.statusFilter === "Closed" ? { Closed: [] } as MarketStatus :
+        options.statusFilter === "Disputed" ? { Disputed: null } as MarketStatus :
+        options.statusFilter === "Voided" ? { Voided: null } as MarketStatus :
+        undefined
+      ].filter(Boolean) as [MarketStatus]
+    : [];
+
+  const sortOptionValue: [] | [SortOption] = options.sortOption
+    ? [
+        {
+          [options.sortOption.type]: { [options.sortOption.direction]: null },
+        } as SortOption
+      ]
+    : [];
+
   const args = {
     start: BigInt(options.start ?? 0),
     length: BigInt(options.length ?? 100),
-    status_filter: (() => {
-      if (!options.statusFilter) return [];
-      switch (options.statusFilter) {
-        case "Open": // Mapped from UI "open"
-          return [{ Active: null }]; // Candid uses "Active"
-        case "Closed": // Mapped from UI "resolved"
-          return [{ Closed: [] }]; // Assuming empty Vec<Nat> for all closed markets
-        case "Disputed":
-          return [{ Disputed: null }];
-        case "Voided": // Mapped from UI "voided"
-          return [{ Voided: null }];
-        // Note: "Pending" (from Candid) or "expired" (from UI) needs clarification
-        // if it's a distinct filterable state here. Currently, unhandled types default to [].
-        default:
-          return [];
-      }
-    })(),
-    sort_option: options.sortOption
-      ? [{
-          [options.sortOption.type]: { [options.sortOption.direction]: null },
-        }]
-      : [],
+    status_filter: statusFilterValue,
+    sort_option: sortOptionValue,
   };
 
   const markets = await actor.get_all_markets(args);
@@ -110,6 +109,9 @@ export interface CreateMarketParams {
   resolutionMethod: any; // ResolutionMethod type from candid
   endTimeSpec: any; // MarketEndTime type from candid
   image_url?: string; // Optional image URL
+  uses_time_weighting?: boolean; // Optional: Whether to use time-weighted distribution
+  time_weight_alpha?: number; // Optional: Decay parameter for time-weighting
+  token_id?: string; // Optional: Token type to use for this market
 }
 
 export async function createMarket(params: CreateMarketParams) {
@@ -127,9 +129,9 @@ export async function createMarket(params: CreateMarketParams) {
     params.resolutionMethod,
     params.endTimeSpec,
     params.image_url ? [params.image_url] : [], // Pass as optional array
-    [], // for optional uses_time_weighting: Opt(Bool)
-    [], // for optional time_weight_alpha: Opt(Float64)
-    []  // for optional token_id_override: Opt(Text)
+    params.uses_time_weighting !== undefined ? [params.uses_time_weighting] : [],
+    params.time_weight_alpha !== undefined ? [params.time_weight_alpha] : [],
+    params.token_id ? [params.token_id] : []
   );
 
   notificationsStore.add({
@@ -376,4 +378,13 @@ export async function isAdmin(principal: string) {
     anon: true,
   });
   return await actor.is_admin(Principal.fromText(principal));
+}
+
+export async function getSupportedTokens() {
+  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
+    canisterId: canisters.predictionMarkets.canisterId,
+    idl: canisters.predictionMarkets.idl,
+    anon: true,
+  });
+  return await actor.get_supported_tokens();
 }

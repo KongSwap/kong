@@ -1,16 +1,23 @@
 <script lang="ts">
-  import { createMarket, getAllCategories, isAdmin } from "$lib/api/predictionMarket";
+  import { createMarket, getAllCategories, getSupportedTokens } from "$lib/api/predictionMarket";
   import { uploadFile } from "$lib/api/upload";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { AlertTriangle, Plus, Trash2, ClipboardList, Target, Clock, CheckCircle, HelpCircle, Tag, Gavel, ScrollText, ListChecks, Calendar, TriangleAlert, Coins, Image, Upload } from "lucide-svelte";
-  import { page } from "$app/stores";
+  import { AlertTriangle, Trash2, HelpCircle, TriangleAlert, Image, Plus, Coins, Calendar } from "lucide-svelte";
   import { browser } from "$app/environment";
   import { formatCategory } from "$lib/utils/numberFormatUtils";
-  import { fade, fly } from 'svelte/transition';
   import { auth } from "$lib/stores/auth";
+  import Dropdown from "$lib/components/common/Dropdown.svelte";
+  import { fetchTokensByCanisterId } from "$lib/api";
+  import LoadingWrapper from "$lib/components/common/LoadingWrapper.svelte";
+  import { debounce } from "$lib/utils/debounce";
+  import { validateMarketFormStep } from "$lib/utils/validators/marketValidators";
+  import type { MarketFormState } from "$lib/utils/validators/marketValidators";
+  import { validateAndReadImageFile } from "$lib/utils/imageUtils";
+  import { buildCreateMarketInput } from "$lib/utils/marketUtils";
+  import FormField from '$lib/components/common/FormField.svelte';
 
   // Constants
   const TOTAL_STEPS = 4;
@@ -19,17 +26,13 @@
   const MIN_IMAGE_DIMENSION = 200; // pixels
   const DEBOUNCE_DELAY = 300; // ms
   
-  // Debounce utility function
-  function debounce<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
-    let timer: ReturnType<typeof setTimeout>;
-    return (...args: Parameters<T>) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => func(...args), delay);
-    };
-  }
-
   // Form state
-  const formState = {
+  const formState: MarketFormState & {
+    imageFile: File | null;
+    imageUrl: string | null;
+    uses_time_weighting: boolean;
+    token_id: string;
+  } = {
     question: "",
     category: "Other",
     rules: "",
@@ -41,7 +44,11 @@
     specificTime: "",
     imageFile: null as File | null,
     imageUrl: null as string | null,
+    uses_time_weighting: true,
+    token_id: process.env.CANISTER_ID_KONG_LEDGER,
   };
+
+  $: console.log(formState);
   
   // UI state
   let currentStep = 1;
@@ -54,6 +61,8 @@
   let error: string | null = null;
   let imageError: string | null = null;
   let categoryError: string | null = null;
+  let supportedTokens: any[] = [];
+  let loadingTokens = true;
   
   // Create separate variables for radio buttons
   let endTimeType = formState.endTimeType;
@@ -122,6 +131,18 @@
       loadingCategories = false;
     }
 
+    // Fetch supported tokens
+    try {
+      const supportedTokensRes = await getSupportedTokens();
+      console.log(supportedTokensRes);
+      supportedTokens = await fetchTokensByCanisterId(supportedTokensRes.map(token => token.id));
+      console.log(supportedTokens);
+    } catch (e) {
+      supportedTokens = [];
+    } finally {
+      loadingTokens = false;
+    }
+
     // Restore state from URL if parameters exist
     const params = new URLSearchParams(window.location.search);
     if (params.has('step')) {
@@ -141,7 +162,7 @@
       
       formState.resolutionMethod = params.get('resolutionMethod') || 'Admin';
       // Set both the form state and the local variable
-      const loadedEndTimeType = params.get('endTimeType') || 'Duration';
+      const loadedEndTimeType = (params.get('endTimeType') || 'Duration') as MarketFormState['endTimeType'];
       formState.endTimeType = loadedEndTimeType;
       endTimeType = loadedEndTimeType;
       
@@ -150,22 +171,7 @@
       formState.specificTime = params.get('specificTime') || '';
     }
   });
-  
-  // Check admin status
-  $: if ($auth.isConnected) {
-    isAdmin($auth.account.owner).then((admin) => {
-      isUserAdmin = admin;
-      if (!isUserAdmin) {
-        toastStore.add({
-          title: "Access Denied",
-          message: "Only admins can create prediction markets",
-          type: "error",
-        });
-        goto("/predict");
-      }
-    });
-  }
-  
+
   // Form navigation
   function nextStep() {
     if (validateCurrentStep()) {
@@ -188,43 +194,9 @@
     }
   }
   
-  // Debounced validation
-  const debouncedValidate = debounce(() => {
-    validateCurrentStep();
-  }, DEBOUNCE_DELAY);
-  
   // Validation
   function validateCurrentStep(): boolean {
-    formErrors = {};
-    
-    if (currentStep === 1) {
-      if (!formState.question.trim()) {
-        formErrors.question = "Question is required";
-      }
-      if (!formState.rules.trim()) {
-        formErrors.rules = "Rules are required";
-      }
-    } else if (currentStep === 2) {
-      if (formState.outcomes.some(outcome => !outcome.trim())) {
-        formErrors.outcomes = "All outcomes must be filled";
-      }
-    } else if (currentStep === 3) {
-      if (formState.endTimeType === "Duration") {
-        if (!formState.duration || formState.duration < 1) {
-          formErrors.duration = "Duration must be at least 1 hour";
-        }
-      } else {
-        if (!formState.specificDate || !formState.specificTime) {
-          formErrors.specificDate = "Date and time are required";
-        } else {
-          const selectedDateTime = new Date(`${formState.specificDate}T${formState.specificTime}`);
-          if (selectedDateTime <= new Date()) {
-            formErrors.specificDate = "End time must be in the future";
-          }
-        }
-      }
-    }
-
+    formErrors = validateMarketFormStep(formState as MarketFormState, currentStep);
     return Object.keys(formErrors).length === 0;
   }
 
@@ -235,46 +207,19 @@
 
   async function processImageFile(file: File) {
     imageError = null;
-    
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      imageError = 'Please upload an image file';
+    const { error, dataUrl } = await validateAndReadImageFile(
+      file,
+      MAX_IMAGE_SIZE,
+      MIN_IMAGE_DIMENSION
+    );
+    if (error) {
+      imageError = error;
+      formState.imageFile = null;
+      formState.imageUrl = null;
       return;
     }
-    
-    // Validate file size
-    if (file.size > MAX_IMAGE_SIZE) {
-      imageError = 'Image size should be less than 5MB';
-      return;
-    }
-    
     formState.imageFile = file;
-    
-    // Validate dimensions using FileReader
-    try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (!e.target || typeof e.target.result !== 'string') {
-          imageError = 'Failed to load image preview';
-          return;
-        }
-        
-        const img = document.createElement('img');
-        img.onload = () => {
-          if (img.width < MIN_IMAGE_DIMENSION || img.height < MIN_IMAGE_DIMENSION) {
-            imageError = `Image dimensions should be at least ${MIN_IMAGE_DIMENSION}x${MIN_IMAGE_DIMENSION} pixels`;
-          }
-        };
-        img.onerror = () => {
-          imageError = 'Failed to process image';
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.error("Image preview error:", err);
-      imageError = err instanceof Error ? err.message : 'Failed to process image';
-    }
+    formState.imageUrl = dataUrl!;
   }
 
   // Image handling
@@ -329,40 +274,9 @@
         }
       }
 
-      // Prepare end time
-      const endTimeSpec = formState.endTimeType === "Duration"
-        ? { Duration: BigInt(formState.duration * 60 * 60) } // Convert hours to seconds
-        : { SpecificDate: BigInt(Math.floor(new Date(`${formState.specificDate}T${formState.specificTime}`).getTime() / 1000)) };
-
-      // Prepare resolution method
-      let resolutionMethodSpec;
-      switch (formState.resolutionMethod) {
-        case "Admin":
-          resolutionMethodSpec = { Admin: null };
-          break;
-        case "Decentralized":
-          resolutionMethodSpec = { Decentralized: { quorum: 100n } };
-          break;
-        case "Oracle":
-          resolutionMethodSpec = {
-            Oracle: {
-              oracle_principals: [],
-              required_confirmations: 1n
-            }
-          };
-          break;
-      }
-
-      // Create market
-      const result = await createMarket({
-        question: formState.question,
-        category: { [formState.category]: null },
-        rules: formState.rules,
-        outcomes: validOutcomes,
-        resolutionMethod: resolutionMethodSpec,
-        endTimeSpec,
-        image_url: uploadedImageUrl
-      });
+      // Build payload and call API
+      const payload = buildCreateMarketInput({ ...formState, imageUrl: uploadedImageUrl });
+      const result = await createMarket(payload);
 
       if ('Ok' in result) {
         toastStore.add({
@@ -458,20 +372,12 @@
           >
             {#if currentStep === 1}
               <div class="space-y-6">
-                <!-- Question -->
-                <div class="space-y-2">
-                  <div class="flex items-center gap-2">
-                    <label for="question" class="block text-xs uppercase font-medium text-kong-text-primary">
-                      What's your question?
-                    </label>
-                    <div class="group relative">
-                      <HelpCircle size={18} class="text-kong-text-secondary cursor-help" />
-                      <div class="absolute left-1/2 -translate-x-1/2 mt-2 px-3 py-2 bg-kong-bg-dark border border-kong-border rounded-lg text-sm text-kong-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        Keep your question clear and specific
-                        <div class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-kong-bg-dark border-t border-l border-kong-border transform rotate-45"></div>
-                      </div>
-                    </div>
-                  </div>
+                <FormField
+                  id="question"
+                  label="What's your question?"
+                  helpText="Keep your question clear and specific"
+                  error={formErrors.question}
+                >
                   <input
                     type="text"
                     id="question"
@@ -479,28 +385,15 @@
                     class="w-full p-4 bg-kong-bg-dark rounded-lg border {questionError ? 'border-kong-accent-red' : 'border-kong-border'} text-lg text-kong-text-primary placeholder:text-kong-text-secondary/50 focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                     placeholder="e.g., Will Bitcoin reach $100,000 by the end of 2024?"
                   />
-
-                  {#if formErrors.question}
-                    <p class="text-sm text-kong-text-accent-red flex items-center gap-2 mt-2">
-                      <AlertTriangle size={16} />
-                      {formErrors.question}
-                    </p>
-                  {/if}
-                </div>
+                </FormField>
 
                 <!-- Image Upload -->
-                <div class="space-y-2">
-                  <label for="image" class="block text-xs uppercase font-medium text-kong-text-primary flex items-center gap-2">
-                    Market Image <span class="text-xs lowercase normal-case text-kong-text-secondary">(optional)</span>
-                    <div class="group relative">
-                      <HelpCircle size={16} class="text-kong-text-secondary cursor-help" />
-                      <div class="absolute left-1/2 -translate-x-1/2 mt-2 px-3 py-2 bg-kong-bg-dark border border-kong-border rounded-lg text-sm text-kong-text-primary w-56 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                        Add an image to make your market more engaging. Recommended size 800x400px, max 5MB.
-                        <div class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-kong-bg-dark border-t border-l border-kong-border transform rotate-45"></div>
-                      </div>
-                    </div>
-                  </label>
-                  
+                <FormField
+                  id="image"
+                  label="Market Image (optional)"
+                  helpText="Add an image to make your market more engaging. Recommended size 800x400px, max 5MB."
+                  error={imageError}
+                >
                   <div class="relative rounded-lg overflow-hidden border border-dashed border-kong-border hover:border-kong-accent-blue transition-colors">
                     <input 
                       type="file"
@@ -510,7 +403,7 @@
                       on:change={handleImageUpload}
                       disabled={uploadingImage}
                     />
-                    
+
                     {#if formState.imageFile}
                       <div class="relative group">
                         <img 
@@ -528,7 +421,7 @@
                             <Trash2 size={20} />
                           </button>
                         </div>
-                        
+
                         {#if uploadingImage}
                           <div class="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
                             <div class="flex flex-col items-center">
@@ -548,54 +441,62 @@
                       </div>
                     {/if}
                   </div>
-                  
-                  {#if imageError}
-                    <p class="text-sm text-kong-text-accent-red flex items-center gap-2 mt-2">
-                      <AlertTriangle size={16} />
-                      {imageError}
-                    </p>
-                  {/if}
-                </div>
+                </FormField>
 
                 <!-- Category -->
-                <div class="space-y-2">
-                  <label for="category" class="block text-xs uppercase font-medium text-kong-text-primary">
-                    Category
-                  </label>
-                  <div class="relative">
-                    {#if loadingCategories}
-                      <div class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-secondary flex items-center justify-between">
-                        <span>Loading categories...</span>
-                        <div class="w-5 h-5 border-2 border-kong-text-secondary border-t-transparent rounded-full animate-spin"></div>
+                <FormField
+                  id="category"
+                  label="Category"
+                  error={categoryError}
+                >
+                  <LoadingWrapper loading={loadingCategories} text="Loading categories...">
+                    <select
+                      id="category"
+                      bind:value={formState.category}
+                      class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
+                    >
+                      {#each categories as cat}
+                        <option value={cat}>{cat}</option>
+                      {/each}
+                    </select>
+                    <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-kong-text-secondary">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </LoadingWrapper>
+                </FormField>
+
+                <!-- Token Selection -->
+                <FormField id="token" label="Token">
+                  <LoadingWrapper loading={loadingTokens} text="Loading tokens...">
+                    <Dropdown width="w-full">
+                      <div slot="trigger" class="flex items-center gap-2 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary cursor-pointer min-h-[3rem]">
+                        {#if formState.token_id}
+                          {#if supportedTokens.find(t => t.address === formState.token_id)?.logo_url}
+                            <img src={supportedTokens.find(t => t.address === formState.token_id)?.logo_url} alt="logo" class="w-6 h-6 rounded-full object-cover" />
+                          {/if}
+                          <span>
+                            {supportedTokens.find(t => t.address === formState.token_id)?.symbol ? `${supportedTokens.find(t => t.address === formState.token_id)?.symbol} - ` : ""}
+                            {supportedTokens.find(t => t.address === formState.token_id)?.name}
+                          </span>
+                        {/if}
+                        <svg class="ml-auto w-4 h-4 text-kong-text-secondary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
                       </div>
-                    {:else}
-                      <select
-                        id="category"
-                        bind:value={formState.category}
-                        class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
-                      >
-                        {#each categories as cat}
-                          <option value={cat}>{cat}</option>
+                      <div>
+                        {#each supportedTokens as token}
+                          <div class="px-4 py-3 text-left hover:bg-kong-bg-secondary/20 hover:text-kong-primary group flex items-center gap-2 transition-colors" on:click={() => formState.token_id = token.id}>
+                            {#if token.logo_url}
+                              <img src={token.logo_url} alt="logo" class="w-6 h-6 rounded-full object-cover mr-2" />
+                            {/if}
+                            <span>{token.symbol ? `${token.symbol} - ` : ""}{token.name}</span>
+                          </div>
                         {/each}
-                      </select>
-                      <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-kong-text-secondary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                       </div>
-                    {/if}
-                  </div>
-                  {#if categoryError}
-                    <p class="text-sm text-kong-text-accent-red flex items-center gap-2 mt-2">
-                      <AlertTriangle size={16} />
-                      {categoryError}
-                    </p>
-                  {/if}
-                </div>
+                    </Dropdown>
+                  </LoadingWrapper>
+                </FormField>
 
                 <!-- Resolution Method -->
-                <div class="space-y-2">
-                  <label for="resolutionMethod" class="block text-xs uppercase font-medium text-kong-text-primary">
-                    How will this be resolved?
-                  </label>
+                <FormField id="resolutionMethod" label="How will this be resolved?">
                   <div class="relative">
                     <select
                       id="resolutionMethod"
@@ -603,8 +504,6 @@
                       class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
                     >
                       <option value="Admin">Admin Resolution</option>
-                      <option value="Decentralized">Community Resolution</option>
-                      <option value="Oracle">Oracle Resolution</option>
                     </select>
                     <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-kong-text-secondary">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -619,13 +518,14 @@
                       Market will be resolved through trusted oracle providers
                     {/if}
                   </p>
-                </div>
+                </FormField>
 
                 <!-- Rules -->
-                <div class="space-y-2">
-                  <label for="rules" class="block text-xs uppercase font-medium text-kong-text-primary">
-                    Resolution Rules
-                  </label>
+                <FormField
+                  id="rules"
+                  label="Resolution Rules"
+                  error={formErrors.rules}
+                >
                   <textarea
                     id="rules"
                     bind:value={formState.rules}
@@ -633,20 +533,15 @@
                     class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary placeholder:text-kong-text-secondary/50 focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none resize-none transition-all duration-200"
                     placeholder="Specify clear rules for how this market will be resolved..."
                   />
-                  {#if formErrors.rules}
-                    <p class="text-sm text-kong-text-accent-red flex items-center gap-2 mt-2">
-                      <AlertTriangle size={16} />
-                      {formErrors.rules}
-                    </p>
-                  {/if}
-                </div>
+                </FormField>
               </div>
             {:else if currentStep === 2}
               <div class="space-y-6">
-                <div class="space-y-2">
-                  <label class="block text-xs uppercase font-medium text-kong-text-primary">
-                    What are the possible outcomes?
-                  </label>
+                <FormField
+                  id="outcomes"
+                  label="What are the possible outcomes?"
+                  error={formErrors.outcomes}
+                >
                   <div class="space-y-3">
                     {#each formState.outcomes as outcome, i}
                       <div class="flex gap-3 items-center">
@@ -676,21 +571,15 @@
                       Add Another Outcome
                     </button>
                   </div>
-                  {#if formErrors.outcomes}
-                    <p class="text-sm text-kong-text-accent-red flex items-center gap-2 mt-2">
-                      <AlertTriangle size={16} />
-                      {formErrors.outcomes}
-                    </p>
-                  {/if}
-                </div>
+                </FormField>
               </div>
             {:else if currentStep === 3}
               <div class="space-y-6">
-                <div class="space-y-2">
-                  <label class="block text-xs uppercase font-medium text-kong-text-primary">
-                    When will the market end?
-                  </label>
-                  
+                <FormField
+                  id="endTimeType"
+                  label="When will the market end?"
+                  error={formErrors.duration || formErrors.specificDate}
+                >
                   <div class="space-y-4">
                     <div class="flex gap-4">
                       <label class="flex-1 flex items-center gap-3 p-4 bg-kong-bg-dark rounded-lg border cursor-pointer transition-all duration-200 {formState.endTimeType === 'Duration' ? 'border-kong-accent-blue bg-kong-accent-blue/5' : 'border-kong-border hover:border-kong-border-light'}">
@@ -748,13 +637,7 @@
                       </div>
                     {/if}
                   </div>
-                  {#if formErrors.duration || formErrors.specificDate}
-                    <p class="text-sm text-kong-text-accent-red flex items-center gap-2 mt-2">
-                      <AlertTriangle size={16} />
-                      {formErrors.duration || formErrors.specificDate}
-                    </p>
-                  {/if}
-                </div>
+                </FormField>
               </div>
             {:else if currentStep === 4}
               <div class="space-y-6">

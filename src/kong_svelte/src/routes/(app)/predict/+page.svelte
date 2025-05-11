@@ -274,17 +274,16 @@
       </div>
 
       <div class="flex gap-3 w-full justify-center md:justify-end">
-        {#if isUserAdmin}
+
+        {#if $auth.isConnected}
           <ButtonV2
             theme="accent-green"
             variant="solid"
             size="md"
             on:click={() => goto("/predict/create")}
-          >
-            Create Market
-          </ButtonV2>
-        {/if}
-        {#if $auth.isConnected}
+        >
+          Create Market
+        </ButtonV2>
           <ButtonV2
             theme="secondary"
             variant="solid"
