@@ -29,59 +29,35 @@
     "staging_fe": "",
     "staging": "ohr23-xqaaa-aaaar-qahqq-cai"
   },
-  "usdt_ledger": {
+  "ckusdt_ledger": {
     "ic": "cngnf-vqaaa-aaaar-qag4q-cai",
-    "local": "",
+    "local": "cngnf-vqaaa-aaaar-qag4q-cai",
     "staging_fe": "cngnf-vqaaa-aaaar-qag4q-cai",
     "staging": ""
   },
-  "ksusdt_ledger": {
-    "ic": "",
-    "local": "zdzgz-siaaa-aaaar-qaiba-cai",
-    "staging_fe": "",
-    "staging": "zdzgz-siaaa-aaaar-qaiba-cai"
-  },
   "icp_ledger": {
     "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai",
-    "local": "",
+    "local": "ryjl3-tyaaa-aaaaa-aaaba-cai",
     "staging_fe": "ryjl3-tyaaa-aaaaa-aaaba-cai",
     "staging": ""
   },
-  "btc_ledger": {
+  "ckbtc_ledger": {
     "ic": "mxzaz-hqaaa-aaaar-qaada-cai",
-    "local": "",
+    "local": "mxzaz-hqaaa-aaaar-qaada-cai",
     "staging_fe": "mxzaz-hqaaa-aaaar-qaada-cai",
     "staging": ""
   },
-  "ksbtc_ledger": {
-    "ic": "",
-    "local": "zeyan-7qaaa-aaaar-qaibq-cai",
-    "staging_fe": "",
-    "staging": "zeyan-7qaaa-aaaar-qaibq-cai"
-  },
-  "eth_ledger": {
+  "cketh_ledger": {
     "ic": "ss2fx-dyaaa-aaaar-qacoq-cai",
-    "local": "",
+    "local": "ss2fx-dyaaa-aaaar-qacoq-cai",
     "staging_fe": "ss2fx-dyaaa-aaaar-qacoq-cai",
     "staging": ""
-  },
-  "kseth_ledger": {
-    "ic": "",
-    "local": "zr7ra-6yaaa-aaaar-qaica-cai",
-    "staging_fe": "",
-    "staging": "zr7ra-6yaaa-aaaar-qaica-cai"
   },
   "kong_ledger": {
     "ic": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "local": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "staging_fe": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "staging": ""
-  },
-  "kskong_ledger": {
-    "ic": "",
-    "local": "uxrrr-q7777-77774-qaaaq-cai",
-    "staging_fe": "",
-    "staging": "uxrrr-q7777-77774-qaaaq-cai"
   },
   "internet_identity": {
     "local": "rdmx6-jaaaa-aaaaa-aaadq-cai",

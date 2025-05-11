@@ -4,7 +4,7 @@
 set -e
 
 # Switch to minter identity
-dfx identity use minter
+dfx identity use kong_token_minter
 
 # Get canister IDs
 KONG_LEDGER=$(dfx canister id kong_ledger)
@@ -20,7 +20,7 @@ mint_tokens() {
     echo "Minting $MINT_AMOUNT tokens for $identity ($principal)..."
     
     # Switch back to minter to mint tokens
-    dfx identity use minter
+    dfx identity use kong_token_minter
     dfx canister call $KONG_LEDGER icrc1_transfer "(record {
         to = record { owner = principal \"$principal\" };
         amount = $MINT_AMOUNT : nat;
@@ -38,5 +38,9 @@ mint_tokens "kong"
 mint_tokens "default"
 mint_tokens "kong_user1"
 mint_tokens "kong_user2"
+mint_tokens "alice"
+mint_tokens "bob"
+mint_tokens "carol"
+mint_tokens "dave"
 
 echo "Token setup complete!"

@@ -10,7 +10,7 @@ fi
 IDENTITY="--identity kong_user1"
 KONG_BACKEND=$(dfx canister id kong_backend)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 10000000000" | bc)  # 10 seconds from now
-TOKEN_LEDGER=$(dfx canister id ksusdt_ledger)
+TOKEN_LEDGER=$(dfx canister id ckusdt_ledger)
 
 dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc2_approve '
   record {

@@ -7,7 +7,7 @@ const defaultTokens = () => {
   if (process.env.DFX_NETWORK === 'local') {
     return {
       icp: process.env.CANISTER_ID_ICP_LEDGER,
-      ckusdt: process.env.CANISTER_ID_KSUSDT_LEDGER,
+      ckusdt: process.env.CANISTER_ID_CKUSDT_LEDGER,
       kong: process.env.CANISTER_ID_KONG_LEDGER,
     };
   }
@@ -37,7 +37,7 @@ const defaultTokens = () => {
 
 export const DEFAULT_TOKENS = defaultTokens();
 
-export const CKUSDT_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_KSUSDT_LEDGER : "cngnf-vqaaa-aaaar-qag4q-cai";
+export const CKUSDT_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_CKUSDT_LEDGER : "cngnf-vqaaa-aaaar-qag4q-cai";
 // @ts-ignore
 export const ICP_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_ICP_LEDGER : process.env.CANISTER_ID_ICP_LEDGER;
 
@@ -52,9 +52,9 @@ export const PREDICTION_MARKETS_CANISTER_ID = process.env.CANISTER_ID_PREDICTION
 
 // Token Canister IDs
 export const BIL_CANISTER_ID = 'ktra4-taaaa-aaaag-atveq-cai';
-export const CKBTC_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_KSBTC_LEDGER : 'mxzaz-hqaaa-aaaar-qaada-cai';
+export const CKBTC_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_CKBTC_LEDGER : 'mxzaz-hqaaa-aaaar-qaada-cai';
 export const CKUSDC_CANISTER_ID = 'xevnm-gaaaa-aaaar-qafnq-cai';
-export const CKETH_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_KSETH_LEDGER : 'ss2fx-dyaaa-aaaar-qacoq-cai';
+export const CKETH_CANISTER_ID = process.env.DFX_NETWORK === 'local' ? process.env.CANISTER_ID_CKETH_LEDGER : 'ss2fx-dyaaa-aaaar-qacoq-cai';
 export const DKP_CANISTER_ID = 'zfcdd-tqaaa-aaaaq-aaaga-cai';
 export const BITS_CANISTER_ID = 'j5lhj-xyaaa-aaaai-qpfeq-cai';
 export const CHAT_CANISTER_ID = '2ouva-viaaa-aaaaq-aaamq-cai';

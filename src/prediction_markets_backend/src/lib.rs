@@ -35,6 +35,8 @@ use crate::market::create_market::*;
 use crate::market::market::*;
 use crate::market::get_market_by_status::GetMarketsByStatusArgs;
 use crate::market::get_market_by_status::GetMarketsByStatusResult;
+use crate::market::get_all_markets::GetAllMarketsArgs;
+use crate::market::get_all_markets::GetAllMarketsResult;
 
 use crate::market::estimate_return_types::{EstimatedReturn, TimeWeightPoint, BetPayoutRecord};
 // Standard types
@@ -67,7 +69,7 @@ pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetC
 
 // Constants
 // const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
-const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai"; /// Canister ID for KONG token ledger (local testing environment)
+const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; /// Canister ID for KONG token ledger (local testing environment)
 
 // We don't need import the registry functions here
 // since we're not using them directly in the post_upgrade function

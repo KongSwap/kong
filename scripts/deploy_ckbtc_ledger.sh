@@ -4,7 +4,7 @@ original_dir=$(pwd)
 root_dir="${CANISTER_IDS_ROOT:-${original_dir}/..}"
 canister_ids_file="${root_dir}/canister_ids.all.json"
 
-TOKEN_SYMBOL="ksBTC"
+TOKEN_SYMBOL="ckBTC"
 TOKEN_LEDGER=$(echo ${TOKEN_SYMBOL}_ledger | tr '[:upper:]' '[:lower:]')
 TOKEN_NAME="Bitcoin (KongSwap Test Token)"
 TOKEN_DECIMALS=8

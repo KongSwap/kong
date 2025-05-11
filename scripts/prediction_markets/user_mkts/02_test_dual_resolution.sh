@@ -7,7 +7,7 @@ echo "==== Testing Dual Resolution for User-Created Markets ===="
 
 # Get canister IDs
 PREDICTION_MARKETS_CANISTER=$(dfx canister id prediction_markets_backend)
-KONG_LEDGER=$(dfx canister id kskong_ledger)
+KONG_LEDGER=$(dfx canister id kong_ledger)
 KONG_FEE=$(dfx canister call ${KONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
 KONG_FEE=${KONG_FEE//_/}
 ACTIVATION_FEE=3000000000 # 3000 KONG

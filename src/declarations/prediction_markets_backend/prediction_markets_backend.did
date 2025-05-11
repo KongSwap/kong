@@ -119,6 +119,13 @@ type FailedTransaction = record {
   timestamp : nat64;
   amount : nat;
 };
+type GetAllMarketsArgs = record {
+  status_filter : opt MarketStatus;
+  start : nat;
+  length : nat64;
+  sort_option : opt SortOption;
+};
+type GetAllMarketsResult = record { markets : vec Market; total_count : nat };
 type GetMarketsByCreatorArgs = record {
   creator : principal;
   start : nat;
@@ -238,6 +245,10 @@ type SearchMarketsArgs = record {
 type SearchMarketsResult = record { total : nat; markets : vec Market };
 type SortDirection = variant { Descending; Ascending };
 type SortField = variant { TotalPool; CreationTime; EndTime; TotalBets };
+type SortOption = variant {
+  TotalPool : SortDirection;
+  CreatedAt : SortDirection;
+};
 type TimeWeightPoint = record {
   weight : float64;
   absolute_time : nat;
@@ -287,6 +298,7 @@ service : () -> {
   force_resolve_market : (nat, vec nat) -> (Result_2);
   generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
   get_all_categories : () -> (vec text) query;
+  get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
   get_all_transactions : () -> (vec record { nat64; FailedTransaction }) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;

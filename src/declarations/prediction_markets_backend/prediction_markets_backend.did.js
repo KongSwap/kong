@@ -76,22 +76,26 @@ export const idlFactory = ({ IDL }) => {
     'absolute_time' : IDL.Nat,
     'relative_time' : IDL.Float64,
   });
-  const FailedTransaction = IDL.Record({
-    'resolved' : IDL.Bool,
-    'token_id' : IDL.Text,
-    'retry_count' : IDL.Nat8,
-    'market_id' : IDL.Opt(IDL.Nat),
-    'recipient' : IDL.Principal,
-    'error' : IDL.Text,
-    'timestamp' : IDL.Nat64,
-    'amount' : IDL.Nat,
-  });
   const MarketStatus = IDL.Variant({
     'Disputed' : IDL.Null,
     'Closed' : IDL.Vec(IDL.Nat),
     'Active' : IDL.Null,
     'Voided' : IDL.Null,
     'Pending' : IDL.Null,
+  });
+  const SortDirection = IDL.Variant({
+    'Descending' : IDL.Null,
+    'Ascending' : IDL.Null,
+  });
+  const SortOption = IDL.Variant({
+    'TotalPool' : SortDirection,
+    'CreatedAt' : SortDirection,
+  });
+  const GetAllMarketsArgs = IDL.Record({
+    'status_filter' : IDL.Opt(MarketStatus),
+    'start' : IDL.Nat,
+    'length' : IDL.Nat64,
+    'sort_option' : IDL.Opt(SortOption),
   });
   const Market = IDL.Record({
     'id' : IDL.Nat,
@@ -115,6 +119,20 @@ export const idlFactory = ({ IDL }) => {
     'rules' : IDL.Text,
     'resolved_by' : IDL.Opt(IDL.Principal),
     'bet_counts' : IDL.Vec(IDL.Nat),
+  });
+  const GetAllMarketsResult = IDL.Record({
+    'markets' : IDL.Vec(Market),
+    'total_count' : IDL.Nat,
+  });
+  const FailedTransaction = IDL.Record({
+    'resolved' : IDL.Bool,
+    'token_id' : IDL.Text,
+    'retry_count' : IDL.Nat8,
+    'market_id' : IDL.Opt(IDL.Nat),
+    'recipient' : IDL.Principal,
+    'error' : IDL.Text,
+    'timestamp' : IDL.Nat64,
+    'amount' : IDL.Nat,
   });
   const Bet = IDL.Record({
     'token_id' : IDL.Text,
@@ -283,10 +301,6 @@ export const idlFactory = ({ IDL }) => {
     'EndTime' : IDL.Null,
     'TotalBets' : IDL.Null,
   });
-  const SortDirection = IDL.Variant({
-    'Descending' : IDL.Null,
-    'Ascending' : IDL.Null,
-  });
   const SearchMarketsArgs = IDL.Record({
     'include_resolved' : IDL.Bool,
     'sort_field' : IDL.Opt(SortField),
@@ -334,6 +348,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'get_all_categories' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
+    'get_all_markets' : IDL.Func(
+        [GetAllMarketsArgs],
+        [GetAllMarketsResult],
+        ['query'],
+      ),
     'get_all_transactions' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Nat64, FailedTransaction))],

@@ -73,9 +73,9 @@ thread_local! {
         
         // Add KONG token
         registry.insert(
-            "umunu-kh777-77774-qaaca-cai".to_string(), 
+            "o7oak-iyaaa-aaaaq-aadzq-cai".to_string(), 
             TokenInfo {
-                id: "umunu-kh777-77774-qaaca-cai".to_string(),
+                id: "o7oak-iyaaa-aaaaq-aadzq-cai".to_string(),
                 name: "Kong Swap Token".to_string(),
                 symbol: "KONG".to_string(),
                 decimals: 8,
@@ -84,21 +84,7 @@ thread_local! {
                 transfer_fee: StorableNat::from(10_000u64), // 0.0001 KONG
             }
         );
-        
-        // Add ksUSDT token for local testing
-        registry.insert(
-            "v56tl-sp777-77774-qaahq-cai".to_string(),
-            TokenInfo {
-                id: "v56tl-sp777-77774-qaahq-cai".to_string(),
-                name: "Chain Key USDT".to_string(),
-                symbol: "ksUSDT".to_string(),
-                decimals: 6,
-                fee_percentage: 200, // 2%
-                is_kong: false,
-                transfer_fee: StorableNat::from(1_000u64), // 0.001 USDT
-            }
-        );
-        
+
         // Add production ICP token
         registry.insert(
             "ryjl3-tyaaa-aaaaa-aaaba-cai".to_string(),
@@ -312,4 +298,4 @@ pub fn remove_supported_token(token_id: TokenIdentifier) {
 pub const KONG_LEDGER_ID_PROD: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";
 
 /// Canister ID for the KONG token ledger in local testing environment
-pub const KONG_LEDGER_ID_LOCAL: &str = "umunu-kh777-77774-qaaca-cai";
+pub const KONG_LEDGER_ID_LOCAL: &str = "o7oak-iyaaa-aaaaq-aadzq-cai";

@@ -182,14 +182,6 @@ export function initializePNP(): PNP {
     // Initialize PNP with the stable config
     globalPnp = createPNP(config);
 
-    // Ensure WalletConnect adapter is properly initialized
-    if (globalPnp.adapter?.walletconnectSiws) {
-      const wcAdapter = globalPnp.adapter.walletconnectSiws;
-      if (typeof wcAdapter.initialize === 'function') {
-        wcAdapter.initialize();
-      }
-    }
-
     return globalPnp;
   } catch (error) {
     console.error("Error initializing PNP:", error);

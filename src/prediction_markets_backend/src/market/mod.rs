@@ -2,6 +2,7 @@
 pub mod market;
 pub mod create_market;
 pub mod get_market;
+pub mod get_all_markets;
 pub mod get_market_by_status;
 pub mod get_markets_by_creator;
 pub mod search_markets;

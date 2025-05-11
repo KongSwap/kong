@@ -95,11 +95,11 @@ fi
 
 # Deploy core canisters
 CORE_CANISTERS_SCRIPTS=(
-    "deploy_kong_backend.sh"
-    "deploy_kong_data.sh"
-    "deploy_kong_svelte.sh"
-    "deploy_prediction_markets.sh"
-    "deploy_trollbox.sh"
+    "${PROJECT_ROOT}/scripts/deploy_kong_backend.sh"
+    "${PROJECT_ROOT}/scripts/deploy_kong_data.sh"
+    "${PROJECT_ROOT}/scripts/deploy_kong_svelte.sh"
+    "${PROJECT_ROOT}/scripts/deploy_prediction_markets.sh"
+    "${PROJECT_ROOT}/scripts/deploy_trollbox.sh"
 )
 
 for script in "${CORE_CANISTERS_SCRIPTS[@]}"; do
@@ -114,11 +114,11 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 
     # Deploy test token ledger canisters
     LEDGER_SCRIPTS=(
-        "${PROJECT_ROOT}/scripts/deploy_ksusdt_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_ckusdt_ledger.sh"
         "${PROJECT_ROOT}/scripts/deploy_icp_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_ksbtc_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_kseth_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_kskong_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_ckbtc_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_cketh_ledger.sh"
+        "${PROJECT_ROOT}/scripts/deploy_kong_ledger.sh"
     )
 
     for script in "${LEDGER_SCRIPTS[@]}"; do

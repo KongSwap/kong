@@ -26,7 +26,7 @@ RULES="$3"
 OUTCOMES="$4"
 RESOLUTION_METHOD="$5"
 DURATION_OR_TIMESTAMP="$6"
-TOKEN_ID="${7:-\"umunu-kh777-77774-qaaca-cai\"}" # Default to KONG if not specified
+TOKEN_ID="${7:-\"o7oak-iyaaa-aaaaq-aadzq-cai\"}" # Default to KONG if not specified
 
 # Process the category
 case "$CATEGORY" in
@@ -70,10 +70,8 @@ for outcome in "${OUTCOME_ARRAY[@]}"; do
 done
 
 # Determine which token we're using
-if [ "$TOKEN_ID" = "\"umunu-kh777-77774-qaaca-cai\"" ]; then
+if [ "$TOKEN_ID" = "\"o7oak-iyaaa-aaaaq-aadzq-cai\"" ]; then
     TOKEN_NAME="KONG"
-elif [ "$TOKEN_ID" = "\"ulvla-h7777-77774-qaacq-cai\"" ]; then
-    TOKEN_NAME="ksICP"
 elif [ "$TOKEN_ID" = "\"ryjl3-tyaaa-aaaaa-aaaba-cai\"" ]; then
     TOKEN_NAME="ICP"
 else

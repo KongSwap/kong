@@ -7,7 +7,7 @@ echo "==== Testing Simulate Future Weight Functionality ===="
 
 # Get canister IDs
 PREDICTION_MARKETS_CANISTER=$(dfx canister id prediction_markets_backend)
-KONG_LEDGER=$(dfx canister id kskong_ledger)
+KONG_LEDGER=$(dfx canister id kong_ledger)
 
 echo "Prediction Markets Canister: $PREDICTION_MARKETS_CANISTER"
 echo "KONG Ledger: $KONG_LEDGER"

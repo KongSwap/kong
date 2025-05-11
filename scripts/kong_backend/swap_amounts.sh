@@ -35,7 +35,7 @@ KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ckBTC", 250_000, "ckETH")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ckETH", 0, "ckBTC")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ckETH", 734_234_134_000_000_000, "ckBTC")'
-# dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("IC.zw6xu-taaaa-aaaar-qaicq-cai", 1, "IC.zdzgz-siaaa-aaaar-qaiba-cai")'
+# dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("IC.zw6xu-taaaa-aaaar-qaicq-cai", 1, "IC.cngnf-vqaaa-aaaar-qag4q-cai")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("IC.jzo46-yaaaa-aaaam-adlpq-cai", 100_000, "ckUSDT")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("IC.mfvg3-tiaaa-aaaam-adlqa-cai", 100_000, "ckUSDT")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ALPACALB", 500_000_000, "ckUSDT")'

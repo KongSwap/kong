@@ -14,7 +14,7 @@ fi
 MARKET_ID=$1
 OUTCOME_INDEX=$2
 AMOUNT=$3
-TOKEN_ID=${4:-"umunu-kh777-77774-qaaca-cai"} # Default to KONG if not specified
+TOKEN_ID=${4:-"o7oak-iyaaa-aaaaq-aadzq-cai"} # Default to KONG if not specified
 
 # Get token ledger canister ID based on token ID
 PREDICTION_MARKETS_CANISTER=$(dfx canister id prediction_markets_backend)
@@ -49,5 +49,5 @@ dfx canister call prediction_markets_backend place_bet "(
 # # Place a bet of 100 KONG tokens on the first outcome (index 0) of market 1
 # ./place_bet.sh 1 0 100
 
-# # Place a bet of 25 ksICP tokens on the first outcome (index 0) of market 1
+# # Place a bet of 25 ICP tokens on the first outcome (index 0) of market 1
 # ./place_bet.sh 1 0 2500000000 ulvla-h7777-77774-qaacq-cai

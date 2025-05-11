@@ -293,14 +293,7 @@
     ) {
       return false;
     }
-
-    // Find token symbols for the toast message
-    const paySymbol = $swapState.payToken.symbol;
-    const receiveSymbol = $swapState.receiveToken.symbol;
-    // Use the actual amounts from the state *before* clearing them
-    const paidAmountStr = $swapState.payAmount;
-    const receivedAmountStr = $swapState.receiveAmount;
-
+    
     try {
       swapState.update((state) => ({
         ...state,
@@ -750,12 +743,6 @@
       onConfirm={handleSwap}
       onClose={() => {
         swapState.setShowConfirmation(false);
-      }}
-      on:quoteUpdate={({ detail }) => {
-        swapState.update((state) => ({
-          ...state,
-          receiveAmount: detail.receiveAmount,
-        }));
       }}
     />
   </Portal>

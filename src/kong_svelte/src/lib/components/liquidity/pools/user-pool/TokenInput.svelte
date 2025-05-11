@@ -50,7 +50,7 @@
       
       if (percentage === 100) {
         // For MAX (100%), use the calculateMaxAmount utility which properly accounts for fees
-        result = await calculateMaxAmount(token, tokenBalance, 2);
+        result = await calculateMaxAmount(token, tokenBalance, 1);
       } else {
         // For other percentages, just calculate the percentage of the balance
         const adjustedBalance = parsedBalance.times(percentage).div(100);

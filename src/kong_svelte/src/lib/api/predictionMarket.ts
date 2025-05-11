@@ -34,20 +34,28 @@ export async function getAllMarkets(
   const args = {
     start: BigInt(options.start ?? 0),
     length: BigInt(options.length ?? 100),
-    status_filter: options.statusFilter
-      ? options.statusFilter === "Closed"
-        ? [{ Closed: [] }] as [any]
-        : options.statusFilter === "Open"
-          ? [{ Open: null }] as [any]
-          : options.statusFilter === "Voided"
-            ? [{ Voided: null }] as [any]
-            : [] as []
-      : [] as [],
+    status_filter: (() => {
+      if (!options.statusFilter) return [];
+      switch (options.statusFilter) {
+        case "Open": // Mapped from UI "open"
+          return [{ Active: null }]; // Candid uses "Active"
+        case "Closed": // Mapped from UI "resolved"
+          return [{ Closed: [] }]; // Assuming empty Vec<Nat> for all closed markets
+        case "Disputed":
+          return [{ Disputed: null }];
+        case "Voided": // Mapped from UI "voided"
+          return [{ Voided: null }];
+        // Note: "Pending" (from Candid) or "expired" (from UI) needs clarification
+        // if it's a distinct filterable state here. Currently, unhandled types default to [].
+        default:
+          return [];
+      }
+    })(),
     sort_option: options.sortOption
       ? [{
           [options.sortOption.type]: { [options.sortOption.direction]: null },
-        }] as [any] // Ensure it's a tuple with exactly one element
-      : [] as [], // Default sorting (newest first) will be applied by the backend
+        }]
+      : [],
   };
 
   const markets = await actor.get_all_markets(args);
@@ -119,6 +127,9 @@ export async function createMarket(params: CreateMarketParams) {
     params.resolutionMethod,
     params.endTimeSpec,
     params.image_url ? [params.image_url] : [], // Pass as optional array
+    [], // for optional uses_time_weighting: Opt(Bool)
+    [], // for optional time_weight_alpha: Opt(Float64)
+    []  // for optional token_id_override: Opt(Text)
   );
 
   notificationsStore.add({
@@ -161,7 +172,7 @@ export async function placeBet(
       throw new Error("Bet amount cannot be zero");
     }
 
-    const result = await actor.place_bet(marketId, outcomeIndex, bigIntAmount);
+    const result = await actor.place_bet(marketId, outcomeIndex, bigIntAmount, []); // Added missing Opt(Text) argument
 
     if ("Err" in result) {
       // Handle specific error cases
@@ -335,6 +346,8 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
   return allBets.slice(fromIndex, toIndex);
 }
 
+/*
+// Commenting out as get_stats is not in the current DID
 export async function getPredictionMarketStats() {
   const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
     canisterId: canisters.predictionMarkets.canisterId,
@@ -344,6 +357,7 @@ export async function getPredictionMarketStats() {
   const stats = await actor.get_stats();
   return stats;
 }
+*/
 
 export async function getAllCategories() {
   const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({

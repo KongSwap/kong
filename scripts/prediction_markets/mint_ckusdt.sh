@@ -24,8 +24,8 @@ principals=(
 AMOUNT=5_000_000_000_000  # 50000 * 10^8
 
 # Get canister ID
-TOKEN_SYMBOL="ksUSDT"
-TOKEN_LEDGER="ksusdt_ledger"
+TOKEN_SYMBOL="ckUSDT"
+TOKEN_LEDGER="ckusdt_ledger"
 CANISTER_ID=$(dfx canister id ${TOKEN_LEDGER})
 
 echo "Minting ${AMOUNT} ${TOKEN_SYMBOL} tokens (50'000 ${TOKEN_SYMBOL}) to each principal..."

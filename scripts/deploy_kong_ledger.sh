@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 original_dir=$(pwd)
-root_dir="${CANISTER_IDS_ROOT:-${original_dir}/..}"
-canister_ids_file="${root_dir}/canister_ids.all.json"
+PROJECT_ROOT="$( cd ".." && pwd )"
+canister_ids_file="${PROJECT_ROOT}/canister_ids.all.json"
 
-TOKEN_SYMBOL="ksKONG"
+TOKEN_SYMBOL="KONG"
 TOKEN_LEDGER=$(echo ${TOKEN_SYMBOL}_ledger | tr '[:upper:]' '[:lower:]')
 TOKEN_NAME="KongSwap (KongSwap Test Token)"
 TOKEN_DECIMALS=8
