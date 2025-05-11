@@ -6,7 +6,7 @@ pub const ICP: &str = "ICP";
 pub const ICP_LEDGER: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 
 pub const CKBTC: &str = "ckBTC";
-pub const CKBTC_LEDGER: &str = "zeyan-7qaaa-aaaar-qaibq-cai";
+pub const CKBTC_LEDGER: &str = "mxzaz-hqaaa-aaaar-qaada-cai";
 
 pub const CKETH: &str = "ckETH";
 pub const CKETH_LEDGER: &str = "ss2fx-dyaaa-aaaar-qacoq-cai";

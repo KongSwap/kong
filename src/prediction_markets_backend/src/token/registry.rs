@@ -146,7 +146,7 @@ thread_local! {
             "zfcdd-tqaaa-aaaaq-aaaga-cai".to_string(),
             TokenInfo {
                 id: "zfcdd-tqaaa-aaaaq-aaaga-cai".to_string(),
-                name: "DANK Protocol".to_string(),
+                name: "Draggin Karma Points".to_string(),
                 symbol: "DKP".to_string(),
                 decimals: 8,
                 fee_percentage: 200, // 2%
