@@ -8,11 +8,11 @@ use crate::common::canister::{create_canister, create_canister_at_id}; // Added 
 
 const IC_ICRC1_LEDGER_WASM: &str = "wasm/ic-icrc1-ledger.wasm.gz";
 
-#[derive(CandidType)]
+#[derive(CandidType, Clone)]
 pub struct MetadataValueRecord {
     pub text: MetadataValue,
 }
-#[derive(CandidType)]
+#[derive(CandidType, Clone)]
 pub enum MetadataValue {
     Nat(Nat),
     Int(i64),
@@ -20,7 +20,7 @@ pub enum MetadataValue {
     Blob(Vec<u8>),
 }
 
-#[derive(CandidType)]
+#[derive(CandidType, Clone)]
 pub struct FeatureFlags {
     pub icrc2: bool,
 }
@@ -37,7 +37,7 @@ pub struct ArchiveOptions {
     pub more_controller_ids: Option<Vec<Principal>>,
 }
 
-#[derive(CandidType)]
+#[derive(CandidType, Clone)]
 pub struct InitArgs {
     pub minting_account: Account,
     pub fee_collector_account: Option<Account>,

@@ -1,41 +1,50 @@
-// Test suite for add_pool functionality
-// Phase 1: Setup - Create two test tokens and add them to Kong
-
 pub mod common;
 
 use anyhow::Result;
-use candid::{decode_one, encode_one, Nat, Principal}; // Added Principal
+use candid::{decode_one, encode_one, CandidType, Nat, Principal}; // Added CandidType
 use icrc_ledger_types::icrc1::account::Account;
+use serde::Deserialize; // Added Deserialize
 use kong_backend::add_token::add_token_args::AddTokenArgs;
 use kong_backend::add_token::add_token_reply::AddTokenReply;
-use kong_backend::add_pool::add_pool_args::AddPoolArgs; // Added for add_pool
-use kong_backend::add_pool::add_pool_reply::AddPoolReply; // Added for add_pool
+use kong_backend::add_pool::add_pool_args::AddPoolArgs;
+use kong_backend::add_pool::add_pool_reply::AddPoolReply;
 
-// Assuming these common helpers are needed, similar to test_add_token.rs
-use common::icrc1_ledger::{create_icrc1_ledger, create_icrc1_ledger_with_id, ArchiveOptions, FeatureFlags, InitArgs, LedgerArg}; // Added create_icrc1_ledger_with_id
-use common::identity::{get_identity_from_pem_file, get_new_identity}; // Added get_new_identity
+use common::icrc1_ledger::{create_icrc1_ledger, create_icrc1_ledger_with_id, ArchiveOptions, FeatureFlags, InitArgs, LedgerArg};
+use common::identity::{get_identity_from_pem_file, get_new_identity};
 use common::setup::{setup_ic_environment, CONTROLLER_PEM_FILE};
-use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError}; // Added for minting
-use icrc_ledger_types::icrc2::approve::{ApproveArgs, ApproveError}; // Added for approval
+use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
+use icrc_ledger_types::icrc2::approve::{ApproveArgs, ApproveError};
+use icrc_ledger_types::icrc2::allowance::{AllowanceArgs, Allowance};
 
-// Constants for Test Token A
+fn get_icrc1_balance(ic: &pocket_ic::PocketIc, ledger_id: candid::Principal, account: Account) -> Nat {
+    let payload = encode_one(account).expect("Failed to encode account for balance_of");
+    let response = ic.query_call(ledger_id, candid::Principal::anonymous(), "icrc1_balance_of", payload)
+        .expect("Failed to call icrc1_balance_of");
+    decode_one::<Nat>(&response).expect("Failed to decode icrc1_balance_of response")
+}
+
+fn get_icrc2_allowance(ic: &pocket_ic::PocketIc, ledger_id: candid::Principal, owner_account: Account, spender_account: Account) -> Allowance {
+    let args = AllowanceArgs { account: owner_account, spender: spender_account };
+    let payload = encode_one(args).expect("Failed to encode allowance args");
+    let response = ic.query_call(ledger_id, candid::Principal::anonymous(), "icrc2_allowance", payload)
+        .expect("Failed to call icrc2_allowance");
+    decode_one::<Allowance>(&response).expect("Failed to decode icrc2_allowance response")
+}
+
 const TOKEN_A_SYMBOL: &str = "TKA";
 const TOKEN_A_NAME: &str = "Test Token A";
 const TOKEN_A_FEE: u64 = 10_000;
 const TOKEN_A_DECIMALS: u8 = 8;
 
-// Constants for the Mock ksUSDT Ledger (originally Token B)
-// const TOKEN_B_SYMBOL: &str = "TKB"; // Unused now
-// const TOKEN_B_NAME: &str = "Test Token B"; // Unused now
-const TOKEN_B_FEE: u64 = 10_000; // Used for mock ksUSDT init
-const TOKEN_B_DECIMALS: u8 = 8; // Used for mock ksUSDT init & liquidity amount calculation
+const TOKEN_B_SYMBOL_ICP: &str = "ICP";
+const TOKEN_B_NAME_ICP: &str = "Internet Computer Protocol";
+const TOKEN_B_FEE_ICP: u64 = 10_000;
+const TOKEN_B_DECIMALS_ICP: u8 = 8;
 
 #[test]
 fn test_add_pool_setup() {
-    // 1. Setup Environment
     let (ic, kong_backend) = setup_ic_environment().expect("Failed to setup IC environment");
 
-    // Get the controller identity
     let controller_identity =
         get_identity_from_pem_file(CONTROLLER_PEM_FILE).expect("Failed to get controller identity");
     let controller_principal = controller_identity
@@ -46,7 +55,6 @@ fn test_add_pool_setup() {
         subaccount: None,
     };
 
-    // Shared Archive Options
     let archive_options = ArchiveOptions {
         num_blocks_to_archive: 1000,
         max_transactions_per_response: None,
@@ -58,8 +66,6 @@ fn test_add_pool_setup() {
         more_controller_ids: None,
     };
 
-    // 2. Create Token A Ledger
-    println!("Creating Token A Ledger...");
     let token_a_init_args = InitArgs {
         minting_account: controller_account,
         fee_collector_account: None,
@@ -75,45 +81,37 @@ fn test_add_pool_setup() {
     };
     let token_a_ledger_id = create_icrc1_ledger(
         &ic,
-        &Some(controller_principal), // Controller of the ledger
+        &Some(controller_principal),
         &LedgerArg::Init(token_a_init_args),
     )
     .expect("Failed to create Token A ledger");
-    println!("Token A Ledger ID: {}", token_a_ledger_id);
+    let _initial_controller_balance_a = get_icrc1_balance(&ic, token_a_ledger_id, controller_account);
 
-    // --- Create Mock ksUSDT Ledger with Specified ID ---
-    // Kong Backend expects Token_1 to be ksUSDT or ICP with specific hardcoded IDs.
-    // We create a mock ksUSDT ledger with the expected ID.
-    println!("Creating Mock ksUSDT Ledger with specified ID...");
-    // The expected ksUSDT Principal ID from the add_pool error message
-    let ksusdt_principal_id = Principal::from_text("zdzgz-siaaa-aaaar-qaiba-cai").expect("Invalid ksUSDT Principal ID");
+    let token_b_principal_id = Principal::from_text("nppha-riaaa-aaaal-ajf2q-cai").expect("Invalid Testnet ICP Principal ID"); // Use Testnet ICP
 
-    let mock_ksusdt_init_args = InitArgs {
-        minting_account: controller_account, // Use controller as minter
+    let token_b_init_args = InitArgs {
+        minting_account: controller_account,
         fee_collector_account: None,
-        transfer_fee: Nat::from(TOKEN_B_FEE), // Using TOKEN_B constants for mock ksUSDT properties
-        decimals: Some(TOKEN_B_DECIMALS),     // Using TOKEN_B_DECIMALS for mock ksUSDT
+        transfer_fee: Nat::from(TOKEN_B_FEE_ICP),
+        decimals: Some(TOKEN_B_DECIMALS_ICP),
         max_memo_length: Some(32),
-        token_symbol: "ksUSDT".to_string(),   // Explicitly use "ksUSDT" symbol
-        token_name: "Mock ksUSDT for Test".to_string(), // Clearer name for the mock
+        token_symbol: TOKEN_B_SYMBOL_ICP.to_string(),
+        token_name: TOKEN_B_NAME_ICP.to_string(),
         metadata: vec![],
         initial_balances: vec![],
         feature_flags: Some(FeatureFlags { icrc2: true }),
         archive_options: archive_options.clone(),
     };
-    let mock_ksusdt_ledger_id = create_icrc1_ledger_with_id(
+    let token_b_ledger_id = create_icrc1_ledger_with_id(
         &ic,
-        ksusdt_principal_id, // Specify the hardcoded ID
-        controller_principal, // Controller of the ledger
-        &LedgerArg::Init(mock_ksusdt_init_args),
+        token_b_principal_id,
+        controller_principal,
+        &LedgerArg::Init(token_b_init_args.clone()),
     )
-    .expect("Failed to create Mock ksUSDT ledger with specified ID");
-    println!("Mock ksUSDT Ledger ID: {}", mock_ksusdt_ledger_id);
-    // Assert that the created ID matches the specified ID
-    assert_eq!(mock_ksusdt_ledger_id, ksusdt_principal_id, "Created Mock ksUSDT ID does not match specified ID");
+    .expect("Failed to create ICP ledger for Token B");
+    assert_eq!(token_b_ledger_id, token_b_principal_id, "Created ICP Ledger ID does not match specified ID");
+    let _initial_controller_balance_b = get_icrc1_balance(&ic, token_b_ledger_id, controller_account);
 
-    // 4. Add Token A to Kong Backend (using controller identity)
-    println!("Adding Token A to Kong Backend...");
     let token_a_str = format!("IC.{}", token_a_ledger_id.to_text());
     let add_token_a_args = AddTokenArgs {
         token: token_a_str.clone(),
@@ -132,60 +130,50 @@ fn test_add_pool_setup() {
         "add_token for Token A should succeed, but got {:?}",
         result_a
     );
-    println!("Token A added successfully.");
 
-    // 5. Add Mock ksUSDT to Kong Backend (using controller identity)
-    println!("Adding Mock ksUSDT to Kong Backend...");
-    let mock_ksusdt_str = format!("IC.{}", mock_ksusdt_ledger_id.to_text()); // Use mock_ksusdt_ledger_id
-    let add_token_mock_ksusdt_args = AddTokenArgs {
-        token: mock_ksusdt_str.clone(), // Use mock_ksusdt_str
-    };
-    let args_mock_ksusdt = encode_one(&add_token_mock_ksusdt_args).expect("Failed to encode add_token_mock_ksusdt_args");
-
-    let response_mock_ksusdt = ic
-        .update_call(kong_backend, controller_principal, "add_token", args_mock_ksusdt)
-        .expect("Failed to call add_token for Mock ksUSDT");
-
-    let result_mock_ksusdt = decode_one::<Result<AddTokenReply, String>>(&response_mock_ksusdt)
-        .expect("Failed to decode add_token response for Mock ksUSDT");
-
-    assert!(
-        result_mock_ksusdt.is_ok(),
-        "add_token for Mock ksUSDT should succeed, but got {:?}",
-        result_mock_ksusdt
-    );
-    println!("Mock ksUSDT added successfully.");
-
-    // --- Phase 1.5: Mint tokens to a user and approve Kong ---
-    println!("Setting up a test user and minting initial tokens...");
-
-    // 6. Create a test user identity
     let user_identity = get_new_identity().expect("Failed to create new user identity");
     let user_principal = user_identity.sender().expect("Failed to get user principal");
     let user_account = Account {
         owner: user_principal,
         subaccount: None,
     };
-    println!("Test User Principal: {}", user_principal);
 
-    // Define mint and approval amounts (e.g., 10,000 of each token with 8 decimals)
-    // These amounts will be used for minting to the user and then for the user to approve Kong.
+    let token_b_str = format!("IC.{}", token_b_ledger_id.to_text());
+    let add_token_b_args = AddTokenArgs {
+        token: token_b_str.clone(),
+    };
+    let args_token_b = encode_one(&add_token_b_args).expect("Failed to encode add_token_b_args");
+
+    let response_token_b = ic
+        .update_call(kong_backend, controller_principal, "add_token", args_token_b)
+        .expect("Failed to call add_token for Token B (ICP) by controller");
+
+    let result_token_b = decode_one::<Result<AddTokenReply, String>>(&response_token_b)
+        .expect("Failed to decode add_token response for Token B (ICP)");
+
+    assert!(
+        result_token_b.is_ok(),
+        "add_token for Token B (ICP) should succeed, but got {:?}",
+        result_token_b
+    );
+
+    let initial_user_balance_a = get_icrc1_balance(&ic, token_a_ledger_id, user_account);
+    assert_eq!(initial_user_balance_a, Nat::from(0_u64), "Initial user balance for Token A should be 0");
+    let initial_user_balance_b = get_icrc1_balance(&ic, token_b_ledger_id, user_account);
+    assert_eq!(initial_user_balance_b, Nat::from(0_u64), "Initial user balance for Token B should be 0");
+
     let token_a_liquidity_amount = Nat::from(10_000 * 10u64.pow(TOKEN_A_DECIMALS as u32));
-    let token_b_liquidity_amount = Nat::from(10_000 * 10u64.pow(TOKEN_B_DECIMALS as u32));
+    let token_b_liquidity_amount = Nat::from(10_000 * 10u64.pow(TOKEN_B_DECIMALS_ICP as u32));
 
-    // Calculate total amount to mint for Token A (liquidity + approve_fee + transfer_from_fee)
     let total_mint_amount_a = token_a_liquidity_amount.clone() + Nat::from(TOKEN_A_FEE) + Nat::from(TOKEN_A_FEE);
-    println!("Calculated total mint amount for Token A: {} (liquidity {} + approve_fee {} + transfer_from_fee {})", total_mint_amount_a, token_a_liquidity_amount, TOKEN_A_FEE, TOKEN_A_FEE);
 
-    // 7. Mint Token A to user_account (from controller_account as minter)
-    println!("Minting {} of Token A to user {}...", total_mint_amount_a, user_principal);
     let transfer_args_a = TransferArg {
         from_subaccount: None,
         to: user_account,
-        amount: total_mint_amount_a.clone(), // Mint total amount needed
-        fee: None, // Ledger uses its default fee
+        amount: total_mint_amount_a.clone(),
+        fee: None,
         memo: None,
-        created_at_time: None, // Ledger sets current time
+        created_at_time: None,
     };
     let transfer_payload_a = encode_one(transfer_args_a).expect("Failed to encode transfer_args_a for Token A");
     let transfer_response_a = ic
@@ -198,46 +186,40 @@ fn test_add_pool_setup() {
         "Minting Token A to user failed: {:?}",
         transfer_result_a
     );
-    println!("Token A minted to user {} successfully.", user_principal);
+    let user_balance_a_after_mint = get_icrc1_balance(&ic, token_a_ledger_id, user_account);
+    assert_eq!(user_balance_a_after_mint, total_mint_amount_a, "User balance for Token A after minting is incorrect");
 
-    // Calculate total amount to mint for Token B (liquidity + approve_fee + transfer_from_fee)
-    let total_mint_amount_b = token_b_liquidity_amount.clone() + Nat::from(TOKEN_B_FEE) + Nat::from(TOKEN_B_FEE);
-    println!("Calculated total mint amount for Token B: {} (liquidity {} + approve_fee {} + transfer_from_fee {})", total_mint_amount_b, token_b_liquidity_amount, TOKEN_B_FEE, TOKEN_B_FEE);
+    let total_mint_amount_b = token_b_liquidity_amount.clone() + Nat::from(TOKEN_B_FEE_ICP) + Nat::from(TOKEN_B_FEE_ICP);
 
-    // 8. Mint Token B to user_account
-    println!("Minting {} of Token B to user {}...", total_mint_amount_b, user_principal);
     let transfer_args_b = TransferArg {
         from_subaccount: None,
         to: user_account,
-        amount: total_mint_amount_b.clone(), // Mint total amount needed
+        amount: total_mint_amount_b.clone(),
         fee: None,
         memo: None,
         created_at_time: None,
     };
-    let transfer_payload_b = encode_one(transfer_args_b).expect("Failed to encode transfer_args_b for Token B");
+    let transfer_payload_b = encode_one(transfer_args_b).expect("Failed to encode transfer_args_b for Token B (ICP)");
     let transfer_response_b = ic
-        .update_call(mock_ksusdt_ledger_id, controller_principal, "icrc1_transfer", transfer_payload_b) // Use mock_ksusdt_ledger_id
-        .expect("Failed to call icrc1_transfer for Token B");
+        .update_call(token_b_ledger_id, controller_principal, "icrc1_transfer", transfer_payload_b)
+        .expect("Failed to call icrc1_transfer for Token B (ICP)");
     let transfer_result_b = decode_one::<Result<Nat, TransferError>>(&transfer_response_b)
-        .expect("Failed to decode icrc1_transfer response for Token B");
+        .expect("Failed to decode icrc1_transfer response for Token B (ICP)");
     assert!(
         transfer_result_b.is_ok(),
-        "Minting Token B to user failed: {:?}",
+        "Minting Token B (ICP) to user failed: {:?}",
         transfer_result_b
     );
-    println!("Token B minted to user {} successfully.", user_principal);
+    let user_balance_b_after_mint = get_icrc1_balance(&ic, token_b_ledger_id, user_account);
+    assert_eq!(user_balance_b_after_mint, total_mint_amount_b, "User balance for Token B (ICP) after minting is incorrect");
 
-    // 9. User approves Kong Backend for Token A
-    println!("User {} approving Kong Backend for {} of Token A...", user_principal, token_a_liquidity_amount);
-    // Calculate approval amount including fee for Token A
-    let approve_amount_a = token_a_liquidity_amount.clone() + Nat::from(TOKEN_A_FEE);
-    println!("User {} approving Kong Backend for {} of Token A ({} + {} fee)...", user_principal, approve_amount_a, token_a_liquidity_amount, TOKEN_A_FEE);
+    let approve_amount_a_orig = token_a_liquidity_amount.clone() + Nat::from(TOKEN_A_FEE);
     let approve_args_a = ApproveArgs {
         from_subaccount: None,
-        spender: Account { owner: kong_backend, subaccount: None }, // kong_backend is the Principal
-        amount: approve_amount_a, // Approve amount + fee
+        spender: Account { owner: kong_backend, subaccount: None },
+        amount: approve_amount_a_orig.clone(),
         expected_allowance: None,
-        expires_at: None, // No expiry for simplicity
+        expires_at: None,
         fee: None,
         memo: None,
         created_at_time: None,
@@ -253,62 +235,64 @@ fn test_add_pool_setup() {
         "User approval for Token A failed: {:?}",
         approve_result_a
     );
-    println!("Token A approved for Kong Backend by user {}.", user_principal);
+    let user_balance_a_after_approve = get_icrc1_balance(&ic, token_a_ledger_id, user_account);
+    assert_eq!(user_balance_a_after_approve, total_mint_amount_a.clone() - Nat::from(TOKEN_A_FEE), "User balance for Token A after approval is incorrect");
+    let kong_account_for_allowance_check = Account { owner: kong_backend, subaccount: None };
+    let allowance_a_details = get_icrc2_allowance(&ic, token_a_ledger_id, user_account, kong_account_for_allowance_check);
+    assert_eq!(allowance_a_details.allowance, approve_amount_a_orig);
+    assert_eq!(allowance_a_details.expires_at, None, "Allowance expiry for Token A should be None");
 
-    // 10. User approves Kong Backend for Token B (Mock ksUSDT)
-    // Calculate approval amount including fee for Token B
-    let approve_amount_b = token_b_liquidity_amount.clone() + Nat::from(TOKEN_B_FEE);
-    println!("User {} approving Kong Backend for {} of Token B ({} + {} fee)...", user_principal, approve_amount_b, token_b_liquidity_amount, TOKEN_B_FEE);
+    let approve_amount_b_orig = token_b_liquidity_amount.clone() + Nat::from(TOKEN_B_FEE_ICP);
     let approve_args_b = ApproveArgs {
         from_subaccount: None,
         spender: Account { owner: kong_backend, subaccount: None },
-        amount: approve_amount_b, // Approve amount + fee
+        amount: approve_amount_b_orig.clone(),
         expected_allowance: None,
         expires_at: None,
         fee: None,
         memo: None,
         created_at_time: None,
     };
-    let approve_payload_b = encode_one(approve_args_b).expect("Failed to encode approve_args_b for Token B");
+    let approve_payload_b = encode_one(approve_args_b).expect("Failed to encode approve_args_b for Token B (ICP)");
     let approve_response_b = ic
-        .update_call(mock_ksusdt_ledger_id, user_principal, "icrc2_approve", approve_payload_b) // Use mock_ksusdt_ledger_id
-        .expect("Failed to call icrc2_approve for Token B by user");
+        .update_call(token_b_ledger_id, user_principal, "icrc2_approve", approve_payload_b)
+        .expect("Failed to call icrc2_approve for Token B (ICP) by user");
     let approve_result_b = decode_one::<Result<Nat, ApproveError>>(&approve_response_b)
-        .expect("Failed to decode icrc2_approve response for Token B");
+        .expect("Failed to decode icrc2_approve response for Token B (ICP)");
     assert!(
         approve_result_b.is_ok(),
-        "User approval for Token B failed: {:?}",
+        "User approval for Token B (ICP) failed: {:?}",
         approve_result_b
     );
-    println!("Token B approved for Kong Backend by user {}.", user_principal);
+    let user_balance_b_after_approve = get_icrc1_balance(&ic, token_b_ledger_id, user_account);
+    assert_eq!(user_balance_b_after_approve, total_mint_amount_b.clone() - Nat::from(TOKEN_B_FEE_ICP), "User balance for Token B (ICP) after approval is incorrect");
+    let kong_account_for_allowance_check_b = Account { owner: kong_backend, subaccount: None };
+    let allowance_b_details = get_icrc2_allowance(&ic, token_b_ledger_id, user_account, kong_account_for_allowance_check_b);
+    assert_eq!(allowance_b_details.allowance, approve_amount_b_orig);
+    assert_eq!(allowance_b_details.expires_at, None, "Allowance expiry for Token B (ICP) should be None");
 
-    println!("Minting and approval steps are now complete for user {}.", user_principal);
+    let kong_account = Account { owner: kong_backend, subaccount: None };
+    let kong_balance_a_before_add = get_icrc1_balance(&ic, token_a_ledger_id, kong_account);
+    assert_eq!(kong_balance_a_before_add, Nat::from(0_u64), "Kong backend balance for Token A should be 0 before add_pool");
+    let kong_balance_b_before_add = get_icrc1_balance(&ic, token_b_ledger_id, kong_account);
+    assert_eq!(kong_balance_b_before_add, Nat::from(0_u64), "Kong backend balance for Token B (ICP) should be 0 before add_pool");
 
-    // --- Phase 2: Call add_pool ---
-    println!("User {} attempting to add a new pool with Token A ({}) and Mock ksUSDT ({})", user_principal, token_a_str, mock_ksusdt_str); // Use mock_ksusdt_str in log
-
-    // 11. Construct AddPoolArgs
-    // Amounts are the ones minted to the user and approved for Kong Backend
     let add_pool_args = AddPoolArgs {
-        token_0: token_a_str.clone(), // token_a_str was defined earlier
+        token_0: token_a_str.clone(),
         amount_0: token_a_liquidity_amount.clone(),
-        tx_id_0: None, // We are using the approve/transfer_from flow, not pre-transfer verification
-        token_1: mock_ksusdt_str.clone(), // Use mock_ksusdt_str
+        tx_id_0: None,
+        token_1: token_b_str.clone(),
         amount_1: token_b_liquidity_amount.clone(),
         tx_id_1: None,
-        lp_fee_bps: None, // Use default LP fee configured in the canister
+        lp_fee_bps: None,
     };
 
-    // 12. Encode args and call add_pool as the user
     let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");
-    
-    println!("Calling add_pool on canister {} as user {} with payload: {:?}", kong_backend, user_principal, add_pool_args);
 
     let add_pool_response_bytes = ic
         .update_call(kong_backend, user_principal, "add_pool", add_pool_payload)
         .expect("Failed to call add_pool");
 
-    // 13. Decode reply and assert success
     let add_pool_result = decode_one::<Result<AddPoolReply, String>>(&add_pool_response_bytes)
         .expect("Failed to decode add_pool response");
     
@@ -317,12 +301,68 @@ fn test_add_pool_setup() {
         "add_pool call failed: {:?}",
         add_pool_result
     );
-    println!("add_pool call successful. Reply: {:?}", add_pool_result.as_ref().unwrap());
 
-    // TODO: Further verification:
-    // 1. Define AddPoolReply struct and inspect its contents (e.g., pool_id, lp_token_id).
-    // 2. Query kong_backend for the list of pools and verify the new pool exists with correct details.
-    // 3. Query user's balance of the new LP token on its ledger.
+    // --- Phase 3: Verify pool creation by calling 'pools' ---
+    // Encode the argument for 'pools': opt text = None
+    let pools_payload = encode_one(Option::<String>::None).expect("Failed to encode None for pools arg");
+
+    // Call the 'pools' query function
+    let pools_response_bytes = ic
+        .query_call(
+            kong_backend,
+            user_principal, // Caller doesn't strictly matter for query
+            "pools",
+            pools_payload,
+        )
+        .expect("Failed to call pools query function");
+
+    // Define the expected result types matching the Candid definition
+    #[derive(CandidType, Deserialize, Debug, Clone)]
+    struct PoolReply {
+        pool_id : u32,
+        name : String,
+        symbol : String,
+        chain_0 : String,
+        symbol_0 : String,
+        address_0 : String,
+        balance_0 : Nat,
+        lp_fee_0 : Nat,
+        chain_1 : String,
+        symbol_1 : String,
+        address_1 : String,
+        balance_1 : Nat,
+        lp_fee_1 : Nat,
+        price : f64,
+        lp_fee_bps : u8,
+        lp_token_symbol : String,
+        is_removed : bool,
+    }
+
+    #[derive(CandidType, Deserialize, Debug)]
+    enum PoolsResult {
+        Ok(Vec<PoolReply>),
+        Err(String),
+    }
+
+    // Decode the response (PocketIC query_call returns Result<Vec<u8>, UserError>)
+    // The Vec<u8> itself contains the Candid encoded PoolsResult
+    let pools_result_decoded = decode_one::<PoolsResult>(&pools_response_bytes)
+         .expect("Failed to decode pools response");
+
+
+    println!("pools_result_decoded: {:?}", pools_result_decoded);
+
+    // Assert the inner PoolsResult is Ok and contains pools
+    match pools_result_decoded {
+        PoolsResult::Ok(pools) => {
+            assert!(!pools.is_empty(), "Pool list should not be empty after adding a pool");
+            assert_eq!(pools.len(), 1, "Expected exactly one pool");
+            let pool = &pools[0];
+            assert_eq!(pool.symbol_0, TOKEN_A_SYMBOL);
+            assert_eq!(pool.symbol_1, TOKEN_B_SYMBOL_ICP);
+        }
+        PoolsResult::Err(e) => {
+            panic!("Pools call returned an application error: {}", e);
+        }
+    }
 }
-
-// TODO: Add tests for add_pool logic itself (approvals, amounts, pool creation, state verification)
