@@ -163,6 +163,7 @@ fn process_icrc3_generic_block_value(block_value: &ICRC3GenericBlock) -> Result<
 }
 
 /// Common helper to verify transfer details once parsed from any ledger type.
+#[allow(clippy::too_many_arguments)]
 fn verify_parsed_transfer_details(
     tx_from: &Account,
     tx_to: Option<&Account>,
@@ -236,7 +237,7 @@ async fn attempt_icrc3_get_blocks_verification(
     let blocks_result_tuple: Result<(GetBlocksResult,), _> = if token_address_chain == TAGGR_CANISTER_ID {
         let args = vec![TaggrGetBlocksArgs {
             start: nat_to_u64(block_id_arg)
-                .ok_or_else(|| VerificationError::Soft(format!("TAGGR ICRC3: Block ID {:?} cannot be u64", block_id_arg)))?,
+                .ok_or_else(|| VerificationError::Soft(format!("TAGGR ICRC3: Block ID {:?} not u64", block_id_arg)))?,
             length: 1,
         }];
         ic_cdk::call(canister_id, "icrc3_get_blocks", (args,)).await
@@ -470,7 +471,7 @@ async fn attempt_special_ledger_get_transaction_verification(
 
     match ic_cdk::call(canister_id, "get_transaction", (block_id_arg.clone(),)).await {
         Ok(response_tuple_option) => {
-            let response_tuple: (Option<Transaction1>,) = response_tuple_option; 
+            let response_tuple: (Option<Transaction1>,) = response_tuple_option;
             if let Some(transaction_data) = response_tuple.0 {
                 if let Some(transfer_details) = transaction_data.transfer {
                     match verify_parsed_transfer_details(
@@ -485,15 +486,15 @@ async fn attempt_special_ledger_get_transaction_verification(
                         min_valid_timestamp,
                         &format!("Special Ledger ({}) GetTransaction", token.symbol()),
                     ) {
-                        Ok(()) => return Ok(()), 
-                        Err(hard_fail_msg) => return Err(VerificationError::Hard(hard_fail_msg)),
+                        Ok(()) => Ok(()),
+                        Err(hard_fail_msg) => Err(VerificationError::Hard(hard_fail_msg)),
                     }
                 } else {
-                    return Err(VerificationError::Soft(format!(
+                    Err(VerificationError::Soft(format!(
                         "Special Ledger ({}) GetTransaction: Tx kind {} is not simple transfer",
                         token.symbol(),
                         transaction_data.kind
-                    )));
+                    )))
                 }
             } else {
                 Err(VerificationError::Soft(format!(
