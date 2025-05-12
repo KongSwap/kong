@@ -1,19 +1,22 @@
 use crate::market::market::*;
 use crate::market::estimate_return_types::*;
-use crate::nat::*;
+use crate::nat::StorableNat;
 use crate::utils::time_weighting::*;
+use crate::utils::fee_utils::{calculate_platform_fee, calculate_amount_after_fee};
+use crate::constants::PLATFORM_FEE_PERCENTAGE;
 use crate::stable_memory::*;
+use crate::types::{TokenAmount, OutcomeIndex, Timestamp};
 
 /// Estimate the potential return for a bet
 pub fn estimate_bet_return(
     market: &Market,
-    outcome_index: StorableNat,
-    bet_amount: StorableNat,
+    outcome_index: OutcomeIndex,
+    bet_amount: TokenAmount,
     current_time: Timestamp,
 ) -> Result<EstimatedReturn, String> {
     // Validate market state
-    if !matches!(market.status, MarketStatus::Open) {
-        return Err("Market is not open for betting".to_string());
+    if !matches!(market.status, MarketStatus::Active) {
+        return Err("Market is not active for betting".to_string());
     }
 
     // Validate outcome index
@@ -58,9 +61,9 @@ pub fn estimate_bet_return(
         // Calculate time weight for this bet
         let alpha = get_market_alpha(market);
         let weight = calculate_time_weight(
-            market.created_at.to_u64(),
-            market.end_time.to_u64(),
-            current_time.to_u64(),
+            market.created_at.clone(),
+            market.end_time.clone(),
+            current_time.clone(),
             alpha
         );
         winning_return.time_weight = Some(weight);
@@ -84,9 +87,9 @@ pub fn estimate_bet_return(
         let mut total_weighted_contribution = 0.0;
         for bet in &existing_bets {
             let bet_weight = calculate_time_weight(
-                market.created_at.to_u64(),
-                market.end_time.to_u64(),
-                bet.timestamp.to_u64(),
+                market.created_at.clone(),
+                market.end_time.clone(),
+                bet.timestamp.clone(),
                 alpha
             );
             total_weighted_contribution += calculate_weighted_contribution(
@@ -135,7 +138,15 @@ pub fn estimate_bet_return(
         time_weight: None,
     };
     
-    // Create the final estimate
+    // Apply platform fee to winning scenario expected return
+    let raw_expected_return = TokenAmount::from(winning_return.expected_return.clone());
+    let platform_fee = calculate_platform_fee(&raw_expected_return);
+    let expected_return_after_fee = calculate_amount_after_fee(&raw_expected_return);
+    
+    // Update winning scenario with fee-adjusted return
+    winning_return.expected_return = StorableNat::from(expected_return_after_fee.to_u64());
+    
+    // Create the final estimate, including platform fee information
     let estimate = EstimatedReturn {
         market_id: market.id.clone(),
         outcome_index: outcome_index.clone(),
@@ -146,6 +157,8 @@ pub fn estimate_bet_return(
         uses_time_weighting: market.uses_time_weighting,
         time_weight_alpha: market.time_weight_alpha,
         current_time: current_time.clone(),
+        platform_fee_percentage: Some(PLATFORM_FEE_PERCENTAGE),
+        estimated_platform_fee: Some(platform_fee),
     };
     
     Ok(estimate)
@@ -184,7 +197,12 @@ pub fn generate_time_weight_curve(
     for i in 1..points {
         let time = market_created_at + (i as u64 * interval);
         let relative_time = (time - market_created_at) as f64 / market_duration as f64;
-        let weight = calculate_time_weight(market_created_at, market_end_time, time, alpha);
+        let weight = calculate_time_weight(
+            Timestamp::from(market_created_at),
+            Timestamp::from(market_end_time),
+            Timestamp::from(time),
+            alpha
+        );
         
         curve_points.push(TimeWeightPoint {
             relative_time,
@@ -226,9 +244,9 @@ pub fn simulate_future_weight(
     }
     
     let weight = calculate_time_weight(
-        market_created_at,
-        market_end_time,
-        bet_time.to_u64(),
+        TokenAmount::from(market_created_at).into(),
+        TokenAmount::from(market_end_time).into(),
+        bet_time.clone(),
         alpha
     );
     

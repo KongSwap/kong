@@ -2,15 +2,14 @@ use candid::Principal;
 use ic_cdk::update;
 use num_traits::ToPrimitive;
 
-use super::finalize_market::*;
 use super::resolution::*;
-
-use crate::nat::*;
+use super::finalize_market::finalize_market;
 use crate::stable_memory::*;
+use crate::types::{MarketId, OutcomeIndex};
 
 /// Resolves a market through oracle confirmation
 #[update]
-async fn resolve_via_oracle(market_id: MarketId, outcome_indices: Vec<StorableNat>, _signature: Vec<u8>) -> Result<(), ResolutionError> {
+async fn resolve_via_oracle(market_id: MarketId, outcome_indices: Vec<OutcomeIndex>, _signature: Vec<u8>) -> Result<(), ResolutionError> {
     let oracle_principal = ic_cdk::caller();
 
     // Verify oracle is whitelisted

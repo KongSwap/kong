@@ -1,16 +1,29 @@
-use candid::{CandidType, Deserialize, Principal, decode_one};
+use candid::{CandidType, Deserialize, Principal};
 use ic_cdk::{caller, query, update};
-use std::time::{SystemTime, UNIX_EPOCH};
+use ic_cdk::api::time;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
-use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
+use icrc_ledger_types::icrc21::requests::{ConsentMessageRequest, ConsentMessageMetadata};
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
+use candid::decode_one;
+
+use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
+use crate::token::registry::{TokenInfo, get_all_supported_tokens, get_token_info, add_supported_token as add_token, update_token_config as update_token};
 
 use super::delegation::*;
-use super::stable_memory::*;
+use crate::market::estimate_return_types::*;
+use crate::constants::PLATFORM_FEE_PERCENTAGE;
+use crate::stable_memory::*;
 
-// Helper function to get current time in nanoseconds
-pub fn get_current_time() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos() as u64
+// Helper function to get current time in nanoseconds as a Timestamp type
+pub fn get_current_time() -> Timestamp {
+    Timestamp::from(time())
+}
+
+// Helper function to get current time in seconds
+pub fn get_current_time_seconds() -> Timestamp {
+    Timestamp::from(time() / NANOS_PER_SECOND)
 }
 
 // We'll implement our own simple hash function since we don't have sha2
@@ -101,7 +114,7 @@ pub fn icrc_34_delegate(request: DelegationRequest) -> Result<DelegationResponse
 
     let delegation = Delegation {
         target: caller_principal,
-        created: current_time,
+        created: current_time.to_u64(),
         expiration: request.expiration,
         targets_list_hash: targets_hash,
     };
@@ -167,4 +180,209 @@ fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
     ];
 
     Icrc28TrustedOriginsResponse { trusted_origins }
+}
+
+/// Estimate the potential return for a bet
+#[query]
+pub fn estimate_bet_return(
+    market_id: u64,
+    outcome_index: u64,
+    bet_amount: u64,
+    current_time: u64,
+    // token_id is now optional and unused, keeping for API compatibility
+    _token_id: Option<String>,
+) -> EstimatedReturn {
+    // Convert primitive parameters to our type system
+    let market_id = MarketId::from(market_id);
+    let outcome_index = OutcomeIndex::from(outcome_index);
+    let bet_amount = TokenAmount::from(bet_amount);
+    let current_time = Timestamp::from(current_time);
+    
+    MARKETS.with(|markets| {
+        let markets = markets.borrow();
+        if let Some(market) = markets.get(&market_id) {
+            match super::market::estimate_return::estimate_bet_return(
+                &market,
+                outcome_index.clone(),
+                bet_amount.clone(),
+                current_time.clone()
+            ) {
+                Ok(estimate) => estimate,
+                Err(_) => {
+                    // Return a default estimate on error
+                    EstimatedReturn {
+                        market_id,
+                        outcome_index,
+                        bet_amount,
+                        current_market_pool: TokenAmount::from(0u64),
+                        current_outcome_pool: TokenAmount::from(0u64),
+                        scenarios: vec![],
+                        uses_time_weighting: false,
+                        time_weight_alpha: None,
+                        current_time,
+                        platform_fee_percentage: Some(PLATFORM_FEE_PERCENTAGE),
+                        estimated_platform_fee: Some(TokenAmount::from(0u64)),
+                    }
+                }
+            }
+        } else {
+            // Return a default estimate if market not found
+            EstimatedReturn {
+                market_id,
+                outcome_index,
+                bet_amount,
+                current_market_pool: TokenAmount::from(0u64),
+                current_outcome_pool: TokenAmount::from(0u64),
+                scenarios: vec![],
+                uses_time_weighting: false,
+                time_weight_alpha: None,
+                current_time,
+                platform_fee_percentage: Some(PLATFORM_FEE_PERCENTAGE),
+                estimated_platform_fee: Some(TokenAmount::from(0u64)),
+            }
+        }
+    })
+}
+
+/// Generate data points for visualizing the time weight curve
+#[query]
+pub fn generate_time_weight_curve(
+    market_id: u64,
+    points: u64
+) -> Vec<TimeWeightPoint> {
+    // Convert market_id to our type system
+    let market_id = MarketId::from(market_id);
+    
+    MARKETS.with(|markets| {
+        let markets = markets.borrow();
+        if let Some(market) = markets.get(&market_id) {
+            match super::market::estimate_return::generate_time_weight_curve(&market, points as usize) {
+                Ok(curve) => curve,
+                Err(_) => vec![]
+            }
+        } else {
+            vec![]
+        }
+    })
+}
+
+/// Simulate the weight of a bet at a specified future time
+#[query]
+pub fn simulate_future_weight(
+    market_id: u64,
+    bet_time: u64,
+    future_time: u64
+) -> f64 {
+    // Convert parameters to our type system
+    let market_id = MarketId::from(market_id);
+    let bet_time = Timestamp::from(bet_time);
+    let future_time = Timestamp::from(future_time);
+    
+    MARKETS.with(|markets| {
+        let markets = markets.borrow();
+        if let Some(market) = markets.get(&market_id) {
+            match super::market::estimate_return::simulate_future_weight(&market, bet_time.clone(), future_time.clone()) {
+                Ok(weight) => weight,
+                Err(_) => 1.0
+            }
+        } else {
+            1.0
+        }
+    })
+}
+
+// Thread-local storage for market payout records
+thread_local! {
+    static MARKET_PAYOUTS: RefCell<BTreeMap<MarketId, Vec<BetPayoutRecord>>> = 
+        RefCell::new(BTreeMap::new());
+}
+
+/// Record a payout for a market
+pub fn record_market_payout(payout: BetPayoutRecord) {
+    let market_id = payout.market_id.clone();
+    
+    MARKET_PAYOUTS.with(|payouts| {
+        let mut payouts = payouts.borrow_mut();
+        
+        // Get existing payouts or create a new vector
+        let mut market_payouts = if let Some(existing) = payouts.get(&market_id) {
+            existing.clone()
+        } else {
+            Vec::new()
+        };
+        
+        // Add the new payout record
+        market_payouts.push(payout);
+        
+        // Update the storage
+        payouts.insert(market_id, market_payouts);
+    });
+}
+
+/// Get payout records for a market
+#[query]
+pub fn get_supported_tokens() -> Vec<TokenInfo> {
+    get_all_supported_tokens()
+}
+
+#[query]
+pub fn get_token_fee_percentage(token_id: String) -> Option<u64> {
+    get_token_info(&token_id).map(|info| info.fee_percentage)
+}
+
+#[update]
+pub fn add_supported_token(token_info: TokenInfo) -> Result<(), String> {
+    // Check caller is admin
+    if !crate::controllers::admin::is_admin(ic_cdk::caller()) {
+        return Err("Unauthorized: caller is not an admin".to_string());
+    }
+    
+    add_token(token_info);
+    Ok(())
+}
+
+#[update]
+pub fn update_token_config(token_id: String, token_info: TokenInfo) -> Result<(), String> {
+    // Check caller is admin
+    if !crate::controllers::admin::is_admin(ic_cdk::caller()) {
+        return Err("Unauthorized: caller is not an admin".to_string());
+    }
+    
+    if token_id != token_info.id {
+        return Err("Token ID mismatch".to_string());
+    }
+    
+    update_token(token_info);
+    Ok(())
+}
+
+#[query]
+pub fn get_market_payout_records(market_id: u64) -> Vec<BetPayoutRecord> {
+    // Convert market_id to our type system
+    let market_id = MarketId::from(market_id);
+    
+    MARKET_PAYOUTS.with(|payouts| {
+        let payouts = payouts.borrow();
+        if let Some(market_payouts) = payouts.get(&market_id) {
+            market_payouts.clone()
+        } else {
+            vec![]
+        }
+    })
+}
+
+/// Get markets created by a specific user with pagination and sorting
+#[query]
+pub fn get_markets_by_creator(args: crate::market::get_markets_by_creator::GetMarketsByCreatorArgs) 
+    -> crate::market::get_markets_by_creator::GetMarketsByCreatorResult 
+{
+    crate::market::get_markets_by_creator::get_markets_by_creator(args)
+}
+
+/// Search for markets by text in the question with optional filtering and sorting
+#[query]
+pub fn search_markets(args: crate::market::search_markets::SearchMarketsArgs) 
+    -> crate::market::search_markets::SearchMarketsResult 
+{
+    crate::market::search_markets::search_markets(args)
 }

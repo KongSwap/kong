@@ -12,6 +12,12 @@ principals=(
     "cfkk4-3cb27-jbkl4-oycde-2cy3s-6km4e-o4b5v-qz54y-iifed-xo4mr-eae"
     "vbaw5-dfbei-hzsix-zc6gn-3wnm7-v6p4x-hmmxl-cluhd-bjb24-af6pd-3ae"
     "7ohni-sbpse-y327l-syhzk-jn6n4-hw277-erei5-xhkjr-lbh6b-rjqei-sqe"
+
+    # principals of Alice, Bob, Carol, and Dave
+    "7ioul-dfiqp-fojev-qd5fi-ewhto-twpjf-r37le-gpqli-vmba7-dzhsi-lqe"
+    "3rogr-klslx-wr36u-ne33n-7lcs7-dr6xh-cjbbd-oeiok-y6xs4-nl3uq-6qe"
+    "mgk4o-6y33o-tmcr5-zwshu-4duy5-v43uo-2mgir-76kmc-tsnmu-3uqrs-kqe"
+    "cv577-xkxrm-plvok-h4zqg-hhyeq-umezv-ls7mq-3ct55-ofbdq-bpk77-zae"
 )
 
 # Amount to mint (50000 tokens with 8 decimals)
@@ -22,7 +28,7 @@ TOKEN_SYMBOL="KONG"
 TOKEN_LEDGER=$(echo ${TOKEN_SYMBOL}_ledger | tr '[:upper:]' '[:lower:]')
 CANISTER_ID=$(dfx canister id ${TOKEN_LEDGER})
 
-echo "Minting ${AMOUNT} ${TOKEN_SYMBOL} tokens (1000.00000000 ${TOKEN_SYMBOL}) to each principal..."
+echo "Minting ${AMOUNT} ${TOKEN_SYMBOL} tokens (50'000 ${TOKEN_SYMBOL}) to each principal..."
 
 # Mint tokens to each principal
 for principal in "${principals[@]}"; do

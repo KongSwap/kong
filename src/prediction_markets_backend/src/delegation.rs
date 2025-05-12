@@ -107,6 +107,7 @@ impl DelegationVec {
         self.0.retain(f);
     }
 
+    #[allow(dead_code)]
     fn into_vec(self) -> Vec<Delegation> {
         self.0
     }

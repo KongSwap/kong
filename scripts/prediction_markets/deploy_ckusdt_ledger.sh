@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-IDENTITY="--identity minter"
+IDENTITY="--identity kong_token_minter"
 
 set -e
 
@@ -13,11 +13,11 @@ touch "${root_dir}/canister_ids.all.json"
 # Ensure the file has valid JSON if empty
 [ ! -s "${root_dir}/canister_ids.all.json" ] && echo '{}' > "${root_dir}/canister_ids.all.json"
 
-TOKEN_SYMBOL="CKUSDT"
+TOKEN_SYMBOL="ksUSDT"
 TOKEN_LEDGER=$(echo ${TOKEN_SYMBOL}_ledger | tr '[:upper:]' '[:lower:]')
 TOKEN_NAME="ckUSDT"
 TOKEN_DECIMALS=6
-TRANSFER_FEE=10_000
+TRANSFER_FEE=1000
 TOKEN_LOGO="data:image/png;base64,..."  # Your existing logo data here
 
 # Get the principal of sns_proposal for minting initial tokens

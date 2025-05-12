@@ -1,11 +1,10 @@
 use ic_cdk::query;
 use candid::CandidType;
 use serde::Deserialize;
-use num_traits::ToPrimitive;
 
-use crate::nat::*;
+use crate::types::StorableNat;
 use crate::stable_memory::*;
-use super::market::{MarketStatus}; // Import MarketStatus
+use super::market::MarketStatus; // Import MarketStatus
 
 #[derive(CandidType, Deserialize)]
 pub struct StatsResult {
@@ -27,8 +26,8 @@ pub fn get_stats() -> StatsResult {
         total_markets = markets_ref.len() as u64;
 
         for (_, market) in markets_ref.iter() {
-            // A market is active if it's Open and its end_time hasn't passed yet.
-            if market.status == MarketStatus::Open && now < market.end_time {
+            // A market is active if it's Active and its end_time hasn't passed yet.
+            if market.status == MarketStatus::Active && now < market.end_time {
                 total_active_markets += 1;
             }
         }

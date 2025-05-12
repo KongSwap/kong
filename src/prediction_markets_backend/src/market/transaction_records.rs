@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::market::estimate_return_types::BetPayoutRecord;
 
-use crate::nat::*;
+use crate::types::{MarketId, TokenAmount};
 
 
 
@@ -12,7 +12,7 @@ use crate::nat::*;
 pub struct MarketPayoutRecords {
     pub market_id: MarketId,
     pub payouts: Vec<BetPayoutRecord>,
-    pub total_payout: StorableNat,
+    pub total_payout: TokenAmount,
     pub payout_count: usize,
     pub uses_time_weighting: bool,
 }
@@ -22,7 +22,7 @@ impl MarketPayoutRecords {
         Self {
             market_id,
             payouts: Vec::new(),
-            total_payout: StorableNat::from(0u64),
+            total_payout: TokenAmount::from(0u64),
             payout_count: 0,
             uses_time_weighting,
         }
@@ -39,22 +39,22 @@ impl MarketPayoutRecords {
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct UserPayoutSummary {
     pub user: Principal,
-    pub total_payouts: StorableNat,
+    pub total_payouts: TokenAmount,
     pub payout_count: usize,
     pub markets_participated: Vec<MarketId>,
-    pub time_weighted_payouts: StorableNat,
-    pub standard_payouts: StorableNat,
+    pub time_weighted_payouts: TokenAmount,
+    pub standard_payouts: TokenAmount,
 }
 
 impl UserPayoutSummary {
     pub fn new(user: Principal) -> Self {
         Self {
             user,
-            total_payouts: StorableNat::from(0u64),
+            total_payouts: TokenAmount::from(0u64),
             payout_count: 0,
             markets_participated: Vec::new(),
-            time_weighted_payouts: StorableNat::from(0u64),
-            standard_payouts: StorableNat::from(0u64),
+            time_weighted_payouts: TokenAmount::from(0u64),
+            standard_payouts: TokenAmount::from(0u64),
         }
     }
 
