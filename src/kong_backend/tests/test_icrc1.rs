@@ -16,9 +16,5 @@ fn test_icrc1_name() {
     let result = decode_one::<String>(&response).expect("Failed to decode icrc1_name response");
 
     let expected_icrc1_name = format!("{} {}", APP_NAME, APP_VERSION);
-    assert_eq!(
-        result, expected_icrc1_name,
-        "icrc1_name should be equal to '{}'",
-        expected_icrc1_name
-    );
+    assert_eq!(result, expected_icrc1_name, "icrc1_name should be to '{}'", expected_icrc1_name);
 }

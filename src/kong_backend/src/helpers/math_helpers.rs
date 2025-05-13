@@ -38,3 +38,51 @@ pub fn bytes_to_megabytes(bytes: u64) -> f64 {
 pub fn to_trillions(n: u128) -> f64 {
     round_f64(n as f64 / 1_000_000_000_000.0, 2)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_round_f64_no_decimals() {
+        assert_eq!(round_f64(123.456, 0), 123.0);
+        assert_eq!(round_f64(123.789, 0), 124.0);
+    }
+
+    #[test]
+    fn test_round_f64_two_decimals() {
+        assert_eq!(round_f64(123.456, 2), 123.46);
+        assert_eq!(round_f64(123.454, 2), 123.45);
+    }
+
+    #[test]
+    fn test_round_f64_round_up() {
+        assert_eq!(round_f64(0.123456789, 5), 0.12346);
+    }
+
+    #[test]
+    fn test_round_f64_round_down() {
+        assert_eq!(round_f64(0.987654321, 5), 0.98765);
+    }
+
+    #[test]
+    fn test_round_f64_many_decimals() {
+        assert_eq!(round_f64(1.2345678901234567, 10), 1.2345678901);
+    }
+
+    #[test]
+    fn test_round_f64_negative_number() {
+        assert_eq!(round_f64(-123.456, 2), -123.46);
+        assert_eq!(round_f64(-123.454, 2), -123.45);
+    }
+
+    #[test]
+    fn test_round_f64_zero() {
+        assert_eq!(round_f64(0.0, 2), 0.0);
+    }
+
+    #[test]
+    fn test_round_f64_integer() {
+        assert_eq!(round_f64(123.0, 2), 123.0);
+    }
+}
