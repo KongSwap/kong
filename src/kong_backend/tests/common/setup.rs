@@ -3,8 +3,8 @@ use candid::Principal;
 use pocket_ic::PocketIc;
 
 use crate::common::identity::get_identity_from_pem_file;
-// Import both helpers, the original and the one for specific ID
-use crate::common::kong_backend::{create_kong_backend, create_kong_backend_at_id};
+// Import the helper for creating Kong backend at a specific ID
+use crate::common::kong_backend::create_kong_backend_at_id;
 
 pub const CONTROLLER_PEM_FILE: &str = "tests/common/identity.pem";
 
@@ -28,7 +28,7 @@ pub fn setup_ic_environment() -> Result<(PocketIc, Principal)> {
         controller_principal_id,
         // Init args still `()`
     )
-    .map_err(|e| anyhow::anyhow!(e))?; // Map String error to anyhow::Error
+    .map_err(|e: String| anyhow::anyhow!(e))?; // Map String error to anyhow::Error
 
     Ok((ic, kong_backend))
 }

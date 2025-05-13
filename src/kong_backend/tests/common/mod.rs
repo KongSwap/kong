@@ -4,3 +4,4 @@ pub mod icrc1_ledger;
 pub mod identity;
 pub mod kong_backend;
 pub mod setup;
+pub mod setup_with_pool;
