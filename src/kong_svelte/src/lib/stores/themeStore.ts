@@ -7,7 +7,7 @@ import { get } from 'svelte/store';
 import { auth } from '../stores/auth';
 
 // Define theme ID type based on available themes
-export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'win98light' | 'synthwave' | 'dragginz';
+export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'microswap' | 'synthwave' | 'dragginz';
 
 function createThemeStore() {
   const { subscribe, set } = writable<ThemeId>('dark');
@@ -283,7 +283,26 @@ function createThemeStore() {
       document.documentElement.setAttribute('data-theme-ready', 'false');
       
       try {
-        // Directly get theme from localStorage for maximum speed
+        // Check for theme in URL parameters first
+        const urlParams = new URLSearchParams(window.location.search);
+        const themeParam = urlParams.get('theme');
+        
+        // If valid theme in URL, apply it immediately
+        if (themeParam && getAllThemes().some(theme => theme.id === themeParam)) {
+          applyThemeStyles(themeParam as ThemeId);
+          set(themeParam as ThemeId);
+          
+          // Clear initializing attribute if needed
+          if (isInitializing) {
+            document.documentElement.removeAttribute('data-theme-initializing');
+          }
+          
+          // Mark theme as ready
+          document.documentElement.setAttribute('data-theme-ready', 'true');
+          return;
+        }
+        
+        // If no valid theme in URL, proceed with normal initialization
         const walletId = getUserId();
         
         // Try user-specific theme first
@@ -352,15 +371,24 @@ function createThemeStore() {
       // Check if auth state has changed in a meaningful way
       if (currentAuthState.isConnected !== previousAuthState.isConnected || 
           currentAuthState.principalId !== previousAuthState.principalId) {
-                
-        // Wait a bit before loading to make sure auth state has stabilized
-        setTimeout(() => {
-          loadThemeFromStorage().then(theme => {
-            if (theme) {
-              setTheme(theme);
-            }
-          });
-        }, 100);
+        
+        // Check for theme in URL parameters first
+        const urlParams = new URLSearchParams(window.location.search);
+        const themeParam = urlParams.get('theme');
+        
+        // If valid theme in URL, use it instead of stored theme
+        if (themeParam && getAllThemes().some(theme => theme.id === themeParam)) {
+          setTheme(themeParam as ThemeId);
+        } else {
+          // Wait a bit before loading to make sure auth state has stabilized
+          setTimeout(() => {
+            loadThemeFromStorage().then(theme => {
+              if (theme) {
+                setTheme(theme);
+              }
+            });
+          }, 100);
+        }
         
         // Update previous state
         previousAuthState = currentAuthState;

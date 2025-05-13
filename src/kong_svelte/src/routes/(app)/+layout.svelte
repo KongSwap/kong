@@ -147,12 +147,12 @@
 
     <footer class="w-full h-6 bg-transparent absolute bottom-0 mx-auto">
       <div
-        class="flex items-center justify-center opacity-60 hover:opacity-90 transition-opacity duration-200"
+        class="flex items-center justify-center opacity-60 transition-opacity duration-200"
       >
         <p class="text-xs text-kong-text-secondary">
           Powered by <button
             onclick={() => goto("/")}
-            class="text-kong-text-primary font-semibold hover:text-kong-primary"
+            class="hover:opacity-90 text-kong-text-primary font-semibold hover:text-kong-primary"
             >KongSwap</button
           >
         </p>

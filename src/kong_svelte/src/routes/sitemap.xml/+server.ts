@@ -1,4 +1,4 @@
-import { SITEMAP_URL } from '$lib/constants/appConstants';
+const SITEMAP_URL = 'https://kongswap.io';
 
 // Define static pages
 // Exclude pages that rely heavily on client-side rendering or are dynamic by nature

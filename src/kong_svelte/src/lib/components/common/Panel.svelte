@@ -3,7 +3,7 @@
   import { fade, slide, type TransitionConfig } from 'svelte/transition';
   import { themeStore } from '../../stores/themeStore';
   import { getThemeById } from '../../themes/themeRegistry';
-  import { transparentPanel } from '../../stores/derivedThemeStore';
+  import { panelRoundness, transparentPanel } from '../../stores/derivedThemeStore';
 
   let {
     variant = transparentPanel ? "transparent" : "solid",
@@ -13,9 +13,7 @@
     content = '',
     className = '',
     zIndex = 10,
-    roundedBorders = true,
     // New roundness prop using Tailwind classes, can be overridden by prop
-    roundness = null,
     unpadded = false,
     animated = false,
     isSwapPanel = false,
@@ -36,8 +34,6 @@
     content?: string;
     className?: string;
     zIndex?: number;
-    roundedBorders?: boolean;
-    roundness?: "rounded-none" | "rounded-sm" | "rounded" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | "rounded-3xl" | "rounded-full" | null;
     unpadded?: boolean;
     animated?: boolean;
     isSwapPanel?: boolean;
@@ -53,19 +49,11 @@
   const defaultSlideParams = { duration: 300, delay: 200, axis: 'x' };
   const defaultFadeParams = { duration: 200 };
 
-  // Store the current theme's panel roundness or use default
-  let themeRoundness = $state("rounded-lg");
-  
   // Computed values
   let params = $derived({
     ...(transition === 'slide' ? defaultSlideParams : defaultFadeParams),
     ...transitionParams
   });
-  
-  // Compute the roundness class based on props and theme
-  let roundnessClass = $derived(!roundedBorders 
-    ? 'rounded-none' 
-    : roundness || themeRoundness);
     
   // Compute the interactive class based on interactive prop
   let interactiveClass = $derived(interactive ? 'interactive' : '');
@@ -74,7 +62,6 @@
   $effect(() => {
     const unsubscribe = themeStore.subscribe(themeId => {
       const theme = getThemeById(themeId);
-      themeRoundness = theme.colors.panelRoundness || "rounded-lg";
     });
     
     return unsubscribe;
@@ -83,7 +70,7 @@
 
 {#if transition === 'slide'}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} rounded-{$panelRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:slide={params}
     on:click
@@ -97,7 +84,7 @@
   </div>
 {:else if transition === 'fade'}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} rounded-{$panelRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:fade={params}
     on:click
@@ -111,7 +98,7 @@
   </div>
 {:else}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} {className} {roundnessClass} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} rounded-{$panelRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     on:click
     on:keydown
@@ -192,7 +179,6 @@
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
-  border-radius: inherit;
 }
 
 /* Inner glow effect - uses theme text color */

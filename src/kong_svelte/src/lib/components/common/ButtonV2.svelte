@@ -138,7 +138,7 @@
 <button
   bind:this={element}
   type={type}
-  class="{$panelRoundness} font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed 
+  class="rounded-{$panelRoundness} font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed 
     {baseThemeClass} {variantClass} {sizeClass} 
     {fullWidth ? 'w-full' : 'w-auto'} {uppercase ? 'uppercase' : ''} {className}"
   disabled={isDisabled}

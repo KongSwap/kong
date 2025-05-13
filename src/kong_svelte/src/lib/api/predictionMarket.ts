@@ -348,8 +348,7 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
   return allBets.slice(fromIndex, toIndex);
 }
 
-/*
-// Commenting out as get_stats is not in the current DID
+
 export async function getPredictionMarketStats() {
   const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
     canisterId: canisters.predictionMarkets.canisterId,
@@ -359,7 +358,7 @@ export async function getPredictionMarketStats() {
   const stats = await actor.get_stats();
   return stats;
 }
-*/
+
 
 export async function getAllCategories() {
   const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({

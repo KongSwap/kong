@@ -13,16 +13,12 @@
   import { onMount } from "svelte";
   import { 
     swapPanelRoundness, 
-    swapPanelBorder, 
     swapPanelShadow, 
-    swapPanelBorderStyle, 
-    swapPanelInputsRounded, 
     transparentSwapPanel,
     panelRoundness
   } from "$lib/stores/derivedThemeStore";
-  
-  let isWin95Border = $derived($swapPanelBorderStyle === 'win95');
-  
+  import { calculateMaxAmount as calculateMaxAmountRawNumber } from "$lib/utils/validators/tokenValidators";
+    
   let {
     title,
     token,
@@ -57,12 +53,12 @@
   // State management using runes
   let inputElement = $state<HTMLInputElement | null>(null);
   let inputFocused = $state(false);
-  let previousValue = $state("0");
+  let localInputValue = $state(formatWithCommas(formatDisplayValue(amount || "0"))); // Initialize with formatted prop
+  let previousAmountProp = $state(amount); // Track prop changes
   let isMobile = $state(false);
 
   // Derived state using runes
   let decimals = $derived(token?.decimals || DEFAULT_DECIMALS);
-  let isIcrc1 = $derived(token?.icrc1 && !token?.icrc2);
 
   // Initialize window-dependent values
   let windowWidth = $state(0);
@@ -97,6 +93,12 @@
   // Format number with commas for display
   function formatWithCommas(value: string): string {
     if (!value) return "0";
+    // Allow trailing decimal point for input
+    if (value.endsWith('.')) {
+      const parts = value.slice(0, -1).split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      return parts.join(".") + '.';
+    }
     const parts = value.split(".");
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     return parts.join(".");
@@ -109,144 +111,207 @@
       : MAX_DISPLAY_DECIMALS_DESKTOP;
   }
 
-  // Format display value with proper decimals
+  // Format display value with proper decimals - keep raw precision for calculations
   function formatDisplayValue(value: string): string {
     if (!value || value === "0") return "0";
+    if (value === "0.") return "0."; // Preserve trailing decimal for input
 
     const parts = value.split(".");
     const maxDecimals = getMaxDisplayDecimals();
 
     if (parts.length === 2) {
-      if (
-        panelType === "receive" &&
-        parts[1].length > maxDecimals &&
-        decimals > maxDecimals
-      ) {
-        parts[1] = parts[1].slice(0, maxDecimals) + "...";
-      } else {
-        parts[1] = parts[1].slice(0, maxDecimals);
+       // Truncate for display only, not for the actual state value sent upwards
+      if (parts[1].length > maxDecimals) {
+         // Keep full precision internally, but maybe truncate display if needed?
+         // For now, let formatWithCommas handle display formatting.
+         // This function primarily ensures the value structure is reasonable.
+         // Let's just return the value clipped to token decimals for internal consistency before formatting
+         return `${parts[0]}.${parts[1].slice(0, decimals)}`;
       }
-
-      if (parts[1].length === 0) return parts[0];
+      if (parts[1].length === 0) return parts[0] + '.'; // Keep trailing dot if user typed it
       return parts.join(".");
     }
-
-    return parts[0];
+    return parts[0]; // Return whole number
   }
 
   // Validate numeric input
   function isValidNumber(value: string): boolean {
-    if (!value) return true;
+    if (!value) return true; // Allow empty input during typing
+    // Allow numbers with optional single decimal point
     const regex = /^[0-9]*\.?[0-9]*$/;
     return regex.test(value);
   }
 
-  // Animation and value updates using $effect
+  // Update local state ONLY when the input is NOT focused
+  // OR when the amount prop changes significantly (e.g., reset, token switch)
   $effect(() => {
-    if (amount === "0") {
-      // Update animated values directly using tradeUsdValue
-      animatedUsdValue.set(0, { duration: 0 }); // Reset directly for 0 amount
+    if (amount !== previousAmountProp) { // Detect external changes from prop
+        if (!inputFocused || amount === "" || amount === "0") { // Update local value if not focused or if it's a reset
+             const newlyFormatted = formatWithCommas(formatDisplayValue(amount || "0"));
+             localInputValue = newlyFormatted;
+             if(inputElement && !inputFocused) { // Update element value directly if not focused
+                 inputElement.value = newlyFormatted;
+             }
+        }
+        previousAmountProp = amount; // Update tracker regardless
+    }
+  });
+
+  // Initialize input value on mount
+  $effect(() => {
+    if (inputElement && !localInputValue && !inputFocused) {
+        // Set initial value based on prop if local state is empty and not focused
+        const initialFormatted = formatWithCommas(formatDisplayValue(amount || "0"));
+        localInputValue = initialFormatted;
+        inputElement.value = initialFormatted;
+    }
+  });
+
+
+  // Animation and value updates using $effect (for USD value, slippage animation)
+  $effect(() => {
+    // Use the main 'amount' prop for animations, not localInputValue
+    const currentNumericAmount = parseFloat(amount || '0');
+    const currentUsdValue = tokenPrice * currentNumericAmount;
+
+    if (amount === "0" || !amount) {
+      animatedUsdValue.set(0, { duration: 0 });
     } else {
-      const currentValue = $animatedUsdValue;
-      // Use tradeUsdValue for calculation
-      const valueDiff = Math.abs(tradeUsdValue - currentValue);
+      const existingAnimatedValue = $animatedUsdValue;
+      const valueDiff = Math.abs(currentUsdValue - existingAnimatedValue);
       const duration = Math.min(
         ANIMATION_MAX_DURATION,
         ANIMATION_BASE_DURATION + valueDiff * ANIMATION_VALUE_MULTIPLIER,
       );
-
-      // Use tradeUsdValue for setting the tweened value
-      animatedUsdValue.set(tradeUsdValue, {
-        duration,
-        easing: cubicOut,
-      });
+      animatedUsdValue.set(currentUsdValue, { duration, easing: cubicOut });
     }
 
     animatedSlippage.set(slippage, { duration: 0 });
   });
 
+
   // Event handlers
   function handleInput(event: Event) {
     const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/,/g, "");
+    let rawValue = input.value.replace(/,/g, ""); // Work with raw value
 
-    if (!isValidNumber(value)) {
-      input.value = previousValue;
+    // Basic validation for numeric characters and single decimal point
+    if (!isValidNumber(rawValue)) {
+      input.value = localInputValue; // Revert display to last known good local value
       return;
     }
 
-    if (value.includes(".")) {
-      const [whole, decimal] = value.split(".");
-      value = `${whole}.${decimal.slice(0, decimals)}`;
+    // Handle excessive decimals - trim raw value
+    if (rawValue.includes(".")) {
+      const [whole, decimal] = rawValue.split(".");
+      if (decimal && decimal.length > decimals) {
+        rawValue = `${whole}.${decimal.slice(0, decimals)}`;
+      } else if (decimal === '') {
+        // Allow trailing decimal point during input
+      }
     }
 
-    if (value.length > 1 && value.startsWith("0") && value[1] !== ".") {
-      value = value.replace(/^0+/, "");
+    // Handle leading zeros (e.g., "05" -> "5", but allow "0.")
+    if (rawValue.length > 1 && rawValue.startsWith("0") && rawValue[1] !== ".") {
+      rawValue = rawValue.replace(/^0+/, "");
+    }
+    // Allow starting input with "." -> "0."
+    if (rawValue === ".") {
+       rawValue = "0.";
     }
 
-    if (!value || value === ".") {
-      value = "0";
+    // Update local state for display (apply comma formatting)
+    localInputValue = formatWithCommas(rawValue);
+    input.value = localInputValue; // Update the input element display value
+
+    // Determine the value to send upwards (should be clean number string, "0" if appropriate)
+    let valueToSend = rawValue;
+    if (valueToSend === "0.") {
+       valueToSend = "0"; // Send "0" if user only typed the decimal point
+    } else if (!valueToSend) {
+       valueToSend = "0"; // Send "0" if input is empty
     }
 
-    previousValue = value;
 
-    if (inputElement) {
-      const formattedValue = formatWithCommas(value);
-      inputElement.value = formattedValue;
-    }
-
+    // Send the cleaned, raw numeric string value to the parent state service.
     onAmountChange(
       new CustomEvent("input", {
-        detail: { value, panelType },
+        detail: { value: valueToSend, panelType },
       }),
     );
   }
+
+  function handleFocus() {
+    inputFocused = true;
+    // Optional: Could remove commas on focus, but might be jarring.
+    // if (inputElement) {
+    //   inputElement.value = amount || '0';
+    // }
+  }
+
+  function handleBlur() {
+    inputFocused = false;
+    // On blur, ensure the input's display value strictly matches the formatted version
+    // of the *current* amount prop, reflecting any calculations that happened.
+    const finalFormattedValue = formatWithCommas(formatDisplayValue(amount || "0"));
+    localInputValue = finalFormattedValue;
+     if(inputElement) {
+         inputElement.value = finalFormattedValue;
+     }
+    // If the raw value after formatting is essentially zero, send "0" upwards
+    // This handles cases like typing "0.00" and blurring
+    if (parseFloat(amount || "0") === 0 && amount !== "0") {
+         onAmountChange(
+           new CustomEvent("input", {
+             detail: { value: "0", panelType },
+           }),
+         );
+    }
+  }
+
 
   async function handleMaxClick() {
     if (!disabled && title === "You Pay" && token) {
       try {
         if (!token) {
-          console.error("Token info missing");
           toastStore.error("Invalid token configuration");
           return;
         }
 
         const balance = $currentUserBalancesStore[token.address]?.in_tokens;
-        if (!balance) {
-          console.error("Balance not available for token", token.symbol);
+        if (balance === undefined || balance === null) {
           toastStore.error(`Balance not available for ${token.symbol}`);
           return;
         }
 
-        // Calculate fees using token prop directly
-        const feesInTokens = token.fee_fixed
-          ? BigInt(token.fee_fixed.toString().replace(/_/g, "")) *
-            (isIcrc1 ? 1n : 2n)
-          : 0n;
+        const feeBigInt = token.fee_fixed ? BigInt(token.fee_fixed.toString().replace(/_/g, "")) : 0n;
 
-        // Subtract fees from balance
-        const availableBalance = balance - feesInTokens;
+        // Use calculateMaxAmountRawNumber which returns a number
+        const maxAmountNumber = calculateMaxAmountRawNumber(
+          balance,
+          token.decimals,
+          feeBigInt
+        );
 
-        if (availableBalance <= 0n) {
+        if (maxAmountNumber <= 0) {
           toastStore.error("Insufficient balance to cover fees");
           return;
         }
+        
+        // Convert the resulting number to a string for consistency
+        const maxAmountRawString = maxAmountNumber.toString();
 
-        // Convert to display format
-        const maxAmount = formatTokenBalance(
-          availableBalance.toString(),
-          token.decimals,
-        );
-
-        // Set the input value
+        // Update local display value and input element
+        const formattedMax = formatWithCommas(formatDisplayValue(maxAmountRawString));
+        localInputValue = formattedMax;
         if (inputElement) {
-          inputElement.value = formatWithCommas(maxAmount);
+          inputElement.value = formattedMax;
         }
 
-        // Trigger the amount change
+        // Trigger the amount change with the raw value string
         onAmountChange(
           new CustomEvent("input", {
-            detail: { value: maxAmount, panelType },
+            detail: { value: maxAmountRawString, panelType },
           }),
         );
       } catch (error) {
@@ -261,46 +326,33 @@
     if (disabled) return;
 
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    // Adjust position calculation slightly if needed based on visual checks
     const position = {
-      x: rect.right + 8,
+      x: rect.right + 8, // Keep space from button
       y: rect.top,
-      windowWidth,
+      height: rect.height,
+      windowWidth: window.innerWidth, // Use reactive windowWidth
+      windowHeight: window.innerHeight, // Use reactive windowHeight
     };
 
-    if (panelType === "pay") {
-      const currentState = $swapState.showPayTokenSelector;
-      swapState.update((s) => ({
-        ...s,
-        showPayTokenSelector: !currentState,
-        showReceiveTokenSelector: false,
-        tokenSelectorPosition: position,
-        tokenSelectorOpen: "pay",
-      }));
-    } else {
-      const currentState = $swapState.showReceiveTokenSelector;
-      swapState.update((s) => ({
-        ...s,
-        showReceiveTokenSelector: !currentState,
-        showPayTokenSelector: false,
-        tokenSelectorPosition: position,
-        tokenSelectorOpen: "receive",
-      }));
-    }
 
-    if (amount) {
-      onAmountChange(
-        new CustomEvent("input", {
-          detail: { value: amount, panelType },
-        }),
-      );
-    }
+    swapState.update((s) => ({
+      ...s,
+      showPayTokenSelector: panelType === "pay" ? !s.showPayTokenSelector : false,
+      showReceiveTokenSelector: panelType === "receive" ? !s.showReceiveTokenSelector : false,
+      tokenSelectorPosition: position,
+      tokenSelectorOpen: panelType, // Always set which panel opened it
+    }));
+
+
+    // No need to re-trigger onAmountChange here unless token selection
+    // should immediately clear/recalculate amounts.
+    // The change will be handled when the token is actually selected.
   }
 
   // Display calculations using runes
-  let displayAmount = $derived(formatDisplayValue(amount || "0"));
-  let formattedDisplayAmount = $derived(formatWithCommas(displayAmount));
-  let parsedAmount = $derived(parseFloat(displayAmount || "0"));
-  // Use token prop directly for price
+  // Use the main 'amount' prop for calculations external to the input display
+  let parsedAmount = $derived(parseFloat(amount || "0"));
   let tokenPrice = $derived(
     token ? Number(token?.metrics?.price || 0) : 0,
   );
@@ -327,7 +379,7 @@
     };
   });
 
-  // Use $effect for the direction calculation
+  // Use $effect for the dropdown direction calculation
   $effect(() => {
     if (typeof window !== "undefined") {
       // Check if we're in browser environment
@@ -341,9 +393,8 @@
   variant={$transparentSwapPanel ? "transparent" : "solid"}
   width="auto"
   type="main"
-  className="w-full max-w-2xl !p-4 !h-full {isWin95Border ? 'win95-panel' : ''}"
+  className="w-full max-w-2xl !p-4 !h-full !{$swapPanelRoundness}"
   shadow={$swapPanelShadow}
-  roundness={$swapPanelRoundness}
   isSwapPanel={true}
 >
   <div
@@ -358,8 +409,9 @@
         </h2>
         <div class="flex items-center gap-2">
           {#if panelType === "pay"}
+            <!-- OnRamp Button -->
             <button
-              class="onramp-button {$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1.5 sm:px-3"
+              class="onramp-button rounded-{$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1.5 sm:px-3"
               on:click={(e) => {
                 e.preventDefault();
                 window.open("https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp", '_blank', 'width=500,height=650');
@@ -369,8 +421,9 @@
             </button>
           {/if}
           {#if showPrice && $animatedSlippage > 0}
+             <!-- Price Impact Display -->
             <div
-              class="flex items-center gap-1.5 bg-white/10 p-1 rounded-md"
+              class="flex items-center gap-1.5 bg-white/10 p-1 rounded-{$panelRoundness}"
               title="Price Impact"
             >
               <span
@@ -391,9 +444,10 @@
     </header>
 
     <div class="relative flex-grow mb-[-1px] h-[68px]">
-      <div class="flex items-center gap-1 h-[69%] box-border rounded-md">
+      <div class="flex items-center gap-1 h-[69%] box-border rounded-{$panelRoundness}">
         <div class="relative flex-1">
           {#if isLoading && panelType === "receive"}
+            <!-- Loading Dots -->
             <div class="absolute inset-0 flex items-center">
               <div class="loading-dots flex gap-[6px] items-center justify-start pl-[4px]">
                 <span class="w-[8px] h-[8px] rounded-full bg-kong-text-primary/50 animate-bounce delay-[-0.32s]"></span>
@@ -406,71 +460,34 @@
             bind:this={inputElement}
             type="text"
             inputmode="decimal"
-            pattern="[0-9]*"
+            pattern="[0-9]*\\.?[0-9]*"
             placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary placeholder:text-kong-text-primary text-3xl lg:text-4xl sm:mt-[-0.15rem]"
+            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary/50 placeholder:text-kong-text-primary/60 text-3xl lg:text-4xl sm:mt-[-0.15rem]"
             class:opacity-0={isLoading && panelType === "receive"}
-            class:rounded-md={$swapPanelInputsRounded}
-            value={formattedDisplayAmount}
+            value={localInputValue}
             on:input={handleInput}
-            on:focus={() => (inputFocused = true)}
-            on:blur={() => (inputFocused = false)}
+            on:focus={handleFocus}
+            on:blur={handleBlur}
             {disabled}
-            readonly={panelType === "receive"}
           />
         </div>
         <div class="relative">
+          <!-- Token Selector Button -->
           <button
-            class="flex items-center justify-between bg-white/5 p-2 border border-white/10 transition-colors duration-150 gap-2 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 {isWin95Border ? 'win95-button' : ''} w-full"
-            class:rounded-xl={$swapPanelInputsRounded && !isWin95Border}
-            on:click|stopPropagation={(event) => {
-              const rect = event.currentTarget.getBoundingClientRect();
-              const position = {
-                x: rect.right + 8,
-                y: rect.top,
-                height: rect.height,
-                windowHeight: window.innerHeight,
-                windowWidth: window.innerWidth,
-              };
-              swapState.update((s) => ({
-                ...s,
-                tokenSelectorPosition: position,
-                tokenSelectorOpen: panelType,
-              }));
-              handleTokenSelect(event);
-            }}
+            class="flex items-center justify-between bg-white/5 p-2 border border-white/10 transition-colors duration-150 gap-2 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 w-full"
+            on:click|stopPropagation={handleTokenSelect}
           >
             {#if token}
               <div class="flex items-center gap-2">
                 <TokenImages tokens={[token]} size={32} />
                 <span class="hidden text-lg font-semibold text-kong-text-primary sm:inline">{token.symbol}</span>
               </div>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                class="chevron w-5 h-5 text-kong-text-primary/50"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                  clip-rule="evenodd"
-                />
-              </svg>
+              <!-- Chevron Down Icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron w-5 h-5 text-kong-text-primary/50"> <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /> </svg>
             {:else}
               <span class="text-lg text-kong-text-primary/70 text-left">Select Token</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                class="chevron w-5 h-5 text-kong-text-primary/50"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                  clip-rule="evenodd"
-                />
-              </svg>
+              <!-- Chevron Down Icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron w-5 h-5 text-kong-text-primary/50"> <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /> </svg>
             {/if}
           </button>
         </div>
@@ -480,6 +497,7 @@
     <div class="text-kong-text-primary text-sm">
       <div class="flex justify-between items-center leading-6">
         <div class="flex items-center gap-1">
+           <!-- USD Value Display -->
           <span
             class="text-kong-text-primary font-normal tracking-wide text-xs sm:text-xs"
             >Value:</span
@@ -487,10 +505,11 @@
           <span
             class="text-kong-text-primary font-medium tracking-wide text-xs sm:text-xs"
           >
-            ${formatToNonZeroDecimal(tradeUsdValue)}
+            ${formatToNonZeroDecimal($animatedUsdValue)} <!-- Use animated value -->
           </span>
         </div>
         {#if token}
+          <!-- Balance Display -->
           <div class="flex items-center gap-1 min-w-[160px] justify-end">
             <span
               class="text-kong-text-primary font-normal tracking-wide text-xs sm:text-xs"
@@ -502,20 +521,18 @@
               class:clickable={title === "You Pay" && !disabled}
               class:hover:text-yellow-500={title === 'You Pay' && !disabled}
               on:click={handleMaxClick}
+              disabled={disabled || title !== 'You Pay'}
             >
-              {#if token && token.address && $currentUserBalancesStore}
-                {#if $currentUserBalancesStore[token.address]}
+              {#if token && token.address && $currentUserBalancesStore && $currentUserBalancesStore[token.address] !== undefined}
                   {formatTokenBalance(
-                    ($currentUserBalancesStore[token.address]?.in_tokens || 0).toString(),
+                    ($currentUserBalancesStore[token.address]?.in_tokens ?? 0n).toString(), // Use nullish coalescing for safety
                     token.decimals || DEFAULT_DECIMALS
                   )}
                   {token.symbol || ''}
-                {:else}
-                  <!-- Log what's happening for debugging -->
-                  0 {token.symbol || ''}
-                {/if}
+              {:else if token}
+                  0 {token.symbol || ''} <!-- Show 0 if balance not loaded -->
               {:else}
-                Loading...
+                Loading... <!-- Show loading if token itself is not loaded -->
               {/if}
             </button>
           </div>
@@ -539,5 +556,10 @@
     box-shadow: inset -1px -1px 0 #FFFFFF, inset 1px 1px 0 #808080, inset -2px -2px 0 #DFDFDF, inset 2px 2px 0 #404040 !important;
     padding-top: 5px !important;
     padding-left: 9px !important;
+  }
+
+  input:disabled {
+    cursor: not-allowed;
+    opacity: 0.6; /* Make disabled inputs look more obviously disabled */
   }
 </style>

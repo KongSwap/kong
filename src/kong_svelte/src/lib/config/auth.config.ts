@@ -163,7 +163,7 @@ export function initializePNP(): PNP {
           appName: "KongSwap",
           appDescription: 'Next gen multi-chain DeFi',
           appUrl: 'https://kongswap.io',
-          appIcons: ['https://kongswap.io/titles/kong_logo.png'],
+          appIcons: ['https://kongswap.io/images/kong_logo.png'],
           onSignatureRequired: (message: string) => {
             if (typeof window !== 'undefined') {
               showSignatureModal(message);

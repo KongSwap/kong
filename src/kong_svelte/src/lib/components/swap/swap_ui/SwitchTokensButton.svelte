@@ -10,7 +10,7 @@
   let hoverBackgroundColor = $derived(theme.colors.switchButtonHoverBg || theme.colors.surfaceDark || '#252b3d');
   let borderColor = $derived(theme.colors.switchButtonBorder || theme.colors.borderLight || 'rgba(255, 255, 255, 0.1)');
   let buttonShadow = $derived(theme.colors.switchButtonShadow || '0 8px 32px rgba(0, 0, 0, 0.32)');
-  let isWin98Theme = $derived(theme.id === 'win98light');
+  let ismicroswapTheme = $derived(theme.id === 'microswap');
 
   // Props
   let { 
@@ -37,9 +37,9 @@
   // Memoize button styles to avoid recalculation on each render
   let buttonStyle = $derived(`
     background: ${isHovered ? hoverBackgroundColor : backgroundColor};
-    ${!isWin98Theme ? `border-color: ${isHovered ? borderColor : borderColor};` : 
+    ${!ismicroswapTheme ? `border-color: ${isHovered ? borderColor : borderColor};` : 
     `border-style: solid; border-width: 2px; border-color: ${borderColor};`}
-    ${isWin98Theme ? `box-shadow: ${buttonShadow};` : ''}
+    ${ismicroswapTheme ? `box-shadow: ${buttonShadow};` : ''}
     color: ${theme.colors.textPrimary || 'white'};
   `);
 
@@ -88,7 +88,7 @@
 
 <button
   bind:this={buttonElement}
-  class="switch-tokens-button absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full transition-colors duration-200 ease-out border shadow-lg {isWin98Theme ? 'rounded-none win98-button' : 'hover:scale-110 hover:shadow-lg active:scale-95 active:shadow-md'} {disabledClasses}"
+  class="switch-tokens-button absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full transition-colors duration-200 ease-out border shadow-lg {ismicroswapTheme ? 'rounded-none win98-button' : 'hover:scale-110 hover:shadow-lg active:scale-95 active:shadow-md'} {disabledClasses}"
   style={buttonStyle}
   on:click={handleClick}
   disabled={isDisabled}

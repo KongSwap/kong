@@ -24,7 +24,7 @@ export const glowEffectColor = derived(themeColors, ($colors) => ($colors as any
 export const panelRoundness = derived(themeColors, ($colors) => ($colors as any)?.panelRoundness ?? 'rounded-lg');
 
 // Derived properties for SwapPanel
-export const swapPanelRoundness = derived(themeColors, ($colors) => ($colors as any)?.swapPanelRoundness ?? 'rounded-lg');
+export const swapPanelRoundness = derived(themeColors, ($colors) => ($colors as any)?.swapPanelRoundness ?? 'rounded-none');
 export const swapPanelBorder = derived(themeColors, ($colors) => ($colors as any)?.swapPanelBorder ?? '1px solid rgba(255, 255, 255, 0.1)');
 export const swapPanelShadow = derived(themeColors, ($colors) => ($colors as any)?.swapPanelShadow ?? '0 8px 32px rgba(0, 0, 0, 0.32)');
 export const swapPanelBorderStyle = derived(themeColors, ($colors) => ($colors as any)?.swapPanelBorderStyle ?? 'default');

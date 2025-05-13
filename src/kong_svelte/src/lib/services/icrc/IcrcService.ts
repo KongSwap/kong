@@ -3,11 +3,12 @@ import { canisters, type CanisterType } from "$lib/config/auth.config";
 import { Principal } from "@dfinity/principal";
 import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "$lib/stores/allowanceStore";
-import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
+import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { get } from "svelte/store";
 import { type IcrcAccount } from "@dfinity/ledger-icrc";
 import type { ApproveArgs } from "@dfinity/ledger-icrc/dist/candid/icrc_ledger";
 import type { TransferArgs } from "@dfinity/ledger-icp/dist/candid/ledger";
+import { hexStringToUint8Array } from "@dfinity/utils";
 
 export class IcrcService {
   private static readonly MAX_CONCURRENT_REQUESTS = 5;
@@ -137,7 +138,7 @@ export class IcrcService {
   ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
     const subaccount = auth.pnp?.account?.subaccount
-      ? (Array.from(auth.pnp.account.subaccount) as number[])
+      ? Array.from(hexStringToUint8Array(auth.pnp.account.subaccount))
       : undefined;
 
     // Group tokens by subnet to minimize subnet key fetches
@@ -193,7 +194,7 @@ export class IcrcService {
   public static async checkAndRequestIcrc2Allowances(
     token: Kong.Token,
     payAmount: bigint,
-    spender: string = KONG_BACKEND_PRINCIPAL,
+    spender: string = KONG_BACKEND_CANISTER_ID,
   ): Promise<bigint | null> {
     if (!token?.address) {
       throw new Error("Invalid token: missing address");

@@ -32,6 +32,7 @@
   import { themeStore } from "$lib/stores/themeStore";
   import { getThemeById } from "$lib/themes/themeRegistry";
   import type { ThemeColors } from "$lib/themes/baseTheme";
+  import { panelRoundness } from "$lib/stores/derivedThemeStore";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -434,9 +435,9 @@
         className="flex-1 {$isMobile ? '' : '!p-0'}" 
         variant={isTableTransparent() ? "transparent" : "solid"}
       >
-        <div class="overflow-hidden flex flex-col h-full rounded-lg">
+        <div class="overflow-hidden flex flex-col h-full rounded-{$panelRoundness}">
           <!-- Header with full-width search and "My Pools" button -->
-          <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md rounded-t-lg">
+          <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md rounded-t-{$panelRoundness}">
             <div class="flex flex-col gap-3 sm:gap-0">
               <!-- Mobile-only buttons -->
               <div class="sm:hidden space-y-2">
@@ -551,7 +552,7 @@
                 {/if}
               </div>
               <!-- Desktop view -->
-              <div class="hidden sm:flex border-b border-white/[0.04] py-1 rounded-t-xl">
+              <div class="hidden sm:flex border-b border-white/[0.04] py-1 rounded-t-{$panelRoundness}">
                 <div class="flex-1">
                   <div class="flex items-center">
                     <div class="flex bg-transparent">
@@ -598,7 +599,7 @@
                 </div>
 
                 <button
-                  class="-mt-2 -mb-1 flex items-center gap-2 rounded-none !rounded-tr-xl px-6 py-2 text-white bg-kong-primary hover:bg-kong-primary-hover hover:shadow-[0_0_15px_rgba(0,149,235,0.2)] transition-all duration-200"
+                  class="-mt-2 -mb-1 flex items-center gap-2 !rounded-tr-none px-6 py-2 text-white bg-kong-primary hover:bg-kong-primary-hover hover:shadow-[0_0_15px_rgba(0,149,235,0.2)] transition-all duration-200"
                   on:click={() => goto("/pools/add")}
                 >
                   <svg

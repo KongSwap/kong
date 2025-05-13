@@ -1,8 +1,8 @@
 // Theme Registry - Central place to manage all available themes
 import type { ThemeDefinition } from './baseTheme';
 import { baseTheme } from './baseTheme';
-import { win98Theme } from './win98Theme';
-import { plainBlackTheme } from './plainBlackTheme';
+import { microswapTheme } from './microswapTheme';
+import { midnightTheme } from './midnightTheme';
 import { nordTheme } from './nordTheme';
 import { lightTheme } from './lightTheme';
 import { synthwaveTheme } from './synthwaveTheme';
@@ -12,8 +12,8 @@ import { dragginzTheme } from './dragginzTheme';
 const themes: ThemeDefinition[] = [
   lightTheme, // Modern light theme
   baseTheme,      // Default dark theme
-  win98Theme,     // Windows 98 light theme
-  plainBlackTheme, // Plain black theme
+  microswapTheme,     // Windows 98 light theme
+  midnightTheme, // Plain black theme
   nordTheme,       // Nord-inspired theme
   synthwaveTheme,  // Synthwave sunset theme
   dragginzTheme,   // Dragginz fantasy theme

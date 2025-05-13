@@ -50,7 +50,7 @@ export const lightTheme: ThemeDefinition = {
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     
     // UI settings
-    panelRoundness: 'rounded-lg', // Modern rounded corners
+    panelRoundness: 'lg', // Modern rounded corners
     swapPanelRoundness: 'rounded-xl', // Slightly more rounded for swap panels
     swapPanelBorder: '1px solid rgba(203, 213, 225, 0.5)', // Light border
     swapPanelShadow: 'shadow-sm', // Modern shadow
@@ -99,7 +99,7 @@ export const lightTheme: ThemeDefinition = {
     swapButtonReadyGlowStart: '#10B981', // Modern green
     swapButtonReadyGlowEnd: '#059669',   // Darker green
     swapButtonTextColor: '#FFFFFF', // White text for contrast
-    swapButtonRoundness: 'rounded-xl', // Match swap panel roundness
+    swapButtonRoundness: 'rounded-full', // Match swap panel roundness
     swapButtonShadow: '0 4px 8px rgba(37, 99, 235, 0.2)', // Subtle blue shadow
     
     // Chart text color

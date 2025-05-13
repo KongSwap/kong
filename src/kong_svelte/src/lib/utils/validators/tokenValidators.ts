@@ -11,7 +11,7 @@ export function calculateMaxAmount(
     .minus(
       new BigNumber(tokenFee.toString()).dividedBy(
         new BigNumber(10).pow(tokenDecimals)
-      ).multipliedBy(2)
+      )
     )
     .toNumber();
 }

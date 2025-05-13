@@ -90,7 +90,7 @@
       <!-- Pool Selector Integration -->
       {#if token && onPoolSelect}
         <div class="relative pool-selector-container">
-          <div class="border !border-kong-border bg-kong-bg-dark/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200">
+          <div class="border !border-kong-border bg-kong-bg-dark/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 rounded-{$panelRoundness} transition-all duration-200">
             <PoolSelector 
               {selectedPool} 
               {token} 
@@ -103,7 +103,7 @@
         </div>
       {:else}
         <div class="mb-4">
-          <div class="border !border-kong-border bg-kong-bg-dark/70 {$panelRoundness} p-3 overflow-hidden">
+          <div class="border !border-kong-border bg-kong-bg-dark/70 rounded-{$panelRoundness} p-3 overflow-hidden">
             <div class="flex items-center gap-3">
               <TokenImages
                 tokens={[token0, token1].filter(Boolean)}

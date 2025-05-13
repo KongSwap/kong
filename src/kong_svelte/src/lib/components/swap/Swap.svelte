@@ -25,7 +25,6 @@
   import { browser } from "$app/environment";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { tick } from "svelte";
-  import { SwapUrlService } from "$lib/services/swap/SwapUrlService";
   import { SwapButtonService } from "$lib/services/swap/SwapButtonService";
   import { 
     refreshBalances, 
@@ -628,10 +627,10 @@
   <div class="relative flex flex-col gap-2 mb-2">
     <div class="relative flex flex-col gap-1 min-h-[240px] px-3 md:px-0 mt-0 md:mt-10">
       <!-- Doge image peeking only for Win98 theme -->
-      {#if $themeId === 'win98light'}
+      {#if $themeId === 'microswap'}
         <div class="absolute -top-[4.8rem] right-5 z-1 transform translate-x-1/4 select-none pointer-events-none">
           <img 
-            src="/images/layingdoge.png" 
+            src="/images/layingdoge.webp" 
             alt="Doge peeking" 
             class="w-48 h-48 object-contain"
             style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"

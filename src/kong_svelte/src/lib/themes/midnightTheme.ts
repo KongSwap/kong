@@ -1,7 +1,7 @@
 // Plain Black theme definition
 import type { ThemeDefinition } from './baseTheme';
 
-export const plainBlackTheme: ThemeDefinition = {
+export const midnightTheme: ThemeDefinition = {
   id: 'plain-black',
   name: 'Midnight',
   colorScheme: 'dark',
@@ -47,7 +47,7 @@ export const plainBlackTheme: ThemeDefinition = {
     fontFamily: "'IBM Plex Mono', monospace",
     
     // UI settings
-    panelRoundness: 'rounded-none', // Sharp corners for the brutalist plain-black theme
+    panelRoundness: 'none', // Sharp corners for the brutalist plain-black theme
     swapPanelRoundness: 'rounded-none', // No rounded corners for brutalist style
     swapPanelBorder: '2px solid rgba(255, 255, 255, 0.3)', // Bright border for contrast
     swapPanelShadow: 'shadow-none', // No shadow for brutalist style
@@ -95,6 +95,6 @@ export const plainBlackTheme: ThemeDefinition = {
     backgroundSolid: '#000000', // Pure black background
     enableNebula: false,
     enableStars: true,
-    starsOpacity: 1 // Higher opacity for stars in pure black theme
+    starsOpacity: 0.3 // Higher opacity for stars in pure black theme
   }
 }; 

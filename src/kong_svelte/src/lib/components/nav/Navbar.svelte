@@ -38,18 +38,27 @@
   import { isAuthenticating } from "$lib/stores/auth";
   import NavPanel from "./NavPanel.svelte";
 
+  let isClaiming = $state(false);
+
   // Computed directly where needed using themeStore rune
-  let isWin98Theme = $derived(browser && $themeStore === "win98light");
   
   // Define if current theme is light and should have inverted logo
   const isLightTheme = $derived(browser && 
     (getThemeById($themeStore)?.colors?.logoInvert === 1 || 
      $themeStore.includes('light') ||
-     $themeStore === 'win98light'));
+     $themeStore === 'microswap'));
   
-  // Define logo paths - use only one logo path
-  const logoPath = "/images/kongface-white.svg";
-  const mobileLogoPath = "/titles/logo-white-wide.png";
+  // Define logo paths - use theme logoPath if set, otherwise use defaults
+  const defaultLogoPath = "/images/kongface-white.svg";
+  const defaultMobileLogoPath = "/images/logo-white-wide.webp";
+  
+  // Get theme logo path if available
+  const themeLogoPath = $derived(browser ? getThemeById($themeStore)?.colors?.logoPath : null);
+  
+  // Use theme logo path if available, otherwise use defaults
+  const logoPath = $derived(themeLogoPath || defaultLogoPath);
+  const mobileLogoPath = $derived(themeLogoPath || defaultMobileLogoPath);
+
 
   // No longer need logoSrc as we'll use the single path directly
   // and apply CSS inversion when needed via the light-logo class
@@ -65,13 +74,6 @@
   let showWalletSidebar = $state(false);
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
-  );
-
-  // Compute account ID reactively
-  let accountId = $derived(
-    $auth.isConnected && $auth.account?.owner
-      ? getAccountIds($auth.account.owner, $auth.account.subaccount).main
-      : ""
   );
 
   const showFaucetOption = $derived(
@@ -143,14 +145,8 @@
     }
   });
 
-  const standardButtonThemeProps = $derived({
-    useThemeBorder: isWin98Theme,
-    customBgColor: browser ? getThemeById($themeStore)?.colors?.buttonBg : undefined,
-    customShadow: browser ? getThemeById($themeStore)?.colors?.buttonShadow : undefined
-  });
 
   const walletButtonThemeProps = $derived({
-    useThemeBorder: isWin98Theme,
     customBgColor: browser ? getThemeById($themeStore)?.colors?.primary : undefined,
     customTextColor: 'var(--color-kong-text-light)',
     customBorderStyle: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorder : undefined,
@@ -174,7 +170,10 @@
     {
       label: "Claim Tokens",
       icon: Droplet,
-      onClick: mobileMenuAction(claimTokens),
+      onClick: mobileMenuAction(async () => {
+        if (isClaiming) return;
+        await claimTokens();
+      }),
       show: showFaucetOption
     },
     {
@@ -285,9 +284,15 @@
   // --- End Refactoring ---
 
   async function claimTokens() {
-    await faucetClaim();
-    // Use runes directly
-    await loadBalances($userTokens.tokens, $auth.account.owner, true);
+    if (isClaiming) return;
+    isClaiming = true;
+    try {
+      await faucetClaim();
+      // Use runes directly
+      await loadBalances($userTokens.tokens, $auth.account.owner, true);
+    } finally {
+      isClaiming = false;
+    }
   }
 
   $effect(() => {
@@ -357,7 +362,7 @@
       {#if isMobile}
         <button
           class="h-[34px] w-[34px] flex items-center justify-center"
-          on:click={() => (navOpen = !navOpen)}
+          onclick={() => (navOpen = !navOpen)}
         >
           <Menu
             size={20}
@@ -367,20 +372,16 @@
       {:else}
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          on:click={() => goto("/swap")}
+          onclick={() => goto("/swap")}
         >
-          <img
-            src={logoPath}
-            alt="Kong Logo"
-            class="h-[40px] transition-all duration-200 navbar-logo"
-            class:light-logo={isLightTheme}
-            on:error={(e) => {
-              const img = e.target as HTMLImageElement;
-              const textElement = img.nextElementSibling as HTMLElement;
-              img.style.display = "none";
-              if (textElement) { textElement.style.display = "block"; }
-            }}
-          />
+          {#key logoPath}
+            <img
+              src={logoPath}
+              alt="Kong Logo"
+              class="h-[36px] max-w-full inline-block"
+              class:light-logo={isLightTheme}
+            />
+          {/key}
           <span
             class="hidden text-xl font-bold text-kong-text-primary"
             style="display: none;"
@@ -407,9 +408,8 @@
                 class="relative h-16 px-5 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200 hover:text-kong-text-primary"
                 class:nav-link={activeTab === navItem.tabId}
                 class:active={activeTab === navItem.tabId}
-                on:click={() => {
+                onclick={() => {
                   goto(navItem.defaultPath);
-                  activeTab = navItem.tabId as NavTabId;
                 }}
               >
                 {navItem.label}
@@ -426,20 +426,22 @@
       >
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          on:click={() => goto("/swap")}
+          onclick={() => goto("/swap")}
         >
-          <img
-            src={mobileLogoPath}
-            alt="Kong Logo"
-            class="h-8 transition-all duration-200 navbar-logo mobile-navbar-logo"
-            class:light-logo={isLightTheme}
-            on:error={(e) => {
-              const img = e.target as HTMLImageElement;
-              const textElement = img.nextElementSibling as HTMLElement;
-              img.style.display = "none";
-              if (textElement) { textElement.style.display = "block"; }
-            }}
-          />
+          {#key mobileLogoPath}
+            <img
+              src={mobileLogoPath}
+              alt="Kong Logo"
+              class="h-8 w-auto inline-block"
+              class:light-logo={isLightTheme}
+              onerror={(e) => {
+                const img = e.target as HTMLImageElement;
+                const textElement = img.nextElementSibling as HTMLElement;
+                img.style.display = "none";
+                if (textElement) { textElement.style.display = "block"; }
+              }}
+            />
+          {/key}
           <span
             class="hidden text-lg font-bold text-kong-text-primary"
             style="display: none;"
@@ -464,7 +466,7 @@
 
 {#if navOpen && isMobile}
   <div class="fixed inset-0 z-50" transition:fade={{ duration: 200 }}>
-    <div class="fixed inset-0 bg-kong-bg-dark/60 backdrop-blur-sm" on:click={() => (navOpen = false)} />
+    <div class="fixed inset-0 bg-kong-bg-dark/60 backdrop-blur-sm" onclick={() => (navOpen = false)} />
     <div
       class="fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col bg-kong-bg-dark border-r border-kong-border shadow-lg max-[375px]:w-[90%] max-[375px]:max-w-[300px]"
       transition:slide={{ duration: 200, axis: "x" }}
@@ -473,11 +475,11 @@
         <img
           src={mobileLogoPath}
           alt="Kong Logo"
-          class="navbar-logo h-9 !transition-all !duration-200"
+          class="h-9"
           class:light-logo={isLightTheme}
           style={isLightTheme ? '--logo-brightness: 0.2' : ''}
         />
-        <button class="w-9 h-9 flex items-center justify-center rounded-full text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/10 hover:bg-kong-text-primary/15 transition-colors duration-200" on:click={() => (navOpen = false)}>
+        <button class="w-9 h-9 flex items-center justify-center rounded-full text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/10 hover:bg-kong-text-primary/15 transition-colors duration-200" onclick={() => (navOpen = false)}>
           <X size={16} />
         </button>
       </div>
@@ -539,8 +541,8 @@
 <style scoped lang="postcss">
   /* Logo styles using CSS vars - Keep */
   .light-logo {
-    @apply invert brightness-[var(--logo-brightness,0.8)] transition-all duration-200;
     filter: invert(1) brightness(var(--logo-brightness, 0.2));
+    @apply transition-all duration-200;
   }
 
   /* Keep only for text-shadow on active state */

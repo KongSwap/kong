@@ -293,7 +293,7 @@
             <ButtonV2
               variant="outline"
               size="sm"
-              className="!border-kong-border w-full bg-kong-bg-dark/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200 !py-3"
+              className="!border-kong-border w-full bg-kong-bg-dark/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 rounded-{$panelRoundness} transition-all duration-200 !py-3"
             >
               <div class="flex items-center gap-2 justify-between w-full">
                 <span class="text-sm font-mono truncate">{token?.address}</span>

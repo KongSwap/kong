@@ -94,7 +94,6 @@ img {
 
 /* Ensure navbar logos size properly */
 .navbar-logo {
-  max-height: 100%;
-  width: auto;
   object-fit: contain;
+  width: 100%;
 }

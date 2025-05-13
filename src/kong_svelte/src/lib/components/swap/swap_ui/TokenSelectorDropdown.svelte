@@ -551,7 +551,7 @@
 {#if show}
   <div class="fixed inset-0 bg-kong-bg-dark/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
     <div
-      class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] bg-kong-token-selector-bg {expandDirection} {selectorState.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1 rounded-xl'}"
+      class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] bg-kong-token-selector-bg {expandDirection} {selectorState.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1 rounded-{$panelRoundness}'}"
       bind:this={selectorState.dropdownElement}
       on:click|stopPropagation
       transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}

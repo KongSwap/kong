@@ -1,9 +1,9 @@
 // Light theme definition (Windows 98-inspired)
 import type { ThemeDefinition } from './baseTheme';
 
-export const win98Theme: ThemeDefinition = {
-  id: 'win98light',
-  name: 'Windoge98 Light',
+export const microswapTheme: ThemeDefinition = {
+  id: 'microswap',
+  name: 'Windoge98 Microswap',
   colorScheme: 'light',
   author: 'Shill Gates',
   authorLink: 'https://windoge98.com',
@@ -47,7 +47,7 @@ export const win98Theme: ThemeDefinition = {
     fontFamily: "'Comic Sans MS', 'MS Sans Serif', 'Segoe UI', Arial, sans-serif",
     
     // UI settings
-    panelRoundness: 'rounded', // Subtle roundness for the Windows 98 look
+    panelRoundness: 'none', // Subtle roundness for the Windows 98 look
     swapPanelRoundness: 'rounded-none', // No rounded corners for Windows 98 style
     swapPanelBorder: 'none', // Turn off standard border - using shadow for 3D effect
     swapPanelShadow: 'shadow-sm', // Win95 3D border effect
@@ -88,10 +88,10 @@ export const win98Theme: ThemeDefinition = {
     swapButtonShadow: 'inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #808080', // Win98 inner shadow
     
     // Logo properties
-    logoBrightness: 0.75,
+    logoBrightness: 0.9,
     logoInvert: 0,
     logoHoverBrightness: 0.65,
-    logoPath: '/images/exe-kong-logo2.webp', // Custom Windows 98 style logo
+    logoPath: '/images/microswap-logo.webp', // Custom Windows 98 style logo
     
     // Chart text color
     chartTextColor: '#334155', // Darker blue-gray for better contrast

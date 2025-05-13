@@ -25,13 +25,25 @@
   // Props
   let { isMobile = false } = $props();
 
+  // Helper function to get the directional rounding class part
+  function getRoundingSuffix(roundness: string | null): string {
+    if (!roundness || roundness === 'rounded-none') return 'none';
+    if (roundness === 'rounded') return ''; // For base 'rounded', suffix is empty -> rounded-l/rounded-r
+    return `-${roundness.substring(8)}`; // e.g., "rounded-lg" -> "-lg"
+  }
+  
+  // Compute directional classes reactively
+  let roundingSuffix = $derived(getRoundingSuffix($panelRoundness));
+  let leftRoundnessClass = $derived(roundingSuffix === 'none' ? '' : `rounded-l${roundingSuffix}`);
+  let rightRoundnessClass = $derived(roundingSuffix === 'none' ? '' : `rounded-r${roundingSuffix}`);
+
   // Base config for standard desktop icon buttons
   const baseDesktopIconButton = {
-    variant: 'icon' as const,
+    variant: "icon" as const,
     isWalletButton: false,
     badgeCount: null,
     label: null,
-    type: 'standard' as const,
+    type: "standard" as const,
     isSelected: false,
     loading: false,
     iconSize: 18,
@@ -54,11 +66,13 @@
   let accountId = $derived(
     $auth.isConnected && $auth.account?.owner
       ? getAccountIds($auth.account.owner, $auth.account.subaccount).main
-      : ""
+      : "",
   );
 
   const showFaucetOption = $derived(
-    $auth.isConnected && (process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging")
+    $auth.isConnected &&
+      (process.env.DFX_NETWORK === "local" ||
+        process.env.DFX_NETWORK === "staging"),
   );
 
   async function claimTokens() {
@@ -77,28 +91,27 @@
     }
   }
 
-  function copyAccountId() {
-    if (accountId) {
-      copyToClipboard(accountId);
-    }
-  }
-
   function handleConnect() {
     if (!$auth.isConnected) {
       walletProviderStore.open();
       return;
     }
-    const activeTab = $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
+    const activeTab =
+      $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
     toggleWalletSidebar(activeTab);
   }
 
-  function toggleWalletSidebar(tab: "notifications" | "chat" | "wallet" = "notifications") {
+  function toggleWalletSidebar(
+    tab: "notifications" | "chat" | "wallet" = "notifications",
+  ) {
     walletSidebarActiveTab = tab;
     showWalletSidebar = !showWalletSidebar;
   }
 
   let showWalletSidebar = $state(false);
-  let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">("notifications");
+  let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
+    "notifications",
+  );
 
   const mobileHeaderButtons = $derived([
     {
@@ -136,7 +149,7 @@
       tooltipText: "",
       label: null,
       class: "",
-    }
+    },
   ]);
 
   const desktopButtons = $derived([
@@ -169,7 +182,7 @@
     },
     {
       ...baseDesktopIconButton,
-      type: 'copy',
+      type: "copy",
       icon: Copy,
       onClick: copyPrincipalId,
       tooltipText: "Copy Principal ID",
@@ -179,7 +192,7 @@
     },
     // Wallet Button (Specific properties)
     {
-      type: 'wallet' as const,
+      type: "wallet" as const,
       icon: Wallet,
       onClick: () => {
         if ($isAuthenticating) {
@@ -198,30 +211,44 @@
       label: null,
       class: "",
       iconSize: 18,
-    }
+    },
   ]);
 
   // Use the appropriate buttons based on mobile state
   const buttons = $derived(isMobile ? mobileHeaderButtons : desktopButtons);
 </script>
 
-<div class="flex items-center overflow-visible {isMobile ? '' : 'bg-kong-bg-dark/50 border border-kong-border/50'} {$panelRoundness} overflow-hidden">
-  {#each buttons as button}
+<div
+  class="flex items-center overflow-visible {isMobile
+    ? ''
+    : 'bg-kong-bg-dark/50 border border-kong-border/50'} rounded-{$panelRoundness} overflow-hidden"
+>
+  {#each buttons as button, i}
     {#if button.show !== false}
       <button
-        class="nav-panel-button {button.class || ''} {button.isSelected ? 'selected' : ''} {button.isWalletButton ? 'wallet-button' : ''} {isMobile ? 'mobile' : ''}"
-        on:click={button.onClick}
-        use:tooltip={button.tooltipText ? { text: button.tooltipText, direction: 'bottom' } : null}
+        class="nav-panel-button {button.class || ''} {button.isSelected
+          ? 'selected'
+          : ''} {button.isWalletButton ? 'wallet-button' : ''} {isMobile
+          ? 'mobile'
+          : ''} {i === 0 ? leftRoundnessClass : ''} {i === buttons.length - 1 ? rightRoundnessClass : ''}"
+        onclick={button.onClick}
+        use:tooltip={button.tooltipText
+          ? { text: button.tooltipText, direction: "bottom" }
+          : null}
         aria-label={button.tooltipText || button.label || "Button"}
       >
         <div class="relative">
           {#if button.loading}
             <div class="spinner">
               {#if button.isWalletButton}
-                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div
+                  class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                >
                   <X size={button.iconSize || 18} />
                 </div>
-                <div class="absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-200">
+                <div
+                  class="absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-200"
+                >
                   <div class="spinner-inner"></div>
                 </div>
               {/if}
@@ -230,13 +257,17 @@
             {@const Icon = button.icon}
             <Icon size={button.iconSize || 18} />
             {#if button.badgeCount > 0}
-              <span class="absolute {isMobile ? '-top-2 -left-2' : '-top-3 -left-3'} w-4 h- z-20 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10">
+              <span
+                class="absolute {isMobile
+                  ? '-top-2 -left-2'
+                  : '-top-3 -left-3'} w-4 h- z-20 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10"
+              >
                 {button.badgeCount}
               </span>
             {/if}
           {/if}
         </div>
-        
+
         {#if button.label && !isMobile}
           <span>{button.loading ? undefined : button.label}</span>
         {/if}
@@ -248,7 +279,7 @@
 <WalletSidebar
   isOpen={showWalletSidebar}
   activeTab={walletSidebarActiveTab}
-  onClose={() => showWalletSidebar = false}
+  onClose={() => (showWalletSidebar = false)}
 />
 
 <style scoped lang="postcss">
@@ -290,8 +321,10 @@
     border-top-color: currentColor;
     animation: spin 1s linear infinite;
   }
-  
+
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
-</style> 
+</style>

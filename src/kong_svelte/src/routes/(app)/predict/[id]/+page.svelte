@@ -354,7 +354,7 @@
   />
   <meta
     property="og:image"
-    content="https://kongswap.io/images/predictionmarket-og.png"
+    content="https://kongswap.io/images/predictionmarket-og.jpg"
   />
   <meta
     property="og:url"

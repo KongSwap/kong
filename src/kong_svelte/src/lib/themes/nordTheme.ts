@@ -76,7 +76,7 @@ export const nordTheme: ThemeDefinition = {
     fontFamily: "'Inter', 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     
     // UI settings
-    panelRoundness: 'rounded-md', // Slightly less rounded corners for Nord's minimalist style
+    panelRoundness: 'md', // Slightly less rounded corners for Nord's minimalist style
     swapPanelRoundness: 'rounded-lg', // Slightly more rounded for swap panels
     swapPanelBorder: '1px solid #4C566A', // Nord's border color
     swapPanelShadow: 'shadow-sm',
@@ -119,7 +119,7 @@ export const nordTheme: ThemeDefinition = {
     swapButtonReadyGlowStart: '#A3BE8C', // nord14 - Aurora green
     swapButtonReadyGlowEnd: '#97B67E',   // Darker green
     swapButtonTextColor: '#ECEFF4', // nord0 - Dark text for contrast
-    swapButtonRoundness: 'rounded-md', // Matching panel roundness
+    swapButtonRoundness: 'rounded-full', // Matching panel roundness
     swapButtonShadow: '0 4px 12px rgba(46, 52, 64, 0.2)', // nord0 with transparency
     
     // Background configuration

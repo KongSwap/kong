@@ -8,7 +8,7 @@
   import { tick } from "svelte";
   import { X } from "lucide-svelte";
   import { modalStack } from "$lib/stores/modalStore";
-  import { transparentPanel } from "$lib/stores/derivedThemeStore";
+  import { transparentPanel, panelRoundness } from "$lib/stores/derivedThemeStore";
 
   // Props
   let {
@@ -250,7 +250,7 @@
         <Panel
           width="100%"
           height={modalHeight}
-          className="flex flex-col overflow-hidden {className} {isPadded ? 'px-4' : ''}"
+          className="flex flex-col overflow-hidden !rounded-{$panelRoundness} {className} {isPadded ? 'px-4' : ''}"
         >
           <div
             class="modal-content flex flex-col overflow-hidden"

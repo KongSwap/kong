@@ -48,7 +48,7 @@ export const dragginzTheme: ThemeDefinition = {
     fontFamily: "'Caudex', 'Almendra', 'Exo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     
     // UI settings - more rounded panels for a softer fantasy feel
-    panelRoundness: 'rounded',
+    panelRoundness: 'md',
     swapPanelRoundness: 'rounded',
     swapPanelBorder: '1px solid rgba(255, 255, 255, 0.2)',
     swapPanelShadow: 'shadow-sm',
@@ -153,6 +153,6 @@ export const dragginzTheme: ThemeDefinition = {
     parallaxStrength: 0, // Slightly reduced for subtlety
     enableNebula: false,
     enableStars: true,
-    starsOpacity: 0.6
+    starsOpacity: 0.4
   }
 }; 

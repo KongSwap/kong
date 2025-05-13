@@ -30,6 +30,7 @@
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { fetchPoolTotals } from "$lib/api/pools";
   import { themeStore } from "$lib/stores/themeStore";
+  import { panelRoundness } from "$lib/stores/derivedThemeStore";
 
   // Constants
   const ITEMS_PER_PAGE = 100;
@@ -489,7 +490,7 @@
             {/if}
           </div>
         {:else}
-          <div class="flex-1 rounded-lg h-full overflow-auto {isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-1rem)]'}">
+          <div class="flex-1 rounded-{$panelRoundness} h-full overflow-auto {isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-1rem)]'}">
             {#if !isMobile}
               <DataTable
                 data={$filteredTokens}

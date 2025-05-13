@@ -249,6 +249,11 @@ type SortOption = variant {
   TotalPool : SortDirection;
   CreatedAt : SortDirection;
 };
+type StatsResult = record {
+  total_bets : nat;
+  total_active_markets : nat;
+  total_markets : nat;
+};
 type TimeWeightPoint = record {
   weight : float64;
   absolute_time : nat;
@@ -309,6 +314,7 @@ service : () -> {
   get_markets_by_status : (GetMarketsByStatusArgs) -> (
       GetMarketsByStatusResult,
     ) query;
+  get_stats : () -> (StatsResult) query;
   get_supported_tokens : () -> (vec TokenInfo) query;
   get_token_fee_percentage : (text) -> (opt nat64) query;
   get_transactions_by_market : (nat) -> (

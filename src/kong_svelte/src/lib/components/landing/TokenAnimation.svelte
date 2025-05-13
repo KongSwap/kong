@@ -83,7 +83,7 @@
     const textureLoader = new THREE.TextureLoader();
     
     // First try with a texture that has a transparent background to show the logo clearly
-    const kongTexture = textureLoader.load('/titles/kong_logo.png', 
+    const kongTexture = textureLoader.load('/images/kong_logo.png', 
       // onLoad callback
       (texture) => {
         console.log("Texture loaded successfully");

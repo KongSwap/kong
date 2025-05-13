@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { formatUsdValue } from '$lib/utils/tokenFormatters';
   import { fade } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatToNonZeroDecimal, formatLargeNumber, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
+  import { formatToNonZeroDecimal, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { livePools } from "$lib/stores/poolStore";
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
 
@@ -26,14 +27,13 @@
   function calculateEarnings(timeframe: number): string {
     // Use APY from the actual pool
     if (!actualPool?.rolling_24h_apy || !pool.usd_balance) {
-      return "0";
+      return "$0.00";
     }
 
     // Convert APY to daily rate and calculate linear projection
     const apyDecimal = Number(actualPool.rolling_24h_apy) / 100; // Ensure it's a number
     const dailyRate = apyDecimal / 365;
     const earnings = parseFloat(pool.usd_balance) * dailyRate * timeframe;
-
     return formatToNonZeroDecimal(earnings);
   }
 </script>
@@ -62,7 +62,7 @@
       <div class="stat-item">
         <span class="stat-label">LP Tokens</span>
         <span class="stat-value highlight truncate" title={formatToNonZeroDecimal(pool.balance)}>
-          {formatLargeNumber(pool.balance)}
+          {formatToNonZeroDecimal(pool.balance)}
         </span>
       </div>
     </div>
@@ -108,7 +108,7 @@
       {#each [{ label: "Daily", days: 1 }, { label: "Weekly", days: 7 }, { label: "Monthly", days: 30 }, { label: "Yearly", days: 365 }] as period}
         <div class="earnings-card">
           <span class="earnings-value truncate" title={calculateEarnings(period.days)}>
-            ${formatLargeNumber(calculateEarnings(period.days))}
+            {formatUsdValue(calculateEarnings(period.days))}
           </span>
           <span class="earnings-label">{period.label}</span>
         </div>

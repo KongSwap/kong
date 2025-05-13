@@ -201,6 +201,11 @@ export const idlFactory = ({ IDL }) => {
     'total_expired_unresolved' : IDL.Nat,
     'markets_by_status' : MarketsByStatus,
   });
+  const StatsResult = IDL.Record({
+    'total_bets' : IDL.Nat,
+    'total_active_markets' : IDL.Nat,
+    'total_markets' : IDL.Nat,
+  });
   const UserBetInfo = IDL.Record({
     'outcome_text' : IDL.Text,
     'bet_amount' : IDL.Nat,
@@ -375,6 +380,7 @@ export const idlFactory = ({ IDL }) => {
         [GetMarketsByStatusResult],
         ['query'],
       ),
+    'get_stats' : IDL.Func([], [StatsResult], ['query']),
     'get_supported_tokens' : IDL.Func([], [IDL.Vec(TokenInfo)], ['query']),
     'get_token_fee_percentage' : IDL.Func(
         [IDL.Text],

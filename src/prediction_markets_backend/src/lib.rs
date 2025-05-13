@@ -66,6 +66,7 @@ pub mod utils;
 
 // Re-export common types for convenience
 pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount, TokenIdentifier};
+pub use market::get_stats::StatsResult;
 
 // Constants
 // const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister

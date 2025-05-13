@@ -28,7 +28,7 @@ const routeMetadata = {
   '/predict': {
     title: 'Prediction Markets - KongSwap',
     description: 'Trade on prediction markets with KongSwap',
-    image: 'https://kongswap.io/images/predictionmarket-og.png'
+    image: 'https://kongswap.io/images/predictionmarket-og.jpg'
   }
   // Add more routes as needed
 };

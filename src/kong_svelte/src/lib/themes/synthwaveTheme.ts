@@ -56,7 +56,7 @@ export const synthwaveTheme: ThemeDefinition = {
     fontFamily: "'Major Mono Display', 'Share Tech Mono', 'Space Mono', 'IBM Plex Mono', monospace",
     
     // UI settings
-    panelRoundness: 'rounded-md', // Less rounded corners
+    panelRoundness: 'md', // Less rounded corners
     swapPanelRoundness: 'rounded-lg', // Slightly more rounded for swap panels
     swapPanelBorder: '1px solid rgba(255, 54, 171, 0.3)', // Pink border
     swapPanelShadow: 'shadow', // Pink/purple glow
@@ -125,6 +125,6 @@ export const synthwaveTheme: ThemeDefinition = {
     enableNebula: true,      // Enable nebula effect
     enableStars: true,       // Enable stars
     nebulaOpacity: 0.4,      // Subtle nebula
-    starsOpacity: 0.7        // Visible stars
+    starsOpacity: 0.4       // Visible stars
   }
 }; 
