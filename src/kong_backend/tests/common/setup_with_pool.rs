@@ -4,10 +4,7 @@ use candid::{decode_one, encode_one, Nat, Principal};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
 
-use super::icrc1_ledger::{
-    create_icrc1_ledger, create_icrc1_ledger_with_id, ArchiveOptions, FeatureFlags, InitArgs,
-    LedgerArg,
-};
+use super::icrc1_ledger::{create_icrc1_ledger, create_icrc1_ledger_with_id, ArchiveOptions, FeatureFlags, InitArgs, LedgerArg};
 use super::identity::{get_identity_from_pem_file, get_new_identity};
 use super::setup::{setup_ic_environment, CONTROLLER_PEM_FILE};
 
@@ -16,8 +13,8 @@ use kong_backend::add_pool::add_pool_args::AddPoolArgs;
 use kong_backend::add_pool::add_pool_reply::AddPoolReply;
 use kong_backend::add_token::add_token_args::AddTokenArgs;
 use kong_backend::add_token::add_token_reply::AddTokenReply;
-use kong_backend::stable_transfer::tx_id::TxId;
 use kong_backend::pools::pools_reply::PoolReply;
+use kong_backend::stable_transfer::tx_id::TxId;
 
 // --- Constants needed for setup ---
 pub const TOKEN_A_SYMBOL: &str = "SWPA"; // Swap Test Token A
@@ -65,7 +62,7 @@ pub struct SwapTestSetup {
 }
 
 // --- Test Setup Function ---
-pub fn setup_swap_test_environment() -> Result<SwapTestSetup, anyhow::Error> {
+pub fn setup_swap_test_environment() -> Result<SwapTestSetup> {
     // --- Phase 1: Setup Environment, Identities, Ledgers ---
     let (ic, kong_backend) = setup_ic_environment()?;
 
@@ -73,7 +70,9 @@ pub fn setup_swap_test_environment() -> Result<SwapTestSetup, anyhow::Error> {
     println!("Kong backend: {}", readable_kong_backend);
 
     let controller_identity = get_identity_from_pem_file(CONTROLLER_PEM_FILE)?;
-    let controller_principal = controller_identity.sender().map_err(anyhow::Error::msg)
+    let controller_principal = controller_identity
+        .sender()
+        .map_err(anyhow::Error::msg)
         .context("Failed to get controller principal")?;
     let controller_account = Account {
         owner: controller_principal,
@@ -81,7 +80,9 @@ pub fn setup_swap_test_environment() -> Result<SwapTestSetup, anyhow::Error> {
     };
 
     let user_identity = get_new_identity()?;
-    let user_principal = user_identity.sender().map_err(anyhow::Error::msg)
+    let user_principal = user_identity
+        .sender()
+        .map_err(anyhow::Error::msg)
         .context("Failed to get user principal")?;
     let user_account = Account {
         owner: user_principal,
@@ -190,14 +191,8 @@ pub fn setup_swap_test_environment() -> Result<SwapTestSetup, anyhow::Error> {
     let total_mint_amount_b = Nat::from(base_liquidity_b + base_direct_swap_b) + total_fees_b.clone();
 
     println!("\n--- Minting Tokens ---");
-    println!(
-        "  Minting {} of Token A ({}) to User",
-        total_mint_amount_a, TOKEN_A_SYMBOL
-    );
-    println!(
-        "  Minting {} of Token B ({}) to User",
-        total_mint_amount_b, TOKEN_B_SYMBOL_ICP
-    );
+    println!("  Minting {} of Token A ({}) to User", total_mint_amount_a, TOKEN_A_SYMBOL);
+    println!("  Minting {} of Token B ({}) to User", total_mint_amount_b, TOKEN_B_SYMBOL_ICP);
 
     // Mint Token A
     let transfer_args_a = TransferArg {
@@ -331,8 +326,7 @@ pub fn setup_swap_test_environment() -> Result<SwapTestSetup, anyhow::Error> {
         )
         .map_err(anyhow::Error::msg) // Map PocketIc error
         .context("Failed to call 'pools' query")?;
-    let pools_result = decode_one::<Result<Vec<PoolReply>, String>>(&pools_response_bytes)
-        .expect("Failed to decode 'pools' response");
+    let pools_result = decode_one::<Result<Vec<PoolReply>, String>>(&pools_response_bytes).expect("Failed to decode 'pools' response");
     assert!(pools_result.is_ok(), "Querying pools failed: {:?}", pools_result);
     assert!(
         !pools_result.unwrap().is_empty(),
@@ -346,22 +340,10 @@ pub fn setup_swap_test_environment() -> Result<SwapTestSetup, anyhow::Error> {
     let initial_kong_balance_b = get_icrc1_balance_internal(&ic, token_b_ledger_id, kong_account);
 
     println!("\n--- Balances AFTER Initial Setup & Add Pool ---");
-    println!(
-        "  User Balance A ({}): {}",
-        TOKEN_A_SYMBOL, initial_user_balance_a
-    );
-    println!(
-        "  User Balance B ({}): {}",
-        TOKEN_B_SYMBOL_ICP, initial_user_balance_b
-    );
-    println!(
-        "  Kong Balance A ({}): {}",
-        TOKEN_A_SYMBOL, initial_kong_balance_a
-    );
-    println!(
-        "  Kong Balance B ({}): {}",
-        TOKEN_B_SYMBOL_ICP, initial_kong_balance_b
-    );
+    println!("  User Balance A ({}): {}", TOKEN_A_SYMBOL, initial_user_balance_a);
+    println!("  User Balance B ({}): {}", TOKEN_B_SYMBOL_ICP, initial_user_balance_b);
+    println!("  Kong Balance A ({}): {}", TOKEN_A_SYMBOL, initial_kong_balance_a);
+    println!("  Kong Balance B ({}): {}", TOKEN_B_SYMBOL_ICP, initial_kong_balance_b);
 
     // Verify Kong balances are the liquidity amounts
     assert_eq!(initial_kong_balance_a, liquidity_amount_a, "Kong balance A after add_pool setup");

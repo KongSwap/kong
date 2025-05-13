@@ -128,7 +128,7 @@ fn test_add_token_as_controller() {
         // This case should ideally not be reached if the find logic and token setup are correct
         // and we only add IC tokens in this test.
         panic!("Expected TokensReply::IC variant after finding token, but found something else.");
-    };
+    }; 
 
     assert_eq!(ic_token_data.symbol, TOKEN_SYMBOL);
     assert_eq!(ic_token_data.name, TOKEN_NAME);

@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use candid::Principal;
 use ic_management_canister_types::CanisterSettings; // This is the correct Settings type
 use pocket_ic::PocketIc;
@@ -10,12 +11,14 @@ pub fn create_canister(ic: &PocketIc, controller: &Option<Principal>, settings: 
 }
 
 /// Creates a canister with a specified ID and controller using PocketIc's create_canister_with_id.
-pub fn create_canister_at_id(
+pub fn create_canister_with_id(
     ic: &PocketIc,
-    id_to_create: Principal,
+    canister_id: Principal,
     controller: Principal, // The controller for the new canister
-) -> Result<Principal, String> { // Returns Result as per PocketIc API
-    let settings = CanisterSettings { // Using ic_management_canister_types::CanisterSettings
+) -> Result<Principal> {
+    // Returns Result as per PocketIc API
+    let settings = CanisterSettings {
+        // Using ic_management_canister_types::CanisterSettings
         controllers: Some(vec![controller]),
         compute_allocation: None,
         memory_allocation: None,
@@ -28,11 +31,11 @@ pub fn create_canister_at_id(
 
     // Call PocketIc's 3-argument create_canister_with_id method.
     // Using `Some(controller)` as the sender for this operation.
-    match ic.create_canister_with_id(Some(controller), Some(settings), id_to_create) {
+    match ic.create_canister_with_id(Some(controller), Some(settings), canister_id) {
         Ok(canister_id) => {
             ic.add_cycles(canister_id, 10_000_000_000_000); // Add default cycles
             Ok(canister_id)
         }
-        Err(e) => Err(e), // e is already a String error message
+        Err(e) => Err(anyhow!(e)),
     }
 }

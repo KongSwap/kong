@@ -1,9 +1,8 @@
-use candid::{CandidType, Nat};
+use candid::Nat;
 use ic_ledger_types::{query_blocks, AccountIdentifier, Block, GetBlocksArgs, Operation, Subaccount, Tokens};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::allowance::{Allowance, AllowanceArgs};
 use icrc_ledger_types::icrc3::transactions::{GetTransactionsRequest, GetTransactionsResponse};
-use serde::{Deserialize, Serialize};
 
 use super::icrc3::{self, VerificationError as ICRC3VerificationError};
 use super::wumbo::Transaction1;
@@ -29,12 +28,6 @@ pub enum TransactionType {
     Approve,
     Transfer,
     TransferFrom,
-}
-
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-struct TaggrGetBlocksArgs {
-    pub start: u64,
-    pub length: u64,
 }
 
 /// Verifies a transfer by checking the ledger.
@@ -232,8 +225,8 @@ async fn attempt_icrc3_verification(token: &StableToken, block_id: &Nat, amount:
     )
     .await
     {
-        Ok(()) => return Ok(()),                                   // Verified successfully with ICRC3 get_blocks
-        Err(ICRC3VerificationError::Hard(msg)) => return Err(msg), // Hard error, no need to continue
+        Ok(()) => Ok(()),                                   // Verified successfully with ICRC3 get_blocks
+        Err(ICRC3VerificationError::Hard(msg)) => Err(msg), // Hard error, no need to continue
         Err(ICRC3VerificationError::Soft(_)) => {
             // Fallback to generic get_transactions for this ICRC3 token
             match icrc3::attempt_generic_get_transactions_verification(
