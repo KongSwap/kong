@@ -47,8 +47,8 @@ export const midnightTheme: ThemeDefinition = {
     fontFamily: "'IBM Plex Mono', monospace",
     
     // UI settings
-    panelRoundness: 'none', // Sharp corners for the brutalist plain-black theme
-    swapPanelRoundness: 'rounded-none', // No rounded corners for brutalist style
+    panelRoundness: 'rounded', // Sharp corners for the brutalist plain-black theme
+    swapPanelRoundness: 'rounded', // No rounded corners for brutalist style
     swapPanelBorder: '2px solid rgba(255, 255, 255, 0.3)', // Bright border for contrast
     swapPanelShadow: 'shadow-none', // No shadow for brutalist style
     swapPanelInputsRounded: false, // Sharp corners for all elements
@@ -81,13 +81,13 @@ export const midnightTheme: ThemeDefinition = {
     swapButtonErrorGradientEnd: '#EB3737',     // Darker red
     swapButtonProcessingGradientStart: '#6F5DFB', // Vibrant purple
     swapButtonProcessingGradientEnd: '#5B49D5',   // Darker purple
-    swapButtonBorderColor: 'rgba(255, 255, 255, 0.5)', // White border for high contrast
+    swapButtonBorderColor: 'rgba(255, 255, 255, 0.1)', // White border for high contrast
     swapButtonGlowColor: 'rgba(0, 149, 235, 0.6)',  // Blue glow
     swapButtonShineColor: 'rgba(255, 255, 255, 0.3)', // White shine
     swapButtonReadyGlowStart: '#05EC86', // Vibrant green
     swapButtonReadyGlowEnd: '#04CE75',   // Darker green
     swapButtonTextColor: '#FFFFFF', // White text
-    swapButtonRoundness: 'rounded-none', // Sharp corners
+    swapButtonRoundness: 'rounded-full', // Sharp corners
     swapButtonShadow: 'none', // No shadow
     
     // Background configuration

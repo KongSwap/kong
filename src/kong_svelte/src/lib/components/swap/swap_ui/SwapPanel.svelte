@@ -394,6 +394,7 @@
   width="auto"
   type="main"
   className="w-full max-w-2xl !p-4 !h-full !{$swapPanelRoundness}"
+  roundness={$swapPanelRoundness}
   shadow={$swapPanelShadow}
   isSwapPanel={true}
 >
@@ -411,11 +412,11 @@
           {#if panelType === "pay"}
             <!-- OnRamp Button -->
             <button
-              class="onramp-button rounded-{$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1.5 sm:px-3"
+              class="onramp-button {$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1.5 sm:px-3"
               on:click={(e) => {
                 e.preventDefault();
                 window.open("https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp", '_blank', 'width=500,height=650');
-              }}
+            }}
             >
               Buy ICP with Fiat
             </button>
@@ -423,7 +424,7 @@
           {#if showPrice && $animatedSlippage > 0}
              <!-- Price Impact Display -->
             <div
-              class="flex items-center gap-1.5 bg-white/10 p-1 rounded-{$panelRoundness}"
+              class="flex items-center gap-1.5 bg-white/10 p-1 {$panelRoundness}"
               title="Price Impact"
             >
               <span
@@ -444,7 +445,7 @@
     </header>
 
     <div class="relative flex-grow mb-[-1px] h-[68px]">
-      <div class="flex items-center gap-1 h-[69%] box-border rounded-{$panelRoundness}">
+      <div class="flex items-center gap-1 h-[69%] box-border {$panelRoundness}">
         <div class="relative flex-1">
           {#if isLoading && panelType === "receive"}
             <!-- Loading Dots -->
@@ -474,7 +475,7 @@
         <div class="relative">
           <!-- Token Selector Button -->
           <button
-            class="flex items-center justify-between bg-white/5 p-2 border border-white/10 transition-colors duration-150 gap-2 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 w-full"
+            class="flex items-center {$panelRoundness} justify-between bg-white/5 p-2 border border-white/10 transition-colors duration-150 gap-2 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 w-full"
             on:click|stopPropagation={handleTokenSelect}
           >
             {#if token}

@@ -628,7 +628,7 @@
       // For existing pools with non-zero balance, re-calculate expected token1 amount based on token0 input
       if (poolExists === true && !hasZeroBalance(pool)) {
         const result = await calculateLiquidityAmounts(token0.symbol, amount0, token1.symbol);
-        if (!result.Ok) throw new Error(result.Err || "Failed to calculate liquidity amounts");
+        if ('Err' in result) throw new Error(result.Err || "Failed to calculate liquidity amounts");
         
         const calculatedAmount1 = toBigNumber(result.Ok.amount_1)
             .div(new BigNumber(10).pow(token1.decimals));

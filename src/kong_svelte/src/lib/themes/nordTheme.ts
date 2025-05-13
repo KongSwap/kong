@@ -76,7 +76,7 @@ export const nordTheme: ThemeDefinition = {
     fontFamily: "'Inter', 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     
     // UI settings
-    panelRoundness: 'md', // Slightly less rounded corners for Nord's minimalist style
+    panelRoundness: 'rounded-md', // Slightly less rounded corners for Nord's minimalist style
     swapPanelRoundness: 'rounded-lg', // Slightly more rounded for swap panels
     swapPanelBorder: '1px solid #4C566A', // Nord's border color
     swapPanelShadow: 'shadow-sm',

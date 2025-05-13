@@ -490,7 +490,7 @@
             {/if}
           </div>
         {:else}
-          <div class="flex-1 rounded-{$panelRoundness} h-full overflow-auto {isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-1rem)]'}">
+          <div class="flex-1 {$panelRoundness} h-full overflow-auto {isMobile ? 'h-[calc(100vh-8rem)]' : 'h-[calc(100vh-1rem)]'}">
             {#if !isMobile}
               <DataTable
                 data={$filteredTokens}

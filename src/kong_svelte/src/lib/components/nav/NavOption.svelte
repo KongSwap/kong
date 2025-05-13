@@ -56,16 +56,16 @@
   </button>
   
   {#if activeDropdown === label.toLowerCase()}
-    <div class="absolute top-full left-[-20px] min-w-[500px] p-3 bg-kong-bg-dark border border-kong-border rounded-{$panelRoundness} shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
+    <div class="absolute top-full left-[-20px] min-w-[500px] p-3 bg-kong-bg-dark border border-kong-border {$panelRoundness} shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
       <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">{label} OPTIONS</div>
       {#each options as option}
         <button
-          class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-{$panelRoundness} overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
+          class="w-full grid grid-cols-[80px_1fr] items-center text-left relative {$panelRoundness} overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
           class:active={$page.url.pathname === option.path}
           on:click={() => handleOptionClick(option)}
           class:disabled={option.comingSoon}
         >
-          <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-{$panelRoundness} bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
+          <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center {$panelRoundness} bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
             <svelte:component this={option.icon} size={20} />
           </div>
           <div class="flex flex-col gap-1 pt-0.5">

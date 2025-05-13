@@ -34,9 +34,10 @@
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
-  import { getAccountIds, getPrincipalString } from "$lib/utils/accountUtils";
+  import { getAccountIds } from "$lib/utils/accountUtils";
   import { isAuthenticating } from "$lib/stores/auth";
   import NavPanel from "./NavPanel.svelte";
+  import { logoPath } from "$lib/stores/derivedThemeStore";
 
   let isClaiming = $state(false);
 
@@ -48,17 +49,8 @@
      $themeStore.includes('light') ||
      $themeStore === 'microswap'));
   
-  // Define logo paths - use theme logoPath if set, otherwise use defaults
-  const defaultLogoPath = "/images/kongface-white.svg";
-  const defaultMobileLogoPath = "/images/logo-white-wide.webp";
-  
-  // Get theme logo path if available
-  const themeLogoPath = $derived(browser ? getThemeById($themeStore)?.colors?.logoPath : null);
-  
   // Use theme logo path if available, otherwise use defaults
-  const logoPath = $derived(themeLogoPath || defaultLogoPath);
-  const mobileLogoPath = $derived(themeLogoPath || defaultMobileLogoPath);
-
+  const mobileLogoPath = $logoPath;
 
   // No longer need logoSrc as we'll use the single path directly
   // and apply CSS inversion when needed via the light-logo class
@@ -374,9 +366,9 @@
           class="flex items-center hover:opacity-90 transition-opacity"
           onclick={() => goto("/swap")}
         >
-          {#key logoPath}
+          {#key $logoPath}
             <img
-              src={logoPath}
+              src={$logoPath}
               alt="Kong Logo"
               class="h-[36px] max-w-full inline-block"
               class:light-logo={isLightTheme}

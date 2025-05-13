@@ -63,10 +63,10 @@
   // Compute button classes
   let buttonClass = $derived(
     variant === "primary" 
-      ? `h-[34px] px-2.5 flex items-center gap-1.5 $rounded-{$panelRoundness} text-xs font-semibold text-kong-text-primary/95 bg-kong-primary/40 border border-kong-primary/80 transition-all duration-150 hover:bg-kong-primary/60 hover:border-kong-primary/90`
+      ? `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-semibold text-kong-text-primary/95 bg-kong-primary/40 border border-kong-primary/80 transition-all duration-150 hover:bg-kong-primary/60 hover:border-kong-primary/90`
       : variant === "mobile"
-      ? `h-[34px] w-[34px] flex items-center justify-center $rounded-{$panelRoundness} text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40`
-      : `h-[34px] px-2.5 flex items-center gap-1.5 $rounded-{$panelRoundness} text-xs font-medium text-kong-text-secondary bg-kong-bg-dark border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-bg-light hover:border-kong-border-light`
+      ? `h-[34px] w-[34px] flex items-center justify-center ${$panelRoundness} text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40`
+      : `h-[34px] px-2.5 flex items-center gap-1.5 ${$panelRoundness} text-xs font-medium text-kong-text-secondary bg-kong-bg-dark border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-bg-light hover:border-kong-border-light`
   );
 
   // Selected and disabled classes
@@ -75,7 +75,7 @@
 </script>
 
 <button
-  class="{buttonClass} {className} {isSelected ? selectedClass : ''} {disabled ? disabledClass : ''} rounded-{$panelRoundness}"
+  class="{buttonClass} {className} {isSelected ? selectedClass : ''} {disabled ? disabledClass : ''} {$panelRoundness}"
   class:use-theme-border={useThemeBorder}
   class:has-custom-style={hasCustomStyle}
   class:use-theme-variables={useThemeVariables}

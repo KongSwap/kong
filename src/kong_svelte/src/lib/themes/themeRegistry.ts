@@ -204,6 +204,10 @@ export function generateThemeVariables(theme: ThemeDefinition): string {
   if (colors.fontFamily) {
     css += `--font-family: ${colors.fontFamily};\n`;
   }
+
+  // Panel roundness
+  css += `--panel-roundness: ${colors.panelRoundness};\n`;
+  css += `--swap-panel-roundness: ${colors.swapPanelRoundness};\n`;
   
   // Color scheme
   css += `color-scheme: ${theme.colorScheme};\n`;

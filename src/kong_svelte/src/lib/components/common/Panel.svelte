@@ -3,7 +3,7 @@
   import { fade, slide, type TransitionConfig } from 'svelte/transition';
   import { themeStore } from '../../stores/themeStore';
   import { getThemeById } from '../../themes/themeRegistry';
-  import { panelRoundness, transparentPanel } from '../../stores/derivedThemeStore';
+  import {panelRoundness, transparentPanel } from '../../stores/derivedThemeStore';
 
   let {
     variant = transparentPanel ? "transparent" : "solid",
@@ -20,7 +20,7 @@
     isSidebar = false,
     interactive = false,
     shadow = "shadow-none",
-    
+    roundness,
     // Transition props
     transition = null,
     transitionParams = {},
@@ -35,6 +35,7 @@
     className?: string;
     zIndex?: number;
     unpadded?: boolean;
+    roundness?: string;
     animated?: boolean;
     isSwapPanel?: boolean;
     shadow?: string;
@@ -44,6 +45,9 @@
     transitionParams?: TransitionConfig;
     children?: () => any;
   }>();
+
+  // Make roundness reactive to theme changes
+  let effectiveRoundness = $derived(roundness ?? $panelRoundness);
 
   // Default transition parameters
   const defaultSlideParams = { duration: 300, delay: 200, axis: 'x' };
@@ -70,7 +74,7 @@
 
 {#if transition === 'slide'}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} rounded-{$panelRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} !{effectiveRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:slide={params}
     on:click
@@ -84,7 +88,7 @@
   </div>
 {:else if transition === 'fade'}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} rounded-{$panelRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} !{effectiveRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:fade={params}
     on:click
@@ -98,7 +102,7 @@
   </div>
 {:else}
   <div 
-    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} rounded-{$panelRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
+    class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} !{effectiveRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     on:click
     on:keydown
@@ -122,12 +126,12 @@
 
 /* Base solid panel styling - uses theme variables */
 .panel.solid {
-  @apply bg-kong-bg-dark border border-kong-border;
+  @apply bg-kong-bg-dark border border-kong-border/70;
 }
 
 /* Main panel styling - slightly different for primary panels */
 .panel.solid.main {
-  @apply border-kong-border;
+  @apply border-kong-border/70;
 }
 
 /* Sidebar panel specific style */

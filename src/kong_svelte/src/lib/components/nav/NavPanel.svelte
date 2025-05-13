@@ -221,7 +221,7 @@
 <div
   class="flex items-center overflow-visible {isMobile
     ? ''
-    : 'bg-kong-bg-dark/50 border border-kong-border/50'} rounded-{$panelRoundness} overflow-hidden"
+    : 'bg-kong-bg-dark/50 border border-kong-border/50'} {$panelRoundness} overflow-hidden"
 >
   {#each buttons as button, i}
     {#if button.show !== false}

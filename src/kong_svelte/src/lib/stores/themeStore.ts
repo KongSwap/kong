@@ -131,6 +131,7 @@ function createThemeStore() {
        ${theme.colors.swapButtonTextColor ? `--swap-button-text-color: ${theme.colors.swapButtonTextColor};` : ''}
        ${theme.colors.swapButtonRoundness ? `--swap-button-roundness: ${theme.colors.swapButtonRoundness};` : ''}
        ${theme.colors.swapButtonShadow ? `--swap-button-shadow: ${theme.colors.swapButtonShadow};` : ''}
+       ${theme.colors.swapPanelRoundness ? `--swap-panel-roundness: ${theme.colors.swapPanelRoundness};` : ''}
       `
     );
   }

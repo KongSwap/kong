@@ -56,7 +56,7 @@ export const synthwaveTheme: ThemeDefinition = {
     fontFamily: "'Major Mono Display', 'Share Tech Mono', 'Space Mono', 'IBM Plex Mono', monospace",
     
     // UI settings
-    panelRoundness: 'md', // Less rounded corners
+    panelRoundness: 'rounded-md', // Less rounded corners
     swapPanelRoundness: 'rounded-lg', // Slightly more rounded for swap panels
     swapPanelBorder: '1px solid rgba(255, 54, 171, 0.3)', // Pink border
     swapPanelShadow: 'shadow', // Pink/purple glow

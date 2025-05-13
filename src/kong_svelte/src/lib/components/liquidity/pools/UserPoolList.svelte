@@ -18,6 +18,7 @@
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { livePools } from "$lib/stores/poolStore";
   import { auth } from "$lib/stores/auth";
+    import { goto } from "$app/navigation";
 
   export let searchQuery = "";
 
@@ -193,10 +194,12 @@
         <p class="text-sm text-kong-text-primary/60 max-w-md">
           Add liquidity to a pool to start earning fees
         </p>
-        <a href="/pools/add" class="mt-4 flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-kong-primary text-white font-medium hover:bg-kong-primary-hover transition-all duration-200">
+        <button on:click={() => {
+          goto("/pools/add");
+        }} class="mt-4 flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-kong-primary text-white font-medium hover:bg-kong-primary-hover transition-all duration-200">
           <Plus size={16} />
           <span>Add Liquidity</span>
-        </a>
+        </button>
       {/if}
     </div>
   {:else}

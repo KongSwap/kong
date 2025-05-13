@@ -12,7 +12,7 @@
 
   // Props
   let {
-    isOpen = false,
+    isOpen = $bindable(),
     modalKey = Math.random().toString(36).substr(2, 9),
     title = "",
     variant = transparentPanel ? "transparent" : "solid",
@@ -250,7 +250,7 @@
         <Panel
           width="100%"
           height={modalHeight}
-          className="flex flex-col overflow-hidden !rounded-{$panelRoundness} {className} {isPadded ? 'px-4' : ''}"
+          className="flex flex-col overflow-hidden !{$panelRoundness} {className} {isPadded ? 'px-4' : ''}"
         >
           <div
             class="modal-content flex flex-col overflow-hidden"

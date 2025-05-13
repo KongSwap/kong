@@ -50,7 +50,7 @@ export const lightTheme: ThemeDefinition = {
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     
     // UI settings
-    panelRoundness: 'lg', // Modern rounded corners
+    panelRoundness: 'rounded-lg', // Modern rounded corners
     swapPanelRoundness: 'rounded-xl', // Slightly more rounded for swap panels
     swapPanelBorder: '1px solid rgba(203, 213, 225, 0.5)', // Light border
     swapPanelShadow: 'shadow-sm', // Modern shadow

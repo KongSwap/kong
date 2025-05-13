@@ -1,7 +1,8 @@
 <script>
+  import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-	import "../app.css"
+  import "../app.css";
 </script>
 
 <section class="w-screen h-screen flex items-center justify-center">
@@ -18,13 +19,14 @@
       Please check the URL and try again. If the URL is valid and the problem
       persists, please contact support.
     </p>
-    <a href="/swap">
-      <ButtonV2
-        label="Back to Swap"
-        theme="primary"
-        variant="solid"
-        size="md"
-      />
-    </a>
+    <ButtonV2
+      label="Back to Swap"
+      theme="primary"
+      variant="solid"
+      size="md"
+      on:click={() => {
+        goto("/swap");
+      }}
+    />
   </div>
 </section>

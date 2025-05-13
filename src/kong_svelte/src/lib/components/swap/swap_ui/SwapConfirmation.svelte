@@ -258,7 +258,7 @@
       <button
         class:processing={isLoading}
         class:warning={showPriceImpactWarning}
-        class="swap-confirm-button rounded-{$panelRoundness} relative w-full py-3.5 px-4 border cursor-pointer transform transition-all duration-200 overflow-hidden sm:py-3.5 sm:text-base disabled:opacity-70 disabled:cursor-not-allowed"
+        class="swap-confirm-button {$panelRoundness} relative w-full py-3.5 px-4 border cursor-pointer transform transition-all duration-200 overflow-hidden sm:py-3.5 sm:text-base disabled:opacity-70 disabled:cursor-not-allowed"
         on:click={handleConfirm}
         disabled={isLoading}
       >

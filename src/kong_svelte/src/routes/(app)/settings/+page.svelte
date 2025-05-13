@@ -481,7 +481,7 @@
     <!-- Wrap Slippage and Settings Grid in a new grid container -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <!-- Slippage Section -->
-      <Panel type="main" className="space-y-4">
+      <Panel className="space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="text-kong-text-primary font-medium text-base">Slippage Tolerance</h3>
         </div>

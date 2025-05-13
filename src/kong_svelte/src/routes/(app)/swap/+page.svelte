@@ -7,6 +7,6 @@
   <title>Swap - KongSwap</title>
 </svelte:head>
 
-<section class="w-full p-2 md:p-0 flex justify-center {$themeStore === 'microswap' ? 'mt-8' : ''}">
+<section class="w-full flex flex-col p-2 md:p-0 justify-center {$themeStore === 'microswap' ? 'mt-12' : ''}">
   <Swap />
 </section>

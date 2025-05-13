@@ -40,7 +40,7 @@ export interface ThemeColors {
   fontFamily?: string;
   
   // UI Settings
-  panelRoundness?: "none" | "sm" | "rounded" | "md" | "lg" | "xl" | "2xl" | "3xl" | "full";
+  panelRoundness?: "rounded-none" | "rounded-sm" | "rounded" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | "rounded-3xl" | "rounded-full";
   swapPanelRoundness?: "rounded-none" | "rounded-sm" | "rounded" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | "rounded-3xl" | "rounded-full";
   swapPanelBorder?: string;
   swapPanelShadow?: string;
@@ -220,7 +220,7 @@ export const baseTheme: ThemeDefinition = {
     fontFamily: "'Exo 2', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     
     // UI settings
-    panelRoundness: 'lg', // Default panel roundness
+    panelRoundness: 'rounded-lg', // Default panel roundness
     swapPanelRoundness: 'rounded-xl', // Swap panels are slightly more rounded
     swapPanelBorder: '1px solid rgba(255, 255, 255, 0.1)',
     swapPanelShadow: 'shadow-sm',

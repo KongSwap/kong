@@ -47,7 +47,7 @@ export const microswapTheme: ThemeDefinition = {
     fontFamily: "'Comic Sans MS', 'MS Sans Serif', 'Segoe UI', Arial, sans-serif",
     
     // UI settings
-    panelRoundness: 'none', // Subtle roundness for the Windows 98 look
+    panelRoundness: 'rounded-none', // Subtle roundness for the Windows 98 look
     swapPanelRoundness: 'rounded-none', // No rounded corners for Windows 98 style
     swapPanelBorder: 'none', // Turn off standard border - using shadow for 3D effect
     swapPanelShadow: 'shadow-sm', // Win95 3D border effect

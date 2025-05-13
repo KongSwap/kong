@@ -435,7 +435,7 @@
         className="flex-1 {$isMobile ? '' : '!p-0'}" 
         variant={isTableTransparent() ? "transparent" : "solid"}
       >
-        <div class="overflow-hidden flex flex-col h-full rounded-{$panelRoundness}">
+        <div class="overflow-hidden flex flex-col h-full {$panelRoundness}">
           <!-- Header with full-width search and "My Pools" button -->
           <div class="flex flex-col sticky top-0 z-20 backdrop-blur-md rounded-t-{$panelRoundness}">
             <div class="flex flex-col gap-3 sm:gap-0">
