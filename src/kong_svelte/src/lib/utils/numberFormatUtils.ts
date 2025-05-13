@@ -224,3 +224,17 @@ export function formatVolume(volume: number): string {
 export function formatNumberWithCommas(num: number): string {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
+
+export function calculatePercentageAmount(
+  balance: bigint,
+  percentage: number,
+  token: Kong.Token
+): string {
+  const balanceNumber = new BigNumber(balance.toString());
+  const percentageAmount = balanceNumber
+    .multipliedBy(percentage)
+    .dividedBy(100)
+    .dividedBy(new BigNumber(10).pow(token.decimals))
+    
+  return percentageAmount.minus(token.fee).toFixed(token.decimals);
+}

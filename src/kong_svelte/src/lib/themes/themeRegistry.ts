@@ -167,6 +167,9 @@ export function generateThemeVariables(theme: ThemeDefinition): string {
   if (colors.tokenSelectorBorder) {
     css += `--token-selector-border: ${colors.tokenSelectorBorder};\n`;
   }
+  if (colors.kongBorder) {
+    css += `--kong-border: ${colors.kongBorder};\n`;
+  }
   if (colors.tokenSelectorShadow) {
     css += `--token-selector-shadow: ${colors.tokenSelectorShadow};\n`;
   }

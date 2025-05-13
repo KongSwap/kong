@@ -49,14 +49,14 @@ export const midnightTheme: ThemeDefinition = {
     // UI settings
     panelRoundness: 'rounded', // Sharp corners for the brutalist plain-black theme
     swapPanelRoundness: 'rounded', // No rounded corners for brutalist style
-    swapPanelBorder: '2px solid rgba(255, 255, 255, 0.3)', // Bright border for contrast
+    swapPanelBorder: '2px solid rgba(0, 0, 0, 1)', // Bright border for contrast
     swapPanelShadow: 'shadow-none', // No shadow for brutalist style
     swapPanelInputsRounded: false, // Sharp corners for all elements
     transparentSwapPanel: false,
     transparentPanel: false,
     
     // Borders
-    border: '#333333',
+    border: '#000',
     borderLight: '#232735',
     
     // Surface colors
@@ -92,7 +92,7 @@ export const midnightTheme: ThemeDefinition = {
     
     // Background configuration
     backgroundType: 'solid',
-    backgroundSolid: '#000000', // Pure black background
+    backgroundSolid: '#0f0f0f', // Pure black background
     enableNebula: false,
     enableStars: true,
     starsOpacity: 0.3 // Higher opacity for stars in pure black theme

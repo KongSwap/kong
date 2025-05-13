@@ -200,8 +200,12 @@ function createSwapStore(): SwapStore {
     },
 
     setReceiveAmount(amount: string) {
-      // No-op since receive panel input is disabled
-      return;
+      update(state => ({
+        ...state,
+        receiveAmount: amount,
+        isCalculating: true,
+        error: null
+      }));
     },
 
     setPayToken(token: Kong.Token | null) {

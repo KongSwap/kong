@@ -3,6 +3,7 @@
   import type { ThemeColors } from '$lib/themes/baseTheme';
   import { getThemeById } from '$lib/themes/themeRegistry';
   import { panelRoundness } from '$lib/stores/derivedThemeStore';
+  import { Rocket } from 'lucide-svelte';
 
   // Props
   let { 
@@ -149,14 +150,14 @@
 </script>
 
 <button
-  class="relative w-full py-4 px-6 overflow-hidden transition-all duration-200 ease-out mt-1 border shadow-md min-h-[64px] disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-px hover:shadow-lg hover:border-white/20 active:translate-y-0 active:shadow-md active:duration-100 {getRoundness()}"
+  class="relative w-full px-6 overflow-hidden transition-all duration-200 ease-out border shadow-md min-h-[64px] disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-px hover:shadow-lg hover:border-white/20 active:translate-y-0 active:shadow-md active:duration-100 {getRoundness()}"
   style={isError ? getErrorStyle() : (isProcessing || isLoading) ? getProcessingStyle() : getNormalStyle()}
   class:animate-pulse={isProcessing || isLoading}
   class:shine-animation={showShineAnimation}
   on:click={onClick}
   disabled={disabled || isProcessing}
 >
-  <div class="relative z-10 flex items-center justify-center gap-2 w-full">
+  <div class="relative z-10 flex items-center justify-center gap-1.5 w-full">
     {#if isProcessing || isLoading}
       <div class="w-[22px] h-[22px] rounded-full border-2 border-white/10 border-t-white animate-spin"></div>
     {/if}
@@ -195,10 +196,50 @@
 
   /* Animation utility classes */
   .animate-shine {
-    animation: shine 3s infinite;
+    animation: shine 4.5s infinite;
   }
   
   .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
+    animation: pulse-glow 2.5s ease-in-out infinite;
+  }
+
+  .arrow-right {
+    display: none;
+  }
+
+  @keyframes arrow-move {
+    0%, 100% { transform: rotate(-15deg); }
+    50% { transform: rotate(8deg); }
+  }
+
+  .animate-rocket {
+    animation: arrow-move 2.5s infinite;
+  }
+
+  @keyframes swap-text-bounce-glow {
+    0%, 100% {
+      transform: translateY(0);
+      text-shadow: 0 1px 8px rgba(55, 114, 255, 0.25), 0 1px 1px rgba(0,0,0,0.1);
+    }
+    20% {
+      transform: translateY(-2px) scale(1.04);
+      text-shadow: 0 2px 16px rgba(111, 66, 193, 0.35), 0 1px 1px rgba(0,0,0,0.1);
+    }
+    40% {
+      transform: translateY(1px) scale(0.98);
+      text-shadow: 0 1px 8px rgba(55, 114, 255, 0.25), 0 1px 1px rgba(0,0,0,0.1);
+    }
+    60% {
+      transform: translateY(-1px) scale(1.02);
+      text-shadow: 0 2px 12px rgba(111, 66, 193, 0.25), 0 1px 1px rgba(0,0,0,0.1);
+    }
+    80% {
+      transform: translateY(0.5px) scale(1);
+      text-shadow: 0 1px 8px rgba(55, 114, 255, 0.25), 0 1px 1px rgba(0,0,0,0.1);
+    }
+  }
+  .swap-text-animate {
+    animation: swap-text-bounce-glow 2.2s infinite;
+    will-change: transform, text-shadow;
   }
 </style> 

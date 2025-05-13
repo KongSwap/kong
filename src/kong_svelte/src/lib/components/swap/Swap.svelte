@@ -71,6 +71,7 @@
   let insufficientFunds = $state(false);
   let hasValidPool = $state(false);
   let lastProcessedSearchParams = $state<string | null>(null);
+  let lastEditedPanel: PanelType | null = null;
 
   // Function to calculate optimal dropdown position
   function getDropdownPosition(
@@ -386,66 +387,9 @@
     await handleSwapClick();
   }
 
-
-  async function handleAmountChange(event: CustomEvent) {
-    const { value, panelType } = event.detail;
-
-    if (panelType === "pay") {
-      swapState.setPayAmount(value);
-      await updateSwapQuote();
-    } else {
-      swapState.setReceiveAmount(value);
-    }
-  }
-
-  // Update the handleTokenSelect function to be simpler
-  function handleTokenSelect(panelType: PanelType) {
-    if (panelType === "pay") {
-      swapState.update((s) => ({
-        ...s,
-        showPayTokenSelector: true,
-        error: null,
-      }));
-    } else {
-      swapState.update((s) => ({
-        ...s,
-        showReceiveTokenSelector: true,
-        error: null,
-      }));
-    }
-  }
-
-  // Modify handleReverseTokens to avoid referencing $swapState mid-update
-  async function handleReverseTokens() {
-    if (!isInitialized || $swapState.isProcessing) return;
-
-    const currentPayToken = $swapState.payToken;
-    const currentReceiveToken = $swapState.receiveToken;
-    const tempPayAmount = $swapState.payAmount;
-    const tempReceiveAmount = $swapState.receiveAmount;
-    if (!currentPayToken || !currentReceiveToken) return;
-
-    swapState.update((s) => ({
-      ...s,
-      payToken: currentReceiveToken,
-      receiveToken: currentPayToken,
-      error: null,
-    }));
-
-    await tick();
-    await refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, true);
-
-    // Update amounts and quote
-    if (tempReceiveAmount && tempReceiveAmount !== "0") {
-      swapState.setPayAmount(tempReceiveAmount);
-    } else if (tempPayAmount) {
-      swapState.setPayAmount(tempPayAmount);
-    }
-    await updateSwapQuote();
-  }
-
-  // Add a new state for quote loading
+  // Debounce timeouts for quote functions
   let quoteUpdateTimeout: NodeJS.Timeout;
+  let reverseQuoteTimeout: NodeJS.Timeout;
 
   async function updateSwapQuote() {
     const state = get(swapState);
@@ -521,20 +465,126 @@
     }, 600); // 600ms debounce
   }
 
+  // Add function to calculate pay amount from receive input
+  async function updateReverseQuote() {
+    const state = get(swapState);
+    if (
+      !state.payToken ||
+      !state.receiveToken ||
+      !hasValidPool ||
+      !state.receiveAmount ||
+      state.receiveAmount === "0"
+    ) {
+      swapState.update((s) => ({
+        ...s,
+        payAmount: "",
+        swapSlippage: 0,
+      }));
+      return;
+    }
+
+    if (reverseQuoteTimeout) clearTimeout(reverseQuoteTimeout);
+    isQuoteLoading = true;
+    reverseQuoteTimeout = setTimeout(async () => {
+      try {
+        const currentState = get(swapState);
+        const quote = await SwapService.getSwapQuote(
+          currentState.receiveToken,
+          currentState.payToken,
+          currentState.receiveAmount,
+        );
+        swapState.update((s) => ({
+          ...s,
+          payAmount: quote.receiveAmount,
+          swapSlippage: quote.slippage,
+        }));
+      } catch (error) {
+        console.error("Error getting reverse quote:", error);
+        swapState.update((s) => ({
+          ...s,
+          payAmount: "",
+          swapSlippage: 0,
+          error: "Failed to get reverse quote",
+        }));
+      } finally {
+        isQuoteLoading = false;
+      }
+    }, 600);
+  }
+
+  async function handleAmountChange(event: CustomEvent) {
+    const { value, panelType } = event.detail;
+    lastEditedPanel = panelType;
+
+    if (panelType === "pay") {
+      swapState.setPayAmount(value);
+      await updateSwapQuote();
+    } else {
+      swapState.setReceiveAmount(value);
+      await updateReverseQuote();
+    }
+  }
+
+  // Update the handleTokenSelect function to be simpler
+  function handleTokenSelect(panelType: PanelType) {
+    if (panelType === "pay") {
+      swapState.update((s) => ({
+        ...s,
+        showPayTokenSelector: true,
+        error: null,
+      }));
+    } else {
+      swapState.update((s) => ({
+        ...s,
+        showReceiveTokenSelector: true,
+        error: null,
+      }));
+    }
+  }
+
+  // Modify handleReverseTokens to avoid referencing $swapState mid-update
+  async function handleReverseTokens() {
+    if (!isInitialized || $swapState.isProcessing) return;
+
+    const currentPayToken = $swapState.payToken;
+    const currentReceiveToken = $swapState.receiveToken;
+    const tempPayAmount = $swapState.payAmount;
+    const tempReceiveAmount = $swapState.receiveAmount;
+    if (!currentPayToken || !currentReceiveToken) return;
+
+    swapState.update((s) => ({
+      ...s,
+      payToken: currentReceiveToken,
+      receiveToken: currentPayToken,
+      error: null,
+    }));
+
+    await tick();
+    await refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, true);
+
+    // Update amounts and quote
+    if (tempReceiveAmount && tempReceiveAmount !== "0") {
+      swapState.setPayAmount(tempReceiveAmount);
+    } else if (tempPayAmount) {
+      swapState.setPayAmount(tempPayAmount);
+    }
+    await updateSwapQuote();
+  }
+
   let previousPayAmount = "";
   let previousPayToken = null;
   let previousReceiveToken = null;
 
   $effect(() => {
-    // Only update quote if relevant values have actually changed
+    // Only run forward quote when pay panel was last edited and values changed
     if (
+      lastEditedPanel === 'pay' &&
       $swapState.payToken &&
       $swapState.receiveToken &&
       $swapState.payAmount &&
       ($swapState.payAmount !== previousPayAmount ||
         $swapState.payToken?.address !== previousPayToken?.address ||
-        $swapState.receiveToken?.address !==
-          previousReceiveToken?.address)
+        $swapState.receiveToken?.address !== previousReceiveToken?.address)
     ) {
       previousPayAmount = $swapState.payAmount;
       previousPayToken = $swapState.payToken;
@@ -746,7 +796,3 @@
     />
   </Portal>
 {/if}
-
-<style scoped lang="postcss">
-  /* No animation classes needed here anymore since they're now in the SwapButton component */
-</style>

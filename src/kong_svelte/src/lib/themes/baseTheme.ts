@@ -53,6 +53,7 @@ export interface ThemeColors {
   // Borders
   border: string;
   borderLight: string;
+  kongBorder?: string;
   
   // Surface colors
   surfaceDark: string;

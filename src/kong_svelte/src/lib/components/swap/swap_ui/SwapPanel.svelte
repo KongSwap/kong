@@ -3,22 +3,20 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import {
-    currentUserBalancesStore,
-  } from "$lib/stores/tokenStore";
+  import { currentUserBalancesStore } from "$lib/stores/tokenStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
-  import { 
-    swapPanelRoundness, 
-    swapPanelShadow, 
+  import {
+    swapPanelRoundness,
+    swapPanelShadow,
     transparentSwapPanel,
-    panelRoundness
+    panelRoundness,
   } from "$lib/stores/derivedThemeStore";
-  import { calculateMaxAmount as calculateMaxAmountRawNumber } from "$lib/utils/validators/tokenValidators";
-    
+  import { calculatePercentageAmount } from "$lib/utils/numberFormatUtils";
+
   let {
     title,
     token,
@@ -53,7 +51,9 @@
   // State management using runes
   let inputElement = $state<HTMLInputElement | null>(null);
   let inputFocused = $state(false);
-  let localInputValue = $state(formatWithCommas(formatDisplayValue(amount || "0"))); // Initialize with formatted prop
+  let localInputValue = $state(
+    formatWithCommas(formatDisplayValue(amount || "0")),
+  ); // Initialize with formatted prop
   let previousAmountProp = $state(amount); // Track prop changes
   let isMobile = $state(false);
 
@@ -94,10 +94,10 @@
   function formatWithCommas(value: string): string {
     if (!value) return "0";
     // Allow trailing decimal point for input
-    if (value.endsWith('.')) {
+    if (value.endsWith(".")) {
       const parts = value.slice(0, -1).split(".");
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      return parts.join(".") + '.';
+      return parts.join(".") + ".";
     }
     const parts = value.split(".");
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -120,15 +120,15 @@
     const maxDecimals = getMaxDisplayDecimals();
 
     if (parts.length === 2) {
-       // Truncate for display only, not for the actual state value sent upwards
+      // Truncate for display only, not for the actual state value sent upwards
       if (parts[1].length > maxDecimals) {
-         // Keep full precision internally, but maybe truncate display if needed?
-         // For now, let formatWithCommas handle display formatting.
-         // This function primarily ensures the value structure is reasonable.
-         // Let's just return the value clipped to token decimals for internal consistency before formatting
-         return `${parts[0]}.${parts[1].slice(0, decimals)}`;
+        // Keep full precision internally, but maybe truncate display if needed?
+        // For now, let formatWithCommas handle display formatting.
+        // This function primarily ensures the value structure is reasonable.
+        // Let's just return the value clipped to token decimals for internal consistency before formatting
+        return `${parts[0]}.${parts[1].slice(0, decimals)}`;
       }
-      if (parts[1].length === 0) return parts[0] + '.'; // Keep trailing dot if user typed it
+      if (parts[1].length === 0) return parts[0] + "."; // Keep trailing dot if user typed it
       return parts.join(".");
     }
     return parts[0]; // Return whole number
@@ -145,33 +145,39 @@
   // Update local state ONLY when the input is NOT focused
   // OR when the amount prop changes significantly (e.g., reset, token switch)
   $effect(() => {
-    if (amount !== previousAmountProp) { // Detect external changes from prop
-        if (!inputFocused || amount === "" || amount === "0") { // Update local value if not focused or if it's a reset
-             const newlyFormatted = formatWithCommas(formatDisplayValue(amount || "0"));
-             localInputValue = newlyFormatted;
-             if(inputElement && !inputFocused) { // Update element value directly if not focused
-                 inputElement.value = newlyFormatted;
-             }
+    if (amount !== previousAmountProp) {
+      // Detect external changes from prop
+      if (!inputFocused || amount === "" || amount === "0") {
+        // Update local value if not focused or if it's a reset
+        const newlyFormatted = formatWithCommas(
+          formatDisplayValue(amount || "0"),
+        );
+        localInputValue = newlyFormatted;
+        if (inputElement && !inputFocused) {
+          // Update element value directly if not focused
+          inputElement.value = newlyFormatted;
         }
-        previousAmountProp = amount; // Update tracker regardless
+      }
+      previousAmountProp = amount; // Update tracker regardless
     }
   });
 
   // Initialize input value on mount
   $effect(() => {
     if (inputElement && !localInputValue && !inputFocused) {
-        // Set initial value based on prop if local state is empty and not focused
-        const initialFormatted = formatWithCommas(formatDisplayValue(amount || "0"));
-        localInputValue = initialFormatted;
-        inputElement.value = initialFormatted;
+      // Set initial value based on prop if local state is empty and not focused
+      const initialFormatted = formatWithCommas(
+        formatDisplayValue(amount || "0"),
+      );
+      localInputValue = initialFormatted;
+      inputElement.value = initialFormatted;
     }
   });
-
 
   // Animation and value updates using $effect (for USD value, slippage animation)
   $effect(() => {
     // Use the main 'amount' prop for animations, not localInputValue
-    const currentNumericAmount = parseFloat(amount || '0');
+    const currentNumericAmount = parseFloat(amount || "0");
     const currentUsdValue = tokenPrice * currentNumericAmount;
 
     if (amount === "0" || !amount) {
@@ -189,7 +195,6 @@
     animatedSlippage.set(slippage, { duration: 0 });
   });
 
-
   // Event handlers
   function handleInput(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -206,18 +211,22 @@
       const [whole, decimal] = rawValue.split(".");
       if (decimal && decimal.length > decimals) {
         rawValue = `${whole}.${decimal.slice(0, decimals)}`;
-      } else if (decimal === '') {
+      } else if (decimal === "") {
         // Allow trailing decimal point during input
       }
     }
 
     // Handle leading zeros (e.g., "05" -> "5", but allow "0.")
-    if (rawValue.length > 1 && rawValue.startsWith("0") && rawValue[1] !== ".") {
+    if (
+      rawValue.length > 1 &&
+      rawValue.startsWith("0") &&
+      rawValue[1] !== "."
+    ) {
       rawValue = rawValue.replace(/^0+/, "");
     }
     // Allow starting input with "." -> "0."
     if (rawValue === ".") {
-       rawValue = "0.";
+      rawValue = "0.";
     }
 
     // Update local state for display (apply comma formatting)
@@ -227,11 +236,10 @@
     // Determine the value to send upwards (should be clean number string, "0" if appropriate)
     let valueToSend = rawValue;
     if (valueToSend === "0.") {
-       valueToSend = "0"; // Send "0" if user only typed the decimal point
+      valueToSend = "0"; // Send "0" if user only typed the decimal point
     } else if (!valueToSend) {
-       valueToSend = "0"; // Send "0" if input is empty
+      valueToSend = "0"; // Send "0" if input is empty
     }
-
 
     // Send the cleaned, raw numeric string value to the parent state service.
     onAmountChange(
@@ -243,81 +251,27 @@
 
   function handleFocus() {
     inputFocused = true;
-    // Optional: Could remove commas on focus, but might be jarring.
-    // if (inputElement) {
-    //   inputElement.value = amount || '0';
-    // }
   }
 
   function handleBlur() {
     inputFocused = false;
     // On blur, ensure the input's display value strictly matches the formatted version
     // of the *current* amount prop, reflecting any calculations that happened.
-    const finalFormattedValue = formatWithCommas(formatDisplayValue(amount || "0"));
+    const finalFormattedValue = formatWithCommas(
+      formatDisplayValue(amount || "0"),
+    );
     localInputValue = finalFormattedValue;
-     if(inputElement) {
-         inputElement.value = finalFormattedValue;
-     }
+    if (inputElement) {
+      inputElement.value = finalFormattedValue;
+    }
     // If the raw value after formatting is essentially zero, send "0" upwards
     // This handles cases like typing "0.00" and blurring
     if (parseFloat(amount || "0") === 0 && amount !== "0") {
-         onAmountChange(
-           new CustomEvent("input", {
-             detail: { value: "0", panelType },
-           }),
-         );
-    }
-  }
-
-
-  async function handleMaxClick() {
-    if (!disabled && title === "You Pay" && token) {
-      try {
-        if (!token) {
-          toastStore.error("Invalid token configuration");
-          return;
-        }
-
-        const balance = $currentUserBalancesStore[token.address]?.in_tokens;
-        if (balance === undefined || balance === null) {
-          toastStore.error(`Balance not available for ${token.symbol}`);
-          return;
-        }
-
-        const feeBigInt = token.fee_fixed ? BigInt(token.fee_fixed.toString().replace(/_/g, "")) : 0n;
-
-        // Use calculateMaxAmountRawNumber which returns a number
-        const maxAmountNumber = calculateMaxAmountRawNumber(
-          balance,
-          token.decimals,
-          feeBigInt
-        );
-
-        if (maxAmountNumber <= 0) {
-          toastStore.error("Insufficient balance to cover fees");
-          return;
-        }
-        
-        // Convert the resulting number to a string for consistency
-        const maxAmountRawString = maxAmountNumber.toString();
-
-        // Update local display value and input element
-        const formattedMax = formatWithCommas(formatDisplayValue(maxAmountRawString));
-        localInputValue = formattedMax;
-        if (inputElement) {
-          inputElement.value = formattedMax;
-        }
-
-        // Trigger the amount change with the raw value string
-        onAmountChange(
-          new CustomEvent("input", {
-            detail: { value: maxAmountRawString, panelType },
-          }),
-        );
-      } catch (error) {
-        console.error("Error in handleMaxClick:", error);
-        toastStore.error("Failed to set maximum amount");
-      }
+      onAmountChange(
+        new CustomEvent("input", {
+          detail: { value: "0", panelType },
+        }),
+      );
     }
   }
 
@@ -335,15 +289,15 @@
       windowHeight: window.innerHeight, // Use reactive windowHeight
     };
 
-
     swapState.update((s) => ({
       ...s,
-      showPayTokenSelector: panelType === "pay" ? !s.showPayTokenSelector : false,
-      showReceiveTokenSelector: panelType === "receive" ? !s.showReceiveTokenSelector : false,
+      showPayTokenSelector:
+        panelType === "pay" ? !s.showPayTokenSelector : false,
+      showReceiveTokenSelector:
+        panelType === "receive" ? !s.showReceiveTokenSelector : false,
       tokenSelectorPosition: position,
       tokenSelectorOpen: panelType, // Always set which panel opened it
     }));
-
 
     // No need to re-trigger onAmountChange here unless token selection
     // should immediately clear/recalculate amounts.
@@ -353,9 +307,7 @@
   // Display calculations using runes
   // Use the main 'amount' prop for calculations external to the input display
   let parsedAmount = $derived(parseFloat(amount || "0"));
-  let tokenPrice = $derived(
-    token ? Number(token?.metrics?.price || 0) : 0,
-  );
+  let tokenPrice = $derived(token ? Number(token?.metrics?.price || 0) : 0);
   let tradeUsdValue = $derived(tokenPrice * parsedAmount);
 
   // Use onMount to safely access window properties
@@ -387,6 +339,39 @@
         $swapState.tokenSelectorPosition?.y > windowHeight / 2 ? "up" : "down";
     }
   });
+
+  function handlePercentageClick(percentage) {
+    if (!token) {
+      toastStore.error("Invalid token configuration");
+      return;
+    }
+
+    const balance = $currentUserBalancesStore[token.address]?.in_tokens;
+    if (balance === undefined || balance === null || balance === 0n) {
+      toastStore.error(`Balance not available for ${token.symbol}`);
+      return;
+    }
+
+    const percentageAmountString = calculatePercentageAmount(
+      balance,
+      percentage,
+      token
+    );
+
+    const formattedPercentage = formatWithCommas(
+      formatDisplayValue(percentageAmountString),
+    );
+    localInputValue = formattedPercentage;
+    if (inputElement) {
+      inputElement.value = formattedPercentage;
+    }
+
+    onAmountChange(
+      new CustomEvent("input", {
+        detail: { value: percentageAmountString, panelType },
+      }),
+    );
+  }
 </script>
 
 <Panel
@@ -398,11 +383,9 @@
   shadow={$swapPanelShadow}
   isSwapPanel={true}
 >
-  <div
-    class="flex flex-col min-h-[165px] max-h-[220px] box-border relative"
-  >
+  <div class="flex flex-col gap-5 min-h-[150px] box-border relative">
     <header>
-      <div class="flex items-center justify-between gap-4 min-h-[1rem] mb-5">
+      <div class="flex items-center justify-between">
         <h2
           class="text-lg sm:text-2xl lg:text-xl font-semibold text-kong-text-primary m-0 tracking-tight leading-none"
         >
@@ -412,17 +395,21 @@
           {#if panelType === "pay"}
             <!-- OnRamp Button -->
             <button
-              class="onramp-button {$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1.5 sm:px-3"
+              class="onramp-button {$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1 sm:px-2"
               on:click={(e) => {
                 e.preventDefault();
-                window.open("https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp", '_blank', 'width=500,height=650');
-            }}
+                window.open(
+                  "https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp",
+                  "_blank",
+                  "width=500,height=650",
+                );
+              }}
             >
               Buy ICP with Fiat
             </button>
           {/if}
           {#if showPrice && $animatedSlippage > 0}
-             <!-- Price Impact Display -->
+            <!-- Price Impact Display -->
             <div
               class="flex items-center gap-1.5 bg-white/10 p-1 {$panelRoundness}"
               title="Price Impact"
@@ -434,7 +421,8 @@
               </span>
               <span
                 class="text-sm sm:text-[1rem] font-semibold text-kong-text-primary"
-                class:text-kong-accent-red={$animatedSlippage >= HIGH_IMPACT_THRESHOLD}
+                class:text-kong-accent-red={$animatedSlippage >=
+                  HIGH_IMPACT_THRESHOLD}
               >
                 {$animatedSlippage.toFixed(2)}%
               </span>
@@ -444,16 +432,24 @@
       </div>
     </header>
 
-    <div class="relative flex-grow mb-[-1px] h-[68px]">
-      <div class="flex items-center gap-1 h-[69%] box-border {$panelRoundness}">
+    <div class="relative flex-grow mb-1">
+      <div class="flex items-center box-border {$panelRoundness}">
         <div class="relative flex-1">
           {#if isLoading && panelType === "receive"}
             <!-- Loading Dots -->
             <div class="absolute inset-0 flex items-center">
-              <div class="loading-dots flex gap-[6px] items-center justify-start pl-[4px]">
-                <span class="w-[8px] h-[8px] rounded-full bg-kong-text-primary/50 animate-bounce delay-[-0.32s]"></span>
-                <span class="w-[8px] h-[8px] rounded-full bg-kong-text-primary/50 animate-bounce delay-[-0.16s]"></span>
-                <span class="w-[8px] h-[8px] rounded-full bg-kong-text-primary/50 animate-bounce"></span>
+              <div
+                class="loading-dots flex gap-[6px] items-center justify-start pl-[4px]"
+              >
+                <span
+                  class="w-[8px] h-[8px] rounded-full bg-kong-text-primary/50 animate-bounce delay-[-0.32s]"
+                ></span>
+                <span
+                  class="w-[8px] h-[8px] rounded-full bg-kong-text-primary/50 animate-bounce delay-[-0.16s]"
+                ></span>
+                <span
+                  class="w-[8px] h-[8px] rounded-full bg-kong-text-primary/50 animate-bounce"
+                ></span>
               </div>
             </div>
           {/if}
@@ -463,7 +459,7 @@
             inputmode="decimal"
             pattern="[0-9]*\\.?[0-9]*"
             placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary/50 placeholder:text-kong-text-primary/60 text-3xl lg:text-4xl sm:mt-[-0.15rem]"
+            class="flex-1 min-w-0 bg-transparent items-center border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary/50 placeholder:text-kong-text-primary/60 text-3xl lg:text-4xl"
             class:opacity-0={isLoading && panelType === "receive"}
             value={localInputValue}
             on:input={handleInput}
@@ -471,6 +467,14 @@
             on:blur={handleBlur}
             {disabled}
           />
+                 <!-- USD Value Display -->
+        <span
+        class="absolute -bottom-[1.1rem] left-0 text-kong-text-primary/50 font-medium text-xs"
+      >
+        {#if $animatedUsdValue > 0}
+          ≈${formatToNonZeroDecimal($animatedUsdValue)}
+        {/if}
+      </span>
         </div>
         <div class="relative">
           <!-- Token Selector Button -->
@@ -481,61 +485,117 @@
             {#if token}
               <div class="flex items-center gap-2">
                 <TokenImages tokens={[token]} size={32} />
-                <span class="hidden text-lg font-semibold text-kong-text-primary sm:inline">{token.symbol}</span>
+                <span
+                  class="hidden text-lg font-semibold text-kong-text-primary sm:inline"
+                  >{token.symbol}</span
+                >
               </div>
               <!-- Chevron Down Icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron w-5 h-5 text-kong-text-primary/50"> <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /> </svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="chevron w-5 h-5 text-kong-text-primary/50"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clip-rule="evenodd"
+                />
+              </svg>
             {:else}
-              <span class="text-lg text-kong-text-primary/70 text-left">Select Token</span>
+              <span class="text-lg text-kong-text-primary/70 text-left"
+                >Select Token</span
+              >
               <!-- Chevron Down Icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron w-5 h-5 text-kong-text-primary/50"> <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /> </svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="chevron w-5 h-5 text-kong-text-primary/50"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clip-rule="evenodd"
+                />
+              </svg>
             {/if}
           </button>
         </div>
       </div>
+
     </div>
 
     <div class="text-kong-text-primary text-sm">
       <div class="flex justify-between items-center leading-6">
-        <div class="flex items-center gap-1">
-           <!-- USD Value Display -->
-          <span
-            class="text-kong-text-primary font-normal tracking-wide text-xs sm:text-xs"
-            >Value:</span
-          >
-          <span
-            class="text-kong-text-primary font-medium tracking-wide text-xs sm:text-xs"
-          >
-            ${formatToNonZeroDecimal($animatedUsdValue)} <!-- Use animated value -->
-          </span>
-        </div>
-        {#if token}
-          <!-- Balance Display -->
-          <div class="flex items-center gap-1 min-w-[160px] justify-end">
+        <div class="flex flex-col w-full items-start justify-start gap-0">
+          <div class="flex items-center w-full gap-0.5">
             <span
               class="text-kong-text-primary font-normal tracking-wide text-xs sm:text-xs"
             >
-              Available:
+              Balance:
             </span>
             <button
               class="text-kong-text-primary font-semibold tracking-tight text-xs sm:text-xs"
               class:clickable={title === "You Pay" && !disabled}
-              class:hover:text-yellow-500={title === 'You Pay' && !disabled}
-              on:click={handleMaxClick}
-              disabled={disabled || title !== 'You Pay'}
+              class:hover:text-yellow-500={title === "You Pay" && !disabled}
+              on:click={() => handlePercentageClick(100)}
+              disabled={disabled || title !== "You Pay"}
             >
               {#if token && token.address && $currentUserBalancesStore && $currentUserBalancesStore[token.address] !== undefined}
-                  {formatTokenBalance(
-                    ($currentUserBalancesStore[token.address]?.in_tokens ?? 0n).toString(), // Use nullish coalescing for safety
-                    token.decimals || DEFAULT_DECIMALS
-                  )}
-                  {token.symbol || ''}
+                {formatTokenBalance(
+                  (
+                    $currentUserBalancesStore[token.address]?.in_tokens ?? 0n
+                  ).toString(), // Use nullish coalescing for safety
+                  token.decimals || DEFAULT_DECIMALS,
+                )}
+                {token.symbol || ""}
               {:else if token}
-                  0 {token.symbol || ''} <!-- Show 0 if balance not loaded -->
+                0 {token.symbol || ""} <!-- Show 0 if balance not loaded -->
               {:else}
                 Loading... <!-- Show loading if token itself is not loaded -->
               {/if}
             </button>
+            </div>
+        </div>
+        {#if token}
+          <!-- Balance Display -->
+          <div class="flex flex-col items-center gap-1">
+         
+            <!-- Percentage Buttons -->
+            {#if title === "You Pay" && token}
+            <div class="flex items-center justify-end w-full text-xs">
+              <button
+                class="bg-kong-bg-light px-2 py-1.5 border border-transparent hover:border-kong-primary rounded-l-md"
+                on:click={() => handlePercentageClick(25)}
+                disabled={disabled}
+              >
+                25%
+              </button>
+              <button
+                class="bg-kong-bg-light px-2 py-1.5 border border-transparent hover:border-kong-primary"
+                on:click={() => handlePercentageClick(50)}
+                disabled={disabled}
+              >
+                50%
+              </button>
+              <button
+                class="bg-kong-bg-light px-2 py-1.5 border border-transparent hover:border-kong-primary"
+                on:click={() => handlePercentageClick(75)}
+                disabled={disabled}
+              >
+                75%
+              </button>
+              <button
+                class="bg-kong-bg-light px-2 py-1.5 border border-transparent hover:border-kong-primary rounded-r-md"
+                on:click={() => handlePercentageClick(100)}
+                disabled={disabled}
+              >
+                100%
+                </button>
+              </div>
+            {/if}
           </div>
         {/if}
       </div>
@@ -545,16 +605,24 @@
 
 <style lang="postcss" scoped>
   .win95-button {
-    background-color: #C3C3C3 !important;
+    background-color: #c3c3c3 !important;
     border: none !important;
     position: relative;
     border-radius: 0 !important;
-    box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #808080, inset 2px 2px 0 #DFDFDF, inset -2px -2px 0 #404040 !important;
+    box-shadow:
+      inset 1px 1px 0 #ffffff,
+      inset -1px -1px 0 #808080,
+      inset 2px 2px 0 #dfdfdf,
+      inset -2px -2px 0 #404040 !important;
     padding: 4px 8px !important;
   }
-  
+
   .win95-button:active {
-    box-shadow: inset -1px -1px 0 #FFFFFF, inset 1px 1px 0 #808080, inset -2px -2px 0 #DFDFDF, inset 2px 2px 0 #404040 !important;
+    box-shadow:
+      inset -1px -1px 0 #ffffff,
+      inset 1px 1px 0 #808080,
+      inset -2px -2px 0 #dfdfdf,
+      inset 2px 2px 0 #404040 !important;
     padding-top: 5px !important;
     padding-left: 9px !important;
   }
