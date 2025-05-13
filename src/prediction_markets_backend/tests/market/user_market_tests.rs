@@ -1,5 +1,95 @@
-use candid::{Principal, encode_args, decode_one, Nat};
-use crate::common::{setup_prediction_markets_canister, ADMIN_PRINCIPALS};
+use candid::{Principal, encode_args, decode_one, encode_one, Nat, CandidType, Deserialize};
+use num_traits::ToPrimitive;
+use pocket_ic::PocketIc;
+use crate::common::{setup_complete_test_environment, TEST_USER_PRINCIPALS};
+
+// ICRC-1 types from the token ledger interface
+#[derive(CandidType, Clone, Debug, Deserialize)]
+pub struct Account {
+    pub owner: Principal,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subaccount: Option<Vec<u8>>,
+}
+
+// Transfer arguments structure following ICRC-1 standard
+#[derive(CandidType, Debug)]
+struct TransferArgs {
+    // Required args
+    from_subaccount: Option<Vec<u8>>,
+    to: Account,
+    amount: Nat,
+    // Optional args
+    fee: Option<Nat>,
+    memo: Option<Vec<u8>>,
+    created_at_time: Option<u64>,
+}
+
+/// Helper function to query an account's token balance
+fn query_balance(pic: &PocketIc, token_canister_id: Principal, account_principal: Principal) -> u64 {
+    println!("  🔍 Querying balance for {} from token canister {}", account_principal, token_canister_id);
+    
+    // Create the account structure
+    let account = Account {
+        owner: account_principal,
+        subaccount: None,
+    };
+
+    // Encode account
+    let args = encode_one(account).unwrap();
+
+    // Query balance
+    let result = pic.query_call(
+        token_canister_id, // This must be the token ledger canister ID
+        Principal::anonymous(),
+        "icrc1_balance_of",
+        args,
+    ).unwrap_or_else(|err| {
+        println!("  ❌ Error querying balance: {:?}", err);
+        panic!("Failed to query balance: {:?}", err);
+    });
+
+    // Decode the balance
+    let balance: Nat = decode_one(&result).unwrap_or_else(|err| {
+        println!("  ❌ Error decoding balance: {:?}", err);
+        panic!("Failed to decode balance: {:?}", err);
+    });
+    
+    balance.0.to_u64().unwrap()
+}
+
+/// Helper function to display a formatted balance with proper decimal places
+fn format_balance(balance: u64, decimals: u8) -> String {
+    let divisor = 10u64.pow(decimals as u32) as f64;
+    format!("{:.8} KONG ({} raw units)", balance as f64 / divisor, balance)
+}
+
+/// Helper function to query and display a user's token balance
+fn query_and_display_balance(pic: &PocketIc, token_canister_id: Principal, account_owner: Principal, account_label: &str) -> u64 {
+    // Query the user's balance
+    let balance = query_balance(pic, token_canister_id, account_owner);
+    
+    // Get token decimals (default to 8 if query fails)
+    // icrc1_decimals takes no arguments but needs an empty candid value encoding
+    let decimals_result = pic.query_call(
+        token_canister_id, // Make sure this is the token canister
+        Principal::anonymous(),
+        "icrc1_decimals",
+        encode_one(()).unwrap() // Properly encode empty argument as candid value
+    );
+    
+    let decimals = match decimals_result {
+        Ok(result) => decode_one::<u8>(&result).unwrap_or(8),
+        Err(err) => {
+            println!("  ⚠️ Failed to query token decimals: {:?}, using default of 8", err);
+            8
+        }
+    };
+    
+    // Format and print the balance
+    println!("  → {}'s balance: {}", account_label, format_balance(balance, decimals));
+    
+    balance
+}
 
 #[derive(candid::CandidType)]
 enum MarketCategory {
@@ -38,14 +128,19 @@ enum MarketStatus {
 fn test_user_market_creation_with_activation() {
     println!("\n======= USER MARKET CREATION TEST =======\n");
     
-    // Setup the canister
-    let (pic, canister_id) = setup_prediction_markets_canister();
-    println!("Testing with canister ID: {}\n", canister_id);
+    // Setup the complete test environment with both canisters
+    let (pic, pm_canister_id, token_canister_id) = setup_complete_test_environment();
+    println!("Testing with prediction markets canister ID: {}", pm_canister_id);
+    println!("Using KONG token ledger canister ID: {}\n", token_canister_id);
     
-    // Create a regular user principal (non-admin)
-    let user_principal = Principal::from_text("2vxsx-fae").expect("Failed to create user principal");
-    println!("TEST 1: Creating market as regular user: {}", user_principal);
+    // Use Alice as our regular user (non-admin) from TEST_USER_PRINCIPALS
+    let alice_principal = Principal::from_text(TEST_USER_PRINCIPALS[0]).expect("Failed to create Alice principal");
+    println!("TEST 1: Creating market as Alice (regular user): {}", alice_principal);
     println!("  → User principals can create markets, but they require activation with a minimum bet amount");
+    
+    // Check Alice's initial balance
+    println!("\nAlice's Initial Balance:");
+    query_and_display_balance(&pic, token_canister_id, alice_principal, "Alice (creator)");
     
     // Use standard encode_args from candid
     let question = "Will ADA reach $10 by end of 2025?".to_string();
@@ -75,10 +170,10 @@ fn test_user_market_creation_with_activation() {
     
     println!("Market creation arguments encoded successfully");
     
-    // Make update call to canister as a regular user
+    // Make update call to canister as Alice
     let result = pic.update_call(
-        canister_id,
-        user_principal,
+        pm_canister_id,
+        alice_principal,
         "create_market",
         args,
     );
@@ -118,8 +213,8 @@ fn test_user_market_creation_with_activation() {
     
     // Query the market
     let status_result = pic.query_call(
-        canister_id,
-        user_principal,
+        pm_canister_id,
+        alice_principal,
         "get_market",
         query_args,
     );
@@ -158,8 +253,8 @@ fn test_user_market_creation_with_activation() {
     // Try to activate with insufficient amount
     println!("  → Attempting to place bet with insufficient amount...");
     let insufficient_result = pic.update_call(
-        canister_id,
-        user_principal,
+        pm_canister_id,
+        alice_principal,
         "place_bet",
         insufficient_bet_args,
     );
@@ -173,8 +268,8 @@ fn test_user_market_creation_with_activation() {
         .expect("Failed to encode market ID for query");
     
     let status_check = pic.query_call(
-        canister_id,
-        user_principal,
+        pm_canister_id,
+        alice_principal,
         "get_market",
         query_args,
     );
@@ -191,25 +286,82 @@ fn test_user_market_creation_with_activation() {
         }
     }
     
-    // TEST 4: Now activate the market with sufficient amount
-    println!("\nTEST 4: Activating market with sufficient bet amount");
-    println!("  → Using correct activation amount of 3000 KONG (300_000_000_000)");
+    // TEST 4: Now activate the market using the KONG token ledger (proper token transfer)
+    println!("\nTEST 4: Activating market with proper token transfer");
+    println!("  → Using the KONG token ledger for a token transfer to activate the market");
     
     // Per types.rs, we need 3000 KONG tokens (300_000_000_000) for activation
     let activation_amount = Nat::from(300_000_000_000u64);
     
-    // Encode arguments for place_bet with correct amount
+    // Set up the prediction markets canister as the recipient of the tokens
+    let to_account = Account {
+        owner: pm_canister_id,
+        subaccount: None,
+    };
+    
+    // Create transfer arguments for sending tokens to the prediction markets canister
+    let transfer_args = TransferArgs {
+        from_subaccount: None,
+        to: to_account,
+        amount: activation_amount.clone(),
+        fee: None,
+        memo: Some(market_id.0.to_bytes_be()), // Use market ID as memo to identify this transfer
+        created_at_time: None,
+    };
+    
+    // Encode the transfer arguments
+    let encoded_transfer_args = encode_one(transfer_args).unwrap();
+    
+    // Display what we're doing
+    println!("  → Transferring 3000 KONG tokens from Alice to prediction markets canister");
+    println!("  → Using market ID {} as memo to identify this transfer", market_id);
+    
+    // Query Alice's balance before transfer
+    println!("\nAlice's Balance Before Activation Transfer:");
+    let pre_transfer_balance = query_and_display_balance(&pic, token_canister_id, alice_principal, "Alice (before activation)");
+    
+    // Execute the token transfer using Alice's principal
+    let transfer_result = pic.update_call(
+        token_canister_id,
+        alice_principal,
+        "icrc1_transfer",
+        encoded_transfer_args,
+    );
+    
+    // Handle token transfer result
+    match transfer_result {
+        Err(err) => {
+            println!("  ❌ ERROR: Token transfer failed: {}", err);
+            panic!("Failed to transfer activation tokens: {}", err);
+        }
+        Ok(result) => {
+            println!("  ✅ Token transfer completed successfully");
+            
+            // Query Alice's balance after transfer to confirm tokens were deducted
+            println!("\nAlice's Balance After Activation Transfer:");
+            let post_transfer_balance = query_and_display_balance(&pic, token_canister_id, alice_principal, "Alice (after activation)");
+            
+            // Calculate and display the amount deducted
+            let amount_deducted = pre_transfer_balance - post_transfer_balance;
+            println!("  → {} KONG tokens were deducted from Alice's account", amount_deducted as f64 / 100_000_000.0);
+        }
+    }
+    
+    // Now call the place_bet function with appropriate amount to activate the market
+    println!("\n  → Placing bet on outcome 0 (Yes) with activation amount");
+    
+    // Prepare arguments for place_bet
     let place_bet_args = encode_args((
         market_id.clone(), 
-        outcome_index,
+        outcome_index.clone(),
         activation_amount.clone(),
         None::<String>, // Default token (KONG)
     )).expect("Failed to encode place_bet arguments");
     
-    // Call place_bet as the market creator to activate the market
+    // Call place_bet as Alice to activate the market
     let activation_result = pic.update_call(
-        canister_id,
-        user_principal,
+        pm_canister_id,
+        alice_principal,
         "place_bet",
         place_bet_args,
     );
@@ -220,7 +372,7 @@ fn test_user_market_creation_with_activation() {
             panic!("Market activation bet failed: {}", err);
         }
         Ok(_) => {
-            println!("  ✅ Market activated successfully with creator's first bet!");
+            println!("  ✅ Market activated successfully with Alice's bet!");
             println!("  → Bet of 3000 KONG was accepted and market is now active");
         }
     }
@@ -234,8 +386,8 @@ fn test_user_market_creation_with_activation() {
         .expect("Failed to encode market ID for query");
     
     let status_result = pic.query_call(
-        canister_id,
-        user_principal,
+        pm_canister_id,
+        alice_principal,
         "get_market",
         query_args,
     );
@@ -252,11 +404,12 @@ fn test_user_market_creation_with_activation() {
     }
     
     println!("\n====== TEST SUMMARY ======");
-    println!("✅ Successfully created market as regular user with ID: {}", market_id.to_string());
+    println!("✅ Successfully created market as Alice with ID: {}", market_id.to_string());
     println!("✅ Verified that user markets start in PendingActivation status");
     println!("✅ Confirmed that insufficient activation bet (1000 KONG) is rejected");
-    println!("✅ Successfully activated market with 3000 KONG tokens (300_000_000_000)");
-    println!("✅ Verified market transitions to Active status after sufficient bet");
+    println!("✅ Successfully transferred 3000 KONG tokens from Alice to activate the market");
+    println!("✅ Successfully activated market with proper token amount (300_000_000_000)");
+    println!("✅ Verified market transitions to Active status after activation");
     println!("⏱️ Markets configured to run for 120 seconds for quick testing");
     
     println!("\n======= USER MARKET CREATION TEST PASSED =======\n");
