@@ -3,11 +3,16 @@ use ic_ledger_types::{query_blocks, AccountIdentifier, Block, GetBlocksArgs, Ope
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::allowance::{Allowance, AllowanceArgs};
 use icrc_ledger_types::icrc3::transactions::{GetTransactionsRequest, GetTransactionsResponse};
+use icrc_ledger_types::icrc3::blocks::{GetBlocksRequest as ICRC3GetBlocksRequest, GetBlocksResult as ICRC3GetBlocksResult}; // ICRC3GenericBlock removed
 
-use super::icrc3::{self, VerificationError as ICRC3VerificationError};
+// ICRC3Value import removed
+
+use super::icrc3; // Keep for process_icrc3_generic_block_value and verify_parsed_transfer_details
+// No longer need VerificationError as ICRC3VerificationError if it's fully removed later
 use super::wumbo::Transaction1;
 
 use crate::helpers::nat_helpers::nat_to_u64;
+use crate::ic::icrc3::TaggrGetBlocksArgs; // ParsedICRC3TransactionInfo removed
 use crate::ic::get_time::get_time;
 use crate::ic::id::{caller_account_id, caller_id};
 use crate::stable_kong_settings::kong_settings_map;
@@ -21,6 +26,8 @@ const ICP_CANISTER_ID: &str = "IC.ryjl3-tyaaa-aaaaa-aaaba-cai"; // Mainnet ICP L
 const WUMBO_CANISTER_ID: &str = "IC.wkv3f-iiaaa-aaaap-ag73a-cai";
 const DAMONIC_CANISTER_ID: &str = "IC.zzsnb-aaaaa-aaaap-ag66q-cai";
 const CLOWN_CANISTER_ID: &str = "IC.iwv6l-6iaaa-aaaal-ajjjq-cai";
+const TAGGR_CANISTER_ID: &str = "IC.6qfxa-ryaaa-aaaai-qbhsq-cai"; // Added from icrc3.rs for inlined logic
+
 
 /// Represents the type of a transaction being verified.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -37,33 +44,105 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
     match token {
         StableToken::IC(ic_token) => {
             if ic_token.icrc3 {
-                // First, try ICRC3 get_blocks verification directly
-                let kong_settings = kong_settings_map::get();
-                let min_valid_timestamp = get_time() - kong_settings.transfer_expiry_nanosecs;
-                let current_caller_account = caller_id(); // ICRC-1 Account of the caller
-                let kong_backend_account = kong_settings.kong_backend; // ICRC-1 Account for Kong backend
+                // Inlined logic from attempt_icrc3_get_blocks_verification
+                // This async block attempts verification. Ok(()) means success for verify_transfer.
+                // Err(reason) means this ICRC3 path failed, and verify_transfer should fall back.
+                let icrc3_get_blocks_verification_result: Result<(), String> = (async {
+                    let kong_settings = kong_settings_map::get();
+                    let min_valid_timestamp = get_time() - kong_settings.transfer_expiry_nanosecs;
+                    let current_caller_account = caller_id(); // ICRC-1 Account of the caller
+                    let kong_backend_account = &kong_settings.kong_backend; // ICRC-1 Account for Kong backend
 
-                match icrc3::attempt_icrc3_get_blocks_verification(
-                    token,
-                    block_id,
-                    amount,
-                    &current_caller_account,
-                    &kong_backend_account,
-                    min_valid_timestamp,
-                )
-                .await
-                {
-                    Ok(()) => return Ok(()),                                   // Verified by ICRC3 get_blocks
-                    Err(ICRC3VerificationError::Hard(msg)) => return Err(msg), // Definitive failure – abort
-                    Err(ICRC3VerificationError::Soft(_)) => {
-                        // Soft failure – fall through to traditional verification below
+                    let canister_id_principal = match token.canister_id() {
+                        Some(id) => id,
+                        None => return Err("Token missing canister_id for icrc3_get_blocks".to_string()),
+                    };
+                    let token_address_chain = token.address_with_chain();
+
+                    let blocks_result_tuple: Result<(ICRC3GetBlocksResult,), _> = 
+                        if token_address_chain == TAGGR_CANISTER_ID { 
+                            let start_u64 = nat_to_u64(block_id)
+                                .ok_or_else(|| format!("TAGGR ICRC3: Block ID {:?} not convertible to u64", block_id))?;
+                            let args = vec![TaggrGetBlocksArgs { start: start_u64, length: 1 }];
+                            ic_cdk::call(*canister_id_principal, "icrc3_get_blocks", (args,)).await
+                        } else {
+                            let args = ICRC3GetBlocksRequest { start: block_id.clone(), length: Nat::from(1u32) };
+                            ic_cdk::call(*canister_id_principal, "icrc3_get_blocks", (args,)).await
+                        };
+
+                    match blocks_result_tuple {
+                        Ok(get_blocks_response_tuple) => {
+                            let blocks_data = get_blocks_response_tuple.0;
+                            if blocks_data.blocks.is_empty() {
+                                return Err(format!(
+                                    "ICRC3 get_blocks for {}: No blocks returned for block_id {}",
+                                    token.symbol(), block_id
+                                ));
+                            }
+
+                            for block_envelope in blocks_data.blocks.iter() {
+                                if block_envelope.id != *block_id { 
+                                    // Log if needed: "Skipping block with id {} (expected {})"
+                                    continue; 
+                                }
+
+                                match icrc3::process_icrc3_generic_block_value(&block_envelope.block) {
+                                    Ok(tx_info) => {
+                                        if matches!(tx_info.op.as_str(), "icrc1_transfer" | "1xfer" | "transfer" | "xfer") {
+                                            // verify_parsed_transfer_details returns Result<(), String>
+                                            // If Err, it propagates out of this async block.
+                                            icrc3::verify_parsed_transfer_details(
+                                                &tx_info.from,
+                                                tx_info.to.as_ref(),
+                                                tx_info.spender.as_ref(),
+                                                &tx_info.amount,
+                                                tx_info.timestamp,
+                                                &current_caller_account,
+                                                kong_backend_account,
+                                                amount, // This is the `amount` arg of `verify_transfer`
+                                                min_valid_timestamp,
+                                                "ICRC3 GetBlocks (Inlined)",
+                                            )?; 
+                                            return Ok(()); // Success for this ICRC3 path!
+                                        }
+                                        // If op type doesn't match, this block isn't a verifiable transfer.
+                                        // Continue loop in case other blocks were (unexpectedly) returned.
+                                    }
+                                    Err(parse_err) => {
+                                        // Block parsing failed.
+                                        return Err(format!(
+                                            "ICRC3 get_blocks for {}: Failed to parse block {}: {}",
+                                            token.symbol(), block_id, parse_err
+                                        ));
+                                    }
+                                }
+                            }
+                            // If loop finishes, no block with matching ID led to successful verification.
+                            Err(format!(
+                                "ICRC3 get_blocks for {}: Transfer verification conditions not met for block_id {} (block found but details mismatch or not a transfer)",
+                                token.symbol(), block_id
+                            ))
+                        }
+                        Err((rejection_code, msg)) => Err(format!(
+                            "ICRC3 get_blocks call failed for {}: {:?} - {}",
+                            token.symbol(), rejection_code, msg
+                        )),
                     }
+                }).await;
+
+                if icrc3_get_blocks_verification_result.is_ok() {
+                    return Ok(()); // ICRC3 get_blocks path succeeded, verification complete.
+                } else {
+                    // ICRC3 get_blocks path failed. Log the error if desired.
+                    // e.g., ic_cdk::println!("ICRC3 get_blocks verification failed: {}", icrc3_get_blocks_verification_result.unwrap_err());
+                    // Proceed to fallback traditional verification methods.
                 }
             }
 
-            // If not ICRC3 or ICRC3 verification failed, use traditional methods
+            // If not ICRC3, or if ICRC3 verification failed (softly, now always the case), use traditional methods
             let token_address_with_chain = token.address_with_chain();
-            let ts_start = get_time() - kong_settings_map::get().transfer_expiry_nanosecs; // only accept transfers within the hour
+            // ts_start needs to be defined here for the fallback logic
+            let ts_start = get_time() - kong_settings_map::get().transfer_expiry_nanosecs; 
 
             if token_address_with_chain == ICP_CANISTER_ID {
                 // use query_blocks

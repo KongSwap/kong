@@ -1,24 +1,19 @@
 use candid::{CandidType, Nat, Principal};
 use icrc_ledger_types::icrc::generic_value::ICRC3Value;
 use icrc_ledger_types::icrc1::account::Account;
-use icrc_ledger_types::icrc3::blocks::{GetBlocksRequest, GetBlocksResult, ICRC3GenericBlock};
+use icrc_ledger_types::icrc3::blocks::ICRC3GenericBlock; // GetBlocksRequest, GetBlocksResult removed
 use icrc_ledger_types::icrc3::transactions::{GetTransactionsRequest, GetTransactionsResponse};
 use num_traits::cast::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use crate::helpers::nat_helpers::nat_to_u64;
+// nat_to_u64 import removed
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 
 const SUBACCOUNT_LENGTH: usize = 32;
 
-/// Used by verification helper functions to determine if a fallback should be attempted.
-#[derive(Debug)]
-pub enum VerificationError {
-    Hard(String), // A definitive validation failure for the transaction. Stop.
-    Soft(String), // Method failed (e.g., call error, block not found by this method). Try fallback.
-}
+// VerificationError enum removed as per Jon's suggestion
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct TaggrGetBlocksArgs {
@@ -197,101 +192,7 @@ pub fn verify_parsed_transfer_details(
     Ok(())
 }
 
-// --- Verification Method Helpers for verify_transfer ---
-pub async fn attempt_icrc3_get_blocks_verification(
-    token: &StableToken,
-    block_id_arg: &Nat,
-    expected_amount_arg: &Nat,
-    current_caller_account: &Account,
-    kong_backend_account: &Account,
-    min_valid_timestamp: u64,
-) -> Result<(), VerificationError> {
-    let canister_id = *token
-        .canister_id()
-        .ok_or_else(|| VerificationError::Soft("Token missing canister_id for icrc3_get_blocks".to_string()))?;
-    let token_address_chain = token.address_with_chain();
-
-    let blocks_result_tuple: Result<(GetBlocksResult,), _> = if token_address_chain == "IC.6qfxa-ryaaa-aaaai-qbhsq-cai" { // TAGGR_CANISTER_ID 
-        let args = vec![TaggrGetBlocksArgs {
-            start: nat_to_u64(block_id_arg)
-                .ok_or_else(|| VerificationError::Soft(format!("TAGGR ICRC3: Block ID {:?} not u64", block_id_arg)))?,
-            length: 1,
-        }];
-        ic_cdk::call(canister_id, "icrc3_get_blocks", (args,)).await
-    } else {
-        let args = GetBlocksRequest {
-            start: block_id_arg.clone(),
-            length: Nat::from(1u32),
-        };
-        ic_cdk::call(canister_id, "icrc3_get_blocks", (args,)).await
-    };
-
-    match blocks_result_tuple {
-        Ok(get_blocks_response) => {
-            let blocks_data = get_blocks_response.0;
-            if blocks_data.blocks.is_empty() {
-                return Err(VerificationError::Soft(format!(
-                    "ICRC3 get_blocks for {}: No blocks returned for block_id {}",
-                    token.symbol(),
-                    block_id_arg
-                )));
-            }
-
-            for block_envelope in blocks_data.blocks.iter() {
-                // If ledger returns a range, we need to ensure we are processing the correct block by ID.
-                // For length 1, we expect block_envelope.id to be block_id_arg.
-                if block_envelope.id != *block_id_arg {
-                    continue; // Not the specific block we requested by ID, skip.
-                }
-
-                match process_icrc3_generic_block_value(&block_envelope.block) {
-                    Ok(tx_info) => {
-                        if matches!(tx_info.op.as_str(), "icrc1_transfer" | "1xfer" | "transfer" | "xfer") {
-                            match verify_parsed_transfer_details(
-                                &tx_info.from,
-                                tx_info.to.as_ref(),
-                                tx_info.spender.as_ref(),
-                                &tx_info.amount,
-                                tx_info.timestamp,
-                                current_caller_account,
-                                kong_backend_account,
-                                expected_amount_arg,
-                                min_valid_timestamp,
-                                "ICRC3 GetBlocks",
-                            ) {
-                                Ok(()) => return Ok(()), // Success!
-                                Err(hard_fail_msg) => return Err(VerificationError::Hard(hard_fail_msg)),
-                            }
-                        }
-                        // If op type doesn't match, this specific block isn't a verifiable transfer.
-                        // Continue loop in case other blocks were (unexpectedly) returned.
-                    }
-                    Err(parse_err) => {
-                        return Err(VerificationError::Soft(format!(
-                            // Soft, as block data might be malformed.
-                            "ICRC3 get_blocks for {}: Failed to parse block {}: {}",
-                            token.symbol(),
-                            block_id_arg,
-                            parse_err
-                        )));
-                    }
-                }
-            }
-            // If loop finishes, no block with matching ID led to successful verification.
-            Err(VerificationError::Soft(format!(
-                "ICRC3 get_blocks for {}: Transfer verification conditions not met for block_id {}",
-                token.symbol(),
-                block_id_arg
-            )))
-        }
-        Err((rc, msg)) => Err(VerificationError::Soft(format!(
-            "ICRC3 get_blocks call failed for {}: {:?} - {}",
-            token.symbol(),
-            rc,
-            msg
-        ))),
-    }
-}
+// attempt_icrc3_get_blocks_verification removed as its logic is inlined into verify_transfer in verify.rs
 
 pub async fn attempt_generic_get_transactions_verification(
     token: &StableToken,
@@ -300,10 +201,10 @@ pub async fn attempt_generic_get_transactions_verification(
     current_caller_account: &Account,
     kong_backend_account: &Account,
     min_valid_timestamp: u64,
-) -> Result<(), VerificationError> {
+) -> Result<(), String> { // Changed return type
     let canister_id = *token
         .canister_id()
-        .ok_or_else(|| VerificationError::Soft("Token missing canister_id for get_transactions".to_string()))?;
+        .ok_or_else(|| "Token missing canister_id for get_transactions".to_string())?; // Now returns String
     let args = GetTransactionsRequest {
         start: transaction_start_index_arg.clone(),
         length: Nat::from(1u32),
@@ -313,17 +214,17 @@ pub async fn attempt_generic_get_transactions_verification(
         Ok(get_transactions_response_tuple) => {
             let response: GetTransactionsResponse = get_transactions_response_tuple.0;
             if response.transactions.is_empty() {
-                return Err(VerificationError::Soft(format!(
+                return Err(format!( // Now returns String
                     "GetTransactions for {}: No transactions returned for start_index {}",
                     token.symbol(),
                     transaction_start_index_arg
-                )));
+                ));
             }
             for tx in response.transactions.into_iter() {
-                // Assuming the first transaction is the one we care about for length 1.
-                // ICRC-1 GetTransactions doesn't reference block_id directly in the response items.
                 if let Some(transfer_details) = tx.transfer {
-                    match verify_parsed_transfer_details(
+                    // verify_parsed_transfer_details already returns Result<(), String>
+                    // If it's Err(reason), that reason will be propagated.
+                    verify_parsed_transfer_details(
                         &transfer_details.from,
                         Some(&transfer_details.to),
                         transfer_details.spender.as_ref(),
@@ -334,24 +235,21 @@ pub async fn attempt_generic_get_transactions_verification(
                         expected_amount_arg,
                         min_valid_timestamp,
                         "GetTransactions",
-                    ) {
-                        Ok(()) => return Ok(()), // Success!
-                        Err(hard_fail_msg) => return Err(VerificationError::Hard(hard_fail_msg)),
-                    }
+                    )?; // This will propagate the String error if verify_parsed_transfer_details fails
+                    return Ok(()); // Success!
                 }
-                // Other tx kinds are ignored for direct transfer verification.
             }
-            Err(VerificationError::Soft(format!(
+            Err(format!( // Now returns String
                 "GetTransactions for {}: Transfer verification conditions not met for start_index {}",
                 token.symbol(),
                 transaction_start_index_arg
-            )))
+            ))
         }
-        Err((rc, msg)) => Err(VerificationError::Soft(format!(
+        Err((rc, msg)) => Err(format!( // Now returns String
             "GetTransactions call failed for {}: {:?} - {}",
             token.symbol(),
             rc,
             msg
-        ))),
+        )),
     }
 }
