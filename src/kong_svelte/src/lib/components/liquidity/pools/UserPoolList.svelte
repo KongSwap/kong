@@ -149,7 +149,7 @@
   }
 </script>
 
-<div class="mt-2">
+<div class="">
   {#if $currentUserPoolsStore.loading && !hasCompletedInitialLoad}
     <div class="flex flex-col items-center justify-center h-64 gap-4" in:fade={{ duration: 300 }}>
       <div class="flex items-center justify-center">
@@ -205,15 +205,6 @@
   {:else}
     <div class="overflow-x-auto w-full">
       <table class="w-full table-auto border-collapse">
-        <thead class="sticky top-0 bg-kong-bg-dark/90 backdrop-blur-md z-10">
-          <tr>
-            <th class="text-left pl-4 py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]">Pool</th>
-            <th class="text-right py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]">Share</th>
-            <th class="text-right py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]">APY</th>
-            <th class="text-right pr-4 py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]">Value</th>
-            <th class="w-10 py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]"></th>
-          </tr>
-        </thead>
         <tbody>
           {#each userPoolsWithDetails as pool (pool.key)}
             <tr

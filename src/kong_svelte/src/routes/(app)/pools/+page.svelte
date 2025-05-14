@@ -799,11 +799,39 @@
             {:else if $activePoolView === "user"}
               <!-- User Pools View -->
               {#if $auth.isConnected}
-                <div class="h-full custom-scrollbar">
-                  <UserPoolList
-                    on:poolClick={handlePoolClick}
-                    searchQuery={searchTerm}
-                  />
+                <div class="h-full flex flex-col">
+                  <!-- Sticky header section -->
+                  <div class="sticky top-0 z-20 backdrop-blur-md rounded-t-{$panelRoundness} bg-kong-bg-primary border-b border-white/[0.05]">
+                    <!-- Table header -->
+                    <div class="w-full overflow-x-auto">
+                      <table class="w-full table-auto border-collapse">
+                        <colgroup>
+                          <col style="width: 40%;">
+                          <col style="width: 15%;">
+                          <col style="width: 15%;">
+                          <col style="width: 20%;">
+                          <col style="width: 10%;">
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th class="text-left pl-4 py-3 px-4 text-sm font-medium text-kong-text-secondary">Pool</th>
+                            <th class="text-right py-3 px-4 text-sm font-medium text-kong-text-secondary">Share</th>
+                            <th class="text-right py-3 px-4 text-sm font-medium text-kong-text-secondary">APY</th>
+                            <th class="text-right py-3 px-4 text-sm font-medium text-kong-text-secondary">Value</th>
+                            <th class="text-center py-3 px-4 text-sm font-medium text-kong-text-secondary"></th>
+                          </tr>
+                        </thead>
+                      </table>
+                    </div>
+                  </div>
+                  
+                  <!-- Scrollable content area -->
+                  <div class="flex-1 overflow-auto">
+                    <UserPoolList
+                      on:poolClick={handlePoolClick}
+                      searchQuery={searchTerm}
+                    />
+                  </div>
                 </div>
               {:else}
                 <div
