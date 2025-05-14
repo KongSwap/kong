@@ -36,13 +36,27 @@ pub enum TransactionType {
 pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) -> Result<(), String> {
     match token {
         StableToken::IC(ic_token) => {
-            // If it's an ICRC3 token, try ICRC3 methods first
             if ic_token.icrc3 {
-                match attempt_icrc3_verification(token, block_id, amount).await {
-                    Ok(()) => return Ok(()), // ICRC3 verification succeeded
-                    Err(_) => {
-                        // ICRC3 verification failed, fall back to traditional methods
-                        // Fall through to traditional verification
+                // First, try ICRC3 get_blocks verification directly
+                let kong_settings = kong_settings_map::get();
+                let min_valid_timestamp = get_time() - kong_settings.transfer_expiry_nanosecs;
+                let current_caller_account = caller_id(); // ICRC-1 Account of the caller
+                let kong_backend_account = kong_settings.kong_backend; // ICRC-1 Account for Kong backend
+
+                match icrc3::attempt_icrc3_get_blocks_verification(
+                    token,
+                    block_id,
+                    amount,
+                    &current_caller_account,
+                    &kong_backend_account,
+                    min_valid_timestamp,
+                )
+                .await
+                {
+                    Ok(()) => return Ok(()),                                   // Verified by ICRC3 get_blocks
+                    Err(ICRC3VerificationError::Hard(msg)) => return Err(msg), // Definitive failure – abort
+                    Err(ICRC3VerificationError::Soft(_)) => {
+                        // Soft failure – fall through to traditional verification below
                     }
                 }
             }
@@ -204,30 +218,6 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
             }
         }
         _ => Err("Verify transfer not supported for this token")?,
-    }
-}
-
-/// ICRC3 verification methods
-async fn attempt_icrc3_verification(token: &StableToken, block_id: &Nat, amount: &Nat) -> Result<(), String> {
-    let kong_settings = kong_settings_map::get();
-    let min_valid_timestamp = get_time() - kong_settings.transfer_expiry_nanosecs;
-    let current_caller_account = caller_id(); // ICRC-1 Account of the caller
-    let kong_backend_account = kong_settings.kong_backend; // ICRC-1 Account for Kong
-
-    // Try ICRC3 get_blocks method first
-    match icrc3::attempt_icrc3_get_blocks_verification(
-        token,
-        block_id,
-        amount,
-        &current_caller_account,
-        &kong_backend_account,
-        min_valid_timestamp,
-    )
-    .await
-    {
-        Ok(()) => Ok(()),                                   // Verified successfully with ICRC3 get_blocks
-        Err(ICRC3VerificationError::Hard(msg)) => Err(msg), // Hard error, propagate
-        Err(ICRC3VerificationError::Soft(msg)) => Err(msg), // Soft error, let caller handle fallback
     }
 }
 
