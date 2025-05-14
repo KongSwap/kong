@@ -4,6 +4,7 @@ use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::allowance::{Allowance, AllowanceArgs};
 use icrc_ledger_types::icrc3::transactions::{GetTransactionsRequest, GetTransactionsResponse};
 
+use super::icrc3::{self, VerificationError as ICRC3VerificationError};
 use super::wumbo::Transaction1;
 
 use crate::helpers::nat_helpers::nat_to_u64;
@@ -14,38 +15,49 @@ use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 
 #[cfg(not(feature = "prod"))]
-const ICP_CANISTER_ID: &str = "IC.ryjl3-tyaaa-aaaaa-aaaba-cai";
+const ICP_CANISTER_ID: &str = "IC.nppha-riaaa-aaaal-ajf2q-cai"; // Testnet ICP Ledger
 #[cfg(feature = "prod")]
-const ICP_CANISTER_ID: &str = "IC.ryjl3-tyaaa-aaaaa-aaaba-cai";
+const ICP_CANISTER_ID: &str = "IC.ryjl3-tyaaa-aaaaa-aaaba-cai"; // Mainnet ICP Ledger
 const WUMBO_CANISTER_ID: &str = "IC.wkv3f-iiaaa-aaaap-ag73a-cai";
 const DAMONIC_CANISTER_ID: &str = "IC.zzsnb-aaaaa-aaaap-ag66q-cai";
 const CLOWN_CANISTER_ID: &str = "IC.iwv6l-6iaaa-aaaal-ajjjq-cai";
 
-/// Represents the type of a transaction.
-#[derive(Debug, PartialEq, Eq)]
+/// Represents the type of a transaction being verified.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TransactionType {
     Approve,
     Transfer,
     TransferFrom,
 }
 
-/// verify that the block_id is a transfer from caller, amount matches
-/// ts_start timestamp where transfer must be after this time
+/// Verifies a transfer by checking the ledger.
+/// For ICRC3 tokens, it tries ICRC3 methods first, falling back to traditional methods.
+/// For non-ICRC3 tokens, it uses the traditional verification methods.
 pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) -> Result<(), String> {
-    let token_address_with_chain = token.address_with_chain();
-    let ts_start = get_time() - kong_settings_map::get().transfer_expiry_nanosecs; // only accept transfers within the hour
     match token {
-        StableToken::IC(_) => {
+        StableToken::IC(ic_token) => {
+            // If it's an ICRC3 token, try ICRC3 methods first
+            if ic_token.icrc3 {
+                match attempt_icrc3_verification(token, block_id, amount).await {
+                    Ok(()) => return Ok(()), // ICRC3 verification succeeded
+                    Err(_) => {
+                        // ICRC3 verification failed, fall back to traditional methods
+                        // Fall through to traditional verification
+                    }
+                }
+            }
+
+            // If not ICRC3 or ICRC3 verification failed, use traditional methods
+            let token_address_with_chain = token.address_with_chain();
+            let ts_start = get_time() - kong_settings_map::get().transfer_expiry_nanosecs; // only accept transfers within the hour
+
             if token_address_with_chain == ICP_CANISTER_ID {
                 // use query_blocks
                 let block_args = GetBlocksArgs {
                     start: nat_to_u64(block_id).ok_or_else(|| format!("ICP ledger block id {:?} not found", block_id))?,
                     length: 1,
                 };
-                match query_blocks(*token.canister_id().ok_or("Invalid principal id")?, block_args)
-                    .await
-                    .map_err(|e| e.1)
-                {
+                match query_blocks(*token.canister_id().ok_or("Invalid principal id")?, block_args).await {
                     Ok(query_response) => {
                         let blocks: Vec<Block> = query_response.blocks;
                         let backend_account = kong_settings_map::get().kong_backend;
@@ -85,9 +97,9 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                             }
                         }
 
-                        Err(format!("Failed to verify {} transfer block id {}", token.symbol(), block_id))?
+                        Err(format!("Failed to verify {} transfer block id {}", token.symbol(), block_id))
                     }
-                    Err(e) => Err(e)?,
+                    Err(e) => Err(e.1),
                 }
             } else if token_address_with_chain == WUMBO_CANISTER_ID
                 || token_address_with_chain == DAMONIC_CANISTER_ID
@@ -133,7 +145,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                             None => Err("No transaction found")?,
                         }
                     }
-                    Err(e) => Err(e.1)?,
+                    Err(e) => Err(e.1),
                 }
             } else {
                 // use get_transactions()
@@ -185,9 +197,9 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                             }
                         }
 
-                        Err(format!("Failed to verify {} transfer block id {}", token.symbol(), block_id))?
+                        Err(format!("Failed to verify {} transfer block id {}", token.symbol(), block_id))
                     }
-                    Err(e) => Err(e.1)?,
+                    Err(e) => Err(e.1),
                 }
             }
         }
@@ -195,6 +207,51 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
     }
 }
 
+/// ICRC3 verification methods
+async fn attempt_icrc3_verification(token: &StableToken, block_id: &Nat, amount: &Nat) -> Result<(), String> {
+    let kong_settings = kong_settings_map::get();
+    let min_valid_timestamp = get_time() - kong_settings.transfer_expiry_nanosecs;
+    let current_caller_account = caller_id(); // ICRC-1 Account of the caller
+    let kong_backend_account = kong_settings.kong_backend; // ICRC-1 Account for Kong
+
+    // Try ICRC3 get_blocks method first
+    match icrc3::attempt_icrc3_get_blocks_verification(
+        token,
+        block_id,
+        amount,
+        &current_caller_account,
+        &kong_backend_account,
+        min_valid_timestamp,
+    )
+    .await
+    {
+        Ok(()) => Ok(()),                                   // Verified successfully with ICRC3 get_blocks
+        Err(ICRC3VerificationError::Hard(msg)) => Err(msg), // Hard error, no need to continue
+        Err(ICRC3VerificationError::Soft(_)) => {
+            // Fallback to generic get_transactions for this ICRC3 token
+            match icrc3::attempt_generic_get_transactions_verification(
+                token,
+                block_id, // block_id is used as start_index for get_transactions
+                amount,
+                &current_caller_account,
+                &kong_backend_account,
+                min_valid_timestamp,
+            )
+            .await
+            {
+                Ok(()) => Ok(()), // Verified successfully with get_transactions
+                Err(e) => match e {
+                    ICRC3VerificationError::Hard(m) | ICRC3VerificationError::Soft(m) => {
+                        Err(format!("ICRC3 verification failed for {}: {}", token.symbol(), m))
+                    }
+                },
+            }
+        }
+    }
+}
+
+/// Verifies a transaction by checking the ledger.
+/// `block_id`'s meaning (block index, transaction index) depends on the ledger type.
 #[allow(dead_code)]
 pub async fn verify_block_id(
     token: &StableToken,
@@ -369,6 +426,7 @@ pub async fn verify_block_id(
     ))?
 }
 
+/// Verifies that an allowance exists and is sufficient.
 #[allow(dead_code)]
 pub async fn verify_allowance(
     token: &StableToken,
@@ -395,8 +453,9 @@ pub async fn verify_allowance(
     Ok(())
 }
 
+/// Helper function to query an ICRC2 allowance.
 #[allow(dead_code)]
-pub async fn icrc2_allowance(from_principal_id: &Account, spender: &Account, token: &StableToken) -> Result<Allowance, String> {
+async fn icrc2_allowance(from_principal_id: &Account, spender: &Account, token: &StableToken) -> Result<Allowance, String> {
     let allowance_args = AllowanceArgs {
         account: *from_principal_id,
         spender: *spender,
