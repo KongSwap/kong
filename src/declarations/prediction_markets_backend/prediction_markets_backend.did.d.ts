@@ -189,8 +189,9 @@ export interface MarketResult {
 export type MarketStatus = { 'Disputed' : null } |
   { 'Closed' : Array<bigint> } |
   { 'Active' : null } |
+  { 'ExpiredUnresolved' : null } |
   { 'Voided' : null } |
-  { 'Pending' : null };
+  { 'PendingActivation' : null };
 export interface MarketsByStatus {
   'resolved' : Array<MarketResult>,
   'active' : Array<Market>,
@@ -269,6 +270,7 @@ export interface TokenInfo {
   'transfer_fee' : bigint,
   'name' : string,
   'fee_percentage' : bigint,
+  'activation_fee' : bigint,
   'symbol' : string,
 }
 export interface UserBetInfo {
@@ -364,6 +366,7 @@ export interface _SERVICE {
   'retry_transaction' : ActorMethod<[bigint], Result_8>,
   'search_markets' : ActorMethod<[SearchMarketsArgs], SearchMarketsResult>,
   'simulate_future_weight' : ActorMethod<[bigint, bigint, bigint], number>,
+  'update_expired_markets' : ActorMethod<[], bigint>,
   'update_token_config' : ActorMethod<[string, TokenInfo], Result>,
   'void_market' : ActorMethod<[bigint], Result_2>,
 }

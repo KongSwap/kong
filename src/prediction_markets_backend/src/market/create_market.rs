@@ -215,7 +215,7 @@ pub fn create_market(
                 outcomes,
                 resolution_method,
                 image_url,
-                status: if is_admin_user { MarketStatus::Active } else { MarketStatus::Pending },
+                status: if is_admin_user { MarketStatus::Active } else { MarketStatus::PendingActivation },
                 created_at: Timestamp::from(now),
                 end_time: Timestamp::from(end_time),
                 total_pool: TokenAmount::from(0u64),

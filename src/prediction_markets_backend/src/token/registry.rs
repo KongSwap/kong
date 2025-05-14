@@ -64,6 +64,11 @@ pub struct TokenInfo {
     /// This is deducted from transfers and ensures the minimum viable transaction amount
     /// Example: 10_000 (0.0001 KONG) for KONG tokens, 1_000 (0.001 USDT) for ckUSDT
     pub transfer_fee: TokenAmount,
+    
+    /// Minimum amount required to activate a market with this token
+    /// This defines the threshold that must be met before a market becomes active
+    /// Examples: 3000 KONG (300_000_000_000 units), 25 ICP (2_500_000_000 units)
+    pub activation_fee: TokenAmount,
 }
 
 // Thread-local registry of supported tokens
@@ -82,6 +87,7 @@ thread_local! {
                 fee_percentage: 100, // 1%
                 is_kong: true,
                 transfer_fee: StorableNat::from(10_000u64), // 0.0001 KONG
+                activation_fee: StorableNat::from(300_000_000_000u64), // 3000 KONG
             }
         );
         
@@ -96,6 +102,7 @@ thread_local! {
                 fee_percentage: 100, // 1%
                 is_kong: true,
                 transfer_fee: StorableNat::from(10_000u64), // 0.0001 KONG
+                activation_fee: StorableNat::from(300_000_000_000u64), // 3000 KONG
             }
         );
         
@@ -111,6 +118,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(1_000u64), // 0.001 USDT
+                activation_fee: StorableNat::from(100_000_000u64), // 100 ksUSDT
             }
         );
         
@@ -125,6 +133,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(10_000u64), // 0.0001 ICP
+                activation_fee: StorableNat::from(2_500_000_000u64), // 25 ICP
             }
         );
         
@@ -139,6 +148,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(1_000u64), // 0.001 USDT
+                activation_fee: StorableNat::from(100_000_000u64), // 100 ckUSDT
             }
         );
         
@@ -153,6 +163,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(1_000u64), // 0.001 USDC
+                activation_fee: StorableNat::from(100_000_000u64), // 100 ckUSDC
             }
         );
         
@@ -167,6 +178,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(10u64), // 0.0000001 BTC
+                activation_fee: StorableNat::from(100_000u64), // 0.001 ckBTC
             }
         );
         
@@ -181,6 +193,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(10_000u64), // 0.0001 DKP
+                activation_fee: StorableNat::from(7_000_000_000_000u64), // 70000 DKP
             }
         );
         
@@ -194,7 +207,8 @@ thread_local! {
                 decimals: 8,
                 fee_percentage: 200, // 2%
                 is_kong: false,
-                transfer_fee: StorableNat::from(10_000u64), // 0.0001 GLDT
+                transfer_fee: StorableNat::from(1_000u64), // 0.00001 GLDT
+                activation_fee: StorableNat::from(10_000_000_000u64), // 100 GLDT
             }
         );
         

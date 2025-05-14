@@ -60,7 +60,7 @@ pub fn search_markets(args: SearchMarketsArgs) -> SearchMarketsResult {
     if !args.include_resolved {
         filter = filter.with_statuses(vec![
             crate::market::market::MarketStatus::Active,
-            crate::market::market::MarketStatus::Pending,
+            crate::market::market::MarketStatus::PendingActivation,
             crate::market::market::MarketStatus::Disputed,
         ]);
     }

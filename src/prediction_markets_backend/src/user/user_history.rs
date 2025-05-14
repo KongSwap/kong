@@ -30,7 +30,7 @@ pub fn get_user_history(user: Principal) -> UserHistory {
                             total_wagered += bet.amount.clone();
 
                             match market.status {
-                                MarketStatus::Active | MarketStatus::Pending => {
+                                MarketStatus::Active | MarketStatus::PendingActivation | MarketStatus::ExpiredUnresolved => {
                                     total_active = total_active.clone() + bet.amount.clone();
                                     active_bets.push(UserBetInfo {
                                         market: market.clone(),
