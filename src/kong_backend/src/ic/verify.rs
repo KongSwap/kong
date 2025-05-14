@@ -5,10 +5,7 @@ use icrc_ledger_types::icrc2::allowance::{Allowance, AllowanceArgs};
 use icrc_ledger_types::icrc3::transactions::{GetTransactionsRequest, GetTransactionsResponse};
 use icrc_ledger_types::icrc3::blocks::{GetBlocksRequest as ICRC3GetBlocksRequest, GetBlocksResult as ICRC3GetBlocksResult}; // ICRC3GenericBlock removed
 
-// ICRC3Value import removed
-
-use super::icrc3; // Keep for process_icrc3_generic_block_value and verify_parsed_transfer_details
-// No longer need VerificationError as ICRC3VerificationError if it's fully removed later
+use super::icrc3;
 use super::wumbo::Transaction1;
 
 use crate::helpers::nat_helpers::nat_to_u64;
@@ -44,9 +41,6 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
     match token {
         StableToken::IC(ic_token) => {
             if ic_token.icrc3 {
-                // Inlined logic from attempt_icrc3_get_blocks_verification
-                // This async block attempts verification. Ok(()) means success for verify_transfer.
-                // Err(reason) means this ICRC3 path failed, and verify_transfer should fall back.
                 let icrc3_get_blocks_verification_result: Result<(), String> = (async {
                     let kong_settings = kong_settings_map::get();
                     let min_valid_timestamp = get_time() - kong_settings.transfer_expiry_nanosecs;

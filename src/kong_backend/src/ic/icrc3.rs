@@ -192,8 +192,6 @@ pub fn verify_parsed_transfer_details(
     Ok(())
 }
 
-// attempt_icrc3_get_blocks_verification removed as its logic is inlined into verify_transfer in verify.rs
-
 pub async fn attempt_generic_get_transactions_verification(
     token: &StableToken,
     transaction_start_index_arg: &Nat, // block_id is used as start index here
