@@ -226,13 +226,16 @@ impl MarketTransformer {
         
         for (_, market) in markets {
             match market.status {
-                MarketStatus::Active | MarketStatus::Pending => {
+                MarketStatus::Active | MarketStatus::PendingActivation => {
                     if now < market.end_time.to_u64() {
                         total_active += 1;
                     } else {
                         total_expired_unresolved += 1;
                     }
-                }
+                },
+                MarketStatus::ExpiredUnresolved => {
+                    total_expired_unresolved += 1;
+                },
                 MarketStatus::Disputed => {
                     total_expired_unresolved += 1;
                 }

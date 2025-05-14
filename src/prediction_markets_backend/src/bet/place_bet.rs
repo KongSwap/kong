@@ -127,8 +127,8 @@ async fn place_bet(
         MarketStatus::Active => {
             // Market is active, betting is allowed for everyone
         },
-        MarketStatus::Pending => {
-            // Only the creator can place an activation bet on a pending market
+        MarketStatus::PendingActivation => {
+            // Only the creator can place an activation bet on a pending activation market
             if user != market.creator {
                 return Err(BetError::NotMarketCreator);
             }
@@ -150,6 +150,7 @@ async fn place_bet(
             }
         },
         MarketStatus::Closed(_) => return Err(BetError::MarketClosed),
+        MarketStatus::ExpiredUnresolved => return Err(BetError::MarketClosed),
         MarketStatus::Disputed => return Err(BetError::InvalidMarketStatus),
         MarketStatus::Voided => return Err(BetError::InvalidMarketStatus),
     }
@@ -240,10 +241,10 @@ async fn place_bet(
         .collect();
 
     // Market Activation Logic
-    // If this is an activation bet from the creator, update the market status from Pending to Active
-    // User-created markets start as Pending and require this activation bet to become available
+    // If this is an activation bet from the creator, update the market status from PendingActivation to Active
+    // User-created markets start as PendingActivation and require this activation bet to become available
     // Admin-created markets start as Active and don't require this step
-    if matches!(market.status, MarketStatus::Pending) && user == market.creator {
+    if matches!(market.status, MarketStatus::PendingActivation) && user == market.creator {
         market.status = MarketStatus::Active;
         ic_cdk::println!("Market {} activated by creator bet of {} {}", 
                       market_id.to_u64(),

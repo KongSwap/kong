@@ -11,3 +11,4 @@ pub mod estimate_return_types;
 pub mod transaction_records;
 pub mod activity_metrics;
 pub mod bet;
+pub mod update_expired_markets;

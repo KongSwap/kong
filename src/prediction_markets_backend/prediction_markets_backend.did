@@ -183,8 +183,9 @@ type MarketStatus = variant {
   Disputed;
   Closed : vec nat;
   Active;
+  ExpiredUnresolved;
   Voided;
-  Pending;
+  PendingActivation;
 };
 type MarketsByStatus = record {
   resolved : vec MarketResult;
@@ -250,6 +251,7 @@ type TokenInfo = record {
   transfer_fee : nat;
   name : text;
   fee_percentage : nat64;
+  activation_fee : nat;
   symbol : text;
 };
 type UserBetInfo = record {
@@ -326,6 +328,7 @@ service : () -> {
   retry_transaction : (nat64) -> (Result_8);
   search_markets : (SearchMarketsArgs) -> (SearchMarketsResult) query;
   simulate_future_weight : (nat64, nat64, nat64) -> (float64) query;
+  update_expired_markets : () -> (nat64);
   update_token_config : (text, TokenInfo) -> (Result);
   void_market : (nat) -> (Result_2);
 }
