@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { browser } from '$app/environment';
   import { placeBet, getAllBets, isAdmin } from "$lib/api/predictionMarket";
   import { AlertTriangle, ChevronDown } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
@@ -11,7 +14,6 @@
   import { auth } from "$lib/stores/auth";
   import {
     marketStore,
-    filteredMarkets,
     type SortOption,
     type StatusFilter,
   } from "$lib/stores/marketStore";
@@ -20,7 +22,6 @@
   import { clickOutside } from "$lib/actions/clickOutside";
   import Badge from "$lib/components/common/Badge.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { goto } from "$app/navigation";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
 
   // Modal state
@@ -47,6 +48,18 @@
   let pendingOutcome: number | null = null;
   let tokens = [];
   let kongToken = null;
+
+  // Define valid filter/sort options based on marketStore types
+  const validStatusFilters: StatusFilter[] = ['all', 'active', 'pending', 'closed', 'disputed', 'voided'];
+  const validSortOptions: SortOption[] = ['newest', 'pool_asc', 'pool_desc', 'end_time_asc', 'end_time_desc'];
+
+  function isValidStatusFilter(filter: string | null): filter is StatusFilter {
+    return !!filter && validStatusFilters.includes(filter as StatusFilter);
+  }
+
+  function isValidSortOption(option: string | null): option is SortOption {
+    return !!option && validSortOptions.includes(option as SortOption);
+  }
 
   onDestroy(() => {
     // Stop the polling task
@@ -112,8 +125,20 @@
   }
 
   onMount(async () => {
-    // Initialize market store
-    await marketStore.init();
+    const urlParams = $page.url.searchParams;
+    const statusFromUrl = urlParams.get('status');
+    const sortFromUrl = urlParams.get('sort');
+
+    let initialOverrides: { statusFilter?: StatusFilter, sortOption?: SortOption } = {};
+    if (isValidStatusFilter(statusFromUrl)) {
+      initialOverrides.statusFilter = statusFromUrl;
+    }
+    if (isValidSortOption(sortFromUrl)) {
+      initialOverrides.sortOption = sortFromUrl;
+    }
+
+    // Initialize market store with overrides from URL
+    await marketStore.init(initialOverrides);
 
     tokens = await fetchTokensByCanisterId([KONG_LEDGER_CANISTER_ID]);
     kongToken = tokens[0];
@@ -226,9 +251,10 @@
   // Status display mapping
   const statusOptions = [
     { value: "all", label: "All" },
-    { value: "open", label: "Open" },
-    { value: "expired", label: "Pending" },
-    { value: "resolved", label: "Resolved" },
+    { value: "active", label: "Active" },
+    { value: "pending", label: "Pending" },
+    { value: "closed", label: "Closed" },
+    { value: "disputed", label: "Disputed" },
     { value: "voided", label: "Voided" },
   ];
 
@@ -237,6 +263,8 @@
     { value: "newest", label: "Newest" },
     { value: "pool_desc", label: "Pool Size (High to Low)" },
     { value: "pool_asc", label: "Pool Size (Low to High)" },
+    { value: "end_time_asc", label: "End Time (Soonest First)" },
+    { value: "end_time_desc", label: "End Time (Latest First)" },
   ];
 
   // Get current option label
@@ -252,6 +280,30 @@
       sortOptions.find((option) => option.value === $marketStore.sortOption)
         ?.label || "Pool Size (High to Low)"
     );
+  }
+
+  // Reactive statement to update URL when filters change
+  $: if (browser && $marketStore.statusFilter && $marketStore.sortOption && !$marketStore.loading) {
+    const newUrlParams = new URLSearchParams($page.url.searchParams.toString());
+    let changed = false;
+
+    if (newUrlParams.get('status') !== $marketStore.statusFilter) {
+      newUrlParams.set('status', $marketStore.statusFilter);
+      changed = true;
+    }
+    if (newUrlParams.get('sort') !== $marketStore.sortOption) {
+      newUrlParams.set('sort', $marketStore.sortOption);
+      changed = true;
+    }
+
+    if (changed) {
+      const currentPath = $page.url.pathname;
+      goto(`${currentPath}?${newUrlParams.toString()}`, { 
+        replaceState: true, 
+        noScroll: true, 
+        keepFocus: true 
+      });
+    }
   }
 </script>
 
@@ -424,25 +476,9 @@
         {:else}
           <div class="relative">
             <!-- Display markets based on status filter -->
-            {#if ($filteredMarkets.active && $filteredMarkets.active.length > 0) || ($marketStore.statusFilter !== "open" && (($filteredMarkets.expired_unresolved && $filteredMarkets.expired_unresolved.length > 0) || ($filteredMarkets.resolved && $filteredMarkets.resolved.length > 0)))}
+            {#if $marketStore.markets.length > 0}
               <MarketSection
-                markets={$marketStore.statusFilter === "resolved"
-                  ? $filteredMarkets.resolved.filter(
-                      (market) => "Closed" in (market as any).status,
-                    )
-                  : $marketStore.statusFilter === "voided"
-                    ? $filteredMarkets.resolved.filter(
-                        (market) => "Voided" in (market as any).status,
-                      )
-                    : $marketStore.statusFilter === "expired"
-                      ? $filteredMarkets.expired_unresolved
-                      : $marketStore.statusFilter === "all"
-                        ? [
-                            ...($filteredMarkets.active || []),
-                            ...($filteredMarkets.expired_unresolved || []),
-                            ...($filteredMarkets.resolved || []),
-                          ]
-                        : $filteredMarkets.active}
+                markets={$marketStore.markets}
                 {openBetModal}
                 onMarketResolved={async () =>
                   await marketStore.refreshMarkets()}

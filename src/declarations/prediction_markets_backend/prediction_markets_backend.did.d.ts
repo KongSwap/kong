@@ -268,7 +268,8 @@ export type SortField = { 'TotalPool' : null } |
   { 'EndTime' : null } |
   { 'TotalBets' : null };
 export type SortOption = { 'TotalPool' : SortDirection } |
-  { 'CreatedAt' : SortDirection };
+  { 'CreatedAt' : SortDirection } |
+  { 'EndTime' : SortDirection };
 export interface StatsResult {
   'total_bets' : bigint,
   'total_active_markets' : bigint,
@@ -286,6 +287,7 @@ export interface TokenInfo {
   'transfer_fee' : bigint,
   'name' : string,
   'fee_percentage' : bigint,
+  'min_initial_bet' : bigint,
   'symbol' : string,
 }
 export interface UserBetInfo {

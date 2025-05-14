@@ -10,7 +10,7 @@
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
   import { getAccountIds } from "$lib/utils/accountUtils";
-  import { loadBalances } from "$lib/stores/tokenStore";
+  import { loadBalances } from "$lib/stores/balancesStore";
   import { userTokens } from "$lib/stores/userTokens";
   import {
     Droplet,

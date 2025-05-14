@@ -4,7 +4,7 @@ import { Principal } from "@dfinity/principal";
 import BigNumber from "bignumber.js";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { swapStatusStore } from "$lib/stores/swapStore";
-import { auth } from "$lib/stores/auth";
+import { auth, swapActor } from "$lib/stores/auth";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { requireWalletConnection } from "$lib/stores/auth";
 import { SwapMonitor } from "./SwapMonitor";
@@ -146,11 +146,7 @@ export class SwapService {
       if (!payToken?.address || !receiveToken?.address) {
         throw new Error("Invalid tokens provided for swap quote");
       }
-      const actor = auth.pnp.getActor<CanisterType["KONG_BACKEND"]>({
-        canisterId: KONG_BACKEND_CANISTER_ID,
-        idl: canisters.kongBackend.idl,
-        anon: true,
-      });
+      const actor = swapActor({anon: true, requiresSigning: false});
       return await actor.swap_amounts(
         "IC." + payToken.address,
         payAmount,
@@ -236,13 +232,7 @@ export class SwapService {
     pay_tx_id: [] | [{ BlockIndex: bigint }];
   }): Promise<BE.SwapAsyncResponse> {
     try {
-      console.log("swap_async", auth.pnp)
-      const actor = auth.pnp.getActor<CanisterType["KONG_BACKEND"]>({
-          canisterId: KONG_BACKEND_CANISTER_ID,
-          idl: canisters.kongBackend.idl,
-          anon: false,
-          requiresSigning: auth.pnp.adapter.id === "plug",
-        });
+      const actor = swapActor({anon: false, requiresSigning: auth.pnp.adapter.id === "plug"});
       const result = await actor.swap_async(params);
       return result;
     } catch (error) {
@@ -256,12 +246,7 @@ export class SwapService {
    */
   public static async requests(requestIds: bigint[]): Promise<RequestsResult> {
     try {
-      const actor = auth.pnp.getActor<CanisterType["KONG_BACKEND"]>({
-        canisterId: KONG_BACKEND_CANISTER_ID,
-        idl: canisters.kongBackend.idl,
-        anon: true,
-        requiresSigning: false,
-      });
+      const actor = swapActor({anon: true, requiresSigning: false});
       // Ensure we only pass a single-element array or empty array
       const result = await actor.requests([requestIds[0]]);
       return result;
@@ -372,7 +357,6 @@ export class SwapService {
       if (result.Ok) {
         SwapMonitor.monitorTransaction(result?.Ok, swapId, toastId);
       } else {
-        console.log("auth.pnp", auth.pnp)
         console.error("Swap error:", result.Err);
         return false;
       }

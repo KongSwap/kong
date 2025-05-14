@@ -33,31 +33,31 @@
     "ic": "cngnf-vqaaa-aaaar-qag4q-cai",
     "local": "cngnf-vqaaa-aaaar-qag4q-cai",
     "staging_fe": "cngnf-vqaaa-aaaar-qag4q-cai",
-    "staging": ""
+    "staging": "cngnf-vqaaa-aaaar-qag4q-cai"
   },
   "icp_ledger": {
     "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai",
     "local": "ryjl3-tyaaa-aaaaa-aaaba-cai",
     "staging_fe": "ryjl3-tyaaa-aaaaa-aaaba-cai",
-    "staging": ""
+    "staging": "ryjl3-tyaaa-aaaaa-aaaba-cai"
   },
   "ckbtc_ledger": {
     "ic": "mxzaz-hqaaa-aaaar-qaada-cai",
     "local": "mxzaz-hqaaa-aaaar-qaada-cai",
     "staging_fe": "mxzaz-hqaaa-aaaar-qaada-cai",
-    "staging": ""
+    "staging": "mxzaz-hqaaa-aaaar-qaada-cai"
   },
   "cketh_ledger": {
     "ic": "ss2fx-dyaaa-aaaar-qacoq-cai",
     "local": "ss2fx-dyaaa-aaaar-qacoq-cai",
     "staging_fe": "ss2fx-dyaaa-aaaar-qacoq-cai",
-    "staging": ""
+    "staging": "ss2fx-dyaaa-aaaar-qacoq-cai"
   },
   "kong_ledger": {
     "ic": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "local": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "staging_fe": "o7oak-iyaaa-aaaaq-aadzq-cai",
-    "staging": ""
+    "staging": "o7oak-iyaaa-aaaaq-aadzq-cai"
   },
   "internet_identity": {
     "local": "rdmx6-jaaaa-aaaaa-aaadq-cai",
@@ -80,7 +80,7 @@
   "ic_siws_provider": {
     "local": "guktk-fqaaa-aaaao-a4goa-cai",
     "staging_fe": "guktk-fqaaa-aaaao-a4goa-cai",
-    "staging": "",
+    "staging": "guktk-fqaaa-aaaao-a4goa-cai",
     "ic": "guktk-fqaaa-aaaao-a4goa-cai"
   }
 }

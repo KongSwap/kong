@@ -29,9 +29,7 @@
       if (!principal || principal === "anonymous") {
         throw new Error("No wallet connected");
       }
-      
-      console.log('Loading wallet data for:', principal);
-      
+            
       // This will handle loading state internally in the store
       await WalletDataService.initializeWallet(principal);
     } catch (err) {
@@ -43,11 +41,6 @@
   // Monitor wallet data changes
   $effect(() => {
     const walletData = $walletDataStore;
-    // Using the most recent value in the console log doesn't trigger reactivity
-    console.log('Wallet data updated for', walletData.currentWallet, ':', 
-      'tokens:', walletData.tokens?.length || 0, 
-      'balances:', Object.keys(walletData.balances || {}).length);
-    
     // Update local error state only when it changes
     if (walletData.error) {
       error = walletData.error;
@@ -68,11 +61,9 @@
       // But avoid reloading if we're already loading for this principal
       if ((currentWallet !== currentPrincipal || !hasBalances) && 
           !(isAlreadyLoading && currentWallet === currentPrincipal)) {
-        console.log('Loading wallet data due to principal change or missing balances');
         lastLoadedPrincipal = currentPrincipal;
         loadWalletData();
       } else {
-        console.log(`Wallet data already loaded for ${currentPrincipal}`);
         lastLoadedPrincipal = currentPrincipal;
       }
     } else if (!currentPrincipal && previousPrincipal) {

@@ -33,7 +33,6 @@
 
   // Event handlers
   function toggleDropdown() {
-    console.log('Dropdown: toggleDropdown called'); // Log toggle
     const newState = !isOpen;
     if (open !== undefined) {
       open = newState; // Update bound prop if provided
@@ -58,8 +57,6 @@
     const target = event.target as Node;
     if (!triggerRef.contains(target) && !contentRef.contains(target)) {
       closeDropdown();
-    } else {
-      // console.log('Dropdown: handleClickOutside ignored (inside)');
     }
   }
 

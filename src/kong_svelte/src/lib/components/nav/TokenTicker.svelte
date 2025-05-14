@@ -267,7 +267,7 @@
 
 <div
   bind:this={tickerElement}
-  class="w-full overflow-hidden text-sm token-ticker-bg token-ticker-border shadow-lg h-8 flex items-center"
+  class="w-full opacity-90 hover:opacity-100 transition-opacity duration-200 overflow-hidden text-sm token-ticker-bg token-ticker-border shadow-lg h-8 flex items-center"
 >
   <div class="ticker-container h-full flex items-center">
     <div

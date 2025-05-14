@@ -32,7 +32,7 @@ pub fn min_activation_bet(token_id: &TokenIdentifier) -> TokenAmount {
     
     // Set token-specific activation fees
     match token_info.symbol.as_str() {
-        "KONG" => TokenAmount::from(300_000_000_000u64), // 3000 KONG (8 decimals)
+        "KONG" => TokenAmount::from(300_000_000u64), // 3000 KONG (8 decimals)
         "ICP" | "ksICP" => TokenAmount::from(2_500_000_000u64), // 25 ICP (8 decimals)
         "ckUSDT" => TokenAmount::from(100_000_000u64), // 100 ckUSDT (6 decimals)
         "ckUSDC" => TokenAmount::from(100_000_000u64), // 100 ckUSDC (6 decimals)

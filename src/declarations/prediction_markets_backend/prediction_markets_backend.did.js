@@ -6,6 +6,7 @@ export const idlFactory = ({ IDL }) => {
     'transfer_fee' : IDL.Nat,
     'name' : IDL.Text,
     'fee_percentage' : IDL.Nat64,
+    'min_initial_bet' : IDL.Nat,
     'symbol' : IDL.Text,
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
@@ -90,6 +91,7 @@ export const idlFactory = ({ IDL }) => {
   const SortOption = IDL.Variant({
     'TotalPool' : SortDirection,
     'CreatedAt' : SortDirection,
+    'EndTime' : SortDirection,
   });
   const GetAllMarketsArgs = IDL.Record({
     'status_filter' : IDL.Opt(MarketStatus),

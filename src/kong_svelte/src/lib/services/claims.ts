@@ -1,4 +1,4 @@
-import { auth } from '$lib/stores/auth';
+import { auth, swapActor } from '$lib/stores/auth';
 import { canisters, type CanisterType } from '../config/auth.config';
 import type { Claim } from '../types/claims';
 import { toastStore } from '../stores/toastStore';
@@ -26,12 +26,7 @@ export class ClaimsService {
         return { claims: [], error: "Please connect your wallet to view claims" };
       }
 
-      const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
-        canisterId: canisters.kongBackend.canisterId,
-        idl: canisters.kongBackend.idl,
-        anon: false,
-        requiresSigning: false,
-      });
+      const actor = swapActor({anon: false, requiresSigning: false});
       const principalId = authState.account?.owner;
       
       if (!principalId) {
@@ -61,13 +56,7 @@ export class ClaimsService {
 
   static async processClaim(claimId: bigint): Promise<{ success: boolean, error: string | null }> {
     try {
-      console.log("Processing claim:", claimId);
-      const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
-        canisterId: canisters.kongBackend.canisterId,
-        idl: canisters.kongBackend.idl,
-        anon: false,
-        requiresSigning: false,
-      });
+      const actor = swapActor({anon: false, requiresSigning: false});
       const result = await actor.claim(claimId);
       
       if ('Ok' in result) {
@@ -91,12 +80,7 @@ export class ClaimsService {
     let failureCount = 0;
     
     try {
-      const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
-        canisterId: canisters.kongBackend.canisterId,
-        idl: canisters.kongBackend.idl,
-        anon: false,
-        requiresSigning: false,
-      });
+      const actor = swapActor({anon: false, requiresSigning: false});
       
       for (const claim of claims) {
         try {

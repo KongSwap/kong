@@ -3,7 +3,7 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
-  import { loadBalances } from "$lib/stores/tokenStore";
+  import { loadBalances } from "$lib/stores/balancesStore";
   import { auth } from "$lib/stores/auth";
   import { liquidityStore } from "$lib/stores/liquidityStore";
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";

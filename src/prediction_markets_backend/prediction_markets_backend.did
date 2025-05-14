@@ -248,6 +248,7 @@ type SortField = variant { TotalPool; CreationTime; EndTime; TotalBets };
 type SortOption = variant {
   TotalPool : SortDirection;
   CreatedAt : SortDirection;
+  EndTime : SortDirection;
 };
 type StatsResult = record {
   total_bets : nat;
@@ -266,6 +267,7 @@ type TokenInfo = record {
   transfer_fee : nat;
   name : text;
   fee_percentage : nat64;
+  min_initial_bet : nat;
   symbol : text;
 };
 type UserBetInfo = record {

@@ -1,16 +1,12 @@
 import { canisters, type CanisterType } from "$lib/config/auth.config";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
-import { auth } from "$lib/stores/auth";
+import { auth, predictionActor } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import { notificationsStore } from "$lib/stores/notificationsStore";
 import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
 
 export async function getMarket(marketId: bigint) {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: true,
-  });
+  const actor = predictionActor({anon: true});
   const market = await actor.get_market(marketId);
   return market;
 }
@@ -19,25 +15,22 @@ export async function getAllMarkets(
   options: {
     start?: number;
     length?: number;
-    statusFilter?: "Open" | "Closed" | "Disputed" | "Voided";
+    statusFilter?: "Active" | "Closed" | "Disputed" | "Voided" | "Pending";
     sortOption?: {
       type: "CreatedAt" | "TotalPool";
       direction: "Ascending" | "Descending";
     };
   } = {},
 ) {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: true,
-  });
+  const actor = predictionActor({anon: true});
 
   const statusFilterValue: [] | [MarketStatus] = options.statusFilter
     ? [
-        options.statusFilter === "Open" ? { Active: null } as MarketStatus :
+        options.statusFilter === "Active" ? { Active: null } as MarketStatus :
         options.statusFilter === "Closed" ? { Closed: [] } as MarketStatus :
         options.statusFilter === "Disputed" ? { Disputed: null } as MarketStatus :
         options.statusFilter === "Voided" ? { Voided: null } as MarketStatus :
+        options.statusFilter === "Pending" ? { Pending: null } as MarketStatus :
         undefined
       ].filter(Boolean) as [MarketStatus]
     : [];
@@ -62,11 +55,7 @@ export async function getAllMarkets(
 }
 
 export async function getMarketsByStatus() {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: true,
-  });
+  const actor = predictionActor({anon: true});
   const marketsByStatus = await actor.get_markets_by_status({
     start: 0n,
     length: 100n,
@@ -75,25 +64,16 @@ export async function getMarketsByStatus() {
 }
 
 export async function getMarketBets(marketId: bigint) {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: true,
-  });
+  const actor = predictionActor({anon: true});
   const bets = await actor.get_market_bets(marketId);
   return bets;
 }
 
 export async function getUserHistory(principal: string) {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: true,
-  });
+  const actor = predictionActor({anon: true});
   try {
     const principalObj = Principal.fromText(principal);
     const history = await actor.get_user_history(principalObj);
-    console.log("User history:", history);
     return history;
   } catch (error) {
     console.error("Error in getUserHistory:", error);
@@ -115,12 +95,7 @@ export interface CreateMarketParams {
 }
 
 export async function createMarket(params: CreateMarketParams) {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: false,
-    requiresSigning: false,
-  });
+  const actor = predictionActor({anon: false, requiresSigning: false});
   const result = await actor.create_market(
     params.question,
     params.category,
@@ -131,7 +106,7 @@ export async function createMarket(params: CreateMarketParams) {
     params.image_url ? [params.image_url] : [], // Pass as optional array
     params.uses_time_weighting !== undefined ? [params.uses_time_weighting] : [],
     params.time_weight_alpha !== undefined ? [params.time_weight_alpha] : [],
-    params.token_id ? [params.token_id] : []
+    (params.token_id !== undefined && params.token_id !== null) ? [String(params.token_id)] : []
   );
 
   notificationsStore.add({
@@ -160,12 +135,7 @@ export async function placeBet(
     );
 
     // Place the bet using an authenticated actor
-    const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-      canisterId: canisters.predictionMarkets.canisterId,
-      idl: canisters.predictionMarkets.idl,
-      anon: false,
-      requiresSigning: false,
-    });
+    const actor = predictionActor({anon: false, requiresSigning: false});
 
     // Convert amount string to BigInt and verify it's not zero
     const bigIntAmount = BigInt(amount);
@@ -215,12 +185,7 @@ export async function resolveMarketViaAdmin(
   winningOutcome: bigint,
 ): Promise<void> {
   try {
-    const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-      canisterId: canisters.predictionMarkets.canisterId,
-      idl: canisters.predictionMarkets.idl,
-      anon: false,
-      requiresSigning: false,
-    });
+    const actor = predictionActor({anon: false, requiresSigning: false});
 
     // Convert marketId from string to number
     const marketIdNumber = marketId;
@@ -256,12 +221,7 @@ export async function resolveMarketViaAdmin(
 
 export async function voidMarketViaAdmin(marketId: bigint): Promise<void> {
   try {
-    const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-      canisterId: canisters.predictionMarkets.canisterId,
-      idl: canisters.predictionMarkets.idl,
-      anon: false,
-      requiresSigning: false,
-    });
+    const actor = predictionActor({anon: false, requiresSigning: false});
 
     // Convert marketId from string to number
     const marketIdNumber = marketId;
@@ -296,11 +256,7 @@ export async function voidMarketViaAdmin(marketId: bigint): Promise<void> {
 }
 
 export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: true,
-  });
+  const actor = predictionActor({anon: true});
 
   // The backend API expects start and length parameters
   const marketsByStatus = await actor.get_markets_by_status({
@@ -350,40 +306,24 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
 
 
 export async function getPredictionMarketStats() {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: true,
-  });
+  const actor = predictionActor({anon: true});
   const stats = await actor.get_stats();
   return stats;
 }
 
 
 export async function getAllCategories() {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: true,
-  });
+  const actor = predictionActor({anon: true});
   const categories = await actor.get_all_categories();
   return categories;
 }
 
 export async function isAdmin(principal: string) {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: true,
-  });
+  const actor = predictionActor({anon: true});
   return await actor.is_admin(Principal.fromText(principal));
 }
 
 export async function getSupportedTokens() {
-  const actor = auth.pnp.getActor<CanisterType['PREDICTION_MARKETS']>({
-    canisterId: canisters.predictionMarkets.canisterId,
-    idl: canisters.predictionMarkets.idl,
-    anon: true,
-  });
+  const actor = predictionActor({anon: true});
   return await actor.get_supported_tokens();
 }

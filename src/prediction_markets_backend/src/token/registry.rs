@@ -64,6 +64,9 @@ pub struct TokenInfo {
     /// This is deducted from transfers and ensures the minimum viable transaction amount
     /// Example: 10_000 (0.0001 KONG) for KONG tokens, 1_000 (0.001 USDT) for ckUSDT
     pub transfer_fee: TokenAmount,
+
+    /// Minimum initial bet amount of tokens required to make a user created market live
+    pub min_initial_bet: TokenAmount,
 }
 
 // Thread-local registry of supported tokens
@@ -82,6 +85,7 @@ thread_local! {
                 fee_percentage: 100, // 1%
                 is_kong: true,
                 transfer_fee: StorableNat::from(10_000u64), // 0.0001 KONG
+                min_initial_bet: StorableNat::from(300_000_000u64), // 3 KONG
             }
         );
 
@@ -96,6 +100,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(10_000u64), // 0.0001 ICP
+                min_initial_bet: StorableNat::from(2_500_000_000u64), // 25 ICP
             }
         );
         
@@ -110,6 +115,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(1_000u64), // 0.001 USDT
+                min_initial_bet: StorableNat::from(100_000_000u64), // 100 ckUSDT
             }
         );
         
@@ -124,6 +130,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(1_000u64), // 0.001 USDC
+                min_initial_bet: StorableNat::from(100_000_000u64), // 100 ckUSDC
             }
         );
         
@@ -138,6 +145,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(10u64), // 0.0000001 BTC
+                min_initial_bet: StorableNat::from(100_000u64), // 0.001 ckBTC
             }
         );
         
@@ -152,6 +160,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(10_000u64), // 0.0001 DKP
+                min_initial_bet: StorableNat::from(7_000_000_000_000u64), // 70000 DKP
             }
         );
         
@@ -166,6 +175,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(10_000u64), // 0.0001 GLDT
+                min_initial_bet: StorableNat::from(10_000_000_000u64), // 100 GLDT
             }
         );
         

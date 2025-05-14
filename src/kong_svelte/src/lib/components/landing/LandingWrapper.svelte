@@ -164,7 +164,6 @@
         );
         totalSwaps = calculatedSwaps; // Assign state here
       } else {
-        console.log("Leaderboard data is not in a recognized format:", leaderboardData);
         totalSwaps = 0; // Default if format is unexpected
       }
     } catch (error) {

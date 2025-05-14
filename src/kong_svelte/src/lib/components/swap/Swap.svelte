@@ -11,10 +11,7 @@
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { auth } from "$lib/stores/auth";
-  import {
-    getTokenDecimals,
-    currentUserBalancesStore
-  } from "$lib/stores/tokenStore";
+  import { currentUserBalancesStore } from "$lib/stores/balancesStore";
   import { settingsStore } from "$lib/stores/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/stores/swapStore";
@@ -26,9 +23,7 @@
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { tick } from "svelte";
   import { SwapButtonService } from "$lib/services/swap/SwapButtonService";
-  import { 
-    refreshBalances, 
-  } from "$lib/stores/balancesStore";
+  import { refreshBalances } from "$lib/stores/balancesStore";
   import {
     themeId,
     primaryColor,
@@ -38,14 +33,14 @@
     processingColorStart,
     processingColorEnd,
     buttonBorderColor,
-    glowEffectColor
+    glowEffectColor,
   } from "$lib/stores/derivedThemeStore";
   import SwapButton from "./swap_ui/SwapButton.svelte";
   import SwitchTokensButton from "./swap_ui/SwitchTokensButton.svelte";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  
+
   // Types
   type PanelType = "pay" | "receive";
   interface PanelConfig {
@@ -95,39 +90,64 @@
 
   // Reactive statement to call refreshTokenBalances when token or amount changes
   $effect(() => {
-    if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
-      refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, true);
+    if (
+      $auth.account?.owner &&
+      ($swapState.payToken || $swapState.receiveToken)
+    ) {
+      refreshBalances(
+        [$swapState.payToken, $swapState.receiveToken],
+        $auth.account?.owner,
+        true,
+      );
     } else {
-      console.warn('Resetting balance states - missing auth or tokens');
+      console.warn("Resetting balance states - missing auth or tokens");
       insufficientFunds = false;
     }
   });
 
   let buttonText = $derived(
-    !$auth.isConnected ? "Connect Wallet" :
-    (!$swapState.payAmount || $swapState.payAmount === "0") ? "Enter Amount" : 
-    insufficientFunds ? "Insufficient Balance" :
-    SwapButtonService.getButtonText($swapState, $settingsStore, isQuoteLoading, insufficientFunds, $auth)
+    !$auth.isConnected
+      ? "Connect Wallet"
+      : !$swapState.payAmount || $swapState.payAmount === "0"
+        ? "Enter Amount"
+        : insufficientFunds
+          ? "Insufficient Balance"
+          : SwapButtonService.getButtonText(
+              $swapState,
+              $settingsStore,
+              isQuoteLoading,
+              insufficientFunds,
+              $auth,
+            ),
   );
 
   let buttonDisabled = $derived(
     // Never disable the button when it says "Connect Wallet"
-    buttonText === "Connect Wallet" ? false :
-    // Otherwise use normal disable logic
-    !$swapState.payAmount || $swapState.payAmount === "0" || 
-    SwapButtonService.isButtonDisabled($swapState, insufficientFunds, isQuoteLoading, $auth)
+    buttonText === "Connect Wallet"
+      ? false
+      : // Otherwise use normal disable logic
+        !$swapState.payAmount ||
+          $swapState.payAmount === "0" ||
+          SwapButtonService.isButtonDisabled(
+            $swapState,
+            insufficientFunds,
+            isQuoteLoading,
+            $auth,
+          ),
   );
 
   // More direct token lookup by canister ID
-  async function findTokenByCanisterId(canisterId: string): Promise<Kong.Token | null> {
+  async function findTokenByCanisterId(
+    canisterId: string,
+  ): Promise<Kong.Token | null> {
     if (!canisterId) return null;
-    
+
     // First check in userTokens
     if ($userTokens.tokens && $userTokens.tokens.length > 0) {
-      const token = $userTokens.tokens.find(t => t.address === canisterId);
+      const token = $userTokens.tokens.find((t) => t.address === canisterId);
       if (token) return token;
     }
-    
+
     // If not found, try to fetch it
     try {
       // Wrap canisterId in an array to match the expected parameter type
@@ -138,21 +158,24 @@
     } catch (error) {
       console.error(`Error fetching token ${canisterId}:`, error);
     }
-    
+
     return null;
   }
 
   // Refactored function to process URL parameters
   async function handleUrlTokenParams(searchParams: URLSearchParams) {
-    const fromParam = searchParams.get('from');
-    const toParam = searchParams.get('to');
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
 
     if (!fromParam && !toParam) return; // Nothing to do if no params
 
     // Wait for user tokens if necessary
     let attempts = 0;
-    while ((!$userTokens.tokens || $userTokens.tokens.length === 0) && attempts < 5) {
-      await new Promise(resolve => setTimeout(resolve, 200));
+    while (
+      (!$userTokens.tokens || $userTokens.tokens.length === 0) &&
+      attempts < 5
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
       attempts++;
     }
 
@@ -161,23 +184,33 @@
 
     // Find tokens only if params exist and are different from current state
     const [fromToken, toToken] = await Promise.all([
-      (fromParam && fromParam !== currentPayTokenId) ? findTokenByCanisterId(fromParam) : Promise.resolve($swapState.payToken),
-      (toParam && toParam !== currentReceiveTokenId) ? findTokenByCanisterId(toParam) : Promise.resolve($swapState.receiveToken)
+      fromParam && fromParam !== currentPayTokenId
+        ? findTokenByCanisterId(fromParam)
+        : Promise.resolve($swapState.payToken),
+      toParam && toParam !== currentReceiveTokenId
+        ? findTokenByCanisterId(toParam)
+        : Promise.resolve($swapState.receiveToken),
     ]);
 
-    const newPayToken = fromParam ? (await findTokenByCanisterId(fromParam)) : $swapState.payToken;
-    const newReceiveToken = toParam ? (await findTokenByCanisterId(toParam)) : $swapState.receiveToken;
+    const newPayToken = fromParam
+      ? await findTokenByCanisterId(fromParam)
+      : $swapState.payToken;
+    const newReceiveToken = toParam
+      ? await findTokenByCanisterId(toParam)
+      : $swapState.receiveToken;
 
     // Update state only if tokens actually changed
-    if (newPayToken?.address !== currentPayTokenId || newReceiveToken?.address !== currentReceiveTokenId) {
-      console.log('Updating tokens from URL params:', { fromParam, toParam, newPayToken, newReceiveToken });
-      swapState.update(state => ({
+    if (
+      newPayToken?.address !== currentPayTokenId ||
+      newReceiveToken?.address !== currentReceiveTokenId
+    ) {
+      swapState.update((state) => ({
         ...state,
         payToken: newPayToken || state.payToken, // Keep existing if lookup failed
         receiveToken: newReceiveToken || state.receiveToken, // Keep existing if lookup failed
         payAmount: "", // Reset amounts when tokens change via URL
         receiveAmount: "",
-        error: null
+        error: null,
       }));
       await tick(); // Ensure state updates before potential balance refresh or quote update
       // Resetting quote is handled by the $effect watching payAmount/tokens
@@ -185,8 +218,7 @@
       // Update the tracker *after* successful processing
       lastProcessedSearchParams = searchParams.toString();
     } else {
-      console.log('Token lookup resulted in no change.');
-      // Still update the tracker even if no state change occurred, 
+      // Still update the tracker even if no state change occurred,
       // to prevent reprocessing the same unchanged params.
       lastProcessedSearchParams = searchParams.toString();
     }
@@ -196,7 +228,6 @@
   onMount(async () => {
     if (browser) {
       try {
-        console.debug('Swap.svelte onMount: Processing initial URL params.');
         // Process initial URL params
         const initialSearchParams = new URL(window.location.href).searchParams;
         await handleUrlTokenParams(initialSearchParams);
@@ -204,15 +235,15 @@
         lastProcessedSearchParams = initialSearchParams.toString();
 
         await tick();
-        
+
         // If no tokens were set (or couldn't be found from URL), initialize default tokens
         if (!$swapState.payToken || !$swapState.receiveToken) {
           await swapState.initializeTokens(null, null);
         }
-        
+
         isInitialized = true;
       } catch (error) {
-        console.error('Error during token initialization:', error);
+        console.error("Error during token initialization:", error);
         // Fallback to default tokens
         await swapState.initializeTokens(null, null);
         isInitialized = true;
@@ -225,14 +256,10 @@
     if (browser && isInitialized && $page.url.searchParams) {
       const searchParams = $page.url.searchParams;
       const currentSearchString = searchParams.toString();
-      
+
       // Only run if the search string has actually changed
       if (currentSearchString !== lastProcessedSearchParams) {
-        console.log('Swap.svelte $effect: URL search params changed, processing:', currentSearchString);
         Promise.resolve().then(() => handleUrlTokenParams(searchParams));
-      } else {
-        // Optional: Log that we skipped due to unchanged params
-        // console.log('Swap.svelte $effect: URL search params unchanged, skipping processing:', currentSearchString);
       }
     }
   });
@@ -293,7 +320,7 @@
     ) {
       return false;
     }
-    
+
     try {
       swapState.update((state) => ({
         ...state,
@@ -356,8 +383,12 @@
     if (!$auth.isConnected) {
       walletProviderStore.open(() => {
         // After successful connection, we can attempt the action again if needed
-        if ($swapState.payAmount && $swapState.payAmount !== "0" && 
-            $swapState.payToken && $swapState.receiveToken) {
+        if (
+          $swapState.payAmount &&
+          $swapState.payAmount !== "0" &&
+          $swapState.payToken &&
+          $swapState.receiveToken
+        ) {
           handleSwapClick();
         }
       });
@@ -365,7 +396,7 @@
     }
 
     if ($swapState.swapSlippage > $settingsStore.max_slippage) {
-      goto('/settings');
+      goto("/settings");
       return;
     }
 
@@ -422,7 +453,7 @@
       try {
         // Get the most up-to-date state inside the timeout callback
         const currentState = get(swapState);
-        
+
         // Verify the state is still valid before making the API call
         if (
           !currentState.payToken ||
@@ -439,7 +470,7 @@
           isQuoteLoading = false;
           return;
         }
-        
+
         const quote = await SwapService.getSwapQuote(
           currentState.payToken,
           currentState.receiveToken,
@@ -560,7 +591,11 @@
     }));
 
     await tick();
-    await refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, true);
+    await refreshBalances(
+      [$swapState.payToken, $swapState.receiveToken],
+      $auth.account?.owner,
+      true,
+    );
 
     // Update amounts and quote
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
@@ -578,7 +613,7 @@
   $effect(() => {
     // Only run forward quote when pay panel was last edited and values changed
     if (
-      lastEditedPanel === 'pay' &&
+      lastEditedPanel === "pay" &&
       $swapState.payToken &&
       $swapState.receiveToken &&
       $swapState.payAmount &&
@@ -636,25 +671,36 @@
   // Add effect to check if user has sufficient balance
   $effect(() => {
     const checkBalance = async () => {
-      if ($auth.account?.owner && $swapState.payToken?.address && $swapState.payAmount && $swapState.payAmount !== "0") {
+      if (
+        $auth.account?.owner &&
+        $swapState.payToken?.address &&
+        $swapState.payAmount &&
+        $swapState.payAmount !== "0"
+      ) {
         // Check if we have balance data for this token
-        if ($currentUserBalancesStore && $currentUserBalancesStore[$swapState.payToken.address]) {
+        if (
+          $currentUserBalancesStore &&
+          $currentUserBalancesStore[$swapState.payToken.address]
+        ) {
           try {
             // Convert payAmount to a number that can be compared with the BigInt
             const payAmount = parseFloat($swapState.payAmount);
-            
+
             // Get the BigInt balance and convert to number for comparison
-            const balanceBigInt = $currentUserBalancesStore[$swapState.payToken.address].in_tokens;
-            
+            const balanceBigInt =
+              $currentUserBalancesStore[$swapState.payToken.address].in_tokens;
+
             // Get token decimals (this is async)
-            const decimals = await getTokenDecimals($swapState.payToken.address);
+            const decimals = await getTokenDecimals(
+              $swapState.payToken.address,
+            );
             const divisor = Math.pow(10, Number(decimals) || 8);
             const balanceAsNumber = Number(balanceBigInt) / divisor;
-            
+
             // Update insufficient funds flag
             insufficientFunds = payAmount > balanceAsNumber;
           } catch (error) {
-            console.error('Error calculating balance:', error);
+            console.error("Error calculating balance:", error);
             insufficientFunds = false;
           }
         } else {
@@ -667,27 +713,39 @@
         insufficientFunds = false;
       }
     };
-    
+
     // Execute the async function
     checkBalance();
   });
+
+  const getTokenDecimals = async (address: string) => {
+    const token =
+      $userTokens.tokens.find((t) => t.address === address) ||
+      (await fetchTokensByCanisterId([address])[0]);
+    return token?.decimals || 0;
+  };
 </script>
 
-<div class="relative flex flex-col w-full max-w-xl mx-auto" in:fade={{ duration: 420 }}>
+<div
+  class="relative flex flex-col w-full max-w-xl mx-auto"
+  in:fade={{ duration: 420 }}
+>
   <div class="relative flex flex-col gap-2 mb-2">
     <div class="relative flex flex-col gap-1 min-h-[240px] px-3 md:px-0">
       <!-- Doge image peeking only for Win98 theme -->
-      {#if $themeId === 'microswap'}
-        <div class="absolute -top-[4.8rem] right-5 z-1 transform translate-x-1/4 select-none pointer-events-none">
-          <img 
-            src="/images/layingdoge.webp" 
-            alt="Doge peeking" 
+      {#if $themeId === "microswap"}
+        <div
+          class="absolute -top-[4.8rem] right-5 z-1 transform translate-x-1/4 select-none pointer-events-none"
+        >
+          <img
+            src="/images/layingdoge.webp"
+            alt="Doge peeking"
             class="w-48 h-48 object-contain"
             style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"
           />
         </div>
       {/if}
-      
+
       <div class="relative z-10">
         <SwapPanel
           title={PANELS[0].title}
@@ -701,7 +759,7 @@
         />
       </div>
 
-      <SwitchTokensButton 
+      <SwitchTokensButton
         isDisabled={$swapState.isProcessing}
         onSwitch={handleReverseTokens}
       />
@@ -722,9 +780,11 @@
     </div>
 
     <div class="mt-1 px-3 md:px-0">
-      <SwapButton 
+      <SwapButton
         text={buttonText}
-        isError={!!$swapState.error || $swapState.swapSlippage > $settingsStore.max_slippage || insufficientFunds}
+        isError={!!$swapState.error ||
+          $swapState.swapSlippage > $settingsStore.max_slippage ||
+          insufficientFunds}
         isProcessing={$swapState.isProcessing}
         isLoading={isQuoteLoading}
         showShineAnimation={buttonText === "SWAP"}

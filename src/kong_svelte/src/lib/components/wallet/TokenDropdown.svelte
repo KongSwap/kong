@@ -160,7 +160,6 @@
         if (token.token?.address) {
           navigator.clipboard.writeText(token.token.address)
             .then(() => {
-              console.log('Canister ID copied to clipboard:', token.token.address);
               copySuccess = true;
               
               // Show toast notification
@@ -193,8 +192,6 @@
       default:
         if (onAction) {
           onAction(action, token);
-        } else {
-          console.log('onAction callback is missing');
         }
         onClose();
         break;

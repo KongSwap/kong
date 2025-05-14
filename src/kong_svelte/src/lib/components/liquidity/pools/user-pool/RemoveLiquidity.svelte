@@ -2,7 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { fade, fly } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { loadBalance } from "$lib/stores/tokenStore";
+  import { loadBalance } from "$lib/stores/balancesStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";

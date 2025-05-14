@@ -180,11 +180,6 @@ export const formatCategory = (category: any): string => {
 };
 
 export const toFixed = (amount: number, decimals: number): number => {
-  console.log("amount", amount);
-  console.log("decimals", decimals);
-  console.log("new BigNumber(amount)", new BigNumber(amount));
-  console.log("new BigNumber(10).pow(decimals)", new BigNumber(10).pow(decimals));
-  console.log("new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toNumber()", new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toNumber());
     return new BigNumber(amount).multipliedBy(new BigNumber(10).pow(decimals)).toNumber();
 };
 

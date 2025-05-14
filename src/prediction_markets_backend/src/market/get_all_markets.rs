@@ -18,6 +18,7 @@ pub enum SortDirection {
 pub enum SortOption {
     CreatedAt(SortDirection),  // Sort by creation time
     TotalPool(SortDirection),  // Sort by total pool size
+    EndTime(SortDirection),    // Sort by end time
 }
 
 #[derive(CandidType, Deserialize)]
@@ -83,6 +84,12 @@ pub fn get_all_markets(args: GetAllMarketsArgs) -> GetAllMarketsResult {
                 match direction {
                     SortDirection::Ascending => all_markets.sort_by(|(_, a), (_, b)| a.total_pool.cmp(&b.total_pool)),
                     SortDirection::Descending => all_markets.sort_by(|(_, a), (_, b)| b.total_pool.cmp(&a.total_pool)),
+                }
+            }
+            SortOption::EndTime(direction) => {
+                match direction {
+                    SortDirection::Ascending => all_markets.sort_by(|(_, a), (_, b)| a.end_time.cmp(&b.end_time)),
+                    SortDirection::Descending => all_markets.sort_by(|(_, a), (_, b)| b.end_time.cmp(&a.end_time)),
                 }
             }
         }

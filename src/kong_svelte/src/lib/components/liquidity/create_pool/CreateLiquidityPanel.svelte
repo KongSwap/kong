@@ -167,13 +167,11 @@
     if (tokenPairKey === lastLoadedTokenPair &&
         (currentTime - lastBalanceLoadTime < MIN_BALANCE_LOAD_INTERVAL ||
          (balanceLoadAttempts >= MAX_BALANCE_LOAD_ATTEMPTS && !forceRefresh))) {
-        console.log("Throttling balance load - conditions met");
         return;
     }
 
     // Return early if already loading to prevent race conditions
     if (isLoadingBalances) {
-      console.log("Skipping balance load - already in progress");
       return;
     }
 
@@ -250,7 +248,6 @@
         console.error("Error setting fallback tokens:", fallbackError);
       }
     } finally {
-      console.log("Finished loadInitialTokens, setting isLoading to false");
       isLoading = false;
     }
   }
@@ -284,7 +281,6 @@
           console.error("Error during initialization:", error);
         } finally {
           // Always set isLoading to false when done, regardless of success/failure
-          console.log("Setting isLoading to false");
           isLoading = false;
         }
       }
@@ -293,7 +289,6 @@
     // Safety timeout to prevent infinite loading
     setTimeout(() => {
       if (isLoading) {
-        console.log("Safety timeout triggered, forcing isLoading to false");
         isLoading = false;
       }
     }, 5000);
@@ -371,7 +366,6 @@
             // Reset balance load attempts when pool status changes or tokens change
             balanceLoadAttempts = 0;
             lastLoadedTokenPair = ""; // Allow immediate loading for new pair/status
-            console.log("Pool status or tokens changed, resetting balance load attempts.");
           }
           
           // Trigger balance loading if necessary
@@ -393,7 +387,6 @@
                 balanceLoadAttempts < MAX_BALANCE_LOAD_ATTEMPTS;
 
               if (canLoadAgain) {
-                console.log("Scheduling balance update via reactive block");
 
                 // Clear any existing timer
                 if (balanceLoadingTimer) {
@@ -403,15 +396,12 @@
                 // Debounce the balance loading trigger
                 balanceLoadingTimer = setTimeout(() => {
                   if (token0 && token1 && $auth.account?.owner && !isLoadingBalances) { // Re-check state
-                    console.log("Executing debounced balance load from reactive block");
                     // Pass false for forceRefresh, let throttling handle repeats
                     loadBalancesIfNecessary([token0, token1], $auth.account.owner, false);
                   }
                   balanceLoadingTimer = null;
                 }, 150); // Slightly longer debounce for reactive triggers
-              } else {
-                 console.log("Skipping balance update trigger - throttled");
-              }
+              } 
             }
           }
         } else {
@@ -494,7 +484,6 @@
             (p.address_0 === token0?.address && p.address_1 === token1?.address) ||
             (p.address_0 === token1?.address && p.address_1 === token0?.address)
         );
-        console.log("Pool found immediately after token change:", pool);
         // If pool exists, set price based on pool ratio (if applicable)
         // This might require recalculating amounts based on the existing pool's ratio
         // For now, let's rely on the user potentially adjusting amounts or price
@@ -504,8 +493,7 @@
 
       // Trigger balance load for the new pair if needed
       if ($auth?.isInitialized && $auth?.account?.owner) {
-          console.log("Triggering balance load after token select");
-          // Force refresh might be desired here, or rely on throttling logic
+            // Force refresh might be desired here, or rely on throttling logic
           loadBalancesIfNecessary([token0, token1], $auth.account.owner, true);
       }
     }
@@ -636,7 +624,6 @@
         // Compare calculated amount with current input amount1 for safety check (optional)
         const inputAmount1 = new BigNumber(amount1Str);
         if (!inputAmount1.isEqualTo(calculatedAmount1)) {
-             console.warn(`Input amount1 (${inputAmount1.toString()}) differs from calculated amount1 (${calculatedAmount1.toString()}) based on pool ratio. Using calculated amount.`);
              // Update the store to reflect the calculated amount before showing modal
              liquidityStore.setAmount(1, calculatedAmount1.toString());
         }

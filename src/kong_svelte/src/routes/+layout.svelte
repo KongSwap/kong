@@ -17,6 +17,12 @@
       display: flex;
     }
 
+    /* Ensure dialog portals work correctly when appended to body */
+    body > div {
+      position: relative;
+      z-index: 10000;
+    }
+
     /* Hide app until theme is ready */
     html:not([data-theme-ready="true"]) .app-content {
       visibility: hidden;

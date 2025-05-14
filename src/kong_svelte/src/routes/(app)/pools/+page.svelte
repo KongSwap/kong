@@ -386,7 +386,6 @@
   }
 
   function handlePoolClick(event: CustomEvent) {
-    console.log("Pool clicked", event.detail);
   }
 
   // Add loadTokens function to load token data for mobile cards

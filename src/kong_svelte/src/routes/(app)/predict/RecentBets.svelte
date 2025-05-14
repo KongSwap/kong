@@ -1,4 +1,4 @@
-<script lang="ts" runes>
+<script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { goto } from "$app/navigation";
@@ -14,6 +14,7 @@
     className?: string;
     panelVariant?: "transparent" | "solid";
     loading?: boolean;
+    tokenSymbol?: string;
   }>();
 
   // Set default values for props in non-reactive way
@@ -25,6 +26,7 @@
   let className = $state(props.className ?? "");
   let panelVariant = $state(props.panelVariant ?? "transparent");
   let loading = $state(props.loading ?? false);
+  let tokenSymbol = $state(props.tokenSymbol ?? "KONG");
 
   // Store visible bets to avoid animation flashes
   let visibleBets = $state<any[]>([]);
@@ -82,7 +84,7 @@
 </script>
 
 <Panel variant={panelVariant} {className} height={maxHeight} unpadded>
-  <h2 class="text-sm font-medium px-4 pt-4">{title}</h2>
+  <h2 class="text-sm text-kong-text-secondary font-medium px-4 pt-4">{title}</h2>
   <div class="max-h-[{maxHeight}] overflow-y-auto scrollbar-thin relative">
     {#if visibleBets.length > 0}
       {#each visibleBets as bet}
@@ -115,7 +117,7 @@
               <span class="font-medium text-kong-text-accent-green">
                 {formatBalance(Number(betData.amount || 0), 8)}
               </span>
-              <span class="text-xs text-kong-pm-text-secondary">KONG</span>
+              <span class="text-xs text-kong-pm-text-secondary">{tokenSymbol}</span>
             </div>
           </div>
           <div class="flex justify-between w-full items-center mt-2">

@@ -275,20 +275,17 @@
 
 	// Handle refresh button click
 	function handleRefresh() {
-		console.log('🔄 WalletTokensList: handleRefresh clicked, walletId:', walletId);
 		if (onRefresh) {
 			onRefresh();
 		} else if (walletId) {
 			loadUserBalancesWrapper(true);
 		} else {
-			console.warn('⚠️ WalletTokensList: No walletId available for refresh');
 		}
 	}
 
 	// Load user balances function - uses the service
 	async function loadUserBalancesWrapper(forceRefresh = false) {
 		if (!walletId) {
-			console.log('⚠️ WalletTokensList: No walletId available in loadUserBalancesWrapper');
 			return;
 		}
 
@@ -302,10 +299,8 @@
 				const refreshTimestamp = Date.now();
 				lastRefreshed = refreshTimestamp;
 				setLastRefreshed(refreshTimestamp);
-				console.log('✅ WalletTokensList: Balances loaded successfully, calling onBalancesLoaded');
 				onBalancesLoaded();
 			} else {
-				console.log('⚠️ WalletTokensList: No balances were loaded');
 			}
 		} catch (err) {
 			console.error("❌ WalletTokensList: Error loading balances:", err);
@@ -393,7 +388,6 @@
 
 	// Cancel the sync operation (now just closes the modal)
 	function cancelSync() {
-		console.log("[WalletTokensList] cancelSync called");
 		tokenSyncCandidates = { tokensToAdd: [], tokensToRemove: [] }; // Clear candidates on cancel
 		showSyncConfirmModal = false;
 	}
@@ -553,8 +547,7 @@
 				// 	break;
 				// }
 
-				const url = `/pools/add?token0=${token0Id}&token1=${token1Id}`;
-				console.log('Navigating to Add LP:', url);
+				const url = `/pools/add?token0=${token0Id}&token1=${token1Id}`;	
 				goto(url);
 				// Optionally call the prop if the parent needs to react *before* navigation
 				// onAction(action, selectedToken);
@@ -621,7 +614,6 @@
 
 		// If discovery didn't show the confirmation modal, fall back to regular sync
 		if (!foundTokens) {
-			console.log("Discovery found no changes, falling back to regular sync analysis (skipping redundant balance refresh).");
 			// Force a refresh to ensure balances are up to date
 			await loadUserBalancesWrapper(true);
 			handleSyncTokens(true); // Pass true to skip the initial refresh

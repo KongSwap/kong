@@ -92,7 +92,7 @@
     
     // Determine how many stars to generate based on screen size
     // Reduced density by quarter from original (from 2000 to 8000 pixels per star)
-    const starCount = Math.floor((window.innerWidth * window.innerHeight) / 8000);
+    const starCount = Math.floor((window.innerWidth * window.innerHeight) / 24000);
     
     for (let i = 0; i < starCount; i++) {
       const star = document.createElement('div');

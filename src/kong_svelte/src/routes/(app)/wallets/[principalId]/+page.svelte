@@ -61,10 +61,6 @@
   // Reset data when principal ID changes
   $effect(() => {
     if (page.params.principalId !== currentPrincipalId) {
-      console.log(
-        `Principal ID changed from ${currentPrincipalId} to ${page.params.principalId}`,
-      );
-
       // Force a complete reset of the wallet data
       WalletDataService.reset();
 
@@ -123,7 +119,6 @@
 
   // Clean up when component is destroyed
   onDestroy(() => {
-    console.log("Wallet page destroyed, cleaning up state");
     // Reset any component-specific state here if needed
     totalValue = 0;
   });

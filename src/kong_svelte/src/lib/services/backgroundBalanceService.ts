@@ -19,8 +19,7 @@ export async function initBalanceWorker(): Promise<void> {
   if (!browser) return;
   
   try {
-    await initWorker(BALANCE_WORKER_ID, WORKER_SCRIPT_PATH);
-    console.log('Balance worker initialized');
+    await initWorker(BALANCE_WORKER_ID, WORKER_SCRIPT_PATH);  
   } catch (error) {
     console.error('Failed to initialize balance worker:', error);
     throw error;
@@ -87,5 +86,4 @@ export function terminateBalanceWorker(): void {
   if (!browser) return;
   
   terminateWorker(BALANCE_WORKER_ID);
-  console.log('Balance worker terminated');
 } 

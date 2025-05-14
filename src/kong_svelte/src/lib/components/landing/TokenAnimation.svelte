@@ -86,7 +86,6 @@
     const kongTexture = textureLoader.load('/images/kong_logo.png', 
       // onLoad callback
       (texture) => {
-        console.log("Texture loaded successfully");
         texture.flipY = false;
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;

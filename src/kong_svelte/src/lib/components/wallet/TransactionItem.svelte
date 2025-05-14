@@ -12,11 +12,7 @@
   import { getTransactionIcon } from "$lib/utils/transactionUtils";
 
   let { tx, onClick } = $props();
-
-  $effect(() => {
-    console.log(tx);
-  });
-
+  
   // Get icon component based on type name
   function getIconComponent(iconName: string) {
     switch (iconName) {

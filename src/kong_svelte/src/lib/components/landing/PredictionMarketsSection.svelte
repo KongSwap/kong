@@ -51,8 +51,6 @@
   
   // Effect to trigger animation based on visibility
   $effect(() => {
-    // Log visibility change for animation trigger
-    // console.log(`PredictionMarketsSection Animation Effect: isVisible=${isVisible}, hasTriggeredAnimation=${hasTriggeredAnimation}, mounted=${mounted}`);
     if (isVisible && !hasTriggeredAnimation && mounted) {
       triggerAnimation();
     }
@@ -78,7 +76,6 @@
       const stats = await getPredictionMarketStats();
       
       if (!mounted) {
-        console.log("PredictionMarketsSection fetchStats: Unmounted during API call. Aborting update.");
         // Note: 'finally' will still run and manage isLoadingStats if mounted state is checked there too
         return; 
       }
@@ -91,13 +88,11 @@
       tweenedActiveMarkets.set(activeMarkets);
       tweenedTotalBets.set(totalBets);
     } catch (error) {
-      console.error("PredictionMarketsSection: Error fetching stats:", error);
       errorLoadingStats = "Failed to load stats.";
       // Set default values on error
       totalMarkets = 50; // Example default
       activeMarkets = 10; // Example default
       totalBets = 2500; // Example default
-      console.log("PredictionMarketsSection: Setting default stats due to error.");
       // Update tweened values even on error with defaults
       tweenedMarkets.set(totalMarkets);
       tweenedActiveMarkets.set(activeMarkets);
@@ -105,21 +100,17 @@
     } finally {
       if (mounted) {
         isLoadingStats = false;
-      } else {
-         console.log("PredictionMarketsSection fetchStats Finally: Component unmounted, not setting isLoadingStats.");
-      }
+      } 
     }
   }
   
   // onMount lifecycle hook
   onMount(() => {
     mounted = true;
-    console.log("PredictionMarketsSection: Mounted.");
     
     // Fetch logic is now solely handled by the $effect below
     
     return () => {
-      console.log("PredictionMarketsSection: Unmounting.");
       mounted = false;
     };
   });

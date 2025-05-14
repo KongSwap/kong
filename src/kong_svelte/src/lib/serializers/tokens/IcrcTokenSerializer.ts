@@ -30,7 +30,7 @@ export class IcrcTokenSerializer extends BaseSerializer {
         symbol: this.toString(data.symbol),
         address: this.toString(data.address || data.canister_id), // Use canister_id as address
         fee: this.toNumber(data.fee),
-        fee_fixed: this.toString(data.fee_fixed || data.fee),
+        fee_fixed: this.toString(data.fee_fixed || data.fee).replace("_", ""),
         decimals: this.toNumber(data.decimals),
         token_type: 'IC', // Explicitly set for ICRC tokens
         chain: 'ICP', // Explicitly set for ICRC tokens

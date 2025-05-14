@@ -11,11 +11,12 @@ import type {
 import { ApiClient } from '../base/ApiClient';
 import { API_URL } from '../index';
 import { browser } from '$app/environment';
-import { auth } from '$lib/stores/auth';
+import { auth, faucetActor } from '$lib/stores/auth';
 import { toastStore } from '$lib/stores/toastStore';
 import { userTokens } from '$lib/stores/userTokens';
 import { get } from 'svelte/store';
-import { canisters, type ICRC2_LEDGER, type KONG_FAUCET } from '$lib/config/auth.config';
+import { canisters, type CanisterType } from '$lib/config/auth.config';
+import { icrcActor } from '$lib/stores/auth';
 
 // Lazy initialization of API client to prevent SSR issues
 const getApiClient = () => {
@@ -198,12 +199,7 @@ export const addToken = async (canisterId: string): Promise<any> => {
  * Claims tokens from the faucet
  */
 export const faucetClaim = async (): Promise<void> => {
-  const actor = auth.pnp.getActor<KONG_FAUCET>({
-    canisterId: canisters.kongFaucet.canisterId,
-    idl: canisters.kongFaucet.idl,
-    anon: false,
-    requiresSigning: false,
-  });
+  const actor = faucetActor({anon: false, requiresSigning: false});
   const result = await actor.claim();
 
   if ('Ok' in result) {
@@ -224,11 +220,7 @@ export const fetchTokenMetadata = async (canisterId: string): Promise<Kong.Token
       throw new Error("API calls can only be made in the browser");
     }
 
-    const actor = auth.pnp.getActor<ICRC2_LEDGER>({
-      canisterId: canisterId,
-      idl: canisters.icrc2.idl,
-      anon: true,
-    });
+    const actor = icrcActor({canisterId, anon: true});
     if (!actor) {
       throw new Error('Failed to create token actor');
     }

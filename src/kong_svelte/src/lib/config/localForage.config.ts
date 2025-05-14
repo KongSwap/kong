@@ -38,8 +38,6 @@ export function configureStorage() {
       storeName: 'kong_main_store',
       size: 25600000 // 25MB
     });
-
-    console.log('[Storage] LocalForage configured successfully');
     return true;
   } catch (error) {
     console.error('[Storage] Error configuring localForage:', error);
@@ -65,7 +63,6 @@ export async function clearAllStorage() {
   
   try {
     await localForage.clear();
-    console.log('[Storage] All localForage data cleared');
     return true;
   } catch (error) {
     console.error('[Storage] Error clearing localForage data:', error);

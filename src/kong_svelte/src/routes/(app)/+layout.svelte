@@ -17,7 +17,6 @@
   import { userTokens } from "$lib/stores/userTokens";
   import { keyboardShortcuts } from "$lib/services/keyboardShortcuts";
   import { configureStorage } from "$lib/config/localForage.config";
-  import { allowanceStore } from "$lib/stores/allowanceStore";
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import GlobalSignatureModal from "$lib/components/wallet/GlobalSignatureModal.svelte";
@@ -40,8 +39,6 @@
         }
         await auth.initialize();
         if (browser) {
-          allowanceStore.initialize();
-
           // Fetch default tokens
           const tokenCanisterIds = Object.values(DEFAULT_TOKENS);
           const tokens = await fetchTokensByCanisterId(tokenCanisterIds);
@@ -72,7 +69,6 @@
           // Force show content after 2 seconds even if theme isn't fully ready
           themeReady = true;
           document.documentElement.setAttribute("data-theme-ready", "true");
-          console.log("[Layout] Forced theme ready due to timeout");
         }, 2000);
 
         // Start theme initialization
@@ -112,7 +108,6 @@
     return () => {
       if (browser) {
         keyboardShortcuts.destroy();
-        allowanceStore.destroy();
         if (loadingTimeout) {
           clearTimeout(loadingTimeout);
         }
@@ -133,10 +128,10 @@
   <LoadingIndicator text="Loading..." fullHeight />
 {:else}
   <PageWrapper page={page.url.pathname}>
-    <div class="ticker-section">
+    <div class="ticker-section bg-kong-bg-dark">
       <TokenTicker />
     </div>
-    <div class="bg-transparent navbar-section">
+    <div class="bg-transparent navbar-section mb-4">
       <Navbar />
     </div>
     <main class="flex flex-col items-center w-full flex-grow">

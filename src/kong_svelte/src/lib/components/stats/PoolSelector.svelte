@@ -64,18 +64,7 @@
   let poolsWithTokens = $derived(relevantPools.map(pool => {
     const matchingToken = getMatchingToken(pool);
     const tvl = Number(pool.tvl);
-    
-    // Add log for each pool to debug token matching issues
-    console.log(`Pool ${pool.pool_id} tokens:`, {
-      matchingToken,
-      token,
-      addresses: [pool.address_0, pool.address_1],
-      symbols: [pool.symbol_0, pool.symbol_1],
-      // Use type-safe access for token0/token1
-      token0: (pool as any).token0,
-      token1: (pool as any).token1
-    });
-    
+
     return { pool, matchingToken, tvl };
   }).sort((a, b) => b.tvl - a.tvl));
 

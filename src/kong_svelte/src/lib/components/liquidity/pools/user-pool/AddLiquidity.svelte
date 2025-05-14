@@ -3,7 +3,7 @@
   import { fade, fly } from "svelte/transition";
   import { BigNumber } from "bignumber.js";
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
-  import { currentUserBalancesStore } from "$lib/stores/tokenStore";
+  import { currentUserBalancesStore } from "$lib/stores/balancesStore";
   import { liquidityStore } from "$lib/stores/liquidityStore";
   import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import TokenInput from "./TokenInput.svelte";

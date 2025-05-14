@@ -133,7 +133,6 @@
   // Simplify search term handling
   function handleSearchInput(e) {
     const value = e.currentTarget.value;
-    console.log("Search input changed:", value);
     searchTerm.set(value);
   }
 
@@ -155,17 +154,13 @@
     const currentDebouncedTerm = $debouncedSearchTerm;
     
     if (currentDebouncedTerm !== undefined && currentDebouncedTerm !== lastSearchTerm && !isUrlUpdateInProgress) {
-      console.log("Search term changed from", lastSearchTerm, "to", currentDebouncedTerm);
       lastSearchTerm = currentDebouncedTerm;
       
-      // Always reset to page 1 for new searches
       if ($currentPage !== 1) {
-        console.log("Resetting to page 1 for new search");
-        lastPage = 1; // Update lastPage to prevent triggering page effect
+        lastPage = 1;
         currentPage.set(1);
       } else {
-        console.log("Already on page 1, refreshing data");
-        isPageChange.set(true); // Signal it's a page change type refresh
+        isPageChange.set(true);
         refreshData(true);
       }
     }
@@ -174,7 +169,6 @@
   // Handle page changes
   $effect(() => {
     if ($currentPage !== lastPage && !isUrlUpdateInProgress) {
-      console.log("Page changed from", lastPage, "to", $currentPage);
       isPageChange.set(true);
       lastPage = $currentPage;
       refreshData(true);

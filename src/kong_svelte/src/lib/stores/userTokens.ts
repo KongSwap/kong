@@ -182,7 +182,6 @@ function createUserTokensStore() {
       
       // If no saved tokens, load defaults
       if (!hasSaved) {
-        console.log('[UserTokens] No saved tokens found, loading defaults');
         const defaultTokensList = await fetchTokensByCanisterId(Object.values(DEFAULT_TOKENS));
         
         // Create new state with defaults
@@ -460,9 +459,6 @@ function createUserTokensStore() {
       if (!token || !token.address) return;
       
       state.update(state => {
-        console.log(`[UserTokens] enableToken called for ${token.symbol} (${token.address})`);
-        console.log('[UserTokens] State BEFORE enable:', Array.from(state.enabledTokens));
-
         // Create copies of current state
         const newEnabledTokens = new Set(state.enabledTokens);
         const newTokenData = new Map(state.tokenData);
@@ -481,7 +477,6 @@ function createUserTokensStore() {
           lastUpdated: Date.now(),
         };
 
-        console.log('[UserTokens] State AFTER enable:', Array.from(newState.enabledTokens));
         debouncedUpdateStorage(newState);
         return newState;
       });
@@ -518,9 +513,6 @@ function createUserTokensStore() {
     
     disableToken: (canisterId: string) => {
       state.update(state => {
-        console.log(`[UserTokens] disableToken called for ${canisterId}`);
-        console.log('[UserTokens] State BEFORE disable:', Array.from(state.enabledTokens));
-
         // Create copies of current state
         const newEnabledTokens = new Set(state.enabledTokens);
         const newTokenData = new Map(state.tokenData);
@@ -536,7 +528,6 @@ function createUserTokensStore() {
           lastUpdated: Date.now(),
         };
 
-        console.log('[UserTokens] State AFTER disable:', Array.from(newState.enabledTokens));
         debouncedUpdateStorage(newState);
         return newState;
       });

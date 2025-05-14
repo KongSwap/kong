@@ -65,7 +65,6 @@
   $effect(() => {
     if (principal && !poolsData.loading && 
         (!poolsData.walletId || poolsData.walletId !== principal)) {
-      console.log('Loading liquidity pools for portfolio calculation');
       walletPoolListStore.fetchPoolsForWallet(principal);
     }
   });
@@ -74,7 +73,6 @@
     try {
       // Load history data
       const history = getPortfolioHistory(principal, 1);
-      console.log('Portfolio history loaded:', history);
 
       // Only update if we have valid history data
       if (history && history.length >= 2) {

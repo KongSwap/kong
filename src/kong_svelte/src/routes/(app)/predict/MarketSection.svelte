@@ -12,6 +12,8 @@
   import { auth } from "$lib/stores/auth";
   import { isAdmin } from "$lib/api/predictionMarket";
   import { voidMarketViaAdmin } from "$lib/api/predictionMarket";
+  import { userTokens } from "$lib/stores/userTokens";
+    import TokenImages from "$lib/components/common/TokenImages.svelte";
 
   // Convert props to use $props
   let { 
@@ -60,6 +62,10 @@
   // Check if market is voided
   function isMarketVoided(market: any): boolean {
     return market && market.status && "Voided" in market.status;
+  }
+
+  function isMarketPending(market: any): boolean {
+    return market && market.status && "Pending" in market.status;
   }
 
   // Helper function to check if an outcome is a winner
@@ -144,7 +150,8 @@
   function getMarketStatusColor(market: any): string {
     if (isMarketResolved(market)) return "bg-kong-accent-blue";
     if (isMarketVoided(market)) return "bg-kong-text-accent-red";
-    if (isMarketExpiredUnresolved(market)) return "bg-yellow-400";
+    if (isMarketExpiredUnresolved(market)) return "bg-indigo-400";
+    if (isMarketPending(market)) return "bg-kong-accent-yellow";
     return "bg-kong-accent-green";
   }
 
@@ -152,7 +159,8 @@
   function getMarketStatusText(market: any): string {
     if (isMarketResolved(market)) return "Resolved";
     if (isMarketVoided(market)) return "Voided";
-    if (isMarketExpiredUnresolved(market)) return "Pending";
+    if (isMarketExpiredUnresolved(market)) return "Unresolved";
+    if (isMarketPending(market)) return "Pending";
     return "Active";
   }
 
@@ -408,14 +416,19 @@
                   <span
                     class="text-kong-text-secondary text-xs whitespace-nowrap flex items-center gap-1"
                   >
-                    <Coins class="w-3 h-3" />
+                    <TokenImages tokens={[
+                      $userTokens.tokens.find(
+                        (t) => t.address === market.token_id,
+                      ),
+                    ]}
+                    size={20} />
                     {formatBalance(
                       market.outcome_pools.reduce(
                         (acc, pool) => acc + Number(pool || 0),
                         0,
                       ),
                       8,
-                    )} KONG
+                    )} {$userTokens.tokens.find(t => t.address === market.token_id)?.symbol}
                   </span>
                   <span
                     class="py-0.5 px-1.5 flex items-center gap-1 text-kong-text-secondary bg-kong-accent/10 text-kong-accent rounded text-xs font-medium"

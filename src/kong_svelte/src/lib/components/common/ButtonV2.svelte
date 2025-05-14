@@ -42,7 +42,7 @@
     secondary: "text-kong-text-primary",
     success: "text-kong-success",
     error: "text-white",
-    warning: "text-kong-warning",
+    warning: "text-kong-text-on-primary",
     "accent-green": "text-kong-bg-dark",
     "accent-blue": "text-kong-white",
     "accent-red": "text-kong-white",

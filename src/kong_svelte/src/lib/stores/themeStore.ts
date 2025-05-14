@@ -183,7 +183,6 @@ function createThemeStore() {
         }
         
         // If no user theme, try the default theme
-        console.log(`[Theme] No user theme found, trying default key "${THEME_KEY}"`);
         const defaultThemeJson = localStorage.getItem(THEME_KEY);
         if (defaultThemeJson) {
           const defaultTheme = JSON.parse(defaultThemeJson) as ThemeId;
@@ -196,8 +195,6 @@ function createThemeStore() {
           const globalDefault = JSON.parse(globalDefaultJson) as ThemeId;
           return globalDefault;
         }
-        
-        console.log(`[Theme] No theme found in localStorage, will use system preference`);
       } catch (error) {
         console.error('Failed to load theme from localStorage:', error);
       }

@@ -28,14 +28,11 @@
   let lpTokenBalance = 0;
 
   onMount(async () => {
-    console.log("pool", $currentUserPoolsStore);
     // Set the balance from the pool data
     lpTokenBalance = parseFloat(pool.balance) || 0;
-    console.log("lpTokenBalance", pool);
     
     // Construct token ID - this should be adapted to match your application's LP token ID format
     tokenId = "LP." + pool.symbol;
-    console.log("tokenId", tokenId);
   });
 
   function validateFields() {
@@ -73,7 +70,6 @@
     isLoading = true;
     
     try {
-      console.log("tokenid", tokenId)
       await sendLpTokens({
         token: tokenId,
         toAddress: recipientAddress,

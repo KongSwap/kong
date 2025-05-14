@@ -70,7 +70,7 @@ export const dragginzTheme: ThemeDefinition = {
     logoBrightness: 1.05,
     logoInvert: 0,
     logoHoverBrightness: 1.15,
-    logoPath: '/images/dkp.png', // Using the dragon logo
+    logoPath: '/images/logo-white-wide.webp', // Using the dragon logo
     
     // Token selector dropdown colors - more distinct with fantasy theme colors
     tokenSelectorBg: '#0F201C',
@@ -152,7 +152,6 @@ export const dragginzTheme: ThemeDefinition = {
     enableParallax: false,
     parallaxStrength: 0, // Slightly reduced for subtlety
     enableNebula: false,
-    enableStars: true,
-    starsOpacity: 0.4
+    enableStars: false,
   }
 }; 

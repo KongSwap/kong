@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { auth } from "$lib/stores/auth";
+  import { auth, swapActor } from "$lib/stores/auth";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { userTokens } from "$lib/stores/userTokens";
   import { toastStore } from "$lib/stores/toastStore";
@@ -172,13 +172,7 @@
     try {
       try {
         // Call the add_token canister function directly
-        const kongBackendActor = auth.pnp.getActor<KONG_BACKEND>({
-          canisterId: canisters.kongBackend.canisterId,
-          idl: canisters.kongBackend.idl,
-          anon: false,
-          requiresSigning: false,
-        });
-        
+        const kongBackendActor = swapActor({anon: true, requiresSigning: false});
         const addTokenResult = await kongBackendActor.add_token({ token: formattedCanisterId });
         
         if ('Err' in addTokenResult) {

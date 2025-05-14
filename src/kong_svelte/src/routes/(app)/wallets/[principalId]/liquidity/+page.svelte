@@ -154,33 +154,21 @@
     
     // Check if we need to update our local principal
     if (currentPrincipal && currentPrincipal !== principal) {
-      console.log(`URL principal changed from ${principal} to ${currentPrincipal}`);
       
-      // Always reset allPools when principal changes to prevent showing stale data
-      console.log(`Resetting allPools due to principal change`);
       allPools = [];
-      
-      // Set loading state to true when switching wallets
       isLoading = true;
-      
-      // Always reset the wallet pool list store when principal changes
-      console.log(`Resetting walletPoolListStore due to principal change`);
       walletPoolListStore.reset();
       
-      // Update our local principal
       principal = currentPrincipal;
     }
     
-    // Check if wallet data is loaded for the current principal
     if (currentPrincipal && 
         $walletDataStore.currentWallet === currentPrincipal && 
         $walletDataStore.tokens.length > 0 && 
         !$walletDataStore.isLoading) {
       
-      // If we have wallet data but no pools, load the pools
       if ($walletPoolListStore.walletId !== currentPrincipal || 
           $walletPoolListStore.processedPools.length === 0) {
-        console.log(`Wallet data loaded for ${currentPrincipal}, loading pools`);
         loadPoolData(currentPrincipal);
       }
     }
@@ -199,7 +187,6 @@
     // Clear allPools if the walletPoolListStore has data for a different wallet
     if ($walletPoolListStore.walletId && 
         $walletPoolListStore.walletId !== currentPrincipal) {
-      console.log(`WalletPoolListStore has data for ${$walletPoolListStore.walletId} but current principal is ${currentPrincipal}, clearing allPools`);
       allPools = [];
       return;
     }
@@ -207,7 +194,6 @@
     // Update allPools from walletPoolListStore only if it matches the current principal
     if ($walletPoolListStore.processedPools.length > 0 && 
         $walletPoolListStore.walletId === currentPrincipal) {
-      console.log(`Updating allPools with ${$walletPoolListStore.processedPools.length} pools from store for ${currentPrincipal}`);
       allPools = [...$walletPoolListStore.processedPools];
     }
   });
@@ -218,7 +204,6 @@
     
     // Always reset allPools when loading data for a different principal
     if ($walletPoolListStore.walletId !== principalId) {
-      console.log(`Principal changed from ${$walletPoolListStore.walletId} to ${principalId}, resetting allPools`);
       allPools = [];
       
       // Set loading state to true when fetching new data
@@ -226,7 +211,6 @@
       
       // Reset the store to ensure we don't have stale data
       if ($walletPoolListStore.walletId !== principalId) {
-        console.log(`Resetting walletPoolListStore before loading data for ${principalId}`);
         walletPoolListStore.reset();
       }
     }
@@ -234,12 +218,10 @@
     // Check if we already have pools for this principal
     if ($walletPoolListStore.walletId === principalId && 
         $walletPoolListStore.processedPools.length > 0) {
-      console.log(`Already have pools for ${principalId}, no need to reload`);
       return;
     }
     
     try {
-      console.log(`Fetching pool data for ${principalId}`);
       
       // Set loading state to true when fetching new data
       isLoading = true;
@@ -248,9 +230,7 @@
       
       // Check if pools were loaded successfully
       if ($walletPoolListStore.processedPools.length === 0) {
-        console.log(`No pools found for ${principalId} after fetching`);
       } else {
-        console.log(`Successfully loaded ${$walletPoolListStore.processedPools.length} pools for ${principalId}`);
       }
     } catch (error) {
       console.error("Error loading pool data:", error);
@@ -273,7 +253,6 @@
     
     // Update our local principal if needed
     if (currentPrincipal !== principal) {
-      console.log(`Principal changed during navigation from ${principal} to ${currentPrincipal}`);
       principal = currentPrincipal;
       
       // Reset pools data when principal changes during navigation
@@ -287,8 +266,6 @@
         !$walletPoolListStore.loading && 
         ($walletPoolListStore.walletId !== currentPrincipal || 
          $walletPoolListStore.processedPools.length === 0)) {
-      
-      console.log(`Navigated to liquidity page for ${currentPrincipal}, checking if pools need to be loaded`);
       
       // If wallet data is already loaded, load pools
       if ($walletDataStore.currentWallet === currentPrincipal && 

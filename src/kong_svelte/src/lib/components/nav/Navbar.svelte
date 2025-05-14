@@ -19,7 +19,7 @@
     Trophy,
     Bell,
   } from "lucide-svelte";
-  import { loadBalances } from "$lib/stores/tokenStore";
+  import { loadBalances } from "$lib/stores/balancesStore";
   import { page } from "$app/state";
   import { browser } from "$app/environment";
   import { themeStore } from "$lib/stores/themeStore";
@@ -50,7 +50,7 @@
      $themeStore === 'microswap'));
   
   // Use theme logo path if available, otherwise use defaults
-  const mobileLogoPath = $logoPath;
+  const mobileLogoPath = "/titles/logo-white-wide.png";
 
   // No longer need logoSrc as we'll use the single path directly
   // and apply CSS inversion when needed via the light-logo class
@@ -348,7 +348,7 @@
   }
 </script>
 
-<div id="navbar" class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
+<div id="navbar" class="w-full top-0 left-0 z-50 relative py-2">
   <div class="mx-auto h-16 flex items-center justify-between md:px-6 px-4">
     <div class="flex items-center gap-4">
       {#if isMobile}

@@ -85,7 +85,7 @@ export const canisters: CanisterConfigs = {
 // --- PNP Initialization ---
 let globalPnp: PNP | null = null;
 const isDev = process.env.DFX_NETWORK === "local";
-const kongSvelteCanisterId = process.env.CANISTER_ID_KONG_SVELTE;
+const derivationOriginCanister = "3ldz4-aiaaa-aaaar-qaina-cai";
 
 const delegationTargets = [
   kongBackendCanisterId,
@@ -98,13 +98,13 @@ const derivationOrigin = (() => {
   if (isDev) {
     return undefined; // Let createPNP handle local derivation (uses window.location by default)
   } else {
-    if (!kongSvelteCanisterId) {
+    if (!derivationOriginCanister) {
       console.warn(
         "CANISTER_ID_KONG_SVELTE is not set for production derivation origin."
       );
       return undefined;
     }
-    return `https://${kongSvelteCanisterId}.icp0.io`;
+    return `https://${derivationOriginCanister}.icp0.io`;
   }
 })()
 
@@ -131,6 +131,7 @@ export function initializePNP(): PNP {
       verifyQuerySignatures: !isDev,
       derivationOrigin,
       delegationTimeout: BigInt(30 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 30 days
+      timeout: BigInt(30 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 30 days
       delegationTargets,
       siwsProviderCanisterId,
       adapters: {

@@ -23,8 +23,6 @@ export async function loadBalancesInBackground(principalId: string) {
     // Fetch balances in the background
     const balances = await fetchBalancesInBackground(tokens, principalId);
     
-    // Process and return results 
-    console.log(`Loaded ${Object.keys(balances).length} token balances in background`);
     return balances;
   } catch (error) {
     console.error('Error loading balances in background:', error);

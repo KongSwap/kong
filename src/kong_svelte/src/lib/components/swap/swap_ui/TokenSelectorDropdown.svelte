@@ -318,7 +318,13 @@
     // Enable the token first if it's from API
     if (isApiToken(token)) userTokens.enableToken(token);
 
-    onSelect(token);
+    // --- PATCH: Always use the full token object from userTokens if available ---
+    let selectedToken = token;
+    const userToken = $userTokens.tokenData.get(token.address);
+    if (userToken) {
+      selectedToken = userToken;
+    }
+    onSelect(selectedToken);
     searchQuery = "";
   }
   

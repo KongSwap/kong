@@ -193,7 +193,6 @@
   function ensureMaterials() {
     // Only create if they don't exist
     if (Object.keys(materials).length === 0) {
-      console.log("Creating materials");
       // Get colors from CSS variables using theme values
       let positiveColor = 0x00ff00; // Default green fallback
       let negativeColor = 0xff0000; // Default red fallback
@@ -277,7 +276,6 @@
     });
 
     isInitialized = true;
-    console.log("Positions initialized.");
   }
 
   function updatePositions() {
@@ -497,7 +495,6 @@
         cancelAnimationFrame(animationFrameId);
         animationFrameId = undefined; // Reset state
       }
-      console.log("Cleanup effect ran.");
        // Do not reset state variables like tokens here, they persist across renders unless explicitly changed.
     };
   });
@@ -506,20 +503,17 @@
   $effect(() => {
     // Check if we are ready to initialize *and* haven't initialized yet
     if (containerElement && tokens.length > 0 && containerWidth > 0 && containerHeight > 0 && !isInitialized) {
-      console.log("Dependencies met for initialization.");
       initializePositions(); // This sets isInitialized = true
 
       // Start the animation loop *after* initialization
       if (animationFrameId) cancelAnimationFrame(animationFrameId); // Clear previous frame just in case
       animationFrameId = requestAnimationFrame(updatePositions);
-      console.log("Animation loop started.");
     } else if (isInitialized && tokens.length > 0 && !animationFrameId && containerWidth > 0 && containerHeight > 0) {
         // If initialized, have tokens, but animation isn't running (e.g., after stopping), restart it.
         animationFrameId = requestAnimationFrame(updatePositions);
     } else if ((tokens.length === 0 || containerWidth === 0 || containerHeight === 0) && animationFrameId) {
         // If conditions to run animation are no longer met, stop it.
-        console.log("Stopping animation loop due to missing prerequisites.");
-        cancelAnimationFrame(animationFrameId);
+          cancelAnimationFrame(animationFrameId);
         animationFrameId = undefined;
     }
   });

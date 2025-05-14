@@ -41,7 +41,6 @@
 
   async function loadPage(pageNumber: number, forPrincipal: string) {
     if ($isLoading) {
-      console.log("Already loading, skipping request");
       return;
     }
     
@@ -51,8 +50,6 @@
     try {
       // Get the cursor for the requested page
       const cursor = pageCursors.get(pageNumber);
-      
-      console.log(`Loading swaps page ${pageNumber} for principal: ${forPrincipal} with cursor:`, cursor);
       
       const response = await fetchUserTransactions(
         forPrincipal,
@@ -64,7 +61,6 @@
       const { transactions: userTransactions, has_more, next_cursor } = response;
 
       if (!userTransactions || userTransactions.length === 0) {
-        console.log(`No swap transactions found for principal: ${forPrincipal}`);
         transactionStore.set([]);
         
         // Update total pages if we got no results
@@ -80,7 +76,6 @@
           }
         }
       } else {
-        console.log(`Received ${userTransactions.length} swap transactions for principal: ${forPrincipal}`);
         transactionStore.set(userTransactions.sort((a, b) => Number(b.timestamp) - Number(a.timestamp)));
         
         // Store the next cursor for the next page
@@ -118,7 +113,6 @@
     try {
       // Check if we need to load wallet data first
       if (!$walletData?.tokens || $walletData.tokens.length === 0) {
-        console.log(`Ensuring wallet data is loaded for principal: ${principalId}`);
         await WalletDataService.initializeWallet(principalId);
       }
     } catch (error) {
@@ -130,7 +124,6 @@
   }
 
   function initializeData(forPrincipal: string) {
-    console.log("Initializing swaps data for principal:", forPrincipal);
     // Reset all data structures
     transactionStore.set([]);
     totalPages.set(1);
@@ -150,7 +143,6 @@
   );
   
   onMount(() => {
-    console.log("Swaps component mounted for principal:", $currentPrincipal);
     // Only load additional data if initial wallet loading is complete
     if (!initialDataLoading) {
       ensureWalletDataAndLoadSwaps($currentPrincipal);
@@ -163,12 +155,8 @@
     const newPrincipal = page.params.principalId;
     const urlTimestamp = page.url.searchParams.get('t') || '';
     const currentUrl = page.url.pathname + page.url.search;
-    
-    console.log(`URL state change: path=${currentUrl}, principal=${newPrincipal}, timestamp=${urlTimestamp}, lastTimestamp=${lastTimestamp}`);
-    
+
     if (newPrincipal !== $currentPrincipal || urlTimestamp !== lastTimestamp) {
-      console.log(`Detected navigation change - Principal: ${$currentPrincipal} → ${newPrincipal}, Timestamp: ${lastTimestamp} → ${urlTimestamp}`);
-      
       // Update our tracking variables
       currentPrincipal.set(newPrincipal);
       lastTimestamp = urlTimestamp;
@@ -185,8 +173,7 @@
     if (initialDataLoading === false && $currentPrincipal) {
       // Check if we have tokens loaded
       const hasTokens = $walletData?.tokens?.length > 0;
-      console.log('Initial data loading complete, has tokens:', hasTokens);
-      
+        
       // When layout loading completes, load token and swap data
       ensureWalletDataAndLoadSwaps($currentPrincipal);
     }

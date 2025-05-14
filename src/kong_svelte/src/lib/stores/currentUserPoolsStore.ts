@@ -1,6 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
-import { auth } from "$lib/stores/auth";
+import { auth, swapActor } from "$lib/stores/auth";
 import { canisters } from '$lib/config/auth.config';
 import type { KONG_BACKEND } from '$lib/config/auth.config';
 
@@ -65,12 +65,7 @@ function createCurrentUserPoolsStore() {
       
       try {
         const currentAuth = get(auth);
-        const actor = auth.pnp.getActor<KONG_BACKEND>({
-          canisterId: canisters.kongBackend.canisterId,
-          idl: canisters.kongBackend.idl,
-          anon: true,
-        });
-        
+        const actor = swapActor({anon: true, requiresSigning: false});
         const response = await actor.user_balances(
           currentAuth?.account?.owner || ''
         );

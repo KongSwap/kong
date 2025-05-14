@@ -30,7 +30,7 @@
   import FormField from "$lib/components/common/FormField.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
-  import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
 
   // Constants
   const DEFAULT_DURATION = 24; // hours
@@ -59,7 +59,7 @@
     imageFile: null as File | null,
     imageUrl: null as string | null,
     uses_time_weighting: true,
-    token_id: KONG_CANISTER_ID,
+    token_id: DEFAULT_TOKENS.kong,
   });
 
   // UI state using $state
@@ -75,6 +75,7 @@
   let supportedTokens = $state<any[]>([]);
   let loadingTokens = $state(true);
   let showConfirmationModal = $state(false);
+  let tokenDropdownOpen = $state(false);
 
   // Derived values using $derived
   const questionError = $derived(
@@ -83,11 +84,6 @@
       : "",
   );
   const validOutcomes = $derived(formState.outcomes.filter((o) => o.trim()));
-
-  // Effect for console logging
-  $effect(() => {
-    console.log(formState);
-  });
 
   // Load state and fetch categories
   onMount(async () => {
@@ -114,12 +110,20 @@
     // Fetch supported tokens
     try {
       const supportedTokensRes = await getSupportedTokens();
-      formState.token_id = supportedTokensRes[0].id;
-      console.log(supportedTokensRes);
       supportedTokens = await fetchTokensByCanisterId(
         supportedTokensRes.map((token) => token.id),
       );
-      console.log(supportedTokens);
+      // Only set the default if not already set or if the current value is not in the list
+      if (
+        !formState.token_id ||
+        !supportedTokens.some((t) => t.address === formState.token_id)
+      ) {
+        // Try to set to KONG if available, else fallback to first token
+        const kongToken = supportedTokens.find((t) => t.address === DEFAULT_TOKENS.kong);
+        formState.token_id = kongToken
+          ? kongToken.address
+          : supportedTokens[0]?.address;
+      }
     } catch (e) {
       supportedTokens = [];
     } finally {
@@ -484,7 +488,7 @@
                     loading={loadingTokens}
                     text="Loading tokens..."
                   >
-                    <Dropdown width="w-full">
+                    <Dropdown width="w-full" bind:open={tokenDropdownOpen}>
                       <div
                         slot="trigger"
                         class="flex items-center gap-2 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary cursor-pointer min-h-[3rem]"
@@ -529,7 +533,10 @@
                         {#each supportedTokens as token}
                           <div
                             class="px-4 py-3 text-left hover:bg-kong-bg-secondary/20 hover:text-kong-primary group flex items-center gap-2 transition-colors cursor-pointer"
-                            on:click={() => (formState.token_id = token.id)}
+                            on:click={() => {
+                              formState.token_id = token.address;
+                              tokenDropdownOpen = false;
+                            }}
                           >
                             {#if token.logo_url}
                               <img
