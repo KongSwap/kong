@@ -226,27 +226,8 @@ async fn attempt_icrc3_verification(token: &StableToken, block_id: &Nat, amount:
     .await
     {
         Ok(()) => Ok(()),                                   // Verified successfully with ICRC3 get_blocks
-        Err(ICRC3VerificationError::Hard(msg)) => Err(msg), // Hard error, no need to continue
-        Err(ICRC3VerificationError::Soft(_)) => {
-            // Fallback to generic get_transactions for this ICRC3 token
-            match icrc3::attempt_generic_get_transactions_verification(
-                token,
-                block_id, // block_id is used as start_index for get_transactions
-                amount,
-                &current_caller_account,
-                &kong_backend_account,
-                min_valid_timestamp,
-            )
-            .await
-            {
-                Ok(()) => Ok(()), // Verified successfully with get_transactions
-                Err(e) => match e {
-                    ICRC3VerificationError::Hard(m) | ICRC3VerificationError::Soft(m) => {
-                        Err(format!("ICRC3 verification failed for {}: {}", token.symbol(), m))
-                    }
-                },
-            }
-        }
+        Err(ICRC3VerificationError::Hard(msg)) => Err(msg), // Hard error, propagate
+        Err(ICRC3VerificationError::Soft(msg)) => Err(msg), // Soft error, let caller handle fallback
     }
 }
 
