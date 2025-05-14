@@ -6,7 +6,7 @@ use ic_ledger_types::{AccountIdentifier, Subaccount};
 use icrc_ledger_types::icrc1::account::Account;
 use pocket_ic::PocketIc;
 
-use common::icp_ledger::{create_icp_ledger, InitArgs, LedgerArg};
+use common::icp_ledger::{InitArgs, LedgerArg};
 use common::identity;
 
 const MINTING_ACCOUNT_PEM_FILE: &str = "tests/common/identity.pem";

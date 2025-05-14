@@ -1,3 +1,4 @@
+// TODO: deprecate this file in favor of pool_builder.rs
 pub mod common;
 
 use anyhow::Result;
@@ -1246,10 +1247,6 @@ fn test_add_pool_insufficient_token1_balance() {
     let user_balance_a_after_failed_pool = common::icrc1_ledger::get_icrc1_balance(&ic, token_a_ledger_id, user_account);
 
     // Expected user balance should be approximately the original minus approve fee and transfer fee
-    // It appears Kong deducts some fees during the attempt
-    let expected_balance_a = total_mint_amount_a.clone() - (token_a_fee.clone() * Nat::from(3u64));
-
-    // Rather than enforce an exact balance, we'll make sure the user didn't lose their funds entirely
     assert!(
         user_balance_a_after_failed_pool.clone() + token_a_liquidity_amount.clone() > Nat::from(0u64),
         "User balance for Token A seems to have lost all funds: {}",
