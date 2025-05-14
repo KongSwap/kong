@@ -1,6 +1,6 @@
-import { canisters, type CanisterType } from "$lib/config/auth.config";
+import { canisters } from "$lib/config/auth.config";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
-import { auth, predictionActor } from "$lib/stores/auth";
+import { predictionActor } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import { notificationsStore } from "$lib/stores/notificationsStore";
 import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
@@ -326,4 +326,21 @@ export async function isAdmin(principal: string) {
 export async function getSupportedTokens() {
   const actor = predictionActor({anon: true});
   return await actor.get_supported_tokens();
+}
+
+export async function estimateBetReturn(
+  marketId: bigint, 
+  outcomeIndex: bigint, 
+  betAmount: bigint, 
+  currentTime: bigint = BigInt(Date.now()) * 1000000n,
+  tokenId?: string
+) {
+  const actor = predictionActor({anon: true});
+  return await actor.estimate_bet_return(
+    marketId, 
+    outcomeIndex, 
+    betAmount, 
+    currentTime,
+    tokenId ? [tokenId] : []
+  );
 }

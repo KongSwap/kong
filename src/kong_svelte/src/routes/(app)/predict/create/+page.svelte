@@ -282,7 +282,7 @@
           message: "Your prediction market has been created successfully",
           type: "success",
         });
-        goto("/predict");
+        goto(`/predict/${result.Ok}`);
       } else {
         error = result.Err;
       }

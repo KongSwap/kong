@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Modal from "$lib/components/common/Modal.svelte";
-  import { AlertTriangle, Coins, ArrowLeft } from "lucide-svelte";
+  import Dialog from "$lib/components/common/Dialog.svelte";
+  import { AlertTriangle, Coins, ArrowLeft, Clock } from "lucide-svelte";
   import { formatBalance, toFixed } from "$lib/utils/numberFormatUtils";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
   import { currentUserBalancesStore, refreshSingleBalance } from "$lib/stores/balancesStore";
@@ -8,6 +8,8 @@
   import { calculateMaxAmount } from "$lib/utils/validators/tokenValidators";
   import { auth } from "$lib/stores/auth";
   import { userTokens } from "$lib/stores/userTokens";
+  import { estimateBetReturn } from "$lib/api/predictionMarket";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
 
   let {
     showBetModal = false,
@@ -35,7 +37,9 @@
     kongBalance: 0,
     maxAmount: 0,
     modalId: Math.random().toString(36).substr(2, 9),
-    step: 1 // Track which step of the flow we're on: 1 = input, 2 = confirmation
+    step: 1, // Track which step of the flow we're on: 1 = input, 2 = confirmation
+    estimatedReturn: null,
+    isLoadingEstimate: false
   });
   
   // Reset modal state and fetch balance when modal is opened
@@ -45,6 +49,7 @@
     
     if (showBetModal) {
       state.step = 1;
+      state.estimatedReturn = null;
       
       // Fetch KONG balance when modal is opened
       if ($auth.isConnected) {
@@ -67,12 +72,60 @@
     }
   });
 
-  // Calculate potential win based on selected outcome and bet amount
+  // Update estimated return when bet amount or selected outcome changes
+  $effect(() => {
+    if (selectedMarket && selectedOutcome !== null && betAmount > 0) {
+      updateEstimatedReturn();
+    } else {
+      state.estimatedReturn = null;
+    }
+  });
+
+  // Get potential win from estimated return
   const potentialWin = $derived(
-    selectedOutcome !== null 
-      ? calculatePotentialWin(selectedOutcome, betAmount)
+    state.estimatedReturn 
+      ? getBestScenarioReturn(state.estimatedReturn)
       : 0
   );
+
+  // Get the best scenario return from estimated return
+  function getBestScenarioReturn(estimatedReturn) {
+    if (!estimatedReturn || !estimatedReturn.scenarios || estimatedReturn.scenarios.length === 0) {
+      return 0;
+    }
+    
+    // Find the scenario with the highest expected return
+    const bestScenario = estimatedReturn.scenarios.reduce(
+      (best, current) => current.expected_return > best.expected_return ? current : best, 
+      estimatedReturn.scenarios[0]
+    );
+    
+    return Number(bestScenario.expected_return);
+  }
+
+  async function updateEstimatedReturn() {
+    if (!selectedMarket || selectedOutcome === null || betAmount <= 0) return;
+    
+    try {
+      state.isLoadingEstimate = true;
+      // Convert bet amount to token units (multiply by 10^8)
+      const betAmountScaled = BigInt(toFixed(betAmount, 8));
+      const marketId = BigInt(selectedMarket.id);
+      const outcomeIdx = BigInt(selectedOutcome);
+      
+      const estimation = await estimateBetReturn(
+        marketId,
+        outcomeIdx,
+        betAmountScaled
+      );
+      
+      state.estimatedReturn = estimation;
+    } catch (error) {
+      console.error("Error estimating return:", error);
+    } finally {
+      state.isLoadingEstimate = false;
+    }
+  }
 
   function handleClose() {
     onClose();
@@ -82,54 +135,6 @@
     if (state.maxAmount > 0) {
       betAmount = Number((state.maxAmount * (percentage / 100)).toFixed(8));
     }
-  }
-
-  function calculatePotentialWin(
-    outcomeIndex: number,
-    betAmount: number,
-  ): number {
-    if (!selectedMarket || betAmount <= 0) return 0;
-
-    // Convert bet amount to token units (multiply by 10^8)
-    const betAmountScaled = toFixed(betAmount, 8);
-    const currentTotalPool = Number(selectedMarket.total_pool);
-    const outcomePool = Number(selectedMarket.outcome_pools[outcomeIndex] || 0);
-
-    // Calculate the total pool of other outcomes (the losing pool if you win)
-    const otherOutcomesPool = selectedMarket.outcome_pools.reduce(
-      (acc: number, pool: number, i: number) =>
-        i === outcomeIndex ? acc : acc + Number(pool || 0),
-      0,
-    );
-
-    // Your share of the outcome pool after your bet
-    // When outcomePool is 0, you'll get 100% of your outcome's pool (which is just your bet)
-    const yourShareOfPool = outcomePool === 0 ? 1 : betAmountScaled / (outcomePool + betAmountScaled);
-
-    // If you win, you get:
-    // 1. Your bet back
-    // 2. Your proportional share of the losing pool
-    const potentialWin =
-      betAmountScaled + Math.floor(yourShareOfPool * otherOutcomesPool);
-
-    return potentialWin;
-  }
-
-  // Calculate odds as (total_pool - outcome_pool) / outcome_pool + 1
-  // This represents how much you win for every 1 token bet
-  function calculateOdds(i: number): string {
-    if (!selectedMarket) return "";
-    const totalPool = Number(selectedMarket.total_pool);
-    const outcomePool = Number(selectedMarket.outcome_pools[i] || 0);
-    if (outcomePool === 0) return "N/A";
-
-    const otherOutcomesPool = selectedMarket.outcome_pools.reduce(
-      (acc: number, pool: number, idx: number) =>
-        idx === i ? acc : acc + Number(pool || 0),
-      0,
-    );
-
-    return (otherOutcomesPool / outcomePool + 1).toFixed(2);
   }
 
   function goToNextStep() {
@@ -143,14 +148,12 @@
   }
 </script>
 
-<Modal
-  isOpen={showBetModal}
-  variant="transparent"
-  on:close={handleClose}
-  modalKey={state.modalId + (showBetModal ? "-open" : "-closed")}
+<Dialog
+  open={showBetModal}
+  transparent={true}
+  onClose={handleClose}
   title={selectedMarket?.question || "Place Your Bet"}
-  width="min(95vw, 500px)"
-  className="!rounded max-h-[90vh] flex flex-col"
+  showClose={false}
 >
   {#if selectedMarket}
     <!-- Step 1: Input Bet Amount -->
@@ -164,6 +167,12 @@
             </span>
             <div class="mt-2 text-kong-text-secondary text-sm">
               <p>You are predicting this outcome.</p>
+              {#if selectedMarket.uses_time_weighting}
+                <div class="flex items-center gap-1 mt-1 text-xs text-kong-text-accent-green">
+                  <Clock class="w-3 h-3" />
+                  <span>Time-weighted rewards active</span>
+                </div>
+              {/if}
             </div>
           </div>
 
@@ -186,34 +195,42 @@
               placeholder="Enter amount"
             />
             <div class="grid grid-cols-4 gap-1.5 sm:gap-2 mb-4">
-              <button
-                class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
+              <ButtonV2
+                label="25%"
+                theme="secondary"
+                variant="solid"
+                size="xs"
                 on:click={() => setPercentage(25)}
-                disabled={state.maxAmount <= 0}
-              >
-                25%
-              </button>
-              <button
-                class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
+                isDisabled={state.maxAmount <= 0}
+                className="sm:text-sm"
+              />
+              <ButtonV2
+                label="50%"
+                theme="secondary"
+                variant="solid"
+                size="xs"
                 on:click={() => setPercentage(50)}
-                disabled={state.maxAmount <= 0}
-              >
-                50%
-              </button>
-              <button
-                class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
+                isDisabled={state.maxAmount <= 0}
+                className="sm:text-sm"
+              />
+              <ButtonV2
+                label="75%"
+                theme="secondary"
+                variant="solid"
+                size="xs"
                 on:click={() => setPercentage(75)}
-                disabled={state.maxAmount <= 0}
-              >
-                75%
-              </button>
-              <button
-                class="px-2 py-1.5 text-xs sm:text-sm bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-primary rounded transition-colors"
+                isDisabled={state.maxAmount <= 0}
+                className="sm:text-sm"
+              />
+              <ButtonV2
+                label="MAX"
+                theme="secondary"
+                variant="solid"
+                size="xs"
                 on:click={() => setPercentage(100)}
-                disabled={state.maxAmount <= 0}
-              >
-                MAX
-              </button>
+                isDisabled={state.maxAmount <= 0}
+                className="sm:text-sm"
+              />
             </div>
           </div>
         {/if}
@@ -232,19 +249,23 @@
       <!-- Action Buttons for Step 1 -->
       <div class="p-3 sm:px-4 bg-kong-bg mt-auto">
         <div class="flex gap-2 sm:gap-3">
-          <button
-            class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-kong-bg-light text-kong-text-primary rounded font-bold hover:bg-kong-bg-light/70 transition-all text-sm sm:text-base"
+          <ButtonV2
+            label="Cancel"
+            theme="secondary"
+            variant="solid"
+            size="lg"
             on:click={handleClose}
-          >
-            Cancel
-          </button>
-          <button
-            class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-kong-accent-green text-kong-bg-dark rounded font-bold hover:bg-kong-accent-green-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+            className="flex-1 font-bold sm:text-base"
+          />
+          <ButtonV2
+            label="Next"
+            theme="accent-green"
+            variant="solid"
+            size="lg"
             on:click={goToNextStep}
-            disabled={selectedOutcome === null || !betAmount}
-          >
-            Next
-          </button>
+            isDisabled={selectedOutcome === null || !betAmount}
+            className="flex-1 font-bold sm:text-base"
+          />
         </div>
       </div>
     
@@ -262,11 +283,41 @@
               The market ends in <span class="font-bold"><CountdownTimer endTime={selectedMarket.end_time} /></span>.
             </p>
             
-            <p class="text-center text-base leading-relaxed mt-4">
-              If the market resolves to this outcome, you will receive 
-              <span class="text-kong-text-accent-green font-bold">{formatBalance(potentialWin, 8)} KONG</span> 
-              based on the current pool size.
-            </p>
+            {#if state.isLoadingEstimate}
+              <div class="text-center mt-4">
+                <div class="inline-block w-5 h-5 border-2 border-kong-accent-green border-t-transparent rounded-full animate-spin"></div>
+                <p class="mt-2">Calculating potential return...</p>
+              </div>
+            {:else if state.estimatedReturn}
+              <div class="text-center mt-4">
+                <p class="text-base leading-relaxed">
+                  If the market resolves to this outcome, you will receive 
+                  <span class="text-kong-text-accent-green font-bold">{formatBalance(potentialWin, 8)} KONG</span> 
+                  based on the current pool size.
+                </p>
+                
+                {#if selectedMarket.uses_time_weighting && state.estimatedReturn.time_weight_alpha}
+                  <div class="mt-3 text-sm bg-kong-bg-light p-2 rounded">
+                    <div class="flex items-center justify-center gap-1 text-kong-text-accent-green mb-1">
+                      <Clock class="w-4 h-4" />
+                      <span class="font-medium">Time-Weighted Rewards</span>
+                    </div>
+                    <p class="text-kong-text-secondary">
+                      Early betters receive higher rewards. <br/>
+                      {#if state.estimatedReturn.scenarios[0]?.time_weight}
+                        Your time weight factor: 
+                        <span class="font-medium">{(Number(state.estimatedReturn.scenarios[0].time_weight) * 100).toFixed(1)}%</span>
+                      {/if}
+                    </p>
+                  </div>
+                {/if}
+              </div>
+            {:else}
+              <p class="text-center text-base leading-relaxed mt-4">
+                If the market resolves to this outcome, you will receive your winnings
+                based on the current pool size.
+              </p>
+            {/if}
           </div>
           
           <!-- Warning or additional info can go here -->
@@ -289,18 +340,26 @@
       <!-- Action Buttons for Step 2 -->
       <div class="p-3 sm:px-4 bg-kong-bg mt-auto">
         <div class="flex gap-2 sm:gap-3">
-          <button
-            class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-kong-bg-light text-kong-text-primary rounded font-bold hover:bg-kong-bg-light/70 transition-all text-sm sm:text-base flex items-center justify-center"
+          <ButtonV2
+            theme="secondary"
+            variant="solid"
+            size="lg"
             on:click={goBack}
-            disabled={isBetting}
+            isDisabled={isBetting}
+            className="flex-1 font-bold sm:text-base flex items-center justify-center"
           >
-            <ArrowLeft class="w-4 h-4 mr-1" />
-            Back
-          </button>
-          <button
-            class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-kong-accent-green text-kong-bg-dark rounded font-bold hover:bg-kong-accent-green-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+            <div class="flex items-center justify-center gap-2">
+              <ArrowLeft class="w-4 h-4 mr-1" />
+              Back
+            </div>
+          </ButtonV2>
+          <ButtonV2
+            theme="accent-green"
+            variant="solid"
+            size="lg"
             on:click={() => onBet(betAmount)}
-            disabled={isBetting}
+            isDisabled={isBetting}
+            className="flex-1 font-bold sm:text-base flex items-center justify-center gap-2"
           >
             {#if isBetting}
               <div
@@ -314,9 +373,9 @@
             {:else}
               Confirm
             {/if}
-          </button>
+          </ButtonV2>
         </div>
       </div>
     {/if}
   {/if}
-</Modal>
+</Dialog>

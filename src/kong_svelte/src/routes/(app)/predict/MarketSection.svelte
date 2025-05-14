@@ -150,8 +150,8 @@
   function getMarketStatusColor(market: any): string {
     if (isMarketResolved(market)) return "bg-kong-accent-blue";
     if (isMarketVoided(market)) return "bg-kong-text-accent-red";
-    if (isMarketExpiredUnresolved(market)) return "bg-indigo-400";
     if (isMarketPending(market)) return "bg-kong-accent-yellow";
+    if (isMarketExpiredUnresolved(market)) return "bg-indigo-400";
     return "bg-kong-accent-green";
   }
 
@@ -159,8 +159,8 @@
   function getMarketStatusText(market: any): string {
     if (isMarketResolved(market)) return "Resolved";
     if (isMarketVoided(market)) return "Voided";
-    if (isMarketExpiredUnresolved(market)) return "Unresolved";
     if (isMarketPending(market)) return "Pending";
+    if (isMarketExpiredUnresolved(market)) return "Unresolved";
     return "Active";
   }
 
