@@ -93,8 +93,8 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                                 ICRC3Value::Nat(ts_nat) => ts_nat.0.to_u64(),
                                 _ => None,
                             }) {
-                                Some(ts) if ts < min_valid_timestamp => continue, // expired transfer timestamp
-                                None => continue,                                 // Missing timestamp
+                                Some(ts) if ts < min_valid_timestamp => Err("Expired transfer timestamp")?,
+                                None => Err("Missing transfer timestamp".to_string())?,
                                 Some(_) => (),
                             };
 
@@ -112,8 +112,8 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                             }
                             match op {
                                 Some(op_str) if matches!(op_str.as_str(), "icrc1_transfer" | "1xfer" | "transfer" | "xfer") => (),
-                                Some(_) => continue, // Skip non-transfer operations
-                                None => continue,    // Missing operation type
+                                Some(op_str) => Err(format!("Invalid transfer operation: {}", op_str))?,
+                                None => Err("Missing operation")?,
                             }
 
                             // Extract transaction details from tx map or top level
@@ -130,9 +130,11 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                                 }
                             }
                             match tx_amount {
-                                Some(amt) if amt == *amount => (),
-                                Some(_) => continue, // Amount mismatch
-                                None => continue,    // Missing amount
+                                Some(transfer_amount) if transfer_amount == *amount => (),
+                                Some(transfer_amount) => {
+                                    Err(format!("Invalid transfer amount: rec {:?} exp {:?}", transfer_amount, amount))?
+                                }
+                                None => continue, // Missing amount
                             }
 
                             let tx_from = if let Some(ICRC3Value::Map(tx)) = tx_map {
@@ -154,8 +156,8 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                             };
                             match tx_from {
                                 Some(from) if from == caller_account => (),
-                                Some(_) => continue, // From account mismatch
-                                None => continue,    // Missing from account
+                                Some(_) => Err("Transfer from does not match caller")?,
+                                None => Err("Missing from account")?,
                             }
 
                             let tx_to = if let Some(ICRC3Value::Map(tx)) = tx_map {
@@ -177,8 +179,8 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                             };
                             match tx_to {
                                 Some(to) if to == *kong_backend_account => (),
-                                Some(_) => continue, // To account mismatch
-                                None => continue,    // Missing to account
+                                Some(_) => Err("Transfer to does not match Kong backend")?,
+                                None => Err("Missing to account")?,
                             }
 
                             let tx_spender = if let Some(ICRC3Value::Map(tx)) = tx_map {
@@ -200,7 +202,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                             };
                             match tx_spender {
                                 None => (), // icrc1_transfer should have no spender
-                                Some(_) => continue,
+                                Some(_) => Err("Invalid transfer spender")?,
                             }
 
                             // All checks passed - verification successful
