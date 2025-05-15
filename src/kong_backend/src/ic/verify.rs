@@ -1,16 +1,17 @@
-use candid::Nat;
+use candid::{Nat, Principal};
 use ic_ledger_types::{query_blocks, AccountIdentifier, Block, GetBlocksArgs, Operation, Subaccount, Tokens};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::allowance::{Allowance, AllowanceArgs};
 use icrc_ledger_types::icrc3::transactions::{GetTransactionsRequest, GetTransactionsResponse};
 use icrc_ledger_types::icrc3::blocks::{GetBlocksRequest as ICRC3GetBlocksRequest, GetBlocksResult as ICRC3GetBlocksResult};
 use icrc_ledger_types::icrc::generic_value::ICRC3Value;
+use std::collections::BTreeMap;
+use serde::{Deserialize, Serialize};
+use candid::CandidType;
 
-use super::icrc3;
 use super::wumbo::Transaction1;
 
 use crate::helpers::nat_helpers::nat_to_u64;
-use crate::ic::icrc3::TaggrGetBlocksArgs;
 use crate::ic::get_time::get_time;
 use crate::ic::id::{caller_account_id, caller_id};
 use crate::stable_kong_settings::kong_settings_map;
@@ -26,7 +27,73 @@ const WUMBO_CANISTER_ID: &str = "IC.wkv3f-iiaaa-aaaap-ag73a-cai";
 const DAMONIC_CANISTER_ID: &str = "IC.zzsnb-aaaaa-aaaap-ag66q-cai";
 const CLOWN_CANISTER_ID: &str = "IC.iwv6l-6iaaa-aaaal-ajjjq-cai";
 const TAGGR_CANISTER_ID: &str = "IC.6qfxa-ryaaa-aaaai-qbhsq-cai";
+const SUBACCOUNT_LENGTH: usize = 32; // 32 bytes for subaccount
 
+// TAGGR specific GetBlocksArgs uses nat64 (u64) for both start and length.
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct TaggrGetBlocksArgs {
+    pub start: u64,
+    pub length: u64,
+}
+
+// Decodes an ICRC3 account value from an array of ICRC3Values
+fn try_decode_icrc3_account_value(icrc3_value_arr: &[ICRC3Value]) -> Option<Account> {
+    // Handle Candid encoding (e.g., SNS ledgers)
+    if let Some(ICRC3Value::Blob(blob)) = icrc3_value_arr.first() {
+        if let Ok(owner) = Principal::try_from_slice(blob) {
+            let subaccount = if icrc3_value_arr.len() >= 2 {
+                if let Some(ICRC3Value::Blob(blob)) = icrc3_value_arr.get(1) {
+                    if blob.len() == SUBACCOUNT_LENGTH {
+                        blob.as_slice().try_into().ok()
+                    } else {
+                        None // Invalid length for subaccount
+                    }
+                } else {
+                    None // Expected blob for subaccount, found something else
+                }
+            } else {
+                None // No subaccount provided
+            };
+
+            return Some(Account { owner, subaccount });
+        }
+    }
+
+    // Handle CBOR encoding (e.g., TAGGR ledger)
+    if icrc3_value_arr.len() == 1 {
+        if let Some(ICRC3Value::Blob(blob)) = icrc3_value_arr.first() {
+            if let Ok(map) = ciborium::de::from_reader::<BTreeMap<String, ciborium::value::Value>, _>(
+                blob.as_slice(),
+            ) {
+                let owner_bytes = match map.get("owner") {
+                    Some(ciborium::value::Value::Bytes(bytes)) => bytes.as_slice(),
+                    _ => return None, // Missing or invalid owner
+                };
+                let owner = match Principal::try_from_slice(owner_bytes) {
+                    Ok(p) => p,
+                    Err(_) => return None, // Invalid principal bytes
+                };
+                let subaccount = match map.get("subaccount") {
+                    Some(ciborium::value::Value::Bytes(bytes))
+                        if !bytes.is_empty() && bytes.len() == SUBACCOUNT_LENGTH =>
+                    {
+                        // Explicitly create array and copy slice
+                        let mut subacct = [0u8; SUBACCOUNT_LENGTH];
+                        subacct.copy_from_slice(bytes);
+                        Some(subacct)
+                    }
+                    // Handles cases: missing "subaccount", not bytes, empty, wrong length
+                    _ => None,
+                };
+
+                return Some(Account { owner, subaccount });
+            }
+        }
+    }
+
+    // If neither format matched or decoding failed at any step
+    None
+}
 
 /// Represents the type of a transaction being verified.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -42,15 +109,16 @@ pub enum TransactionType {
 pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) -> Result<(), String> {
     match token {
         StableToken::IC(ic_token) => {
+            // Set up common variables used in all verification paths
+            let principal = *token.canister_id().ok_or("Invalid principal id")?;
+            let token_address_chain = token.address_with_chain();
+            let kong_settings = kong_settings_map::get();
+            let min_valid_timestamp = get_time() - kong_settings.transfer_expiry_nanosecs;
+            let current_caller_account = caller_id();
+            let kong_backend_account = &kong_settings.kong_backend;
+            
             // For ICRC3 tokens, first try ICRC3 verification
-            if ic_token.icrc3 && token.canister_id().is_some() {
-                let principal = *token.canister_id().unwrap();
-                let token_address_chain = token.address_with_chain();
-                let kong_settings = kong_settings_map::get();
-                let min_valid_timestamp = get_time() - kong_settings.transfer_expiry_nanosecs;
-                let current_caller_account = caller_id();
-                let kong_backend_account = &kong_settings.kong_backend;
-                
+            if ic_token.icrc3 {
                 // Prepare request arguments based on token type
                 let blocks_result = if token_address_chain == TAGGR_CANISTER_ID {
                     // TAGGR uses a different format
@@ -122,31 +190,31 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                         // Extract account data (either from tx map or top level)
                         let from = if let Some(ICRC3Value::Map(tx)) = fields.get("tx") {
                             tx.get("from").and_then(|v| if let ICRC3Value::Array(arr) = v {
-                                icrc3::try_decode_icrc3_account_value(arr)
+                                try_decode_icrc3_account_value(arr)
                             } else { None })
                         } else {
                             fields.get("from").and_then(|v| if let ICRC3Value::Array(arr) = v {
-                                icrc3::try_decode_icrc3_account_value(arr)
+                                try_decode_icrc3_account_value(arr)
                             } else { None })
                         };
                         
                         let to = if let Some(ICRC3Value::Map(tx)) = fields.get("tx") {
                             tx.get("to").and_then(|v| if let ICRC3Value::Array(arr) = v {
-                                icrc3::try_decode_icrc3_account_value(arr)
+                                try_decode_icrc3_account_value(arr)
                             } else { None })
                         } else {
                             fields.get("to").and_then(|v| if let ICRC3Value::Array(arr) = v {
-                                icrc3::try_decode_icrc3_account_value(arr)
+                                try_decode_icrc3_account_value(arr)
                             } else { None })
                         };
                         
                         let spender = if let Some(ICRC3Value::Map(tx)) = fields.get("tx") {
                             tx.get("spender").and_then(|v| if let ICRC3Value::Array(arr) = v {
-                                icrc3::try_decode_icrc3_account_value(arr)
+                                try_decode_icrc3_account_value(arr)
                             } else { None })
                         } else {
                             fields.get("spender").and_then(|v| if let ICRC3Value::Array(arr) = v {
-                                icrc3::try_decode_icrc3_account_value(arr)
+                                try_decode_icrc3_account_value(arr)
                             } else { None })
                         };
                         
@@ -175,22 +243,20 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
             }
 
             // If not ICRC3, or if ICRC-3 verification doesn't succeed, fall back to the traditional methods
-            let token_address_with_chain = token.address_with_chain();
-            // ts_start needs to be defined here for the fallback logic
-            let ts_start = get_time() - kong_settings_map::get().transfer_expiry_nanosecs; 
+            // Use min_valid_timestamp that was already defined above
+            let ts_start = min_valid_timestamp;
 
-            if token_address_with_chain == ICP_CANISTER_ID {
+            if token_address_chain == ICP_CANISTER_ID {
                 // use query_blocks
                 let block_args = GetBlocksArgs {
                     start: nat_to_u64(block_id).ok_or_else(|| format!("ICP ledger block id {:?} not found", block_id))?,
                     length: 1,
                 };
-                match query_blocks(*token.canister_id().ok_or("Invalid principal id")?, block_args).await {
+                match query_blocks(principal, block_args).await {
                     Ok(query_response) => {
                         let blocks: Vec<Block> = query_response.blocks;
-                        let backend_account = kong_settings_map::get().kong_backend;
                         let backend_account_id =
-                            AccountIdentifier::new(&backend_account.owner, &Subaccount(backend_account.subaccount.unwrap_or([0; 32])));
+                            AccountIdentifier::new(&kong_backend_account.owner, &Subaccount(kong_backend_account.subaccount.unwrap_or([0; 32])));
                         let amount = Tokens::from_e8s(nat_to_u64(amount).ok_or("Invalid ICP amount")?);
                         for block in blocks.into_iter() {
                             match block.transaction.operation {
@@ -229,13 +295,13 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                     }
                     Err(e) => Err(e.1),
                 }
-            } else if token_address_with_chain == WUMBO_CANISTER_ID
-                || token_address_with_chain == DAMONIC_CANISTER_ID
-                || token_address_with_chain == CLOWN_CANISTER_ID
+            } else if token_address_chain == WUMBO_CANISTER_ID
+                || token_address_chain == DAMONIC_CANISTER_ID
+                || token_address_chain == CLOWN_CANISTER_ID
             {
                 // use get_transaction()
                 match ic_cdk::call::<(Nat,), (Option<Transaction1>,)>(
-                    *token.canister_id().ok_or("Invalid principal id")?,
+                    principal,
                     "get_transaction",
                     (block_id.clone(),),
                 )
@@ -246,11 +312,11 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                             Some(transaction) => {
                                 if let Some(transfer) = transaction.transfer {
                                     let from = transfer.from;
-                                    if from != caller_id() {
+                                    if from != current_caller_account {
                                         Err("Transfer from does not match caller")?
                                     }
                                     let to = transfer.to;
-                                    if to != kong_settings_map::get().kong_backend {
+                                    if to != *kong_backend_account {
                                         Err("Transfer to does not match Kong backend")?
                                     }
                                     let transfer_amount = transfer.amount;
@@ -282,7 +348,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                     length: Nat::from(1_u32),
                 };
                 match ic_cdk::call::<(GetTransactionsRequest,), (GetTransactionsResponse,)>(
-                    *token.canister_id().ok_or("Invalid principal id")?,
+                    principal,
                     "get_transactions",
                     (block_args,),
                 )
@@ -293,11 +359,11 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                         for transaction in transactions.into_iter() {
                             if let Some(transfer) = transaction.transfer {
                                 let from = transfer.from;
-                                if from != caller_id() {
+                                if from != current_caller_account {
                                     Err("Transfer from does not match caller")?
                                 }
                                 let to = transfer.to;
-                                if to != kong_settings_map::get().kong_backend {
+                                if to != *kong_backend_account {
                                     Err("Transfer to does not match Kong backend")?
                                 }
                                 // make sure spender is None so not an icrc2_transfer_from transaction
