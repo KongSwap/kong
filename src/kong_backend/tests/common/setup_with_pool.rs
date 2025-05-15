@@ -1,10 +1,12 @@
 // --- Imports ---
 use anyhow::{Context, Result};
 use candid::{decode_one, encode_one, Nat, Principal};
+use ic_ledger_types::{AccountIdentifier, Tokens, Subaccount};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
 
-use super::icrc1_ledger::{create_icrc1_ledger, create_icrc1_ledger_with_id, ArchiveOptions, FeatureFlags, InitArgs, LedgerArg};
+use super::icrc1_ledger::{create_icrc1_ledger, ArchiveOptions, FeatureFlags, InitArgs, LedgerArg};
+use super::icp_ledger::{create_icp_ledger_with_id, ArchiveOptions as ICPArchiveOptions, InitArgs as ICPInitArgs, LedgerArg as ICPLedgerArg};
 use super::identity::{get_identity_from_pem_file, get_new_identity};
 use super::setup::{setup_ic_environment, CONTROLLER_PEM_FILE};
 
@@ -117,26 +119,41 @@ pub fn setup_swap_test_environment() -> Result<SwapTestSetup> {
     let token_a_ledger_id = create_icrc1_ledger(&ic, &Some(controller_principal), &LedgerArg::Init(token_a_init_args))
         .context("Failed to create Token A ledger")?;
 
-    // Create Token B (Mock ICP) Ledger
+    // Create Token B (Mock ICP) Ledger with actual ICP ledger implementation
     let token_b_principal_id = Principal::from_text("nppha-riaaa-aaaal-ajf2q-cai").expect("Invalid Testnet ICP Principal ID"); // Use Testnet ICP ID
-    let token_b_init_args = InitArgs {
-        minting_account: controller_account,
-        fee_collector_account: None,
-        transfer_fee: Nat::from(TOKEN_B_FEE_ICP),
-        decimals: Some(TOKEN_B_DECIMALS_ICP),
-        max_memo_length: Some(32),
-        token_symbol: TOKEN_B_SYMBOL_ICP.to_string(),
-        token_name: TOKEN_B_NAME_ICP.to_string(),
-        metadata: vec![],
-        initial_balances: vec![],
-        feature_flags: Some(FeatureFlags { icrc2: true }),
-        archive_options: archive_options.clone(),
+    
+    // Create account identifier for controller
+    let controller_account_id = AccountIdentifier::new(&controller_principal, &Subaccount([0; 32]));
+    
+    // Build ICP-specific init args
+    let token_b_icp_init_args = ICPInitArgs {
+        minting_account: controller_account_id.to_string(),
+        icrc1_minting_account: Some(controller_account),
+        initial_values: vec![],
+        max_message_size_bytes: None,
+        transaction_window: None,
+        archive_options: Some(ICPArchiveOptions {
+            num_blocks_to_archive: 1000,
+            trigger_threshold: 500,
+            max_transactions_per_response: None,
+            max_message_size_bytes: None,
+            cycles_for_archive_creation: None,
+            node_max_memory_size_bytes: None,
+            controller_id: controller_principal,
+            more_controller_ids: None,
+        }),
+        send_whitelist: vec![],
+        transfer_fee: Some(super::icp_ledger::Tokens { e8s: TOKEN_B_FEE_ICP }),
+        token_symbol: Some(TOKEN_B_SYMBOL_ICP.to_string()),
+        token_name: Some(TOKEN_B_NAME_ICP.to_string()),
+        feature_flags: Some(super::icp_ledger::FeatureFlags { icrc2: true }),
     };
-    let token_b_ledger_id = create_icrc1_ledger_with_id(
+    
+    let token_b_ledger_id = create_icp_ledger_with_id(
         &ic,
         token_b_principal_id,
         controller_principal,
-        &LedgerArg::Init(token_b_init_args.clone()),
+        &ICPLedgerArg::Init(token_b_icp_init_args),
     )
     .map_err(anyhow::Error::msg) // Map String error
     .context("Failed to create ICP ledger for Token B")?;
