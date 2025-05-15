@@ -15,7 +15,7 @@ export async function getAllMarkets(
   options: {
     start?: number;
     length?: number;
-    statusFilter?: "Active" | "Closed" | "Disputed" | "Voided" | "Pending";
+    statusFilter?: "Active" | "Closed" | "Disputed" | "Voided" | "PendingActivation" | "ExpiredUnresolved";
     sortOption?: {
       type: "CreatedAt" | "TotalPool";
       direction: "Ascending" | "Descending";
@@ -30,7 +30,8 @@ export async function getAllMarkets(
         options.statusFilter === "Closed" ? { Closed: [] } as MarketStatus :
         options.statusFilter === "Disputed" ? { Disputed: null } as MarketStatus :
         options.statusFilter === "Voided" ? { Voided: null } as MarketStatus :
-        options.statusFilter === "Pending" ? { Pending: null } as MarketStatus :
+        options.statusFilter === "PendingActivation" ? { PendingActivation: null } as MarketStatus :
+        options.statusFilter === "ExpiredUnresolved" ? { ExpiredUnresolved: null } as MarketStatus :
         undefined
       ].filter(Boolean) as [MarketStatus]
     : [];
@@ -135,7 +136,7 @@ export async function placeBet(
     );
 
     // Place the bet using an authenticated actor
-    const actor = predictionActor({anon: false, requiresSigning: false});
+    const actor = predictionActor({anon: false, requiresSigning: true});
 
     // Convert amount string to BigInt and verify it's not zero
     const bigIntAmount = BigInt(amount);
@@ -144,15 +145,13 @@ export async function placeBet(
       throw new Error("Bet amount cannot be zero");
     }
 
-    const result = await actor.place_bet(marketId, outcomeIndex, bigIntAmount, []); // Added missing Opt(Text) argument
+    const result = await actor.place_bet({market_id: marketId, outcome_index: outcomeIndex, amount: bigIntAmount, token_id: []});
 
     if ("Err" in result) {
       // Handle specific error cases
       if ("TransferError" in result.Err) {
         throw new Error(`Transfer failed: ${result.Err.TransferError}`);
-      }
-
-      if ("MarketNotFound" in result.Err) {
+      } else if ("MarketNotFound" in result.Err) {
         throw new Error("Market not found");
       } else if ("MarketClosed" in result.Err) {
         throw new Error("Market is closed");
@@ -172,7 +171,16 @@ export async function placeBet(
     });
     return result;
   } catch (error) {
-    console.error("Place bet error:", error);
+    console.error("Place bet raw error object:", error);
+    console.error("Place bet error (JSON.stringify):", JSON.stringify(error));
+    if (error instanceof Error) {
+      console.error("Place bet error.name:", error.name);
+      console.error("Place bet error.message:", error.message);
+      console.error("Place bet error.stack:", error.stack);
+    } else {
+      console.error("Place bet error is not an instance of Error. Type:", typeof error);
+    }
+
     if (error instanceof Error) {
       throw error;
     }
@@ -253,6 +261,12 @@ export async function voidMarketViaAdmin(marketId: bigint): Promise<void> {
     console.error("Failed to void market via admin:", error);
     throw error;
   }
+}
+
+export async function getLatestBets() {
+  const actor = predictionActor({anon: true});
+  const latestBets = await actor.get_latest_bets();
+  return latestBets;
 }
 
 export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {

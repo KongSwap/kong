@@ -14,7 +14,8 @@ export type MarketStatus =
   | { Active: null }
   | { Closed: bigint[] }
   | { Voided: null }
-  | { Pending: null };
+  | { PendingActivation: null }
+  | { ExpiredUnresolved: null };
 
 export type ResolutionMethod = 
   | { Oracle: { oracle_principals: Principal[]; required_confirmations: bigint } }
@@ -105,5 +106,5 @@ export interface TokenInfo {
   fee_percentage: bigint;
   is_kong: boolean;
   transfer_fee: bigint;
-  min_initial_bet: bigint;
+  activation_fee: bigint;
 }

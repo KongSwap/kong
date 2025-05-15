@@ -87,7 +87,7 @@ thread_local! {
                 fee_percentage: 100, // 1%
                 is_kong: true,
                 transfer_fee: StorableNat::from(10_000u64), // 0.0001 KONG
-                activation_fee: StorableNat::from(300_000_000_000u64), // 3000 KONG
+                activation_fee: StorableNat::from(300_000_000u64), // 3000 KONG
             }
         );
         
@@ -178,7 +178,7 @@ thread_local! {
                 fee_percentage: 200, // 2%
                 is_kong: false,
                 transfer_fee: StorableNat::from(10u64), // 0.0000001 BTC
-                activation_fee: StorableNat::from(100_000u64), // 0.001 ckBTC
+                activation_fee: StorableNat::from(10u64), // 0.001 ckBTC
             }
         );
         

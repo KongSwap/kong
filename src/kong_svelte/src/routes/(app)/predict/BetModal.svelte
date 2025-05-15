@@ -1,7 +1,7 @@
 <script lang="ts">
   import Dialog from "$lib/components/common/Dialog.svelte";
-  import { AlertTriangle, Coins, ArrowLeft, Clock } from "lucide-svelte";
-  import { formatBalance, toFixed } from "$lib/utils/numberFormatUtils";
+  import { AlertTriangle, Coins, ArrowLeft, Clock, DollarSign, RefreshCw } from "lucide-svelte";
+  import { formatBalance, toFixed, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import CountdownTimer from "$lib/components/common/CountdownTimer.svelte";
   import { currentUserBalancesStore, refreshSingleBalance } from "$lib/stores/balancesStore";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
@@ -10,6 +10,8 @@
   import { userTokens } from "$lib/stores/userTokens";
   import { estimateBetReturn } from "$lib/api/predictionMarket";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+    import BigNumber from "bignumber.js";
+    import TokenImages from "$lib/components/common/TokenImages.svelte";
 
   let {
     showBetModal = false,
@@ -18,7 +20,7 @@
     isApprovingAllowance = false,
     betError = null,
     selectedOutcome = null,
-    betAmount = $bindable(0),
+    betAmount = $bindable(null),
     onClose = () => {},
     onBet = (amount: number) => {}
   } = $props<{
@@ -28,18 +30,24 @@
     isApprovingAllowance: boolean;
     betError: string | null;
     selectedOutcome: number | null;
-    betAmount: number;
+    betAmount: number | null;
     onClose: () => void;
     onBet: (amount: number) => void;
   }>();
 
   const state = $state({
-    kongBalance: 0,
+    tokenBalance: 0,
     maxAmount: 0,
     modalId: Math.random().toString(36).substr(2, 9),
     step: 1, // Track which step of the flow we're on: 1 = input, 2 = confirmation
     estimatedReturn: null,
-    isLoadingEstimate: false
+    isLoadingEstimate: false,
+    tokenSymbol: "KONG", // Default token symbol
+    tokenId: KONG_LEDGER_CANISTER_ID, // Default token ID
+    tokenPriceUsd: 0, // Token price in USD
+    betAmountUsd: 0, // Bet amount in USD
+    inputMode: "token", // 'token' or 'usd'
+    usdInputValue: null // Used when inputMode is 'usd'
   });
   
   // Reset modal state and fetch balance when modal is opened
@@ -50,31 +58,161 @@
     if (showBetModal) {
       state.step = 1;
       state.estimatedReturn = null;
+      state.inputMode = "token";
+      state.usdInputValue = null;
+      betAmount = null;
       
-      // Fetch KONG balance when modal is opened
+      // Update token ID and symbol based on selected market
+      if (selectedMarket && selectedMarket.token_id) {
+        state.tokenId = selectedMarket.token_id;
+        updateTokenSymbol(selectedMarket.token_id);
+        updateTokenPrice(selectedMarket.token_id);
+      } else {
+        state.tokenId = KONG_LEDGER_CANISTER_ID;
+        state.tokenSymbol = "KONG";
+        updateTokenPrice(KONG_LEDGER_CANISTER_ID);
+      }
+      
+      // Fetch token balance when modal is opened
       if ($auth.isConnected) {
-        const kongToken = $userTokens.tokens.find(token => token.address === KONG_LEDGER_CANISTER_ID);
-        if (kongToken) {
-          refreshSingleBalance(kongToken, $auth.account?.owner || "", true);
-        }
+        refreshTokenBalance();
       }
     }
   });
 
-  // Update balance when store changes
+  // Update token symbol and ID when market changes
   $effect(() => {
-    const balances = $currentUserBalancesStore;
-    if ($auth.isConnected && balances && balances[KONG_LEDGER_CANISTER_ID]) {
-      const rawBalance = BigInt(balances[KONG_LEDGER_CANISTER_ID].in_tokens);
-      state.kongBalance = Number(rawBalance) / 1e8;
-      // Calculate max amount considering the token fee
-      state.maxAmount = calculateMaxAmount(rawBalance, 8, BigInt(10000));
+    if (selectedMarket && selectedMarket.token_id) {
+      state.tokenId = selectedMarket.token_id;
+      updateTokenSymbol(selectedMarket.token_id);
+      updateTokenPrice(selectedMarket.token_id);
+      
+      // Refresh balance when token changes
+      if ($auth.isConnected) {
+        refreshTokenBalance();
+      }
     }
   });
 
+  // Update USD value when bet amount or token price changes in token input mode
+  $effect(() => {
+    if (state.inputMode === "token" && betAmount !== null) {
+      state.betAmountUsd = betAmount * state.tokenPriceUsd;
+      
+      // Also update USD input value to keep them in sync
+      state.usdInputValue = state.betAmountUsd || null;
+    } else if (state.inputMode === "token") {
+      state.betAmountUsd = 0;
+    }
+  });
+  
+  // Update token amount when USD value changes in USD input mode
+  $effect(() => {
+    if (state.inputMode === "usd" && state.tokenPriceUsd > 0 && state.usdInputValue !== null) {
+      betAmount = Number((state.usdInputValue / state.tokenPriceUsd).toFixed(8));
+      state.betAmountUsd = state.usdInputValue;
+    } else if (state.inputMode === "usd") {
+      betAmount = null;
+    }
+  });
+
+  // Toggle between token and USD input modes
+  function toggleInputMode() {
+    if (state.inputMode === "token") {
+      state.inputMode = "usd";
+      state.usdInputValue = betAmount !== null ? betAmount * state.tokenPriceUsd : null;
+    } else {
+      state.inputMode = "token";
+    }
+  }
+
+  // Function to update token symbol from token_id
+  function updateTokenSymbol(tokenId: string) {
+    try {
+      const token = $userTokens.tokens.find((token) => token.address === tokenId);
+      if (token) {
+        state.tokenSymbol = token.symbol || "KONG";
+      } else {
+        state.tokenSymbol = "KONG"; // Default fallback
+      }
+    } catch (error) {
+      console.error("Error getting token details:", error);
+      state.tokenSymbol = "KONG"; // Default fallback on error
+    }
+  }
+
+  // Function to update token price from token_id
+  function updateTokenPrice(tokenId: string) {
+    try {
+      const token = $userTokens.tokens.find((token) => token.address === tokenId);
+      if (token && token.metrics && token.metrics.price) {
+        state.tokenPriceUsd = Number(token.metrics.price);
+        console.log(`Updated token price: ${state.tokenPriceUsd} USD for ${token.symbol}`);
+      } else {
+        state.tokenPriceUsd = 0; // Default fallback
+      }
+    } catch (error) {
+      console.error("Error getting token price:", error);
+      state.tokenPriceUsd = 0; // Default fallback on error
+    }
+  }
+
+  // Function to refresh the token balance (improved with retries)
+  function refreshTokenBalance() {
+    if (!$auth.isConnected || !state.tokenId) return;
+    
+    const token = $userTokens.tokens.find(token => token.address === state.tokenId);
+    console.log("Refreshing balance for token:", token?.symbol || state.tokenId);
+    
+    if (token) {
+      refreshSingleBalance(token, $auth.account?.owner || "", true);
+    } else {
+      console.warn(`Token with ID ${state.tokenId} not found in user tokens`);
+    }
+  }
+
+  // Update balance when store changes
+  $effect(() => {
+    const balances = $currentUserBalancesStore;
+    if ($auth.isConnected && balances) {
+      if (balances[state.tokenId]) {
+        const rawBalance = BigInt(balances[state.tokenId].in_tokens);
+        const decimals = 8; // Most tokens use 8 decimals
+        const tokenFee = $userTokens.tokens.find(token => token.address === state.tokenId)?.fee_fixed;
+        state.tokenBalance = Number(rawBalance) / Math.pow(10, decimals);
+        state.maxAmount = calculateMaxAmount(rawBalance, decimals, BigInt(tokenFee));
+      } else {
+        console.warn(`No balance found for token ID: ${state.tokenId}`);
+        state.tokenBalance = 0;
+        state.maxAmount = 0;
+        
+        // Force refresh balance since it wasn't found
+        refreshTokenBalance();
+      }
+    } else {
+      state.tokenBalance = 0;
+      state.maxAmount = 0;
+    }
+  });
+
+  // Format USD value with proper decimal places
+  function formatUsd(value: number): string {
+    if (value === 0 || !value) return "$0.00";
+    
+    if (value < 0.01) {
+      return `< $0.01`; // Show "less than $0.01" for very small amounts
+    } else if (value < 1) {
+      return `$${value.toFixed(2)}`; // Show 2 decimal places for values less than $1
+    } else if (value < 1000) {
+      return `$${value.toFixed(2)}`; // Show 2 decimal places for normal values
+    } else {
+      return `$${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`; // Use locale formatting for large numbers
+    }
+  }
+
   // Update estimated return when bet amount or selected outcome changes
   $effect(() => {
-    if (selectedMarket && selectedOutcome !== null && betAmount > 0) {
+    if (selectedMarket && selectedOutcome !== null && betAmount !== null && betAmount > 0) {
       updateEstimatedReturn();
     } else {
       state.estimatedReturn = null;
@@ -85,13 +223,13 @@
   const potentialWin = $derived(
     state.estimatedReturn 
       ? getBestScenarioReturn(state.estimatedReturn)
-      : 0
+      : new BigNumber(0)
   );
 
   // Get the best scenario return from estimated return
   function getBestScenarioReturn(estimatedReturn) {
     if (!estimatedReturn || !estimatedReturn.scenarios || estimatedReturn.scenarios.length === 0) {
-      return 0;
+      return new BigNumber(0);
     }
     
     // Find the scenario with the highest expected return
@@ -99,12 +237,14 @@
       (best, current) => current.expected_return > best.expected_return ? current : best, 
       estimatedReturn.scenarios[0]
     );
+
+    const token = $userTokens.tokens.find(token => token.address === selectedMarket.token_id);  
     
-    return Number(bestScenario.expected_return);
+    return new BigNumber(bestScenario.expected_return).div(new BigNumber(10).pow(token.decimals));
   }
 
   async function updateEstimatedReturn() {
-    if (!selectedMarket || selectedOutcome === null || betAmount <= 0) return;
+    if (!selectedMarket || selectedOutcome === null || betAmount === null || betAmount <= 0) return;
     
     try {
       state.isLoadingEstimate = true;
@@ -132,13 +272,35 @@
   }
 
   function setPercentage(percentage: number) {
-    if (state.maxAmount > 0) {
+    // Use tokenBalance directly if maxAmount is negative or zero
+    if (state.maxAmount <= 0 && state.tokenBalance > 0) {
+      console.log("Using tokenBalance instead of maxAmount for percentage calculation");
+      // Apply percentage to token balance but reserve some for fees (~10%)
+      const reservedPercent = 10; 
+      const availablePercent = 100 - reservedPercent;
+      const adjustedBalance = state.tokenBalance * (availablePercent / 100);
+      betAmount = Number(((adjustedBalance * percentage) / 100).toFixed(8));
+      console.log(`Set bet amount to ${betAmount} (${percentage}% of ${adjustedBalance})`);
+      
+      // Ensure USD mode is also updated
+      if (state.inputMode === "usd" && state.tokenPriceUsd > 0) {
+        state.usdInputValue = betAmount * state.tokenPriceUsd;
+      }
+    } else if (state.maxAmount > 0) {
       betAmount = Number((state.maxAmount * (percentage / 100)).toFixed(8));
+      console.log(`Set bet amount to ${betAmount} (${percentage}% of max ${state.maxAmount})`);
+      
+      // Ensure USD mode is also updated
+      if (state.inputMode === "usd" && state.tokenPriceUsd > 0) {
+        state.usdInputValue = betAmount * state.tokenPriceUsd;
+      }
+    } else {
+      console.warn("Cannot set percentage: both maxAmount and tokenBalance are zero or negative");
     }
   }
 
   function goToNextStep() {
-    if (selectedOutcome !== null && betAmount > 0) {
+    if (selectedOutcome !== null && betAmount !== null && betAmount > 0) {
       state.step = 2;
     }
   }
@@ -148,11 +310,25 @@
   }
 </script>
 
+<style>
+  /* Hide number input arrows */
+  input[type=number]::-webkit-inner-spin-button, 
+  input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+  }
+  
+  input[type=number] {
+    -moz-appearance: textfield; /* Firefox */
+    appearance: textfield;
+  }
+</style>
+
 <Dialog
   open={showBetModal}
   transparent={true}
   onClose={handleClose}
-  title={selectedMarket?.question || "Place Your Bet"}
+  title={"Make Your Prediction"}
   showClose={false}
 >
   {#if selectedMarket}
@@ -162,15 +338,17 @@
         <!-- Simplified Betting Summary Section -->
         {#if selectedOutcome !== null}
           <div class="bg-kong-accent-green/10 border-2 border-kong-accent-green p-4 rounded relative">
-            <span class="font-bold text-base sm:text-lg">
+            <p class="text-sm">You are predicting this outcome:</p>
+
+            <span class="font-bold text-base sm:text-lg flex justify-between">
               {selectedMarket.outcomes[selectedOutcome]}
             </span>
             <div class="mt-2 text-kong-text-secondary text-sm">
-              <p>You are predicting this outcome.</p>
               {#if selectedMarket.uses_time_weighting}
-                <div class="flex items-center gap-1 mt-1 text-xs text-kong-text-accent-green">
+                <div class="flex items-center justify-end gap-1 mt-1 text-xs text-kong-text-accent-green">
                   <Clock class="w-3 h-3" />
-                  <span>Time-weighted rewards active</span>
+                  <span><span class="font-medium">{ state?.estimatedReturn?.scenarios[0]?.time_weight ? 
+                  "Time-weight factor " + (Number(state?.estimatedReturn?.scenarios[0]?.time_weight) * 100).toFixed(1) + "%"  : ""}</span></span>
                 </div>
               {/if}
             </div>
@@ -180,28 +358,62 @@
           <div>
             <div class="flex justify-between items-center mb-2">
               <h4 class="text-sm font-medium text-kong-text-secondary">Prediction Amount</h4>
-              <div class="flex items-center gap-2 text-xs sm:text-sm text-kong-text-secondary">
-                <Coins class="w-3 h-3 sm:w-4 sm:h-4" />
-                <span>Balance: <span class="font-medium">{state.kongBalance.toFixed(8)} KONG</span></span>
+              <div class="flex items-center gap-1 text-xs sm:text-sm text-kong-text-secondary">
+                <TokenImages tokens={[$userTokens.tokens.find(token => token.address === state.tokenId)]} size={14} />
+                <span class="font-medium">{formatToNonZeroDecimal(state.tokenBalance)} {state.tokenSymbol}</span>
               </div>
             </div>
-            <input
-              type="number"
-              bind:value={betAmount}
-              min="0"
-              max={state.maxAmount}
-              step="0.1"
-              class="w-full p-2.5 sm:p-3 bg-kong-bg-light rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
-              placeholder="Enter amount"
-            />
-            <div class="grid grid-cols-4 gap-1.5 sm:gap-2 mb-4">
+            
+            <!-- Token Input Mode -->
+            {#if state.inputMode === "token"}
+              <div class="relative">
+                <input
+                  type="number"
+                  bind:value={betAmount}
+                  min="0"
+                  max={state.maxAmount}
+                  step="0.1"
+                  class="w-full p-2.5 sm:p-3 bg-kong-bg-light rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
+                  placeholder="Enter token amount"
+                />
+                {#if state.tokenPriceUsd > 0 && betAmount !== null && betAmount > 0}
+                  <div class="absolute right-3 top-[43%] transform -translate-y-1/2 text-xs text-kong-text-secondary">
+                    ≈ {formatUsd(state.betAmountUsd)}
+                  </div>
+                {/if}
+              </div>
+            
+            <!-- USD Input Mode -->
+            {:else}
+              <div class="relative">
+                <input
+                  type="number"
+                  bind:value={state.usdInputValue}
+                  min="0"
+                  step="0.01"
+                  class="w-full p-2.5 sm:p-3 !pl-7 bg-kong-bg-light rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
+                  placeholder="Enter USD amount"
+                />
+                <div class="absolute left-3 top-[43%] transform -translate-y-1/2 text-kong-text-secondary">
+                  $
+                </div>
+                {#if state.usdInputValue !== null}
+                  <div class="absolute right-3 top-[43%] transform -translate-y-1/2 text-xs text-kong-text-secondary">
+                    ≈ {betAmount !== null ? formatToNonZeroDecimal(betAmount) : ''} {state.tokenSymbol}
+                  </div>
+                {/if}
+              </div>
+            {/if}
+            
+            
+            <div class="grid grid-cols-4 gap-1.5 sm:gap-2">
               <ButtonV2
                 label="25%"
                 theme="secondary"
                 variant="solid"
                 size="xs"
                 on:click={() => setPercentage(25)}
-                isDisabled={state.maxAmount <= 0}
+                isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
                 className="sm:text-sm"
               />
               <ButtonV2
@@ -210,7 +422,7 @@
                 variant="solid"
                 size="xs"
                 on:click={() => setPercentage(50)}
-                isDisabled={state.maxAmount <= 0}
+                isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
                 className="sm:text-sm"
               />
               <ButtonV2
@@ -219,7 +431,7 @@
                 variant="solid"
                 size="xs"
                 on:click={() => setPercentage(75)}
-                isDisabled={state.maxAmount <= 0}
+                isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
                 className="sm:text-sm"
               />
               <ButtonV2
@@ -228,10 +440,23 @@
                 variant="solid"
                 size="xs"
                 on:click={() => setPercentage(100)}
-                isDisabled={state.maxAmount <= 0}
+                isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
                 className="sm:text-sm"
               />
             </div>
+                        <!-- Token/USD Input Toggle -->
+                        {#if state.tokenPriceUsd > 0}
+                        <div class="flex justify-end mt-2">
+                          <button 
+                            class="flex items-center text-xs text-kong-text-secondary hover:text-kong-text-primary transition-colors"
+                            on:click={toggleInputMode}
+                          >
+                            <RefreshCw class="w-3 h-3 mr-1" />
+                            Switch to {state.inputMode === "token" ? "USD" : "token"} input
+                          </button>
+                        </div>
+                      {/if}
+                      
           </div>
         {/if}
 
@@ -277,11 +502,15 @@
           <div class="bg-kong-accent-green/10 border-2 border-kong-accent-green p-5 rounded-lg w-full max-w-md mt-3">
             <h3 class="text-center text-lg font-medium mb-4">Confirm Your Bet</h3>
             
-            <p class="text-center text-base leading-relaxed">
-              You are placing <span class="font-bold">{betAmount} KONG</span> on the outcome 
-              <span class="font-bold">{selectedMarket.outcomes[selectedOutcome]}</span>. 
-              The market ends in <span class="font-bold"><CountdownTimer endTime={selectedMarket.end_time} /></span>.
-            </p>
+                          <p class="text-center text-base leading-relaxed">
+                You are placing <span class="font-bold">{formatToNonZeroDecimal(betAmount)} {state.tokenSymbol}</span>
+                {#if state.tokenPriceUsd > 0}
+                  <span class="text-kong-text-secondary">({formatUsd(state.betAmountUsd)})</span>
+                {/if}
+                on the outcome 
+                <span class="font-bold">{selectedMarket.outcomes[selectedOutcome]}</span>. 
+                The market ends in <span class="font-bold"><CountdownTimer endTime={selectedMarket.end_time} /></span>.
+              </p>
             
             {#if state.isLoadingEstimate}
               <div class="text-center mt-4">
@@ -292,7 +521,10 @@
               <div class="text-center mt-4">
                 <p class="text-base leading-relaxed">
                   If the market resolves to this outcome, you will receive 
-                  <span class="text-kong-text-accent-green font-bold">{formatBalance(potentialWin, 8)} KONG</span> 
+                  <span class="text-kong-text-accent-green font-bold">{potentialWin.isZero() ? "0" : formatToNonZeroDecimal(potentialWin.toNumber())} {state.tokenSymbol}</span>
+                  {#if state.tokenPriceUsd > 0}
+                    <span class="text-kong-text-accent-green">({formatUsd(potentialWin.toNumber() * state.tokenPriceUsd)})</span>
+                  {/if}
                   based on the current pool size.
                 </p>
                 
@@ -361,6 +593,7 @@
             isDisabled={isBetting}
             className="flex-1 font-bold sm:text-base flex items-center justify-center gap-2"
           >
+          <div class="flex gap-1">
             {#if isBetting}
               <div
                 class="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
@@ -373,6 +606,7 @@
             {:else}
               Confirm
             {/if}
+          </div>
           </ButtonV2>
         </div>
       </div>

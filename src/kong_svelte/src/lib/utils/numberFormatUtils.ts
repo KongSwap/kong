@@ -87,7 +87,7 @@ export const formatToNonZeroDecimal = (input: number | string): string => {
 
   // For numbers >= 0.1
   // If > 1, use 2 decimals; otherwise, use 3 decimals
-  const decimals = bigNum.isGreaterThan(1) ? 2 : 3;
+  const decimals = bigNum.isGreaterThanOrEqualTo(1) ? 2 : 3;
   return bigNum.toFormat(decimals);
 };
 

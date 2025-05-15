@@ -187,24 +187,24 @@ export const baseTheme: ThemeDefinition = {
     hoverBgLight: '#141826', // Same as bgLight by default in dark theme
     
     // Primary and secondary colors
-    primary: '#0095EB',      // Kong's brand blue
-    primaryHover: '#0086D3', // Darker variant
-    secondary: '#22D3EE',    
-    secondaryHover: '#0EA5E9',
+    primary: '#1A8FE3',      // Refined Kong blue with better contrast
+    primaryHover: '#0D7DCB', // Deeper hover variant
+    secondary: '#38BEC9',    // Refined teal with better visibility
+    secondaryHover: '#2EA8B3', // Deeper teal for hover state
     
     // Accent colors
-    accentBlue: '#00A7FF',   // Brighter blue
-    accentRed: '#FF4545',    // Vibrant red
-    accentGreen: '#05EC86',  // Vibrant green
-    accentYellow: '#FFC107', // Material Yellow
-    accentPurple: '#6F5DFB', // Vibrant purple
-    accentCyan: '#22D3EE',   
+    accentBlue: '#3B82F6',   // Vibrant accessible blue
+    accentRed: '#F43F5E',    // Refined red with better contrast
+    accentGreen: '#00D68F',  // Brighter green with more contrast
+    accentYellow: '#F59E0B', // Warmer, more accessible yellow
+    accentPurple: '#8B5CF6', // Refined purple with better visibility
+    accentCyan: '#06B6D4',   // Brighter cyan for better highlights
     
     // Hover variants
-    accentGreenHover: '#04CE75',
-    accentBlueHover: '#0090DC',
-    accentRedHover: '#EB3737',
-    accentYellowHover: '#FFA726', // Darker yellow
+    accentGreenHover: '#00B778',
+    accentBlueHover: '#2563EB',
+    accentRedHover: '#E11D48',
+    accentYellowHover: '#D97706', // Darker amber
     
     // Text colors
     textPrimary: '#FFFFFF',
@@ -213,9 +213,9 @@ export const baseTheme: ThemeDefinition = {
     textLight: '#ffffff',
     textDark: '#0D111F',
     textOnPrimary: '#0D111F',
-    textAccentGreen: '#05EC86', // Same as accent-green
-    textAccentRed: '#FF4545',   // Same as accent-red
-    textAccentBlue: '#0095EB',
+    textAccentGreen: '#00D68F', // Same as accent-green
+    textAccentRed: '#F43F5E',   // Same as accent-red
+    textAccentBlue: '#3B82F6',
     
     // Font settings
     fontFamily: "'Exo 2', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -258,7 +258,7 @@ export const baseTheme: ThemeDefinition = {
     // Plugin Manager colors
     pmDark: '#171923',
     pmBorder: '#282C3A',
-    pmAccent: '#6F5DFB', // Same as accent-purple
+    pmAccent: '#8B5CF6', // Same as accent-purple
     pmTextSecondary: '#9EA4BA',
     
     // Switch button styling
@@ -278,8 +278,8 @@ export const baseTheme: ThemeDefinition = {
     tokenTickerRoundness: 'rounded-lg',
     tokenTickerHoverBg: '#232735',
     tokenTickerShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
-    tokenTickerUpColor: '#05EC86',
-    tokenTickerDownColor: '#FF4545',
+    tokenTickerUpColor: '#00D68F',
+    tokenTickerDownColor: '#F43F5E',
     tokenTickerBgOpacity: 100,
     
     // Button styling
@@ -292,24 +292,24 @@ export const baseTheme: ThemeDefinition = {
     buttonRoundness: 'rounded-lg',
     
     // Primary button styling
-    primaryButtonBg: '#0095EB',
-    primaryButtonHoverBg: '#0086D3',
+    primaryButtonBg: '#1A8FE3',
+    primaryButtonHoverBg: '#0D7DCB',
     primaryButtonText: '#FFFFFF',
     primaryButtonBorder: '1px solid rgba(255, 255, 255, 0.1)',
     primaryButtonBorderColor: '#FFFFFF',
     
     // Swap Button styling
-    swapButtonPrimaryGradientStart: '#0095EB',
-    swapButtonPrimaryGradientEnd: '#0072B1',
-    swapButtonErrorGradientStart: '#E85373',
-    swapButtonErrorGradientEnd: '#C23758',
-    swapButtonProcessingGradientStart: '#6B8CFF',
-    swapButtonProcessingGradientEnd: '#4563DB',
+    swapButtonPrimaryGradientStart: '#1A8FE3',
+    swapButtonPrimaryGradientEnd: '#0D6EAF',
+    swapButtonErrorGradientStart: '#F43F5E',
+    swapButtonErrorGradientEnd: '#BE123C',
+    swapButtonProcessingGradientStart: '#8B5CF6',
+    swapButtonProcessingGradientEnd: '#6D28D9',
     swapButtonBorderColor: 'rgba(255, 255, 255, 0.15)',
-    swapButtonGlowColor: '#0095EB',
-    swapButtonShineColor: '#00BFFF',
-    swapButtonReadyGlowStart: '#0095EB',
-    swapButtonReadyGlowEnd: '#006699',
+    swapButtonGlowColor: '#1A8FE3',
+    swapButtonShineColor: '#38BDC9',
+    swapButtonReadyGlowStart: '#1A8FE3',
+    swapButtonReadyGlowEnd: '#0D6EAF',
     swapButtonTextColor: '#FFFFFF',
     swapButtonRoundness: 'rounded-full',
     swapButtonShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',

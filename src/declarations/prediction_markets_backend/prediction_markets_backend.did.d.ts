@@ -152,6 +152,7 @@ export interface GetMarketsByStatusResult {
 export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
+export interface LatestBets { 'bet' : Bet, 'market' : Market }
 export interface LineDisplayPage { 'lines' : Array<string> }
 export interface Market {
   'id' : bigint,
@@ -206,6 +207,12 @@ export interface MarketsByStatus {
   'resolved' : Array<MarketResult>,
   'active' : Array<Market>,
   'expired_unresolved' : Array<Market>,
+}
+export interface PlaceBetArgs {
+  'token_id' : [] | [string],
+  'market_id' : bigint,
+  'amount' : bigint,
+  'outcome_index' : bigint,
 }
 export type ResolutionError = { 'MarketNotFound' : null } |
   { 'MarketStillOpen' : null } |
@@ -335,6 +342,7 @@ export interface _SERVICE {
   'get_all_categories' : ActorMethod<[], Array<string>>,
   'get_all_markets' : ActorMethod<[GetAllMarketsArgs], GetAllMarketsResult>,
   'get_all_transactions' : ActorMethod<[], Array<[bigint, FailedTransaction]>>,
+  'get_latest_bets' : ActorMethod<[], Array<LatestBets>>,
   'get_market' : ActorMethod<[bigint], [] | [Market]>,
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
   'get_market_payout_records' : ActorMethod<[bigint], Array<BetPayoutRecord>>,
@@ -375,7 +383,7 @@ export interface _SERVICE {
   >,
   'is_admin' : ActorMethod<[Principal], boolean>,
   'mark_transaction_resolved' : ActorMethod<[bigint], Result>,
-  'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_6>,
+  'place_bet' : ActorMethod<[PlaceBetArgs], Result_6>,
   'propose_resolution' : ActorMethod<[bigint, Array<bigint>], Result_2>,
   'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_2>,
   'resolve_via_oracle' : ActorMethod<

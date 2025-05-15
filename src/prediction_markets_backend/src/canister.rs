@@ -7,6 +7,7 @@ use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::{ConsentMessageRequest, ConsentMessageMetadata};
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 use candid::decode_one;
+use num_traits::ToPrimitive;
 
 use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
 use crate::token::registry::{TokenInfo, get_all_supported_tokens, get_token_info, add_supported_token as add_token, update_token_config as update_token};
@@ -64,6 +65,93 @@ pub fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageR
                 message,
                 caller_principal
             ))
+        },
+        "void_market" => {
+            // Try decoding as a record with a market_id field first, if that fails try direct nat
+            let market_id = match decode_one::<candid::Nat>(&consent_msg_request.arg) {
+                Ok(id) => id,
+                Err(_) => {
+                    // Handle failure by using a generic message instead
+                    return Ok(ConsentInfo {
+                        metadata: ConsentMessageMetadata {
+                            language: "en".to_string(),
+                            utc_offset_minutes: None,
+                        },
+                        consent_message: ConsentMessage::GenericDisplayMessage(
+                            format!("# Void KongSwap Prediction Market\n\nYou are about to void a prediction market and return all bets to users.\n\nThis action is irreversible and should only be used when a market cannot be properly resolved.\n\nRequested by: {}", caller_principal)
+                        )
+                    });
+                }
+            };
+
+            ConsentMessage::GenericDisplayMessage(format!(
+                "# Void KongSwap Prediction Market\n\nYou are about to void market #{} and return all bets to users.\n\nThis action is irreversible and should only be used when a market cannot be properly resolved.\n\nRequested by: {}",
+                market_id,
+                caller_principal
+            ))
+        },
+        "place_bet" => {
+            // Try to decode place_bet parameters using decode_one
+            let args = match decode_one::<PlaceBetArgs>(&consent_msg_request.arg) {
+                Ok(args) => {
+                    // Use MarketId directly 
+                    let market_id_val = args.market_id.clone();
+                    
+                    // Try to get market data to show more context
+                    let market_data = match MARKETS.with(|markets| {
+                        let markets_ref = markets.borrow();
+                        markets_ref.get(&market_id_val).map(|m| m.clone())
+                    }) {
+                        Some(market) => {
+                            let outcome_idx = args.outcome_index.to_u64() as usize;
+                            let outcome_name = if outcome_idx < market.outcomes.len() {
+                                market.outcomes[outcome_idx].clone()
+                            } else {
+                                format!("Outcome #{}", args.outcome_index.to_u64())
+                            };
+                            
+                            // Get token info for better display
+                            let token_id = args.token_id.unwrap_or_else(|| market.token_id.clone());
+                            let token_info = get_token_info(&token_id);
+                            let token_symbol = token_info.as_ref().map(|info| info.symbol.clone()).unwrap_or_else(|| token_id.clone());
+                            let decimals = token_info.map(|info| info.decimals).unwrap_or(0) as u32;
+                            
+                            // Format amount using TokenAmount directly
+                            let amount_decimal = args.amount.to_f64() / 10f64.powi(decimals as i32);
+                            
+                            format!(
+                                "# Place Bet on KongSwap Prediction Market\n\nMarket: {}\n\nOutcome: {}\n\nAmount: {} {}\n\nThis will transfer tokens from your account to the prediction market canister.",
+                                market.question,
+                                outcome_name,
+                                amount_decimal,
+                                token_symbol
+                            )
+                        },
+                        None => {
+                            // If we can't find the market, provide more generic message
+                            format!(
+                                "# Place Bet on KongSwap Prediction Market\n\nMarket ID: {}\n\nOutcome: {}\n\nAmount: {}\n\nThis will transfer tokens from your account to the prediction market canister.",
+                                args.market_id.to_u64(),
+                                args.outcome_index.to_u64(),
+                                args.amount.to_u64()
+                            )
+                        }
+                    };
+                    
+                    ConsentMessage::GenericDisplayMessage(market_data)
+                },
+                Err(e) => {
+                    // If we can't decode properly, return a generic message with error details for debugging
+                    ConsentMessage::GenericDisplayMessage(
+                        format!("# Place Bet on KongSwap Prediction Market\n\nYou are about to place a bet on a prediction market.\n\nThis will transfer tokens from your account to the prediction market canister.\n\nRequested by: {}\n\nDebug info: Failed to decode args: {}", 
+                            caller_principal,
+                            e
+                        )
+                    )
+                }
+            };
+            
+            args
         },
         // Add other method matches here as needed
         _ => ConsentMessage::GenericDisplayMessage(
@@ -385,4 +473,13 @@ pub fn search_markets(args: crate::market::search_markets::SearchMarketsArgs)
     -> crate::market::search_markets::SearchMarketsResult 
 {
     crate::market::search_markets::search_markets(args)
+}
+
+// Define types for consent message arguments
+#[derive(CandidType, Clone, Debug, Deserialize)]
+pub struct PlaceBetArgs {
+    pub market_id: MarketId,
+    pub outcome_index: OutcomeIndex,
+    pub amount: TokenAmount,
+    pub token_id: Option<String>
 }

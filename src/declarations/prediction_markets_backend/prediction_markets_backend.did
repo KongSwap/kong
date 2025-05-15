@@ -141,6 +141,7 @@ type GetMarketsByStatusResult = record {
   markets_by_status : MarketsByStatus;
 };
 type Icrc28TrustedOriginsResponse = record { trusted_origins : vec text };
+type LatestBets = record { bet : Bet; market : Market };
 type LineDisplayPage = record { lines : vec text };
 type Market = record {
   id : nat;
@@ -198,6 +199,12 @@ type MarketsByStatus = record {
   resolved : vec MarketResult;
   active : vec Market;
   expired_unresolved : vec Market;
+};
+type PlaceBetArgs = record {
+  token_id : opt text;
+  market_id : nat;
+  amount : nat;
+  outcome_index : nat;
 };
 type ResolutionError = variant {
   MarketNotFound;
@@ -308,6 +315,7 @@ service : () -> {
   get_all_categories : () -> (vec text) query;
   get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
   get_all_transactions : () -> (vec record { nat64; FailedTransaction }) query;
+  get_latest_bets : () -> (vec LatestBets) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
   get_market_payout_records : (nat64) -> (vec BetPayoutRecord) query;
@@ -339,7 +347,7 @@ service : () -> {
   icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_5);
   is_admin : (principal) -> (bool) query;
   mark_transaction_resolved : (nat64) -> (Result);
-  place_bet : (nat, nat, nat, opt text) -> (Result_6);
+  place_bet : (PlaceBetArgs) -> (Result_6);
   propose_resolution : (nat, vec nat) -> (Result_2);
   resolve_via_admin : (nat, vec nat) -> (Result_2);
   resolve_via_oracle : (nat, vec nat, blob) -> (Result_2);

@@ -145,6 +145,7 @@ export const idlFactory = ({ IDL }) => {
     'amount' : IDL.Nat,
     'outcome_index' : IDL.Nat,
   });
+  const LatestBets = IDL.Record({ 'bet' : Bet, 'market' : Market });
   const BetPayoutRecord = IDL.Record({
     'transaction_id' : IDL.Opt(IDL.Nat),
     'bet_amount' : IDL.Nat,
@@ -286,6 +287,12 @@ export const idlFactory = ({ IDL }) => {
     'targets' : IDL.Vec(IDL.Principal),
   });
   const Result_5 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : DelegationError });
+  const PlaceBetArgs = IDL.Record({
+    'token_id' : IDL.Opt(IDL.Text),
+    'market_id' : IDL.Nat,
+    'amount' : IDL.Nat,
+    'outcome_index' : IDL.Nat,
+  });
   const BetError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
     'InsufficientActivationBet' : IDL.Null,
@@ -366,6 +373,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(IDL.Nat64, FailedTransaction))],
         ['query'],
       ),
+    'get_latest_bets' : IDL.Func([], [IDL.Vec(LatestBets)], ['query']),
     'get_market' : IDL.Func([IDL.Nat], [IDL.Opt(Market)], ['query']),
     'get_market_bets' : IDL.Func([IDL.Nat], [IDL.Vec(Bet)], ['query']),
     'get_market_payout_records' : IDL.Func(
@@ -429,11 +437,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     'mark_transaction_resolved' : IDL.Func([IDL.Nat64], [Result], []),
-    'place_bet' : IDL.Func(
-        [IDL.Nat, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Text)],
-        [Result_6],
-        [],
-      ),
+    'place_bet' : IDL.Func([PlaceBetArgs], [Result_6], []),
     'propose_resolution' : IDL.Func(
         [IDL.Nat, IDL.Vec(IDL.Nat)],
         [Result_2],

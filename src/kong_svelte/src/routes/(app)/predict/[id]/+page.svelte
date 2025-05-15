@@ -294,7 +294,7 @@ let initializing = $state(false);
       }
       
       // Use the minimum initial bet amount from marketTokenInfo
-      const minBetAmount = marketTokenInfo.min_initial_bet;
+      const minBetAmount = marketTokenInfo.activation_fee;
       
       // Place the bet to initialize the market
       await placeBet(
@@ -355,10 +355,10 @@ let initializing = $state(false);
   // Calculate the formatted minimum initial bet string
   let formattedMinInitialBetString = $derived(
     marketTokenInfo && 
-    typeof marketTokenInfo.min_initial_bet !== 'undefined' && 
+    typeof marketTokenInfo.activation_fee !== 'undefined' && 
     typeof marketTokenInfo.decimals !== 'undefined' && 
     marketTokenInfo.symbol
-      ? `${formatBalance(Number(marketTokenInfo.min_initial_bet), marketTokenInfo.decimals)} ${marketTokenInfo.symbol}`
+      ? `${formatBalance(Number(marketTokenInfo.activation_fee), marketTokenInfo.decimals)} ${marketTokenInfo.symbol}`
       : "the required minimum" // Fallback string
   );
 

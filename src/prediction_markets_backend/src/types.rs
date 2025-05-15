@@ -22,7 +22,8 @@ pub const NANOS_PER_SECOND: u64 = 1_000_000_000;
 // Using a function rather than const due to limitations with non-const From trait
 pub fn min_activation_bet(token_id: &TokenIdentifier) -> TokenAmount {
     // Default value for KONG remains 3000 KONG (with 8 decimals)
-    let default_amount = TokenAmount::from(300_000_000_000u64);
+    // ! lowered these amounts for testing
+    let default_amount = TokenAmount::from(300_000_000u64);
     
     // Get token info
     let token_info = match crate::token::registry::get_token_info(token_id) {
@@ -31,12 +32,13 @@ pub fn min_activation_bet(token_id: &TokenIdentifier) -> TokenAmount {
     };
     
     // Set token-specific activation fees
+    // ! lowered these amounts for testing
     match token_info.symbol.as_str() {
         "KONG" => TokenAmount::from(300_000_000u64), // 3000 KONG (8 decimals)
         "ICP" | "ksICP" => TokenAmount::from(2_500_000_000u64), // 25 ICP (8 decimals)
         "ckUSDT" => TokenAmount::from(100_000_000u64), // 100 ckUSDT (6 decimals)
         "ckUSDC" => TokenAmount::from(100_000_000u64), // 100 ckUSDC (6 decimals)
-        "ckBTC" => TokenAmount::from(100_000u64), // 0.001 ckBTC (8 decimals)
+        "ckBTC" => TokenAmount::from(10u64), // 0.001 ckBTC (8 decimals)
         "DKP" => TokenAmount::from(7_000_000_000_000u64), // 70000 DKP (8 decimals)
         "GLDT" => TokenAmount::from(10_000_000_000u64), // 100 GLDT (8 decimals)
         _ => default_amount // Default to 3000 KONG equivalent for unknown tokens

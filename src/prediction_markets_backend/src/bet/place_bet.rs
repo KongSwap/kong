@@ -29,6 +29,7 @@ use crate::stable_memory::*;
 use crate::types::{MarketId, TokenAmount, OutcomeIndex, min_activation_bet, TokenIdentifier, calculate_platform_fee};
 use crate::controllers::admin::is_admin;
 use crate::token::registry::{get_token_info, is_supported_token};
+use crate::canister::PlaceBetArgs;
 
 // House fee constant and configuration
 lazy_static::lazy_static! {
@@ -74,15 +75,10 @@ const FEES_ENABLED: bool = false;
 /// - Records the bet with timestamp for time-weighted calculations
 /// - Activates market if this is the activation bet from creator
 #[update]
-async fn place_bet(
-    market_id: MarketId, 
-    outcome_index: OutcomeIndex, 
-    amount: TokenAmount,
-    token_id: Option<TokenIdentifier>
-) -> Result<(), BetError> {
+async fn place_bet(args: PlaceBetArgs) -> Result<(), BetError> {
     let user = ic_cdk::caller();
     let backend_canister_id = ic_cdk::api::id();
-    let market_id_clone = market_id.clone();
+    let market_id_clone = args.market_id.clone();
     
     // Get market and validate state
     let market = MARKETS.with(|markets| {
@@ -92,7 +88,7 @@ async fn place_bet(
     
     // Determine which token to use
     // If token_id is provided, use that. Otherwise, use the market's token_id
-    let token_id = token_id.unwrap_or_else(|| market.token_id.clone());
+    let token_id = args.token_id.clone().unwrap_or_else(|| market.token_id.clone());
     
     // Validate the token is supported
     if !is_supported_token(&token_id) {
@@ -117,7 +113,7 @@ async fn place_bet(
     // Outcome validation already handled above
 
     // Validate market state and outcome
-    let outcome_idx = outcome_index.to_u64() as usize;
+    let outcome_idx = args.outcome_index.to_u64() as usize;
     if outcome_idx >= market.outcomes.len() {
         return Err(BetError::InvalidOutcome);
     }
@@ -135,7 +131,7 @@ async fn place_bet(
             
             // Ensure the bet meets the minimum activation threshold for this token
             let min_activation = min_activation_bet(&token_id);
-            if amount < min_activation {
+            if args.amount < min_activation {
                 return Err(BetError::InsufficientActivationBet);
             }
             
@@ -144,8 +140,8 @@ async fn place_bet(
             if !is_admin(user) {
                 // For regular users, confirm the activation amount
                 ic_cdk::println!("Activating market {} with bet of {} {} tokens", 
-                              market_id.to_u64(), 
-                              amount.to_u64() / 10u64.pow(token_info.decimals as u32),
+                              args.market_id.to_u64(), 
+                              args.amount.to_u64() / 10u64.pow(token_info.decimals as u32),
                               token_info.symbol);
             }
         },
@@ -157,7 +153,7 @@ async fn place_bet(
 
     // Transfer tokens from user to the canister using icrc2_transfer_from
     // Create the transfer_from arguments
-    let args = TransferFromArgs {
+    let transfer_args = TransferFromArgs {
         spender_subaccount: None,
         from: Account {
             owner: user,
@@ -167,12 +163,12 @@ async fn place_bet(
             owner: backend_canister_id,
             subaccount: None,
         },
-        amount: amount.inner().clone(),
+        amount: args.amount.inner().clone(),
         fee: None,
         memo: None,
         created_at_time: None,
     };
-    match ic_cdk::call::<(TransferFromArgs,), (Result<Nat, TransferFromError>,)>(token_ledger, "icrc2_transfer_from", (args,)).await {
+    match ic_cdk::call::<(TransferFromArgs,), (Result<Nat, TransferFromError>,)>(token_ledger, "icrc2_transfer_from", (transfer_args,)).await {
         Ok((Ok(_block_index),)) => Ok(()),
         Ok((Err(e),)) => Err(BetError::TransferError(format!(
             "Transfer failed: {:?}. Make sure you have approved the prediction market canister to spend your tokens using icrc2_approve",
@@ -188,13 +184,14 @@ async fn place_bet(
     })?;
 
     // Calculate token-specific platform fee
+    let amount_storable = StorableNat::from(args.amount.inner().0.to_u64().unwrap_or(0));
     let fee_amount = if FEES_ENABLED {
-        calculate_platform_fee(&amount, &token_id)
+        calculate_platform_fee(&amount_storable, &token_id)
     } else {
         StorableNat::from(0u64)
     };
     
-    let bet_amount = amount.clone() - fee_amount.clone();
+    let bet_amount = amount_storable - fee_amount.clone();
 
     // Update fee balance
     FEE_BALANCE.with(|fees| {
@@ -247,8 +244,8 @@ async fn place_bet(
     if matches!(market.status, MarketStatus::PendingActivation) && user == market.creator {
         market.status = MarketStatus::Active;
         ic_cdk::println!("Market {} activated by creator bet of {} {}", 
-                      market_id.to_u64(),
-                      amount.to_u64() / 10u64.pow(token_info.decimals as u32),
+                      market_id_clone.to_u64(),
+                      args.amount.to_u64() / 10u64.pow(token_info.decimals as u32),
                       token_info.symbol);
     }
     
@@ -271,7 +268,7 @@ async fn place_bet(
             user,                               // User who placed the bet
             market_id: market_id_clone.clone(), // Market being bet on
             amount: bet_amount,                // Actual bet amount (excluding platform fee)
-            outcome_index,                     // Selected outcome
+            outcome_index: args.outcome_index,                     // Selected outcome
             timestamp: StorableNat::from(ic_cdk::api::time()), // Current time for time-weighting
             token_id: token_id.clone(),        // Token type used for the bet
         };
