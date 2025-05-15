@@ -5,7 +5,6 @@ pub mod ckusdt;
 pub mod get_time;
 pub mod guards;
 pub mod icp;
-pub mod icrc3;
 pub mod id;
 pub mod ledger;
 pub mod logging;
