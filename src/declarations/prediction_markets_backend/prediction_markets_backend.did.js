@@ -308,6 +308,10 @@ export const idlFactory = ({ IDL }) => {
     'BalanceUpdateFailed' : IDL.Null,
   });
   const Result_6 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
+  const ResolveViaAdminArgs = IDL.Record({
+    'market_id' : IDL.Nat,
+    'winning_outcomes' : IDL.Vec(IDL.Nat),
+  });
   const Result_7 = IDL.Variant({ 'Ok' : IDL.Nat64, 'Err' : IDL.Text });
   const Result_8 = IDL.Variant({ 'Ok' : IDL.Opt(IDL.Nat), 'Err' : IDL.Text });
   const SortField = IDL.Variant({
@@ -443,7 +447,12 @@ export const idlFactory = ({ IDL }) => {
         [Result_2],
         [],
       ),
-    'resolve_via_admin' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [Result_2], []),
+    'resolve_via_admin' : IDL.Func([ResolveViaAdminArgs], [Result_2], []),
+    'resolve_via_admin_legacy' : IDL.Func(
+        [IDL.Nat, IDL.Vec(IDL.Nat)],
+        [Result_2],
+        [],
+      ),
     'resolve_via_oracle' : IDL.Func(
         [IDL.Nat, IDL.Vec(IDL.Nat), IDL.Vec(IDL.Nat8)],
         [Result_2],

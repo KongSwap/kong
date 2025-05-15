@@ -32,6 +32,7 @@ use ic_cdk::update;
 use crate::types::{MarketId, OutcomeIndex};
 use crate::market::market::Market;
 use crate::resolution::resolution::ResolutionError;
+use crate::canister::ResolutionArgs;
 
 /// Refunds all bets when a market is voided
 ///
@@ -110,11 +111,10 @@ pub fn can_resolve_market(market: &Market, user: Principal) -> bool {
 #[update]
 #[deprecated(since = "1.1.0", note = "Use resolution_api::propose_resolution instead")]
 pub async fn propose_resolution(
-    market_id: MarketId, 
-    winning_outcomes: Vec<OutcomeIndex>
+    args: ResolutionArgs
 ) -> Result<(), ResolutionError> {
     // Re-export from the new modular structure
-    crate::resolution::resolution_proposal::propose_resolution(market_id, winning_outcomes).await
+    crate::resolution::resolution_proposal::propose_resolution(args).await
 }
 
 /// Allows an admin to force resolve a market, bypassing the dual-approval process
@@ -138,11 +138,10 @@ pub async fn propose_resolution(
 #[update]
 #[deprecated(since = "1.1.0", note = "Use resolution_actions::force_resolve_market instead")]
 pub async fn force_resolve_market(
-    market_id: MarketId,
-    winning_outcomes: Vec<OutcomeIndex>
+    args: ResolutionArgs
 ) -> Result<(), ResolutionError> {
     // Re-export from the new modular structure
-    crate::resolution::resolution_actions::force_resolve_market(market_id, winning_outcomes).await
+    crate::resolution::resolution_actions::force_resolve_market(args).await
 }
 
 /// Resolve the market through admin decision
@@ -154,8 +153,7 @@ pub async fn force_resolve_market(
 /// For user-created markets: requires dual approval between creator and admin
 /// 
 /// # Parameters
-/// * `market_id` - ID of the market to resolve
-/// * `winning_outcomes` - Vector of outcome indices that won
+/// * `args` - Struct containing market ID and winning outcomes
 /// 
 /// # Returns
 /// * `Result<(), ResolutionError>` - Success or error reason if the resolution fails
@@ -168,11 +166,24 @@ pub async fn force_resolve_market(
 #[update]
 #[deprecated(since = "1.1.0", note = "Use resolution_api::resolve_via_admin instead")]
 pub async fn resolve_via_admin(
+    args: ResolutionArgs
+) -> Result<(), ResolutionError> {
+    // Re-export from the new modular structure
+    crate::resolution::resolution_api::resolve_via_admin(args).await
+}
+
+/// For backward compatibility
+#[update]
+#[deprecated(since = "1.1.0", note = "Use resolution_api::resolve_via_admin instead")]
+pub async fn resolve_via_admin_legacy(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
 ) -> Result<(), ResolutionError> {
-    // Re-export from the new modular structure
-    crate::resolution::resolution_api::resolve_via_admin(market_id, winning_outcomes).await
+    // Convert to new type and forward
+    resolve_via_admin(ResolutionArgs {
+        market_id,
+        winning_outcomes,
+    }).await
 }
 
 /// Voids a market and refunds all bets to users

@@ -237,6 +237,10 @@ export type ResolutionMethod = {
   } |
   { 'Decentralized' : { 'quorum' : bigint } } |
   { 'Admin' : null };
+export interface ResolutionArgs {
+  'market_id' : bigint,
+  'winning_outcomes' : Array<bigint>,
+}
 export type Result = { 'Ok' : null } |
   { 'Err' : string };
 export type Result_1 = { 'Ok' : bigint } |
@@ -385,7 +389,8 @@ export interface _SERVICE {
   'mark_transaction_resolved' : ActorMethod<[bigint], Result>,
   'place_bet' : ActorMethod<[PlaceBetArgs], Result_6>,
   'propose_resolution' : ActorMethod<[bigint, Array<bigint>], Result_2>,
-  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_2>,
+  'resolve_via_admin' : ActorMethod<[ResolutionArgs], Result_2>,
+  'resolve_via_admin_legacy' : ActorMethod<[bigint, Array<bigint>], Result_2>,
   'resolve_via_oracle' : ActorMethod<
     [bigint, Array<bigint>, Uint8Array | number[]],
     Result_2

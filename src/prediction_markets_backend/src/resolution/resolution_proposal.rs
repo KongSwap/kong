@@ -14,10 +14,10 @@ use crate::resolution::resolution::*;
 use crate::controllers::admin::*;
 use crate::market::market::*;
 use crate::stable_memory::*;
-use crate::types::{MarketId, OutcomeIndex, TokenIdentifier}; 
 use crate::canister::get_current_time;
 use crate::token::registry::get_token_info;
 use crate::token::transfer::burn_tokens;
+use crate::canister::ResolutionArgs;
 
 /// Proposes or executes a resolution for a market
 ///
@@ -45,11 +45,10 @@ use crate::token::transfer::burn_tokens;
 /// must agree on the outcome.
 // Note: #[update] attribute removed to avoid conflict with the original function in dual_approval.rs
 pub async fn propose_resolution(
-    market_id: MarketId, 
-    winning_outcomes: Vec<OutcomeIndex>
+    args: ResolutionArgs
 ) -> Result<(), ResolutionError> {
     // Validate outcome indices are not empty
-    if winning_outcomes.is_empty() {
+    if args.winning_outcomes.is_empty() {
         return Err(ResolutionError::InvalidOutcome);
     }
     
@@ -59,7 +58,7 @@ pub async fn propose_resolution(
     // Get market
     let mut market = MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
-        markets_ref.get(&market_id).ok_or(ResolutionError::MarketNotFound)
+        markets_ref.get(&args.market_id).ok_or(ResolutionError::MarketNotFound)
     })?;
     
     // Check if market is active
@@ -87,11 +86,11 @@ pub async fn propose_resolution(
         ic_cdk::println!("Admin resolving admin-created market: bypassing dual approval");
         
         // Use the direct resolution function from resolution_actions
-        return resolve_market_directly(market_id, &mut market, winning_outcomes, caller).await;
+        return resolve_market_directly(args, &mut market, caller).await;
     }
     
     // Validate outcome indices are valid for this market
-    for outcome_index in &winning_outcomes {
+    for outcome_index in &args.winning_outcomes {
         let idx = outcome_index.to_u64() as usize;
         if idx >= market.outcomes.len() {
             return Err(ResolutionError::InvalidOutcome);
@@ -103,7 +102,7 @@ pub async fn propose_resolution(
     // Check if a proposal already exists for this market
     let existing_proposal = RESOLUTION_PROPOSALS.with(|proposals| {
         // Use clone() on the Option instead of cloned() which is for iterators
-        proposals.borrow().get(&market_id).clone()
+        proposals.borrow().get(&args.market_id).clone()
     });
     
     // Handle dual approval based on whether a proposal already exists
@@ -112,8 +111,8 @@ pub async fn propose_resolution(
         None => {
             // Create a new resolution proposal recording who proposed it and with what outcomes
             let proposal = ResolutionProposal {
-                market_id: market_id.clone(),
-                proposed_outcomes: winning_outcomes.clone(),
+                market_id: args.market_id.clone(),
+                proposed_outcomes: args.winning_outcomes.clone(),
                 creator_approved: is_caller_creator,
                 admin_approved: is_caller_admin,
                 creator: market.creator,
@@ -124,7 +123,7 @@ pub async fn propose_resolution(
             // Store the proposal in stable memory so it persists across canister upgrades
             RESOLUTION_PROPOSALS.with(|proposals| {
                 let mut proposals = proposals.borrow_mut();
-                proposals.insert(market_id.clone(), proposal.clone());
+                proposals.insert(args.market_id.clone(), proposal.clone());
             });
             
             // Provide appropriate feedback based on who initiated the proposal
@@ -147,25 +146,25 @@ pub async fn propose_resolution(
                 ic_cdk::println!("Admin reviewing creator's resolution proposal");
                 
                 // Check if admin's outcomes match creator's proposed outcomes
-                if proposal.proposed_outcomes == winning_outcomes {
+                if proposal.proposed_outcomes == args.winning_outcomes {
                     // AGREEMENT: Both creator and admin agree on outcomes
                     ic_cdk::println!("Admin confirms creator's resolution outcomes. Finalizing market.");
                     
                     // Remove proposal since we're processing it
                     RESOLUTION_PROPOSALS.with(|proposals| {
                         let mut proposals = proposals.borrow_mut();
-                        proposals.remove(&market_id);
+                        proposals.remove(&args.market_id);
                     });
                     
                     // Finalize the market with the agreed outcomes
-                    return finalize_market(&mut market, winning_outcomes).await;
+                    return finalize_market(&mut market, args.winning_outcomes).await;
                 } else {
                     // DISAGREEMENT: Admin disagrees with creator's proposed outcomes
                     ic_cdk::println!("Admin disagrees with creator's resolution. Voiding market.");
                     
                     // In case of disagreement, void the market and burn creator's deposit
                     // as a penalty for incorrect resolution
-                    return handle_resolution_disagreement(market_id, market, proposal).await;
+                    return handle_resolution_disagreement(args, market, proposal).await;
                 }
             }
             
@@ -174,25 +173,25 @@ pub async fn propose_resolution(
                 ic_cdk::println!("Creator reviewing admin's resolution proposal");
                 
                 // Check if creator's outcomes match admin's proposed outcomes
-                if proposal.proposed_outcomes == winning_outcomes {
+                if proposal.proposed_outcomes == args.winning_outcomes {
                     // AGREEMENT: Both admin and creator agree on outcomes
                     ic_cdk::println!("Creator confirms admin's resolution outcomes. Finalizing market.");
                     
                     // Remove proposal since we're processing it
                     RESOLUTION_PROPOSALS.with(|proposals| {
                         let mut proposals = proposals.borrow_mut();
-                        proposals.remove(&market_id);
+                        proposals.remove(&args.market_id);
                     });
                     
                     // Finalize the market with the agreed outcomes
-                    return finalize_market(&mut market, winning_outcomes).await;
+                    return finalize_market(&mut market, args.winning_outcomes).await;
                 } else {
                     // DISAGREEMENT: Creator disagrees with admin's proposed outcomes
                     ic_cdk::println!("Creator disagrees with admin's resolution. Voiding market.");
                     
                     // In case of disagreement, void the market and burn creator's deposit
                     // as a penalty for incorrect resolution
-                    return handle_resolution_disagreement(market_id, market, proposal).await;
+                    return handle_resolution_disagreement(args, market, proposal).await;
                 }
             } else {
                 // Edge case: this covers scenarios like both parties already approved,
@@ -227,14 +226,14 @@ pub async fn propose_resolution(
 /// # Returns
 /// * `Result<(), ResolutionError>` - Success or error reason if the process fails
 pub async fn handle_resolution_disagreement(
-    market_id: MarketId,
+    args: ResolutionArgs,
     mut market: Market,
     proposal: ResolutionProposal
 ) -> Result<(), ResolutionError> {
     // Log the disagreement
     ic_cdk::println!(
         "Resolution disagreement detected for market {}. Creator: {}, Admin: {}",
-        market_id, 
+        args.market_id, 
         proposal.creator,
         proposal.admin_approver.unwrap_or_else(|| Principal::anonymous())
     );
@@ -267,17 +266,17 @@ pub async fn handle_resolution_disagreement(
     }
     
     // Process refunds for all betters EXCEPT the activation deposit
-    refund_all_bets(&market_id, &market).await?;
+    refund_all_bets(&args.market_id, &market).await?;
     
     // Update market status to voided due to resolution disagreement
     market.status = MarketStatus::Voided;
     // Note: Market doesn't have a closed_at field in this implementation
     
     // Log market status change
-    ic_cdk::println!("Market {} has been voided due to resolution disagreement", market_id);
+    ic_cdk::println!("Market {} has been voided due to resolution disagreement", args.market_id);
     
     // Clone market_id for insertion to avoid ownership issues
-    let market_id_clone = market_id.clone();
+    let market_id_clone = args.market_id.clone();
     
     // Update market in storage
     MARKETS.with(|markets| {
@@ -288,7 +287,7 @@ pub async fn handle_resolution_disagreement(
     // Remove the resolution proposal
     RESOLUTION_PROPOSALS.with(|proposals| {
         let mut proposals = proposals.borrow_mut();
-        proposals.remove(&market_id);
+        proposals.remove(&args.market_id);
     });
     
     Ok(())

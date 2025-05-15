@@ -231,6 +231,10 @@ type ResolutionMethod = variant {
   Decentralized : record { quorum : nat };
   Admin;
 };
+type ResolutionArgs = record {
+  market_id : nat;
+  winning_outcomes : vec nat;
+};
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : nat; Err : text };
 type Result_2 = variant { Ok; Err : ResolutionError };
@@ -349,7 +353,8 @@ service : () -> {
   mark_transaction_resolved : (nat64) -> (Result);
   place_bet : (PlaceBetArgs) -> (Result_6);
   propose_resolution : (nat, vec nat) -> (Result_2);
-  resolve_via_admin : (nat, vec nat) -> (Result_2);
+  resolve_via_admin : (ResolutionArgs) -> (Result_2);
+  resolve_via_admin_legacy : (nat, vec nat) -> (Result_2);
   resolve_via_oracle : (nat, vec nat, blob) -> (Result_2);
   retry_market_transactions : (nat) -> (vec Result_7);
   retry_transaction : (nat64) -> (Result_8);
