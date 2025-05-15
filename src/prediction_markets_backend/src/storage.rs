@@ -43,8 +43,8 @@ pub fn get_bets_for_market(market_id: &MarketId) -> Vec<Bet> {
         
         // Iterate through all bets and collect those matching our market ID
         // The stable memory interface doesn't have a direct "get by partial key" functionality
-        for ((bet_market_id, _), bet) in bets.iter() {
-            if &bet_market_id == market_id {
+        for (bet_key, bet) in bets.iter() {
+            if &bet_key.market_id == market_id {
                 market_bets.push(bet.clone());
             }
         }

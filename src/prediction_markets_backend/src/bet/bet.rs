@@ -158,3 +158,68 @@ impl Storable for BetStore {
     /// Specifies that there's no size limit for this collection
     const BOUND: Bound = Bound::Unbounded;
 }
+
+/// Composite key for bets in stable storage
+/// 
+/// This struct combines MarketId and bet index to create a composite key
+/// that avoids the limitations of tuple serialization in stable memory.
+/// By implementing Storable with bounded serialization, we ensure the bet
+/// collection can be properly stored and retrieved from stable memory.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, CandidType, Serialize, Deserialize)]
+pub struct BetKey {
+    /// The market ID component of the composite key
+    pub market_id: MarketId,
+    
+    /// The bet index component (position within the market)
+    pub bet_index: u64,
+}
+
+impl Storable for BetKey {
+    /// Converts the composite key to a binary representation
+    fn to_bytes(&self) -> Cow<[u8]> {
+        let mut bytes = Vec::new();
+        
+        // Get the market ID bytes
+        let market_id_bytes = self.market_id.to_bytes();
+        
+        // Add the market ID bytes size and content
+        let market_id_size = market_id_bytes.len() as u32;
+        bytes.extend_from_slice(&market_id_size.to_be_bytes());
+        bytes.extend_from_slice(&market_id_bytes);
+        
+        // Add the bet index
+        bytes.extend_from_slice(&self.bet_index.to_be_bytes());
+        
+        Cow::Owned(bytes)
+    }
+    
+    /// Reconstructs the composite key from a binary representation
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        let bytes = bytes.as_ref();
+        
+        // Read the market ID size
+        let mut market_id_size_bytes = [0u8; 4];
+        market_id_size_bytes.copy_from_slice(&bytes[0..4]);
+        let market_id_size = u32::from_be_bytes(market_id_size_bytes) as usize;
+        
+        // Read the market ID
+        let market_id_bytes = Cow::Borrowed(&bytes[4..4 + market_id_size]);
+        let market_id = MarketId::from_bytes(market_id_bytes);
+        
+        // Read the bet index
+        let mut bet_index_bytes = [0u8; 8];
+        bet_index_bytes.copy_from_slice(&bytes[4 + market_id_size..4 + market_id_size + 8]);
+        let bet_index = u64::from_be_bytes(bet_index_bytes);
+        
+        BetKey {
+            market_id,
+            bet_index,
+        }
+    }
+    
+    /// Specifies that this type has a bounded size for stable storage
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 4 + 20 + 8, // 4 bytes for size + max 20 bytes for MarketId + 8 bytes for u64
+        is_fixed_size: false,
+    };
+}

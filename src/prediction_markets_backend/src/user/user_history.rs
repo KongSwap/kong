@@ -27,10 +27,10 @@ pub fn get_user_history(user: Principal) -> UserHistory {
             // Group bets by market_id
             let mut market_bets: HashMap<StorableNat, Vec<_>> = HashMap::new();
             
-            // Collect all bets for this user, organizing them by market_id
-            for ((market_id, _), bet) in bets.iter() {
+            // Collect all bets for this user, organizing them by market_id using the new BetKey type
+            for (bet_key, bet) in bets.iter() {
                 if bet.user == user {
-                    market_bets.entry(market_id.clone()).or_default().push(bet.clone());
+                    market_bets.entry(bet_key.market_id.clone()).or_default().push(bet.clone());
                 }
             }
             

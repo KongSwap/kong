@@ -64,8 +64,8 @@ thread_local! {
         )
     );
 
-    /// Stable BTree map for bets indexed by MarketId + BetId
-    pub static STABLE_BETS: RefCell<StableBTreeMap<(MarketId, u64), crate::bet::bet::Bet, Memory>> = RefCell::new(
+    /// Stable BTree map for bets indexed by a composite key of MarketId + BetId
+    pub static STABLE_BETS: RefCell<StableBTreeMap<crate::bet::bet::BetKey, crate::bet::bet::Bet, Memory>> = RefCell::new(
         StableBTreeMap::init(
             MEMORY_MANAGER.with(|mm| mm.borrow().get(MemoryId::new(1)))
         )

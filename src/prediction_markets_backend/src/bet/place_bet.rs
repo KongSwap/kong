@@ -281,14 +281,20 @@ async fn place_bet(
         // Get the next bet index for this market
         // This counts how many bets are already in the market
         let mut index: u64 = 0;
-        for ((bet_market_id, _), _) in bets.iter() {
-            if &bet_market_id == &market_id_clone {
+        for (bet_key, _) in bets.iter() {
+            if bet_key.market_id == market_id_clone {
                 index += 1;
             }
         }
         
-        // Insert the new bet with the composite key (MarketId, index)
-        bets.insert((market_id_clone, index), new_bet);
+        // Create the composite key using our new BetKey type
+        let bet_key = crate::bet::bet::BetKey {
+            market_id: market_id_clone,
+            bet_index: index,
+        };
+        
+        // Insert the new bet with the composite key
+        bets.insert(bet_key, new_bet);
         
         // For time-weighted markets, the timestamp is particularly important
         // as it determines the weight factor during payout calculations
