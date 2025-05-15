@@ -277,13 +277,19 @@ type ResolutionMethod = variant {
   Decentralized : record { quorum : nat };
   Admin;
 };
+type ResolutionResult = variant {
+  Error : ResolutionError;
+  AwaitingAdminApproval;
+  Success;
+  AwaitingCreatorApproval;
+};
 type Result = variant { Ok; Err : text };
-type Result_1 = variant { Ok; Err : ResolutionError };
-type Result_2 = variant { Ok : nat; Err : text };
-type Result_3 = variant { Ok : ConsentInfo; Err : ErrorInfo };
-type Result_4 = variant { Ok : DelegationResponse; Err : DelegationError };
-type Result_5 = variant { Ok; Err : DelegationError };
-type Result_6 = variant { Ok; Err : BetError };
+type Result_1 = variant { Ok : nat; Err : text };
+type Result_2 = variant { Ok : ConsentInfo; Err : ErrorInfo };
+type Result_3 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_4 = variant { Ok; Err : DelegationError };
+type Result_5 = variant { Ok; Err : BetError };
+type Result_6 = variant { Ok; Err : ResolutionError };
 type Result_7 = variant { Ok : nat64; Err : text };
 type Result_8 = variant { Ok : opt nat; Err : text };
 type RevokeDelegationRequest = record { targets : vec principal };
@@ -331,7 +337,7 @@ type UserHistory = record {
 };
 service : () -> {
   add_supported_token : (TokenInfo) -> (Result);
-  admin_resolve_market : (nat, vec nat) -> (Result_1);
+  admin_resolve_market : (nat, vec nat) -> (ResolutionResult);
   claim_winnings : (vec nat64) -> (BatchClaimResult);
   create_market : (
       text,
@@ -344,12 +350,12 @@ service : () -> {
       opt bool,
       opt float64,
       opt text,
-    ) -> (Result_2);
+    ) -> (Result_1);
   create_test_claim : (principal, nat, nat, text) -> (nat64);
   estimate_bet_return : (nat64, nat64, nat64, nat64, opt text) -> (
       EstimatedReturn,
     ) query;
-  force_resolve_market : (nat, vec nat) -> (Result_1);
+  force_resolve_market : (nat, vec nat) -> (ResolutionResult);
   generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
   get_all_categories : () -> (vec text) query;
   get_all_transactions : () -> (vec record { nat64; FailedTransaction }) query;
@@ -381,19 +387,19 @@ service : () -> {
   get_user_history : (principal) -> (UserHistory) query;
   get_user_pending_claims : () -> (vec ClaimRecord) query;
   icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
-      Result_3,
+      Result_2,
     ) query;
   icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
-  icrc_34_delegate : (DelegationRequest) -> (Result_4);
-  icrc_34_get_delegation : (DelegationRequest) -> (Result_4) query;
-  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_5);
+  icrc_34_delegate : (DelegationRequest) -> (Result_3);
+  icrc_34_get_delegation : (DelegationRequest) -> (Result_3) query;
+  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_4);
   is_admin : (principal) -> (bool) query;
   mark_claim_processed : (nat64) -> (bool);
   mark_transaction_resolved : (nat64) -> (Result);
-  place_bet : (nat, nat, nat, opt text) -> (Result_6);
-  propose_resolution : (nat, vec nat) -> (Result_1);
-  resolve_via_admin : (nat, vec nat) -> (Result_1);
-  resolve_via_oracle : (nat, vec nat, blob) -> (Result_1);
+  place_bet : (nat, nat, nat, opt text) -> (Result_5);
+  propose_resolution : (nat, vec nat) -> (ResolutionResult);
+  resolve_via_admin : (nat, vec nat) -> (ResolutionResult);
+  resolve_via_oracle : (nat, vec nat, blob) -> (Result_6);
   retry_claim : (nat64) -> (ClaimResult);
   retry_market_transactions : (nat) -> (vec Result_7);
   retry_transaction : (nat64) -> (Result_8);
@@ -401,5 +407,5 @@ service : () -> {
   simulate_future_weight : (nat64, nat64, nat64) -> (float64) query;
   update_expired_markets : () -> (nat64);
   update_token_config : (text, TokenInfo) -> (Result);
-  void_market : (nat) -> (Result_1);
+  void_market : (nat) -> (ResolutionResult);
 }

@@ -281,20 +281,24 @@ export type ResolutionMethod = {
   } |
   { 'Decentralized' : { 'quorum' : bigint } } |
   { 'Admin' : null };
+export type ResolutionResult = { 'Error' : ResolutionError } |
+  { 'AwaitingAdminApproval' : null } |
+  { 'Success' : null } |
+  { 'AwaitingCreatorApproval' : null };
 export type Result = { 'Ok' : null } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : null } |
-  { 'Err' : ResolutionError };
-export type Result_2 = { 'Ok' : bigint } |
+export type Result_1 = { 'Ok' : bigint } |
   { 'Err' : string };
-export type Result_3 = { 'Ok' : ConsentInfo } |
+export type Result_2 = { 'Ok' : ConsentInfo } |
   { 'Err' : ErrorInfo };
-export type Result_4 = { 'Ok' : DelegationResponse } |
+export type Result_3 = { 'Ok' : DelegationResponse } |
+  { 'Err' : DelegationError };
+export type Result_4 = { 'Ok' : null } |
   { 'Err' : DelegationError };
 export type Result_5 = { 'Ok' : null } |
-  { 'Err' : DelegationError };
-export type Result_6 = { 'Ok' : null } |
   { 'Err' : BetError };
+export type Result_6 = { 'Ok' : null } |
+  { 'Err' : ResolutionError };
 export type Result_7 = { 'Ok' : bigint } |
   { 'Err' : string };
 export type Result_8 = { 'Ok' : [] | [bigint] } |
@@ -351,7 +355,10 @@ export interface UserHistory {
 }
 export interface _SERVICE {
   'add_supported_token' : ActorMethod<[TokenInfo], Result>,
-  'admin_resolve_market' : ActorMethod<[bigint, Array<bigint>], Result_1>,
+  'admin_resolve_market' : ActorMethod<
+    [bigint, Array<bigint>],
+    ResolutionResult
+  >,
   'claim_winnings' : ActorMethod<[BigUint64Array | bigint[]], BatchClaimResult>,
   'create_market' : ActorMethod<
     [
@@ -366,7 +373,7 @@ export interface _SERVICE {
       [] | [number],
       [] | [string],
     ],
-    Result_2
+    Result_1
   >,
   'create_test_claim' : ActorMethod<
     [Principal, bigint, bigint, string],
@@ -376,7 +383,10 @@ export interface _SERVICE {
     [bigint, bigint, bigint, bigint, [] | [string]],
     EstimatedReturn
   >,
-  'force_resolve_market' : ActorMethod<[bigint, Array<bigint>], Result_1>,
+  'force_resolve_market' : ActorMethod<
+    [bigint, Array<bigint>],
+    ResolutionResult
+  >,
   'generate_time_weight_curve' : ActorMethod<
     [bigint, bigint],
     Array<TimeWeightPoint>
@@ -417,24 +427,24 @@ export interface _SERVICE {
   'get_user_pending_claims' : ActorMethod<[], Array<ClaimRecord>>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],
-    Result_3
+    Result_2
   >,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
-  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_4>,
-  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_4>,
+  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_3>,
+  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_3>,
   'icrc_34_revoke_delegation' : ActorMethod<
     [RevokeDelegationRequest],
-    Result_5
+    Result_4
   >,
   'is_admin' : ActorMethod<[Principal], boolean>,
   'mark_claim_processed' : ActorMethod<[bigint], boolean>,
   'mark_transaction_resolved' : ActorMethod<[bigint], Result>,
-  'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_6>,
-  'propose_resolution' : ActorMethod<[bigint, Array<bigint>], Result_1>,
-  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_1>,
+  'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_5>,
+  'propose_resolution' : ActorMethod<[bigint, Array<bigint>], ResolutionResult>,
+  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], ResolutionResult>,
   'resolve_via_oracle' : ActorMethod<
     [bigint, Array<bigint>, Uint8Array | number[]],
-    Result_1
+    Result_6
   >,
   'retry_claim' : ActorMethod<[bigint], ClaimResult>,
   'retry_market_transactions' : ActorMethod<[bigint], Array<Result_7>>,
@@ -443,7 +453,7 @@ export interface _SERVICE {
   'simulate_future_weight' : ActorMethod<[bigint, bigint, bigint], number>,
   'update_expired_markets' : ActorMethod<[], bigint>,
   'update_token_config' : ActorMethod<[string, TokenInfo], Result>,
-  'void_market' : ActorMethod<[bigint], Result_1>,
+  'void_market' : ActorMethod<[bigint], ResolutionResult>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

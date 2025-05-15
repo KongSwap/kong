@@ -31,7 +31,7 @@ use ic_cdk::update;
 
 use crate::types::{MarketId, OutcomeIndex};
 use crate::market::market::Market;
-use crate::resolution::resolution::ResolutionError;
+use crate::resolution::resolution::{ResolutionError, ResolutionResult};
 
 /// Refunds all bets when a market is voided
 ///
@@ -112,7 +112,7 @@ pub fn can_resolve_market(market: &Market, user: Principal) -> bool {
 pub async fn propose_resolution(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Re-export from the new modular structure
     crate::resolution::resolution_proposal::propose_resolution(market_id, winning_outcomes).await
 }
@@ -138,9 +138,9 @@ pub async fn propose_resolution(
 #[update]
 #[deprecated(since = "1.1.0", note = "Use resolution_actions::force_resolve_market instead")]
 pub async fn force_resolve_market(
-    market_id: MarketId,
+    market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Re-export from the new modular structure
     crate::resolution::resolution_actions::force_resolve_market(market_id, winning_outcomes).await
 }
@@ -170,7 +170,7 @@ pub async fn force_resolve_market(
 pub async fn resolve_via_admin(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Re-export from the new modular structure
     crate::resolution::resolution_api::resolve_via_admin(market_id, winning_outcomes).await
 }
@@ -197,7 +197,7 @@ pub async fn resolve_via_admin(
 #[deprecated(since = "1.1.0", note = "Use resolution_actions::void_market instead")]
 pub async fn void_market(
     market_id: MarketId
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Re-export from the new modular structure
     crate::resolution::resolution_actions::void_market(market_id).await
 }

@@ -28,7 +28,8 @@ dfx identity use alice
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will DOT reach $30 by end of 2025?\", variant { Crypto }, \"Standard rules apply\", \
   vec { \"Yes\"; \"No\" }, variant { Oracle = record { oracle_principals = vec { principal \"$ORACLE_PRINCIPAL\"; principal \"$ADMIN_PRINCIPAL\" }; required_confirmations = 1 : nat } }, \
-  variant { Duration = 300 : nat }, null, null, null)")
+  variant { Duration = 300 : nat }, null, null, null, \
+  opt \"${KONG_LEDGER}\")")
 
 echo "Result: $RESULT"
 
@@ -37,7 +38,8 @@ echo -e "\n==== Step 2: Creating a market with Admin resolution as regular user 
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will DOT reach $30 by end of 2025?\", variant { Crypto }, \"Standard rules apply\", \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
-  variant { Duration = 300 : nat }, null, null, null)")
+  variant { Duration = 300 : nat }, null, null, null, \
+  opt \"${KONG_LEDGER}\")")
 
 # Extract market ID
 MARKET_ID=$(echo $RESULT | grep -o '[0-9]\+' | head -1)
@@ -57,7 +59,8 @@ echo "Using Admin's principal: $DEFAULT_PRINCIPAL"
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will ATOM reach $20 by end of 2025?\", variant { Crypto }, \"Standard rules apply\", \
   vec { \"Yes\"; \"No\" }, variant { Oracle = record { oracle_principals = vec { principal \"$ALICE_PRINCIPAL\"; principal \"$DEFAULT_PRINCIPAL\" }; required_confirmations = 1 : nat } }, \
-  variant { Duration = 300 : nat }, null, null, null)")
+  variant { Duration = 300 : nat }, null, null, null, \
+  opt \"${KONG_LEDGER}\")")
 
 # Extract market ID
 MARKET_ID_ADMIN=$(echo $RESULT | grep -o '[0-9]\+' | head -1)
@@ -77,7 +80,9 @@ echo "Attempting to create market with Decentralized resolution (should fail)...
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will ALGO reach $5 by end of 2025?\", variant { Crypto }, \"Standard rules apply\", \
   vec { \"Yes\"; \"No\" }, variant { Decentralized = record { quorum = 100000 : nat } }, \
-  variant { Duration = 300 : nat }, null, null, null)")
+  variant { Duration = 300 : nat }, null, null, null, \
+  opt \"${KONG_LEDGER}\")")
+
 
 echo "Result: $RESULT"
 
@@ -90,7 +95,9 @@ echo "Using Admin's principal: $DEFAULT_PRINCIPAL"
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will ALGO reach $5 by end of 2025?\", variant { Crypto }, \"Standard rules apply\", \
   vec { \"Yes\"; \"No\" }, variant { Decentralized = record { quorum = 100000 : nat } }, \
-  variant { Duration = 300 : nat }, null, null, null)")
+  variant { Duration = 300 : nat }, null, null, null, \
+  opt \"${KONG_LEDGER}\")")
+
 
 # Extract market ID
 MARKET_ID_ADMIN2=$(echo $RESULT | grep -o '[0-9]\+' | head -1)

@@ -185,8 +185,8 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
         market.id.to_u64(),
         winning_outcomes.iter().map(|n| n.to_u64()).collect::<Vec<_>>()
     );
-    // Validate market state
-    if !matches!(market.status, MarketStatus::Active) {
+    // Validate market state - allow both Active and ExpiredUnresolved markets to be finalized
+    if !matches!(market.status, MarketStatus::Active | MarketStatus::ExpiredUnresolved) {
         return Err(ResolutionError::AlreadyResolved);
     }
 
