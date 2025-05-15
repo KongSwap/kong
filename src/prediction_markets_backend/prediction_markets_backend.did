@@ -119,13 +119,6 @@ type FailedTransaction = record {
   timestamp : nat64;
   amount : nat;
 };
-type GetAllMarketsArgs = record {
-  status_filter : opt MarketStatus;
-  start : nat;
-  length : nat64;
-  sort_option : opt SortOption;
-};
-type GetAllMarketsResult = record { markets : vec Market; total_count : nat };
 type GetMarketsByCreatorArgs = record {
   creator : principal;
   start : nat;
@@ -190,8 +183,9 @@ type MarketStatus = variant {
   Disputed;
   Closed : vec nat;
   Active;
+  ExpiredUnresolved;
   Voided;
-  Pending;
+  PendingActivation;
 };
 type MarketsByStatus = record {
   resolved : vec MarketResult;
@@ -245,16 +239,6 @@ type SearchMarketsArgs = record {
 type SearchMarketsResult = record { total : nat; markets : vec Market };
 type SortDirection = variant { Descending; Ascending };
 type SortField = variant { TotalPool; CreationTime; EndTime; TotalBets };
-type SortOption = variant {
-  TotalPool : SortDirection;
-  CreatedAt : SortDirection;
-  EndTime : SortDirection;
-};
-type StatsResult = record {
-  total_bets : nat;
-  total_active_markets : nat;
-  total_markets : nat;
-};
 type TimeWeightPoint = record {
   weight : float64;
   absolute_time : nat;
@@ -267,7 +251,7 @@ type TokenInfo = record {
   transfer_fee : nat;
   name : text;
   fee_percentage : nat64;
-  min_initial_bet : nat;
+  activation_fee : nat;
   symbol : text;
 };
 type UserBetInfo = record {
@@ -305,7 +289,6 @@ service : () -> {
   force_resolve_market : (nat, vec nat) -> (Result_2);
   generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
   get_all_categories : () -> (vec text) query;
-  get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
   get_all_transactions : () -> (vec record { nat64; FailedTransaction }) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
@@ -316,7 +299,6 @@ service : () -> {
   get_markets_by_status : (GetMarketsByStatusArgs) -> (
       GetMarketsByStatusResult,
     ) query;
-  get_stats : () -> (StatsResult) query;
   get_supported_tokens : () -> (vec TokenInfo) query;
   get_token_fee_percentage : (text) -> (opt nat64) query;
   get_transactions_by_market : (nat) -> (
@@ -346,6 +328,7 @@ service : () -> {
   retry_transaction : (nat64) -> (Result_8);
   search_markets : (SearchMarketsArgs) -> (SearchMarketsResult) query;
   simulate_future_weight : (nat64, nat64, nat64) -> (float64) query;
+  update_expired_markets : () -> (nat64);
   update_token_config : (text, TokenInfo) -> (Result);
   void_market : (nat) -> (Result_2);
 }

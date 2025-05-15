@@ -52,7 +52,8 @@ pub fn get_all_markets(args: GetAllMarketsArgs) -> GetAllMarketsResult {
                     (MarketStatus::Closed(_), MarketStatus::Closed(_)) |
                     (MarketStatus::Disputed, MarketStatus::Disputed) |
                     (MarketStatus::Voided, MarketStatus::Voided) |
-                    (MarketStatus::Pending, MarketStatus::Pending) => filtered_market_ids.push(id),
+                    (MarketStatus::PendingActivation, MarketStatus::PendingActivation) |
+                    (MarketStatus::ExpiredUnresolved, MarketStatus::ExpiredUnresolved) => filtered_market_ids.push(id),
                     _ => continue,
                 }
             } else {

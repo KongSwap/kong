@@ -37,6 +37,7 @@ use crate::market::get_market_by_status::GetMarketsByStatusArgs;
 use crate::market::get_market_by_status::GetMarketsByStatusResult;
 use crate::market::get_all_markets::GetAllMarketsArgs;
 use crate::market::get_all_markets::GetAllMarketsResult;
+use crate::market::update_expired_markets::*;
 
 use crate::market::estimate_return_types::{EstimatedReturn, TimeWeightPoint, BetPayoutRecord};
 // Standard types

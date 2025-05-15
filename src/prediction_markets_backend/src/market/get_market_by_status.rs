@@ -47,7 +47,7 @@ pub fn get_markets_by_status(args: GetMarketsByStatusArgs) -> GetMarketsByStatus
 
     // Filter and transform markets by each status group
     let active_markets = MarketFilter::new()
-        .with_statuses(vec![MarketStatus::Active, MarketStatus::Pending])
+        .with_statuses(vec![MarketStatus::Active, MarketStatus::PendingActivation])
         .apply(all_markets.clone())
         .into_iter()
         .filter(|(_, market)| now < market.end_time.to_u64())
@@ -57,9 +57,13 @@ pub fn get_markets_by_status(args: GetMarketsByStatusArgs) -> GetMarketsByStatus
         .into_iter()
         .filter(|(_, market)| {
             match market.status {
-                MarketStatus::Active | MarketStatus::Pending => {
+                MarketStatus::Active | MarketStatus::PendingActivation => {
+                    // For active or pending activation markets that have passed their end time,
+                    // they should be shown as expired unresolved
                     now >= market.end_time.to_u64()
                 },
+                // Markets that are already marked as ExpiredUnresolved should be included
+                MarketStatus::ExpiredUnresolved => true,
                 MarketStatus::Disputed => true,
                 _ => false
             }

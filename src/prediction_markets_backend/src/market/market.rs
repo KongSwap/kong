@@ -29,11 +29,16 @@ use crate::resolution::resolution::*;
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum MarketStatus {
     /// Market is created but not yet activated (awaiting initial bets/funding)
-    Pending,
+    /// This status indicates the market is newly created and requires a minimum bet to activate
+    PendingActivation,
     
     /// Market is active and open for betting
     /// Users can place bets on any outcome during this phase
     Active,
+    
+    /// Market has reached its end time but has not yet been resolved
+    /// This status indicates a market that needs resolution by admin or creator
+    ExpiredUnresolved,
     
     /// Market is closed with winning outcome indices
     /// The Vec<Nat> contains the indices of winning outcomes (multiple possible for multi-select markets)

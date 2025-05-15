@@ -6,7 +6,7 @@ export const idlFactory = ({ IDL }) => {
     'transfer_fee' : IDL.Nat,
     'name' : IDL.Text,
     'fee_percentage' : IDL.Nat64,
-    'min_initial_bet' : IDL.Nat,
+    'activation_fee' : IDL.Nat,
     'symbol' : IDL.Text,
   });
   const Result = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
@@ -81,8 +81,9 @@ export const idlFactory = ({ IDL }) => {
     'Disputed' : IDL.Null,
     'Closed' : IDL.Vec(IDL.Nat),
     'Active' : IDL.Null,
+    'ExpiredUnresolved' : IDL.Null,
     'Voided' : IDL.Null,
-    'Pending' : IDL.Null,
+    'PendingActivation' : IDL.Null,
   });
   const SortDirection = IDL.Variant({
     'Descending' : IDL.Null,
@@ -456,6 +457,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Float64],
         ['query'],
       ),
+    'update_expired_markets' : IDL.Func([], [IDL.Nat64], []),
     'update_token_config' : IDL.Func([IDL.Text, TokenInfo], [Result], []),
     'void_market' : IDL.Func([IDL.Nat], [Result_2], []),
   });

@@ -16,6 +16,7 @@ mod token;
 // Re-export test modules to make them discoverable
 pub use admin::*;
 pub use market::*;
+pub use token::*;
 
 // Add any integration tests that span multiple modules here
 #[test]

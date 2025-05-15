@@ -2694,6 +2694,7 @@ version = "0.0.20"
 dependencies = [
  "anyhow",
  "candid",
+ "ciborium",
  "ed25519-consensus",
  "futures",
  "getrandom 0.2.15",

@@ -110,7 +110,7 @@ impl MarketFilter {
                 match (s, &market.status) {
                     // For active status, consider both Active and Pending
                     (MarketStatus::Active, MarketStatus::Active) => true,
-                    (MarketStatus::Active, MarketStatus::Pending) => true,
+                    (MarketStatus::Active, MarketStatus::PendingActivation) => true,
                     
                     // For closed status, only match Closed with any outcomes
                     (MarketStatus::Closed(_), MarketStatus::Closed(_)) => true,
@@ -127,11 +127,15 @@ impl MarketFilter {
         // Expired but unresolved filter (special case)
         if let Some(true) = self.only_expired_unresolved {
             match market.status {
-                MarketStatus::Active | MarketStatus::Pending => {
+                MarketStatus::Active | MarketStatus::PendingActivation => {
                     // Only include if end time has passed
                     if current_time < market.end_time.to_u64() {
                         return false;
                     }
+                },
+                MarketStatus::ExpiredUnresolved => {
+                    // Already explicitly marked as expired unresolved
+                    // Include it in the results
                 },
                 MarketStatus::Disputed => {
                     // Disputed markets are considered unresolved

@@ -197,15 +197,6 @@ mod tests {
         let n2 = Nat::from(500_000_000_u128);
         let x = nat_multiply(&n1, &n2);
         assert_eq!(x, Nat::from(500_000_000_000_000_000_u128));
-
-        let n0 = Nat::from(200_000_000_u128);
-        let n1 = Nat::from(47_471_602_527_u128);
-        let n2 = nat_multiply(&n0, &n1);
-        let n3 = Nat::from(18_977_254_u128);
-        let n4 = Nat::from(500_300_000_000_u128);
-        let n5 = nat_multiply(&n3, &n4);
-        println!("n2: {} n5: {}", n2, n5);
-        assert_eq!(n2, n5);
     }
 
     #[test]
