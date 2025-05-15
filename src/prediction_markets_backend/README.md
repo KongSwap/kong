@@ -1,6 +1,6 @@
 # Prediction Markets Backend
 
-A decentralized prediction markets system built as a canister smart contract for the Internet Computer (IC) with multi-token support.
+A decentralized prediction markets system built as a canister smart contract for the Internet Computer (IC) with multi-token support, time-weighted payouts, and a dual approval resolution system.
 
 ## Code Review & Architecture
 
@@ -27,12 +27,14 @@ This canister implements a complete prediction markets platform where users can:
    - Token-specific activation fees for user-created markets
    - Secure bet recording in stable storage with token information
    - Pool-based odds calculation
+   - Time-weighted betting that rewards early participants
    - Automatic fee handling with token-specific fee percentages
    - Configurable platform fee per token type (1-5% depending on token)
 
 3. **Resolution & Payout**
    - Multiple resolution strategies (admin, oracle, decentralized)
-   - Dual approval resolution system for user-created markets
+   - Dual approval resolution system with distinct flows for admin-created vs user-created markets
+   - Time-weighted payout distribution algorithm for fairer rewards
    - Automatic winner determination and payout distribution in the market's native token
    - Token-specific platform fees collected from winning pools and sent to minter
    - Market voiding capabilities with refunds in the original token
@@ -40,14 +42,15 @@ This canister implements a complete prediction markets platform where users can:
 
 4. **State Management**
    - Robust persistence using IC's stable structures
-   - CBOR serialization for efficient storage
    - Thread-local storage for stable BTree collections
+   - Type-safe storage abstraction layer
+   - Claims-based payout management
    - Proper upgrade hooks for canister safety
 
 5. **Security & Access Control**
    - Admin controls for sensitive operations
    - ICRC-21 consent message integration
-   - ICRC-34 delegation support
+   - ICRC-34 delegation support with principal-based verification
    - Oracle-based verification
 
 ### Technical Implementation
@@ -164,41 +167,61 @@ The system uses IC's stable structures for persistent state management:
 
 ```rust
 thread_local! {
-    static MARKETS: RefCell<StableBTreeMap<MarketId, Market, Memory>> = /* ... */
-    static BETS: RefCell<StableBTreeMap<MarketId, BetStore, Memory>> = /* ... */
+    // Markets indexed by MarketId
+    static STABLE_MARKETS: RefCell<StableBTreeMap<MarketId, Market, Memory>> = /* ... */
+    
+    // Bets indexed by composite key (MarketId, BetId)
+    static STABLE_BETS: RefCell<StableBTreeMap<(MarketId, u64), Bet, Memory>> = /* ... */
+    
+    // Resolution proposals indexed by MarketId
+    static STABLE_RESOLUTION_PROPOSALS: RefCell<StableBTreeMap<MarketId, ResolutionProposal, Memory>> = /* ... */
+    
+    // Delegations indexed by Principal (delegator)
+    static STABLE_DELEGATIONS: RefCell<StableBTreeMap<Principal, Delegation, Memory>> = /* ... */
+    
+    // Oracle whitelist
+    static STABLE_ORACLE_WHITELIST: RefCell<StableBTreeMap<Principal, bool, Memory>> = /* ... */
+    
+    // User token balances
     static BALANCES: RefCell<StableBTreeMap<Principal, u64, Memory>> = /* ... */
+    
+    // Platform fee collection
     static FEE_BALANCE: RefCell<StableBTreeMap<Principal, u64, Memory>> = /* ... */
-    static ORACLES: RefCell<StableBTreeMap<Principal, bool, Memory>> = /* ... */
-    static DELEGATIONS: RefCell<StableBTreeMap<Principal, DelegationVec, Memory>> = /* ... */
 }
 ```
 
 ### Architectural Overview
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                 Prediction Markets Canister                      │
-├─────────────────┬─────────────────────────┬────────────────────┤
-│  Market Module  │     Betting Module      │  Resolution Module │
-│                 │                         │                    │
-│ - Create Market │ - Place Bet            │ - Admin Resolution │
-│ - Get Markets   │ - Get Market Bets      │ - Oracle Resolution│
-│ - Market Status │ - Update Pools         │ - Market Voiding   │
-│ - Categories    │ - Calculate Odds       │ - Distribute Wins  │
-├─────────────────┴─────────────────────────┴────────────────────┤
-│                      Persistent Storage                         │
-│                                                                │
-│  - Markets (StableBTreeMap)                                    │
-│  - Bets (StableBTreeMap)                                       │
-│  - Balances (StableBTreeMap)                                   │
-│  - Delegations (StableBTreeMap)                                │
-├────────────────────────────────┬───────────────────────────────┤
-│     User & Admin Controls      │      External Integrations    │
-│                                │                               │
-│  - Admin Authorization         │  - KONG Token (ICRC-2)        │
-│  - Delegation (ICRC-34)        │  - Consent Messages (ICRC-21) │
-│  - Oracle Management           │  - Trusted Origins (ICRC-28)  │
-└────────────────────────────────┴───────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                      Prediction Markets Canister                          │
+├─────────────────┬──────────────────────────┬───────────────────────────────┤
+│  Market Module  │      Betting Module      │      Resolution Module        │
+│                 │                          │                               │
+│ - Create Market │ - Place Bet             │ - Admin Resolution            │
+│ - Get Markets   │ - Get Market Bets       │ - User-created Resolution     │
+│ - Market Status │ - Update Pools          │ - Market Voiding              │
+│ - Categories    │ - Time-weighted Returns │ - Time-weighted Distribution  │
+├─────────────────┼──────────────────────────┼───────────────────────────────┤
+│  Claims Module  │      Token Module       │       User Module             │
+│                 │                          │                               │
+│ - Create Claims │ - Multi-token Support   │ - User History                │
+│ - Process Claims│ - Token Transfer        │ - ICRC Delegation             │
+│ - Track Claims  │ - Fee Management        │ - User Preferences            │
+├─────────────────┴──────────────────────────┴───────────────────────────────┤
+│                         Persistent Storage                                │
+│                                                                          │
+│  - Markets (StableBTreeMap)          - Resolution Proposals              │
+│  - Bets (StableBTreeMap)             - Claims                            │
+│  - Delegations (StableBTreeMap)      - Market Payouts                    │
+├──────────────────────────────────┬───────────────────────────────────────┤
+│     User & Admin Controls        │      External Integrations            │
+│                                  │                                       │
+│  - Admin Authorization           │  - KONG Token (ICRC-1)                │
+│  - Principal-based Delegation    │  - ICP & other tokens (ICRC-1)        │
+│  - Oracle Management             │  - Consent Messages (ICRC-21)         │
+│  - Dual Approval Resolution      │  - Trusted Origins (ICRC-28)          │
+└──────────────────────────────────┴───────────────────────────────────────┘
 ```
 
 ### Key Technical Features
@@ -265,11 +288,9 @@ thread_local! {
 
 ## Time-Weighted Prediction Markets
 
-The system implements an **Exponential Weighting with Return Floor** model to incentivize early participation in prediction markets while ensuring fair reward distribution.
-
 ### Core Concept
 
-The time-weighted prediction markets feature introduces a mechanism where earlier bets receive higher rewards than later bets (for the same outcome), encouraging users to participate early and share their predictions when they have valuable information.
+The time-weighted prediction markets feature introduces a mechanism where earlier bets receive higher rewards than later bets (for the same outcome), encouraging users to participate early and share their predictions when they have valuable information. This system rewards users who contribute early insights while still ensuring all correct predictors receive at least their original bet amount back.
 
 ### Mathematical Model
 
