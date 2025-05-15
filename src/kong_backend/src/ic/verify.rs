@@ -225,13 +225,21 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                                 continue;
                             }
                             
-                            // Skip if any verification check fails
-                            if tx_from != &current_caller_account 
-                                || tx_to != kong_backend_account
-                                || spender.is_some()
-                                || amt != amount
-                                || timestamp < min_valid_timestamp {
-                                continue;
+                            // For a matching block, immediately return errors instead of falling through
+                            if tx_from != &current_caller_account {
+                                return Err("Transfer from does not match caller".to_string());
+                            }
+                            if tx_to != kong_backend_account {
+                                return Err("Transfer to does not match Kong backend".to_string());
+                            }
+                            if spender.is_some() {
+                                return Err("Invalid transfer spender".to_string());
+                            }
+                            if amt != amount {
+                                return Err(format!("Invalid transfer amount: rec {:?} exp {:?}", amt, amount));
+                            }
+                            if timestamp < min_valid_timestamp {
+                                return Err("Expired transfer timestamp".to_string());
                             }
                             
                             // All checks passed - verification successful
@@ -239,7 +247,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                         }
                     }
                 }
-                // ICRC3 verification failed, fall through to traditional methods
+                // ICRC3 verification failed, only fall through to traditional methods if we couldn't find the block or format was unexpected
             }
 
             // If not ICRC3, or if ICRC-3 verification doesn't succeed, fall back to the traditional methods
