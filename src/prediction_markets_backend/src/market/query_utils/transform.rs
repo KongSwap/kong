@@ -8,7 +8,7 @@ use num_traits::ToPrimitive;
 
 use crate::market::market::{Market, MarketResult, Distribution, MarketStatus};
 use crate::nat::StorableNat;
-use crate::stable_memory::*;
+use crate::storage;
 use crate::types::{MarketId, BetCount, TokenAmount};
 
 /// Handles transformation of market data into appropriate response formats
@@ -63,22 +63,21 @@ impl MarketTransformer {
         let mut bet_counts = vec![BetCount::from(0u64); market.outcomes.len()];
         let mut total_bets = BetCount::from(0u64);
         
-        BETS.with(|bets| {
-            if let Some(bet_store) = bets.borrow().get(&market_id) {
-                for bet in bet_store.0.iter() {
-                    let outcome_idx = bet.outcome_index.to_u64() as usize;
-                    
-                    if self.calculate_pools {
-                        outcome_pools[outcome_idx] = (TokenAmount::from(outcome_pools[outcome_idx]) + bet.amount.clone()).to_u64();
-                    }
-                    
-                    if self.calculate_bet_counts {
-                        bet_counts[outcome_idx] = bet_counts[outcome_idx].clone() + BetCount::from(1u64);
-                        total_bets = total_bets.clone() + BetCount::from(1u64);
-                    }
-                }
+        // Get all bets for this market using our helper function
+        let bets = crate::storage::get_bets_for_market(&market_id);
+        
+        for bet in bets.iter() {
+            let outcome_idx = bet.outcome_index.to_u64() as usize;
+            
+            if self.calculate_pools {
+                outcome_pools[outcome_idx] = (TokenAmount::from(outcome_pools[outcome_idx]) + bet.amount.clone()).to_u64();
             }
-        });
+            
+            if self.calculate_bet_counts {
+                bet_counts[outcome_idx] = bet_counts[outcome_idx].clone() + BetCount::from(1u64);
+                total_bets = total_bets.clone() + BetCount::from(1u64);
+            }
+        }
         
         // Update market with calculated statistics
         if self.calculate_pools {
@@ -125,24 +124,25 @@ impl MarketTransformer {
             let mut bet_counts = vec![StorableNat::from(0u64); market.outcomes.len()];
             let mut total_bets = StorableNat::from(0u64);
             
-            BETS.with(|bets| {
-                if let Some(bet_store) = bets.borrow().get(&market_id) {
-                    for bet in bet_store.0.iter() {
-                        let outcome_idx = bet.outcome_index.to_u64() as usize;
-                        
-                        if self.calculate_pools {
-                            outcome_pools[outcome_idx] = outcome_pools[outcome_idx].clone() + bet.amount.clone();
-                        }
-                        
-                        if self.calculate_bet_counts {
-                            bet_counts[outcome_idx] = bet_counts[outcome_idx].clone() + StorableNat::from_u64(1);
-                            total_bets = total_bets.clone() + StorableNat::from_u64(1);
-                        }
-                        
-                        if self.calculate_distributions && 
-                           winning_outcomes.iter().any(|n| Nat::from(bet.outcome_index.clone()) == *n) {
-                            total_winning_pool = total_winning_pool.clone() + bet.amount.clone();
-                            distributions.push(Distribution {
+            // Get all bets for this market using our helper function
+            let bets = crate::storage::get_bets_for_market(&market_id);
+            
+            for bet in bets.iter() {
+                let outcome_idx = bet.outcome_index.to_u64() as usize;
+                
+                if self.calculate_pools {
+                    outcome_pools[outcome_idx] = outcome_pools[outcome_idx].clone() + bet.amount.clone();
+                }
+                
+                if self.calculate_bet_counts {
+                    bet_counts[outcome_idx] = bet_counts[outcome_idx].clone() + StorableNat::from_u64(1);
+                    total_bets = total_bets.clone() + StorableNat::from_u64(1);
+                }
+                
+                if self.calculate_distributions && 
+                   winning_outcomes.iter().any(|n| Nat::from(bet.outcome_index.clone()) == *n) {
+                    total_winning_pool = total_winning_pool.clone() + bet.amount.clone();
+                    distributions.push(Distribution {
                                 user: bet.user,
                                 outcome_index: bet.outcome_index.clone(),
                                 bet_amount: bet.amount.clone(),
@@ -150,8 +150,6 @@ impl MarketTransformer {
                             });
                         }
                     }
-                }
-            });
             
             // Calculate actual winnings for each distribution
             if self.calculate_distributions && !total_winning_pool.is_zero() {

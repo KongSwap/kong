@@ -4,17 +4,15 @@
 //! voiding, and direct resolution.
 
 use candid::{Principal, Nat};
-use ic_cdk::update;
 
 use crate::resolution::finalize_market::finalize_market;
 use crate::resolution::resolution_auth::*;
-use crate::resolution::resolution_refunds::refund_all_bets;
+use crate::resolution::resolution_refunds::create_refund_claims;
 use crate::resolution::resolution::*;
 use crate::controllers::admin::*;
 use crate::market::market::*;
-use crate::stable_memory::*;
+use crate::storage::{MARKETS, RESOLUTION_PROPOSALS, BETS, get_bets_for_market};
 use crate::types::{MarketId, OutcomeIndex};
-use crate::canister::get_current_time;
 
 /// Resolves a market directly (for admin created markets)
 ///
@@ -160,12 +158,14 @@ pub async fn void_market(
     // Log the void action
     ic_cdk::println!("Admin {} is voiding market {}", caller, market_id);
     
-    // Process refunds for all bets
-    refund_all_bets(&market_id, &market).await?;
+    // Create refund claims for all bets instead of processing direct refunds
+    // This improves scalability and distributes the computational load
+    create_refund_claims(&market_id, &market, "VoidedMarket")?;
+    
+    ic_cdk::println!("Created refund claims for all bets in voided market {}", market_id);
     
     // Update market status to voided
     market.status = MarketStatus::Voided;
-    // Note: Market doesn't have a closed_at field in this implementation
     
     // Clone market_id for insertion to avoid ownership issues
     let market_id_clone = market_id.clone();

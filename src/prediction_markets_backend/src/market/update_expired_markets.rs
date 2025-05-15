@@ -2,8 +2,9 @@ use ic_cdk::{update, heartbeat};
 use std::sync::atomic::{AtomicU64, Ordering};
 use crate::market::market::*;
 use crate::token::registry::*;
-use crate::stable_memory::MARKETS;
+use crate::stable_memory::*;
 use crate::types::StorableNat;
+use crate::storage::MARKETS;
 
 /// Track the last time we checked for expired markets
 static LAST_EXPIRY_CHECK: AtomicU64 = AtomicU64::new(0);
@@ -64,7 +65,7 @@ fn check_expired_markets() {
 /// Manual trigger for checking expired markets
 /// This can be called by admins if needed
 #[update]
-fn update_expired_markets() -> u64 {
+pub fn update_expired_markets() -> u64 {
     let now = ic_cdk::api::time();
     let mut expired_markets = 0;
     

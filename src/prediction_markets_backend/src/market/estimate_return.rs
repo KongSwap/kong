@@ -4,7 +4,7 @@ use crate::nat::StorableNat;
 use crate::utils::time_weighting::*;
 use crate::utils::fee_utils::{calculate_platform_fee, calculate_amount_after_fee};
 use crate::constants::PLATFORM_FEE_PERCENTAGE;
-use crate::stable_memory::*;
+use crate::storage::BETS;
 use crate::types::{TokenAmount, OutcomeIndex, Timestamp};
 
 /// Estimate the potential return for a bet
@@ -68,20 +68,11 @@ pub fn estimate_bet_return(
         );
         winning_return.time_weight = Some(weight);
         
-        // Get all existing bets for this outcome
-        let existing_bets = BETS.with(|bets| {
-            let bets = bets.borrow();
-            if let Some(bet_store) = bets.get(&market.id) {
-                bet_store
-                    .0
-                    .iter()
-                    .filter(|bet| bet.outcome_index == outcome_index)
-                    .cloned()
-                    .collect::<Vec<_>>()
-            } else {
-                Vec::new()
-            }
-        });
+        // Get all existing bets for this outcome using our helper function
+        let existing_bets = crate::storage::get_bets_for_market(&market.id)
+            .into_iter()
+            .filter(|bet| bet.outcome_index == outcome_index)
+            .collect::<Vec<_>>();
         
         // Calculate weighted contributions for existing bets
         let mut total_weighted_contribution = 0.0;

@@ -27,6 +27,7 @@ use crate::controllers::admin::*;
 use crate::resolution::resolution::*;
 use crate::stable_memory::*;
 use crate::types::{MarketId, Timestamp, TokenAmount, NANOS_PER_SECOND};
+use crate::storage::MARKETS;
 
 /// Global atomic counter for generating unique market IDs
 /// 

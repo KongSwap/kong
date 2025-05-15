@@ -5,8 +5,9 @@ use serde::Deserialize;
 use super::market::*;
 use super::query_utils::{MarketFilter, MarketTransformer};
 
-use crate::nat::*;
 use crate::stable_memory::*;
+use crate::nat::*;
+use crate::storage::MARKETS;
 
 #[derive(CandidType, Deserialize)]
 pub struct GetMarketsByStatusArgs {

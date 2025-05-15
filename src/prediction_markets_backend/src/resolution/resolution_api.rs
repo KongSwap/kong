@@ -4,8 +4,6 @@
 //! It maintains backward compatibility with existing client applications
 //! while delegating to the more specialized implementation modules.
 
-use ic_cdk::update;
-
 use crate::resolution::resolution_proposal;
 use crate::types::{MarketId, OutcomeIndex};
 use crate::resolution::resolution::ResolutionError;

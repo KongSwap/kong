@@ -60,14 +60,19 @@
 use candid::Principal;
 
 use super::resolution::*;
+use crate::bet::bet::Bet;
+use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::canister::{get_current_time, record_market_payout};
 use crate::market::market::*;
-use crate::market::estimate_return_types::BetPayoutRecord;
-use crate::stable_memory::*;
-use crate::types::{TokenAmount, OutcomeIndex, Timestamp, StorableNat, MarketId};
+use crate::storage::{MARKETS, BETS};
+use crate::token::registry::*;
+use crate::token::transfer::*;
 use crate::utils::time_weighting::*;
-use crate::token::registry::{get_token_info, TokenIdentifier};
-use crate::token::transfer::{transfer_token, handle_fee_transfer, TokenTransferError};
+use crate::claims::claims_processing::{create_winning_claim};
+
+// Import re-exported types from lib.rs
+use crate::{MarketId, TokenAmount, OutcomeIndex, Timestamp};
+use crate::types::StorableNat;
 
 /// Helper function to transfer winnings with retry logic
 /// 
@@ -152,13 +157,13 @@ pub struct FailedTransactionInfo {
     pub timestamp: u64,
 }
 
-/// Finalizes a market by distributing winnings to successful bettors
+/// Finalizes a market by creating claims for successful bettors
 /// 
 /// This function handles the complete market resolution process including:
 /// 1. Validating the market state and winning outcomes
 /// 2. Calculating the total winning pool and platform fees
 /// 3. Processing the platform fee (burn or transfer)
-/// 4. Distributing winnings to successful bettors using either:
+/// 4. Creating claims for winning bettors to claim their winnings using either:
 ///    - Standard proportional distribution, or
 ///    - Time-weighted distribution (if market.uses_time_weighting is true)
 /// 5. Recording payout information for each winning bet
@@ -256,18 +261,12 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
     
     if total_winning_pool > 0u64 {
         // Get all winning bets
-        let winning_bets = BETS.with(|bets| {
-            let bets = bets.borrow();
-            if let Some(bet_store) = bets.get(&market.id) {
-                bet_store
-                    .0
-                    .iter()
-                    .filter(|bet| winning_outcomes.iter().any(|x| x == &bet.outcome_index))
-                    .cloned()
-                    .collect::<Vec<_>>()
-            } else {
-                Vec::new()
-            }
+        let winning_bets = BETS.with(|_bets| {
+            // Get all bets for this market using our helper function
+            crate::storage::get_bets_for_market(&market.id)
+                .into_iter()
+                .filter(|bet| winning_outcomes.iter().any(|x| x == &bet.outcome_index))
+                .collect::<Vec<_>>()
         });
 
         // Store the count for reporting at the end of the function
@@ -447,93 +446,74 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                     total_reward
                 );
                 
-                // Calculate net amount to transfer (after deducting transfer fee)
-                let transfer_amount = if gross_winnings > token_info.transfer_fee {
-                    TokenAmount::from((total_reward - token_info.transfer_fee.to_u64() as f64) as u64)
+                // Calculate user's platform fee (proportional to their reward)
+                let user_platform_fee = if total_reward > 0.0 && total_winning_pool.to_u64() > 0 {
+                    // Calculate proportional fee based on this user's share of rewards
+                    let user_share = bet_amount.to_u64() as f64 / total_winning_pool.to_u64() as f64;
+                    let user_fee = platform_fee_on_profit * user_share;
+                    Some(TokenAmount::from(user_fee as u64))
                 } else {
+                    None
+                };
+                
+                // Skip if winnings are less than transfer fee
+                if gross_winnings <= token_info.transfer_fee {
                     ic_cdk::println!(
-                        "Skipping transfer - winnings {} less than fee {}",
+                        "Skipping claim - winnings {} less than fee {}",
                         gross_winnings.to_u64(),
                         token_info.transfer_fee.to_u64()
                     );
-                    continue; // Skip if winnings are less than transfer fee
-                };
+                    continue;
+                }
                 
                 ic_cdk::println!(
-                    "Processing weighted bet - User: {}, Original bet: {}, Weight: {}, Bonus share: {}, Gross reward: {}, Net transfer: {}",
+                    "Processing weighted bet - User: {}, Original bet: {}, Weight: {}, Bonus share: {}, Gross reward: {}",
                     user.to_string(),
                     bet_amount.to_u64(),
                     weight,
                     bonus_share,
-                    gross_winnings.to_u64(),
-                    transfer_amount.to_u64()
+                    gross_winnings.to_u64()
                 );
-
-                ic_cdk::println!("Transferring {} {} tokens to {}", 
-                              transfer_amount.to_u64() / 10u64.pow(token_info.decimals as u32), 
+                
+                ic_cdk::println!("Creating claim for {} {} tokens to {}", 
+                              gross_winnings.to_u64() / 10u64.pow(token_info.decimals as u32), 
                               token_info.symbol,
                               user.to_string());
-
-                // Transfer winnings to the bettor using the appropriate token with retry logic
-                // Attempt the transfer with up to 2 retries for retryable errors
-                let transfer_result = transfer_winnings_with_retry(user, transfer_amount.clone(), token_id, 2).await;
                 
-                match transfer_result {
-                    Ok(tx_id) => {
-                        ic_cdk::println!("Transfer successful (Transaction ID: {})", tx_id);
-                        
-                        // Record the payout
-                        // Calculate proportional platform fee for this bet
-                        let user_platform_fee = if total_reward > 0.0 && total_winning_pool.to_u64() > 0 {
-                            // Calculate proportional fee based on this user's share of rewards
-                            let user_share = bet_amount.to_u64() as f64 / total_winning_pool.to_u64() as f64;
-                            let user_fee = platform_fee_on_profit * user_share;
-                            Some(TokenAmount::from(user_fee as u64))
-                        } else {
-                            None
-                        };
-                        
-                        let payout_record = BetPayoutRecord {
-                            market_id: market.id.clone(),
-                            user,
-                            bet_amount: bet_amount.clone(),
-                            payout_amount: gross_winnings.clone(), // Record the gross amount for history
-                            timestamp: Timestamp::from(get_current_time()),
-                            outcome_index,
-                            was_time_weighted: true,
-                            time_weight: Some(weight),
-                            original_contribution_returned: bet_amount.clone(),
-                            bonus_amount: Some(TokenAmount::from(bonus_share as u64)),
-                            platform_fee_amount: user_platform_fee,
-                            token_id: token_id.clone(),
-                            token_symbol: token_info.symbol.clone(),
-                            platform_fee_percentage: token_info.fee_percentage,
-                            transaction_id: Some(tx_id),
-                        };
-                        
-                        record_market_payout(payout_record);
-                    },
-                    Err(e) => {
-                        // Enhanced error logging with detailed message
-                        ic_cdk::println!("Transfer failed: {}. Continuing with other payouts.", e.detailed_message());
-                        
-                        // Record failed transaction information for potential recovery
-                        let failed_tx = FailedTransactionInfo {
-                            market_id: market.id.clone(),
-                            user,
-                            amount: transfer_amount.clone(),
-                            token_id: token_id.clone(),
-                            error: e.detailed_message(),
-                            timestamp: get_current_time().into(),
-                        };
-                        
-                        // For now, just log the failed transaction - in a future version
-                        // we would store this in a persistent data structure for admin recovery
-                        ic_cdk::println!("Recorded failed transaction: {:?}", failed_tx);
-                        
-                        // Continue with other payouts instead of returning an error
-                    }
-                }
+                // Create a claim for the user instead of transferring tokens directly
+                let claim_id = create_winning_claim(
+                    user,
+                    market.id.clone(),
+                    bet_amount.clone(),
+                    vec![outcome_index.clone()],
+                    gross_winnings.clone(),
+                    user_platform_fee.clone(),  // This is already an Option<TokenAmount>
+                    token_id.clone(),
+                    Timestamp::from(get_current_time()),
+                );
+                
+                ic_cdk::println!("Created claim {} for user {} with amount {}", 
+                              claim_id, user.to_string(), gross_winnings.to_u64());
+                
+                let payout_record = BetPayoutRecord {
+                    market_id: market.id.clone(),
+                    user,
+                    bet_amount: bet_amount.clone(),
+                    payout_amount: gross_winnings.clone(),
+                    timestamp: Timestamp::from(get_current_time()),
+                    outcome_index,
+                    was_time_weighted: true,
+                    time_weight: Some(weight),
+                    original_contribution_returned: bet_amount.clone(),
+                    bonus_amount: Some(TokenAmount::from(bonus_share as u64)),
+                    platform_fee_amount: user_platform_fee,
+                    token_id: token_id.clone(),
+                    token_symbol: token_info.symbol.clone(),
+                    platform_fee_percentage: token_info.fee_percentage,
+                    transaction_id: None, // No transaction yet, user will claim
+                };
+                
+                record_market_payout(payout_record);
             }
         } else {
             // Use standard (non-time-weighted) distribution
@@ -622,74 +602,51 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                         transfer_amount.to_u64()
                     );
                     
-                    ic_cdk::println!("Transferring {} {} tokens to {}", 
+                    ic_cdk::println!("Creating claim for {} {} tokens to {}", 
                                   transfer_amount.to_u64() / 10u64.pow(token_info.decimals as u32),
                                   token_info.symbol,
                                   bet.user.to_string());
                     
-                    // Transfer winnings with retry logic (up to 2 retries for retryable errors)
-                    // This improves reliability by automatically retrying transient failures,
-                    // which are common in the distributed Internet Computer environment
-                    let transfer_result = transfer_winnings_with_retry(bet.user, transfer_amount.clone(), token_id, 2).await;
+                    // Create a claim for the user instead of transferring tokens directly
+                    let claim_id = create_winning_claim(
+                        bet.user,
+                        market.id.clone(),
+                        bet.amount.clone(),
+                        vec![bet.outcome_index.clone()],
+                        gross_winnings.clone(),
+                        Some(TokenAmount::from(
+                            (platform_fee.to_u64() as f64 * bet_proportion) as u64
+                        )),
+                        market.token_id.clone(),
+                        Timestamp::from(get_current_time()),
+                    );
                     
-                    match transfer_result {
-                        Ok(tx_id) => {
-                            ic_cdk::println!("Transfer successful (Transaction ID: {})", tx_id);
-                            
-                            // Record the payout
-                            let user_platform_fee = Some(TokenAmount::from(
-                                (platform_fee.to_u64() as f64 * bet_proportion) as u64
-                            ));
-                            
-                            let payout_record = BetPayoutRecord {
-                                market_id: market.id.clone(),
-                                user: bet.user,
-                                bet_amount: bet.amount.clone(),
-                                payout_amount: gross_winnings.clone(), // Record the gross amount for history
-                                timestamp: Timestamp::from(get_current_time()),
-                                outcome_index: bet.outcome_index.clone(),
-                                was_time_weighted: false,
-                                time_weight: None,
-                                original_contribution_returned: bet.amount.clone(),
-                                bonus_amount: None,
-                                platform_fee_amount: user_platform_fee,
-                                token_id: token_id.clone(),
-                                token_symbol: token_info.symbol.clone(),
-                                platform_fee_percentage: token_info.fee_percentage,
-                                transaction_id: Some(tx_id),
-                            };
-                            
-                            record_market_payout(payout_record);
-                        },
-                        Err(e) => {
-                            // Enhanced error logging with detailed message
-                            ic_cdk::println!("Transfer failed: {}. Continuing with other payouts.", e.detailed_message());
-                            
-                            // Record failed transaction information for potential recovery
-                            // This information can be used by the transaction_recovery module
-                            // to retry failed transfers later
-                            let failed_tx = FailedTransactionInfo {
-                                market_id: market.id.clone(),
-                                user: bet.user,
-                                amount: transfer_amount.clone(),
-                                token_id: token_id.clone(),
-                                error: e.detailed_message(),
-                                timestamp: get_current_time().into(),
-                            };
-                            
-                            // CRITICAL IMPROVEMENT: We now continue processing other payouts even when 
-                            // one transfer fails. This ensures that one user's failed transfer doesn't 
-                            // block other users from receiving their winnings, significantly improving 
-                            // the platform's reliability. The failed transaction is recorded for later 
-                            // recovery through the transaction_recovery system.
-                            ic_cdk::println!("Recorded failed transaction: {:?}", failed_tx);
-                            
-                            // Continue with other payouts instead of returning an error
-                        }
-                    }
+                    ic_cdk::println!("Created claim {} for user {} with amount {}", 
+                                  claim_id, bet.user.to_string(), gross_winnings.to_u64());
+                    
+                    // Record the payout in the bet history
+                    let payout_record = BetPayoutRecord {
+                        market_id: market.id.clone(),
+                        user: bet.user,
+                        bet_amount: bet.amount.clone(),
+                        payout_amount: gross_winnings.clone(),
+                        timestamp: Timestamp::from(get_current_time()),
+                        outcome_index: bet.outcome_index.clone(),
+                        was_time_weighted: false,
+                        time_weight: None,
+                        original_contribution_returned: bet.amount.clone(),
+                        bonus_amount: None,
+                        platform_fee_amount: Some(TokenAmount::from(
+                            (platform_fee.to_u64() as f64 * bet_proportion) as u64
+                        )),
+                        token_id: token_id.clone(),
+                        token_symbol: token_info.symbol.clone(),
+                        platform_fee_percentage: token_info.fee_percentage,
+                        transaction_id: None, // No transaction yet, user will claim
+                    };
+                    
+                    record_market_payout(payout_record);
                 }
-            } else {
-                ic_cdk::println!("No winning bets found for this market");
             }
         }
     }

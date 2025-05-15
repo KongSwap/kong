@@ -5,8 +5,9 @@ use serde::Deserialize;
 use super::market::Market;
 use super::query_utils::{MarketFilter, MarketSorter, MarketTransformer, SortDirection, MarketSortField};
 
+use crate::nat::*;
 use crate::stable_memory::*;
-use crate::nat::StorableNat;
+use crate::storage::MARKETS;
 use crate::types::TokenIdentifier;
 
 #[derive(CandidType, Deserialize)]

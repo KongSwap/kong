@@ -2,6 +2,12 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
+export interface BatchClaimResult {
+  'claimed_amounts' : Array<[string, bigint]>,
+  'failure_count' : bigint,
+  'results' : Array<ClaimResult>,
+  'success_count' : bigint,
+}
 export interface Bet {
   'token_id' : string,
   'market_id' : bigint,
@@ -38,6 +44,48 @@ export interface BetPayoutRecord {
   'timestamp' : bigint,
   'was_time_weighted' : boolean,
   'outcome_index' : bigint,
+}
+export interface ClaimRecord {
+  'status' : ClaimStatus,
+  'updated_at' : bigint,
+  'token_id' : string,
+  'claim_id' : bigint,
+  'market_id' : bigint,
+  'user' : Principal,
+  'created_at' : bigint,
+  'claimable_amount' : bigint,
+  'claim_type' : ClaimType,
+}
+export interface ClaimResult {
+  'block_index' : [] | [bigint],
+  'claim_id' : bigint,
+  'error' : [] | [string],
+  'success' : boolean,
+}
+export type ClaimStatus = { 'Failed' : FailureDetails } |
+  { 'Processed' : ProcessDetails } |
+  { 'Pending' : null };
+export type ClaimType = {
+    'Refund' : { 'bet_amount' : bigint, 'reason' : RefundReason }
+  } |
+  {
+    'WinningPayout' : {
+      'bet_amount' : bigint,
+      'outcomes' : Array<bigint>,
+      'platform_fee' : [] | [bigint],
+    }
+  } |
+  { 'Other' : { 'description' : string } };
+export interface ClaimableSummary {
+  'pending_claim_count' : bigint,
+  'by_token' : Array<[string, bigint]>,
+}
+export interface ClaimsStats {
+  'pending_count' : bigint,
+  'total_amount_by_token' : Array<[string, bigint]>,
+  'processed_count' : bigint,
+  'total_count' : bigint,
+  'failed_count' : bigint,
 }
 export interface ConsentInfo {
   'metadata' : ConsentMessageMetadata,
@@ -122,6 +170,11 @@ export interface FailedTransaction {
   'timestamp' : bigint,
   'amount' : bigint,
 }
+export interface FailureDetails {
+  'retry_count' : number,
+  'error_message' : string,
+  'timestamp' : bigint,
+}
 export interface GetMarketsByCreatorArgs {
   'creator' : Principal,
   'start' : bigint,
@@ -197,6 +250,14 @@ export interface MarketsByStatus {
   'active' : Array<Market>,
   'expired_unresolved' : Array<Market>,
 }
+export interface ProcessDetails {
+  'transaction_id' : [] | [bigint],
+  'timestamp' : bigint,
+}
+export type RefundReason = { 'Disputed' : null } |
+  { 'TransactionFailed' : null } |
+  { 'Other' : string } |
+  { 'VoidedMarket' : null };
 export type ResolutionError = { 'MarketNotFound' : null } |
   { 'MarketStillOpen' : null } |
   { 'InvalidMarketStatus' : null } |
@@ -222,10 +283,10 @@ export type ResolutionMethod = {
   { 'Admin' : null };
 export type Result = { 'Ok' : null } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : bigint } |
-  { 'Err' : string };
-export type Result_2 = { 'Ok' : null } |
+export type Result_1 = { 'Ok' : null } |
   { 'Err' : ResolutionError };
+export type Result_2 = { 'Ok' : bigint } |
+  { 'Err' : string };
 export type Result_3 = { 'Ok' : ConsentInfo } |
   { 'Err' : ErrorInfo };
 export type Result_4 = { 'Ok' : DelegationResponse } |
@@ -290,6 +351,8 @@ export interface UserHistory {
 }
 export interface _SERVICE {
   'add_supported_token' : ActorMethod<[TokenInfo], Result>,
+  'admin_resolve_market' : ActorMethod<[bigint, Array<bigint>], Result_1>,
+  'claim_winnings' : ActorMethod<[BigUint64Array | bigint[]], BatchClaimResult>,
   'create_market' : ActorMethod<
     [
       string,
@@ -303,21 +366,29 @@ export interface _SERVICE {
       [] | [number],
       [] | [string],
     ],
-    Result_1
+    Result_2
+  >,
+  'create_test_claim' : ActorMethod<
+    [Principal, bigint, bigint, string],
+    bigint
   >,
   'estimate_bet_return' : ActorMethod<
     [bigint, bigint, bigint, bigint, [] | [string]],
     EstimatedReturn
   >,
-  'force_resolve_market' : ActorMethod<[bigint, Array<bigint>], Result_2>,
+  'force_resolve_market' : ActorMethod<[bigint, Array<bigint>], Result_1>,
   'generate_time_weight_curve' : ActorMethod<
     [bigint, bigint],
     Array<TimeWeightPoint>
   >,
   'get_all_categories' : ActorMethod<[], Array<string>>,
   'get_all_transactions' : ActorMethod<[], Array<[bigint, FailedTransaction]>>,
+  'get_claim_by_id' : ActorMethod<[bigint], [] | [ClaimRecord]>,
+  'get_claimable_summary' : ActorMethod<[], ClaimableSummary>,
+  'get_claims_stats' : ActorMethod<[], ClaimsStats>,
   'get_market' : ActorMethod<[bigint], [] | [Market]>,
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
+  'get_market_claims' : ActorMethod<[bigint], Array<ClaimRecord>>,
   'get_market_payout_records' : ActorMethod<[bigint], Array<BetPayoutRecord>>,
   'get_markets_by_creator' : ActorMethod<
     [GetMarketsByCreatorArgs],
@@ -341,7 +412,9 @@ export interface _SERVICE {
     [],
     Array<[bigint, FailedTransaction]>
   >,
+  'get_user_claims' : ActorMethod<[], Array<ClaimRecord>>,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
+  'get_user_pending_claims' : ActorMethod<[], Array<ClaimRecord>>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],
     Result_3
@@ -354,21 +427,23 @@ export interface _SERVICE {
     Result_5
   >,
   'is_admin' : ActorMethod<[Principal], boolean>,
+  'mark_claim_processed' : ActorMethod<[bigint], boolean>,
   'mark_transaction_resolved' : ActorMethod<[bigint], Result>,
   'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_6>,
-  'propose_resolution' : ActorMethod<[bigint, Array<bigint>], Result_2>,
-  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_2>,
+  'propose_resolution' : ActorMethod<[bigint, Array<bigint>], Result_1>,
+  'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], Result_1>,
   'resolve_via_oracle' : ActorMethod<
     [bigint, Array<bigint>, Uint8Array | number[]],
-    Result_2
+    Result_1
   >,
+  'retry_claim' : ActorMethod<[bigint], ClaimResult>,
   'retry_market_transactions' : ActorMethod<[bigint], Array<Result_7>>,
   'retry_transaction' : ActorMethod<[bigint], Result_8>,
   'search_markets' : ActorMethod<[SearchMarketsArgs], SearchMarketsResult>,
   'simulate_future_weight' : ActorMethod<[bigint, bigint, bigint], number>,
   'update_expired_markets' : ActorMethod<[], bigint>,
   'update_token_config' : ActorMethod<[string, TokenInfo], Result>,
-  'void_market' : ActorMethod<[bigint], Result_2>,
+  'void_market' : ActorMethod<[bigint], Result_1>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

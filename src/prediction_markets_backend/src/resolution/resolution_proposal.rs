@@ -4,7 +4,6 @@
 //! market resolution proposals for the dual approval system.
 
 use candid::Principal;
-use ic_cdk::update;
 
 use crate::resolution::resolution_auth::*;
 use crate::resolution::resolution_actions::*;
@@ -13,11 +12,12 @@ use crate::resolution::finalize_market::finalize_market;
 use crate::resolution::resolution::*;
 use crate::controllers::admin::*;
 use crate::market::market::*;
-use crate::stable_memory::*;
-use crate::types::{MarketId, OutcomeIndex, TokenIdentifier}; 
+use crate::types::{MarketId, OutcomeIndex}; 
 use crate::canister::get_current_time;
 use crate::token::registry::get_token_info;
 use crate::token::transfer::burn_tokens;
+use crate::storage::MARKETS;
+use crate::storage::RESOLUTION_PROPOSALS;
 
 /// Proposes or executes a resolution for a market
 ///

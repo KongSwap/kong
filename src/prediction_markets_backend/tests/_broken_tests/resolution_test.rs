@@ -694,7 +694,6 @@ fn test_market_resolution_with_time_weighted_payouts() {
             println!("  ⚠️ Could not query market: {}", err);
         }
     }
-    }
     
     // RECOMMENDATION 3: Check for payout records and user history using correct API methods
     println!("\nTEST 10.3: Checking payout records and user history");

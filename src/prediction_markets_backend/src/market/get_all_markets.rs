@@ -2,7 +2,7 @@ use ic_cdk::query;
 
 use super::market::*;
 
-use crate::stable_memory::*;
+use crate::storage::MARKETS;
 use crate::types::{MarketId, StorableNat};
 
 use candid::CandidType;

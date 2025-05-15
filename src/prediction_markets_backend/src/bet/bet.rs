@@ -98,9 +98,24 @@ pub struct Bet {
     /// Critical for time-weighted markets where earlier bets get higher rewards
     pub timestamp: Timestamp,
     
-    /// Identifier for the token type used for this bet
     /// All bets in a market use the same token type as specified in the market
     pub token_id: TokenIdentifier
+}
+
+/// Implementation of the Storable trait for Bet
+/// 
+/// This enables individual Bet structs to be stored in stable memory,
+/// allowing bet data to persist across canister upgrades.
+impl Storable for Bet {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(serde_json::to_vec(self).unwrap())
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 /// Wrapper around Vec<Bet> that implements the Storable trait for stable storage

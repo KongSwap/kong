@@ -13,12 +13,12 @@
 use super::resolution::*;
 
 use crate::market::market::*;
-use crate::stable_memory::*;
 use crate::controllers::admin::*;
 use crate::types::MarketId;
 use crate::token::registry::{get_token_info, TokenIdentifier};
 use crate::token::transfer::{transfer_token, TokenTransferError};
 use crate::transaction_recovery::record_failed_transaction;
+use crate::storage::{MARKETS, self};
 
 /// Helper function with retry logic specifically for void market refunds
 /// 
@@ -122,15 +122,8 @@ pub async fn void_market(market_id: MarketId) -> Result<(), ResolutionError> {
 
     ic_cdk::println!("Voiding market {}", market_id.to_u64());
 
-    // Get all bets for this market
-    let bets = BETS.with(|bets| {
-        let bets = bets.borrow();
-        if let Some(bet_store) = bets.get(&market_id) {
-            bet_store.0.clone()
-        } else {
-            Vec::new()
-        }
-    });
+    // Get all bets for this market using our helper function
+    let bets = crate::storage::get_bets_for_market(&market_id);
 
     ic_cdk::println!("Found {} bets to refund", bets.len());
 

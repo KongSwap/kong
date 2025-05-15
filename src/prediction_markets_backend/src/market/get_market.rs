@@ -1,9 +1,11 @@
 use ic_cdk::query;
 
 use super::market::*;
-use super::query_utils::MarketTransformer;
-
+use crate::market::market::*;
+use crate::nat::*;
 use crate::stable_memory::*;
+use crate::storage::MARKETS;
+use crate::market::query_utils::MarketTransformer;
 use crate::types::MarketId;
 
 /// Gets a specific market by its ID with detailed betting statistics

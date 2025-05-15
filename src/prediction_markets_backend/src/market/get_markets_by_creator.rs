@@ -7,6 +7,7 @@ use super::query_utils::{MarketFilter, MarketSorter, MarketTransformer, SortDire
 
 use crate::stable_memory::*;
 use crate::nat::StorableNat;
+use crate::storage::MARKETS;
 
 #[derive(CandidType, Deserialize)]
 pub struct GetMarketsByCreatorArgs {

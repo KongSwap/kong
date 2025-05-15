@@ -8,13 +8,15 @@ use icrc_ledger_types::icrc21::requests::{ConsentMessageRequest, ConsentMessageM
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 use candid::decode_one;
 
-use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
+use crate::types::{MarketId, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
+pub use crate::types::Timestamp;
 use crate::token::registry::{TokenInfo, get_all_supported_tokens, get_token_info, add_supported_token as add_token, update_token_config as update_token};
 
 use super::delegation::*;
 use crate::market::estimate_return_types::*;
 use crate::constants::PLATFORM_FEE_PERCENTAGE;
 use crate::stable_memory::*;
+use crate::storage::{DELEGATIONS, MARKETS};
 
 // Helper function to get current time in nanoseconds as a Timestamp type
 pub fn get_current_time() -> Timestamp {
@@ -90,14 +92,20 @@ pub fn icrc_34_get_delegation(request: DelegationRequest) -> Result<DelegationRe
     let targets_hash = request.compute_targets_hash();
 
     let delegations = DELEGATIONS.with(|store| {
-        store
-            .borrow()
-            .get(&caller_principal)
-            .map(|d| d.as_vec().clone())
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|d| !d.is_expired() && d.targets_list_hash == targets_hash)
-            .collect::<Vec<_>>()
+        // Get a list of all delegations for this user
+        let store = store.borrow();
+        let mut filtered_delegations = Vec::new();
+        
+        // Iterate through each delegation for this principal and filter as needed
+        for (principal, delegation) in store.iter() {
+            if principal == caller_principal && 
+               !delegation.is_expired() && 
+               delegation.targets_list_hash == targets_hash {
+                filtered_delegations.push(delegation.clone());
+            }
+        }
+        
+        filtered_delegations
     });
 
     Ok(DelegationResponse { delegations })
@@ -121,15 +129,11 @@ pub fn icrc_34_delegate(request: DelegationRequest) -> Result<DelegationResponse
 
     DELEGATIONS.with(|store| {
         let mut store = store.borrow_mut();
-        let mut user_delegations = store.get(&caller_principal).unwrap_or_default();
-
-        // Remove expired delegations
-        user_delegations.retain(|d| !d.is_expired());
-
-        // Add new delegation
-        user_delegations.push(delegation.clone());
-
-        store.insert(caller_principal, user_delegations);
+        
+        // We simply insert the new delegation, replacing any previous one
+        // that might have existed for this user with the same targets hash
+        store.insert(caller_principal, delegation.clone());
+        
         Ok(DelegationResponse {
             delegations: vec![delegation],
         })
@@ -152,12 +156,21 @@ pub fn icrc_34_revoke_delegation(request: RevokeDelegationRequest) -> Result<(),
 
     DELEGATIONS.with(|store| {
         let mut store = store.borrow_mut();
-        let mut user_delegations = store.get(&caller_principal).unwrap_or_default();
-
-        // Remove delegations with matching hash
-        user_delegations.retain(|d| d.targets_list_hash != targets_hash);
-
-        store.insert(caller_principal, user_delegations);
+        
+        // Find and remove any delegations matching this user and targets hash
+        let mut keys_to_remove = Vec::new();
+        for (principal, delegation) in store.iter() {
+            if principal == caller_principal && delegation.targets_list_hash == targets_hash {
+                keys_to_remove.push(principal);
+            }
+        }
+        
+        // Remove all matched delegations
+        for key in keys_to_remove {
+            store.remove(&key);
+        }
+        
+        // Return success even if no delegations were found/modified
         Ok(())
     })
 }
