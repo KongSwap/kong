@@ -1,7 +1,6 @@
 use super::resolution::*;
 use super::dual_approval;
-use crate::types::{MarketId, OutcomeIndex};
-use crate::canister::ResolutionArgs;
+use crate::types::ResolutionArgs;
 
 /// Resolves a market through admin decision
 /// This is now a wrapper around the dual approval system

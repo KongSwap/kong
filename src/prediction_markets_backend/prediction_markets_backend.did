@@ -206,6 +206,7 @@ type PlaceBetArgs = record {
   amount : nat;
   outcome_index : nat;
 };
+type ResolutionArgs = record { market_id : nat; winning_outcomes : vec nat };
 type ResolutionError = variant {
   MarketNotFound;
   MarketStillOpen;
@@ -230,10 +231,6 @@ type ResolutionMethod = variant {
   };
   Decentralized : record { quorum : nat };
   Admin;
-};
-type ResolutionArgs = record {
-  market_id : nat;
-  winning_outcomes : vec nat;
 };
 type Result = variant { Ok; Err : text };
 type Result_1 = variant { Ok : nat; Err : text };
@@ -314,7 +311,7 @@ service : () -> {
   estimate_bet_return : (nat64, nat64, nat64, nat64, opt text) -> (
       EstimatedReturn,
     ) query;
-  force_resolve_market : (nat, vec nat) -> (Result_2);
+  force_resolve_market : (ResolutionArgs) -> (Result_2);
   generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
   get_all_categories : () -> (vec text) query;
   get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
@@ -352,7 +349,7 @@ service : () -> {
   is_admin : (principal) -> (bool) query;
   mark_transaction_resolved : (nat64) -> (Result);
   place_bet : (PlaceBetArgs) -> (Result_6);
-  propose_resolution : (nat, vec nat) -> (Result_2);
+  propose_resolution : (ResolutionArgs) -> (Result_2);
   resolve_via_admin : (ResolutionArgs) -> (Result_2);
   resolve_via_admin_legacy : (nat, vec nat) -> (Result_2);
   resolve_via_oracle : (nat, vec nat, blob) -> (Result_2);

@@ -37,9 +37,7 @@ use crate::market::get_market_by_status::GetMarketsByStatusArgs;
 use crate::market::get_market_by_status::GetMarketsByStatusResult;
 use crate::market::get_all_markets::GetAllMarketsArgs;
 use crate::market::get_all_markets::GetAllMarketsResult;
-use crate::market::update_expired_markets::*;
 use crate::bet::latest_bets::*;
-use crate::bet::get_market_bets::*;
 
 use crate::market::estimate_return_types::{EstimatedReturn, TimeWeightPoint, BetPayoutRecord};
 // Standard types
@@ -68,7 +66,7 @@ pub mod user;
 pub mod utils;
 
 // Re-export common types for convenience
-pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount, TokenIdentifier};
+pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount, TokenIdentifier, PlaceBetArgs, ResolutionArgs};
 pub use market::get_stats::StatsResult;
 
 // Constants

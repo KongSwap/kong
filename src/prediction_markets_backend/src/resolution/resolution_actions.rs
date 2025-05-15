@@ -13,8 +13,8 @@ use crate::resolution::resolution::*;
 use crate::controllers::admin::*;
 use crate::market::market::*;
 use crate::stable_memory::*;
-use crate::types::{MarketId, OutcomeIndex};
-use crate::canister::{get_current_time, ResolutionArgs};
+use crate::types::{MarketId};
+use crate::types::ResolutionArgs;
 
 /// Resolves a market directly (for admin created markets)
 ///

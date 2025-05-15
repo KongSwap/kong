@@ -26,10 +26,9 @@ use super::bet::*;
 use crate::market::market::*;
 use crate::nat::StorableNat;
 use crate::stable_memory::*;
-use crate::types::{MarketId, TokenAmount, OutcomeIndex, min_activation_bet, TokenIdentifier, calculate_platform_fee};
+use crate::types::{TokenAmount, min_activation_bet, calculate_platform_fee, PlaceBetArgs};
 use crate::controllers::admin::is_admin;
 use crate::token::registry::{get_token_info, is_supported_token};
-use crate::canister::PlaceBetArgs;
 
 // House fee constant and configuration
 lazy_static::lazy_static! {

@@ -9,14 +9,13 @@ use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 use candid::decode_one;
 use num_traits::ToPrimitive;
 
-use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
+use crate::types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, NANOS_PER_SECOND, PlaceBetArgs, ResolutionArgs};
 use crate::token::registry::{TokenInfo, get_all_supported_tokens, get_token_info, add_supported_token as add_token, update_token_config as update_token};
 
 use super::delegation::*;
 use crate::market::estimate_return_types::*;
 use crate::constants::PLATFORM_FEE_PERCENTAGE;
 use crate::stable_memory::*;
-
 // Helper function to get current time in nanoseconds as a Timestamp type
 pub fn get_current_time() -> Timestamp {
     Timestamp::from(time())
@@ -54,10 +53,9 @@ pub fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageR
     let caller_principal = caller();
     
     let consent_message = match consent_msg_request.method.as_str() {
-        "create_message" => create_message_consent(&consent_msg_request, caller_principal),
-        "resolve_via_admin | resolve_via_admin_legacy | propose_resolution" => resolve_via_admin_consent(&consent_msg_request, caller_principal),
-        "void_market" => void_market_consent(&consent_msg_request, caller_principal),
-        "place_bet" => place_bet_consent(&consent_msg_request, caller_principal),
+        "resolve_via_admin | resolve_via_admin_legacy | propose_resolution" => handle_resolution_consent(&consent_msg_request, caller_principal),
+        "void_market" => handle_void_market_consent(&consent_msg_request, caller_principal),
+        "place_bet" => handle_place_bet_consent(&consent_msg_request, caller_principal),
         // Default case for other methods
         _ => Ok(ConsentMessage::GenericDisplayMessage(
             format!("Approve KongSwap Prediction Markets to execute {}?", 
@@ -74,25 +72,8 @@ pub fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageR
     Ok(ConsentInfo { metadata, consent_message })
 }
 
-// Helper function for "create_message" consent
-fn create_message_consent(
-    consent_msg_request: &ConsentMessageRequest,
-    caller_principal: Principal
-) -> Result<ConsentMessage, ErrorInfo> {
-    let message = decode_one::<String>(&consent_msg_request.arg)
-        .map_err(|e| ErrorInfo { 
-            description: format!("Failed to decode message: {}", e) 
-        })?;
-
-    Ok(ConsentMessage::GenericDisplayMessage(format!(
-        "# Approve KongSwap Prediction Markets Message\n\nMessage: {}\n\nFrom: {}",
-        message,
-        caller_principal
-    )))
-}
-
 // Helper function for "resolve_via_admin" consent
-fn resolve_via_admin_consent(
+fn handle_resolution_consent(
     consent_msg_request: &ConsentMessageRequest,
     caller_principal: Principal
 ) -> Result<ConsentMessage, ErrorInfo> {
@@ -159,7 +140,7 @@ fn resolve_via_admin_consent(
 }
 
 // Helper function for "void_market" consent
-fn void_market_consent(
+fn handle_void_market_consent(
     consent_msg_request: &ConsentMessageRequest,
     caller_principal: Principal
 ) -> Result<ConsentMessage, ErrorInfo> {
@@ -184,7 +165,7 @@ fn void_market_consent(
 }
 
 // Helper function for "place_bet" consent
-fn place_bet_consent(
+fn handle_place_bet_consent(
     consent_msg_request: &ConsentMessageRequest,
     caller_principal: Principal
 ) -> Result<ConsentMessage, ErrorInfo> {
@@ -553,20 +534,4 @@ pub fn search_markets(args: crate::market::search_markets::SearchMarketsArgs)
     -> crate::market::search_markets::SearchMarketsResult 
 {
     crate::market::search_markets::search_markets(args)
-}
-
-// Define types for consent message arguments
-#[derive(CandidType, Clone, Debug, Deserialize)]
-pub struct PlaceBetArgs {
-    pub market_id: MarketId,
-    pub outcome_index: OutcomeIndex,
-    pub amount: TokenAmount,
-    pub token_id: Option<String>
-}
-
-// Define shared type for resolve_via_admin arguments
-#[derive(CandidType, Clone, Debug, Deserialize)]
-pub struct ResolutionArgs {
-    pub market_id: MarketId,
-    pub winning_outcomes: Vec<OutcomeIndex>
 }

@@ -54,6 +54,10 @@ export const idlFactory = ({ IDL }) => {
     'current_time' : IDL.Nat,
     'outcome_index' : IDL.Nat,
   });
+  const ResolutionArgs = IDL.Record({
+    'market_id' : IDL.Nat,
+    'winning_outcomes' : IDL.Vec(IDL.Nat),
+  });
   const ResolutionError = IDL.Variant({
     'MarketNotFound' : IDL.Null,
     'MarketStillOpen' : IDL.Null,
@@ -308,10 +312,6 @@ export const idlFactory = ({ IDL }) => {
     'BalanceUpdateFailed' : IDL.Null,
   });
   const Result_6 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
-  const ResolveViaAdminArgs = IDL.Record({
-    'market_id' : IDL.Nat,
-    'winning_outcomes' : IDL.Vec(IDL.Nat),
-  });
   const Result_7 = IDL.Variant({ 'Ok' : IDL.Nat64, 'Err' : IDL.Text });
   const Result_8 = IDL.Variant({ 'Ok' : IDL.Opt(IDL.Nat), 'Err' : IDL.Text });
   const SortField = IDL.Variant({
@@ -356,11 +356,7 @@ export const idlFactory = ({ IDL }) => {
         [EstimatedReturn],
         ['query'],
       ),
-    'force_resolve_market' : IDL.Func(
-        [IDL.Nat, IDL.Vec(IDL.Nat)],
-        [Result_2],
-        [],
-      ),
+    'force_resolve_market' : IDL.Func([ResolutionArgs], [Result_2], []),
     'generate_time_weight_curve' : IDL.Func(
         [IDL.Nat64, IDL.Nat64],
         [IDL.Vec(TimeWeightPoint)],
@@ -442,12 +438,8 @@ export const idlFactory = ({ IDL }) => {
     'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     'mark_transaction_resolved' : IDL.Func([IDL.Nat64], [Result], []),
     'place_bet' : IDL.Func([PlaceBetArgs], [Result_6], []),
-    'propose_resolution' : IDL.Func(
-        [IDL.Nat, IDL.Vec(IDL.Nat)],
-        [Result_2],
-        [],
-      ),
-    'resolve_via_admin' : IDL.Func([ResolveViaAdminArgs], [Result_2], []),
+    'propose_resolution' : IDL.Func([ResolutionArgs], [Result_2], []),
+    'resolve_via_admin' : IDL.Func([ResolutionArgs], [Result_2], []),
     'resolve_via_admin_legacy' : IDL.Func(
         [IDL.Nat, IDL.Vec(IDL.Nat)],
         [Result_2],

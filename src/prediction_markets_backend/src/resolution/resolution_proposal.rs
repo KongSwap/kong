@@ -17,7 +17,7 @@ use crate::stable_memory::*;
 use crate::canister::get_current_time;
 use crate::token::registry::get_token_info;
 use crate::token::transfer::burn_tokens;
-use crate::canister::ResolutionArgs;
+use crate::types::ResolutionArgs;
 
 /// Proposes or executes a resolution for a market
 ///

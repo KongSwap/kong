@@ -8,7 +8,7 @@ use ic_cdk::update;
 
 use crate::resolution::resolution_proposal;
 use crate::resolution::resolution::ResolutionError;
-use crate::canister::ResolutionArgs;
+use crate::types::ResolutionArgs;
 
 /// Resolve the market through admin decision (public API endpoint)
 ///

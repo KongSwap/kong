@@ -29,10 +29,9 @@
 use candid::{Principal, Nat};
 use ic_cdk::update;
 
-use crate::types::{MarketId, OutcomeIndex};
+use crate::types::{MarketId, OutcomeIndex, ResolutionArgs};
 use crate::market::market::Market;
 use crate::resolution::resolution::ResolutionError;
-use crate::canister::ResolutionArgs;
 
 /// Refunds all bets when a market is voided
 ///

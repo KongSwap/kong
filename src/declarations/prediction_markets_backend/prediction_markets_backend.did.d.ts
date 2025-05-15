@@ -214,6 +214,10 @@ export interface PlaceBetArgs {
   'amount' : bigint,
   'outcome_index' : bigint,
 }
+export interface ResolutionArgs {
+  'market_id' : bigint,
+  'winning_outcomes' : Array<bigint>,
+}
 export type ResolutionError = { 'MarketNotFound' : null } |
   { 'MarketStillOpen' : null } |
   { 'InvalidMarketStatus' : null } |
@@ -237,10 +241,6 @@ export type ResolutionMethod = {
   } |
   { 'Decentralized' : { 'quorum' : bigint } } |
   { 'Admin' : null };
-export interface ResolutionArgs {
-  'market_id' : bigint,
-  'winning_outcomes' : Array<bigint>,
-}
 export type Result = { 'Ok' : null } |
   { 'Err' : string };
 export type Result_1 = { 'Ok' : bigint } |
@@ -338,7 +338,7 @@ export interface _SERVICE {
     [bigint, bigint, bigint, bigint, [] | [string]],
     EstimatedReturn
   >,
-  'force_resolve_market' : ActorMethod<[bigint, Array<bigint>], Result_2>,
+  'force_resolve_market' : ActorMethod<[ResolutionArgs], Result_2>,
   'generate_time_weight_curve' : ActorMethod<
     [bigint, bigint],
     Array<TimeWeightPoint>
@@ -388,7 +388,7 @@ export interface _SERVICE {
   'is_admin' : ActorMethod<[Principal], boolean>,
   'mark_transaction_resolved' : ActorMethod<[bigint], Result>,
   'place_bet' : ActorMethod<[PlaceBetArgs], Result_6>,
-  'propose_resolution' : ActorMethod<[bigint, Array<bigint>], Result_2>,
+  'propose_resolution' : ActorMethod<[ResolutionArgs], Result_2>,
   'resolve_via_admin' : ActorMethod<[ResolutionArgs], Result_2>,
   'resolve_via_admin_legacy' : ActorMethod<[bigint, Array<bigint>], Result_2>,
   'resolve_via_oracle' : ActorMethod<
