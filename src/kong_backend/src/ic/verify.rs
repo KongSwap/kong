@@ -147,12 +147,15 @@ async fn attempt_icrc3_get_blocks_verify_transfer(
         }];
         ic_cdk::call::<_, (ICRC3GetBlocksResult,)>(canister_id, "icrc3_get_blocks", (block_args,)).await
     } else {
-        // Standard ICRC3 format
-        let block_args = ICRC3GetBlocksRequest {
-            start: block_id.clone(),
-            length: Nat::from(1u32),
-        };
-        ic_cdk::call::<_, (ICRC3GetBlocksResult,)>(canister_id, "icrc3_get_blocks", (block_args,)).await
+    // Standard ICRC3 format
+    let single_request_arg = ICRC3GetBlocksRequest {
+        start: block_id.clone(),
+        length: Nat::from(1u32),
+    };
+    // ICRC-3 icrc3_get_blocks expects `vec record { start: nat; length: nat; }`
+    // So we wrap the single request argument in a vector.
+    let block_args_vec = vec![single_request_arg];
+    ic_cdk::call::<_, (ICRC3GetBlocksResult,)>(canister_id, "icrc3_get_blocks", (block_args_vec,)).await
     };
     match blocks_result {
         Ok(response) => {
