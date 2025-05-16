@@ -17,7 +17,7 @@ use crate::ic::{
     icp::is_icp,
     id::caller_id,
     transfer::{icrc1_transfer, icrc2_transfer_from},
-    verify::verify_transfer,
+    verify_transfer::verify_transfer,
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings_map;

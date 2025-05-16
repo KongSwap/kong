@@ -58,7 +58,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
 
             // try icrc3_get_blocks first
             if ic_token.icrc3 {
-                return attempt_icrc3_get_blocks_verify_transfer(
+                return verify_transfer_with_icrc3_get_blocks(
                     token,
                     block_id,
                     amount,
@@ -73,19 +73,12 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
 
             // if ICP ledger, use query_blocks
             if token_address_with_chain == ICP_CANISTER_ID {
-                return attempt_query_blocks_verify_transfer(
-                    token,
-                    block_id,
-                    amount,
-                    canister_id,
-                    min_valid_timestamp,
-                    kong_backend_account,
-                )
-                .await;
+                return verify_trnasfer_with_query_blocks(token, block_id, amount, canister_id, min_valid_timestamp, kong_backend_account)
+                    .await;
             }
 
             // otherwise, use get_transactions
-            attempt_get_transactions_verify_transfer(
+            verify_transfer_with_get_transactions(
                 token,
                 block_id,
                 amount,
@@ -139,7 +132,7 @@ fn try_decode_icrc3_account_value(icrc3_value_arr: &[ICRC3Value]) -> Option<Acco
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn attempt_icrc3_get_blocks_verify_transfer(
+async fn verify_transfer_with_icrc3_get_blocks(
     token: &StableToken,
     block_id: &Nat,
     amount: &Nat,
@@ -310,7 +303,7 @@ async fn attempt_icrc3_get_blocks_verify_transfer(
     }
 }
 
-async fn attempt_query_blocks_verify_transfer(
+async fn verify_trnasfer_with_query_blocks(
     token: &StableToken,
     block_id: &Nat,
     amount: &Nat,
@@ -372,7 +365,7 @@ async fn attempt_query_blocks_verify_transfer(
     }
 }
 
-async fn attempt_get_transactions_verify_transfer(
+async fn verify_transfer_with_get_transactions(
     token: &StableToken,
     block_id: &Nat,
     amount: &Nat,

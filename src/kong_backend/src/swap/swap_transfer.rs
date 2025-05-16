@@ -13,7 +13,7 @@ use crate::ic::address::Address;
 use crate::ic::address_helpers::get_address;
 use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
-use crate::ic::verify::verify_transfer;
+use crate::ic::verify_transfer::verify_transfer;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
