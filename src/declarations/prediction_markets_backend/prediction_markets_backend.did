@@ -191,14 +191,14 @@ type FailureDetails = record {
   error_message : text;
   timestamp : nat;
 };
+type GetFeaturedMarketsArgs = record { start : nat; length : nat };
+type GetFeaturedMarketsResult = record { total : nat; markets : vec Market };
 type GetMarketsByCreatorArgs = record {
   creator : principal;
   start : nat;
   length : nat;
   sort_by_creation_time : bool;
 };
-type GetMarketsByCreatorResult = record { total : nat; markets : vec Market };
-type GetMarketsByStatusArgs = record { start : nat; length : nat };
 type GetMarketsByStatusResult = record {
   total_active : nat;
   total_resolved : nat;
@@ -214,6 +214,7 @@ type Market = record {
   outcome_pools : vec nat;
   uses_time_weighting : bool;
   creator : principal;
+  featured : bool;
   outcome_percentages : vec float64;
   question : text;
   token_id : text;
@@ -343,7 +344,6 @@ type SearchMarketsArgs = record {
   length : nat;
   sort_direction : opt SortDirection;
 };
-type SearchMarketsResult = record { total : nat; markets : vec Market };
 type SortDirection = variant { Descending; Ascending };
 type SortField = variant { TotalPool; CreationTime; EndTime; TotalBets };
 type TimeWeightPoint = record {
@@ -403,15 +403,18 @@ service : () -> {
   get_claim_by_id : (nat64) -> (opt ClaimRecord) query;
   get_claimable_summary : () -> (ClaimableSummary) query;
   get_claims_stats : () -> (ClaimsStats) query;
+  get_featured_markets : (GetFeaturedMarketsArgs) -> (
+      GetFeaturedMarketsResult,
+    ) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
   get_market_claims : (nat) -> (vec ClaimRecord) query;
   get_market_payout_records : (nat64) -> (vec BetPayoutRecord) query;
   get_market_resolution_details : (nat64) -> (Result_2) query;
   get_markets_by_creator : (GetMarketsByCreatorArgs) -> (
-      GetMarketsByCreatorResult,
+      GetFeaturedMarketsResult,
     ) query;
-  get_markets_by_status : (GetMarketsByStatusArgs) -> (
+  get_markets_by_status : (GetFeaturedMarketsArgs) -> (
       GetMarketsByStatusResult,
     ) query;
   get_supported_tokens : () -> (vec TokenInfo) query;
@@ -445,7 +448,8 @@ service : () -> {
   retry_claim : (nat64) -> (ClaimResult);
   retry_market_transactions : (nat) -> (vec Result_8);
   retry_transaction : (nat64) -> (Result_9);
-  search_markets : (SearchMarketsArgs) -> (SearchMarketsResult) query;
+  search_markets : (SearchMarketsArgs) -> (GetFeaturedMarketsResult) query;
+  set_market_featured : (nat, bool) -> (Result);
   simulate_future_weight : (nat64, nat64, nat64) -> (float64) query;
   update_expired_markets : () -> (nat64);
   update_token_config : (text, TokenInfo) -> (Result);

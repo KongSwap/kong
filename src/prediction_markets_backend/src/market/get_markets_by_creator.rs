@@ -33,7 +33,7 @@ pub fn get_markets_by_creator(args: GetMarketsByCreatorArgs) -> GetMarketsByCrea
     
     // Determine if we should sort (default: creation time descending)
     let sorter = if args.sort_by_creation_time {
-        Some(MarketSorter::new(
+        Some(MarketSorter::with_options(
             MarketSortField::CreationTime,
             SortDirection::Descending,
         ))

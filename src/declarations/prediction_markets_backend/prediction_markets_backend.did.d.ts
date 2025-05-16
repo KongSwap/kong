@@ -194,17 +194,17 @@ export interface FailureDetails {
   'error_message' : string,
   'timestamp' : bigint,
 }
+export interface GetFeaturedMarketsArgs { 'start' : bigint, 'length' : bigint }
+export interface GetFeaturedMarketsResult {
+  'total' : bigint,
+  'markets' : Array<Market>,
+}
 export interface GetMarketsByCreatorArgs {
   'creator' : Principal,
   'start' : bigint,
   'length' : bigint,
   'sort_by_creation_time' : boolean,
 }
-export interface GetMarketsByCreatorResult {
-  'total' : bigint,
-  'markets' : Array<Market>,
-}
-export interface GetMarketsByStatusArgs { 'start' : bigint, 'length' : bigint }
 export interface GetMarketsByStatusResult {
   'total_active' : bigint,
   'total_resolved' : bigint,
@@ -222,6 +222,7 @@ export interface Market {
   'outcome_pools' : Array<bigint>,
   'uses_time_weighting' : boolean,
   'creator' : Principal,
+  'featured' : boolean,
   'outcome_percentages' : Array<number>,
   'question' : string,
   'token_id' : string,
@@ -355,10 +356,6 @@ export interface SearchMarketsArgs {
   'length' : bigint,
   'sort_direction' : [] | [SortDirection],
 }
-export interface SearchMarketsResult {
-  'total' : bigint,
-  'markets' : Array<Market>,
-}
 export type SortDirection = { 'Descending' : null } |
   { 'Ascending' : null };
 export type SortField = { 'TotalPool' : null } |
@@ -438,6 +435,10 @@ export interface _SERVICE {
   'get_claim_by_id' : ActorMethod<[bigint], [] | [ClaimRecord]>,
   'get_claimable_summary' : ActorMethod<[], ClaimableSummary>,
   'get_claims_stats' : ActorMethod<[], ClaimsStats>,
+  'get_featured_markets' : ActorMethod<
+    [GetFeaturedMarketsArgs],
+    GetFeaturedMarketsResult
+  >,
   'get_market' : ActorMethod<[bigint], [] | [Market]>,
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
   'get_market_claims' : ActorMethod<[bigint], Array<ClaimRecord>>,
@@ -445,10 +446,10 @@ export interface _SERVICE {
   'get_market_resolution_details' : ActorMethod<[bigint], Result_2>,
   'get_markets_by_creator' : ActorMethod<
     [GetMarketsByCreatorArgs],
-    GetMarketsByCreatorResult
+    GetFeaturedMarketsResult
   >,
   'get_markets_by_status' : ActorMethod<
-    [GetMarketsByStatusArgs],
+    [GetFeaturedMarketsArgs],
     GetMarketsByStatusResult
   >,
   'get_supported_tokens' : ActorMethod<[], Array<TokenInfo>>,
@@ -492,7 +493,8 @@ export interface _SERVICE {
   'retry_claim' : ActorMethod<[bigint], ClaimResult>,
   'retry_market_transactions' : ActorMethod<[bigint], Array<Result_8>>,
   'retry_transaction' : ActorMethod<[bigint], Result_9>,
-  'search_markets' : ActorMethod<[SearchMarketsArgs], SearchMarketsResult>,
+  'search_markets' : ActorMethod<[SearchMarketsArgs], GetFeaturedMarketsResult>,
+  'set_market_featured' : ActorMethod<[bigint, boolean], Result>,
   'simulate_future_weight' : ActorMethod<[bigint, bigint, bigint], number>,
   'update_expired_markets' : ActorMethod<[], bigint>,
   'update_token_config' : ActorMethod<[string, TokenInfo], Result>,

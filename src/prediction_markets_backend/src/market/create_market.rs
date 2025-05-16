@@ -249,6 +249,11 @@ pub fn create_market(
                 // will be distributed in the same token. The system supports KONG, ICP,
                 // and other ICRC-compliant tokens registered in the token registry.
                 token_id: token_id,
+                
+                // Featured flag for UI highlighting
+                // Featured markets will be displayed prominently in the UI
+                // This can only be set to true by admins via the set_market_featured function
+                featured: false,
             },
         );
         market_id

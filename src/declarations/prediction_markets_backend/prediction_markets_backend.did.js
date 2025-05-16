@@ -156,6 +156,10 @@ export const idlFactory = ({ IDL }) => {
     'total_count' : IDL.Nat64,
     'failed_count' : IDL.Nat64,
   });
+  const GetFeaturedMarketsArgs = IDL.Record({
+    'start' : IDL.Nat,
+    'length' : IDL.Nat,
+  });
   const MarketStatus = IDL.Variant({
     'Disputed' : IDL.Null,
     'Closed' : IDL.Vec(IDL.Nat),
@@ -171,6 +175,7 @@ export const idlFactory = ({ IDL }) => {
     'outcome_pools' : IDL.Vec(IDL.Nat),
     'uses_time_weighting' : IDL.Bool,
     'creator' : IDL.Principal,
+    'featured' : IDL.Bool,
     'outcome_percentages' : IDL.Vec(IDL.Float64),
     'question' : IDL.Text,
     'token_id' : IDL.Text,
@@ -186,6 +191,10 @@ export const idlFactory = ({ IDL }) => {
     'rules' : IDL.Text,
     'resolved_by' : IDL.Opt(IDL.Principal),
     'bet_counts' : IDL.Vec(IDL.Nat),
+  });
+  const GetFeaturedMarketsResult = IDL.Record({
+    'total' : IDL.Nat,
+    'markets' : IDL.Vec(Market),
   });
   const Bet = IDL.Record({
     'token_id' : IDL.Text,
@@ -260,14 +269,6 @@ export const idlFactory = ({ IDL }) => {
     'start' : IDL.Nat,
     'length' : IDL.Nat,
     'sort_by_creation_time' : IDL.Bool,
-  });
-  const GetMarketsByCreatorResult = IDL.Record({
-    'total' : IDL.Nat,
-    'markets' : IDL.Vec(Market),
-  });
-  const GetMarketsByStatusArgs = IDL.Record({
-    'start' : IDL.Nat,
-    'length' : IDL.Nat,
   });
   const Distribution = IDL.Record({
     'bet_amount' : IDL.Nat,
@@ -411,10 +412,6 @@ export const idlFactory = ({ IDL }) => {
     'length' : IDL.Nat,
     'sort_direction' : IDL.Opt(SortDirection),
   });
-  const SearchMarketsResult = IDL.Record({
-    'total' : IDL.Nat,
-    'markets' : IDL.Vec(Market),
-  });
   return IDL.Service({
     'add_supported_token' : IDL.Func([TokenInfo], [Result], []),
     'admin_resolve_market' : IDL.Func(
@@ -472,6 +469,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'get_claimable_summary' : IDL.Func([], [ClaimableSummary], ['query']),
     'get_claims_stats' : IDL.Func([], [ClaimsStats], ['query']),
+    'get_featured_markets' : IDL.Func(
+        [GetFeaturedMarketsArgs],
+        [GetFeaturedMarketsResult],
+        ['query'],
+      ),
     'get_market' : IDL.Func([IDL.Nat], [IDL.Opt(Market)], ['query']),
     'get_market_bets' : IDL.Func([IDL.Nat], [IDL.Vec(Bet)], ['query']),
     'get_market_claims' : IDL.Func(
@@ -491,11 +493,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'get_markets_by_creator' : IDL.Func(
         [GetMarketsByCreatorArgs],
-        [GetMarketsByCreatorResult],
+        [GetFeaturedMarketsResult],
         ['query'],
       ),
     'get_markets_by_status' : IDL.Func(
-        [GetMarketsByStatusArgs],
+        [GetFeaturedMarketsArgs],
         [GetMarketsByStatusResult],
         ['query'],
       ),
@@ -572,9 +574,10 @@ export const idlFactory = ({ IDL }) => {
     'retry_transaction' : IDL.Func([IDL.Nat64], [Result_9], []),
     'search_markets' : IDL.Func(
         [SearchMarketsArgs],
-        [SearchMarketsResult],
+        [GetFeaturedMarketsResult],
         ['query'],
       ),
+    'set_market_featured' : IDL.Func([IDL.Nat, IDL.Bool], [Result], []),
     'simulate_future_weight' : IDL.Func(
         [IDL.Nat64, IDL.Nat64, IDL.Nat64],
         [IDL.Float64],
