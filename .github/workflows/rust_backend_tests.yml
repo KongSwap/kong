@@ -42,6 +42,7 @@ jobs:
 
       - name: Install DFINITY Canister SDK (dfx)
         run: |
+          export DFXVM_INIT_YES=true
           sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
           echo "$HOME/.local/share/dfx/env" >> $GITHUB_ENV
       
