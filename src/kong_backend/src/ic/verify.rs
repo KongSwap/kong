@@ -58,7 +58,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
 
             // try icrc3_get_blocks first
             if ic_token.icrc3 {
-                attempt_icrc3_get_blocks_verify_transfer(
+                return attempt_icrc3_get_blocks_verify_transfer(
                     token,
                     block_id,
                     amount,
@@ -68,13 +68,20 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                     kong_backend_account,
                     caller_account,
                 )
-                .await?;
+                .await;
             }
 
             // if ICP ledger, use query_blocks
             if token_address_with_chain == ICP_CANISTER_ID {
-                attempt_query_blocks_verify_transfer(token, block_id, amount, canister_id, min_valid_timestamp, kong_backend_account)
-                    .await?;
+                return attempt_query_blocks_verify_transfer(
+                    token,
+                    block_id,
+                    amount,
+                    canister_id,
+                    min_valid_timestamp,
+                    kong_backend_account,
+                )
+                .await;
             }
 
             // otherwise, use get_transactions
