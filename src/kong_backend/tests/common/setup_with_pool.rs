@@ -1,7 +1,7 @@
 // --- Imports ---
 use anyhow::{Context, Result};
 use candid::{decode_one, encode_one, Nat, Principal};
-use ic_ledger_types::{AccountIdentifier, Tokens, Subaccount};
+use ic_ledger_types::{AccountIdentifier, Subaccount};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
 

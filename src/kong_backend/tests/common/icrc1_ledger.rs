@@ -92,12 +92,67 @@ pub enum LedgerArg {
     Upgrade(UpgradeArgs),
 }
 
+/// Creates an ICRC1 ledger with custom settings
 pub fn create_icrc1_ledger(ic: &PocketIc, controller: &Option<Principal>, ledger_arg: &LedgerArg) -> Result<Principal> {
     let icrc1_ledger = create_canister(ic, controller, &None);
     let wasm_module = fs::read(IC_ICRC1_LEDGER_WASM)?;
     let args = encode_one(ledger_arg)?;
     ic.install_canister(icrc1_ledger, wasm_module, args, *controller);
     Ok(icrc1_ledger)
+}
+
+#[derive(Clone)]
+pub struct SimpleLedgerConfig {
+    pub token_symbol: String,
+    pub token_name: String,
+    pub initial_balances: Vec<(Account, Nat)>,
+    pub transfer_fee: Nat,
+    pub decimals: u8,
+    pub controller: Principal,
+}
+
+impl Default for SimpleLedgerConfig {
+    fn default() -> Self {
+        Self {
+            token_symbol: "TEST".to_string(),
+            token_name: "Test Token".to_string(),
+            initial_balances: vec![],
+            transfer_fee: Nat::from(10_000u64),
+            decimals: 8,
+            controller: Principal::anonymous(),
+        }
+    }
+}
+
+/// Creates an ICRC1 ledger with simplified configuration and sensible defaults
+pub fn create_icrc1_ledger_simple(ic: &PocketIc, config: SimpleLedgerConfig) -> Result<Principal> {
+    let ledger_arg = LedgerArg::Init(InitArgs {
+        minting_account: Account {
+            owner: Principal::anonymous(),
+            subaccount: None,
+        },
+        fee_collector_account: None,
+        transfer_fee: config.transfer_fee,
+        decimals: Some(config.decimals),
+        max_memo_length: Some(256),
+        token_symbol: config.token_symbol,
+        token_name: config.token_name,
+        metadata: vec![],
+        initial_balances: config.initial_balances,
+        feature_flags: Some(FeatureFlags { icrc2: true }),
+        archive_options: ArchiveOptions {
+            num_blocks_to_archive: 10000,
+            max_transactions_per_response: Some(100),
+            trigger_threshold: 5000,
+            max_message_size_bytes: Some(2097152),
+            cycles_for_archive_creation: Some(100_000_000_000),
+            node_max_memory_size_bytes: Some(5_000_000_000),
+            controller_id: config.controller,
+            more_controller_ids: None,
+        },
+    });
+    
+    create_icrc1_ledger(ic, &Some(config.controller), &ledger_arg)
 }
 
 /// Creates an ICRC1 ledger canister with a specified ID and controller.

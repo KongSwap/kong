@@ -71,19 +71,6 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                 .await
             } else if token_address_with_chain == ICP_CANISTER_ID {
                 attempt_query_blocks_verify_transfer(token, block_id, amount, canister_id, min_valid_timestamp, kong_backend_account).await
-            } else if token_address_with_chain == WUMBO_CANISTER_ID
-                || token_address_with_chain == DAMONIC_CANISTER_ID
-                || token_address_with_chain == CLOWN_CANISTER_ID
-            {
-                attempt_special_get_transaction_verify_transfer(
-                    block_id,
-                    amount,
-                    canister_id,
-                    min_valid_timestamp,
-                    kong_backend_account,
-                    caller_account,
-                )
-                .await
             } else {
                 attempt_get_transactions_verify_transfer(
                     token,
@@ -370,50 +357,6 @@ async fn attempt_query_blocks_verify_transfer(
     }
 }
 
-async fn attempt_special_get_transaction_verify_transfer(
-    block_id: &Nat,
-    amount: &Nat,
-    canister_id: candid::Principal,
-    min_valid_timestamp: u64,
-    kong_backend_account: &icrc_ledger_types::icrc1::account::Account,
-    caller_account: icrc_ledger_types::icrc1::account::Account,
-) -> Result<(), String> {
-    // try get_transaction() specific to WUMBO, DAMONIC or CLOWN
-    match ic_cdk::call::<(Nat,), (Option<Transaction1>,)>(canister_id, "get_transaction", (block_id.clone(),)).await {
-        Ok(transaction_response) => match transaction_response.0 {
-            Some(transaction) => {
-                if let Some(transfer) = transaction.transfer {
-                    let from = transfer.from;
-                    if from != caller_account {
-                        Err("Transfer from does not match caller")?
-                    }
-                    let to = transfer.to;
-                    if to != *kong_backend_account {
-                        Err("Transfer to does not match Kong backend")?
-                    }
-                    let transfer_amount = transfer.amount;
-                    if transfer_amount != *amount {
-                        Err(format!("Invalid transfer amount: rec {:?} exp {:?}", transfer_amount, amount))?
-                    }
-                    let timestamp = transaction.timestamp;
-                    if timestamp < min_valid_timestamp {
-                        Err("Expired transfer timestamp")?
-                    }
-
-                    Ok(()) // success
-                } else if let Some(_burn) = transaction.burn {
-                    Err("Invalid burn transaction")?
-                } else if let Some(_mint) = transaction.mint {
-                    Err("Invalid mint transaction")?
-                } else {
-                    Err(format!("Invalid transaction kind: {}", transaction.kind))?
-                }
-            }
-            None => Err("No transaction found")?,
-        },
-        Err(e) => Err(e.1)?,
-    }
-}
 
 async fn attempt_get_transactions_verify_transfer(
     token: &StableToken,
@@ -424,51 +367,95 @@ async fn attempt_get_transactions_verify_transfer(
     kong_backend_account: &icrc_ledger_types::icrc1::account::Account,
     caller_account: icrc_ledger_types::icrc1::account::Account,
 ) -> Result<(), String> {
-    let block_args = GetTransactionsRequest {
-        start: block_id.clone(),
-        length: Nat::from(1_u32),
-    };
-    match ic_cdk::call::<(GetTransactionsRequest,), (GetTransactionsResponse,)>(canister_id, "get_transactions", (block_args,)).await {
-        Ok(get_transactions_response) => {
-            let transactions = get_transactions_response.0.transactions;
-            for transaction in transactions.into_iter() {
-                if let Some(transfer) = transaction.transfer {
-                    let from = transfer.from;
-                    if from != caller_account {
-                        Err("Transfer from does not match caller")?
-                    }
-                    let to = transfer.to;
-                    if to != *kong_backend_account {
-                        Err("Transfer to does not match Kong backend")?
-                    }
-                    // make sure spender is None, so not an icrc2_transfer_from transaction
-                    let spender = transfer.spender;
-                    if spender.is_some() {
-                        Err("Invalid transfer spender")?
-                    }
-                    let transfer_amount = transfer.amount;
-                    if transfer_amount != *amount {
-                        Err(format!("Invalid transfer amount: rec {:?} exp {:?}", transfer_amount, amount))?
-                    }
-                    let timestamp = transaction.timestamp;
-                    if timestamp < min_valid_timestamp {
-                        Err("Expired transfer timestamp")?
-                    }
+    let token_address_with_chain = token.address_with_chain();
+    
+    // Handle special tokens (WUMBO, DAMONIC, CLOWN) that use get_transaction (no 's')
+    if token_address_with_chain == WUMBO_CANISTER_ID
+        || token_address_with_chain == DAMONIC_CANISTER_ID
+        || token_address_with_chain == CLOWN_CANISTER_ID
+    {
+        match ic_cdk::call::<(Nat,), (Option<Transaction1>,)>(canister_id, "get_transaction", (block_id.clone(),)).await {
+            Ok(transaction_response) => match transaction_response.0 {
+                Some(transaction) => {
+                    if let Some(transfer) = transaction.transfer {
+                        let from = transfer.from;
+                        if from != caller_account {
+                            Err("Transfer from does not match caller")?
+                        }
+                        let to = transfer.to;
+                        if to != *kong_backend_account {
+                            Err("Transfer to does not match Kong backend")?
+                        }
+                        let transfer_amount = transfer.amount;
+                        if transfer_amount != *amount {
+                            Err(format!("Invalid transfer amount: rec {:?} exp {:?}", transfer_amount, amount))?
+                        }
+                        let timestamp = transaction.timestamp;
+                        if timestamp < min_valid_timestamp {
+                            Err("Expired transfer timestamp")?
+                        }
 
-                    return Ok(()); // success
-                } else if let Some(_burn) = transaction.burn {
-                    // not used
-                } else if let Some(_mint) = transaction.mint {
-                    // not used
-                } else if let Some(_approve) = transaction.approve {
-                    // not used
-                } else {
-                    Err(format!("Invalid transaction kind: {}", transaction.kind))?
+                        Ok(())
+                    } else if let Some(_burn) = transaction.burn {
+                        Err("Invalid burn transaction")?
+                    } else if let Some(_mint) = transaction.mint {
+                        Err("Invalid mint transaction")?
+                    } else {
+                        Err(format!("Invalid transaction kind: {}", transaction.kind))?
+                    }
                 }
-            }
-
-            Err(format!("Failed to verify {} transfer block id {}", token.symbol(), block_id))?
+                None => Err("No transaction found")?,
+            },
+            Err(e) => Err(e.1)?,
         }
-        Err(e) => Err(e.1)?,
+    } else {
+        // Standard tokens use get_transactions (with 's')
+        let block_args = GetTransactionsRequest {
+            start: block_id.clone(),
+            length: Nat::from(1_u32),
+        };
+        match ic_cdk::call::<(GetTransactionsRequest,), (GetTransactionsResponse,)>(canister_id, "get_transactions", (block_args,)).await {
+            Ok(get_transactions_response) => {
+                let transactions = get_transactions_response.0.transactions;
+                for transaction in transactions.into_iter() {
+                    if let Some(transfer) = transaction.transfer {
+                        let from = transfer.from;
+                        if from != caller_account {
+                            Err("Transfer from does not match caller")?
+                        }
+                        let to = transfer.to;
+                        if to != *kong_backend_account {
+                            Err("Transfer to does not match Kong backend")?
+                        }
+                        // make sure spender is None, so not an icrc2_transfer_from transaction
+                        let spender = transfer.spender;
+                        if spender.is_some() {
+                            Err("Invalid transfer spender")?
+                        }
+                        let transfer_amount = transfer.amount;
+                        if transfer_amount != *amount {
+                            Err(format!("Invalid transfer amount: rec {:?} exp {:?}", transfer_amount, amount))?
+                        }
+                        let timestamp = transaction.timestamp;
+                        if timestamp < min_valid_timestamp {
+                            Err("Expired transfer timestamp")?
+                        }
+
+                        return Ok(()); // success
+                    } else if let Some(_burn) = transaction.burn {
+                        // not used
+                    } else if let Some(_mint) = transaction.mint {
+                        // not used
+                    } else if let Some(_approve) = transaction.approve {
+                        // not used
+                    } else {
+                        Err(format!("Invalid transaction kind: {}", transaction.kind))?
+                    }
+                }
+
+                Err(format!("Failed to verify {} transfer block id {}", token.symbol(), block_id))?
+            }
+            Err(e) => Err(e.1)?,
+        }
     }
 }
