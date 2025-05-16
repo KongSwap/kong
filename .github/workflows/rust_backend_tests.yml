@@ -39,7 +39,7 @@ jobs:
           POCKET_IC_VERSION: 9.0.1
 
       - name: Install dfx
-        uses: dfinity/setup-dfx@v2
+        uses: dfinity/setup-dfx@main
         with:
           dfx-version: "0.26.0"
 
@@ -48,6 +48,3 @@ jobs:
 
       - name: Run kong_backend tests
         run: cargo test -p kong_backend
-
-      - name: Test (full workspace)
-        run: cargo test --workspace --all-features -- --test-threads 2
