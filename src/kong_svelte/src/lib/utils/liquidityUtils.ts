@@ -137,9 +137,6 @@ export function getButtonText(
 ): string {
     if (!token0 || !token1) return "Select Tokens";
     if (hasInsufficientBalance) return "Insufficient Balance";
-    if (token0.address === "6qfxa-ryaaa-aaaai-qbhsq-cai" || token1.address === "6qfxa-ryaaa-aaaai-qbhsq-cai") {
-        return "Temporarily disabled";
-    }
     if (!amount0 || !amount1) return "Enter Amounts";
     if (loading) return loadingState || "Loading...";
     return "Review Transaction";
