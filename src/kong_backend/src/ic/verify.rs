@@ -56,7 +56,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
             let kong_backend_account = &kong_settings.kong_backend;
             let caller_account = caller_id();
 
-            // attempt to verify transfer depending on token standard supported
+            // try icrc3_get_blocks first
             if ic_token.icrc3 {
                 attempt_icrc3_get_blocks_verify_transfer(
                     token,
@@ -68,21 +68,26 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
                     kong_backend_account,
                     caller_account,
                 )
-                .await
-            } else if token_address_with_chain == ICP_CANISTER_ID {
-                attempt_query_blocks_verify_transfer(token, block_id, amount, canister_id, min_valid_timestamp, kong_backend_account).await
-            } else {
-                attempt_get_transactions_verify_transfer(
-                    token,
-                    block_id,
-                    amount,
-                    canister_id,
-                    min_valid_timestamp,
-                    kong_backend_account,
-                    caller_account,
-                )
-                .await
+                .await?;
             }
+
+            // if ICP ledger, use query_blocks
+            if token_address_with_chain == ICP_CANISTER_ID {
+                attempt_query_blocks_verify_transfer(token, block_id, amount, canister_id, min_valid_timestamp, kong_backend_account)
+                    .await?;
+            }
+
+            // otherwise, use get_transactions
+            attempt_get_transactions_verify_transfer(
+                token,
+                block_id,
+                amount,
+                canister_id,
+                min_valid_timestamp,
+                kong_backend_account,
+                caller_account,
+            )
+            .await
         }
         _ => Err("Verify transfer not supported for this token")?,
     }
@@ -147,15 +152,15 @@ async fn attempt_icrc3_get_blocks_verify_transfer(
         }];
         ic_cdk::call::<_, (ICRC3GetBlocksResult,)>(canister_id, "icrc3_get_blocks", (block_args,)).await
     } else {
-    // Standard ICRC3 format
-    let single_request_arg = ICRC3GetBlocksRequest {
-        start: block_id.clone(),
-        length: Nat::from(1u32),
-    };
-    // ICRC-3 icrc3_get_blocks expects `vec record { start: nat; length: nat; }`
-    // So we wrap the single request argument in a vector.
-    let block_args_vec = vec![single_request_arg];
-    ic_cdk::call::<_, (ICRC3GetBlocksResult,)>(canister_id, "icrc3_get_blocks", (block_args_vec,)).await
+        // Standard ICRC3 format
+        let single_request_arg = ICRC3GetBlocksRequest {
+            start: block_id.clone(),
+            length: Nat::from(1u32),
+        };
+        // ICRC-3 icrc3_get_blocks expects `vec record { start: nat; length: nat; }`
+        // So we wrap the single request argument in a vector.
+        let block_args_vec = vec![single_request_arg];
+        ic_cdk::call::<_, (ICRC3GetBlocksResult,)>(canister_id, "icrc3_get_blocks", (block_args_vec,)).await
     };
     match blocks_result {
         Ok(response) => {
@@ -360,7 +365,6 @@ async fn attempt_query_blocks_verify_transfer(
     }
 }
 
-
 async fn attempt_get_transactions_verify_transfer(
     token: &StableToken,
     block_id: &Nat,
@@ -371,7 +375,7 @@ async fn attempt_get_transactions_verify_transfer(
     caller_account: icrc_ledger_types::icrc1::account::Account,
 ) -> Result<(), String> {
     let token_address_with_chain = token.address_with_chain();
-    
+
     // Handle special tokens (WUMBO, DAMONIC, CLOWN) that use get_transaction (no 's')
     if token_address_with_chain == WUMBO_CANISTER_ID
         || token_address_with_chain == DAMONIC_CANISTER_ID
