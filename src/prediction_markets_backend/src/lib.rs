@@ -46,6 +46,8 @@ use crate::transaction_recovery::FailedTransaction;
 // Claims system types
 use crate::claims::claims_types::*;
 use crate::claims::claims_api::*;
+// Market resolution details types
+use crate::types::{MarketResolutionDetails, BetDistributionDetail, FailedTransactionInfo};
 use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
 use icrc_ledger_types::icrc21::responses::ConsentInfo; 
 use icrc_ledger_types::icrc21::errors::ErrorInfo;

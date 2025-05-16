@@ -1,6 +1,9 @@
 // Central type definitions for the prediction markets backend
 // This module consolidates all common types to ensure consistency
 
+use candid::{CandidType, Deserialize, Principal};
+use serde::Serialize;
+
 // Re-export StorableNat for convenience
 pub use crate::nat::StorableNat;
 
@@ -53,7 +56,91 @@ pub fn calculate_platform_fee(amount: &TokenAmount, token_id: &TokenIdentifier) 
 
     let fee_percentage = token_info.fee_percentage;
     let amount_u64 = amount.to_u64();
-    let fee_amount = amount_u64 * fee_percentage / 10000; // fee_percentage is in basis points (100 = 1%)
+    let fee_amount = (amount_u64 * fee_percentage) / 10000; // fee_percentage is in basis points (100 = 1%)
     
     TokenAmount::from(fee_amount)
+}
+
+/// Comprehensive details about a market's resolution and payout distribution
+#[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
+pub struct MarketResolutionDetails {
+    /// The market ID
+    pub market_id: MarketId,
+    /// The winning outcomes indices
+    pub winning_outcomes: Vec<OutcomeIndex>,
+    /// Timestamp when the market was resolved
+    pub resolution_timestamp: Timestamp,
+    /// Total pool size (sum of all bets)
+    pub total_market_pool: TokenAmount,
+    /// Total amount bet on winning outcomes
+    pub total_winning_pool: TokenAmount,
+    /// Total profit from losing bets
+    pub total_profit: TokenAmount,
+    /// Platform fee amount collected
+    pub platform_fee_amount: TokenAmount,
+    /// Platform fee percentage applied
+    pub platform_fee_percentage: u64,
+    /// Transaction ID for the fee transfer (if applicable)
+    pub fee_transaction_id: Option<u64>,
+    /// Token ID used for the market
+    pub token_id: String,
+    /// Token symbol (e.g., "KONG")
+    pub token_symbol: String,
+    /// Number of winning bets processed
+    pub winning_bet_count: u64,
+    /// Whether time-weighted distribution was used
+    pub used_time_weighting: bool,
+    /// Alpha value used for time-weighting (if applicable)
+    pub time_weight_alpha: Option<f64>,
+    /// Total amount allocated for transfer fees
+    pub total_transfer_fees: TokenAmount,
+    /// Distributable profit after fees
+    pub distributable_profit: TokenAmount,
+    /// Total weighted contribution (for time-weighted markets)
+    pub total_weighted_contribution: Option<f64>,
+    /// Per-bet distribution details
+    pub distribution_details: Vec<BetDistributionDetail>,
+    /// Any failed transactions that occurred during payout
+    pub failed_transactions: Vec<FailedTransactionInfo>,
+}
+
+/// Details about how a specific bet was paid out
+#[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
+pub struct BetDistributionDetail {
+    /// The user who placed the bet
+    pub user: Principal,
+    /// Original bet amount
+    pub bet_amount: TokenAmount,
+    /// Time weight applied (for time-weighted markets)
+    pub time_weight: Option<f64>,
+    /// Weighted contribution (for time-weighted markets)
+    pub weighted_contribution: Option<f64>,
+    /// Share of profit awarded
+    pub bonus_amount: TokenAmount,
+    /// Total payout amount (original bet + profit share)
+    pub total_payout: TokenAmount,
+    /// Outcome index that was bet on
+    pub outcome_index: OutcomeIndex,
+    /// Claim ID generated for this payout
+    pub claim_id: Option<u64>,
+}
+
+/// Information about a failed transaction during market resolution
+#[derive(Debug, Clone, CandidType, Serialize, Deserialize)]
+pub struct FailedTransactionInfo {
+    /// ID of the market associated with this transaction (optional as some failures might be system-wide)
+    #[serde(default)]
+    pub market_id: Option<MarketId>,
+    /// The user who was to receive tokens
+    pub user: Principal,
+    /// The amount that failed to transfer
+    pub amount: TokenAmount,
+    /// Identifier for the token type (optional as it might be inferred from context)
+    #[serde(default)]
+    pub token_id: Option<String>,
+    /// Error message from the failed transaction
+    pub error: String,
+    /// Transaction timestamp (optional as it might be inferred from context)
+    #[serde(default)]
+    pub timestamp: Option<Timestamp>,
 }

@@ -24,9 +24,10 @@ use super::delegation::*;
 
 use crate::market::market::*;
 use crate::resolution::resolution::ResolutionProposal;
-use crate::types::MarketId;
+use crate::types::{MarketId, MarketResolutionDetails};
 use crate::claims::claims_storage;
-use crate::storage::NEXT_MARKET_ID;
+use crate::storage::{NEXT_MARKET_ID, MARKET_RESOLUTION_DETAILS};
+use std::collections::HashMap;
 
 /// Type alias for the virtual memory used by stable collections
 /// 
@@ -47,15 +48,20 @@ thread_local! {
     
     /// Stable storage for claims data (used for upgrade persistence)
     /// 
-    /// This stores the entire claims system state during canister upgrades.
-    /// The data format is ((claims, user_claims, market_claims, next_claim_id))
-    /// where each element corresponds to the internal state of the claims module.
+    /// Storage for the in-memory claim state during upgrades
+    /// This is used to persist claims, user_claims, market_claims, and next_claim_id
+    /// Raw storage format: Option<(claims_vec, user_claims_vec, market_claims_vec, next_id)>
     pub static STABLE_CLAIMS_DATA: RefCell<Option<(
         Vec<(u64, crate::claims::claims_types::ClaimRecord)>,
         Vec<(Principal, Vec<u64>)>,
         Vec<(MarketId, Vec<u64>)>,
         u64
     )>> = RefCell::new(None);
+
+    /// Storage for market resolution details during upgrades
+    /// This stores detailed information about how markets were resolved
+    /// Raw storage format: Vec<(MarketId, MarketResolutionDetails)>
+    pub static STABLE_MARKET_RESOLUTION_DETAILS: RefCell<Option<Vec<(MarketId, MarketResolutionDetails)>>> = RefCell::new(None);
 
     /// Stable BTree map for markets indexed by MarketId
     pub static STABLE_MARKETS: RefCell<StableBTreeMap<MarketId, Market, Memory>> = RefCell::new(
@@ -132,7 +138,7 @@ thread_local! {
 /// # Details
 /// The stable BTree maps (markets, bets, etc.) handle their own serialization,
 /// so this function focuses on persisting other in-memory data that isn't
-/// already in stable storage, such as the claims system data.
+/// already in stable storage, such as the claims system data and market resolution details.
 pub fn save() {
     // Save claims data to stable storage
     let claims_data = crate::claims::claims_storage::export_claims();
@@ -144,6 +150,16 @@ pub fn save() {
     
     STABLE_CLAIMS_DATA.with(|stable_claims| {
         *stable_claims.borrow_mut() = Some((claims_vec, user_claims_vec, market_claims_vec, claims_data.3));
+    });
+    
+    // Save market resolution details to stable storage
+    MARKET_RESOLUTION_DETAILS.with(|details_map| {
+        let resolution_details_vec: Vec<(MarketId, MarketResolutionDetails)> = 
+            details_map.borrow().iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        
+        STABLE_MARKET_RESOLUTION_DETAILS.with(|stable_details| {
+            *stable_details.borrow_mut() = Some(resolution_details_vec);
+        });
     });
 }
 
@@ -194,6 +210,20 @@ pub fn restore() {
             let market_claims: std::collections::HashMap<MarketId, Vec<u64>> = market_claims_vec.into_iter().collect();
             
             crate::claims::claims_storage::import_claims(claims, user_claims, market_claims, next_id);
+        }
+    });
+    
+    // Restore market resolution details if available
+    STABLE_MARKET_RESOLUTION_DETAILS.with(|stable_details| {
+        if let Some(details_vec) = stable_details.borrow_mut().take() {
+            // Convert Vec<(K,V)> back to HashMap
+            let resolution_details: std::collections::HashMap<MarketId, MarketResolutionDetails> = 
+                details_vec.into_iter().collect();
+            
+            // Restore to the in-memory HashMap
+            MARKET_RESOLUTION_DETAILS.with(|details_map| {
+                *details_map.borrow_mut() = resolution_details;
+            });
         }
     });
 }

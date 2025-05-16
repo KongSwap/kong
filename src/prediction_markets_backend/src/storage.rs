@@ -6,9 +6,10 @@
 //! the stable memory storage.
 
 use candid::Principal;
-use crate::types::MarketId;
+use crate::types::{MarketId, MarketResolutionDetails};
 use crate::bet::bet::Bet;
 use std::cell::RefCell;
+use std::collections::HashMap;
 
 // Re-export stable memory variables with the names expected in the rest of the codebase
 pub use crate::stable_memory::STABLE_MARKETS as MARKETS;
@@ -23,6 +24,10 @@ thread_local! {
     /// Counter for the next market ID to be assigned
     /// This ensures every market gets a unique sequential ID
     pub static NEXT_MARKET_ID: RefCell<u64> = RefCell::new(1);
+    
+    /// Storage for market resolution details with market ID as key
+    /// This captures comprehensive information about how markets were resolved
+    pub static MARKET_RESOLUTION_DETAILS: RefCell<HashMap<MarketId, MarketResolutionDetails>> = RefCell::new(HashMap::new());
 }
 
 /// Retrieves all bets for a given market ID
@@ -73,13 +78,35 @@ pub fn get_next_market_id() -> u64 {
 
 /// Set next market ID (used during canister upgrade)
 pub fn set_next_market_id(id: u64) {
-    NEXT_MARKET_ID.with(|counter| {
-        let mut value = counter.borrow_mut();
-        *value = id;
+    NEXT_MARKET_ID.with(|next_id| {
+        *next_id.borrow_mut() = id;
     });
-    // Also update the stable memory version
-    crate::stable_memory::STABLE_NEXT_MARKET_ID.with(|counter| {
-        let mut value = counter.borrow_mut();
-        *value = id;
+}
+
+/// Store market resolution details
+/// 
+/// Records comprehensive information about how a market was resolved,
+/// including payout calculations, fee processing, and distribution details.
+/// 
+/// # Parameters
+/// * `details` - The resolution details to store
+pub fn store_market_resolution_details(details: MarketResolutionDetails) {
+    MARKET_RESOLUTION_DETAILS.with(|details_map| {
+        details_map.borrow_mut().insert(details.market_id.clone(), details);
     });
+}
+
+/// Retrieve market resolution details
+/// 
+/// Fetches the stored resolution details for a specific market.
+/// 
+/// # Parameters
+/// * `market_id` - The ID of the market to retrieve details for
+/// 
+/// # Returns
+/// * `Option<MarketResolutionDetails>` - The resolution details if found, None otherwise
+pub fn get_market_resolution_details(market_id: &MarketId) -> Option<MarketResolutionDetails> {
+    MARKET_RESOLUTION_DETAILS.with(|details_map| {
+        details_map.borrow().get(market_id).cloned()
+    })
 }

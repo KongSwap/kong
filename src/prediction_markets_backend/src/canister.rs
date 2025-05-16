@@ -11,6 +11,7 @@ use candid::decode_one;
 use crate::types::{MarketId, TokenAmount, OutcomeIndex, NANOS_PER_SECOND};
 pub use crate::types::Timestamp;
 use crate::token::registry::{TokenInfo, get_all_supported_tokens, get_token_info, add_supported_token as add_token, update_token_config as update_token};
+use crate::types::MarketResolutionDetails;
 
 use super::delegation::*;
 use crate::market::estimate_return_types::*;
@@ -382,6 +383,33 @@ pub fn get_market_payout_records(market_id: u64) -> Vec<BetPayoutRecord> {
             vec![]
         }
     })
+}
+
+/// Retrieve detailed market resolution information (admin only)
+/// 
+/// This function returns comprehensive details about how a market was resolved,
+/// including payout calculations, fee processing, and distribution information.
+/// It is restricted to admin access only due to the sensitive financial information contained.
+/// 
+/// # Parameters
+/// * `market_id` - The ID of the market to retrieve resolution details for
+/// 
+/// # Returns
+/// * `Result<Option<MarketResolutionDetails>, String>` - The resolution details if found, or an error if unauthorized
+#[query]
+pub fn get_market_resolution_details(market_id: u64) -> Result<Option<MarketResolutionDetails>, String> {
+    // Check caller is admin
+    if !crate::controllers::admin::is_admin(ic_cdk::caller()) {
+        return Err("Unauthorized: caller is not an admin".to_string());
+    }
+    
+    // Convert market_id to our type system
+    let market_id = MarketId::from(market_id);
+    
+    // Retrieve market resolution details from storage
+    let details = crate::storage::get_market_resolution_details(&market_id);
+    
+    Ok(details)
 }
 
 /// Get markets created by a specific user with pagination and sorting

@@ -58,21 +58,27 @@
 //! the total market pool, with dynamic bonus pool adjustments if necessary.
 
 use candid::Principal;
+use num_traits::ToPrimitive;
 
 use super::resolution::*;
-use crate::bet::bet::Bet;
 use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::canister::{get_current_time, record_market_payout};
 use crate::market::market::*;
-use crate::storage::{MARKETS, BETS};
-use crate::token::registry::*;
-use crate::token::transfer::*;
-use crate::utils::time_weighting::*;
-use crate::claims::claims_processing::{create_winning_claim};
+use crate::storage::{BETS, store_market_resolution_details};
+use crate::token::transfer::{transfer_token, handle_fee_transfer, TokenTransferError};
+use crate::token::registry::{get_token_info, TokenIdentifier};
+use crate::utils::time_weighting::{get_market_alpha, calculate_time_weight, calculate_weighted_contribution};
+use crate::claims::claims_processing::create_winning_claim;
 
 // Import re-exported types from lib.rs
-use crate::{MarketId, TokenAmount, OutcomeIndex, Timestamp};
+use crate::MarketId;
+use crate::TokenAmount;
+use crate::OutcomeIndex;
+use crate::Timestamp;
 use crate::types::StorableNat;
+use crate::types::MarketResolutionDetails;
+use crate::types::BetDistributionDetail;
+use crate::types::FailedTransactionInfo;
 
 /// Helper function to transfer winnings with retry logic
 /// 
@@ -137,25 +143,7 @@ async fn transfer_winnings_with_retry(
 /// Structure to track failed transaction information within the finalization process
 /// 
 /// When a token transfer fails during market finalization, this structure stores
-/// all the relevant information needed to retry the transaction later or diagnose issues.
-/// 
-/// This is used primarily for in-memory tracking during the finalization process.
-/// For persistent storage of failed transactions, see the transaction_recovery module.
-#[derive(Clone, Debug)]
-pub struct FailedTransactionInfo {
-    /// ID of the market associated with this transaction
-    pub market_id: MarketId,
-    /// Principal ID of the intended token recipient
-    pub user: Principal,
-    /// Amount of tokens that failed to transfer
-    pub amount: TokenAmount,
-    /// Identifier for the token type that failed to transfer
-    pub token_id: TokenIdentifier,
-    /// Detailed error message explaining why the transaction failed
-    pub error: String,
-    /// Transaction timestamp
-    pub timestamp: u64,
-}
+// Note: FailedTransactionInfo is now imported from crate::types
 
 /// Finalizes a market by creating claims for successful bettors
 /// 
@@ -185,6 +173,31 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
         market.id.to_u64(),
         winning_outcomes.iter().map(|n| n.to_u64()).collect::<Vec<_>>()
     );
+    
+    // Initialize market resolution details structure to capture all resolution information
+    let current_time = get_current_time();
+    let mut resolution_details = MarketResolutionDetails {
+        market_id: market.id.clone(),
+        winning_outcomes: winning_outcomes.clone(),
+        resolution_timestamp: current_time,
+        total_market_pool: market.total_pool.clone(),
+        total_winning_pool: TokenAmount::from(0), // Will update later
+        total_profit: TokenAmount::from(0), // Will update later
+        platform_fee_amount: TokenAmount::from(0), // Will update later
+        platform_fee_percentage: 0, // Will update later
+        fee_transaction_id: None,
+        token_id: market.token_id.clone(),
+        token_symbol: String::new(), // Will update later
+        winning_bet_count: 0, // Will update later
+        used_time_weighting: market.uses_time_weighting,
+        time_weight_alpha: market.time_weight_alpha,
+        total_transfer_fees: TokenAmount::from(0), // Will update if applicable
+        distributable_profit: TokenAmount::from(0), // Will update if applicable
+        total_weighted_contribution: None, // Will update if time-weighted
+        distribution_details: Vec::new(),
+        failed_transactions: Vec::new(),
+    };
+    
     // Validate market state - allow both Active and ExpiredUnresolved markets to be finalized
     if !matches!(market.status, MarketStatus::Active | MarketStatus::ExpiredUnresolved) {
         return Err(ResolutionError::AlreadyResolved);
@@ -202,23 +215,35 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
     let token_info = get_token_info(token_id)
         .ok_or(ResolutionError::TransferError(format!("Token info not found for ID: {}", token_id)))?;
 
+    // Update token symbol in resolution details
+    resolution_details.token_symbol = token_info.symbol.clone();
+    resolution_details.platform_fee_percentage = token_info.fee_percentage;
+
     // Calculate total winning pool
     let total_winning_pool: StorableNat = winning_outcomes
         .iter()
         .map(|i| market.outcome_pools[i.to_u64() as usize].clone())
         .sum();
 
+    // Update resolution details with pool information
+    resolution_details.total_winning_pool = total_winning_pool.clone();
+
     ic_cdk::println!("Total winning pool: {}", total_winning_pool.to_u64());
     ic_cdk::println!("Total market pool: {}", market.total_pool.to_u64());
     
     // Calculate the total profit (losing bets)
     let total_profit = market.total_pool.to_u64() as u64 - total_winning_pool.to_u64();
+    resolution_details.total_profit = TokenAmount::from(total_profit);
+    
     ic_cdk::println!("Total profit (losing bets): {}", total_profit);
     
     // Calculate platform fee based on profit (1% for KONG, 2% for others)
     let fee_percentage = token_info.fee_percentage;
     let platform_fee_amount = total_profit * fee_percentage / 10000;
     let platform_fee = TokenAmount::from(platform_fee_amount);
+    
+    // Update platform fee in resolution details
+    resolution_details.platform_fee_amount = platform_fee.clone();
     
     // Calculate the remaining winning pool (for distribution)
     let remaining_pool_u64 = total_winning_pool.to_u64();
@@ -237,6 +262,10 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
     if platform_fee.to_u64() > token_info.transfer_fee.to_u64() {
         match handle_fee_transfer(platform_fee.clone(), token_id).await {
             Ok(Some(tx_id)) => {
+                // Store transaction ID in resolution details
+                // Convert Nat to u64 for storage in our resolution details
+                resolution_details.fee_transaction_id = Some(tx_id.0.to_u64().unwrap());
+                
                 ic_cdk::println!("Successfully burned platform fee of {} {} (Transaction ID: {})", 
                     platform_fee.to_u64() / 10u64.pow(token_info.decimals as u32), 
                     token_info.symbol, 
@@ -248,7 +277,21 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                     token_info.symbol);
             },
             Err(e) => {
-                ic_cdk::println!("Error processing platform fee: {:?}. Continuing with distribution.", e);
+                // Record fee transfer error in resolution details
+                let error_msg = format!("{:?}", e);
+                let system_principal = Principal::from_text("aaaaa-aa").unwrap_or(ic_cdk::caller());
+                // Create failure record for platform fee transfer
+                // Add failed transaction to resolution details with the updated structure
+                resolution_details.failed_transactions.push(FailedTransactionInfo {
+                    market_id: Some(market.id.clone()),
+                    user: system_principal,
+                    amount: platform_fee.clone(),
+                    token_id: Some(token_id.clone()),
+                    error: error_msg.clone(),
+                    timestamp: Some(get_current_time())
+                });
+                
+                ic_cdk::println!("Error processing platform fee: {}. Continuing with distribution.", error_msg);
                 // Continue with distribution even if fee processing fails
             }
         }
@@ -295,6 +338,9 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             let market_end_time = market.end_time.clone();
             let alpha = get_market_alpha(market);
             
+            // Update resolution details for time-weighted distribution
+            resolution_details.time_weight_alpha = Some(alpha);
+            
             ic_cdk::println!("Using time-weighted distribution with alpha: {}", alpha);
             
             // Calculate weighted contributions for each winning bet
@@ -332,6 +378,18 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 ));
                 total_weighted_contribution += weighted_contribution;
                 
+                // Add distribution detail to resolution details
+                resolution_details.distribution_details.push(BetDistributionDetail {
+                    user: bet.user,
+                    bet_amount: bet.amount.clone(),
+                    time_weight: Some(weight),
+                    weighted_contribution: Some(weighted_contribution),
+                    bonus_amount: TokenAmount::from(0), // Will update after bonus calculation
+                    total_payout: TokenAmount::from(0), // Will update after bonus calculation
+                    outcome_index: bet.outcome_index.clone(),
+                    claim_id: None, // Will update after claim creation
+                });
+                
                 ic_cdk::println!(
                     "Bet by {} at time {}, weight: {}, weighted contribution: {}",
                     bet.user.to_string(), 
@@ -341,6 +399,9 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 );
             }
             
+            // Store total weighted contribution in resolution details
+            resolution_details.total_weighted_contribution = Some(total_weighted_contribution);
+            
             // Use the profit and fee values already calculated
             let total_profit_f64 = total_profit as f64;
             let platform_fee_on_profit = platform_fee.to_u64() as f64;
@@ -348,6 +409,10 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             // Calculate total transfer fees needed for all winning bets
             let transfer_fee_per_payout = token_info.transfer_fee.to_u64() as f64;
             let total_transfer_fees = (weighted_contributions.len() as f64) * transfer_fee_per_payout;
+            
+            // Update resolution details with transfer fees
+            resolution_details.total_transfer_fees = TokenAmount::from(total_transfer_fees as u64);
+            
             ic_cdk::println!("Reserving {} {} for transfer fees ({} payouts)", 
                           total_transfer_fees / 10u64.pow(token_info.decimals as u32) as f64,
                           token_info.symbol,
@@ -355,6 +420,9 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             
             // Calculate the distributable profit after fees
             let distributable_profit = total_profit_f64 - platform_fee_on_profit - total_transfer_fees;
+            
+            // Update resolution details with distributable profit
+            resolution_details.distributable_profit = TokenAmount::from(distributable_profit as u64);
             
             // Initialize bonus pool with the distributable profit
             // Note: This will potentially be adjusted by the safety check below
@@ -424,6 +492,8 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             // The system distributes the bonus pool (profits from losing bets) proportionally
             // to each bet's weighted contribution, which combines bet amount and time weight.
             // Bets placed earlier have higher weights, resulting in higher proportional rewards.
+            let mut detail_index = 0;
+            
             for (user, bet_amount, weight, weighted_contribution, outcome_index) in weighted_contributions {
                 // Calculate the share of the bonus pool
                 let bonus_share = if total_weighted_contribution > 0.0 {
@@ -436,6 +506,14 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                 // Note: Transfer fee is already accounted for in the bonus pool calculation
                 let total_reward = bet_amount.to_u64() as f64 + bonus_share;
                 let gross_winnings = TokenAmount::from(total_reward as u64);
+                
+                // Update resolution details with bonus and final payout amounts
+                if detail_index < resolution_details.distribution_details.len() {
+                    let bonus_amount = TokenAmount::from(bonus_share as u64);
+                    resolution_details.distribution_details[detail_index].bonus_amount = bonus_amount;
+                    resolution_details.distribution_details[detail_index].total_payout = gross_winnings.clone();
+                }
+                detail_index += 1;
                 
                 ic_cdk::println!(
                     "Reward breakdown for {}: Original bet: {}, Bonus share: {} ({}% of profit), Total reward: {}",
@@ -491,6 +569,15 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                     token_id.clone(),
                     Timestamp::from(get_current_time()),
                 );
+                
+                // Update resolution details with claim ID
+                // Find the distribution detail for this user and outcome
+                for detail in &mut resolution_details.distribution_details {
+                    if detail.user == user && detail.outcome_index == outcome_index {
+                        detail.claim_id = Some(claim_id);
+                        break;
+                    }
+                }
                 
                 ic_cdk::println!("Created claim {} for user {} with amount {}", 
                               claim_id, user.to_string(), gross_winnings.to_u64());

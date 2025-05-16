@@ -16,6 +16,16 @@ export interface Bet {
   'amount' : bigint,
   'outcome_index' : bigint,
 }
+export interface BetDistributionDetail {
+  'weighted_contribution' : [] | [number],
+  'bet_amount' : bigint,
+  'bonus_amount' : bigint,
+  'time_weight' : [] | [number],
+  'claim_id' : [] | [bigint],
+  'total_payout' : bigint,
+  'user' : Principal,
+  'outcome_index' : bigint,
+}
 export type BetError = { 'MarketNotFound' : null } |
   { 'InsufficientActivationBet' : null } |
   { 'MarketClosed' : null } |
@@ -170,6 +180,14 @@ export interface FailedTransaction {
   'timestamp' : bigint,
   'amount' : bigint,
 }
+export interface FailedTransactionInfo {
+  'token_id' : [] | [string],
+  'market_id' : [] | [bigint],
+  'user' : Principal,
+  'error' : string,
+  'timestamp' : [] | [bigint],
+  'amount' : bigint,
+}
 export interface FailureDetails {
   'retry_count' : number,
   'error_message' : string,
@@ -228,6 +246,27 @@ export type MarketCategory = { 'AI' : null } |
   { 'Sports' : null };
 export type MarketEndTime = { 'SpecificDate' : bigint } |
   { 'Duration' : bigint };
+export interface MarketResolutionDetails {
+  'total_transfer_fees' : bigint,
+  'total_winning_pool' : bigint,
+  'total_market_pool' : bigint,
+  'platform_fee_amount' : bigint,
+  'token_id' : string,
+  'token_symbol' : string,
+  'failed_transactions' : Array<FailedTransactionInfo>,
+  'market_id' : bigint,
+  'total_weighted_contribution' : [] | [number],
+  'platform_fee_percentage' : bigint,
+  'used_time_weighting' : boolean,
+  'distribution_details' : Array<BetDistributionDetail>,
+  'resolution_timestamp' : bigint,
+  'time_weight_alpha' : [] | [number],
+  'winning_bet_count' : bigint,
+  'winning_outcomes' : Array<bigint>,
+  'distributable_profit' : bigint,
+  'fee_transaction_id' : [] | [bigint],
+  'total_profit' : bigint,
+}
 export interface MarketResult {
   'bet_count_percentages' : Array<number>,
   'outcome_pools' : Array<bigint>,
@@ -289,19 +328,21 @@ export type Result = { 'Ok' : null } |
   { 'Err' : string };
 export type Result_1 = { 'Ok' : bigint } |
   { 'Err' : string };
-export type Result_2 = { 'Ok' : ConsentInfo } |
+export type Result_2 = { 'Ok' : [] | [MarketResolutionDetails] } |
+  { 'Err' : string };
+export type Result_3 = { 'Ok' : ConsentInfo } |
   { 'Err' : ErrorInfo };
-export type Result_3 = { 'Ok' : DelegationResponse } |
-  { 'Err' : DelegationError };
-export type Result_4 = { 'Ok' : null } |
+export type Result_4 = { 'Ok' : DelegationResponse } |
   { 'Err' : DelegationError };
 export type Result_5 = { 'Ok' : null } |
-  { 'Err' : BetError };
+  { 'Err' : DelegationError };
 export type Result_6 = { 'Ok' : null } |
+  { 'Err' : BetError };
+export type Result_7 = { 'Ok' : null } |
   { 'Err' : ResolutionError };
-export type Result_7 = { 'Ok' : bigint } |
+export type Result_8 = { 'Ok' : bigint } |
   { 'Err' : string };
-export type Result_8 = { 'Ok' : [] | [bigint] } |
+export type Result_9 = { 'Ok' : [] | [bigint] } |
   { 'Err' : string };
 export interface RevokeDelegationRequest { 'targets' : Array<Principal> }
 export interface SearchMarketsArgs {
@@ -400,6 +441,7 @@ export interface _SERVICE {
   'get_market_bets' : ActorMethod<[bigint], Array<Bet>>,
   'get_market_claims' : ActorMethod<[bigint], Array<ClaimRecord>>,
   'get_market_payout_records' : ActorMethod<[bigint], Array<BetPayoutRecord>>,
+  'get_market_resolution_details' : ActorMethod<[bigint], Result_2>,
   'get_markets_by_creator' : ActorMethod<
     [GetMarketsByCreatorArgs],
     GetMarketsByCreatorResult
@@ -427,28 +469,28 @@ export interface _SERVICE {
   'get_user_pending_claims' : ActorMethod<[], Array<ClaimRecord>>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],
-    Result_2
+    Result_3
   >,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
-  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_3>,
-  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_3>,
+  'icrc_34_delegate' : ActorMethod<[DelegationRequest], Result_4>,
+  'icrc_34_get_delegation' : ActorMethod<[DelegationRequest], Result_4>,
   'icrc_34_revoke_delegation' : ActorMethod<
     [RevokeDelegationRequest],
-    Result_4
+    Result_5
   >,
   'is_admin' : ActorMethod<[Principal], boolean>,
   'mark_claim_processed' : ActorMethod<[bigint], boolean>,
   'mark_transaction_resolved' : ActorMethod<[bigint], Result>,
-  'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_5>,
+  'place_bet' : ActorMethod<[bigint, bigint, bigint, [] | [string]], Result_6>,
   'propose_resolution' : ActorMethod<[bigint, Array<bigint>], ResolutionResult>,
   'resolve_via_admin' : ActorMethod<[bigint, Array<bigint>], ResolutionResult>,
   'resolve_via_oracle' : ActorMethod<
     [bigint, Array<bigint>, Uint8Array | number[]],
-    Result_6
+    Result_7
   >,
   'retry_claim' : ActorMethod<[bigint], ClaimResult>,
-  'retry_market_transactions' : ActorMethod<[bigint], Array<Result_7>>,
-  'retry_transaction' : ActorMethod<[bigint], Result_8>,
+  'retry_market_transactions' : ActorMethod<[bigint], Array<Result_8>>,
+  'retry_transaction' : ActorMethod<[bigint], Result_9>,
   'search_markets' : ActorMethod<[SearchMarketsArgs], SearchMarketsResult>,
   'simulate_future_weight' : ActorMethod<[bigint, bigint, bigint], number>,
   'update_expired_markets' : ActorMethod<[], bigint>,
