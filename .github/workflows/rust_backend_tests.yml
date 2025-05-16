@@ -1,0 +1,55 @@
+name: Rust Backend Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-rust-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # Using a more recent version
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # components: rustfmt, clippy # Optional: add if you want to run linter/formatter
+          toolchain: stable # Or specify a version from your rust-toolchain.toml if needed, though it usually picks it up
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4 # Using a more recent version
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install PocketIC server
+        uses: dfinity/pocketic@main
+        # You can specify a version if needed, e.g.:
+        # with:
+        #   pocket-ic-server-version: "3.0.0" 
+
+      - name: Install DFINITY Canister SDK (dfx)
+        run: |
+          sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
+          echo "$HOME/.local/share/dfx/env" >> $GITHUB_ENV
+      
+      - name: Verify dfx installation
+        run: dfx --version
+
+      - name: Build kong_backend package
+        run: cargo build -p kong_backend --all-targets
+
+      - name: Run kong_backend tests
+        run: cargo test -p kong_backend
