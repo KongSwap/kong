@@ -23,6 +23,7 @@ use kong_backend::swap::swap_args::SwapArgs;
 use kong_backend::swap::swap_reply::SwapReply;
 
 // --- Balance Check Helper (used by multiple tests) ---
+// This function works for both ICRC1 tokens and ICP ledger (which implements ICRC1 interface)
 fn get_icrc1_balance(ic: &pocket_ic::PocketIc, ledger_id: Principal, account: Account) -> Nat {
     let payload = encode_one(account).expect("Failed to encode account for balance_of");
     let response = ic
