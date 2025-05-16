@@ -25,7 +25,6 @@ use crate::token::registry::KONG_LEDGER_ID_LOCAL;
 use crate::category::market_category::*;
 use crate::controllers::admin::*;
 use crate::resolution::resolution::*;
-use crate::stable_memory::*;
 use crate::types::{MarketId, Timestamp, TokenAmount, NANOS_PER_SECOND};
 use crate::storage::MARKETS;
 

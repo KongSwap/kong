@@ -26,7 +26,7 @@
 //! Please use those modules directly for new code. This module remains
 //! for backward compatibility but will be removed in a future release.
 
-use candid::{Principal, Nat};
+use candid::Principal;
 use ic_cdk::update;
 
 use crate::types::{MarketId, OutcomeIndex};

@@ -16,7 +16,6 @@ use crate::types::MarketResolutionDetails;
 use super::delegation::*;
 use crate::market::estimate_return_types::*;
 use crate::constants::PLATFORM_FEE_PERCENTAGE;
-use crate::stable_memory::*;
 use crate::storage::{DELEGATIONS, MARKETS};
 
 // Helper function to get current time in nanoseconds as a Timestamp type

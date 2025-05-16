@@ -1,8 +1,6 @@
 use ic_cdk::{update, heartbeat};
 use std::sync::atomic::{AtomicU64, Ordering};
 use crate::market::market::*;
-use crate::token::registry::*;
-use crate::stable_memory::*;
 use crate::types::StorableNat;
 use crate::storage::MARKETS;
 

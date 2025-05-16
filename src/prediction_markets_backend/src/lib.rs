@@ -44,10 +44,9 @@ use crate::user::user::*;
 use crate::token::registry::TokenInfo;
 use crate::transaction_recovery::FailedTransaction;
 // Claims system types
-use crate::claims::claims_types::*;
 use crate::claims::claims_api::*;
-// Market resolution details types
-use crate::types::{MarketResolutionDetails, BetDistributionDetail, FailedTransactionInfo};
+// Market resolution details type for API export
+use crate::types::MarketResolutionDetails;
 use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
 use icrc_ledger_types::icrc21::responses::ConsentInfo; 
 use icrc_ledger_types::icrc21::errors::ErrorInfo;

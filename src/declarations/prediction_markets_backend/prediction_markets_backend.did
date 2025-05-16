@@ -1,5 +1,6 @@
 type BatchClaimResult = record {
   claimed_amounts : vec record { text; nat };
+  transaction_ids : vec record { nat64; nat };
   failure_count : nat64;
   results : vec ClaimResult;
   success_count : nat64;

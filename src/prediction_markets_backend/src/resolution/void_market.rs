@@ -18,7 +18,7 @@ use crate::types::MarketId;
 use crate::token::registry::{get_token_info, TokenIdentifier};
 use crate::token::transfer::{transfer_token, TokenTransferError};
 use crate::transaction_recovery::record_failed_transaction;
-use crate::storage::{MARKETS, self};
+use crate::storage::MARKETS;
 
 /// Helper function with retry logic specifically for void market refunds
 /// 

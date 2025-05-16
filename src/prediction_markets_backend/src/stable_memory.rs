@@ -25,9 +25,7 @@ use super::delegation::*;
 use crate::market::market::*;
 use crate::resolution::resolution::ResolutionProposal;
 use crate::types::{MarketId, MarketResolutionDetails};
-use crate::claims::claims_storage;
 use crate::storage::{NEXT_MARKET_ID, MARKET_RESOLUTION_DETAILS};
-use std::collections::HashMap;
 
 /// Type alias for the virtual memory used by stable collections
 /// 

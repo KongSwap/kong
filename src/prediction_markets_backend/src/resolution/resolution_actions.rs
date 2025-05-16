@@ -6,7 +6,6 @@
 use candid::{Principal, Nat};
 
 use crate::resolution::finalize_market::finalize_market;
-use crate::resolution::resolution_auth::*;
 use crate::resolution::resolution_refunds::create_refund_claims;
 use crate::resolution::resolution::{*, ResolutionResult};
 use crate::controllers::admin::*;

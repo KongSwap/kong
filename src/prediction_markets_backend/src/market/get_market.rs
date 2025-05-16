@@ -1,9 +1,6 @@
 use ic_cdk::query;
 
 use super::market::*;
-use crate::market::market::*;
-use crate::nat::*;
-use crate::stable_memory::*;
 use crate::storage::MARKETS;
 use crate::market::query_utils::MarketTransformer;
 use crate::types::MarketId;

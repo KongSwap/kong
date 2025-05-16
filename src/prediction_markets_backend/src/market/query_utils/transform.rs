@@ -8,7 +8,6 @@ use num_traits::ToPrimitive;
 
 use crate::market::market::{Market, MarketResult, Distribution, MarketStatus};
 use crate::nat::StorableNat;
-use crate::storage;
 use crate::types::{MarketId, BetCount, TokenAmount};
 
 /// Handles transformation of market data into appropriate response formats

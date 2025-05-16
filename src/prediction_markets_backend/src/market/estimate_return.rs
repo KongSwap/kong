@@ -4,7 +4,6 @@ use crate::nat::StorableNat;
 use crate::utils::time_weighting::*;
 use crate::utils::fee_utils::{calculate_platform_fee, calculate_amount_after_fee};
 use crate::constants::PLATFORM_FEE_PERCENTAGE;
-use crate::storage::BETS;
 use crate::types::{TokenAmount, OutcomeIndex, Timestamp};
 
 /// Estimate the potential return for a bet

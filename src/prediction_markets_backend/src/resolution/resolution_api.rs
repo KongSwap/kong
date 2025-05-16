@@ -6,7 +6,7 @@
 
 use crate::resolution::resolution_proposal;
 use crate::types::{MarketId, OutcomeIndex};
-use crate::resolution::resolution::{ResolutionError, ResolutionResult};
+use crate::resolution::resolution::ResolutionResult;
 
 /// Resolve the market through admin decision (public API endpoint)
 ///

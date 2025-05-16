@@ -5,7 +5,6 @@ use serde::Deserialize;
 use super::market::Market;
 use super::query_utils::{MarketFilter, MarketSorter, MarketTransformer, SortDirection, MarketSortField};
 
-use crate::stable_memory::*;
 use crate::nat::StorableNat;
 use crate::storage::MARKETS;
 

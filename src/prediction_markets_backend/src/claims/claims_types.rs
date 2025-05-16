@@ -124,7 +124,7 @@ pub struct ClaimResult {
     pub error: Option<String>,
 }
 
-/// Result of a batch claim operation
+/// Results of batch claim processing operation
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct BatchClaimResult {
     /// Results of individual claim operations
@@ -135,4 +135,6 @@ pub struct BatchClaimResult {
     pub success_count: u64,
     /// Count of failed claims
     pub failure_count: u64,
+    /// Map of successful claim IDs to their transaction IDs for easy reference
+    pub transaction_ids: HashMap<u64, candid::Nat>,
 }

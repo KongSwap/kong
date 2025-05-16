@@ -41,6 +41,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const BatchClaimResult = IDL.Record({
     'claimed_amounts' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat)),
+    'transaction_ids' : IDL.Vec(IDL.Tuple(IDL.Nat64, IDL.Nat)),
     'failure_count' : IDL.Nat64,
     'results' : IDL.Vec(ClaimResult),
     'success_count' : IDL.Nat64,

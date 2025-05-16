@@ -248,15 +248,18 @@ section "Step 10: Checking market status after resolution"
 
 run_dfx "dfx canister call prediction_markets_backend get_market \"(\$MARKET_ID)\"" "Getting market details after resolution"
 
-# Step 11 removed: User history checking is more frontend-focused
+# Step 11: Checking market resolution details
+section "Step 11: Checking market resolution details"
+run_dfx "dfx identity use default" "Switching to default (admin) identity"
+run_dfx "dfx canister call prediction_markets_backend get_market_resolution_details \"(\$MARKET_ID)\"" "Getting resolution details for market"
 
-# Step 11: Checking market payout records to verify time-weighted payouts
-section "Step 11: Checking market payout records to verify time-weighted payouts"
+# Step 12: Checking market payout records to verify time-weighted payouts
+section "Step 12: Checking market payout records to verify time-weighted payouts"
 
 run_dfx "dfx canister call prediction_markets_backend get_market_payout_records \"(\$MARKET_ID)\"" "Getting payout records for market"
 
-# Step 12: Checking for pending claims for each user
-section "Step 12: Checking for pending claims"
+# Step 13: Checking for pending claims for each user
+section "Step 13: Checking for pending claims"
 
 # Alice's pending claims
 run_dfx "dfx identity use alice" "Switching to Alice identity"
@@ -274,8 +277,8 @@ run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"
 run_dfx "dfx identity use dave" "Switching to Dave identity"
 run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"()\"" "Checking Dave's pending claims"
 
-# Step 13: Claiming winnings for users with pending claims
-section "Step 13: Claiming winnings"
+# Step 14: Claiming winnings for users with pending claims
+section "Step 14: Claiming winnings"
 
 # Function to extract claim IDs from pending claims output and claim them
 claim_winnings() {

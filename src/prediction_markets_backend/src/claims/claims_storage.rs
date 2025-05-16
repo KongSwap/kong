@@ -5,7 +5,7 @@
 
 use candid::Principal;
 use std::cell::RefCell;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::HashMap;
 
 use crate::types::{MarketId, TokenAmount, TokenIdentifier};
 use crate::canister::get_current_time;

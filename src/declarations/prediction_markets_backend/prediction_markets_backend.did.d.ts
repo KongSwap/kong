@@ -4,6 +4,7 @@ import type { IDL } from '@dfinity/candid';
 
 export interface BatchClaimResult {
   'claimed_amounts' : Array<[string, bigint]>,
+  'transaction_ids' : Array<[bigint, bigint]>,
   'failure_count' : bigint,
   'results' : Array<ClaimResult>,
   'success_count' : bigint,

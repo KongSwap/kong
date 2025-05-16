@@ -64,14 +64,13 @@ use super::resolution::*;
 use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::canister::{get_current_time, record_market_payout};
 use crate::market::market::*;
-use crate::storage::{BETS, store_market_resolution_details};
+use crate::storage::BETS;
 use crate::token::transfer::{transfer_token, handle_fee_transfer, TokenTransferError};
 use crate::token::registry::{get_token_info, TokenIdentifier};
 use crate::utils::time_weighting::{get_market_alpha, calculate_time_weight, calculate_weighted_contribution};
 use crate::claims::claims_processing::create_winning_claim;
 
 // Import re-exported types from lib.rs
-use crate::MarketId;
 use crate::TokenAmount;
 use crate::OutcomeIndex;
 use crate::Timestamp;
@@ -743,8 +742,16 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
     // any further bets or resolutions on this market
     market.status = MarketStatus::Closed(winning_outcomes.into_iter().map(|x| x.inner().clone()).collect());
     
+    // Store resolution details in the thread-local storage
+    crate::storage::MARKET_RESOLUTION_DETAILS.with(|details| {
+        details.borrow_mut().insert(market.id.clone(), resolution_details.clone());
+    });
+    
     ic_cdk::println!("Market {} successfully finalized with {} winning bets paid out", 
                   market.id.to_u64(), winning_bet_count);
+    
+    ic_cdk::println!("Market {} successfully finalized and persisted", 
+                  market.id.to_u64());
     
     Ok(())
 }

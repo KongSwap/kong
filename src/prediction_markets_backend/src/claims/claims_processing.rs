@@ -114,6 +114,7 @@ pub async fn process_claim(claim_id: u64) -> ClaimResult {
 pub async fn process_claims(claim_ids: Vec<u64>) -> BatchClaimResult {
     let mut results = Vec::new();
     let mut claimed_amounts: HashMap<TokenIdentifier, TokenAmount> = HashMap::new();
+    let mut transaction_ids: HashMap<u64, candid::Nat> = HashMap::new();
     let mut success_count = 0;
     let mut failure_count = 0;
     
@@ -123,6 +124,11 @@ pub async fn process_claims(claim_ids: Vec<u64>) -> BatchClaimResult {
         if result.success {
             // If successful, update the claimed amount summary
             success_count += 1;
+            
+            // Store the transaction ID for successful claims
+            if let Some(block_index) = &result.block_index {
+                transaction_ids.insert(claim_id, block_index.clone());
+            }
             
             if let Some(claim) = get_claim(claim_id) {
                 claimed_amounts
@@ -142,6 +148,7 @@ pub async fn process_claims(claim_ids: Vec<u64>) -> BatchClaimResult {
         claimed_amounts,
         success_count,
         failure_count,
+        transaction_ids,
     }
 }
 

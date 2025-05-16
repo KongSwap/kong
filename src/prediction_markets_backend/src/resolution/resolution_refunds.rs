@@ -4,7 +4,6 @@
 //! with disagreements.
 
 use crate::market::market::*;
-use crate::storage::get_bets_for_market;
 use crate::types::MarketId;
 use crate::token::registry::get_token_info;
 use crate::token::transfer::transfer_token;

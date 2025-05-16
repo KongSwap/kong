@@ -5,7 +5,6 @@
 //! It defines thread-local variables for transient state and proxy functions to access
 //! the stable memory storage.
 
-use candid::Principal;
 use crate::types::{MarketId, MarketResolutionDetails};
 use crate::bet::bet::Bet;
 use std::cell::RefCell;
