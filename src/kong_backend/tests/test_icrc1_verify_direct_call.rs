@@ -57,26 +57,24 @@ fn test_verify_transfer_direct_function_call() {
 
     // Create ICToken instance for verification
     let ic_token = ICToken {
-        token_id: 0, // Dummy value for test
+        token_id: 0,
         name: ledger_config.token_name,
         symbol: ledger_config.token_symbol,
         canister_id: token_canister_id,
         decimals: ledger_config.decimals,
         fee: ledger_config.transfer_fee,
-        icrc1: true,     // Assuming simple ledger is ICRC1
-        icrc2: false,    // Assuming simple ledger is not ICRC2
-        icrc3: false,    // Assuming simple ledger is not ICRC3 for this basic test
+        icrc1: true,
+        icrc2: false,
+        icrc3: true,
         is_removed: false,
     };
     let stable_token = StableToken::IC(ic_token);
 
-    // Verify the transfer (expect panic when run outside a canister)
-    let verification_panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        block_on(verify_transfer(&stable_token, &tx_id, &transfer_amount))
-    }));
+    let result = block_on(verify_transfer(&stable_token, &tx_id, &transfer_amount));
+    assert!(result.is_ok(), "Transfer verification failed: {:?}", result.err());
 
-    // verify_transfer relies on ic_cdk::api::time() which panics outside of a canister. We
-    // therefore assert that a panic indeed occurs, proving that we reached the call site
-    // inside verify.rs and that the function was executed up to that point.
-    assert!(verification_panic.is_err(), "verify_transfer did not panic as expected outside canister context");
+    // TODO fix
+    // thread 'test_verify_transfer_direct_function_call' panicked at .cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ic0-0.23.0/src/ic0.rs:215:9:
+    // time should only be called inside canisters.
+
 }
