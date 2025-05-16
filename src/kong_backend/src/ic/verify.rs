@@ -1,9 +1,12 @@
+use candid::Principal;
 use candid::{CandidType, Deserialize, Nat};
 use ic_ledger_types::{query_blocks, AccountIdentifier, Block, GetBlocksArgs, Operation, Subaccount, Tokens};
 use icrc_ledger_types::icrc::generic_value::ICRC3Value;
+use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc3::blocks::{GetBlocksRequest as ICRC3GetBlocksRequest, GetBlocksResult as ICRC3GetBlocksResult};
 use icrc_ledger_types::icrc3::transactions::{GetTransactionsRequest, GetTransactionsResponse};
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 use crate::helpers::nat_helpers::nat_to_u64;
 use crate::ic::get_time::get_time;
@@ -13,8 +16,9 @@ use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use num_traits::cast::ToPrimitive;
 
-use super::icrc3;
 use super::wumbo::Transaction1;
+
+const SUBACCOUNT_LENGTH: usize = 32;
 
 #[cfg(not(feature = "prod"))]
 const ICP_CANISTER_ID: &str = "IC.nppha-riaaa-aaaal-ajf2q-cai"; // Testnet ICP Ledger
@@ -95,6 +99,44 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
         }
         _ => Err("Verify transfer not supported for this token")?,
     }
+}
+
+fn try_decode_icrc3_account_value(icrc3_value_arr: &[ICRC3Value]) -> Option<Account> {
+    if let Some(ICRC3Value::Blob(blob)) = icrc3_value_arr.first() {
+        if let Ok(owner) = Principal::try_from_slice(blob) {
+            let subaccount = if icrc3_value_arr.len() >= 2 {
+                icrc3_value_arr.get(1).and_then(|val| match val {
+                    ICRC3Value::Blob(blob2) if blob2.len() == SUBACCOUNT_LENGTH => blob2.as_slice().try_into().ok(),
+                    _ => None,
+                })
+            } else {
+                None
+            };
+            return Some(Account { owner, subaccount });
+        }
+    }
+
+    if icrc3_value_arr.len() == 1 {
+        if let Some(ICRC3Value::Blob(blob)) = icrc3_value_arr.first() {
+            if let Ok(map) = ciborium::de::from_reader::<BTreeMap<String, ciborium::value::Value>, _>(blob.as_slice()) {
+                let owner_bytes = match map.get("owner") {
+                    Some(ciborium::value::Value::Bytes(bytes)) => bytes.as_slice(),
+                    _ => return None,
+                };
+                let owner = Principal::try_from_slice(owner_bytes).ok()?;
+                let subaccount = map.get("subaccount").and_then(|val| match val {
+                    ciborium::value::Value::Bytes(bytes) if !bytes.is_empty() && bytes.len() == SUBACCOUNT_LENGTH => {
+                        let mut sa = [0u8; SUBACCOUNT_LENGTH];
+                        sa.copy_from_slice(bytes);
+                        Some(sa)
+                    }
+                    _ => None,
+                });
+                return Some(Account { owner, subaccount });
+            }
+        }
+    }
+    None
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -192,7 +234,7 @@ async fn attempt_icrc3_get_blocks_verify_transfer(
                 let tx_from = if let Some(ICRC3Value::Map(tx)) = tx_map {
                     tx.get("from").and_then(|v| {
                         if let ICRC3Value::Array(arr) = v {
-                            icrc3::try_decode_icrc3_account_value(arr)
+                            try_decode_icrc3_account_value(arr)
                         } else {
                             None
                         }
@@ -200,7 +242,7 @@ async fn attempt_icrc3_get_blocks_verify_transfer(
                 } else {
                     fields.get("from").and_then(|v| {
                         if let ICRC3Value::Array(arr) = v {
-                            icrc3::try_decode_icrc3_account_value(arr)
+                            try_decode_icrc3_account_value(arr)
                         } else {
                             None
                         }
@@ -215,7 +257,7 @@ async fn attempt_icrc3_get_blocks_verify_transfer(
                 let tx_to = if let Some(ICRC3Value::Map(tx)) = tx_map {
                     tx.get("to").and_then(|v| {
                         if let ICRC3Value::Array(arr) = v {
-                            icrc3::try_decode_icrc3_account_value(arr)
+                            try_decode_icrc3_account_value(arr)
                         } else {
                             None
                         }
@@ -223,7 +265,7 @@ async fn attempt_icrc3_get_blocks_verify_transfer(
                 } else {
                     fields.get("to").and_then(|v| {
                         if let ICRC3Value::Array(arr) = v {
-                            icrc3::try_decode_icrc3_account_value(arr)
+                            try_decode_icrc3_account_value(arr)
                         } else {
                             None
                         }
@@ -238,7 +280,7 @@ async fn attempt_icrc3_get_blocks_verify_transfer(
                 let tx_spender = if let Some(ICRC3Value::Map(tx)) = tx_map {
                     tx.get("spender").and_then(|v| {
                         if let ICRC3Value::Array(arr) = v {
-                            icrc3::try_decode_icrc3_account_value(arr)
+                            try_decode_icrc3_account_value(arr)
                         } else {
                             None
                         }
@@ -246,7 +288,7 @@ async fn attempt_icrc3_get_blocks_verify_transfer(
                 } else {
                     fields.get("spender").and_then(|v| {
                         if let ICRC3Value::Array(arr) = v {
-                            icrc3::try_decode_icrc3_account_value(arr)
+                            try_decode_icrc3_account_value(arr)
                         } else {
                             None
                         }
