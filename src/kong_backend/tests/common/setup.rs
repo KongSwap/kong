@@ -5,6 +5,7 @@ use pocket_ic::PocketIc;
 use crate::common::identity::get_identity_from_pem_file;
 // Import the helper for creating Kong backend at a specific ID
 use crate::common::kong_backend::create_kong_backend_with_id;
+use crate::common::test_tokens::initialize_default_tokens;
 
 pub const CONTROLLER_PEM_FILE: &str = "tests/common/identity.pem";
 
@@ -25,8 +26,9 @@ pub fn setup_ic_environment() -> Result<(PocketIc, Principal)> {
         &ic,
         specific_kong_id,
         controller_principal_id,
-        // Init args still `()`
     )?;
+
+    initialize_default_tokens(&ic, kong_backend, controller_principal_id)?;
 
     Ok((ic, kong_backend))
 }

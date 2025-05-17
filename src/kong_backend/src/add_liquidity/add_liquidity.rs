@@ -51,7 +51,7 @@ pub enum TokenIndex {
 /// 6. calculate_amounts() - re-calculate the amounts to be added to the pool with new state with amount_0, amount_1, lp_token being the final amounts
 /// 7. update_liquidity_pool() - update pool with amount_0, amount_1, add_lp_token_amount
 /// 8. send_lp_token() - if no errors, send add_lp_token_amount to user. send back any extra (add_amount_0 - amount) and (add_amount_1 - amount)
-/// 9. return_tokens() - otherwise if any errors occured, return tokens
+/// 9. return_tokens() - otherwise if any errors occurred, return tokens
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_liquidity(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
     // determine if using icrc2_approve or irc1_transfer method
@@ -67,7 +67,7 @@ pub async fn add_liquidity(args: AddLiquidityArgs) -> Result<AddLiquidityReply, 
 /// Arguments: AddLiquidityArgs
 /// symbol_0: symbol of token_0 eg. "ckBTC"
 /// amount_0: amount of token_0 to add (nat) eg. 100_000_000 is 1 ICP
-/// symbol_1: symbol of token_1 eg. "ckUS
+/// symbol_1: symbol of token_1 eg. "ckUSDT"
 /// amount_1: amount of token_1 to add (nat) eg. 1_000_000 is 1 ckUSDT
 ///
 /// Returns: u64 - request_id. poll requests(request_id) to return the current status of the request
