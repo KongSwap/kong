@@ -339,7 +339,7 @@ fn test_add_pool_icrc2_transfer_from() {
 
     let user_balance_a_after_pool = common::icrc1_ledger::get_icrc1_balance(&ic, token_a_ledger_id, user_account);
     let expected_user_balance_a = total_mint_amount_a - token_a_fee.clone() - token_a_liquidity_amount - token_a_fee.clone();
-    if user_balance_a_after_pool != expected_user_balance_a && user_balance_a_after_pool != Nat::from(0u64) {
+    if user_balance_a_after_pool != expected_user_balance_a && user_balance_a_after_pool != 0u64 {
         panic!(
             "User balance for Token A is neither the expected value nor zero: expected {} or 0, got {}",
             expected_user_balance_a, user_balance_a_after_pool
@@ -348,7 +348,7 @@ fn test_add_pool_icrc2_transfer_from() {
 
     let user_balance_b_after_pool = common::icrc1_ledger::get_icrc1_balance(&ic, token_b_ledger_id, user_account);
     let expected_user_balance_b = total_mint_amount_b - token_b_fee.clone() - token_b_liquidity_amount - token_b_fee.clone();
-    if user_balance_b_after_pool != expected_user_balance_b && user_balance_b_after_pool != Nat::from(0u64) {
+    if user_balance_b_after_pool != expected_user_balance_b && user_balance_b_after_pool != 0u64 {
         panic!(
             "User balance for Token B is neither the expected value nor zero: expected {} or 0, got {}",
             expected_user_balance_b, user_balance_b_after_pool

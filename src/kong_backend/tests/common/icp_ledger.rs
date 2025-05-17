@@ -1,12 +1,12 @@
 use anyhow::Result;
-use candid::{decode_one, encode_one, CandidType, Principal, Deserialize, Nat};
+use candid::{decode_one, encode_one, CandidType, Deserialize, Nat, Principal};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
-use icrc_ledger_types::icrc2::approve::{ApproveArgs, ApproveError};
 use icrc_ledger_types::icrc2::allowance::{Allowance, AllowanceArgs};
+use icrc_ledger_types::icrc2::approve::{ApproveArgs, ApproveError};
 use pocket_ic::PocketIc;
-use std::fs;
 use serde_bytes;
+use std::fs;
 
 use crate::common::canister::{create_canister, create_canister_with_id}; // Added create_canister_with_id
 
@@ -64,12 +64,14 @@ pub struct UpgradeArgs {
     pub feature_flags: Option<FeatureFlags>,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(CandidType, Clone)]
 pub enum LedgerCanisterPayload {
     Init(InitArgs),
     Upgrade(Option<UpgradeArgs>),
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(CandidType, Clone)]
 pub enum LedgerArg {
     Init(InitArgs),
@@ -79,16 +81,16 @@ pub enum LedgerArg {
 pub fn create_icp_ledger(ic: &PocketIc, controller: &Option<Principal>, ledger_arg: &LedgerArg) -> Result<Principal> {
     let icp_ledger = create_canister(ic, controller, &None);
     let wasm_module = fs::read(ICP_LEDGER_WASM)?;
-    
+
     // Convert to LedgerCanisterPayload as expected by the Candid definition
     let payload = match ledger_arg {
         LedgerArg::Init(init_args) => LedgerCanisterPayload::Init(init_args.clone()),
         LedgerArg::Upgrade(upgrade_args) => LedgerCanisterPayload::Upgrade(Some(upgrade_args.clone())),
     };
-    
+
     // Encode the payload
     let args = encode_one(payload)?;
-    
+
     ic.install_canister(icp_ledger, wasm_module, args, *controller);
     Ok(icp_ledger)
 }
@@ -97,9 +99,9 @@ pub fn create_icp_ledger(ic: &PocketIc, controller: &Option<Principal>, ledger_a
 /// This is analogous to `create_icrc1_ledger_with_id` but for the ICP ledger,
 pub fn create_icp_ledger_with_id(
     ic: &PocketIc,
-    canister_id: Principal,    // The specific ID for the ICP ledger
-    controller: Principal,     // Controller for the new ledger
-    ledger_arg: &LedgerArg,    // This is the ICP-specific LedgerArg from this file
+    canister_id: Principal, // The specific ID for the ICP ledger
+    controller: Principal,  // Controller for the new ledger
+    ledger_arg: &LedgerArg, // This is the ICP-specific LedgerArg from this file
 ) -> Result<Principal> {
     // 1. Create the canister shell with the specified ID
     let ledger_canister_id = create_canister_with_id(ic, canister_id, controller)?;
@@ -114,7 +116,7 @@ pub fn create_icp_ledger_with_id(
         LedgerArg::Init(init_args) => LedgerCanisterPayload::Init(init_args.clone()),
         LedgerArg::Upgrade(upgrade_args) => LedgerCanisterPayload::Upgrade(Some(upgrade_args.clone())),
     };
-    
+
     // Encode the payload
     let args = encode_one(payload)?;
 
@@ -134,12 +136,7 @@ pub fn get_icp_balance(ic: &PocketIc, ledger_id: Principal, account: Account) ->
 }
 
 /// Checks the allowance for an ICRC2 account in ICP ledger
-pub fn get_icp_allowance(
-    ic: &PocketIc,
-    ledger_id: Principal,
-    owner_account: Account,
-    spender_account: Account,
-) -> Allowance {
+pub fn get_icp_allowance(ic: &PocketIc, ledger_id: Principal, owner_account: Account, spender_account: Account) -> Allowance {
     let args = AllowanceArgs {
         account: owner_account,
         spender: spender_account,
@@ -153,13 +150,13 @@ pub fn get_icp_allowance(
 
 /// Transfers ICRC1 tokens from ICP ledger
 pub fn icp_transfer(
-    ic: &PocketIc, 
-    ledger_id: Principal, 
-    sender: Principal, 
-    to: Account, 
-    amount: Nat, 
-    fee: Option<Nat>, 
-    memo: Option<Vec<u8>>
+    ic: &PocketIc,
+    ledger_id: Principal,
+    sender: Principal,
+    to: Account,
+    amount: Nat,
+    fee: Option<Nat>,
+    memo: Option<Vec<u8>>,
 ) -> Result<Nat, TransferError> {
     let transfer_args = TransferArg {
         from_subaccount: None,
@@ -173,21 +170,21 @@ pub fn icp_transfer(
     let transfer_response = ic
         .update_call(ledger_id, sender, "icrc1_transfer", transfer_payload)
         .expect("Failed to call icrc1_transfer on ICP ledger");
-    decode_one::<Result<Nat, TransferError>>(&transfer_response)
-        .expect("Failed to decode icrc1_transfer response from ICP ledger")
+    decode_one::<Result<Nat, TransferError>>(&transfer_response).expect("Failed to decode icrc1_transfer response from ICP ledger")
 }
 
 /// Approves an ICRC2 spender in ICP ledger
+#[allow(clippy::too_many_arguments)]
 pub fn icp_approve(
-    ic: &PocketIc, 
-    ledger_id: Principal, 
-    sender: Principal, 
-    spender: Account, 
-    amount: Nat, 
-    expected_allowance: Option<Nat>, 
-    expires_at: Option<u64>, 
+    ic: &PocketIc,
+    ledger_id: Principal,
+    sender: Principal,
+    spender: Account,
+    amount: Nat,
+    expected_allowance: Option<Nat>,
+    expires_at: Option<u64>,
     fee: Option<Nat>,
-    memo: Option<Vec<u8>>
+    memo: Option<Vec<u8>>,
 ) -> Result<Nat, ApproveError> {
     let approve_args = ApproveArgs {
         from_subaccount: None,
@@ -203,6 +200,5 @@ pub fn icp_approve(
     let approve_response = ic
         .update_call(ledger_id, sender, "icrc2_approve", approve_payload)
         .expect("Failed to call icrc2_approve on ICP ledger");
-    decode_one::<Result<Nat, ApproveError>>(&approve_response)
-        .expect("Failed to decode icrc2_approve response from ICP ledger")
+    decode_one::<Result<Nat, ApproveError>>(&approve_response).expect("Failed to decode icrc2_approve response from ICP ledger")
 }
