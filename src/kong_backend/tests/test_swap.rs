@@ -49,7 +49,7 @@ fn test_swap_approve_transfer_from_a_to_b() {
     let token_a_str = setup.token_a_str;
     let token_b_str = setup.token_b_str;
 
-    let approve_swap_amount_a = setup.base_approve_swap_a_amount;
+    let approve_swap_amount_a = setup.base_approve_swap_a;
     let amount_out_min_b_approve_swap = Nat::from(1u64); // Expect at least 1 tiny unit of B out
 
     // --- Act ---
@@ -100,7 +100,7 @@ fn test_swap_approve_transfer_from_a_to_b() {
     println!("\n--- Calling swap (Approve/TransferFrom Flow) ---");
     let swap_args_approve = SwapArgs {
         pay_token: token_a_str.clone(),
-        pay_amount: approve_swap_amount_a.clone(), // The actual amount to swap
+        pay_amount: Nat::from(approve_swap_amount_a), // The actual amount to swap
         pay_tx_id: None,                           // Swap uses transfer_from, so no tx_id needed here
         receive_token: token_b_str.clone(),
         receive_amount: Some(amount_out_min_b_approve_swap.clone()), // Minimum expected
@@ -211,7 +211,7 @@ fn test_swap_direct_transfer_a_to_b() {
     let token_a_str = setup.token_a_str;
     let token_b_str = setup.token_b_str;
 
-    let direct_swap_amount_a = setup.base_direct_swap_a_amount;
+    let direct_swap_amount_a = setup.base_transfer_swap_a;
     let amount_out_min_b_direct_swap = Nat::from(1u64);
 
     // Get balances before direct transfer swap
@@ -237,7 +237,7 @@ fn test_swap_direct_transfer_a_to_b() {
     let transfer_direct_swap_a_args = TransferArg {
         from_subaccount: None,
         to: kong_account, // Send TO Kong
-        amount: direct_swap_amount_a.clone(),
+        amount: Nat::from(direct_swap_amount_a),
         fee: None, // Use default fee (User pays this)
         memo: None,
         created_at_time: None,
@@ -279,7 +279,7 @@ fn test_swap_direct_transfer_a_to_b() {
     println!("\n--- Calling swap (Direct Transfer Flow A -> B) ---");
     let swap_args_direct_a = SwapArgs {
         pay_token: token_a_str.clone(),
-        pay_amount: direct_swap_amount_a.clone(),
+        pay_amount: Nat::from(direct_swap_amount_a),
         pay_tx_id: Some(TxId::BlockIndex(tx_id_direct_swap_a)), // Provide the tx_id
         receive_token: token_b_str.clone(),
         receive_amount: Some(amount_out_min_b_direct_swap.clone()), // Minimum expected
@@ -378,7 +378,7 @@ fn test_swap_direct_transfer_b_to_a() {
     let token_a_str = setup.token_a_str;
     let token_b_str = setup.token_b_str;
 
-    let direct_swap_amount_b = setup.base_direct_swap_b_amount;
+    let direct_swap_amount_b = setup.base_transfer_swap_b;
     let amount_out_min_a_direct_swap = Nat::from(1u64); // Expect at least 1 tiny unit of A out
 
     // Get balances before direct transfer swap B->A
@@ -404,7 +404,7 @@ fn test_swap_direct_transfer_b_to_a() {
     let transfer_direct_swap_b_args = TransferArg {
         from_subaccount: None,
         to: kong_account, // Send TO Kong
-        amount: direct_swap_amount_b.clone(),
+        amount: Nat::from(direct_swap_amount_b),
         fee: None, // Use default fee (User pays this)
         memo: None,
         created_at_time: None,
@@ -446,7 +446,7 @@ fn test_swap_direct_transfer_b_to_a() {
     println!("\n--- Calling swap (Direct Transfer Flow B -> A) ---");
     let swap_args_direct_b = SwapArgs {
         pay_token: token_b_str.clone(), // Pay with B
-        pay_amount: direct_swap_amount_b.clone(),
+        pay_amount: Nat::from(direct_swap_amount_b),
         pay_tx_id: Some(TxId::BlockIndex(tx_id_direct_swap_b)), // Provide the tx_id
         receive_token: token_a_str.clone(),                     // Receive A
         receive_amount: Some(amount_out_min_a_direct_swap.clone()), // Minimum expected A

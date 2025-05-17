@@ -36,6 +36,7 @@ fn setup_test_token(ic: &pocket_ic::PocketIc, controller: Principal) -> Result<P
         initial_balances: vec![],
         feature_flags: Some(FeatureFlags {
             icrc2: true,
+            icrc3: true,
         }),
         archive_options: ArchiveOptions {
             num_blocks_to_archive: 5_000,

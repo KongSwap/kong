@@ -6,3 +6,4 @@ pub mod identity;
 pub mod kong_backend;
 pub mod setup;
 pub mod setup_with_pool;
+pub mod test_tokens;
