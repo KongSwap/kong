@@ -20,6 +20,9 @@ This canister implements a complete prediction markets platform where users can:
    - Support for different categories (Crypto, Sports, Politics, Memes, etc.)
    - User and admin market creation with validation
    - Market activation requiring minimum bet amount
+   - Featured markets functionality for highlighting important markets in the UI
+   - Admin controls for managing featured market status
+   - Smart sorting to prioritize featured markets in listings
    - Comprehensive market querying capabilities
 
 2. **Betting System**
@@ -442,6 +445,40 @@ get_market_payout_records : (nat64) -> (vec BetPayoutRecord) query;
 ```
 
 Parameters: market_id
+
+#### Featured Markets Management
+
+```candid
+set_market_featured : (nat, bool) -> (variant { Ok; Err : text });
+```
+
+Parameters: market_id, featured_status
+
+Admin-only function to set or unset the featured status of a market.
+
+```candid
+get_featured_markets : (GetFeaturedMarketsArgs) -> (GetFeaturedMarketsResult) query;
+```
+
+Parameters:
+
+```candid
+type GetFeaturedMarketsArgs = record {
+  start : nat;
+  length : nat;
+};
+```
+
+Returns:
+
+```candid
+type GetFeaturedMarketsResult = record {
+  markets : vec Market;
+  total : nat;
+};
+```
+
+Query function to retrieve paginated featured markets.
 
 ### Benefits
 
