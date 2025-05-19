@@ -6,7 +6,7 @@
 use super::resolution::*;
 use super::finalize_market::finalize_market;
 use crate::controllers::admin::is_admin;
-use crate::resolution::resolution_refunds::create_refund_claims;
+use crate::resolution::resolution_refunds::{create_refund_claims, create_dispute_refund_claims};
 use crate::types::*;
 use crate::market::market::*;
 use crate::storage::*;
@@ -256,9 +256,10 @@ async fn handle_resolution_disagreement(
         market_id.to_u64()
     );
     
-    // Process refunds for all bets (except for the creator's deposit)
-    // This creates claims for all bettors to withdraw their funds
-    if let Err(e) = create_refund_claims(&market_id, &market, "DisagreementVoid") {
+    // Process refunds for all bets AND burn the creator's deposit
+    // This creates claims for all bettors to withdraw their funds,
+    // except for the creator's activation deposit which gets burned
+    if let Err(e) = create_dispute_refund_claims(&market_id, &market).await {
         return Err(e);
     }
     
