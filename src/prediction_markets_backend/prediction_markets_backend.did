@@ -1,3 +1,7 @@
+type BalanceReconciliationSummary = record {
+  token_summaries : vec TokenBalanceSummary;
+  timestamp : nat;
+};
 type BatchClaimResult = record {
   claimed_amounts : vec record { text; nat };
   transaction_ids : vec record { nat64; nat };
@@ -351,6 +355,24 @@ type TimeWeightPoint = record {
   absolute_time : nat;
   relative_time : float64;
 };
+type TokenBalanceBreakdown = record {
+  platform_fees : nat;
+  pending_claims : nat;
+  voided_markets_unclaimed : nat;
+  pending_markets : nat;
+  resolved_markets_unclaimed : nat;
+  active_markets : nat;
+};
+type TokenBalanceSummary = record {
+  token_id : text;
+  token_symbol : text;
+  difference : nat;
+  breakdown : TokenBalanceBreakdown;
+  is_sufficient : bool;
+  expected_balance : nat;
+  actual_balance : nat;
+  timestamp : nat;
+};
 type TokenInfo = record {
   id : text;
   is_kong : bool;
@@ -379,6 +401,7 @@ type UserHistory = record {
 service : () -> {
   add_supported_token : (TokenInfo) -> (Result);
   admin_resolve_market : (nat, vec nat) -> (ResolutionResult);
+  calculate_token_balance_reconciliation : () -> (BalanceReconciliationSummary);
   claim_winnings : (vec nat64) -> (BatchClaimResult);
   create_market : (
       text,
@@ -405,6 +428,9 @@ service : () -> {
   get_claims_stats : () -> (ClaimsStats) query;
   get_featured_markets : (GetFeaturedMarketsArgs) -> (
       GetFeaturedMarketsResult,
+    ) query;
+  get_latest_token_balance_reconciliation : () -> (
+      opt BalanceReconciliationSummary,
     ) query;
   get_market : (nat) -> (opt Market) query;
   get_market_bets : (nat) -> (vec Bet) query;
