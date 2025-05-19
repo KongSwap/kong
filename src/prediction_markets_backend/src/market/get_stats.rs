@@ -3,7 +3,8 @@ use candid::CandidType;
 use serde::Deserialize;
 
 use crate::types::StorableNat;
-use crate::stable_memory::*;
+use crate::storage::MARKETS;
+use crate::bet::bet::BETS;
 use super::market::MarketStatus; // Import MarketStatus
 
 #[derive(CandidType, Deserialize)]
@@ -35,10 +36,9 @@ pub fn get_stats() -> StatsResult {
 
     BETS.with(|bets| {
         let bets_ref = bets.borrow();
-        for (_, bet_store) in bets_ref.iter() {
-            // Sum the number of bets in each market's BetStore.
-            total_bets = total_bets.clone() + StorableNat::from(bet_store.0.len() as u64);
-        }
+        // Count the total number of bets by iterating through all bet entries
+        let bet_count = bets_ref.iter().count() as u64;
+        total_bets = total_bets.clone() + StorableNat::from(bet_count);
     });
 
     StatsResult {

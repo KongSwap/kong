@@ -1,4 +1,5 @@
 export const idlFactory = ({ IDL }) => {
+
   const MarketCategory = IDL.Variant({
     'AI' : IDL.Null,
     'Memes' : IDL.Null,
@@ -20,7 +21,7 @@ export const idlFactory = ({ IDL }) => {
     'SpecificDate' : IDL.Nat,
     'Duration' : IDL.Nat,
   });
-  const Result = IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : IDL.Text });
+
   const MarketStatus = IDL.Variant({
     'Disputed' : IDL.Null,
     'Open' : IDL.Null,
@@ -47,6 +48,7 @@ export const idlFactory = ({ IDL }) => {
     'status' : MarketStatus,
     'outcome_pools' : IDL.Vec(IDL.Nat),
     'creator' : IDL.Principal,
+    'featured' : IDL.Bool,
     'outcome_percentages' : IDL.Vec(IDL.Float64),
     'question' : IDL.Text,
     'image_url' : IDL.Opt(IDL.Text),
@@ -61,9 +63,7 @@ export const idlFactory = ({ IDL }) => {
     'resolved_by' : IDL.Opt(IDL.Principal),
     'bet_counts' : IDL.Vec(IDL.Nat),
   });
-  const GetAllMarketsResult = IDL.Record({
-    'markets' : IDL.Vec(Market),
-    'total_count' : IDL.Nat,
+
   });
   const Bet = IDL.Record({
     'market_id' : IDL.Nat,
@@ -72,9 +72,7 @@ export const idlFactory = ({ IDL }) => {
     'amount' : IDL.Nat,
     'outcome_index' : IDL.Nat,
   });
-  const GetMarketsByStatusArgs = IDL.Record({
-    'start' : IDL.Nat,
-    'length' : IDL.Nat,
+
   });
   const Distribution = IDL.Record({
     'bet_amount' : IDL.Nat,
@@ -196,21 +194,7 @@ export const idlFactory = ({ IDL }) => {
     'InsufficientBalance' : IDL.Null,
     'BalanceUpdateFailed' : IDL.Null,
   });
-  const Result_4 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : BetError });
-  const ResolutionError = IDL.Variant({
-    'MarketNotFound' : IDL.Null,
-    'MarketStillOpen' : IDL.Null,
-    'TransferError' : IDL.Text,
-    'InvalidOutcome' : IDL.Null,
-    'InvalidMethod' : IDL.Null,
-    'AlreadyResolved' : IDL.Null,
-    'Unauthorized' : IDL.Null,
-    'UpdateFailed' : IDL.Null,
-    'PayoutFailed' : IDL.Null,
-    'VoidingFailed' : IDL.Null,
-  });
-  const Result_5 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : ResolutionError });
-  return IDL.Service({
+
     'create_market' : IDL.Func(
         [
           IDL.Text,
@@ -224,21 +208,36 @@ export const idlFactory = ({ IDL }) => {
         [Result],
         [],
       ),
+
     'get_all_categories' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
     'get_all_markets' : IDL.Func(
         [GetAllMarketsArgs],
         [GetAllMarketsResult],
         ['query'],
       ),
+    'get_claim_by_id' : IDL.Func(
+        [IDL.Nat64],
+        [IDL.Opt(ClaimRecord)],
+        ['query'],
+      ),
+    'get_claimable_summary' : IDL.Func([], [ClaimableSummary], ['query']),
+    'get_claims_stats' : IDL.Func([], [ClaimsStats], ['query']),
+    'get_featured_markets' : IDL.Func(
+        [GetFeaturedMarketsArgs],
+        [GetFeaturedMarketsResult],
+        ['query'],
+      ),
     'get_market' : IDL.Func([IDL.Nat], [IDL.Opt(Market)], ['query']),
     'get_market_bets' : IDL.Func([IDL.Nat], [IDL.Vec(Bet)], ['query']),
+
     'get_markets_by_status' : IDL.Func(
-        [GetMarketsByStatusArgs],
+        [GetFeaturedMarketsArgs],
         [GetMarketsByStatusResult],
         ['query'],
       ),
-    'get_stats' : IDL.Func([], [StatsResult], ['query']),
+
     'get_user_history' : IDL.Func([IDL.Principal], [UserHistory], ['query']),
+    'get_user_pending_claims' : IDL.Func([], [IDL.Vec(ClaimRecord)], ['query']),
     'icrc21_canister_call_consent_message' : IDL.Func(
         [ConsentMessageRequest],
         [Result_1],
@@ -261,14 +260,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
-    'place_bet' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [Result_4], []),
-    'resolve_via_admin' : IDL.Func([IDL.Nat, IDL.Vec(IDL.Nat)], [Result_5], []),
-    'resolve_via_oracle' : IDL.Func(
-        [IDL.Nat, IDL.Vec(IDL.Nat), IDL.Vec(IDL.Nat8)],
-        [Result_5],
-        [],
-      ),
-    'void_market' : IDL.Func([IDL.Nat], [Result_5], []),
+
   });
 };
 export const init = ({ IDL }) => { return []; };

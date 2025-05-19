@@ -40,13 +40,22 @@ pub struct MarketSorter {
 }
 
 impl MarketSorter {
-    /// Create a new market sorter
-    pub fn new(field: MarketSortField, direction: SortDirection) -> Self {
+    /// Create a new market sorter with default field (creation time) and direction (descending)
+    pub fn new() -> Self {
+        Self { 
+            field: MarketSortField::CreationTime, 
+            direction: SortDirection::Descending
+        }
+    }
+    
+    /// Create a new market sorter with specified field and direction
+    pub fn with_options(field: MarketSortField, direction: SortDirection) -> Self {
         Self { field, direction }
     }
     
-    /// Sort a vector of markets in place
+    /// Sort a vector of markets in place with featured markets prioritized
     pub fn sort(&self, markets: &mut Vec<(MarketId, Market)>) {
+        // First sort by the primary field
         match self.field {
             MarketSortField::CreationTime => {
                 markets.sort_by(|(_, a), (_, b)| {
@@ -90,5 +99,27 @@ impl MarketSorter {
             SortDirection::Ascending => comparison,
             SortDirection::Descending => comparison.reverse(),
         }
+    }
+    
+    /// Sort the markets with featured ones first, then apply regular sorting
+    pub fn sort_with_featured_first(&self, markets: &mut Vec<(MarketId, Market)>) {
+        // First sort by the regular criteria
+        self.sort(markets);
+        
+        // Then bubble up featured markets to the top while preserving relative order
+        markets.sort_by(|(_, a), (_, b)| {
+            match (a.featured, b.featured) {
+                (true, false) => std::cmp::Ordering::Less,    // Featured markets come first
+                (false, true) => std::cmp::Ordering::Greater, // Non-featured markets come after
+                _ => std::cmp::Ordering::Equal,              // Maintain original sort order
+            }
+        });
+    }
+    
+    /// Transform a list of markets, applying the sort and returning just the Markets
+    pub fn sort_markets(&self, market_pairs: Vec<(MarketId, Market)>) -> Vec<Market> {
+        let mut markets_to_sort = market_pairs;
+        self.sort_with_featured_first(&mut markets_to_sort);
+        markets_to_sort.into_iter().map(|(_, market)| market).collect()
     }
 }

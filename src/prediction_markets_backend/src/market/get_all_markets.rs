@@ -2,7 +2,7 @@ use ic_cdk::query;
 
 use super::market::*;
 
-use crate::stable_memory::*;
+use crate::storage::MARKETS;
 use crate::types::{MarketId, StorableNat};
 
 use candid::CandidType;
@@ -87,6 +87,16 @@ pub fn get_all_markets(args: GetAllMarketsArgs) -> GetAllMarketsResult {
                 }
             }
         }
+        
+        // After applying regular sorting, prioritize featured markets
+        // This keeps the original order within each group (featured and non-featured)
+        all_markets.sort_by(|(_, a), (_, b)| {
+            match (a.featured, b.featured) {
+                (true, false) => std::cmp::Ordering::Less,     // Featured markets come first
+                (false, true) => std::cmp::Ordering::Greater,  // Non-featured markets come after
+                _ => std::cmp::Ordering::Equal,               // Maintain original sort order within each group
+            }
+        });
         
         // Apply pagination after sorting
         let start_idx = args.start.to_u64() as usize;

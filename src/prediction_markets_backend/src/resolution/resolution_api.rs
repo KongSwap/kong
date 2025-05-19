@@ -4,11 +4,9 @@
 //! It maintains backward compatibility with existing client applications
 //! while delegating to the more specialized implementation modules.
 
-use ic_cdk::update;
-
 use crate::resolution::resolution_proposal;
 use crate::types::{MarketId, OutcomeIndex};
-use crate::resolution::resolution::ResolutionError;
+use crate::resolution::resolution::ResolutionResult;
 
 /// Resolve the market through admin decision (public API endpoint)
 ///
@@ -23,7 +21,7 @@ use crate::resolution::resolution::ResolutionError;
 /// * `winning_outcomes` - Vector of outcome indices that won
 ///
 /// # Returns
-/// * `Result<(), ResolutionError>` - Success or error reason if the resolution fails
+/// * `ResolutionResult` - Success, waiting state, or error reason if the resolution fails
 ///
 /// # Security
 /// Only market creators and admins can call this function successfully.
@@ -31,7 +29,7 @@ use crate::resolution::resolution::ResolutionError;
 pub async fn resolve_via_admin(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // This function is now just a wrapper around propose_resolution
     // for backward compatibility
     resolution_proposal::propose_resolution(market_id, winning_outcomes).await
@@ -41,7 +39,7 @@ pub async fn resolve_via_admin(
 pub async fn propose_resolution(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Forward to the implementation in resolution_proposal
     resolution_proposal::propose_resolution(market_id, winning_outcomes).await
 }

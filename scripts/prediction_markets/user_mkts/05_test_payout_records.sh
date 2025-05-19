@@ -25,7 +25,8 @@ echo "Using Admin's principal: $DEFAULT_PRINCIPAL"
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will LINK reach $50 by end of 2025?\", variant { Crypto }, \"Standard rules apply\", \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
-  variant { Duration = 300 : nat }, null, opt true, opt 0.15)")
+  variant { Duration = 300 : nat }, null, opt true, opt 0.15, \
+  opt \"${KONG_LEDGER}\")")
 
 # Extract market ID
 MARKET_ID=$(echo $RESULT | grep -o '[0-9]\+' | head -1)
@@ -52,7 +53,7 @@ dfx canister call ${KONG_LEDGER} icrc2_approve "(record {
 
 # Place bet
 echo "Alice placing bet on 'Yes'..."
-dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 0 : nat, $BET_AMOUNT : nat)"
+dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 0 : nat, $BET_AMOUNT : nat, opt \"${KONG_LEDGER}\")"
 
 # Step 3: Wait 15 seconds and have Bob place a bet on "No"
 echo -e "\n==== Step 3: Waiting 15 seconds and having Bob place a bet on 'No' ===="
@@ -78,7 +79,7 @@ dfx canister call ${KONG_LEDGER} icrc2_approve "(record {
 
 # Place bet
 echo "Bob placing bet on 'No'..."
-dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 1 : nat, $BET_AMOUNT : nat)"
+dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 1 : nat, $BET_AMOUNT : nat, opt \"${KONG_LEDGER}\")"
 
 # Step 4: Wait 15 more seconds and have Carol place a bet on "Yes"
 echo -e "\n==== Step 4: Waiting 15 more seconds and having Carol place a bet on 'Yes' ===="
@@ -104,7 +105,7 @@ dfx canister call ${KONG_LEDGER} icrc2_approve "(record {
 
 # Place bet
 echo "Carol placing bet on 'Yes'..."
-dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 0 : nat, $BET_AMOUNT : nat)"
+dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 0 : nat, $BET_AMOUNT : nat, opt \"${KONG_LEDGER}\")"
 
 # Step 5: Check market bets and status
 echo -e "\n==== Step 5: Checking market bets and status ===="

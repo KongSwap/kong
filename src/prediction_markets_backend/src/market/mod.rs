@@ -12,3 +12,4 @@ pub mod transaction_records;
 pub mod activity_metrics;
 pub mod bet;
 pub mod update_expired_markets;
+pub mod featured;

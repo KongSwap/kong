@@ -15,7 +15,7 @@ PREDICTION_MARKETS_CANISTER=$(dfx canister id prediction_markets_backend)
 KONG_LEDGER=$(dfx canister id kskong_ledger)
 KONG_FEE=$(dfx canister call ${KONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
 KONG_FEE=${KONG_FEE//_/}
-ACTIVATION_FEE=3000000000 # 3000 KONG
+ACTIVATION_FEE=300000000000 # 3000 KONG, token has decimal precision 8
 
 echo "Prediction Markets Canister: $PREDICTION_MARKETS_CANISTER"
 echo "KONG Ledger: $KONG_LEDGER"
@@ -26,7 +26,9 @@ echo -e "\n==== Step 1: Creating market as regular user (Alice) ===="
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will BTC reach $ 100k in 2025?\", variant { Crypto }, \"Standard rules apply\", \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
-  variant { Duration = 120 : nat }, null, null, null)")
+  variant { Duration = 120 : nat }, null, null, null, \
+  opt \"umunu-kh777-77774-qaaca-cai\")")
+# ^ Using Admin resolution method - the dual approval flow is triggered automatically for non-admin creators
 
 # Extract market ID and check for success
 if [[ $RESULT == *"Ok"* ]]; then
@@ -70,7 +72,7 @@ dfx canister call ${KONG_LEDGER} icrc2_approve "(record {
 
 # Try to place bet (should fail)
 echo "Attempting to place small bet (should fail)..."
-dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 0 : nat, $SMALL_BET : nat)"
+dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 0 : nat, $SMALL_BET : nat, opt \"$KONG_LEDGER\")"
 
 # Step 3.5: Have Carol try to place a bet while the market is still pending
 echo -e "\n==== Step 3.5: Having Carol try to place a bet on a pending market (should fail) ====" 
@@ -94,7 +96,7 @@ dfx canister call ${KONG_LEDGER} icrc2_approve "(record {
 
 # Try to place bet on pending market (should fail)
 echo "Carol attempting to place bet on pending market (should fail)..."
-dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 1 : nat, $BET_AMOUNT : nat)"
+dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 1 : nat, $BET_AMOUNT : nat, opt \"$KONG_LEDGER\")"
 
 # Switch back to Alice for next step
 dfx identity use alice
@@ -116,7 +118,7 @@ dfx canister call ${KONG_LEDGER} icrc2_approve "(record {
 
 # Place activation bet
 echo "Placing activation bet..."
-dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 0 : nat, $ACTIVATION_FEE : nat)"
+dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 0 : nat, $ACTIVATION_FEE : nat, opt \"$KONG_LEDGER\")"
 
 # Step 5: Check market status again (should now be Active)
 echo -e "\n==== Step 5: Checking market status (should now be Active) ===="
@@ -144,7 +146,7 @@ dfx canister call ${KONG_LEDGER} icrc2_approve "(record {
 
 # Place bet
 echo "Bob placing bet..."
-dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 1 : nat, $BET_AMOUNT : nat)"
+dfx canister call prediction_markets_backend place_bet "($MARKET_ID : nat, 1 : nat, $BET_AMOUNT : nat, opt \"$KONG_LEDGER\")"
 
 # Step 7: Check market bets
 echo -e "\n==== Step 7: Checking market bets ===="

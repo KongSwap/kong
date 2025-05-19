@@ -50,6 +50,27 @@ pub enum ResolutionMethod {
     },
 }
 
+/// Result type for market resolution operations
+/// 
+/// This enum distinguishes between successful resolution, intermediate states in
+/// the dual approval flow, and actual error conditions.
+#[derive(CandidType, Debug)]
+pub enum ResolutionResult {
+    /// Resolution was successful
+    Success,
+    
+    /// Waiting for the market creator to approve the admin's proposal
+    /// (admin has already approved) - part of the dual approval flow
+    AwaitingCreatorApproval,
+    
+    /// Waiting for an admin to approve the creator's proposal
+    /// (creator has already approved) - part of the dual approval flow
+    AwaitingAdminApproval,
+    
+    /// An error occurred during the resolution process
+    Error(ResolutionError),
+}
+
 /// Possible errors during market resolution
 /// 
 /// This enum defines all possible error conditions that can occur during
