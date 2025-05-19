@@ -2710,6 +2710,7 @@ dependencies = [
  "num",
  "num-bigint",
  "num-traits",
+ "once_cell",
  "pocket-ic 9.0.0",
  "rand 0.8.5",
  "regex",

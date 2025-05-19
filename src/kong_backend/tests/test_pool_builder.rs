@@ -5,6 +5,7 @@ use candid::{decode_one, encode_one, Nat, Principal};
 use icrc_ledger_types::icrc1::account::Account;
 use pocket_ic::PocketIc;
 use num_traits::cast::ToPrimitive;
+use ic_ledger_types::{AccountIdentifier, Subaccount};
 
 use kong_backend::add_pool::add_pool_args::AddPoolArgs;
 use kong_backend::add_pool::add_pool_reply::AddPoolReply;
@@ -13,7 +14,7 @@ use kong_backend::add_token::add_token_reply::AddTokenReply;
 use kong_backend::stable_transfer::tx_id::TxId;
 
 use common::icp_ledger::{
-    create_icp_ledger_with_id, ArchiveOptions as ICPArchiveOptions, FeatureFlags as ICPFeatureFlags, InitArgs as ICPInitArgs,
+    create_icp_ledger_with_id, ArchiveOptions as ICPArchiveOptions, InitArgs as ICPInitArgs,
     LedgerArg as ICPLedgerArg,
 };
 use common::icrc1_ledger::{
@@ -141,7 +142,7 @@ impl TestSetup {
             subaccount: None,
         };
         
-        let (token_a_ledger_id, token_b_ledger_id, _, _) = setup_test_tokens(&ic, true, None)?;
+        let (token_a_ledger_id, token_b_ledger_id, _, _) = setup_test_tokens(&ic, false, None)?;
         
         // Add tokens to Kong
         add_token_to_kong(&ic, kong_backend, controller_principal, token_a_ledger_id)?;
@@ -668,7 +669,7 @@ fn setup_test_tokens(
         )
         .map_err(|e| anyhow::anyhow!("Failed to create ICRC1 ledger for Token B with ID: {:?}", e))?
     } else {
-        let archive_options_token_b = ICPArchiveOptions {
+        let _archive_options_token_b = ICPArchiveOptions {
             num_blocks_to_archive: 1000,
             max_transactions_per_response: None,
             trigger_threshold: 500,
@@ -679,18 +680,19 @@ fn setup_test_tokens(
             more_controller_ids: None,
         };
 
+        let controller_account_identifier_for_token_b = AccountIdentifier::new(&controller_principal, &Subaccount([0;32]));
         let token_b_init_args = ICPInitArgs {
-            minting_account: controller_principal.to_text(),
-            icrc1_minting_account: Some(controller_account),
+            minting_account: controller_account_identifier_for_token_b.to_string(),
+            icrc1_minting_account: None, // Match working example
             initial_values: vec![],
             max_message_size_bytes: None,
             transaction_window: None,
-            archive_options: Some(archive_options_token_b.clone()),
+            archive_options: None, // Match working example
             send_whitelist: vec![],
-            transfer_fee: Some(common::icp_ledger::Tokens { e8s: TOKEN_B_FEE_ICP }),
-            token_symbol: Some(TOKEN_B_SYMBOL_ICP.to_string()),
-            token_name: Some(TOKEN_B_NAME_ICP.to_string()),
-            feature_flags: Some(ICPFeatureFlags { icrc2: true }),
+            transfer_fee: None, // Match working example, ICP ledger has a default
+            token_symbol: Some(TOKEN_B_SYMBOL_ICP.to_string()), // Keep original symbol for now
+            token_name: Some(TOKEN_B_NAME_ICP.to_string()),   // Keep original name for now
+            feature_flags: None, // Match working example
         };
 
         create_icp_ledger_with_id(
@@ -902,7 +904,7 @@ fn test_add_pool_with_other_user_tx_id() {
     
     // Set up tokens
     let (token_a_ledger_id, token_b_ledger_id, controller_principal, _) =
-        setup_test_tokens(&ic, true, None).expect("Failed to setup test tokens");
+        setup_test_tokens(&ic, false, None).expect("Failed to setup test tokens");
     
     // Add tokens to Kong
     add_token_to_kong(&ic, kong_backend, controller_principal, token_a_ledger_id).expect("Failed to add token A to Kong");

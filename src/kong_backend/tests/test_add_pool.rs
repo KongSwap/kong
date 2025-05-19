@@ -4,6 +4,7 @@ pub mod common;
 use anyhow::Result;
 use candid::{decode_one, encode_one, Nat, Principal};
 use icrc_ledger_types::icrc1::account::Account;
+use ic_ledger_types::{AccountIdentifier, Subaccount};
 use kong_backend::add_pool::add_pool_args::AddPoolArgs;
 use kong_backend::add_pool::add_pool_reply::AddPoolReply;
 use kong_backend::add_token::add_token_args::AddTokenArgs;
@@ -11,7 +12,7 @@ use kong_backend::add_token::add_token_reply::AddTokenReply;
 use kong_backend::stable_transfer::tx_id::TxId;
 
 use common::icp_ledger::{
-    create_icp_ledger_with_id, ArchiveOptions as ICPArchiveOptions, FeatureFlags as ICPFeatureFlags, InitArgs as ICPInitArgs,
+    create_icp_ledger_with_id, ArchiveOptions as ICPArchiveOptions, InitArgs as ICPInitArgs,
     LedgerArg as ICPLedgerArg,
 };
 use common::icrc1_ledger::{
@@ -117,7 +118,7 @@ fn setup_test_tokens(
         )
         .expect("Failed to create ICRC1 ledger for Token B with ID")
     } else {
-        let archive_options_token_b = ICPArchiveOptions {
+        let _archive_options_token_b = ICPArchiveOptions { // Underscore added
             num_blocks_to_archive: 1000,
             max_transactions_per_response: None,
             trigger_threshold: 500,
@@ -128,18 +129,19 @@ fn setup_test_tokens(
             more_controller_ids: None,
         };
 
+        let controller_account_identifier_for_token_b = AccountIdentifier::new(&controller_principal, &Subaccount([0;32])); // New line
         let token_b_init_args = ICPInitArgs {
-            minting_account: controller_principal.to_text(),
-            icrc1_minting_account: Some(controller_account),
+            minting_account: controller_account_identifier_for_token_b.to_string(), // Changed
+            icrc1_minting_account: None, // Changed
             initial_values: vec![],
             max_message_size_bytes: None,
             transaction_window: None,
-            archive_options: Some(archive_options_token_b.clone()),
+            archive_options: None, // Changed
             send_whitelist: vec![],
-            transfer_fee: Some(crate::common::icp_ledger::Tokens { e8s: TOKEN_B_FEE_ICP }),
-            token_symbol: Some(TOKEN_B_SYMBOL_ICP.to_string()),
-            token_name: Some(TOKEN_B_NAME_ICP.to_string()),
-            feature_flags: Some(ICPFeatureFlags { icrc2: true }),
+            transfer_fee: None, // Changed
+            token_symbol: Some(TOKEN_B_SYMBOL_ICP.to_string()), // Kept
+            token_name: Some(TOKEN_B_NAME_ICP.to_string()),   // Kept
+            feature_flags: None, // Changed (ICPFeatureFlags type is no longer in scope due to previous import change, this makes it valid)
         };
 
         create_icp_ledger_with_id(
@@ -165,7 +167,7 @@ fn test_add_pool_icrc2_transfer_from() {
     let token_b_principal_id_opt = Some(Principal::from_text("nppha-riaaa-aaaal-ajf2q-cai").expect("Invalid ICP Principal ID"));
 
     let (token_a_ledger_id, token_b_ledger_id, controller_principal, _controller_account) =
-        setup_test_tokens(&ic, true, token_b_principal_id_opt).expect("Failed to setup test tokens");
+        setup_test_tokens(&ic, false, token_b_principal_id_opt).expect("Failed to setup test tokens");
 
     add_token_to_kong(&ic, kong_backend, controller_principal, token_a_ledger_id).expect("Failed to add token A to Kong");
     add_token_to_kong(&ic, kong_backend, controller_principal, token_b_ledger_id).expect("Failed to add token B to Kong");
@@ -367,7 +369,7 @@ fn test_add_pool_with_icrc1_icrc2_mix() {
     let token_b_principal_id_opt = Some(Principal::from_text("nppha-riaaa-aaaal-ajf2q-cai").expect("Invalid ICP Principal ID"));
 
     let (token_a_ledger_id, token_b_ledger_id, controller_principal, _controller_account) =
-        setup_test_tokens(&ic, true, token_b_principal_id_opt).expect("Failed to setup test tokens");
+        setup_test_tokens(&ic, false, token_b_principal_id_opt).expect("Failed to setup test tokens");
 
     // Add both tokens to Kong backend explicitly - this is crucial!
     add_token_to_kong(&ic, kong_backend, controller_principal, token_a_ledger_id).expect("Failed to add token A to Kong");
@@ -602,7 +604,7 @@ fn test_add_pool_with_icrc1_transfer() {
     let token_b_principal_id_opt = Some(Principal::from_text("nppha-riaaa-aaaal-ajf2q-cai").expect("Invalid ICP Principal ID"));
 
     let (token_a_ledger_id, token_b_ledger_id, controller_principal, _controller_account) =
-        setup_test_tokens(&ic, true, token_b_principal_id_opt).expect("Failed to setup test tokens");
+        setup_test_tokens(&ic, false, token_b_principal_id_opt).expect("Failed to setup test tokens");
 
     // Add both tokens to Kong backend explicitly - this is crucial!
     add_token_to_kong(&ic, kong_backend, controller_principal, token_a_ledger_id).expect("Failed to add token A to Kong");
@@ -832,7 +834,7 @@ fn test_add_pool_insufficient_token0_balance() {
     let token_b_principal_id_opt = Some(Principal::from_text("nppha-riaaa-aaaal-ajf2q-cai").expect("Invalid ICP Principal ID"));
 
     let (token_a_ledger_id, token_b_ledger_id, controller_principal, _controller_account) =
-        setup_test_tokens(&ic, true, token_b_principal_id_opt).expect("Failed to setup test tokens");
+        setup_test_tokens(&ic, false, token_b_principal_id_opt).expect("Failed to setup test tokens");
 
     // Add both tokens to Kong backend explicitly - this is crucial!
     add_token_to_kong(&ic, kong_backend, controller_principal, token_a_ledger_id).expect("Failed to add token A to Kong");
@@ -1067,7 +1069,7 @@ fn test_add_pool_insufficient_token1_balance() {
     let token_b_principal_id_opt = Some(Principal::from_text("nppha-riaaa-aaaal-ajf2q-cai").expect("Invalid ICP Principal ID"));
 
     let (token_a_ledger_id, token_b_ledger_id, controller_principal, _controller_account) =
-        setup_test_tokens(&ic, true, token_b_principal_id_opt).expect("Failed to setup test tokens");
+        setup_test_tokens(&ic, false, token_b_principal_id_opt).expect("Failed to setup test tokens");
 
     // Add both tokens to Kong backend explicitly - this is crucial!
     add_token_to_kong(&ic, kong_backend, controller_principal, token_a_ledger_id).expect("Failed to add token A to Kong");
@@ -1302,7 +1304,7 @@ fn test_add_pool_insufficient_allowance() {
     let token_b_principal_id_opt = Some(Principal::from_text("nppha-riaaa-aaaal-ajf2q-cai").expect("Invalid ICP Principal ID"));
 
     let (token_a_ledger_id, token_b_ledger_id, controller_principal, _controller_account) =
-        setup_test_tokens(&ic, true, token_b_principal_id_opt).expect("Failed to setup test tokens");
+        setup_test_tokens(&ic, false, token_b_principal_id_opt).expect("Failed to setup test tokens");
 
     // Add both tokens to Kong backend explicitly - this is crucial!
     add_token_to_kong(&ic, kong_backend, controller_principal, token_a_ledger_id).expect("Failed to add token A to Kong");

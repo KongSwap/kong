@@ -9,7 +9,7 @@ use super::add_liquidity_transfer_from::archive_to_kong_data;
 use super::add_liquidity_transfer_from::{transfer_from_token, update_liquidity_pool};
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
-use crate::ic::{address::Address, get_time::get_time, id::caller_id, transfer::icrc1_transfer, verify::verify_transfer};
+use crate::ic::{address::Address, get_time::get_time, id::caller_id, transfer::icrc1_transfer, verify_transfer::verify_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_pool::pool_map;
