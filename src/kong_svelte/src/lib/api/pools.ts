@@ -217,13 +217,15 @@ export async function calculateRemoveLiquidityAmounts(
       lpTokenBigInt,
     );
 
+    console.log("result", result);
+
     if (!result.Ok) {
       throw new Error(result.Err || "Failed to calculate removal amounts");
     }
 
     // Handle the correct response format based on .did file
     const reply = result.Ok;
-    return [BigInt(reply.amount_0), BigInt(reply.amount_1)];
+    return [BigInt(reply.amount_0 + reply.lp_fee_0), BigInt(reply.amount_1 + reply.lp_fee_1)];
   } catch (error) {
     console.error("Error calculating removal amounts:", error);
     throw error;

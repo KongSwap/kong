@@ -20,15 +20,9 @@
   },
   "dependencies": {
     "@dfinity/agent": "2.4.1",
-    "@dfinity/auth-client": "2.4.1",
     "@dfinity/candid": "2.4.1",
     "@dfinity/identity": "2.4.1",
-    "@dfinity/ledger-icp": "2.6.13",
-    "@dfinity/nns": "8.4.1",
-    "@dfinity/principal": "2.4.1",
-    "@dfinity/utils": "2.13.0",
-    "@types/three": "0.176.0",
-    "three": "0.176.0"
+    "@dfinity/principal": "2.4.1"
   },
   "workspaces": [
     "src/kong_svelte"

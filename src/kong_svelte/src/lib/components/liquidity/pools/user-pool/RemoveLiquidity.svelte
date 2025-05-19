@@ -8,6 +8,7 @@
   import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { calculateRemoveLiquidityAmounts, removeLiquidity, pollRequestStatus } from "$lib/api/pools";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+  import { BigNumber } from "bignumber.js";
   
   const dispatch = createEventDispatcher();
 
@@ -225,13 +226,7 @@
                 {#if isCalculating}
                   <span class="loading-pulse">Loading...</span>
                 {:else}
-                  {Number(estimatedAmounts.amount0).toLocaleString(
-                    undefined,
-                    {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 6,
-                    },
-                  )}
+                  {new BigNumber(estimatedAmounts.amount0)}
                 {/if}
               </span>
               <span class="usd-value"

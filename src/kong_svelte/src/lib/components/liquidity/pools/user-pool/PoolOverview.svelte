@@ -17,8 +17,8 @@
 
   // Calculate user's percentage of the pool
   $: poolSharePercentage = calculateUserPoolPercentage(
-    actualPool?.balance_0,
-    actualPool?.balance_1,
+    actualPool?.balance_0 + actualPool?.lp_fee_0,
+    actualPool?.balance_1 + actualPool?.lp_fee_1,
     pool?.amount_0,
     pool?.amount_1
   );

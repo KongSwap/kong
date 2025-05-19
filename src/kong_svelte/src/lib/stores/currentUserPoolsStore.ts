@@ -1,8 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { auth, swapActor } from "$lib/stores/auth";
-import { canisters } from '$lib/config/auth.config';
-import type { KONG_BACKEND } from '$lib/config/auth.config';
 
 interface PoolListState {
   processedPools: ProcessedPool[];
@@ -24,6 +22,8 @@ interface ProcessedPool {
   usd_balance: string;
   amount_0: string;
   amount_1: string;
+  lp_fee_0: string;
+  lp_fee_1: string;
   name?: string;
   address_0: string;
   address_1: string;
@@ -69,6 +69,7 @@ function createCurrentUserPoolsStore() {
         const response = await actor.user_balances(
           currentAuth?.account?.owner || ''
         );
+        console.log("response", response);
                 
         if ('Ok' in response) {
           // Process the new raw data

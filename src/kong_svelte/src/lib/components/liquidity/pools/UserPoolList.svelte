@@ -88,8 +88,8 @@
     const poolKey = pool.address_0 + '-' + pool.address_1;
 
     const sharePercentage = calculateUserPoolPercentage(
-      livePool?.balance_0,
-      livePool?.balance_1,
+      livePool?.balance_0 + livePool?.lp_fee_0,
+      livePool?.balance_1 + livePool?.lp_fee_1,
       pool.amount_0,
       pool.amount_1
     );

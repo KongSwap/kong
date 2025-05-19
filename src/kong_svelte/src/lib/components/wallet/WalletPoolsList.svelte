@@ -25,7 +25,7 @@
       token0: { symbol: string; icon: string };
       token1: { symbol: string; icon: string };
       value: number;
-      share: number;
+      share: string;
       apr: number;
       chain: string;
     }>;
@@ -111,8 +111,8 @@
     );
     
     return calculateUserPoolPercentage(
-      livePool?.balance_0,
-      livePool?.balance_1,
+      livePool?.balance_0 + livePool?.lp_fee_0,
+      livePool?.balance_1 + livePool?.lp_fee_1,
       pool.amount_0,
       pool.amount_1
     );
@@ -313,7 +313,7 @@
                 <div class="text-kong-text-secondary mb-1">Pool Share</div>
                 <div class="text-kong-text-primary font-medium">
                   {#if showUsdValues}
-                    {formatNumber(pool.share * 100, 4)}%
+                    {getPoolSharePercentage(pool)}%
                   {:else}
                     ****%
                   {/if}
