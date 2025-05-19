@@ -39,3 +39,35 @@ pub fn create_canister_with_id(
         Err(e) => Err(anyhow!(e)),
     }
 }
+
+pub fn create_canister_on_fiduciary_subnet(
+    ic: &PocketIc,
+    controller: &Option<Principal>,
+    settings: &Option<CanisterSettings>,
+) -> Result<Principal> {
+    // get the fiduciary subnet principal
+    let topology = ic.topology();
+    let fiduciary_subnet_principal = topology.get_fiduciary().ok_or_else(|| anyhow!("No fiduciary subnet found"))?;
+
+    let canister = ic.create_canister_on_subnet(*controller, settings.clone(), fiduciary_subnet_principal);
+    ic.add_cycles(canister, 10_000_000_000_000); // 10T Cycles
+    Ok(canister)
+}
+
+pub fn create_canister_on_application_subnet(
+    ic: &PocketIc,
+    controller: &Option<Principal>,
+    settings: &Option<CanisterSettings>,
+) -> Result<Principal> {
+    // get the application subnet principal
+    let topology = ic.topology();
+    let application_subnet_principal = topology
+        .get_app_subnets()
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("No application subnet found"))?;
+
+    let canister = ic.create_canister_on_subnet(*controller, settings.clone(), application_subnet_principal);
+    ic.add_cycles(canister, 10_000_000_000_000); // 10T Cycles
+    Ok(canister)
+}
