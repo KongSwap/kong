@@ -1,6 +1,6 @@
 use anyhow::Result;
 use candid::Principal;
-use pocket_ic::PocketIc;
+use pocket_ic::{PocketIc, PocketIcBuilder};
 
 use crate::common::identity::get_identity_from_pem_file;
 // Import the helper for creating Kong backend at a specific ID
@@ -10,7 +10,11 @@ pub const CONTROLLER_PEM_FILE: &str = "tests/common/identity.pem";
 
 pub fn setup_ic_environment() -> Result<(PocketIc, Principal)> {
     // setup pocket-ic
-    let ic = PocketIc::new();
+    let ic = PocketIcBuilder::new()
+        .with_system_subnet()
+        .with_fiduciary_subnet()
+        .with_application_subnet()
+        .build();
 
     // setup identity
     let controller_identity = get_identity_from_pem_file(CONTROLLER_PEM_FILE)?;
