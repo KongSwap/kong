@@ -50,6 +50,9 @@ use crate::transaction_recovery::FailedTransaction;
 use crate::claims::claims_api::*;
 // Market resolution details type for API export
 use crate::types::MarketResolutionDetails;
+// Token balance reconciliation
+use crate::token::balance::{BalanceReconciliationSummary, TokenBalanceSummary, TokenBalanceBreakdown};
+use crate::token::balance::{calculate_token_balance_reconciliation, get_latest_token_balance_reconciliation};
 use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
 use icrc_ledger_types::icrc21::responses::ConsentInfo; 
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
