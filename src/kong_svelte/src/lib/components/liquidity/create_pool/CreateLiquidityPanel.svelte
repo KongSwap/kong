@@ -46,7 +46,6 @@
   const DEFAULT_TOKEN = "ICP";
   const SECONDARY_TOKEN_IDS = [ICP_CANISTER_ID, CKUSDT_CANISTER_ID];
   const DEBOUNCE_DELAY = 150; // Reduce from 300ms to improve responsiveness
-  const DISABLED_TOKEN_ADDRESS = "6qfxa-ryaaa-aaaai-qbhsq-cai";
   const MAX_BALANCE_LOAD_ATTEMPTS = 3; // Maximum number of times to try loading balances
   const MIN_BALANCE_LOAD_INTERVAL = 2000; // Minimum time (ms) between balance loads
 
@@ -96,7 +95,7 @@
   }
   
   // Determine button theme based on button text
-  $: buttonTheme = (buttonText === "Insufficient Balance" || buttonText === "Temporarily disabled") 
+  $: buttonTheme = (buttonText === "Insufficient Balance") 
     ? "accent-red" 
     : "accent-green";
   
@@ -740,11 +739,6 @@
                 Deposit Amounts
               {/if}
             </h3>
-            {#if token0.address === DISABLED_TOKEN_ADDRESS || token1.address === DISABLED_TOKEN_ADDRESS}
-              <div class="text-kong-error text-sm mb-4">
-                TAGGR is temporarily disabled. Please select different tokens.
-              </div>
-            {/if}
             <AmountInputs
               {token0}
               {token1}
