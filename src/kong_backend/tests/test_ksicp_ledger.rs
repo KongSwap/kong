@@ -6,14 +6,12 @@ use ic_ledger_types::{AccountIdentifier, Subaccount};
 use icrc_ledger_types::icrc1::account::Account;
 use pocket_ic::PocketIc;
 
-use common::icp_ledger::{create_icp_ledger, ArchiveOptions, InitArgs, LedgerArg, Tokens};
+use common::icp_ledger::{InitArgs, LedgerArg};
 use common::identity;
 
 const MINTING_ACCOUNT_PEM_FILE: &str = "tests/common/identity.pem";
 
-const KSICP_SYMBOL: &str = "ksICP";
 const KSICP_NAME: &str = "Internet Computer (KongSwap Test Token)";
-const KSICP_FEE: u64 = 10_000;
 const KSICP_DECIMALS: u8 = 8;
 
 fn deploy_ksicp_ledger(ic: &PocketIc) -> Result<Principal> {
@@ -26,30 +24,32 @@ fn deploy_ksicp_ledger(ic: &PocketIc) -> Result<Principal> {
     };
     let controller_subaccount = Subaccount([0; 32]);
     let controller_account_id = AccountIdentifier::new(&controller_account.owner, &controller_subaccount);
+    
+    // Always create with the ICP principal ID to match Kong's expectations
+    let ksicp_principal_id = Principal::from_text("nppha-riaaa-aaaal-ajf2q-cai")
+        .expect("Invalid ICP Principal ID");
+    
     let init_args = InitArgs {
         minting_account: controller_account_id.to_string(),
         icrc1_minting_account: None,
         initial_values: vec![],
         max_message_size_bytes: None,
         transaction_window: None,
+        archive_options: None,
         send_whitelist: vec![],
-        transfer_fee: Some(Tokens { e8s: KSICP_FEE }),
-        token_symbol: Some(KSICP_SYMBOL.to_string()),
-        token_name: Some(KSICP_NAME.to_string()),
+        transfer_fee: None,
+        token_symbol: Some("ICP".to_string()), // Set symbol to ICP
+        token_name: Some(KSICP_NAME.to_string()), // Set name
         feature_flags: None,
-        archive_options: Some(ArchiveOptions {
-            num_blocks_to_archive: 5_000,
-            max_transactions_per_response: None,
-            trigger_threshold: 10_00,
-            max_message_size_bytes: None,
-            cycles_for_archive_creation: None,
-            node_max_memory_size_bytes: None,
-            controller_id: controller_principal_id,
-            more_controller_ids: None,
-        }),
     };
+    
     let ledger_arg = LedgerArg::Init(init_args);
-    let ksicp_ledger = create_icp_ledger(ic, &Some(controller_principal_id), &ledger_arg)?;
+    let ksicp_ledger = common::icp_ledger::create_icp_ledger_with_id(
+        ic, 
+        ksicp_principal_id, 
+        controller_principal_id, 
+        &ledger_arg
+    )?;
 
     Ok(ksicp_ledger)
 }

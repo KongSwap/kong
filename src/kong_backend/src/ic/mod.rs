@@ -10,5 +10,5 @@ pub mod ledger;
 pub mod logging;
 pub mod management;
 pub mod transfer;
-pub mod verify;
+pub mod verify_transfer;
 pub mod wumbo;
