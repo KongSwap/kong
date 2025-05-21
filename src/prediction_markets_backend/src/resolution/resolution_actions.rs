@@ -4,17 +4,14 @@
 //! voiding, and direct resolution.
 
 use candid::{Principal, Nat};
-use ic_cdk::update;
 
 use crate::resolution::finalize_market::finalize_market;
-use crate::resolution::resolution_auth::*;
-use crate::resolution::resolution_refunds::refund_all_bets;
-use crate::resolution::resolution::*;
+use crate::resolution::resolution_refunds::create_refund_claims;
+use crate::resolution::resolution::{*, ResolutionResult};
 use crate::controllers::admin::*;
 use crate::market::market::*;
-use crate::stable_memory::*;
-use crate::types::{MarketId};
-use crate::types::ResolutionArgs;
+use crate::storage::{MARKETS, RESOLUTION_PROPOSALS};
+use crate::types::{MarketId, OutcomeIndex, ResolutionArgs};
 
 /// Resolves a market directly (for admin created markets)
 ///
@@ -59,7 +56,6 @@ pub async fn resolve_market_directly(
         let mut proposals = proposals.borrow_mut();
         proposals.remove(&market_id_clone);
     });
-    
     Ok(())
 }
 
@@ -80,35 +76,39 @@ pub async fn resolve_market_directly(
 // Note: #[update] attribute removed to avoid conflict with the original function in dual_approval.rs
 pub async fn force_resolve_market(
     args: ResolutionArgs
-) -> Result<(), ResolutionError> {
+
+) -> ResolutionResult {
     // Validate outcome indices are not empty
     if args.winning_outcomes.is_empty() {
-        return Err(ResolutionError::InvalidOutcome);
+        return ResolutionResult::Error(ResolutionError::InvalidOutcome);
     }
     
     let admin = ic_cdk::caller();
     
     // Verify the caller is an admin
     if !is_admin(admin) {
-        return Err(ResolutionError::Unauthorized);
+        return ResolutionResult::Error(ResolutionError::Unauthorized);
     }
     
     // Get the market
-    let mut market = MARKETS.with(|markets| {
+    let mut market = match MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
-        markets_ref.get(&args.market_id).ok_or(ResolutionError::MarketNotFound)
-    })?;
+        markets_ref.get(&args.market_id)
+    }) {
+        Some(market) => market,
+        None => return ResolutionResult::Error(ResolutionError::MarketNotFound)
+    };
     
-    // Verify market is in an active state
-    if !matches!(market.status, MarketStatus::Active) {
-        return Err(ResolutionError::InvalidMarketStatus);
+    // Verify market is in a resolvable state (Active or ExpiredUnresolved)
+    if !matches!(market.status, MarketStatus::Active | MarketStatus::ExpiredUnresolved) {
+        return ResolutionResult::Error(ResolutionError::InvalidMarketStatus);
     }
     
     // Validate outcome indices
     for outcome_index in &args.winning_outcomes {
         let idx = outcome_index.to_u64() as usize;
         if idx >= market.outcomes.len() {
-            return Err(ResolutionError::InvalidOutcome);
+            return ResolutionResult::Error(ResolutionError::InvalidOutcome);
         }
     }
     
@@ -116,7 +116,10 @@ pub async fn force_resolve_market(
     ic_cdk::println!("Admin {} is force-resolving market {}", admin, args.market_id);
     
     // Resolve directly
-    resolve_market_directly(args, &mut market, admin).await
+    match resolve_market_directly(args, &mut market, admin).await {
+        Ok(_) => ResolutionResult::Success,
+        Err(e) => ResolutionResult::Error(e)
+    }
 }
 
 /// Voids a market and refunds all bets to users
@@ -136,34 +139,41 @@ pub async fn force_resolve_market(
 // Note: #[update] attribute removed to avoid conflict with the original function in dual_approval.rs
 pub async fn void_market(
     market_id: MarketId
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     let caller = ic_cdk::caller();
     
     // Verify caller is an admin
     if !is_admin(caller) {
-        return Err(ResolutionError::Unauthorized);
+        return ResolutionResult::Error(ResolutionError::Unauthorized);
     }
     
     // Get the market
-    let mut market = MARKETS.with(|markets| {
+    let mut market = match MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
-        markets_ref.get(&market_id).ok_or(ResolutionError::MarketNotFound)
-    })?;
+        markets_ref.get(&market_id)
+    }) {
+        Some(market) => market,
+        None => return ResolutionResult::Error(ResolutionError::MarketNotFound)
+    };
     
-    // Check that the market is in active status
-    if !matches!(market.status, MarketStatus::Active) {
-        return Err(ResolutionError::InvalidMarketStatus);
+    // Check that the market is in a resolvable state (Active or ExpiredUnresolved)
+    if !matches!(market.status, MarketStatus::Active | MarketStatus::ExpiredUnresolved) {
+        return ResolutionResult::Error(ResolutionError::InvalidMarketStatus);
     }
     
     // Log the void action
     ic_cdk::println!("Admin {} is voiding market {}", caller, market_id);
     
-    // Process refunds for all bets
-    refund_all_bets(&market_id, &market).await?;
+    // Create refund claims for all bets instead of processing direct refunds
+    // This improves scalability and distributes the computational load
+    if let Err(e) = create_refund_claims(&market_id, &market, "VoidedMarket") {
+        return ResolutionResult::Error(e);
+    }
+    
+    ic_cdk::println!("Created refund claims for all bets in voided market {}", market_id);
     
     // Update market status to voided
     market.status = MarketStatus::Voided;
-    // Note: Market doesn't have a closed_at field in this implementation
     
     // Clone market_id for insertion to avoid ownership issues
     let market_id_clone = market_id.clone();
@@ -180,5 +190,5 @@ pub async fn void_market(
         proposals.remove(&market_id);
     });
     
-    Ok(())
+    ResolutionResult::Success
 }

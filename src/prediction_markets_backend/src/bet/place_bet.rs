@@ -29,6 +29,8 @@ use crate::stable_memory::*;
 use crate::types::{TokenAmount, min_activation_bet, calculate_platform_fee, PlaceBetArgs};
 use crate::controllers::admin::is_admin;
 use crate::token::registry::{get_token_info, is_supported_token};
+use crate::storage::MARKETS;
+use crate::storage::BETS;
 
 // House fee constant and configuration
 lazy_static::lazy_static! {
@@ -261,8 +263,8 @@ async fn place_bet(args: PlaceBetArgs) -> Result<(), BetError> {
     // 3. Generating user bet history and statistics
     BETS.with(|bets| {
         let mut bets = bets.borrow_mut();
-        let mut bet_store = bets.get(&market_id_clone).unwrap_or_default();
-
+        
+        // Create a new bet
         let new_bet = Bet {
             user,                               // User who placed the bet
             market_id: market_id_clone.clone(), // Market being bet on
@@ -271,10 +273,24 @@ async fn place_bet(args: PlaceBetArgs) -> Result<(), BetError> {
             timestamp: StorableNat::from(ic_cdk::api::time()), // Current time for time-weighting
             token_id: token_id.clone(),        // Token type used for the bet
         };
-
-        // Add the bet to the market's bet store
-        bet_store.0.push(new_bet);
-        bets.insert(market_id_clone, bet_store);
+        
+        // Get the next bet index for this market
+        // This counts how many bets are already in the market
+        let mut index: u64 = 0;
+        for (bet_key, _) in bets.iter() {
+            if bet_key.market_id == market_id_clone {
+                index += 1;
+            }
+        }
+        
+        // Create the composite key using our new BetKey type
+        let bet_key = crate::bet::bet::BetKey {
+            market_id: market_id_clone,
+            bet_index: index,
+        };
+        
+        // Insert the new bet with the composite key
+        bets.insert(bet_key, new_bet);
         
         // For time-weighted markets, the timestamp is particularly important
         // as it determines the weight factor during payout calculations

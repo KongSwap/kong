@@ -2,8 +2,9 @@ use serde::{Serialize};
 use candid::{CandidType, Deserialize};
 use ic_cdk::query;
 use super::bet::*;
-use crate::stable_memory::*;
 use crate::market::market::Market;
+use crate::storage::{MARKETS, BETS};
+
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct LatestBets {
@@ -16,10 +17,8 @@ pub struct LatestBets {
 pub fn get_latest_bets() -> Vec<LatestBets> {
     let mut bets = BETS.with(|bets| {
         bets.borrow()
-            .values()
-            .flat_map(|bet_store| {
-                bet_store.0.iter().map(|bet| bet.clone()).collect::<Vec<_>>()
-            })
+            .iter()
+            .map(|(_, bet)| bet.clone())
             .collect::<Vec<_>>()
     });
     bets.sort_by_key(|bet| bet.timestamp.clone());  

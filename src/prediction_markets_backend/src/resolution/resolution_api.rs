@@ -4,11 +4,9 @@
 //! It maintains backward compatibility with existing client applications
 //! while delegating to the more specialized implementation modules.
 
-use ic_cdk::update;
-
 use crate::resolution::resolution_proposal;
-use crate::resolution::resolution::ResolutionError;
 use crate::types::ResolutionArgs;
+use crate::resolution::resolution::ResolutionResult;
 
 /// Resolve the market through admin decision (public API endpoint)
 ///
@@ -22,14 +20,14 @@ use crate::types::ResolutionArgs;
 /// * `args` - Struct containing market ID and winning outcomes
 ///
 /// # Returns
-/// * `Result<(), ResolutionError>` - Success or error reason if the resolution fails
+/// * `ResolutionResult` - Success, waiting state, or error reason if the resolution fails
 ///
 /// # Security
 /// Only market creators and admins can call this function successfully.
 // Note: #[update] attribute removed to avoid conflict with the original function in dual_approval.rs
 pub async fn resolve_via_admin(
     args: ResolutionArgs
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // This function is now just a wrapper around propose_resolution
     // for backward compatibility
     resolution_proposal::propose_resolution(args).await
@@ -38,7 +36,7 @@ pub async fn resolve_via_admin(
 /// Original function signature kept for backward compatibility
 pub async fn resolve_via_admin_legacy(
     args: ResolutionArgs
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Forward to new implementation
     resolve_via_admin(args).await
 }
@@ -46,7 +44,7 @@ pub async fn resolve_via_admin_legacy(
 /// Re-export the propose_resolution function to maintain a consistent API
 pub async fn propose_resolution(
     args: ResolutionArgs
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Forward to the implementation in resolution_proposal
     resolution_proposal::propose_resolution(args).await
 }

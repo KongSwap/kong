@@ -3,10 +3,10 @@ use candid::CandidType;
 use serde::Deserialize;
 
 use super::market::*;
-use super::query_utils::{MarketFilter, MarketTransformer};
+use super::query_utils::{MarketFilter, MarketTransformer, sort::{MarketSorter, SortDirection, MarketSortField}};
 
 use crate::nat::*;
-use crate::stable_memory::*;
+use crate::storage::MARKETS;
 
 #[derive(CandidType, Deserialize)]
 pub struct GetMarketsByStatusArgs {
@@ -28,6 +28,10 @@ pub struct GetMarketsByStatusResult {
 pub fn get_markets_by_status(args: GetMarketsByStatusArgs) -> GetMarketsByStatusResult {
     let now = ic_cdk::api::time();
     let transformer = MarketTransformer::new();
+    
+    // Create a sorter with creation time in descending order (newest first)
+    // The sort_with_featured_first method will prioritize featured markets
+    let sorter = MarketSorter::with_options(MarketSortField::CreationTime, SortDirection::Descending);
 
     // Get all markets
     let all_markets = MARKETS.with(|markets| {
@@ -80,18 +84,24 @@ pub fn get_markets_by_status(args: GetMarketsByStatusArgs) -> GetMarketsByStatus
         })
         .collect::<Vec<_>>();
 
-    // Transform active markets
-    for (market_id, market) in active_markets {
+    // Sort and transform active markets with featured ones first
+    let mut active_markets_sorted = active_markets.clone();
+    sorter.sort_with_featured_first(&mut active_markets_sorted);
+    for (market_id, market) in active_markets_sorted {
         result.active.push(transformer.transform_market(market_id, &market));
     }
 
-    // Transform expired but unresolved markets
-    for (market_id, market) in expired_unresolved_markets {
+    // Sort and transform expired but unresolved markets with featured ones first
+    let mut expired_unresolved_markets_sorted = expired_unresolved_markets.clone();
+    sorter.sort_with_featured_first(&mut expired_unresolved_markets_sorted);
+    for (market_id, market) in expired_unresolved_markets_sorted {
         result.expired_unresolved.push(transformer.transform_market(market_id, &market));
     }
 
-    // Transform resolved markets
-    for (market_id, market) in resolved_markets {
+    // Sort and transform resolved markets with featured ones first
+    let mut resolved_markets_sorted = resolved_markets.clone();
+    sorter.sort_with_featured_first(&mut resolved_markets_sorted);
+    for (market_id, market) in resolved_markets_sorted {
         if let MarketStatus::Voided = market.status {
             // For voided markets, create an empty market result
             result.resolved.push(MarketResult {

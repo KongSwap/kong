@@ -14,3 +14,4 @@ pub mod activity_metrics;
 pub mod bet;
 pub mod get_stats;
 pub mod update_expired_markets;
+pub mod featured;

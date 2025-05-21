@@ -26,12 +26,12 @@
 //! Please use those modules directly for new code. This module remains
 //! for backward compatibility but will be removed in a future release.
 
-use candid::{Principal, Nat};
+use candid::Principal;
 use ic_cdk::update;
 
 use crate::types::{MarketId, OutcomeIndex, ResolutionArgs};
 use crate::market::market::Market;
-use crate::resolution::resolution::ResolutionError;
+use crate::resolution::resolution::{ResolutionError, ResolutionResult};
 
 /// Refunds all bets when a market is voided
 ///
@@ -111,7 +111,7 @@ pub fn can_resolve_market(market: &Market, user: Principal) -> bool {
 #[deprecated(since = "1.1.0", note = "Use resolution_api::propose_resolution instead")]
 pub async fn propose_resolution(
     args: ResolutionArgs
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Re-export from the new modular structure
     crate::resolution::resolution_proposal::propose_resolution(args).await
 }
@@ -138,7 +138,7 @@ pub async fn propose_resolution(
 #[deprecated(since = "1.1.0", note = "Use resolution_actions::force_resolve_market instead")]
 pub async fn force_resolve_market(
     args: ResolutionArgs
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Re-export from the new modular structure
     crate::resolution::resolution_actions::force_resolve_market(args).await
 }
@@ -166,7 +166,7 @@ pub async fn force_resolve_market(
 #[deprecated(since = "1.1.0", note = "Use resolution_api::resolve_via_admin instead")]
 pub async fn resolve_via_admin(
     args: ResolutionArgs
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Re-export from the new modular structure
     crate::resolution::resolution_api::resolve_via_admin(args).await
 }
@@ -177,7 +177,7 @@ pub async fn resolve_via_admin(
 pub async fn resolve_via_admin_legacy(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Convert to new type and forward
     resolve_via_admin(ResolutionArgs {
         market_id,
@@ -207,7 +207,7 @@ pub async fn resolve_via_admin_legacy(
 #[deprecated(since = "1.1.0", note = "Use resolution_actions::void_market instead")]
 pub async fn void_market(
     market_id: MarketId
-) -> Result<(), ResolutionError> {
+) -> ResolutionResult {
     // Re-export from the new modular structure
     crate::resolution::resolution_actions::void_market(market_id).await
 }

@@ -22,7 +22,9 @@ echo "Using Admin's principal: $DEFAULT_PRINCIPAL"
 RESULT=$(dfx canister call prediction_markets_backend create_market \
   "(\"Will XRP reach $2 by end of 2025?\", variant { Crypto }, \"Standard rules apply\", \
   vec { \"Yes\"; \"No\" }, variant { Admin }, \
-  variant { Duration = 600 : nat }, null, opt true, opt 0.25)")
+  variant { Duration = 600 : nat }, null, opt true, opt 0.25, \
+  opt \"${KONG_LEDGER}\")")
+
 
 # Extract market ID
 MARKET_ID=$(echo $RESULT | grep -o '[0-9]\+' | head -1)
