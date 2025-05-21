@@ -182,8 +182,8 @@ export const baseTheme: ThemeDefinition = {
   authorLink: 'https://kongswap.io',
   colors: {
     // Background colors
-    bgDark: '#0D111F',       // Deep navy
-    bgLight: '#141826',      // Lighter navy
+    bgDark: '#090c17',       // Even deeper navy for more contrast
+    bgLight: '#1a2032',      // Lighter, more distinct navy for more contrast
     hoverBgLight: '#141826', // Same as bgLight by default in dark theme
     
     // Primary and secondary colors

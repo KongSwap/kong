@@ -53,17 +53,15 @@
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-3">
 			{#if token}
-				<div class="flex-shrink-0">
 					<TokenImages
 						tokens={[token]}
-						size={36}
+						size={38}
 						showSymbolFallback={true}
 						tooltip={{
 							text: token.name,
 							direction: "top",
 						}}
 					/>
-				</div>
 			{:else}
 				<div
 					class="w-9 h-9 rounded-full bg-kong-text-primary/10 flex items-center justify-center border border-kong-border flex-shrink-0"
@@ -78,11 +76,6 @@
 					<span class="font-medium text-kong-text-primary text-sm leading-tight">
 						{token.name}
 					</span>
-					{#if badgeText}
-						<Badge variant={badgeVariant} size="xs" pill={true}>
-							{badgeText}
-						</Badge>
-					{/if}
 				</div>
 				<div class="text-xs text-kong-text-secondary mt-1 leading-tight">
 					{#if showUsdValues}

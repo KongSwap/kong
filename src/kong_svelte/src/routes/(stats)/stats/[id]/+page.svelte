@@ -65,6 +65,7 @@
 
         // Try direct API fetch
         const fetchedTokens = await fetchTokensByCanisterId([pageId]);
+        console.log(fetchedTokens);
         if (fetchedTokens?.length > 0) {
           token = fetchedTokens[0];
           isTokenLoading = false;
@@ -308,7 +309,7 @@
   {:else}
     <!-- Active Proposals Alert -->
     {#if hasActiveProposals}
-      <div class="max-w-[1300px] mx-auto mb-4">
+      <div class="w-full mx-auto mb-4">
         <div class="bg-kong-primary/10 border border-kong-primary/30 text-kong-primary rounded-lg p-3 flex items-center justify-between gap-4">
           <div class="flex items-center gap-2">
             <AlertTriangle size={18} />
@@ -324,7 +325,7 @@
       </div>
     {/if}
 
-    <div class="flex flex-col max-w-[1300px] mx-auto gap-4">
+    <div class="flex flex-col w-full mx-auto gap-4">
       <!-- Token Header -->
 
 
@@ -364,7 +365,7 @@
               <!-- Chart Panel -->
               <Panel
                 type="main"
-                className=""
+                className="!border-b-none"
               >
                 <div class="h-[450px] min-h-[400px] w-full">
                   {#if isChartDataReady}
@@ -404,15 +405,37 @@
             </div>
 
             <!-- Desktop layout -->
-            <div class="hidden lg:flex lg:flex-row gap-6 w-full">
-              <!-- Left Column - Chart and Transactions -->
-              <div class="lg:w-[70%] flex flex-col gap-6">
+            <div class="hidden lg:flex lg:flex-row gap-4 w-full">
+                <!-- Left Column - Stats -->
+                <div class="lg:w-[450px] flex flex-col gap-6">
+                  <TokenStatistics
+                    {token}
+                    marketCapRank={token?.metrics?.market_cap_rank}
+                    {selectedPool}
+                    {totalTokenTvl}
+                  />
+                  
+                  <!-- Pool Statistics -->
+                  {#if selectedPool}
+                    <PoolStatistics 
+                      {selectedPool} 
+                      {token} 
+                      {relevantPools}
+                      onPoolSelect={(pool) => {
+                        hasManualSelection = true;
+                        selectedPool = pool;
+                      }}
+                    />
+                  {/if}
+                </div>
+              <!-- Middle Column - Chart -->
+              <div class="lg:w-full flex flex-col">
                 <!-- Chart Panel -->
                 <Panel
                   type="main"
-                  className="!p-0"
+                  className="!p-0 !bg-transparent !border-none"
                 >
-                  <div class="h-[450px] min-h-[400px] w-full">
+                  <div class="max-h-[700px] min-h-[600px] w-full">
                     {#if isChartDataReady}
                       {@const currentBaseToken = token}
                       {@const currentQuoteToken = getQuoteToken()}
@@ -442,33 +465,12 @@
                     {/if}
                   </div>
                 </Panel>
-
-                <!-- Transactions Panel -->
-                {#if token && token.address === $page.params.id}
-                  <TransactionFeed {token} className="w-full !p-0" />
-                {/if}
               </div>
 
-              <!-- Right Column - Stats -->
-              <div class="lg:w-[30%] flex flex-col gap-4">
-                <TokenStatistics
-                  {token}
-                  marketCapRank={token?.metrics?.market_cap_rank ?? null}
-                  {selectedPool}
-                  {totalTokenTvl}
-                />
-                
-                <!-- Pool Statistics -->
-                {#if selectedPool}
-                  <PoolStatistics 
-                    {selectedPool} 
-                    {token} 
-                    {relevantPools}
-                    onPoolSelect={(pool) => {
-                      hasManualSelection = true;
-                      selectedPool = pool;
-                    }}
-                  />
+              <!-- Right Column - Transactions -->
+              <div class="lg:w-[450px] flex flex-col">
+                {#if token && token.address === $page.params.id}
+                  <TransactionFeed {token} className="w-full h-[500px] !p-0" />
                 {/if}
               </div>
             </div>
@@ -520,7 +522,7 @@
               </Panel>
               <TokenStatistics
                 {token}
-                marketCapRank={token?.metrics?.market_cap_rank ?? null}
+                marketCapRank={token?.metrics?.market_cap_rank}
                 {selectedPool}
                 {totalTokenTvl}
               />

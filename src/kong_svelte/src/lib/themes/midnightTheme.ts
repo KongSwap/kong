@@ -35,6 +35,7 @@ export const midnightTheme: ThemeDefinition = {
     
     // Text colors
     textPrimary: '#FFFFFF',  // Pure white
+    textOnPrimary: '#000000',
     textSecondary: '#CCCCCC', // Light gray
     textDisabled: '#666666', // Medium gray
     textAccentGreen: '#05EC86', // Same as accent-green

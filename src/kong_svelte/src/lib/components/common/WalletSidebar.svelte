@@ -1,6 +1,6 @@
 <!-- WalletSidebar.svelte -->
 <script lang="ts">
-  import { fade, fly, slide } from "svelte/transition";
+  import { fade } from "svelte/transition";
   import { cubicOut, quintOut } from "svelte/easing";
   import { notificationsStore } from "$lib/stores/notificationsStore";
   import {
@@ -18,6 +18,7 @@
   import TrollboxPanel from "$lib/components/wallet/trollbox/TrollboxPanel.svelte";
   import WalletPanel from "$lib/components/wallet/WalletPanel.svelte";
   import NotificationsPanel from "$lib/components/notifications/NotificationsPanel.svelte";
+  import { slide } from "svelte/transition";
 
   // Define prop types
   type SidebarProps = {
@@ -94,8 +95,6 @@
     if (!browser) return;
 
     if (shouldPreventScroll) {
-      // Instead of overflow-hidden which is too restrictive,
-      // we'll add a custom class that we can style in CSS
       document.body.classList.add("sidebar-open");
     } else {
       document.body.classList.remove("sidebar-open");
@@ -174,138 +173,210 @@
   $effect(() => {
     currentTab = activeTab;
   });
+
+  // Visibility style, no animation needed
+  let sidebarVisible = $state(false);
+  
+  $effect(() => {
+    // If sidebar is opened, wait a tiny bit to ensure styles are applied before showing
+    if (isOpen) {
+      setTimeout(() => {
+        sidebarVisible = true;
+      }, 10);
+    } else {
+      sidebarVisible = false;
+    }
+  });
 </script>
 
 {#if isOpen}
-  <!-- Add crossfade for backdrop for smoother overall effect -->
-  <div
-    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999]"
-    transition:fade={{ duration: 200 }}
-    onclick={handleClose}
-  ></div>
-  <aside
-    class="fixed top-0 right-0 bottom-0 w-[480px] bg-kong-bg-dark border-l border-kong-border flex flex-col z-[1000] overscroll-behavior-contain"
-    style="box-shadow: -10px 0 30px rgba(0, 0, 0, 0.25);"
-    in:fly={{ x: 500, duration: 400, easing: quintOut }}
-    out:fly={{ x: 500, duration: 300, easing: cubicOut }}
-  >
-    <!-- Tabs at the top -->
-    <div class="flex border-b border-kong-border">
-      <button
-        class="{currentTab === 'wallet'
-          ? 'flex-1 text-kong-primary border-b-2 border-kong-primary bg-kong-text-primary/5'
-          : 'px-6 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5'} py-3.5 text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ease-in-out"
-        onclick={() => (currentTab = "wallet")}
-        onmouseenter={() => setTabHover('wallet', true)}
-        onmouseleave={() => setTabHover('wallet', false)}
-      >
-        <div class="transition-all duration-300 ease-in-out transform {currentTab === 'wallet' || walletTabHovered ? 'scale-110' : 'scale-100'}">
-          <Wallet size={16} />
-        </div>
-        {#if currentTab === "wallet" || walletTabHovered}
-          <span transition:slide={{ duration: 200, axis: 'x' }}>Wallet</span>
-        {/if}
-      </button>
+  <!-- Fixed size container with no overflow -->
+  <div class="sidebar-container">
+    <!-- Backdrop (no transition to avoid layout shifts) -->
+    <div
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999]"
+      onclick={handleClose}
+    ></div>
+    
+    <!-- Sidebar with static positioning (no animations) -->
+    <div
+      class="sidebar-panel bg-kong-bg-dark rounded-l-lg"
+      class:visible={sidebarVisible}
+    >
+      <!-- Tabs at the top -->
+      <div class="flex border-b border-kong-border bg-kong-bg-dark">
+        <button
+          class="{currentTab === 'wallet'
+            ? 'flex-1 text-kong-primary border-b-2 border-kong-primary bg-kong-text-primary/5'
+            : 'px-6 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5'} py-3.5 text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ease-in-out"
+          onclick={() => (currentTab = "wallet")}
+          onmouseenter={() => setTabHover('wallet', true)}
+          onmouseleave={() => setTabHover('wallet', false)}
+        >
+          <div class="transition-all duration-300 ease-in-out transform {currentTab === 'wallet' || walletTabHovered ? 'scale-110' : 'scale-100'}">
+            <Wallet size={16} />
+          </div>
+          {#if currentTab === "wallet" || walletTabHovered}
+            <span transition:slide={{ duration: 200, axis: 'x' }}>Wallet</span>
+          {/if}
+        </button>
 
-      <button
-        class="{currentTab === 'chat'
-          ? 'flex-1 text-kong-primary border-b-2 border-kong-primary bg-kong-text-primary/5'
-          : 'px-6 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5'} py-3.5 text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ease-in-out"
-        onclick={() => (currentTab = "chat")}
-        onmouseenter={() => setTabHover('chat', true)}
-        onmouseleave={() => setTabHover('chat', false)}
-      >
-        <div class="transition-all duration-300 ease-in-out transform {currentTab === 'chat' || chatTabHovered ? 'scale-110' : 'scale-100'}">
-          <MessagesSquare size={16} />
-        </div>
-        {#if currentTab === "chat" || chatTabHovered}
-          <span transition:slide={{ duration: 200, axis: 'x' }}>Chat</span>
-        {/if}
-      </button>
+        <button
+          class="{currentTab === 'chat'
+            ? 'flex-1 text-kong-primary border-b-2 border-kong-primary bg-kong-text-primary/5'
+            : 'px-6 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5'} py-3.5 text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ease-in-out"
+          onclick={() => (currentTab = "chat")}
+          onmouseenter={() => setTabHover('chat', true)}
+          onmouseleave={() => setTabHover('chat', false)}
+        >
+          <div class="transition-all duration-300 ease-in-out transform {currentTab === 'chat' || chatTabHovered ? 'scale-110' : 'scale-100'}">
+            <MessagesSquare size={16} />
+          </div>
+          {#if currentTab === "chat" || chatTabHovered}
+            <span transition:slide={{ duration: 200, axis: 'x' }}>Chat</span>
+          {/if}
+        </button>
 
-      <button
-        class="{currentTab === 'notifications'
-          ? 'flex-1 text-kong-primary border-b-2 border-kong-primary bg-kong-text-primary/5'
-          : 'px-6 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5'} py-3.5 text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ease-in-out"
-        onclick={() => (currentTab = "notifications")}
-        onmouseenter={() => setTabHover('notifications', true)}
-        onmouseleave={() => setTabHover('notifications', false)}
-      >
-        <div class="transition-all duration-300 ease-in-out transform {currentTab === 'notifications' || notificationsTabHovered ? 'scale-110' : 'scale-100'}">
-          <Bell size={16} />
-        </div>
-        {#if currentTab === "notifications" || notificationsTabHovered}
-          <span transition:slide={{ duration: 200, axis: 'x' }}>Notifications</span>
-        {:else if $notificationsStore.unreadCount > 0}
-          <Badge variant="red" size="xs"
-            >{$notificationsStore.unreadCount}</Badge
-          >
-        {/if}
-      </button>
+        <button
+          class="{currentTab === 'notifications'
+            ? 'flex-1 text-kong-primary border-b-2 border-kong-primary bg-kong-text-primary/5'
+            : 'px-6 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5'} py-3.5 text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ease-in-out"
+          onclick={() => (currentTab = "notifications")}
+          onmouseenter={() => setTabHover('notifications', true)}
+          onmouseleave={() => setTabHover('notifications', false)}
+        >
+          <div class="transition-all duration-300 ease-in-out transform {currentTab === 'notifications' || notificationsTabHovered ? 'scale-110' : 'scale-100'}">
+            <Bell size={16} />
+          </div>
+          {#if currentTab === "notifications" || notificationsTabHovered}
+            <span transition:slide={{ duration: 200, axis: 'x' }}>Notifications</span>
+          {:else if $notificationsStore.unreadCount > 0}
+            <Badge variant="red" size="xs"
+              >{$notificationsStore.unreadCount}</Badge
+            >
+          {/if}
+        </button>
 
-      <!-- Disconnect button - NEW -->
-      <button
-        class="px-6 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5 py-3.5 text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ease-in-out"
-        onclick={handleDisconnect}
-        onmouseenter={() => setTabHover('disconnect', true)}
-        onmouseleave={() => setTabHover('disconnect', false)}
-        aria-label="Disconnect wallet"
-      >
-        <div class="transition-all duration-300 ease-in-out transform {disconnectTabHovered ? 'scale-110' : 'scale-100'}">
-          <LogOut size={16} />
-        </div>
-        {#if disconnectTabHovered}
-          <span transition:slide={{ duration: 200, axis: 'x' }}>Disconnect</span>
-        {/if}
-      </button>
+        <!-- Disconnect button - NEW -->
+        <button
+          class="px-6 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5 py-3.5 text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ease-in-out"
+          onclick={handleDisconnect}
+          onmouseenter={() => setTabHover('disconnect', true)}
+          onmouseleave={() => setTabHover('disconnect', false)}
+          aria-label="Disconnect wallet"
+        >
+          <div class="transition-all duration-300 ease-in-out transform {disconnectTabHovered ? 'scale-110' : 'scale-100'}">
+            <LogOut size={16} />
+          </div>
+          {#if disconnectTabHovered}
+            <span transition:slide={{ duration: 200, axis: 'x' }}>Disconnect</span>
+          {/if}
+        </button>
 
-      <!-- Close button -->
-      <button
-        class="px-4 py-3.5 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5 transition-colors duration-300 ease-in-out flex items-center justify-center"
-        onclick={handleClose}
-        aria-label="Close sidebar"
-      >
-        <IconClose size={16} />
-      </button>
+        <!-- Close button -->
+        <button
+          class="px-4 py-3.5 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-text-primary/5 transition-colors duration-300 ease-in-out flex items-center justify-center"
+          onclick={handleClose}
+          aria-label="Close sidebar"
+        >
+          <IconClose size={16} />
+        </button>
+      </div>
+
+      <!-- Tab Content -->
+      {#if currentTab === "notifications"}
+        <NotificationsPanel onClose={handleClose} />
+      {:else if currentTab === "chat"}
+        <!-- Chat Tab Content - Using TrollboxPanel component -->
+        <div class="flex-1 flex flex-col h-full overflow-hidden">
+          <TrollboxPanel bind:this={trollboxPanel} onClose={handleClose} />
+        </div>
+      {:else if currentTab === "wallet"}
+        <!-- Wallet Tab Content - Using WalletPanel component -->
+        <div class="flex-1 flex flex-col h-full overflow-hidden">
+          <WalletPanel onClose={handleClose} />
+        </div>
+      {/if}
     </div>
-
-    <!-- Tab Content -->
-    {#if currentTab === "notifications"}
-      <NotificationsPanel onClose={handleClose} />
-    {:else if currentTab === "chat"}
-      <!-- Chat Tab Content - Using TrollboxPanel component -->
-      <div class="flex-1 flex flex-col h-full overflow-hidden">
-        <TrollboxPanel bind:this={trollboxPanel} onClose={handleClose} />
-      </div>
-    {:else if currentTab === "wallet"}
-      <!-- Wallet Tab Content - Using WalletPanel component -->
-      <div class="flex-1 flex flex-col h-full overflow-hidden">
-        <WalletPanel onClose={handleClose} />
-      </div>
-    {/if}
-  </aside>
+  </div>
 {/if}
 
-<style>
+<style lang="postcss" scoped>
+  /* Completely fixed sidebar container with no dimensions */
+  .sidebar-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    z-index: 999;
+    /* Make sure this container never causes overflow */
+    overflow: visible;
+  }
+  
+  /* The sidebar panel itself */
+  .sidebar-panel {
+    @apply border-l border-y border-kong-border shadow-md;
+    position: fixed;
+    top: 50%;
+    right: 0;
+    height: 98vh; /* Use percentage of viewport height */
+    width: 100%;
+    max-width: 480px !important;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    opacity: 0;
+    /* Combined transform for both centering and slide-in */
+    transform: translate(100%, -50%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), 
+                opacity 0.2s ease-in-out;
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+  
+  /* Visible state for the sidebar */
+  .sidebar-panel.visible {
+    transform: translate(0, -50%);
+    opacity: 1;
+  }
+
+  /* Media queries for responsive sizing */
   @media (max-width: 640px) {
-    aside {
-      width: 100%; /* w-full */
-      border-left: 0; /* border-l-0 */
+    .sidebar-panel {
+      width: 100%; 
+      max-width: 100%;
+      border-left: none;
+      /* On mobile, take up more screen space */
+      height: 95vh;
+      /* Adjust for centering */
+      top: 50%;
+      transform: translate(100%, -50%);
+    }
+    
+    .sidebar-panel.visible {
+      transform: translate(0, -50%);
     }
   }
 
   @media (min-width: 641px) and (max-width: 800px) {
-    aside {
-      width: 90%; /* Use percentage for medium screens */
+    .sidebar-panel {
+      width: 90%;
       max-width: 480px;
     }
   }
 
   /* Custom body styles when sidebar is open */
-  :global(body.sidebar-open) {
-    /* Allow scrolling within sidebar elements while preventing background scrolling */
-    overflow: hidden;
-    /* This ensures the page content doesn't shift */
-    padding-right: 16px; /* Add padding to account for scrollbar width */
+  .sidebar-open {
+    overflow: hidden !important;
+    overscroll-behavior: none;
+    touch-action: none;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .sidebar-open::-webkit-scrollbar {
+    display: none;
   }
 </style>

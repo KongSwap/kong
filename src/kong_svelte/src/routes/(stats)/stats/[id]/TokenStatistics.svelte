@@ -23,12 +23,12 @@
   // Props using $props() for Svelte 5 runes mode
   const {
     token,
-    marketCapRank = null,
+    marketCapRank = "-",
     selectedPool = null,
     totalTokenTvl = 0,
   } = $props<{
     token: Kong.Token;
-    marketCapRank: number | null;
+    marketCapRank: string;
     selectedPool?: BE.Pool | null;
     totalTokenTvl?: number;
   }>();
@@ -150,7 +150,7 @@
   const formattedTotalTokenTvl = $derived(formatUsdValue(totalTokenTvl));
 </script>
 
-<Panel type="main">
+<Panel type="main" className="!p-0 !border-none">
   <div class="flex flex-col gap-4">
     <!-- Token Header Section -->
     <div class="flex items-center gap-4">

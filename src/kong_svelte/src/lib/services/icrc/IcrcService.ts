@@ -284,6 +284,7 @@ export class IcrcService {
     try {
       const actor = icrcActor({
         canisterId: token.address,
+        anon: true
       });
       return await actor.icrc1_fee();
     } catch (error) {

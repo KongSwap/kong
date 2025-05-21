@@ -18,6 +18,7 @@
 	import { loadUserBalances, setLastRefreshed } from "$lib/services/balanceService";
 	import TokenListItem from "./TokenListItem.svelte";
 	import WalletListHeader from "./WalletListHeader.svelte";
+	import { fetchPoolTotals } from "$lib/api/pools";
 
 	// Define a type that combines a token with its balance information
 	interface TokenWithBalance {
@@ -161,6 +162,32 @@
 	let tokenSyncCandidates = $state<{tokensToAdd: Kong.Token[], tokensToRemove: Kong.Token[]}>({
 		tokensToAdd: [],
 		tokensToRemove: []
+	});
+
+	// Add pool stats state
+	let poolStats = $state<{
+		total_volume_24h: number;
+		total_tvl: number;
+		total_fees_24h: number;
+	} | null>(null);
+	let isLoadingPoolStats = $state(false);
+
+	// Function to load pool stats
+	async function loadPoolStats() {
+		if (isLoadingPoolStats) return;
+		isLoadingPoolStats = true;
+		try {
+			poolStats = await fetchPoolTotals();
+		} catch (error) {
+			console.error("Error loading pool stats:", error);
+		} finally {
+			isLoadingPoolStats = false;
+		}
+	}
+
+	// Load pool stats on mount
+	onMount(() => {
+		loadPoolStats();
 	});
 
 	// --- Fetch Solana Balances ---
@@ -622,7 +649,7 @@
 </script>
 
 <!-- Component container without scrolling behavior -->
-<div>
+<div class="flex flex-col h-full">
 	<!-- Fixed header that doesn't scroll -->
 	<WalletListHeader 
 		title="Assets"
@@ -657,10 +684,34 @@
 				</div>
 			{/if}
 		</svelte:fragment>
+
+		<!-- Add Pool Stats -->
+		<svelte:fragment slot="stats">
+			{#if isLoadingPoolStats}
+				<div class="flex gap-4 text-xs text-kong-text-secondary/60">
+					<div>Loading stats...</div>
+				</div>
+			{:else if poolStats}
+				<div class="flex gap-4 text-xs">
+					<div class="flex flex-col">
+						<span class="text-kong-text-secondary/60">24h Volume</span>
+						<span class="text-kong-text-primary">${poolStats.total_volume_24h.toLocaleString()}</span>
+					</div>
+					<div class="flex flex-col">
+						<span class="text-kong-text-secondary/60">TVL</span>
+						<span class="text-kong-text-primary">${poolStats.total_tvl.toLocaleString()}</span>
+					</div>
+					<div class="flex flex-col">
+						<span class="text-kong-text-secondary/60">24h Fees</span>
+						<span class="text-kong-text-primary">${poolStats.total_fees_24h.toLocaleString()}</span>
+					</div>
+				</div>
+			{/if}
+		</svelte:fragment>
 	</WalletListHeader>
 
 	<!-- Scrollable content area -->
-	<div class="overflow-y-auto scrollbar-thin" style="max-height: calc(100vh - 225px);">
+	<div class="flex-1 overflow-y-auto scrollbar-thin">
 		{#if balanceLoadError}
 			<div class="text-xs text-kong-accent-red mt-1 px-4 mb-2">
 				Error loading ICP balances: {balanceLoadError}
@@ -685,7 +736,7 @@
 				</p>
 			</div>
 		{:else}
-			<div class="relative"> 
+			<div class="relative pv"> 
 				{#if isSyncing}
 					<div 
 						class="absolute inset-0 flex flex-col items-center justify-start pt-10 bg-kong-bg-dark/80 rounded-md z-10"
@@ -728,7 +779,7 @@
 					{/each}
 					
 					<!-- Token Management Buttons -->
-					<div class="p-4 flex justify-center gap-3">
+					<div class="p-2 flex justify-center gap-3">
 						<button
 							class="flex items-center gap-2 py-2 px-4 bg-kong-bg-dark/10 hover:bg-kong-bg-dark/20 text-kong-text-primary rounded-md transition-colors"
 							on:click={openManageTokensModal}

@@ -87,7 +87,7 @@
     if (!browser) return [];
     
     // Get all wallets from adapters
-    const adapters = auth.pnp?.adapters || {};
+    const adapters = auth.pnp.getEnabledWallets() || {};
     const allWallets = Object.values(adapters)
       .filter((adapter: any) => adapter.enabled !== false)
       .map(mapRawWalletToInfo);

@@ -5,6 +5,9 @@
   import { formatToNonZeroDecimal, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { livePools } from "$lib/stores/poolStore";
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
+  import { calculateRemoveLiquidityAmounts } from '$lib/api/pools';
+  import { onMount } from 'svelte';
+    import BigNumber from 'bignumber.js';
 
   export let pool: any;
   export let token0: any;
@@ -22,6 +25,39 @@
     pool?.amount_0,
     pool?.amount_1
   );
+
+  let estimatedAmounts: [string, string] = ["0", "0"];
+  let loadingEarnings = false;
+  let earningsError = '';
+
+  async function fetchEstimatedEarnings() {
+    loadingEarnings = true;
+    earningsError = '';
+    try {
+      if (!token0 || !token1 || !pool) {
+        estimatedAmounts = ["0", "0"];
+        loadingEarnings = false;
+        return;
+      }
+      const result = await calculateRemoveLiquidityAmounts(
+        token0.address,
+        token1.address,
+        pool.balance
+      );
+      console.log(result)
+      const fee0 = new BigNumber(result.lp_fee_0.toString()).div(new BigNumber(10).pow(token0.decimals))
+      const fee1 = new BigNumber(result.lp_fee_1.toString()).div(new BigNumber(10).pow(token1.decimals))
+      estimatedAmounts = [fee0.toString(), fee1.toString()];
+    } catch (e) {
+      earningsError = e.message || 'Failed to fetch estimated earnings';
+    }
+    loadingEarnings = false;
+  }
+
+  // Optionally, call on mount or when pool/token changes
+  $: if (pool && token0 && token1) {
+    fetchEstimatedEarnings();
+  }
 
   // Calculate earnings based on APY
   function calculateEarnings(timeframe: number): string {
@@ -42,13 +78,13 @@
   <div class="stats-card">
     <div class="stats-row">
       <div class="stat-item">
-        <span class="stat-label">Total Value</span>
+        <span class="stat-label">Value</span>
         <span class="stat-value highlight"
           >${formatToNonZeroDecimal(pool.usd_balance)}</span
         >
       </div>
       <div class="stat-item">
-        <span class="stat-label">APY</span>
+        <span class="stat-label">24h APY</span>
         <span class="stat-value accent"
           >{formatToNonZeroDecimal(actualPool?.rolling_24h_apy)}%</span
         >
@@ -56,7 +92,7 @@
     </div>
     <div class="stats-row">
       <div class="stat-item">
-        <span class="stat-label">Pool Share</span>
+        <span class="stat-label">Share</span>
         <span class="stat-value highlight">{poolSharePercentage}%</span>
       </div>
       <div class="stat-item">
@@ -103,17 +139,29 @@
   </div>
 
   <div class="earnings-container">
-    <h3 class="section-title">Estimated Earnings</h3>
-    <div class="earnings-grid">
-      {#each [{ label: "Daily", days: 1 }, { label: "Weekly", days: 7 }, { label: "Monthly", days: 30 }, { label: "Yearly", days: 365 }] as period}
+    <h3 class="section-title">Lifetime Fees Accrued</h3>
+    {#if loadingEarnings}
+      <div>Loading...</div>
+    {:else if earningsError}
+      <div class="text-red-500">{earningsError}</div>
+    {:else if token0 && token1 && pool}
+      <div class="earnings-grid">
         <div class="earnings-card">
-          <span class="earnings-value truncate" title={calculateEarnings(period.days)}>
-            {formatUsdValue(calculateEarnings(period.days))}
+          <span class="earnings-value truncate" title={formatToNonZeroDecimal(Number(estimatedAmounts[0]))}>
+            {formatToNonZeroDecimal(Number(estimatedAmounts[0]))} {pool.symbol_0}
           </span>
-          <span class="earnings-label">{period.label}</span>
+          <span class="earnings-label">${(token0.metrics.price * Number(estimatedAmounts[0])).toFixed(2)}</span>
+          <span class="earnings-label">{token0.symbol}</span>
         </div>
-      {/each}
-    </div>
+        <div class="earnings-card">
+          <span class="earnings-value truncate" title={formatToNonZeroDecimal(Number(estimatedAmounts[1]))}>
+            {formatToNonZeroDecimal(Number(estimatedAmounts[1]))} {pool.symbol_1}
+          </span>
+          <span class="earnings-label">${(token1.metrics.price * Number(estimatedAmounts[1])).toFixed(2)}</span>
+          <span class="earnings-label">{token1.symbol}</span>
+        </div>
+      </div>
+    {/if}
   </div>
 </div>
 

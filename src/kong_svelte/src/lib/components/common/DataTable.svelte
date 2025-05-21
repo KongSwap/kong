@@ -1,19 +1,14 @@
 <script lang="ts">
-  import { ArrowUp, ArrowDown, ArrowUpDown, Flame, TrendingUp, Wallet } from "lucide-svelte";
-  import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-svelte";
   import { onMount } from "svelte";
-  import { themeStore } from "$lib/stores/themeStore";
-  import { getThemeById } from "$lib/themes/themeRegistry";
-  import type { ThemeColors } from "$lib/themes/baseTheme";
 
   const {
     data = [],
     columns = [],
-    itemsPerPage = 100,
+    itemsPerPage = 50,
     defaultSort = { column: '', direction: 'desc' as 'asc' | 'desc' },
     onRowClick = null,
     rowKey = 'id',
-    isKongRow = null,
     totalItems = 0,
     currentPage = 1,
     onPageChange = null,
@@ -35,7 +30,6 @@
     defaultSort?: { column: string; direction: 'asc' | 'desc' };
     onRowClick?: ((row: any) => void) | null;
     rowKey?: string;
-    isKongRow?: ((row: any) => boolean) | null;
     totalItems?: number;
     currentPage?: number;
     onPageChange?: ((page: number) => void) | null;
@@ -51,18 +45,6 @@
   let scrollContainer: HTMLDivElement;
   let previousPageValue = $state(currentPage); // Track previous page
 
-  // Theme-related properties - use functions to compute values on demand
-  function getCurrentTheme() {
-    return getThemeById($themeStore);
-  }
-
-  function getThemeColors(): ThemeColors {
-    return getCurrentTheme().colors as ThemeColors;
-  }
-
-  function isTableTransparent(): boolean {
-    return getThemeColors().statsTableTransparent === true;
-  }
 
   // Column map for optimized lookups
   let columnMap = $state(new Map());
@@ -93,26 +75,10 @@
     }
   }
 
-  function isKongToken(row: any): boolean {
-    return row.address === KONG_CANISTER_ID || 
-           row.address_0 === KONG_CANISTER_ID || 
-           row.address_1 === KONG_CANISTER_ID;
-  }
-
   let sortedData = $derived(() => {
     if (!data || !Array.isArray(data)) return [];
     
-    if (!sortColumn) {
-      return [...data].sort((a, b) => {
-        if (isKongToken(a)) return -1;
-        if (isKongToken(b)) return 1;
-        return 0;
-      });
-    }
-
     return [...data].sort((a, b) => {
-      if (isKongToken(a)) return -1;
-      if (isKongToken(b)) return 1;
 
       let aValue = getValue(a, sortColumn) ?? 0;
       let bValue = getValue(b, sortColumn) ?? 0;
@@ -202,14 +168,14 @@
   });
 </script>
 
-<div class="flex flex-col h-full">
-  <div class="flex-1 overflow-auto" bind:this={scrollContainer}>
-    <table class="w-full border-collapse md:min-w-0">
-      <thead class="bg-kong-bg-dark sticky top-0 z-20 !backdrop-blur-[12px]">
-        <tr class="border-b border-kong-border bg-kong-bg-dark">
+<div class="flex flex-col px-1">
+  <div class="flex-1 overflow-auto bg-kong-bg-dark">
+    <table class="w-full md:min-w-0">
+      <thead>
+        <tr class="uppercase">
           {#each columns as column (column.key)}
             <th
-              class="py-2 px-4 text-sm font-medium text-kong-text-secondary whitespace-nowrap {column.sortable ? 'cursor-pointer hover:bg-white/5' : ''} transition-colors duration-200 {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'}"
+              class="pt-3 pb-2 !border-b border-kong-border px-4 text-sm font-bold text-kong-text-secondary whitespace-nowrap {column.sortable ? 'cursor-pointer hover:bg-white/5' : ''} transition-colors duration-200 {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'} first:rounded-l-lg last:rounded-r-lg"
               style={column.width ? `width: ${column.width}` : ''}
               on:click={() => column.sortable && toggleSort(column.key)}
             >
@@ -223,13 +189,12 @@
             </th>
           {/each}
         </tr>
+        <tr><td class="h-1"></td></tr>
       </thead>
-      <tbody class={isTableTransparent() ? 'transparent-tbody' : 'solid-tbody'}>
+      <tbody class="min-h-[300px]">
         {#each displayData as row, idx (idx)}
           <tr
-            class="h-[44px] border-b border-kong-border/50 transition-colors duration-200 hover:!text-kong-primary
-              {onRowClick ? 'cursor-pointer' : ''} 
-              {isKongRow?.(row) ? '!bg-kong-primary/15 border-kong-primary/30 hover:bg-kong-primary hover:border hover:border-kong-primary/80' : 'hover:bg-kong-hover-bg-dark/80 hover:backdrop-blur-md hover:z-50 hover:!border hover:border-kong-hover-bg-dark'}"
+            class="h-[48px] border-b border-kong-border/10 transition-colors duration-200 {onRowClick ? 'cursor-pointer' : ''}"
             on:click={() => onRowClick?.(row)}
             on:mouseenter={() => onRowMouseEnter(idx)}
             on:mouseleave={onRowMouseLeave}
@@ -257,14 +222,14 @@
 
   <!-- Loading Overlay -->
   {#if isLoading}
-    <div class="absolute inset-0 bg-kong-bg-dark/30 backdrop-blur-[2px] flex items-center justify-center z-30 transition-opacity duration-200">
+    <div class="absolute inset-0 bg-kong-bg-light/30 backdrop-blur-[2px] flex items-center justify-center z-30 transition-opacity duration-200 rounded-xl">
       <div class="loading-spinner"></div>
     </div>
   {/if}
 
   <!-- Pagination -->
-  <div class="bg-kong-bg-dark sticky bottom-0 z-20 !backdrop-blur-[12px]">
-    <div class="border-t border-kong-border bg-kong-bg-dark flex items-center justify-between px-4 py-1">
+  <div class="z-20 w-full">
+    <div class="flex items-center justify-between px-4 py-2 bg-kong-bg-dark mt-2">
       <div class="flex items-center text-sm text-kong-text-secondary">
         {#if totalItems > 0}
           Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
@@ -274,13 +239,12 @@
       </div>
       <div class="flex items-center gap-2">
         <button
-          class="pagination-button {currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+          class="pagination-pill {currentPage === 1 ? 'bg-kong-bg-light text-kong-text-secondary' : 'bg-kong-primary/10 text-kong-primary'}"
           on:click={previousPage}
           disabled={currentPage === 1 || totalItems === 0}
         >
           Previous
         </button>
-        
         {#if totalItems > 0}
           {#each Array(totalPages) as _, i}
             {@const pageNum = i + 1}
@@ -288,10 +252,9 @@
               pageNum === 1 || 
               pageNum === totalPages || 
               (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)}
-            
             {#if showPage}
               <button
-                class="pagination-button {currentPage === pageNum ? 'bg-kong-primary text-white' : 'text-kong-text-secondary hover:bg-kong-primary/20'}"
+                class="pagination-pill {currentPage === pageNum ? 'bg-kong-primary text-white' : 'bg-kong-primary/10 text-kong-primary'}"
                 on:click={() => goToPage(pageNum)}
               >
                 {pageNum}
@@ -301,9 +264,8 @@
             {/if}
           {/each}
         {/if}
-        
         <button
-          class="pagination-button {currentPage === totalPages || totalItems === 0 ? 'text-kong-text-secondary bg-kong-bg-dark' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+          class="pagination-pill {currentPage === totalPages || totalItems === 0 ? 'bg-kong-bg-light text-kong-text-secondary' : 'bg-kong-primary/10 text-kong-primary'}"
           on:click={nextPage}
           disabled={currentPage === totalPages || totalItems === 0}
         >
@@ -315,83 +277,9 @@
 </div>
 
 <style scoped lang="postcss">
-  button:disabled {
-    @apply opacity-50 cursor-not-allowed;
+  .pagination-pill {
+    @apply px-3 py-1 rounded-full text-sm font-medium transition-colors duration-200 shadow-none border-none;
   }
-  
-  .pagination-button {
-    @apply px-3 py-1 rounded text-sm transition-colors duration-200;
-  }
-
-  thead {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background-color: var(--kong-bg-dark);
-  }
-
-  thead::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-bottom: 1px solid var(--kong-border);
-  }
-
-  th {
-    position: relative;
-    background-color: var(--kong-bg-dark);
-  }
-  
-  /* Table background styling based on theme */
-  .transparent-tbody tr {
-    background-color: transparent;
-  }
-  
-  .transparent-tbody tr:hover {
-    background-color: rgba(var(--hover-bg-light), 0.15);
-    box-shadow: inset 0 0 0 1px rgba(var(--primary), 0.1);
-  }
-  
-  .solid-tbody tr {
-    background-color: var(--kong-bg-dark);
-  }
-  
-  .solid-tbody tr:nth-child(even) {
-    background-color: var(--kong-bg-light);
-  }
-  
-  .solid-tbody tr:hover {
-    background-color: rgba(var(--hover-bg-light), 0.3);
-  }
-  
-  .flash-green {
-    animation: flashGreen 2s ease-out;
-  }
-
-  .flash-red {
-    animation: flashRed 2s ease-out;
-  }
-
-  @keyframes flashGreen {
-    0% {
-      background-color: rgba(34, 197, 94, 0.2);
-    }
-    100% {
-      background-color: transparent;
-    }
-  }
-
-  @keyframes flashRed {
-    0% {
-      background-color: rgba(239, 68, 68, 0.2);
-    }
-    100% {
-      background-color: transparent;
-    }
-  }
-
   .loading-spinner {
     width: 40px;
     height: 40px;
@@ -400,7 +288,6 @@
     border-top-color: transparent;
     animation: spin 0.8s linear infinite;
   }
-
   @keyframes spin {
     to {
       transform: rotate(360deg);

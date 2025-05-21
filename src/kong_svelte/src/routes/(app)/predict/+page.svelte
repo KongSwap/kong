@@ -264,7 +264,7 @@
       }
 
       // Convert bet amount to scaled token units
-      const scaledAmount = toScaledAmount(amount, kongToken.decimals);
+      const scaledAmount = toScaledAmount(amount.toString(), kongToken.decimals);
 
       await placeBet(
         kongToken,

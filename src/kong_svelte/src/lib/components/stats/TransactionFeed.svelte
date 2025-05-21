@@ -43,7 +43,7 @@
   let mobile = $derived(browser ? window.innerWidth < 768 : false);
 
   // Declare our state variables
-  let { token, className = "!border-none" } = $props<{
+  let { token, className = "!border-none !rounded-t-none" } = $props<{
     token: Kong.Token;
     className?: string;
   }>();
@@ -392,31 +392,27 @@
 </script>
 
 <Panel type="main" {className}>
-  <div class="relative flex flex-col h-[300px]">
+  <div class="relative flex flex-col h-full">
     {#if isLoadingTxns && !transactions.length}
-      <div class="flex justify-center items-center p-4">
+      <div class="flex justify-center items-center p-4 h-[400px]">
         <span class="loading loading-spinner loading-md" />
       </div>
     {:else if error}
       <div class="text-red-500 p-4">{error}</div>
     {:else if transactions.length === 0}
-      <div class="text-kong-text-primary/70 text-center p-4">
+      <div class="text-kong-text-primary/70 text-center p-4 h-[400px] flex items-center justify-center">
         No transactions found
       </div>
     {:else}
-      <div class="relative flex flex-col h-full">
+      <div class="relative flex flex-col h-full max-h-[700px]">
         <div
-          class="hidden md:block sticky top-0 z-20 bg-kong-bg-dark border-b border-kong-border/30"
+          class="hidden md:block sticky top-0 z-20 bg-gradient-to-b from-kong-bg-light/90 to-kong-bg-light/30 border-b border-kong-border/30"
         >
           <table class="w-full">
             <thead>
-              <tr class="text-left text-kong-text-primary/70 !font-normal">
-                <th class="px-4 py-2 w-[110px]">Wallet</th>
-                <th class="px-4 py-2 w-[120px]">Paid</th>
-                <th class="px-4 py-2 w-[140px]">Received</th>
-                <th class="px-4 py-2 w-[100px]">Value</th>
-                <th class="px-4 py-2 w-[120px]">Date</th>
-                <th class="w-[50px] py-2">Link</th>
+              <tr class="text-left text-xs text-kong-text-primary/70 !font-normal">
+                <th class="px-2 py-2">Paid/Received</th>
+                <th class="px-2 py-2 text-right">Value</th>
               </tr>
             </thead>
           </table>
@@ -426,15 +422,84 @@
           <table class="w-full">
             <tbody class="hidden md:table-row-group">
               {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
-                <TransactionRow
-                  {tx}
-                  {token}
-                  formattedTokens={$tokensStore}
-                  isNew={newTransactionIds.has(
-                    tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : "",
-                  )}
-                  {mobile}
-                />
+                <tr class={`border-b border-kong-border/30 hover:bg-kong-bg-light active:bg-kong-bg-light/50 transition-colors ${
+                  newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : "") 
+                    ? "transaction-highlight" 
+                    : ""
+                }`}>
+                  <td class="px-2 py-2">
+                    <div class="flex flex-col">
+                      <div class="flex items-center gap-1.5 mb-1">
+                        {#if tx.receive_token_id === token.id}
+                          <span class="bg-kong-accent-green/20 text-kong-text-accent-green px-1.5 py-0.5 rounded text-[10px]">
+                            BUY
+                          </span>
+                        {:else}
+                          <span class="bg-kong-accent-red/20 text-kong-accent-red px-1.5 py-0.5 rounded text-[10px]">
+                            SELL
+                          </span>
+                        {/if}
+                        <span class="text-xs text-kong-text-primary/60">
+                          {new Date(tx.timestamp).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <div class="flex flex-col gap-0.5 text-xs">
+                        <div class="flex items-center gap-1">
+                          <span class="text-kong-text-primary/80">Paid:</span>
+                          <span class="font-medium text-kong-text-primary">
+                            {tx.pay_amount.toFixed(tx.pay_amount < 0.01 ? 6 : 4)}
+                            {$tokensStore.find(t => t.id === tx.pay_token_id)?.symbol}
+                          </span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                          <span class="text-kong-text-primary/80">Got:</span>
+                          <span class="font-medium text-kong-text-primary">
+                            {tx.receive_amount.toFixed(tx.receive_amount < 0.01 ? 6 : 4)}
+                            {$tokensStore.find(t => t.id === tx.receive_token_id)?.symbol}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-2 py-2 text-right">
+                    <div class="flex flex-col items-end gap-1">
+                      <span class="text-xs font-medium">{calculateTotalUsdValue(tx)}</span>
+                      <div class="flex items-center gap-1">
+                        <button
+                          title="View wallet"
+                          class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
+                          on:click|preventDefault={() => goto(`/wallets/${formatPrincipalId(tx.user.principal_id)}`)}
+                        >
+                          <WalletIcon class="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          title="View on explorer"
+                          class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
+                          on:click|preventDefault={() => {
+                            window.open(
+                              `https://www.icexplorer.io/address/detail/${formatPrincipalId(tx.user.principal_id)}`,
+                              "_blank"
+                            );
+                          }}
+                        >
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
               {/each}
             </tbody>
 
@@ -554,12 +619,12 @@
             <div
               bind:this={loadMoreTrigger}
               use:setupIntersectionObserver
-              class="flex justify-center p-4"
+              class="flex justify-center p-2 text-xs"
             >
               {#if isLoadingMore}
-                <span class="loading loading-spinner loading-md" />
+                <span class="loading loading-spinner loading-xs" />
               {:else}
-                <span class="text-kong-text-primary/70">Loading more...</span>
+                <span class="text-kong-text-primary/70">Load more</span>
               {/if}
             </div>
           {/if}
@@ -572,7 +637,7 @@
 <style>
   /* Add custom scrollbar styling */
   :global(.overflow-y-auto::-webkit-scrollbar) {
-    width: 8px;
+    width: 4px;
   }
 
   :global(.overflow-y-auto::-webkit-scrollbar-track) {
@@ -586,6 +651,20 @@
 
   :global(.overflow-y-auto::-webkit-scrollbar-thumb:hover) {
     background-color: rgba(156, 163, 175, 0.5);
+  }
+  
+  /* Add highlight animation for new transactions */
+  .transaction-highlight {
+    animation: highlight 2s ease-out;
+  }
+  
+  @keyframes highlight {
+    0% {
+      background-color: rgba(99, 102, 241, 0.2);
+    }
+    100% {
+      background-color: transparent;
+    }
   }
 
   /* Mobile responsive styles */

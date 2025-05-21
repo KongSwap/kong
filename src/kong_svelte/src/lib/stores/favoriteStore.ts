@@ -1,6 +1,7 @@
 import { writable, get, derived } from "svelte/store";
 import { auth } from "$lib/stores/auth";
 import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
+import { browser } from '$app/environment';
 
 // Internal store for favorites state
 interface FavoriteState {
@@ -215,14 +216,16 @@ function createFavoriteStore() {
   const favoriteCount = derived(store, ($store) => $store.favorites.size);
   
   // Automatically load favorites when auth changes
-  auth.subscribe(() => {
-    const currentWalletId = getCurrentWalletId();
-    const { walletId } = get(store);
-    
-    if (currentWalletId !== walletId) {
-      loadFavorites();
-    }
-  });
+  if (browser) {
+    auth.subscribe(() => {
+      const currentWalletId = getCurrentWalletId();
+      const { walletId } = get(store);
+      
+      if (currentWalletId !== walletId) {
+        loadFavorites();
+      }
+    });
+  }
   
   return {
     subscribe: store.subscribe,

@@ -326,25 +326,25 @@
 
 <!-- Fixed portfolio overview section -->
 <div
-  class="z-10 bg-kong-bg-dark/95 backdrop-blur-sm border-b border-kong-border"
+  class="border-b border-kong-border"
 >
   <!-- Portfolio Overview -->
-  <div class="px-5 py-3">
+  <div class="px-5 py-3 bg-kong-bg-light/50">
     <div class="flex justify-between items-center mb-2">
-      <div class="text-sm text-kong-text-secondary flex items-center gap-2 cursor-pointer" aria-label="Total Portfolio Value">
+      <div class="text-sm text-kong-text-primary flex items-center gap-2 cursor-pointer" aria-label="Total Portfolio Value">
         <span onclick={() => {
           goto(`/wallets/${walletId}`);
         }}>Total Portfolio Value</span>
         <div class="flex items-center gap-2">
           <button
-            class="p-1 {isRefreshing ? 'text-kong-primary bg-kong-primary/10' : 'text-kong-text-secondary/60 hover:text-kong-primary hover:bg-kong-bg-light/20'} rounded-full transition-all"
+            class="p-1 {isRefreshing ? 'text-kong-text-primary bg-kong-primary/10' : 'text-kong-text-primary/60 hover:text-kong-primary hover:bg-kong-primary/10'} rounded-full transition-all"
             onclick={() => refreshBalances(true)}
             disabled={isRefreshing}
           >
             <RefreshCw size={12} class={isRefreshing ? 'animate-spin' : ''} />
           </button>
           <button
-            class="p-1 text-kong-text-secondary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all"
+            class="p-1 text-kong-text-primary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all"
             onclick={toggleUsdVisibility}
           >
             {#if showUsdValues}
@@ -392,7 +392,7 @@
   </div>
 
   <!-- Section Tabs -->
-  <div class="flex border-b border-kong-border">
+  <div class="flex">
     {#each tabsConfig as tab}
       {@const Icon = tab.icon}
       <button
@@ -415,7 +415,7 @@
 </div>
 
 <!-- Scrollable content area for tab content -->
-<div>
+<div class="h-full overflow-y-auto">
   <!-- Tab Content: Dynamically show the appropriate component -->
   {#if tabComponents[activeSection]}
     {@const tabData = tabComponents[activeSection]}

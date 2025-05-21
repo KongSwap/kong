@@ -496,7 +496,7 @@
   </div>
 
   <!-- Content layout with proper spacing -->
-  <div class="relative z-10 container mx-auto px-4 sm:px-6 flex flex-col items-center justify-center h-full pt-10 sm:pt-0 transition-all duration-1000 ease-out {contentVisible ? 'opacity-100' : 'opacity-0 transform translate-y-8'}">
+  <div class="relative !max-w-5xl z-10 container mx-auto px-4 sm:px-6 flex flex-col items-center justify-center h-full pt-10 sm:pt-0 transition-all duration-1000 ease-out {contentVisible ? 'opacity-100' : 'opacity-0 transform translate-y-8'}">
     
     <!-- Logo with CRT effect -->
     <div class="relative mb-5 sm:mb-10 w-full max-w-6xl">

@@ -37,6 +37,7 @@
         if (browser) {
           configureStorage();
         }
+        themeStore.initTheme();
         await auth.initialize();
         if (browser) {
           // Fetch default tokens
@@ -123,19 +124,19 @@
 </script>
 
 
-<div class="flex flex-col min-h-screen w-full origin-center app-content">
+<div class="flex flex-col min-h-screen !bg-kong-bg-dark w-full origin-center overflow-hidden">
   {#if !themeReady}
   <LoadingIndicator text="Loading..." fullHeight />
 {:else}
-  <PageWrapper page={page.url.pathname}>
+
     <div class="ticker-section bg-kong-bg-dark">
       <TokenTicker />
     </div>
     <div class="bg-transparent navbar-section mb-4">
       <Navbar />
     </div>
-    <main class="flex justify-center items-center w-full flex-grow">
-      <div class="w-[1300px] px-2 mx-auto h-full" transition:fade>
+    <main class="flex items-center max-w-xl flex-grow">
+      <div class="w-full h-full" transition:fade>
         {@render children?.()}
       </div>
     </main>
@@ -153,7 +154,6 @@
         </p>
       </div>
     </footer>
-  </PageWrapper>
   <Toast />
   <AddToHomeScreen />
   <QRModal />

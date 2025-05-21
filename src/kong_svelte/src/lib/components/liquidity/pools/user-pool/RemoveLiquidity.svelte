@@ -49,12 +49,14 @@
         throw new Error("Amount exceeds balance");
       }
 
-      const [amount0, amount1] =
+      const result =
         await calculateRemoveLiquidityAmounts(
           pool.address_0,
           pool.address_1,
           numericAmount,
         );
+
+      const [amount0, amount1] = [result.amount_0 + result.lp_fee_0, result.amount_1 + result.lp_fee_1];
 
       // Get token decimals from fetched token data
       const token0Decimals = token0?.decimals || 8;
@@ -62,8 +64,8 @@
 
       // First adjust for decimals, then store as string
       estimatedAmounts = {
-        amount0: (Number(amount0) / Math.pow(10, token0Decimals)).toString(),
-        amount1: (Number(amount1) / Math.pow(10, token1Decimals)).toString(),
+        amount0: (new BigNumber(amount0.toString()).div(new BigNumber(10).pow(token0Decimals))).toString(),
+        amount1: (new BigNumber(amount1.toString()).div(new BigNumber(10).pow(token1Decimals))).toString(),
       };
     } catch (err) {
       console.error("Error calculating removal amounts:", err);

@@ -148,7 +148,7 @@
   } as const;
 </script>
 
-<div class="flex-1 overflow-y-auto py-3 scrollbar-thin">
+<div class="flex-1 overflow-y-auto py-3 scrollbar-thin rounded-bl-xl">
   {#if $notificationsStore.history.length === 0}
     <div
       class="flex flex-col items-center justify-center gap-2 p-8 h-full text-kong-text-secondary text-sm"

@@ -14,18 +14,46 @@
 
 <span 
   use:tooltip={{ text: tooltipContent, direction: "bottom" }}
-  class="cursor-help {flashClass} transition-colors duration-200 {isHovered ? 'text-kong-primary' : ''}"
+  class="cursor-help {flashClass} {isHovered ? 'text-kong-primary' : ''}"
 >
   {formattedPrice}
 </span>
 
 <style scoped>
   .flash-green {
-    color: rgb(var(--text-accent-green));
-    font-weight: 500;
+    animation: flash-green 2s ease-out !important;
   }
   .flash-red {
-    color: rgb(var(--text-accent-red));
-    font-weight: 500;
+    animation: flash-red 2s ease-out !important;
+  }
+
+  @keyframes flash-green {
+    0% {
+      background: transparent;
+    }
+    15% {
+      background: rgba(0, 204, 129, 0.1);
+    }
+    85% {
+      background: rgba(0, 204, 129, 0.1);
+    }
+    100% {
+      background: transparent;
+    }
+  }
+
+  @keyframes flash-red {
+    0% {
+      background: transparent;
+    }
+    15% {
+      background: rgba(209, 27, 27, 0.1);
+    }
+    85% {
+      background: rgba(209, 27, 27, 0.1);
+    }
+    100% {
+      background: transparent;
+    }
   }
 </style>

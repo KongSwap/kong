@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, type Writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { getThemeById, generateThemeVariables, getAllThemes, registerTheme } from '../themes/themeRegistry';
 import type { ThemeDefinition } from '../themes/baseTheme';
@@ -9,10 +9,13 @@ import { auth } from '../stores/auth';
 // Define theme ID type based on available themes
 export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'microswap' | 'synthwave' | 'dragginz';
 
+export type ColorScheme = 'light' | 'dark';
+export const colorScheme: Writable<ColorScheme> = writable('dark');
+
 function createThemeStore() {
   const { subscribe, set } = writable<ThemeId>('dark');
+  const { subscribe: colorSchemeSubscribe } = colorScheme;
   const THEME_KEY = STORAGE_KEYS.THEME;
-  let previousAuthState = { isConnected: false, principalId: null };
   
   /**
    * Get the current user ID from auth service or default to 'default'
@@ -42,8 +45,10 @@ function createThemeStore() {
     // This ensures theme-specific styles (like border colors) are properly scoped
     let cssContent;
     
+    
     // Get the light or dark class based on the theme's colorScheme
     const themeClass = theme.colorScheme === 'light' ? 'light' : 'dark';
+    colorScheme.set(theme.colorScheme);
     
     // Apply CSS variables to the appropriate theme class
     cssContent = `
@@ -356,42 +361,6 @@ function createThemeStore() {
         document.documentElement.setAttribute('data-theme-ready', 'true');
       }
     }
-  }
-
-  // Create a subscription to the auth store to reload theme when auth changes
-  if (browser) {
-    auth.subscribe((authState) => {
-      const currentAuthState = {
-        isConnected: authState.isConnected,
-        principalId: authState.account?.owner || null
-      };
-      
-      // Check if auth state has changed in a meaningful way
-      if (currentAuthState.isConnected !== previousAuthState.isConnected || 
-          currentAuthState.principalId !== previousAuthState.principalId) {
-        
-        // Check for theme in URL parameters first
-        const urlParams = new URLSearchParams(window.location.search);
-        const themeParam = urlParams.get('theme');
-        
-        // If valid theme in URL, use it instead of stored theme
-        if (themeParam && getAllThemes().some(theme => theme.id === themeParam)) {
-          setTheme(themeParam as ThemeId);
-        } else {
-          // Wait a bit before loading to make sure auth state has stabilized
-          setTimeout(() => {
-            loadThemeFromStorage().then(theme => {
-              if (theme) {
-                setTheme(theme);
-              }
-            });
-          }, 100);
-        }
-        
-        // Update previous state
-        previousAuthState = currentAuthState;
-      }
-    });
   }
 
   // Initialize on module load

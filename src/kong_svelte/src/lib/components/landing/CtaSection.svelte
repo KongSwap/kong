@@ -607,7 +607,7 @@
     <img src="/images/kongface-white.svg" alt="Kong logo watermark" class="w-full h-full" />
   </div>
   
-  <div class="max-w-4xl mx-auto px-6 md:px-8 w-full z-30 text-center relative transition-all duration-1000 ease-out {contentVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'} pointer-events-none">
+  <div class="!max-w-4xl mx-auto px-6 md:px-8 w-full z-30 text-center relative transition-all duration-1000 ease-out {contentVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'} pointer-events-none">
     <!-- Cyberpunk header with neon effect -->
     <h2 class="text-3xl md:text-5xl font-black mb-8 uppercase tracking-tight leading-none cyberpunk-title">
       <div class="relative inline-block leading-tight perspective-1000">

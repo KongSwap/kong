@@ -9,6 +9,7 @@
   import { debounce } from "lodash-es";
   import { themeStore } from "$lib/stores/themeStore";
   import { updateTradingViewPriceScale, findBestPoolForTokens } from "$lib/utils/statsUtils";
+  import { applyTradingViewTheme, setTradingViewRootVars } from "$lib/config/tradingview/theme.utils";
 
   // Props
   const props = $props<{
@@ -55,66 +56,7 @@
   };
 
   // Function to update TradingView CSS variables when theme changes
-  const updateTradingViewTheme = () => {
-    if (!chart || !chart.setCSSCustomProperty) return;
-    
-    // Get computed CSS values from the document
-    const getThemeColor = (cssVar: string, fallback: string): string => {
-      if (typeof window === 'undefined') return fallback;
-      return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || fallback;
-    };
-
-    // Get RGB values and convert to hex
-    const rgbToHex = (rgbVar: string, fallback: string): string => {
-      const rgb = getThemeColor(rgbVar, '').split(' ').map(Number);
-      if (rgb.length === 3 && !rgb.some(isNaN)) {
-        return `#${rgb.map(x => x.toString(16).padStart(2, '0')).join('')}`;
-      }
-      return fallback;
-    };
-
-    // Core theme colors
-    const bgDarkColor = rgbToHex('--bg-dark', '#000000');
-    const bgLightColor = rgbToHex('--bg-light', '#111111');
-    const borderColor = rgbToHex('--border', '#333333');
-    const borderLightColor = rgbToHex('--border-light', '#444444');
-    const textPrimaryColor = rgbToHex('--text-primary', '#FFFFFF');
-    const textSecondaryColor = rgbToHex('--text-secondary', '#AAAAAA');
-    const accentBlueColor = rgbToHex('--accent-blue', '#00A7FF');
-    const accentGreenColor = rgbToHex('--accent-green', '#05EC86');
-    const accentRedColor = rgbToHex('--accent-red', '#FF4545');
-
-    // Update TradingView CSS custom properties
-    try {
-      chart.setCSSCustomProperty('--tv-color-platform-background', bgDarkColor);
-      chart.setCSSCustomProperty('--tv-color-pane-background', bgDarkColor);
-      chart.setCSSCustomProperty('--tv-color-background', bgDarkColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-button-background-hover', bgLightColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-button-background-expanded', borderColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-button-background-active', borderLightColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-button-background-active-hover', borderLightColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-button-text', textSecondaryColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-button-text-hover', textPrimaryColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-button-text-active', textPrimaryColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-button-text-active-hover', textPrimaryColor);
-      chart.setCSSCustomProperty('--tv-color-item-active-text', textPrimaryColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-toggle-button-background-active', accentBlueColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-toggle-button-background-active-hover', accentBlueColor);
-      chart.setCSSCustomProperty('--tv-color-toolbar-divider-background', borderColor);
-      chart.setCSSCustomProperty('--tv-color-popup-background', bgLightColor);
-      chart.setCSSCustomProperty('--tv-color-popup-element-text', textSecondaryColor);
-      chart.setCSSCustomProperty('--tv-color-popup-element-text-hover', textPrimaryColor);
-      chart.setCSSCustomProperty('--tv-color-popup-element-background-hover', borderColor);
-      chart.setCSSCustomProperty('--tv-color-popup-element-divider-background', borderColor);
-      chart.setCSSCustomProperty('--tv-color-popup-element-secondary-text', textSecondaryColor);
-      chart.setCSSCustomProperty('--tv-color-buy-button', accentGreenColor);
-      chart.setCSSCustomProperty('--tv-color-sell-button', accentRedColor);
-      chart.setCSSCustomProperty('--themed-color-buy-btn-chart', accentGreenColor);
-      chart.setCSSCustomProperty('--themed-color-sell-btn-chart', accentRedColor);
-    } catch (e) {
-      console.warn('[Chart] Error updating CSS properties:', e);
-    }
-  };
+  const updateTradingViewTheme = () => applyTradingViewTheme(chart);
 
   // Effects
   $effect(() => {
@@ -124,8 +66,12 @@
   $effect(() => {
     state.currentTheme = $themeStore;
     if (typeof document !== 'undefined') {
+      // Update theme attributes for rest of app
       document.documentElement.setAttribute('data-theme', state.currentTheme);
       document.body.setAttribute('data-theme', state.currentTheme);
+
+      // Update root vars immediately to avoid flash
+      setTradingViewRootVars();
       
       // Update TradingView theme when our theme changes
       if (chart && chart._ready) {
@@ -246,6 +192,9 @@
     state.isInitializingChart = true;
     
     try {
+      // Ensure colours are in place before loading library to prevent FOUC
+      setTradingViewRootVars();
+
       const dimensions = await checkDimensions();      
       await loadTradingViewLibrary();
       
@@ -578,9 +527,8 @@
     position: relative;
     width: 100%;
     height: 100%;
-    min-height: 400px;
+    min-height: 450px;
     background: var(--bg-dark);
-    border-radius: 12px;
     overflow: hidden;
   }
 

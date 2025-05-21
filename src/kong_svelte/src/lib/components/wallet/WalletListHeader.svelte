@@ -26,9 +26,10 @@
 
 <div class="px-4 flex items-center justify-between shadow">
   <div class="text-xs py-3 font-medium text-kong-text-secondary uppercase tracking-wide">
-    {title}
     {#if count !== undefined}
       {count} {count !== 1 ? title.toLowerCase() : title.toLowerCase().replace(/s$/, '')}
+    {:else}
+      {title}
     {/if}
   </div>
   

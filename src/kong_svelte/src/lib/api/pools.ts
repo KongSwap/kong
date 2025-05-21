@@ -4,7 +4,7 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { toastStore } from "$lib/stores/toastStore";
 import { IcrcTokenSerializer } from "$lib/serializers/tokens/IcrcTokenSerializer";
 import { canisters, type CanisterType } from "$lib/config/auth.config";
-import type { AddLiquiditAmountsResult } from "../../../../declarations/kong_backend/kong_backend.did";
+import type { AddLiquiditAmountsResult, RemoveLiquidityAmountsReply } from "../../../../declarations/kong_backend/kong_backend.did";
 
 export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total_count: number, total_pages: number, page: number, limit: number}> => {
   try {
@@ -203,7 +203,7 @@ export async function calculateRemoveLiquidityAmounts(
   token0CanisterId: string,
   token1CanisterId: string,
   lpTokenAmount: number | bigint,
-): Promise<[bigint, bigint]> {
+): Promise<RemoveLiquidityAmountsReply> {
   try {
     const lpTokenBigInt =
       typeof lpTokenAmount === "number"
@@ -225,7 +225,7 @@ export async function calculateRemoveLiquidityAmounts(
 
     // Handle the correct response format based on .did file
     const reply = result.Ok;
-    return [BigInt(reply.amount_0 + reply.lp_fee_0), BigInt(reply.amount_1 + reply.lp_fee_1)];
+    return reply;
   } catch (error) {
     console.error("Error calculating removal amounts:", error);
     throw error;
@@ -270,6 +270,9 @@ export async function addLiquidity(params: {
       tx_id_1 = [];
       actor = actorResult;
     } else {
+      console.log("token_0", params.token_0);
+      console.log("token_1", params.token_1);
+      console.log("adding icrc1 lp");
       // Handle ICRC1 tokens
       const [transfer0Result, transfer1Result, actorResult] = await Promise.all([
         IcrcService.transfer(

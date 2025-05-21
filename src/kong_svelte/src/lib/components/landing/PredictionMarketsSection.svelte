@@ -208,7 +208,7 @@
     <div class="crt-effects"></div>
   </div>
   
-  <div class="container max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8">
+  <div class=" !max-w-7xl mx-auto px-3 md:px-8 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-8">
     <!-- Text content with enhanced design -->
     <div class="flex-1 text-left mb-10 md:mb-0 z-10 transform translate-y-12 opacity-0 transition-all duration-700 ease-out {animationClass}">
       <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-sm text-blue-300 text-xs md:text-sm font-medium mb-4 w-fit border border-blue-500/20 mx-auto md:mx-0">
@@ -286,7 +286,7 @@
     </div>
 
     <!-- iPhone with screenshot - Optimized for mobile -->
-    <div class="flex-1 flex justify-center items-center relative z-10 order-2 md:order-1 transform translate-y-12 opacity-0 transition-all duration-1000 delay-300 ease-out {animationClass}">
+    <div class="flex-1 flex justify-end justify-self-end items-end relative z-10 order-2 md:order-1 transform translate-y-12 opacity-0 transition-all duration-1000 delay-300 ease-out {animationClass}">
       <!-- Use the IphoneFrame component -->
       <IphoneFrame 
         screenshotSrc="/images/pmscreen.jpg"

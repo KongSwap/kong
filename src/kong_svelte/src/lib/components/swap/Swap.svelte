@@ -727,7 +727,7 @@
 </script>
 
 <div
-  class="relative flex flex-col w-full max-w-xl mx-auto"
+  class="relative flex flex-col w-full !max-w-xl mx-auto"
   in:fade={{ duration: 420 }}
 >
   <div class="relative flex flex-col gap-2 mb-2">
