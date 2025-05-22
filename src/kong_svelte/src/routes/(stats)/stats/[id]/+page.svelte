@@ -1,10 +1,8 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { onMount } from "svelte";
-  import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import { fetchPoolsForCanister } from "$lib/stores/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { AlertTriangle } from 'lucide-svelte';
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import { goto } from "$app/navigation";
   import {
@@ -19,6 +17,8 @@
   import { browser } from "$app/environment";
   import PoolStatistics from "./PoolStatistics.svelte";
   import { snsService } from '$lib/utils/snsUtils';
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
+  import TokenChart from "./TokenChart.svelte";
 
   // Token and loading states
   let isTokenLoading = $state(true);
@@ -41,6 +41,31 @@
   let showDropdown = $state(false);
   let dropdownButtonRef = $state<HTMLButtonElement | null>(null);
   let dropdownRef = $state<HTMLElement | null>(null);
+
+  // Chart size state
+  let mobileChartHeight = $state("calc(40vh + 100px)");
+  let desktopChartHeight = $state("calc(60vh - 60px)");
+  let windowHeight = $state(0);
+
+  // Update chart height based on screen size
+  function updateChartHeight() {
+    if (browser) {
+      windowHeight = window.innerHeight;
+      if (windowHeight < 768) {
+        // Mobile view - more compact
+        mobileChartHeight = windowHeight < 480 
+          ? "calc(35vh + 80px)" 
+          : "calc(40vh + 100px)";
+      } else {
+        // Desktop view - more expansive
+        desktopChartHeight = windowHeight > 1079
+          ? "calc(55vh - 60px)"  // Large screens
+          : windowHeight > 1023
+            ? "calc(45vh - 60px)" // Medium-large screens  
+            : "calc(45vh - 60px)"; // Medium screens
+      }
+    }
+  }
 
   // Fetch token data when page loads or ID changes
   $effect(() => {
@@ -159,7 +184,6 @@
 
   // Handle chart data readiness
   $effect(() => {
-    // Restore check for token and selectedPool
     if (!token || !selectedPool) { 
       if (isChartDataReady) isChartDataReady = false;
       return;
@@ -232,43 +256,28 @@
     if(browser) {
       document.addEventListener("click", handleClickOutside);
       document.addEventListener("touchend", handleClickOutside);
+      
+      // Set initial chart height
+      updateChartHeight();
+      
+      // Watch for window resize to update chart dimensions
+      window.addEventListener('resize', () => {
+        updateChartHeight();
+        // Trigger chart redraw by incrementing instance
+        if (chartMounted) {
+          setTimeout(() => chartInstance++, 100);
+        }
+      });
     }
 
     return () => {
       document.removeEventListener("click", handleClickOutside);
       document.removeEventListener("touchend", handleClickOutside);
+      if(browser) {
+        window.removeEventListener('resize', updateChartHeight);
+      }
     };
   });
-
-  // Helper function for chart symbol display
-  function getChartSymbol() {
-    if (!token || !selectedPool) return "";
-    
-    const quoteSymbol = selectedPool.address_0 === token.address
-      ? selectedPool.token1?.symbol ||
-        selectedPool.symbol_1 ||
-        $tokenData?.find(t => t.address === selectedPool.address_1)?.symbol ||
-        "Unknown"
-      : selectedPool.token0?.symbol ||
-        selectedPool.symbol_0 ||
-        $tokenData?.find(t => t.address === selectedPool.address_0)?.symbol ||
-        "Unknown";
-        
-    return `${token.symbol}/${quoteSymbol}`;
-  }
-
-  // Helper function for quote token in chart
-  function getQuoteToken() {
-    if (!selectedPool) return undefined;
-    
-    if (selectedPool.address_0 === token?.address) {
-      return selectedPool.token1 ||
-        $tokenData?.find(t => t.address === selectedPool.address_1)
-    } else {
-      return selectedPool.token0 ||
-        $tokenData?.find(t => t.address === selectedPool.address_0)
-    }
-  }
 
   // Function to check for active proposals
   async function checkActiveProposals(governanceId: string) {
@@ -284,6 +293,12 @@
        checkingProposals = false;
      }
    }
+
+  // Function to handle pool selection
+  function handlePoolSelect(pool: BE.Pool) {
+    hasManualSelection = true;
+    selectedPool = pool;
+  }
 </script>
 
 <svelte:head>
@@ -292,10 +307,7 @@
 
 <div class="p-4 pt-0">
   {#if isTokenLoading}
-    <div class="flex flex-col items-center justify-center min-h-[300px]">
-      <div class="loader mb-4"></div>
-      <div class="text-kong-text-primary/70">Loading token data...</div>
-    </div>
+    <LoadingIndicator message="Loading token data..." />
   {:else if !token}
     <div class="flex flex-col items-center justify-center min-h-[300px]">
       <div class="text-kong-text-primary/70">Token not found</div>
@@ -307,249 +319,121 @@
       </button>
     </div>
   {:else}
-    <!-- Active Proposals Alert -->
-    {#if hasActiveProposals}
-      <div class="w-full mx-auto mb-4">
-        <div class="bg-kong-primary/10 border border-kong-primary/30 text-kong-primary rounded-lg p-3 flex items-center justify-between gap-4">
-          <div class="flex items-center gap-2">
-            <AlertTriangle size={18} />
-            <span class="text-sm font-medium">Active governance proposals found.</span>
-          </div>
-          <button 
-            class="text-sm font-semibold hover:underline flex-shrink-0"
-            on:click={() => activeTab = 'governance'}
-          >
-            View Governance →
-          </button>
-        </div>
-      </div>
-    {/if}
-
     <div class="flex flex-col w-full mx-auto gap-4">
-      <!-- Token Header -->
+      <!-- Main Content -->
+      <div>
+        <!-- Mobile-first layout -->
+        <div class="flex flex-col lg:hidden gap-4">
+          <!-- Token Statistics -->
+          <TokenStatistics
+            {token}
+            marketCapRank={token?.metrics?.market_cap_rank ?? null}
+            {selectedPool}
+            {totalTokenTvl}
+          />
+          
+          <!-- Pool Statistics -->
+          {#if selectedPool}
+            <PoolStatistics 
+              {selectedPool} 
+              {token} 
+              {relevantPools}
+              onPoolSelect={handlePoolSelect}
+            />
+          {/if}
 
-
-      <!-- Tab Content -->
-      {#if activeTab === "overview"}
-        <div
-          role="tabpanel"
-          id="overview-panel"
-          aria-labelledby="overview-tab"
-          tabindex="0"
-        >
-          <!-- Overview Layout -->
-          <div class="flex flex-col lg:flex-row gap-4">
-            <!-- Mobile-first layout -->
-            <div class="flex flex-col gap-4 w-full lg:hidden">
-              <!-- Token Statistics -->
-              <TokenStatistics
+          <!-- Chart Panel -->
+          <Panel type="main" className="!border-b-none">
+            <div class="w-full chart-wrapper">
+              <TokenChart 
                 {token}
-                marketCapRank={token?.metrics?.market_cap_rank ?? null}
                 {selectedPool}
-                {totalTokenTvl}
+                {isChartDataReady}
+                {chartInstance}
+                height={mobileChartHeight}
               />
-              
-              <!-- Pool Statistics -->
-              {#if selectedPool}
-                <PoolStatistics 
-                  {selectedPool} 
-                  {token} 
-                  {relevantPools}
-                  onPoolSelect={(pool) => {
-                    hasManualSelection = true;
-                    selectedPool = pool;
-                  }}
-                />
-              {/if}
-
-              <!-- Chart Panel -->
-              <Panel
-                type="main"
-                className="!border-b-none"
-              >
-                <div class="h-[450px] min-h-[400px] w-full">
-                  {#if isChartDataReady}
-                    {@const currentBaseToken = token}
-                    {@const currentQuoteToken = getQuoteToken()}
-                    {#if currentBaseToken && currentQuoteToken} 
-                      <div class="h-full w-full">
-                        {#key chartInstance}
-                          <TradingViewChart
-                            poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
-                            symbol={getChartSymbol()}
-                            quoteToken={currentQuoteToken}
-                            baseToken={currentBaseToken}
-                          />
-                        {/key}
-                      </div>
-                    {:else}
-                      <div class="flex items-center justify-center h-full">
-                         <div class="loader"></div>
-                         <div class="ml-3 text-kong-text-secondary">
-                           Loading token data for chart...
-                         </div>
-                       </div>
-                    {/if}
-                  {:else}
-                    <div class="flex items-center justify-center h-full">
-                      <div class="loader"></div>
-                    </div>
-                  {/if}
-                </div>
-              </Panel>
-
-              <!-- Transactions Panel -->
-              {#if token && token.address === $page.params.id}
-                <TransactionFeed {token} className="w-full !p-0" />
-              {/if}
             </div>
+          </Panel>
 
-            <!-- Desktop layout -->
-            <div class="hidden lg:flex lg:flex-row gap-4 w-full">
-                <!-- Left Column - Stats -->
-                <div class="lg:w-[450px] flex flex-col gap-6">
-                  <TokenStatistics
-                    {token}
-                    marketCapRank={token?.metrics?.market_cap_rank}
-                    {selectedPool}
-                    {totalTokenTvl}
-                  />
-                  
-                  <!-- Pool Statistics -->
-                  {#if selectedPool}
-                    <PoolStatistics 
-                      {selectedPool} 
-                      {token} 
-                      {relevantPools}
-                      onPoolSelect={(pool) => {
-                        hasManualSelection = true;
-                        selectedPool = pool;
-                      }}
-                    />
-                  {/if}
-                </div>
-              <!-- Middle Column - Chart -->
-              <div class="lg:w-full flex flex-col">
-                <!-- Chart Panel -->
-                <Panel
-                  type="main"
-                  className="!p-0 !bg-transparent !border-none"
-                >
-                  <div class="max-h-[700px] min-h-[600px] w-full">
-                    {#if isChartDataReady}
-                      {@const currentBaseToken = token}
-                      {@const currentQuoteToken = getQuoteToken()}
-                      {#if currentBaseToken && currentQuoteToken} 
-                        <div class="h-full w-full">
-                          {#key chartInstance}
-                            <TradingViewChart
-                              poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
-                              symbol={getChartSymbol()}
-                              quoteToken={currentQuoteToken}
-                              baseToken={currentBaseToken}
-                            />
-                          {/key}
-                        </div>
-                      {:else}
-                        <div class="flex items-center justify-center h-full">
-                           <div class="loader"></div>
-                           <div class="ml-3 text-kong-text-secondary">
-                             Loading token data for chart...
-                           </div>
-                         </div>
-                      {/if}
-                    {:else}
-                      <div class="flex items-center justify-center h-full">
-                        <div class="loader"></div>
-                      </div>
-                    {/if}
-                  </div>
-                </Panel>
-              </div>
+          <!-- Transactions Panel -->
+          {#if token && token.address === $page.params.id}
+            <TransactionFeed {token} className="w-full !p-0" />
+          {/if}
 
-              <!-- Right Column - Transactions -->
-              <div class="lg:w-[450px] flex flex-col">
-                {#if token && token.address === $page.params.id}
-                  <TransactionFeed {token} className="w-full h-[500px] !p-0" />
-                {/if}
-              </div>
-            </div>
-          </div>
-        </div>
-      {/if}
-
-      {#if activeTab === "governance" && token?.address && GOVERNANCE_CANISTER_IDS[token.address]}
-        <div
-          role="tabpanel"
-          id="governance-panel"
-          aria-labelledby="governance-tab"
-          tabindex="0"
-        >
-          <!-- Governance layout -->
-          <div class="flex flex-col lg:flex-row gap-6">
-            <!-- Left Column - Proposals -->
-            <div class="lg:w-[70%]">
+          <!-- Governance Section (Mobile) -->
+          {#if token?.address && GOVERNANCE_CANISTER_IDS[token.address]}
+            <div id="governance-section" class="mt-4">
               <SNSProposals
                 governanceCanisterId={GOVERNANCE_CANISTER_IDS[token.address]}
               />
             </div>
+          {/if}
+        </div>
 
-            <!-- Right Column - Stats -->
-            <div class="lg:w-[30%] flex flex-col gap-4">
-              <Panel type="main">
-                <div class="flex flex-col gap-4">
-                  <h2 class="text-lg font-semibold">About Governance</h2>
-                  <div class="text-kong-text-secondary">
-                    <p class="mb-2">
-                      {token.symbol} token holders can participate in governance
-                      by:
-                    </p>
-                    <ul class="list-disc pl-4 space-y-1">
-                      <li>Submitting proposals</li>
-                      <li>Voting on active proposals</li>
-                      <li>Discussing community initiatives</li>
-                    </ul>
-                  </div>
-                  <a
-                    href={`https://nns.ic0.app/proposals/?u=${token.address}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-kong-primary hover:underline mt-2"
-                  >
-                    View on IC Dashboard →
-                  </a>
-                </div>
-              </Panel>
-              <TokenStatistics
-                {token}
-                marketCapRank={token?.metrics?.market_cap_rank}
-                {selectedPool}
-                {totalTokenTvl}
+        <!-- Desktop layout -->
+        <div class="hidden lg:flex lg:flex-row gap-4 w-full">
+          <!-- Left Column - Stats -->
+          <div class="lg:w-[420px] flex flex-col gap-6">
+            <TokenStatistics
+              {token}
+              marketCapRank={token?.metrics?.market_cap_rank}
+              {selectedPool}
+              {totalTokenTvl}
+            />
+            
+            <!-- Pool Statistics -->
+            {#if selectedPool}
+              <PoolStatistics 
+                {selectedPool} 
+                {token} 
+                {relevantPools}
+                onPoolSelect={handlePoolSelect}
               />
-            </div>
+            {/if}
+          </div>
+          
+          <!-- Middle Column - Chart -->
+          <div class="lg:w-full flex flex-col">
+            <!-- Chart Panel -->
+            <Panel type="main" className="!p-0 !bg-transparent !border-none">
+              <div class="w-full chart-wrapper">
+                <TokenChart 
+                  {token}
+                  {selectedPool}
+                  {isChartDataReady}
+                  {chartInstance}
+                  height={desktopChartHeight}
+                />
+              </div>
+            </Panel>
+            
+            <!-- Governance and Transactions (Desktop) -->
+            {#if token?.address && GOVERNANCE_CANISTER_IDS[token.address]}
+              <div id="governance-section" class="mt-4 hidden lg:block">
+                <div class="flex flex-row gap-6">
+                  <!-- Left Column - Proposals -->
+                  <div class="w-1/2">
+                    <SNSProposals
+                      governanceCanisterId={GOVERNANCE_CANISTER_IDS[token.address]}
+                    />
+                  </div>
+                  <!-- Right Column - Transactions -->
+                  <div class="lg:w-1/2 flex flex-col">
+                    {#if token && token.address === $page.params.id}
+                      <TransactionFeed {token} className="w-full !p-0" />
+                    {/if}
+                  </div>
+                </div>
+              </div>
+            {/if}
           </div>
         </div>
-      {/if}
+      </div>
     </div>
   {/if}
 </div>
 
 <style scoped>
-  .loader {
-    border: 4px solid rgba(255, 255, 255, 0.2);
-    border-top: 4px solid #ffffff;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
   /* Global scrollbar styles */
   :global(::-webkit-scrollbar) {
     width: 6px;
@@ -588,5 +472,19 @@
   /* Add smooth transitions for tabs */
   button {
     transition: all 0.2s ease-in-out;
+  }
+
+  /* Chart wrapper styles */
+  .chart-wrapper {
+    position: relative;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+  
+  /* Clearfix for chart wrapper */
+  .chart-wrapper::after {
+    content: "";
+    display: table;
+    clear: both;
   }
 </style>

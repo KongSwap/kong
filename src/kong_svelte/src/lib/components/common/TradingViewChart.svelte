@@ -527,7 +527,7 @@
     position: relative;
     width: 100%;
     height: 100%;
-    min-height: 450px;
+    min-height: 250px;
     background: var(--bg-dark);
     overflow: hidden;
   }

@@ -150,7 +150,7 @@
   const formattedTotalTokenTvl = $derived(formatUsdValue(totalTokenTvl));
 </script>
 
-<Panel type="main" className="!p-0 !border-none">
+<Panel type="main" className="">
   <div class="flex flex-col gap-4">
     <!-- Token Header Section -->
     <div class="flex items-center gap-4">

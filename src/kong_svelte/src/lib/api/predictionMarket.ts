@@ -356,3 +356,30 @@ export async function estimateBetReturn(
     tokenId ? [tokenId] : []
   );
 }
+
+export async function setMarketFeatured(marketId: bigint, featured: boolean): Promise<void> {
+  try {
+    const actor = predictionActor({anon: false, requiresSigning: false});
+    const result = await actor.set_market_featured(marketId, featured);
+
+    if ("Err" in result) {
+      if ("MarketNotFound" in result.Err) {
+        throw new Error("Market not found");
+      } else if ("Unauthorized" in result.Err) {
+        throw new Error("You are not authorized to modify this market");
+      } else {
+        throw new Error(
+          `Failed to set market featured status: ${JSON.stringify(result.Err)}`,
+        );
+      }
+    }
+    notificationsStore.add({
+      title: featured ? "Market Featured" : "Market Unfeatured",
+      message: `Market ${marketId} has been ${featured ? 'featured' : 'unfeatured'}`,
+      type: "success",
+    });
+  } catch (error) {
+    console.error("Failed to set market featured status:", error);
+    throw error;
+  }
+}

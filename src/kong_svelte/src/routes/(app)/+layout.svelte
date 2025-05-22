@@ -135,7 +135,7 @@
       <Navbar />
     </div>
     <main class="flex justify-center items-center w-full flex-grow">
-      <div class="w-[1300px] px-2 mx-auto h-full" transition:fade>
+      <div class="w-full px-2 mx-auto h-full" transition:fade>
         {@render children?.()}
       </div>
     </main>

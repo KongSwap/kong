@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scale } from 'svelte/transition';
   import { LayoutGrid, ChartPie, BarChart3, RefreshCw } from "lucide-svelte";
   import Badge from "$lib/components/common/Badge.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
@@ -247,9 +248,14 @@
                   overlap={true}
                 />
               </div>
+              <div class="flex flex-col"> 
               <span class="text-sm text-kong-text-primary">
-                {formatToNonZeroDecimal(pool.amount_0)} {pool.symbol_0} <br/> {formatToNonZeroDecimal(pool.amount_1)} {pool.symbol_1}
+                {pool.symbol_0}/{pool.symbol_1}
               </span>
+              <span class="text-xs text-kong-text-secondary">
+                {formatToNonZeroDecimal(pool.amount_0)} {pool.symbol_0} / {formatToNonZeroDecimal(pool.amount_1)} {pool.symbol_1}
+              </span>
+              </div>
               <div class="flex-grow flex justify-end">
                   <div class="flex flex-col items-end gap-1 text-xs text-kong-text-secondary">
                     <span class="font-medium text-sm text-kong-text-primary">
@@ -259,7 +265,7 @@
                         $****
                       {/if}
                     </span>
-                    <span class="text-kong-accent-green/90">{getPoolApy(pool)}% APY</span>
+                    <span class="text-kong-accent-green">{getPoolApy(pool)}% APY</span>
                 </div>
               </div>
             </div>

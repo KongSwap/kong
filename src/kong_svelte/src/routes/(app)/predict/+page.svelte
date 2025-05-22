@@ -3,7 +3,7 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { browser } from "$app/environment";
-  import { placeBet, getLatestBets, isAdmin } from "$lib/api/predictionMarket";
+  import { placeBet, getLatestBets } from "$lib/api/predictionMarket";
   import { AlertTriangle, ChevronDown } from "lucide-svelte";
   import { KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
@@ -43,7 +43,6 @@
   let previousBets: any[] = [];
   let isInitialLoad = true;
   let loadingBets = false;
-  let isUserAdmin = false;
 
   // UI state for dropdowns
   let statusDropdownOpen = false;
@@ -145,12 +144,6 @@
 
   function getBetId(bet: any) {
     return `${bet.timestamp}-${bet.user}`;
-  }
-
-  $: if ($auth.isConnected) {
-    isAdmin($auth.account.owner).then((isAdmin) => {
-      isUserAdmin = isAdmin;
-    });
   }
 
   onMount(async () => {
@@ -361,7 +354,7 @@
 </svelte:head>
 
 <div class="min-h-screen text-kong-text-primary px-4">
-  <div class="max-w-7xl mx-auto">
+  <div class="mx-auto">
     <div
       class="text-center mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-6"
     >

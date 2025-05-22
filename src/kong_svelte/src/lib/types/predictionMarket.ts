@@ -41,6 +41,10 @@ export interface Market {
   rules: string;
   resolved_by?: Principal;
   bet_counts: bigint[];
+  featured: boolean;
+  uses_time_weighting: boolean;
+  image_url?: string;
+  time_weight_alpha?: number;
 }
 
 export interface Bet {

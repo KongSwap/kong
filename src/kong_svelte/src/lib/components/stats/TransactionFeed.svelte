@@ -404,15 +404,15 @@
         No transactions found
       </div>
     {:else}
-      <div class="relative flex flex-col h-full max-h-[700px]">
+      <div class="relative flex flex-col h-full max-h-[600px]">
         <div
           class="hidden md:block sticky top-0 z-20 bg-gradient-to-b from-kong-bg-light/90 to-kong-bg-light/30 border-b border-kong-border/30"
         >
           <table class="w-full">
             <thead>
               <tr class="text-left text-xs text-kong-text-primary/70 !font-normal">
-                <th class="px-2 py-2">Paid/Received</th>
-                <th class="px-2 py-2 text-right">Value</th>
+                <th class="px-3 py-3">Paid/Received</th>
+                <th class="px-3 py-3 text-right">Value</th>
               </tr>
             </thead>
           </table>
@@ -427,7 +427,7 @@
                     ? "transaction-highlight" 
                     : ""
                 }`}>
-                  <td class="px-2 py-2">
+                  <td class="px-3 py-3">
                     <div class="flex flex-col">
                       <div class="flex items-center gap-1.5 mb-1">
                         {#if tx.receive_token_id === token.id}
@@ -448,25 +448,34 @@
                           })}
                         </span>
                       </div>
-                      <div class="flex flex-col gap-0.5 text-xs">
-                        <div class="flex items-center gap-1">
-                          <span class="text-kong-text-primary/80">Paid:</span>
-                          <span class="font-medium text-kong-text-primary">
+                      
+                      <!-- Single line transaction display -->
+                      <div class="flex items-center gap-2 text-xs">
+                        {#if tx.receive_token_id === token.id}
+                          <span class="text-kong-text-primary/80">
                             {tx.pay_amount.toFixed(tx.pay_amount < 0.01 ? 6 : 4)}
                             {$tokensStore.find(t => t.id === tx.pay_token_id)?.symbol}
                           </span>
-                        </div>
-                        <div class="flex items-center gap-1">
-                          <span class="text-kong-text-primary/80">Got:</span>
+                          <span class="text-kong-text-primary/80">→</span>
                           <span class="font-medium text-kong-text-primary">
                             {tx.receive_amount.toFixed(tx.receive_amount < 0.01 ? 6 : 4)}
                             {$tokensStore.find(t => t.id === tx.receive_token_id)?.symbol}
                           </span>
-                        </div>
+                        {:else}
+                          <span class="font-medium text-kong-text-primary">
+                            {tx.pay_amount.toFixed(tx.pay_amount < 0.01 ? 6 : 4)}
+                            {$tokensStore.find(t => t.id === tx.pay_token_id)?.symbol}
+                          </span>
+                          <span class="text-kong-text-primary/80">→</span>
+                          <span class="text-kong-text-primary/80">
+                            {tx.receive_amount.toFixed(tx.receive_amount < 0.01 ? 6 : 4)}
+                            {$tokensStore.find(t => t.id === tx.receive_token_id)?.symbol}
+                          </span>
+                        {/if}
                       </div>
                     </div>
                   </td>
-                  <td class="px-2 py-2 text-right">
+                  <td class="px-3 py-3 text-right">
                     <div class="flex flex-col items-end gap-1">
                       <span class="text-xs font-medium">{calculateTotalUsdValue(tx)}</span>
                       <div class="flex items-center gap-1">
@@ -538,32 +547,30 @@
                         </span>
                       </div>
 
-                      <div class="flex flex-col gap-1">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs text-kong-text-primary/80"
-                            >Paid:</span
-                          >
-                          <span
-                            class="text-sm font-medium text-kong-text-primary"
-                          >
-                            {tx.pay_amount}
-                            {$tokensStore.find(
-                              (t) => t.id === tx.pay_token_id,
-                            )?.symbol}
-                          </span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs text-kong-text-primary/80"
-                            >Received:</span
-                          >
-                          <span
-                            class="text-sm font-medium text-kong-text-primary"
-                          >
-                            {tx.receive_amount}
-                            {$tokensStore.find(
-                              (t) => t.id === tx.receive_token_id,
-                            )?.symbol}
-                          </span>
+                      <!-- Single line mobile transaction display -->
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2 text-sm">
+                          {#if tx.receive_token_id === token.id}
+                            <span class="text-kong-text-primary/80">
+                              {tx.pay_amount.toFixed(tx.pay_amount < 0.01 ? 4 : 2)}
+                              {$tokensStore.find(t => t.id === tx.pay_token_id)?.symbol}
+                            </span>
+                            <span class="text-kong-text-primary/70">→</span>
+                            <span class="font-medium text-kong-text-primary">
+                              {tx.receive_amount.toFixed(tx.receive_amount < 0.01 ? 4 : 2)}
+                              {$tokensStore.find(t => t.id === tx.receive_token_id)?.symbol}
+                            </span>
+                          {:else}
+                            <span class="font-medium text-kong-text-primary">
+                              {tx.pay_amount.toFixed(tx.pay_amount < 0.01 ? 4 : 2)}
+                              {$tokensStore.find(t => t.id === tx.pay_token_id)?.symbol}
+                            </span>
+                            <span class="text-kong-text-primary/70">→</span>
+                            <span class="text-kong-text-primary/80">
+                              {tx.receive_amount.toFixed(tx.receive_amount < 0.01 ? 4 : 2)}
+                              {$tokensStore.find(t => t.id === tx.receive_token_id)?.symbol}
+                            </span>
+                          {/if}
                         </div>
                       </div>
 

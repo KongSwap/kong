@@ -95,12 +95,12 @@
       </div>
     {:else}
       <div
-        class="space-y-4 max-h-[600px] overflow-y-auto"
+        class="space-y-4 max-h-[600px] overflow-y-auto pr-1"
         bind:this={scrollContainer}
         on:scroll={handleScroll}
       >
         {#each proposals as proposal}
-          <div class="bg-kong-bg-secondary rounded-lg p-2">
+          <div class="bg-kong-bg-secondary rounded-lg p-3 hover:bg-kong-bg-secondary/80 transition-colors">
             <div class="flex flex-col gap-2">
               <div class="flex justify-between items-center gap-2">
                 <h3 class="font-medium text-kong-text-primary overflow-hidden text-ellipsis flex-1">
