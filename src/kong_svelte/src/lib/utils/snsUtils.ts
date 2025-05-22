@@ -1,8 +1,9 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
-import { idlFactory } from '$lib/idls/snsGovernance.idl.js';
+import { idlFactory as snsIdlFactory } from '$lib/idls/snsGovernance.idl.js';
+import { idlFactory as nnsIdlFactory } from '$lib/idls/nnsGovernance.idl.js';
 import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
 
-export interface SNSProposal {
+export interface GovernanceProposal {
   id: bigint;
   title: string;
   summary: string;
@@ -25,12 +26,13 @@ export interface SNSProposal {
 }
 
 export interface ProposalResponse {
-  proposals: SNSProposal[];
+  proposals: GovernanceProposal[];
   hasMore: boolean;
 }
 
 // move to api at some point
 export const GOVERNANCE_CANISTER_IDS: { [key: string]: string } = {
+  "ryjl3-tyaaa-aaaaa-aaaba-cai": "rrkah-fqaaa-aaaaa-aaaaq-cai",
   "o7oak-iyaaa-aaaaq-aadzq-cai": "oypg6-faaaa-aaaaq-aadza-cai",
   "vtrom-gqaaa-aaaaq-aabia-cai": "xomae-vyaaa-aaaaq-aabhq-cai",
   "2ouva-viaaa-aaaaq-aaamq-cai": "2jvtu-yqaaa-aaaaq-aaama-cai",
@@ -57,9 +59,7 @@ export class SNSService {
   private agent: HttpAgent;
 
   constructor() {
-    this.agent = HttpAgent.createSync({
-      host: 'https://ic0.app'
-    });
+    this.agent = new HttpAgent();
   }
 
   async getProposals(
@@ -68,17 +68,22 @@ export class SNSService {
     beforeProposal?: bigint
   ): Promise<ProposalResponse> {
     try {
-      const governanceActor = createAnonymousActorHelper(governanceCanisterId, idlFactory);
+      console.log('Fetching SNS proposals for canister:', governanceCanisterId);
+      const governanceActor = createAnonymousActorHelper(governanceCanisterId, snsIdlFactory);
 
       const result = await governanceActor.list_proposals({
         limit: BigInt(limit),
         before_proposal: beforeProposal ? [{ id: beforeProposal }] : [],
         exclude_type: [],
         include_reward_status: [] as number[],
-        include_status: [] as number[]
+        include_status: [] as number[],
+        exclude_topic: [] as number[],
+        include_all_manage_neuron_proposals: []
       });
 
-      function determineStatus(proposal: any): SNSProposal['status'] {
+      console.log('Raw SNS proposals response:', result);
+
+      function determineStatus(proposal: any): GovernanceProposal['status'] {
         if (proposal.failed_timestamp_seconds > 0n) return 'failed';
         if (proposal.executed_timestamp_seconds > 0n) return 'executed';
         if (proposal.decided_timestamp_seconds > 0n) return 'accepted';
@@ -107,15 +112,102 @@ export class SNSService {
         is_eligible_for_rewards: proposal.is_eligible_for_rewards
       }));
 
+      console.log('Mapped SNS proposals:', mappedProposals);
+
       return {
         proposals: mappedProposals,
         hasMore: result.proposals.length >= limit
       };
     } catch (error) {
       console.error('Error fetching SNS proposals:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
       return { proposals: [], hasMore: false };
     }
   }
 }
 
-export const snsService = new SNSService(); 
+export class ICPGovernanceService {
+  private agent: HttpAgent;
+
+  constructor() {
+    this.agent = new HttpAgent();
+  }
+
+  async getProposals(
+    governanceCanisterId: string, 
+    limit: number = 10,
+    beforeProposal?: bigint
+  ): Promise<ProposalResponse> {
+    try {
+      console.log('Fetching ICP proposals for canister:', governanceCanisterId);
+      const governanceActor = createAnonymousActorHelper(governanceCanisterId, nnsIdlFactory);
+
+      const result = await governanceActor.list_proposals({
+        limit: BigInt(limit),
+        before_proposal: beforeProposal ? [{ id: beforeProposal }] : [],
+        exclude_type: [],
+        include_reward_status: [] as number[],
+        include_status: [] as number[],
+        exclude_topic: [] as number[],
+        include_all_manage_neuron_proposals: []
+      });
+
+      console.log('Raw ICP proposals response:', result);
+
+      function determineStatus(proposal: any): GovernanceProposal['status'] {
+        if (proposal.failed_timestamp_seconds > 0n) return 'failed';
+        if (proposal.executed_timestamp_seconds > 0n) return 'executed';
+        if (proposal.decided_timestamp_seconds > 0n) return 'accepted';
+        return 'open';
+      }
+
+      const mappedProposals = result.proposals.map(proposal => ({
+        id: proposal.id[0]?.id || BigInt(0),
+        title: proposal.proposal[0]?.title || "",
+        summary: proposal.proposal[0]?.summary || "",
+        url: proposal.proposal[0]?.url || "",
+        status: determineStatus(proposal),
+        proposer: proposal.proposer[0]?.id.toString(),
+        created: proposal.proposal_creation_timestamp_seconds,
+        deadline: proposal.wait_for_quiet_deadline_increase_seconds,
+        reward_event_round: proposal.reward_event_round,
+        tally: {
+          yes: proposal.latest_tally[0]?.yes,
+          no: proposal.latest_tally[0]?.no,
+          total: proposal.latest_tally[0]?.total,
+          timestamp_seconds: proposal.latest_tally[0]?.timestamp_seconds
+        },
+        decided_timestamp_seconds: proposal.decided_timestamp_seconds,
+        executed_timestamp_seconds: proposal.executed_timestamp_seconds,
+        failed_timestamp_seconds: proposal.failed_timestamp_seconds,
+        is_eligible_for_rewards: proposal.is_eligible_for_rewards
+      }));
+
+      console.log('Mapped ICP proposals:', mappedProposals);
+
+      return {
+        proposals: mappedProposals,
+        hasMore: result.proposals.length >= limit
+      };
+    } catch (error) {
+      console.error('Error fetching ICP proposals:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
+      return { proposals: [], hasMore: false };
+    }
+  }
+}
+
+export const snsService = new SNSService();
+export const icpGovernanceService = new ICPGovernanceService(); 

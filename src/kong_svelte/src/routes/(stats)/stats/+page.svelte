@@ -25,7 +25,7 @@
   import TokenCell from "$lib/components/stats/TokenCell.svelte";
   import PriceCell from "$lib/components/stats/PriceCell.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
+  import { fetchTokens, fetchTopTokens } from "$lib/api/tokens/TokenApiClient";
   import { fetchPoolTotals } from "$lib/api/pools";
   import { themeStore } from "$lib/stores/themeStore";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
@@ -68,6 +68,17 @@
   const favoriteTokenIds = writable<string[]>([]);
   const favoriteCount = writable<number>(0);
   const isInitialRefreshCycleDone = writable<boolean>(false);
+  const topTokens = writable<{
+    gainers: Kong.Token[];
+    losers: Kong.Token[];
+    hottest: Kong.Token[];
+    top_volume: Kong.Token[];
+  }>({
+    gainers: [],
+    losers: [],
+    hottest: [],
+    top_volume: []
+  });
 
   // Local state
   let isMobile = false;
@@ -84,34 +95,17 @@
   const activeTab = writable<"gainers" | "losers">("gainers");
 
   // Derived stores for top gainers and losers
-  const topGainers = derived(tokenData, ($tokenData) => {
-    return [...$tokenData]
-      .filter((token) => Number(token.metrics?.price_change_24h || 0) > 0)
-      .sort(
-        (a, b) =>
-          Number(b.metrics?.price_change_24h || 0) -
-          Number(a.metrics?.price_change_24h || 0),
-      )
-      .slice(0, 5);
+  const topGainers = derived(topTokens, ($topTokens) => {
+    console.log('Derived topGainers:', $topTokens.gainers);
+    return $topTokens.gainers || [];
   });
-
-  const topLosers = derived(tokenData, ($tokenData) => {
-    return [...$tokenData]
-      .filter((token) => Number(token.metrics?.price_change_24h || 0) < 0)
-      .sort(
-        (a, b) =>
-          Number(a.metrics?.price_change_24h || 0) -
-          Number(b.metrics?.price_change_24h || 0),
-      )
-      .slice(0, 5);
+  const topLosers = derived(topTokens, ($topTokens) => {
+    console.log('Derived topLosers:', $topTokens.losers);
+    return $topTokens.losers || [];
   });
-
-  // Derived store for top volume tokens
-  const topVolumeTokens = derived(tokenData, ($tokenData) => {
-    return [...$tokenData]
-      .filter((token) => Number(token.metrics?.volume_24h || 0) > 0)
-      .sort((a, b) => Number(b.metrics?.volume_24h || 0) - Number(a.metrics?.volume_24h || 0))
-      .slice(0, 5);
+  const topVolumeTokens = derived(topTokens, ($topTokens) => {
+    console.log('Derived topVolumeTokens:', $topTokens.top_volume);
+    return $topTokens.top_volume || [];
   });
 
   // Function to handle tab change
@@ -166,15 +160,19 @@
     if (isPageChangeRefresh) isLoading.set(true);
 
     try {
-      const [{ tokens, total_count }, totalsResult] = await Promise.all([
+      const [{ tokens, total_count }, totalsResult, topTokensData] = await Promise.all([
         fetchTokens({
           page: $currentPage,
           limit: $itemsPerPage,
           search: $debouncedSearchTerm,
         }),
         fetchPoolTotals(),
+        fetchTopTokens()
       ]);
 
+      console.log('Received top tokens data:', topTokensData);
+
+      // Process main token list
       const sortedByVolume = [...tokens].sort(
         (a, b) => Number(b.metrics?.volume_24h || 0) - Number(a.metrics?.volume_24h || 0)
       );
@@ -182,33 +180,11 @@
         token.volumeRank = i + 1;
       });
 
-      // Assign priceChangeRank for top gainers (positive change)
-      const gainers = [...tokens]
-        .filter(t => Number(t.metrics?.price_change_24h || 0) > 0)
-        .sort((a, b) => Number(b.metrics?.price_change_24h || 0) - Number(a.metrics?.price_change_24h || 0));
-      gainers.forEach((token: any, i) => {
-        token.priceChangeRank = i + 1;
-      });
-
-      // Assign priceChangeRank for top losers (negative change)
-      const losers = [...tokens]
-        .filter(t => Number(t.metrics?.price_change_24h || 0) < 0)
-        .sort((a, b) => Number(a.metrics?.price_change_24h || 0) - Number(b.metrics?.price_change_24h || 0));
-      losers.forEach((token: any, i) => {
-        token.priceChangeRank = i + 1;
-      });
-
-      // Assign tvlRank for top TVL tokens
-      const sortedByTVL = [...tokens].sort(
-        (a, b) => Number(b.metrics?.tvl || 0) - Number(a.metrics?.tvl || 0)
-      );
-      sortedByTVL.forEach((token: any, i) => {
-        token.tvlRank = i + 1;
-      });
-
       tokenData.set(sortedByVolume);
       totalCount.set(total_count);
       poolTotals.set(totalsResult);
+      topTokens.set(topTokensData);
+      console.log('Set top tokens in store:', topTokensData);
       tokens.forEach(updatePriceFlash);
     } catch (error) {
       console.error("Error refreshing data:", error);
@@ -612,12 +588,12 @@
           </div>
         </Panel>
       </div>
-      <div class="flex flex-col gap-4 items-center">
+      <!-- <div class="flex flex-col gap-4 items-center">
         <div class="w-full flex items-center justify-center border-2 border-dashed border-kong-border/40 bg-kong-bg-light/40 text-kong-text-secondary text-lg font-semibold">
           <img src="/images/stick-10.png" class="h-full w-full object-fit object-bottom" />
 
         </div>
-      </div>
+      </div> -->
     </div>
   </div>
   <Panel

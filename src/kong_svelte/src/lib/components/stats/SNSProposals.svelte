@@ -1,59 +1,87 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { snsService, type SNSProposal } from '$lib/utils/snsUtils';
+  import { snsService, icpGovernanceService, type GovernanceProposal } from '$lib/utils/snsUtils';
+  import { GOVERNANCE_CANISTER_IDS } from '$lib/utils/snsUtils';
+  import { formatNumber } from '$lib/utils/formatUtils';
+  import { formatDistanceToNow } from 'date-fns';
   import Panel from '$lib/components/common/Panel.svelte';
   
   export let governanceCanisterId: string;
+  export let type: 'sns' | 'icp' = 'sns';
+  export let limit: number = 10;
+  export let debug: boolean = false;
   
-  let proposals: SNSProposal[] = [];
+  let proposals: GovernanceProposal[] = [];
   let loading = true;
   let loadingMore = false;
   let error: string | null = null;
-  let hasMore = true;
+  let errorDetails: any = null;
+  let hasMore = false;
   let scrollContainer: HTMLDivElement;
-  const LIMIT = 10;
+  let lastProposalId: bigint | undefined;
 
-  function formatDate(timestamp: bigint): string {
-    return new Date(Number(timestamp) * 1000).toLocaleString();
-  }
-
-  function formatStatus(status: string): string {
-    const statusColors = {
-      open: 'text-yellow-400',
-      accepted: 'text-green-400',
-      rejected: 'text-red-400',
-      executing: 'text-blue-400',
-      executed: 'text-green-400',
-      failed: 'text-red-400'
-    };
-    return `<span class="${statusColors[status] || ''}">${
-      status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
-    }</span>`;
-  }
-
-  function calculateVotePercentage(yes?: bigint, total?: bigint): number {
-    if (!yes || !total || total === BigInt(0)) return 0;
-    return Number((yes * BigInt(100)) / total);
-  }
-
-  async function loadMoreProposals() {
-    if (loadingMore || !hasMore) return;
-    
+  async function loadProposals() {
     try {
-      loadingMore = true;
-      const lastProposal = proposals[proposals.length - 1];
-      const result = await snsService.getProposals(
+      loading = true;
+      error = null;
+      errorDetails = null;
+
+      console.log('Loading proposals with params:', {
         governanceCanisterId,
-        LIMIT,
-        lastProposal?.id
-      );
-      
-      proposals = [...proposals, ...result.proposals];
+        type,
+        limit,
+        lastProposalId
+      });
+
+      const service = type === 'sns' ? snsService : icpGovernanceService;
+      const result = await service.getProposals(governanceCanisterId, limit, lastProposalId);
+
+      if (lastProposalId) {
+        proposals = [...proposals, ...result.proposals];
+      } else {
+        proposals = result.proposals;
+      }
+
       hasMore = result.hasMore;
-    } catch (e) {
-      console.error('Error loading more proposals:', e);
+      if (result.proposals.length > 0) {
+        lastProposalId = result.proposals[result.proposals.length - 1].id;
+      }
+
+      console.log('Proposals loaded:', {
+        count: proposals.length,
+        hasMore,
+        lastProposalId
+      });
+    } catch (err) {
+      console.error('Error loading proposals:', err);
+      error = 'Failed to load proposals';
+      errorDetails = err;
     } finally {
-      loadingMore = false;
+      loading = false;
+    }
+  }
+
+  function formatTimestamp(timestamp: bigint): string {
+    const date = new Date(Number(timestamp) * 1000);
+    return formatDistanceToNow(date, { addSuffix: true });
+  }
+
+  function getStatusColor(status: GovernanceProposal['status']): string {
+    switch (status) {
+      case 'open':
+        return 'bg-blue-100 text-blue-800';
+      case 'accepted':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      case 'executing':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'executed':
+        return 'bg-green-100 text-green-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   }
 
@@ -61,34 +89,51 @@
     const target = e.target as HTMLDivElement;
     const bottom = target.scrollHeight - target.scrollTop - target.clientHeight;
     if (bottom < 50) { // Load more when within 50px of bottom
-      loadMoreProposals();
+      loadProposals();
     }
   }
 
-  onMount(async () => {
-    try {
-      const result = await snsService.getProposals(governanceCanisterId, LIMIT);
-      proposals = result.proposals;
-      hasMore = result.hasMore;
-    } catch (e) {
-      error = 'Failed to load proposals';
-      console.error(e);
-    } finally {
-      loading = false;
-    }
+  onMount(() => {
+    loadProposals();
   });
 </script>
 
 <Panel type="main" >
   <div class="flex flex-col gap-4">
-    <h2 class="text-lg font-semibold">Governance Proposals</h2>
+    <h2 class="text-lg font-semibold">
+      {type === 'sns' ? 'SNS' : 'ICP'} Governance Proposals
+    </h2>
+    
+    {#if debug}
+      <div class="bg-gray-100 p-4 rounded-lg text-sm">
+        <h3 class="font-medium mb-2">Debug Info:</h3>
+        <pre class="whitespace-pre-wrap">
+          Canister ID: {governanceCanisterId}
+          Type: {type}
+          Limit: {limit}
+          Loading: {loading}
+          Error: {error}
+          Error Details: {errorDetails ? JSON.stringify(errorDetails, null, 2) : 'None'}
+          Proposals Count: {proposals.length}
+          Has More: {hasMore}
+          Last Proposal ID: {lastProposalId?.toString()}
+        </pre>
+      </div>
+    {/if}
     
     {#if loading}
       <div class="flex justify-center py-4">
         <div class="loader"></div>
       </div>
     {:else if error}
-      <div class="text-red-500 text-center py-4">{error}</div>
+      <div class="text-red-500 text-center py-4">
+        <p>{error}</p>
+        {#if debug && errorDetails}
+          <pre class="mt-2 text-left text-xs bg-red-50 p-2 rounded">
+            {JSON.stringify(errorDetails, null, 2)}
+          </pre>
+        {/if}
+      </div>
     {:else if proposals.length === 0}
       <div class="text-kong-text-secondary text-center py-4">
         No proposals found
@@ -104,24 +149,18 @@
             <div class="flex flex-col gap-2">
               <div class="flex justify-between items-center gap-2">
                 <h3 class="font-medium text-kong-text-primary overflow-hidden text-ellipsis flex-1">
-                  {proposal.title}
+                  <a href={proposal.url} target="_blank" rel="noopener noreferrer" class="hover:text-kong-primary">
+                    {proposal.title}
+                  </a>
                 </h3>
-                <div class="flex flex-col items-end gap-1 ml-2 min-w-[80px]">
-                  <div class="text-sm font-medium whitespace-nowrap">
-                    Yes: {calculateVotePercentage(proposal.tally.yes, proposal.tally.total).toFixed(1)}%
-                  </div>
-                  <div class="w-20 h-2 bg-kong-bg-dark rounded-full overflow-hidden">
-                    <div
-                      class="h-full bg-green-500"
-                      style="width: {calculateVotePercentage(proposal.tally.yes, proposal.tally.total)}%"
-                    />
-                  </div>
-                </div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getStatusColor(proposal.status)}">
+                  {proposal.status}
+                </span>
               </div>
               <div class="grid grid-cols-2 gap-2 text-xs text-kong-text-secondary">
-                <span class="truncate">ID: {proposal.id.toString()}</span>
-                <span class="text-right truncate">Status: {@html formatStatus(proposal.status)}</span>
-                <span class="truncate">Created: {formatDate(proposal.created)}</span>
+                <span class="truncate">Created: {formatTimestamp(proposal.created)}</span>
+                <span class="text-right truncate">Deadline: {formatTimestamp(proposal.deadline)}</span>
+                <span class="truncate">Votes: {formatNumber(Number(proposal.tally.yes || 0))} Yes / {formatNumber(Number(proposal.tally.no || 0))} No</span>
                 <a
                   href={`https://nns.ic0.app/proposal/?u=${governanceCanisterId}&proposal=${proposal.id.toString()}`}
                   target="_blank"

@@ -141,9 +141,20 @@
   <div class="earnings-container">
     <h3 class="section-title">Lifetime Fees Accrued</h3>
     {#if loadingEarnings}
-      <div>Loading...</div>
+      <div class="earnings-grid">
+        <div class="earnings-card loading">
+          <div class="skeleton-value"></div>
+          <div class="skeleton-label"></div>
+          <div class="skeleton-label short"></div>
+        </div>
+        <div class="earnings-card loading">
+          <div class="skeleton-value"></div>
+          <div class="skeleton-label"></div>
+          <div class="skeleton-label short"></div>
+        </div>
+      </div>
     {:else if earningsError}
-      <div class="text-red-500">{earningsError}</div>
+      <div class="error-message">{earningsError}</div>
     {:else if token0 && token1 && pool}
       <div class="earnings-grid">
         <div class="earnings-card">
@@ -262,11 +273,32 @@
     transition-duration: 200ms;
   }
 
+  .earnings-card.loading {
+    @apply hover:bg-kong-bg-light/50;
+  }
+
   .earnings-label {
     @apply text-xs text-kong-text-primary/60 font-medium;
   }
 
   .earnings-value {
     @apply text-sm font-medium text-kong-text-accent-green max-w-full;
+  }
+
+  .error-message {
+    @apply text-sm text-red-500 p-3 rounded-lg bg-kong-bg-light/50
+           border border-kong-border/10 text-center;
+  }
+
+  .skeleton-value {
+    @apply w-24 h-4 rounded bg-white/10 animate-pulse mb-1;
+  }
+
+  .skeleton-label {
+    @apply w-16 h-3 rounded bg-white/10 animate-pulse;
+  }
+
+  .skeleton-label.short {
+    @apply w-8;
   }
 </style> 

@@ -125,7 +125,7 @@
 
 <div class="flex flex-col min-h-screen w-full origin-center app-content">
   {#if !themeReady}
-  <LoadingIndicator text="Loading..." fullHeight />
+  <LoadingIndicator message="Loading..." fullHeight />
 {:else}
   <PageWrapper page={page.url.pathname}>
     <div class="ticker-section bg-kong-bg-dark">

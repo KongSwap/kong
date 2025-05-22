@@ -742,7 +742,7 @@
 						class="absolute inset-0 flex flex-col items-center justify-start pt-10 bg-kong-bg-dark/80 rounded-md z-10"
 						transition:fade={{ duration: 150 }}
 					>
-						<LoadingIndicator text="Syncing tokens..." size={18} />
+						<LoadingIndicator message="Syncing tokens..." fullHeight={18} />
 					</div>
 				{/if}
 				<div class="space-y-0">

@@ -299,3 +299,77 @@ const createRawTokenData = (canisterId: string, tokenData: any, tokenId: number)
     total_24h_volume: "0"
   };
 };
+
+interface TopTokensResponse {
+  gainers: Array<{ token: Kong.Token; metrics: any }>;
+  losers: Array<{ token: Kong.Token; metrics: any }>;
+  hottest: Array<{ token: Kong.Token; metrics: any }>;
+  top_volume: Array<{ token: Kong.Token; metrics: any }>;
+}
+
+/**
+ * Fetches top tokens (gainers, losers, volume) from the API
+ */
+export const fetchTopTokens = async (): Promise<{
+  gainers: Kong.Token[];
+  losers: Kong.Token[];
+  hottest: Kong.Token[];
+  top_volume: Kong.Token[];
+}> => {
+  try {
+    // Ensure we're in a browser environment
+    if (!browser) {
+      throw new Error("API calls can only be made in the browser");
+    }
+    
+    const apiClient = getApiClient();
+    
+    // Make the API request using the base client
+    const data = await apiClient.get<any>('/api/tokens/top');
+    console.log('Raw API response:', data);
+    
+    // Ensure we have valid data
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid response from top tokens API');
+    }
+
+    // Process the arrays into the expected format
+    const processTokens = (tokens: any[]) => {
+      if (!Array.isArray(tokens)) {
+        console.warn('Expected array but got:', tokens);
+        return [];
+      }
+      return tokens.map(item => {
+        const token = item.token || item;
+        return {
+          ...token,
+          canister_id: token.canister_id,
+          address: token.canister_id, // Keep address for backward compatibility
+          metrics: {
+            ...token.metrics,
+            ...item.metrics // Merge metrics from both levels
+          }
+        };
+      });
+    };
+
+    const result = {
+      gainers: processTokens(data.gainers || []),
+      losers: processTokens(data.losers || []),
+      hottest: processTokens(data.hottest || []),
+      top_volume: processTokens(data.top_volume || [])
+    };
+
+    console.log('Processed top tokens:', result);
+    return result;
+  } catch (error) {
+    console.error('Error fetching top tokens:', error);
+    // Return empty arrays on error to prevent UI breakage
+    return {
+      gainers: [],
+      losers: [],
+      hottest: [],
+      top_volume: []
+    };
+  }
+};
