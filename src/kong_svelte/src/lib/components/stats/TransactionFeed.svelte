@@ -367,7 +367,9 @@
 
   const calculateTotalUsdValue = (tx: FE.Transaction): string => {
     const payToken = $tokensStore?.find((t) => t.id === tx.pay_token_id);
-    const receiveToken = $tokensStore?.find((t) => t.id === tx.receive_token_id);
+    const receiveToken = $tokensStore?.find(
+      (t) => t.id === tx.receive_token_id,
+    );
     if (!payToken || !receiveToken) return "0.00";
 
     // Calculate USD value from pay side
@@ -392,54 +394,67 @@
 </script>
 
 <Panel type="main" {className}>
-  <div class="relative flex flex-col h-full">
+  <div class="flex flex-col gap-4">
+    <!-- Header -->
+    <h2 class="text-sm font-semibold uppercase px-4 pt-4">
+      <div class="grid grid-cols-2 gap-x-8">
+        <div class="text-kong-text-primary tracking-wider">
+          Transaction
+        </div>
+        <div class="text-kong-text-primary tracking-wider text-right">
+          Value
+        </div>
+      </div>
+    </h2>
     {#if isLoadingTxns && !transactions.length}
-      <div class="flex justify-center items-center p-4 h-[400px]">
+      <div class="flex justify-center items-center p-6 flex-1">
         <span class="loading loading-spinner loading-md" />
       </div>
     {:else if error}
-      <div class="text-red-500 p-4">{error}</div>
+      <div class="text-kong-accent-red p-6 text-sm font-medium flex-1">{error}</div>
     {:else if transactions.length === 0}
-      <div class="text-kong-text-primary/70 text-center p-4 h-[400px] flex items-center justify-center">
+      <div
+        class="text-kong-text-primary/70 text-center p-6 flex-1 flex items-center justify-center text-sm"
+      >
         No transactions found
       </div>
     {:else}
-      <div class="relative flex flex-col h-full max-h-[600px]">
-        <div
-          class="hidden md:block sticky top-0 z-20 bg-gradient-to-b from-kong-bg-light/90 to-kong-bg-light/30 border-b border-kong-border/30"
-        >
-          <table class="w-full">
-            <thead>
-              <tr class="text-left text-xs text-kong-text-primary/70 !font-normal">
-                <th class="px-3 py-3">Paid/Received</th>
-                <th class="px-3 py-3 text-right">Value</th>
-              </tr>
-            </thead>
-          </table>
-        </div>
-
-        <div class="flex-1 overflow-y-auto overflow-x-hidden">
-          <table class="w-full">
-            <tbody class="hidden md:table-row-group">
-              {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
-                <tr class={`border-b border-kong-border/30 hover:bg-kong-bg-light active:bg-kong-bg-light/50 transition-colors ${
-                  newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : "") 
-                    ? "transaction-highlight" 
+      <div class="flex-1 overflow-hidden">
+        <!-- Transaction List -->
+        <div class="h-full overflow-y-auto overflow-x-hidden">
+          <!-- Desktop View -->
+          <div class="hidden md:block h-[400px]">
+            {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
+              <div
+                class={`border-b border-kong-border/20 hover:bg-kong-bg-dark/20 hover:bg-kong-bg-secondary/20 transition-all duration-200 ${
+                  newTransactionIds.has(
+                    tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : "",
+                  )
+                    ? "transaction-highlight"
                     : ""
-                }`}>
-                  <td class="px-3 py-3">
-                    <div class="flex flex-col">
-                      <div class="flex items-center gap-1.5 mb-1">
+                }`}
+              >
+                <div class="px-4 py-4">
+                  <div class="grid grid-cols-2 gap-x-8 items-center">
+                    <!-- Transaction Info -->
+                    <div class="flex flex-col gap-2">
+                      <div class="flex items-center gap-2 mb-1">
                         {#if tx.receive_token_id === token.id}
-                          <span class="bg-kong-accent-green/20 text-kong-text-accent-green px-1.5 py-0.5 rounded text-[10px]">
+                          <span
+                            class="bg-kong-accent-green/10 text-kong-accent-green px-2 py-1 rounded-md text-xs font-medium"
+                          >
                             BUY
                           </span>
                         {:else}
-                          <span class="bg-kong-accent-red/20 text-kong-accent-red px-1.5 py-0.5 rounded text-[10px]">
+                          <span
+                            class="bg-kong-accent-red/10 text-kong-accent-red px-2 py-1 rounded-md text-xs font-medium"
+                          >
                             SELL
                           </span>
                         {/if}
-                        <span class="text-xs text-kong-text-primary/60">
+                        <span
+                          class="text-xs text-kong-text-primary/60 font-medium"
+                        >
                           {new Date(tx.timestamp).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
@@ -448,150 +463,68 @@
                           })}
                         </span>
                       </div>
-                      
-                      <!-- Single line transaction display -->
-                      <div class="flex items-center gap-2 text-xs">
+
+                      <!-- Transaction amounts -->
+                      <div class="flex items-center gap-2 text-sm">
                         {#if tx.receive_token_id === token.id}
-                          <span class="text-kong-text-primary/80">
-                            {tx.pay_amount.toFixed(tx.pay_amount < 0.01 ? 6 : 4)}
-                            {$tokensStore.find(t => t.id === tx.pay_token_id)?.symbol}
+                          <span class="text-kong-text-primary/70 font-medium">
+                            {tx.pay_amount.toFixed(
+                              tx.pay_amount < 0.01 ? 6 : 4,
+                            )}
+                            {$tokensStore.find((t) => t.id === tx.pay_token_id)
+                              ?.symbol}
                           </span>
-                          <span class="text-kong-text-primary/80">→</span>
-                          <span class="font-medium text-kong-text-primary">
-                            {tx.receive_amount.toFixed(tx.receive_amount < 0.01 ? 6 : 4)}
-                            {$tokensStore.find(t => t.id === tx.receive_token_id)?.symbol}
+                          <span class="text-kong-text-primary/50">→</span>
+                          <span class="font-semibold text-kong-text-primary">
+                            {tx.receive_amount.toFixed(
+                              tx.receive_amount < 0.01 ? 6 : 4,
+                            )}
+                            {$tokensStore.find(
+                              (t) => t.id === tx.receive_token_id,
+                            )?.symbol}
                           </span>
                         {:else}
-                          <span class="font-medium text-kong-text-primary">
-                            {tx.pay_amount.toFixed(tx.pay_amount < 0.01 ? 6 : 4)}
-                            {$tokensStore.find(t => t.id === tx.pay_token_id)?.symbol}
+                          <span class="font-semibold text-kong-text-primary">
+                            {tx.pay_amount.toFixed(
+                              tx.pay_amount < 0.01 ? 6 : 4,
+                            )}
+                            {$tokensStore.find((t) => t.id === tx.pay_token_id)
+                              ?.symbol}
                           </span>
-                          <span class="text-kong-text-primary/80">→</span>
-                          <span class="text-kong-text-primary/80">
-                            {tx.receive_amount.toFixed(tx.receive_amount < 0.01 ? 6 : 4)}
-                            {$tokensStore.find(t => t.id === tx.receive_token_id)?.symbol}
+                          <span class="text-kong-text-primary/50">→</span>
+                          <span class="text-kong-text-primary/70 font-medium">
+                            {tx.receive_amount.toFixed(
+                              tx.receive_amount < 0.01 ? 6 : 4,
+                            )}
+                            {$tokensStore.find(
+                              (t) => t.id === tx.receive_token_id,
+                            )?.symbol}
                           </span>
                         {/if}
                       </div>
                     </div>
-                  </td>
-                  <td class="px-3 py-3 text-right">
-                    <div class="flex flex-col items-end gap-1">
-                      <span class="text-xs font-medium">{calculateTotalUsdValue(tx)}</span>
-                      <div class="flex items-center gap-1">
-                        <button
-                          title="View wallet"
-                          class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
-                          on:click|preventDefault={() => goto(`/wallets/${formatPrincipalId(tx.user.principal_id)}`)}
-                        >
-                          <WalletIcon class="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          title="View on explorer"
-                          class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
-                          on:click|preventDefault={() => {
-                            window.open(
-                              `https://www.icexplorer.io/address/detail/${formatPrincipalId(tx.user.principal_id)}`,
-                              "_blank"
-                            );
-                          }}
-                        >
-                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
 
-            <tbody class="md:hidden">
-              {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
-                <tr
-                  class="block border-b border-kong-border/30 p-3 hover:bg-kong-bg-light active:bg-kong-bg-light/50 transition-colors"
-                >
-                  <td class="block">
-                    <div class="flex flex-col gap-2">
-                      <div class="flex justify-between items-center">
+                    <!-- Value and Actions -->
+                    <div class="flex items-center justify-end gap-3">
+                      <div class="flex flex-col items-end gap-1">
                         <span
-                          class="text-sm font-medium text-kong-text-primary"
+                          class="text-sm font-semibold text-kong-text-primary"
+                          >{calculateTotalUsdValue(tx)}</span
                         >
-                          {#if tx.receive_token_id === token.id}
-                            <span
-                              class="bg-kong-accent-green/20 text-kong-text-accent-green px-2 py-0.5 rounded-full text-xs"
-                            >
-                              {token.symbol} BUY
-                            </span>
-                          {:else}
-                            <span
-                              class="bg-kong-accent-red/20 text-kong-accent-red px-2 py-0.5 rounded-full text-xs"
-                            >
-                              {token.symbol} SELL
-                            </span>
-                          {/if}
-                        </span>
-                        <span class="text-xs text-kong-text-primary/60">
-                          {new Date(tx.timestamp).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-
-                      <!-- Single line mobile transaction display -->
-                      <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2 text-sm">
-                          {#if tx.receive_token_id === token.id}
-                            <span class="text-kong-text-primary/80">
-                              {tx.pay_amount.toFixed(tx.pay_amount < 0.01 ? 4 : 2)}
-                              {$tokensStore.find(t => t.id === tx.pay_token_id)?.symbol}
-                            </span>
-                            <span class="text-kong-text-primary/70">→</span>
-                            <span class="font-medium text-kong-text-primary">
-                              {tx.receive_amount.toFixed(tx.receive_amount < 0.01 ? 4 : 2)}
-                              {$tokensStore.find(t => t.id === tx.receive_token_id)?.symbol}
-                            </span>
-                          {:else}
-                            <span class="font-medium text-kong-text-primary">
-                              {tx.pay_amount.toFixed(tx.pay_amount < 0.01 ? 4 : 2)}
-                              {$tokensStore.find(t => t.id === tx.pay_token_id)?.symbol}
-                            </span>
-                            <span class="text-kong-text-primary/70">→</span>
-                            <span class="text-kong-text-primary/80">
-                              {tx.receive_amount.toFixed(tx.receive_amount < 0.01 ? 4 : 2)}
-                              {$tokensStore.find(t => t.id === tx.receive_token_id)?.symbol}
-                            </span>
-                          {/if}
-                        </div>
-                      </div>
-
-                      <div class="flex items-center justify-between pt-1">
-                        <span class="text-xs text-kong-text-primary/60">
-                          {calculateTotalUsdValue(tx)}
-                        </span>
                         <div class="flex items-center gap-2">
                           <button
-                            class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
+                            title="View wallet"
+                            class="text-kong-text-primary/60 hover:text-kong-primary transition-colors duration-200 p-1 rounded-md hover:bg-kong-bg-secondary/30"
                             on:click|preventDefault={() =>
                               goto(
                                 `/wallets/${formatPrincipalId(tx.user.principal_id)}`,
                               )}
                           >
-                            <WalletIcon
-                              class="w-4 h-4 text-kong-text-secondary"
-                            />
+                            <WalletIcon class="w-4 h-4" />
                           </button>
                           <button
-                            class="text-kong-text-primary/70 hover:text-kong-text-primary transition-colors"
+                            title="View on explorer"
+                            class="text-kong-text-primary/60 hover:text-kong-primary transition-colors duration-200 p-1 rounded-md hover:bg-kong-bg-secondary/30"
                             on:click|preventDefault={() => {
                               window.open(
                                 `https://www.icexplorer.io/address/detail/${formatPrincipalId(tx.user.principal_id)}`,
@@ -616,22 +549,160 @@
                         </div>
                       </div>
                     </div>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </div>
+            {/each}
+          </div>
 
+          <!-- Mobile View -->
+          <div class="md:hidden">
+            {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
+              <div
+                class={`border-b border-kong-border/20 hover:bg-kong-bg-secondary/20 transition-all duration-200 ${
+                  newTransactionIds.has(
+                    tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : "",
+                  )
+                    ? "transaction-highlight"
+                    : ""
+                }`}
+              >
+                <div class="p-4">
+                  <div class="flex flex-col gap-3">
+                    <!-- Header row -->
+                    <div class="flex justify-between items-center">
+                      {#if tx.receive_token_id === token.id}
+                        <span
+                          class="bg-kong-accent-green/10 text-kong-accent-green px-2 py-1 rounded-md text-xs font-medium"
+                        >
+                          {token.symbol} BUY
+                        </span>
+                      {:else}
+                        <span
+                          class="bg-kong-accent-red/10 text-kong-accent-red px-2 py-1 rounded-md text-xs font-medium"
+                        >
+                          {token.symbol} SELL
+                        </span>
+                      {/if}
+                      <span
+                        class="text-xs text-kong-text-primary/60 font-medium"
+                      >
+                        {new Date(tx.timestamp).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+
+                    <!-- Transaction amounts -->
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2 text-sm">
+                        {#if tx.receive_token_id === token.id}
+                          <span class="text-kong-text-primary/70 font-medium">
+                            {tx.pay_amount.toFixed(
+                              tx.pay_amount < 0.01 ? 4 : 2,
+                            )}
+                            {$tokensStore.find((t) => t.id === tx.pay_token_id)
+                              ?.symbol}
+                          </span>
+                          <span class="text-kong-text-primary/50">→</span>
+                          <span class="font-semibold text-kong-text-primary">
+                            {tx.receive_amount.toFixed(
+                              tx.receive_amount < 0.01 ? 4 : 2,
+                            )}
+                            {$tokensStore.find(
+                              (t) => t.id === tx.receive_token_id,
+                            )?.symbol}
+                          </span>
+                        {:else}
+                          <span class="font-semibold text-kong-text-primary">
+                            {tx.pay_amount.toFixed(
+                              tx.pay_amount < 0.01 ? 4 : 2,
+                            )}
+                            {$tokensStore.find((t) => t.id === tx.pay_token_id)
+                              ?.symbol}
+                          </span>
+                          <span class="text-kong-text-primary/50">→</span>
+                          <span class="text-kong-text-primary/70 font-medium">
+                            {tx.receive_amount.toFixed(
+                              tx.receive_amount < 0.01 ? 4 : 2,
+                            )}
+                            {$tokensStore.find(
+                              (t) => t.id === tx.receive_token_id,
+                            )?.symbol}
+                          </span>
+                        {/if}
+                      </div>
+                    </div>
+
+                    <!-- Value and actions row -->
+                    <div
+                      class="flex items-center justify-between pt-1 border-t border-kong-border/10"
+                    >
+                      <span
+                        class="text-sm font-semibold text-kong-text-primary"
+                      >
+                        {calculateTotalUsdValue(tx)}
+                      </span>
+                      <div class="flex items-center gap-2">
+                        <button
+                          title="View wallet"
+                          class="text-kong-text-primary/60 hover:text-kong-primary transition-colors duration-200 p-1.5 rounded-md hover:bg-kong-bg-secondary/30"
+                          on:click|preventDefault={() =>
+                            goto(
+                              `/wallets/${formatPrincipalId(tx.user.principal_id)}`,
+                            )}
+                        >
+                          <WalletIcon class="w-4 h-4" />
+                        </button>
+                        <button
+                          title="View on explorer"
+                          class="text-kong-text-primary/60 hover:text-kong-primary transition-colors duration-200 p-1.5 rounded-md hover:bg-kong-bg-secondary/30"
+                          on:click|preventDefault={() => {
+                            window.open(
+                              `https://www.icexplorer.io/address/detail/${formatPrincipalId(tx.user.principal_id)}`,
+                              "_blank",
+                            );
+                          }}
+                        >
+                          <svg
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {/each}
+          </div>
+
+          <!-- Load More Trigger -->
           {#if hasMore}
             <div
               bind:this={loadMoreTrigger}
               use:setupIntersectionObserver
-              class="flex justify-center p-2 text-xs"
+              class="flex justify-center p-4 border-t border-kong-border/10"
             >
               {#if isLoadingMore}
-                <span class="loading loading-spinner loading-xs" />
+                <span class="loading loading-spinner loading-sm" />
               {:else}
-                <span class="text-kong-text-primary/70">Load more</span>
+                <span
+                  class="text-kong-text-primary/50 text-xs uppercase tracking-wider font-medium"
+                  >Load more</span
+                >
               {/if}
             </div>
           {/if}
@@ -642,7 +713,7 @@
 </Panel>
 
 <style>
-  /* Add custom scrollbar styling */
+  /* Custom scrollbar styling to match other components */
   :global(.overflow-y-auto::-webkit-scrollbar) {
     width: 4px;
   }
@@ -659,42 +730,29 @@
   :global(.overflow-y-auto::-webkit-scrollbar-thumb:hover) {
     background-color: rgba(156, 163, 175, 0.5);
   }
-  
-  /* Add highlight animation for new transactions */
+
+  /* Highlight animation for new transactions */
   .transaction-highlight {
     animation: highlight 2s ease-out;
   }
-  
+
   @keyframes highlight {
     0% {
-      background-color: rgba(99, 102, 241, 0.2);
+      background-color: rgba(99, 102, 241, 0.15);
     }
     100% {
       background-color: transparent;
     }
   }
 
-  /* Mobile responsive styles */
+  /* Mobile responsive optimizations */
   @media (max-width: 767px) {
-    :global(table) {
-      display: block;
-    }
-
-    :global(thead) {
-      display: none;
-    }
-
-    :global(tbody) {
-      display: block;
-      width: 100%;
-    }
-
     :global(.overflow-y-auto) {
-      height: calc(100vh - 200px); /* More dynamic height */
-      -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+      height: calc(100vh - 200px);
+      -webkit-overflow-scrolling: touch;
     }
 
-    :global(.transaction-highlight) {
+    .transaction-highlight {
       animation: mobile-highlight 1.5s ease-out;
     }
 
@@ -705,6 +763,18 @@
       100% {
         background-color: transparent;
       }
+    }
+  }
+
+  /* Consistent hover effects */
+  button:hover {
+    transform: translateY(-1px);
+  }
+
+  /* Better spacing for touch devices */
+  @media (hover: none) and (pointer: coarse) {
+    button {
+      padding: 0.625rem;
     }
   }
 </style>

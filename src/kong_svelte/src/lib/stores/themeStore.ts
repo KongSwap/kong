@@ -4,7 +4,6 @@ import { getThemeById, generateThemeVariables, getAllThemes, registerTheme } fro
 import type { ThemeDefinition } from '../themes/baseTheme';
 import { STORAGE_KEYS } from '../config/localForage.config';
 import { get } from 'svelte/store';
-import { auth } from '../stores/auth';
 
 // Define theme ID type based on available themes
 export type ThemeId = 'dark' | 'light' | 'plain-black' | 'nord' | 'modern-light' | 'microswap' | 'synthwave' | 'dragginz';
@@ -16,22 +15,6 @@ function createThemeStore() {
   const { subscribe, set } = writable<ThemeId>('dark');
   const { subscribe: colorSchemeSubscribe } = colorScheme;
   const THEME_KEY = STORAGE_KEYS.THEME;
-  
-  /**
-   * Get the current user ID from auth service or default to 'default'
-   */
-  function getUserId(): string {
-    if (browser) {
-      try {
-        const authState = get(auth);
-        return authState?.account?.owner || 'default';
-      } catch (error) {
-        console.error('Failed to get user ID:', error);
-        return 'default';
-      }
-    }
-    return 'default';
-  }
   
   /**
    * Apply a theme's CSS variables to the document root
@@ -158,8 +141,7 @@ function createThemeStore() {
   async function saveThemeToStorage(themeId: ThemeId) {
     if (browser) {
       try {
-        const walletId = getUserId();
-        localStorage.setItem(`${THEME_KEY}_${walletId}`, JSON.stringify(themeId));
+        localStorage.setItem(THEME_KEY, JSON.stringify(themeId));
         return true;
       } catch (error) {
         console.error('Failed to save theme to localStorage:', error);
@@ -176,29 +158,10 @@ function createThemeStore() {
   async function loadThemeFromStorage(): Promise<ThemeId | null> {
     if (browser) {
       try {
-        // Get wallet ID or default to 'default'
-        const walletId = getUserId();
-        
-        // First try user-specific theme
-        const userThemeJson = localStorage.getItem(`${THEME_KEY}_${walletId}`);
-        
-        if (userThemeJson) {
-          const userTheme = JSON.parse(userThemeJson) as ThemeId;
-          return userTheme;
-        }
-        
-        // If no user theme, try the default theme
-        const defaultThemeJson = localStorage.getItem(THEME_KEY);
-        if (defaultThemeJson) {
-          const defaultTheme = JSON.parse(defaultThemeJson) as ThemeId;
-          return defaultTheme;
-        }
-        
-        // If still no theme, try the global default
-        const globalDefaultJson = localStorage.getItem(`${THEME_KEY}_default`);
-        if (globalDefaultJson) {
-          const globalDefault = JSON.parse(globalDefaultJson) as ThemeId;
-          return globalDefault;
+        const storedThemeJson = localStorage.getItem(THEME_KEY);
+        if (storedThemeJson) {
+          const storedTheme = JSON.parse(storedThemeJson) as ThemeId;
+          return storedTheme;
         }
       } catch (error) {
         console.error('Failed to load theme from localStorage:', error);
@@ -305,21 +268,12 @@ function createThemeStore() {
           return;
         }
         
-        // If no valid theme in URL, proceed with normal initialization
-        const walletId = getUserId();
-        
-        // Try user-specific theme first
+        // Try to load theme from localStorage
         let themeToApply: ThemeId | null = null;
-        const userThemeJson = localStorage.getItem(`${THEME_KEY}_${walletId}`);
+        const storedThemeJson = localStorage.getItem(THEME_KEY);
         
-        if (userThemeJson) {
-          themeToApply = JSON.parse(userThemeJson) as ThemeId;
-        } else {
-          // Try default theme
-          const defaultThemeJson = localStorage.getItem(THEME_KEY);
-          if (defaultThemeJson) {
-            themeToApply = JSON.parse(defaultThemeJson) as ThemeId;
-          }
+        if (storedThemeJson) {
+          themeToApply = JSON.parse(storedThemeJson) as ThemeId;
         }
         
         // If no theme found in localStorage, use system preference
@@ -333,7 +287,7 @@ function createThemeStore() {
         set(themeToApply);
         
         // Save the theme if it was from system preference
-        if (!userThemeJson && !localStorage.getItem(THEME_KEY)) {
+        if (!storedThemeJson) {
           saveThemeToStorage(themeToApply);
         }
         

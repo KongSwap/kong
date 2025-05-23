@@ -16,7 +16,7 @@
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { browser } from "$app/environment";
   import PoolStatistics from "./PoolStatistics.svelte";
-  import { snsService } from '$lib/utils/snsUtils';
+  import { snsService, icpGovernanceService } from '$lib/utils/snsUtils';
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import TokenChart from "./TokenChart.svelte";
 
@@ -283,8 +283,12 @@
   async function checkActiveProposals(governanceId: string) {
     checkingProposals = true;
     try {
+      // Determine service type based on token address (same logic as SNSProposals component)
+      const serviceType = token?.address === 'ryjl3-tyaaa-aaaaa-aaaba-cai' ? 'icp' : 'sns';
+      const service = serviceType === 'sns' ? snsService : icpGovernanceService;
+      
       // Fetch first 5 proposals to check for any 'open' ones
-      const result = await snsService.getProposals(governanceId, 5);
+      const result = await service.getProposals(governanceId, 5);
        hasActiveProposals = result.proposals.some(p => p.status === 'open');
      } catch (error) {
        console.error("Error checking for active proposals:", error);
@@ -343,7 +347,7 @@
           {/if}
 
           <!-- Chart Panel -->
-          <Panel type="main" className="!border-b-none">
+          <Panel type="main" className="!border-b-none !shadow-none">
             <div class="w-full chart-wrapper">
               <TokenChart 
                 {token}
@@ -357,7 +361,7 @@
 
           <!-- Transactions Panel -->
           {#if token && token.address === $page.params.id}
-            <TransactionFeed {token} className="w-full !p-0" />
+            <TransactionFeed {token} className="w-full !bg-kong-bg-light" />
           {/if}
 
           <!-- Governance Section (Mobile) -->
@@ -365,6 +369,7 @@
             <div id="governance-section" class="mt-4">
               <SNSProposals
                 governanceCanisterId={GOVERNANCE_CANISTER_IDS[token.address]}
+                type={token.address === 'ryjl3-tyaaa-aaaaa-aaaba-cai' ? 'icp' : 'sns'}
               />
             </div>
           {/if}
@@ -395,7 +400,7 @@
           <!-- Middle Column - Chart -->
           <div class="lg:w-full flex flex-col">
             <!-- Chart Panel -->
-            <Panel type="main" className="!p-0 !bg-transparent !border-none">
+            <Panel type="main" className="!p-0 !bg-transparent !shadow-none !border-none">
               <div class="w-full chart-wrapper">
                 <TokenChart 
                   {token}
@@ -408,24 +413,26 @@
             </Panel>
             
             <!-- Governance and Transactions (Desktop) -->
-            {#if token?.address && GOVERNANCE_CANISTER_IDS[token.address]}
               <div id="governance-section" class="mt-4 hidden lg:block">
                 <div class="flex flex-row gap-6">
+                  {#if token?.address && GOVERNANCE_CANISTER_IDS[token.address]}
                   <!-- Left Column - Proposals -->
                   <div class="w-1/2">
                     <SNSProposals
                       governanceCanisterId={GOVERNANCE_CANISTER_IDS[token.address]}
+                      type={token.address === 'ryjl3-tyaaa-aaaaa-aaaba-cai' ? 'icp' : 'sns'}
                     />
                   </div>
+                  {/if}
+                  
                   <!-- Right Column - Transactions -->
-                  <div class="lg:w-1/2 flex flex-col">
+                  <div class={`${token?.address && GOVERNANCE_CANISTER_IDS[token.address] ? 'lg:w-1/2' : 'lg:w-full'} flex flex-col`}>
                     {#if token && token.address === $page.params.id}
-                      <TransactionFeed {token} className="w-full !p-0" />
+                      <TransactionFeed {token} className="w-full !p-0 !bg-kong-bg-light" />
                     {/if}
                   </div>
                 </div>
               </div>
-            {/if}
           </div>
         </div>
       </div>

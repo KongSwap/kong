@@ -481,9 +481,9 @@ service : () -> {
   get_unresolved_transactions : () -> (
       vec record { nat64; FailedTransaction },
     ) query;
-  get_user_claims : () -> (vec ClaimRecord) query;
+  get_user_claims : (text) -> (vec ClaimRecord) query;
   get_user_history : (principal) -> (UserHistory) query;
-  get_user_pending_claims : () -> (vec ClaimRecord) query;
+  get_user_pending_claims : (text) -> (vec ClaimRecord) query;
   icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
       Result_3,
     ) query;

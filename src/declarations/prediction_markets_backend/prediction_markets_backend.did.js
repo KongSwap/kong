@@ -583,9 +583,13 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(IDL.Nat64, FailedTransaction))],
         ['query'],
       ),
-    'get_user_claims' : IDL.Func([], [IDL.Vec(ClaimRecord)], ['query']),
+    'get_user_claims' : IDL.Func([IDL.Text], [IDL.Vec(ClaimRecord)], ['query']),
     'get_user_history' : IDL.Func([IDL.Principal], [UserHistory], ['query']),
-    'get_user_pending_claims' : IDL.Func([], [IDL.Vec(ClaimRecord)], ['query']),
+    'get_user_pending_claims' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(ClaimRecord)],
+        ['query'],
+      ),
     'icrc21_canister_call_consent_message' : IDL.Func(
         [ConsentMessageRequest],
         [Result_3],

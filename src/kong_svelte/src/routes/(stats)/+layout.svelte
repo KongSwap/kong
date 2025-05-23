@@ -126,7 +126,7 @@
 
 <div class="flex flex-col min-h-screen !bg-kong-bg-dark w-full origin-center overflow-hidden">
   {#if !themeReady}
-  <LoadingIndicator text="Loading..." fullHeight />
+  <LoadingIndicator message="Loading..." fullHeight />
 {:else}
 
     <div class="ticker-section bg-kong-bg-dark">
@@ -140,20 +140,6 @@
         {@render children?.()}
       </div>
     </main>
-
-    <footer class="w-full h-6 bg-transparent absolute bottom-0 mx-auto">
-      <div
-        class="flex items-center justify-center opacity-60 transition-opacity duration-200"
-      >
-        <p class="text-xs text-kong-text-secondary">
-          Powered by <button
-            onclick={() => goto("/")}
-            class="hover:opacity-90 text-kong-text-primary font-semibold hover:text-kong-primary"
-            >KongSwap</button
-          >
-        </p>
-      </div>
-    </footer>
   <Toast />
   <AddToHomeScreen />
   <QRModal />

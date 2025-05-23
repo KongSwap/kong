@@ -148,9 +148,33 @@
     selectedPool ? formatUsdValue(Number(selectedPool.tvl)) : "",
   );
   const formattedTotalTokenTvl = $derived(formatUsdValue(totalTokenTvl));
+
+  let priceElement: HTMLElement;
+  let priceFontSize = $state('text-3xl');
+
+  function adjustFontSize(element: HTMLElement, text: string) {
+    if (!element) return;
+    
+    const containerWidth = element.parentElement?.offsetWidth || 0;
+    const textLength = text.length;
+    
+    if (textLength > 12) {
+      priceFontSize = 'text-xl';
+    } else if (textLength > 8) {
+      priceFontSize = 'text-2xl';
+    } else {
+      priceFontSize = 'text-3xl';
+    }
+  }
+
+  $effect(() => {
+    if (priceElement && formattedPrice) {
+      adjustFontSize(priceElement, formattedPrice);
+    }
+  });
 </script>
 
-<Panel type="main" className="">
+<Panel variant="solid" className="!bg-kong-bg-light">
   <div class="flex flex-col gap-4">
     <!-- Token Header Section -->
     <div class="flex items-center gap-4">
@@ -217,11 +241,15 @@
           </div>
 
           <div
-            class="text-3xl font-medium text-kong-text-primary leading-none flex gap-x-1.5"
+            class="font-medium text-kong-text-primary leading-none flex flex-wrap gap-x-1.5 responsive-price overflow-hidden"
             class:flash-green-text={priceFlash === "up"}
             class:flash-red-text={priceFlash === "down"}
+            class:text-3xl={priceFontSize === 'text-3xl'}
+            class:text-2xl={priceFontSize === 'text-2xl'}
+            class:text-xl={priceFontSize === 'text-xl'}
+            bind:this={priceElement}
           >
-            ${formattedPrice}
+            <span class="truncate">${formattedPrice}</span>
           </div>
         </div>
 
@@ -404,6 +432,17 @@
 
   .flash-red-text {
     animation: flashRed 1s ease-out;
+  }
+
+  .responsive-price {
+    transition: font-size 0.2s ease;
+    max-width: 100%;
+  }
+
+  /* Ensure price text doesn't overflow */
+  .responsive-price span {
+    max-width: 100%;
+    display: inline-block;
   }
 
   @keyframes flashGreen {

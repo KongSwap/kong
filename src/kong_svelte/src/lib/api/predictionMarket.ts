@@ -316,13 +316,40 @@ export async function getAllBets(fromIndex: number = 0, toIndex: number = 10) {
   return allBets.slice(fromIndex, toIndex);
 }
 
-
 export async function getPredictionMarketStats() {
   const actor = predictionActor({anon: true});
   const stats = await actor.get_stats();
   return stats;
 }
 
+export async function getUserClaims(principal: string) {
+  const actor = predictionActor({anon: true});
+  try {
+    const claims = await actor.get_user_claims(principal);
+    console.log("claims", claims)
+    
+    return claims;
+  } catch (error) {
+    console.error("Error in getUserClaims:", error);
+    throw error;
+  }
+}
+
+export async function claimWinnings(claimIds: bigint[]) {
+  const actor = predictionActor({anon: false, requiresSigning: true});
+  try {
+    const result = await actor.claim_winnings(claimIds);
+    
+    if ("Err" in result) {
+      throw new Error(`Failed to claim winnings: ${result.Err}`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error("Error in claimWinnings:", error);
+    throw error;
+  }
+}
 
 export async function getAllCategories() {
   const actor = predictionActor({anon: true});

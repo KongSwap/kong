@@ -9,8 +9,8 @@ export const lightTheme: ThemeDefinition = {
   authorLink: 'https://kongswap.io',
   colors: {
     // Background colors
-    bgDark: '#F5F7FA',      // Light gray/blue
-    bgLight: '#f5f5f5',     // White
+    bgDark: '#f5f5f5',      // Light gray/blue
+    bgLight: '#F5F7FA',     // White
     hoverBgLight: '#EEF1F5', // Slightly darker for hover
     
     // Primary and secondary colors

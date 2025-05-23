@@ -392,6 +392,47 @@
         : $tokenData,
   );
 
+  // Sorted tokens for mobile view
+  const sortedTokens = derived(
+    [filteredTokens, sortBy, sortDirection],
+    ([$filteredTokens, $sortBy, $sortDirection]) => {
+      const sorted = [...$filteredTokens].sort((a, b) => {
+        let aValue: number;
+        let bValue: number;
+
+        switch ($sortBy) {
+          case 'market_cap':
+            aValue = Number(a.metrics?.market_cap || 0);
+            bValue = Number(b.metrics?.market_cap || 0);
+            break;
+          case 'price':
+            aValue = Number(a.metrics?.price || 0);
+            bValue = Number(b.metrics?.price || 0);
+            break;
+          case 'volume':
+            aValue = Number(a.metrics?.volume_24h || 0);
+            bValue = Number(b.metrics?.volume_24h || 0);
+            break;
+          case 'price_change':
+            aValue = Number(a.metrics?.price_change_24h || 0);
+            bValue = Number(b.metrics?.price_change_24h || 0);
+            break;
+          default:
+            aValue = Number(a.metrics?.market_cap || 0);
+            bValue = Number(b.metrics?.market_cap || 0);
+        }
+
+        if ($sortDirection === 'asc') {
+          return aValue - bValue;
+        } else {
+          return bValue - aValue;
+        }
+      });
+
+      return sorted;
+    }
+  );
+
   // Helper functions
   function getTrendClass(token: FE.StatsToken): string {
     const change = token?.metrics?.price_change_24h;
@@ -492,52 +533,54 @@
   <title>Market Stats - KongSwap</title>
 </svelte:head>
 
-<section class="flex w-full gap-2 px-4">
-  <div class="flex flex-col w-[350px]">
-    <div class="flex flex-col gap-4">
-      <div>
-        <Panel
-          type="main"
-          className="flex flex-col !bg-transparent !border-none !p-0 !shadow-none"
-          height="100%"
-        >
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between px-1">
-              <h3 class="text-lg font-semibold text-kong-text-primary">
-                Biggest Movers
-              </h3>
-              <div class="flex items-center gap-2 pt-2">
-                <button
-                  class="px-3 py-1 flex items-center gap-1 text-sm rounded-full transition-colors duration-200 {$activeTab ===
-                  'gainers'
-                    ? 'bg-kong-accent-green text-kong-text-on-primary'
-                    : 'bg-kong-bg-light text-kong-text-secondary hover:text-kong-text-primary'}"
-                  on:click={() => handleTabChange("gainers")}
-                >
-                  <TrendingUp size={16} />
-                </button>
-                <button
-                  class="px-3 py-1 flex items-center gap-1 text-sm rounded-full transition-colors duration-200 {$activeTab ===
-                  'losers'
-                    ? 'bg-kong-accent-red text-kong-text-on-primary'
-                    : 'bg-kong-bg-light text-kong-text-secondary hover:text-kong-text-primary'}"
-                  on:click={() => handleTabChange("losers")}
-                >
-                  <TrendingDown size={16} />
-                </button>
-              </div>
+<section class="flex flex-col md:flex-row w-full gap-2 px-4">
+  <!-- Sidebar containing both Biggest Movers and Top Volume -->
+  <div class="w-full md:w-[350px] flex flex-col gap-2 order-1">
+    <!-- Biggest Movers Section -->
+    <div class="w-full">
+      <Panel
+        type="main"
+        className="flex flex-col !bg-transparent !border-none !p-0 !shadow-none"
+        height="100%"
+      >
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between px-1">
+            <h3 class="text-lg font-semibold text-kong-text-primary">
+              Biggest Movers
+            </h3>
+            <div class="flex items-center gap-2 pt-2">
+              <button
+                class="px-3 py-1 flex items-center gap-1 text-sm rounded-full transition-colors duration-200 {$activeTab ===
+                'gainers'
+                  ? 'bg-kong-accent-green text-kong-text-on-primary'
+                  : 'bg-kong-bg-light text-kong-text-secondary hover:text-kong-text-primary'}"
+                on:click={() => handleTabChange("gainers")}
+              >
+                <TrendingUp size={16} />
+              </button>
+              <button
+                class="px-3 py-1 flex items-center gap-1 text-sm rounded-full transition-colors duration-200 {$activeTab ===
+                'losers'
+                  ? 'bg-kong-accent-red text-kong-text-on-primary'
+                  : 'bg-kong-bg-light text-kong-text-secondary hover:text-kong-text-primary'}"
+                on:click={() => handleTabChange("losers")}
+              >
+                <TrendingDown size={16} />
+              </button>
             </div>
+          </div>
 
-            <div class="flex flex-col gap-1">
-              {#if $isLoading}
-                <div class="space-y-2">
-                  {#each Array(5) as _}
-                    <div
-                      class="h-12 bg-kong-bg-light rounded-lg animate-pulse"
-                    ></div>
-                  {/each}
-                </div>
-              {:else}
+          <div class="flex flex-col gap-1">
+            {#if $isLoading}
+              <div class="space-y-2">
+                {#each Array(5) as _}
+                  <div
+                    class="h-12 bg-kong-bg-light rounded-lg animate-pulse"
+                  ></div>
+                {/each}
+              </div>
+            {:else}
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-col gap-1">
                 {#each $activeTab === "gainers" ? $topGainers : $topLosers as token, i (token.address)}
                   <button
                     class="w-full"
@@ -553,52 +596,55 @@
                     />
                   </button>
                 {/each}
-              {/if}
-            </div>
+              </div>
+            {/if}
           </div>
-        </Panel>
-      </div>
-      <div>
-        <!-- Top Volume Section -->
-        <Panel
-          type="main"
-          className="flex flex-col !bg-transparent !shadow-none !border-none !p-0"
-          height="100%"
-        >
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-2 px-1">
-              <Flame size={22} class="text-orange-400" />
-              <h3 class="text-lg font-semibold text-kong-text-primary">
-                Top Volume
-              </h3>
-            </div>
-            <div class="flex flex-col gap-1">
-              {#each $topVolumeTokens as token, i (token.address)}
-                <TokenCardMobile
-                  {token}
-                  section="top-volume"
-                  trendClass={getTrendClass(token)}
-                  showAdvancedStats={false}
-                  showIcons={false}
-                  paddingClass="px-3 py-1.5"
-                  showIndex={i}
-                />
-              {/each}
-            </div>
-          </div>
-        </Panel>
-      </div>
-      <!-- <div class="flex flex-col gap-4 items-center">
-        <div class="w-full flex items-center justify-center border-2 border-dashed border-kong-border/40 bg-kong-bg-light/40 text-kong-text-secondary text-lg font-semibold">
-          <img src="/images/stick-10.png" class="h-full w-full object-fit object-bottom" />
-
         </div>
-      </div> -->
+      </Panel>
+    </div>
+
+    <!-- Top Volume Section -->
+    <div class="w-full">
+      <Panel
+        type="main"
+        className="flex flex-col !bg-transparent !shadow-none !border-none !p-0"
+        height="100%"
+      >
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center gap-2 px-1">
+            <Flame size={22} class="text-orange-400" />
+            <h3 class="text-lg font-semibold text-kong-text-primary">
+              Top Volume
+            </h3>
+          </div>
+          <div class="flex flex-col gap-1">
+                       <div class="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-col gap-1">
+             {#each $topVolumeTokens as token, i (token.address)}
+               <button
+                 class="w-full"
+                 on:click={() => goto(`/stats/${token.address}`)}
+               >
+                 <TokenCardMobile
+                   {token}
+                   section="top-volume"
+                   trendClass={getTrendClass(token)}
+                   showAdvancedStats={false}
+                   showIcons={false}
+                   paddingClass="px-3 py-1.5"
+                   showIndex={i}
+                 />
+               </button>
+             {/each}
+           </div>
+        </div>
+      </Panel>
     </div>
   </div>
+
+  <!-- Main Token Table - Full width on mobile, takes remaining space on desktop -->
   <Panel
     type="main"
-    className="flex flex-col !p-0 !w-full !bg-transparent !shadow-none !border-none"
+    className="flex flex-col !p-0 !w-full !bg-transparent !shadow-none !border-none order-2"
     height="100%"
   >
     <div class="flex flex-col h-full !rounded-lg">
@@ -634,14 +680,14 @@
       </div>
 
       <!-- Content -->
-      {#if $isLoading && $filteredTokens.length === 0}
+      {#if $isLoading && $sortedTokens.length === 0}
         <div class="flex flex-col items-center justify-center h-64 text-center">
           <div class="transition-opacity duration-300">
             <div class="h-4 w-32 bg-kong-bg-light rounded mb-4"></div>
             <div class="h-4 w-48 bg-kong-bg-light rounded"></div>
           </div>
         </div>
-      {:else if $filteredTokens.length === 0}
+      {:else if $sortedTokens.length === 0}
         <div class="flex flex-col items-center justify-center h-64 text-center">
           {#if $showFavoritesOnly && !$auth.isConnected}
             <p class="text-gray-400 mb-4">
@@ -664,7 +710,7 @@
         <div class="flex-1 {$panelRoundness}">
           {#if !isMobile}
             <StatsGrid
-              data={$filteredTokens}
+              data={$sortedTokens}
               rowKey="canister_id"
               isLoading={$isLoading}
               columns={tableColumns}
@@ -672,7 +718,7 @@
               defaultSort={{ column: "market_cap", direction: "desc" }}
               onRowClick={(row) => goto(`/stats/${row.address}`)}
               totalItems={$showFavoritesOnly
-                ? $filteredTokens.length
+                ? $sortedTokens.length
                 : $totalCount}
               currentPage={$currentPage}
               onPageChange={(page) => currentPage.set(page)}
@@ -681,19 +727,19 @@
             <div class="flex flex-col h-full overflow-hidden">
               <!-- Mobile filters -->
               <div
-                class="sticky top-0 z-30 bg-kong-bg-light border-b border-kong-border"
+                class="sticky top-0 z-30 backdrop-blur-md border-b border-kong-border/50"
               >
-                <div class="flex gap-2 px-3 py-2 justify-between">
+                <div class="flex gap-1.5 px-3 py-3 justify-between">
                   <button
-                    class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {$sortBy ===
+                    class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 {$sortBy ===
                     'market_cap'
-                      ? 'bg-kong-primary text-white'
-                      : 'bg-kong-bg-light'}"
+                      ? 'bg-kong-primary text-kong-text-on-primary shadow-md'
+                      : 'bg-kong-bg-dark/40 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-dark/60'}"
                     on:click={() => toggleSort("market_cap")}
                   >
                     MCap
                     <ChevronDown
-                      size={16}
+                      size={14}
                       class="transition-transform {$sortDirection === 'asc' &&
                       $sortBy === 'market_cap'
                         ? 'rotate-180'
@@ -701,15 +747,31 @@
                     />
                   </button>
                   <button
-                    class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {$sortBy ===
+                    class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 {$sortBy ===
+                    'price'
+                      ? 'bg-kong-primary text-kong-text-on-primary shadow-md'
+                      : 'bg-kong-bg-dark/40 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-dark/60'}"
+                    on:click={() => toggleSort("price")}
+                  >
+                    Price
+                    <ChevronDown
+                      size={14}
+                      class="transition-transform {$sortDirection === 'asc' &&
+                      $sortBy === 'price'
+                        ? 'rotate-180'
+                        : ''}"
+                    />
+                  </button>
+                  <button
+                    class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 {$sortBy ===
                     'volume'
-                      ? 'bg-kong-primary text-white'
-                      : 'bg-kong-bg-light'}"
+                      ? 'bg-kong-primary text-kong-text-on-primary shadow-md'
+                      : 'bg-kong-bg-dark/40 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-dark/60'}"
                     on:click={() => toggleSort("volume")}
                   >
                     Volume
                     <ChevronDown
-                      size={16}
+                      size={14}
                       class="transition-transform {$sortDirection === 'asc' &&
                       $sortBy === 'volume'
                         ? 'rotate-180'
@@ -717,15 +779,15 @@
                     />
                   </button>
                   <button
-                    class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {$sortBy ===
+                    class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 {$sortBy ===
                     'price_change'
-                      ? 'bg-kong-primary text-white'
-                      : 'bg-kong-bg-light'}"
+                      ? 'bg-kong-primary text-kong-text-on-primary shadow-md'
+                      : 'bg-kong-bg-dark/40 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-dark/60'}"
                     on:click={() => toggleSort("price_change")}
                   >
                     24h %
                     <ChevronDown
-                      size={16}
+                      size={14}
                       class="transition-transform {$sortDirection === 'asc' &&
                       $sortBy === 'price_change'
                         ? 'rotate-180'
@@ -737,8 +799,8 @@
 
               <!-- Scrollable content -->
               <div class="flex-1 overflow-auto">
-                <div class="space-y-2.5 px-2 py-2">
-                  {#each $filteredTokens as token (token.address)}
+                <div class="flex flex-col gap-1 py-2">
+                  {#each $sortedTokens as token (token.address)}
                     <button
                       class="w-full"
                       on:click={() => goto(`/stats/${token.address}`)}
@@ -747,6 +809,8 @@
                         {token}
                         trendClass={getTrendClass(token)}
                         showIcons={false}
+                        section="stats-list"
+                        paddingClass="px-3 py-1.5"
                       />
                     </button>
                   {/each}

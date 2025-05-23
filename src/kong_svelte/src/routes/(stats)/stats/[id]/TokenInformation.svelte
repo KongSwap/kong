@@ -14,7 +14,7 @@
   }>();
 </script>
 
-<Panel variant="transparent" type="main" className="p-4 md:p-6">
+<Panel variant="transparent" type="main" className="p-4 md:p-6 !bg-kong-bg-light">
   <div class="flex flex-col">
     <!-- Navigation Tabs Only -->
     <div>

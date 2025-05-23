@@ -1,6 +1,6 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { idlFactory as snsIdlFactory } from '$lib/idls/snsGovernance.idl.js';
-import { idlFactory as nnsIdlFactory } from '$lib/idls/nnsGovernance.idl.js';
+import { idlFactory as icpIdlFactory } from '$lib/idls/icpGovernance.idl.js';
 import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
 
 export interface GovernanceProposal {
@@ -76,9 +76,7 @@ export class SNSService {
         before_proposal: beforeProposal ? [{ id: beforeProposal }] : [],
         exclude_type: [],
         include_reward_status: [] as number[],
-        include_status: [] as number[],
-        exclude_topic: [] as number[],
-        include_all_manage_neuron_proposals: []
+        include_status: [] as number[]
       });
 
       console.log('Raw SNS proposals response:', result);
@@ -146,36 +144,48 @@ export class ICPGovernanceService {
   ): Promise<ProposalResponse> {
     try {
       console.log('Fetching ICP proposals for canister:', governanceCanisterId);
-      const governanceActor = createAnonymousActorHelper(governanceCanisterId, nnsIdlFactory);
-
-      const result = await governanceActor.list_proposals({
+      const governanceActor = createAnonymousActorHelper(governanceCanisterId, icpIdlFactory);
+      console.log('ICP governance actor methods:', Object.keys(governanceActor));
+      
+      const requestParams = {
         limit: BigInt(limit),
         before_proposal: beforeProposal ? [{ id: beforeProposal }] : [],
-        exclude_type: [],
+        exclude_topic: [] as number[],
         include_reward_status: [] as number[],
         include_status: [] as number[],
-        exclude_topic: [] as number[],
-        include_all_manage_neuron_proposals: []
-      });
+        include_all_manage_neuron_proposals: [],
+        omit_large_fields: []
+      };
+      
+      console.log('ICP API request params:', requestParams);
+      
+      const result = await governanceActor.list_proposals(requestParams);
 
       console.log('Raw ICP proposals response:', result);
+      console.log('ICP proposals count:', result.proposal_info?.length || 0);
 
-      function determineStatus(proposal: any): GovernanceProposal['status'] {
-        if (proposal.failed_timestamp_seconds > 0n) return 'failed';
-        if (proposal.executed_timestamp_seconds > 0n) return 'executed';
-        if (proposal.decided_timestamp_seconds > 0n) return 'accepted';
-        return 'open';
+      // ICP status mapping - these are the integer values from the IDL
+      function determineStatus(statusInt: number): GovernanceProposal['status'] {
+        switch (statusInt) {
+          case 1: return 'open';
+          case 2: return 'rejected';
+          case 3: return 'accepted';
+          case 4: return 'executed';
+          case 5: return 'failed';
+          default: return 'open';
+        }
       }
 
-      const mappedProposals = result.proposals.map(proposal => ({
+      // Access the correct field name: proposal_info instead of proposals
+      const mappedProposals = result.proposal_info.map(proposal => ({
         id: proposal.id[0]?.id || BigInt(0),
-        title: proposal.proposal[0]?.title || "",
+        title: proposal.proposal[0]?.title || proposal.proposal[0]?.action?.Motion?.motion_text || "Untitled Proposal",
         summary: proposal.proposal[0]?.summary || "",
         url: proposal.proposal[0]?.url || "",
-        status: determineStatus(proposal),
+        status: determineStatus(proposal.status),
         proposer: proposal.proposer[0]?.id.toString(),
-        created: proposal.proposal_creation_timestamp_seconds,
-        deadline: proposal.wait_for_quiet_deadline_increase_seconds,
+        created: proposal.proposal_timestamp_seconds,
+        deadline: proposal.deadline_timestamp_seconds || BigInt(0),
         reward_event_round: proposal.reward_event_round,
         tally: {
           yes: proposal.latest_tally[0]?.yes,
@@ -186,14 +196,14 @@ export class ICPGovernanceService {
         decided_timestamp_seconds: proposal.decided_timestamp_seconds,
         executed_timestamp_seconds: proposal.executed_timestamp_seconds,
         failed_timestamp_seconds: proposal.failed_timestamp_seconds,
-        is_eligible_for_rewards: proposal.is_eligible_for_rewards
+        is_eligible_for_rewards: proposal.reward_status === 1 // 1 means eligible for rewards
       }));
 
       console.log('Mapped ICP proposals:', mappedProposals);
 
       return {
         proposals: mappedProposals,
-        hasMore: result.proposals.length >= limit
+        hasMore: result.proposal_info.length >= limit
       };
     } catch (error) {
       console.error('Error fetching ICP proposals:', error);

@@ -279,20 +279,22 @@
       const reservedPercent = 10; 
       const availablePercent = 100 - reservedPercent;
       const adjustedBalance = state.tokenBalance * (availablePercent / 100);
-      betAmount = Number(((adjustedBalance * percentage) / 100).toFixed(8));
+      const calculatedAmount = (adjustedBalance * percentage) / 100;
+      betAmount = Number(calculatedAmount.toFixed(8));
       console.log(`Set bet amount to ${betAmount} (${percentage}% of ${adjustedBalance})`);
       
       // Ensure USD mode is also updated
       if (state.inputMode === "usd" && state.tokenPriceUsd > 0) {
-        state.usdInputValue = betAmount * state.tokenPriceUsd;
+        state.usdInputValue = Number((betAmount * state.tokenPriceUsd).toFixed(2));
       }
     } else if (state.maxAmount > 0) {
-      betAmount = Number((state.maxAmount * (percentage / 100)).toFixed(8));
+      const calculatedAmount = (state.maxAmount * percentage) / 100;
+      betAmount = Number(calculatedAmount.toFixed(8));
       console.log(`Set bet amount to ${betAmount} (${percentage}% of max ${state.maxAmount})`);
       
       // Ensure USD mode is also updated
       if (state.inputMode === "usd" && state.tokenPriceUsd > 0) {
-        state.usdInputValue = betAmount * state.tokenPriceUsd;
+        state.usdInputValue = Number((betAmount * state.tokenPriceUsd).toFixed(2));
       }
     } else {
       console.warn("Cannot set percentage: both maxAmount and tokenBalance are zero or negative");

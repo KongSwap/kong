@@ -74,7 +74,6 @@
       window.addEventListener('resize', handleResize);
       window.addEventListener('click', handleClickOutside);
       initializeSlippageFromStorage();
-      loadThemeFromStorage();
       return () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('click', handleClickOutside);
@@ -108,7 +107,6 @@
          previousAuthState.principalId !== currentAuthState.principalId)) {
       
       loadUserSettings();
-      loadThemeFromStorage();
       
       // Update previous state
       previousAuthState = currentAuthState;
@@ -117,10 +115,7 @@
   
   // Apply a theme when selected
   async function applyTheme(themeId: string) {
-    
-    try {
-      // Get user ID for debugging
-      const userId = $auth?.account?.owner || 'default';      
+    try {     
       await themeStore.setTheme(themeId as ThemeId);
       
       // Force update UI
@@ -132,16 +127,6 @@
     } catch (error) {
       console.error('[Settings] Error applying theme:', error);
       toastStore.error('Failed to apply theme');
-    }
-  }
-  
-  // Load theme from storage - use the store's function to avoid duplication
-  async function loadThemeFromStorage() {
-    if (browser) {
-      const storedTheme = await themeStore.loadThemeFromStorage();
-      if (storedTheme) {
-        currentThemeId = storedTheme;
-      }
     }
   }
   

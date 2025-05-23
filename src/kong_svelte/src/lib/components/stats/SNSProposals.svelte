@@ -20,9 +20,13 @@
   let scrollContainer: HTMLDivElement;
   let lastProposalId: bigint | undefined;
 
-  async function loadProposals() {
+  async function loadProposals(isLoadMore = false) {
     try {
-      loading = true;
+      if (isLoadMore) {
+        loadingMore = true;
+      } else {
+        loading = true;
+      }
       error = null;
       errorDetails = null;
 
@@ -30,11 +34,15 @@
         governanceCanisterId,
         type,
         limit,
-        lastProposalId
+        lastProposalId,
+        isLoadMore
       });
 
       const service = type === 'sns' ? snsService : icpGovernanceService;
+      console.log("Service type:", type, "service:", service);
+      
       const result = await service.getProposals(governanceCanisterId, limit, lastProposalId);
+      console.log("Service result:", result);
 
       if (lastProposalId) {
         proposals = [...proposals, ...result.proposals];
@@ -50,14 +58,19 @@
       console.log('Proposals loaded:', {
         count: proposals.length,
         hasMore,
-        lastProposalId
+        lastProposalId,
+        actualProposals: proposals
       });
     } catch (err) {
       console.error('Error loading proposals:', err);
       error = 'Failed to load proposals';
       errorDetails = err;
     } finally {
-      loading = false;
+      if (isLoadMore) {
+        loadingMore = false;
+      } else {
+        loading = false;
+      }
     }
   }
 
@@ -86,40 +99,30 @@
   }
 
   function handleScroll(e: Event) {
+    if (loading || loadingMore || !hasMore) {
+      return;
+    }
+    
     const target = e.target as HTMLDivElement;
-    const bottom = target.scrollHeight - target.scrollTop - target.clientHeight;
-    if (bottom < 50) { // Load more when within 50px of bottom
-      loadProposals();
+    const { scrollTop, scrollHeight, clientHeight } = target;
+    const bottom = scrollHeight - scrollTop - clientHeight;
+    
+    if (bottom <= 100) {
+      loadProposals(true);
     }
   }
 
   onMount(() => {
-    loadProposals();
+    loadProposals(false);
   });
 </script>
 
-<Panel type="main" >
+<Panel type="main" className="!bg-kong-bg-light !p-0" >
   <div class="flex flex-col gap-4">
-    <h2 class="text-lg font-semibold">
+    <h2 class="text-sm font-semibold uppercase px-4 pt-4">
       {type === 'sns' ? 'SNS' : 'ICP'} Governance Proposals
     </h2>
-    
-    {#if debug}
-      <div class="bg-gray-100 p-4 rounded-lg text-sm">
-        <h3 class="font-medium mb-2">Debug Info:</h3>
-        <pre class="whitespace-pre-wrap">
-          Canister ID: {governanceCanisterId}
-          Type: {type}
-          Limit: {limit}
-          Loading: {loading}
-          Error: {error}
-          Error Details: {errorDetails ? JSON.stringify(errorDetails, null, 2) : 'None'}
-          Proposals Count: {proposals.length}
-          Has More: {hasMore}
-          Last Proposal ID: {lastProposalId?.toString()}
-        </pre>
-      </div>
-    {/if}
+  
     
     {#if loading}
       <div class="flex justify-center py-4">
@@ -140,7 +143,7 @@
       </div>
     {:else}
       <div
-        class="space-y-4 max-h-[600px] overflow-y-auto pr-1"
+        class="space-y-4 overflow-y-auto pr-1  h-[400px]"
         bind:this={scrollContainer}
         on:scroll={handleScroll}
       >

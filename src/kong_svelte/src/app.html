@@ -41,36 +41,12 @@
     <!-- Inline Theme Initialization - Fast loading -->
     <script>
       (function () {
-        // Get user ID from session or localStorage if available
-        let userId = "default";
-        try {
-          // Try to get from sessionStorage if user previously logged in
-          const authData = localStorage.getItem("kong_storage_auth");
-          if (authData) {
-            const parsed = JSON.parse(authData);
-            if (parsed && parsed.principalId) {
-              userId = parsed.principalId;
-            }
-          }
-        } catch (e) {
-          console.error("Error getting user ID for theme:", e);
-        }
-
-        // Try to load theme from localStorage with proper keys
+        // Try to load theme from localStorage with simple key
         let initialTheme = null;
         try {
-          // Try user-specific theme
-          const userThemeJson = localStorage.getItem(`theme_${userId}`);
-          if (userThemeJson) {
-            initialTheme = JSON.parse(userThemeJson);
-          }
-
-          // If no user theme, try the default
-          if (!initialTheme) {
-            const defaultThemeJson = localStorage.getItem("theme");
-            if (defaultThemeJson) {
-              initialTheme = JSON.parse(defaultThemeJson);
-            }
+          const storedThemeJson = localStorage.getItem("theme");
+          if (storedThemeJson) {
+            initialTheme = JSON.parse(storedThemeJson);
           }
         } catch (e) {
           console.error("Error loading theme:", e);

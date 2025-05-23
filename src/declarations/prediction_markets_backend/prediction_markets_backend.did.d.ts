@@ -521,9 +521,9 @@ export interface _SERVICE {
     [],
     Array<[bigint, FailedTransaction]>
   >,
-  'get_user_claims' : ActorMethod<[], Array<ClaimRecord>>,
+  'get_user_claims' : ActorMethod<[string], Array<ClaimRecord>>,
   'get_user_history' : ActorMethod<[Principal], UserHistory>,
-  'get_user_pending_claims' : ActorMethod<[], Array<ClaimRecord>>,
+  'get_user_pending_claims' : ActorMethod<[string], Array<ClaimRecord>>,
   'icrc21_canister_call_consent_message' : ActorMethod<
     [ConsentMessageRequest],
     Result_3
