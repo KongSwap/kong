@@ -7,9 +7,8 @@ A decentralized prediction markets system built as a canister smart contract for
 ### System Overview
 
 This canister implements a complete prediction markets platform where users can:
-
 - Create markets with multiple possible outcomes
-- Place bets on outcomes using KONG tokens
+- Place bets on specific market outcomes using KONG tokens
 - Resolve markets through various methods (admin, oracle, or decentralized)
 - Automatically distribute winnings to successful bettors
 
@@ -492,7 +491,7 @@ Query function to retrieve paginated featured markets.
 
 The system now supports user-created markets with a dual resolution mechanism to ensure fairness and prevent manipulation.
 
-### Core Concept
+### User Market Concept
 
 Users can create their own prediction markets, but these markets require:
 
@@ -540,7 +539,7 @@ pub async fn burn_tokens(amount: TokenAmount) -> Result<(), String> {
 }
 ```
 
-### API Endpoints
+### Resolution API Endpoints
 
 ```candid
 // User market creation (same as admin but restricted to Admin resolution method)
@@ -563,52 +562,218 @@ propose_resolution : (nat64, nat64, opt text) -> (Result);
 resolve_market : (nat64, nat64, opt text) -> (Result);
 ```
 
-### Benefits
+### Key Benefits
 
 1. **Decentralized Market Creation**: Any user can create markets
 2. **Quality Control**: Activation bet requirement ensures creator commitment
 3. **Dispute Resolution**: Dual approval system prevents manipulation
 4. **Economic Incentives**: Burning mechanism discourages bad behavior
 
+## System Architecture
 
-## Running the project locally
+The Kong Swap prediction markets backend follows a modular architecture organized around key domain concepts:
 
-If you want to test your project locally, you can use the following commands:
+### Core Components
+
+1. **Market Module** - Manages market lifecycle and data
+   - Market creation and configuration
+   - Status tracking and transitions
+   - Query capabilities for UI integration
+   - Featured markets management
+
+2. **Bet Module** - Handles bet placement and recording
+   - Multi-token bet processing
+   - Time-weighted bet recording
+   - Market activation logic
+   - Fee calculation and collection
+
+3. **Resolution Module** - Implements market resolution flows
+   - Dual approval for user-created markets
+   - Direct resolution for admin-created markets
+   - Dispute handling and market voiding
+   - Payout calculation and distribution
+
+4. **Token Module** - Provides token operations and accounting
+   - ICRC-1/2 token standard integration
+   - Transfer operations with error handling
+   - Token registry with configurable parameters
+   - Balance reconciliation and verification
+
+5. **Claims Module** - Manages user payouts
+   - Claims record creation and processing
+   - On-demand claim retrieval
+   - Failed transaction recovery
+
+### State Management
+
+The system uses Internet Computer's stable structures pattern for persistent storage:
+
+```rust
+thread_local! {
+    // Markets storage (Market ID -> Market)
+    pub static MARKETS: RefCell<StableBTreeMap<MarketId, Market>> = 
+        RefCell::new(StableBTreeMap::init(MEMORY_MANAGER.with(|m| m.borrow().get(MARKETS_MEMORY_ID))));    
+    
+    // Bets storage (BetKey -> Bet)
+    pub static BETS: RefCell<StableBTreeMap<BetKey, Bet>> = 
+        RefCell::new(StableBTreeMap::init(MEMORY_MANAGER.with(|m| m.borrow().get(BETS_MEMORY_ID))));
+}
+```
+
+### Resolution Flows
+
+The system implements two distinct resolution paths:
+
+1. **Admin-Created Markets**:
+   - Direct resolution by any admin
+   - Single-step process with immediate finalization
+
+2. **User-Created Markets**:
+   - Requires dual approval (creator + admin)
+   - Two-step process with proposal and confirmation
+   - Dispute handling if creator and admin disagree
+
+## Recent Implementations
+
+### Token Balance Reconciliation System
+
+We've implemented a comprehensive token balance reconciliation system that compares expected token balances with actual balances in the canister accounts. This provides administrators with real-time insights into token allocation and detects any discrepancies.
+
+```candid
+// Calculate token balance reconciliation for all supported tokens
+calculate_token_balance_reconciliation : () -> (BalanceReconciliationSummary);
+
+// Get the most recent balance reconciliation without recalculating
+get_latest_token_balance_reconciliation : () -> (opt BalanceReconciliationSummary) query;
+```
+
+#### Token Reconciliation Features
+
+- **Comprehensive Breakdown**: Detailed allocation of tokens (active markets, pending claims, etc.)
+- **Multi-Token Support**: Works with all supported tokens in the system
+- **Large Value Handling**: Correctly handles large token amounts exceeding the u64 range
+- **Admin-Only Access**: Secured access to sensitive financial data
+- **CLI Tool**: Dedicated `token_balance_check.sh` script for administrative oversight
+
+### Time-Weighted Distribution Enhancements
+
+We've enhanced the time-weighted betting feature that rewards early participants with higher payouts. The implementation uses an exponential weighting model that ensures:
+
+- Early bettors receive higher rewards based on how early they placed their bet
+- All winning bettors receive at least their original bet amount back
+- Configurable alpha parameter controls the steepness of the reward curve
+
+```candid
+// Time-weighted reward structures
+type TimeWeightPoint = record {
+  bet_id : nat64;
+  weight : float64;
+  original_amount : nat;
+};
+
+type BetPayoutRecord = record {
+  bet_id : nat64;
+  payout_amount : nat;
+  original_amount : nat;
+  weight : float64;
+};
+```
+
+### Multi-Token Payout Improvements
+
+Fixed critical issues in the token transfer mechanism to ensure reliable payouts across all supported tokens:
+
+- Improved error handling in token transfers
+- Properly nested Result pattern matching for ICRC-1 token responses
+- Enhanced payout processing to continue even if individual transfers fail
+- More robust transaction recovery for failed payouts
+
+## Testing and Development
+
+### Running the Project Locally
+
+To test the project locally:
 
 ```bash
-# Starts the replica, running in the background
+# Start the replica in the background
 dfx start --background --pocketic
 
-# Deploys your canisters to the replica and generates your candid interface
+# Deploy the prediction markets canister
 dfx deploy prediction_markets_backend
-```
 
-```bash
+# Deploy a token ledger for testing
 dfx deploy kong_ledger
+
+# Mint tokens for test identities
+./scripts/prediction_markets/mint_kong.sh
+
+# Run various test scenarios
+./scripts/prediction_markets/01_user_mkt_test.sh
+./scripts/prediction_markets/03_no_winner.sh
+./scripts/prediction_markets/04_dispute_resolution.sh
+
+# Check token balance reconciliation
+./scripts/prediction_markets/token_balance_check.sh --refresh
 ```
 
-#mint tokens for the selected profiles (change the principals in the mint_kong.sh script to send to your identities)  
-```bash
-./scripts/mint_kong.sh
-```
+### Testing Strategy
 
-#end to end testing of the markets run
-```bash
-./e2e_testing.sh
-```
+The prediction markets system uses a multi-layered testing approach:
 
-#run a test tournament
+1. **Unit Tests**
+   - Focused on core business logic functions
+   - Located alongside implementation files
+   - Run with `cargo test`
 
-this will in itiate the tournament, create the markets and place the bets, for each market.
-```bash
-./01_madness_tournament_testing.sh
-```
-after the creation and placing bets is verified, run the resolution of the markets, to determine the winner of each pair and manage the payouts.
-```bash
-./02_resolve_markets.sh
-```
+2. **Integration Scripts**
+   - End-to-end testing of market flows
+   - Located in `/scripts/prediction_markets/`
+   - Test specific scenarios like market creation, dispute resolution, etc.
 
-check if the market resolution is correct and the balances of the selected profiles match the expected results
-```bash
-./scripts/get_balance.sh
-```
+3. **Testing Instances**
+   - Local: Run with dfx for rapid iteration
+   - Dev: Deployed to the IC test subnet for environment testing
+   - Prod: Staging environment for final verification
+
+### Key Test Scenarios
+
+1. **Market Lifecycle Tests**
+   - Create market → Place bets → Resolve → Claim winnings
+   - Tests both admin and user-created markets
+
+2. **Token Handling Tests**
+   - Multi-token bet placement and payouts
+   - Balance reconciliation verification
+
+3. **Resolution Flow Tests**
+   - Admin direct resolution
+   - User-admin dual approval resolution
+   - Dispute handling and market voiding
+
+## Future Development
+
+Planned improvements and extensions to the prediction markets system:
+
+1. **Enhanced Market Types**
+   - Scalar markets with continuous outcome ranges
+   - Conditional markets linked to external events
+   - Tournament-style markets with brackets
+
+2. **Governance Integration**
+   - Token-based voting for disputed markets
+   - Community-driven market curation
+
+3. **Performance Optimizations**
+   - Canister cycles optimization
+   - Pagination for large market datasets
+   - On-demand data loading patterns
+
+4. **Advanced Analytics**
+   - Market activity dashboards
+   - User performance tracking
+   - System health monitoring
+
+5. **Security Enhancements**
+   - Additional audit trail mechanisms
+   - Advanced fraud detection systems
+   - Circuit breakers for extreme market conditions

@@ -122,89 +122,7 @@ run_dfx "dfx canister call \${KONG_LEDGER} icrc2_approve \"(record {
 echo -e "${CMD_COLOR}Alice placing activation bet on 'Yes'...${RESET}"
 run_dfx "dfx canister call prediction_markets_backend place_bet \"(\$MARKET_ID : nat, 0 : nat, \$ACTIVATION_FEE : nat, opt \\\"\${KONG_LEDGER}\\\")\"" "Placing bet"
 
-# Wait 15 seconds before next bet to demonstrate time-weighting
-echo -e "${CMD_COLOR}Waiting 15 seconds before next bet for time-weighting demonstration...${RESET}"
-sleep 15
-
-# Step 3: Bob places bet on "Yes"
-section "Step 3: Bob placing bet on 'Yes'"
-
-run_dfx "dfx identity use bob" "Switching to Bob identity"
-run_dfx "BOB_PRINCIPAL=\$(dfx identity get-principal)" "Getting Bob's principal"
-BOB_PRINCIPAL=$(dfx identity get-principal)
-
-BET_AMOUNT=300000000000 # 3'000 KONG
-EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # approval expires 60 seconds from now
-
-# Approve tokens for transfer
-echo -e "${CMD_COLOR}Approving tokens for transfer...${RESET}"
-run_dfx "dfx canister call \${KONG_LEDGER} icrc2_approve \"(record {
-	amount = \$(echo \"\${BET_AMOUNT} + \${KONG_FEE}\" | bc);
-	expires_at = opt \${EXPIRES_AT};
-	spender = record {
-		owner = principal \\\"\${PREDICTION_MARKETS_CANISTER}\\\";
-	};
-})\"" "Approving token transfer"
-
-# Place bet
-echo -e "${CMD_COLOR}Bob placing bet on 'Yes'...${RESET}"
-run_dfx "dfx canister call prediction_markets_backend place_bet \"(\$MARKET_ID : nat, 0 : nat, \$BET_AMOUNT : nat, opt \\\"\${KONG_LEDGER}\\\")\"" "Placing bet"
-
-# Wait 15 seconds before next bet to demonstrate time-weighting
-echo -e "${CMD_COLOR}Waiting 15 seconds before next bet...${RESET}"
-sleep 15
-
-# Step 4: Carol places bet on "Yes"
-section "Step 4: Carol placing bet on 'Yes'"
-
-run_dfx "dfx identity use carol" "Switching to Carol identity"
-run_dfx "CAROL_PRINCIPAL=\$(dfx identity get-principal)" "Getting Carol's principal"
-CAROL_PRINCIPAL=$(dfx identity get-principal)
-
-BET_AMOUNT=300000000000 # 3'000 KONG
-EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # approval expires 60 seconds from now
-
-# Approve tokens for transfer
-echo -e "${CMD_COLOR}Approving tokens for transfer...${RESET}"
-run_dfx "dfx canister call \${KONG_LEDGER} icrc2_approve \"(record {
-	amount = \$(echo \"\${BET_AMOUNT} + \${KONG_FEE}\" | bc);
-	expires_at = opt \${EXPIRES_AT};
-	spender = record {
-		owner = principal \\\"\${PREDICTION_MARKETS_CANISTER}\\\";
-	};
-})\"" "Approving token transfer"
-
-# Place bet
-echo -e "${CMD_COLOR}Carol placing bet on 'Yes'...${RESET}"
-run_dfx "dfx canister call prediction_markets_backend place_bet \"(\$MARKET_ID : nat, 0 : nat, \$BET_AMOUNT : nat, opt \\\"\${KONG_LEDGER}\\\")\"" "Placing bet"
-
-# Wait 15 seconds before next bet to demonstrate time-weighting
-echo -e "${CMD_COLOR}Waiting 15 seconds before next bet...${RESET}"
-sleep 15
-
-# Step 5: Dave places bet on "No"
-section "Step 5: Dave placing bet on 'No'"
-
-run_dfx "dfx identity use dave" "Switching to Dave identity"
-run_dfx "DAVE_PRINCIPAL=\$(dfx identity get-principal)" "Getting Dave's principal"
-DAVE_PRINCIPAL=$(dfx identity get-principal)
-
-BET_AMOUNT=100000000000 # 10'000 KONG
-EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # approval expires 60 seconds from now
-
-# Approve tokens for transfer
-echo -e "${CMD_COLOR}Approving tokens for transfer...${RESET}"
-run_dfx "dfx canister call \${KONG_LEDGER} icrc2_approve \"(record {
-	amount = \$(echo \"\${BET_AMOUNT} + \${KONG_FEE}\" | bc);
-	expires_at = opt \${EXPIRES_AT};
-	spender = record {
-		owner = principal \\\"\${PREDICTION_MARKETS_CANISTER}\\\";
-	};
-})\"" "Approving token transfer"
-
-# Place bet
-echo -e "${CMD_COLOR}Dave placing bet on 'No'...${RESET}"
-run_dfx "dfx canister call prediction_markets_backend place_bet \"(\$MARKET_ID : nat, 1 : nat, \$BET_AMOUNT : nat, opt \\\"\${KONG_LEDGER}\\\")\"" "Placing bet"
+# -------------------------------------------------------------
 
 # Step 6: Check market bets and status
 section "Step 6: Checking market bets and status"
@@ -227,18 +145,23 @@ echo ""
 # Check if market has expired
 run_dfx "dfx canister call prediction_markets_backend get_market \"(\$MARKET_ID)\"" "Checking market status after waiting period"
 
-# Step 8: Alice never responds to resolution proposal
-section "Step 8: Alice never responds to resolution proposal"
-echo -e "${CMD_COLOR}Alice never responds to resolution proposal...${RESET}"
+# -------------------------------------------------------------
 
-# Step 9: Admin uses force_resolve_market to resolve market
-section "Step 9: Admin using force_resolve_market to resolve market"
+# Step 8: Alice (creator) proposes resolution with "Yes" as winner
+section "Step 8: Alice (creator) proposing resolution with 'Yes' as winner"
+
+run_dfx "dfx identity use alice" "Switching back to Alice identity (market creator)"
+echo -e "${CMD_COLOR}Alice proposing resolution...${RESET}"
+run_dfx "dfx canister call prediction_markets_backend propose_resolution \"(\$MARKET_ID, vec { 0 : nat })\"" "Proposing market resolution with Yes as winner"
+
+# Step 9: Admin approving resolution
+section "Step 9: Admin approving resolution"
 
 run_dfx "dfx identity use default" "Switching to default (admin) identity"
 run_dfx "DEFAULT_PRINCIPAL=\$(dfx identity get-principal)" "Getting Admin's principal"
 DEFAULT_PRINCIPAL=$(dfx identity get-principal)
-echo -e "${CMD_COLOR}Admin  using force_resolve_market to resolve market...${RESET}"
-run_dfx "dfx canister call prediction_markets_backend force_resolve_market \"(\$MARKET_ID, vec { 0 : nat })\"" "Admin using force_resolve_market to resolve market"
+echo -e "${CMD_COLOR}Admin approving resolution...${RESET}"
+run_dfx "dfx canister call prediction_markets_backend resolve_via_admin \"(\$MARKET_ID, vec { 0 : nat })\"" "Admin confirming resolution"
 
 # Step 10: Checking market status after resolution
 section "Step 10: Checking market status after resolution"
@@ -261,18 +184,6 @@ section "Step 13: Checking for pending claims"
 # Alice's pending claims
 run_dfx "dfx identity use alice" "Switching to Alice identity"
 run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"()\"" "Checking Alice's pending claims"
-
-# Bob's pending claims
-run_dfx "dfx identity use bob" "Switching to Bob identity"
-run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"()\"" "Checking Bob's pending claims"
-
-# Carol's pending claims
-run_dfx "dfx identity use carol" "Switching to Carol identity"
-run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"()\"" "Checking Carol's pending claims"
-
-# Dave's pending claims
-run_dfx "dfx identity use dave" "Switching to Dave identity"
-run_dfx "dfx canister call prediction_markets_backend get_user_pending_claims \"()\"" "Checking Dave's pending claims"
 
 # Step 14: Claiming winnings for users with pending claims
 section "Step 14: Claiming winnings"
@@ -307,8 +218,6 @@ claim_winnings() {
 
 # Try to claim for each user who placed a bet on the winning side
 claim_winnings "alice"
-claim_winnings "bob"
-claim_winnings "carol"
 
 # Verify claims were processed by checking history again
 section "Step 14: Verifying claims were processed"
