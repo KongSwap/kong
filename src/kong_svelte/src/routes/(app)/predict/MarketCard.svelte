@@ -318,7 +318,7 @@
               </div>
             {:else}
               <div
-                class="max-h-[130px] flex flex-col gap-0.5 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-kong-border"
+                class="flex flex-col max-h-[135px] gap-0.5 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-kong-border"
               >
                 {#each market.outcomes as outcome, i}
                   <div
@@ -463,7 +463,7 @@
       </div>
 
       <!-- Add outcomes section to non-featured cards -->
-      <div class="flex-1 flex flex-col justify-center px-4 pt-4">
+      <div class="flex-1 flex flex-col justify-center px-4">
         <div class="flex flex-col justify-center">
           {#if isYesNoMarket(market)}
             <!-- Yes/No buttons side by side -->
@@ -497,7 +497,7 @@
             </div>
           {:else}
             <div
-              class="max-h-[80px] flex flex-col gap-0.5 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-kong-border"
+              class="max-h-[135px] flex flex-col gap-0.5 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-kong-border"
             >
               {#each market.outcomes as outcome, i}
                 <div
@@ -557,6 +557,28 @@
               <Calendar class="w-3 h-3" />
               <CountdownTimer endTime={market.end_time} />
             </span>
+          {/if}
+          {#if isUserAdmin}
+            <AdminDropdownButton
+              isOpen={showDropdown}
+              onToggle={(e) => {
+                e.stopPropagation();
+                toggleDropdown();
+              }}
+              onSetFeatured={() => {
+                handleSetFeatured(market, !market.featured);
+                showDropdown = false;
+              }}
+              onResolve={() => {
+                openResolutionModal(market);
+                showDropdown = false;
+              }}
+              onVoid={() => {
+                handleVoidMarket(market);
+                showDropdown = false;
+              }}
+              isFeatured={market.featured}
+            />
           {/if}
         </div>
       </div>

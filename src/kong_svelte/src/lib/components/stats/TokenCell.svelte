@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Star, Flame, PiggyBank, TrendingUp, TrendingDown, AlertTriangle } from "lucide-svelte";
+  import { Star, TriangleRight, PiggyBank, TrendingUp, TrendingDown, AlertTriangle } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { tooltip } from "$lib/actions/tooltip";
   import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
@@ -28,7 +28,7 @@
     {/if}
     {#if isTopVolume}
       <div use:tooltip={{ text: `#${row.volumeRank} by Volume`, direction: "top" }}>
-        <Flame class="w-4 h-4 text-orange-400" />
+        <TriangleRight class="w-4 h-4 text-orange-400" fill="currentColor" />
       </div>
     {/if}
     {#if isTopGainer}

@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { snsService, icpGovernanceService, type GovernanceProposal } from '$lib/utils/snsUtils';
-  import { GOVERNANCE_CANISTER_IDS } from '$lib/utils/snsUtils';
   import { formatNumber } from '$lib/utils/formatUtils';
   import { formatDistanceToNow } from 'date-fns';
   import Panel from '$lib/components/common/Panel.svelte';
   
   export let governanceCanisterId: string;
   export let type: 'sns' | 'icp' = 'sns';
+  export let token: Kong.Token;
   export let limit: number = 10;
   export let debug: boolean = false;
   
@@ -39,10 +39,7 @@
       });
 
       const service = type === 'sns' ? snsService : icpGovernanceService;
-      console.log("Service type:", type, "service:", service);
-      
       const result = await service.getProposals(governanceCanisterId, limit, lastProposalId);
-      console.log("Service result:", result);
 
       if (lastProposalId) {
         proposals = [...proposals, ...result.proposals];
@@ -54,13 +51,6 @@
       if (result.proposals.length > 0) {
         lastProposalId = result.proposals[result.proposals.length - 1].id;
       }
-
-      console.log('Proposals loaded:', {
-        count: proposals.length,
-        hasMore,
-        lastProposalId,
-        actualProposals: proposals
-      });
     } catch (err) {
       console.error('Error loading proposals:', err);
       error = 'Failed to load proposals';
@@ -120,7 +110,7 @@
 <Panel type="main" className="!bg-kong-bg-light !p-0" >
   <div class="flex flex-col gap-4">
     <h2 class="text-sm font-semibold uppercase px-4 pt-4">
-      {type === 'sns' ? 'SNS' : 'ICP'} Governance Proposals
+      {token.symbol} Governance Proposals
     </h2>
   
     

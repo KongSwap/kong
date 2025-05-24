@@ -86,7 +86,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
   // Base build options
   const buildOptions = {
     emptyOutDir: true,
-    sourcemap: process.env.DFX_NETWORK === "local",
+    sourcemap: true,
     chunkSizeWarningLimit: 1800,
     rollupOptions: {
       output: {

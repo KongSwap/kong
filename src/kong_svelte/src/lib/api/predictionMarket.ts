@@ -200,13 +200,14 @@ export async function resolveMarketViaAdmin(
     const result = await actor.resolve_via_admin({ market_id: marketIdNumber, winning_outcomes: [winningOutcome] });
 
     if ("Err" in result) {
-      if ("MarketNotFound" in result.Err) {
+      const error = result.Err as any;
+      if ("MarketNotFound" in error) {
         throw new Error("Market not found");
-      } else if ("MarketStillOpen" in result.Err) {
+      } else if ("MarketStillOpen" in error) {
         throw new Error("Market is still open");
-      } else if ("AlreadyResolved" in result.Err) {
+      } else if ("AlreadyResolved" in error) {
         throw new Error("Market has already been resolved");
-      } else if ("Unauthorized" in result.Err) {
+      } else if ("Unauthorized" in error) {
         throw new Error("You are not authorized to resolve this market");
       } else {
         throw new Error(
@@ -234,15 +235,16 @@ export async function voidMarketViaAdmin(marketId: bigint): Promise<void> {
     const result = await actor.void_market(marketIdNumber);
 
     if ("Err" in result) {
-      if ("MarketNotFound" in result.Err) {
+      const error = result.Err as any;
+      if ("MarketNotFound" in error) {
         throw new Error("Market not found");
-      } else if ("MarketStillOpen" in result.Err) {
+      } else if ("MarketStillOpen" in error) {
         throw new Error("Market is still open");
-      } else if ("AlreadyResolved" in result.Err) {
+      } else if ("AlreadyResolved" in error) {
         throw new Error("Market has already been resolved");
-      } else if ("Unauthorized" in result.Err) {
+      } else if ("Unauthorized" in error) {
         throw new Error("You are not authorized to void this market");
-      } else if ("VoidingFailed" in result.Err) {
+      } else if ("VoidingFailed" in error) {
         throw new Error("Failed to void the market");
       } else {
         throw new Error(
@@ -335,6 +337,19 @@ export async function getUserClaims(principal: string) {
   }
 }
 
+export async function getUserPendingClaims(principal: string) {
+  const actor = predictionActor({anon: true});
+  try {
+    const pendingClaims = await actor.get_user_pending_claims(principal);
+    console.log("pending claims", pendingClaims)
+    
+    return pendingClaims;
+  } catch (error) {
+    console.error("Error in getUserPendingClaims:", error);
+    throw error;
+  }
+}
+
 export async function claimWinnings(claimIds: bigint[]) {
   const actor = predictionActor({anon: false, requiresSigning: true});
   try {
@@ -384,21 +399,47 @@ export async function estimateBetReturn(
   );
 }
 
+export async function getMarketsByCreator(
+  creator: string,
+  options: {
+    start?: number;
+    length?: number;
+    sortByCreationTime?: boolean;
+  } = {}
+) {
+  const actor = predictionActor({anon: true});
+  try {
+    const creatorPrincipal = Principal.fromText(creator);
+    const result = await actor.get_markets_by_creator({
+      creator: creatorPrincipal,
+      start: BigInt(options.start ?? 0),
+      length: BigInt(options.length ?? 100),
+      sort_by_creation_time: options.sortByCreationTime ?? true,
+    });
+    return result;
+  } catch (error) {
+    console.error("Error in getMarketsByCreator:", error);
+    throw error;
+  }
+}
+
 export async function setMarketFeatured(marketId: bigint, featured: boolean): Promise<void> {
   try {
     const actor = predictionActor({anon: false, requiresSigning: false});
     const result = await actor.set_market_featured(marketId, featured);
 
     if ("Err" in result) {
-      if ("MarketNotFound" in result.Err) {
-        throw new Error("Market not found");
-      } else if ("Unauthorized" in result.Err) {
-        throw new Error("You are not authorized to modify this market");
-      } else {
-        throw new Error(
-          `Failed to set market featured status: ${JSON.stringify(result.Err)}`,
-        );
+      const error = result.Err as any;
+      if (typeof error === 'object' && error !== null) {
+        if ("MarketNotFound" in error) {
+          throw new Error("Market not found");
+        } else if ("Unauthorized" in error) {
+          throw new Error("You are not authorized to modify this market");
+        }
       }
+      throw new Error(
+        `Failed to set market featured status: ${JSON.stringify(result.Err)}`,
+      );
     }
     notificationsStore.add({
       title: featured ? "Market Featured" : "Market Unfeatured",

@@ -64,6 +64,7 @@
     "closed",
     "disputed",
     "voided",
+    "myMarkets",
   ];
   const validSortOptions: SortOption[] = [
     "newest",
@@ -105,8 +106,6 @@
 
       try {
         recentBets = await getLatestBets();
-        console.log(recentBets);
-
         // Minimum loading time of 500ms to prevent flash
         const elapsed = Date.now() - startTime;
         if (elapsed < 500) {
@@ -160,6 +159,11 @@
     }
     if (isValidSortOption(sortFromUrl)) {
       initialOverrides.sortOption = sortFromUrl;
+    }
+
+    // Set the current user principal in the market store
+    if ($auth.isConnected && $auth.account?.owner) {
+      marketStore.setCurrentUserPrincipal($auth.account.owner);
     }
 
     // Initialize market store with overrides from URL
@@ -292,6 +296,7 @@
     { value: "closed", label: "Closed" },
     { value: "disputed", label: "Disputed" },
     { value: "voided", label: "Voided" },
+    { value: "myMarkets", label: "My Markets" },
   ];
 
   // Sort options mapping
@@ -316,6 +321,15 @@
       sortOptions.find((option) => option.value === $marketStore.sortOption)
         ?.label || "Pool Size (High to Low)"
     );
+  }
+
+  // Reactive statement to update market store when auth state changes
+  $: if (browser) {
+    if ($auth.isConnected && $auth.account?.owner) {
+      marketStore.setCurrentUserPrincipal($auth.account.owner);
+    } else {
+      marketStore.setCurrentUserPrincipal(null);
+    }
   }
 
   // Reactive statement to update URL when filters change
@@ -486,18 +500,32 @@
               class="absolute top-full left-0 mt-1 z-50 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
             >
               {#each statusOptions as option}
-                <button
-                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.statusFilter ===
-                  option.value
-                    ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
-                    : 'text-kong-text-primary'}"
-                  on:click={() => {
-                    marketStore.setStatusFilter(option.value as StatusFilter);
-                    statusDropdownOpen = false;
-                  }}
-                >
-                  {option.label}
-                </button>
+                {#if option.value === "myMarkets" && !$auth.isConnected}
+                  <!-- Disabled My Markets option when not authenticated -->
+                  <div
+                    class="w-full text-left px-3 py-2 text-xs text-kong-text-disabled cursor-not-allowed opacity-50"
+                    title="Please connect your wallet to view your markets"
+                  >
+                    {option.label}
+                  </div>
+                {:else}
+                  <button
+                    class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.statusFilter ===
+                    option.value
+                      ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
+                      : 'text-kong-text-primary'}"
+                    on:click={() => {
+                      if (option.value === "myMarkets" && !$auth.isConnected) {
+                        // This shouldn't happen due to the conditional above, but just in case
+                        return;
+                      }
+                      marketStore.setStatusFilter(option.value as StatusFilter);
+                      statusDropdownOpen = false;
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                {/if}
               {/each}
             </div>
           {/if}

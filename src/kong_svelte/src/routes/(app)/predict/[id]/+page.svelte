@@ -510,6 +510,7 @@ let initializing = $state(false);
           <!-- Outcomes Panel -->
           <OutcomesList
             {market}
+            {token}
             {outcomes}
             {outcomePercentages}
             {betCountPercentages}

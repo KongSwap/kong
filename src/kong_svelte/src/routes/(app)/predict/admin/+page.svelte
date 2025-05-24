@@ -66,6 +66,7 @@
     { value: "closed", label: "Closed" },
     { value: "disputed", label: "Disputed" },
     { value: "voided", label: "Voided" },
+    { value: "myMarkets", label: "My Markets" },
   ];
   const sortOptions = [
     { value: "newest", label: "Newest" },

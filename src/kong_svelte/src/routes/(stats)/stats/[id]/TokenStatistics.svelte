@@ -175,9 +175,9 @@
 </script>
 
 <Panel variant="solid" className="!bg-kong-bg-light">
-  <div class="flex flex-col gap-4">
+  <div class="flex flex-col gap-3">
     <!-- Token Header Section -->
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-3 min-w-0">
       <!-- Token Logo -->
       <div class="flex-shrink-0">
         <TokenImages
@@ -188,15 +188,17 @@
       </div>
 
       <!-- Token Name and Rank -->
-      <div class="flex flex-col">
-        <div class="flex flex-col items-start gap-1.5">
+      <div class="flex flex-col min-w-0 flex-1">
+        <div class="flex flex-col items-start gap-1.5 min-w-0">
           <h1
-            class="text-lg md:text-xl flex gap-x-1 items-center font-bold text-kong-text-primary leading-tight"
+            class="text-lg md:text-xl flex gap-x-1 items-center font-bold text-kong-text-primary leading-tight min-w-0 w-full"
           >
-            {token?.name || "Loading..."}
-            <div class="text-base text-kong-text-secondary font-medium">
+            <span class="truncate min-w-0 flex-1">
+              {token?.name || "Loading..."}
+            </span>
+            <span class="text-base text-kong-text-secondary font-medium flex-shrink-0 whitespace-nowrap">
               ({token?.symbol || "..."})
-            </div>
+            </span>
           </h1>
           <div class="flex flex-wrap gap-1.5 items-center">
             {#each token.standards as standard}

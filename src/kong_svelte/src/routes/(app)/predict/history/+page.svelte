@@ -1,20 +1,18 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getUserHistory, getUserClaims, claimWinnings } from "$lib/api/predictionMarket";
+  import { getUserHistory } from "$lib/api/predictionMarket";
   import { auth } from "$lib/stores/auth";
   import { goto } from "$app/navigation";
-  import { ArrowLeft, TrendingUp, Wallet, Award, Activity, ArrowUpRight, Gift } from "lucide-svelte";
+  import { ArrowLeft, TrendingUp, Wallet, Award, Activity, ArrowUpRight } from "lucide-svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
   import PerformanceChart from "./PerformanceChart.svelte";
   import { fade } from "svelte/transition";
   import { notificationsStore } from "$lib/stores/notificationsStore";
+    import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   let history: any = null;
-  let claims: any[] = [];
   let loading = true;
   let error: string | null = null;
-  let claimingRewards = false;
-  let claimError: string | null = null;
 
   // Pagination state
   let currentPage = 1;
@@ -24,7 +22,6 @@
     try {
       if ($auth.isConnected) {
         history = await getUserHistory($auth.account.owner);
-        claims = await getUserClaims($auth.account.owner);
       }
     } catch (e) {
       console.error("Failed to load data:", e);
@@ -36,7 +33,6 @@
 
   $: if ($auth.isConnected) {
     getHistory();
-    getClaims();
   }
 
   async function getHistory() {
@@ -51,47 +47,9 @@
     }
   }
 
-  async function getClaims() {
-    try {
-      loading = true;
-      claims = await getUserClaims($auth.account.owner);
-    } catch (e) {
-      console.error("Failed to load claims:", e);
-      error = e instanceof Error ? e.message : "Failed to load claims";
-    } finally {
-      loading = false;
-    }
-  }
 
-  async function handleClaimRewards() {
-    if (!claims?.length) return;
-    
-    try {
-      claimingRewards = true;
-      claimError = null;
-      
-      // Get all claim IDs from claims
-      const claimIds = claims.map(claim => claim.claim_id);
-      
-      // Call the claim function
-      await claimWinnings(claimIds);
-      
-      // Refresh data after successful claim
-      await Promise.all([getHistory(), getClaims()]);
-      
-      // Show success notification
-      notificationsStore.add({
-        title: "Rewards Claimed",
-        message: "Successfully claimed your prediction rewards",
-        type: "success",
-      });
-    } catch (e) {
-      console.error("Failed to claim rewards:", e);
-      claimError = e instanceof Error ? e.message : "Failed to claim rewards";
-    } finally {
-      claimingRewards = false;
-    }
-  }
+
+
 
   // Combine and paginate bets
   $: combinedBets = history ? [...(history.active_bets || []), ...(history.resolved_bets || [])] : [];
@@ -153,8 +111,23 @@
     </button>
 
     <div class="mb-8">
-      <h1 class="text-2xl md:text-3xl font-bold mb-2">Prediction History</h1>
-      <p class="text-kong-text-secondary">View your past predictions and outcomes</p>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold mb-2">Prediction History</h1>
+          <p class="text-kong-text-secondary">View your past predictions and outcomes</p>
+        </div>
+        <ButtonV2
+          on:click={() => goto("/predict/claims")}
+          theme="primary"
+          size="lg"
+          className="text-white font-medium rounded-lg transition-colors flex items-center gap-2 sm:self-start"
+        >
+          <div class="flex items-center gap-2">
+            <Award class="w-4 h-4" />
+            <span>Claim Rewards</span>
+          </div>
+        </ButtonV2>
+      </div>
     </div>
 
     {#if error}
@@ -229,58 +202,7 @@
         </Panel>
       </div>
 
-      <!-- Pending Rewards Section -->
-      {#if claims?.length > 0}
-        <div class="mb-8">
-          <h2 class="text-xl font-bold mb-4">Pending Rewards</h2>
-          <Panel className="!rounded">
-            <div class="p-4">
-              <div class="flex items-center gap-2 mb-4">
-                <Gift class="w-5 h-5 text-kong-accent-purple" />
-                <h3 class="text-lg font-medium">You have unclaimed rewards!</h3>
-              </div>
-              
-              <div class="space-y-4">
-                {#each claims as claim}
-                  <div class="flex items-center justify-between p-3 bg-kong-bg-dark rounded-lg">
-                    <div>
-                      <p class="font-medium">Market #{claim.market_id}</p>
-                      <p class="text-sm text-kong-text-secondary">
-                        {claim.claim_type.WinningPayout ? 'Winning Payout' : 'Refund'}
-                      </p>
-                    </div>
-                    <div class="text-right">
-                      <p class="text-kong-accent-green font-medium">
-                        +{formatBalance(claim.claimable_amount, 8, 2)} KONG
-                      </p>
-                    </div>
-                  </div>
-                {/each}
-              </div>
 
-              {#if claimError}
-                <div class="mt-4 p-3 bg-kong-accent-red/10 text-kong-accent-red rounded-lg">
-                  {claimError}
-                </div>
-              {/if}
-
-              <button
-                on:click={handleClaimRewards}
-                disabled={claimingRewards}
-                class="mt-4 w-full py-3 px-4 bg-kong-accent-green hover:bg-kong-accent-green/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {#if claimingRewards}
-                  <div class="animate-spin w-5 h-5 border-2 border-white rounded-full border-t-transparent" />
-                  <span>Claiming Rewards...</span>
-                {:else}
-                  <Gift class="w-5 h-5" />
-                  <span>Claim All Rewards</span>
-                {/if}
-              </button>
-            </div>
-          </Panel>
-        </div>
-      {/if}
 
       <!-- Combined Bets Table -->
       {#if (history && (history.active_bets.length > 0 || (history.resolved_bets && history.resolved_bets.length > 0)))}

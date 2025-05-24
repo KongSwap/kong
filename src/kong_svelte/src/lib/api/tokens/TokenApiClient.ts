@@ -326,7 +326,6 @@ export const fetchTopTokens = async (): Promise<{
     
     // Make the API request using the base client
     const data = await apiClient.get<any>('/api/tokens/top');
-    console.log('Raw API response:', data);
     
     // Ensure we have valid data
     if (!data || typeof data !== 'object') {
@@ -360,7 +359,6 @@ export const fetchTopTokens = async (): Promise<{
       top_volume: processTokens(data.top_volume || [])
     };
 
-    console.log('Processed top tokens:', result);
     return result;
   } catch (error) {
     console.error('Error fetching top tokens:', error);

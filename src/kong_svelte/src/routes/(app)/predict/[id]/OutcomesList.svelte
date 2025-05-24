@@ -1,10 +1,12 @@
 <script lang="ts">
     import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import Panel from "$lib/components/common/Panel.svelte";
+    import BigNumber from "bignumber.js";
   import OutcomeProgressBar from "./OutcomeProgressBar.svelte";
   import { Dices, BarChart3 } from "lucide-svelte";
 
   export let market: any;
+  export let token: Kong.Token;
   export let outcomes: string[];
   export let outcomePercentages: number[];
   export let betCountPercentages: number[];
@@ -14,18 +16,6 @@
   export let isMarketClosed: boolean;
   export let winningOutcomes: any[];
   export let onSelectOutcome: (outcomeIndex: number) => void;
-
-  function calculateOdds(percentage: number): string {
-    if (percentage <= 0) return "0x";
-    if (percentage >= 100) return "1x";
-
-    // Convert percentage to decimal odds
-    // Decimal odds = 100/percentage
-    const decimalOdds = 100 / percentage;
-
-    // Round to 2 decimal places
-    return `${decimalOdds.toFixed(2)}x`;
-  }
 </script>
 
 <div class="space-y-2 sm:space-y-3">
@@ -53,18 +43,7 @@
                 class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-kong-text-secondary"
               >
                 <span class="flex items-center gap-1">
-                  <Dices size={12} class="sm:w-4 sm:h-4" />
-                  <span
-                    class={outcomePercentages[i] >= 75
-                      ? "text-kong-accent-green"
-                      : outcomePercentages[i] >= 50
-                        ? "text-kong-accent-green"
-                        : outcomePercentages[i] >= 25
-                          ? "text-kong-accent-yellow"
-                          : "text-kong-accent-red"}
-                  >
-                    {calculateOdds(outcomePercentages[i])} payout
-                  </span>
+                  {new BigNumber(market.outcome_pools[i]).div(10 ** token.decimals).toString()} {token.symbol}
                 </span>
                 <div class="flex items-center gap-1">
                   <BarChart3 size={12} class="sm:w-4 sm:h-4" />

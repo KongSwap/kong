@@ -105,13 +105,7 @@
     <div
       class="relative z-10 flex items-center justify-center gap-1 truncate-text"
     >
-      <div class="flex items-center justify-center">
-        {#if outcome === "Yes"}
-          <ThumbsUp class="w-4 h-4 text-kong-accent-green flex-shrink-0" />
-        {:else}
-          <ThumbsDown class="w-4 h-4 text-kong-accent-red flex-shrink-0" />
-        {/if}
-      </div>
+
       <div class="flex items-center justify-center gap-1">
         <span class="truncate">{outcome}</span>
 

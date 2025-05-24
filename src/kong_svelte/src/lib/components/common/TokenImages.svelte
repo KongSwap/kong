@@ -94,7 +94,7 @@
       {:else}
         <div class="w-full h-full rounded-full bg-kong-text-primary/10 flex items-center justify-center ring-2 ring-opacity-90">
           <span 
-            class="font-bold text-kong-primary truncate max-w-[80%] text-center" 
+            class="text-kong-primary text-center" 
             style="font-size: min(calc({size}px * 0.5), 1rem);"
           >
             {size < 36 && token.symbol.length > 1 ? token.symbol[0] : token.symbol}
@@ -103,8 +103,8 @@
       {/if}
       {#if showNetworkIcon || (size > 24 && !overlap)}
         <div 
-          class="absolute -bottom-0.5 shadow -right-[0.15rem] border border-kong-bg-light p-[0.04rem] text-sm text-gray-200 rounded-full bg-gradient-to-r from-blue-600 to-purple-700 flex items-center justify-center"
-          style="width: {Math.min(size * 0.55, 28)}px; height: {Math.min(size * 0.5, 26)}px;"
+          class="absolute -bottom-0.5 shadow -right-[0.15rem] border border-kong-bg-light p-[0.04rem] text-sm text-gray-200 rounded-full bg-gradient-to-r from-orange-600 to-purple-700 flex items-center justify-center"
+          style="width: {Math.min(size * 0.5, 28)}px; height: {Math.min(size * 0.5, 28)}px;"
         >
           <svg 
             xmlns="http://www.w3.org/2000/svg" 

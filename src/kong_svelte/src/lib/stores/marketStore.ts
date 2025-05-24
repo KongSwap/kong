@@ -1,10 +1,10 @@
 import { writable, derived } from 'svelte/store';
 import type { Market, MarketResult } from '$lib/types/predictionMarket';
-import { getAllMarkets, getAllCategories } from '$lib/api/predictionMarket';
+import { getAllMarkets, getAllCategories, getMarketsByCreator } from '$lib/api/predictionMarket';
 import { toastStore } from './toastStore';
 
 export type SortOption = 'newest' | 'pool_asc' | 'pool_desc' | 'end_time_asc' | 'end_time_desc';
-export type StatusFilter = 'all' | 'active' | 'pending' | 'closed' | 'disputed' | 'voided';
+export type StatusFilter = 'all' | 'active' | 'pending' | 'closed' | 'disputed' | 'voided' | 'myMarkets';
 
 // New unified interface without categorization
 interface MarketState {
@@ -15,6 +15,7 @@ interface MarketState {
   statusFilter: StatusFilter;
   loading: boolean;
   error: string | null;
+  currentUserPrincipal: string | null; // Add current user principal
 }
 
 const initialState: MarketState = {
@@ -24,7 +25,8 @@ const initialState: MarketState = {
   sortOption: 'end_time_asc',
   statusFilter: 'active',
   loading: true,
-  error: null
+  error: null,
+  currentUserPrincipal: null
 };
 
 function createMarketStore() {
@@ -62,6 +64,14 @@ function createMarketStore() {
       }
     },
 
+    // Set current user principal
+    setCurrentUserPrincipal(principal: string | null) {
+      update(state => ({
+        ...state,
+        currentUserPrincipal: principal
+      }));
+    },
+
     // Set selected category
     setCategory(category: string | null) {
       update(state => ({
@@ -94,10 +104,51 @@ function createMarketStore() {
       update(state => ({ ...state, loading: true }));
       
       try {
-        const { sortOption, statusFilter } = await new Promise<MarketState>(resolve => {
+        const { sortOption, statusFilter, currentUserPrincipal } = await new Promise<MarketState>(resolve => {
           subscribe(state => resolve(state))();
         });
-        
+
+        let marketsResult;
+
+        // Check if we need to filter by current user
+        if (statusFilter === 'myMarkets') {
+          if (!currentUserPrincipal) {
+            // If no user is connected, return empty results
+            update(state => ({
+              ...state,
+              markets: [],
+              loading: false,
+              error: null
+            }));
+            return;
+          }
+
+          // Use getMarketsByCreator for user's markets
+          marketsResult = await getMarketsByCreator(currentUserPrincipal, {
+            start: 0,
+            length: 100,
+            sortByCreationTime: sortOption === 'newest'
+          });
+
+          // Transform the result to match the expected format
+          const transformedMarkets = marketsResult.markets.map(market => ({
+            ...market,
+            resolution_data: market.resolution_data?.[0] ?? "",
+            resolved_by: market.resolved_by?.[0] ?? null,
+            image_url: market.image_url?.[0] ?? "",
+            time_weight_alpha: market.time_weight_alpha?.[0] ?? undefined
+          }));
+
+          update(state => ({
+            ...state,
+            markets: transformedMarkets,
+            loading: false,
+            error: null
+          }));
+          return;
+        }
+
+        // Use the regular getAllMarkets for other filters
         // Map the UI sort option to backend sort options
         let backendSortOption = undefined;
         if (sortOption === 'pool_asc') {
@@ -156,7 +207,9 @@ function createMarketStore() {
           markets: (allMarketsResult.markets || []).map(market => ({
             ...market,
             resolution_data: market.resolution_data?.[0] ?? "",
-            resolved_by: market.resolved_by?.[0] ?? null
+            resolved_by: market.resolved_by?.[0] ?? null,
+            image_url: market.image_url?.[0] ?? "",
+            time_weight_alpha: market.time_weight_alpha?.[0] ?? undefined
           })),
           loading: false,
           error: null

@@ -38,73 +38,73 @@
     <meta name="robots" content="index, follow" />
     <meta name="yandex-verification" content="e01afe1bc6683991" />
 
-    <!-- Inline Theme Initialization - Fast loading -->
-    <script>
-      (function () {
-        // Try to load theme from localStorage with simple key
-        let initialTheme = null;
-        try {
-          const storedThemeJson = localStorage.getItem("theme");
-          if (storedThemeJson) {
-            initialTheme = JSON.parse(storedThemeJson);
-          }
-        } catch (e) {
-          console.error("Error loading theme:", e);
-        }
-
-        // Immediately check system preference if no theme found
-        if (!initialTheme) {
-          const prefersDark = window.matchMedia(
-            "(prefers-color-scheme: dark)",
-          ).matches;
-          initialTheme = prefersDark ? "dark" : "light";
-        }
-
-        // Apply theme class right away
-        document.documentElement.classList.add(initialTheme);
-
-        // Add basic inline styles to prevent flash
-        const style = document.createElement("style");
-        style.textContent = `
-          body { 
-            background-color: ${initialTheme === "dark" ? "#0E111B" : "#f5f7fa"}; 
-            color: ${initialTheme === "dark" ? "#ffffff" : "#111827"}; 
-            transition: background-color 0.2s ease-in-out;
-          }
-        `;
-        document.head.appendChild(style);
-      })();
-    </script>
-
-    <!-- Structured Data (Schema.org) -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@graph": [
-          {
-            "@type": "Organization",
-            "name": "KongSwap",
-            "url": "https://kongswap.io",
-            "logo": "https://kongswap.io/images/kong_logo.png",
-            "sameAs": [
-              "https://x.com/kongswapx",
-              "https://t.me/kong_swap",
-              "https://www.tiktok.com/@kongswapx",
-              "https://youtube.com/@kongswapx",
-              "https://www.instagram.com/kongswapx",
-              "https://oc.app/community/maceh-niaaa-aaaaf-bm37q-cai"
-            ]
-          },
-          {
-            "@type": "WebSite",
-            "name": "KongSwap",
-            "url": "https://kongswap.io"
-          }
-        ]
-      }
-    </script>
     %sveltekit.head%
   </head>
+      <!-- Inline Theme Initialization - Fast loading -->
+      <script>
+        (function () {
+          // Try to load theme from localStorage with simple key
+          let initialTheme = null;
+          try {
+            const storedThemeJson = localStorage.getItem("theme");
+            if (storedThemeJson) {
+              initialTheme = JSON.parse(storedThemeJson);
+            }
+          } catch (e) {
+            console.error("Error loading theme:", e);
+          }
+  
+          // Immediately check system preference if no theme found
+          if (!initialTheme) {
+            const prefersDark = window.matchMedia(
+              "(prefers-color-scheme: dark)",
+            ).matches;
+            initialTheme = prefersDark ? "dark" : "light";
+          }
+  
+          // Apply theme class right away
+          document.documentElement.classList.add(initialTheme);
+  
+          // Add basic inline styles to prevent flash
+          const style = document.createElement("style");
+          style.textContent = `
+            body { 
+              background-color: ${initialTheme === "dark" ? "#0E111B" : "#f5f7fa"}; 
+              color: ${initialTheme === "dark" ? "#ffffff" : "#111827"}; 
+              transition: background-color 0.2s ease-in-out;
+            }
+          `;
+          document.head.appendChild(style);
+        })();
+      </script>
+  
+      <!-- Structured Data (Schema.org) -->
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "name": "KongSwap",
+              "url": "https://kongswap.io",
+              "logo": "https://kongswap.io/images/kong_logo.png",
+              "sameAs": [
+                "https://x.com/kongswapx",
+                "https://t.me/kong_swap",
+                "https://www.tiktok.com/@kongswapx",
+                "https://youtube.com/@kongswapx",
+                "https://www.instagram.com/kongswapx",
+                "https://oc.app/community/maceh-niaaa-aaaaf-bm37q-cai"
+              ]
+            },
+            {
+              "@type": "WebSite",
+              "name": "KongSwap",
+              "url": "https://kongswap.io"
+            }
+          ]
+        }
+      </script>
   <!-- Google tag (gtag.js) -->
   <script
     async

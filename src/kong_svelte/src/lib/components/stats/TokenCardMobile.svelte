@@ -24,19 +24,19 @@
 	$: displayRank = section === "stats-list" ? token.metrics?.market_cap_rank : (showIndex !== null ? showIndex + 1 : null);
 </script>
 
-<div class="w-full bg-kong-bg-light backdrop-blur-sm border hover:bg-kong-bg-light border-kong-border/30 rounded-xl hover:border-[#60A5FA]/30 hover:bg-kong-bg-dark/60 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-sm">
+<div class="w-full min-w-0 bg-kong-bg-light backdrop-blur-sm border hover:bg-kong-bg-light border-kong-border/30 rounded-xl hover:border-[#60A5FA]/30 hover:bg-kong-bg-dark/60 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-sm">
 	<div class="{paddingClass} flex items-center justify-between">
-		<div class="flex items-center gap-2.5">
-			<div class="relative flex items-center gap-2">
+		<div class="flex items-center gap-2.5 min-w-0 flex-1">
+			<div class="relative flex items-center gap-2 flex-shrink-0">
 				{#if displayRank !== null}
 					<span class="text-kong-text-secondary">{displayRank}.</span>
 				{/if}
 				<TokenImages tokens={[token]} size={20} showNetworkIcon />
 			</div>
-			<div class="flex flex-col gap-0.5">
+			<div class="flex flex-col gap-0.5 min-w-0 flex-1">
 				<div class="flex items-center gap-2">
-					<div class="flex items-center gap-1.5">
-						<span class="font-medium text-kong-text-primary">{token.symbol}</span>
+					<div class="flex items-center gap-1.5 min-w-0 flex-1">
+						<div class="font-medium text-kong-text-primary text-ellipsis overflow-hidden whitespace-nowrap">{token.symbol}</div>
 						{#if showIcons}
 							<div class="flex gap-1 items-center">
 								{#if isTopVolume}
@@ -70,7 +70,7 @@
 				{/if}
 			</div>
 		</div>
-		<div class="flex flex-col items-end gap-0.5">
+		<div class="flex flex-col items-end gap-0.5 flex-shrink-0 min-w-[80px]">
 			{#if section === "top-volume"}
 				<div class="font-medium text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-orange-600 to-red-500">
 					${formatToNonZeroDecimal(token?.metrics?.volume_24h)}
