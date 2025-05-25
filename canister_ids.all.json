@@ -106,5 +106,9 @@
     "staging_fe": "guktk-fqaaa-aaaao-a4goa-cai",
     "staging": "",
     "ic": "guktk-fqaaa-aaaao-a4goa-cai"
+  },
+  "kong_solana_backend": {
+    "local": "xfagb-mqaaa-aaaad-qg7wa-cai",
+    "ic": "pmbu6-syaaa-aaaah-qqb2a-cai"
   }
 }

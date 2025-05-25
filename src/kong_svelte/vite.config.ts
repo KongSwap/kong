@@ -9,20 +9,11 @@ import viteCompression from 'vite-plugin-compression';
 import type { UserConfig } from 'vite';
 import { execSync } from 'child_process';
 
-// Load base env first
+// Load base env only
 const baseEnv = dotenv.config({ 
   path: path.resolve(__dirname, "../../.env"),
   override: true 
 }).parsed || {};
-
-// Load and merge Doppler env
-const dopplerEnv = dotenv.config({ 
-  path: path.resolve(__dirname, ".secrets"),
-  override: true 
-}).parsed || {};
-
-// Combine environments with Doppler taking precedence
-const combinedEnv = { ...baseEnv, ...dopplerEnv };
 
 // Get git commit hash
 const getGitHash = () => {
@@ -37,8 +28,8 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
   const env = loadEnv(mode, process.cwd());
   const gitHash = getGitHash();
   
-  // Merge our combined env with Vite's env
-  const fullEnv = { ...env, ...combinedEnv };
+  // Merge our base env with Vite's env
+  const fullEnv = { ...env, ...baseEnv };
 
   // Create base plugins array
   const basePlugins = [

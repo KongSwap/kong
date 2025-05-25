@@ -1,0 +1,200 @@
+type TxId = variant {
+    BlockIndex : nat;
+    TransactionHash : text;
+};
+
+type ICTransferReply = record {
+    chain : text;
+    symbol : text;
+    is_send : bool;
+    amount : nat;
+    canister_id : text;
+    block_index : nat;
+};
+type TransferReply = variant {
+    IC : ICTransferReply;
+};
+type TransferIdReply = record {
+    transfer_id : nat64;
+    transfer : TransferReply
+};
+
+type SwapArgs = record {
+    pay_token : text;
+    pay_amount : nat;
+    pay_address : opt text;
+    pay_tx_id : opt TxId;
+    receive_token : text;
+    receive_amount : opt nat;
+    receive_address : opt text;
+    max_slippage : opt float64;
+    referred_by : opt text;
+    timestamp : opt nat64; // Optional timestamp, required only for Solana direct transfers
+    signature : opt text;
+};
+type SwapTxReply = record {
+    pool_symbol : text;
+    pay_chain : text;
+    pay_address : text;
+    pay_symbol : text;
+    pay_amount : nat;
+    receive_chain : text;
+    receive_address : text;
+    receive_symbol : text;
+    receive_amount : nat;
+    price : float64;
+    lp_fee : nat;
+    gas_fee : nat;
+    ts : nat64;
+};
+type SwapReply = record {
+    tx_id : nat64;
+    request_id : nat64;
+    status : text;
+    pay_chain : text;
+    pay_address : text;
+    pay_symbol : text;
+    pay_amount : nat;
+    receive_chain : text;
+    receive_address : text;
+    receive_symbol : text;
+    receive_amount : nat;
+    mid_price : float64;
+    price : float64;
+    slippage : float64;
+    txs : vec SwapTxReply;
+    transfer_ids : vec TransferIdReply;
+    claim_ids : vec nat64;
+    ts : nat64;
+};
+
+// New types for asynchronous swap job queue
+type QueuedSwapReply = record {
+    job_id : opt nat64;
+    status : text; // e.g., "Queued" or "Pending"
+    message : text;
+};
+
+type SwapJobStatus = variant {
+    Pending;    // Job created, not yet picked up by ws_proxy
+    Submitted;  // Picked up by ws_proxy, submitted to Solana, awaiting confirmation
+    Confirmed;  // Confirmed by ws_proxy as successful on Solana
+    Failed;     // Failed (either Solana tx failed, or an internal error)
+};
+
+type SwapJob = record {
+    id : nat64;
+    original_args_json : text; 
+    status : SwapJobStatus;
+    created_at : nat64;
+    updated_at : nat64;
+    encoded_signed_solana_tx : text; 
+    solana_tx_signature_of_payout : opt text;
+    error_message : opt text;
+    attempts : nat32;
+};
+
+type SwapResult = variant { Ok : QueuedSwapReply; Err : text }; // Changed SwapResult
+
+type SolanaTransactionStatus = variant {
+    Pending;
+    Confirmed;
+    Finalized;
+    Failed;
+    TimedOut;
+};
+
+type SolanaTransaction = record {
+    id : text;
+    signature : text;
+    status : SolanaTransactionStatus;
+    registered_at : nat64;
+    updated_at : nat64;
+    amount : opt nat64;
+    fee : opt nat64;
+    sender : opt text;
+    receiver : opt text;
+    direction : opt text;
+    transaction_time : opt text;
+    instruction_type : opt text;
+    balance_change : opt nat64;
+    metadata : opt text;
+};
+
+type UpdateSolanaTransactionArgs = record {
+    id : text;
+    signature : text;
+    status : text;
+    amount : opt nat64;
+    fee : opt nat64;
+    sender : opt text;
+    receiver : opt text;
+    direction : opt text;
+    transaction_time : opt text;
+    instruction_type : opt text;
+    balance_change : opt nat64;
+    metadata : opt text;
+    skip_queue : bool;
+};
+
+type QueuedTransaction = record {
+    id : nat64;
+    signature : text;
+    amount : opt nat64;
+    fee : opt nat64;
+    sender : opt text;
+    receiver : opt text;
+    direction : opt text;
+    instruction_type : opt text;
+    balance_change : opt nat64;
+    metadata : opt text;
+    queued_at : nat64;
+    is_processed : bool;
+    processed_at : opt nat64;
+};
+
+service : {
+    // get KongSwap's address for SOL and SPL tokens for Solana network
+    "get_solana_address": () -> ( variant { Ok : text; Err : text } ) query;
+    
+    // Cache the canister's Solana address (admin only)
+    "cache_solana_address": () -> ( variant { Ok : text; Err : text } );
+
+    // swap()
+    // pay_token, receive_token - SOL.SOL, SOL.USDC, SOL.3iCWevq7rJ9WXXVSPKHvKZZQy3UtbZPnVsKuBUCwdHxH
+    // pay_amount, receive_amount - atomic numbers with corresponding decimal precisions
+    swap : (SwapArgs) -> (SwapResult); // Return type changed
+
+    // Swap Job Queue Methods
+    get_swap_job : (nat64) -> (opt SwapJob) query;
+    // Fetches pending jobs for ws_proxy. Proxy should then call mark_swap_job_submitted.
+    get_pending_swap_jobs : (nat32) -> (vec SwapJob) query; 
+    // ws_proxy calls this after successfully submitting tx to Solana RPC (not yet confirmed)
+    mark_swap_job_submitted : (nat64, text) -> (variant { Ok; Err : text }); 
+                                            // job_id, solana_tx_signature_of_submission_attempt
+    // ws_proxy calls this after Solana tx is confirmed or definitively failed
+    finalize_swap_job : (nat64, text, bool, opt text) -> (variant { Ok; Err : text });
+                                            // job_id, final_solana_tx_sig (if successful), 
+                                            // was_successful (true/false), error_message (if failed)
+    
+    // Solana transaction tracking methods
+    "update_solana_tx" : (UpdateSolanaTransactionArgs) -> (variant { Ok; Err : text });
+    "get_solana_tx" : (text) -> (opt SolanaTransaction) query;
+    "get_all_solana_txs" : () -> (vec SolanaTransaction) query;
+    
+    // Transaction queue methods for polling
+    "get_transactions" : (nat64, nat32) -> (vec QueuedTransaction) query;
+    "mark_transactions_processed" : (vec nat64) -> (variant { Ok; Err : text });
+
+    // Method to update the latest blockhash (called by ws_proxy)
+    "update_latest_blockhash" : (text) -> (variant { Ok; Err : text });
+    
+    // Principal management methods (admin only)
+    "add_authorized_principal_with_role" : (principal, text) -> (variant { Ok; Err : text });
+    "remove_authorized_principal_from_canister" : (principal) -> (variant { Ok; Err : text });
+    "list_authorized_principals_in_canister" : () -> (variant { Ok : vec record { principal; text }; Err : text }) query;
+    
+    // Security info and stats methods
+    "get_authorization_info" : () -> (text) query;
+    "get_security_stats" : () -> (text) query;
+}
