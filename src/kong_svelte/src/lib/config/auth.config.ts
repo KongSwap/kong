@@ -19,7 +19,10 @@ import { idlFactory as icrc2IDL } from '../../../../declarations/kong_ledger/kon
 import type { _SERVICE as _ICRC2_SERVICE } from '../../../../declarations/kong_ledger/kong_ledger.did.d.ts';
 import { idlFactory as icpIDL } from '../../../../declarations/icp_ledger/icp_ledger.did.js';
 import type { _SERVICE as _ICP_SERVICE } from '../../../../declarations/icp_ledger/icp_ledger.did.d.ts';
-import { idlFactory as kongSolanaBackendIDL, canisterId as kongSolanaBackendCanisterId } from "../../../../declarations/kong_solana_backend";
+import { idlFactory as kongSolanaBackendIDL } from "../../../../declarations/kong_solana_backend";
+
+// Use environment variable for kong solana backend canister ID
+const kongSolanaBackendCanisterId = process.env.CANISTER_ID_KONG_SOLANA_BACKEND;
 import type { _SERVICE as _KONG_SOLANA_BACKEND_SERVICE } from '../../../../declarations/kong_solana_backend/kong_solana_backend.did.d.ts';
 import { IDL } from '@dfinity/candid';
 import { signatureModalStore } from "$lib/stores/signatureModalStore";

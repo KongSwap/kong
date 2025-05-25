@@ -24,9 +24,12 @@
   export let onShowQR: (detail: { address: string; name: string; chain: string }) => void = () => {};
 
   // Truncate address for display
-  function truncateAddress(addr: string): string {
+  function truncateAddress(addr: string | any): string {
     if (!addr) return '';
-    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+    // Ensure addr is a string
+    const addressStr = typeof addr === 'string' ? addr : String(addr);
+    if (!addressStr || addressStr === 'undefined' || addressStr === 'null') return '';
+    return `${addressStr.substring(0, 6)}...${addressStr.substring(addressStr.length - 4)}`;
   }
 </script>
 

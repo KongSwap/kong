@@ -83,7 +83,18 @@
 
     Object.entries(walletAddresses)
       .filter(([chain, address]) => chain !== 'icp' && !!address)
-      .forEach(([chain, address]) => addAddress(`${chain}-${address}`, auth.pnp?.provider?.walletName, address, chain, 'address', undefined));
+      .forEach(([chain, address]) => {
+        // Extract the actual address string if it's an object
+        const addressStr = typeof address === 'object' && address !== null 
+          ? (address.publicKey || address.address || address.toString() || '')
+          : address;
+        
+        console.log('🔍 WalletAddressesList: Processing chain:', chain, 'address:', address, 'extracted:', addressStr);
+        
+        if (addressStr) {
+          addAddress(`${chain}-${addressStr}`, auth.pnp?.provider?.walletName, addressStr, chain, 'address', undefined);
+        }
+      });
 
     userAddresses
       .filter(wallet => wallet.address && wallet.address !== principalId)
