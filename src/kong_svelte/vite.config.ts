@@ -160,6 +160,41 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       },
       watch: {
         usePolling: true
+      },
+      cors: {
+        origin: [
+          // Local development
+          'http://localhost:3000',
+          'http://localhost:5173',
+          'http://127.0.0.1:3000',
+          'http://127.0.0.1:5173',
+          // Solana devnet RPC endpoints
+          'https://api.devnet.solana.com',
+          'https://devnet.helius-rpc.com',
+          'https://solana-devnet.g.alchemy.com',
+          // Kong domains
+          'https://kongswap.io',
+          'https://dev.kongswap.io',
+          // IC domains
+          'https://*.ic0.app',
+          'https://*.icp0.io',
+          'https://*.internetcomputer.org'
+        ],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        credentials: true,
+        allowedHeaders: [
+          'Content-Type',
+          'Authorization',
+          'X-Requested-With',
+          'Accept',
+          'Origin',
+          'User-Agent',
+          'DNT',
+          'Cache-Control',
+          'X-Mx-ReqToken',
+          'Keep-Alive',
+          'X-CSRFToken'
+        ]
       }
     },
     plugins: basePlugins as any[],

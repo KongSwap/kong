@@ -5,9 +5,6 @@
   import type { CanisterType } from '$lib/config/auth.config';
   import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
   import { Principal } from '@dfinity/principal';
-  import PageWrapper from '$lib/components/layout/PageWrapper.svelte';
-  import Panel from '$lib/components/common/Panel.svelte';
-  import Button from '$lib/components/common/Button.svelte';
   import LoadingIndicator from '$lib/components/common/LoadingIndicator.svelte';
   import { IcrcService } from '$lib/services/icrc/IcrcService';
   import { SolanaService } from '$lib/services/solana/SolanaService';
@@ -16,35 +13,35 @@
   
   type SwapMode = 'SOL_TO_ICP' | 'ICP_TO_SOL' | 'SOL_TO_SPL';
   
-  let isConnected = false;
-  let loading = false;
-  let solanaAddress = '';
-  let userPrincipal = '';
-  let userSolanaAddress = '';
-  let currentWallet = '';
-  let solanaCapabilities = { canSendSol: false, canSignMessage: false, canGetAddress: false, walletType: null };
-  let manualTransferInstructions: any = null;
+  let isConnected = $state(false);
+  let loading = $state(false);
+  let solanaAddress = $state('91r3p9zkmx1P2HSu19Fc3hLr6ccxXviYiJJf2bxHUdQC'); // Hardcoded Kong Solana address
+  let userPrincipal = $state('');
+  let userSolanaAddress = $state('');
+  let currentWallet = $state('');
+  let solanaCapabilities = $state({ canSendSol: false, canSignMessage: false, canGetAddress: false, walletType: null });
+  let manualTransferInstructions: any = $state(null);
   
   // Swap mode
-  let swapMode: SwapMode = 'SOL_TO_ICP';
+  let swapMode: SwapMode = $state('SOL_TO_ICP');
   
   // Swap form fields
-  let payToken = 'SOL';
-  let payAmount = '';
-  let receiveToken = 'ICP';
-  let receiveAmount = '';
-  let maxSlippage = '99.0';
+  let payToken = $state('SOL');
+  let payAmount = $state('');
+  let receiveToken = $state('ICP');
+  let receiveAmount = $state('');
+  let maxSlippage = $state('99.0');
   
   // Progress tracking
-  let progress = {
+  let progress = $state({
     step: '',
     message: '',
     status: 'idle' as 'idle' | 'pending' | 'success' | 'error'
-  };
+  });
   
   // Job polling
-  let jobId: bigint | null = null;
-  let isPolling = false;
+  let jobId: bigint | null = $state(null);
+  let isPolling = $state(false);
   
   // Token decimals mapping
   const TOKEN_DECIMALS: Record<string, number> = {
@@ -58,68 +55,35 @@
   
   // Watch for auth changes
   $effect(() => {
-    console.log('🔍 SwapV2: Auth effect triggered');
-    console.log('🔍 SwapV2: Auth state:', $auth);
-    console.log('🔍 SwapV2: Auth account:', $auth?.account);
-    console.log('🔍 SwapV2: Auth isConnected:', $auth?.isConnected);
-    
     isConnected = $auth?.isConnected || false;
-    console.log('🔍 SwapV2: Updated isConnected:', isConnected);
     
     if (isConnected && $auth?.account?.owner) {
-      console.log('✅ SwapV2: User is connected, getting details...');
-      
       // Get user principal from auth store
       userPrincipal = $auth.account.owner.toString();
-      console.log('✅ SwapV2: User principal from auth store:', userPrincipal);
       
-      // Get wallet info and debug adapter details
+      // Get wallet info
       currentWallet = auth.pnp.adapter?.id || '';
-      console.log('🔍 SwapV2: Current wallet:', currentWallet);
-      console.log('🔍 SwapV2: Full auth.pnp object:', auth.pnp);
-      console.log('🔍 SwapV2: Auth adapter:', auth.pnp.adapter);
-      console.log('🔍 SwapV2: Adapter methods:', auth.pnp.adapter ? Object.keys(auth.pnp.adapter) : 'No adapter');
-      console.log('🔍 SwapV2: Is Phantom?', currentWallet.includes('phantom'));
       
-      // Check for Solana-specific methods
-      if (auth.pnp.adapter) {
-        console.log('🔍 SwapV2: getSolanaAddress method exists?', typeof auth.pnp.adapter.getSolanaAddress);
-        console.log('🔍 SwapV2: sendSol method exists?', typeof auth.pnp.adapter.sendSol);
-        console.log('🔍 SwapV2: signMessage method exists?', typeof auth.pnp.adapter.signMessage);
-        
-        // Check nested adapter
-        const nestedAdapter = auth.pnp.adapter.adapter;
-        console.log('🔍 SwapV2: Nested adapter:', nestedAdapter);
-        if (nestedAdapter) {
-          console.log('🔍 SwapV2: Nested getSolanaAddress method exists?', typeof nestedAdapter.getSolanaAddress);
-          console.log('🔍 SwapV2: Nested sendSol method exists?', typeof nestedAdapter.sendSol);
-          console.log('🔍 SwapV2: Nested signMessage method exists?', typeof nestedAdapter.signMessage);
-        }
-      }
-      
-      // Get Solana capabilities and user address
-      console.log('🔍 SwapV2: Getting Solana capabilities...');
+      // Get Solana capabilities
       solanaCapabilities = SolanaService.getSolanaCapabilities();
-      console.log('✅ SwapV2: Solana capabilities:', solanaCapabilities);
       
+      // Only try to get address if wallet supports it and is already connected
       if (solanaCapabilities.canGetAddress) {
-        console.log('🔍 SwapV2: Attempting to get user Solana address...');
-        SolanaService.getUserSolanaAddress().then(address => {
-          userSolanaAddress = address || '';
-          console.log('✅ SwapV2: User Solana address:', userSolanaAddress);
-        }).catch(e => {
-          console.error('❌ SwapV2: Failed to get Solana address:', e);
-        });
-      } else {
-        console.log('⚠️ SwapV2: Wallet cannot get Solana address');
-        console.log('🔍 SwapV2: Capabilities breakdown:', {
-          hasAdapter: !!auth.pnp.adapter,
-          adapterId: auth.pnp.adapter?.id,
-          hasSolanaMethod: !!auth.pnp.adapter?.getSolanaAddress
-        });
+        // Use a non-reactive way to get the address
+        const getSolanaAddressOnce = async () => {
+          try {
+            const address = await SolanaService.getUserSolanaAddress();
+            if (address && address !== userSolanaAddress) {
+              userSolanaAddress = address;
+            }
+          } catch (e) {
+            console.error('Failed to get Solana address:', e);
+          }
+        };
+        
+        getSolanaAddressOnce();
       }
     } else {
-      console.log('⚠️ SwapV2: User not connected');
       userPrincipal = '';
       userSolanaAddress = '';
       currentWallet = '';
@@ -127,26 +91,12 @@
   });
 
   onMount(async () => {
-    console.log('🚀 SwapV2: Starting onMount');
-    
     try {
-      console.log('🔍 SwapV2: Getting Kong Solana address...');
-      await getSolanaAddress();
-      
-      console.log('🔍 SwapV2: Updating tokens for mode...');
       updateTokensForMode();
-      
-      console.log('✅ SwapV2: onMount completed successfully');
     } catch (error) {
-      console.error('❌ SwapV2: Error in onMount:', error);
+      console.error('Initialization error:', error);
       updateProgress('error', `Initialization error: ${error.message}`, 'error');
     }
-  });
-  
-  // Watch for swap mode changes
-  $effect(() => {
-    console.log('🔍 SwapV2: Swap mode changed to:', swapMode);
-    updateTokensForMode();
   });
   
   function updateTokensForMode() {
@@ -187,16 +137,7 @@
     }
   }
   
-  async function getSolanaAddress() {
-    console.log('🔍 SwapV2: Getting Kong Solana address...');
-    try {
-      solanaAddress = await SolanaService.getKongSolanaAddress();
-      console.log('✅ SwapV2: Kong Solana address:', solanaAddress);
-    } catch (error) {
-      console.error('❌ SwapV2: Error getting Kong Solana address:', error);
-      updateProgress('error', 'Failed to get Kong Solana address', 'error');
-    }
-  }
+
   
   function getTokenDecimals(token: string): number {
     return TOKEN_DECIMALS[token] || 9;
@@ -222,7 +163,7 @@
     }
     
     // Send SOL to Kong's Solana address
-    const txSignature = await SolanaService.sendSolWithPhantom(solanaAddress, parseFloat(payAmount));
+    const txSignature = await SolanaService.sendSolWithWallet(solanaAddress, parseFloat(payAmount));
     return txSignature;
   }
   
@@ -260,6 +201,7 @@
     try {
       let payTxId = null;
       let signature = null;
+      let timestamp = Date.now(); // timestamp for message signing
       
       // Handle SOL transfer if needed
       if (swapMode === 'SOL_TO_ICP') {
@@ -281,27 +223,114 @@
           throw new Error('Please send SOL manually to: ' + solanaAddress);
         }
         
-        // Create canonical message for signing
+        // Create canonical message for signing - EXACT format as shell script  
+        // Use the timestamp we declared above 
+        const payAmountNat = convertToAtomicUnits(payAmount, payToken);
+        
+        // IMPORTANT: Shell script always calculates receive_amount, never null
+        // Default to a reasonable conversion if user didn't specify
+        const defaultReceiveAmount = receiveAmount || (parseFloat(payAmount) * 0.5).toString(); // 0.5 rate as in shell script
+        const receiveAmountNat = convertToAtomicUnits(defaultReceiveAmount, receiveToken);
+        
         const messageParams = {
-          max_slippage: parseFloat(maxSlippage),
-          pay_address: userSolanaAddress,
-          pay_amount: convertToAtomicUnits(payAmount, payToken).toString(),
           pay_token: payToken,
-          receive_address: userPrincipal,
-          receive_amount: receiveAmount ? convertToAtomicUnits(receiveAmount, receiveToken).toString() : null,
+          pay_amount: parseInt(payAmountNat.toString()), // Parse as integer like shell script
+          pay_address: userSolanaAddress,
           receive_token: receiveToken,
-          referred_by: null,
-          timestamp: BigInt(Date.now()).toString()
+          receive_amount: parseInt(receiveAmountNat.toString()), // Always a number, never null
+          receive_address: userPrincipal,
+          max_slippage: parseFloat(maxSlippage), // Keep as float like shell script (99.0)
+          timestamp: parseInt(timestamp.toString()), // Parse as integer
+          referred_by: null
         };
         
         const message = SolanaService.createCanonicalMessage(messageParams);
         
-        // Sign message with connected Solana wallet
+        // Debug: Log the exact message being signed
+        console.log('🔐 Message to sign:', message);
+        console.log('📝 Message params:', messageParams);
+        console.log('🎯 Pay address (who sent SOL):', userSolanaAddress);
+        console.log('🔑 Wallet public key matches pay address:', userSolanaAddress === messageParams.pay_address);
+        
+        // Sign message with connected Solana wallet - TRY ALL 3 METHODS
         if (solanaCapabilities.canSignMessage) {
-          updateProgress('signing', `Signing message with ${solanaCapabilities.walletType}...`, 'pending');
+          updateProgress('signing', `Testing 3 signature methods with ${solanaCapabilities.walletType}...`, 'pending');
           try {
-            signature = await SolanaService.signMessage(message);
-            updateProgress('signing', 'Message signed!', 'success');
+            // Try all 3 signature methods
+            const signatureResults = await SolanaService.tryAllSignatureMethods(message);
+            
+            if (signatureResults.length === 0) {
+              console.warn('All signature methods failed');
+              updateProgress('signing', 'All signature methods failed - continuing without signature', 'error');
+            } else {
+              // Try calling swap with each signature method
+              for (let i = 0; i < signatureResults.length; i++) {
+                const { signature: testSig, method } = signatureResults[i];
+                
+                try {
+                  updateProgress('swap', `Testing swap with ${method} signature (${i+1}/${signatureResults.length})...`, 'pending');
+                  
+                  const actor = await getActor();
+                  const payAmountAtomic = convertToAtomicUnits(payAmount, payToken);
+                  const receiveAmountAtomic = receiveAmount ? convertToAtomicUnits(receiveAmount, receiveToken) : null;
+                  
+                  const payAddress = swapMode === 'ICP_TO_SOL' ? userPrincipal : userSolanaAddress;
+                  const receiveAddress = swapMode === 'SOL_TO_ICP' ? userPrincipal : userSolanaAddress;
+                  
+                  const canisterTimestamp = BigInt(timestamp);
+                  
+                  const swapArgs = {
+                    pay_token: payToken,
+                    pay_amount: payAmountAtomic,
+                    pay_address: payAddress ? [payAddress] : [],
+                    pay_tx_id: payTxId ? [{ TransactionHash: payTxId }] : [],
+                    receive_token: receiveToken,
+                    receive_amount: receiveAmountAtomic ? [receiveAmountAtomic] : [],
+                    receive_address: receiveAddress ? [receiveAddress] : [],
+                    max_slippage: [parseFloat(maxSlippage)],
+                    referred_by: [],
+                    timestamp: [canisterTimestamp],
+                    signature: [testSig]
+                  };
+                  
+                  console.log(`🎯 TESTING SWAP with ${method} signature:`, testSig.slice(0, 12) + '...');
+                  
+                  const response = await actor.swap(swapArgs);
+                  
+                  if ('Ok' in response) {
+                    console.log(`🎉 SUCCESS! ${method} signature worked!`);
+                    updateProgress('success', `Swap successful with ${method} signature!`, 'success');
+                    
+                    if (response.Ok.job_id && response.Ok.job_id.length > 0) {
+                      jobId = response.Ok.job_id[0];
+                      updateProgress('queued', `Swap queued! Job ID: ${jobId} (${method} signature)`, 'success');
+                      
+                      if (swapMode === 'ICP_TO_SOL') {
+                        await startJobPolling();
+                      }
+                    } else {
+                      updateProgress('complete', `Swap completed successfully with ${method} signature!`, 'success');
+                    }
+                    
+                    // Success! Exit the loop
+                    signature = testSig;
+                    loading = false;
+                    return;
+                    
+                  } else {
+                    console.log(`❌ ${method} signature failed:`, response.Err);
+                    updateProgress('error', `${method} signature failed: ${response.Err}`, 'error');
+                  }
+                  
+                } catch (swapError) {
+                  console.log(`❌ Swap error with ${method} signature:`, swapError.message);
+                  updateProgress('error', `Swap error with ${method}: ${swapError.message}`, 'error');
+                }
+              }
+              
+              // If we get here, all signature methods failed
+              updateProgress('error', 'All signature methods failed with backend verification', 'error');
+            }
           } catch (e) {
             console.warn('Message signing failed:', e);
             updateProgress('signing', 'Message signing failed - continuing without signature', 'error');
@@ -323,47 +352,45 @@
           );
           updateProgress('approval', 'ICP approved!', 'success');
         }
-      }
-      
-      updateProgress('swap', 'Calling swap canister...', 'pending');
-      const actor = await getActor();
-      const payAmountAtomic = convertToAtomicUnits(payAmount, payToken);
-      const receiveAmountAtomic = receiveAmount ? convertToAtomicUnits(receiveAmount, receiveToken) : null;
-      
-      const payAddress = swapMode === 'ICP_TO_SOL' ? userPrincipal : userSolanaAddress;
-      const receiveAddress = swapMode === 'SOL_TO_ICP' ? userPrincipal : userSolanaAddress;
-      
-      const timestamp = BigInt(Date.now());
-      
-      const swapArgs = {
-        pay_token: payToken,
-        pay_amount: payAmountAtomic,
-        pay_address: payAddress ? [payAddress] : [],
-        pay_tx_id: payTxId ? [{ TransactionHash: payTxId }] : [],
-        receive_token: receiveToken,
-        receive_amount: receiveAmountAtomic ? [receiveAmountAtomic] : [],
-        receive_address: receiveAddress ? [receiveAddress] : [],
-        max_slippage: [parseFloat(maxSlippage)],
-        referred_by: [],
-        timestamp: [timestamp],
-        signature: signature ? [signature] : []
-      };
-      
-      const response = await actor.swap(swapArgs);
-      
-      if ('Ok' in response) {
-        if (response.Ok.job_id && response.Ok.job_id.length > 0) {
-          jobId = response.Ok.job_id[0];
-          updateProgress('queued', `Swap queued! Job ID: ${jobId}`, 'success');
-          
-          if (swapMode === 'ICP_TO_SOL') {
+        
+        // For ICP_TO_SOL, call swap directly since no signature needed
+        updateProgress('swap', 'Calling swap canister...', 'pending');
+        const actor = await getActor();
+        const payAmountAtomic = convertToAtomicUnits(payAmount, payToken);
+        const receiveAmountAtomic = receiveAmount ? convertToAtomicUnits(receiveAmount, receiveToken) : null;
+        
+        const payAddress = userPrincipal;
+        const receiveAddress = userSolanaAddress;
+        
+        const canisterTimestamp = BigInt(Date.now());
+        
+        const swapArgs = {
+          pay_token: payToken,
+          pay_amount: payAmountAtomic,
+          pay_address: payAddress ? [payAddress] : [],
+          pay_tx_id: [],
+          receive_token: receiveToken,
+          receive_amount: receiveAmountAtomic ? [receiveAmountAtomic] : [],
+          receive_address: receiveAddress ? [receiveAddress] : [],
+          max_slippage: [parseFloat(maxSlippage)],
+          referred_by: [],
+          timestamp: [canisterTimestamp],
+          signature: []
+        };
+        
+        const response = await actor.swap(swapArgs);
+        
+        if ('Ok' in response) {
+          if (response.Ok.job_id && response.Ok.job_id.length > 0) {
+            jobId = response.Ok.job_id[0];
+            updateProgress('queued', `Swap queued! Job ID: ${jobId}`, 'success');
             await startJobPolling();
+          } else {
+            updateProgress('complete', 'Swap completed successfully!', 'success');
           }
         } else {
-          updateProgress('complete', 'Swap completed successfully!', 'success');
+          updateProgress('error', `Swap failed: ${response.Err}`, 'error');
         }
-      } else {
-        updateProgress('error', `Swap failed: ${response.Err}`, 'error');
       }
       
     } catch (error) {
@@ -422,96 +449,172 @@
   <meta name="description" content="Cross-chain swaps between Solana and Internet Computer" />
 </svelte:head>
 
-<PageWrapper page="/swap-v2-demo">
-  <div class="max-w-lg mx-auto px-4 py-8">
-    <Panel variant="solid" roundness="rounded-2xl" class="relative">
-      <div class="space-y-6">
-        <!-- Header with Mode Selector -->
+<main class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-blue-900">
+  <div class="container mx-auto px-4 py-12">
+    <div class="max-w-md mx-auto">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          Cross-Chain Swap
+        </h1>
+        <p class="text-gray-600 dark:text-gray-400">
+          Seamlessly swap between Solana and Internet Computer
+        </p>
+      </div>
+      
+      <!-- Main swap card -->
+      <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div class="space-y-6">
+        <!-- Mode Selector -->
         <div>
-          <h1 class="text-2xl font-bold mb-4">Cross-Chain Swap</h1>
-          
           <!-- Mode Pills -->
-          <div class="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+          <div class="flex gap-1 p-1 bg-gray-100 dark:bg-gray-700 rounded-xl">
             <button
-              on:click={() => swapMode = 'SOL_TO_ICP'}
-              class="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all
+              onclick={() => { swapMode = 'SOL_TO_ICP'; updateTokensForMode(); }}
+              class="flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200
                 {swapMode === 'SOL_TO_ICP' 
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}"
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg' 
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-600'}"
             >
               SOL → ICP
             </button>
             <button
-              on:click={() => swapMode = 'ICP_TO_SOL'}
-              class="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all
+              onclick={() => { swapMode = 'ICP_TO_SOL'; updateTokensForMode(); }}
+              class="flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200
                 {swapMode === 'ICP_TO_SOL' 
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}"
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg' 
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-600'}"
             >
               ICP → SOL
             </button>
             <button
-              on:click={() => swapMode = 'SOL_TO_SPL'}
-              class="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all
+              onclick={() => { swapMode = 'SOL_TO_SPL'; updateTokensForMode(); }}
+              class="flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200
                 {swapMode === 'SOL_TO_SPL' 
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}"
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg' 
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-600'}"
             >
               SOL → SPL
             </button>
           </div>
           
-          <!-- Test Send SOL Button -->
+          <!-- Test Buttons for SOL Transfer -->
           {#if swapMode === 'SOL_TO_ICP' && isConnected}
-            <button
-              on:click={async () => {
-                console.log('🧪 TEST SEND: Attempting to trigger Solana transfer...');
-                
-                try {
-                  // Try different ways to access Solana wallet
-                  if (window.phantom?.solana) {
-                    console.log('🧪 TEST SEND: Found window.phantom.solana');
-                    console.log('🧪 TEST SEND: Phantom methods:', Object.keys(window.phantom.solana));
-                    
-                    if (window.phantom.solana.publicKey) {
-                      console.log('🧪 TEST SEND: Phantom address:', window.phantom.solana.publicKey.toString());
-                      userSolanaAddress = window.phantom.solana.publicKey.toString();
+            <div class="flex gap-2 mt-4">
+              {#if solanaCapabilities.canSendSol}
+                <button
+                  onclick={async () => {
+                    try {
+                      const amount = payAmount || '0.01'; // Default to 0.01 SOL if no amount entered
+                      updateProgress('transfer', `Sending ${amount} SOL with ${solanaCapabilities.walletType}...`, 'pending');
+                      
+                      const txSignature = await SolanaService.sendSolWithWallet(solanaAddress, parseFloat(amount));
+                      updateProgress('transfer', `SOL sent! TX: ${txSignature.slice(0, 8)}...`, 'success');
+                      
+                    } catch (error) {
+                      console.error('Wallet send error:', error);
+                      updateProgress('transfer', `Failed to send SOL: ${error.message}`, 'error');
                     }
-                  }
-                  
-                  if (window.solflare) {
-                    console.log('🧪 TEST SEND: Found window.solflare');
-                    console.log('🧪 TEST SEND: Solflare methods:', Object.keys(window.solflare));
-                    
-                    if (window.solflare.publicKey) {
-                      console.log('🧪 TEST SEND: Solflare address:', window.solflare.publicKey.toString());
-                      userSolanaAddress = window.solflare.publicKey.toString();
+                  }}
+                  class="flex-1 py-2 px-4 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  🚀 Send SOL with Wallet
+                </button>
+              {:else}
+                <button
+                  onclick={async () => {
+                    try {
+                      // Test wallet detection
+                      const capabilities = SolanaService.getSolanaCapabilities();
+                      console.log('Wallet capabilities:', capabilities);
+                      
+                      // Try to get address
+                      const address = await SolanaService.getUserSolanaAddress();
+                      console.log('User Solana address:', address);
+                      
+                      // Check window objects
+                      console.log('Window phantom:', (window as any).phantom);
+                      console.log('Window solana:', (window as any).solana);
+                      console.log('Window solflare:', (window as any).solflare);
+                      
+                      updateProgress('test', `Wallet test complete - check console`, 'success');
+                    } catch (error) {
+                      console.error('Wallet test error:', error);
+                      updateProgress('test', `Wallet test failed: ${error.message}`, 'error');
                     }
-                  }
-                  
-                  if (window.solana) {
-                    console.log('🧪 TEST SEND: Found window.solana');
-                    console.log('🧪 TEST SEND: Solana methods:', Object.keys(window.solana));
-                    
-                    if (window.solana.publicKey) {
-                      console.log('🧪 TEST SEND: Generic Solana address:', window.solana.publicKey.toString());
-                      userSolanaAddress = window.solana.publicKey.toString();
+                  }}
+                  class="flex-1 py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  🧪 Test Wallet Detection
+                </button>
+              {/if}
+              
+                              <button
+                  onclick={async () => {
+                    try {
+                      // First get Solana address from wallet if we don't have it
+                      if (!userSolanaAddress) {
+                        if ((window as any).phantom?.solana?.publicKey) {
+                          userSolanaAddress = (window as any).phantom.solana.publicKey.toString();
+                        } else if ((window as any).solflare?.publicKey) {
+                          userSolanaAddress = (window as any).solflare.publicKey.toString();
+                        } else if ((window as any).solana?.publicKey) {
+                          userSolanaAddress = (window as any).solana.publicKey.toString();
+                        }
+                      }
+                      
+                      // Show a simple instruction
+                      const amount = payAmount || '0.01'; // Default to 0.01 SOL if no amount entered
+                      const message = `Please send ${amount} SOL to:\n\n${solanaAddress}\n\nThen return here and click Swap.`;
+                      
+                      // Copy address to clipboard
+                      await navigator.clipboard.writeText(solanaAddress);
+                      
+                      alert(message + '\n\nAddress copied to clipboard!');
+                      
+                    } catch (error) {
+                      console.error('Copy address error:', error);
                     }
+                  }}
+                  class="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  📋 Copy Kong Address
+                </button>
+              
+                                            <button
+                onclick={async () => {
+                  const url = `https://solscan.io/account/${solanaAddress}?cluster=devnet`;
+                  window.open(url, '_blank');
+                }}
+                class="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                🔍 View on Explorer
+              </button>
+            </div>
+            
+            <!-- Devnet SOL Faucet Button -->
+            <div class="flex gap-2 mt-2">
+              <button
+                onclick={async () => {
+                  try {
+                    if (!userSolanaAddress) {
+                      updateProgress('faucet', 'Please connect Solana wallet first', 'error');
+                      return;
+                    }
+                    
+                    updateProgress('faucet', 'Requesting devnet SOL from faucet...', 'pending');
+                    const signature = await SolanaService.requestDevnetSol(userSolanaAddress);
+                    updateProgress('faucet', `Devnet SOL received! TX: ${signature.slice(0, 8)}...`, 'success');
+                  } catch (error) {
+                    console.error('Faucet error:', error);
+                    updateProgress('faucet', `Faucet failed: ${error.message}`, 'error');
                   }
-                  
-                  // Try to open a Solana transfer URL
-                  const transferUrl = `https://phantom.app/ul/browse/https://solscan.io/account/${solanaAddress}?cluster=mainnet-beta`;
-                  console.log('🧪 TEST SEND: Opening transfer URL:', transferUrl);
-                  window.open(transferUrl, '_blank');
-                  
-                } catch (error) {
-                  console.error('🧪 TEST SEND: Error:', error);
-                }
-              }}
-              class="w-full py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              🧪 Test Send SOL
-            </button>
+                }}
+                class="flex-1 py-2 px-4 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                🚰 Get Devnet SOL
+              </button>
+            </div>
           {/if}
         </div>
         
@@ -533,50 +636,33 @@
             <!-- Debug buttons for testing -->
             <br/>
             <button 
-              on:click={async () => {
-                console.log('🧪 MANUAL TEST: Testing Solana address fetch...');
-                console.log('🧪 MANUAL TEST: Current adapter:', auth.pnp.adapter);
-                console.log('🧪 MANUAL TEST: Adapter properties:', auth.pnp.adapter ? Object.getOwnPropertyNames(auth.pnp.adapter) : 'No adapter');
-                console.log('🧪 MANUAL TEST: Adapter prototype:', auth.pnp.adapter ? Object.getPrototypeOf(auth.pnp.adapter) : 'No adapter');
-                
-                if (auth.pnp.adapter) {
-                  // Test direct method calls
-                  console.log('🧪 MANUAL TEST: Direct getSolanaAddress:', auth.pnp.adapter.getSolanaAddress);
-                  if (typeof auth.pnp.adapter.getSolanaAddress === 'function') {
-                    try {
-                      const directResult = await auth.pnp.adapter.getSolanaAddress();
-                      console.log('🧪 MANUAL TEST: Direct call result:', directResult);
-                      userSolanaAddress = directResult || '';
-                    } catch (e) {
-                      console.error('🧪 MANUAL TEST: Direct call error:', e);
-                    }
-                  }
-                }
-                
+              onclick={async () => {
                 try {
-                  const address = await SolanaService.getUserSolanaAddress();
-                  console.log('🧪 MANUAL TEST: Service result:', address);
+                  updateProgress('connect', 'Connecting to Solana wallet...', 'pending');
+                  const address = await SolanaService.connectSolanaWallet();
                   userSolanaAddress = address || '';
+                  updateProgress('connect', `Connected! Address: ${address?.slice(0, 8)}...`, 'success');
+                  console.log('Connected Solana address:', address);
                 } catch (e) {
-                  console.error('🧪 MANUAL TEST: Service error:', e);
+                  console.error('Failed to connect Solana wallet:', e);
+                  updateProgress('connect', `Connection failed: ${e.message}`, 'error');
                 }
               }}
               class="text-xs text-blue-500 hover:text-blue-700 underline"
             >
-              🧪 Test Solana Address
+              🔗 Connect Solana Wallet
             </button>
             
             <button 
-              on:click={() => {
-                console.log('🧪 ADAPTER DUMP:');
-                console.log('- adapter:', auth.pnp.adapter);
-                console.log('- adapter id:', auth.pnp.adapter?.id);
-                console.log('- all adapter properties:', auth.pnp.adapter ? Object.keys(auth.pnp.adapter) : 'none');
-                console.log('- all adapter methods:', auth.pnp.adapter ? Object.getOwnPropertyNames(auth.pnp.adapter).filter(name => typeof auth.pnp.adapter[name] === 'function') : 'none');
+              onclick={() => {
+                console.log('Adapter info:', {
+                  id: auth.pnp.adapter?.id,
+                  capabilities: solanaCapabilities
+                });
               }}
               class="text-xs text-green-500 hover:text-green-700 underline ml-2"
             >
-              🔍 Dump Adapter
+              🔍 Show Capabilities
             </button>
           </div>
         {/if}
@@ -595,6 +681,34 @@
                 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
+          </div>
+        {/if}
+        
+        <!-- Show Kong Solana Address for Manual Transfer -->
+        {#if swapMode === 'SOL_TO_ICP' && solanaAddress}
+          <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <p class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                  Send SOL to Kong Address (Devnet):
+                </p>
+                <p class="text-xs font-mono text-blue-800 dark:text-blue-200 break-all">
+                  {solanaAddress}
+                </p>
+                <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  ✅ Hardcoded for testing
+                </p>
+              </div>
+              <button
+                onclick={() => {
+                  navigator.clipboard.writeText(solanaAddress);
+                  alert('Address copied!');
+                }}
+                class="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+              >
+                📋
+              </button>
+            </div>
           </div>
         {/if}
         
@@ -664,7 +778,7 @@
             {progress.status === 'error' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : ''}">
             <div class="flex items-start gap-3">
               {#if progress.status === 'pending'}
-                <LoadingIndicator size="sm" />
+                <LoadingIndicator size={16} />
               {:else if progress.status === 'success'}
                 <svg class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -699,7 +813,7 @@
             <div class="flex items-start justify-between mb-4">
               <h3 class="font-semibold text-orange-800 dark:text-orange-300">{manualTransferInstructions.title}</h3>
               <button 
-                on:click={hideManualTransferInstructions}
+                onclick={hideManualTransferInstructions}
                 class="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -720,7 +834,7 @@
               </div>
               
               <button
-                on:click={() => navigator.clipboard.writeText(manualTransferInstructions.address)}
+                onclick={() => navigator.clipboard.writeText(manualTransferInstructions.address)}
                 class="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
               >
                 📋 Copy address to clipboard
@@ -736,7 +850,7 @@
               ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed' 
               : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]'}"
           disabled={loading || !payAmount}
-          on:click={executeSwap}
+          onclick={() => executeSwap()}
         >
           <div class="flex items-center justify-center gap-3">
             {#if loading}
@@ -753,19 +867,22 @@
         
         <!-- Info -->
         <div class="text-xs text-center text-gray-500 dark:text-gray-400">
+          <div class="mb-1">
+            🚧 <strong>Development Mode:</strong> Using Solana Devnet
+          </div>
           {#if swapMode === 'SOL_TO_ICP'}
             {#if solanaCapabilities.canSendSol}
-              SOL will be sent automatically via {solanaCapabilities.walletType}
+              Devnet SOL will be sent automatically via {solanaCapabilities.walletType}
             {:else}
-              Manual SOL transfer required to Kong address: {solanaAddress.slice(0, 8)}...
+              Manual devnet SOL transfer required to Kong address: {solanaAddress.slice(0, 8)}...
             {/if}
           {:else if swapMode === 'ICP_TO_SOL'}
-            ICP approval will be requested, SOL sent to your address
+            ICP approval will be requested, devnet SOL sent to your address
           {:else}
-            Direct SPL token swap on Solana network
+            Direct SPL token swap on Solana devnet
           {/if}
         </div>
       </div>
-    </Panel>
+    </div>
   </div>
-</PageWrapper>
+</main>

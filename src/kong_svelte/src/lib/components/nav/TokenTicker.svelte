@@ -25,8 +25,6 @@
   let ckUSDCToken: Kong.Token | null = null;
   let actualQuoteToken: 'ckUSDT' | 'ICP' = 'ckUSDT';
   let previousPrices = new Map<string, number>();
-  let pendingUpdates = new Set<Kong.Token>();
-  let updateScheduled = false;
   let tickerWidth = 0;
   let contentWidth = 0;
 
@@ -52,27 +50,52 @@
       const currentTokenIds = tickerTokens.map(t => t.address).join(',');
       const hasNewTokens = newTokenIds !== currentTokenIds;
 
-      // Handle price updates using the batch update mechanism
-      sortedTokens.forEach(newToken => {
-        pendingUpdates.add(newToken);
-      });
-      
-      // Schedule the updates
-      scheduleUpdate();
-
       // Update ticker tokens if the list changed
       if (hasNewTokens || tickerTokens.length === 0) {
         tickerTokens = sortedTokens;
+        // Only process price updates for new token lists
+        sortedTokens.forEach(newToken => {
+          const currentPrice = Number(newToken.metrics?.price || 0);
+          previousPrices.set(newToken.address, currentPrice);
+        });
       } else {
         // Create a map of new token data by canister_id
         const tokenMap = new Map(sortedTokens.map(t => [t.address, t]));
         
-        // Update existing token data to preserve references where possible
-        // but ensure metrics are updated
+        // Update existing token data and handle price flashing
         tickerTokens = tickerTokens.map(token => {
           const newData = tokenMap.get(token.address);
           if (newData && newData.metrics) {
-            return { ...token, metrics: { ...newData.metrics } };
+            const updatedToken = { ...token, metrics: { ...newData.metrics } };
+            
+            // Handle price flash animation
+            const prevPrice = previousPrices.get(token.address);
+            const currentPrice = Number(newData.metrics?.price || 0);
+            
+            if (prevPrice !== undefined && prevPrice !== currentPrice && isVisible) {
+              const flashClass = currentPrice > prevPrice ? "flash-green" : "flash-red";
+              
+              // Clear existing timeout if any
+              if (priceFlashStates.has(token.address)) {
+                clearTimeout(priceFlashStates.get(token.address)!.timeout);
+              }
+              
+              // Set new flash state
+              const timeout = setTimeout(() => {
+                if (priceFlashStates.has(token.address)) {
+                  priceFlashStates.delete(token.address);
+                  priceFlashStates = new Map(priceFlashStates); // Trigger reactivity
+                }
+              }, 2000);
+              
+              priceFlashStates.set(token.address, { class: flashClass, timeout });
+              priceFlashStates = new Map(priceFlashStates); // Trigger reactivity
+            }
+            
+            // Update previous price
+            previousPrices.set(token.address, currentPrice);
+            
+            return updatedToken;
           }
           return token;
         });
@@ -82,55 +105,7 @@
     }
   }
 
-  function scheduleUpdate() {
-    if (!updateScheduled) {
-      updateScheduled = true;
-      requestAnimationFrame(() => {
-        processPendingUpdates();
-        updateScheduled = false;
-      });
-    }
-  }
 
-  function processPendingUpdates() {
-    pendingUpdates.forEach((token) => {
-      const prevPrice = previousPrices.get(token.address);
-      const currentPrice = Number(token.metrics?.price || 0);
-
-      if (prevPrice !== undefined && prevPrice !== currentPrice) {
-        const flashClass =
-          currentPrice > prevPrice ? "flash-green" : "flash-red";
-
-        // Clear existing timeout if any
-        if (priceFlashStates.has(token.address)) {
-          clearTimeout(priceFlashStates.get(token.address)!.timeout);
-        }
-
-        // Set new flash state
-        const timeout = setTimeout(() => {
-          if (priceFlashStates.has(token.address)) {
-            priceFlashStates.delete(token.address);
-            priceFlashStates = priceFlashStates; // Trigger reactivity
-          }
-        }, 2000);
-
-        priceFlashStates.set(token.address, { class: flashClass, timeout });
-      }
-      
-      // Always update the previous price for next comparison
-      previousPrices.set(token.address, currentPrice);
-    });
-
-    pendingUpdates.clear();
-    if (isVisible) {
-      priceFlashStates = priceFlashStates; // Trigger reactivity
-    }
-  }
-
-  function updatePriceFlash(token: Kong.Token) {
-    pendingUpdates.add(token);
-    scheduleUpdate();
-  }
 
   // Use Intersection Observer to pause animations when not visible
   let observer: IntersectionObserver;
@@ -163,17 +138,25 @@
     }
 
     const resizeObserver = new ResizeObserver(entries => {
-      let raf;
-      clearTimeout(raf);
-      raf = setTimeout(() => {
-        requestAnimationFrame(() => {
-          for (const entry of entries) {
-            if (entry.target.classList.contains('ticker-container')) {
-              tickerWidth = entry.contentRect.width;
-            } else if (entry.target.classList.contains('ticker-content')) {
-              contentWidth = entry.contentRect.width / 2;
-            }
+      // Use a simple debounce mechanism to prevent excessive updates
+      let timeoutId: NodeJS.Timeout;
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        let newTickerWidth = tickerWidth;
+        let newContentWidth = contentWidth;
+        
+        for (const entry of entries) {
+          if (entry.target.classList.contains('ticker-container')) {
+            newTickerWidth = entry.contentRect.width;
+          } else if (entry.target.classList.contains('ticker-content')) {
+            newContentWidth = entry.contentRect.width / 2;
           }
+        }
+        
+        // Only update if values actually changed
+        if (newTickerWidth !== tickerWidth || newContentWidth !== contentWidth) {
+          tickerWidth = newTickerWidth;
+          contentWidth = newContentWidth;
           
           if (tickerWidth && contentWidth) {
             const scrollElement = tickerElement?.querySelector(".ticker-content") as HTMLElement;
@@ -183,7 +166,7 @@
               scrollElement.style.setProperty('--ticker-duration', `${duration}ms`);
             }
           }
-        });
+        }
       }, 100); // 100ms debounce
     });
 

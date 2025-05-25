@@ -13,6 +13,14 @@ const config = {
       precompress: false,
       strict: false,
     }),
+    // CSP disabled for development to avoid blocking IC canister requests
+    // Will be re-enabled with proper configuration for production
+    // csp: {
+    //   mode: 'hash',
+    //   directives: {
+    //     'connect-src': ['*'],
+    //   }
+    // },
     files: {
       assets: "static",
     },
