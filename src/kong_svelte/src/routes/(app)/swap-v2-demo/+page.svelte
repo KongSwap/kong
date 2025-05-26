@@ -15,7 +15,7 @@
   
   let isConnected = $state(false);
   let loading = $state(false);
-  let solanaAddress = $state('91r3p9zkmx1P2HSu19Fc3hLr6ccxXviYiJJf2bxHUdQC'); // Hardcoded Kong Solana address
+  let solanaAddress = $state(''); // Will be fetched from canister
   let userPrincipal = $state('');
   let userSolanaAddress = $state('');
   let currentWallet = $state('');
@@ -93,6 +93,18 @@
   onMount(async () => {
     try {
       updateTokensForMode();
+      
+      // Fetch Kong's Solana address from canister
+      updateProgress('init', 'Fetching Kong Solana address...', 'pending');
+      try {
+        solanaAddress = await SolanaService.getKongSolanaAddress();
+        console.log('🔗 Fetched Kong Solana address from canister:', solanaAddress);
+        updateProgress('init', 'Kong Solana address loaded', 'success');
+      } catch (error) {
+        console.error('Failed to fetch Kong Solana address:', error);
+        updateProgress('init', `Failed to fetch Kong address: ${error.message}`, 'error');
+        // Don't fail completely, but show the error
+      }
     } catch (error) {
       console.error('Initialization error:', error);
       updateProgress('error', `Initialization error: ${error.message}`, 'error');
@@ -212,15 +224,36 @@
             payTxId = txSig;
             updateProgress('transfer', `SOL sent! TX: ${txSig.slice(0, 8)}...`, 'success');
           } catch (e) {
-            // Fallback to manual transfer
-            updateProgress('transfer', 'Automatic transfer failed - manual transfer required', 'error');
-            showManualTransferInstructions();
-            throw new Error('Manual SOL transfer required: ' + e.message);
+            // Check if this is a wallet connection issue
+            const adapter = auth.pnp.adapter;
+            const hasWalletAdapter = adapter?.id?.includes('phantom') || adapter?.id?.includes('solflare');
+            
+            if (hasWalletAdapter) {
+              // Wallet was connected but transfer failed - likely connection issue
+              updateProgress('transfer', 'Wallet connection lost - please reconnect', 'error');
+              throw new Error('Lost connection to wallet. Please refresh the page and reconnect your Phantom/Solflare wallet.');
+            } else {
+              // Fallback to manual transfer for non-wallet users
+              updateProgress('transfer', 'Automatic transfer failed - manual transfer required', 'error');
+              showManualTransferInstructions();
+              throw new Error('Manual SOL transfer required: ' + e.message);
+            }
           }
         } else {
-          updateProgress('transfer', 'Manual SOL transfer required', 'error');
-          showManualTransferInstructions();
-          throw new Error('Please send SOL manually to: ' + solanaAddress);
+          // Check if user has a wallet adapter but can't send SOL (connection issue)
+          const adapter = auth.pnp.adapter;
+          const hasWalletAdapter = adapter?.id?.includes('phantom') || adapter?.id?.includes('solflare');
+          
+          if (hasWalletAdapter) {
+            // User has wallet but can't send - connection issue
+            updateProgress('transfer', 'Wallet connection lost', 'error');
+            throw new Error('Lost connection to your wallet. Please refresh the page and reconnect your Phantom/Solflare wallet to continue.');
+          } else {
+            // No compatible wallet - show manual instructions
+            updateProgress('transfer', 'Manual SOL transfer required', 'error');
+            showManualTransferInstructions();
+            throw new Error('Please send SOL manually to: ' + solanaAddress);
+          }
         }
         
         // Create canonical message for signing - EXACT format as shell script  
@@ -246,93 +279,63 @@
         
         const message = SolanaService.createCanonicalMessage(messageParams);
         
-        // Debug: Log the exact message being signed
-        console.log('🔐 Message to sign:', message);
-        console.log('📝 Message params:', messageParams);
-        console.log('🎯 Pay address (who sent SOL):', userSolanaAddress);
-        console.log('🔑 Wallet public key matches pay address:', userSolanaAddress === messageParams.pay_address);
-        
-        // Sign message with connected Solana wallet - TRY ALL 3 METHODS
+        // Sign message with connected Solana wallet using the proven working method
         if (solanaCapabilities.canSignMessage) {
-          updateProgress('signing', `Testing 3 signature methods with ${solanaCapabilities.walletType}...`, 'pending');
+          updateProgress('signing', `Signing message with ${solanaCapabilities.walletType}...`, 'pending');
           try {
-            // Try all 3 signature methods
-            const signatureResults = await SolanaService.tryAllSignatureMethods(message);
+            // Use the raw message signing method (METHOD 2) - proven to work
+            signature = await SolanaService.signMessageRaw(message);
+            updateProgress('signing', 'Message signed successfully!', 'success');
             
-            if (signatureResults.length === 0) {
-              console.warn('All signature methods failed');
-              updateProgress('signing', 'All signature methods failed - continuing without signature', 'error');
-            } else {
-              // Try calling swap with each signature method
-              for (let i = 0; i < signatureResults.length; i++) {
-                const { signature: testSig, method } = signatureResults[i];
-                
-                try {
-                  updateProgress('swap', `Testing swap with ${method} signature (${i+1}/${signatureResults.length})...`, 'pending');
-                  
-                  const actor = await getActor();
-                  const payAmountAtomic = convertToAtomicUnits(payAmount, payToken);
-                  const receiveAmountAtomic = receiveAmount ? convertToAtomicUnits(receiveAmount, receiveToken) : null;
-                  
-                  const payAddress = swapMode === 'ICP_TO_SOL' ? userPrincipal : userSolanaAddress;
-                  const receiveAddress = swapMode === 'SOL_TO_ICP' ? userPrincipal : userSolanaAddress;
-                  
-                  const canisterTimestamp = BigInt(timestamp);
-                  
-                  const swapArgs = {
-                    pay_token: payToken,
-                    pay_amount: payAmountAtomic,
-                    pay_address: payAddress ? [payAddress] : [],
-                    pay_tx_id: payTxId ? [{ TransactionHash: payTxId }] : [],
-                    receive_token: receiveToken,
-                    receive_amount: receiveAmountAtomic ? [receiveAmountAtomic] : [],
-                    receive_address: receiveAddress ? [receiveAddress] : [],
-                    max_slippage: [parseFloat(maxSlippage)],
-                    referred_by: [],
-                    timestamp: [canisterTimestamp],
-                    signature: [testSig]
-                  };
-                  
-                  console.log(`🎯 TESTING SWAP with ${method} signature:`, testSig.slice(0, 12) + '...');
-                  
-                  const response = await actor.swap(swapArgs);
-                  
-                  if ('Ok' in response) {
-                    console.log(`🎉 SUCCESS! ${method} signature worked!`);
-                    updateProgress('success', `Swap successful with ${method} signature!`, 'success');
-                    
-                    if (response.Ok.job_id && response.Ok.job_id.length > 0) {
-                      jobId = response.Ok.job_id[0];
-                      updateProgress('queued', `Swap queued! Job ID: ${jobId} (${method} signature)`, 'success');
-                      
-                      if (swapMode === 'ICP_TO_SOL') {
-                        await startJobPolling();
-                      }
-                    } else {
-                      updateProgress('complete', `Swap completed successfully with ${method} signature!`, 'success');
-                    }
-                    
-                    // Success! Exit the loop
-                    signature = testSig;
-                    loading = false;
-                    return;
-                    
-                  } else {
-                    console.log(`❌ ${method} signature failed:`, response.Err);
-                    updateProgress('error', `${method} signature failed: ${response.Err}`, 'error');
-                  }
-                  
-                } catch (swapError) {
-                  console.log(`❌ Swap error with ${method} signature:`, swapError.message);
-                  updateProgress('error', `Swap error with ${method}: ${swapError.message}`, 'error');
-                }
-              }
+            // Call swap with signed message
+            updateProgress('swap', 'Submitting signed swap...', 'pending');
+            const actor = await getActor();
+            const payAmountAtomic = convertToAtomicUnits(payAmount, payToken);
+            const receiveAmountAtomic = receiveAmount ? convertToAtomicUnits(receiveAmount, receiveToken) : null;
+            
+            const payAddress = swapMode === 'ICP_TO_SOL' ? userPrincipal : userSolanaAddress;
+            const receiveAddress = swapMode === 'SOL_TO_ICP' ? userPrincipal : userSolanaAddress;
+            
+            const canisterTimestamp = BigInt(timestamp);
+            
+            const swapArgs = {
+              pay_token: payToken,
+              pay_amount: payAmountAtomic,
+              pay_address: payAddress ? [payAddress] : [],
+              pay_tx_id: payTxId ? [{ TransactionHash: payTxId }] : [],
+              receive_token: receiveToken,
+              receive_amount: receiveAmountAtomic ? [receiveAmountAtomic] : [],
+              receive_address: receiveAddress ? [receiveAddress] : [],
+              max_slippage: [parseFloat(maxSlippage)],
+              referred_by: [],
+              timestamp: [canisterTimestamp],
+              signature: [signature]
+            };
+            
+            const response = await actor.swap(swapArgs);
+            
+            if ('Ok' in response) {
+              updateProgress('success', 'Swap successful!', 'success');
               
-              // If we get here, all signature methods failed
-              updateProgress('error', 'All signature methods failed with backend verification', 'error');
+              if (response.Ok.job_id && response.Ok.job_id.length > 0) {
+                jobId = response.Ok.job_id[0];
+                updateProgress('queued', `Swap queued! Job ID: ${jobId}`, 'success');
+                
+                // Only poll for ICP → SOL swaps (which use job queue)
+                // SOL → ICP swaps complete immediately
+                if (swapMode === 'ICP_TO_SOL') {
+                  await startJobPolling();
+                }
+              } else {
+                // SOL → ICP swaps complete immediately without job queue
+                updateProgress('complete', 'Swap completed successfully!', 'success');
+              }
+            } else {
+              updateProgress('error', `Swap failed: ${response.Err}`, 'error');
             }
+            
           } catch (e) {
-            console.warn('Message signing failed:', e);
+            console.error('Message signing failed:', e);
             updateProgress('signing', 'Message signing failed - continuing without signature', 'error');
           }
         }
@@ -384,6 +387,9 @@
           if (response.Ok.job_id && response.Ok.job_id.length > 0) {
             jobId = response.Ok.job_id[0];
             updateProgress('queued', `Swap queued! Job ID: ${jobId}`, 'success');
+            
+            // Start fake progress steps for better UX (ICP → SOL takes ~20 seconds)
+            await simulateSwapProgress();
             await startJobPolling();
           } else {
             updateProgress('complete', 'Swap completed successfully!', 'success');
@@ -403,15 +409,44 @@
     }
   }
   
+  // Job polling state for cool UI
+  let pollAttempt = $state(0);
+  let maxPollAttempts = $state(25); // 25 seconds max
+  let jobDetails = $state(null);
+  let pollingStartTime = $state(0);
+  
+  // Simulate realistic progress steps for ICP → SOL swaps
+  async function simulateSwapProgress() {
+    // Step 1: Verifying ICP payment (5 seconds)
+    updateProgress('step1', '🔍 Canister verifying ICP payment...', 'pending');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    // Step 2: Processing signatures (3 seconds) 
+    updateProgress('step2', '✍️ Verifying transaction signatures...', 'pending');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Step 3: Preparing Solana payout (7 seconds)
+    updateProgress('step3', '💰 Preparing SOL payout to your wallet...', 'pending');
+    await new Promise(resolve => setTimeout(resolve, 7000));
+    
+    // Step 4: Ready for real polling
+    updateProgress('ready', '🚀 Broadcasting to Solana network...', 'pending');
+  }
+  
   async function startJobPolling() {
     if (!jobId) return;
     
     isPolling = true;
-    const maxAttempts = 30;
-    const pollInterval = 2000;
+    pollAttempt = 0;
+    maxPollAttempts = 25; // 25 seconds for 15-20 second swaps
+    pollingStartTime = Date.now();
+    const pollInterval = 1000; // 1 second intervals
     
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      updateProgress('polling', `Checking swap status... (${attempt + 1}/${maxAttempts})`, 'pending');
+    for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
+      pollAttempt = attempt + 1;
+      const elapsedSeconds = Math.floor((Date.now() - pollingStartTime) / 1000);
+      
+      updateProgress('polling', `Processing swap... ${elapsedSeconds}s elapsed`, 'pending');
       
       try {
         const actor = await getActor();
@@ -419,24 +454,48 @@
         
         if (jobStatus && jobStatus.length > 0) {
           const job = jobStatus[0];
+          jobDetails = job;
           
-          if ('Confirmed' in job.status || 'Submitted' in job.status) {
-            updateProgress('complete', 'Swap confirmed!', 'success');
+          // Parse detailed job status
+          const statusKey = Object.keys(job.status)[0];
+          const statusValue = job.status[statusKey];
+          
+          if (statusKey === 'Confirmed') {
+            updateProgress('complete', 'Swap confirmed on blockchain!', 'success');
             if (job.solana_tx_signature_of_payout && job.solana_tx_signature_of_payout.length > 0) {
               const sig = job.solana_tx_signature_of_payout[0];
               updateProgress('complete', `Swap complete! TX: ${sig.slice(0, 8)}...${sig.slice(-8)}`, 'success');
             }
             break;
-          } else if ('Failed' in job.status) {
-            updateProgress('error', 'Swap failed!', 'error');
+          } else if (statusKey === 'Submitted') {
+            updateProgress('submitted', `Transaction submitted to network (${elapsedSeconds}s)`, 'pending');
+          } else if (statusKey === 'Processing') {
+            updateProgress('processing', `Processing transaction... (${elapsedSeconds}s)`, 'pending');
+          } else if (statusKey === 'Failed') {
+            const errorMsg = statusValue || 'Unknown error';
+            updateProgress('failed', `Swap failed: ${errorMsg}`, 'error');
             break;
+          } else if (statusKey === 'Pending') {
+            updateProgress('pending', `Queued for processing... (${elapsedSeconds}s)`, 'pending');
+          } else {
+            updateProgress('polling', `Status: ${statusKey} (${elapsedSeconds}s)`, 'pending');
           }
+        } else {
+          updateProgress('not-found', 'Job not found in queue', 'error');
+          break;
         }
         
         await new Promise(resolve => setTimeout(resolve, pollInterval));
       } catch (error) {
         console.error('Polling error:', error);
+        updateProgress('poll-error', `Poll error: ${error.message}`, 'error');
+        break;
       }
+    }
+    
+    // Timeout handling
+    if (pollAttempt >= maxPollAttempts) {
+      updateProgress('timeout', 'Swap is taking longer than expected, but may still complete', 'error');
     }
     
     isPolling = false;
@@ -685,29 +744,38 @@
         {/if}
         
         <!-- Show Kong Solana Address for Manual Transfer -->
-        {#if swapMode === 'SOL_TO_ICP' && solanaAddress}
+        {#if swapMode === 'SOL_TO_ICP'}
           <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
             <div class="flex items-start justify-between">
               <div class="flex-1">
                 <p class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
                   Send SOL to Kong Address (Devnet):
                 </p>
-                <p class="text-xs font-mono text-blue-800 dark:text-blue-200 break-all">
-                  {solanaAddress}
-                </p>
-                <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                  ✅ Hardcoded for testing
-                </p>
+                {#if solanaAddress}
+                  <p class="text-xs font-mono text-blue-800 dark:text-blue-200 break-all">
+                    {solanaAddress}
+                  </p>
+                  <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                    ✅ Fetched from canister
+                  </p>
+                {:else}
+                  <div class="animate-pulse">
+                    <div class="h-4 bg-blue-300 dark:bg-blue-600 rounded w-3/4 mb-2"></div>
+                    <div class="h-3 bg-blue-300 dark:bg-blue-600 rounded w-1/2"></div>
+                  </div>
+                {/if}
               </div>
-              <button
-                onclick={() => {
-                  navigator.clipboard.writeText(solanaAddress);
-                  alert('Address copied!');
-                }}
-                class="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-              >
-                📋
-              </button>
+              {#if solanaAddress}
+                <button
+                  onclick={() => {
+                    navigator.clipboard.writeText(solanaAddress);
+                    alert('Address copied!');
+                  }}
+                  class="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                >
+                  📋
+                </button>
+              {/if}
             </div>
           </div>
         {/if}
@@ -802,11 +870,178 @@
                   {progress.status === 'error' ? 'text-red-700 dark:text-red-400' : ''}">
                   {progress.message}
                 </p>
+                
+                <!-- Cool Job Polling UI -->
+                {#if jobId}
+                  <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <!-- Job Header -->
+                    <div class="flex items-center justify-between mb-3">
+                      <div>
+                        <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Job ID</p>
+                        <code class="text-xs font-mono text-blue-600 dark:text-blue-400">{jobId}</code>
+                      </div>
+                      {#if !isPolling}
+                        <button
+                          onclick={async () => {
+                            if (jobId) {
+                              updateProgress('manual-poll', 'Checking job status...', 'pending');
+                              try {
+                                const actor = await getActor();
+                                const jobStatus = await actor.get_swap_job(jobId);
+                                
+                                if (jobStatus && jobStatus.length > 0) {
+                                  const job = jobStatus[0];
+                                  jobDetails = job;
+                                  const statusKey = Object.keys(job.status)[0];
+                                  
+                                  if (statusKey === 'Confirmed') {
+                                    updateProgress('complete', 'Swap confirmed!', 'success');
+                                  } else if (statusKey === 'Failed') {
+                                    updateProgress('failed', 'Swap failed!', 'error');
+                                  } else {
+                                    updateProgress('manual-check', `Status: ${statusKey}`, 'pending');
+                                  }
+                                } else {
+                                  updateProgress('not-found', 'Job not found', 'error');
+                                }
+                              } catch (error) {
+                                updateProgress('poll-error', `Poll error: ${error.message}`, 'error');
+                              }
+                            }
+                          }}
+                          class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                        >
+                          🔄 Refresh
+                        </button>
+                      {/if}
+                    </div>
+
+                    <!-- Progress Bar (when polling) -->
+                    {#if isPolling}
+                      <div class="mb-3">
+                        <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                          <span>Processing...</span>
+                          <span>{pollAttempt}/{maxPollAttempts}s</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                          <div 
+                            class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-1000 ease-out"
+                            style="width: {Math.min((pollAttempt / maxPollAttempts) * 100, 100)}%"
+                          ></div>
+                        </div>
+                      </div>
+                    {/if}
+
+                    <!-- Job Status Details -->
+                    {#if jobDetails}
+                      <div class="space-y-2">
+                        {#if jobDetails.pay_tx_signature && jobDetails.pay_tx_signature.length > 0}
+                          <div class="flex items-center justify-between py-1">
+                            <span class="text-xs text-gray-600 dark:text-gray-400">SOL Transfer:</span>
+                            <div class="flex items-center gap-1">
+                              <span class="text-xs text-green-600 dark:text-green-400">✓</span>
+                              <code class="text-xs font-mono text-gray-800 dark:text-gray-200">
+                                {jobDetails.pay_tx_signature[0].slice(0, 8)}...
+                              </code>
+                            </div>
+                          </div>
+                        {/if}
+
+                        {#if jobDetails.solana_tx_signature_of_payout && jobDetails.solana_tx_signature_of_payout.length > 0}
+                          <div class="flex items-center justify-between py-1">
+                            <span class="text-xs text-gray-600 dark:text-gray-400">ICP Payout:</span>
+                            <div class="flex items-center gap-1">
+                              <span class="text-xs text-green-600 dark:text-green-400">✓</span>
+                              <code class="text-xs font-mono text-gray-800 dark:text-gray-200">
+                                {jobDetails.solana_tx_signature_of_payout[0].slice(0, 8)}...
+                              </code>
+                            </div>
+                          </div>
+                        {/if}
+
+                        <!-- Current Status Badge -->
+                        {#if jobDetails.status}
+                          {@const statusKey = Object.keys(jobDetails.status)[0]}
+                          <div class="flex items-center justify-between py-1">
+                            <span class="text-xs text-gray-600 dark:text-gray-400">Status:</span>
+                            <span class="px-2 py-1 text-xs rounded-full font-medium
+                              {statusKey === 'Confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : ''}
+                              {statusKey === 'Submitted' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : ''}
+                              {statusKey === 'Processing' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' : ''}
+                              {statusKey === 'Pending' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300' : ''}
+                              {statusKey === 'Failed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' : ''}">
+                              {statusKey}
+                            </span>
+                          </div>
+                        {/if}
+
+                        <!-- Animated Status Icons -->
+                        {#if isPolling}
+                          <div class="flex justify-center py-2">
+                            <div class="flex items-center gap-2">
+                              <!-- Spinning progress indicators -->
+                              <div class="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                              <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                {progress.step === 'submitted' ? 'Broadcasting...' : 
+                                 progress.step === 'processing' ? 'Confirming...' : 
+                                 'Monitoring...'}
+                              </span>
+                            </div>
+                          </div>
+                        {/if}
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
               </div>
             </div>
           </div>
         {/if}
         
+        <!-- Wallet Connection Issues -->
+        {#if progress.status === 'error' && (progress.message.includes('Lost connection') || progress.message.includes('refresh'))}
+          <div class="p-6 rounded-xl border-2 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+            <div class="flex items-start gap-3 mb-4">
+              <svg class="w-6 h-6 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div>
+                <h3 class="font-semibold text-red-800 dark:text-red-300 mb-2">Wallet Connection Lost</h3>
+                <p class="text-sm text-red-700 dark:text-red-400 mb-4">
+                  Your Phantom/Solflare wallet connection was lost. Please reconnect to continue with automatic SOL transfers.
+                </p>
+                
+                <div class="space-y-2">
+                  <button
+                    onclick={async () => {
+                      try {
+                        updateProgress('reconnect', 'Reconnecting to wallet...', 'pending');
+                        const address = await SolanaService.connectSolanaWallet();
+                        userSolanaAddress = address || '';
+                        // Update capabilities after reconnection
+                        solanaCapabilities = SolanaService.getSolanaCapabilities();
+                        updateProgress('reconnect', 'Wallet reconnected successfully!', 'success');
+                      } catch (e) {
+                        updateProgress('reconnect', `Failed to reconnect: ${e.message}`, 'error');
+                      }
+                    }}
+                    class="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    🔗 Reconnect Wallet
+                  </button>
+                  
+                  <button
+                    onclick={() => window.location.reload()}
+                    class="w-full py-2 px-4 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    🔄 Refresh Page
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        {/if}
+
         <!-- Manual Transfer Instructions -->
         {#if manualTransferInstructions}
           <div class="p-6 rounded-xl border-2 border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20">
