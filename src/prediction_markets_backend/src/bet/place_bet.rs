@@ -184,10 +184,37 @@ async fn place_bet(
     }?;
 
     // Re-read the market after the transfer to get latest state
-    let mut market = MARKETS.with(|markets| {
+    let mut market = match MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
-        markets_ref.get(&market_id_clone).ok_or(BetError::MarketNotFound)
-    })?;
+        // Clone the market if it exists
+        if let Some(market) = markets_ref.get(&market_id_clone) {
+            Some(market.clone())
+        } else {
+            None
+        }
+    }) {
+        Some(market) => market,
+        None => {
+            // Market not found after token transfer - we need to refund the user
+            ic_cdk::println!("Market {} not found after token transfer, refunding user {}", market_id.to_u64(), user);
+            
+            // Create a refund transfer to return tokens to the user
+            let refund_result = crate::token::transfer::transfer_token(
+                user,
+                amount.clone(),
+                &token_id,
+                None
+            ).await;
+            
+            // Log the refund attempt, but still return the error either way
+            match refund_result {
+                Ok(_) => ic_cdk::println!("Successfully refunded {} tokens to user {}", amount.to_u64(), user),
+                Err(e) => ic_cdk::println!("Failed to refund tokens to user: {:?}", e),
+            }
+            
+            return Err(BetError::MarketNotFound);
+        }
+    };
 
     // Calculate token-specific platform fee
     let fee_amount = if FEES_ENABLED {
