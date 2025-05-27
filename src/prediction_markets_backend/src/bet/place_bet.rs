@@ -201,10 +201,10 @@ async fn place_bet(
     // Update fee balance
     FEE_BALANCE.with(|fees| {
         let mut fees = fees.borrow_mut();
-        let current_fees = fees.get(&backend_canister_id).unwrap_or(0);
+        let current_fees = fees.get(&backend_canister_id).unwrap_or_default();
         fees.insert(
             backend_canister_id,
-            (StorableNat::from(current_fees) + fee_amount).0 .0.to_u64().unwrap_or(0),
+            current_fees + fee_amount.clone(),
         );
     });
 

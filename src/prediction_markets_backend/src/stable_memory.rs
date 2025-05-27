@@ -21,6 +21,7 @@ use ic_stable_structures::{
 use std::cell::RefCell;
 
 use crate::BetPayoutRecord;
+use crate::types::StorableNat;
 
 use super::delegation::*;
 
@@ -121,7 +122,8 @@ thread_local! {
     /// This collection tracks platform fees collected from markets, organized by token type.
     /// Uses memory region 6 and is primarily used for administrative accounting and
     /// fee withdrawal operations. For KONG tokens, fees are burned rather than collected.
-    pub static FEE_BALANCE: RefCell<StableBTreeMap<Principal, u64, Memory>> = RefCell::new(
+    /// Uses StorableNat to support tokens with high decimal precision like ckETH (18 decimals).
+    pub static FEE_BALANCE: RefCell<StableBTreeMap<Principal, StorableNat, Memory>> = RefCell::new(
         StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(6))),
         )

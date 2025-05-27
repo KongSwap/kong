@@ -14,5 +14,5 @@ pub fn get_fee_balance() -> Result<StorableNat, String> {
     }
 
     let canister_id = ic_cdk::api::id();
-    Ok(FEE_BALANCE.with(|balance| StorableNat::from(balance.borrow().get(&canister_id).unwrap_or_default())))
+    Ok(FEE_BALANCE.with(|balance| balance.borrow().get(&canister_id).unwrap_or_default().clone()))
 }
