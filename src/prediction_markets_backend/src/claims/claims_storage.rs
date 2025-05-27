@@ -123,7 +123,7 @@ pub fn fetch_user_claims(user: Principal) -> Vec<ClaimRecord> {
 /// Gets pending claims for a specific user
 pub fn get_user_pending_claims(user: Principal) -> Vec<ClaimRecord> {
     get_user_claims(user).into_iter()
-        .filter(|claim| matches!(claim.status, ClaimStatus::Pending))
+        .filter(|claim| matches!(claim.status, ClaimStatus::Pending | ClaimStatus::Claiming))
         .collect()
 }
 

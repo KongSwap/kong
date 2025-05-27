@@ -14,6 +14,8 @@ use std::collections::HashMap;
 pub enum ClaimStatus {
     /// Claim is pending, ready to be processed
     Pending,
+    /// Claim is currently being processed (prevents double processing)
+    Claiming,
     /// Claim has been processed successfully
     Processed(ProcessDetails),
     /// Claim processing failed
