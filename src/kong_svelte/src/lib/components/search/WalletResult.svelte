@@ -216,7 +216,7 @@
   }
 
   .wallet-badge.tokens {
-    @apply bg-kong-accent-green/10 text-kong-accent-green hover:bg-kong-accent-green/20;
+    @apply bg-kong-success/10 text-kong-success hover:bg-kong-success/20;
   }
 
   .wallet-badge.liquidity {
@@ -228,7 +228,7 @@
   }
 
   .user-level {
-    @apply px-2 py-0.5 bg-kong-accent-green/20 text-kong-accent-green rounded-md text-xs font-medium;
+    @apply px-2 py-0.5 bg-kong-success/20 text-kong-success rounded-md text-xs font-medium;
     flex-shrink: 0;
   }
 

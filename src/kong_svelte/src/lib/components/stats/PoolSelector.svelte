@@ -102,7 +102,7 @@
       <ButtonV2
         variant="outline"
         size="sm"
-        className="{integrationMode ? '!border-0 bg-transparent' : '!border-kong-border bg-kong-bg-dark/70'} hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 w-full {$panelRoundness} transition-all duration-200 !py-3"
+        className="{integrationMode ? '!border-0 bg-transparent' : '!border-kong-border bg-kong-bg-primary/70'} hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 w-full {$panelRoundness} transition-all duration-200 !py-3"
       >
         <div class="flex items-center justify-between w-full">
           {#if $isLoadingPools}
@@ -167,7 +167,7 @@
         {#each poolsWithTokens as { pool, matchingToken }}
           <button
             type="button"
-            class="{getItemClass()} !p-3 {pool.pool_id === selectedPool?.pool_id ? 'bg-kong-bg-light' : ''} w-full"
+            class="{getItemClass()} !p-3 {pool.pool_id === selectedPool?.pool_id ? 'bg-kong-bg-secondary' : ''} w-full"
             on:click={() => {
               onPoolSelect(pool);
               isPoolSelectorOpen = false;

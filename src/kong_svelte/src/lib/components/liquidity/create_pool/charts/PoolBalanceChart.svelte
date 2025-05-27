@@ -570,14 +570,14 @@
                 ? formatNumber(props.currentPool.balance_1)
                 : "0.00"}</span
             >
-            <span class="text-kong-text-accent-green/80 text-sm mt-1"
+            <span class="text-kong-success/80 text-sm mt-1"
               >{$liquidityStore.token1.symbol}</span
             >
           </div>
         {:else}
           <div class="flex items-center gap-1">
             <span>0.00</span>
-            <span class="text-kong-text-accent-green/80 text-sm mt-1"
+            <span class="text-kong-success/80 text-sm mt-1"
               >{$liquidityStore.token0?.symbol || "-"}</span
             >
           </div>

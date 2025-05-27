@@ -27,7 +27,7 @@
 </script>
 
 <div
-  class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border/30 hover:bg-kong-bg-light/10 transition-colors cursor-pointer"
+  class="px-4 py-3.5 bg-kong-bg-secondary/5 border-b border-kong-border/30 hover:bg-kong-bg-secondary/10 transition-colors cursor-pointer"
   on:click={onClick}
 >
   <div class="flex items-center justify-between mb-2">
@@ -36,14 +36,14 @@
         <div
           class="w-8 h-8 rounded-full flex items-center justify-center {tx.status ===
           'Success'
-            ? 'bg-kong-accent-green/10'
-            : 'bg-kong-accent-red/10'} flex-shrink-0"
+            ? 'bg-kong-success/10'
+            : 'bg-kong-error/10'} flex-shrink-0"
         >
           <svelte:component
             this={getIconComponent(getTransactionIcon(tx.type))}
             class={tx.status === "Success"
-              ? "text-kong-accent-green"
-              : "text-kong-accent-red"}
+              ? "text-kong-success"
+              : "text-kong-error"}
             size={16}
           />
         </div>
@@ -74,8 +74,8 @@
         <div class="text-right flex flex-col justify-end">
           <div
             class="text-xs font-medium {tx.status === 'Success'
-              ? 'text-kong-accent-green'
-              : 'text-kong-accent-red'} capitalize leading-tight"
+              ? 'text-kong-success'
+              : 'text-kong-error'} capitalize leading-tight"
           >
             {tx.status}
           </div>

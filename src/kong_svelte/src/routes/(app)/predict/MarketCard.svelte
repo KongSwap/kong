@@ -174,10 +174,10 @@
   // Get status color based on market state
   function getMarketStatusColor(market: any): string {
     if (isMarketResolved(market)) return "bg-kong-accent-blue";
-    if (isMarketVoided(market)) return "bg-kong-text-accent-red";
+    if (isMarketVoided(market)) return "bg-kong-error";
     if (isMarketPending(market)) return "bg-kong-accent-yellow";
     if (isMarketExpiredUnresolved(market)) return "bg-indigo-400";
-    return "bg-kong-accent-green";
+    return "bg-kong-success";
   }
 
   // Get status text based on market state
@@ -242,9 +242,9 @@
 />
 
 <Panel
-  className="relative !p-2 {isMarketResolved(market)
+  className="relative !bg-kong-bg-secondary !p-2 {isMarketResolved(market)
     ? 'opacity-100'
-    : ''} group hover:bg-kong-bg-dark/10 transition-all duration-200 flex flex-col {market.featured
+    : ''} group hover:bg-kong-bg-primary/10 transition-all duration-200 flex flex-col {market.featured
     ? '!h-[260px]'
     : '!h-[260px]'}"
 >
@@ -253,7 +253,7 @@
     {#if market.featured}
       <!-- Featured market layout -->
       <div class="flex flex-col h-full">
-        <div class="px-4 pt-4 flex gap-3 items-start">
+        <div class="px-2 pt-4 flex gap-3 items-start">
           {#if market.image_url.length != 0}
             <div class="w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-black">
               <img
@@ -264,9 +264,9 @@
             </div>
           {:else}
             <div
-              class="w-12 h-12 flex-shrink-0 bg-kong-accent/10 rounded-lg bg-kong-bg-dark flex items-center justify-center"
+              class="w-12 h-12 flex-shrink-0 bg-kong-accent/10 rounded-lg bg-kong-bg-primary flex items-center justify-center"
             >
-              <CircleHelp class="w-8 h-8 text-kong-bg-light/80" />
+              <CircleHelp class="w-8 h-8 text-kong-bg-secondary/80" />
             </div>
           {/if}
           <button
@@ -284,7 +284,7 @@
           </button>
         </div>
         <!-- Outcomes section vertically centered -->
-        <div class="flex-1 flex flex-col justify-center px-4">
+        <div class="flex-1 flex flex-col justify-center px-2">
           <div class="flex flex-col justify-center">
             {#if isYesNoMarket(market)}
               <!-- Yes/No buttons side by side -->
@@ -324,7 +324,7 @@
                   <div
                     class="relative rounded {!isMarketExpiredUnresolved(market) &&
                     !isMarketResolved(market)
-                      ? 'hover:bg-kong-surface-light/40 cursor-pointer'
+                      ? 'hover:bg-kong-bg-secondary/40 cursor-pointer'
                       : ''}"
                   >
                     <MarketOutcomeButton
@@ -431,7 +431,7 @@
       </div>
     {:else}
       <!-- Non-featured market layout -->
-      <div class="px-4 pt-4 flex gap-3 items-start">
+      <div class="px-2 pt-4 flex gap-3 items-start">
         {#if market.image_url.length != 0}
           <div class="w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-black">
             <img
@@ -442,9 +442,9 @@
           </div>
         {:else}
           <div
-            class="w-16 h-16 flex-shrink-0 bg-kong-accent/10 rounded-lg bg-kong-bg-dark flex items-center justify-center"
+            class="w-16 h-16 flex-shrink-0 bg-kong-accent/10 rounded-lg bg-kong-bg-primary flex items-center justify-center"
           >
-            <Dice1 class="w-10 h-10 text-kong-bg-light/80" />
+            <Dice1 class="w-10 h-10 text-kong-bg-secondary/80" />
           </div>
         {/if}
         <button
@@ -463,7 +463,7 @@
       </div>
 
       <!-- Add outcomes section to non-featured cards -->
-      <div class="flex-1 flex flex-col justify-center px-4">
+      <div class="flex-1 flex flex-col justify-center px-2">
         <div class="flex flex-col justify-center">
           {#if isYesNoMarket(market)}
             <!-- Yes/No buttons side by side -->
@@ -503,7 +503,7 @@
                 <div
                   class="relative rounded {!isMarketExpiredUnresolved(market) &&
                   !isMarketResolved(market)
-                    ? 'hover:bg-kong-surface-light/40 cursor-pointer'
+                    ? 'hover:bg-kong-bg-secondary/40 cursor-pointer'
                     : ''}"
                 >
                   <MarketOutcomeButton
@@ -587,7 +587,7 @@
     <!-- Status badge (moved to top right) -->
     <div class="absolute top-0 right-0 flex items-center gap-1">
       <div
-        class="px-1.5 py-0.5 rounded text-xs text-kong-bg-light {getMarketStatusColor(
+        class="px-1.5 py-0.5 rounded text-xs text-kong-bg-secondary {getMarketStatusColor(
           market,
         )}"
       >
@@ -606,8 +606,8 @@
 
 <style>
   /* Smooth hover transitions */
-  .group\/outcome:hover :global(.bg-kong-accent-green\/40) {
-    @apply bg-kong-accent-green/60;
+  .group\/outcome:hover :global(.bg-kong-success\/40) {
+    @apply bg-kong-success/60;
   }
 
   /* Custom scrollbar styling */

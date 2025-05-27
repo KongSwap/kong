@@ -60,7 +60,7 @@
     @apply w-full px-4 py-3 rounded-lg;
     @apply bg-gray-800/20 border border-gray-800/20;
     @apply text-kong-text-primary placeholder-kong-text-primary/40;
-    @apply focus:outline-none focus:border-kong-accent-blue;
+    @apply focus:outline-none focus:border-kong-info;
     @apply transition-colors duration-200;
     @apply light:bg-white/60;
   }

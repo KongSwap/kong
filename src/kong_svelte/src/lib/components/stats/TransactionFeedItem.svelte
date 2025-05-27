@@ -69,8 +69,8 @@
           <span
             class={`px-2 py-1 rounded-md text-xs font-medium ${
               isBuy
-                ? "bg-kong-accent-green/10 text-kong-accent-green"
-                : "bg-kong-accent-red/10 text-kong-accent-red"
+                ? "bg-kong-success/10 text-kong-success"
+                : "bg-kong-error/10 text-kong-error"
             }`}
           >
             {token.symbol} {isBuy ? "BUY" : "SELL"}
@@ -132,8 +132,8 @@
             <span
               class={`px-2 py-1 rounded-md text-xs font-medium ${
                 isBuy
-                  ? "bg-kong-accent-green/10 text-kong-accent-green"
-                  : "bg-kong-accent-red/10 text-kong-accent-red"
+                  ? "bg-kong-success/10 text-kong-success"
+                  : "bg-kong-error/10 text-kong-error"
               }`}
             >
               {isBuy ? "BUY" : "SELL"}

@@ -9,8 +9,10 @@ export const microswapTheme: ThemeDefinition = {
   authorLink: 'https://windoge98.com',
   colors: {
     // Background colors
-    bgDark: '#C3C3C3',      // Windows 98 light gray
-    bgLight: '#e0e0e0',     // Windows 98 highlight color
+    bgPrimary: '#C3C3C3',      // Windows 98 light gray (primary)
+    bgSecondary: '#e0e0e0',     // Windows 98 highlight color (secondary)
+    bgTertiary: '#F0F0F0',      // Even lighter gray for tertiary
+    hoverBgSecondary: '#D4D4D4', // Hover state
     
     // Primary and secondary colors
     primary: '#010081',     // Windows 98 blue
@@ -18,27 +20,29 @@ export const microswapTheme: ThemeDefinition = {
     secondary: '#008080',   // Windows 98 teal
     secondaryHover: '#006464', // Darker variant of teal
     
-    // Accent colors
-    accentBlue: '#010081',  // Windows 98 blue
-    accentRed: '#FF0081',   // Windows 98 pink/magenta
-    accentGreen: '#008080', // Windows 98 teal as green
-    accentYellow: '#FFFF00', // Windows 98 yellow
-    accentPurple: '#6F5DFB', // Keeping consistent in light theme
-    accentCyan: '#0891B2',   
+    // Semantic colors
+    accent: '#010081',  // Windows 98 blue
+    error: '#FF0081',   // Windows 98 pink/magenta
+    success: '#008080', // Windows 98 teal as green
+    warning: '#FFFF00', // Windows 98 yellow
+    info: '#6F5DFB',    // Purple-blue
+    muted: '#94A3B8',   // Gray   
     
     // Hover variants
-    accentGreenHover: '#006464', // Darker teal
-    accentBlueHover: '#000064',  // Darker blue
-    accentRedHover: '#C80064',   // Darker magenta
-    accentYellowHover: '#E6E600', // Darker yellow
+    successHover: '#006464', // Darker teal
+    accentHover: '#000064',  // Darker blue
+    errorHover: '#C80064',   // Darker magenta
+    warningHover: '#E6E600', // Darker yellow
+    infoHover: '#5B4AE5',    // Darker purple-blue
+    mutedHover: '#7C8BA1',   // Darker gray
     
     // Text colors
     textPrimary: '#000000',  // Windows 98 text
     textSecondary: '#323232', // Windows 98 dark gray
     textDisabled: '#818181', // Windows 98 dark gray
-    textAccentGreen: '#008000', // More vibrant forest green
-    textAccentRed: '#B00000',   // More vibrant deep red
-    textAccentBlue: '#00008B',  // Darker blue for better contrast on gray
+    textSuccess: '#008000', // More vibrant forest green
+    textError: '#B00000',   // More vibrant deep red
+    textAccent: '#00008B',  // Darker blue for better contrast on gray
     textOnPrimary: '#ffffff',
     textLight: '#ffffff',
     textDark: '#000000',
@@ -60,10 +64,6 @@ export const microswapTheme: ThemeDefinition = {
     // Borders
     border: '#818181',       // Windows 98 dark gray
     borderLight: '#FDFFFF',  // Windows 98 highlight color
-    
-    // Surface colors
-    surfaceDark: '#E1E6F0',
-    surfaceLight: '#C3C3C3',  // Win98 standard gray for button background
     
     // Switch button specific styling - Win98 style
     switchButtonBg: '#C3C3C3',       // Standard Win98 gray for default state
@@ -96,20 +96,13 @@ export const microswapTheme: ThemeDefinition = {
     // Chart text color
     chartTextColor: '#334155', // Darker blue-gray for better contrast
     
-    // Plugin Manager colors
-    pmDark: '#E1E6F0',
-    pmBorder: '#C3C3C3',
-    pmAccent: '#6F5DFB',     // Same as accent-purple
-    pmTextSecondary: '#323232',
-    
     // Token ticker styling
-    tokenTickerBg: '#C3C3C3',           // Windows 98 light gray background (same as bgDark)
+    tokenTickerBg: '#C3C3C3',           // Windows 98 light gray background (same as bgPrimary)
     tokenTickerText: '#000000',         // Black text
     tokenTickerBorder: '1px solid #818181', // Windows 98 gray border
     tokenTickerBorderStyle: 'win95',    // Windows 95 style 3D border
     tokenTickerRoundness: 'rounded-none', // Square corners for Win98 style
     tokenTickerHoverBg: '#E1E6F0',      // Slight highlight on hover
-    tokenTickerShadow: '2px 2px 0px rgba(0, 0, 0, 0.2)', // Windows 98 shadow
     tokenTickerUpColor: '#008000',      // More vibrant forest green for price increase
     tokenTickerDownColor: '#B00000',    // More vibrant deep red for price decrease
     tokenTickerBgOpacity: 100,          // Solid background (100% opacity)
@@ -145,10 +138,6 @@ export const microswapTheme: ThemeDefinition = {
     backgroundLeft: '0',
     backgroundRight: 'auto',
     backgroundBottom: 'auto',
-    
-    // Enable subtle parallax effect for the clouds
-    enableParallax: false,
-    parallaxStrength: 0,
     
     // Disable special effects for authentic Windows 98 look
     enableNebula: false,

@@ -11,7 +11,7 @@
   >
     <h1 class="text-7xl font-bold mb-4">Oops!</h1>
     <h2 class="text-2xl font-bold mb-4">
-      You've encountered a <span class="text-kong-accent-red"
+      You've encountered a <span class="text-kong-error"
         >{$page.status}</span
       > error.
     </h2>

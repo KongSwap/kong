@@ -140,7 +140,7 @@
 
   const walletButtonThemeProps = $derived({
     customBgColor: browser ? getThemeById($themeStore)?.colors?.primary : undefined,
-    customTextColor: 'var(--color-kong-text-light)',
+    customTextColor: 'var(--color-kong-text-primary)',
     customBorderStyle: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorder : undefined,
     customBorderColor: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorderColor : undefined
   });
@@ -458,9 +458,9 @@
 
 {#if navOpen && isMobile}
   <div class="fixed inset-0 z-50" transition:fade={{ duration: 200 }}>
-    <div class="fixed inset-0 bg-kong-bg-dark/60 backdrop-blur-sm" onclick={() => (navOpen = false)} />
+    <div class="fixed inset-0 bg-kong-bg-primary/60 backdrop-blur-sm" onclick={() => (navOpen = false)} />
     <div
-      class="fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col bg-kong-bg-dark border-r border-kong-border shadow-lg max-[375px]:w-[90%] max-[375px]:max-w-[300px]"
+      class="fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col bg-kong-bg-primary border-r border-kong-border shadow-lg max-[375px]:w-[90%] max-[375px]:max-w-[300px]"
       transition:slide={{ duration: 200, axis: "x" }}
     >
       <div class="flex items-center justify-between p-5 border-b border-kong-border max-[375px]:p-4">

@@ -196,7 +196,7 @@
     {#if initialDataLoading}
       <LoadingIndicator text="Initializing wallet data..." size={24} />
     {:else if initError}
-      <div class="text-center py-8 text-kong-accent-red">
+      <div class="text-center py-8 text-kong-error">
         {initError}
       </div>
     {:else if $isLoading}
@@ -207,7 +207,7 @@
       </div>
     {:else}
       <!-- Table Headers - Hidden on mobile -->
-      <div class="hidden sm:grid sm:grid-cols-[1fr,1fr,1fr,0.8fr] gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-dark">
+      <div class="hidden sm:grid sm:grid-cols-[1fr,1fr,1fr,0.8fr] gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-primary">
         <div>From</div>
         <div>To</div>
         <div class="text-right">Value</div>
@@ -215,10 +215,10 @@
       </div>
       
       <!-- Table Body -->
-      <div class="divide-y divide-kong-bg-dark">
+      <div class="divide-y divide-kong-bg-primary">
         {#each $swapTransactions as tx (`${tx.tx_id}-${tx.timestamp}`)}
           <!-- Desktop view - grid layout -->
-          <div class="hidden sm:grid sm:grid-cols-[1fr,1fr,1fr,0.8fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-dark/30 transition-colors">
+          <div class="hidden sm:grid sm:grid-cols-[1fr,1fr,1fr,0.8fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-primary/30 transition-colors">
             <!-- From -->
             <div class="flex items-center gap-2">
               <TokenImages
@@ -226,7 +226,7 @@
                 size={28}
               />
               <div class="text-sm">
-                <div class="font-medium text-kong-accent-red">
+                <div class="font-medium text-kong-error">
                   -{formatToNonZeroDecimal(tx.details.pay_amount)} {tx.details.pay_token_symbol}
                 </div>
               </div>
@@ -239,7 +239,7 @@
                 size={28}
               />
               <div class="text-sm">
-                <div class="font-medium text-kong-text-accent-green">
+                <div class="font-medium text-kong-success">
                   +{formatToNonZeroDecimal(tx.details.receive_amount)} {tx.details.receive_token_symbol}
                 </div>
               </div>
@@ -260,7 +260,7 @@
           </div>
           
           <!-- Mobile view - card layout -->
-          <div class="sm:hidden p-4 hover:bg-kong-bg-dark/30 transition-colors">
+          <div class="sm:hidden p-4 hover:bg-kong-bg-primary/30 transition-colors">
             <!-- Top row: From → To and Date -->
             <div class="flex justify-between items-center mb-3">
               <!-- From → To -->
@@ -290,14 +290,14 @@
             <div class="flex justify-between items-center">
               <!-- From amount -->
               <div class="text-sm">
-                <div class="font-medium text-kong-accent-red">
+                <div class="font-medium text-kong-error">
                   -{formatToNonZeroDecimal(tx.details.pay_amount)} {tx.details.pay_token_symbol}
                 </div>
               </div>
               
               <!-- To amount -->
               <div class="text-sm">
-                <div class="font-medium text-kong-text-accent-green">
+                <div class="font-medium text-kong-success">
                   +{formatToNonZeroDecimal(tx.details.receive_amount)} {tx.details.receive_token_symbol}
                 </div>
               </div>
@@ -318,13 +318,13 @@
     {/if}
 
     <!-- Pagination Controls - Always displayed -->
-    <div class="mt-4 sm:mt-6 pt-3 border-t border-kong-bg-dark flex justify-between sm:justify-end">
+    <div class="mt-4 sm:mt-6 pt-3 border-t border-kong-bg-primary flex justify-between sm:justify-end">
       <div class="flex items-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm text-kong-text-secondary">
         <span class="whitespace-nowrap">Page {$currentPage} of {Math.max($totalPages, 1)}</span>
         
         <div class="flex">
           <button 
-            class="px-1 sm:px-2 py-1 rounded-l-md border border-kong-bg-dark hover:bg-kong-bg-dark/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-1 sm:px-2 py-1 rounded-l-md border border-kong-bg-primary hover:bg-kong-bg-primary/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={$currentPage === 1 || $isLoading || initialDataLoading}
             on:click={() => goToPage($currentPage - 1)}
             aria-label="Previous page"
@@ -333,7 +333,7 @@
           </button>
           
           <button 
-            class="px-1 sm:px-2 py-1 rounded-r-md border-t border-r border-b border-kong-bg-dark hover:bg-kong-bg-dark/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+            class="px-1 sm:px-2 py-1 rounded-r-md border-t border-r border-b border-kong-bg-primary hover:bg-kong-bg-primary/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
             disabled={$currentPage === $totalPages || $isLoading || initialDataLoading}
             on:click={() => goToPage($currentPage + 1)}
             aria-label="Next page"

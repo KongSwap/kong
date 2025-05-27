@@ -355,7 +355,7 @@
       </div>
     </div>
   {:else if error}
-    <div class="text-kong-accent-red text-sm text-center py-4">
+    <div class="text-kong-error text-sm text-center py-4">
       {error}
     </div>
   {:else if selectedFilter === "predict"}

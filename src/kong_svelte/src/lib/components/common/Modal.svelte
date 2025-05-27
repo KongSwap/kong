@@ -51,7 +51,7 @@
   let currentX = $state(0);
   let isDragging = $state(false);
   let modalElement: HTMLDivElement = $state(null);
-  let zIndex = $state(99999);
+  let zIndex = $state(100010);
   
   const SLIDE_THRESHOLD = 100; // pixels to trigger close
 
@@ -82,8 +82,8 @@
       // Find position of current modal
       const currentIndex = modalEntries.findIndex(([key]) => key === modalKey);
       if (currentIndex !== -1) {
-        // Base z-index is 99999, each modal adds 10 to ensure proper stacking
-        zIndex = 99999 + (currentIndex * 10);
+        // Base z-index is 100010, each modal adds 10 to ensure proper stacking
+        zIndex = 100010 + (currentIndex * 10);
       }
     });
 
@@ -251,6 +251,7 @@
           width="100%"
           height={modalHeight}
           className="flex flex-col overflow-hidden !{$panelRoundness} {className} {isPadded ? 'px-4' : ''}"
+          zIndex={undefined}
         >
           <div
             class="modal-content flex flex-col overflow-hidden"
@@ -278,7 +279,7 @@
                 </slot>
               </div>
               <button
-                class="!flex !items-center hover:text-kong-accent-red !border-0 !shadow-none group relative"
+                class="!flex !items-center hover:text-kong-error !border-0 !shadow-none group relative"
                 on:click={(e) => handleClose(e)}
                 aria-label="Close modal"
               >
@@ -308,10 +309,5 @@
     transition: all 0.15s ease;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     width: 40px;
-  }
-
-  :global(#portal-target) {
-    position: relative;
-    isolation: isolate;
   }
 </style>

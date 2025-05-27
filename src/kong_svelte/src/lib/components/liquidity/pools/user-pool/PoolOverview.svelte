@@ -178,7 +178,7 @@
 
 <style lang="postcss">
   .stats-card {
-    @apply mb-3 rounded-lg bg-kong-bg-light/50
+    @apply mb-3 rounded-lg bg-kong-bg-secondary/50
            border border-kong-border/10 overflow-hidden;
   }
 
@@ -210,7 +210,7 @@
   }
 
   .stat-value.accent {
-    @apply text-kong-text-accent-green;
+    @apply text-kong-success;
   }
 
   .section-title {
@@ -222,7 +222,7 @@
   }
 
   .token-card {
-    @apply rounded-lg bg-kong-bg-light/50
+    @apply rounded-lg bg-kong-bg-secondary/50
            border border-kong-border/10 overflow-hidden;
   }
 
@@ -266,7 +266,7 @@
   }
 
   .earnings-card {
-    @apply p-3 rounded-lg bg-kong-bg-light/50
+    @apply p-3 rounded-lg bg-kong-bg-secondary/50
            border border-kong-border/10 flex flex-col items-center gap-0.5 
            hover:bg-white/5;
     transition-property: background-color;
@@ -274,7 +274,7 @@
   }
 
   .earnings-card.loading {
-    @apply hover:bg-kong-bg-light/50;
+    @apply hover:bg-kong-bg-secondary/50;
   }
 
   .earnings-label {
@@ -282,11 +282,11 @@
   }
 
   .earnings-value {
-    @apply text-sm font-medium text-kong-text-accent-green max-w-full;
+    @apply text-sm font-medium text-kong-success max-w-full;
   }
 
   .error-message {
-    @apply text-sm text-red-500 p-3 rounded-lg bg-kong-bg-light/50
+    @apply text-sm text-red-500 p-3 rounded-lg bg-kong-bg-secondary/50
            border border-kong-border/10 text-center;
   }
 

@@ -180,7 +180,7 @@
       <!-- Copy Link Button -->
       <button
         on:click={handleCopyLinkToClipboard}
-        class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg bg-kong-bg-light hover:bg-kong-hover-bg-light text-kong-text-primary font-medium transition-colors"
+        class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg bg-kong-bg-secondary hover:bg-kong-bg-secondary text-kong-text-primary font-medium transition-colors"
         aria-label="Copy Link"
       >
         <Copy class="w-5 h-5" />

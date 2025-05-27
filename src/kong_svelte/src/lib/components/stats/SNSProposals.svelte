@@ -107,7 +107,7 @@
   });
 </script>
 
-<Panel type="main" className="!bg-kong-bg-light !p-0" >
+<Panel type="main" className="!bg-kong-bg-secondary !p-0" >
   <div class="flex flex-col gap-4">
     <h2 class="text-sm font-semibold uppercase px-4 pt-4">
       {token.symbol} Governance Proposals

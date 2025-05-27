@@ -91,6 +91,8 @@
   height="auto"
   className="!flex !flex-col !max-h-[90vh]"
   isPadded={false}
+  target="#portal-target"
+  modalKey={`user-pool-${pool?.address_0}-${pool?.address_1}`}
 >
   <div slot="title" class="flex flex-col gap-2">
     <div class="flex items-center gap-3">
@@ -183,6 +185,6 @@
       dispatch("liquidityAdded");
     }}
     modalKey={`confirm-liquidity-${pool.address_0}-${pool.address_1}`}
-    target="#modals"
+    target="#portal-target"
   />
 {/if} 

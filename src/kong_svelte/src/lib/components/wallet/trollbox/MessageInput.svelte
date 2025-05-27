@@ -51,7 +51,7 @@
   }
 </script>
 
-<div class="p-2.5 bg-kong-bg-dark relative">
+<div class="p-2.5 bg-kong-bg-primary relative">
   {#if isConnected}
     <div class="flex gap-2 relative">
       <!-- Emoji button -->
@@ -69,7 +69,7 @@
         bind:value={messageInput}
         on:keypress={handleKeyPress}
         placeholder="Message..."
-        class="flex-1 min-w-0 bg-kong-bg-light text-kong-text-primary text-sm rounded-full px-3.5 py-2 border border-kong-border focus:outline-none focus:border-kong-accent-blue transition-colors"
+        class="flex-1 min-w-0 bg-kong-bg-secondary text-kong-text-primary text-sm rounded-full px-3.5 py-2 border border-kong-border focus:outline-none focus:border-kong-accent-blue transition-colors"
       />
       
       <!-- Send button - only show when there's text -->

@@ -234,12 +234,12 @@
 
   /* Token Card Common Styles */
   .token-card {
-    @apply relative bg-kong-bg-dark/30 border border-kong-border/20 rounded-xl p-4 transition-all duration-200 hover:border-kong-border/40 sm:p-3;
+    @apply relative bg-kong-bg-primary/30 border border-kong-border/20 rounded-xl p-4 transition-all duration-200 hover:border-kong-border/40 sm:p-3;
   }
 
   /* Token Header */
   .token-header {
-    @apply absolute top-2 left-3 text-[10px] font-medium text-kong-text-secondary bg-kong-bg-dark/70 px-2 py-0.5 rounded-lg sm:text-xs sm:top-1.5 sm:left-2 sm:py-0;
+    @apply absolute top-2 left-3 text-[10px] font-medium text-kong-text-secondary bg-kong-bg-primary/70 px-2 py-0.5 rounded-lg sm:text-xs sm:top-1.5 sm:left-2 sm:py-0;
   }
 
   /* Token Content Layout */
@@ -249,7 +249,7 @@
 
   /* Token Image Container */
   .token-img-container {
-    @apply flex-shrink-0 bg-kong-bg-dark/40 rounded-full p-1 sm:p-0.5;
+    @apply flex-shrink-0 bg-kong-bg-primary/40 rounded-full p-1 sm:p-0.5;
   }
 
   /* Token Details Layout */
@@ -274,13 +274,13 @@
 
   /* Arrow Circle */
   .arrow-circle {
-    @apply flex items-center justify-center w-8 h-8 rounded-full bg-kong-bg-dark border border-kong-primary/20 z-10 text-kong-primary sm:w-6 sm:h-6;
+    @apply flex items-center justify-center w-8 h-8 rounded-full bg-kong-bg-primary border border-kong-primary/20 z-10 text-kong-primary sm:w-6 sm:h-6;
     box-shadow: 0 2px 8px rgba(var(--primary), 0.15);
   }
 
   /* Exchange Rate Container */
   .exchange-rate {
-    @apply flex items-center justify-between p-3 bg-kong-bg-dark/20 rounded-lg border border-kong-border/10 sm:p-2;
+    @apply flex items-center justify-between p-3 bg-kong-bg-primary/20 rounded-lg border border-kong-border/10 sm:p-2;
   }
 
   /* Rate Label */
@@ -295,9 +295,9 @@
 
   /* Route Toggle Button */
   .route-toggle {
-    @apply flex items-center justify-between w-full p-3 bg-kong-bg-dark/20 
+    @apply flex items-center justify-between w-full p-3 bg-kong-bg-primary/20 
            border border-kong-border/10 rounded-lg cursor-pointer transition-all duration-200
-           hover:bg-kong-bg-dark/40 hover:border-kong-border/30 sm:p-2;
+           hover:bg-kong-bg-primary/40 hover:border-kong-border/30 sm:p-2;
   }
 
   /* Route Label */
@@ -317,7 +317,7 @@
 
   /* Route Visualization */
   .route-visualization {
-    @apply bg-kong-bg-dark/10 rounded-lg border border-kong-border/10 p-3 mt-1 overflow-hidden sm:p-2;
+    @apply bg-kong-bg-primary/10 rounded-lg border border-kong-border/10 p-3 mt-1 overflow-hidden sm:p-2;
   }
 
   /* Route Path */
@@ -332,14 +332,14 @@
 
   /* Token Node Content */
   .token-node-content {
-    @apply flex flex-col items-center gap-1 px-3 py-2 bg-kong-bg-dark/30 
+    @apply flex flex-col items-center gap-1 px-3 py-2 bg-kong-bg-primary/30 
            border border-kong-border/20 rounded-lg transition-all duration-200
-           hover:border-kong-primary/30 hover:bg-kong-bg-dark/40 sm:px-2 sm:py-1 sm:gap-0.5;
+           hover:border-kong-primary/30 hover:bg-kong-bg-primary/40 sm:px-2 sm:py-1 sm:gap-0.5;
   }
 
   /* Node Image */
   .node-image {
-    @apply rounded-full bg-kong-bg-dark/40 p-0.5;
+    @apply rounded-full bg-kong-bg-primary/40 p-0.5;
   }
 
   /* Node Symbol */
@@ -354,7 +354,7 @@
 
   /* Active Token Node */
   .token-node-content.active {
-    @apply border-kong-primary/50 bg-kong-bg-dark/50 transform -translate-y-0.5;
+    @apply border-kong-primary/50 bg-kong-bg-primary/50 transform -translate-y-0.5;
     box-shadow: 0 2px 6px rgba(var(--primary), 0.1);
   }
 
@@ -362,7 +362,7 @@
   @media (max-width: 640px) {
     /* Improve touch targets */
     .route-toggle, .token-node-content {
-      @apply active:bg-kong-bg-dark/60;
+      @apply active:bg-kong-bg-primary/60;
       -webkit-tap-highlight-color: transparent;
     }
 

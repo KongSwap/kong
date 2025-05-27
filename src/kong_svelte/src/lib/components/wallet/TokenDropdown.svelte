@@ -243,7 +243,7 @@
       <!-- Action buttons in a row -->
       <div class="flex flex-wrap gap-2 justify-center">
         <button 
-          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-dark rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
+          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-primary rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
           on:click={() => handleAction('send')}
         >
           <ArrowUp size={16} class="text-kong-text-secondary group-hover:text-kong-text-on-primary transition-colors" />
@@ -251,7 +251,7 @@
         </button>
         
         <button 
-          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-dark rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
+          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-primary rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
           on:click={() => handleAction('receive')}
         >
           <ArrowDown size={16} class="text-kong-text-secondary group-hover:text-kong-text-on-primary transition-colors" />
@@ -259,7 +259,7 @@
         </button>
         
         <button 
-          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-dark rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
+          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-primary rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
           on:click={() => handleAction('swap')}
         >
           <Repeat size={16} class="text-kong-text-secondary group-hover:text-kong-text-on-primary transition-colors" />
@@ -267,7 +267,7 @@
         </button>
         
         <button 
-          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-dark rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
+          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-primary rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
           on:click={() => handleAction('add_lp')}
         >
           <Droplets size={16} class="text-kong-text-secondary group-hover:text-kong-text-on-primary transition-colors" />
@@ -275,7 +275,7 @@
         </button>
         
         <button 
-          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-dark rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
+          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-primary rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105"
           on:click={() => handleAction('info')}
         >
           <Info size={16} class="text-kong-text-secondary group-hover:text-kong-text-on-primary transition-colors" />
@@ -283,13 +283,13 @@
         </button>
         
         <button 
-          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-dark rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105 relative"
+          class="flex-1 min-w-[80px] md:min-w-[100px] p-3 flex flex-col group items-center justify-center gap-1.5 bg-kong-bg-primary rounded-md hover:bg-kong-primary hover:text-kong-text-on-primary transition-all text-kong-text-primary hover:shadow-sm hover:transform hover:scale-105 relative"
           on:click={() => handleAction('copy')}
         >
-          <Copy size={16} class={copySuccess ? "text-kong-accent-green" : "text-kong-text-secondary group-hover:text-kong-text-on-primary transition-colors"} />
+          <Copy size={16} class={copySuccess ? "text-kong-success" : "text-kong-text-secondary group-hover:text-kong-text-on-primary transition-colors"} />
           <span class="text-xs">{copySuccess ? "Copied!" : "Copy ID"}</span>
           {#if copySuccess}
-            <div class="absolute -top-2 left-0 right-0 mx-auto w-3 h-3 bg-kong-accent-green/20 rounded-full animate-ping"></div>
+            <div class="absolute -top-2 left-0 right-0 mx-auto w-3 h-3 bg-kong-success/20 rounded-full animate-ping"></div>
           {/if}
         </button>
       </div>
@@ -298,7 +298,7 @@
     <!-- Original floating dropdown -->
     <div 
       bind:this={dropdownElement}
-      class="absolute z-30 bg-kong-bg-dark rounded-md border border-kong-border shadow-lg"
+      class="absolute z-30 bg-kong-bg-primary rounded-md border border-kong-border shadow-lg"
       style="top: {adjustedPosition.top}px; left: {adjustedPosition.left}px; width: {adjustedPosition.width}px; max-width: 320px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2);"
       in:slide={{ duration: 200, easing: quintOut }}
       out:slide={{ duration: 150, easing: quintOut }}
@@ -343,7 +343,7 @@
         </div>
         <div>
           <div class="text-xs text-kong-text-secondary mb-1">24h Change</div>
-          <div class="text-sm font-medium {token.change24h >= 0 ? 'text-kong-accent-green' : 'text-kong-accent-red'}">
+          <div class="text-sm font-medium {token.change24h >= 0 ? 'text-kong-success' : 'text-kong-error'}">
             {Number(formatToNonZeroDecimal(token.change24h)) >= 0 ? "+" : ""}{formatToNonZeroDecimal(token.change24h)}%
           </div>
         </div>
@@ -359,7 +359,7 @@
                 class="text-xs py-1 px-2 flex items-center gap-1 rounded-md bg-kong-primary/10 hover:bg-kong-primary hover:text-kong-text-on-primary text-kong-text-secondary transition-all"
                 on:click={() => handleAction('copy')}
               >
-                <Copy size={12} class={copySuccess ? "text-kong-accent-green" : ""} />
+                <Copy size={12} class={copySuccess ? "text-kong-success" : ""} />
                 <span>{copySuccess ? "Copied!" : "Copy"}</span>
               </button>
             </div>
@@ -370,7 +370,7 @@
       <!-- Action buttons -->
       <div class="p-2">
         <button 
-          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-light/10 hover:text-kong-text-on-primary transition-all text-kong-text-primary"
+          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-secondary/10 hover:text-kong-text-on-primary transition-all text-kong-text-primary"
           on:click={() => handleAction('send')}
         >
           <ArrowUp size={16} class="text-kong-text-secondary" />
@@ -379,7 +379,7 @@
         </button>
         
         <button 
-          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-light/10 hover:text-kong-text-on-primary transition-all text-kong-text-primary"
+          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-secondary/10 hover:text-kong-text-on-primary transition-all text-kong-text-primary"
           on:click={() => handleAction('receive')}
         >
           <ArrowDown size={16} class="text-kong-text-secondary" />
@@ -388,7 +388,7 @@
         </button>
         
         <button 
-          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-light/10 hover:text-kong-text-on-primary transition-all text-kong-text-primary"
+          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-secondary/10 hover:text-kong-text-on-primary transition-all text-kong-text-primary"
           on:click={() => handleAction('swap')}
         >
           <Repeat size={16} class="text-kong-text-secondary" />
@@ -397,7 +397,7 @@
         </button>
         
         <button 
-          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-light/10 hover:text-kong-text-on-primary transition-all text-kong-text-primary"
+          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-secondary/10 hover:text-kong-text-on-primary transition-all text-kong-text-primary"
           on:click={() => handleAction('add_lp')}
         >
           <Droplets size={16} class="text-kong-text-secondary" />
@@ -405,7 +405,7 @@
         </button>
         
         <button 
-          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-light/10 hover:text-kong-text-on-primary transition-all text-kong-text-primary"
+          class="w-full text-left px-3 py-2.5 text-sm flex items-center gap-3 rounded-md hover:bg-kong-bg-secondary/10 hover:text-kong-text-on-primary transition-all text-kong-text-primary"
           on:click={() => handleAction('info')}
         >
           <Info size={16} class="text-kong-text-secondary" />

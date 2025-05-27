@@ -32,6 +32,7 @@ const config = {
       handleHttpError: ({ path, referrer, message }) => {
         // Ignore specific paths that require client-side rendering
         if (
+          path === "/" ||
           path === "/swap" ||
           path === "/pools" ||
           path === "/stats" ||

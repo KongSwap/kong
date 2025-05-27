@@ -6,8 +6,8 @@ import BigNumber from 'bignumber.js';
 export function getPriceChangeClass(token: Kong.Token): string {
   if (!token?.metrics?.price_change_24h) return '';
   const change = Number(token?.metrics?.price_change_24h);
-  if (change > 0) return 'text-kong-text-accent-green';
-  if (change < 0) return 'text-kong-accent-red';
+  if (change > 0) return 'text-kong-success';
+  if (change < 0) return 'text-kong-error';
   return '';
 }
 

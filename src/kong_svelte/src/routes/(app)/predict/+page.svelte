@@ -418,7 +418,7 @@
                 size="sm"
                 pill={true}
                 icon="●"
-                class="border border-kong-accent-green font-medium"
+                class="border border-kong-success font-medium"
               >
                 {category}
               </Badge>
@@ -441,7 +441,7 @@
           use:clickOutside={() => (layoutDropdownOpen = false)}
         >
           <button
-            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
+            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
             on:click={(e) => {
               e.stopPropagation();
               layoutDropdownOpen = !layoutDropdownOpen;
@@ -457,12 +457,12 @@
 
           {#if layoutDropdownOpen}
             <div
-              class="absolute top-full left-0 mt-1 z-50 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
+              class="absolute top-full left-0 mt-1 z-50 bg-kong-bg-tertiary border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
             >
               {#each layoutOptions as option, index}
                 <button
-                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {selectedLayout === index
-                    ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-secondary/30 {selectedLayout === index
+                    ? 'bg-kong-success/20 text-kong-success font-medium'
                     : 'text-kong-text-primary'}"
                   on:click={() => {
                     selectedLayout = index;
@@ -482,7 +482,7 @@
           use:clickOutside={() => (statusDropdownOpen = false)}
         >
           <button
-            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
+            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
             on:click={(e) => {
               e.stopPropagation();
               statusDropdownOpen = !statusDropdownOpen;
@@ -497,7 +497,7 @@
 
           {#if statusDropdownOpen}
             <div
-              class="absolute top-full left-0 mt-1 z-50 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
+              class="absolute top-full left-0 mt-1 z-50 bg-kong-bg-tertiary border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[120px] backdrop-blur-sm"
             >
               {#each statusOptions as option}
                 {#if option.value === "myMarkets" && !$auth.isConnected}
@@ -510,9 +510,9 @@
                   </div>
                 {:else}
                   <button
-                    class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.statusFilter ===
+                    class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-secondary/30 {$marketStore.statusFilter ===
                     option.value
-                      ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
+                      ? 'bg-kong-success/20 text-kong-success font-medium'
                       : 'text-kong-text-primary'}"
                     on:click={() => {
                       if (option.value === "myMarkets" && !$auth.isConnected) {
@@ -537,7 +537,7 @@
           use:clickOutside={() => (sortDropdownOpen = false)}
         >
           <button
-            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-surface-dark text-kong-text-primary hover:bg-kong-bg-light/30 transition-colors border border-kong-border/50"
+            class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
             on:click={(e) => {
               e.stopPropagation();
               sortDropdownOpen = !sortDropdownOpen;
@@ -552,13 +552,13 @@
 
           {#if sortDropdownOpen}
             <div
-              class="absolute top-full right-0 mt-1 z-30 bg-kong-surface-dark border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[180px] backdrop-blur-sm"
+              class="absolute top-full right-0 mt-1 z-30 bg-kong-bg-tertiary border border-kong-border rounded-md shadow-lg py-1 w-full min-w-[180px] backdrop-blur-sm"
             >
               {#each sortOptions as option}
                 <button
-                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-light/30 {$marketStore.sortOption ===
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-secondary/30 {$marketStore.sortOption ===
                   option.value
-                    ? 'bg-kong-accent-green/20 text-kong-accent-green font-medium'
+                    ? 'bg-kong-success/20 text-kong-success font-medium'
                     : 'text-kong-text-primary'}"
                   on:click={() => {
                     marketStore.setSortOption(option.value as SortOption);
@@ -580,7 +580,7 @@
       <div class="lg:col-span-3">
         <!-- Market Sections -->
         {#if $marketStore.error}
-          <div class="text-center py-12 text-kong-accent-red">
+          <div class="text-center py-12 text-kong-error">
             <AlertTriangle class="w-12 h-12 mx-auto mb-4" />
             <p class="text-lg font-medium">{$marketStore.error}</p>
           </div>
@@ -602,7 +602,7 @@
             {:else}
               <!-- No Markets Message -->
               <div class="text-center py-12">
-                <div class="max-w-md mx-auto text-kong-pm-text-secondary">
+                <div class="max-w-md mx-auto text-kong-text-secondary">
                   <div class="mb-4 text-2xl">📉</div>
                   <p class="text-lg">No markets available</p>
                   <p class="text-sm mt-2">
@@ -619,15 +619,15 @@
 
       <!-- Recent Bets column - takes up 1/4 of the space -->
       <div class="mt-6 lg:mt-0">
-        <Panel variant="solid" type="main" className="overflow-hidden px-0">
+        <Panel variant="solid" type="main" className="overflow-hidden px-0 !bg-kong-bg-secondary">
           <div
             class="border-b border-kong-border/30 flex justify-between items-center px-4"
           >
             <h2 class="font-semibold">Recent Predictions</h2>
             <span
-              class="text-kong-accent-green flex items-center gap-1 text-sm px-2 py-1 rounded-full font-medium"
+              class="text-kong-success flex items-center gap-1 text-sm px-2 py-1 rounded-full font-medium"
               >
-              <div class="bg-kong-accent-green w-2 h-2 animate-pulse rounded-full"></div>
+              <div class="bg-kong-success w-2 h-2 animate-pulse rounded-full"></div>
               Live</span
             >
           </div>
@@ -635,7 +635,7 @@
           {#if loadingBets && isInitialLoad}
             <div class="p-4 text-center">
               <div
-                class="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-kong-accent-green border-r-transparent"
+                class="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-kong-success border-r-transparent"
               ></div>
               <p class="mt-2 text-kong-text-secondary">
                 Loading recent predictions...
@@ -663,7 +663,7 @@
                   <!-- User predicted outcome on market question -->
                   <div class="text-kong-text-secondary break-all">
                     <span
-                      class="font-medium text-kong-accent-green inline-flex gap-1"
+                      class="font-medium text-kong-success inline-flex gap-1"
                     >
                       <TokenImages
                         tokens={[
@@ -798,8 +798,8 @@
     background: linear-gradient(
       to right,
       var(--kong-accent-blue),
-      var(--kong-accent-green),
-      var(--kong-accent-purple)
+      var(--kong-success),
+      var(--kong-primary)
     );
     -webkit-background-clip: text;
     background-clip: text;
@@ -816,7 +816,7 @@
   }
 
   :global(.gradient-stroke) {
-    stroke: var(--kong-accent-green);
+    stroke: var(--kong-success);
     animation: strokeGradient 8s ease infinite;
   }
 

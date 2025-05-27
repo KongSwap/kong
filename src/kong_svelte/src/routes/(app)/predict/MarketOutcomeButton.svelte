@@ -36,18 +36,18 @@
     isYesNo
       ? `flex-1 h-10 rounded transition-colors relative ${
           index === 0
-            ? "bg-kong-accent-green/20 hover:bg-kong-accent-green/30 text-kong-text-primary border border-kong-accent-green/30"
-            : "bg-kong-accent-red/20 hover:bg-kong-accent-red/30 text-kong-text-primary border border-kong-accent-red/30"
+            ? "bg-kong-success/20 hover:bg-kong-success/30 text-kong-text-primary border border-kong-success/30"
+            : "bg-kong-error/20 hover:bg-kong-error/30 text-kong-text-primary border border-kong-error/30"
         } ${
           isMarketResolved(market) && isWinningOutcome(market, index)
             ? index === 0
-              ? "border-2 border-kong-accent-green shadow-[0_0_5px_rgba(0,203,160,0.3)]"
-              : "border-2 border-kong-accent-red shadow-[0_0_5px_rgba(203,0,0,0.3)]"
+              ? "border-2 border-kong-success shadow-[0_0_5px_rgba(0,203,160,0.3)]"
+              : "border-2 border-kong-error shadow-[0_0_5px_rgba(203,0,0,0.3)]"
             : ""
         }`
       : `h-8 sm:h-8 hover:bg-white/10 ${panelRoundness} px-2 py-5 transition-colors relative w-full ${
           isMarketResolved(market) && isWinningOutcome(market, index)
-            ? "border-2 border-kong-accent-green/30 bg-kong-accent-green/5 shadow-[0_0_5px_rgba(0,203,160,0.3)]"
+            ? "border-2 border-kong-success/30 bg-kong-success/5 shadow-[0_0_5px_rgba(0,203,160,0.3)]"
             : ""
         }`,
   );
@@ -56,9 +56,9 @@
   const progressBarColor = $derived(
     isYesNo
       ? index === 0
-        ? "bg-kong-accent-green/50"
-        : "bg-kong-accent-red/50"
-      : "bg-kong-accent-green/50",
+        ? "bg-kong-success/50"
+        : "bg-kong-error/50"
+      : "bg-kong-success/50",
   );
 
   // Determine if the outcome is a winner
@@ -68,8 +68,8 @@
   const bgColor = $derived(
     isYesNo
       ? outcome.toLowerCase() === "yes"
-        ? "bg-kong-accent-green/10 border-kong-accent-green/30 hover:bg-kong-accent-green/20 text-kong-text-accent-green"
-        : "bg-kong-accent-red/10 border-kong-accent-red/30 hover:bg-kong-accent-red/20 text-kong-text-accent-red"
+        ? "bg-kong-success/10 border-kong-success/30 hover:bg-kong-success/20 text-kong-success"
+        : "bg-kong-error/10 border-kong-error/30 hover:bg-kong-error/20 text-kong-error"
       : "",
   );
 
@@ -95,8 +95,8 @@
     class="w-full py-2 px-5 text-center {$panelRoundness} font-medium text-lg group/outcome relative
       border transition-all duration-200
       {isWinner
-      ? 'bg-kong-accent-green/20 text-kong-text-accent-green font-bold border-kong-accent-green/40'
-      : `${bgColor} border-${outcome.toLowerCase() === 'yes' ? 'kong-accent-green' : 'kong-accent-red'}/20`} 
+      ? 'bg-kong-success/20 text-kong-success font-bold border-kong-success/40'
+      : `${bgColor} border-${outcome.toLowerCase() === 'yes' ? 'kong-success' : 'kong-error'}/20`} 
       {isMarketExpiredUnresolved(market) || isMarketResolved(market)
       ? 'opacity-80 cursor-default'
       : 'hover:opacity-100 hover:shadow-sm transform hover:translate-y-[0.5px]'}"
@@ -111,7 +111,7 @@
 
         {#if isWinner}
           <CheckCircle
-            class="w-4 h-4 text-kong-accent-green animate-pulse flex-shrink-0"
+            class="w-4 h-4 text-kong-success animate-pulse flex-shrink-0"
           />
         {/if}
       </div>
@@ -126,8 +126,8 @@
     class="w-full py-2 px-3 text-left overflow-hidden flex items-center {$panelRoundness} 
       relative border transition-all duration-200
       {isWinner
-      ? 'bg-kong-accent-green/10 text-kong-text-accent-green font-bold border-kong-accent-green/30'
-      : 'border-kong-border/20 hover:border-kong-border/40 hover:bg-kong-surface-light/20'} 
+      ? 'bg-kong-success/10 text-kong-success font-bold border-kong-success/30'
+      : 'border-kong-border/20 hover:border-kong-border/40 hover:bg-kong-bg-secondary/20'} 
       {isMarketExpiredUnresolved(market) || isMarketResolved(market)
       ? 'opacity-80 cursor-default'
       : 'hover:opacity-100 hover:shadow-sm'}"
@@ -136,7 +136,7 @@
     <!-- Background progress bar -->
     <div
       class="absolute left-0 top-0 h-full {isWinner
-        ? 'bg-kong-accent-green/20'
+        ? 'bg-kong-success/20'
         : 'bg-kong-primary/10'} opacity-90 transition-width duration-300 {$panelRoundness}"
       style="width: {width};"
     />
@@ -147,7 +147,7 @@
         <span class="truncate block">{outcome}</span>
         {#if isWinner}
           <CheckCircle
-            class="w-4 h-4 text-kong-accent-green animate-pulse flex-shrink-0"
+            class="w-4 h-4 text-kong-success animate-pulse flex-shrink-0"
           />
         {/if}
       </span>

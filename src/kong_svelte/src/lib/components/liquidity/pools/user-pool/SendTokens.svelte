@@ -292,7 +292,7 @@
   }
   
   .form-group {
-    @apply rounded-lg bg-kong-bg-light/50 border border-kong-border/10 p-3 shadow-sm;
+    @apply rounded-lg bg-kong-bg-secondary/50 border border-kong-border/10 p-3 shadow-sm;
   }
   
   .input-group {
@@ -324,10 +324,10 @@
   }
   
   .input-field {
-    @apply w-full p-2 rounded-lg bg-kong-bg-dark/80 border border-kong-border/20
+    @apply w-full p-2 rounded-lg bg-kong-bg-primary/80 border border-kong-border/20
            text-kong-text-primary placeholder:text-kong-text-primary/40
            focus:outline-none focus:ring-1 focus:ring-kong-primary
-           transition-all duration-200 hover:bg-kong-bg-dark pr-16;
+           transition-all duration-200 hover:bg-kong-bg-primary pr-16;
   }
   
   .max-button-wrapper {
@@ -348,7 +348,7 @@
   }
   
   .modal-footer {
-    @apply border-t border-kong-border/10 mt-2 pt-3 bg-kong-bg-dark/90 
+    @apply border-t border-kong-border/10 mt-2 pt-3 bg-kong-bg-primary/90 
            backdrop-blur-md w-full;
   }
 

@@ -429,7 +429,7 @@
   }
 
   .modal-footer {
-    @apply border-t border-kong-border/10 mt-4 bg-kong-bg-dark/90 
+    @apply border-t border-kong-border/10 mt-4 bg-kong-bg-primary/90 
            backdrop-blur-md w-full;
   }
 
@@ -450,8 +450,8 @@
   }
 
   .error-message {
-    @apply p-3 rounded-lg bg-kong-accent-red/10 border border-kong-accent-red/20 
-           text-kong-accent-red text-xs backdrop-blur-sm flex items-center gap-2;
+    @apply p-3 rounded-lg bg-kong-error/10 border border-kong-error/20 
+           text-kong-error text-xs backdrop-blur-sm flex items-center gap-2;
   }
 
   .error-icon {

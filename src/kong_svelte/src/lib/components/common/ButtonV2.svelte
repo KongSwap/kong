@@ -43,7 +43,7 @@
     success: "text-kong-success",
     error: "text-white",
     warning: "text-kong-text-on-primary",
-    "accent-green": "text-kong-bg-dark",
+    "accent-green": "text-kong-bg-primary",
     "accent-blue": "text-kong-white",
     "accent-red": "text-kong-white",
     muted: "text-kong-text-inverse/60",
@@ -51,22 +51,22 @@
 
   const solidThemeClasses = {
     primary: "bg-kong-primary hover:bg-kong-primary-hover",
-    secondary: "bg-kong-bg-light",
-    success: "bg-kong-accent-green hover:bg-kong-accent-green-hover",
+    secondary: "bg-kong-bg-secondary",
+    success: "bg-kong-success hover:bg-kong-success-hover",
     error: "bg-red-600 hover:bg-red-700",
     warning: "bg-kong-warning hover:bg-yellow-500",
-    "accent-green": "bg-kong-accent-green hover:bg-kong-accent-green-hover",
+    "accent-green": "bg-kong-success hover:bg-kong-success-hover",
     "accent-blue": "bg-kong-accent-blue hover:bg-kong-accent-blue-hover",
-    "accent-red": "bg-kong-accent-red hover:bg-kong-accent-red-hover",
+    "accent-red": "bg-kong-error hover:bg-kong-error-hover",
     muted: "bg-white/5 hover:bg-white/10 text-white/90 hover:text-white",
   };
 
   const outlineThemeClasses = {
     primary: "border border-kong-primary text-kong-text-primary hover:bg-kong-primary/20",
     secondary: "border border-white/10 text-white/90 hover:bg-white/5",
-    "accent-green": "border border-kong-accent-green text-kong-text-accent-green hover:bg-kong-accent-green/10",
+    "accent-green": "border border-kong-success text-kong-success hover:bg-kong-success/10",
     "accent-blue": "border border-kong-accent-blue text-kong-accent-blue hover:bg-kong-accent-blue/10",
-    "accent-red": "border border-kong-accent-red text-kong-accent-red hover:bg-kong-accent-red/10",
+    "accent-red": "border border-kong-error text-kong-error hover:bg-kong-error/10",
     success: "border border-kong-success text-kong-success hover:bg-kong-success/10",
     error: "border border-red-600 text-red-500 hover:bg-red-600/10",
     warning: "border border-kong-warning text-kong-warning hover:bg-kong-warning/10",
@@ -76,9 +76,9 @@
   const transparentThemeClasses = {
     primary: "bg-transparent text-kong-primary hover:bg-kong-primary/10",
     secondary: "bg-transparent text-white/90 hover:bg-white/5",
-    "accent-green": "bg-transparent text-kong-text-accent-green hover:bg-kong-accent-green/10",
+    "accent-green": "bg-transparent text-kong-success hover:bg-kong-success/10",
     "accent-blue": "bg-transparent text-kong-accent-blue hover:bg-kong-accent-blue/10",
-    "accent-red": "bg-transparent text-kong-accent-red hover:bg-kong-accent-red/10",
+    "accent-red": "bg-transparent text-kong-error hover:bg-kong-error/10",
     success: "bg-transparent text-kong-success hover:bg-kong-success/10",
     error: "bg-transparent text-red-600 hover:bg-red-600/10",
     warning: "bg-transparent text-kong-warning hover:bg-kong-warning/10",
@@ -106,9 +106,9 @@
     success: "bg-gradient-to-r from-kong-success to-green-500",
     error: "bg-gradient-to-r from-kong-error to-red-500",
     warning: "bg-gradient-to-r from-kong-warning to-yellow-500",
-    "accent-green": "bg-gradient-to-r from-kong-accent-green to-kong-accent-green-hover",
+    "accent-green": "bg-gradient-to-r from-kong-success to-kong-success-hover",
     "accent-blue": "bg-gradient-to-r from-kong-accent-blue to-kong-accent-blue-hover",
-    "accent-red": "bg-gradient-to-r from-kong-accent-red to-kong-accent-red-hover",
+    "accent-red": "bg-gradient-to-r from-kong-error to-kong-error-hover",
     muted: "bg-gradient-to-r from-white/10 to-white/20",
   };
 

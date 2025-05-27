@@ -1,5 +1,5 @@
 .hot-icon {
-  @apply text-kong-accent-red;
+  @apply text-kong-error;
   fill: #ffa500;
   stroke: #ffa500;
   animation: flame-flicker 2s infinite;
@@ -31,13 +31,13 @@
 }
 
 .positive {
-  @apply text-kong-text-accent-green;
+  @apply text-kong-success;
   @apply flex items-center justify-end;
   @apply w-full h-full;
 }
 
 .negative {
-  @apply text-kong-accent-red;
+  @apply text-kong-error;
   @apply flex items-center justify-end;
   @apply w-full h-full;
 }

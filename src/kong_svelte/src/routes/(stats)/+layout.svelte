@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { fade } from "svelte/transition";
+  import { fade, crossfade } from "svelte/transition";
+  import { cubicOut } from "svelte/easing";
   import { page } from "$app/state";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
@@ -31,11 +32,20 @@
   let themeReady = $state(false);
   let loadingTimeout: number | null = $state(null);
 
+  // Create crossfade transition for smoother page transitions
+  const [send, receive] = crossfade({
+    duration: 300,
+    easing: cubicOut,
+    fallback: (node) => fade(node, { duration: 300 })
+  });
+
   async function init() {
     const promise = (async () => {
       try {
         if (browser) {
           configureStorage();
+          themeStore.initTheme();
+          themeReady = true;
         }
         await auth.initialize();
         if (browser) {
@@ -56,43 +66,8 @@
 
   // Initialize on component mount
   $effect.root(() => {
-    // Initialize theme
-    if (browser) {
-      // Check if theme is ready immediately - it might be ready from the inline script
-      if (
-        document.documentElement.getAttribute("data-theme-ready") === "true"
-      ) {
-        themeReady = true;
-      } else {
-        // Setup a timeout to hide loading spinner if it takes too long
-        loadingTimeout = window.setTimeout(() => {
-          // Force show content after 2 seconds even if theme isn't fully ready
-          themeReady = true;
-          document.documentElement.setAttribute("data-theme-ready", "true");
-        }, 2000);
-
-        // Check if theme is ready
-        const checkThemeReady = () => {
-          if (
-            document.documentElement.getAttribute("data-theme-ready") === "true"
-          ) {
-            themeReady = true;
-            if (loadingTimeout) {
-              clearTimeout(loadingTimeout);
-              loadingTimeout = null;
-            }
-          } else {
-            // Check more frequently (faster response)
-            setTimeout(checkThemeReady, 5);
-          }
-        };
-
-        checkThemeReady();
-      }
-
-      // Initialize keyboard shortcuts
-      keyboardShortcuts.initialize();
-    }
+    // Initialize keyboard shortcuts
+    keyboardShortcuts.initialize();
 
     // Initialize the app only if not already initializing
     if (!initializationPromise) {
@@ -120,22 +95,43 @@
 </script>
 
 
-<div class="flex flex-col min-h-screen !bg-kong-bg-dark w-full origin-center overflow-hidden">
+<div class="flex flex-col min-h-screen w-full origin-center app-content">
   {#if !themeReady}
   <LoadingIndicator message="Loading..." fullHeight />
 {:else}
-
-    <div class="ticker-section bg-kong-bg-dark">
+  <PageWrapper page={page.url.pathname}>
+    <div class="ticker-section bg-kong-bg-primary">
       <TokenTicker />
     </div>
     <div class="bg-transparent navbar-section mb-4">
       <Navbar />
     </div>
-    <main class="flex items-center max-w-xl flex-grow">
-      <div class="w-full h-full" transition:fade>
-        {@render children?.()}
-      </div>
+    <main class="main-container flex justify-center w-full flex-grow">
+      {#key page.url.pathname}
+        <div 
+          class="content-wrapper w-full px-2 mx-auto h-full" 
+          in:receive={{ key: page.url.pathname }}
+          out:send={{ key: page.url.pathname }}
+        >
+          {@render children?.()}
+        </div>
+      {/key}
     </main>
+
+    <footer class="w-full h-6 bg-transparent absolute bottom-0 mx-auto">
+      <div
+        class="flex items-center justify-center opacity-60 transition-opacity duration-200"
+      >
+        <p class="text-xs text-kong-text-secondary">
+          Powered by <button
+            onclick={() => goto("/")}
+            class="hover:opacity-90 text-kong-text-primary font-semibold hover:text-kong-primary"
+            >KongSwap</button
+          >
+        </p>
+      </div>
+    </footer>
+  </PageWrapper>
   <Toast />
   <AddToHomeScreen />
   <QRModal />
@@ -149,3 +145,18 @@
   <div id="modals"></div>
 {/if}
 </div>
+
+<style>
+  /* Ensure smooth transitions without layout shifts */
+  .main-container {
+    position: relative;
+  }
+  
+  .content-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    min-height: 100%;
+  }
+</style>

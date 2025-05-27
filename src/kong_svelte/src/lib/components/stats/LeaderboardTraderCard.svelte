@@ -83,7 +83,7 @@
   // Additional styling
   const panelClassName = isTopThree
     ? `relative ${style.borderColor} transform transition-all hover:scale-102 shadow-xl animate-fadeIn ${rank === 2 ? "animation-delay-150" : rank === 3 ? "animation-delay-300" : ""}`
-    : "hover:bg-kong-bg-light cursor-pointer transition-colors group";
+    : "hover:bg-kong-bg-secondary cursor-pointer transition-colors group";
 
   // Only use border-2 for champion, border for others
   const borderWidth = isChampion ? "border-2" : "border";
@@ -117,7 +117,7 @@
     <div
       class="absolute top-3 left-3 {isChampion
         ? 'w-12 h-12'
-        : 'w-10 h-10'} flex items-center justify-center rounded-full bg-kong-bg-dark {borderWidth} {style.borderColor} shadow-lg z-10"
+        : 'w-10 h-10'} flex items-center justify-center rounded-full bg-kong-bg-primary {borderWidth} {style.borderColor} shadow-lg z-10"
     >
       <span
         class="{isChampion ? 'text-xl' : 'text-sm'} font-bold {style.textColor}"
@@ -129,7 +129,7 @@
     <!-- Crown for champion -->
     {#if isChampion}
       <div
-        class="absolute top-0 right-6 transform -translate-y-3 bg-kong-bg-dark rounded-full p-1 shadow-lg"
+        class="absolute top-0 right-6 transform -translate-y-3 bg-kong-bg-primary rounded-full p-1 shadow-lg"
       >
         <Crown class="text-yellow-400 w-6 h-6" />
       </div>
@@ -157,12 +157,12 @@
           />
           <div
             class="absolute z-10 -bottom-2 -right-2 {isChampion
-              ? 'bg-kong-accent-green'
+              ? 'bg-kong-success'
               : style.bgColor} text-white text-xs font-bold rounded-full w-{isChampion
               ? '8'
               : '6'} h-{isChampion
               ? '8'
-              : '6'} flex items-center justify-center {borderWidth} border-kong-bg-dark shadow-md"
+              : '6'} flex items-center justify-center {borderWidth} border-kong-bg-primary shadow-md"
           >
             <svelte:component
               this={Trophy}
@@ -185,7 +185,7 @@
           <div
             class="text-{isChampion ? '3xl' : 'lg'} font-{isChampion
               ? 'bold'
-              : 'medium'} text-kong-accent-green flex items-center"
+              : 'medium'} text-kong-success flex items-center"
           >
             {formatVolume(user.total_volume_usd)}
           </div>
@@ -216,7 +216,7 @@
       <div
         class="p-{isChampion
           ? '5'
-          : '4'} bg-kong-bg-dark bg-opacity-30 animate-fadeIn border-t border-kong-border"
+          : '4'} bg-kong-bg-primary bg-opacity-30 animate-fadeIn border-t border-kong-border"
       >
         <TraderDetailsExpanded
           {user}
@@ -234,13 +234,13 @@
 {:else}
   <!-- For traders below top 3, show in table row format -->
   <tr
-    class="hover:bg-kong-bg-light cursor-pointer transition-colors group"
+    class="hover:bg-kong-bg-secondary cursor-pointer transition-colors group"
     on:click={onClick}
   >
     <td class="px-4 py-4 whitespace-nowrap">
       <div class="flex items-center">
         <div
-          class="bg-kong-bg-dark w-8 h-8 rounded-full flex items-center justify-center mr-2 shadow-sm"
+          class="bg-kong-bg-primary w-8 h-8 rounded-full flex items-center justify-center mr-2 shadow-sm"
         >
           <span class="text-sm font-medium text-kong-text-secondary"
             >#{rank}</span
@@ -263,7 +263,7 @@
       </div>
     </td>
     <td
-      class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium text-kong-accent-green"
+      class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium text-kong-success"
     >
       {formatVolume(user.total_volume_usd)}
     </td>
@@ -289,7 +289,7 @@
 
   <!-- Expanded Row Content -->
   {#if expanded}
-    <tr class="bg-kong-bg-dark bg-opacity-10">
+    <tr class="bg-kong-bg-primary bg-opacity-10">
       <td colspan="4" class="px-6 py-4 animate-fadeIn">
         <TraderDetailsExpanded
           {user}

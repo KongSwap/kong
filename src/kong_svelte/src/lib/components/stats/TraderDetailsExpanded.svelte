@@ -37,11 +37,11 @@
     </div>
     
     <div class="text-xs font-medium text-kong-text-secondary mt-2 md:mt-0">
-      <span class="inline-flex items-center bg-kong-bg-dark bg-opacity-50 px-3 py-1 rounded-full">
+      <span class="inline-flex items-center bg-kong-bg-primary bg-opacity-50 px-3 py-1 rounded-full">
         <span class="mr-1">{compactLayout ? 'Volume:' : 'Trading Volume:'}</span>
-        <span class="text-kong-accent-green">{formatVolume(user.total_volume_usd)}</span>
+        <span class="text-kong-success">{formatVolume(user.total_volume_usd)}</span>
       </span>
-      <span class="inline-flex items-center ml-2 bg-kong-bg-dark bg-opacity-50 px-3 py-1 rounded-full">
+      <span class="inline-flex items-center ml-2 bg-kong-bg-primary bg-opacity-50 px-3 py-1 rounded-full">
         <span class="mr-1">Swaps:</span>
         <span>{user.swap_count}</span>
       </span>
@@ -62,7 +62,7 @@
           </div>
         </div>
       {:else if tokenError}
-        <p class="text-xs text-kong-accent-red mb-2 flex items-center">
+        <p class="text-xs text-kong-error mb-2 flex items-center">
           <AlertTriangle class="w-3 h-3 mr-1" />
           {tokenError}
         </p>
@@ -70,7 +70,7 @@
         <div class="p-2">
           <TokenImages 
             tokens={tradedTokens} 
-            imageWrapperClass="bg-kong-bg-dark shadow-sm"
+            imageWrapperClass="bg-kong-bg-primary shadow-sm"
             size={rank === 1 ? 40 : 36} 
             overlap={true}
             containerClass=""

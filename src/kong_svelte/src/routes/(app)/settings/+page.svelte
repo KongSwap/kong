@@ -496,9 +496,9 @@
               <button
                 class="px-3 py-1 text-sm rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 class:border-kong-border={!(slippageValue === val && !isCustomSlippage)}
-                class:bg-kong-bg-light={!(slippageValue === val && !isCustomSlippage)}
+                class:bg-kong-bg-secondary={!(slippageValue === val && !isCustomSlippage)}
                 class:text-kong-text-secondary={!(slippageValue === val && !isCustomSlippage)}
-                class:hover:bg-kong-hover-bg-light={!(slippageValue === val && !isCustomSlippage)}
+                class:hover:bg-kong-bg-secondary={!(slippageValue === val && !isCustomSlippage)}
                 class:hover:border-kong-primary={!(slippageValue === val && !isCustomSlippage)}
                 class:bg-kong-primary={slippageValue === val && !isCustomSlippage}
                 class:border-kong-primary={slippageValue === val && !isCustomSlippage}
@@ -559,7 +559,7 @@
             </div>
             <div class="flex items-center gap-2">
               <button 
-                class="bg-kong-bg-light hover:bg-kong-accent-yellow/60 text-kong-text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                class="bg-kong-bg-secondary hover:bg-kong-accent-yellow/60 text-kong-text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 on:click={clearFavorites}
                 disabled={!$auth.isConnected}
               >
@@ -576,7 +576,7 @@
             </div>
             <div class="flex items-center gap-2">
               <button 
-                class="bg-kong-accent-red/30 hover:bg-kong-accent-red/60 text-red-100 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                class="bg-kong-error/30 hover:bg-kong-error/60 text-red-100 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 on:click={resetDatabase}
                 disabled={loadingSlippage || loadingSound}
               >
@@ -608,17 +608,17 @@
           <!-- Theme preview -->
           <div class="theme-preview h-28 mb-3 rounded overflow-hidden border border-kong-border flex">
             <div class="w-1/2 flex flex-col">
-              <div class="h-1/2 flex items-center justify-center" style="background-color: {theme.colors.bgDark}">
-                <div class="w-8 h-2 rounded-full" style="background-color: {theme.colors.primary}"></div>
+              <div class="h-1/2 flex items-center justify-center" style="background-color: {theme.colors.bgPrimary}">
+                <span class="text-white text-xs font-mono">Primary</span>
               </div>
-              <div class="h-1/2 flex items-center justify-center" style="background-color: {theme.colors.bgLight}">
-                <div class="w-6 h-2 rounded-full" style="background-color: {theme.colors.accentBlue}"></div>
+              <div class="h-1/2 flex items-center justify-center" style="background-color: {theme.colors.bgSecondary}">
+                <span class="text-white text-xs font-mono">Secondary</span>
               </div>
             </div>
             <div class="w-1/2 flex flex-col">
               <div class="h-1/3" style="background-color: {theme.colors.primary}"></div>
-              <div class="h-1/3" style="background-color: {theme.colors.accentGreen}"></div>
-              <div class="h-1/3" style="background-color: {theme.colors.accentRed}"></div>
+              <div class="h-1/3" style="background-color: {theme.colors.success}"></div>
+              <div class="h-1/3" style="background-color: {theme.colors.error}"></div>
             </div>
           </div>
           
@@ -664,11 +664,11 @@
         {#if showThemeCreator && ThemeCreator}
           <svelte:component this={ThemeCreator} />
         {:else}
-          <div class="bg-kong-bg-dark/30 p-4 rounded-lg border border-kong-border/20">
+          <div class="bg-kong-bg-primary/30 p-4 rounded-lg border border-kong-border/20">
             <p class="text-kong-text-primary mb-2">
               Loading theme creator...
             </p>
-            <div class="h-1 w-32 bg-kong-bg-light overflow-hidden rounded">
+            <div class="h-1 w-32 bg-kong-bg-secondary overflow-hidden rounded">
               <div class="h-full bg-kong-primary/40 animate-pulse rounded"></div>
             </div>
           </div>
@@ -678,9 +678,9 @@
     
     <Panel variant="transparent" className="mt-12">
       <h3 class="text-xl font-bold text-kong-text-primary mb-2">How to Create Themes Programmatically</h3>
-      <p class="mb-3 text-kong-text-secondary">You can also create themes through code. Check out the documentation in <code class="bg-kong-bg-dark px-1 py-0.5 rounded text-kong-accent-blue">/lib/themes/README.md</code>.</p>
+      <p class="mb-3 text-kong-text-secondary">You can also create themes through code. Check out the documentation in <code class="bg-kong-bg-primary px-1 py-0.5 rounded text-kong-accent-blue">/lib/themes/README.md</code>.</p>
       
-      <div class="code-example bg-kong-bg-dark rounded-lg p-4 overflow-x-auto">
+      <div class="code-example bg-kong-bg-primary rounded-lg p-4 overflow-x-auto">
         <pre class="text-kong-text-primary font-mono text-sm">
 import type &#123; ThemeDefinition &#125; from '$lib/themes/baseTheme';
 import &#123; themeStore &#125; from '$lib/stores/themeStore';
@@ -690,8 +690,9 @@ const myCustomTheme: ThemeDefinition = &#123;
   name: 'My Custom Theme',
   colorScheme: 'dark light',
   colors: &#123;
-    bgDark: '#1A1A1A',
-    bgLight: '#2A2A2A',
+    bgPrimary: '#1A1A1A',
+    bgSecondary: '#2A2A2A',
+    bgTertiary: '#3A3A3A',
     primary: '#FF5722',
     // ... other required colors
   &#125;
@@ -741,7 +742,7 @@ themeStore.registerAndApplyTheme(myCustomTheme);
 
   /* Kept global slider input styling */
   :global(.slider-input) {
-    @apply bg-kong-bg-dark/40 border border-kong-border rounded-lg;
+    @apply bg-kong-bg-primary/40 border border-kong-border rounded-lg;
     padding: 6px 8px;
   }
 

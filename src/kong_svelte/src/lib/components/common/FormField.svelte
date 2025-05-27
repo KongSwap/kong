@@ -21,7 +21,7 @@
     </div>
 
     {#if error}
-      <p class="text-sm text-kong-text-accent-red flex items-center gap-2 mt-2">
+      <p class="text-sm text-kong-error flex items-center gap-2 mt-2">
         <AlertTriangle size={16} />
         {error}
       </p>

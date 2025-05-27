@@ -1,9 +1,10 @@
 // Base theme definition with types and default values
 export interface ThemeColors {
   // Background colors
-  bgDark: string;
-  bgLight: string;
-  hoverBgLight?: string;
+  bgPrimary: string;      // Primary background (darkest)
+  bgSecondary: string;    // Secondary background (medium)
+  bgTertiary: string;     // Tertiary background (lightest)
+  hoverBgSecondary?: string;  // Hover state for secondary background
   
   // Primary and secondary colors
   primary: string;
@@ -12,18 +13,20 @@ export interface ThemeColors {
   secondaryHover: string;
   
   // Accent colors
-  accentBlue: string;
-  accentRed: string;
-  accentGreen: string;
-  accentYellow: string;
-  accentPurple: string;
-  accentCyan: string;
+  accent: string;
+  error: string;
+  success: string;
+  warning: string;
+  info: string;
+  muted: string;
   
   // Hover variants
-  accentGreenHover: string;
-  accentBlueHover: string;
-  accentRedHover: string;
-  accentYellowHover?: string;
+  successHover: string;
+  accentHover: string;
+  errorHover: string;
+  warningHover: string;
+  infoHover: string;
+  mutedHover: string;
   
   // Text colors
   textPrimary: string;
@@ -32,9 +35,9 @@ export interface ThemeColors {
   textLight?: string;
   textDark?: string;
   textOnPrimary?: string;
-  textAccentGreen?: string;
-  textAccentBlue?: string;
-  textAccentRed?: string;
+  textSuccess?: string;
+  textAccent?: string;
+  textError?: string;
   
   // Font settings
   fontFamily?: string;
@@ -55,32 +58,11 @@ export interface ThemeColors {
   borderLight: string;
   kongBorder?: string;
   
-  // Surface colors
-  surfaceDark: string;
-  surfaceLight: string;
-  
   // Logo properties
   logoBrightness: number;
   logoInvert: number;
   logoHoverBrightness: number;
   logoPath?: string; // Custom logo path, defaults to standard app logo if not set
-  
-  // Token selector dropdown colors
-  tokenSelectorBg?: string;
-  tokenSelectorHeaderBg?: string;
-  tokenSelectorItemBg?: string;
-  tokenSelectorItemHoverBg?: string;
-  tokenSelectorItemActiveBg?: string;
-  tokenSelectorSearchBg?: string;
-  tokenSelectorBorder?: string;
-  tokenSelectorRoundness?: "rounded-none" | "rounded-sm" | "rounded" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | "rounded-3xl" | "rounded-full";
-  tokenSelectorShadow?: string;
-  
-  // Plugin Manager colors
-  pmDark: string;
-  pmBorder: string;
-  pmAccent: string;
-  pmTextSecondary: string;
   
   // Switch button styling
   switchButtonBg?: string;         // Background color for the switch button
@@ -98,7 +80,6 @@ export interface ThemeColors {
   tokenTickerBorderStyle?: 'default' | 'win95' | 'none'; // Special border style presets
   tokenTickerRoundness?: "rounded-none" | "rounded-sm" | "rounded" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | "rounded-3xl" | "rounded-full";
   tokenTickerHoverBg?: string;     // Background color on hover
-  tokenTickerShadow?: string;      // Shadow style for token tickers
   tokenTickerUpColor?: string;     // Color for positive price changes
   tokenTickerDownColor?: string;   // Color for negative price changes
   tokenTickerBgOpacity?: number;   // Background opacity (0-100)
@@ -153,10 +134,7 @@ export interface ThemeColors {
   backgroundRight?: string;       // Right position of background element (e.g., '0', 'auto')
   backgroundBottom?: string;      // Bottom position of background element (e.g., '0', 'auto')
   
-  // Parallax effect
-  enableParallax?: boolean;       // Whether to enable parallax effect on the background
-  parallaxStrength?: number;      // Strength of parallax effect (0.0-1.0, default 0.2)
-  
+
   // Special effects
   enableNebula?: boolean;
   enableStars?: boolean;
@@ -182,9 +160,10 @@ export const baseTheme: ThemeDefinition = {
   authorLink: 'https://kongswap.io',
   colors: {
     // Background colors
-    bgDark: '#090c17',       // Even deeper navy for more contrast
-    bgLight: '#1a2032',      // Lighter, more distinct navy for more contrast
-    hoverBgLight: '#141826', // Same as bgLight by default in dark theme
+    bgPrimary: '#050813',       // Very deep navy, almost black for maximum contrast
+    bgSecondary: '#0f1523',      // Noticeably lighter for clear panel separation
+    bgTertiary: '#1a2335',      // Even lighter for nested elements
+    hoverBgSecondary: '#1f2940', // Distinct hover state
     
     // Primary and secondary colors
     primary: '#1A8FE3',      // Refined Kong blue with better contrast
@@ -193,18 +172,20 @@ export const baseTheme: ThemeDefinition = {
     secondaryHover: '#2EA8B3', // Deeper teal for hover state
     
     // Accent colors
-    accentBlue: '#3B82F6',   // Vibrant accessible blue
-    accentRed: '#F43F5E',    // Refined red with better contrast
-    accentGreen: '#00D68F',  // Brighter green with more contrast
-    accentYellow: '#F59E0B', // Warmer, more accessible yellow
-    accentPurple: '#8B5CF6', // Refined purple with better visibility
-    accentCyan: '#06B6D4',   // Brighter cyan for better highlights
+    accent: '#3B82F6',   // Vibrant accessible blue
+    error: '#F43F5E',    // Refined red with better contrast
+    success: '#00D68F',  // Brighter green with more contrast
+    warning: '#F59E0B', // Warmer, more accessible yellow
+    info: '#3B82F6',    // Same as accent (blue)
+    muted: '#6B7280',   // Gray color for muted elements
     
     // Hover variants
-    accentGreenHover: '#00B778',
-    accentBlueHover: '#2563EB',
-    accentRedHover: '#E11D48',
-    accentYellowHover: '#D97706', // Darker amber
+    successHover: '#00B778',
+    accentHover: '#2563EB',
+    errorHover: '#E11D48',
+    warningHover: '#D97706', // Darker amber
+    infoHover: '#2563EB',    // Same as accentHover
+    mutedHover: '#4B5563',   // Darker gray
     
     // Text colors
     textPrimary: '#FFFFFF',
@@ -213,9 +194,9 @@ export const baseTheme: ThemeDefinition = {
     textLight: '#ffffff',
     textDark: '#0D111F',
     textOnPrimary: '#0D111F',
-    textAccentGreen: '#00D68F', // Same as accent-green
-    textAccentRed: '#F43F5E',   // Same as accent-red
-    textAccentBlue: '#3B82F6',
+    textSuccess: '#00D68F', // Same as accent-green
+    textError: '#F43F5E',   // Same as accent-red
+    textAccent: '#3B82F6',
     
     // Font settings
     fontFamily: "'Exo 2', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -232,38 +213,17 @@ export const baseTheme: ThemeDefinition = {
     statsTableTransparent: true, // Default to transparent stats table for modern look
     
     // Borders
-    border: '#1C202E',
-    borderLight: '#232735',
-    
-    // Surface colors
-    surfaceDark: '#111523',
-    surfaceLight: '#181C2A',
+    border: '#1f2940',
+    borderLight: '#2a3650',
     
     // Logo properties
     logoBrightness: 1,
     logoInvert: 0,
     logoHoverBrightness: 0.9,
     
-    // Token selector dropdown colors
-    tokenSelectorBg: '#111523',
-    tokenSelectorHeaderBg: '#181C2A',
-    tokenSelectorItemBg: '#1C202E',
-    tokenSelectorItemHoverBg: '#232735',
-    tokenSelectorItemActiveBg: '#282C3A',
-    tokenSelectorSearchBg: '#232735',
-    tokenSelectorBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    tokenSelectorRoundness: 'rounded-lg',
-    tokenSelectorShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
-    
-    // Plugin Manager colors
-    pmDark: '#171923',
-    pmBorder: '#282C3A',
-    pmAccent: '#8B5CF6', // Same as accent-purple
-    pmTextSecondary: '#9EA4BA',
-    
     // Switch button styling
-    switchButtonBg: '#111523',
-    switchButtonHoverBg: '#232735',
+    switchButtonBg: '#0f1523',
+    switchButtonHoverBg: '#1a2335',
     switchButtonBorder: '1px solid rgba(255, 255, 255, 0.1)',
     switchButtonShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
     
@@ -271,20 +231,19 @@ export const baseTheme: ThemeDefinition = {
     chartTextColor: '#FFFFFF',
     
     // Token ticker styling
-    tokenTickerBg: '#111523',
+    tokenTickerBg: '#0f1523',
     tokenTickerText: '#FFFFFF',
     tokenTickerBorder: '1px solid rgba(255, 255, 255, 0.1)',
     tokenTickerBorderStyle: 'default',
     tokenTickerRoundness: 'rounded-lg',
-    tokenTickerHoverBg: '#232735',
-    tokenTickerShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
+    tokenTickerHoverBg: '#1a2335',
     tokenTickerUpColor: '#00D68F',
     tokenTickerDownColor: '#F43F5E',
     tokenTickerBgOpacity: 100,
     
     // Button styling
-    buttonBg: '#111523',
-    buttonHoverBg: '#232735',
+    buttonBg: '#0f1523',
+    buttonHoverBg: '#1a2335',
     buttonText: '#FFFFFF',
     buttonBorder: '1px solid rgba(255, 255, 255, 0.1)',
     buttonBorderColor: '#FFFFFF',
@@ -316,7 +275,7 @@ export const baseTheme: ThemeDefinition = {
     
     // Background configuration
     backgroundType: 'gradient',
-    backgroundGradient: 'linear-gradient(180deg, rgb(2, 6, 23) 0%, rgb(10, 15, 35) 100%)',
+    backgroundGradient: 'linear-gradient(135deg, #050813 0%, #080b18 25%, #0a0e1b 50%, #080b18 75%, #050813 100%)',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
@@ -326,10 +285,9 @@ export const baseTheme: ThemeDefinition = {
     backgroundLeft: '0',
     backgroundRight: 'auto',
     backgroundBottom: '0',
-    enableParallax: false,
     enableNebula: true,
     enableStars: false,
-    nebulaOpacity: 0.4,
+    nebulaOpacity: 0.3,
     starsOpacity: 0.2
   }
 }; 

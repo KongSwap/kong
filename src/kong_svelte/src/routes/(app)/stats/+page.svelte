@@ -21,13 +21,14 @@
 
   // Constants
   const REFRESH_INTERVAL = 10000;
-  const ITEMS_PER_PAGE = 50;
+  const DEFAULT_ITEMS_PER_PAGE = 50;
 
   // Consolidated state
   const state = writable({
     tokens: [] as FE.StatsToken[],
     totalCount: 0,
     currentPage: 1,
+    itemsPerPage: DEFAULT_ITEMS_PER_PAGE,
     searchTerm: "",
     isLoading: true,
     poolTotals: { total_volume_24h: 0, total_tvl: 0, total_fees_24h: 0 },
@@ -49,6 +50,7 @@
   // Derived stores
   const isLoading = derived(state, $state => $state.isLoading);
   const currentPage = derived(state, $state => $state.currentPage);
+  const itemsPerPage = derived(state, $state => $state.itemsPerPage);
   const searchTerm = derived(state, $state => $state.searchTerm);
   const totalCount = derived(state, $state => $state.totalCount);
   const poolTotals = derived(state, $state => $state.poolTotals);
@@ -134,7 +136,7 @@
     try {
       const currentState = $state;
       const [tokensRes, totalsRes, topTokensRes] = await Promise.all([
-        fetchTokens({ page: currentState.currentPage, limit: ITEMS_PER_PAGE, search: currentState.searchTerm }),
+        fetchTokens({ page: currentState.currentPage, limit: currentState.itemsPerPage, search: currentState.searchTerm }),
         fetchPoolTotals(),
         fetchTopTokens(),
       ]);
@@ -176,6 +178,13 @@
     fetchData(true);
   }
 
+  // Page size change
+  function changePageSize(newPageSize: number) {
+    state.update(s => ({ ...s, itemsPerPage: newPageSize, currentPage: 1 }));
+    updateURL();
+    fetchData(true);
+  }
+
   // URL management
   function updateURL() {
     if (!browser) return;
@@ -207,8 +216,8 @@
   function getTrendClass(token: FE.StatsToken): string {
     const change = token?.metrics?.price_change_24h;
     if (!change) return "";
-    return Number(change) > 0 ? "text-kong-text-accent-green" 
-         : Number(change) < 0 ? "text-kong-accent-red" : "";
+    return Number(change) > 0 ? "text-kong-success" 
+         : Number(change) < 0 ? "text-kong-error" : "";
   }
 
   // Store the current flash states for reactivity
@@ -225,7 +234,7 @@
     }},
     { key: "volume_24h", title: "Vol", align: "right" as const, sortable: false, formatter: (row) => formatUsdValue(row.metrics?.volume_24h || 0) },
     { key: "market_cap", title: "MCap", align: "right" as const, sortable: false, formatter: (row) => formatUsdValue(row.metrics?.market_cap || 0) },
-    { key: "tvl", title: "TVL", align: "right" as const, sortable: false, formatter: (row) => formatUsdValue(row.metrics?.tvl || 0) },
+    { key: "tvl", title: "TVL(:MC)", align: "right" as const, sortable: false, isHtml: true, formatter: (row) => `<div class="flex flex-col gap-0">${formatUsdValue(row.metrics?.tvl || 0)}  <span class="text-xs text-kong-text-secondary">(${(Number(row.metrics?.tvl) / Number(row.metrics?.market_cap) * 100).toFixed(2)}%)</span></div>` },
   ];
 
   // Initialize and cleanup
@@ -271,7 +280,7 @@
 
 <section class="flex flex-col md:flex-row w-full gap-4 px-4">
   <!-- Sidebar -->
-  <div class="w-full md:w-[375px] flex flex-col gap-3 order-1">
+  <div class="w-full md:w-[330px] flex flex-col gap-2 order-1">
     <PlatformStats poolTotals={$poolTotals} isLoading={$isLoading} />
     <BiggestMovers topGainers={$topGainers} topLosers={$topLosers} isLoading={$isLoading} panelRoundness={$panelRoundness} />
     <TopVolume topVolumeTokens={$topVolumeTokens} isLoading={$isLoading} panelRoundness={$panelRoundness} />
@@ -290,7 +299,7 @@
           <input
             type="text"
             placeholder={isMobile ? "Search tokens..." : "Search tokens by name, symbol, or canister ID"}
-            class="w-full pl-10 pr-4 py-2 rounded-full bg-kong-bg-light/60 border border-kong-border/40 text-kong-text-primary placeholder-[#8890a4] focus:outline-none focus:ring-2 focus:ring-kong-primary/40 focus:border-kong-primary transition-all duration-200 shadow-sm"
+            class="w-full pl-10 pr-4 py-2 rounded-full bg-kong-bg-secondary/60 border border-kong-border/40 text-kong-text-primary placeholder-[#8890a4] focus:outline-none focus:ring-2 focus:ring-kong-primary/40 focus:border-kong-primary transition-all duration-200 shadow-sm"
             on:input={handleSearch}
             value={$searchTerm}
           />
@@ -300,8 +309,8 @@
       <!-- Content -->
       {#if $isLoading && $sortedTokens.length === 0}
         <div class="flex flex-col items-center justify-center h-64 text-center">
-          <div class="h-4 w-32 bg-kong-bg-light rounded mb-4"></div>
-          <div class="h-4 w-48 bg-kong-bg-light rounded"></div>
+          <div class="h-4 w-32 bg-kong-bg-secondary rounded mb-4"></div>
+          <div class="h-4 w-48 bg-kong-bg-secondary rounded"></div>
         </div>
       {:else if $sortedTokens.length === 0}
         <div class="flex flex-col items-center justify-center h-64 text-center">
@@ -315,12 +324,13 @@
               rowKey="canister_id"
               isLoading={$isLoading}
               columns={tableColumns}
-              itemsPerPage={ITEMS_PER_PAGE}
+              itemsPerPage={$itemsPerPage}
               defaultSort={{ column: "market_cap", direction: "desc" }}
               onRowClick={(row) => goto(`/stats/${row.address}`)}
               totalItems={$totalCount}
               currentPage={$currentPage}
               onPageChange={changePage}
+              onPageSizeChange={changePageSize}
             />
           {:else}
             <!-- Mobile View -->
@@ -337,7 +347,7 @@
                     <button
                       class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 {$state.sortBy === sort.key
                         ? 'bg-kong-primary text-kong-text-on-primary shadow-md'
-                        : 'bg-kong-bg-dark/40 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-dark/60'}"
+                        : 'bg-kong-bg-primary/40 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-primary/60'}"
                       on:click={() => toggleSort(sort.key)}
                     >
                       {sort.label}
@@ -361,19 +371,19 @@
               <!-- Mobile Pagination -->
               <div class="sticky bottom-0 flex items-center justify-between px-4 py-2 border-t border-kong-border backdrop-blur-md !rounded-b-lg">
                 <button
-                  class="px-3 py-1 rounded text-sm {$currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-light opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+                  class="px-3 py-1 rounded text-sm {$currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-secondary opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
                   on:click={() => changePage($currentPage - 1)}
                   disabled={$currentPage === 1}
                 >
                   Previous
                 </button>
                 <span class="text-sm text-kong-text-secondary">
-                  Page {$currentPage} of {Math.max(1, Math.ceil($totalCount / ITEMS_PER_PAGE))}
+                  Page {$currentPage} of {Math.max(1, Math.ceil($totalCount / $itemsPerPage))}
                 </span>
                 <button
-                  class="px-3 py-1 rounded text-sm {$currentPage >= Math.ceil($totalCount / ITEMS_PER_PAGE) ? 'text-kong-text-secondary bg-kong-bg-light opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
+                  class="px-3 py-1 rounded text-sm {$currentPage >= Math.ceil($totalCount / $itemsPerPage) ? 'text-kong-text-secondary bg-kong-bg-secondary opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
                   on:click={() => changePage($currentPage + 1)}
-                  disabled={$currentPage >= Math.ceil($totalCount / ITEMS_PER_PAGE)}
+                  disabled={$currentPage >= Math.ceil($totalCount / $itemsPerPage)}
                 >
                   Next
                 </button>

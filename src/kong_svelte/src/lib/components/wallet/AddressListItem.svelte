@@ -31,7 +31,7 @@
 </script>
 
 <div
-  class="px-4 py-3.5 bg-kong-bg-dark border-t border-kong-border/50 group hover:bg-kong-bg-light group transition-all duration-200 relative cursor-pointer"
+  class="px-4 py-3.5 bg-kong-bg-primary border-t border-kong-border/50 group hover:bg-kong-bg-secondary group transition-all duration-200 relative cursor-pointer"
   on:click={() => onCopy(address.address, address.id)} 
   role="button"
   tabindex="0"
@@ -59,7 +59,7 @@
     
     <div class="flex items-center gap-1">
       <button 
-        class="p-1.5 rounded-full text-kong-text-secondary hover:text-kong-primary transition-colors hover:bg-kong-bg-light/20 z-10"
+        class="p-1.5 rounded-full text-kong-text-secondary hover:text-kong-primary transition-colors hover:bg-kong-bg-secondary/20 z-10"
         title={showFullAddress ? "Show shortened address" : "Show full address"}
         on:click|stopPropagation={() => onToggleDisplay(address.id)}
       >
@@ -73,7 +73,7 @@
   </div>
 
   <div class="flex items-center justify-between gap-2">
-    <div class="text-kong-text-secondary font-mono max-w-[70%] overflow-hidden text-ellipsis bg-kong-bg-light group-hover:bg-kong-bg-dark group transition-all duration-200 rounded-md px-2.5 py-1.5 text-xs">
+    <div class="text-kong-text-secondary font-mono max-w-[70%] overflow-hidden text-ellipsis bg-kong-bg-secondary group-hover:bg-kong-bg-primary group transition-all duration-200 rounded-md px-2.5 py-1.5 text-xs">
       {#if showFullAddress}
         <div class="break-all transition-all duration-200">{address.address}</div>
       {:else}
@@ -82,25 +82,25 @@
     </div>
     <div class="flex items-center gap-1">
       <button 
-        class="p-1.5 rounded-full text-kong-text-secondary hover:text-kong-primary transition-colors hover:bg-kong-bg-light/20 z-10"
+        class="p-1.5 rounded-full text-kong-text-secondary hover:text-kong-primary transition-colors hover:bg-kong-bg-secondary/20 z-10"
         title={copiedAddressId === address.id ? "Copied!" : "Copy Address"}
         on:click|stopPropagation={() => onCopy(address.address, address.id)}
       >
         {#if copiedAddressId === address.id}
-          <Check size={14} class="text-kong-accent-green" />
+          <Check size={14} class="text-kong-success" />
         {:else}
           <Copy size={14} />
         {/if}
       </button>
       <button 
-        class="p-1.5 rounded-full text-kong-text-secondary hover:text-kong-primary transition-colors hover:bg-kong-bg-light/20 z-10"
+        class="p-1.5 rounded-full text-kong-text-secondary hover:text-kong-primary transition-colors hover:bg-kong-bg-secondary/20 z-10"
         title="Show QR Code"
         on:click|stopPropagation={() => onShowQR({ address: address.address, name: address.name, chain: address.chain })}
       >
         <QrCode size={14} />
       </button>
       <button 
-        class="p-1.5 rounded-full text-kong-text-secondary hover:text-kong-primary transition-colors hover:bg-kong-bg-light/20 z-10"
+        class="p-1.5 rounded-full text-kong-text-secondary hover:text-kong-primary transition-colors hover:bg-kong-bg-secondary/20 z-10"
         title="View on Explorer"
         on:click|stopPropagation={onViewExplorer}
       >
@@ -110,7 +110,7 @@
   </div>
 
   {#if copiedAddressId === address.id}
-    <div class="mt-2 text-xs text-kong-accent-green animate-fade-in flex items-center gap-1.5">
+    <div class="mt-2 text-xs text-kong-success animate-fade-in flex items-center gap-1.5">
       <Check size={12} />
       <span>Address copied</span>
     </div>

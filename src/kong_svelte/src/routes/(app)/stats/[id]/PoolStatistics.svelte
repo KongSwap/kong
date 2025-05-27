@@ -66,7 +66,7 @@
   );
 </script>
 
-<Panel type="main" className="relative !bg-kong-bg-light" zIndex={1}>
+<Panel type="main" className="relative !bg-kong-bg-secondary" zIndex={1}>
   <div class="flex flex-col gap-5">
     <!-- Pool Title Section -->
     <div>
@@ -90,7 +90,7 @@
       <!-- Pool Selector Integration -->
       {#if token && onPoolSelect}
         <div class="relative pool-selector-container">
-          <div class="border !border-kong-border bg-kong-bg-dark/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200">
+          <div class="border !border-kong-border bg-kong-bg-primary/70 hover:bg-kong-bg-secondary/30 hover:border-kong-primary/50 {$panelRoundness} transition-all duration-200">
             <PoolSelector 
               {selectedPool} 
               {token} 
@@ -103,7 +103,7 @@
         </div>
       {:else}
         <div class="mb-4">
-          <div class="border !border-kong-border bg-kong-bg-dark/70 {$panelRoundness} p-3 overflow-hidden">
+          <div class="border !border-kong-border bg-kong-bg-primary/70 {$panelRoundness} p-3 overflow-hidden">
             <div class="flex items-center gap-3">
               <TokenImages
                 tokens={[token0, token1].filter(Boolean)}
@@ -137,7 +137,7 @@
           <div class="text-sm font-medium text-kong-text-primary flex items-center gap-1">
             {apy}% 
             {#if Number(apy) > 0}
-              <span class="text-xs px-1.5 py-0.5 rounded-full bg-kong-accent-green/10 text-kong-accent-green">
+              <span class="text-xs px-1.5 py-0.5 rounded-full bg-kong-success/10 text-kong-success">
                 {Number(apy) < 4 ? 'Low' : Number(apy) < 20 ? 'Medium' : 'High'}
               </span>
             {/if}

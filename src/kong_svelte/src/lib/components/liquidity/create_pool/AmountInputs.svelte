@@ -182,10 +182,10 @@
 
 <style scoped lang="postcss">
   .token-input-container {
-    @apply bg-kong-bg-light rounded-xl p-3;
+    @apply bg-kong-bg-secondary rounded-xl p-3;
     @apply border border-kong-border backdrop-blur-md;
     @apply transition-all duration-200;
-    @apply hover:border-kong-border-light hover:bg-kong-bg-light/75;
+    @apply hover:border-kong-border-light hover:bg-kong-bg-secondary/75;
   }
 
   .amount-input {
@@ -206,7 +206,7 @@
   }
 
   .token-logo {
-    @apply w-6 h-6 rounded-full bg-kong-bg-dark/20 object-contain flex-shrink-0;
+    @apply w-6 h-6 rounded-full bg-kong-bg-primary/20 object-contain flex-shrink-0;
     @apply border border-kong-border;
   }
 
@@ -215,9 +215,9 @@
   }
 
   .percentage-buttons button {
-    @apply px-1.5 py-0.5 text-xs rounded-md bg-kong-bg-light text-kong-text-primary/70
-           hover:bg-kong-bg-light/75 hover:text-kong-text-primary transition-all duration-200
-           disabled:opacity-40 disabled:hover:bg-kong-bg-light disabled:hover:text-kong-text-primary/70;
+    @apply px-1.5 py-0.5 text-xs rounded-md bg-kong-bg-secondary text-kong-text-primary/70
+           hover:bg-kong-bg-secondary/75 hover:text-kong-text-primary transition-all duration-200
+           disabled:opacity-40 disabled:hover:bg-kong-bg-secondary disabled:hover:text-kong-text-primary/70;
     @apply border border-kong-border;
   }
 </style> 

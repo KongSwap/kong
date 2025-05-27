@@ -174,12 +174,12 @@
 
   function getMarketStatusColor(market: any): string {
     if (market.status && "Closed" in market.status)
-      return "bg-kong-accent-blue/20 text-kong-text-accent-blue";
+      return "bg-kong-accent-blue/20 text-kong-primary";
     if (market.status && "Voided" in market.status)
-      return "bg-kong-accent-red/20 text-kong-text-accent-red";
+      return "bg-kong-error/20 text-kong-error";
     if (market.status && "Pending" in market.status)
       return "bg-kong-accent-yellow/20 text-kong-accent-yellow";
-    return "bg-kong-accent-green/20 text-kong-text-accent-green";
+    return "bg-kong-success/20 text-kong-success";
   }
   function getMarketStatusText(market: any): string {
     if (market.status && "Closed" in market.status) return "Resolved";
@@ -225,10 +225,10 @@
   <div class="flex justify-between mb-4 items-center">
     <div class="flex flex-col gap-2">
       <h1
-        class="text-3xl font-bold text-kong-accent-green flex items-center gap-3"
+        class="text-3xl font-bold text-kong-success flex items-center gap-3"
       >
         <svg
-          class="w-7 h-7 text-kong-accent-green"
+          class="w-7 h-7 text-kong-success"
           fill="none"
           stroke="currentColor"
           stroke-width="2"
@@ -240,7 +240,7 @@
       <div class="mb-6 text-kong-text-secondary text-base">
         <strong>Admin tools:</strong> Manage, resolve, or void prediction
         markets. <br />
-        <span class="text-xs text-kong-accent-red"
+        <span class="text-xs text-kong-error"
           >Warning: Admin actions are irreversible and affect user funds.</span
         >
       </div>
@@ -297,10 +297,10 @@
     onResolved={handleResolved}
   />
   <div
-    class="overflow-x-auto rounded shadow border border-kong-border bg-kong-bg-light"
+    class="overflow-x-auto rounded shadow border border-kong-border bg-kong-bg-secondary"
   >
     <table class="min-w-full text-sm">
-      <thead class="bg-kong-bg-dark/80">
+      <thead class="bg-kong-bg-primary/80">
         <tr>
           <th class="px-4 py-2 text-left">Question</th>
           <th class="px-4 py-2 text-left">Status</th>
@@ -320,7 +320,7 @@
         {:else}
           {#each $marketStore.markets as market}
             <tr
-              class="border-b border-kong-border hover:bg-kong-bg-dark/10 transition"
+              class="border-b border-kong-border hover:bg-kong-bg-primary/10 transition"
             >
               <td class="px-4 py-2 max-w-xs truncate">
                 <a
@@ -373,12 +373,12 @@
                 {#if isUserAdmin}
                   <div class="flex gap-2">
                     <button
-                      class="px-2 py-1 rounded bg-kong-accent-green/10 text-kong-accent-green border border-kong-accent-green/30 hover:bg-kong-accent-green/20 text-xs font-medium"
+                      class="px-2 py-1 rounded bg-kong-success/10 text-kong-success border border-kong-success/30 hover:bg-kong-success/20 text-xs font-medium"
                       on:click={() => handleResolveMarket(market)}
                       >Resolve</button
                     >
                     <button
-                      class="px-2 py-1 rounded bg-kong-accent-red/10 text-kong-accent-red border border-kong-accent-red/30 hover:bg-kong-accent-red/20 text-xs font-medium"
+                      class="px-2 py-1 rounded bg-kong-error/10 text-kong-error border border-kong-error/30 hover:bg-kong-error/20 text-xs font-medium"
                       on:click={() => handleVoidMarket(market)}>Void</button
                     >
                   </div>
@@ -396,6 +396,6 @@
 
 <style>
   h1 {
-    color: var(--kong-accent-green);
+    color: var(--kong-success);
   }
 </style>

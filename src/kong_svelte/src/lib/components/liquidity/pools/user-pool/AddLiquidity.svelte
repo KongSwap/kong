@@ -345,7 +345,7 @@
   }
 
   .summary-container {
-    @apply p-3 rounded-lg bg-kong-bg-light/50 backdrop-blur-sm 
+    @apply p-3 rounded-lg bg-kong-bg-secondary/50 backdrop-blur-sm 
            border border-kong-border/10 space-y-2;
   }
 
@@ -358,8 +358,8 @@
   }
 
   .error-message {
-    @apply p-3 rounded-lg bg-kong-accent-red/10 border border-kong-accent-red/20 
-           text-kong-accent-red text-xs backdrop-blur-sm flex items-center gap-2;
+    @apply p-3 rounded-lg bg-kong-error/10 border border-kong-error/20 
+           text-kong-error text-xs backdrop-blur-sm flex items-center gap-2;
   }
 
   .warning-message {
@@ -373,7 +373,7 @@
   }
 
   .modal-footer {
-    @apply border-t border-kong-border/10 mt-4 bg-kong-bg-dark/90 
+    @apply border-t border-kong-border/10 mt-4 bg-kong-bg-primary/90 
            backdrop-blur-md w-full;
   }
 
@@ -392,7 +392,7 @@
   }
 
   .add-button {
-    @apply bg-kong-accent-green text-kong-bg-dark hover:bg-kong-accent-green-hover;
+    @apply bg-kong-success text-kong-bg-primary hover:bg-kong-success-hover;
   }
 
   .loading-spinner {

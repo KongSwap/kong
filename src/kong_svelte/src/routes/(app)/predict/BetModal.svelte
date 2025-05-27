@@ -339,7 +339,7 @@
       <div class="px-3 pb-3 sm:px-4 space-y-3 sm:space-y-5 flex-1 overflow-y-auto">
         <!-- Simplified Betting Summary Section -->
         {#if selectedOutcome !== null}
-          <div class="bg-kong-accent-green/10 border-2 border-kong-accent-green p-4 rounded relative">
+          <div class="bg-kong-success/10 border-2 border-kong-success p-4 rounded relative">
             <p class="text-sm">You are predicting this outcome:</p>
 
             <span class="font-bold text-base sm:text-lg flex justify-between">
@@ -347,7 +347,7 @@
             </span>
             <div class="mt-2 text-kong-text-secondary text-sm">
               {#if selectedMarket.uses_time_weighting}
-                <div class="flex items-center justify-end gap-1 mt-1 text-xs text-kong-text-accent-green">
+                <div class="flex items-center justify-end gap-1 mt-1 text-xs text-kong-success">
                   <Clock class="w-3 h-3" />
                   <span><span class="font-medium">{ state?.estimatedReturn?.scenarios[0]?.time_weight ? 
                   "Time-weight factor " + (Number(state?.estimatedReturn?.scenarios[0]?.time_weight) * 100).toFixed(1) + "%"  : ""}</span></span>
@@ -375,7 +375,7 @@
                   min="0"
                   max={state.maxAmount}
                   step="0.1"
-                  class="w-full p-2.5 sm:p-3 bg-kong-bg-light rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
+                  class="w-full p-2.5 sm:p-3 bg-kong-bg-secondary rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
                   placeholder="Enter token amount"
                 />
                 {#if state.tokenPriceUsd > 0 && betAmount !== null && betAmount > 0}
@@ -393,7 +393,7 @@
                   bind:value={state.usdInputValue}
                   min="0"
                   step="0.01"
-                  class="w-full p-2.5 sm:p-3 !pl-7 bg-kong-bg-light rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
+                  class="w-full p-2.5 sm:p-3 !pl-7 bg-kong-bg-secondary rounded border border-kong-border focus:border-kong-accent-blue focus:ring-1 focus:ring-kong-accent-blue mb-2"
                   placeholder="Enter USD amount"
                 />
                 <div class="absolute left-3 top-[43%] transform -translate-y-1/2 text-kong-text-secondary">
@@ -465,7 +465,7 @@
         <!-- Error Message -->
         {#if betError}
           <div
-            class="p-2.5 sm:p-3 bg-kong-accent-red/20 border border-kong-accent-red/40 rounded text-kong-text-accent-red flex items-center gap-2"
+            class="p-2.5 sm:p-3 bg-kong-error/20 border border-kong-error/40 rounded text-kong-error flex items-center gap-2"
           >
             <AlertTriangle class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
             <span class="text-sm">{betError}</span>
@@ -501,7 +501,7 @@
       <div class="px-3 pb-3 sm:px-4 flex-1 overflow-y-auto">
         <div class="py-6 flex flex-col items-center">
           <!-- Confirmation Message -->
-          <div class="bg-kong-accent-green/10 border-2 border-kong-accent-green p-5 rounded-lg w-full max-w-md mt-3">
+          <div class="bg-kong-success/10 border-2 border-kong-success p-5 rounded-lg w-full max-w-md mt-3">
             <h3 class="text-center text-lg font-medium mb-4">Confirm Your Bet</h3>
             
                           <p class="text-center text-base leading-relaxed">
@@ -516,23 +516,23 @@
             
             {#if state.isLoadingEstimate}
               <div class="text-center mt-4">
-                <div class="inline-block w-5 h-5 border-2 border-kong-accent-green border-t-transparent rounded-full animate-spin"></div>
+                <div class="inline-block w-5 h-5 border-2 border-kong-success border-t-transparent rounded-full animate-spin"></div>
                 <p class="mt-2">Calculating potential return...</p>
               </div>
             {:else if state.estimatedReturn}
               <div class="text-center mt-4">
                 <p class="text-base leading-relaxed">
                   If the market resolves to this outcome, you will receive 
-                  <span class="text-kong-text-accent-green font-bold">{potentialWin.isZero() ? "0" : formatToNonZeroDecimal(potentialWin.toNumber())} {state.tokenSymbol}</span>
+                  <span class="text-kong-success font-bold">{potentialWin.isZero() ? "0" : formatToNonZeroDecimal(potentialWin.toNumber())} {state.tokenSymbol}</span>
                   {#if state.tokenPriceUsd > 0}
-                    <span class="text-kong-text-accent-green">({formatUsd(potentialWin.toNumber() * state.tokenPriceUsd)})</span>
+                    <span class="text-kong-success">({formatUsd(potentialWin.toNumber() * state.tokenPriceUsd)})</span>
                   {/if}
                   based on the current pool size.
                 </p>
                 
                 {#if selectedMarket.uses_time_weighting && state.estimatedReturn.time_weight_alpha}
-                  <div class="mt-3 text-sm bg-kong-bg-light p-2 rounded">
-                    <div class="flex items-center justify-center gap-1 text-kong-text-accent-green mb-1">
+                  <div class="mt-3 text-sm bg-kong-bg-secondary p-2 rounded">
+                    <div class="flex items-center justify-center gap-1 text-kong-success mb-1">
                       <Clock class="w-4 h-4" />
                       <span class="font-medium">Time-Weighted Rewards</span>
                     </div>
@@ -563,7 +563,7 @@
         <!-- Error Message -->
         {#if betError}
           <div
-            class="p-2.5 sm:p-3 bg-kong-accent-red/20 border border-kong-accent-red/40 rounded text-kong-text-accent-red flex items-center gap-2 mt-3"
+            class="p-2.5 sm:p-3 bg-kong-error/20 border border-kong-error/40 rounded text-kong-error flex items-center gap-2 mt-3"
           >
             <AlertTriangle class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
             <span class="text-sm">{betError}</span>

@@ -106,7 +106,17 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       ]
     },
     modulePreload: {
-      polyfill: true
+      polyfill: true,
+      resolveDependencies: (filename, deps) => {
+        // Only preload critical dependencies
+        return deps.filter(dep => {
+          // Preload vendor chunks and essential modules
+          return dep.includes('vendor') || 
+                 dep.includes('svelte') || 
+                 dep.includes('app') ||
+                 dep.includes('index');
+        });
+      }
     },
     commonjsOptions: {
       include: [/node_modules/],

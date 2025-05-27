@@ -21,7 +21,7 @@
 <div class="space-y-2 sm:space-y-3">
   <div class="space-y-2 sm:space-y-3">
     {#each outcomes as outcome, i}
-      <Panel className="relative !rounded {isMarketClosed && winningOutcomes.some((w) => Number(w) === i) ? 'border-2 !border-kong-accent-green' : isMarketClosed && !isPendingResolution && !winningOutcomes.some((w) => Number(w) === i) ? 'opacity-75 border border-kong-border/30' : ''}">
+      <Panel className="relative !rounded {isMarketClosed && winningOutcomes.some((w) => Number(w) === i) ? 'border-2 !border-kong-success' : isMarketClosed && !isPendingResolution && !winningOutcomes.some((w) => Number(w) === i) ? 'opacity-75 border border-kong-border/30' : ''}">
         <div class="relative flex flex-col">
           <div
             class="flex items-center justify-between p-2 sm:p-3 rounded transition-colors"
@@ -33,7 +33,7 @@
                 {outcome}
                 {#if isMarketClosed && winningOutcomes.some((w) => Number(w) === i)}
                   <span
-                    class="text-xs px-1.5 py-0.5 bg-kong-accent-green/20 text-kong-text-accent-green rounded border border-kong-accent-green"
+                    class="text-xs px-1.5 py-0.5 bg-kong-success/20 text-kong-success rounded border border-kong-success"
                   >
                     Winner
                   </span>
@@ -70,7 +70,7 @@
                 </ButtonV2>
               {:else if isMarketClosed && winningOutcomes.some((w) => Number(w) === i)}
                 <div
-                  class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-accent-green/20 text-kong-text-accent-green rounded-md text-sm sm:text-base font-medium border border-kong-accent-green"
+                  class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-success/20 text-kong-success rounded-md text-sm sm:text-base font-medium border border-kong-success"
                 >
                   Winner
                 </div>
@@ -78,7 +78,7 @@
                 <div class="text-sm text-yellow-500">Pending</div>
               {:else}
                 <div
-                  class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-bg-dark/70 text-kong-text-secondary/70 rounded-md text-sm sm:text-base border border-kong-border/30"
+                  class="px-3 sm:px-4 py-1.5 sm:py-2 bg-kong-bg-primary/70 text-kong-text-secondary/70 rounded-md text-sm sm:text-base border border-kong-border/30"
                 >
                   Lost
                 </div>

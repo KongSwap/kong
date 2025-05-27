@@ -44,7 +44,7 @@
 </script>
 
 <div
-	class="px-4 z-[10] !shadow py-3.5 bg-kong-bg-dark border-t border-kong-border/50 hover:bg-kong-primary/10 transition-all duration-200 relative
+	class="px-4 z-[10] !shadow py-3.5 bg-kong-bg-primary border-t border-kong-border/50 hover:bg-kong-primary/10 transition-all duration-200 relative
 		{isSyncing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
 		{isActive ? 
 			'border-l-4 border-l-kong-primary border border-kong-primary/20 shadow-[0_0_15px_rgba(0,0,0,0.1)] bg-kong-primary/10' : 'border-l-2 border-l-transparent'}"
@@ -101,8 +101,8 @@
 			</div>
 			<div
 				class="text-xs {Number(token.metrics.price_change_24h) >= 0
-					? 'text-kong-accent-green'
-					: 'text-kong-accent-red'} font-medium mt-1 leading-tight"
+					? 'text-kong-success'
+					: 'text-kong-error'} font-medium mt-1 leading-tight"
 			>
 				{Number(formatToNonZeroDecimal(token.metrics.price_change_24h)) >= 0
 					? "+"

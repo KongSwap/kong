@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { fade } from "svelte/transition";
+  import { fade, fly } from "svelte/transition";
+  import { cubicOut, cubicInOut } from "svelte/easing";
   import { page } from "$app/state";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
@@ -71,9 +72,6 @@
           document.documentElement.setAttribute("data-theme-ready", "true");
         }, 2000);
 
-        // Start theme initialization
-        themeStore.initTheme();
-
         // Check if theme is ready
         const checkThemeReady = () => {
           if (
@@ -123,37 +121,30 @@
 </script>
 
 
-<div class="flex flex-col min-h-screen w-full origin-center app-content">
+<div class="flex flex-col min-h-screen !bg-kong-bg-primary w-full origin-center overflow-hidden">
   {#if !themeReady}
   <LoadingIndicator message="Loading..." fullHeight />
 {:else}
-  <PageWrapper page={page.url.pathname}>
-    <div class="ticker-section bg-kong-bg-dark">
+
+    <div class="ticker-section bg-kong-bg-primary">
       <TokenTicker />
     </div>
     <div class="bg-transparent navbar-section mb-4">
       <Navbar />
     </div>
-    <main class="flex justify-center items-center w-full flex-grow">
-      <div class="w-full px-2 mx-auto h-full" transition:fade>
-        {@render children?.()}
+    <main class="flex flex-grow relative">
+      <div class="w-full !max-w-[90rem] mx-auto h-full relative">
+        {#key page.url.pathname}
+          <div 
+            class="page-content w-full h-full" 
+            in:fade={{ duration: 200, easing: cubicInOut, delay: 50 }}
+            out:fade={{ duration: 150, easing: cubicOut }}
+          >
+            {@render children?.()}
+          </div>
+        {/key}
       </div>
     </main>
-
-    <footer class="w-full h-6 bg-transparent absolute bottom-0 mx-auto">
-      <div
-        class="flex items-center justify-center opacity-60 transition-opacity duration-200"
-      >
-        <p class="text-xs text-kong-text-secondary">
-          Powered by <button
-            onclick={() => goto("/")}
-            class="hover:opacity-90 text-kong-text-primary font-semibold hover:text-kong-primary"
-            >KongSwap</button
-          >
-        </p>
-      </div>
-    </footer>
-  </PageWrapper>
   <Toast />
   <AddToHomeScreen />
   <QRModal />
@@ -164,6 +155,14 @@
   <KeyboardShortcutsHelp />
   <GlobalWalletProvider />
   <GlobalSignatureModal />
-  <div id="modals"></div>
 {/if}
 </div>
+
+<style>
+  /* Ensure smooth transitions without layout shifts */
+  .main-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+</style>

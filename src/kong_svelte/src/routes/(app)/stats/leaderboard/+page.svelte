@@ -88,9 +88,9 @@
 <div class="max-w-[1300px] mx-auto pt-4">
   <!-- Period Selector - Redesigned -->
   <div class="flex justify-end mb-8 px-4">
-    <div class="inline-flex p-0.5 bg-kong-bg-dark rounded-lg shadow-sm border border-kong-border overflow-hidden">
+    <div class="inline-flex p-0.5 bg-kong-bg-primary rounded-lg shadow-sm border border-kong-border overflow-hidden">
       <button 
-        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'day' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'day' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-secondary'}"
         on:click={() => handlePeriodChange('day')}
         aria-label="Show daily leaderboard"
       >
@@ -98,7 +98,7 @@
         <span>Day</span>
       </button>
       <button 
-        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'week' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'week' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-secondary'}"
         on:click={() => handlePeriodChange('week')}
         aria-label="Show weekly leaderboard"
       >
@@ -106,7 +106,7 @@
         <span>Week</span>
       </button>
       <button 
-        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'month' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-light'}"
+        class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'month' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-secondary'}"
         on:click={() => handlePeriodChange('month')}
         aria-label="Show monthly leaderboard"
       >
@@ -195,7 +195,7 @@
             unpadded={true}
           >
             <table class="w-full table-auto">
-              <thead class="bg-kong-surface-light border-b border-kong-border">
+              <thead class="bg-kong-bg-secondary border-b border-kong-border">
                 <tr>
                   <th class="px-4 py-3 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider w-16">Rank</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-kong-text-secondary uppercase tracking-wider">Trader</th>

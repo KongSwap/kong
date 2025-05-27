@@ -454,7 +454,7 @@ let initializing = $state(false);
 
     {#if error}
       <div class="text-center py-8 sm:py-12">
-        <p class="text-kong-accent-red text-base sm:text-lg" role="alert">
+        <p class="text-kong-error text-base sm:text-lg" role="alert">
           {error}
         </p>
         <ButtonV2
@@ -472,13 +472,13 @@ let initializing = $state(false);
         class="space-y-3 sm:space-y-4 py-8 sm:py-12"
       >
         <div
-          class="h-6 sm:h-8 bg-kong-bg-light/30 rounded animate-pulse mx-auto w-full sm:w-1/2"
+          class="h-6 sm:h-8 bg-kong-bg-secondary/30 rounded animate-pulse mx-auto w-full sm:w-1/2"
         ></div>
         <div
-          class="h-16 sm:h-20 bg-kong-bg-light/30 rounded animate-pulse mx-auto w-full sm:w-3/4"
+          class="h-16 sm:h-20 bg-kong-bg-secondary/30 rounded animate-pulse mx-auto w-full sm:w-3/4"
         ></div>
         <div
-          class="h-32 sm:h-40 bg-kong-bg-light/30 rounded animate-pulse mx-auto w-full"
+          class="h-32 sm:h-40 bg-kong-bg-secondary/30 rounded animate-pulse mx-auto w-full"
         ></div>
       </div>
     {:else if market}
@@ -576,7 +576,7 @@ showClose={false}
 >
 <div class="flex flex-col gap-4">
   <div class="text-kong-text-primary text-lg font-semibold">Are you sure you want to void this market?</div>
-  <div class="text-kong-text-secondary text-sm">Voiding a market is <span class="font-bold text-kong-accent-red">irreversible</span> and will refund all user bets. This action cannot be undone.</div>
+  <div class="text-kong-text-secondary text-sm">Voiding a market is <span class="font-bold text-kong-error">irreversible</span> and will refund all user bets. This action cannot be undone.</div>
   <div class="flex gap-3 justify-end">
     <ButtonV2
       theme="secondary"

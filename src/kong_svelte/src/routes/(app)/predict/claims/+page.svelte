@@ -88,7 +88,7 @@
   <div class="max-w-4xl mx-auto">
     <button
       on:click={() => goto("/predict")}
-      class="mb-4 flex items-center gap-2 px-3 py-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md hover:bg-kong-bg-dark/40"
+      class="mb-4 flex items-center gap-2 px-3 py-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md hover:bg-kong-bg-primary/40"
     >
       <ArrowLeft class="w-4 h-4" />
       <span class="text-sm">Back to Markets</span>
@@ -101,14 +101,14 @@
 
     {#if error}
       <Panel className="!rounded">
-        <div class="text-center py-8 text-kong-accent-red">
+        <div class="text-center py-8 text-kong-error">
           <p class="text-lg">{error}</p>
         </div>
       </Panel>
     {:else if loading}
       <Panel className="!rounded">
         <div class="text-center py-8">
-          <div class="animate-spin w-8 h-8 border-4 border-kong-accent-green rounded-full border-t-transparent mx-auto" />
+          <div class="animate-spin w-8 h-8 border-4 border-kong-success rounded-full border-t-transparent mx-auto" />
           <p class="mt-4 text-kong-text-secondary">Loading your claimable rewards...</p>
         </div>
       </Panel>
@@ -137,7 +137,7 @@
         <Panel className="!rounded">
           <div class="p-4">
             <div class="flex items-center gap-2 mb-2">
-              <Gift class="w-5 h-5 text-kong-accent-purple" />
+              <Gift class="w-5 h-5 text-kong-primary" />
               <h3 class="text-sm text-kong-text-secondary">Total Claimable</h3>
             </div>
             <p class="text-xl font-medium">{formatBalance(totalClaimable, 8, 2)} KONG</p>
@@ -146,7 +146,7 @@
         <Panel className="!rounded">
           <div class="p-4">
             <div class="flex items-center gap-2 mb-2">
-              <Award class="w-5 h-5 text-kong-accent-green" />
+              <Award class="w-5 h-5 text-kong-success" />
               <h3 class="text-sm text-kong-text-secondary">Available Claims</h3>
             </div>
             <p class="text-xl font-medium">{claims.length}</p>
@@ -161,12 +161,12 @@
           <div class="p-4">
             <div class="space-y-4 mb-6">
               {#each claims as claim}
-                <div class="flex items-center justify-between p-4 bg-kong-bg-dark rounded-lg border border-kong-border">
+                <div class="flex items-center justify-between p-4 bg-kong-bg-primary rounded-lg border border-kong-border">
                   <div class="flex-1">
                     <div class="flex items-center gap-2 mb-2">
                       {#if claim.claim_type.WinningPayout}
-                        <Award class="w-4 h-4 text-kong-accent-green" />
-                        <span class="text-sm font-medium text-kong-accent-green">Winning Payout</span>
+                        <Award class="w-4 h-4 text-kong-success" />
+                        <span class="text-sm font-medium text-kong-success">Winning Payout</span>
                       {:else}
                         <Gift class="w-4 h-4 text-kong-accent-blue" />
                         <span class="text-sm font-medium text-kong-accent-blue">Refund</span>
@@ -178,7 +178,7 @@
                     </p>
                   </div>
                   <div class="text-right">
-                    <p class="text-kong-accent-green font-bold text-lg">
+                    <p class="text-kong-success font-bold text-lg">
                       +{formatBalance(claim.claimable_amount, 8, 2)} KONG
                     </p>
                   </div>
@@ -187,7 +187,7 @@
             </div>
 
             {#if claimError}
-              <div class="mb-4 p-3 bg-kong-accent-red/10 text-kong-accent-red rounded-lg border border-kong-accent-red/20">
+              <div class="mb-4 p-3 bg-kong-error/10 text-kong-error rounded-lg border border-kong-error/20">
                 <p class="font-medium">Claim Failed</p>
                 <p class="text-sm">{claimError}</p>
               </div>
@@ -196,7 +196,7 @@
             <button
               on:click={handleClaimRewards}
               disabled={claimingRewards}
-              class="w-full py-4 px-6 bg-kong-accent-green hover:bg-kong-accent-green/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg"
+              class="w-full py-4 px-6 bg-kong-success hover:bg-kong-success/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg"
             >
               {#if claimingRewards}
                 <div class="animate-spin w-5 h-5 border-2 border-white rounded-full border-t-transparent" />

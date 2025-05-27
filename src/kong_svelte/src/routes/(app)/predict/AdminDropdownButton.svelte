@@ -20,7 +20,7 @@
 
 <div class="admin-dropdown justify-end">
   <button
-    class="p-1.5 text-right rounded-full hover:bg-kong-bg-dark/50 transition-colors"
+    class="p-1.5 text-right rounded-full hover:bg-kong-bg-primary/50 transition-colors"
     onclick={(e) => {
       e.stopPropagation();
       onToggle(e);
@@ -29,10 +29,10 @@
     <MoreVertical class="w-4 h-4 text-kong-text-secondary" />
   </button>
   {#if isOpen}
-    <div class="absolute top-full right-0 mt-2 w-48 bg-kong-bg-dark border border-kong-border rounded-md shadow-lg">
+    <div class="absolute top-full right-0 mt-2 w-48 bg-kong-bg-primary border border-kong-border rounded-md shadow-lg">
       <div class="py-1">
         <button
-          class="w-full px-4 py-2 text-left text-sm text-kong-text-primary hover:bg-kong-bg-light/10 flex items-center gap-2"
+          class="w-full px-4 py-2 text-left text-sm text-kong-text-primary hover:bg-kong-bg-secondary/10 flex items-center gap-2"
           onclick={(e) => {
             e.stopPropagation();
             onSetFeatured();
@@ -42,7 +42,7 @@
           {isFeatured ? 'Remove Featured' : 'Set as Featured'}
         </button>
         <button
-          class="w-full px-4 py-2 text-left text-sm text-kong-text-primary hover:bg-kong-bg-light/10 flex items-center gap-2"
+          class="w-full px-4 py-2 text-left text-sm text-kong-text-primary hover:bg-kong-bg-secondary/10 flex items-center gap-2"
           onclick={(e) => {
             e.stopPropagation();
             onResolve();
@@ -52,7 +52,7 @@
           Resolve Market
         </button>
         <button
-          class="w-full px-4 py-2 text-left text-sm text-kong-text-accent-red hover:bg-kong-bg-light/10 flex items-center gap-2"
+          class="w-full px-4 py-2 text-left text-sm text-kong-error hover:bg-kong-bg-secondary/10 flex items-center gap-2"
           onclick={(e) => {
             e.stopPropagation();
             onVoid();

@@ -7,12 +7,14 @@
     data = [],
     columns = [],
     itemsPerPage = 50,
+    pageSizeOptions = [25, 50, 100, 200],
     defaultSort = { column: '', direction: 'desc' as 'asc' | 'desc' },
     onRowClick = null,
     rowKey = 'id',
     totalItems = 0,
     currentPage = 1,
     onPageChange = null,
+    onPageSizeChange = null,
     isLoading = false
   } = $props<{
     data: any[];
@@ -26,14 +28,17 @@
       component?: any;
       componentProps?: any;
       sortValue?: (row: any) => string | number;
+      isHtml?: boolean;
     }[];
     itemsPerPage?: number;
+    pageSizeOptions?: number[];
     defaultSort?: { column: string; direction: 'asc' | 'desc' };
     onRowClick?: ((row: any) => void) | null;
     rowKey?: string;
     totalItems?: number;
     currentPage?: number;
     onPageChange?: ((page: number) => void) | null;
+    onPageSizeChange?: ((pageSize: number) => void) | null;
     isLoading?: boolean;
   }>();
 
@@ -77,7 +82,7 @@
 
   function isLowTVL(row: any): boolean {
     // Check if TVL is less than 100
-    return Number(row.metrics?.tvl || 0) < 100;
+    return Number(row.metrics?.tvl || 0) < 1000;
   }
 
   let sortedData = $derived(() => {
@@ -153,7 +158,7 @@
 
   function getTrendClass(value: number): string {
     if (!value) return '';
-    return value > 0 ? 'text-kong-text-accent-green' : value < 0 ? 'text-kong-accent-red' : '';
+    return value > 0 ? 'text-kong-success' : value < 0 ? 'text-kong-error' : '';
   }
 
   function onRowMouseEnter(index: number) {
@@ -162,6 +167,13 @@
   
   function onRowMouseLeave() {
     hoveredRowIndex = null;
+  }
+
+  function handlePageSizeChange(e: Event) {
+    const newPageSize = parseInt((e.target as HTMLSelectElement).value);
+    // Reset to page 1 when changing page size
+    onPageChange?.(1);
+    onPageSizeChange?.(newPageSize);
   }
 
   onMount(() => {
@@ -224,6 +236,10 @@
                   isHovered={hoveredRowIndex === idx} 
                   {...(column.componentProps || {})} 
                 />
+              {:else if column.isHtml}
+                <div class="cell-content {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
+                  {@html formattedValue}
+                </div>
               {:else}
                 <div class="cell-content {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
                   {formattedValue}
@@ -245,6 +261,23 @@
   <!-- Fixed Footer/Pagination -->
   <div class="grid-footer-container">
     <div class="pagination-container">
+      <div class="pagination-left">
+        {#if onPageSizeChange}
+          <div class="page-size-selector">
+            <label for="page-size" class="page-size-label">Show:</label>
+            <select
+              id="page-size"
+              class="page-size-select"
+              value={itemsPerPage}
+              on:change={handlePageSizeChange}
+            >
+              {#each pageSizeOptions as size}
+                <option value={size}>{size}</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
+      </div>
       <div class="pagination-info">
         {#if totalItems > 0}
           Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
@@ -414,11 +447,11 @@
   }
 
   .grid-row.low-tvl:hover {
-    opacity: 0.6;
+    opacity: 0.7;
   }
   
   .grid-cell {
-    padding: 0.5rem 1rem;
+    padding: 0.3rem 1rem;
     display: flex;
     align-items: center;
     overflow: hidden;
@@ -461,23 +494,64 @@
   }
   
   .pagination-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
     padding: 0.75rem 1rem;
     background-color: var(--bg-dark);
     border-top: 1px solid var(--kong-border);
+  }
+
+  .pagination-left {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
   }
   
   .pagination-info {
     font-size: 0.875rem;
     color: var(--text-secondary);
+    text-align: center;
+    white-space: nowrap;
   }
   
   .pagination-controls {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.5rem;
+  }
+
+  .page-size-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .page-size-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  .page-size-select {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--kong-border);
+    background-color: var(--bg-light);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .page-size-select:hover {
+    border-color: rgb(var(--primary) / 0.5);
+  }
+
+  .page-size-select:focus {
+    outline: none;
+    border-color: rgb(var(--primary));
+    box-shadow: 0 0 0 2px rgba(var(--primary) / 0.2);
   }
   
   .pagination-pill {

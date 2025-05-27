@@ -91,7 +91,7 @@
         {@const betData = getBetData(bet)}
         {@const betId = getBetId(bet)}
         <div
-          class="flex p-4 flex-col py-3 border-b border-kong-border/50 last:border-0 hover:bg-kong-bg-dark/30 transition-colors group rounded-md"
+          class="flex p-4 flex-col py-3 border-b border-kong-border/50 last:border-0 hover:bg-kong-bg-primary/30 transition-colors group rounded-md"
         >
           <div class="flex items-center justify-between">
             {#if showOutcomes && outcomes}
@@ -107,21 +107,21 @@
                   <span class="block pr-6">{betData.market.question}</span>
                 </button>
                 <div class="flex items-center gap-1">
-                  <span class="text-kong-text-accent-green">
+                  <span class="text-kong-success">
                     {betData.market.outcomes[Number(betData.outcome_index)]}
                   </span>
                 </div>
               </div>
             {/if}
             <div class="flex items-center gap-1 ml-4 flex-shrink-0">
-              <span class="font-medium text-kong-text-accent-green">
+              <span class="font-medium text-kong-success">
                 {formatBalance(Number(betData.amount || 0), 8)}
               </span>
-              <span class="text-xs text-kong-pm-text-secondary">{tokenSymbol}</span>
+              <span class="text-xs text-kong-text-secondary">{tokenSymbol}</span>
             </div>
           </div>
           <div class="flex justify-between w-full items-center mt-2">
-            <span class="text-xs text-kong-pm-text-secondary">
+            <span class="text-xs text-kong-text-secondary">
               {new Date(Number(betData.timestamp) / 1_000_000).toLocaleString(
                 undefined,
                 {
@@ -132,8 +132,8 @@
                 },
               )}
             </span>
-            <span class="text-xs text-kong-pm-text-secondary/80">
-              by <span class="font-medium text-kong-text-accent-green"
+            <span class="text-xs text-kong-text-secondary/80">
+              by <span class="font-medium text-kong-success"
                 >{betData.user
                   ? betData.user.toString().slice(0, 10)
                   : "Unknown"}...</span
@@ -146,11 +146,11 @@
       <div transition:fade class="space-y-3 px-4">
         {#each Array(3) as _}
           <div class="animate-pulse">
-            <div class="h-5 bg-kong-bg-light/30 rounded w-3/4 mb-2"></div>
-            <div class="h-4 bg-kong-bg-light/30 rounded w-1/2"></div>
+            <div class="h-5 bg-kong-bg-secondary/30 rounded w-3/4 mb-2"></div>
+            <div class="h-4 bg-kong-bg-secondary/30 rounded w-1/2"></div>
             <div class="flex justify-between items-center mt-2">
-              <div class="h-3 bg-kong-bg-light/30 rounded w-24"></div>
-              <div class="h-3 bg-kong-bg-light/30 rounded w-20"></div>
+              <div class="h-3 bg-kong-bg-secondary/30 rounded w-24"></div>
+              <div class="h-3 bg-kong-bg-secondary/30 rounded w-20"></div>
             </div>
           </div>
         {/each}
@@ -160,7 +160,7 @@
         class="flex flex-col items-center justify-center py-8 px-4 text-center"
       >
         <div
-          class="w-16 h-16 mb-4 rounded-full bg-kong-bg-dark/50 flex items-center justify-center"
+          class="w-16 h-16 mb-4 rounded-full bg-kong-bg-primary/50 flex items-center justify-center"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

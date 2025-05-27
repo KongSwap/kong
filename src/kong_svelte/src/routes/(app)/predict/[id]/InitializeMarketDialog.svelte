@@ -35,7 +35,7 @@
       Choose an outcome to place your initial {formattedMinInitialBetString} bet and initialize this market.
     </div>
     <div class="text-kong-text-secondary text-sm">
-      This action is <span class="font-bold text-kong-accent-red">irreversible</span> and will make the market public.
+      This action is <span class="font-bold text-kong-error">irreversible</span> and will make the market public.
     </div>
     <div class="flex flex-col gap-2">
       {#each outcomes as outcome, index}
@@ -53,7 +53,7 @@
         <div class="flex items-center gap-2">
           <span class="text-xs text-kong-text-secondary">
             {#if selectedOutcome === index}
-              <span class="text-kong-accent-green flex items-center gap-1 bg-kong-accent-green/10 px-2 py-1 rounded-md font-bold">
+              <span class="text-kong-success flex items-center gap-1 bg-kong-success/10 px-2 py-1 rounded-md font-bold">
                 <Check class="w-3 h-3" />
                 Selected
               </span>

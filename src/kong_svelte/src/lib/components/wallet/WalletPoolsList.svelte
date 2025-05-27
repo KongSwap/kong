@@ -190,9 +190,9 @@
     {:else if errorMessage}
       <div class="py-10 text-center">
         <div
-          class="p-5 rounded-full bg-kong-accent-red/10 inline-block mb-3 mx-auto"
+          class="p-5 rounded-full bg-kong-error/10 inline-block mb-3 mx-auto"
         >
-          <LayoutGrid size={24} class="text-kong-accent-red/80" />
+          <LayoutGrid size={24} class="text-kong-error/80" />
         </div>
         <p class="text-base font-medium text-kong-text-primary">
           Error Loading Pools
@@ -203,8 +203,8 @@
           {errorMessage}
         </p>
         <button
-          class="px-4 py-2 bg-kong-bg-dark/40 text-kong-text-primary text-xs font-medium rounded-lg
-                 border border-kong-border/40 hover:border-kong-primary/30 hover:bg-kong-bg-dark/60
+          class="px-4 py-2 bg-kong-bg-primary/40 text-kong-text-primary text-xs font-medium rounded-lg
+                 border border-kong-border/40 hover:border-kong-primary/30 hover:bg-kong-bg-primary/60
                  transition-all duration-200 active:scale-[0.98]"
           on:click={handleRefresh}
         >
@@ -234,7 +234,7 @@
       <div class="space-y-0">
         {#each $currentUserPoolsStore.filteredPools as pool}
           <div
-            class="px-4 md:px-4 py-3.5 bg-kong-bg-light/5 border-t border-kong-border/80 hover:bg-kong-primary/10 transition-all duration-200 cursor-pointer"
+            class="px-4 md:px-4 py-3.5 bg-kong-bg-secondary/5 border-t border-kong-border/80 hover:bg-kong-primary/10 transition-all duration-200 cursor-pointer"
             on:click={() => handlePoolItemClick(pool)}
             on:keydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
             role="button"
@@ -244,7 +244,7 @@
               <div class="flex-shrink-0">
                 <TokenImages
                   tokens={[pool.token0, pool.token1]}
-                  size={36}
+                  size={38}
                   overlap={true}
                 />
               </div>
@@ -252,7 +252,7 @@
               <span class="text-sm text-kong-text-primary">
                 {pool.symbol_0}/{pool.symbol_1}
               </span>
-              <span class="text-xs text-kong-text-secondary">
+              <span class="text-xs text-kong-text-secondary/90">
                 {formatToNonZeroDecimal(pool.amount_0)} {pool.symbol_0} / {formatToNonZeroDecimal(pool.amount_1)} {pool.symbol_1}
               </span>
               </div>
@@ -265,7 +265,7 @@
                         $****
                       {/if}
                     </span>
-                    <span class="text-kong-accent-green">{getPoolApy(pool)}% APY</span>
+                    <span class="text-kong-success">{getPoolApy(pool)}% APY</span>
                 </div>
               </div>
             </div>
@@ -277,7 +277,7 @@
       <div class="space-y-0">
         {#each liquidityPools as pool}
           <div
-            class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border hover:bg-kong-bg-light/10 transition-colors cursor-pointer"
+            class="px-4 py-3.5 bg-kong-bg-secondary/5 border-b border-kong-border hover:bg-kong-bg-secondary/10 transition-colors cursor-pointer"
             on:click={() => handlePoolItemClick(pool)}
             on:keydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
             role="button"
@@ -337,7 +337,7 @@
               </div>
               <div>
                 <div class="text-kong-text-secondary">APY</div>
-                <div class="text-kong-accent-green font-medium mt-0.5">
+                <div class="text-kong-success font-medium mt-0.5">
                   {pool.apr}%
                 </div>
               </div>

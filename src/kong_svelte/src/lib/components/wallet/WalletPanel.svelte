@@ -329,7 +329,7 @@
   class="border-b border-kong-border"
 >
   <!-- Portfolio Overview -->
-  <div class="px-5 py-3 bg-kong-bg-light/50">
+  <div class="px-5 py-3 bg-kong-bg-secondary/50">
     <div class="flex justify-between items-center mb-2">
       <div class="text-sm text-kong-text-primary flex items-center gap-2 cursor-pointer" aria-label="Total Portfolio Value">
         <span onclick={() => {
@@ -344,7 +344,7 @@
             <RefreshCw size={12} class={isRefreshing ? 'animate-spin' : ''} />
           </button>
           <button
-            class="p-1 text-kong-text-primary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-light/20 transition-all"
+            class="p-1 text-kong-text-primary/60 hover:text-kong-primary rounded-full hover:bg-kong-bg-secondary/20 transition-all"
             onclick={toggleUsdVisibility}
           >
             {#if showUsdValues}
@@ -365,7 +365,7 @@
             >{truncateAddress($auth?.account?.owner)}</span
           >
           {#if hasCopiedPrincipal}
-            <Check size={11} class="text-kong-accent-green" />
+            <Check size={11} class="text-kong-success" />
           {:else}
             <Copy
               size={11}

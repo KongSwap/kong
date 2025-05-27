@@ -254,7 +254,7 @@
     </div>
     
     <!-- Action button with improved styling -->
-    <div class="w-full sticky bottom-0 bg-kong-bg-dark z-10 pt-3 sm:pt-2">
+    <div class="w-full sticky bottom-0 bg-kong-bg-primary z-10 pt-3 sm:pt-2">
       <button
         class:processing={isLoading}
         class:warning={showPriceImpactWarning}

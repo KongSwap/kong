@@ -13,7 +13,7 @@
   $: isTopVolume = !isExcludedToken && topTokens.top_volume.some(token => token.address === row.address) && Number(row.metrics?.volume_24h || 0) > 0;
   $: isTopGainer = !isExcludedToken && topTokens.gainers.some(token => token.address === row.address) && Number(row.metrics?.price_change_24h || 0) > 0;
   $: isTopLoser = !isExcludedToken && topTokens.losers.some(token => token.address === row.address) && Number(row.metrics?.price_change_24h || 0) < 0;
-  $: isLowTVL = Number(row.metrics?.tvl || 0) < 100;
+  $: isLowTVL = Number(row.metrics?.tvl || 0) < 1000;
   
   // For TVL, we'll calculate from the current tokens since it's not in topTokens
   // This is a simplified approach - you might want to add a top_tvl array to your API response
@@ -27,12 +27,12 @@
 
 <div class="flex items-center gap-1">
   <TokenImages tokens={[row]} containerClass="self-center" size={28} showNetworkIcon />
-  <span class="token-name ml-2 {isHovered ? '!text-kong-primary' : ''} {row.name === 'KongSwap' ? '!text-kong-accent-yellow' : ''} ">{row.name}</span>
-  <span class="token-symbol {isHovered ? '!text-kong-primary' : ''} {row.name === 'KongSwap' ? '!text-kong-accent-yellow/60' : ''} ">({row.symbol})</span>
+  <span class="token-name ml-2 {isHovered ? '!text-kong-primary' : ''}">{row.name}</span>
+  <span class="token-symbol {isHovered ? '!text-kong-primary' : ''}">({row.symbol})</span>
   <div class="flex gap-1 items-center">
     {#if isLowTVL}
-      <div use:tooltip={{ text: "Low TVL (<$100) - Limited liquidity", direction: "top" }}>
-        <AlertTriangle class="w-4 h-4 text-kong-accent-red !opacity-100" />
+      <div use:tooltip={{ text: "Low TVL (<$1,000) - Limited liquidity", direction: "top" }}>
+        <AlertTriangle class="w-4 h-4 text-kong-error !opacity-100" />
       </div>
     {/if}
     {#if isTopVolume}

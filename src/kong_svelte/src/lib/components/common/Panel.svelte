@@ -126,7 +126,7 @@
 
 /* Base solid panel styling - uses theme variables */
 .panel.solid {
-  @apply bg-kong-bg-dark border border-kong-border/70;
+  @apply bg-kong-bg-secondary border border-kong-border/70;
 }
 
 /* Main panel styling - slightly different for primary panels */
@@ -143,7 +143,7 @@
 
 /* Transparent panel styling */
 .panel.transparent {
-  @apply bg-kong-bg-dark/90 backdrop-blur-md;
+  @apply bg-kong-bg-secondary/90 backdrop-blur-md;
   @apply border border-kong-border/50;
 }
 
@@ -163,13 +163,6 @@
 /* Active state for interactive panels */
 .panel.interactive.active {
   @apply border-kong-primary bg-kong-primary-hover text-kong-text-on-primary;
-}
-
-/* Hover effect for transparent panels */
-.panel.transparent:hover,
-.panel.transparent:has(.panel:hover) {
-  @apply border-kong-border/70;
-  @apply bg-kong-bg-dark/90 backdrop-blur-md;
 }
 
 /* Premium edge highlight for solid variant - uses theme text color */

@@ -204,7 +204,7 @@
             </span>
           </div>
         {:else}
-          <div class="text-lg sm:text-xl font-medium flex items-center" class:text-kong-text-accent-green={performanceMetrics.dailyChange > 0} class:text-kong-text-accent-red={performanceMetrics.dailyChange < 0}>
+          <div class="text-lg sm:text-xl font-medium flex items-center" class:text-kong-success={performanceMetrics.dailyChange > 0} class:text-kong-error={performanceMetrics.dailyChange < 0}>
             {formatPercentage(performanceMetrics.dailyChange)}
             {#if performanceMetrics.dailyChange > 0}
               <ArrowUp class="inline h-3 w-3 sm:h-4 sm:w-4 ml-1" />
@@ -248,7 +248,7 @@
       {#if isDataLoading}
         <LoadingIndicator text={initialDataLoading ? "Initializing wallet data..." : "Loading balances..."} size={24} />
       {:else if loadingError}
-        <div class="text-kong-accent-red mb-4">{loadingError}</div>
+        <div class="text-kong-error mb-4">{loadingError}</div>
         <button
           class="text-sm text-kong-primary hover:text-opacity-80 transition-colors"
           on:click={() => page.params.principalId && loadTokensOnly(page.params.principalId)}

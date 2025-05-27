@@ -208,9 +208,9 @@
 
       const priceChangeClass =
         direction === "up"
-          ? "text-kong-text-accent-green"
+          ? "text-kong-success"
           : direction === "down"
-            ? "text-kong-text-accent-red"
+            ? "text-kong-error"
             : "text-kong-text-on-primary";
 
       const formattedChange = priceChange.startsWith("-")
@@ -355,7 +355,7 @@
             ? 'left-0'
             : 'right-0'} top-0 -translate-y-1/2 {isCurrentUser
             ? '-translate-x-1/2'
-            : 'translate-x-1/2'} p-1 text-red-400 hover:text-red-300 transition-colors rounded-full hover:bg-red-900/30 opacity-0 group-hover:opacity-100 focus:opacity-100 bg-kong-surface-dark mr-1"
+            : 'translate-x-1/2'} p-1 text-red-400 hover:text-red-300 transition-colors rounded-full hover:bg-red-900/30 opacity-0 group-hover:opacity-100 focus:opacity-100 bg-kong-bg-tertiary mr-1"
           title="Delete message"
         >
           <Trash2 class="w-3.5 h-3.5" />
@@ -370,7 +370,7 @@
               ? 'text-green-400 hover:text-green-300'
               : 'text-red-400 hover:text-red-300'} transition-colors rounded-full {isBanned
               ? 'hover:bg-green-900/30'
-              : 'hover:bg-red-900/30'} opacity-0 group-hover:opacity-100 focus:opacity-100 bg-kong-surface-dark"
+              : 'hover:bg-red-900/30'} opacity-0 group-hover:opacity-100 focus:opacity-100 bg-kong-bg-tertiary"
             title={isBanned
               ? `User banned (${banTimeString} remaining)`
               : "Ban user"}
@@ -445,14 +445,14 @@
         <div class="flex items-center gap-1">
           <button
             on:click={() => onConfirmDelete(message.id)}
-            class="p-1 text-green-400 hover:text-green-300 transition-colors rounded-full hover:bg-green-900/30 bg-kong-surface-dark"
+            class="p-1 text-green-400 hover:text-green-300 transition-colors rounded-full hover:bg-green-900/30 bg-kong-bg-tertiary"
             title="Confirm delete"
           >
             <Check class="w-3 h-3" />
           </button>
           <button
             on:click={() => onCancelDelete(message.id)}
-            class="p-1 text-red-400 hover:text-red-300 transition-colors rounded-full hover:bg-red-900/30 bg-kong-surface-dark"
+            class="p-1 text-red-400 hover:text-red-300 transition-colors rounded-full hover:bg-red-900/30 bg-kong-bg-tertiary"
             title="Cancel delete"
           >
             <XCircle class="w-3 h-3" />

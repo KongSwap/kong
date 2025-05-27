@@ -49,7 +49,7 @@
 
 <Panel
   variant="transparent"
-  className="bg-kong-bg-dark/80 backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn"
+  className="bg-kong-bg-primary/80 backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn"
 >
   <h2 class="text-sm text-kong-text-secondary mb-2">
     Market Data

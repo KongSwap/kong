@@ -95,7 +95,7 @@
       {#if props.market && marketBetsSnapshot.length > 0}
         {#if betChartError}
           <div
-            class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
+            class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
           >
             <p class="text-kong-text-secondary">
               Unable to display prediction history chart
@@ -112,7 +112,7 @@
         {/if}
       {:else}
         <div
-          class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
+          class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
         >
           <p class="text-kong-text-secondary">No prediction history data available</p>
         </div>
@@ -121,7 +121,7 @@
       {#if props.market && marketBetsSnapshot.length > 0}
         {#if chanceChartError}
           <div
-            class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
+            class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
           >
             <p class="text-kong-text-secondary">
               Unable to display percentage chance chart
@@ -138,13 +138,13 @@
         {/if}
       {:else}
         <div
-          class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
+          class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
         >
           <p class="text-kong-text-secondary">No percentage chance data available</p>
         </div>
       {/if}
     {:else if props.selectedChartTab === "rules"}
-      <div class="px-4 h-[300px] overflow-y-auto bg-kong-bg-dark/10 rounded !text-kong-text-primary">
+      <div class="px-4 h-[300px] overflow-y-auto bg-kong-bg-primary/10 rounded !text-kong-text-primary">
         {#if props.market && props.market.rules}
           <div class="prose prose-invert max-w-none">
             {#if typeof props.market.rules === 'string'}

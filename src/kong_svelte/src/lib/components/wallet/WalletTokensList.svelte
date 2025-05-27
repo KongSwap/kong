@@ -659,7 +659,7 @@
 	>
 		<svelte:fragment slot="actions">
 			<button 
-				class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-dark/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 				on:click={handleSyncButtonClick}
 				disabled={isSyncing || isLoading || isLoadingBalances}
 			>
@@ -673,7 +673,7 @@
 					transition:fade={{ duration: 200 }}
 				>
 					{#if syncStatus.added > 0 || syncStatus.removed > 0}
-						<span class="text-kong-accent-green">
+						<span class="text-kong-success">
 							{syncStatus.added > 0 ? `+${syncStatus.added}` : ""}
 							{syncStatus.added > 0 && syncStatus.removed > 0 ? "/" : ""}
 							{syncStatus.removed > 0 ? `-${syncStatus.removed}` : ""}
@@ -713,7 +713,7 @@
 	<!-- Scrollable content area -->
 	<div class="flex-1 overflow-y-auto scrollbar-thin">
 		{#if balanceLoadError}
-			<div class="text-xs text-kong-accent-red mt-1 px-4 mb-2">
+			<div class="text-xs text-kong-error mt-1 px-4 mb-2">
 				Error loading ICP balances: {balanceLoadError}
 			</div>
 		{/if}
@@ -739,7 +739,7 @@
 			<div class="relative pv"> 
 				{#if isSyncing}
 					<div 
-						class="absolute inset-0 flex flex-col items-center justify-start pt-10 bg-kong-bg-dark/80 rounded-md z-10"
+						class="absolute inset-0 flex flex-col items-center justify-start pt-10 bg-kong-bg-primary/80 rounded-md z-10"
 						transition:fade={{ duration: 150 }}
 					>
 						<LoadingIndicator message="Syncing tokens..." fullHeight />
@@ -763,7 +763,7 @@
 							<!-- Token Actions Row - Expanded underneath the token -->
 							{#if selectedTokenId === token.address && showDropdown}
 								<div 
-									class="px-4 py-3 border-b border-kong-border/30 bg-kong-bg-light" 
+									class="px-4 py-3 border-b border-kong-border/30 bg-kong-bg-secondary" 
 									transition:slide={{ duration: 200 }}
 								>
 									<TokenDropdown 
@@ -781,7 +781,7 @@
 					<!-- Token Management Buttons -->
 					<div class="p-2 flex justify-center gap-3">
 						<button
-							class="flex items-center gap-2 py-2 px-4 bg-kong-bg-dark/10 hover:bg-kong-bg-dark/20 text-kong-text-primary rounded-md transition-colors"
+							class="flex items-center gap-2 py-2 px-4 bg-kong-bg-primary/10 hover:bg-kong-bg-primary/20 text-kong-text-primary rounded-md transition-colors"
 							on:click={openManageTokensModal}
 						>
 							<Settings size={16} />

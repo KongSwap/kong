@@ -110,7 +110,7 @@
 
 <style lang="postcss" scoped>
   .token-item {
-    @apply flex items-center justify-between p-3 mx-2 rounded-lg bg-kong-bg-dark cursor-pointer transition-all duration-200 touch-pan-y select-none;
+    @apply flex items-center justify-between p-3 mx-2 rounded-lg bg-kong-bg-primary cursor-pointer transition-all duration-200 touch-pan-y select-none;
     height: 64px; /* Fixed height to match TOKEN_ITEM_HEIGHT minus padding */
     box-sizing: border-box;
   }
@@ -219,7 +219,7 @@
   }
 
   .selected-indicator {
-    @apply text-kong-bg-dark;
+    @apply text-kong-bg-primary;
     background: theme('colors.kong.accent-green');
     border-radius: 50%;
     padding: 4px;

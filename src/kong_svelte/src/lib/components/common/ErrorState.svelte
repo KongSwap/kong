@@ -27,12 +27,12 @@
 <div class="{paddingClass[size]} text-center">
   <div class="flex justify-center mb-4">
     <div class="relative">
-      <AlertTriangle class="text-kong-accent-red {iconSizeClass[size]}" />
-      <div class="absolute inset-0 text-kong-accent-red {iconSizeClass[size]} animate-ping opacity-30"></div>
+      <AlertTriangle class="text-kong-error {iconSizeClass[size]}" />
+      <div class="absolute inset-0 text-kong-error {iconSizeClass[size]} animate-ping opacity-30"></div>
     </div>
   </div>
   
-  <p class="text-kong-accent-red mb-4 font-medium {textClass[size]}">{message}</p>
+  <p class="text-kong-error mb-4 font-medium {textClass[size]}">{message}</p>
   
   {#if retryHandler}
     <button 

@@ -172,7 +172,7 @@
         <span class="loading loading-spinner loading-md" />
       </div>
     {:else if error}
-      <div class="text-kong-accent-red p-6 text-sm font-medium flex-1">
+      <div class="text-kong-error p-6 text-sm font-medium flex-1">
         {error}
       </div>
     {:else if transactions.length === 0}

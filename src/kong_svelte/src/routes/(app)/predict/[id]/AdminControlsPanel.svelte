@@ -39,14 +39,14 @@
   </Panel>
 {:else if isUserAdmin}
   <Panel variant="transparent" className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn">
-    <h3 class="text-sm font-bold text-kong-accent-red mb-2">Admin Controls</h3>
+    <h3 class="text-sm font-bold text-kong-error mb-2">Admin Controls</h3>
     <div class="text-xs text-kong-text-secondary mb-2">You are an admin. Use these tools with caution.</div>
     <!-- Admin actions -->
     {#if !isMarketResolved && !isMarketVoided}
       <button class="bg-kong-accent-yellow text-kong-text-on-primary px-3 py-2 rounded mb-2 hover:bg-yellow-700 transition-colors w-full" on:click={openResolutionModal}>
         Resolve Market
       </button>
-      <button class="bg-kong-accent-red text-kong-text-on-primary px-3 py-2 rounded hover:bg-red-400 transition-colors w-full" on:click={onOpenVoidDialog}>
+      <button class="bg-kong-error text-kong-text-on-primary px-3 py-2 rounded hover:bg-red-400 transition-colors w-full" on:click={onOpenVoidDialog}>
         Void Market
       </button>
     {/if}
@@ -59,6 +59,6 @@
   />
 {:else if adminError}
   <Panel variant="transparent" className="backdrop-blur-sm !rounded shadow-lg border border-kong-border/10 animate-fadeIn">
-    <div class="text-sm text-kong-accent-red">{adminError}</div>
+    <div class="text-sm text-kong-error">{adminError}</div>
   </Panel>
 {/if} 

@@ -311,7 +311,7 @@
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 mt-4">
-      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-dark/30 rounded-lg">
+      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-primary/30 rounded-lg">
         <div class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1">
           <DollarSign class="w-3 h-3 sm:w-4 sm:h-4" />
           <span>Total Value</span>
@@ -325,7 +325,7 @@
         </div>
       </div>
       
-      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-dark/30 rounded-lg">
+      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-primary/30 rounded-lg">
         <div class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1">
           <TrendingUp class="w-3 h-3 sm:w-4 sm:h-4" />
           <span class="flex items-center gap-1">
@@ -335,7 +335,7 @@
               use:tooltip={{ 
                 text: "This APY is weighted by the USD value of each position, giving more influence to larger positions.", 
                 direction: "top",
-                background: "bg-kong-bg-dark",
+                background: "bg-kong-bg-primary",
                 paddingClass: "p-3",
                 textSize: "sm"
               }}
@@ -344,7 +344,7 @@
             </span>
           </span>
         </div>
-        <div class="text-lg sm:text-xl font-medium text-kong-text-accent-green">
+        <div class="text-lg sm:text-xl font-medium text-kong-success">
           {#if $walletPoolListStore.loading || isLoading}
             <LoadingEllipsis color="text-kong-text-primary" size="text-lg sm:text-xl" />
           {:else if averageAPY > 0}
@@ -355,7 +355,7 @@
         </div>
       </div>
       
-      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-dark/30 rounded-lg">
+      <div class="flex flex-col p-3 sm:p-4 bg-kong-bg-primary/30 rounded-lg">
         <div class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1">
           <Droplets class="w-3 h-3 sm:w-4 sm:h-4" />
           <span>Active Positions</span>
@@ -377,7 +377,7 @@
       <h3 class="text-sm uppercase font-medium text-kong-text-primary">Liquidity Positions</h3>
       
       <div class="flex items-center gap-2">
-        <button class="p-2 rounded-lg hover:bg-kong-bg-dark/60 transition-colors" title="Filter Options">
+        <button class="p-2 rounded-lg hover:bg-kong-bg-primary/60 transition-colors" title="Filter Options">
           <SlidersHorizontal class="w-3 h-3 sm:w-4 sm:h-4 text-kong-text-secondary" />
         </button>
         <div class="p-2 rounded-lg bg-kong-primary/10">
@@ -392,7 +392,7 @@
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-kong-primary" />
         </div>
       {:else if loadingError}
-        <div class="text-center py-8 text-kong-accent-red">
+        <div class="text-center py-8 text-kong-error">
           {loadingError}
         </div>
       {:else if sortedPools.length === 0}
@@ -401,7 +401,7 @@
         </div>
       {:else}
         <!-- Table Headers with sorting - Hidden on mobile -->
-        <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-dark">
+        <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-primary">
           <button 
             class="flex items-center gap-1 text-left hover:text-kong-text-primary transition-colors"
             on:click={() => updateSort("name")}
@@ -427,7 +427,7 @@
             use:tooltip={{ 
               text: "Annual Percentage Yield - Estimated return based on recent trading activity", 
               direction: "top",
-              background: "bg-kong-bg-dark",
+              background: "bg-kong-bg-primary",
               paddingClass: "p-2"
             }}
           >
@@ -444,19 +444,19 @@
             <span class="text-xs text-kong-text-secondary">Sort by:</span>
             <div class="flex gap-2">
               <button 
-                class="px-2 py-1 text-xs rounded {sortBy === 'name' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary'}"
+                class="px-2 py-1 text-xs rounded {sortBy === 'name' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-primary/50 text-kong-text-secondary'}"
                 on:click={() => updateSort("name")}
               >
                 Name {#if sortBy === "name"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
               </button>
               <button 
-                class="px-2 py-1 text-xs rounded {sortBy === 'value' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary'}"
+                class="px-2 py-1 text-xs rounded {sortBy === 'value' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-primary/50 text-kong-text-secondary'}"
                 on:click={() => updateSort("value")}
               >
                 Value {#if sortBy === "value"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
               </button>
               <button 
-                class="px-2 py-1 text-xs rounded {sortBy === 'apy' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary'}"
+                class="px-2 py-1 text-xs rounded {sortBy === 'apy' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-primary/50 text-kong-text-secondary'}"
                 on:click={() => updateSort("apy")}
               >
                 APY {#if sortBy === "apy"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
@@ -466,10 +466,10 @@
         </div>
         
         <!-- Table Body -->
-        <div class="divide-y divide-kong-bg-dark">
+        <div class="divide-y divide-kong-bg-primary">
           {#each sortedPools as pool}
             <!-- Desktop view - grid layout -->
-            <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-dark/30 transition-colors">
+            <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-primary/30 transition-colors">
               <!-- Pool -->
               <div class="flex items-center gap-2">
                 <TokenImages
@@ -515,15 +515,15 @@
               <div class="text-right text-sm relative">
                 <span 
                   class="font-medium flex items-center gap-1 justify-end ml-auto group cursor-pointer"
-                  class:text-kong-text-accent-green={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
-                  class:text-kong-text-accent-red={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
+                  class:text-kong-success={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
+                  class:text-kong-error={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
                   class:text-kong-text-secondary={pool.rolling_24h_apy === undefined || pool.rolling_24h_apy === null}
                   use:tooltip={{
                     text: pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null 
                       ? `Based on recent trading activity. Estimated daily earnings: $${calculateEarnings(pool, 1)}`
                       : "APY data is currently unavailable for this pool",
                     direction: "top",
-                    background: "bg-kong-bg-dark",
+                    background: "bg-kong-bg-primary",
                     paddingClass: "p-2"
                   }}
                   on:click={(e) => showAPYDetails(pool, e)}
@@ -539,7 +539,7 @@
             </div>
             
             <!-- Mobile view - card layout -->
-            <div class="sm:hidden p-4 hover:bg-kong-bg-dark/30 transition-colors">
+            <div class="sm:hidden p-4 hover:bg-kong-bg-primary/30 transition-colors">
               <!-- Pool and Value -->
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
@@ -582,8 +582,8 @@
                 <div class="text-xs text-kong-text-secondary">APY</div>
                 <div 
                   class="flex items-center gap-1 text-sm"
-                  class:text-kong-text-accent-green={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
-                  class:text-kong-text-accent-red={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
+                  class:text-kong-success={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
+                  class:text-kong-error={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
                   class:text-kong-text-secondary={pool.rolling_24h_apy === undefined || pool.rolling_24h_apy === null}
                   on:click={(e) => showAPYDetails(pool, e)}
                 >
@@ -607,7 +607,7 @@
   {@const selectedPool = allPools.find(p => p.id === selectedPoolId)}
   {#if selectedPool}
     <div 
-      class="apy-tooltip fixed bg-kong-bg-dark border border-kong-border rounded-lg shadow-lg p-4 z-50 w-64"
+      class="apy-tooltip fixed bg-kong-bg-primary border border-kong-border rounded-lg shadow-lg p-4 z-50 w-64"
       style="left: {Math.min(tooltipPosition.x, window.innerWidth - 280)}px; top: {Math.min(tooltipPosition.y + 10, window.innerHeight - 280)}px"
     >
       <div class="flex justify-between items-center mb-3">
@@ -618,7 +618,7 @@
       {#if selectedPool.rolling_24h_apy !== undefined && selectedPool.rolling_24h_apy !== null}
         <div class="grid grid-cols-2 gap-2">
           {#each [{ label: "Daily", days: 1 }, { label: "Weekly", days: 7 }, { label: "Monthly", days: 30 }, { label: "Yearly", days: 365 }] as period}
-            <div class="bg-kong-bg-light/30 rounded-lg p-2 flex flex-col">
+            <div class="bg-kong-bg-secondary/30 rounded-lg p-2 flex flex-col">
               <span class="text-xs text-kong-text-secondary">{period.label}</span>
               <span class="text-sm font-medium">${calculateEarnings(selectedPool, period.days)}</span>
             </div>

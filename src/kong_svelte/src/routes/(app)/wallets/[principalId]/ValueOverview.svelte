@@ -108,7 +108,7 @@
         Total Portfolio Value
       </h2>
       {#if error}
-        <div class="text-kong-accent-red">{error}</div>
+        <div class="text-kong-error">{error}</div>
       {:else if isDataLoading}
         <!-- Loading indicator for portfolio value with bouncing ellipsis -->
         <div class="text-4xl font-bold text-kong-text-primary flex items-center">
@@ -125,8 +125,8 @@
           })}
         </p>
         <div
-          class:text-kong-text-accent-green={performanceMetrics.dailyChange > 0}
-          class:text-kong-accent-red={performanceMetrics.dailyChange < 0}
+          class:text-kong-success={performanceMetrics.dailyChange > 0}
+          class:text-kong-error={performanceMetrics.dailyChange < 0}
           class="text-base font-bold flex"
         >
           {dailyPnL.toLocaleString(undefined, {

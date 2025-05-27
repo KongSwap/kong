@@ -25,14 +25,14 @@
             <div class="grid grid-cols-2 gap-2">
               {#each Array(2) as _}
                 <div
-                  class="h-16 bg-kong-bg-light rounded-lg animate-pulse"
+                  class="h-16 bg-kong-bg-secondary rounded-lg animate-pulse"
                 ></div>
               {/each}
             </div>
             <!-- Bottom row loading state -->
             <div class="w-full">
               <div
-                class="h-16 bg-kong-bg-light rounded-lg animate-pulse"
+                class="h-16 bg-kong-bg-secondary rounded-lg animate-pulse"
               ></div>
             </div>
           </div>
@@ -41,7 +41,7 @@
             <!-- Top row: Volume and Fees -->
             <div class="grid grid-cols-2 gap-2">
               <!-- Total Volume 24h -->
-              <div class="bg-kong-bg-light rounded-lg p-3">
+              <div class="bg-kong-bg-secondary rounded-lg p-3">
                 <div class="flex flex-col">
                   <span class="text-lg font-bold text-kong-text-primary">
                     {formatUsdValue(poolTotals.total_volume_24h)}
@@ -53,7 +53,7 @@
               </div>
 
               <!-- Total Fees 24h -->
-              <div class="bg-kong-bg-light rounded-lg p-3">
+              <div class="bg-kong-bg-secondary rounded-lg p-3">
                 <div class="flex flex-col">
                   <span class="text-lg font-bold text-kong-text-primary">
                     {formatUsdValue(poolTotals.total_fees_24h)}
@@ -68,7 +68,7 @@
             <!-- Bottom row: TVL on its own -->
             <div class="w-full">
               <!-- Total TVL -->
-              <div class="bg-kong-bg-light rounded-lg p-3">
+              <div class="bg-kong-bg-secondary rounded-lg p-3">
                 <div class="flex flex-col">
                   <span class="text-lg font-bold text-kong-text-primary">
                     ${poolTotals.total_tvl.toLocaleString(undefined, {

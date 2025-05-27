@@ -356,8 +356,8 @@
                     type="text"
                     id="question"
                     bind:value={formState.question}
-                    class="w-full p-4 bg-kong-bg-dark rounded-lg border {questionError
-                      ? 'border-kong-accent-red'
+                    class="w-full p-4 bg-kong-bg-primary rounded-lg border {questionError
+                      ? 'border-kong-error'
                       : 'border-kong-border'} text-lg text-kong-text-primary placeholder:text-kong-text-secondary/50 focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                     placeholder="e.g., Will Bitcoin reach $100,000 by the end of 2024?"
                   />
@@ -394,7 +394,7 @@
                         >
                           <button
                             type="button"
-                            class="p-2 bg-kong-bg-dark rounded-lg text-kong-text-primary hover:bg-kong-accent-red hover:text-white transition-colors"
+                            class="p-2 bg-kong-bg-primary rounded-lg text-kong-text-primary hover:bg-kong-error hover:text-white transition-colors"
                             on:click|stopPropagation={resetImage}
                             disabled={uploadingImage}
                           >
@@ -454,7 +454,7 @@
                       <select
                         id="category"
                         bind:value={formState.category}
-                        class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
+                        class="w-full p-4 bg-kong-bg-primary rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
                       >
                         {#each categories as cat}
                           <option value={cat}>{cat}</option>
@@ -492,7 +492,7 @@
                     <Dropdown width="w-full" bind:open={tokenDropdownOpen}>
                       <div
                         slot="trigger"
-                        class="flex items-center gap-2 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary cursor-pointer min-h-[3rem]"
+                        class="flex items-center gap-2 p-4 bg-kong-bg-primary rounded-lg border border-kong-border text-lg text-kong-text-primary cursor-pointer min-h-[3rem]"
                       >
                         {#if formState.token_id}
                           {#if supportedTokens.find((t) => t.address === formState.token_id)?.logo_url}
@@ -567,7 +567,7 @@
                     <select
                       id="resolutionMethod"
                       bind:value={formState.resolutionMethod}
-                      class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
+                      class="w-full p-4 bg-kong-bg-primary rounded-lg border border-kong-border text-lg text-kong-text-primary appearance-none focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200 pr-10"
                     >
                       <option value="Admin">Admin Resolution</option>
                     </select>
@@ -609,7 +609,7 @@
                     id="rules"
                     bind:value={formState.rules}
                     rows="4"
-                    class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary placeholder:text-kong-text-secondary/50 focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none resize-none transition-all duration-200"
+                    class="w-full p-4 bg-kong-bg-primary rounded-lg border border-kong-border text-lg text-kong-text-primary placeholder:text-kong-text-secondary/50 focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none resize-none transition-all duration-200"
                     placeholder="Specify clear rules for how this market will be resolved..."
                   />
                 </FormField>
@@ -637,13 +637,13 @@
                         type="text"
                         bind:value={formState.outcomes[i]}
                         placeholder={`Outcome ${i + 1}`}
-                        class="flex-1 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary placeholder:text-kong-text-secondary/50 focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
+                        class="flex-1 p-4 bg-kong-bg-primary rounded-lg border border-kong-border text-lg text-kong-text-primary placeholder:text-kong-text-secondary/50 focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                       />
                       {#if i >= 2}
                         <button
                           type="button"
                           on:click={() => removeOutcome(i)}
-                          class="p-3 text-kong-text-accent-red hover:bg-kong-accent-red/10 rounded-lg transition-colors"
+                          class="p-3 text-kong-error hover:bg-kong-error/10 rounded-lg transition-colors"
                         >
                           <Trash2 size={20} />
                         </button>
@@ -653,7 +653,7 @@
                   <button
                     type="button"
                     on:click={addOutcome}
-                    class="w-full p-4 bg-kong-bg-dark rounded-lg border border-kong-border hover:border-kong-accent-blue hover:text-kong-accent-blue flex items-center justify-center gap-2 transition-all duration-200 text-kong-text-secondary group"
+                    class="w-full p-4 bg-kong-bg-primary rounded-lg border border-kong-border hover:border-kong-accent-blue hover:text-kong-accent-blue flex items-center justify-center gap-2 transition-all duration-200 text-kong-text-secondary group"
                   >
                     <Plus
                       size={20}
@@ -679,7 +679,7 @@
                 <div class="space-y-4">
                   <div class="flex gap-4">
                     <label
-                      class="flex-1 flex items-center gap-3 p-4 bg-kong-bg-dark rounded-lg border cursor-pointer transition-all duration-200 {formState.endTimeType ===
+                      class="flex-1 flex items-center gap-3 p-4 bg-kong-bg-primary rounded-lg border cursor-pointer transition-all duration-200 {formState.endTimeType ===
                       'Duration'
                         ? 'border-kong-accent-blue bg-kong-accent-blue/5'
                         : 'border-kong-border hover:border-kong-border-light'}"
@@ -705,7 +705,7 @@
                       <span class="text-lg">Duration</span>
                     </label>
                     <label
-                      class="flex-1 flex items-center gap-3 p-4 bg-kong-bg-dark rounded-lg border cursor-pointer transition-all duration-200 {formState.endTimeType ===
+                      class="flex-1 flex items-center gap-3 p-4 bg-kong-bg-primary rounded-lg border cursor-pointer transition-all duration-200 {formState.endTimeType ===
                       'SpecificDate'
                         ? 'border-kong-accent-blue bg-kong-accent-blue/5'
                         : 'border-kong-border hover:border-kong-border-light'}"
@@ -738,7 +738,7 @@
                         type="number"
                         bind:value={formState.duration}
                         min="1"
-                        class="w-32 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
+                        class="w-32 p-4 bg-kong-bg-primary rounded-lg border border-kong-border text-lg text-kong-text-primary focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                       />
                       <span class="text-lg text-kong-text-secondary"
                         >hours from now</span
@@ -749,12 +749,12 @@
                       <input
                         type="date"
                         bind:value={formState.specificDate}
-                        class="flex-1 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
+                        class="flex-1 p-4 bg-kong-bg-primary rounded-lg border border-kong-border text-lg text-kong-text-primary focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                       />
                       <input
                         type="time"
                         bind:value={formState.specificTime}
-                        class="flex-1 p-4 bg-kong-bg-dark rounded-lg border border-kong-border text-lg text-kong-text-primary focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
+                        class="flex-1 p-4 bg-kong-bg-primary rounded-lg border border-kong-border text-lg text-kong-text-primary focus:border-kong-accent-blue focus:ring-2 focus:ring-kong-accent-blue/20 focus:outline-none transition-all duration-200"
                       />
                     </div>
                   {/if}
@@ -766,7 +766,7 @@
         <!-- Error display area -->
         {#if error}
           <div
-            class="mt-6 p-4 rounded-lg border border-kong-accent-red/20 bg-kong-accent-red/5 text-kong-text-accent-red flex items-center gap-3"
+            class="mt-6 p-4 rounded-lg border border-kong-error/20 bg-kong-error/5 text-kong-error flex items-center gap-3"
           >
             <AlertTriangle size={20} />
             <p>{error}</p>
@@ -779,7 +779,7 @@
             <button
               type="button"
               on:click={() => goto("/predict")}
-              class="px-6 py-3 bg-kong-bg-dark text-kong-text-primary rounded-lg font-medium hover:bg-kong-surface-light transition-all duration-200"
+              class="px-6 py-3 bg-kong-bg-primary text-kong-text-primary rounded-lg font-medium hover:bg-kong-bg-secondary transition-all duration-200"
             >
               Cancel
             </button>
@@ -836,12 +836,12 @@
                   class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-sm"
                 >
                   <span
-                    class="px-1.5 py-0.5 bg-kong-pm-accent/10 text-kong-pm-accent rounded text-xs font-medium"
+                    class="px-1.5 py-0.5 bg-kong-accent/10 text-kong-primary rounded text-xs font-medium"
                   >
                     {formatCategory(formState.category)}
                   </span>
                   <span
-                    class="flex items-center gap-1 text-kong-pm-text-secondary text-xs whitespace-nowrap"
+                    class="flex items-center gap-1 text-kong-text-secondary text-xs whitespace-nowrap"
                   >
                     <Calendar class="w-3 h-3" />
                     {#if formState.endTimeType === "Duration"}
@@ -880,7 +880,7 @@
                 {#each validOutcomes as outcome, i}
                   <div class="relative group/outcome rounded">
                     <div
-                      class="h-8 sm:h-10 bg-kong-bg-dark/10 rounded p-1.5 transition-colors relative w-full"
+                      class="h-8 sm:h-10 bg-kong-bg-primary/10 rounded p-1.5 transition-colors relative w-full"
                     >
                       <div
                         class="relative flex justify-between items-center h-full gap-2"
@@ -896,12 +896,12 @@
                           class="text-right flex items-center gap-1 sm:gap-2 flex-shrink-0"
                         >
                           <div
-                            class="text-kong-pm-accent font-bold text-xs sm:text-sm whitespace-nowrap"
+                            class="text-kong-primary font-bold text-xs sm:text-sm whitespace-nowrap"
                           >
                             {(100 / validOutcomes.length).toFixed(1)}%
                           </div>
                           <div
-                            class="text-xs text-kong-pm-text-secondary hidden sm:block"
+                            class="text-xs text-kong-text-secondary hidden sm:block"
                           >
                             $0.00
                           </div>
@@ -921,10 +921,10 @@
             <div class="flex-1"></div>
 
             <!-- Card Footer -->
-            <div class="pt-1.5 sm:pt-2 border-t border-kong-pm-border">
+            <div class="pt-1.5 sm:pt-2 border-t border-kong-border">
               <div class="flex items-center justify-center">
                 <div
-                  class="w-full flex items-center justify-center py-1.5 sm:py-2 border shadow-sm border-kong-accent-green/50 text-kong-text-accent-green rounded font-medium text-xs sm:text-sm"
+                  class="w-full flex items-center justify-center py-1.5 sm:py-2 border shadow-sm border-kong-success/50 text-kong-success rounded font-medium text-xs sm:text-sm"
                 >
                   <Coins class="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1.5" />
                   Place Bet
@@ -939,7 +939,7 @@
           <button
             type="button"
             on:click={() => (showConfirmationModal = false)}
-            class="px-6 py-3 bg-kong-bg-dark text-kong-text-primary rounded-lg font-medium hover:bg-kong-surface-light transition-all duration-200"
+            class="px-6 py-3 bg-kong-bg-primary text-kong-text-primary rounded-lg font-medium hover:bg-kong-bg-secondary transition-all duration-200"
             disabled={loading}
           >
             Cancel

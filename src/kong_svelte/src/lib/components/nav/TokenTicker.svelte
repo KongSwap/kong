@@ -269,7 +269,7 @@
 
 {#if hoveredToken && isVisible}
   <button
-    class="fixed z-[999] w-[300px] h-[150px] bg-kong-bg-dark border border-kong-border rounded-xl shadow-lg overflow-hidden {$page.url.pathname === `/stats/${hoveredToken.address}` ? 'ring-2 ring-kong-accent-green' : ''}"
+    class="fixed z-[999] w-[300px] h-[150px] bg-kong-bg-primary border border-kong-border rounded-xl shadow-lg overflow-hidden {$page.url.pathname === `/stats/${hoveredToken.address}` ? 'ring-2 ring-kong-success' : ''}"
     style="left: {chartPosition.x}px; top: {chartPosition.y}px;"
     on:mouseenter={handleChartMouseEnter}
     on:mouseleave={handleChartMouseLeave}
@@ -395,8 +395,8 @@
     contain: layout style paint;
   }
 
-  .positive { @apply text-kong-text-accent-green; }
-  .negative { @apply text-kong-text-accent-red; }
+  .positive { @apply text-kong-success; }
+  .negative { @apply text-kong-error; }
   .neutral { @apply text-kong-text-secondary; }
   .divider { @apply absolute right-0 w-px h-4 bg-kong-text-primary/50 opacity-50; }
 </style>

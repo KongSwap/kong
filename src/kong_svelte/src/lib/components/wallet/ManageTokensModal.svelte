@@ -188,7 +188,7 @@
           type="text"
           bind:value={searchQuery}
           placeholder="Search by name, symbol, or canister ID"
-          class="w-full pl-10 pr-4 py-2.5 bg-kong-bg-dark/70 border border-kong-border/40 rounded-lg text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:ring-1 focus:ring-kong-accent-blue/40"
+          class="w-full pl-10 pr-4 py-2.5 bg-kong-bg-primary/70 border border-kong-border/40 rounded-lg text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:ring-1 focus:ring-kong-accent-blue/40"
         />
       </div>
       
@@ -245,7 +245,7 @@
             {@const hasTokenBalance = hasBalance(token)}
             
             <div 
-              class="p-3 border-t border-kong-border/30 flex items-center justify-between hover:bg-kong-bg-light/5 transition-colors"
+              class="p-3 border-t border-kong-border/30 flex items-center justify-between hover:bg-kong-bg-secondary/5 transition-colors"
               transition:fade={{ duration: 150 }}
             >
               <div class="flex items-center gap-3">
@@ -275,7 +275,7 @@
                 {/if}
                 
                 <button
-                  class="flex items-center justify-center rounded-full p-1.5 {enabled ? 'bg-kong-primary/10 text-kong-primary hover:bg-kong-primary/20' : 'bg-kong-bg-light/10 text-kong-text-secondary hover:bg-kong-bg-light/20'} transition-colors"
+                  class="flex items-center justify-center rounded-full p-1.5 {enabled ? 'bg-kong-primary/10 text-kong-primary hover:bg-kong-primary/20' : 'bg-kong-bg-secondary/10 text-kong-text-secondary hover:bg-kong-bg-secondary/20'} transition-colors"
                   on:click={(e) => {
                     e.stopPropagation();
                     e.preventDefault();

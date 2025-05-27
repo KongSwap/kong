@@ -3,7 +3,6 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { userTokens } from "$lib/stores/userTokens";
   import { slide } from "svelte/transition";
-  import Panel from "$lib/components/common/Panel.svelte";
   import { AlertTriangle } from "lucide-svelte";
 
   const { 
@@ -44,14 +43,6 @@
       <span class="detail-value" class:warning-text={showPriceImpactWarning}>
         {priceImpact.toFixed(2)}%
       </span>
-    </div>
-  </div>
-
-  <!-- Slippage Card -->
-  <div class="detail-card">
-    <div class="detail-row">
-      <span class="detail-label">Max Slippage</span>
-      <span class="detail-value highlight">{userMaxSlippage}%</span>
     </div>
   </div>
 
@@ -118,7 +109,7 @@
 
   /* Detail Card Common Styles */
   .detail-card {
-    @apply bg-kong-bg-dark/30 rounded-lg border border-kong-border/20 p-3 transition-all duration-200 sm:p-2.5;
+    @apply bg-kong-bg-primary/30 rounded-lg border border-kong-border/20 p-3 transition-all duration-200 sm:p-2.5;
   }
 
   /* Warning Card State */
@@ -169,7 +160,7 @@
   /* Expand Button */
   .expand-button {
     @apply w-5 h-5 flex items-center justify-center text-kong-text-secondary 
-           bg-kong-bg-dark/50 rounded-full border border-kong-border/30 text-sm sm:w-4 sm:h-4 sm:text-xs;
+           bg-kong-bg-primary/50 rounded-full border border-kong-border/30 text-sm sm:w-4 sm:h-4 sm:text-xs;
   }
 
   /* Fee Details Container */
@@ -199,7 +190,7 @@
 
   /* LP Fee Dot */
   .fee-dot.lp {
-    @apply bg-kong-accent-purple;
+    @apply bg-kong-primary;
   }
 
   /* Fee Detail Values Container */
@@ -216,7 +207,7 @@
   @media (max-width: 640px) {
     /* Improve touch targets */
     .detail-card.fees {
-      @apply min-h-[42px] active:bg-kong-bg-dark/40;
+      @apply min-h-[42px] active:bg-kong-bg-primary/40;
       -webkit-tap-highlight-color: transparent;
     }
     

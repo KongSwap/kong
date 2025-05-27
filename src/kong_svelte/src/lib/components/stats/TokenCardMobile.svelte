@@ -10,7 +10,7 @@
 	export let trendClass: string;
 	export let showAdvancedStats = false;
 	export let showIcons = true;
-	export let paddingClass = "px-3 py-2.5";
+	export let paddingClass = "px-3 py-1";
 	export let showIndex = null;
 	export let section = "top-gainers";
 	export let topTokens: { gainers: Kong.Token[], losers: Kong.Token[], hottest: Kong.Token[], top_volume: Kong.Token[] } = { gainers: [], losers: [], hottest: [], top_volume: [] };
@@ -30,7 +30,7 @@
 	$: displayRank = section === "stats-list" ? token.metrics?.market_cap_rank : (showIndex !== null ? showIndex + 1 : null);
 </script>
 
-<div class="w-full min-w-0 bg-kong-bg-light backdrop-blur-sm border hover:bg-kong-bg-light border-kong-border/30 rounded-xl hover:border-[#60A5FA]/30 hover:bg-kong-bg-dark/60 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-sm">
+<div class="w-full min-w-0 bg-kong-bg-secondary backdrop-blur-sm border hover:bg-kong-bg-secondary border-kong-border/30 rounded-xl hover:border-[#60A5FA]/30 hover:bg-kong-bg-primary/60 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-sm">
 	<div class="{paddingClass} flex items-center justify-between">
 		<div class="flex items-center gap-2.5 min-w-0 flex-1">
 			<div class="relative flex items-center gap-2 flex-shrink-0">
@@ -113,7 +113,7 @@
 		<div class="flex justify-between items-center">
 			<div class="text-kong-text-secondary">TVL</div>
 			<div class="text-kong-text-primary font-medium">
-					{formatUsdValue(token?.metrics?.tvl)}
+					{formatUsdValue(token?.metrics?.tvl)} (${Number(token.metrics.market_cap) / Number(token?.metrics?.tvl) * 100}%)
 				</div>
 			</div>
 		</div>

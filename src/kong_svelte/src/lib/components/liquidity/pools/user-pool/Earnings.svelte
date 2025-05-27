@@ -37,7 +37,7 @@
   }
 
   .feature {
-    @apply flex items-center gap-3 px-4 py-3 rounded-lg bg-kong-surface-light/50;
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg bg-kong-bg-secondary/50;
   }
 
   .feature-icon {

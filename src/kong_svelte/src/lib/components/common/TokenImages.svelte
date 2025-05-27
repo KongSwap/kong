@@ -84,7 +84,7 @@
     >
       {#if token?.logo_url}
         <img
-          class="w-full h-full rounded-full bg-kong-bg-light ring-1 ring-opacity-90"
+          class="w-full h-full rounded-full bg-kong-bg-secondary ring-1 ring-opacity-90"
           src={token.logo_url}
           alt={token.name}
           loading="eager"
@@ -103,8 +103,8 @@
       {/if}
       {#if showNetworkIcon || (size > 24 && !overlap)}
         <div 
-          class="absolute -bottom-0.5 shadow -right-[0.15rem] border border-kong-bg-light p-[0.04rem] text-sm text-gray-200 rounded-full bg-gradient-to-r from-orange-600 to-purple-700 flex items-center justify-center"
-          style="width: {Math.min(size * 0.5, 28)}px; height: {Math.min(size * 0.5, 28)}px;"
+          class="absolute -bottom-0.5 shadow -right-[0.15rem] border border-kong-bg-secondary p-[0.04rem] text-sm text-gray-200 rounded-full bg-kong-bg-secondary bg-gradient-to-r from-kong-primary to-kong-primary/50 flex items-center justify-center"
+          style="width: {Math.min(size * 0.46, 28)}px; height: {Math.min(size * 0.46, 28)}px;"
         >
           <svg 
             xmlns="http://www.w3.org/2000/svg" 

@@ -59,7 +59,9 @@ export function registerTheme(theme: ThemeDefinition): boolean {
  */
 export function generateThemeVariables(theme: ThemeDefinition): string {
   const colors = theme.colors;
-  const hexToRGB = (hex: string): string => {
+  const hexToRGB = (hex: string | undefined): string => {
+    if (!hex) return '0 0 0'; // fallback to black if undefined
+    
     // Remove the hash at the start if it exists
     hex = hex.replace(/^#/, '');
     
@@ -75,11 +77,13 @@ export function generateThemeVariables(theme: ThemeDefinition): string {
   let css = '';
   
   // Background colors
-  css += `--bg-dark: ${hexToRGB(colors.bgDark)};\n`;
-  css += `--bg-light: ${hexToRGB(colors.bgLight)};\n`;
-  if (colors.hoverBgLight) {
-    css += `--hover-bg-light: ${hexToRGB(colors.hoverBgLight)};\n`;
-  }
+  css += `--bg-dark: ${hexToRGB(colors.bgPrimary)};\n`;  // Legacy mapping for backward compatibility
+  css += `--bg-light: ${hexToRGB(colors.bgSecondary)};\n`;  // Legacy mapping for backward compatibility
+
+  // New semantic background mappings
+  css += `--bg-primary: ${hexToRGB(colors.bgPrimary)};\n`;
+  css += `--bg-secondary: ${hexToRGB(colors.bgSecondary)};\n`;
+  css += `--bg-tertiary: ${hexToRGB(colors.bgTertiary)};\n`;
   
   // Primary and secondary colors
   css += `--primary: ${hexToRGB(colors.primary)};\n`;
@@ -87,98 +91,64 @@ export function generateThemeVariables(theme: ThemeDefinition): string {
   css += `--secondary: ${hexToRGB(colors.secondary)};\n`;
   css += `--secondary-hover: ${hexToRGB(colors.secondaryHover)};\n`;
   
-  // Accent colors
-  css += `--accent-blue: ${hexToRGB(colors.accentBlue)};\n`;
-  css += `--accent-red: ${hexToRGB(colors.accentRed)};\n`;
-  css += `--accent-green: ${hexToRGB(colors.accentGreen)};\n`;
-  css += `--accent-yellow: ${hexToRGB(colors.accentYellow)};\n`;
-  css += `--accent-purple: ${hexToRGB(colors.accentPurple)};\n`;
-  css += `--accent-cyan: ${hexToRGB(colors.accentCyan)};\n`;
+  // Brand colors (mapped from primary/secondary)
+  css += `--brand-primary: ${hexToRGB(colors.primary)};\n`;
+  css += `--brand-secondary: ${hexToRGB(colors.secondary)};\n`;
   
-  // Hover variants
-  css += `--accent-green-hover: ${hexToRGB(colors.accentGreenHover)};\n`;
-  css += `--accent-blue-hover: ${hexToRGB(colors.accentBlueHover)};\n`;
-  css += `--accent-red-hover: ${hexToRGB(colors.accentRedHover)};\n`;
-  if (colors.accentYellowHover) {
-    css += `--accent-yellow-hover: ${hexToRGB(colors.accentYellowHover)};\n`;
-  }
+  // Accent colors - map semantic colors to legacy color-specific variables
+  css += `--accent-blue: ${hexToRGB(colors.info || colors.accent)};\n`;
+  css += `--accent-red: ${hexToRGB(colors.error)};\n`;
+  css += `--accent-green: ${hexToRGB(colors.success)};\n`;
+  css += `--accent-yellow: ${hexToRGB(colors.warning)};\n`;
+  css += `--accent-purple: ${hexToRGB(colors.accent)};\n`;
+  css += `--accent-cyan: ${hexToRGB(colors.info)};\n`;
+  
+  // Semantic colors
+  css += `--semantic-success: ${hexToRGB(colors.success)};\n`;
+  css += `--semantic-error: ${hexToRGB(colors.error)};\n`;
+  css += `--semantic-warning: ${hexToRGB(colors.warning)};\n`;
+  css += `--semantic-info: ${hexToRGB(colors.info)};\n`;
+  
+  // Hover variants - map semantic hover colors to legacy color-specific variables
+  css += `--accent-green-hover: ${hexToRGB(colors.successHover)};\n`;
+  css += `--accent-blue-hover: ${hexToRGB(colors.infoHover || colors.accentHover)};\n`;
+  css += `--accent-red-hover: ${hexToRGB(colors.errorHover)};\n`;
+  css += `--accent-yellow-hover: ${hexToRGB(colors.warningHover)};\n`;
+  
+  // Semantic hover variants
+  css += `--semantic-success-hover: ${hexToRGB(colors.successHover)};\n`;
+  css += `--semantic-error-hover: ${hexToRGB(colors.errorHover)};\n`;
+  css += `--semantic-info-hover: ${hexToRGB(colors.infoHover)};\n`;
+  css += `--semantic-warning-hover: ${hexToRGB(colors.warningHover)};\n`;
   
   // Text colors
   css += `--text-primary: ${hexToRGB(colors.textPrimary)};\n`;
   css += `--text-secondary: ${hexToRGB(colors.textSecondary)};\n`;
   css += `--text-disabled: ${hexToRGB(colors.textDisabled)};\n`;
-  if (colors.textLight) {
-    css += `--text-light: ${hexToRGB(colors.textLight)};\n`;
-  }
-  if (colors.textDark) {
-    css += `--text-dark: ${hexToRGB(colors.textDark)};\n`;
-  }
-  if (colors.textOnPrimary) {
-    css += `--text-on-primary: ${hexToRGB(colors.textOnPrimary)};\n`;
-  }
-  if (colors.textAccentGreen) {
-    css += `--text-accent-green: ${hexToRGB(colors.textAccentGreen)};\n`;
-  }
-  if (colors.textAccentBlue) {
-    css += `--text-accent-blue: ${hexToRGB(colors.textAccentBlue)};\n`;
-  }
-  if (colors.textAccentRed) {
-    css += `--text-accent-red: ${hexToRGB(colors.textAccentRed)};\n`;
-  }
+  
+  // Semantic text mappings
+  css += `--text-inverse: ${hexToRGB(colors.textLight || colors.textPrimary)};\n`;
+  css += `--text-on-primary: ${hexToRGB(colors.textOnPrimary || colors.textDark || '#000000')};\n`;
+  
+  // UI colors
+  css += `--ui-border: ${hexToRGB(colors.border)};\n`;
+  css += `--ui-border-light: ${hexToRGB(colors.borderLight)};\n`;
+  css += `--ui-focus: ${hexToRGB(colors.info || colors.accent)};\n`;
+  css += `--ui-hover: ${hexToRGB(colors.hoverBgSecondary || colors.bgSecondary)};\n`;
   
   // Borders
   css += `--border: ${hexToRGB(colors.border)};\n`;
   css += `--border-light: ${hexToRGB(colors.borderLight)};\n`;
-  
-  // Surface colors
-  css += `--surface-dark: ${hexToRGB(colors.surfaceDark)};\n`;
-  css += `--surface-light: ${hexToRGB(colors.surfaceLight)};\n`;
   
   // Logo properties
   css += `--logo-brightness: ${colors.logoBrightness};\n`;
   css += `--logo-invert: ${colors.logoInvert};\n`;
   css += `--logo-hover-brightness: ${colors.logoHoverBrightness};\n`;
   
-  // Plugin Manager colors
-  css += `--pm-dark: ${hexToRGB(colors.pmDark)};\n`;
-  css += `--pm-border: ${hexToRGB(colors.pmBorder)};\n`;
-  css += `--pm-accent: ${hexToRGB(colors.pmAccent)};\n`;
-  css += `--pm-text-secondary: ${hexToRGB(colors.pmTextSecondary)};\n`;
-  
-  // Token selector dropdown colors
-  if (colors.tokenSelectorBg) {
-    css += `--token-selector-bg: ${colors.tokenSelectorBg};\n`;
-  }
-  if (colors.tokenSelectorHeaderBg) {
-    css += `--token-selector-header-bg: ${colors.tokenSelectorHeaderBg};\n`;
-  }
-  if (colors.tokenSelectorItemBg) {
-    css += `--token-selector-item-bg: ${colors.tokenSelectorItemBg};\n`;
-  }
-  if (colors.tokenSelectorItemHoverBg) {
-    css += `--token-selector-item-hover-bg: ${colors.tokenSelectorItemHoverBg};\n`;
-  }
-  if (colors.tokenSelectorItemActiveBg) {
-    css += `--token-selector-item-active-bg: ${colors.tokenSelectorItemActiveBg};\n`;
-  }
-  if (colors.tokenSelectorSearchBg) {
-    css += `--token-selector-search-bg: ${colors.tokenSelectorSearchBg};\n`;
-  }
-  if (colors.tokenSelectorBorder) {
-    css += `--token-selector-border: ${colors.tokenSelectorBorder};\n`;
-  }
   if (colors.kongBorder) {
     css += `--kong-border: ${colors.kongBorder};\n`;
   }
-  if (colors.tokenSelectorShadow) {
-    css += `--token-selector-shadow: ${colors.tokenSelectorShadow};\n`;
-  }
-  
-  // Chart text color (if provided)
-  if (colors.chartTextColor) {
-    css += `--chart-text-color: ${colors.chartTextColor};\n`;
-  }
-  
+
   // Background configuration
   css += `--background-type: ${colors.backgroundType};\n`;
   if (colors.backgroundGradient) {
@@ -216,4 +186,4 @@ export function generateThemeVariables(theme: ThemeDefinition): string {
   css += `color-scheme: ${theme.colorScheme};\n`;
   
   return css;
-} 
+}

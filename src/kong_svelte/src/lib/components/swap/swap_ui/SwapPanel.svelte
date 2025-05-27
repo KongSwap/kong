@@ -16,6 +16,7 @@
     panelRoundness,
   } from "$lib/stores/derivedThemeStore";
   import { calculatePercentageAmount } from "$lib/utils/numberFormatUtils";
+    import { Wallet } from "lucide-svelte";
 
   let {
     title,
@@ -383,11 +384,11 @@
   shadow={$swapPanelShadow}
   isSwapPanel={true}
 >
-  <div class="flex flex-col gap-5 min-h-[150px] box-border relative">
+  <div class="flex flex-col gap-4 min-h-[140px] box-border relative">
     <header>
       <div class="flex items-center justify-between">
         <h2
-          class="text-lg sm:text-2xl lg:text-xl font-semibold text-kong-text-primary m-0 tracking-tight leading-none"
+          class="text-lg sm:text-2xl lg:text-xl font-semibold text-kong-text-secondary m-0 tracking-tight leading-none"
         >
           {title}
         </h2>
@@ -395,7 +396,7 @@
           {#if panelType === "pay"}
             <!-- OnRamp Button -->
             <button
-              class="onramp-button {$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-4 py-0.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm sm:py-1 sm:px-2"
+              class="{$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-2.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm py-0.5 sm:px-2"
               on:click={(e) => {
                 e.preventDefault();
                 window.open(
@@ -411,7 +412,7 @@
           {#if showPrice && $animatedSlippage > 0}
             <!-- Price Impact Display -->
             <div
-              class="flex items-center gap-1.5 bg-white/10 p-1 {$panelRoundness}"
+              class="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 {$panelRoundness}"
               title="Price Impact"
             >
               <span
@@ -421,7 +422,7 @@
               </span>
               <span
                 class="text-sm sm:text-[1rem] font-semibold text-kong-text-primary"
-                class:text-kong-accent-red={$animatedSlippage >=
+                class:text-kong-error={$animatedSlippage >=
                   HIGH_IMPACT_THRESHOLD}
               >
                 {$animatedSlippage.toFixed(2)}%
@@ -432,8 +433,8 @@
       </div>
     </header>
 
-    <div class="relative flex-grow mb-1">
-      <div class="flex items-center box-border {$panelRoundness}">
+    <div class="relative flex-grow">
+      <div class="flex items-center gap-2.5 box-border {$panelRoundness}">
         <div class="relative flex-1">
           {#if isLoading && panelType === "receive"}
             <!-- Loading Dots -->
@@ -459,7 +460,7 @@
             inputmode="decimal"
             pattern="[0-9]*\\.?[0-9]*"
             placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent items-center border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary/50 placeholder:text-kong-text-primary/60 text-3xl lg:text-4xl"
+            class="flex-1 min-w-0 bg-transparent items-center border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary/50 placeholder:text-kong-text-primary/60 text-4xl md:text-4xl"
             class:opacity-0={isLoading && panelType === "receive"}
             value={localInputValue}
             on:input={handleInput}
@@ -469,7 +470,7 @@
           />
                  <!-- USD Value Display -->
         <span
-        class="absolute -bottom-[1.1rem] left-0 text-kong-text-primary/50 font-medium text-xs"
+        class="absolute -bottom-5 left-0 text-kong-text-primary/50 font-medium text-xs"
       >
         {#if $animatedUsdValue > 0}
           ≈${formatToNonZeroDecimal($animatedUsdValue)}
@@ -527,17 +528,17 @@
 
     </div>
 
-    <div class="text-kong-text-primary text-sm">
-      <div class="flex justify-between items-center leading-6">
+    <div class="text-kong-text-primary text-sm mt-2">
+      <div class="flex justify-between items-center leading-5">
         <div class="flex flex-col w-full items-start justify-start gap-0">
-          <div class="flex items-center w-full gap-0.5">
+          <div class="flex items-center w-full gap-1 py-1">
             <span
-              class="text-kong-text-primary font-normal tracking-wide text-xs sm:text-xs"
+              class="text-kong-text-secondary/80 mr-0.5 font-normal tracking-wide text-xs sm:text-xs"
             >
-              Balance:
+              <Wallet class="w-3.5 h-3.5" />
             </span>
             <button
-              class="text-kong-text-primary font-semibold tracking-tight text-xs sm:text-xs"
+              class="text-kong-text-secondary font-semibold tracking-tight text-xs sm:text-sm"
               class:clickable={title === "You Pay" && !disabled}
               class:hover:text-yellow-500={title === "You Pay" && !disabled}
               on:click={() => handlePercentageClick(100)}
@@ -565,30 +566,30 @@
          
             <!-- Percentage Buttons -->
             {#if title === "You Pay" && token}
-            <div class="flex items-center justify-end w-full text-xs">
+            <div class="flex items-center justify-end w-full text-xs sm:text-sm">
               <button
-                class="bg-kong-bg-light px-2 py-1.5 border border-transparent hover:border-kong-primary rounded-l-md"
+                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary rounded-l-md transition-all duration-150"
                 on:click={() => handlePercentageClick(25)}
                 disabled={disabled}
               >
                 25%
               </button>
               <button
-                class="bg-kong-bg-light px-2 py-1.5 border border-transparent hover:border-kong-primary"
+                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary transition-all duration-150"
                 on:click={() => handlePercentageClick(50)}
                 disabled={disabled}
               >
                 50%
               </button>
               <button
-                class="bg-kong-bg-light px-2 py-1.5 border border-transparent hover:border-kong-primary"
+                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary transition-all duration-150"
                 on:click={() => handlePercentageClick(75)}
                 disabled={disabled}
               >
                 75%
               </button>
               <button
-                class="bg-kong-bg-light px-2 py-1.5 border border-transparent hover:border-kong-primary rounded-r-md"
+                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary rounded-r-md transition-all duration-150"
                 on:click={() => handlePercentageClick(100)}
                 disabled={disabled}
               >

@@ -89,10 +89,10 @@
   }
 
   .modern-button.green {
-    @apply bg-kong-accent-green border border-kong-accent-green text-white
-           hover:bg-kong-accent-green-hover hover:border-kong-accent-green-hover
-           focus:ring-2 focus:ring-kong-accent-green/30
-           shadow-lg shadow-kong-accent-green/10;
+    @apply bg-kong-success border border-kong-success text-white
+           hover:bg-kong-success-hover hover:border-kong-success-hover
+           focus:ring-2 focus:ring-kong-success/30
+           shadow-lg shadow-kong-success/10;
   }
 
   .modern-button.yellow {

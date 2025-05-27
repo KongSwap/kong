@@ -110,13 +110,13 @@
         <div class="flex flex-col gap-3">
           <h3 class="text-sm uppercase font-medium text-kong-text-primary">Wallet ID</h3>
           
-          <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-kong-bg-dark/30">
+          <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-kong-bg-primary/30">
             <div class="text-sm font-mono text-kong-text-secondary truncate">
               {formatShortAddress(principal || '')}
             </div>
             
             <button 
-              class="p-1.5 rounded-md hover:bg-kong-bg-dark/80 transition-colors text-kong-text-secondary hover:text-kong-primary flex items-center"
+              class="p-1.5 rounded-md hover:bg-kong-bg-primary/80 transition-colors text-kong-text-secondary hover:text-kong-primary flex items-center"
               on:click={copyPrincipalToClipboard}
               title="Copy principal ID to clipboard"
               disabled={!principal}
@@ -130,7 +130,7 @@
           </div>
           
           {#if showCopiedIndicator}
-            <div class="text-xs text-center text-kong-text-accent-green">
+            <div class="text-xs text-center text-kong-success">
               Copied to clipboard!
             </div>
           {/if}

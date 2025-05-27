@@ -11,7 +11,6 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { loadBalance } from "$lib/stores/balancesStore";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-  import { auth } from "$lib/stores/auth";
 
   const dispatch = createEventDispatcher();
 

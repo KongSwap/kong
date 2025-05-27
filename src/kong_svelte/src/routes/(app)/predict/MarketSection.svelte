@@ -128,8 +128,8 @@
 
 <style>
   /* Smooth hover transitions */
-  .group\/outcome:hover :global(.bg-kong-accent-green\/40) {
-    @apply bg-kong-accent-green/60;
+  .group\/outcome:hover :global(.bg-kong-success\/40) {
+    @apply bg-kong-success/60;
   }
 
   /* Custom scrollbar styling */

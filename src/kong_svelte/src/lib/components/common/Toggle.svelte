@@ -90,7 +90,7 @@
 <style lang="postcss">
   .toggle-base {
     @apply relative rounded-full transition-all duration-300 ease-in-out cursor-pointer;
-    @apply bg-kong-bg-dark border border-kong-border;
+    @apply bg-kong-bg-primary border border-kong-border;
   }
 
   .toggle-background {
@@ -154,7 +154,7 @@
 
   /* Focus state */
   .toggle-base:focus {
-    @apply outline-none ring-2 ring-kong-primary/50 ring-offset-1 ring-offset-kong-bg-dark;
+    @apply outline-none ring-2 ring-kong-primary/50 ring-offset-1 ring-offset-kong-bg-primary;
   }
 
   /* Disabled state */
@@ -168,7 +168,7 @@
 
   /* Checked state enhancements */
   .toggle-base.active {
-    @apply border-kong-primary/30 bg-kong-bg-dark/80;
+    @apply border-kong-primary/30 bg-kong-bg-primary/80;
   }
 
   .toggle-base.active .toggle-background {

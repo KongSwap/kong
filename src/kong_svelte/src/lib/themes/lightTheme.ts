@@ -9,9 +9,10 @@ export const lightTheme: ThemeDefinition = {
   authorLink: 'https://kongswap.io',
   colors: {
     // Background colors
-    bgDark: '#f5f5f5',      // Light gray/blue
-    bgLight: '#F5F7FA',     // White
-    hoverBgLight: '#EEF1F5', // Slightly darker for hover
+    bgPrimary: '#f5f5f5',      // Light gray/blue (lightest for light theme)
+    bgSecondary: '#F5F7FA',     // White
+    bgTertiary: '#EEF1F5',      // Slightly darker for tertiary
+    hoverBgSecondary: '#EEF1F5', // Slightly darker for hover
     
     // Primary and secondary colors
     primary: '#2563EB',     // Modern blue
@@ -19,27 +20,29 @@ export const lightTheme: ThemeDefinition = {
     secondary: '#0EA5E9',   // Sky blue
     secondaryHover: '#0284C7', // Darker sky blue
     
-    // Accent colors
-    accentBlue: '#3B82F6',  // Modern blue
-    accentRed: '#EF4444',   // Modern red
-    accentGreen: '#10B981', // Modern green
-    accentYellow: '#F59E0B', // Modern amber
-    accentPurple: '#8B5CF6', // Modern purple
-    accentCyan: '#06B6D4',   // Modern cyan
+    // Semantic colors
+    accent: '#3B82F6',  // Modern blue
+    error: '#EF4444',   // Modern red
+    success: '#10B981', // Modern green
+    warning: '#F59E0B', // Modern amber
+    info: '#3B82F6',    // Modern blue (same as accent)
+    muted: '#94A3B8',   // Slate 400
     
     // Hover variants
-    accentGreenHover: '#059669', // Darker green
-    accentBlueHover: '#2563EB',  // Darker blue
-    accentRedHover: '#DC2626',   // Darker red
-    accentYellowHover: '#D97706', // Darker amber
+    successHover: '#059669', // Darker green
+    accentHover: '#2563EB',  // Darker blue
+    errorHover: '#DC2626',   // Darker red
+    warningHover: '#D97706', // Darker amber
+    infoHover: '#2563EB',    // Darker blue
+    mutedHover: '#64748B',   // Slate 500
     
     // Text colors
     textPrimary: '#1E293B',  // Slate 800
     textSecondary: '#475569', // Slate 600
     textDisabled: '#94A3B8', // Slate 400
-    textAccentGreen: '#059669', // Green 600
-    textAccentRed: '#DC2626',   // Red 600
-    textAccentBlue: '#2563EB',  // Blue 600
+    textSuccess: '#059669', // Green 600
+    textError: '#DC2626',   // Red 600
+    textAccent: '#2563EB',  // Blue 600
     textOnPrimary: '#fff',
     textLight: '#FFFFFF',      // White for light text needs
     textDark: '#1E293B',       // Slate 800 for dark text needs
@@ -60,31 +63,10 @@ export const lightTheme: ThemeDefinition = {
     border: '#E2E8F0',      // Slate 200
     borderLight: '#F1F5F9',  // Slate 100
     
-    // Surface colors
-    surfaceDark: '#F8FAFC',  // Slate 50
-    surfaceLight: '#FFFFFF',  // White
-    
     // Logo properties - adjust for light theme
     logoBrightness: 0.9,
     logoInvert: 1,           // Invert for dark logos on light background
     logoHoverBrightness: 0.8,
-    
-    // Token selector dropdown colors
-    tokenSelectorBg: '#FFFFFF',
-    tokenSelectorHeaderBg: '#F8FAFC',
-    tokenSelectorItemBg: '#F8FAFC',
-    tokenSelectorItemHoverBg: '#F1F5F9',
-    tokenSelectorItemActiveBg: '#E2E8F0',
-    tokenSelectorSearchBg: '#FFFFFF',
-    tokenSelectorBorder: '1px solid rgba(203, 213, 225, 0.5)',
-    tokenSelectorRoundness: 'rounded-lg',
-    tokenSelectorShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
-    
-    // Plugin Manager colors
-    pmDark: '#F8FAFC',
-    pmBorder: '#E2E8F0',
-    pmAccent: '#8B5CF6',     // Modern purple
-    pmTextSecondary: '#475569',
     
     // Swap Button styling - Modern Light theme
     swapButtonPrimaryGradientStart: '#2563EB', // Modern blue

@@ -6,8 +6,8 @@
   
   // Theme-specific styling
   let theme = $derived(getThemeById($themeStore));
-  let backgroundColor = $derived(theme.colors.switchButtonBg || theme.colors.surfaceLight || '#1c2333');
-  let hoverBackgroundColor = $derived(theme.colors.switchButtonHoverBg || theme.colors.surfaceDark || '#252b3d');
+  let backgroundColor = $derived(theme.colors.switchButtonBg || theme.colors.bgSecondary || '#1c2333');
+  let hoverBackgroundColor = $derived(theme.colors.switchButtonHoverBg || theme.colors.bgPrimary || '#252b3d');
   let borderColor = $derived(theme.colors.switchButtonBorder || theme.colors.borderLight || 'rgba(255, 255, 255, 0.1)');
   let buttonShadow = $derived(theme.colors.switchButtonShadow || '0 8px 32px rgba(0, 0, 0, 0.32)');
   let ismicroswapTheme = $derived(theme.id === 'microswap');

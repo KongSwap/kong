@@ -37,9 +37,10 @@ export const nordTheme: ThemeDefinition = {
   authorLink: 'https://www.windoge98.com/',
   colors: {
     // Background colors
-    bgDark: '#2E3440',      // nord0 - Polar Night darkest
-    bgLight: '#3B4252',     // nord1 - Polar Night lighter
-    hoverBgLight: '#434C5E', // nord2 - Polar Night hover
+    bgPrimary: '#2E3440',      // nord0 - Polar Night darkest
+    bgSecondary: '#3B4252',     // nord1 - Polar Night lighter
+    bgTertiary: '#434C5E',      // nord2 - Polar Night tertiary
+    hoverBgSecondary: '#434C5E', // nord2 - Polar Night hover
     
     // Primary and secondary colors
     primary: '#88C0D0',     // nord8 - Frost light blue
@@ -47,19 +48,21 @@ export const nordTheme: ThemeDefinition = {
     secondary: '#5E81AC',   // nord10 - Frost dark blue
     secondaryHover: '#4C6A92', // Darker variant of nord10
     
-    // Accent colors - using the aurora palette for accents
-    accentBlue: '#81A1C1',  // nord9 - Frost medium blue
-    accentRed: '#BF616A',   // nord11 - Aurora red
-    accentGreen: '#A3BE8C', // nord14 - Aurora green
-    accentYellow: '#EBCB8B', // nord13 - Aurora yellow
-    accentPurple: '#B48EAD', // nord15 - Aurora purple
-    accentCyan: '#8FBCBB',   // nord7 - Frost cyan
+    // Semantic colors - using the aurora palette for accents
+    accent: '#81A1C1',  // nord9 - Frost medium blue
+    error: '#BF616A',   // nord11 - Aurora red
+    success: '#A3BE8C', // nord14 - Aurora green
+    warning: '#EBCB8B', // nord13 - Aurora yellow
+    info: '#88C0D0',    // nord8 - Frost
+    muted: '#4C566A',   // nord3 - Polar Night
     
     // Hover variants - slightly darker shades of the accent colors
-    accentGreenHover: '#97B67E', // Darker green
-    accentBlueHover: '#7393B3',  // Darker blue
-    accentRedHover: '#B3555E',   // Darker red
-    accentYellowHover: '#E1C079', // Darker yellow
+    successHover: '#97B67E', // Darker green
+    accentHover: '#7393B3',  // Darker blue
+    errorHover: '#B3555E',   // Darker red
+    warningHover: '#E1C079', // Darker yellow
+    infoHover: '#7BAFC0',    // Darker Frost
+    mutedHover: '#434C5E',   // nord2 - Darker Polar Night
     
     // Text colors - using Snow Storm palette for text
     textLight: '#ECEFF4',
@@ -68,9 +71,9 @@ export const nordTheme: ThemeDefinition = {
     textSecondary: '#D8DEE9', // nord4 - Snow Storm medium
     textDisabled: '#ADB5BD', // Desaturated text
     textOnPrimary: '#2E3440', // nord0 - Dark text on primary color backgrounds
-    textAccentGreen: '#A3BE8C', // nord14 - Same as accent green
-    textAccentRed: '#BF616A',   // nord11 - Same as accent red
-    textAccentBlue: '#81A1C1',  // nord9 - Same as accent blue
+    textSuccess: '#A3BE8C', // nord14 - Same as success
+    textError: '#BF616A',   // nord11 - Same as error
+    textAccent: '#81A1C1',  // nord9 - Same as accent
     
     // Font settings - Using a clean font that complements the Nord theme
     fontFamily: "'Inter', 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -88,10 +91,6 @@ export const nordTheme: ThemeDefinition = {
     border: '#4C566A',       // nord3 - Polar Night light
     borderLight: '#434C5E',  // nord2 - Polar Night medium
     
-    // Surface colors - similar to background colors but can be used for cards and containers
-    surfaceDark: '#2E3440',  // nord0 - Same as bg-dark
-    surfaceLight: '#3B4252', // nord1 - Same as bg-light
-    
     // Logo properties
     logoBrightness: 1,
     logoInvert: 0,
@@ -99,12 +98,6 @@ export const nordTheme: ThemeDefinition = {
     
     // Chart text color
     chartTextColor: '#ECEFF4', // nord6 - Snow Storm lightest for chart text
-    
-    // Plugin Manager colors
-    pmDark: '#292E39',       // Slightly darker than bg-dark
-    pmBorder: '#4C566A',     // nord3 - Same as border
-    pmAccent: '#B48EAD',     // nord15 - Aurora purple
-    pmTextSecondary: '#D8DEE9', // nord4 - Snow Storm medium
     
     // Swap Button styling - using Nord colors
     swapButtonPrimaryGradientStart: '#88C0D0', // nord8 - Frost light blue

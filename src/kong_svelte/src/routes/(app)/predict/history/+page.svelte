@@ -77,8 +77,8 @@
     const isWinner = winningOutcomes.includes(bet.outcome_index);
 
     return isWinner
-      ? { text: "Won", color: "text-kong-accent-green" }
-      : { text: "Lost", color: "text-kong-accent-red" };
+      ? { text: "Won", color: "text-kong-success" }
+      : { text: "Lost", color: "text-kong-error" };
   }
 
   function calculatePotentialWin(bet: any): number {
@@ -104,7 +104,7 @@
   <div class="max-w-6xl mx-auto">
     <button
       on:click={() => goto("/predict")}
-      class="mb-4 flex items-center gap-2 px-3 py-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md hover:bg-kong-bg-dark/40"
+      class="mb-4 flex items-center gap-2 px-3 py-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md hover:bg-kong-bg-primary/40"
     >
       <ArrowLeft class="w-4 h-4" />
       <span class="text-sm">Back to Markets</span>
@@ -132,14 +132,14 @@
 
     {#if error}
       <Panel className="!rounded">
-        <div class="text-center py-8 text-kong-accent-red">
+        <div class="text-center py-8 text-kong-error">
           <p class="text-lg">{error}</p>
         </div>
       </Panel>
     {:else if loading}
       <Panel className="!rounded">
         <div class="text-center py-8">
-          <div class="animate-spin w-8 h-8 border-4 border-kong-accent-green rounded-full border-t-transparent mx-auto" />
+          <div class="animate-spin w-8 h-8 border-4 border-kong-success rounded-full border-t-transparent mx-auto" />
           <p class="mt-4 text-kong-text-secondary">Loading your prediction history...</p>
         </div>
       </Panel>
@@ -160,7 +160,7 @@
         <Panel className="!rounded">
           <div class="p-4">
             <div class="flex items-center gap-2 mb-2">
-              <Wallet class="w-5 h-5 text-kong-accent-green" />
+              <Wallet class="w-5 h-5 text-kong-success" />
               <h3 class="text-sm text-kong-text-secondary">Current Balance</h3>
             </div>
             <p class="text-xl font-medium">{formatBalance(history.current_balance, 8, 2)} KONG</p>
@@ -178,7 +178,7 @@
         <Panel className="!rounded">
           <div class="p-4">
             <div class="flex items-center gap-2 mb-2">
-              <Award class="w-5 h-5 text-kong-accent-purple" />
+              <Award class="w-5 h-5 text-kong-primary" />
               <h3 class="text-sm text-kong-text-secondary">Total Won</h3>
             </div>
             <p class="text-xl font-medium">{formatBalance(history.total_won, 8, 2)} KONG</p>
@@ -211,7 +211,7 @@
           <Panel className="!rounded overflow-x-auto">
             <table class="w-full min-w-full">
               <thead>
-                <tr class="border-b border-kong-bg-dark text-left">
+                <tr class="border-b border-kong-bg-primary text-left">
                   <th class="p-4 text-kong-text-secondary font-medium">Market</th>
                   <th class="p-4 text-kong-text-secondary font-medium">Outcome</th>
                   <th class="p-4 text-kong-text-secondary font-medium">Status</th>
@@ -223,10 +223,10 @@
                 {#if paginatedBets.length > 0}
                   {#each paginatedBets as bet}
                     {@const statusInfo = getOutcomeStatus(bet)}
-                    <tr class="border-b border-kong-bg-dark hover:bg-kong-bg-dark/10 transition-colors">
+                    <tr class="border-b border-kong-bg-primary hover:bg-kong-bg-primary/10 transition-colors">
                       <td class="p-4">
                         <button
-                          class="text-sm sm:text-base line-clamp-2 font-medium text-kong-text-primary text-left hover:text-kong-text-accent-green transition-colors flex items-center gap-1 max-w-md"
+                          class="text-sm sm:text-base line-clamp-2 font-medium text-kong-text-primary text-left hover:text-kong-success transition-colors flex items-center gap-1 max-w-md"
                           title={bet.market.question}
                           on:click={() => goto(`/predict/${bet.market.id}`)}
                         >
@@ -235,7 +235,7 @@
                         </button>
                       </td>
                       <td class="p-4">
-                        <span class="text-sm px-3 py-1 rounded-full bg-kong-bg-dark inline-block">
+                        <span class="text-sm px-3 py-1 rounded-full bg-kong-bg-primary inline-block">
                           {bet.outcome_text}
                         </span>
                       </td>
@@ -250,11 +250,11 @@
                       <td class="p-4 text-right font-medium">
                         {#if statusInfo.text === 'Pending'}
                             <span class="text-sm text-kong-text-secondary block">Potential Win</span>
-                            <span class="text-kong-accent-green">{formatBalance(calculatePotentialWin(bet), 8, 2)} KONG</span>
+                            <span class="text-kong-success">{formatBalance(calculatePotentialWin(bet), 8, 2)} KONG</span>
                         {:else if statusInfo.text === 'Won'}
                             <span class="text-sm text-kong-text-secondary block">Winnings</span>
                             {#if bet.winnings && bet.winnings.length > 0}
-                                <span class="text-kong-accent-green">
+                                <span class="text-kong-success">
                                     +{formatBalance(bet.winnings[0], 8, 2)} KONG
                                 </span>
                             {:else}
@@ -262,7 +262,7 @@
                             {/if}
                         {:else}
                             <span class="text-sm text-kong-text-secondary block">Result</span>
-                            <span class="text-kong-accent-red">-{formatBalance(bet.bet_amount, 8, 2)} KONG</span>
+                            <span class="text-kong-error">-{formatBalance(bet.bet_amount, 8, 2)} KONG</span>
                         {/if}
                       </td>
                     </tr>
@@ -276,11 +276,11 @@
             </table>
             <!-- Pagination Controls -->
             {#if totalPages > 1}
-            <div class="flex justify-between items-center p-4 border-t border-kong-bg-dark">
+            <div class="flex justify-between items-center p-4 border-t border-kong-bg-primary">
               <button
                 on:click={prevPage}
                 disabled={currentPage === 1}
-                class="px-4 py-2 text-sm font-medium rounded-md transition-colors {currentPage === 1 ? 'bg-kong-bg-light text-kong-text-disabled cursor-not-allowed' : 'bg-kong-secondary hover:bg-kong-secondary-hover text-kong-text-primary'}"
+                class="px-4 py-2 text-sm font-medium rounded-md transition-colors {currentPage === 1 ? 'bg-kong-bg-secondary text-kong-text-disabled cursor-not-allowed' : 'bg-kong-secondary hover:bg-kong-secondary-hover text-kong-text-primary'}"
               >
                 Previous
               </button>
@@ -290,7 +290,7 @@
               <button
                 on:click={nextPage}
                 disabled={currentPage === totalPages}
-                class="px-4 py-2 text-sm font-medium rounded-md transition-colors {currentPage === totalPages ? 'bg-kong-bg-light text-kong-text-disabled cursor-not-allowed' : 'bg-kong-secondary hover:bg-kong-secondary-hover text-kong-text-primary'}"
+                class="px-4 py-2 text-sm font-medium rounded-md transition-colors {currentPage === totalPages ? 'bg-kong-bg-secondary text-kong-text-disabled cursor-not-allowed' : 'bg-kong-secondary hover:bg-kong-secondary-hover text-kong-text-primary'}"
               >
                 Next
               </button>

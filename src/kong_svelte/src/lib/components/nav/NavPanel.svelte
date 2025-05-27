@@ -221,7 +221,7 @@
 <div
   class="flex items-center overflow-visible {isMobile
     ? ''
-    : 'bg-kong-bg-dark/50 border border-kong-border/50'} {$panelRoundness} overflow-hidden"
+    : 'bg-kong-bg-primary/50 border border-kong-border/50'} {$panelRoundness} overflow-hidden"
 >
   {#each buttons as button, i}
     {#if button.show !== false}
@@ -260,7 +260,7 @@
               <span
                 class="absolute {isMobile
                   ? '-top-2 -left-2'
-                  : '-top-3 -left-3'} w-4 h- z-20 rounded-full bg-kong-accent-red text-white text-[10px] font-medium flex items-center justify-center z-10"
+                  : '-top-3 -left-3'} w-4 h- z-20 rounded-full bg-kong-error text-white text-[10px] font-medium flex items-center justify-center z-10"
               >
                 {button.badgeCount}
               </span>
@@ -284,7 +284,7 @@
 
 <style scoped lang="postcss">
   .nav-panel-button {
-    @apply h-[34px] px-3 flex items-center gap-1.5 text-xs font-medium text-kong-text-secondary bg-kong-bg-dark border-none transition-all duration-150;
+    @apply h-[34px] px-3 flex items-center gap-1.5 text-xs font-medium text-kong-text-secondary bg-kong-bg-primary border-none transition-all duration-150;
   }
 
   .nav-panel-button:not(:last-child) {
@@ -292,7 +292,7 @@
   }
 
   .nav-panel-button:hover {
-    @apply bg-kong-primary text-kong-text-light;
+    @apply bg-kong-primary text-kong-text-primary;
   }
 
   .nav-panel-button.selected {
@@ -300,7 +300,7 @@
   }
 
   .nav-panel-button.wallet-button {
-    @apply text-kong-primary hover:bg-kong-primary hover:text-kong-text-light;
+    @apply text-kong-primary hover:bg-kong-primary hover:text-kong-text-primary;
   }
 
   .nav-panel-button.mobile {

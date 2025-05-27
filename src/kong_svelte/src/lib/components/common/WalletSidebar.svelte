@@ -194,17 +194,17 @@
   <div class="sidebar-container">
     <!-- Backdrop (no transition to avoid layout shifts) -->
     <div
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999]"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9000]"
       onclick={handleClose}
     ></div>
     
     <!-- Sidebar with static positioning (no animations) -->
     <div
-      class="sidebar-panel bg-kong-bg-dark rounded-l-lg"
+      class="sidebar-panel bg-kong-bg-primary rounded-l-lg"
       class:visible={sidebarVisible}
     >
       <!-- Tabs at the top -->
-      <div class="flex border-b border-kong-border bg-kong-bg-dark">
+      <div class="flex border-b border-kong-border bg-kong-bg-primary">
         <button
           class="{currentTab === 'wallet'
             ? 'flex-1 text-kong-primary border-b-2 border-kong-primary bg-kong-text-primary/5'
@@ -309,7 +309,7 @@
     left: 0;
     width: 0;
     height: 0;
-    z-index: 999;
+    z-index: 9000;
     /* Make sure this container never causes overflow */
     overflow: visible;
   }
@@ -326,7 +326,7 @@
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
-    z-index: 1000;
+    z-index: 9001;
     opacity: 0;
     /* Combined transform for both centering and slide-in */
     transform: translate(100%, -50%);

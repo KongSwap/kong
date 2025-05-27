@@ -276,7 +276,7 @@
     <div class="flex flex-col items-center justify-center min-h-[300px]">
       <div class="text-kong-text-primary/70">Token not found</div>
       <button
-        class="mt-4 px-4 py-2 bg-kong-bg-dark rounded-lg hover:bg-kong-bg-dark/80 transition-colors"
+        class="mt-4 px-4 py-2 bg-kong-bg-primary rounded-lg hover:bg-kong-bg-primary/80 transition-colors"
         on:click={() => goto("/stats")}
       >
         Return to Stats
@@ -315,7 +315,7 @@
         </Panel>
 
         {#if state.token && state.token.address === $page.params.id}
-          <TransactionFeed token={state.token} className="w-full !bg-kong-bg-light" />
+          <TransactionFeed token={state.token} className="w-full !bg-kong-bg-secondary" />
         {/if}
 
         {#if state.token?.address && GOVERNANCE_CANISTER_IDS[state.token.address]}
@@ -379,7 +379,7 @@
               
               <div class={`${state.token?.address && GOVERNANCE_CANISTER_IDS[state.token.address] ? 'lg:w-1/2' : 'lg:w-full'} flex flex-col`}>
                 {#if state.token && state.token.address === $page.params.id}
-                  <TransactionFeed token={state.token} className="w-full !p-0 !bg-kong-bg-light" />
+                  <TransactionFeed token={state.token} className="w-full !p-0 !bg-kong-bg-secondary" />
                 {/if}
               </div>
             </div>

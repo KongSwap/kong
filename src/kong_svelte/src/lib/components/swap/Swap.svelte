@@ -302,13 +302,16 @@
 
     if (!$swapState.payToken || !$swapState.receiveToken) return;
 
-    swapState.update((state) => ({
-      ...state,
-      showConfirmation: true,
-      isProcessing: false,
-      error: null,
-      showSuccessModal: false,
-    }));
+    // Delay the modal opening to allow the press effect to show
+    setTimeout(() => {
+      swapState.update((state) => ({
+        ...state,
+        showConfirmation: true,
+        isProcessing: false,
+        error: null,
+        showSuccessModal: false,
+      }));
+    }, 200); // Match the delay in SwapButton
   }
 
   async function handleSwap(): Promise<boolean> {
@@ -731,7 +734,7 @@
   in:fade={{ duration: 420 }}
 >
   <div class="relative flex flex-col gap-2 mb-2">
-    <div class="relative flex flex-col gap-1 min-h-[240px] px-3 md:px-0">
+    <div class="relative flex flex-col min-h-[220px] px-3 md:px-0">
       <!-- Doge image peeking only for Win98 theme -->
       {#if $themeId === "microswap"}
         <div
@@ -759,10 +762,12 @@
         />
       </div>
 
-      <SwitchTokensButton
-        isDisabled={$swapState.isProcessing}
-        onSwitch={handleReverseTokens}
-      />
+      <div class="relative my-0.5">
+        <SwitchTokensButton
+          isDisabled={$swapState.isProcessing}
+          onSwitch={handleReverseTokens}
+        />
+      </div>
 
       <div class="relative z-10">
         <SwapPanel

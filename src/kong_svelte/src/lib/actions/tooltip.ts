@@ -114,7 +114,7 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
     if (options.background) {
       tooltipEl.classList.add(options.background);
     } else {
-      tooltipEl.classList.add('bg-kong-bg-dark');
+      tooltipEl.classList.add('bg-kong-bg-primary');
     }
 
     // Apply padding

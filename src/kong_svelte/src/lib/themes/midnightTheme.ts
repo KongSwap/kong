@@ -9,9 +9,10 @@ export const midnightTheme: ThemeDefinition = {
   authorLink: 'https://www.windoge98.com/',
   colors: {
     // Background colors
-    bgDark: '#000000',      // Pure black
-    bgLight: '#121212',     // Very dark gray
-    hoverBgLight: '#1E1E1E', // Slightly lighter for more prominent hover
+    bgPrimary: '#000000',      // Pure black
+    bgSecondary: '#121212',     // Very dark gray
+    bgTertiary: '#1E1E1E',      // Slightly lighter gray for tertiary
+    hoverBgSecondary: '#1E1E1E', // Slightly lighter for more prominent hover
     
     // Primary and secondary colors
     primary: '#0095EB',     // Kong's brand blue
@@ -19,28 +20,30 @@ export const midnightTheme: ThemeDefinition = {
     secondary: '#22D3EE',
     secondaryHover: '#0EA5E9',
     
-    // Accent colors
-    accentBlue: '#00A7FF',  // Brighter blue
-    accentRed: '#FF4545',   // Vibrant red
-    accentGreen: '#05EC86', // Vibrant green
-    accentYellow: '#FFC107', // Material Yellow
-    accentPurple: '#6F5DFB', // Vibrant purple
-    accentCyan: '#22D3EE',
+    // Semantic colors
+    accent: '#00A7FF',  // Brighter blue
+    error: '#FF4545',   // Vibrant red
+    success: '#05EC86', // Vibrant green
+    warning: '#FFC107', // Material Yellow
+    info: '#22D3EE',    // Cyan
+    muted: '#4B5563',   // Gray
     
     // Hover variants
-    accentGreenHover: '#04CE75',
-    accentBlueHover: '#0090DC',
-    accentRedHover: '#EB3737',
-    accentYellowHover: '#FFA726', // Darker yellow
+    successHover: '#04CE75',
+    accentHover: '#0090DC',
+    errorHover: '#EB3737',
+    warningHover: '#FFA726', // Darker yellow
+    infoHover: '#1DBBD8',    // Darker cyan
+    mutedHover: '#374151',   // Darker gray
     
     // Text colors
     textPrimary: '#FFFFFF',  // Pure white
     textOnPrimary: '#000000',
     textSecondary: '#CCCCCC', // Light gray
     textDisabled: '#666666', // Medium gray
-    textAccentGreen: '#05EC86', // Same as accent-green
-    textAccentRed: '#FF4545',   // Same as accent-red
-    textAccentBlue: '#0095EB',
+    textSuccess: '#05EC86', // Same as success
+    textError: '#FF4545',   // Same as error
+    textAccent: '#0095EB',
     textLight: '#FFFFFF',      // White for light text needs
     textDark: '#121212',       // Very dark gray for dark text needs
     
@@ -60,20 +63,10 @@ export const midnightTheme: ThemeDefinition = {
     border: '#000',
     borderLight: '#232735',
     
-    // Surface colors
-    surfaceDark: '#121212',
-    surfaceLight: '#1A1A1A',
-    
     // Logo properties
     logoBrightness: 1,
     logoInvert: 0,
     logoHoverBrightness: 0.9,
-    
-    // Plugin Manager colors
-    pmDark: '#171717',
-    pmBorder: '#282828',
-    pmAccent: '#6F5DFB', // Same as accent-purple
-    pmTextSecondary: '#9EA4BA',
     
     // Swap Button styling - Brutalist plain black
     swapButtonPrimaryGradientStart: '#0095EB', // Kong's brand blue

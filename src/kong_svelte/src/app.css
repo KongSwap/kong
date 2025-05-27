@@ -30,7 +30,7 @@ body {
   font-family: var(--font-family, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  @apply bg-kong-bg-dark text-kong-text-primary;
+  @apply bg-kong-bg-primary text-kong-text-primary;
 }
 
 /* Base variable definitions - these will be dynamic based on theme */
@@ -38,22 +38,40 @@ body {
   /* Default CSS variables - will be overridden by dynamic theme styles */
   color-scheme: dark light; /* Dark first */
   
+  /* Default theme values (dark theme) */
+  --bg-primary: 9 12 23;
+  --bg-secondary: 26 32 50;
+  --bg-tertiary: 24 28 42;
+  --text-primary: 255 255 255;
+  --text-secondary: 176 182 197;
+  --text-disabled: 107 114 128;
+  --text-inverse: 13 17 31;
+  --brand-primary: 26 143 227;
+  --brand-secondary: 56 190 201;
+  --semantic-success: 0 214 143;
+  --semantic-error: 244 63 94;
+  --semantic-warning: 245 158 11;
+  --semantic-info: 59 130 246;
+  --semantic-success-hover: 0 183 122; /* Darker green for hover */
+  --semantic-error-hover: 225 29 72;   /* Darker red for hover */
+  --semantic-warning-hover: 217 119 6;  /* Darker yellow for hover */
+  --semantic-info-hover: 37 99 235;     /* Darker blue for hover */
+  --ui-border: 28 32 46;
+  --ui-border-light: 35 39 53;
+  --ui-focus: 59 130 246;
+  --ui-hover: 35 39 53;
+  
   /* Logo default properties */
   --logo-invert: 0; /* 0 = no inversion, 1 = invert */
   --logo-brightness: 1; /* Default brightness */
-  --logo-hover-brightness: 0.9; /* Default hover brightness */
   
-  /* Token ticker default properties */
-  --token-ticker-bg: #111523;
-  --token-ticker-text: #FFFFFF;
-  --token-ticker-border: 1px solid rgba(255, 255, 255, 0.1);
-  --token-ticker-border-style: default; /* can be 'default', 'win95', or 'none' */
-  --token-ticker-roundness: rounded-lg;
-  --token-ticker-hover-bg: #232735;
-  --token-ticker-shadow: 0 8px 32px rgba(0, 0, 0, 0.32);
-  --token-ticker-up-color: #05EC86;
-  --token-ticker-down-color: #FF4545;
-  --token-ticker-bg-opacity: 80; /* Default opacity 80% */
+  /* Component defaults */
+  --font-family: 'Exo 2', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --radius-sm: rounded-sm;
+  --radius-md: rounded-md;
+  --radius-lg: rounded-lg;
+  --radius-xl: rounded-xl;
+  --radius-full: rounded-full;
 }
 
 /* Page wrapper for background effects */
@@ -66,31 +84,48 @@ body {
   max-width: 100vw;
 }
 
-/* Update the gradient for light theme with more muted blue tones */
-:root:not(.dark):not(.plain-black):not(.nord) .page-wrapper::before {
+/* Light theme background gradient */
+:root.light .page-wrapper::before {
   content: '';
   position: fixed;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgb(214 226 240) 0%,    /* #D6E2F0 - Muted blue top */
-    rgb(226 237 248) 45%,   /* #E2EDF8 - Mid muted blue */
-    rgb(235 244 252) 100%   /* #EBF4FC - Light muted blue */
-  );
+  background: var(--background-value, linear-gradient(180deg, #F8FAFC 0%, #EFF6FF 100%));
   pointer-events: none;
   z-index: -1;
   width: 100%;
   max-width: 100vw;
 }
 
-/* Make the nebula effect more muted in light theme */
-:root:not(.dark):not(.plain-black):not(.nord) .nebula {
-  opacity: 0.06;
+/* Dark theme background gradient */
+:root.dark .page-wrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--background-value, linear-gradient(135deg, #050813 0%, #080b18 25%, #0a0e1b 50%, #080b18 75%, #050813 100%));
+  pointer-events: none;
+  z-index: -1;
+  width: 100%;
+  max-width: 100vw;
+}
+
+/* Nebula effect */
+.nebula {
+  opacity: var(--nebula-opacity, 0.4);
   filter: blur(100px);
   background: radial-gradient(
     circle at 50% 50%,
-    rgba(214, 226, 240, 0.9),  /* #D6E2F0 - Muted blue */
-    rgba(226, 237, 248, 0.0)   /* #E2EDF8 - Fade to muted blue */
+    rgba(var(--brand-primary), 0.6),
+    transparent
+  );
+}
+
+/* Light theme nebula */
+:root.light .nebula {
+  opacity: var(--nebula-opacity, 0.06);
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(214, 226, 240, 0.9),
+    rgba(226, 237, 248, 0.0)
   );
   transform: translateY(-20%);
 }
@@ -113,4 +148,40 @@ img {
 .navbar-logo {
   object-fit: contain;
   width: 100%;
+}
+
+/* Portal target for modals - ensure proper stacking context */
+#portal-target {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: 999999; /* Very high z-index to ensure modals appear above everything */
+  pointer-events: none;
+}
+
+/* Ensure modal children can receive pointer events */
+#portal-target > * {
+  pointer-events: auto;
+}
+
+/* Force all modal backdrops and content to have high z-index */
+#portal-target [role="dialog"] {
+  z-index: 999999 !important;
+}
+
+#portal-target [role="dialog"] > * {
+  z-index: inherit !important;
+}
+
+/* Ensure sidebar is always below modals */
+.sidebar-container,
+.sidebar-panel {
+  z-index: 9000 !important;
+}
+
+/* Ensure modal panels don't inherit lower z-index */
+#portal-target .panel {
+  z-index: auto !important;
 }

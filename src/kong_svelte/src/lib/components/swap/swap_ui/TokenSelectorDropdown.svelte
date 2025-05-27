@@ -524,15 +524,15 @@
 </script>
 
 {#if show}
-  <div class="fixed inset-0 bg-kong-bg-dark/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
+  <div class="fixed inset-0 bg-kong-bg-primary/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
     <div
-      class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] bg-kong-token-selector-bg {expandDirection} {$panelRoundness} {selectorState.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1'}"
+      class="relative border bg-kong-bg-primary transition-all duration-200 overflow-hidden w-[420px] bg-kong-bg-secondary {expandDirection} {$panelRoundness} {selectorState.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1'}"
       bind:this={selectorState.dropdownElement}
       on:click|stopPropagation
       transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}
     >
-      <div class="relative bg-kong-bg-dark flex flex-col h-full">
-        <header class="px-4 py-3 flex justify-between items-center bg-kong-bg-dark">
+      <div class="relative bg-kong-bg-primary flex flex-col h-full">
+        <header class="px-4 py-3 flex justify-between items-center bg-kong-bg-primary">
           <h2 class="text-kong-text-primary text-xl font-semibold">{title}</h2>
           <button class="text-kong-text-secondary hover:bg-kong-border/10 p-1 rounded" on:click|stopPropagation={closeWithCleanup}>
             <svg
@@ -558,7 +558,7 @@
                     bind:value={searchQuery}
                     type="text"
                     placeholder="Search by name, symbol, canister ID, or standard"
-                    class="flex-1 border-none text-kong-text-primary text-base rounded-md px-4 py-3 outline-none placeholder:text-kong-text-secondary bg-kong-token-selector-search-bg" 
+                    class="flex-1 border-none text-kong-text-primary text-base rounded-md px-4 py-3 outline-none placeholder:text-kong-text-secondary bg-kong-bg-secondary" 
                     on:click|stopPropagation
                   />
                 </div>
@@ -572,12 +572,12 @@
                   {#each FILTER_TABS as tab}
                     <button
                       on:click={() => setStandardFilter(tab.id as FilterType)}
-                      class="flex-1 px-3 py-2 flex items-center justify-center gap-2 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium bg-kong-bg-dark/30 rounded-2xl {selectorState.standardFilter === tab.id ? 'text-white font-semibold bg-kong-primary text-kong-bg-light hover:bg-kong-primary' : 'hover:bg-kong-bg-light/60'}"
+                      class="flex-1 px-3 py-2 flex items-center justify-center gap-2 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium bg-kong-bg-primary/30 rounded-2xl {selectorState.standardFilter === tab.id ? 'text-white font-semibold bg-kong-primary text-kong-bg-secondary hover:bg-kong-primary' : 'hover:bg-kong-bg-secondary/60'}"
                       aria-label="Show {tab.label.toLowerCase()} tokens"
                     >
                       <span class="relative z-10">{tab.label}</span>
                       <span
-                        class="text-kong-text-on-primary text-xs px-2 py-1 rounded-full bg-kong-bg-dark/50 min-w-[1.5rem] text-center transition-all duration-200 {selectorState.standardFilter === tab.id ? 'bg-kong-primary/10 text-kong-bg-light' : ''}"
+                        class="text-kong-text-on-primary text-xs px-2 py-1 rounded-full bg-kong-bg-primary/50 min-w-[1.5rem] text-center transition-all duration-200 {selectorState.standardFilter === tab.id ? 'bg-kong-primary/10 text-kong-bg-secondary' : ''}"
                       >
                         {getTabCount(tab.id)}
                       </span>
@@ -590,7 +590,7 @@
 
           <!-- Scrollable Token List -->
           <div
-            class="scrollable-section bg-kong-bg-dark flex-1 overflow-y-auto relative z-10 touch-pan-y overscroll-contain will-change-transform max-h-[450px]"
+            class="scrollable-section bg-kong-bg-primary flex-1 overflow-y-auto relative z-10 touch-pan-y overscroll-contain will-change-transform max-h-[450px]"
             bind:this={scrollContainer}
             bind:clientHeight={containerHeight}
             on:scroll={handleScroll}
@@ -641,7 +641,7 @@
               <!-- API Search Results -->
               {#if apiFilteredTokens.length > 0 || selectorState.isSearching}
                 <div class="space-y-2 mt-4">
-                  <div class="p-2 text-sm font-medium text-kong-text-secondary rounded-lg border border-kong-border/10 backdrop-blur-sm mx-2 my-2 bg-kong-token-selector-item-bg">
+                  <div class="p-2 text-sm font-medium text-kong-text-secondary rounded-lg border border-kong-border/10 backdrop-blur-sm mx-2 my-2 bg-kong-bg-secondary">
                     <span>Available Tokens</span>
                   </div>
                   
@@ -701,10 +701,10 @@
               {#if allowedCanisterIds.length === 0}
                 <div class="px-2 py-3 mt-2">
                   <button 
-                    class="group w-full hover:bg-kong-primary hover:text-kong-bg-light flex items-center justify-center gap-2 py-3 px-4 text-kong-text-primary font-medium rounded-lg border border-kong-border/30 transition-all duration-200 hover:border-kong-primary/40 bg-kong-token-selector-item-bg"
+                    class="group w-full hover:bg-kong-primary hover:text-kong-bg-secondary flex items-center justify-center gap-2 py-3 px-4 text-kong-text-primary font-medium rounded-lg border border-kong-border/30 transition-all duration-200 hover:border-kong-primary/40 "
                     on:click|stopPropagation={() => selectorState.isAddNewTokenModalOpen = true}
                   >
-                    <div class="flex items-center justify-center w-5 h-5 rounded-full text-kong-bg-light font-bold bg-kong-primary group-hover:text-kong-primary group-hover:bg-kong-bg-light">+</div>
+                    <div class="flex items-center justify-center w-5 h-5 rounded-full text-kong-bg-secondary font-bold bg-kong-primary group-hover:text-kong-primary group-hover:bg-kong-bg-secondary">+</div>
                     <span>Add New Token</span>
                   </button>
                 </div>

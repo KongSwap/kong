@@ -28,8 +28,8 @@
   } as const;
 
   const ICON_COLORS = {
-    success: "text-kong-accent-green",
-    error: "text-kong-accent-red",
+    success: "text-kong-success",
+    error: "text-kong-error",
     warning: "text-kong-accent-yellow",
     info: "text-kong-accent-blue",
   } as const;
@@ -170,7 +170,7 @@
   }
 
   .toast-container {
-    @apply w-full pointer-events-auto backdrop-blur-md bg-kong-bg-dark/95;
+    @apply w-full pointer-events-auto backdrop-blur-md bg-kong-bg-primary/95;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.1);
     @apply rounded-md border border-kong-border/20;
     animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -178,13 +178,13 @@
 
   /* Success Toast */
   .toast-success {
-    @apply border-l-2 border-l-kong-accent-green;
+    @apply border-l-2 border-l-kong-success;
     background-image: linear-gradient(to right, rgba(163, 190, 140, 0.08), transparent 30%);
   }
 
   /* Error Toast */
   .toast-error {
-    @apply border-l-2 border-l-kong-accent-red;
+    @apply border-l-2 border-l-kong-error;
     background-image: linear-gradient(to right, rgba(191, 97, 106, 0.08), transparent 30%);
   }
 
@@ -202,7 +202,7 @@
 
   .close-button {
     @apply -mr-1 flex items-center justify-center w-5 h-5 rounded-full
-      hover:bg-kong-bg-light/30
+      hover:bg-kong-bg-secondary/30
       text-kong-text-secondary hover:text-kong-text-primary
       transition-colors sm:w-4 sm:h-4;
   }

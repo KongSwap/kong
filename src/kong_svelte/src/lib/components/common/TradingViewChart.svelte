@@ -515,7 +515,7 @@
         </svg>
       </div>
     {:else if state.routingPath.length > 1}
-      <div class="absolute top-0 left-0 p-2 bg-kong-bg-dark bg-opacity-50 text-kong-text-primary text-sm rounded m-2">
+      <div class="absolute top-0 left-0 p-2 bg-kong-bg-primary bg-opacity-50 text-kong-text-primary text-sm rounded m-2">
         Note: Showing chart for {state.routingPath[0]} → {state.routingPath[1]} pool
       </div>
     {/if}

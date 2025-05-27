@@ -24,8 +24,8 @@ const rgbVarToHex = (cssVar: string, fallback: string): string => {
  */
 export const getTradingViewColors = () => {
   // Core theme colors
-  const bgDarkColor = rgbVarToHex('--bg-dark', '#000000');
-  const bgLightColor = rgbVarToHex('--bg-light', '#111111');
+  const bgPrimaryColor = rgbVarToHex('--bg-primary', '#000000');
+  const bgSecondaryColor = rgbVarToHex('--bg-secondary', '#111111');
   const borderColor = rgbVarToHex('--border', '#333333');
   const borderLightColor = rgbVarToHex('--border-light', '#444444');
   const textPrimaryColor = rgbVarToHex('--text-primary', '#FFFFFF');
@@ -35,8 +35,8 @@ export const getTradingViewColors = () => {
   const accentRedColor = rgbVarToHex('--accent-red', '#FF4545');
 
   return {
-    bgDarkColor,
-    bgLightColor,
+    bgDarkColor: bgPrimaryColor,
+    bgLightColor: bgSecondaryColor,
     borderColor,
     borderLightColor,
     textPrimaryColor,

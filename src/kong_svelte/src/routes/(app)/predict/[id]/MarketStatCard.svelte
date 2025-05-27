@@ -7,12 +7,12 @@
   export let value: string;
 </script>
 
-<div class="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-kong-bg-light/50 rounded transition-colors hover:bg-kong-bg-light/20">
+<div class="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-kong-bg-secondary/50 rounded transition-colors hover:bg-kong-bg-secondary/20">
   <div class="p-2 rounded">
     {#if logoUrl}
       <img src={logoUrl} alt="Token Logo" class="w-8 h-8 object-contain" />
     {:else if icon}
-      <svelte:component this={icon} class="w-8 h-8 text-kong-text-accent-green" />
+      <svelte:component this={icon} class="w-8 h-8 text-kong-success" />
     {/if}
   </div>
   <div>

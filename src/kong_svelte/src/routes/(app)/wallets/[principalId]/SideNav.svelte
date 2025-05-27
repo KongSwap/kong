@@ -45,7 +45,7 @@
         data-sveltekit-prefetch
         class="flex items-center gap-3 p-2 rounded-lg transition-colors {isCurrentPath(tab.path)
           ? 'bg-kong-primary text-white'
-          : 'hover:bg-kong-bg-dark/30'}"
+          : 'hover:bg-kong-bg-primary/30'}"
       >
         {#key tab.icon}
           <tab.icon class="w-5 h-5" />
