@@ -1,16 +1,18 @@
 <script lang="ts">
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import TokenSelectionPanel from "./TokenSelectionPanel.svelte";
   import AmountInputs from "./AmountInputs.svelte";
   import InitialPriceInput from "./InitialPriceInput.svelte";
   import PoolWarning from "./PoolWarning.svelte";
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
+  import { ArrowDown, CheckCircle } from "lucide-svelte";
   
   import { liquidityStore } from "$lib/stores/liquidityStore";
   import { loadBalances } from "$lib/stores/balancesStore";
   import { toastStore } from "$lib/stores/toastStore";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import { auth } from "$lib/stores/auth";
   import { livePools } from "$lib/stores/poolStore";
   import { userTokens } from "$lib/stores/userTokens";
@@ -118,7 +120,7 @@
   // Initialize component
   onMount(async () => {
     try {
-      await initializeTokens($page.url.searchParams, $userTokens.tokens);
+      await initializeTokens(page.url.searchParams, $userTokens.tokens);
       
       if ($auth?.account?.owner && $liquidityStore.token0 && $liquidityStore.token1) {
         await loadBalances([$liquidityStore.token0, $liquidityStore.token1], $auth.account.owner);
@@ -263,20 +265,26 @@
   onDestroy(() => {
     liquidityStore.resetAmounts();
   });
+
+  // Derived state for UI organization
+  $: isCreatingNewPool = poolExists === false || pool?.balance_0 === 0n;
+  $: hasTokenPair = token0 && token1;
+  $: canProceed = hasTokenPair && $liquidityStore.amount0 && $liquidityStore.amount1;
 </script>
 
-<Panel variant="transparent" width="auto" className="!p-0">
-  <div class="flex flex-col min-h-[165px] box-border relative rounded-lg">
-    {#if isLoading}
-      <div class="flex items-center justify-center h-64">
-        <div class="spinner w-10 h-10 border-4 border-t-4 border-t-kong-primary rounded-full animate-spin"></div>
-      </div>
-    {:else}
-      <div class="relative space-y-6 p-4">
-        <div class="mb-2">
-          <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
-            Select Tokens
-          </h3>
+<div class="flex flex-col gap-y-4 w-full">
+  {#if isLoading}
+    <LoadingIndicator message="Loading liquidity panel..." />
+  {:else}
+    <!-- Step 1: Token Selection -->
+    <Card className="p-4">
+      <div class="space-y-3">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 bg-kong-primary rounded-full flex items-center justify-center text-xs font-bold text-white">1</div>
+          <h3 class="text-kong-text-primary font-medium">Select Token Pair</h3>
+        </div>
+        
+        <div>
           <TokenSelectionPanel
             {token0}
             {token1}
@@ -284,28 +292,44 @@
             secondaryTokenIds={SECONDARY_TOKEN_IDS}
           />
         </div>
+      </div>
+    </Card>
 
-        {#if token0 && token1 && (poolExists === false || pool?.balance_0 === 0n)}
-          <div class="flex flex-col gap-4">
-            <PoolWarning {token0} {token1} />
-            <div>
-              <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
-                Set Initial Price
-              </h3>
-              <InitialPriceInput
-                {token0}
-                {token1}
-                onPriceChange={handlePriceChange}
-              />
-            </div>
+    <!-- Step 2: Initial Price (for new pools only) -->
+    {#if hasTokenPair && isCreatingNewPool}
+      <Card className="p-4">
+        <div class="space-y-3">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 bg-kong-primary rounded-full flex items-center justify-center text-xs font-bold text-white">2</div>
+            <h3 class="text-kong-text-primary font-medium">Set Initial Price</h3>
           </div>
-        {/if}
+          
+          <div class="space-y-3">
+            <PoolWarning {token0} {token1} />
+            <InitialPriceInput
+              {token0}
+              {token1}
+              onPriceChange={handlePriceChange}
+            />
+          </div>
+        </div>
+      </Card>
+    {/if}
 
-        {#if token0 && token1}
-          <div class="mt-2">
-            <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
-              {poolExists === false || pool?.balance_0 === 0n ? "Initial Deposits" : "Deposit Amounts"}
+    <!-- Step 3: Amount Input -->
+    {#if hasTokenPair}
+      <Card className="p-4">
+        <div class="space-y-3">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 bg-kong-primary rounded-full flex items-center justify-center text-xs font-bold text-white">
+              {isCreatingNewPool ? '3' : '2'}
+            </div>
+            <h3 class="text-kong-text-primary font-medium">
+              {isCreatingNewPool ? "Set Initial Deposits" : "Enter Deposit Amounts"}
             </h3>
+          </div>
+          
+          <div>
             <AmountInputs
               {token0}
               {token1}
@@ -318,28 +342,50 @@
               onToken1PercentageClick={handlePercentageClick(1)}
             />
           </div>
+        </div>
+      </Card>
+    {/if}
 
-          <div class="mt-6">
-            <ButtonV2
-              variant="solid"
-              theme={buttonTheme}
-              size="lg"
-              fullWidth={true}
-              on:click={poolExists === false ? handleCreatePool : handleAddLiquidity}
-              isDisabled={buttonText !== "Review Transaction"}
-            >
-              {buttonText}
-            </ButtonV2>
-          </div>
-        {:else}
-          <div class="text-center text-kong-text-primary/70 py-8">
-            Select both tokens to create a new liquidity pool
+    <!-- Action Button -->
+    <div>
+      {#if hasTokenPair}
+        <ButtonV2
+          variant="solid"
+          theme={buttonTheme}
+          size="lg"
+          fullWidth={true}
+          on:click={isCreatingNewPool ? handleCreatePool : handleAddLiquidity}
+          isDisabled={buttonText !== "Review Transaction"}
+          className="h-12"
+        >
+          {buttonText}
+        </ButtonV2>
+        
+        {#if canProceed}
+          <div class="mt-3 p-3 bg-kong-bg-tertiary/50 rounded-lg">
+            <div class="flex items-start gap-2">
+              <CheckCircle class="w-4 h-4 text-kong-success mt-0.5 flex-shrink-0" />
+              <div class="text-xs text-kong-text-primary/70">
+                <p class="font-medium text-kong-text-primary mb-1">Ready to proceed</p>
+                <p>Review your transaction details before confirming the {isCreatingNewPool ? 'pool creation' : 'liquidity addition'}.</p>
+              </div>
+            </div>
           </div>
         {/if}
-      </div>
-    {/if}
-  </div>
-</Panel>
+      {:else}
+        <div class="text-center py-8">
+          <div class="p-4 bg-kong-bg-tertiary/30 rounded-lg mb-4">
+            <ArrowDown class="w-8 h-8 text-kong-text-primary/40 mx-auto mb-2" />
+            <h4 class="text-kong-text-primary font-medium mb-1">Get Started</h4>
+            <p class="text-sm text-kong-text-primary/60">
+              Select two tokens above to begin creating your liquidity position
+            </p>
+          </div>
+        </div>
+      {/if}
+    </div>
+  {/if}
+</div>
 
 {#if showConfirmModal}
   <ConfirmLiquidityModal
@@ -352,14 +398,3 @@
     }}
   />
 {/if}
-
-<style>
-  .spinner {
-    animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-</style>

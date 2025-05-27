@@ -4,7 +4,7 @@
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import { onMount } from "svelte";
   import { livePools } from "$lib/stores/poolStore";
-  import { swapState } from "$lib/services/swap/SwapStateService";
+  import { swapState } from "$lib/stores/swapStateStore";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import TokenInfo from "./TokenInfo.svelte";
 

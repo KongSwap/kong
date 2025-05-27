@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import { RefreshCw, BarChart3 } from "lucide-svelte";
   import { 
     initializeChart, 
@@ -254,7 +254,7 @@
   });
 </script>
 
-<Panel variant="transparent" unpadded={true} className="!overflow-visible">
+<Card className="!overflow-visible">
   <div class="flex flex-col w-full h-full">
     <h3 class="flex items-center justify-between py-3 px-5 text-sm uppercase font-medium text-kong-text-primary/90">
       TVL History
@@ -303,7 +303,7 @@
       {/if}
     </div>
   </div>
-</Panel>
+</Card>
 
 <style lang="postcss">
   .chart-container {

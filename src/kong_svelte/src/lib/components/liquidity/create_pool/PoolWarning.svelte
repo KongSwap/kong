@@ -1,10 +1,10 @@
 <script lang="ts">
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   export let token0: Kong.Token;
   export let token1: Kong.Token;
 </script>
 
-<Panel variant="transparent" className="!p-4">
+<Card className="!p-4 bg-kong-warning/5 border-kong-warning/20">
   <div class="flex items-start gap-3">
     <div class="text-yellow-400">
       <svg xmlns="http://www.w3.org/2000/svg" class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -18,7 +18,7 @@
       </p>
     </div>
   </div>
-</Panel>
+</Card>
 
 <style lang="postcss">
   .warning-icon {

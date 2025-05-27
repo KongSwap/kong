@@ -14,7 +14,7 @@
   }
 
   .loading-spinner {
-    @apply w-10 h-10 border-4 border-kong-info border-t-transparent rounded-full animate-spin mb-4;
+    @apply w-10 h-10 border-4 border-kong-accent-blue border-t-transparent rounded-full animate-spin mb-4;
   }
 
   .loading-text {

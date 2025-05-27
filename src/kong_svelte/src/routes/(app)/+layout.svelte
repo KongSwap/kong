@@ -4,15 +4,12 @@
   import { page } from "$app/state";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
-  import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
   import QRModal from "$lib/components/common/QRModal.svelte";
-  import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
   import GlobalWalletProvider from "$lib/components/wallet/GlobalWalletProvider.svelte";
-  import { goto } from "$app/navigation";
   import { browser } from "$app/environment";
   import { auth } from "$lib/stores/auth";
   import { userTokens } from "$lib/stores/userTokens";
@@ -21,8 +18,8 @@
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import GlobalSignatureModal from "$lib/components/wallet/GlobalSignatureModal.svelte";
-  import { themeStore } from "$lib/stores/themeStore";
-    import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
+
   let { children } = $props<{
     children: any;
   }>();
@@ -125,11 +122,7 @@
   {#if !themeReady}
   <LoadingIndicator message="Loading..." fullHeight />
 {:else}
-
-    <div class="ticker-section bg-kong-bg-primary">
-      <TokenTicker />
-    </div>
-    <div class="bg-transparent navbar-section mb-4">
+    <div class="bg-transparent navbar-section">
       <Navbar />
     </div>
     <main class="flex flex-grow relative">

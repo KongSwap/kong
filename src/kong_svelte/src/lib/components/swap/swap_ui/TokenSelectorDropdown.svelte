@@ -8,7 +8,7 @@
   import { scale } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import { browser } from "$app/environment";
-  import { swapState } from "$lib/services/swap/SwapStateService";
+  import { swapState } from "$lib/stores/swapStateStore";
 	import { favoriteStore } from "$lib/stores/favoriteStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { userTokens } from "$lib/stores/userTokens";

@@ -6,7 +6,7 @@
   import { currentUserBalancesStore } from "$lib/stores/tokenStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
-  import { swapState } from "$lib/services/swap/SwapStateService";
+  import { swapState } from "$lib/stores/swapStateStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import {
@@ -379,9 +379,7 @@
   variant={$transparentSwapPanel ? "transparent" : "solid"}
   width="auto"
   type="main"
-  className="w-full max-w-2xl !p-4 !h-full !{$swapPanelRoundness}"
-  roundness={$swapPanelRoundness}
-  shadow={$swapPanelShadow}
+  className="w-full max-w-2xl !p-4 !h-full !rounded-kong-roundness !shadow-kong-shadow"
   isSwapPanel={true}
 >
   <div class="flex flex-col gap-4 min-h-[140px] box-border relative">

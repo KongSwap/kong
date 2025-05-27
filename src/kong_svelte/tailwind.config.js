@@ -41,6 +41,11 @@ export default {
           // Text colors
           "text-primary": "rgb(var(--text-primary) / <alpha-value>)",
           "text-secondary": "rgb(var(--text-secondary) / <alpha-value>)",
+          "text-success": "rgb(var(--text-success) / <alpha-value>)",
+          "text-error": "rgb(var(--text-error) / <alpha-value>)",
+          "text-warning": "rgb(var(--text-warning) / <alpha-value>)",
+          "text-info": "rgb(var(--text-info) / <alpha-value>)",
+          "text-muted": "rgb(var(--text-muted) / <alpha-value>)",
           "text-disabled": "rgb(var(--text-disabled) / <alpha-value>)",
           "text-inverse": "rgb(var(--text-inverse) / <alpha-value>)",
           "text-on-primary": "rgb(var(--text-on-primary) / <alpha-value>)",
@@ -221,6 +226,11 @@ export default {
             transform: 'scale(0.98)'
           }
         },
+      },
+      borderRadius: {
+        DEFAULT: '4px',
+        'swap-button-roundness': 'var(--swap-button-roundness, 90rem)',
+        'kong-roundness': 'var(--panel-roundness, 0.5rem)',
       },
     },
   },

@@ -8,7 +8,6 @@
   })
 </script>
 
-
 <slot />
 
 <style>

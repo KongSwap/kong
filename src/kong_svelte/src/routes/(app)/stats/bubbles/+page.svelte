@@ -1,14 +1,13 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
-  import * as THREE from 'three';
 
   // Types
   interface Token {
     address: string;
-    symbol?: string; // Optional based on usage
-    logo_url?: string; // Optional based on usage
-    metrics?: { // Define known metrics, use any/unknown for others if needed
+    symbol?: string;
+    logo_url?: string;
+    metrics?: {
         volume_24h?: number | string | null;
         tvl?: number | string | null;
         price_change_24h?: number | string | null;
@@ -21,14 +20,14 @@
     y: number;
     vx: number;
     vy: number;
-    targetX?: number; // Target X for smooth transitions
-    targetY?: number; // Target Y for smooth transitions
-    mesh?: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>; // Link to the Three.js mesh
+    targetX?: number;
+    targetY?: number;
+    element?: HTMLElement; // Cache DOM element reference
   }
 
   // State
-  let tokens = $state<Token[]>([]); // Use defined Token type
-  let bubblePositions = $state<Array<BubblePosition>>([]); // Physics state + mesh reference
+  let tokens = $state<Token[]>([]);
+  let bubblePositions = $state<Array<BubblePosition>>([]);
   let containerWidth = $state(0);
   let containerHeight = $state(0);
   let containerElement = $state<HTMLElement | undefined>(undefined);
@@ -38,14 +37,15 @@
   let maxTokens = $state(100);
   let loading = $state(true);
   let error = $state<string | null>(null);
-  let hoveredToken = $state<string | null>(null); // Track currently hovered token address
+  let hoveredToken = $state<string | null>(null);
+  let lastUpdateTime = $state(0);
+  let isAnimationPaused = $state(false);
 
-  // Three.js specific state
-  let scene = $state<THREE.Scene | null>(null);
-  let camera = $state<THREE.OrthographicCamera | null>(null);
-  let renderer = $state<THREE.WebGLRenderer | null>(null);
-  let materials = $state<Record<string, THREE.MeshBasicMaterial>>({});
-  const bubbleGeometry = new THREE.CircleGeometry(0.5, 16); // Base geometry (radius 0.5), scale mesh later
+  // Optimized constants for best performance
+  const TARGET_FPS = 60;
+  const FRAME_TIME = 1000 / TARGET_FPS;
+  const MAX_TOKENS_MOBILE = 15;
+  const MAX_TOKENS_DESKTOP = 50;
 
   // Helper Functions
   function formatCurrency(value: number | string | null | undefined): string {
@@ -76,7 +76,18 @@
     return `$${numValue.toFixed(2)}`;
   }
 
+  // Optimized bubble size calculation with smaller cache
+  const bubbleSizeCache = new Map<string, { size: number, timestamp: number }>();
+  const CACHE_TTL = 3000; // 3 seconds cache for better performance
+
   function calcBubbleSize(token: Token): number {
+    const cacheKey = `${token.address}_${token.metrics?.price_change_24h}_${containerWidth}_${containerHeight}_${tokens.length}`;
+    const cached = bubbleSizeCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.size;
+    }
+
     // Get price change data
     const changePercent = token?.metrics?.price_change_24h;
     const numericValue = typeof changePercent === "string"
@@ -92,33 +103,39 @@
       const screenArea = containerWidth * containerHeight;
       const tokenCount = tokens.length;
       
-      // Target a specific density - adjust these values to change how filled the screen appears
-      const desiredCoverage = 0.4; // 40% of screen covered by bubbles
+      // Target a specific density optimized for performance
+      const desiredCoverage = 0.35;
       
       // Calculate ideal average bubble size for desired coverage
-      // We divide by pi/4 because circles only cover ~78.5% of their bounding square
       const idealArea = (screenArea * desiredCoverage) / (tokenCount * (Math.PI / 4));
       const idealDiameter = Math.sqrt(idealArea);
       
       // Calculate minimum size based on screen dimensions
       const screenSize = Math.sqrt(screenArea);
-      const minBaseSizeByScreen = screenSize * (isMobile ? 0.12 : 0.1); // Increased from 0.06 to 0.12 for mobile
+      const minBaseSizeByScreen = screenSize * (isMobile ? 0.12 : 0.1);
       
-      // Set bounds for minimum size
-      const absoluteMinSize = isMobile ? 120 : 100; // Increased from 100 to 120 for mobile
+      // Set bounds for minimum size - optimized for performance
+      const absoluteMinSize = isMobile ? 100 : 80;
       const minBaseSize = Math.max(absoluteMinSize, minBaseSizeByScreen);
       
-      // Limit how large bubbles can get on very large screens or with few tokens
-      const maxBaseDiameter = Math.min(220, screenSize * 0.15); // Max 15% of screen dimension, capped at 220px
+      // Limit how large bubbles can get - performance optimized
+      const maxBaseDiameter = Math.min(180, screenSize * 0.12);
       const baseSize = Math.min(maxBaseDiameter, Math.max(minBaseSize, idealDiameter * 0.65));
       
       // Use the calculated base size plus variation for price change
-      return baseSize + absVal * (isMobile ? 2 : 3);
+      const size = baseSize + absVal * (isMobile ? 2 : 3);
+      
+      // Cache the result
+      bubbleSizeCache.set(cacheKey, { size, timestamp: Date.now() });
+      return size;
     }
     
     // Fallback to fixed size if container dimensions not available yet
-    const baseSize = isMobile ? 70 : 100;
-    return baseSize + absVal * (isMobile ? 2 : 3);
+    const baseSize = isMobile ? 60 : 80;
+    const size = baseSize + absVal * (isMobile ? 1.5 : 2);
+    
+    bubbleSizeCache.set(cacheKey, { size, timestamp: Date.now() });
+    return size;
   }
 
   function getBubbleColor(changePercent: number | string | null | undefined): string {
@@ -190,39 +207,44 @@
     return `font-size: ${fontSize}rem;`;
   }
 
-  function ensureMaterials() {
-    // Only create if they don't exist
-    if (Object.keys(materials).length === 0) {
-      // Get colors from CSS variables using theme values
-      let positiveColor = 0x00ff00; // Default green fallback
-      let negativeColor = 0xff0000; // Default red fallback
-      let neutralColor = 0x808080; // Default gray fallback
-      let zeroColor = 0x101010; // Default dark fallback
+  // Highly optimized repulsion calculation
+  function calculateRepulsionForces(bubblePositions: BubblePosition[], tokens: Token[], i: number, bubbleSize: number, minDistance: number, repulsionStrength: number): [number, number] {
+    let forceX = 0;
+    let forceY = 0;
+    
+    const pos = bubblePositions[i];
+    const checkDistance = Math.min(150, bubbleSize * 2.5); // Reduced interaction range
+    const checkDistanceSq = checkDistance * checkDistance;
+    
+    // Only check every 2nd bubble for mobile performance
+    const step = isMobile ? 2 : 1;
+    
+    for (let j = 0; j < bubblePositions.length; j += step) {
+      if (i === j || !tokens[j]?.metrics || !bubblePositions[j]) continue;
 
-      try {
-          if (typeof getComputedStyle !== 'undefined') {
-            const style = getComputedStyle(document.documentElement);
-            // Use theme color variables from tailwind config
-            positiveColor = new THREE.Color(style.getPropertyValue('--accent-green').trim() || 
-                                          'rgb(var(--accent-green))').getHex();
-            negativeColor = new THREE.Color(style.getPropertyValue('--accent-red').trim() || 
-                                          'rgb(var(--accent-red))').getHex();
-            neutralColor = new THREE.Color(style.getPropertyValue('--text-secondary').trim() || 
-                                         'rgb(var(--text-secondary))').getHex();
-            zeroColor = new THREE.Color(style.getPropertyValue('--bg-dark').trim() || 
-                                      'rgb(var(--bg-dark))').getHex();
-          }
-      } catch (e) {
-          console.warn("Could not parse CSS variables for theme colors, using defaults.", e);
+      const pos2 = bubblePositions[j];
+      
+      // Fast early distance check using squared distance
+      const dx = pos2.x - pos.x;
+      const dy = pos2.y - pos.y;
+      const distanceSq = dx * dx + dy * dy;
+      
+      if (distanceSq > checkDistanceSq) continue;
+
+      const size2 = calcBubbleSize(tokens[j]);
+      const distance = Math.sqrt(distanceSq);
+      const minDist = (bubbleSize + size2) / 2 + minDistance;
+
+      if (distance < minDist && distance > 0.1) {
+        const overlap = Math.min(1, (minDist - distance) / minDist);
+        const force = repulsionStrength * overlap;
+        const invDistance = 1 / distance;
+        forceX -= dx * invDistance * force;
+        forceY -= dy * invDistance * force;
       }
-
-      materials = {
-        positive: new THREE.MeshBasicMaterial({ color: positiveColor, transparent: true, opacity: 0.8 }),
-        negative: new THREE.MeshBasicMaterial({ color: negativeColor, transparent: true, opacity: 0.8 }),
-        neutral: new THREE.MeshBasicMaterial({ color: neutralColor, transparent: true, opacity: 0.8 }),
-        zero: new THREE.MeshBasicMaterial({ color: zeroColor, transparent: true, opacity: 0.8 })
-      };
     }
+    
+    return [forceX, forceY];
   }
 
   // Core Logic Functions (adapted for runes)
@@ -279,59 +301,68 @@
   }
 
   function updatePositions() {
-    if (!bubblePositions.length || !tokens.length || bubblePositions.length !== tokens.length) return;
+    if (!bubblePositions.length || !tokens.length || bubblePositions.length !== tokens.length || isAnimationPaused) return;
 
-    const damping = 0.95;
-    const repulsionStrength = 2.2; // Increased from 1.5 for stronger repulsion
+    const currentTime = performance.now();
+    
+    // Skip frame if we're running too fast
+    if (currentTime - lastUpdateTime < FRAME_TIME) {
+      animationFrameId = requestAnimationFrame(updatePositions);
+      return;
+    }
+
+    lastUpdateTime = currentTime;
+
+    // Optimized constants for best performance
+    const damping = 0.92;
+    const repulsionStrength = 1.8;
+    const maxSpeed = 4;
+    const velocitySmoothing = 0.65;
+    const baseFloatStrength = 0.03;
     
     // Scale minimum distance between bubbles based on screen size
     const screenSize = containerWidth && containerHeight ? Math.sqrt(containerWidth * containerHeight) : 0;
     const minDistance = screenSize > 0 
-      ? Math.max(20, Math.min(40, 30 * (screenSize / 1200))) // Increased from 15-30px to 20-40px
-      : 25; // Default increased from 20
+      ? Math.max(15, Math.min(35, 25 * (screenSize / 1200)))
+      : 20;
     
-    const maxSpeed = 5; // Reduced from 8 for gentler movement
-    const velocitySmoothing = 0.7;
-    
-    // Scale float strength with screen size - larger screens get slightly more movement
-    const baseFloatStrength = 0.05;
     const floatStrength = screenSize > 0 
-      ? baseFloatStrength * Math.max(0.8, Math.min(1.2, screenSize / 1200))
+      ? baseFloatStrength * Math.max(0.8, Math.min(1.1, screenSize / 1200))
       : baseFloatStrength;
     
-    const time = Date.now() / 1000; // Current time in seconds for oscillation
+    const time = Date.now() / 1000;
+
+    // Pre-calculate common values
+    const boundaryForce = 0.6;
 
     for (let i = 0; i < bubblePositions.length; i++) {
       const pos = bubblePositions[i];
-      // Ensure token exists at this index, defensively
       if (!tokens[i]?.metrics) continue;
       
       const bubbleSize = calcBubbleSize(tokens[i]);
       const radius = bubbleSize / 2;
+      const boundaryMargin = radius + 8;
 
-      let forceX = 0; // Accumulate forces
+      let forceX = 0;
       let forceY = 0;
 
-      // Add gentle floating motion using sine waves with offset based on index
-      // This creates a more natural, continuous bubble-like movement
-      const phase = i * 0.2; // Different phase for each bubble
-      forceX += Math.sin(time * 0.5 + phase) * floatStrength;
-      forceY += Math.cos(time * 0.3 + phase * 1.5) * floatStrength;
+      // Optimized floating motion
+      const phase = i * 0.15;
+      forceX += Math.sin(time * 0.4 + phase) * floatStrength;
+      forceY += Math.cos(time * 0.25 + phase * 1.3) * floatStrength;
 
-      // Smooth transition to target position if it exists and not too close already
+      // Target position transition
       if (pos.targetX !== undefined && pos.targetY !== undefined) {
         const dx = pos.targetX - pos.x;
         const dy = pos.targetY - pos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const distSq = dx * dx + dy * dy;
         
-        // Only apply transition force if we're not very close to target
-        if (dist > 1.0) {
-          // Use a weaker pull for large distances to prevent sudden jumps
-          const transitionSpeed = Math.min(0.08, 0.5 / dist);
+        if (distSq > 1.0) {
+          const dist = Math.sqrt(distSq);
+          const transitionSpeed = Math.min(0.06, 0.4 / dist);
           forceX += dx * transitionSpeed;
           forceY += dy * transitionSpeed;
         } else {
-          // If we're close enough, snap to target and clear it
           pos.x = pos.targetX;
           pos.y = pos.targetY;
           pos.targetX = undefined;
@@ -339,42 +370,21 @@
         }
       }
 
-      // Repulsion forces
-      for (let j = 0; j < bubblePositions.length; j++) {
-        if (i === j) continue;
-        // Ensure token exists at this index, defensively
-        if (!tokens[j]?.metrics || !bubblePositions[j]) continue;
+      // Use optimized repulsion calculation
+      const [repulsionX, repulsionY] = calculateRepulsionForces(bubblePositions, tokens, i, bubbleSize, minDistance, repulsionStrength);
+      forceX += repulsionX;
+      forceY += repulsionY;
 
-        const pos2 = bubblePositions[j];
-        const size2 = calcBubbleSize(tokens[j]);
-        const dx = pos2.x - pos.x;
-        const dy = pos2.y - pos.y;
-        let distance = Math.sqrt(dx * dx + dy * dy);
-        distance = Math.max(0.1, distance); // Prevent division by zero
-        const minDist = (bubbleSize + size2) / 2 + minDistance;
-
-        if (distance < minDist) {
-          const overlap = Math.min(1, (minDist - distance) / minDist);
-          const force = repulsionStrength * overlap * overlap; // squared overlap for stronger push at close distance
-          forceX -= (dx / distance) * force;
-          forceY -= (dy / distance) * force;
-        }
-      }
-
-      // Boundary forces (smoother version)
-      const boundaryMargin = radius + 10;
-      const boundaryForce = 0.7; // Reduced from 0.9 for gentler boundary handling
-
+      // Boundary forces - optimized
       if (pos.x < boundaryMargin) {
         forceX += boundaryForce * (boundaryMargin - pos.x);
-      }
-      if (pos.x > containerWidth - boundaryMargin) {
+      } else if (pos.x > containerWidth - boundaryMargin) {
         forceX -= boundaryForce * (pos.x - (containerWidth - boundaryMargin));
       }
+      
       if (pos.y < boundaryMargin) {
         forceY += boundaryForce * (boundaryMargin - pos.y);
-      }
-      if (pos.y > containerHeight - boundaryMargin) {
+      } else if (pos.y > containerHeight - boundaryMargin) {
         forceY -= boundaryForce * (pos.y - (containerHeight - boundaryMargin));
       }
 
@@ -387,21 +397,31 @@
       pos.vy *= damping;
 
       // Limit speed
-      const speed = Math.sqrt(pos.vx * pos.vx + pos.vy * pos.vy);
-      if (speed > maxSpeed) {
-        pos.vx = (pos.vx / speed) * maxSpeed;
-        pos.vy = (pos.vy / speed) * maxSpeed;
+      const speedSq = pos.vx * pos.vx + pos.vy * pos.vy;
+      if (speedSq > maxSpeed * maxSpeed) {
+        const speed = Math.sqrt(speedSq);
+        const factor = maxSpeed / speed;
+        pos.vx *= factor;
+        pos.vy *= factor;
       }
 
       // Update position
       pos.x += pos.vx;
       pos.y += pos.vy;
+
+      // Direct DOM update for better performance
+      if (pos.element) {
+        pos.element.style.transform = `translate(${pos.x - radius}px, ${pos.y - radius}px)`;
+      }
     }
 
-    // Always keep animation running for constant gentle movement
+    // Continue animation
     animationFrameId = requestAnimationFrame(updatePositions);
   }
 
+  // Debounced loading for better performance
+  let loadTokensTimeout: number | undefined;
+  
   async function loadTokens() {
     loading = true;
 
@@ -413,39 +433,62 @@
             Number(token.metrics?.volume_24h) > 0 &&
             Number(token.metrics?.tvl) > 100,
         )
-         // Use the current $state value of maxTokens
         .slice(0, maxTokens);
 
       // Check if the actual set of token addresses has changed
       const oldAddresses = new Set(tokens.map(t => t.address));
-      const newAddresses = new Set(fetchedTokens.map((t: Token) => t.address)); // Add type hint
+      const newAddresses = new Set(fetchedTokens.map((t: Token) => t.address));
       const setsAreEqual = oldAddresses.size === newAddresses.size && [...oldAddresses].every(addr => newAddresses.has(addr));
 
       if (!setsAreEqual || tokens.length === 0) {
         // If token set changed or it's the initial load, replace tokens and reset initialization
         tokens = fetchedTokens;
-        isInitialized = false; // This will trigger the initialization effect
-        // Clear potentially mismatched positions
+        isInitialized = false;
+        // Clear potentially mismatched positions and cache
         bubblePositions = [];
-        // Reset error state on successful load/reset
+        bubbleSizeCache.clear();
         error = null;
       } else {
         // Simply update token data, but preserve current positions
         tokens = tokens.map(oldToken => {
           const updatedTokenData = fetchedTokens.find(t => t.address === oldToken.address);
-          // Merge metrics, keeping existing token object identity if possible
           return updatedTokenData ? { ...oldToken, metrics: updatedTokenData.metrics } : oldToken;
         });
-        // Reset error state on successful update
+        // Clear cache on data update to recalculate sizes
+        bubbleSizeCache.clear();
         error = null;
       }
 
     } catch (e) {
       console.error("Error loading tokens:", e);
       error = "Failed to load token data";
-       // Keep existing tokens on error? Or clear them? Current logic keeps them.
     } finally {
       loading = false;
+    }
+  }
+
+  // Pause/resume animation based on visibility
+  function handleVisibilityChange() {
+    if (typeof document !== 'undefined') {
+      isAnimationPaused = document.hidden;
+    }
+  }
+
+  // Keyboard shortcuts for accessibility
+  function handleKeydown(event: KeyboardEvent) {
+    switch (event.key) {
+      case ' ':
+        // Space to pause/resume animation
+        event.preventDefault();
+        isAnimationPaused = !isAnimationPaused;
+        break;
+      case 'r':
+        // R to refresh data
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          loadTokens();
+        }
+        break;
     }
   }
 
@@ -455,19 +498,16 @@
     const handleResize = () => {
       if (typeof window !== "undefined") {
         const mobile = window.innerWidth < 768;
-        // Only update state if the value actually changed
         if (isMobile !== mobile) isMobile = mobile;
-        const newMaxTokens = mobile ? 20 : 100;
+        const newMaxTokens = mobile ? MAX_TOKENS_MOBILE : MAX_TOKENS_DESKTOP;
         if (maxTokens !== newMaxTokens) maxTokens = newMaxTokens;
       }
       if (containerElement) {
         const rect = containerElement.getBoundingClientRect();
-        // Prevent setting 0x0 dimensions initially if element isn't ready
         if (rect.width > 0 && rect.height > 0) {
             if (containerWidth !== rect.width) containerWidth = rect.width;
             if (containerHeight !== rect.height) containerHeight = rect.height;
         } else if (containerWidth !== 0 || containerHeight !== 0) {
-            // If element becomes 0x0 (e.g., display:none), reset dimensions
             containerWidth = 0;
             containerHeight = 0;
         }
@@ -477,8 +517,13 @@
     handleResize(); // Initial call
     loadTokens(); // Initial load
 
+    // Add event listeners
     window.addEventListener("resize", handleResize);
-    const interval = setInterval(loadTokens, 30000); // Refresh data
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("keydown", handleKeydown);
+    
+    // Optimized refresh interval
+    const interval = setInterval(loadTokens, 30000);
 
     let resizeObserver: ResizeObserver | undefined;
     if (containerElement) {
@@ -489,13 +534,15 @@
     // Cleanup function
     return () => {
       window.removeEventListener("resize", handleResize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("keydown", handleKeydown);
       resizeObserver?.disconnect();
       clearInterval(interval);
+      if (loadTokensTimeout) clearTimeout(loadTokensTimeout);
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
-        animationFrameId = undefined; // Reset state
+        animationFrameId = undefined;
       }
-       // Do not reset state variables like tokens here, they persist across renders unless explicitly changed.
     };
   });
 
@@ -518,16 +565,34 @@
     }
   });
 
-  // Remove onDestroy as cleanup is handled by $effect return function
-
+  // Clean up cache periodically
   $effect(() => {
-    if (!scene || !renderer || !isInitialized || !tokens.length || !bubblePositions.length || !Object.keys(materials).length) {
-        // Clear scene if prerequisites lost (e.g., tokens cleared)
-        if (scene && scene.children.length > 0) {
-            while(scene.children.length > 0){ scene.remove(scene.children[0]); }
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      for (const [key, value] of bubbleSizeCache.entries()) {
+        if (now - value.timestamp > CACHE_TTL * 2) {
+          bubbleSizeCache.delete(key);
         }
-    }
+      }
+    }, CACHE_TTL);
+
+    return () => clearInterval(cleanupInterval);
   });
+
+  // Action to cache bubble element references
+  function cacheBubbleElement(element: HTMLElement, params: { position: BubblePosition, index: number }) {
+    if (params.position) {
+      params.position.element = element;
+    }
+    
+    return {
+      destroy() {
+        if (params.position) {
+          params.position.element = undefined;
+        }
+      }
+    };
+  }
 </script>
 
 <svelte:head>
@@ -535,6 +600,11 @@
 </svelte:head>
 
 <div class="bubbles-container" bind:this={containerElement}>
+  <div class="controls-help">
+    <div class="control-hint">Space: ⏸️ Pause/Resume</div>
+    <div class="control-hint">Ctrl+R: 🔄 Refresh</div>
+  </div>
+  
   {#if loading && !tokens.length}
     <div class="loading">Loading tokens...</div>
   {:else if error}
@@ -569,6 +639,7 @@
             {(bubblePositions[i]?.y || 0) - bubbleSize / 2}px
           );
         "
+        use:cacheBubbleElement={{ position: bubblePositions[i], index: i }}
       >
         <div
           class="bubble"
@@ -638,10 +709,18 @@
     width: 100%;
     height: 85vh;
     overflow: hidden;
-    /* Add touch handling for mobile */
+    /* Optimized for maximum performance */
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    contain: layout style paint;
+    /* Additional performance optimizations */
+    -webkit-perspective: 1000px;
+    perspective: 1000px;
+    -webkit-transform-style: preserve-3d;
+    transform-style: preserve-3d;
   }
 
   .bubble {
@@ -656,13 +735,18 @@
     align-items: center;
     justify-content: center;
     transform-origin: center center;
-    /* Add hardware acceleration */
+    /* Optimized for performance */
     will-change: transform;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
-    /* Remove transition for smoother animation - already removed */
+    transform: translateZ(0);
     pointer-events: none; /* Hitbox handles pointer events */
-    transition: transform 0.2s ease-out;
+    transition: transform 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+    /* Better font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Improve paint performance */
+    contain: layout style paint;
   }
 
   .bubble-hitbox {
@@ -670,8 +754,13 @@
     cursor: pointer;
     transform-origin: center center;
     will-change: transform;
-    transition: transform 0.15s ease-out;
+    transition: transform 0.12s cubic-bezier(0.2, 0, 0.38, 0.9);
     z-index: 1; /* Base z-index for all bubbles */
+    /* Performance optimizations */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    contain: layout style;
   }
 
   /* Add new style for hovered bubbles */
@@ -785,6 +874,10 @@
     .bubble-tooltip {
       display: none; /* Hide tooltips on mobile */
     }
+    
+    .controls-help {
+      display: none; /* Hide keyboard controls on mobile */
+    }
   }
 
   .loading,
@@ -799,5 +892,52 @@
 
   .error {
     color: var(--error-color);
+  }
+
+
+  .controls-help {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 1000;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+  }
+
+  .controls-help:hover {
+    opacity: 1;
+  }
+
+  .control-hint {
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    margin-bottom: 2px;
+    backdrop-filter: blur(2px);
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .bubble,
+    .bubble-hitbox {
+      transition: none;
+    }
+    
+    .performance-indicator {
+      animation: none;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .bubble {
+      border: 2px solid;
+    }
+    
+    .bubble-tooltip {
+      border-width: 2px;
+    }
   }
 </style>

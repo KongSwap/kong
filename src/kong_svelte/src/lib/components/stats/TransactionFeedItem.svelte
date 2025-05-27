@@ -2,7 +2,7 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { truncateAddress } from "$lib/utils/principalUtils";
   import { formatPrincipalId } from "$lib/utils/transactionUtils";
-  import { WalletIcon } from "lucide-svelte";
+  import { Wallet } from "lucide-svelte";
   import { goto } from "$app/navigation";
   import ButtonV2 from "../common/ButtonV2.svelte";
 
@@ -110,7 +110,7 @@
               class="text-kong-text-primary/60 hover:text-kong-primary transition-colors duration-200 p-1.5 rounded-md hover:bg-kong-bg-secondary/30"
               on:click|preventDefault={handleWalletClick}
             >
-              <WalletIcon class="w-4 h-4" />
+              <Wallet class="w-4 h-4" />
             </button>
             <button
               title="View on explorer"
@@ -181,7 +181,7 @@
                 class="text-kong-text-primary/60 hover:text-kong-primary transition-colors duration-200 p-1 rounded-md hover:bg-kong-bg-secondary/30"
                 on:click|preventDefault={handleWalletClick}
               >
-                <WalletIcon class="w-4 h-4" />
+                <Wallet class="w-4 h-4" />
               </button>
               <button
                 title="View on explorer"

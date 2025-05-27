@@ -53,6 +53,25 @@ export function registerTheme(theme: ThemeDefinition): boolean {
 }
 
 /**
+ * Convert Tailwind rounded class to CSS value
+ */
+function getRoundedValue(roundedClass: string | undefined): string {
+  const roundedMap: Record<string, string> = {
+    'rounded-none': '0',
+    'rounded-sm': '0.125rem',
+    'rounded': '0.25rem',
+    'rounded-md': '0.375rem',
+    'rounded-lg': '0.5rem',
+    'rounded-xl': '0.75rem',
+    'rounded-2xl': '1rem',
+    'rounded-3xl': '1.5rem',
+    'rounded-full': '9999px'
+  };
+  
+  return roundedMap[roundedClass || 'rounded-lg'] || '0.5rem';
+}
+
+/**
  * Generate CSS variables from a theme definition
  * @param theme The theme to generate CSS variables for
  * @returns CSS variables as a string
@@ -124,6 +143,11 @@ export function generateThemeVariables(theme: ThemeDefinition): string {
   // Text colors
   css += `--text-primary: ${hexToRGB(colors.textPrimary)};\n`;
   css += `--text-secondary: ${hexToRGB(colors.textSecondary)};\n`;
+  css += `--text-success: ${hexToRGB(colors.textSuccess)};\n`;
+  css += `--text-error: ${hexToRGB(colors.textError)};\n`;
+  css += `--text-warning: ${hexToRGB(colors.textWarning)};\n`;
+  css += `--text-info: ${hexToRGB(colors.textInfo)};\n`;
+  css += `--text-muted: ${hexToRGB(colors.textMuted)};\n`;
   css += `--text-disabled: ${hexToRGB(colors.textDisabled)};\n`;
   
   // Semantic text mappings
@@ -179,8 +203,10 @@ export function generateThemeVariables(theme: ThemeDefinition): string {
   }
 
   // Panel roundness
-  css += `--panel-roundness: ${colors.panelRoundness};\n`;
-  css += `--swap-panel-roundness: ${colors.swapPanelRoundness};\n`;
+  css += `--panel-roundness: ${getRoundedValue(colors.panelRoundness)};\n`;
+  css += `--swap-panel-roundness: ${getRoundedValue(colors.swapPanelRoundness)};\n`;
+  css += `--swap-button-roundness: ${getRoundedValue(colors.swapButtonRoundness)};\n`;
+  css += `--button-roundness: ${getRoundedValue(colors.buttonRoundness)};\n`;
   
   // Color scheme
   css += `color-scheme: ${theme.colorScheme};\n`;

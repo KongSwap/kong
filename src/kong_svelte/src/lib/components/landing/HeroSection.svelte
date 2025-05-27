@@ -205,22 +205,24 @@
     
     canvasContainer.appendChild(newRenderer.domElement);
     
-    // Create cyberpunk Blade Runner background effect
+    // Create trading/swapping themed background effect
     const crtGeometry = new THREE.PlaneGeometry(2, 2);
     
-    // Even more optimized version of the shader
+    // Trading-themed shader uniforms
     materialUniforms = {
       time: { value: 0.0 },
       resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
       baseColor: { value: new THREE.Color(0x0D111F) },      // Match other sections bg
       neonColor1: { value: new THREE.Color(0x7B68EE) },     // Use Indigo/Purple from SwapSection
       neonColor2: { value: new THREE.Color(0x9370DB) },     // Use Indigo/Purple from SwapSection
+      greenColor: { value: new THREE.Color(0x00FF88) },     // Trading green
+      redColor: { value: new THREE.Color(0xFF0055) },       // Trading red
       mousePosition: { value: new THREE.Vector2(0.5, 0.5) },// Mouse position in UV space
       mouseActive: { value: 0.0 },                           // Mouse activity indicator
       isLowPerformance: { value: (isLowEndDevice || isMobile) ? 1.0 : 0.0 }
     };
     
-    const bladeRunnerMaterial = new THREE.ShaderMaterial({
+    const tradingMaterial = new THREE.ShaderMaterial({
       uniforms: materialUniforms,
       vertexShader: `
         varying vec2 vUv;
@@ -236,6 +238,8 @@
         uniform vec3 baseColor;
         uniform vec3 neonColor1;
         uniform vec3 neonColor2;
+        uniform vec3 greenColor;
+        uniform vec3 redColor;
         uniform vec2 mousePosition;
         uniform float mouseActive;
         uniform float isLowPerformance;
@@ -256,83 +260,196 @@
                      mix(random(i + vec2(0.0, 1.0)), random(i + vec2(1.0, 1.0)), u.x), u.y);
         }
         
-        // Function for abstract background patterns
-        vec3 backgroundPattern(vec2 uv, float time) {
+        // Trading candlestick pattern
+        vec3 candlestickPattern(vec2 uv, float time) {
           vec3 color = vec3(0.0);
           
-          // Layer 1: Slow moving noise field
-          float n = noise(uv * 4.0 + time * 0.1);
-          color += mix(neonColor1, neonColor2, n) * 0.15;
+          // Create multiple candlesticks across the screen
+          float numCandles = 20.0;
+          float candleWidth = 1.0 / numCandles;
           
-          // Conditionally render more complex layers
-          if (isLowPerformance < 0.5) {
-            // Layer 2: Faster moving smaller scale noise
-            float n2 = noise(uv * 15.0 - time * 0.3);
-            color += mix(baseColor * 1.2, neonColor1, n2) * 0.1;
-
-            // Layer 3: Diagonal subtle waves
-            float wave = sin(uv.x * 10.0 + uv.y * 5.0 + time * 0.5) * 0.5 + 0.5;
-            color += neonColor2 * wave * 0.05;
+          for (float i = 0.0; i < numCandles; i++) {
+            float x = i * candleWidth + candleWidth * 0.5;
+            float priceNoise = noise(vec2(i * 0.3, time * 0.2));
+            float height = 0.2 + priceNoise * 0.3;
+            float y = 0.3 + sin(i * 0.5 + time * 0.3) * 0.2;
+            
+            // Candle body
+            float bodyWidth = candleWidth * 0.6;
+            float bodyHeight = height * 0.7;
+            
+            // Determine if bullish or bearish
+            bool isBullish = priceNoise > 0.5;
+            vec3 candleColor = isBullish ? greenColor : redColor;
+            
+            // Draw candle body
+            if (abs(uv.x - x) < bodyWidth * 0.5 && abs(uv.y - y) < bodyHeight * 0.5) {
+              color += candleColor * 0.15;
+            }
+            
+            // Draw wick
+            float wickWidth = bodyWidth * 0.1;
+            float wickHeight = height;
+            if (abs(uv.x - x) < wickWidth * 0.5 && abs(uv.y - y) < wickHeight * 0.5) {
+              color += candleColor * 0.08;
+            }
           }
           
           return color;
         }
         
-        // Simplified neon streaks - skip on low performance
-        vec3 neonStreaks(vec2 uv, float time) {
-          vec3 streakColor = vec3(0.0);
+        // Order book visualization
+        vec3 orderBookPattern(vec2 uv, float time) {
+          vec3 color = vec3(0.0);
           
-          if (isLowPerformance < 0.5) {
-            // Horizontal streak
-            float y1 = fract(0.3 + time * 0.08);
-            float w1 = 0.003;
-            streakColor += smoothstep(w1, 0.0, abs(uv.y - y1)) * neonColor1 * 0.15;
-
-            // Diagonal streak
-            float diag1 = fract(uv.x - uv.y * 0.5 + time * 0.04);
-            float w2 = 0.002;
-            streakColor += smoothstep(w2, 0.0, abs(diag1 - 0.5)) * neonColor2 * 0.1;
+          // Left side - buy orders (green)
+          if (uv.x < 0.15) {
+            float orderDepth = noise(vec2(uv.y * 10.0, time * 0.5)) * 0.15;
+            if (uv.x < orderDepth) {
+              color += greenColor * 0.2 * (1.0 - uv.x / 0.15);
+            }
           }
           
-          return streakColor;
+          // Right side - sell orders (red)
+          if (uv.x > 0.85) {
+            float orderDepth = noise(vec2(uv.y * 10.0, time * 0.5 + 100.0)) * 0.15;
+            if ((1.0 - uv.x) < orderDepth) {
+              color += redColor * 0.2 * ((uv.x - 0.85) / 0.15);
+            }
+          }
+          
+          return color;
         }
         
-        // Optimized mouse effect (Ripple) - reduce intensity on low performance
-        vec3 mouseEffect(vec2 uv, vec2 mousePos) {
+        // Flowing data streams representing token swaps
+        vec3 swapFlowPattern(vec2 uv, float time) {
+          vec3 color = vec3(0.0);
+          
+          // Create flowing particles
+          float numFlows = 5.0;
+          
+          for (float i = 0.0; i < numFlows; i++) {
+            float flowTime = time * 0.5 + i * 1.3;
+            float y = fract(flowTime * 0.3);
+            float x = 0.5 + sin(y * 6.28 + i) * 0.3;
+            
+            // Create particle trail
+            float dist = distance(uv, vec2(x, y));
+            float trail = smoothstep(0.02, 0.0, dist);
+            
+            // Alternate between colors
+            vec3 flowColor = mod(i, 2.0) < 1.0 ? neonColor1 : neonColor2;
+            color += flowColor * trail * 0.3;
+            
+            // Add glow
+            float glow = smoothstep(0.1, 0.0, dist);
+            color += flowColor * glow * 0.1;
+          }
+          
+          return color;
+        }
+        
+        // Price chart line
+        vec3 priceChartPattern(vec2 uv, float time) {
+          vec3 color = vec3(0.0);
+          
+          if (isLowPerformance < 0.5) {
+            // Generate price movement
+            float price = 0.5;
+            for (float i = 0.0; i < 10.0; i++) {
+              price += sin(i * 0.5 + time * 0.2) * 0.02;
+              price += noise(vec2(i * 0.1, time * 0.1)) * 0.01;
+            }
+            
+            // Draw price line
+            float chartY = 0.5 + (noise(vec2(uv.x * 5.0, time * 0.2)) - 0.5) * 0.3;
+            float lineThickness = 0.003;
+            
+            if (abs(uv.y - chartY) < lineThickness) {
+              // Gradient based on price direction
+              float priceChange = noise(vec2(uv.x * 5.0 + 0.1, time * 0.2)) - 
+                                  noise(vec2(uv.x * 5.0 - 0.1, time * 0.2));
+              vec3 lineColor = priceChange > 0.0 ? greenColor : redColor;
+              color += lineColor * 0.4;
+            }
+          }
+          
+          return color;
+        }
+        
+        // Grid pattern for trading interface feel
+        vec3 gridPattern(vec2 uv) {
+          vec3 color = vec3(0.0);
+          
+          // Major grid lines
+          float gridSize = 0.1;
+          float lineWidth = 0.001;
+          
+          if (mod(uv.x, gridSize) < lineWidth || mod(uv.y, gridSize) < lineWidth) {
+            color += neonColor1 * 0.05;
+          }
+          
+          // Minor grid lines
+          float minorGridSize = 0.025;
+          if (mod(uv.x, minorGridSize) < lineWidth * 0.5 || 
+              mod(uv.y, minorGridSize) < lineWidth * 0.5) {
+            color += neonColor2 * 0.02;
+          }
+          
+          return color;
+        }
+        
+        // Mouse effect - swap ripple
+        vec3 mouseSwapEffect(vec2 uv, vec2 mousePos) {
           float dist = length(uv - mousePos);
-          float ripple = sin(dist * 25.0 - time * 4.0) * 0.5 + 0.5;
-          float falloff = smoothstep(0.25, 0.0, dist);
-          float finalRipple = ripple * falloff * mouseActive;
-          vec3 rippleColor = mix(neonColor1, neonColor2, sin(dist * 15.0 - time * 1.5) * 0.5 + 0.5);
-          // Reduce intensity based on performance flag
-          return rippleColor * finalRipple * 0.3 * (1.0 - isLowPerformance * 0.7);
+          
+          // Create expanding rings
+          float ring1 = sin(dist * 30.0 - time * 5.0) * 0.5 + 0.5;
+          float ring2 = sin(dist * 20.0 - time * 4.0 + 3.14) * 0.5 + 0.5;
+          
+          float falloff = smoothstep(0.3, 0.0, dist);
+          float rings = (ring1 * 0.7 + ring2 * 0.3) * falloff * mouseActive;
+          
+          // Swap colors between green and purple
+          vec3 swapColor = mix(greenColor, neonColor1, sin(time * 2.0) * 0.5 + 0.5);
+          
+          return swapColor * rings * 0.4 * (1.0 - isLowPerformance * 0.7);
         }
         
         void main() {
           vec2 uv = vUv;
           vec3 color = baseColor;
           
-          // Add abstract patterns
-          color += backgroundPattern(uv, time);
+          // Add grid background
+          color += gridPattern(uv);
           
-          // Add subtle neon streaks
-          color += neonStreaks(uv, time);
-          
-          // Add mouse ripple effect
-          color += mouseEffect(uv, mousePosition);
-          
-          // Subtle static noise
-          float staticNoise = random(uv + fract(time * 0.5));
-          color += vec3(staticNoise * 0.03);
-          
-          // Subtle horizontal scan lines
-          if (fract(uv.y * 100.0) > 0.6) { // Increased frequency, reduced visibility
-            color *= 0.99;
+          // Add trading patterns based on performance
+          if (isLowPerformance > 0.5) {
+            // Low performance - just basic patterns
+            color += swapFlowPattern(uv, time) * 0.5;
+          } else {
+            // Full performance - all patterns
+            color += candlestickPattern(uv, time) * 0.3;
+            color += orderBookPattern(uv, time) * 0.5;
+            color += swapFlowPattern(uv, time);
+            color += priceChartPattern(uv, time) * 0.6;
           }
           
-          // Vignette effect (similar to other sections)
+          // Add mouse swap effect
+          color += mouseSwapEffect(uv, mousePosition);
+          
+          // Subtle static noise for texture
+          float staticNoise = random(uv + fract(time * 0.5));
+          color += vec3(staticNoise * 0.02);
+          
+          // Subtle horizontal scan lines
+          if (fract(uv.y * 150.0) > 0.7) {
+            color *= 0.98;
+          }
+          
+          // Vignette effect
           float vignetteDist = length(vec2(0.5) - uv);
-          color *= smoothstep(0.8, 0.3, vignetteDist); // Adjusted falloff
+          color *= smoothstep(0.9, 0.2, vignetteDist);
           
           gl_FragColor = vec4(color, 1.0);
         }
@@ -340,7 +457,7 @@
       transparent: true
     });
     
-    const crtScreen = new THREE.Mesh(crtGeometry, bladeRunnerMaterial);
+    const crtScreen = new THREE.Mesh(crtGeometry, tradingMaterial);
     newScene.add(crtScreen);
     
     // Assign to state variables

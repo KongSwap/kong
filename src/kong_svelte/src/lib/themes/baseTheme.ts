@@ -36,6 +36,9 @@ export interface ThemeColors {
   textDark?: string;
   textOnPrimary?: string;
   textSuccess?: string;
+  textWarning?: string;
+  textInfo?: string;
+  textMuted?: string;
   textAccent?: string;
   textError?: string;
   
@@ -174,13 +177,13 @@ export const baseTheme: ThemeDefinition = {
     // Accent colors
     accent: '#3B82F6',   // Vibrant accessible blue
     error: '#F43F5E',    // Refined red with better contrast
-    success: '#00D68F',  // Brighter green with more contrast
+    success: '#00C77F',  // Slightly darker green for better contrast
     warning: '#F59E0B', // Warmer, more accessible yellow
     info: '#3B82F6',    // Same as accent (blue)
     muted: '#6B7280',   // Gray color for muted elements
     
     // Hover variants
-    successHover: '#00B778',
+    successHover: '#00A86B',
     accentHover: '#2563EB',
     errorHover: '#E11D48',
     warningHover: '#D97706', // Darker amber
@@ -194,10 +197,13 @@ export const baseTheme: ThemeDefinition = {
     textLight: '#ffffff',
     textDark: '#0D111F',
     textOnPrimary: '#0D111F',
-    textSuccess: '#00D68F', // Same as accent-green
-    textError: '#F43F5E',   // Same as accent-red
-    textAccent: '#3B82F6',
-    
+    textSuccess: '#E6FFFA', // Very light mint/cyan for contrast on success bg
+    textError: '#FFFFFF',   // White for maximum contrast on error bg
+    textAccent: '#FFFFFF',  // White for maximum contrast on accent bg
+    textWarning: '#FEF3C7', // Very light yellow/cream for contrast on warning bg
+    textInfo: '#FFFFFF',    // White for maximum contrast on info bg
+    textMuted: '#FFFFFF',   // White for maximum contrast on muted bg
+
     // Font settings
     fontFamily: "'Exo 2', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     

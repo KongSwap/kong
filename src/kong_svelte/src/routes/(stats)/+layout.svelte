@@ -7,7 +7,6 @@
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
   import QRModal from "$lib/components/common/QRModal.svelte";
-  import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";
@@ -100,9 +99,6 @@
   <LoadingIndicator message="Loading..." fullHeight />
 {:else}
   <PageWrapper page={page.url.pathname}>
-    <div class="ticker-section bg-kong-bg-primary">
-      <TokenTicker />
-    </div>
     <div class="bg-transparent navbar-section mb-4">
       <Navbar />
     </div>

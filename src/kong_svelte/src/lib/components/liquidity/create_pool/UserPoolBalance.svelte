@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Panel from "$lib/components/common/Panel.svelte";
+  import Card from "$lib/components/common/Card.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { auth } from "$lib/stores/auth";
   import { livePools } from "$lib/stores/poolStore";
@@ -57,46 +57,14 @@
   });
 </script>
 
-<Panel variant="transparent" className="h-full">
+<Card className="h-full p-4">
   <div class="flex flex-col h-full">
     <h3 class="text-sm uppercase font-medium text-kong-text-primary/90 mb-4">Your Pool Position</h3>
     
     {#if userPosition && currentPool}
       <div class="space-y-4">
-        <!-- Pool Header -->
-        <div class="flex items-center justify-between pb-3 border-b border-kong-border/10">
-          <div class="flex items-center gap-2">
-            <TokenImages 
-              tokens={[token0, token1]} 
-              size={24} 
-              overlap={true}
-              containerClass="mr-1"
-            />
-            <span class="text-base font-medium text-kong-text-primary">
-              {token0.symbol}/{token1.symbol}
-            </span>
-          </div>
-          <span class="text-xs text-kong-text-primary/60 bg-kong-bg-secondary px-2 py-1 rounded">
-            {formatToNonZeroDecimal(userSharePercentage)}% share
-          </span>
-        </div>
-        
-        <!-- Position Balance -->
-        <div class="bg-kong-bg-secondary/50 rounded-lg">
-          <div class="flex justify-between items-center">
-            <span class="text-xs text-kong-text-primary/60">Position Value</span>
-            <span class="text-sm font-medium text-kong-text-primary">
-              ${formatToNonZeroDecimal(userPosition.usd_balance)}
-            </span>
-          </div>
-        </div>
-        
         <!-- Token Balances -->
         <div class="space-y-3">
-          <div class="text-xs text-kong-text-primary/60 uppercase tracking-wider mb-2">
-            Pooled Tokens
-          </div>
-          
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <img 
@@ -199,4 +167,4 @@
       </div>
     {/if}
   </div>
-</Panel> 
+</Card> 

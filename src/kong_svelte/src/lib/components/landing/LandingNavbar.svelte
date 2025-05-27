@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
   import LandingButton from "./LandingButton.svelte";
-  
+  import TokenTicker from "../nav/TokenTicker.svelte";
   export let currentSection: number;
   export let isMenuOpen: boolean;
   export let toggleMenu: () => void;
@@ -9,10 +9,12 @@
   export let navigateToSwap: () => void;
 </script>
 
+<TokenTicker />
+
 <nav 
   class="absolute top-0 left-0 right-0 z-50 h-20 bg-transparent"
 >
-  <div class="max-w-7xl mx-auto px-6 h-full flex items-center justify-between relative">
+  <div class="max-w-7xl mx-auto px-6 h-full flex items-center justify-between relative mt-7">
     <!-- Logo -->
     <div class="flex items-center gap-3">
       <img 
