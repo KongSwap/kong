@@ -11,6 +11,7 @@ import { currentUserBalancesStore } from "$lib/stores/balancesStore";
 import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
 import { createNamespacedStore } from "$lib/config/localForage.config";
 import { trackEvent, AnalyticsEvent } from "$lib/utils/analytics";
+import { userTokens } from "$lib/stores/userTokens";
 
 // Constants
 const AUTH_NAMESPACE = 'auth';
@@ -85,8 +86,6 @@ function createAuthStore(pnp: PnpInterface) {
 
       try {
         const lastWallet = await storage.get("LAST_WALLET");
-        if (!lastWallet || lastWallet === "plug") return;
-
         const hasAttempted = sessionStorage.getItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED);
         const wasConnected = await storage.get("WAS_CONNECTED");
 
@@ -141,7 +140,6 @@ function createAuthStore(pnp: PnpInterface) {
         // Load balances in background
         setTimeout(async () => {
           try {
-            const { userTokens } = await import("$lib/stores/userTokens");
             await userTokens.setPrincipal(owner);
             await fetchBalances(get(userTokens).tokens, owner, true);
           } catch (error) {
@@ -169,7 +167,6 @@ function createAuthStore(pnp: PnpInterface) {
       isAuthenticating.set(false);
       connectionError.set(null);
       // Set principal to null but don't reset tokens
-      const { userTokens } = await import("$lib/stores/userTokens");
       userTokens.setPrincipal(null);
       
       await storage.clear();

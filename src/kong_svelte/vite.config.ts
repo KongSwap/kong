@@ -86,7 +86,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
   // Base build options
   const buildOptions = {
     emptyOutDir: true,
-    sourcemap: true,
+    sourcemap: process.env.DFX_NETWORK === "local",
     chunkSizeWarningLimit: 1800,
     rollupOptions: {
       output: {
@@ -117,32 +117,16 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
 
   // Add compression plugins and terser for non-local environments
   if (process.env.DFX_NETWORK !== "local") {
-    basePlugins.push(
-      viteCompression({
-        verbose: true,
-        disable: false,
-        threshold: 5200,
-        algorithm: 'gzip',
-        ext: '.gz',
-      }),
-      viteCompression({
-        verbose: true,
-        disable: false,
-        threshold: 5200,
-        algorithm: 'brotliCompress',
-        ext: '.br',
-      })
-    );
+    // basePlugins.push(
+    //   viteCompression({
+    //     verbose: true,
+    //     disable: false,
+    //     threshold: 5200,
+    //     algorithm: 'gzip',
+    //     ext: '.gz',
+    //   })
+    // );
 
-    // Add terser options for production
-    Object.assign(buildOptions, {
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: false,
-        },
-      },
-    });
   }
 
   return {

@@ -37,7 +37,6 @@
         if (browser) {
           configureStorage();
         }
-        themeStore.initTheme();
         await auth.initialize();
         if (browser) {
           // Fetch default tokens
@@ -71,9 +70,6 @@
           themeReady = true;
           document.documentElement.setAttribute("data-theme-ready", "true");
         }, 2000);
-
-        // Start theme initialization
-        themeStore.initTheme();
 
         // Check if theme is ready
         const checkThemeReady = () => {

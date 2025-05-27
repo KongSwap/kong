@@ -13,12 +13,18 @@
 	export let paddingClass = "px-3 py-2.5";
 	export let showIndex = null;
 	export let section = "top-gainers";
+	export let topTokens: { gainers: Kong.Token[], losers: Kong.Token[], hottest: Kong.Token[], top_volume: Kong.Token[] } = { gainers: [], losers: [], hottest: [], top_volume: [] };
 
 	$: isExcludedToken = token.address === CKUSDT_CANISTER_ID || token.address === ICP_CANISTER_ID;
-	$: isTopVolume = !isExcludedToken && token.volumeRank !== undefined && token.volumeRank <= 5 && Number(token.metrics?.volume_24h || 0) > 0;
-	$: isTopTVL = !isExcludedToken && token.tvlRank !== undefined && token.tvlRank <= 5 && Number(token.metrics?.tvl || 0) > 0;
-	$: isTopGainer = !isExcludedToken && token.priceChangeRank !== undefined && token.priceChangeRank <= 3 && Number(token.metrics?.price_change_24h || 0) > 0;
-	$: isTopLoser = !isExcludedToken && token.priceChangeRank !== undefined && token.priceChangeRank <= 3 && Number(token.metrics?.price_change_24h || 0) < 0;
+	$: isTopVolume = !isExcludedToken && topTokens.top_volume.some(t => t.address === token.address) && Number(token.metrics?.volume_24h || 0) > 0;
+	$: isTopTVL = false; // Disabled for now since we don't have top TVL data from fetchTopTokens
+	$: isTopGainer = !isExcludedToken && topTokens.gainers.some(t => t.address === token.address) && Number(token.metrics?.price_change_24h || 0) > 0;
+	$: isTopLoser = !isExcludedToken && topTokens.losers.some(t => t.address === token.address) && Number(token.metrics?.price_change_24h || 0) < 0;
+	
+	// Get the rank for display in tooltips
+	$: volumeRank = isTopVolume ? topTokens.top_volume.findIndex(t => t.address === token.address) + 1 : undefined;
+	$: gainerRank = isTopGainer ? topTokens.gainers.findIndex(t => t.address === token.address) + 1 : undefined;
+	$: loserRank = isTopLoser ? topTokens.losers.findIndex(t => t.address === token.address) + 1 : undefined;
 
 	// Use market cap rank for stats list, otherwise use showIndex for top gainers/losers
 	$: displayRank = section === "stats-list" ? token.metrics?.market_cap_rank : (showIndex !== null ? showIndex + 1 : null);
@@ -40,22 +46,22 @@
 						{#if showIcons}
 							<div class="flex gap-1 items-center">
 								{#if isTopVolume}
-									<div use:tooltip={{ text: `#${token.volumeRank} by Volume`, direction: "top" }}>
+									<div use:tooltip={{ text: `#${volumeRank} by Volume`, direction: "top" }}>
 										<Flame class="w-4 h-4 text-orange-400" />
 									</div>
 								{/if}
 								{#if isTopTVL}
-									<div use:tooltip={{ text: `#${token.tvlRank} by TVL`, direction: "top" }}>
+									<div use:tooltip={{ text: `Top TVL`, direction: "top" }}>
 										<PiggyBank class="w-4 h-4 text-pink-500" />
 									</div>
 								{/if}
 								{#if isTopGainer}
-									<div use:tooltip={{ text: `#${token.priceChangeRank} Biggest Gainer (24h)`, direction: "top" }}>
+									<div use:tooltip={{ text: `#${gainerRank} Biggest Gainer (24h)`, direction: "top" }}>
 										<TrendingUp class="w-4 h-4 text-green-400" />
 									</div>
 								{/if}
 								{#if isTopLoser}
-									<div use:tooltip={{ text: `#${token.priceChangeRank} Biggest Drop (24h)`, direction: "top" }}>
+									<div use:tooltip={{ text: `#${loserRank} Biggest Drop (24h)`, direction: "top" }}>
 										<TrendingDown class="w-4 h-4 text-red-400" />
 									</div>
 								{/if}

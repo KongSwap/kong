@@ -1,6 +1,6 @@
 <script lang="ts">
+	import {page } from '$app/state';
   import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
   import {
     getMarket,
     getMarketBets,
@@ -98,7 +98,7 @@ let initializing = $state(false);
     if (loadingBets) return;
     try {
       loadingBets = true;
-      const allBets = await getMarketBets(BigInt($page.params.id));
+      const allBets = await getMarketBets(BigInt(page.params.id));
 
       // Create a completely new array with deep copies to avoid any reference issues
       // Make sure to process BigInt values to prevent reactivity issues
@@ -126,7 +126,7 @@ let initializing = $state(false);
   $effect(() => {
     const fetchData = async () => {
       try {
-        const marketId = BigInt($page.params.id);
+        const marketId = BigInt(page.params.id);
         const marketData = await getMarket(marketId);
         console.log(marketData);
         market = marketData[0];
@@ -193,7 +193,7 @@ let initializing = $state(false);
       selectedOutcome = null;
 
       // Refresh market data
-      const marketId = BigInt($page.params.id);
+      const marketId = BigInt(page.params.id);
       const marketData = await getMarket(marketId);
       market = marketData[0];
       showBetModal = false;
@@ -251,7 +251,7 @@ let initializing = $state(false);
         type: "success",
       });
       // Refresh market data
-      const marketId = BigInt($page.params.id);
+      const marketId = BigInt(page.params.id);
       const marketData = await getMarket(marketId);
       market = marketData[0];
     } catch (e) {
@@ -278,7 +278,7 @@ let initializing = $state(false);
     initializing = true;
     try {
       // Get the market ID from the page parameters
-      const marketId = BigInt($page.params.id);
+      const marketId = BigInt(page.params.id);
       
       // Get the token information from marketTokenInfo
       if (!marketTokenInfo) {
@@ -409,7 +409,7 @@ let initializing = $state(false);
   />
   <meta
     property="og:url"
-    content="{$page.url.origin}/predict/{$page.params.id}"
+    content="{page.url.origin}/predict/{page.params.id}"
   />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -547,7 +547,7 @@ let initializing = $state(false);
 
           <!-- Social Share Buttons -->
           <SocialSharePanel
-            marketUrl={`${window.location.origin}/predict/${$page.params.id}`}
+            marketUrl={`${page.url.origin}/predict/${page.params.id}`}
             marketQuestion={market?.question}
           />
 

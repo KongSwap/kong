@@ -14,46 +14,70 @@
 
 <span 
   use:tooltip={{ text: tooltipContent, direction: "bottom" }}
-  class="cursor-help {flashClass} {isHovered ? 'text-kong-primary' : ''}"
+  class="cursor-help price-cell {flashClass} {isHovered ? 'text-kong-primary' : ''}"
 >
   {formattedPrice}
 </span>
 
 <style scoped>
-  .flash-green {
-    animation: flash-green 2s ease-out !important;
+  .price-cell {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
   }
+
+  .flash-green {
+    animation: flash-green 2s ease-out;
+    color: #00cc81 !important;
+  }
+  
   .flash-red {
-    animation: flash-red 2s ease-out !important;
+    animation: flash-red 2s ease-out;
+    color: #ef4444 !important;
   }
 
   @keyframes flash-green {
     0% {
-      background: transparent;
+      background-color: transparent;
+      color: #00cc81;
     }
     15% {
-      background: rgba(0, 204, 129, 0.1);
+      background-color: rgba(0, 204, 129, 0.25);
+      box-shadow: 0 0 10px rgba(0, 204, 129, 0.3);
+      color: #00cc81;
     }
     85% {
-      background: rgba(0, 204, 129, 0.1);
+      background-color: rgba(0, 204, 129, 0.25);
+      box-shadow: 0 0 10px rgba(0, 204, 129, 0.3);
+      color: #00cc81;
     }
     100% {
-      background: transparent;
+      background-color: transparent;
+      box-shadow: none;
+      color: #00cc81;
     }
   }
 
   @keyframes flash-red {
     0% {
-      background: transparent;
+      background-color: transparent;
+      color: #ef4444;
     }
     15% {
-      background: rgba(209, 27, 27, 0.1);
+      background-color: rgba(239, 68, 68, 0.25);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+      color: #ef4444;
     }
     85% {
-      background: rgba(209, 27, 27, 0.1);
+      background-color: rgba(239, 68, 68, 0.25);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+      color: #ef4444;
     }
     100% {
-      background: transparent;
+      background-color: transparent;
+      box-shadow: none;
+      color: #ef4444;
     }
   }
 </style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-svelte";
   import { onMount } from "svelte";
 
@@ -205,7 +206,7 @@
     <div class="grid-body">
       {#each displayData as row, idx (row[rowKey] || idx)}
         <div
-          class="grid-row {onRowClick ? 'clickable' : ''} {hoveredRowIndex === idx ? 'hovered' : ''} {isLowTVL(row) ? 'low-tvl' : ''}"
+          class="grid-row {$panelRoundness} {onRowClick ? 'clickable' : ''} {hoveredRowIndex === idx ? 'hovered' : ''} {isLowTVL(row) ? 'low-tvl' : ''}"
           style="grid-template-columns: {gridTemplateColumns}"
           on:click={() => onRowClick?.(row)}
           on:mouseenter={() => onRowMouseEnter(idx)}

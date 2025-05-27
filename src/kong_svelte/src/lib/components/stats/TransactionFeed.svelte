@@ -183,7 +183,7 @@
       <div class="flex-1 overflow-hidden">
         <div class="h-full overflow-y-auto overflow-x-hidden">
           <div class="h-[400px]">
-            {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto.randomUUID())}
+            {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto?.randomUUID())}
               <TransactionFeedItem
                 {tx}
                 {token}

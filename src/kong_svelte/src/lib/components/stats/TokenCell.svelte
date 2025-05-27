@@ -6,14 +6,23 @@
 
   export let row: FE.StatsToken;
   export let isHovered = false;
+  export let topTokens: { gainers: Kong.Token[], losers: Kong.Token[], hottest: Kong.Token[], top_volume: Kong.Token[] } = { gainers: [], losers: [], hottest: [], top_volume: [] };
   
 
   $: isExcludedToken = row.address === CKUSDT_CANISTER_ID || row.address === ICP_CANISTER_ID;
-  $: isTopVolume = !isExcludedToken && row.volumeRank !== undefined && row.volumeRank <= 5 && Number(row.metrics?.volume_24h || 0) > 0;
-  $: isTopTVL = !isExcludedToken && row.tvlRank !== undefined && row.tvlRank <= 5 && Number(row.metrics?.tvl || 0) > 0;
-  $: isTopGainer = !isExcludedToken && row.priceChangeRank !== undefined && row.priceChangeRank <= 3 && Number(row.metrics?.price_change_24h || 0) > 0;
-  $: isTopLoser = !isExcludedToken && row.priceChangeRank !== undefined && row.priceChangeRank <= 3 && Number(row.metrics?.price_change_24h || 0) < 0;
+  $: isTopVolume = !isExcludedToken && topTokens.top_volume.some(token => token.address === row.address) && Number(row.metrics?.volume_24h || 0) > 0;
+  $: isTopGainer = !isExcludedToken && topTokens.gainers.some(token => token.address === row.address) && Number(row.metrics?.price_change_24h || 0) > 0;
+  $: isTopLoser = !isExcludedToken && topTokens.losers.some(token => token.address === row.address) && Number(row.metrics?.price_change_24h || 0) < 0;
   $: isLowTVL = Number(row.metrics?.tvl || 0) < 100;
+  
+  // For TVL, we'll calculate from the current tokens since it's not in topTokens
+  // This is a simplified approach - you might want to add a top_tvl array to your API response
+  $: isTopTVL = false; // Disabled for now since we don't have top TVL data from fetchTopTokens
+  
+  // Get the rank for display in tooltips
+  $: volumeRank = isTopVolume ? topTokens.top_volume.findIndex(token => token.address === row.address) + 1 : undefined;
+  $: gainerRank = isTopGainer ? topTokens.gainers.findIndex(token => token.address === row.address) + 1 : undefined;
+  $: loserRank = isTopLoser ? topTokens.losers.findIndex(token => token.address === row.address) + 1 : undefined;
 </script>
 
 <div class="flex items-center gap-1">
@@ -27,22 +36,22 @@
       </div>
     {/if}
     {#if isTopVolume}
-      <div use:tooltip={{ text: `#${row.volumeRank} by Volume`, direction: "top" }}>
+      <div use:tooltip={{ text: `#${volumeRank} by Volume`, direction: "top" }}>
         <TriangleRight class="w-4 h-4 text-orange-400" fill="currentColor" />
       </div>
     {/if}
     {#if isTopGainer}
-      <div use:tooltip={{ text: `#${row.priceChangeRank} Biggest Gainer (24h)`, direction: "top" }}>
+      <div use:tooltip={{ text: `#${gainerRank} Gainer (24h)`, direction: "top" }}>
         <TrendingUp class="w-4 h-4 text-green-400" />
       </div>
     {/if}
     {#if isTopLoser}
-      <div use:tooltip={{ text: `#${row.priceChangeRank} Biggest Drop (24h)`, direction: "top" }}>
+      <div use:tooltip={{ text: `#${loserRank} Loser (24h)`, direction: "top" }}>
         <TrendingDown class="w-4 h-4 text-red-400" />
       </div>
     {/if}
     {#if isTopTVL}
-      <div use:tooltip={{ text: `#${row.tvlRank} by TVL`, direction: "top" }}>
+      <div use:tooltip={{ text: `Top TVL`, direction: "top" }}>
         <PiggyBank class="w-4 h-4 text-pink-500" />
       </div>
     {/if}

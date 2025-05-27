@@ -31,6 +31,7 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
+    import { page } from "$app/state";
 
   // Constants
   const DEFAULT_DURATION = 24; // hours
@@ -131,7 +132,7 @@
     }
 
     // Restore state from URL
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(page.url.search);
     formState.question = params.get("question") || "";
     formState.category = params.get("category") || "Other";
     formState.rules = params.get("rules") || "";

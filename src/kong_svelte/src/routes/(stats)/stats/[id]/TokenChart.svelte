@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { browser } from "$app/environment";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import { tokenData } from "$lib/stores/tokenData";
   import { onMount } from "svelte";
@@ -52,6 +53,7 @@
 
   // Check if height changed and trigger resize
   $effect(() => {
+    if (!browser) return;
     if (prevHeight !== height) {
       prevHeight = height;
       // Force re-render of chart when height changes

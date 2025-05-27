@@ -17,6 +17,7 @@
   import PlatformStats from "$lib/components/stats/PlatformStats.svelte";
   import BiggestMovers from "$lib/components/stats/BiggestMovers.svelte";
   import TopVolume from "$lib/components/stats/TopVolume.svelte";
+  import { page } from "$app/state";
 
   // Constants
   const REFRESH_INTERVAL = 10000;
@@ -70,22 +71,27 @@
     });
   });
 
-  // Price flash functionality
+    // Price flash functionality
   function updatePriceFlashes(tokens: FE.StatsToken[]) {
     if (isInitialLoad) {
       // On initial load, just store prices without flashing
       previousPrices.update(prev => {
+        const newPrices = new Map(prev);
         tokens.forEach(token => {
-          prev.set(token.address, Number(token.metrics?.price || 0));
+          newPrices.set(token.address, Number(token.metrics?.price || 0));
         });
-        return prev;
+        return newPrices;
       });
       isInitialLoad = false;
       return;
     }
 
-    const currentPrices = $previousPrices;
-    const currentFlashStates = $priceFlashStates;
+    // Create completely new Maps to ensure reactivity
+    const currentPrices = new Map($previousPrices);
+    const newFlashStates = new Map();
+    
+    // Copy existing flash states (excluding expired ones)
+    const existingFlashStates = $priceFlashStates;
     
     tokens.forEach(token => {
       const currentPrice = Number(token.metrics?.price || 0);
@@ -95,7 +101,7 @@
         const flashClass = currentPrice > prevPrice ? "flash-green" : "flash-red";
         
         // Clear existing timeout if any
-        const existingState = currentFlashStates.get(token.address);
+        const existingState = existingFlashStates.get(token.address);
         if (existingState?.timeout) {
           clearTimeout(existingState.timeout);
         }
@@ -103,20 +109,22 @@
         // Set new flash state with timeout
         const timeout = setTimeout(() => {
           priceFlashStates.update(states => {
-            states.delete(token.address);
-            return new Map(states);
+            const newStates = new Map(states);
+            newStates.delete(token.address);
+            return newStates;
           });
         }, 2000);
         
-        currentFlashStates.set(token.address, { class: flashClass, timeout });
+        newFlashStates.set(token.address, { class: flashClass, timeout });
       }
       
-      // Update previous price
+      // Update current price
       currentPrices.set(token.address, currentPrice);
     });
     
-    priceFlashStates.set(new Map(currentFlashStates));
-    previousPrices.set(new Map(currentPrices));
+    // Set the new states
+    priceFlashStates.set(newFlashStates);
+    previousPrices.set(currentPrices);
   }
 
   // Data fetching
@@ -171,7 +179,7 @@
   // URL management
   function updateURL() {
     if (!browser) return;
-    const url = new URL(window.location.href);
+    const url = new URL(page.url);
     const currentState = $state;
     
     url.searchParams.set("page", currentState.currentPage.toString());
@@ -193,6 +201,8 @@
     }));
   }
 
+
+
   // Helper functions
   function getTrendClass(token: FE.StatsToken): string {
     const change = token?.metrics?.price_change_24h;
@@ -201,11 +211,14 @@
          : Number(change) < 0 ? "text-kong-accent-red" : "";
   }
 
-  // Table configuration
-  const tableColumns = [
+  // Store the current flash states for reactivity
+  $: currentFlashStates = $priceFlashStates;
+  
+  // Table configuration (reactive to pass topTokens and priceFlashStates data)
+  $: tableColumns = [
     { key: "#", title: "#", align: "center" as const, sortable: false, formatter: (row) => `${row.metrics?.market_cap_rank}` },
-    { key: "token", title: "Token", align: "left" as const, component: TokenCell, sortable: false },
-    { key: "price", title: "Price", align: "right" as const, sortable: false, component: PriceCell, componentProps: { priceFlashStates: $priceFlashStates } },
+    { key: "token", title: "Token", align: "left" as const, component: TokenCell, sortable: false, componentProps: { topTokens: $state.topTokens } },
+    { key: "price", title: "Price", align: "right" as const, sortable: false, component: PriceCell, componentProps: { priceFlashStates: currentFlashStates } },
     { key: "price_change_24h", title: "24h", align: "right" as const, sortable: false, formatter: (row) => {
       const value = row.metrics?.price_change_24h || 0;
       return `${value > 0 ? "+" : ""}${formatToNonZeroDecimal(value)}%`;
@@ -225,11 +238,11 @@
     window.addEventListener("resize", handleResize, { passive: true });
 
     // Initialize from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const page = parseInt(urlParams.get("page") || "1");
+    const urlParams = new URLSearchParams(page.url.search);
+    const currentPage = parseInt(urlParams.get("page") || "1");
     const search = urlParams.get("search") || "";
     
-    state.update(s => ({ ...s, currentPage: page, searchTerm: search }));
+    state.update(s => ({ ...s, currentPage, searchTerm: search }));
     
     // Initial fetch and setup interval
     fetchData(true);
@@ -268,8 +281,8 @@
   <Panel type="main" className="flex flex-col !p-0 !w-full !bg-transparent !shadow-none !border-none order-2" height="100%">
     <div class="flex flex-col h-full !rounded-lg">
       <!-- Search Header (Desktop) -->
-      <div class="hidden sm:flex items-center mb-2">
-        <div class="relative w-full">
+      <div class="hidden sm:flex items-center mb-2 gap-2">
+        <div class="relative flex-1">
           <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-kong-text-secondary pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -339,7 +352,7 @@
                 <div class="flex flex-col gap-1 py-2">
                   {#each $sortedTokens as token (token.address)}
                     <button class="w-full" on:click={() => goto(`/stats/${token.address}`)}>
-                      <TokenCardMobile {token} trendClass={getTrendClass(token)} showIcons={false} section="stats-list" paddingClass="px-3 py-1.5" />
+                      <TokenCardMobile {token} trendClass={getTrendClass(token)} showIcons={true} section="stats-list" paddingClass="px-3 py-1.5" topTokens={$state.topTokens} />
                     </button>
                   {/each}
                 </div>
