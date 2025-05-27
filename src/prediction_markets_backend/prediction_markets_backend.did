@@ -76,6 +76,7 @@ type ClaimResult = record {
   success : bool;
 };
 type ClaimStatus = variant {
+  Claiming;
   Failed : FailureDetails;
   Processed : ProcessDetails;
   Pending;

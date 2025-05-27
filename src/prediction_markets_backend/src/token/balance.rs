@@ -334,7 +334,7 @@ fn calculate_pending_claims_total(token_id: &TokenIdentifier) -> TokenAmount {
         let claims_ref = claims.borrow();
         for (_, claim) in claims_ref.iter() {
             // Check if the claim is still pending (not processed)
-            if claim.token_id == *token_id && matches!(claim.status, ClaimStatus::Pending) {
+            if claim.token_id == *token_id && matches!(claim.status, ClaimStatus::Pending | ClaimStatus::Claiming) {
                 total += claim.claimable_amount.clone();
             }
         }

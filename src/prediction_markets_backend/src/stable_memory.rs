@@ -20,6 +20,9 @@ use ic_stable_structures::{
 };
 use std::cell::RefCell;
 
+use crate::BetPayoutRecord;
+use crate::types::StorableNat;
+
 use super::delegation::*;
 
 use crate::market::market::*;
@@ -60,6 +63,11 @@ thread_local! {
     /// This stores detailed information about how markets were resolved
     /// Raw storage format: Vec<(MarketId, MarketResolutionDetails)>
     pub static STABLE_MARKET_RESOLUTION_DETAILS: RefCell<Option<Vec<(MarketId, MarketResolutionDetails)>>> = RefCell::new(None);
+    
+    /// Storage for market payout records during upgrades
+    /// This stores detailed information about payouts for each market
+    /// Raw storage format: Vec<(MarketId, Vec<BetPayoutRecord>)>
+    pub static STABLE_MARKET_PAYOUTS: RefCell<Option<Vec<(MarketId, Vec<BetPayoutRecord>)>>> = RefCell::new(None);
 
     /// Stable BTree map for markets indexed by MarketId
     pub static STABLE_MARKETS: RefCell<StableBTreeMap<MarketId, Market, Memory>> = RefCell::new(
@@ -114,7 +122,8 @@ thread_local! {
     /// This collection tracks platform fees collected from markets, organized by token type.
     /// Uses memory region 6 and is primarily used for administrative accounting and
     /// fee withdrawal operations. For KONG tokens, fees are burned rather than collected.
-    pub static FEE_BALANCE: RefCell<StableBTreeMap<Principal, u64, Memory>> = RefCell::new(
+    /// Uses StorableNat to support tokens with high decimal precision like ckETH (18 decimals).
+    pub static FEE_BALANCE: RefCell<StableBTreeMap<Principal, StorableNat, Memory>> = RefCell::new(
         StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(6))),
         )
@@ -157,6 +166,16 @@ pub fn save() {
         
         STABLE_MARKET_RESOLUTION_DETAILS.with(|stable_details| {
             *stable_details.borrow_mut() = Some(resolution_details_vec);
+        });
+    });
+    
+    // Save market payout records to stable storage
+    crate::canister::MARKET_PAYOUTS.with(|payouts| {
+        let payouts_vec: Vec<(MarketId, Vec<BetPayoutRecord>)> = 
+            payouts.borrow().iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        
+        STABLE_MARKET_PAYOUTS.with(|stable_payouts| {
+            *stable_payouts.borrow_mut() = Some(payouts_vec);
         });
     });
 }
@@ -221,6 +240,20 @@ pub fn restore() {
             // Restore to the in-memory HashMap
             MARKET_RESOLUTION_DETAILS.with(|details_map| {
                 *details_map.borrow_mut() = resolution_details;
+            });
+        }
+    });
+    
+    // Restore market payout records if available
+    STABLE_MARKET_PAYOUTS.with(|stable_payouts| {
+        if let Some(payouts_vec) = stable_payouts.borrow_mut().take() {
+            // Convert Vec<(MarketId, Vec<BetPayoutRecord>)> back to BTreeMap
+            let market_payouts: std::collections::BTreeMap<MarketId, Vec<BetPayoutRecord>> = 
+                payouts_vec.into_iter().collect();
+            
+            // Restore to the in-memory BTreeMap
+            crate::canister::MARKET_PAYOUTS.with(|payouts| {
+                *payouts.borrow_mut() = market_payouts;
             });
         }
     });
