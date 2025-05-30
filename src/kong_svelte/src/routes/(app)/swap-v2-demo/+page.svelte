@@ -10,6 +10,8 @@
   import { SolanaService } from '$lib/services/solana/SolanaService';
   import { userTokens } from '$lib/stores/userTokens';
   import { get } from 'svelte/store';
+  import { crossChainSwapStore } from '$lib/services/swap/CrossChainSwapMonitor';
+  import { CrossChainSwapMonitor } from '$lib/services/swap/CrossChainSwapMonitor';
   
   type SwapMode = 'SOL_TO_ICP' | 'ICP_TO_SOL' | 'SOL_TO_SPL';
   

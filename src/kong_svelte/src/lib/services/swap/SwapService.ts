@@ -252,9 +252,23 @@ export class SwapService {
       throw new Error(quote.Err);
     }
 
-    // For cross-chain swaps, we'll need different handling
-    if (this.isCrossChainSwap(params.payToken, params.receiveToken)) {
-      throw new Error("Cross-chain swap quotes not yet implemented");
+    // Handle Solana tokens (already handled by swap_amounts, but different response structure)
+    if (isSolanaToken(params.payToken) || isSolanaToken(params.receiveToken)) {
+      // For Solana swaps, we have a simplified response from swap_amounts
+      const receiveAmount = SwapService.fromBigInt(
+        quote.Ok.receive_amount,
+        params.receiveToken.decimals,
+      );
+      
+      return {
+        receiveAmount,
+        price: quote.Ok.exchange_rate?.[0]?.rate.toString() || "0",
+        usdValue: "0", // USD value not available for cross-chain
+        lpFee: "0",
+        gasFee: "0",
+        tokenFee: params.payToken.fee_fixed?.toString() || "0",
+        slippage: quote.Ok.swap_slippage?.toNumber() || 0.5,
+      };
     }
 
     // For regular IC swaps, both tokens must be Kong tokens
@@ -580,12 +594,24 @@ export class SwapService {
     payAmount: string,
   ): Promise<{ receiveAmount: string; slippage: number }> {
     try {
-      // Check if this is a cross-chain swap
-      if (this.isCrossChainSwap(payToken, receiveToken)) {
-        throw new Error("Cross-chain swaps should use CrossChainSwapService.getQuote");
+      // Check if either token is a Solana token (cross-chain or Solana-to-Solana)
+      if (isSolanaToken(payToken) || isSolanaToken(receiveToken)) {
+        // Use CrossChainSwapService for any swap involving Solana tokens
+        const { CrossChainSwapService } = await import('./CrossChainSwapService');
+        
+        // Convert amount to BigInt
+        const payAmountBN = new BigNumber(payAmount);
+        const payAmountInTokens = this.toBigInt(payAmountBN, payToken.decimals);
+        
+        const quote = await CrossChainSwapService.getQuote(payToken, payAmountInTokens, receiveToken);
+        
+        return {
+          receiveAmount: this.fromBigInt(quote.receiveAmount, receiveToken.decimals),
+          slippage: 0.5, // 0.5% slippage for cross-chain
+        };
       }
 
-      // Type guard - ensure both tokens are Kong tokens for regular swaps
+      // Regular IC <-> IC swap
       if (!isKongToken(payToken) || !isKongToken(receiveToken)) {
         throw new Error("Both tokens must be Kong tokens for regular swaps");
       }
