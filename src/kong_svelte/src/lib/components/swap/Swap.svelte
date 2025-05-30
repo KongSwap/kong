@@ -366,6 +366,41 @@
               }));
             }
           );
+          
+          // If swap was initiated successfully, start refreshing SOL balances every 500ms for 30 seconds
+          if (result && result.status === 'success') {
+            const { solanaBalanceStore } = await import('$lib/stores/solanaBalanceStore');
+            let refreshCount = 0;
+            const maxRefreshes = 60;
+            
+            // Show toast notification about balance refresh
+            toastStore.info(
+              `Refreshing SOL balances to reflect outgoing tokens...`,
+              { duration: 30000 }
+            );
+            
+            const refreshInterval = setInterval(async () => {
+              refreshCount++;
+              console.log(`Refreshing SOL balances (${refreshCount}/${maxRefreshes}) after SOL to ICP swap initiation`);
+              
+              try {
+                await solanaBalanceStore.fetchBalances(true); // Force refresh
+              } catch (error) {
+                console.error('Error refreshing SOL balances:', error);
+              }
+              
+              if (refreshCount >= maxRefreshes) {
+                clearInterval(refreshInterval);
+                console.log('Completed SOL balance refresh cycle');
+                
+                // Show completion toast
+                toastStore.success(
+                  `Balance refresh completed! SOL balances updated.`,
+                  { duration: 5000 }
+                );
+              }
+            }, 500); // Every 500ms
+          }
         } else if (swapMode === 'ICP_TO_SOL') {
           // Get user's Solana address
           const solanaAddress = await SolanaService.getUserSolanaAddress();
@@ -391,6 +426,41 @@
               }));
             }
           );
+          
+          // If swap was initiated successfully, start refreshing SOL balances every second for 3 seconds
+          if (result && result.status === 'success') {
+            const { solanaBalanceStore } = await import('$lib/stores/solanaBalanceStore');
+            let refreshCount = 0;
+            const maxRefreshes = 3;
+            
+            // Show toast notification about balance refresh
+            const refreshToastId = toastStore.info(
+              `Refreshing SOL balances to reflect incoming tokens...`,
+              { duration: 4000 }
+            );
+            
+            const refreshInterval = setInterval(async () => {
+              refreshCount++;
+              console.log(`Refreshing SOL balances (${refreshCount}/${maxRefreshes}) after ICP to SOL swap initiation`);
+              
+              try {
+                await solanaBalanceStore.fetchBalances(true); // Force refresh
+              } catch (error) {
+                console.error('Error refreshing SOL balances:', error);
+              }
+              
+              if (refreshCount >= maxRefreshes) {
+                clearInterval(refreshInterval);
+                console.log('Completed SOL balance refresh cycle');
+                
+                // Show completion toast
+                toastStore.success(
+                  `Balance refresh completed! Check your SOL wallet for incoming tokens.`,
+                  { duration: 5000 }
+                );
+              }
+            }, 1000); // Every 1 second
+          }
         } else if (swapMode === 'SOL_TO_SPL' || swapMode === 'SPL_TO_SPL') {
           // Solana-to-Solana swaps
           const solanaAddress = await SolanaService.getUserSolanaAddress();

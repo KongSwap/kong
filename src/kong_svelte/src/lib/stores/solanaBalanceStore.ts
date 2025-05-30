@@ -130,6 +130,11 @@ function createSolanaBalanceStore() {
           await this.loadBalances();
         }
       }
+    },
+
+    // Alias for loadBalances to match naming convention used elsewhere
+    async fetchBalances(forceRefresh = false): Promise<void> {
+      return this.loadBalances(forceRefresh);
     }
   };
 }
