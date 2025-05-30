@@ -93,6 +93,17 @@ export class SolanaService {
         throw new Error('Invalid amount: must be greater than 0');
       }
       
+      // Get fee estimate (Solana base fee is 5000 lamports = 0.00005 SOL)
+      const feeEstimate = 5000; // 0.00005 SOL in lamports
+      
+      // Check if user has enough balance for amount + fee
+      const balance = await connection.getBalance(new PublicKey(solanaWallet.publicKey.toString()));
+      if (balance < lamports + feeEstimate) {
+        const neededSOL = (lamports + feeEstimate) / LAMPORTS_PER_SOL;
+        const hasSOL = balance / LAMPORTS_PER_SOL;
+        throw new Error(`Insufficient balance. Need ${neededSOL.toFixed(6)} SOL (including fee), but only have ${hasSOL.toFixed(6)} SOL`);
+      }
+      
       // Create transfer instruction
       const fromPubkey = new PublicKey(solanaWallet.publicKey.toString());
       const toPubkey = new PublicKey(recipientAddress);

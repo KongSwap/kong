@@ -103,81 +103,7 @@
       : []
   );
   
-  // Convert Solana tokens to Kong format with price data
-  async function convertSolanaTokensToKongFormat(): Promise<Kong.Token[]> {
-    try {
-      const { CrossChainSwapService } = await import('$lib/services/swap/CrossChainSwapService');
-      const prices = await CrossChainSwapService.fetchTokenPrices();
-      
-      return DEFAULT_SOLANA_TOKENS.map(solToken => {
-        const price = prices[solToken.symbol] || 0;
-        
-        const kongToken: Kong.Token = {
-          id: solToken.id,
-          name: solToken.name,
-          symbol: solToken.symbol,
-          address: solToken.mint_address, // Use mint_address as address for compatibility
-          mint_address: solToken.mint_address, // Keep original mint_address too
-          fee: 0,
-          fee_fixed: '0',
-          decimals: solToken.decimals,
-          token_type: 'SPL',
-          chain: 'Solana',
-          standards: [],
-          logo_url: solToken.logo_url,
-          metrics: {
-            price: price.toString(),
-            total_supply: '0',
-            volume_24h: '0',
-            market_cap: '0',
-            tvl: '0',
-            price_change_24h: '0',
-            updated_at: new Date().toISOString(),
-          },
-          timestamp: Date.now(),
-        };
-        
-        return kongToken;
-      });
-    } catch (error) {
-      console.error('Error converting Solana tokens:', error);
-      // Fallback: create Kong tokens without price data
-      return DEFAULT_SOLANA_TOKENS.map(solToken => ({
-        id: solToken.id,
-        name: solToken.name,
-        symbol: solToken.symbol,
-        address: solToken.mint_address,
-        fee: 0,
-        fee_fixed: '0',
-        decimals: solToken.decimals,
-        token_type: 'SPL',
-        chain: 'Solana',
-        standards: [],
-        logo_url: solToken.logo_url,
-        metrics: {
-          price: '0',
-          total_supply: '0',
-          volume_24h: '0',
-          market_cap: '0',
-          tvl: '0',
-          price_change_24h: '0',
-          updated_at: new Date().toISOString(),
-        },
-        timestamp: Date.now(),
-      }));
-    }
-  }
-  
-  let solanaTokens = $state<Kong.Token[]>([]);
-  
-  // Load Solana tokens with prices
-  $effect(() => {
-    if (browser) {
-      convertSolanaTokensToKongFormat().then(tokens => {
-        solanaTokens = tokens;
-      });
-    }
-  });
+  let solanaTokens = $derived(DEFAULT_SOLANA_TOKENS);
 
   // Update loadedTokens when the balancesStore changes
   $effect(() => {
@@ -190,11 +116,8 @@
 
   // Helper functions for token state
   function isApiToken(token: AnyToken): boolean {
-    // Solana tokens are never API tokens - they don't need enabling
-    if ('mint_address' in token || token.token_type === 'SPL' || token.chain === 'Solana') {
-      return false;
-    }
-    return 'address' in token && !$userTokens.enabledTokens.has(token.address);
+    // Only ICP tokens can be API tokens
+    return 'address' in token && !('mint_address' in token) && !$userTokens.enabledTokens.has(token.address);
   }
   
   function isFavoriteToken(tokenId: string): boolean {
@@ -781,7 +704,10 @@
                               if ('address' in (token as AnyToken)) {
                                 return isUserAuthenticated && $currentUserBalancesStore[(token as Kong.Token).address] === undefined;
                               } else if ('mint_address' in (token as AnyToken)) {
-                                return $solanaBalanceStore.isLoading;
+                                // Only show loading if we don't have the balance yet AND store is loading
+                                const mintAddress = (token as SolanaTokenInfo).mint_address;
+                                const hasBalance = $solanaBalanceStore.balances[mintAddress] !== undefined;
+                                return !hasBalance && $solanaBalanceStore.isLoading;
                               }
                               return false;
                             })(),
@@ -855,7 +781,10 @@
                                 if ('address' in (token as AnyToken)) {
                                   return isUserAuthenticated && $currentUserBalancesStore[(token as Kong.Token).address] === undefined;
                                 } else if ('mint_address' in (token as AnyToken)) {
-                                  return $solanaBalanceStore.isLoading;
+                                  // Only show loading if we don't have the balance yet AND store is loading
+                                  const mintAddress = (token as SolanaTokenInfo).mint_address;
+                                  const hasBalance = $solanaBalanceStore.balances[mintAddress] !== undefined;
+                                  return !hasBalance && $solanaBalanceStore.isLoading;
                                 }
                                 return false;
                               })(),
