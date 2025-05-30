@@ -343,6 +343,12 @@
           throw new Error("Invalid cross-chain swap mode");
         }
 
+        // Show initial toast notification
+        toastStore.info(
+          `Verifying ${$swapState.payToken.symbol} transaction and preparing swap...`,
+          { duration: 3000 }
+        );
+
         let result;
         
         if (swapMode === 'SOL_TO_ICP') {
@@ -489,6 +495,12 @@
         if (result.error) {
           throw new Error(result.error);
         }
+
+        // Show second toast notification for successful swap initiation
+        toastStore.success(
+          `Swap initiated! Preparing to send ${$swapState.receiveToken.symbol} to your wallet...`,
+          { duration: 2000 }
+        );
 
         // Start monitoring the cross-chain swap with 200ms polling
         if (result.job_id) {

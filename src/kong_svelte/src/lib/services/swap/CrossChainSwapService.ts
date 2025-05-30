@@ -378,7 +378,7 @@ export class CrossChainSwapService {
       );
       
       // Verify transaction is in canister before proceeding
-      if (onStatusUpdate) onStatusUpdate("Verifying transaction with Kong canister (up to 20 seconds)...");
+      if (onStatusUpdate) onStatusUpdate("Verifying transaction with Kong canister...");
       console.log(`Verifying transaction ${payTxId} is in canister...`);
       const isInCanister = await this.verifyTransactionInCanister(payTxId);
       
