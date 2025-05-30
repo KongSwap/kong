@@ -6,6 +6,7 @@ import { swapStatusStore } from "$lib/stores/swapStore";
 import { SwapMonitor } from "./SwapMonitor";
 import type { Principal } from "@dfinity/principal";
 import { userTokens } from "$lib/stores/userTokens";
+import { getTokenId, type AnyToken } from "$lib/utils/tokenUtils";
 
 export class SwapLogicService {
   static async handleSwapSuccess(event: CustomEvent) {
@@ -37,12 +38,16 @@ export class SwapLogicService {
     }));
   }
 
-  static handleSelectToken(type: "pay" | "receive", token: Kong.Token) {
+  static handleSelectToken(type: "pay" | "receive", token: AnyToken) {
     const state = get(swapState);
     
+    const tokenId = getTokenId(token);
+    const payTokenId = getTokenId(state.payToken);
+    const receiveTokenId = getTokenId(state.receiveToken);
+    
     if (
-      (type === "pay" && token?.address === state.receiveToken?.address) ||
-      (type === "receive" && token?.address === state.payToken?.address)
+      (type === "pay" && tokenId === receiveTokenId) ||
+      (type === "receive" && tokenId === payTokenId)
     ) {
       toastStore.error("Cannot select the same token for both sides");
       return;

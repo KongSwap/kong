@@ -122,14 +122,41 @@ export const refreshBalances = async (
 
 // Validation function for tokens
 export const isValidToken = (token: any): boolean => {
-  return (
-    token && 
-    typeof token === 'object' && 
-    typeof token.address === 'string' && 
-    token.address.includes('-') &&  // Must have a subnet delimiter
-    typeof token.symbol === 'string' && 
-    (typeof token.decimals === 'number' || typeof token.decimals === 'string')
-  );
+  if (!token || typeof token !== 'object' || !token.symbol) {
+    return false;
+  }
+  
+  // For Solana tokens, they might not have 'address' but have 'mint_address'
+  if (token.token_type === 'SPL' || token.chain === 'Solana') {
+    return !!token.mint_address;
+  }
+  
+  // For ICP tokens, check address
+  if (!token.address) {
+    return false;
+  }
+  
+  // Check basic properties
+  const hasValidAddress = typeof token.address === 'string' && token.address.length > 0;
+  const hasValidSymbol = typeof token.symbol === 'string';
+  const hasValidDecimals = typeof token.decimals === 'number' || typeof token.decimals === 'string';
+  
+  if (!hasValidAddress || !hasValidSymbol || !hasValidDecimals) {
+    return false;
+  }
+  
+  // For ICP tokens, check for subnet delimiter
+  if (token.chain === 'ICP' || token.token_type === 'IC' || token.token_type === 'LP') {
+    return token.address.includes('-');
+  }
+  
+  // For Solana tokens, just check that address exists
+  if (token.chain === 'Solana' || token.token_type === 'SPL') {
+    return token.address.length > 0;
+  }
+  
+  // Default: if no chain specified, assume ICP for backward compatibility
+  return token.address.includes('-');
 };
 
 // Helper function to get stored balances
@@ -189,6 +216,11 @@ export const refreshSingleBalance = async (
 ): Promise<TokenBalance | null> => {
   if (!isValidToken(token) || !principalId) {
     console.warn('Cannot refresh balance - invalid token or missing principal');
+    return null;
+  }
+
+  // Skip balance refresh for Solana tokens - they use a different system
+  if (token.token_type === 'SPL' || token.chain === 'Solana') {
     return null;
   }
 

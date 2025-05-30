@@ -2,55 +2,33 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
-export interface ICTransferReply {
-  'is_send' : boolean,
-  'block_index' : bigint,
-  'chain' : string,
-  'canister_id' : string,
+export interface IcpTransferJob {
+  'id' : bigint,
+  'status' : IcpTransferStatus,
+  'updated_at' : bigint,
+  'to_principal' : Principal,
+  'block_index' : [] | [bigint],
+  'error_message' : [] | [string],
+  'attempts' : number,
+  'created_at' : bigint,
+  'from_principal' : [] | [Principal],
   'amount' : bigint,
-  'symbol' : string,
 }
+export type IcpTransferStatus = { 'Failed' : null } |
+  { 'InProgress' : null } |
+  { 'Completed' : null } |
+  { 'Pending' : null };
 export interface QueuedSwapReply {
   'status' : string,
-  'job_id' : [] | [bigint],
+  'job_id' : bigint,
   'message' : string,
 }
-export interface QueuedTransaction {
-  'id' : bigint,
-  'fee' : [] | [bigint],
-  'is_processed' : boolean,
-  'direction' : [] | [string],
-  'signature' : string,
-  'metadata' : [] | [string],
-  'instruction_type' : [] | [string],
-  'sender' : [] | [string],
-  'balance_change' : [] | [bigint],
-  'processed_at' : [] | [bigint],
-  'amount' : [] | [bigint],
-  'queued_at' : bigint,
-  'receiver' : [] | [string],
-}
-export interface SolanaTransaction {
-  'id' : string,
-  'fee' : [] | [bigint],
-  'status' : SolanaTransactionStatus,
-  'updated_at' : bigint,
-  'direction' : [] | [string],
-  'signature' : string,
-  'transaction_time' : [] | [string],
-  'metadata' : [] | [string],
-  'instruction_type' : [] | [string],
-  'sender' : [] | [string],
-  'balance_change' : [] | [bigint],
-  'registered_at' : bigint,
-  'amount' : [] | [bigint],
-  'receiver' : [] | [string],
-}
-export type SolanaTransactionStatus = { 'Failed' : null } |
-  { 'Finalized' : null } |
-  { 'Confirmed' : null } |
-  { 'TimedOut' : null } |
-  { 'Pending' : null };
+export type Result = { 'Ok' : string } |
+  { 'Err' : string };
+export type Result_1 = { 'Ok' : null } |
+  { 'Err' : string };
+export type Result_2 = { 'Ok' : QueuedSwapReply } |
+  { 'Err' : string };
 export interface SwapArgs {
   'receive_token' : string,
   'signature' : [] | [string],
@@ -79,123 +57,71 @@ export type SwapJobStatus = { 'Failed' : null } |
   { 'Confirmed' : null } |
   { 'Submitted' : null } |
   { 'Pending' : null };
-export interface SwapReply {
-  'ts' : bigint,
-  'txs' : Array<SwapTxReply>,
-  'request_id' : bigint,
+export interface TransactionNotification {
   'status' : string,
-  'tx_id' : bigint,
-  'transfer_ids' : Array<TransferIdReply>,
-  'receive_chain' : string,
-  'mid_price' : number,
-  'pay_amount' : bigint,
-  'receive_amount' : bigint,
-  'claim_ids' : BigUint64Array | bigint[],
-  'pay_symbol' : string,
-  'receive_symbol' : string,
-  'receive_address' : string,
-  'pay_address' : string,
-  'price' : number,
-  'pay_chain' : string,
-  'slippage' : number,
+  'signature' : string,
+  'metadata' : [] | [string],
 }
-export type SwapResult = { 'Ok' : QueuedSwapReply } |
-  { 'Err' : string };
-export interface SwapTxReply {
-  'ts' : bigint,
-  'receive_chain' : string,
-  'pay_amount' : bigint,
-  'receive_amount' : bigint,
-  'pay_symbol' : string,
-  'receive_symbol' : string,
-  'receive_address' : string,
-  'pool_symbol' : string,
-  'pay_address' : string,
-  'price' : number,
-  'pay_chain' : string,
-  'lp_fee' : bigint,
-  'gas_fee' : bigint,
-}
-export interface TransferIdReply {
-  'transfer_id' : bigint,
-  'transfer' : TransferReply,
-}
-export type TransferReply = { 'IC' : ICTransferReply };
-export type TxId = { 'TransactionHash' : string } |
-  { 'BlockIndex' : bigint };
-export interface UpdateSolanaTransactionArgs {
-  'id' : string,
+export interface TransactionQueueItem {
+  'id' : bigint,
   'fee' : [] | [bigint],
-  'status' : string,
+  'is_processed' : boolean,
   'direction' : [] | [string],
   'signature' : string,
-  'transaction_time' : [] | [string],
   'metadata' : [] | [string],
   'instruction_type' : [] | [string],
   'sender' : [] | [string],
   'balance_change' : [] | [bigint],
-  'skip_queue' : boolean,
+  'processed_at' : [] | [bigint],
   'amount' : [] | [bigint],
+  'queued_at' : bigint,
   'receiver' : [] | [string],
 }
+export type TxId = { 'TransactionHash' : string } |
+  { 'BlockIndex' : bigint };
+export interface UpdateSolanaTransactionArgs {
+  'status' : string,
+  'signature' : string,
+  'metadata' : [] | [string],
+}
 export interface _SERVICE {
-  'add_authorized_principal_with_role' : ActorMethod<
-    [Principal, string],
-    { 'Ok' : null } |
-      { 'Err' : string }
-  >,
-  'cache_solana_address' : ActorMethod<
-    [],
-    { 'Ok' : string } |
-      { 'Err' : string }
-  >,
+  'cache_solana_address' : ActorMethod<[], Result>,
   'finalize_swap_job' : ActorMethod<
     [bigint, string, boolean, [] | [string]],
-    { 'Ok' : null } |
-      { 'Err' : string }
+    Result_1
   >,
-  'get_all_solana_txs' : ActorMethod<[], Array<SolanaTransaction>>,
-  'get_authorization_info' : ActorMethod<[], string>,
+  'get_all_solana_transactions' : ActorMethod<
+    [],
+    Array<TransactionNotification>
+  >,
+  'get_icp_job' : ActorMethod<[bigint], [] | [IcpTransferJob]>,
+  'get_icp_jobs_for_caller' : ActorMethod<[], Array<IcpTransferJob>>,
+  'get_pending_icp_jobs' : ActorMethod<[number], Array<IcpTransferJob>>,
   'get_pending_swap_jobs' : ActorMethod<[number], Array<SwapJob>>,
-  'get_security_stats' : ActorMethod<[], string>,
-  'get_solana_address' : ActorMethod<
-    [],
-    { 'Ok' : string } |
-      { 'Err' : string }
+  'get_solana_address' : ActorMethod<[], Result>,
+  'get_solana_transaction' : ActorMethod<
+    [string],
+    [] | [TransactionNotification]
   >,
-  'get_solana_tx' : ActorMethod<[string], [] | [SolanaTransaction]>,
   'get_swap_job' : ActorMethod<[bigint], [] | [SwapJob]>,
-  'get_transactions' : ActorMethod<[bigint, number], Array<QueuedTransaction>>,
-  'list_authorized_principals_in_canister' : ActorMethod<
-    [],
-    { 'Ok' : Array<[Principal, string]> } |
-      { 'Err' : string }
+  'get_transactions' : ActorMethod<
+    [bigint, number],
+    Array<TransactionQueueItem>
   >,
-  'mark_swap_job_submitted' : ActorMethod<
-    [bigint, string],
-    { 'Ok' : null } |
-      { 'Err' : string }
-  >,
+  'mark_swap_job_submitted' : ActorMethod<[bigint, string], Result_1>,
   'mark_transactions_processed' : ActorMethod<
     [BigUint64Array | bigint[]],
-    { 'Ok' : null } |
-      { 'Err' : string }
+    Result_1
   >,
-  'remove_authorized_principal_from_canister' : ActorMethod<
-    [Principal],
-    { 'Ok' : null } |
-      { 'Err' : string }
+  'receive_solana_transaction_notification' : ActorMethod<
+    [TransactionNotification],
+    Result_1
   >,
-  'swap' : ActorMethod<[SwapArgs], SwapResult>,
-  'update_latest_blockhash' : ActorMethod<
-    [string],
-    { 'Ok' : null } |
-      { 'Err' : string }
-  >,
-  'update_solana_tx' : ActorMethod<
+  'swap' : ActorMethod<[SwapArgs], Result_2>,
+  'update_latest_blockhash' : ActorMethod<[string], Result_1>,
+  'update_solana_transaction' : ActorMethod<
     [UpdateSolanaTransactionArgs],
-    { 'Ok' : null } |
-      { 'Err' : string }
+    Result_1
   >,
 }
 export declare const idlFactory: IDL.InterfaceFactory;

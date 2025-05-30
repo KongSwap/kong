@@ -1,26 +1,28 @@
 export const idlFactory = ({ IDL }) => {
-  const SolanaTransactionStatus = IDL.Variant({
+  const Result = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
+  const Result_1 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
+  const TransactionNotification = IDL.Record({
+    'status' : IDL.Text,
+    'signature' : IDL.Text,
+    'metadata' : IDL.Opt(IDL.Text),
+  });
+  const IcpTransferStatus = IDL.Variant({
     'Failed' : IDL.Null,
-    'Finalized' : IDL.Null,
-    'Confirmed' : IDL.Null,
-    'TimedOut' : IDL.Null,
+    'InProgress' : IDL.Null,
+    'Completed' : IDL.Null,
     'Pending' : IDL.Null,
   });
-  const SolanaTransaction = IDL.Record({
-    'id' : IDL.Text,
-    'fee' : IDL.Opt(IDL.Nat64),
-    'status' : SolanaTransactionStatus,
+  const IcpTransferJob = IDL.Record({
+    'id' : IDL.Nat64,
+    'status' : IcpTransferStatus,
     'updated_at' : IDL.Nat64,
-    'direction' : IDL.Opt(IDL.Text),
-    'signature' : IDL.Text,
-    'transaction_time' : IDL.Opt(IDL.Text),
-    'metadata' : IDL.Opt(IDL.Text),
-    'instruction_type' : IDL.Opt(IDL.Text),
-    'sender' : IDL.Opt(IDL.Text),
-    'balance_change' : IDL.Opt(IDL.Nat64),
-    'registered_at' : IDL.Nat64,
-    'amount' : IDL.Opt(IDL.Nat64),
-    'receiver' : IDL.Opt(IDL.Text),
+    'to_principal' : IDL.Principal,
+    'block_index' : IDL.Opt(IDL.Nat64),
+    'error_message' : IDL.Opt(IDL.Text),
+    'attempts' : IDL.Nat32,
+    'created_at' : IDL.Nat64,
+    'from_principal' : IDL.Opt(IDL.Principal),
+    'amount' : IDL.Nat64,
   });
   const SwapJobStatus = IDL.Variant({
     'Failed' : IDL.Null,
@@ -39,7 +41,7 @@ export const idlFactory = ({ IDL }) => {
     'solana_tx_signature_of_payout' : IDL.Opt(IDL.Text),
     'encoded_signed_solana_tx' : IDL.Text,
   });
-  const QueuedTransaction = IDL.Record({
+  const TransactionQueueItem = IDL.Record({
     'id' : IDL.Nat64,
     'fee' : IDL.Opt(IDL.Nat64),
     'is_processed' : IDL.Bool,
@@ -73,103 +75,71 @@ export const idlFactory = ({ IDL }) => {
   });
   const QueuedSwapReply = IDL.Record({
     'status' : IDL.Text,
-    'job_id' : IDL.Opt(IDL.Nat64),
+    'job_id' : IDL.Nat64,
     'message' : IDL.Text,
   });
-  const SwapResult = IDL.Variant({ 'Ok' : QueuedSwapReply, 'Err' : IDL.Text });
+  const Result_2 = IDL.Variant({ 'Ok' : QueuedSwapReply, 'Err' : IDL.Text });
   const UpdateSolanaTransactionArgs = IDL.Record({
-    'id' : IDL.Text,
-    'fee' : IDL.Opt(IDL.Nat64),
     'status' : IDL.Text,
-    'direction' : IDL.Opt(IDL.Text),
     'signature' : IDL.Text,
-    'transaction_time' : IDL.Opt(IDL.Text),
     'metadata' : IDL.Opt(IDL.Text),
-    'instruction_type' : IDL.Opt(IDL.Text),
-    'sender' : IDL.Opt(IDL.Text),
-    'balance_change' : IDL.Opt(IDL.Nat64),
-    'skip_queue' : IDL.Bool,
-    'amount' : IDL.Opt(IDL.Nat64),
-    'receiver' : IDL.Opt(IDL.Text),
   });
   return IDL.Service({
-    'add_authorized_principal_with_role' : IDL.Func(
-        [IDL.Principal, IDL.Text],
-        [IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text })],
-        [],
-      ),
-    'cache_solana_address' : IDL.Func(
-        [],
-        [IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text })],
-        [],
-      ),
+    'cache_solana_address' : IDL.Func([], [Result], []),
     'finalize_swap_job' : IDL.Func(
         [IDL.Nat64, IDL.Text, IDL.Bool, IDL.Opt(IDL.Text)],
-        [IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text })],
+        [Result_1],
         [],
       ),
-    'get_all_solana_txs' : IDL.Func(
+    'get_all_solana_transactions' : IDL.Func(
         [],
-        [IDL.Vec(SolanaTransaction)],
+        [IDL.Vec(TransactionNotification)],
         ['query'],
       ),
-    'get_authorization_info' : IDL.Func([], [IDL.Text], ['query']),
+    'get_icp_job' : IDL.Func([IDL.Nat64], [IDL.Opt(IcpTransferJob)], ['query']),
+    'get_icp_jobs_for_caller' : IDL.Func(
+        [],
+        [IDL.Vec(IcpTransferJob)],
+        ['query'],
+      ),
+    'get_pending_icp_jobs' : IDL.Func(
+        [IDL.Nat32],
+        [IDL.Vec(IcpTransferJob)],
+        ['query'],
+      ),
     'get_pending_swap_jobs' : IDL.Func(
         [IDL.Nat32],
         [IDL.Vec(SwapJob)],
         ['query'],
       ),
-    'get_security_stats' : IDL.Func([], [IDL.Text], ['query']),
-    'get_solana_address' : IDL.Func(
-        [],
-        [IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text })],
-        ['query'],
-      ),
-    'get_solana_tx' : IDL.Func(
+    'get_solana_address' : IDL.Func([], [Result], ['query']),
+    'get_solana_transaction' : IDL.Func(
         [IDL.Text],
-        [IDL.Opt(SolanaTransaction)],
+        [IDL.Opt(TransactionNotification)],
         ['query'],
       ),
     'get_swap_job' : IDL.Func([IDL.Nat64], [IDL.Opt(SwapJob)], ['query']),
     'get_transactions' : IDL.Func(
         [IDL.Nat64, IDL.Nat32],
-        [IDL.Vec(QueuedTransaction)],
+        [IDL.Vec(TransactionQueueItem)],
         ['query'],
       ),
-    'list_authorized_principals_in_canister' : IDL.Func(
-        [],
-        [
-          IDL.Variant({
-            'Ok' : IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Text)),
-            'Err' : IDL.Text,
-          }),
-        ],
-        ['query'],
-      ),
-    'mark_swap_job_submitted' : IDL.Func(
-        [IDL.Nat64, IDL.Text],
-        [IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text })],
-        [],
-      ),
+    'mark_swap_job_submitted' : IDL.Func([IDL.Nat64, IDL.Text], [Result_1], []),
     'mark_transactions_processed' : IDL.Func(
         [IDL.Vec(IDL.Nat64)],
-        [IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text })],
+        [Result_1],
         [],
       ),
-    'remove_authorized_principal_from_canister' : IDL.Func(
-        [IDL.Principal],
-        [IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text })],
+    'receive_solana_transaction_notification' : IDL.Func(
+        [TransactionNotification],
+        [Result_1],
         [],
       ),
-    'swap' : IDL.Func([SwapArgs], [SwapResult], []),
-    'update_latest_blockhash' : IDL.Func(
-        [IDL.Text],
-        [IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text })],
-        [],
-      ),
-    'update_solana_tx' : IDL.Func(
+    'swap' : IDL.Func([SwapArgs], [Result_2], []),
+    'update_latest_blockhash' : IDL.Func([IDL.Text], [Result_1], []),
+    'update_solana_transaction' : IDL.Func(
         [UpdateSolanaTransactionArgs],
-        [IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text })],
+        [Result_1],
         [],
       ),
   });

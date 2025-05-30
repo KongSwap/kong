@@ -11,15 +11,19 @@
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
-  import { 
-    swapPanelRoundness, 
-    swapPanelBorder, 
-    swapPanelShadow, 
-    swapPanelBorderStyle, 
-    swapPanelInputsRounded, 
+  import {
+    swapPanelRoundness,
+    swapPanelBorder,
+    swapPanelShadow,
+    swapPanelBorderStyle,
+    swapPanelInputsRounded,
     transparentSwapPanel,
     panelRoundness
   } from "$lib/stores/derivedThemeStore";
+  import type { SolanaTokenInfo } from "$lib/config/solana.config"; // Import SolanaTokenInfo
+  import { solanaBalanceStore } from "$lib/stores/solanaBalanceStore"; // Import Solana balance store
+  
+  type AnyToken = Kong.Token | SolanaTokenInfo; // Define AnyToken
   
   let isWin95Border = $derived($swapPanelBorderStyle === 'win95');
   
@@ -35,7 +39,7 @@
     isLoading = false,
   } = $props<{
     title: string;
-    token: Kong.Token;
+    token: AnyToken; // Change token type to AnyToken
     amount: string;
     onAmountChange: (event: CustomEvent) => void;
     disabled: boolean;
@@ -62,7 +66,7 @@
 
   // Derived state using runes
   let decimals = $derived(token?.decimals || DEFAULT_DECIMALS);
-  let isIcrc1 = $derived(token?.icrc1 && !token?.icrc2);
+  let isIcrc1 = $derived('icrc1' in token && token?.icrc1 && !token?.icrc2); // Use type guard
 
   // Initialize window-dependent values
   let windowWidth = $state(0);
@@ -211,39 +215,69 @@
           return;
         }
 
-        const balance = $currentUserBalancesStore[token.address]?.in_tokens;
-        if (!balance) {
-          console.error("Balance not available for token", token.symbol);
-          toastStore.error(`Balance not available for ${token.symbol}`);
+        let balance: bigint | undefined;
+        let feesInTokens = 0n;
+        let maxAmount: string;
+
+        if ('address' in token) { // It's an ICP token
+          balance = $currentUserBalancesStore[token.address]?.in_tokens;
+          feesInTokens = token.fee_fixed
+            ? BigInt(token.fee_fixed.toString().replace(/_/g, "")) *
+              (isIcrc1 ? 1n : 2n)
+            : 0n;
+
+          if (!balance) {
+            console.error("Balance not available for token", token.symbol);
+            toastStore.error(`Balance not available for ${token.symbol}`);
+            return;
+          }
+
+          const availableBalance = balance - feesInTokens;
+
+          if (availableBalance <= 0n) {
+            toastStore.error("Insufficient balance to cover fees");
+            return;
+          }
+
+          maxAmount = formatTokenBalance(
+            availableBalance.toString(),
+            token.decimals,
+          );
+        } else if ('mint_address' in token) { // It's a Solana token
+          const solanaBalance = solanaBalanceStore.getBalance(token.mint_address);
+          
+          if (!solanaBalance || solanaBalance.balance === 0n) {
+            console.error("Solana balance not available for token", token.symbol);
+            toastStore.error(`Balance not available for ${token.symbol}`);
+            return;
+          }
+
+          // For Solana tokens, we'll use the formatted balance directly
+          // In the future, we might want to subtract network fees for SOL
+          if (token.symbol === 'SOL') {
+            // Reserve a small amount for transaction fees (0.001 SOL)
+            const reserveAmount = 0.001;
+            const availableAmount = parseFloat(solanaBalance.balance_formatted) - reserveAmount;
+            
+            if (availableAmount <= 0) {
+              toastStore.error("Insufficient SOL balance to cover transaction fees");
+              return;
+            }
+            
+            maxAmount = availableAmount.toFixed(6);
+          } else {
+            // For SPL tokens, use full balance
+            maxAmount = solanaBalance.balance_formatted;
+          }
+        } else {
+          toastStore.error("Unsupported token type");
           return;
         }
 
-        // Calculate fees using token prop directly
-        const feesInTokens = token.fee_fixed
-          ? BigInt(token.fee_fixed.toString().replace(/_/g, "")) *
-            (isIcrc1 ? 1n : 2n)
-          : 0n;
-
-        // Subtract fees from balance
-        const availableBalance = balance - feesInTokens;
-
-        if (availableBalance <= 0n) {
-          toastStore.error("Insufficient balance to cover fees");
-          return;
-        }
-
-        // Convert to display format
-        const maxAmount = formatTokenBalance(
-          availableBalance.toString(),
-          token.decimals,
-        );
-
-        // Set the input value
         if (inputElement) {
           inputElement.value = formatWithCommas(maxAmount);
         }
 
-        // Trigger the amount change
         onAmountChange(
           new CustomEvent("input", {
             detail: { value: maxAmount, panelType },
@@ -302,7 +336,7 @@
   let parsedAmount = $derived(parseFloat(displayAmount || "0"));
   // Use token prop directly for price
   let tokenPrice = $derived(
-    token ? Number(token?.metrics?.price || 0) : 0,
+    token && 'metrics' in token ? Number(token?.metrics?.price || 0) : 0, // Use type guard
   );
   let tradeUsdValue = $derived(tokenPrice * parsedAmount);
 
@@ -335,6 +369,29 @@
         $swapState.tokenSelectorPosition?.y > windowHeight / 2 ? "up" : "down";
     }
   });
+
+  // Helper function to get token balance
+  function getTokenBalance(token: AnyToken): string {
+    if (!token) return "0";
+    
+    if ('address' in token) {
+      // ICP token - use currentUserBalancesStore
+      const balance = $currentUserBalancesStore[token.address];
+      if (balance) {
+        return formatTokenBalance(
+          balance.in_tokens.toString(),
+          token.decimals || DEFAULT_DECIMALS
+        );
+      }
+      return "0";
+    } else if ('mint_address' in token) {
+      // Solana token - use solanaBalanceStore
+      const solanaBalance = solanaBalanceStore.getBalance(token.mint_address);
+      return solanaBalance ? solanaBalance.balance_formatted : "0";
+    }
+    
+    return "0";
+  }
 </script>
 
 <Panel
@@ -442,7 +499,7 @@
           >
             {#if token}
               <div class="flex items-center gap-2">
-                <TokenImages tokens={[token]} size={32} />
+                <TokenImages tokens={[{ ...token, logo_url: token.logo_url || '/static/tokens/not_verified.webp' }]} size={32} />
                 <span class="hidden text-lg font-semibold text-kong-text-primary sm:inline">{token.symbol}</span>
               </div>
               <svg
@@ -503,20 +560,7 @@
               class:hover:text-yellow-500={title === 'You Pay' && !disabled}
               on:click={handleMaxClick}
             >
-              {#if token && token.address && $currentUserBalancesStore}
-                {#if $currentUserBalancesStore[token.address]}
-                  {formatTokenBalance(
-                    ($currentUserBalancesStore[token.address]?.in_tokens || 0).toString(),
-                    token.decimals || DEFAULT_DECIMALS
-                  )}
-                  {token.symbol || ''}
-                {:else}
-                  <!-- Log what's happening for debugging -->
-                  0 {token.symbol || ''}
-                {/if}
-              {:else}
-                Loading...
-              {/if}
+              {getTokenBalance(token)} {token.symbol || ''}
             </button>
           </div>
         {/if}

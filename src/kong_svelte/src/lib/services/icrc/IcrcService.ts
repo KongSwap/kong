@@ -137,12 +137,38 @@ export class IcrcService {
   ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
     const subaccount = auth.pnp?.account?.subaccount
-      ? (Array.from(auth.pnp.account.subaccount) as number[])
+      ? Array.from(auth.pnp.account.subaccount).map(x => Number(x))
       : undefined;
 
+    // Filter out tokens with invalid addresses early
+    const validTokens = tokens.filter(token => {
+      if (!token || !token.address || typeof token.address !== 'string') {
+        console.warn('Skipping token with invalid address:', token);
+        return false;
+      }
+      return true;
+    });
+
+    if (validTokens.length === 0) {
+      console.warn('No valid tokens to process in batch');
+      return results;
+    }
+
     // Group tokens by subnet to minimize subnet key fetches
-    const tokensBySubnet = tokens.reduce((acc, token) => {
-      const subnet = token.address.split("-")[1];
+    const tokensBySubnet = validTokens.reduce((acc, token) => {
+      // Skip Solana tokens - they don't have subnets
+      if (token.token_type === 'SPL' || token.chain === 'Solana') {
+        return acc;
+      }
+      
+      // Safe split with validation
+      const addressParts = token.address.split("-");
+      if (addressParts.length < 2) {
+        console.warn('Token address does not have expected format:', token.address);
+        return acc;
+      }
+      
+      const subnet = addressParts[1];
       if (!acc.has(subnet)) acc.set(subnet, []);
       acc.get(subnet).push(token);
       return acc;

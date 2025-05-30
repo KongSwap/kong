@@ -31,7 +31,9 @@ const defaultTokens = () => {
     ntn: "f54if-eqaaa-aaaaq-aacea-cai",
     cloud: "pcj6u-uaaaa-aaaak-aewnq-cai",
     panda: "druyg-tyaaa-aaaaq-aactq-cai",
-    dcd: "xsi2v-cyaaa-aaaaq-aabfq-cai"
+    dcd: "xsi2v-cyaaa-aaaaq-aabfq-cai",
+    usdc_solana: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    trump_solana: "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"
   };
 };
 

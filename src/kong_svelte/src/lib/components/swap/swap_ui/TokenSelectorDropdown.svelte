@@ -4,7 +4,10 @@
   import {
     currentUserBalancesStore,
   } from "$lib/stores/tokenStore";
+  import type { SolanaTokenInfo } from "$lib/config/solana.config";
+  import { DEFAULT_SOLANA_TOKENS } from "$lib/config/solana.config";
   import { loadBalances, refreshSingleBalance } from "$lib/stores/balancesStore";
+  import { solanaBalanceStore } from "$lib/stores/solanaBalanceStore";
   import { scale } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import { browser } from "$app/environment";
@@ -33,6 +36,8 @@
     title = "Tokens",
   } = props;
 
+  type AnyToken = Kong.Token | SolanaTokenInfo;
+
   // Constants
   const BLOCKED_TOKEN_IDS = [];
   const TOKEN_ITEM_HEIGHT = 72;
@@ -44,13 +49,19 @@
     { id: "all" as const, label: "All" },
     { id: "ck" as const, label: "CK" },
     { id: "favorites" as const, label: "Favorites" },
+    { id: "solana" as const, label: "SOL" },
   ];
   
-  type FilterType = "all" | "ck" | "favorites";
+  type FilterType = "all" | "ck" | "favorites" | "solana";
 
   // Helper for extracting and validating token ID
-  function getTokenId(token: any): string | null {
-    return token?.address || null;
+  function getTokenId(token: AnyToken): string | null {
+    if ('address' in token) {
+      return token.address; // For Kong.Token (ICP tokens)
+    } else if ('mint_address' in token) {
+      return token.mint_address; // For SolanaTokenInfo
+    }
+    return null;
   }
 
   // Individual reactive state variables
@@ -86,11 +97,88 @@
     browser 
       ? Array.from($userTokens.tokenData.values()).filter((token) => {
           const tokenId = getTokenId(token);
-          return tokenId && $userTokens.enabledTokens.has(tokenId);
+          const isEnabled = tokenId && $userTokens.enabledTokens.has(tokenId);
+          return isEnabled;
         }) as Kong.Token[]
       : []
   );
   
+  // Convert Solana tokens to Kong format with price data
+  async function convertSolanaTokensToKongFormat(): Promise<Kong.Token[]> {
+    try {
+      const { CrossChainSwapService } = await import('$lib/services/swap/CrossChainSwapService');
+      const prices = await CrossChainSwapService.fetchTokenPrices();
+      
+      return DEFAULT_SOLANA_TOKENS.map(solToken => {
+        const price = prices[solToken.symbol] || 0;
+        
+        const kongToken: Kong.Token = {
+          id: solToken.id,
+          name: solToken.name,
+          symbol: solToken.symbol,
+          address: solToken.mint_address, // Use mint_address as address for compatibility
+          mint_address: solToken.mint_address, // Keep original mint_address too
+          fee: 0,
+          fee_fixed: '0',
+          decimals: solToken.decimals,
+          token_type: 'SPL',
+          chain: 'Solana',
+          standards: [],
+          logo_url: solToken.logo_url,
+          metrics: {
+            price: price.toString(),
+            total_supply: '0',
+            volume_24h: '0',
+            market_cap: '0',
+            tvl: '0',
+            price_change_24h: '0',
+            updated_at: new Date().toISOString(),
+          },
+          timestamp: Date.now(),
+        };
+        
+        return kongToken;
+      });
+    } catch (error) {
+      console.error('Error converting Solana tokens:', error);
+      // Fallback: create Kong tokens without price data
+      return DEFAULT_SOLANA_TOKENS.map(solToken => ({
+        id: solToken.id,
+        name: solToken.name,
+        symbol: solToken.symbol,
+        address: solToken.mint_address,
+        fee: 0,
+        fee_fixed: '0',
+        decimals: solToken.decimals,
+        token_type: 'SPL',
+        chain: 'Solana',
+        standards: [],
+        logo_url: solToken.logo_url,
+        metrics: {
+          price: '0',
+          total_supply: '0',
+          volume_24h: '0',
+          market_cap: '0',
+          tvl: '0',
+          price_change_24h: '0',
+          updated_at: new Date().toISOString(),
+        },
+        timestamp: Date.now(),
+      }));
+    }
+  }
+  
+  let solanaTokens = $state<Kong.Token[]>([]);
+  
+  // Load Solana tokens with prices
+  $effect(() => {
+    if (browser) {
+      convertSolanaTokensToKongFormat().then(tokens => {
+        solanaTokens = tokens;
+      });
+    }
+  });
+
   // Update loadedTokens when the balancesStore changes
   $effect(() => {
     if ($currentUserBalancesStore) {
@@ -101,20 +189,35 @@
   });
 
   // Helper functions for token state
-  function isApiToken(token: Kong.Token): boolean {
-    return !!token && !$userTokens.enabledTokens.has(token.address);
+  function isApiToken(token: AnyToken): boolean {
+    // Solana tokens are never API tokens - they don't need enabling
+    if ('mint_address' in token || token.token_type === 'SPL' || token.chain === 'Solana') {
+      return false;
+    }
+    return 'address' in token && !$userTokens.enabledTokens.has(token.address);
   }
   
   function isFavoriteToken(tokenId: string): boolean {
     return selectorState.favoriteTokens.get(tokenId) || false;
   }
 
-  function canSelectToken(token: Kong.Token): boolean {
-    return !(
-      otherPanelToken?.address === token.address ||
-      BLOCKED_TOKEN_IDS.includes(token.address) ||
-      isApiToken(token)
-    );
+  function canSelectToken(token: AnyToken): boolean {
+    const tokenId = getTokenId(token);
+    const otherTokenId = getTokenId(otherPanelToken || {} as AnyToken); // Handle null
+    
+    // Check if this token is the same as the other panel's token
+    if (tokenId === otherTokenId) return false;
+    
+    // Check if token is blocked
+    if (tokenId && BLOCKED_TOKEN_IDS.includes(tokenId)) return false;
+    
+    // For ICP tokens, check if they need to be enabled
+    if ('address' in token && isApiToken(token)) return false;
+    
+    // For Solana tokens, they can always be selected when on the solana tab
+    if ('mint_address' in token) return true;
+    
+    return true;
   }
 
   // Get filtered tokens before UI filters
@@ -137,6 +240,13 @@
       : [],
   );
 
+  // New derived store to combine ICP and Solana tokens
+  let combinedTokens = $derived(
+    selectorState.standardFilter === "solana"
+      ? [...solanaTokens] // Only Solana tokens if filter is "solana"
+      : [...baseFilteredTokens] // Otherwise, only ICP tokens
+  );
+
   // User authentication state
   let isUserAuthenticated = $derived($userTokens.isAuthenticated);
 
@@ -151,7 +261,7 @@
 
   // Consolidated filter and sort function
   function filterAndSortTokens(
-    tokens: Kong.Token[],
+    tokens: AnyToken[],
     query: string,
     filter: FilterType,
     hideZero: boolean,
@@ -159,44 +269,48 @@
     sortCol: string,
     sortDir: string,
     balances: Record<string, { in_tokens: bigint; in_usd: string }>,
-    currentToken: Kong.Token | null
-  ): Kong.Token[] {
+    currentToken: AnyToken | null
+  ): AnyToken[] {
     return tokens.filter(token => {
-      // Basic validation
-      if (!token?.address || !token?.symbol || !token?.name) return false;
+      const tokenId = getTokenId(token);
+      if (!tokenId || !token?.symbol || !token?.name) return false;
       
       // Search query filter
       if (query && !token.symbol.toLowerCase().includes(query.toLowerCase()) && 
           !token.name.toLowerCase().includes(query.toLowerCase()) &&
-          !token.address.toLowerCase().includes(query.toLowerCase())) {
+          !tokenId.toLowerCase().includes(query.toLowerCase())) {
         return false;
       }
       
-      // Standard filter (all, ck, favorites)
+      // Standard filter (all, ck, favorites, solana)
       if (filter === "ck" && !token.symbol.toLowerCase().startsWith("ck")) return false;
-      if (filter === "favorites" && !favorites.get(token.address)) return false;
-      
-      // Balance filter
-      if (hideZero) {
+      if (filter === "favorites" && !favorites.get(tokenId)) return false;
+      // For Solana, no additional filter needed here as combinedTokens already filters
+
+      // Balance filter (only applies to ICP tokens with balances)
+      if (hideZero && 'address' in token) { // Only check balance for Kong.Token
         const balance = balances[token.address]?.in_tokens;
         if (!balance || balance <= BigInt(0)) return false;
       }
       
       return true;
     }).sort((a, b) => {
+      const aId = getTokenId(a);
+      const bId = getTokenId(b);
+
       // Sort by current token first
-      const aIsCurrent = currentToken?.address === a.address;
-      const bIsCurrent = currentToken?.address === b.address;
+      const aIsCurrent = currentToken && aId === getTokenId(currentToken);
+      const bIsCurrent = currentToken && bId === getTokenId(currentToken);
       if (aIsCurrent) return -1;
       if (bIsCurrent) return 1;
 
       // Sort by favorites first
-      const aFavorite = favorites.get(a.address) || false;
-      const bFavorite = favorites.get(b.address) || false;
+      const aFavorite = aId ? favorites.get(aId) || false : false;
+      const bFavorite = bId ? favorites.get(bId) || false : false;
       if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
 
-      // Then sort by value if that's selected
-      if (sortCol === 'value') {
+      // Then sort by value if that's selected (only applies to ICP tokens with balances)
+      if (sortCol === 'value' && 'address' in a && 'address' in b) {
         const aBalance = balances[a.address]?.in_usd || "0";
         const bBalance = balances[b.address]?.in_usd || "0";
         const aValue = Number(aBalance);
@@ -208,19 +322,10 @@
     });
   }
 
-  // Get filtered and sorted tokens
-  function getFilteredAndSortedTokens(
-    allTokens: Kong.Token[],
-    apiTokens: Kong.Token[],
-    currentToken: Kong.Token | null
-  ): Kong.Token[] {
-    // Deduplicate tokens from both sources
-    const uniqueTokens = Array.from(new Map(
-      [...allTokens, ...apiTokens].map(token => [token.address, token])
-    ).values());
-    
-    return filterAndSortTokens(
-      uniqueTokens,
+  // Derived lists and virtual scroll states
+  let filteredTokens = $derived(
+    browser ? filterAndSortTokens(
+      [...combinedTokens, ...selectorState.apiSearchResults], // Combine all tokens here
       searchQuery,
       selectorState.standardFilter,
       selectorState.hideZeroBalances,
@@ -228,17 +333,29 @@
       selectorState.sortColumn,
       selectorState.sortDirection,
       $currentUserBalancesStore,
-      currentToken
-    );
-  }
-
-  // Derived lists and virtual scroll states
-  let filteredTokens = $derived(
-    browser ? getFilteredAndSortedTokens(baseFilteredTokens, selectorState.apiSearchResults, currentToken) : []
+      currentToken as AnyToken | null
+    ) : []
   );
   
-  let enabledFilteredTokens = $derived(filteredTokens.filter(token => $userTokens.enabledTokens.has(token.address)));
-  let apiFilteredTokens = $derived(filteredTokens.filter(token => isApiToken(token)));
+  let enabledFilteredTokens = $derived(
+    filteredTokens.filter(token => {
+      // For ICP tokens, check if they're enabled
+      if ('address' in token) {
+        return $userTokens.enabledTokens.has(token.address);
+      }
+      // For Solana tokens, they're always considered "enabled" when on the solana tab
+      if ('mint_address' in token && selectorState.standardFilter === "solana") {
+        return true;
+      }
+      return false;
+    })
+  );
+  let apiFilteredTokens = $derived(
+    filteredTokens.filter(token => {
+      // Only ICP tokens can be API tokens (from search results)
+      return 'address' in token && isApiToken(token);
+    })
+  );
   
   let enabledTokensVirtualState = $derived(
     virtualScroll({
@@ -266,6 +383,7 @@
       case "all": return allTokensCount;
       case "ck": return ckTokensCount;
       case "favorites": return favoritesCount;
+      case "solana": return solanaTokens.length;
       default: return 0;
     }
   }
@@ -299,22 +417,28 @@
   }
 
   // Token-related actions
-  async function handleFavoriteClick(e: MouseEvent, token: Kong.Token) {
+  async function handleFavoriteClick(e: MouseEvent, token: AnyToken) {
     e.preventDefault();
     e.stopPropagation();
     
-    const isFavorite = selectorState.favoriteTokens.get(token.address) || false;
+    const tokenId = getTokenId(token);
+    if (!tokenId) return;
+
+    const isFavorite = selectorState.favoriteTokens.get(tokenId) || false;
     await (isFavorite 
-      ? favoriteStore.removeFavorite(token.address)
-      : favoriteStore.addFavorite(token.address));
+      ? favoriteStore.removeFavorite(tokenId)
+      : favoriteStore.addFavorite(tokenId));
 
     // Update the local state
-    selectorState.favoriteTokens.set(token.address, !isFavorite);
+    selectorState.favoriteTokens.set(tokenId, !isFavorite);
     selectorState.favoriteTokens = new Map(selectorState.favoriteTokens); // Trigger reactivity
   }
   
-  function handleSelect(token: Kong.Token) {
-    if (BLOCKED_TOKEN_IDS.includes(token.address)) {
+  function handleSelect(token: AnyToken) {
+    const tokenId = getTokenId(token);
+    if (!tokenId) return;
+
+    if (BLOCKED_TOKEN_IDS.includes(tokenId)) {
       toastStore.warning(
         "BIL token is currently in read-only mode. Trading will resume when the ledger is stable.",
         { title: "Token Temporarily Unavailable", duration: 8000 }
@@ -322,33 +446,40 @@
       return;
     }
 
-    // Enable the token first if it's from API
-    if (isApiToken(token)) userTokens.enableToken(token);
+    // Enable the token first if it's from API and is an ICP token
+    if ('address' in token && isApiToken(token)) userTokens.enableToken(token);
 
     onSelect(token);
     searchQuery = "";
   }
   
-  async function handleEnableToken(e: MouseEvent, token: Kong.Token) {
+  async function handleEnableToken(e: MouseEvent, token: AnyToken) {
     e.preventDefault();
     e.stopPropagation();
-    selectorState.enablingTokenId = token.address;
+    
+    const tokenId = getTokenId(token);
+    if (!tokenId) return;
+
+    selectorState.enablingTokenId = tokenId;
 
     try {
-      userTokens.enableToken(token);
-      
-      if (isUserAuthenticated && !selectorState.loadedTokens.has(token.address)) {
-        selectorState.loadedTokens.add(token.address);
-        const principal = $auth.account?.owner;
+      // Only enable ICP tokens in userTokens store
+      if ('address' in token) {
+        userTokens.enableToken(token);
+        
+        if (isUserAuthenticated && !selectorState.loadedTokens.has(token.address)) {
+          selectorState.loadedTokens.add(token.address);
+          const principal = $auth.account?.owner;
 
-        if (principal) {          
-          setTimeout(async () => {
-            try {
-              await refreshSingleBalance(token, principal, false);
-            } catch (err) {
-              console.warn(`Failed to load balance for ${token.symbol}:`, err);
-            }
-          }, 200);
+          if (principal) {          
+            setTimeout(async () => {
+              try {
+                await refreshSingleBalance(token, principal, false);
+              } catch (err) {
+                console.warn(`Failed to load balance for ${token.symbol}:`, err);
+              }
+            }, 200);
+          }
         }
       }
       
@@ -363,7 +494,7 @@
     }
   }
   
-  function handleTokenClick(e: MouseEvent | TouchEvent, token: Kong.Token) {
+  function handleTokenClick(e: MouseEvent | TouchEvent, token: AnyToken) {
     e.stopPropagation();
 
     if (isApiToken(token)) {
@@ -374,8 +505,8 @@
 
     if (!canSelectToken(token)) return;
 
-    // Load balance if needed before selecting
-    if (isUserAuthenticated && $auth.account?.owner && 
+    // Load balance if needed before selecting (only for ICP tokens)
+    if ('address' in token && isUserAuthenticated && $auth.account?.owner && 
         !$currentUserBalancesStore[token.address]) {
       void refreshSingleBalance(token, $auth.account.owner, false);
     }
@@ -409,12 +540,12 @@
         ...apiTokensVirtualState.visible.map(v => v.item)
       ];
 
-      // Filter tokens that need balance loading
+      // Filter tokens that need balance loading (only for ICP tokens)
       const tokensNeedingBalances = visibleTokens.filter(
-        token => token.address && 
+        token => 'address' in token && token.address && 
                 !$currentUserBalancesStore[token.address] && 
                 !selectorState.loadedTokens.has(token.address)
-      );
+      ) as Kong.Token[]; // Cast to Kong.Token[]
       
       if (tokensNeedingBalances.length > 0) {
         tokensNeedingBalances.forEach(token => selectorState.loadedTokens.add(token.address));
@@ -434,8 +565,8 @@
     const matchingLocalTokens = baseFilteredTokens.filter(
       token => (token.symbol.toLowerCase().includes(query.toLowerCase()) ||
                token.name.toLowerCase().includes(query.toLowerCase()) ||
-               token.address.toLowerCase().includes(query.toLowerCase())) &&
-               $userTokens.enabledTokens.has(token.address)
+               getTokenId(token)!.toLowerCase().includes(query.toLowerCase())) &&
+               'address' in token && $userTokens.enabledTokens.has(token.address) // Only check enabled for ICP tokens
     );
 
     if (matchingLocalTokens.length >= 10) {
@@ -505,10 +636,10 @@
         setTimeout(() => {
           if (show && tokens.length > 0) {
             const tokensNeedingBalances = tokens.filter(
-              token => token.address && 
+              token => 'address' in token && token.address && 
                       !$currentUserBalancesStore[token.address] && 
                       !selectorState.loadedTokens.has(token.address)
-            );
+            ) as Kong.Token[]; // Cast to Kong.Token[]
             
             if (tokensNeedingBalances.length > 0) {
               tokensNeedingBalances.forEach(token => selectorState.loadedTokens.add(token.address));
@@ -535,6 +666,13 @@
     if (show && browser) loadVisibleTokenBalances();
   });
 
+  $effect(() => {
+    // Load Solana balances when dropdown is shown and user is authenticated
+    if (show && browser && isUserAuthenticated) {
+      solanaBalanceStore.loadBalances();
+    }
+  });
+
   // Cleanup
   function cleanup() {
     if (browser) {
@@ -548,8 +686,7 @@
   onDestroy(cleanup);
 </script>
 
-{#if show}
-  <div class="fixed inset-0 bg-kong-bg-dark/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
+<div class="fixed inset-0 bg-kong-bg-dark/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
     <div
       class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] bg-kong-token-selector-bg {expandDirection} {selectorState.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1 rounded-xl'}"
       bind:this={selectorState.dropdownElement}
@@ -593,16 +730,16 @@
             <!-- Filter Tabs -->
             {#if allowedCanisterIds.length === 0}
               <div class="pb-2 shadow-md z-20">
-                <div class="px-4 flex w-full mb-1 gap-2">
+                <div class="px-4 grid grid-cols-4 w-full mb-1 gap-2">
                   {#each FILTER_TABS as tab}
                     <button
                       on:click={() => setStandardFilter(tab.id as FilterType)}
-                      class="flex-1 px-3 py-2 flex items-center justify-center gap-2 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium bg-kong-bg-dark/30 rounded-2xl {selectorState.standardFilter === tab.id ? 'text-white font-semibold bg-kong-primary text-kong-bg-light hover:bg-kong-primary' : 'hover:bg-kong-bg-light/60'}"
+                      class="px-3 py-2 flex items-center justify-center gap-1.5 text-kong-text-secondary text-sm relative transition-all duration-200 font-medium bg-kong-bg-dark/30 rounded-2xl {selectorState.standardFilter === tab.id ? 'text-white font-semibold bg-kong-primary text-kong-bg-light hover:bg-kong-primary' : 'hover:bg-kong-bg-light/60'}"
                       aria-label="Show {tab.label.toLowerCase()} tokens"
                     >
-                      <span class="relative z-10">{tab.label}</span>
+                      <span class="relative z-10 truncate">{tab.label}</span>
                       <span
-                        class="text-kong-text-on-primary text-xs px-2 py-1 rounded-full bg-kong-bg-dark/50 min-w-[1.5rem] text-center transition-all duration-200 {selectorState.standardFilter === tab.id ? 'bg-kong-primary/10 text-kong-bg-light' : ''}"
+                        class="text-kong-text-on-primary text-xs px-1.5 py-0.5 rounded-full bg-kong-bg-dark/50 min-w-[1.25rem] text-center transition-all duration-200 {selectorState.standardFilter === tab.id ? 'bg-kong-primary/10 text-kong-bg-light' : ''}"
                       >
                         {getTabCount(tab.id)}
                       </span>
@@ -626,36 +763,59 @@
               {#if enabledFilteredTokens.length > 0}
                 <div class="space-y-2">
                   <div style="height: {enabledFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
-                    {#each enabledTokensVirtualState.visible as { item: token, index }, i (token.address)}
+                    {#each enabledTokensVirtualState.visible as { item: token, index }, i (getTokenId(token as AnyToken)!)}
                       <div
                         style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
                       >
                         <TokenItem
-                          {token}
+                          token={token as AnyToken}
                           index={i}
-                          currentToken={currentToken}
-                          otherPanelToken={otherPanelToken}
-                          isApiToken={isApiToken(token)}
-                          isFavorite={isFavoriteToken(token.address)}
+                          currentToken={currentToken as AnyToken | null}
+                          otherPanelToken={otherPanelToken as AnyToken | null}
+                          isApiToken={isApiToken(token as AnyToken)}
+                          isFavorite={isFavoriteToken(getTokenId(token as AnyToken)!)}
                           enablingTokenId={selectorState.enablingTokenId}
                           blockedTokenIds={BLOCKED_TOKEN_IDS}
                           balance={{
-                            loading: isUserAuthenticated && !$currentUserBalancesStore[token.address],
-                            tokens: $currentUserBalancesStore[token.address]
-                              ? formatBalance(
-                                $currentUserBalancesStore[token.address]?.in_tokens || 0n,
-                                token.decimals || 8
-                              )
-                              : "0",
-                            usd: $currentUserBalancesStore[token.address]
-                              ? formatUsdValue(
-                                $currentUserBalancesStore[token.address]?.in_usd || "0"
-                              )
-                              : "$0.00"
+                            loading: (() => {
+                              if ('address' in (token as AnyToken)) {
+                                return isUserAuthenticated && $currentUserBalancesStore[(token as Kong.Token).address] === undefined;
+                              } else if ('mint_address' in (token as AnyToken)) {
+                                return $solanaBalanceStore.isLoading;
+                              }
+                              return false;
+                            })(),
+                            tokens: (() => {
+                              if ('address' in (token as AnyToken) && $currentUserBalancesStore[(token as Kong.Token).address]) {
+                                return formatBalance(
+                                  $currentUserBalancesStore[(token as Kong.Token).address]?.in_tokens || 0n,
+                                  (token as AnyToken).decimals || 8
+                                );
+                              } else if ('mint_address' in (token as AnyToken)) {
+                                // For Solana tokens, show real balance if available
+                                const mintAddress = (token as SolanaTokenInfo).mint_address;
+                                const solanaBalance = $solanaBalanceStore.balances[mintAddress];
+                                return solanaBalance ? solanaBalance.balance_formatted : "0";
+                              }
+                              return "0";
+                            })(),
+                            usd: (() => {
+                              if ('address' in (token as AnyToken) && $currentUserBalancesStore[(token as Kong.Token).address]) {
+                                return formatUsdValue(
+                                  $currentUserBalancesStore[(token as Kong.Token).address]?.in_usd || "0"
+                                );
+                              } else if ('mint_address' in (token as AnyToken)) {
+                                // For Solana tokens, show real USD value if available
+                                const mintAddress = (token as SolanaTokenInfo).mint_address;
+                                const solanaBalance = $solanaBalanceStore.balances[mintAddress];
+                                return solanaBalance ? formatUsdValue(solanaBalance.usd_value) : "$0.00";
+                              }
+                              return "$0.00";
+                            })()
                           }}
-                          onTokenClick={(e) => handleTokenClick(e, token)}
-                          onFavoriteClick={(e) => handleFavoriteClick(e, token)}
-                          onEnableClick={(e) => handleEnableToken(e, token)}
+                          onTokenClick={(e) => handleTokenClick(e, token as AnyToken)}
+                          onFavoriteClick={(e) => handleFavoriteClick(e, token as AnyToken)}
+                          onEnableClick={(e) => handleEnableToken(e, token as AnyToken)}
                         />
                       </div>
                     {/each}
@@ -677,36 +837,59 @@
                     </div>
                   {:else}
                     <div style="height: {apiFilteredTokens.length * TOKEN_ITEM_HEIGHT}px; position: relative;">
-                      {#each apiTokensVirtualState.visible as { item: token, index }, i (token.address)}
+                      {#each apiTokensVirtualState.visible as { item: token, index }, i (getTokenId(token as AnyToken)!)}
                         <div
                           style="position: absolute; top: {index * TOKEN_ITEM_HEIGHT}px; width: 100%; height: {TOKEN_ITEM_HEIGHT}px; padding: 4px 0; box-sizing: border-box;"
                         >
                           <TokenItem
-                            {token}
+                            token={token as AnyToken}
                             index={i}
-                            currentToken={currentToken}
-                            otherPanelToken={otherPanelToken}
+                            currentToken={currentToken as AnyToken | null}
+                            otherPanelToken={otherPanelToken as AnyToken | null}
                             isApiToken={true}
-                            isFavorite={isFavoriteToken(token.address)}
+                            isFavorite={isFavoriteToken(getTokenId(token as AnyToken)!)}
                             enablingTokenId={selectorState.enablingTokenId}
                             blockedTokenIds={BLOCKED_TOKEN_IDS}
                             balance={{
-                              loading: isUserAuthenticated && !$currentUserBalancesStore[token.address],
-                              tokens: $currentUserBalancesStore[token.address]
-                                ? formatBalance(
-                                  $currentUserBalancesStore[token.address]?.in_tokens || 0n,
-                                  token.decimals || 8
-                                )
-                                : "0",
-                              usd: $currentUserBalancesStore[token.address]
-                                ? formatUsdValue(
-                                  $currentUserBalancesStore[token.address]?.in_usd || "0"
-                                )
-                                : "$0.00"
+                              loading: (() => {
+                                if ('address' in (token as AnyToken)) {
+                                  return isUserAuthenticated && $currentUserBalancesStore[(token as Kong.Token).address] === undefined;
+                                } else if ('mint_address' in (token as AnyToken)) {
+                                  return $solanaBalanceStore.isLoading;
+                                }
+                                return false;
+                              })(),
+                              tokens: (() => {
+                                if ('address' in (token as AnyToken) && $currentUserBalancesStore[(token as Kong.Token).address]) {
+                                  return formatBalance(
+                                    $currentUserBalancesStore[(token as Kong.Token).address]?.in_tokens || 0n,
+                                    (token as AnyToken).decimals || 8
+                                  );
+                                } else if ('mint_address' in (token as AnyToken)) {
+                                  // For Solana tokens, show real balance if available
+                                  const mintAddress = (token as SolanaTokenInfo).mint_address;
+                                  const solanaBalance = $solanaBalanceStore.balances[mintAddress];
+                                  return solanaBalance ? solanaBalance.balance_formatted : "0";
+                                }
+                                return "0";
+                              })(),
+                              usd: (() => {
+                                if ('address' in (token as AnyToken) && $currentUserBalancesStore[(token as Kong.Token).address]) {
+                                  return formatUsdValue(
+                                    $currentUserBalancesStore[(token as Kong.Token).address]?.in_usd || "0"
+                                  );
+                                } else if ('mint_address' in (token as AnyToken)) {
+                                  // For Solana tokens, show real USD value if available
+                                  const mintAddress = (token as SolanaTokenInfo).mint_address;
+                                  const solanaBalance = $solanaBalanceStore.balances[mintAddress];
+                                  return solanaBalance ? formatUsdValue(solanaBalance.usd_value) : "$0.00";
+                                }
+                                return "$0.00";
+                              })()
                             }}
                             onTokenClick={(e) => e.stopPropagation()}
-                            onFavoriteClick={(e) => handleFavoriteClick(e, token)}
-                            onEnableClick={(e) => handleEnableToken(e, token)}
+                            onFavoriteClick={(e) => handleFavoriteClick(e, token as AnyToken)}
+                            onEnableClick={(e) => handleEnableToken(e, token as AnyToken)}
                           />
                         </div>
                       {/each}
@@ -740,44 +923,43 @@
       </div>
     </div>
   </div>
-{/if}
-
-<style scoped lang="postcss">
-  .scrollable-section::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  .scrollable-section::-webkit-scrollbar-track {
-    background-color: rgba(theme('colors.kong.bg-dark'), 0.4);
-    border-radius: 0.25rem;
-  }
-
-  .scrollable-section::-webkit-scrollbar-thumb {
-    background-color: theme('colors.kong.text-secondary');
-    border-radius: 0.25rem;
-  }
   
-  .scrollable-section::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 2rem;
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-    pointer-events: none;
-    z-index: 10;
-  }
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-</style>
+  <style scoped lang="postcss">
+    .scrollable-section::-webkit-scrollbar {
+      width: 4px;
+    }
 
-<!-- Add New Token Modal -->
-<AddNewTokenModal 
-  isOpen={selectorState.isAddNewTokenModalOpen}
-  onClose={() => selectorState.isAddNewTokenModalOpen = false}
-  on:tokenAdded={handleCustomTokenAdded}
-/>
+    .scrollable-section::-webkit-scrollbar-track {
+      background-color: rgba(theme('colors.kong.bg-dark'), 0.4);
+      border-radius: 0.25rem;
+    }
+
+    .scrollable-section::-webkit-scrollbar-thumb {
+      background-color: theme('colors.kong.text-secondary');
+      border-radius: 0.25rem;
+    }
+    
+    .scrollable-section::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2rem;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      pointer-events: none;
+      z-index: 10;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  
+  <!-- Add New Token Modal -->
+  <AddNewTokenModal 
+    isOpen={selectorState.isAddNewTokenModalOpen}
+    onClose={() => selectorState.isAddNewTokenModalOpen = false}
+    on:tokenAdded={handleCustomTokenAdded}
+  />

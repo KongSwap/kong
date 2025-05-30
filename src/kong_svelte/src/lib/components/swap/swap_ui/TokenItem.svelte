@@ -1,12 +1,15 @@
 <script lang="ts">
   import { Star } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import type { SolanaTokenInfo } from "$lib/config/solana.config";
+  
+  type AnyToken = Kong.Token | SolanaTokenInfo;
 
   const props = $props<{
-    token: Kong.Token;
+    token: AnyToken;
     index: number;
-    currentToken: Kong.Token | null;
-    otherPanelToken: Kong.Token | null;
+    currentToken: AnyToken | null;
+    otherPanelToken: AnyToken | null;
     isApiToken: boolean;
     isFavorite: boolean;
     enablingTokenId: string | null;
@@ -16,22 +19,31 @@
     onFavoriteClick: (e: MouseEvent) => void;
     onEnableClick: (e: MouseEvent) => void;
   }>();
+
+  function getTokenId(token: AnyToken): string | null {
+    if ('address' in token) {
+      return token.address;
+    } else if ('mint_address' in token) {
+      return token.mint_address;
+    }
+    return null;
+  }
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
   class="token-item"
-  class:selected={props.currentToken?.address === props.token.address}
-  class:disabled={props.otherPanelToken?.address === props.token.address}
-  class:blocked={props.blockedTokenIds.includes(props.token.address)}
+  class:selected={getTokenId(props.currentToken!) === getTokenId(props.token)}
+  class:disabled={getTokenId(props.otherPanelToken!) === getTokenId(props.token)}
+  class:blocked={props.blockedTokenIds.includes(getTokenId(props.token)!)}
   class:not-enabled={props.isApiToken}
   on:click={props.onTokenClick}
 >
   <!-- Token info section (left side) -->
   <div class="token-info">
     <TokenImages
-      tokens={[props.token]}
+      tokens={[{ ...props.token, logo_url: props.token.logo_url || '/static/tokens/not_verified.webp' }]}
       size={40}
       containerClass="token-logo-container"
     />

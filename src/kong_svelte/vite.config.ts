@@ -138,6 +138,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
 
   return {
     build: buildOptions,
+    logLevel: 'error', // Always suppress warnings, only show errors
     optimizeDeps: {
       esbuildOptions: {
         define: {
@@ -178,7 +179,9 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
           // IC domains
           'https://*.ic0.app',
           'https://*.icp0.io',
-          'https://*.internetcomputer.org'
+          'https://*.internetcomputer.org',
+          // CoinGecko API
+          'https://api.coingecko.com'
         ],
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         credentials: true,

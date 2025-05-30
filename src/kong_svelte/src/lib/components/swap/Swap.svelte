@@ -10,6 +10,8 @@
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
+  import { CrossChainSwapService } from "$lib/services/swap/CrossChainSwapService";
+  import { SolanaService } from "$lib/services/solana/SolanaService";
   import { auth } from "$lib/stores/auth";
   import {
     getTokenDecimals,
@@ -46,6 +48,8 @@
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
+  import type { SolanaTokenInfo } from "$lib/config/solana.config";
+  import { type AnyToken, isKongToken, isSolanaToken, filterKongTokens } from "$lib/utils/tokenUtils";
   
   // Types
   type PanelType = "pay" | "receive";
@@ -96,7 +100,12 @@
   // Reactive statement to call refreshTokenBalances when token or amount changes
   $effect(() => {
     if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
-      refreshBalances([$swapState.payToken, $swapState.receiveToken], $auth.account?.owner, true);
+      // Filter out Solana tokens and only pass ICP tokens to refreshBalances
+      const icpTokens = [$swapState.payToken, $swapState.receiveToken].filter(isKongToken);
+      
+      if (icpTokens.length > 0) {
+        refreshBalances(icpTokens, $auth.account?.owner, true);
+      }
     } else {
       console.warn('Resetting balance states - missing auth or tokens');
       insufficientFunds = false;
@@ -245,11 +254,26 @@
 
   // Modify the poolExists function to add more debugging
   function poolExists(
-    payToken: Kong.Token | null,
-    receiveToken: Kong.Token | null,
+    payToken: AnyToken | null,
+    receiveToken: AnyToken | null,
   ): boolean {
     if (!payToken || !receiveToken) {
       return false;
+    }
+
+    // Check if this is a cross-chain swap
+    if (SwapService.isCrossChainSwap(payToken, receiveToken)) {
+      // Cross-chain swaps don't need pools, they use the bridge
+      return true;
+    }
+
+    // Check if both tokens are Solana tokens
+    const payIsSolana = isSolanaToken(payToken);
+    const receiveIsSolana = isSolanaToken(receiveToken);
+    
+    if (payIsSolana && receiveIsSolana) {
+      // Solana-to-Solana swaps don't need Kong pools, they use Solana DEXes
+      return true;
     }
 
     if ($livePools.length === 0) {
@@ -308,6 +332,113 @@
         error: null,
       }));
 
+      // Check if this is a cross-chain swap
+      if (SwapService.isCrossChainSwap($swapState.payToken, $swapState.receiveToken)) {
+        // Handle cross-chain swap
+        const swapMode = CrossChainSwapService.getSwapMode($swapState.payToken, $swapState.receiveToken);
+        
+        if (!swapMode) {
+          throw new Error("Invalid cross-chain swap mode");
+        }
+
+        let result;
+        
+        if (swapMode === 'SOL_TO_ICP') {
+          // Get user's Solana address
+          const solanaAddress = await SolanaService.getUserSolanaAddress();
+          
+          if (!$auth.account?.owner) {
+            throw new Error("Please connect your wallet");
+          }
+          
+          result = await CrossChainSwapService.executeSolToIcpSwap(
+            $swapState.payAmount,
+            $auth.account.owner.toString(),
+            solanaAddress,
+            (message) => {
+              swapState.update((state) => ({
+                ...state,
+                processingMessage: message
+              }));
+            }
+          );
+        } else if (swapMode === 'ICP_TO_SOL') {
+          // Get user's Solana address
+          const solanaAddress = await SolanaService.getUserSolanaAddress();
+          
+          if (!solanaAddress) {
+            throw new Error("Please connect your Solana wallet");
+          }
+          
+          if (!$auth.account?.owner) {
+            throw new Error("Please connect your wallet");
+          }
+          
+          result = await CrossChainSwapService.executeIcpToSolSwap(
+            $swapState.payAmount,
+            $auth.account.owner.toString(),
+            solanaAddress,
+            (message) => {
+              swapState.update((state) => ({
+                ...state,
+                processingMessage: message
+              }));
+            }
+          );
+        } else if (swapMode === 'SOL_TO_SPL' || swapMode === 'SPL_TO_SPL') {
+          // Solana-to-Solana swaps
+          const solanaAddress = await SolanaService.getUserSolanaAddress();
+          
+          if (!solanaAddress) {
+            throw new Error("Please connect your Solana wallet");
+          }
+          
+          // For demo purposes, execute a mock Solana swap
+          result = await CrossChainSwapService.executeSolanaToSolanaSwap(
+            $swapState.payToken,
+            $swapState.payAmount,
+            $swapState.receiveToken,
+            solanaAddress,
+            (message) => {
+              swapState.update((state) => ({
+                ...state,
+                processingMessage: message
+              }));
+            }
+          );
+        } else {
+          throw new Error("Unsupported swap type");
+        }
+
+        if (result.error) {
+          throw new Error(result.error);
+        }
+
+        // Show success message
+        toastStore.success(`Cross-chain swap initiated! ${result.job_id ? `Job ID: ${result.job_id}` : ''}`);
+        
+        // Poll job status if job ID is returned
+        if (result.job_id) {
+          CrossChainSwapService.pollJobStatus(
+            result.job_id,
+            (status, job) => {
+              console.log(`Swap status: ${status}`, job);
+              if (status === 'Confirmed') {
+                toastStore.success('Cross-chain swap completed successfully!');
+              } else if (status === 'Failed') {
+                toastStore.error('Cross-chain swap failed');
+              }
+            }
+          ).catch(error => {
+            console.error('Job polling error:', error);
+          });
+        }
+
+        resetSwapState();
+        return true;
+      }
+
+      // Regular Kong swap
       currentSwapId = swapStatusStore.addSwap({
         expectedReceiveAmount: $swapState.receiveAmount,
         lastPayAmount: $swapState.payAmount,
@@ -345,6 +476,7 @@
       swapState.update((state) => ({
         ...state,
         isProcessing: false,
+        processingMessage: undefined,
         error: error.message || "Swap failed",
       }));
       return false;
@@ -504,17 +636,42 @@
           return;
         }
         
-        const quote = await SwapService.getSwapQuote(
-          currentState.payToken,
-          currentState.receiveToken,
-          currentState.payAmount,
-        );
+        // Check if this is a cross-chain swap
+        if (SwapService.isCrossChainSwap(currentState.payToken, currentState.receiveToken)) {
+          // Handle cross-chain quote
+          const payDecimals = currentState.payToken.decimals;
+          const payAmountBigInt = SwapService.toBigInt(currentState.payAmount, payDecimals);
+          
+          const crossChainQuote = await CrossChainSwapService.getQuote(
+            currentState.payToken,
+            payAmountBigInt,
+            currentState.receiveToken
+          );
+          
+          const receiveAmount = SwapService.fromBigInt(
+            crossChainQuote.receiveAmount,
+            currentState.receiveToken.decimals
+          );
+          
+          swapState.update((s) => ({
+            ...s,
+            receiveAmount: receiveAmount,
+            swapSlippage: 0, // Cross-chain swaps don't have slippage calculation yet
+          }));
+        } else {
+          // Regular Kong quote
+          const quote = await SwapService.getSwapQuote(
+            currentState.payToken,
+            currentState.receiveToken,
+            currentState.payAmount,
+          );
 
-        swapState.update((s) => ({
-          ...s,
-          receiveAmount: quote.receiveAmount,
-          swapSlippage: quote.slippage,
-        }));
+          swapState.update((s) => ({
+            ...s,
+            receiveAmount: quote.receiveAmount,
+            swapSlippage: quote.slippage,
+          }));
+        }
       } catch (error) {
         console.error("Error getting quote:", error);
         swapState.update((s) => ({
@@ -682,6 +839,7 @@
     <div class="mt-1 px-3 md:px-0">
       <SwapButton 
         text={buttonText}
+        processingMessage={$swapState.processingMessage}
         isError={!!$swapState.error || $swapState.swapSlippage > $settingsStore.max_slippage || insufficientFunds}
         isProcessing={$swapState.isProcessing}
         isLoading={isQuoteLoading}

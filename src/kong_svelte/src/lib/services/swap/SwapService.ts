@@ -11,12 +11,13 @@ import { SwapMonitor } from "./SwapMonitor";
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { canisters, type CanisterType } from "$lib/config/auth.config";
 import type { RequestsResult, SwapAmountsResult } from "../../../../../declarations/kong_backend/kong_backend.did.d.ts";
+import { getTokenId, isKongToken, isSolanaToken, type AnyToken } from "$lib/utils/tokenUtils";
 
 interface SwapExecuteParams {
   swapId: string;
-  payToken: Kong.Token;
+  payToken: AnyToken;
   payAmount: string;
-  receiveToken: Kong.Token;
+  receiveToken: AnyToken;
   receiveAmount: string;
   userMaxSlippage: number;
   backendPrincipal: Principal;
@@ -135,17 +136,63 @@ export class SwapService {
   }
 
   /**
+   * Determines if this is a cross-chain swap
+   */
+  public static isCrossChainSwap(payToken: AnyToken, receiveToken: AnyToken): boolean {
+    const payIsSolana = isSolanaToken(payToken);
+    const receiveIsSolana = isSolanaToken(receiveToken);
+    return payIsSolana !== receiveIsSolana;
+  }
+
+  /**
    * Gets swap quote from backend
    */
   public static async swap_amounts(
-    payToken: Kong.Token,
+    payToken: AnyToken,
     payAmount: bigint,
-    receiveToken: Kong.Token,
+    receiveToken: AnyToken,
   ): Promise<SwapAmountsResult> {
     try {
-      if (!payToken?.address || !receiveToken?.address) {
+      const payTokenId = getTokenId(payToken);
+      const receiveTokenId = getTokenId(receiveToken);
+      
+      if (!payTokenId || !receiveTokenId) {
         throw new Error("Invalid tokens provided for swap quote");
       }
+
+      // Check if this is a cross-chain swap
+      if (this.isCrossChainSwap(payToken, receiveToken)) {
+        // Use CrossChainSwapService for cross-chain quotes
+        const { CrossChainSwapService } = await import('./CrossChainSwapService');
+        const quote = await CrossChainSwapService.getQuote(payToken, payAmount, receiveToken);
+        
+        // Convert to SwapAmountsResult format
+        return {
+          Ok: {
+            pay_amount: payAmount,
+            receive_amount: quote.receiveAmount,
+            pay_symbol: payToken.symbol,
+            receive_symbol: receiveToken.symbol,
+            lp_fee: [],
+            gas_fee: [],
+            swap_slippage: new BigNumber(0.5), // 0.5% slippage for cross-chain
+            price_impact: new BigNumber(0.1), // 0.1% price impact estimate
+            exchange_rate: [
+              {
+                rate: new BigNumber(quote.price),
+                base: payToken.symbol,
+                quote: receiveToken.symbol
+              }
+            ]
+          }
+        } as SwapAmountsResult;
+      }
+
+      // Regular IC <-> IC swap
+      if (!isKongToken(payToken) || !isKongToken(receiveToken)) {
+        throw new Error("Both tokens must be Kong tokens for regular swaps");
+      }
+
       const actor = auth.pnp.getActor<CanisterType["KONG_BACKEND"]>({
         canisterId: KONG_BACKEND_CANISTER_ID,
         idl: canisters.kongBackend.idl,
@@ -166,9 +213,9 @@ export class SwapService {
    * Gets quote details including price, fees, etc.
    */
   public static async getQuoteDetails(params: {
-    payToken: Kong.Token;
+    payToken: AnyToken;
     payAmount: bigint;
-    receiveToken: Kong.Token;
+    receiveToken: AnyToken;
   }): Promise<{
     receiveAmount: string;
     price: string;
@@ -186,6 +233,16 @@ export class SwapService {
 
     if (!("Ok" in quote)) {
       throw new Error(quote.Err);
+    }
+
+    // For cross-chain swaps, we'll need different handling
+    if (this.isCrossChainSwap(params.payToken, params.receiveToken)) {
+      throw new Error("Cross-chain swap quotes not yet implemented");
+    }
+
+    // For regular IC swaps, both tokens must be Kong tokens
+    if (!isKongToken(params.payToken) || !isKongToken(params.receiveToken)) {
+      throw new Error("Both tokens must be Kong tokens for getQuoteDetails");
     }
 
     const tokens = await fetchTokensByCanisterId([params.payToken.address, params.receiveToken.address]);
@@ -393,11 +450,21 @@ export class SwapService {
    * Fetches the swap quote based on the provided amount and tokens.
    */
   public static async getSwapQuote(
-    payToken: Kong.Token,
-    receiveToken: Kong.Token,
+    payToken: AnyToken,
+    receiveToken: AnyToken,
     payAmount: string,
   ): Promise<{ receiveAmount: string; slippage: number }> {
     try {
+      // Check if this is a cross-chain swap
+      if (this.isCrossChainSwap(payToken, receiveToken)) {
+        throw new Error("Cross-chain swaps should use CrossChainSwapService.getQuote");
+      }
+
+      // Type guard - ensure both tokens are Kong tokens for regular swaps
+      if (!isKongToken(payToken) || !isKongToken(receiveToken)) {
+        throw new Error("Both tokens must be Kong tokens for regular swaps");
+      }
+
       // Add check for blocked tokens at the start
       if (BLOCKED_TOKEN_IDS.includes(payToken.address) || 
           BLOCKED_TOKEN_IDS.includes(receiveToken.address)) {
@@ -456,7 +523,7 @@ export class SwapService {
    * @returns A BigNumber representing the maximum transferable amount.
    */
   public static calculateMaxAmount(
-    tokenInfo: Kong.Token,
+    tokenInfo: AnyToken,
     formattedBalance: string,
     decimals: number = 8,
     isIcrc1: boolean = false,
@@ -464,6 +531,12 @@ export class SwapService {
     const SCALE_FACTOR = new BigNumber(10).pow(decimals);
     const balance = new BigNumber(formattedBalance);
 
+    // For Solana tokens, we don't have fee_fixed property, so return balance as is
+    if (isSolanaToken(tokenInfo)) {
+      return balance;
+    }
+
+    // For Kong tokens, calculate fees
     // Calculate base fee. If fee is undefined, default to 0.
     const baseFee = tokenInfo.fee_fixed
       ? new BigNumber(tokenInfo.fee_fixed.toString()).dividedBy(SCALE_FACTOR)

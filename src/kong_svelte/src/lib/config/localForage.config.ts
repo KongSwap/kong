@@ -3,7 +3,7 @@ import { browser } from '$app/environment';
 
 // Configuration constants
 const STORAGE_NAME = 'kongswap_storage';
-const STORAGE_VERSION = 1.1;
+const STORAGE_VERSION = 9;  // Changed from 1.1 to match existing database
 const STORAGE_DESCRIPTION = 'KongSwap Local Storage';
 
 // Storage keys/namespaces

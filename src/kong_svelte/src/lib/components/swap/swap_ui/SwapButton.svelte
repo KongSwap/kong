@@ -7,6 +7,7 @@
   // Props
   let { 
     text,
+    processingMessage,
     isError,
     isProcessing,
     isLoading,
@@ -27,6 +28,7 @@
     readyGlowEnd
   } = $props<{
     text: string;
+    processingMessage?: string;
     isError: boolean;
     isProcessing: boolean;
     isLoading: boolean;
@@ -161,7 +163,9 @@
       <div class="w-[22px] h-[22px] rounded-full border-2 border-white/10 border-t-white animate-spin"></div>
     {/if}
     <span class="font-semibold text-2xl tracking-wide flex items-center justify-center text-center overflow-hidden" style="color: {getTextColor()}; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);">
-      {#if text.length > 20}
+      {#if (isProcessing || isLoading) && processingMessage}
+        <span class="text-lg px-2">{processingMessage}</span>
+      {:else if text.length > 20}
         <span class="text-xl px-2">{text}</span>
       {:else}
         {text}

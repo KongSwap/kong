@@ -7,14 +7,57 @@ import { KONG_LEDGER_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from '$l
 import { BigNumber } from 'bignumber.js';
 import { livePools } from '$lib/stores/poolStore';
 import { fetchTokensByCanisterId } from '$lib/api/tokens';
+import type { SolanaTokenInfo } from '$lib/config/solana.config'; // Import SolanaTokenInfo
+import { CrossChainSwapService } from './CrossChainSwapService';
+import type { AnyToken } from '$lib/utils/tokenUtils';
+
+/**
+ * Calculate swap amounts for cross-chain tokens using CrossChainSwapService
+ */
+async function calculateCrossChainSwapAmount(
+  payToken: AnyToken | null,
+  receiveToken: AnyToken | null,
+  payAmount: string
+): Promise<string> {
+  if (!payToken || !receiveToken || !payAmount || isNaN(Number(payAmount))) {
+    return '0';
+  }
+
+  // If same token, return same amount
+  if (payToken.symbol === receiveToken.symbol) {
+    return payAmount;
+  }
+
+  try {
+    // Convert to bigint with proper decimals
+    const payAmountBigInt = BigInt(
+      Math.floor(Number(payAmount) * Math.pow(10, payToken.decimals))
+    );
+
+    // Get quote from CrossChainSwapService
+    const quote = await CrossChainSwapService.getQuote(
+      payToken,
+      payAmountBigInt,
+      receiveToken
+    );
+
+    // Convert back to string for display
+    const receiveAmount = Number(quote.receiveAmount) / Math.pow(10, receiveToken.decimals);
+    return receiveAmount.toFixed(6); // 6 decimal places for display
+  } catch (error) {
+    console.error('Error calculating cross-chain swap amount:', error);
+    return '0';
+  }
+}
 
 export interface SwapState {
-  payToken: Kong.Token | null;
-  receiveToken: Kong.Token | null;
+  payToken: AnyToken | null; // Change to AnyToken
+  receiveToken: AnyToken | null; // Change to AnyToken
   payAmount: string;
   receiveAmount: string;
   isCalculating: boolean;
   isProcessing: boolean;
+  processingMessage?: string; // Add processing message for status updates
   error: string | null;
   tokenSelectorOpen: 'pay' | 'receive' | null;
   tokenSelectorPosition: { x: number; y: number; windowWidth: number } | null;
@@ -32,20 +75,20 @@ export interface SwapState {
   };
   successDetails: {
     payAmount: string;
-    payToken: Kong.Token | null;
+    payToken: AnyToken | null; // Change to AnyToken
     receiveAmount: string;
-    receiveToken: Kong.Token | null;
+    receiveToken: AnyToken | null; // Change to AnyToken
     principalId: string;
   } | null;
 }
 
 export interface SwapStore extends Writable<SwapState> {
   isInputExceedingBalance: Readable<boolean>;
-  initializeTokens(initialFromToken: Kong.Token | null, initialToToken: Kong.Token | null): Promise<void>;
+  initializeTokens(initialFromToken: AnyToken | null, initialToToken: AnyToken | null): Promise<void>; // Change to AnyToken
   setPayAmount(amount: string): void;
   setReceiveAmount(amount: string): void;
-  setPayToken(token: Kong.Token | null): void;
-  setReceiveToken(token: Kong.Token | null): void;
+  setPayToken(token: AnyToken | null): void; // Change to AnyToken
+  setReceiveToken(token: AnyToken | null): void; // Change to AnyToken
   setIsProcessing(isProcessing: boolean): void;
   setShowConfirmation(show: boolean): void;
   setShowSuccessModal(show: boolean): void;
@@ -54,7 +97,7 @@ export interface SwapStore extends Writable<SwapState> {
   reset(): void;
   toggleTokenSelector(type: 'pay' | 'receive'): void;
   closeTokenSelector(): void;
-  setToken(type: 'pay' | 'receive', token: Kong.Token | null): void;
+  setToken(type: 'pay' | 'receive', token: AnyToken | null): void; // Change to AnyToken
 }
 
 function createSwapStore(): SwapStore {
@@ -101,9 +144,14 @@ function createSwapStore(): SwapStore {
       }
       
       // Safely access properties with optional chaining
-      const balance = $balances[$swapState.payToken.address] ?? BigInt(0);
+      let balance = BigInt(0);
+      if ($swapState.payToken && 'address' in $swapState.payToken) {
+        // Access the in_tokens property of TokenBalance
+        balance = $balances[$swapState.payToken.address]?.in_tokens ?? BigInt(0);
+      }
+      
       const payAmountBN = new BigNumber($swapState.payAmount || '0');
-      const payAmountInTokens = fromTokenDecimals(payAmountBN, $swapState.payToken.decimals);
+      const payAmountInTokens = fromTokenDecimals(payAmountBN, $swapState.payToken?.decimals || 8); // Use optional chaining for decimals
       return Number(payAmountInTokens) > Number(balance);
     }
   );
@@ -117,7 +165,10 @@ function createSwapStore(): SwapStore {
     async initializeTokens(initialFromToken: Kong.Token | null, initialToToken: Kong.Token | null) {
       // If no initial tokens are provided, use defaults: ICP and CKUSDT
       const tokenIds = (initialFromToken || initialToToken) ? [initialFromToken?.address, initialToToken?.address] : [ICP_CANISTER_ID, KONG_LEDGER_CANISTER_ID];
-      const tokens = await fetchTokensByCanisterId(tokenIds);
+      
+      // Filter out Solana tokens for fetchTokensByCanisterId as it only handles ICP
+      const icpTokenIds = tokenIds.filter(id => id !== undefined && !id.startsWith('So111') && !id.startsWith('6p6xg') && !id.startsWith('EPjFW'));
+      const fetchedTokens = await fetchTokensByCanisterId(icpTokenIds as string[]); // Renamed to fetchedTokens
       
       // If we have initial tokens, use them directly
       if (initialFromToken && initialToToken) {
@@ -134,9 +185,9 @@ function createSwapStore(): SwapStore {
       }
 
       // If we have tokens loaded, set defaults
-      if (tokens.length > 0) {
-        const defaultPayToken = tokens.find(t => t.address === ICP_CANISTER_ID);
-        const defaultReceiveToken = tokens.find(t => t.address === KONG_LEDGER_CANISTER_ID);
+      if (fetchedTokens.length > 0) {
+        const defaultPayToken = fetchedTokens.find(t => t.address === ICP_CANISTER_ID);
+        const defaultReceiveToken = fetchedTokens.find(t => t.address === KONG_LEDGER_CANISTER_ID);
 
         update(state => ({
           ...state,
@@ -171,10 +222,55 @@ function createSwapStore(): SwapStore {
 
       try {
         const pools = get(livePools);
-        const hasValidPool = pools.some(pool => 
+        const hasValidPool = pools.some(pool =>
           (pool.symbol_0 === currentState.payToken?.symbol && pool.symbol_1 === currentState.receiveToken?.symbol) ||
           (pool.symbol_0 === currentState.receiveToken?.symbol && pool.symbol_1 === currentState.payToken?.symbol)
         );
+
+        // Type guard to ensure we have Kong.Token types (not SolanaTokenInfo)
+        const isKongToken = (token: AnyToken | null): token is Kong.Token => {
+          return token !== null && 'address' in token && 'fee' in token && 'fee_fixed' in token;
+        };
+
+        const isSolanaToken = (token: AnyToken | null): token is SolanaTokenInfo => {
+          return token !== null && 'mint_address' in token;
+        };
+
+        // Check if we have Solana tokens involved
+        const payIsSolana = isSolanaToken(currentState.payToken);
+        const receiveIsSolana = isSolanaToken(currentState.receiveToken);
+
+        if (payIsSolana || receiveIsSolana) {
+          // Cross-chain swap logic
+          try {
+            const receiveAmount = await calculateCrossChainSwapAmount(
+              currentState.payToken,
+              currentState.receiveToken,
+              amount
+            );
+
+            update(state => ({
+              ...state,
+              receiveAmount,
+              swapSlippage: 0.5, // 0.5% slippage for cross-chain swaps
+              isCalculating: false,
+              error: null
+            }));
+          } catch (error) {
+            update(state => ({
+              ...state,
+              receiveAmount: '',
+              error: error instanceof Error ? error.message : 'Failed to calculate cross-chain swap',
+              isCalculating: false
+            }));
+          }
+          return;
+        }
+
+        // Original ICP token logic
+        if (!isKongToken(currentState.payToken) || !isKongToken(currentState.receiveToken)) {
+          throw new Error('Invalid token types');
+        }
 
         const quote = await SwapService.getSwapQuote(
           currentState.payToken,

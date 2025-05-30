@@ -2,13 +2,15 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import { SwapService } from "$lib/services/swap/SwapService";
+  import { CrossChainSwapService } from "$lib/services/swap/CrossChainSwapService";
   import PayReceiveSection from "./confirmation/PayReceiveSection.svelte";
   import FeesSection from "./confirmation/FeesSection.svelte";
   import { fade } from "svelte/transition";
   import { toastStore } from "$lib/stores/toastStore";
   import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import BigNumber from "bignumber.js";
-    import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import { panelRoundness } from "$lib/stores/derivedThemeStore";
+  import type { AnyToken } from "$lib/utils/tokenUtils";
 
   const { 
     payToken,
@@ -19,9 +21,9 @@
     onClose,
     onConfirm
   } = $props<{
-    payToken: Kong.Token;
+    payToken: AnyToken;
     payAmount: string;
-    receiveToken: Kong.Token;
+    receiveToken: AnyToken;
     receiveAmount: string;
     userMaxSlippage: number;
     onClose: () => void;
@@ -126,6 +128,31 @@
       const payDecimals = payToken.decimals;
       const payAmountBigInt = SwapService.toBigInt(payAmount, payDecimals);
 
+      // Check if this is a cross-chain swap
+      if (SwapService.isCrossChainSwap(payToken, receiveToken)) {
+        // Use cross-chain service for quote
+        const crossChainQuote = await CrossChainSwapService.getQuote(
+          payToken,
+          payAmountBigInt,
+          receiveToken
+        );
+        
+        receiveAmount = formatBalance(
+          crossChainQuote.receiveAmount,
+          receiveToken.decimals
+        );
+        
+        // Update exchange rate
+        updateExchangeRate();
+        
+        // For now, skip price impact calculation for cross-chain swaps
+        priceImpact = 0;
+        showPriceImpactWarning = false;
+        
+        return;
+      }
+
+      // Regular Kong swap quote
       const quote = await SwapService.swap_amounts(
         payToken,
         payAmountBigInt,
