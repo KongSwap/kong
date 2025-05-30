@@ -122,6 +122,9 @@ export class SolanaService {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = fromPubkey;
       
+      // Note: Solana will automatically deduct the transaction fee (0.00005 SOL) from the sender's account
+      // This is in addition to the transfer amount
+      
       // Sign and send transaction
       const signedTransaction = await solanaWallet.signAndSendTransaction(transaction);
       

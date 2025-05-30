@@ -8,12 +8,14 @@ export interface Toast {
     timestamp: number;
     timeoutId?: ReturnType<typeof setTimeout>;
     duration?: number;
+    html?: boolean;
 }
 
 export interface ToastOptions {
     title?: string;
     duration?: number;
     id?: string;
+    html?: boolean;
 }
 
 function createToastStore() {
@@ -71,7 +73,8 @@ function createToastStore() {
                 message, 
                 title: options.title,
                 duration: options.duration || 5000,
-                id: options.id
+                id: options.id,
+                html: options.html
             });
         },
         error: (message: string, options: ToastOptions = {}): string => {
@@ -80,7 +83,8 @@ function createToastStore() {
                 message, 
                 title: options.title,
                 duration: options.duration || 10000,
-                id: options.id
+                id: options.id,
+                html: options.html
             });
         },
         warning: (message: string, options: ToastOptions = {}): string => {
@@ -89,7 +93,8 @@ function createToastStore() {
                 message, 
                 title: options.title,
                 duration: options.duration || 10000,
-                id: options.id
+                id: options.id,
+                html: options.html
             });
         },
         info: (message: string, options: ToastOptions = {}): string => {
@@ -98,7 +103,8 @@ function createToastStore() {
                 message, 
                 title: options.title,
                 duration: options.duration || 5000,
-                id: options.id
+                id: options.id,
+                html: options.html
             });
         },
     };

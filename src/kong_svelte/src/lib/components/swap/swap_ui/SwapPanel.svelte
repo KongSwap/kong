@@ -22,6 +22,7 @@
   } from "$lib/stores/derivedThemeStore";
   import type { SolanaTokenInfo } from "$lib/config/solana.config"; // Import SolanaTokenInfo
   import { solanaBalanceStore } from "$lib/stores/solanaBalanceStore"; // Import Solana balance store
+  import { CrossChainSwapService } from "$lib/services/swap/CrossChainSwapService"; // Import for price fetching
   
   type AnyToken = Kong.Token | SolanaTokenInfo; // Define AnyToken
   
@@ -63,6 +64,7 @@
   let inputFocused = $state(false);
   let previousValue = $state("0");
   let isMobile = $state(false);
+  let solanaTokenPrices = $state<Record<string, number>>({});
 
   // Derived state using runes
   let decimals = $derived(token?.decimals || DEFAULT_DECIMALS);
@@ -81,6 +83,11 @@
 
     checkMobile();
     window.addEventListener("resize", checkMobile);
+
+    // Fetch Solana token prices
+    CrossChainSwapService.fetchTokenPrices().then(prices => {
+      solanaTokenPrices = prices;
+    });
 
     return () => {
       window.removeEventListener("resize", checkMobile);
@@ -144,6 +151,16 @@
     const regex = /^[0-9]*\.?[0-9]*$/;
     return regex.test(value);
   }
+
+  // Effect to refresh Solana prices when token changes
+  $effect(() => {
+    if (token && 'mint_address' in token && !solanaTokenPrices[token.symbol]) {
+      // Fetch prices if we have a Solana token but no price
+      CrossChainSwapService.fetchTokenPrices().then(prices => {
+        solanaTokenPrices = prices;
+      });
+    }
+  });
 
   // Animation and value updates using $effect
   $effect(() => {
@@ -336,7 +353,10 @@
   let parsedAmount = $derived(parseFloat(displayAmount || "0"));
   // Use token prop directly for price
   let tokenPrice = $derived(
-    token && 'metrics' in token ? Number(token?.metrics?.price || 0) : 0, // Use type guard
+    !token ? 0 :
+    'metrics' in token && token.metrics?.price ? Number(token.metrics.price) :
+    'mint_address' in token && solanaTokenPrices && solanaTokenPrices[token.symbol] ? solanaTokenPrices[token.symbol] :
+    0
   );
   let tradeUsdValue = $derived(tokenPrice * parsedAmount);
 

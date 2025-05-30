@@ -414,24 +414,19 @@
           throw new Error(result.error);
         }
 
-        // Show success message
-        toastStore.success(`Cross-chain swap initiated! ${result.job_id ? `Job ID: ${result.job_id}` : ''}`);
-        
-        // Poll job status if job ID is returned
+        // Start monitoring the cross-chain swap with 200ms polling
         if (result.job_id) {
-          CrossChainSwapService.pollJobStatus(
+          const { CrossChainSwapMonitor } = await import('$lib/services/swap/CrossChainSwapMonitor');
+          await CrossChainSwapMonitor.startMonitoring(
             result.job_id,
-            (status, job) => {
-              console.log(`Swap status: ${status}`, job);
-              if (status === 'Confirmed') {
-                toastStore.success('Cross-chain swap completed successfully!');
-              } else if (status === 'Failed') {
-                toastStore.error('Cross-chain swap failed');
-              }
-            }
-          ).catch(error => {
-            console.error('Job polling error:', error);
-          });
+            $swapState.payToken.symbol,
+            $swapState.receiveToken.symbol,
+            $swapState.payAmount,
+            $swapState.receiveAmount
+          );
+        } else {
+          // Fallback if no job ID
+          toastStore.success(`Cross-chain swap initiated!`);
         }
 
         resetSwapState();

@@ -36,6 +36,14 @@ export interface SolanaTokenInfo {
   name: string;
   logo_url: string;
   chain: string;
+  metrics?: {
+    price: string;
+    total_supply: string;
+    volume_24h: string;
+    market_cap: string;
+    tvl: string;
+    updated_at: string;
+  };
 }
 
 export const DEFAULT_SOLANA_TOKENS: SolanaTokenInfo[] = [

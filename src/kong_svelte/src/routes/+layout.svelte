@@ -1,6 +1,7 @@
 <script lang="ts">
   import "../app.css";
   import MetaTags from "$lib/components/common/MetaTags.svelte";
+  import CrossChainSwapStatus from "$lib/components/swap/CrossChainSwapStatus.svelte";
   import type { LayoutData } from "./$types";
   
   let { children, data } = $props<{
@@ -64,3 +65,6 @@
 />
 
 {@render children?.()}
+
+<!-- Cross-chain swap status monitor -->
+<CrossChainSwapStatus />
