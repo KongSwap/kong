@@ -11,6 +11,7 @@
   import BigNumber from "bignumber.js";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import type { AnyToken } from "$lib/utils/tokenUtils";
+  import { isSolanaToken } from "$lib/utils/tokenUtils";
 
   const { 
     payToken,
@@ -128,8 +129,8 @@
       const payDecimals = payToken.decimals;
       const payAmountBigInt = SwapService.toBigInt(payAmount, payDecimals);
 
-      // Check if this is a cross-chain swap
-      if (SwapService.isCrossChainSwap(payToken, receiveToken)) {
+      // Check if either token is a Solana token (cross-chain or Solana-to-Solana)
+      if (isSolanaToken(payToken) || isSolanaToken(receiveToken)) {
         // Use cross-chain service for quote
         const crossChainQuote = await CrossChainSwapService.getQuote(
           payToken,

@@ -160,9 +160,9 @@ export class SwapService {
         throw new Error("Invalid tokens provided for swap quote");
       }
 
-      // Check if this is a cross-chain swap
-      if (this.isCrossChainSwap(payToken, receiveToken)) {
-        // Use CrossChainSwapService for cross-chain quotes
+      // Check if either token is a Solana token (cross-chain or Solana-to-Solana)
+      if (isSolanaToken(payToken) || isSolanaToken(receiveToken)) {
+        // Use CrossChainSwapService for any swap involving Solana tokens
         const { CrossChainSwapService } = await import('./CrossChainSwapService');
         const quote = await CrossChainSwapService.getQuote(payToken, payAmount, receiveToken);
         
