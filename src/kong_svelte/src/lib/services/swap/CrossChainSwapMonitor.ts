@@ -112,11 +112,17 @@ export class CrossChainSwapMonitor {
       // Update toast if status changed
       if (statusChanged) {
         this.updateToastForStatus(currentStatus, statusKey, job);
+        
+        // Refresh balances when status changes
+        this.refreshBalances();
       }
       
       // Stop polling if terminal state reached
       if (statusKey === 'Confirmed' || statusKey === 'Failed') {
         this.stopMonitoring(jobIdStr);
+        
+        // Final balance refresh on completion
+        this.refreshBalances();
         
         // Remove from store after 30 seconds
         setTimeout(() => {
@@ -142,6 +148,18 @@ export class CrossChainSwapMonitor {
           }
         }));
       }
+    }
+  }
+  
+  /**
+   * Refresh all token balances
+   */
+  private static async refreshBalances(): Promise<void> {
+    try {
+      const { SwapService } = await import('./SwapService');
+      await SwapService.refreshAllBalances();
+    } catch (error) {
+      console.error('Error refreshing balances during monitoring:', error);
     }
   }
   

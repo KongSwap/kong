@@ -8,12 +8,15 @@
   import { ChevronRight, ChevronsDown, ArrowDown } from "lucide-svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import BigNumber from "bignumber.js";
+  import type { AnyToken } from "$lib/utils/tokenUtils";
+  import { isSolanaToken } from "$lib/utils/tokenUtils";
+  import { CrossChainSwapService } from "$lib/services/swap/CrossChainSwapService";
 
   // Access props directly using $props() instead of destructuring
   const props = $props<{
-    payToken: Kong.Token;
+    payToken: AnyToken;
     payAmount: string;
-    receiveToken: Kong.Token;
+    receiveToken: AnyToken;
     receiveAmount: string;
     routingPath?: string[];
   }>();
@@ -22,6 +25,23 @@
   let prevRoutingPath = $state([]);
   let hoveredIndex = $state<number | null>(null);
   let showRoutes = $state(false);
+  let solanaTokenPrices = $state<Record<string, number>>({});
+  
+  // Removed duplicate onMount - merged into the existing one below
+  
+  // Get token price regardless of token type
+  function getTokenPrice(token: AnyToken | undefined): string {
+    if (!token) return "0";
+    
+    if (isSolanaToken(token)) {
+      const price = solanaTokenPrices[token.symbol] || 0;
+      return price.toString();
+    } else if ('metrics' in token && token.metrics?.price) {
+      return token.metrics.price;
+    }
+    
+    return "0";
+  }
   
   // Format a number for display with commas as thousands separators
   function formatWithCommas(value: string | undefined): string {
@@ -90,8 +110,8 @@
   }
   
   // Calculate USD values and exchange rate
-  let payTokenUsdValue = $derived(calculateUsdValue(props.payAmount, props.payToken?.metrics?.price));
-  let receiveTokenUsdValue = $derived(calculateUsdValue(props.receiveAmount, props.receiveToken?.metrics?.price));
+  let payTokenUsdValue = $derived(calculateUsdValue(props.payAmount, getTokenPrice(props.payToken)));
+  let receiveTokenUsdValue = $derived(calculateUsdValue(props.receiveAmount, getTokenPrice(props.receiveToken)));
   let exchangeRate = $derived(calculateExchangeRate(props.receiveAmount, props.payAmount));
 
   async function updateTokens() {
@@ -122,8 +142,13 @@
     }
   });
 
-  onMount(() => {
+  onMount(async () => {
     updateTokens();
+    try {
+      solanaTokenPrices = await CrossChainSwapService.fetchTokenPrices();
+    } catch (error) {
+      console.error('Error fetching Solana prices:', error);
+    }
   });
 </script>
 

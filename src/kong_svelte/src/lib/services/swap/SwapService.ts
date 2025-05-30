@@ -136,6 +136,23 @@ export class SwapService {
   }
 
   /**
+   * Refresh all token balances (ICP and Solana)
+   */
+  public static async refreshAllBalances(): Promise<void> {
+    try {
+      // Refresh ICP token balances
+      const { IcrcService } = await import('../icrc/IcrcService');
+      await IcrcService.refreshBalances();
+      
+      // Refresh Solana token balances
+      const { solanaBalanceStore } = await import('$lib/stores/solanaBalanceStore');
+      await solanaBalanceStore.fetchBalances();
+    } catch (error) {
+      console.error('Error refreshing balances:', error);
+    }
+  }
+
+  /**
    * Determines if this is a cross-chain swap
    */
   public static isCrossChainSwap(payToken: AnyToken, receiveToken: AnyToken): boolean {
@@ -337,7 +354,110 @@ export class SwapService {
     const swapId = params.swapId;
     try {
       requireWalletConnection();
+      
+      // Check if this is a cross-chain swap
+      if (this.isCrossChainSwap(params.payToken, params.receiveToken)) {
+        // Handle cross-chain swap through CrossChainSwapService
+        const { CrossChainSwapService } = await import('./CrossChainSwapService');
+        const { SolanaService } = await import('../solana/SolanaService');
+        
+        const payAmount = SwapService.toBigInt(
+          params.payAmount,
+          params.payToken.decimals,
+        );
+        
+        swapStatusStore.updateSwap(swapId, {
+          status: "Processing",
+          isProcessing: true,
+          error: undefined
+        });
+        
+        let result: any;
+        
+        // Determine swap direction
+        if (isSolanaToken(params.payToken) && isKongToken(params.receiveToken)) {
+          // SOL/SPL -> ICP
+          const solanaAddress = await SolanaService.getWalletAddress();
+          if (!solanaAddress) {
+            throw new Error("Solana wallet not connected");
+          }
+          
+          result = await CrossChainSwapService.executeSolToIcpSwap(
+            params.payAmount,
+            params.backendPrincipal.toText(),
+            solanaAddress,
+            (message) => {
+              toastStore.info(message, { duration: 5000 });
+            }
+          );
+        } else if (isKongToken(params.payToken) && isSolanaToken(params.receiveToken)) {
+          // ICP -> SOL/SPL
+          const solanaAddress = await SolanaService.getWalletAddress();
+          if (!solanaAddress) {
+            throw new Error("Solana wallet not connected");
+          }
+          
+          result = await CrossChainSwapService.executeIcpToSolSwap(
+            params.payAmount,
+            params.backendPrincipal.toText(),
+            solanaAddress,
+            (message) => {
+              toastStore.info(message, { duration: 5000 });
+            }
+          );
+        } else if (isSolanaToken(params.payToken) && isSolanaToken(params.receiveToken)) {
+          // SOL/SPL -> SOL/SPL
+          const solanaAddress = await SolanaService.getWalletAddress();
+          if (!solanaAddress) {
+            throw new Error("Solana wallet not connected");
+          }
+          
+          result = await CrossChainSwapService.executeSolanaToSolanaSwap(
+            params.payToken,
+            params.payAmount,
+            params.receiveToken,
+            solanaAddress,
+            (message) => {
+              toastStore.info(message, { duration: 5000 });
+            }
+          );
+        }
+        
+        if (result?.status === 'success') {
+          swapStatusStore.updateSwap(swapId, {
+            status: "Pending",
+            isProcessing: true,
+            error: undefined
+          });
+          
+          // Start monitoring if we have a job_id
+          if (result.job_id) {
+            const { CrossChainSwapMonitor } = await import('./CrossChainSwapMonitor');
+            await CrossChainSwapMonitor.startMonitoring(
+              result.job_id,
+              params.payToken.symbol,
+              params.receiveToken.symbol,
+              params.payAmount,
+              params.receiveAmount
+            );
+            
+            // Refresh balances immediately after starting the swap
+            this.refreshAllBalances();
+          }
+          
+          return result.job_id || BigInt(1); // Return job_id or a dummy value for success
+        } else {
+          throw new Error(result?.error || "Cross-chain swap failed");
+        }
+      }
+      
+      // Regular IC <-> IC swap logic below
+      
       // Add check for blocked tokens at the start
+      if (!isKongToken(params.payToken) || !isKongToken(params.receiveToken)) {
+        throw new Error("Both tokens must be Kong tokens for regular swaps");
+      }
+      
       if (BLOCKED_TOKEN_IDS.includes(params.payToken.address) || 
           BLOCKED_TOKEN_IDS.includes(params.receiveToken.address)) {
         toastStore.warning(
@@ -369,6 +489,11 @@ export class SwapService {
 
       if (!receiveToken) {
         throw new Error(`Receive token ${params.receiveToken.symbol} not found`);
+      }
+
+      // Ensure both tokens are Kong tokens for regular swaps
+      if (!isKongToken(payToken) || !isKongToken(receiveToken)) {
+        throw new Error("Both tokens must be Kong tokens for regular IC swaps");
       }
 
       let txId: bigint | false;
