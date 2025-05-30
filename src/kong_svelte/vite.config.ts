@@ -145,7 +145,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
           global: "globalThis",
         },
       },
-      include: ['comlink', '@dfinity/agent'],
+      include: ['comlink', '@dfinity/agent', 'buffer'],
       exclude: ['@sveltejs/kit', '$lib/utils/browser', '@dfinity/candid', '@dfinity/principal']
     },
     server: {
@@ -153,6 +153,12 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         "/api": {
           target: "http://localhost:4943",
           changeOrigin: true,
+        },
+        "/coingecko": {
+          target: "https://api.coingecko.com",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/coingecko/, ""),
+          secure: true,
         },
       },
       fs: {
@@ -218,6 +224,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       format: "es" as const,
     },
     define: {
+      global: 'globalThis',
       'process.env': JSON.stringify({
         ...fullEnv,
         VITE_RELEASE: gitHash

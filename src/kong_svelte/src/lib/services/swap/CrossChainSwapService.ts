@@ -97,12 +97,25 @@ export class CrossChainSwapService {
     }
 
     try {
-      // Fetch SOL, TRUMP, and ICP prices
-      const [solResponse, trumpResponse, icpResponse] = await Promise.all([
-        fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd'),
-        fetch('https://api.coingecko.com/api/v3/simple/price?ids=official-trump&vs_currencies=usd'),
-        fetch('https://api.coingecko.com/api/v3/simple/price?ids=internet-computer&vs_currencies=usd')
-      ]);
+      // Use different approaches for dev and production
+      let solResponse, trumpResponse, icpResponse;
+      
+      if (import.meta.env.DEV) {
+        // Use Vite proxy in development
+        const baseUrl = '/coingecko';
+        [solResponse, trumpResponse, icpResponse] = await Promise.all([
+          fetch(`${baseUrl}/api/v3/simple/price?ids=solana&vs_currencies=usd`),
+          fetch(`${baseUrl}/api/v3/simple/price?ids=official-trump&vs_currencies=usd`),
+          fetch(`${baseUrl}/api/v3/simple/price?ids=internet-computer&vs_currencies=usd`)
+        ]);
+      } else {
+        // Use our API endpoint in production
+        [solResponse, trumpResponse, icpResponse] = await Promise.all([
+          fetch(`/api/coingecko?ids=solana&vs_currencies=usd`),
+          fetch(`/api/coingecko?ids=official-trump&vs_currencies=usd`),
+          fetch(`/api/coingecko?ids=internet-computer&vs_currencies=usd`)
+        ]);
+      }
 
       const solData = await solResponse.json();
       const trumpData = await trumpResponse.json();
@@ -333,7 +346,9 @@ export class CrossChainSwapService {
    * Handle SOL to ICP swap
    */
   public static async executeSolToIcpSwap(
+    payToken: AnyToken,
     payAmount: string,
+    receiveToken: AnyToken,
     userPrincipal: string,
     solanaAddress?: string,
     onStatusUpdate?: (message: string) => void
@@ -346,10 +361,21 @@ export class CrossChainSwapService {
     let payTxId: string | undefined;
     let signature: string | undefined;
 
-    if (capabilities.canSendSol && solanaAddress) {
+    if (capabilities.canSendSol && solanaAddress && payToken.symbol === 'SOL') {
       // Send SOL automatically
-      if (onStatusUpdate) onStatusUpdate("Sending SOL transaction...");
+      if (onStatusUpdate) onStatusUpdate(`Sending ${payToken.symbol} transaction...`);
       payTxId = await SolanaService.sendSolWithWallet(kongSolanaAddress, parseFloat(payAmount));
+    } else if (solanaAddress && payToken.symbol !== 'SOL') {
+      // Send SPL token
+      if (onStatusUpdate) onStatusUpdate(`Sending ${payToken.symbol} transaction...`);
+      if (!isSolanaToken(payToken)) {
+        throw new Error(`Invalid Solana token: ${payToken.symbol}`);
+      }
+      payTxId = await SolanaService.sendSplTokenWithWallet(
+        payToken.mint_address,
+        kongSolanaAddress,
+        parseFloat(payAmount)
+      );
       
       // Verify transaction is in canister before proceeding
       if (onStatusUpdate) onStatusUpdate("Verifying transaction with Kong canister (up to 20 seconds)...");
@@ -363,25 +389,30 @@ export class CrossChainSwapService {
       if (onStatusUpdate) onStatusUpdate("Transaction verified! Processing swap...");
     } else {
       // Manual transfer required
-      throw new Error("Manual SOL transfer required to: " + kongSolanaAddress);
+      throw new Error(`Manual ${payToken.symbol} transfer required to: ${kongSolanaAddress}`);
     }
 
     // Create canonical message for signing
     const timestamp = Date.now();
-    const payAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * Math.pow(10, 9))); // SOL has 9 decimals
+    const payAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * Math.pow(10, payToken.decimals)));
     
     // Calculate receive amount based on real prices
     const prices = await this.fetchTokenPrices();
-    const solPrice = prices['SOL'] || 162;
-    const icpPrice = prices['ICP'] || 12;
-    const exchangeRate = solPrice / icpPrice; // How many ICP per SOL
-    const receiveAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * exchangeRate * Math.pow(10, 8))); // ICP has 8 decimals
+    const payTokenPrice = prices[payToken.symbol] || 0;
+    const receiveTokenPrice = prices[receiveToken.symbol] || 0;
+    
+    if (payTokenPrice === 0 || receiveTokenPrice === 0) {
+      throw new Error(`Unable to fetch prices for ${payToken.symbol} or ${receiveToken.symbol}`);
+    }
+    
+    const exchangeRate = payTokenPrice / receiveTokenPrice;
+    const receiveAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * exchangeRate * Math.pow(10, receiveToken.decimals)));
 
     const messageParams = {
-      pay_token: 'SOL',
+      pay_token: payToken.symbol,
       pay_amount: Number(payAmountAtomic),
       pay_address: solanaAddress || '',
-      receive_token: 'ICP',
+      receive_token: receiveToken.symbol,
       receive_amount: Number(receiveAmountAtomic),
       receive_address: userPrincipal,
       max_slippage: 99.0,
@@ -396,20 +427,7 @@ export class CrossChainSwapService {
       signature = await SolanaService.signMessageRaw(message);
     }
 
-    // Execute swap
-    const payToken: AnyToken = {
-      symbol: 'SOL',
-      name: 'Solana',
-      decimals: 9,
-      mint_address: 'So11111111111111111111111111111111111111112'
-    } as any;
-
-    const receiveToken: AnyToken = {
-      symbol: 'ICP',
-      name: 'Internet Computer',
-      decimals: 8,
-      address: 'ryjl3-tyaaa-aaaaa-aaaba-cai'
-    } as any;
+    // Execute swap with the actual tokens passed as parameters
 
     return this.executeSwap({
       payToken,
@@ -429,51 +447,41 @@ export class CrossChainSwapService {
    * Handle ICP to SOL swap
    */
   public static async executeIcpToSolSwap(
+    payToken: AnyToken,
     payAmount: string,
+    receiveToken: AnyToken,
     userPrincipal: string,
     solanaAddress: string,
     onStatusUpdate?: (message: string) => void
   ): Promise<CrossChainSwapResult> {
     // Check and request ICP approval
-    if (onStatusUpdate) onStatusUpdate("Checking ICP allowance...");
-    const tokenState = get(userTokens);
-    const icpToken = tokenState.tokens.find(t => t.symbol === 'ICP');
+    if (onStatusUpdate) onStatusUpdate(`Checking ${payToken.symbol} allowance...`);
     
-    if (icpToken) {
-      const payAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * Math.pow(10, 8))); // ICP has 8 decimals
-      if (onStatusUpdate) onStatusUpdate("Approving ICP transfer...");
+    if (isKongToken(payToken)) {
+      const payAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * Math.pow(10, payToken.decimals)));
+      if (onStatusUpdate) onStatusUpdate(`Approving ${payToken.symbol} transfer...`);
       await IcrcService.checkAndRequestIcrc2Allowances(
-        icpToken,
+        payToken,
         payAmountAtomic,
         canisters.kongSolanaBackend.canisterId
       );
     }
     
-    if (onStatusUpdate) onStatusUpdate("Processing ICP to SOL swap...");
+    if (onStatusUpdate) onStatusUpdate(`Processing ${payToken.symbol} to ${receiveToken.symbol} swap...`);
 
-    // Execute swap
-    const payToken: AnyToken = {
-      symbol: 'ICP',
-      name: 'Internet Computer',
-      decimals: 8,
-      address: 'ryjl3-tyaaa-aaaaa-aaaba-cai'
-    } as any;
-
-    const receiveToken: AnyToken = {
-      symbol: 'SOL',
-      name: 'Solana',
-      decimals: 9,
-      mint_address: 'So11111111111111111111111111111111111111112'
-    } as any;
-
-    const payAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * Math.pow(10, 8))); // ICP has 8 decimals
+    const payAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * Math.pow(10, payToken.decimals)));
     
     // Calculate receive amount based on real prices
     const prices = await this.fetchTokenPrices();
-    const icpPrice = prices['ICP'] || 12;
-    const solPrice = prices['SOL'] || 162;
-    const exchangeRate = icpPrice / solPrice; // How many SOL per ICP
-    const receiveAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * exchangeRate * Math.pow(10, 9))); // SOL has 9 decimals
+    const payTokenPrice = prices[payToken.symbol] || 0;
+    const receiveTokenPrice = prices[receiveToken.symbol] || 0;
+    
+    if (payTokenPrice === 0 || receiveTokenPrice === 0) {
+      throw new Error(`Unable to fetch prices for ${payToken.symbol} or ${receiveToken.symbol}`);
+    }
+    
+    const exchangeRate = payTokenPrice / receiveTokenPrice;
+    const receiveAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * exchangeRate * Math.pow(10, receiveToken.decimals)))
 
     return this.executeSwap({
       payToken,

@@ -397,7 +397,9 @@ export class SwapService {
           }
           
           result = await CrossChainSwapService.executeSolToIcpSwap(
+            params.payToken,
             params.payAmount,
+            params.receiveToken,
             params.backendPrincipal.toText(),
             solanaAddress,
             (message) => {
@@ -412,7 +414,9 @@ export class SwapService {
           }
           
           result = await CrossChainSwapService.executeIcpToSolSwap(
+            params.payToken,
             params.payAmount,
+            params.receiveToken,
             params.backendPrincipal.toText(),
             solanaAddress,
             (message) => {

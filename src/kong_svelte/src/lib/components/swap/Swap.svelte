@@ -50,6 +50,8 @@
   import { page } from "$app/stores";
   import type { SolanaTokenInfo } from "$lib/config/solana.config";
   import { type AnyToken, isKongToken, isSolanaToken, filterKongTokens } from "$lib/utils/tokenUtils";
+  import CrossChainSwapProgress from "./CrossChainSwapProgress.svelte";
+  import { crossChainSwapStore } from '$lib/services/swap/CrossChainSwapMonitor';
   
   // Types
   type PanelType = "pay" | "receive";
@@ -352,7 +354,9 @@
           }
           
           result = await CrossChainSwapService.executeSolToIcpSwap(
+            $swapState.payToken,
             $swapState.payAmount,
+            $swapState.receiveToken,
             $auth.account.owner.toString(),
             solanaAddress,
             (message) => {
@@ -375,7 +379,9 @@
           }
           
           result = await CrossChainSwapService.executeIcpToSolSwap(
+            $swapState.payToken,
             $swapState.payAmount,
+            $swapState.receiveToken,
             $auth.account.owner.toString(),
             solanaAddress,
             (message) => {
@@ -913,6 +919,9 @@
     />
   </Portal>
 {/if}
+
+<!-- Cross-chain Swap Progress Display -->
+<CrossChainSwapProgress />
 
 <style scoped lang="postcss">
   /* No animation classes needed here anymore since they're now in the SwapButton component */

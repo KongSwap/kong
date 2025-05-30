@@ -1,0 +1,18 @@
+/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept, Authorization
+  Access-Control-Max-Age: 86400
+
+# Specific headers for API routes
+/api/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Credentials: true
+
+# Headers for assets
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable

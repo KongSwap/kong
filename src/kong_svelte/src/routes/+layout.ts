@@ -1,4 +1,6 @@
 import type { LayoutLoad } from './$types';
+// Import polyfills early in the app lifecycle
+import '$lib/utils/polyfills';
 
 // We are enabling prerendering for this layout
 export const prerender = true;

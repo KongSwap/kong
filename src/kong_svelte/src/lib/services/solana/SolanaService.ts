@@ -1,3 +1,6 @@
+// Import polyfills first
+import '$lib/utils/polyfills';
+
 import { auth } from '$lib/stores/auth';
 import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
 import { canisters } from '$lib/config/auth.config';
@@ -143,6 +146,80 @@ export class SolanaService {
       } else {
         throw new Error(`Failed to send SOL: ${error.message}`);
       }
+    }
+  }
+
+  /**
+   * Send SPL tokens using the connected wallet
+   */
+  static async sendSplTokenWithWallet(
+    tokenMintAddress: string,
+    recipientAddress: string, 
+    amount: number
+  ): Promise<string> {
+    const adapter = auth.pnp.adapter;
+    
+    if (!adapter?.id?.includes('solflare') && !adapter?.id?.includes('phantom')) {
+      throw new Error('No supported Solana wallet connected');
+    }
+
+    let solanaWallet = null;
+    
+    if (adapter.id.includes('phantom')) {
+      solanaWallet = (window as any).phantom?.solana || (window as any).solana;
+    } else if (adapter.id.includes('solflare')) {
+      solanaWallet = (window as any).solflare || (window as any).solana;
+    }
+    
+    if (!solanaWallet) {
+      throw new Error('Solana wallet not found');
+    }
+    
+    if (!solanaWallet.isConnected) {
+      await solanaWallet.connect();
+    }
+
+    try {
+      const { PublicKey, Transaction } = await import('@solana/web3.js');
+      const { 
+        getAssociatedTokenAddress, 
+        createTransferInstruction,
+        getMint
+      } = await import('@solana/spl-token');
+      
+      const connection = await getSolanaConnection();
+      const mintPubkey = new PublicKey(tokenMintAddress);
+      const fromPubkey = new PublicKey(solanaWallet.publicKey.toString());
+      const toPubkey = new PublicKey(recipientAddress);
+      
+      // Get mint info to determine decimals
+      const mintInfo = await getMint(connection, mintPubkey);
+      const tokenAmount = BigInt(Math.floor(amount * Math.pow(10, mintInfo.decimals)));
+      
+      // Get associated token accounts
+      const fromTokenAccount = await getAssociatedTokenAddress(mintPubkey, fromPubkey);
+      const toTokenAccount = await getAssociatedTokenAddress(mintPubkey, toPubkey);
+      
+      // Create transfer instruction
+      const transferInstruction = createTransferInstruction(
+        fromTokenAccount,
+        toTokenAccount,
+        fromPubkey,
+        tokenAmount
+      );
+      
+      // Create transaction
+      const transaction = new Transaction().add(transferInstruction);
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = fromPubkey;
+      
+      // Sign and send
+      const signedTransaction = await solanaWallet.signAndSendTransaction(transaction);
+      return signedTransaction.signature;
+    } catch (error) {
+      console.error('Failed to send SPL token:', error);
+      throw new Error(`Failed to send SPL token: ${error.message}`);
     }
   }
 
