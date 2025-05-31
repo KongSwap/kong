@@ -255,6 +255,22 @@ export class CrossChainSwapService {
   }
 
   /**
+   * Wait for manual transaction to be confirmed by canister
+   */
+  public static async waitForManualTransaction(
+    signature: string,
+    onStatusUpdate?: (message: string) => void
+  ): Promise<boolean> {
+    console.log(`[CrossChainSwapService] Waiting for manual transaction: ${signature}`);
+    if (onStatusUpdate) {
+      onStatusUpdate("Waiting for transaction to be detected by Kong canister...");
+    }
+    
+    // Use longer timeout for manual transactions as user needs time to send
+    return this.verifyTransactionInCanister(signature, onStatusUpdate, 120, 500); // 60 seconds
+  }
+
+  /**
    * Execute cross-chain swap
    */
   public static async executeSwap(args: CrossChainSwapArgs): Promise<CrossChainSwapResult> {
@@ -264,6 +280,15 @@ export class CrossChainSwapService {
     }
 
     const actor = await this.getActor(true);
+
+    // If transaction ID is provided, verify it first
+    if (args.payTxId) {
+      console.log(`[CrossChainSwapService] Verifying provided transaction ID: ${args.payTxId}`);
+      const isConfirmed = await this.verifyTransactionInCanister(args.payTxId);
+      if (!isConfirmed) {
+        throw new Error("Transaction not yet confirmed by Kong canister. Please wait and try again.");
+      }
+    }
 
     // Build swap arguments based on swap mode
     const swapArgs = {
@@ -303,49 +328,65 @@ export class CrossChainSwapService {
   }
 
   /**
-   * Verify transaction exists in canister
+   * Verify transaction exists in canister using get_solana_transaction
    */
   public static async verifyTransactionInCanister(
     signature: string,
-    maxRetries = 40, // 40 attempts at 500ms = 20 seconds total
+    onStatusUpdate?: (message: string) => void,
+    maxRetries = 60, // 60 attempts at 500ms = 30 seconds total
     retryDelay = 500 // Check every 500ms
   ): Promise<boolean> {
     const actor = await this.getActor(true);
+    console.log(`[CrossChainSwapService] Starting transaction verification for: ${signature}`);
     
     for (let i = 0; i < maxRetries; i++) {
       try {
-        // Check all transactions - using the correct method name from the .did file
-        const allTxs = await actor.get_all_solana_transactions();
-        const found = allTxs.some(tx => tx.signature === signature);
-        if (found) {
-          console.log(`Transaction ${signature} found in canister after ${i + 1} attempts (${(i + 1) * retryDelay / 1000}s)`);
+        // Use get_solana_transaction directly - this is the proper way
+        const txResult = await actor.get_solana_transaction(signature);
+        
+        if (txResult && txResult.length > 0 && txResult[0]) {
+          const tx = txResult[0];
+          console.log(`[CrossChainSwapService] Transaction ${signature} found!`);
+          console.log(`  Status: ${tx.status}`);
+          console.log(`  Metadata: ${tx.metadata?.[0] || 'none'}`);
+          
+          // Transaction found and processed by canister
+          if (onStatusUpdate) {
+            onStatusUpdate("Transaction confirmed by Kong canister! Proceeding with swap...");
+          }
           return true;
         }
         
-        // Also try get_solana_tx (singular) - this is the correct name from the .did file
-        try {
-          const txResult = await actor.get_solana_transaction(signature);
-          if (txResult && txResult.length > 0) {
-            console.log(`Transaction ${signature} found via get_solana_tx after ${i + 1} attempts`);
-            return true;
+        // Progress updates for user
+        if (onStatusUpdate) {
+          if (i === 0) {
+            onStatusUpdate("Waiting for Kong canister to process transaction...");
+          } else if (i === 3) { // After 1.5 seconds
+            onStatusUpdate("Transaction detected, processing...");
+          } else if (i === 9) { // After 4.5 seconds
+            onStatusUpdate("Still processing, this can take a few seconds...");
+          } else if (i === 20) { // After 10 seconds
+            onStatusUpdate("Transaction processing taking longer than usual...");
           }
-        } catch (e) {
-          // Method might not exist, that's okay, we'll use get_all_solana_transactions
         }
+        
       } catch (error) {
-        console.warn(`Error checking transaction ${signature}:`, error);
+        console.warn(`[CrossChainSwapService] Error checking transaction ${signature}:`, error);
       }
       
       // Don't wait on the last iteration
       if (i < maxRetries - 1) {
         if ((i + 1) % 10 === 0) { // Log every 5 seconds (10 * 500ms)
-          console.log(`Transaction not found yet, checked ${i + 1} times (${(i + 1) * retryDelay / 1000}s elapsed)...`);
+          console.log(`[CrossChainSwapService] Still waiting... checked ${i + 1} times (${(i + 1) * retryDelay / 1000}s elapsed)`);
         }
         await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
     }
     
-    console.error(`Transaction ${signature} not found in canister after ${maxRetries} attempts (${maxRetries * retryDelay / 1000}s total)`);
+    console.error(`[CrossChainSwapService] Transaction ${signature} not found after ${maxRetries} attempts (${maxRetries * retryDelay / 1000}s total)`);
+    if (onStatusUpdate) {
+      onStatusUpdate("Transaction verification timed out. Please try again.");
+    }
     return false;
   }
 
@@ -372,6 +413,19 @@ export class CrossChainSwapService {
       // Send SOL automatically
       if (onStatusUpdate) onStatusUpdate(`Sending ${payToken.symbol} transaction...`);
       payTxId = await SolanaService.sendSolWithWallet(kongSolanaAddress, parseFloat(payAmount));
+      
+      // Verify SOL transaction is in canister before proceeding
+      if (onStatusUpdate) onStatusUpdate("Verifying transaction with Kong canister...");
+      console.log(`[CrossChainSwapService] Verifying SOL transaction ${payTxId} is in canister...`);
+      console.log(`  Amount: ${parseFloat(payAmount)} SOL (${parseFloat(payAmount) * Math.pow(10, payToken.decimals)} lamports)`);
+      
+      const isInCanister = await this.verifyTransactionInCanister(payTxId, onStatusUpdate);
+      
+      if (!isInCanister) {
+        throw new Error("Transaction not confirmed by Kong canister. Please try again.");
+      }
+      
+      if (onStatusUpdate) onStatusUpdate("Transaction verified! Initiating cross-chain swap...");
     } else if (solanaAddress && payToken.symbol !== 'SOL') {
       // Send SPL token
       if (onStatusUpdate) onStatusUpdate(`Sending ${payToken.symbol} transaction...`);
@@ -384,24 +438,18 @@ export class CrossChainSwapService {
         parseFloat(payAmount)
       );
       
-      // Verify transaction is in canister before proceeding
+      // Verify SPL token transaction is in canister before proceeding
       if (onStatusUpdate) onStatusUpdate("Verifying transaction with Kong canister...");
-      console.log(`Verifying transaction ${payTxId} is in canister...`);
-      console.log(`Expected amount in transaction: ${parseFloat(payAmount) * Math.pow(10, payToken.decimals)} atomic units`);
-      console.log(`Token: ${payToken.symbol} (${payToken.decimals} decimals)`);
-      const isInCanister = await this.verifyTransactionInCanister(payTxId);
+      console.log(`[CrossChainSwapService] Verifying SPL token transaction ${payTxId} is in canister...`);
+      console.log(`  Amount: ${parseFloat(payAmount)} ${payToken.symbol} (${parseFloat(payAmount) * Math.pow(10, payToken.decimals)} atomic units)`);
+      
+      const isInCanister = await this.verifyTransactionInCanister(payTxId, onStatusUpdate);
       
       if (!isInCanister) {
-        throw new Error("Transaction not confirmed in canister. Please try again later.");
+        throw new Error("Transaction not confirmed by Kong canister. Please try again.");
       }
       
-      if (onStatusUpdate) onStatusUpdate("Transaction verified! Processing swap...");
-      
-      // Add 3-second delay for Solana pay tokens before calling backend swap
-      if (onStatusUpdate) onStatusUpdate("Waiting for transaction settlement...");
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      if (onStatusUpdate) onStatusUpdate("Initiating cross-chain swap...");
+      if (onStatusUpdate) onStatusUpdate("Transaction verified! Initiating cross-chain swap...");
     } else {
       // Manual transfer required
       throw new Error(`Manual ${payToken.symbol} transfer required to: ${kongSolanaAddress}`);
