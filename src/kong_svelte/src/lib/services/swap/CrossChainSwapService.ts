@@ -280,6 +280,13 @@ export class CrossChainSwapService {
       signature: args.signature ? [args.signature] : []
     };
 
+    console.log(`[CrossChainSwapService] Sending swap args to backend:`, {
+      ...swapArgs,
+      pay_amount: swapArgs.pay_amount.toString(), // Convert BigInt to string for logging
+      receive_amount: swapArgs.receive_amount.map(amt => amt.toString()),
+      timestamp: swapArgs.timestamp.map(ts => ts.toString())
+    });
+
     const response = await actor.swap(swapArgs);
 
     if ('Ok' in response) {
@@ -380,6 +387,8 @@ export class CrossChainSwapService {
       // Verify transaction is in canister before proceeding
       if (onStatusUpdate) onStatusUpdate("Verifying transaction with Kong canister...");
       console.log(`Verifying transaction ${payTxId} is in canister...`);
+      console.log(`Expected amount in transaction: ${parseFloat(payAmount) * Math.pow(10, payToken.decimals)} atomic units`);
+      console.log(`Token: ${payToken.symbol} (${payToken.decimals} decimals)`);
       const isInCanister = await this.verifyTransactionInCanister(payTxId);
       
       if (!isInCanister) {
@@ -387,6 +396,12 @@ export class CrossChainSwapService {
       }
       
       if (onStatusUpdate) onStatusUpdate("Transaction verified! Processing swap...");
+      
+      // Add 3-second delay for Solana pay tokens before calling backend swap
+      if (onStatusUpdate) onStatusUpdate("Waiting for transaction settlement...");
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      if (onStatusUpdate) onStatusUpdate("Initiating cross-chain swap...");
     } else {
       // Manual transfer required
       throw new Error(`Manual ${payToken.symbol} transfer required to: ${kongSolanaAddress}`);
@@ -395,6 +410,12 @@ export class CrossChainSwapService {
     // Create canonical message for signing
     const timestamp = Date.now();
     const payAmountAtomic = BigInt(Math.floor(parseFloat(payAmount) * Math.pow(10, payToken.decimals)));
+    
+    console.log(`[CrossChainSwapService] Amount calculation for ${payToken.symbol}:`);
+    console.log(`  - Input amount: ${payAmount}`);
+    console.log(`  - Token decimals: ${payToken.decimals}`);
+    console.log(`  - Calculated atomic amount: ${payAmountAtomic.toString()}`);
+    console.log(`  - Expected atomic amount for 0.01 TRUMP: 10000`);
     
     // Calculate receive amount based on real prices
     const prices = await this.fetchTokenPrices();

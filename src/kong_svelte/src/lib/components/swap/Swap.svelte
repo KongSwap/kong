@@ -2,11 +2,13 @@
   import SwapPanel from "./swap_ui/SwapPanel.svelte";
   import TokenSelectorDropdown from "./swap_ui/TokenSelectorDropdown.svelte";
   import SwapConfirmation from "./swap_ui/SwapConfirmation.svelte";
+  import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import Portal from "svelte-portal";
   import { Principal } from "@dfinity/principal";
   import { fade } from "svelte/transition";
   import { onMount, onDestroy } from "svelte";
   import { get } from "svelte/store";
+  import { swapSuccessStore } from "$lib/stores/swapSuccessStore";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
@@ -53,6 +55,16 @@
   import CrossChainSwapProgress from "./CrossChainSwapProgress.svelte";
   import { crossChainSwapStore } from '$lib/services/swap/CrossChainSwapMonitor';
   
+  // Function to safely serialize balances for comparison (handles BigInt)
+  function serializeBalancesForComparison(balances: any): string {
+    return JSON.stringify(balances, (key, value) => {
+      if (typeof value === 'bigint') {
+        return value.toString();
+      }
+      return value;
+    });
+  }
+
   // Types
   type PanelType = "pay" | "receive";
   interface PanelConfig {
@@ -373,11 +385,15 @@
             }
           );
           
-          // If swap was initiated successfully, start refreshing SOL balances every 500ms for 30 seconds
+          // If swap was initiated successfully, start refreshing SOL balances every 500ms for 60 times
           if (result && result.status === 'success') {
             const { solanaBalanceStore } = await import('$lib/stores/solanaBalanceStore');
+            const { get } = await import('svelte/store');
             let refreshCount = 0;
             const maxRefreshes = 60;
+            
+            // Get initial balances to compare against
+            const initialBalances = serializeBalancesForComparison(get(solanaBalanceStore).balances);
             
             // Show toast notification about balance refresh
             toastStore.info(
@@ -391,6 +407,20 @@
               
               try {
                 await solanaBalanceStore.fetchBalances(true); // Force refresh
+                
+                // Check if balances have changed
+                const currentBalances = serializeBalancesForComparison(get(solanaBalanceStore).balances);
+                if (currentBalances !== initialBalances) {
+                  console.log('SOL balance change detected! Stopping refresh cycle.');
+                  clearInterval(refreshInterval);
+                  
+                  // Show completion toast
+                  toastStore.success(
+                    `Balance change detected! SOL balance updated successfully.`,
+                    { duration: 5000 }
+                  );
+                  return;
+                }
               } catch (error) {
                 console.error('Error refreshing SOL balances:', error);
               }
@@ -401,11 +431,11 @@
                 
                 // Show completion toast
                 toastStore.success(
-                  `Balance refresh completed! SOL balances updated.`,
+                  `Balance refresh completed! Check your SOL wallet for outgoing tokens.`,
                   { duration: 5000 }
                 );
               }
-            }, 500); // Every 500ms
+            }, 500);
           }
         } else if (swapMode === 'ICP_TO_SOL') {
           // Get user's Solana address
@@ -418,6 +448,14 @@
           if (!$auth.account?.owner) {
             throw new Error("Please connect your wallet");
           }
+          
+          // Add delayed toast message for ICP to SOL swaps
+          setTimeout(() => {
+            toastStore.info(
+              `Preparing to pay Solana...`,
+              { duration: 4000 }
+            );
+          }, 4000);
           
           result = await CrossChainSwapService.executeIcpToSolSwap(
             $swapState.payToken,
@@ -436,8 +474,12 @@
           // If swap was initiated successfully, start refreshing SOL balances every second for 3 seconds
           if (result && result.status === 'success') {
             const { solanaBalanceStore } = await import('$lib/stores/solanaBalanceStore');
+            const { get } = await import('svelte/store');
             let refreshCount = 0;
             const maxRefreshes = 3;
+            
+            // Get initial balances to compare against
+            const initialBalances = serializeBalancesForComparison(get(solanaBalanceStore).balances);
             
             // Show toast notification about balance refresh
             const refreshToastId = toastStore.info(
@@ -451,6 +493,20 @@
               
               try {
                 await solanaBalanceStore.fetchBalances(true); // Force refresh
+                
+                // Check if balances have changed
+                const currentBalances = serializeBalancesForComparison(get(solanaBalanceStore).balances);
+                if (currentBalances !== initialBalances) {
+                  console.log('SOL balance change detected! Stopping refresh cycle.');
+                  clearInterval(refreshInterval);
+                  
+                  // Show completion toast
+                  toastStore.success(
+                    `Balance change detected! SOL balance updated with incoming tokens.`,
+                    { duration: 5000 }
+                  );
+                  return;
+                }
               } catch (error) {
                 console.error('Error refreshing SOL balances:', error);
               }
@@ -465,7 +521,7 @@
                   { duration: 5000 }
                 );
               }
-            }, 1000); // Every 1 second
+            }, 1000);
           }
         } else if (swapMode === 'SOL_TO_SPL' || swapMode === 'SPL_TO_SPL') {
           // Solana-to-Solana swaps
@@ -510,14 +566,17 @@
             $swapState.payToken.symbol,
             $swapState.receiveToken.symbol,
             $swapState.payAmount,
-            $swapState.receiveAmount
+            $swapState.receiveAmount,
+            $swapState.payToken,
+            $swapState.receiveToken
           );
         } else {
           // Fallback if no job ID
           toastStore.success(`Cross-chain swap initiated!`);
+          // Only reset if we're not monitoring (no job ID)
+          resetSwapState();
         }
 
-        resetSwapState();
         return true;
       }
 
@@ -1004,6 +1063,17 @@
 
 <!-- Cross-chain Swap Progress Display -->
 <CrossChainSwapProgress />
+
+<!-- Swap Success Modal -->
+<SwapSuccessModal 
+  show={$swapSuccessStore.show}
+  payAmount={$swapSuccessStore.payAmount}
+  payToken={$swapSuccessStore.payToken}
+  receiveAmount={$swapSuccessStore.receiveAmount}
+  receiveToken={$swapSuccessStore.receiveToken}
+  solanaTransactionHash={$swapSuccessStore.solanaTransactionHash}
+  onClose={() => swapSuccessStore.hide()}
+/>
 
 <style scoped lang="postcss">
   /* No animation classes needed here anymore since they're now in the SwapButton component */

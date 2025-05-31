@@ -140,13 +140,51 @@ export class SwapService {
    */
   public static async refreshAllBalances(): Promise<void> {
     try {
-      // Refresh ICP token balances
+      // Get current swap state to know which tokens to refresh
+      const { swapState } = await import('./SwapStateService');
+      const { get } = await import('svelte/store');
+      const currentState = get(swapState);
+      
+      // Refresh ICP token balances with force refresh
+      const { refreshBalances } = await import('$lib/stores/balancesStore');
+      const { auth } = await import('$lib/stores/auth');
+      const authState = get(auth);
+      
+      if (authState.account?.owner) {
+        // Collect all tokens that need refreshing
+        const tokensToRefresh: AnyToken[] = [];
+        
+        if (currentState.payToken && isKongToken(currentState.payToken)) {
+          tokensToRefresh.push(currentState.payToken);
+        }
+        if (currentState.receiveToken && isKongToken(currentState.receiveToken)) {
+          tokensToRefresh.push(currentState.receiveToken);
+        }
+        
+        // Force refresh for these specific tokens
+        if (tokensToRefresh.length > 0) {
+          await refreshBalances(tokensToRefresh, authState.account.owner, true);
+        }
+      }
+      
+      // Refresh Solana token balances with force refresh
+      const { solanaBalanceStore } = await import('$lib/stores/solanaBalanceStore');
+      await solanaBalanceStore.fetchBalances(true);
+      
+      // For cross-chain swaps involving Solana, add extra refresh attempts
+      if (currentState.payToken && currentState.receiveToken) {
+        const involveSolana = isSolanaToken(currentState.payToken) || isSolanaToken(currentState.receiveToken);
+        if (involveSolana) {
+          // Schedule additional Solana balance refreshes
+          setTimeout(() => solanaBalanceStore.fetchBalances(true), 1000);
+          setTimeout(() => solanaBalanceStore.fetchBalances(true), 2000);
+        }
+      }
+      
+      // Also refresh the general ICRC balances
       const { IcrcService } = await import('../icrc/IcrcService');
       await IcrcService.refreshBalances();
       
-      // Refresh Solana token balances
-      const { solanaBalanceStore } = await import('$lib/stores/solanaBalanceStore');
-      await solanaBalanceStore.fetchBalances();
     } catch (error) {
       console.error('Error refreshing balances:', error);
     }

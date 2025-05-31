@@ -75,10 +75,12 @@ export interface SwapState {
   };
   successDetails: {
     payAmount: string;
-    payToken: AnyToken | null; // Change to AnyToken
+    payToken: AnyToken | null;
     receiveAmount: string;
-    receiveToken: AnyToken | null; // Change to AnyToken
+    receiveToken: AnyToken | null;
     principalId: string;
+    transactionSignature: string | null; // Add transaction signature
+    cluster: string | null; // Add cluster (devnet/mainnet)
   } | null;
 }
 
@@ -332,6 +334,22 @@ function createSwapStore(): SwapStore {
         ...state,
         successDetails: details
       }));
+    },
+
+    setTransactionSignature(signature: string, cluster: string) {
+      update(state => {
+        if (state.successDetails) {
+          return {
+            ...state,
+            successDetails: {
+              ...state.successDetails,
+              transactionSignature: signature,
+              cluster
+            }
+          };
+        }
+        return state;
+      });
     },
 
     reset() {

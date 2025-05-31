@@ -142,27 +142,23 @@ export class SwapMonitor {
                 },
               });
 
-              // Load updated balances
-              const tokens = get(userTokens).tokens;
-              const payToken = tokens.find(
-                (t) => t.symbol === swapStatus.pay_symbol,
-              );
-              const receiveToken = tokens.find(
-                (t) => t.symbol === swapStatus.receive_symbol,
-              );
-              const walletId = auth?.pnp?.account?.owner;
-
-              if (!payToken || !receiveToken || !walletId) {
-                console.error("Missing token or wallet info for balance update");
-                return;
-              }
-
+              // Load updated balances using the improved refresh method
               try {
-                await loadBalances(
-                  [payToken, receiveToken],
-                  walletId,
-                  true
-                );
+                // Refresh all balances immediately
+                await SwapService.refreshAllBalances();
+                
+                // Also refresh balances multiple times to ensure UI updates
+                // After 500ms, 1s, 2s, 3s
+                const refreshTimes = [500, 1000, 2000, 3000];
+                refreshTimes.forEach(delay => {
+                  setTimeout(async () => {
+                    try {
+                      await SwapService.refreshAllBalances();
+                    } catch (error) {
+                      console.error(`Error refreshing balances after ${delay}ms:`, error);
+                    }
+                  }, delay);
+                });
               } catch (error) {
                 console.error("Error updating balances:", error);
               }

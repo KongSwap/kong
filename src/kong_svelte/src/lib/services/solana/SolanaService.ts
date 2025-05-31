@@ -184,6 +184,7 @@ export class SolanaService {
       const { 
         getAssociatedTokenAddress, 
         createTransferInstruction,
+        createAssociatedTokenAccountInstruction,
         getMint
       } = await import('@solana/spl-token');
       
@@ -196,9 +197,33 @@ export class SolanaService {
       const mintInfo = await getMint(connection, mintPubkey);
       const tokenAmount = BigInt(Math.floor(amount * Math.pow(10, mintInfo.decimals)));
       
+      console.log(`[SolanaService] SPL Token Transfer Details:`);
+      console.log(`  - Human amount: ${amount}`);
+      console.log(`  - Mint decimals: ${mintInfo.decimals}`);
+      console.log(`  - Atomic amount being sent: ${tokenAmount.toString()}`);
+      console.log(`  - Mint address: ${tokenMintAddress}`);
+      
       // Get associated token accounts
       const fromTokenAccount = await getAssociatedTokenAddress(mintPubkey, fromPubkey);
       const toTokenAccount = await getAssociatedTokenAddress(mintPubkey, toPubkey);
+      
+      // Check if destination token account exists
+      const toAccountInfo = await connection.getAccountInfo(toTokenAccount);
+      
+      // Create transaction
+      const transaction = new Transaction();
+      
+      // Add instruction to create destination token account if it doesn't exist (like --fund-recipient)
+      if (!toAccountInfo) {
+        console.log(`[SolanaService] Creating associated token account for recipient: ${toTokenAccount.toString()}`);
+        const createAccountInstruction = createAssociatedTokenAccountInstruction(
+          fromPubkey, // payer
+          toTokenAccount, // associated token account
+          toPubkey, // owner
+          mintPubkey // mint
+        );
+        transaction.add(createAccountInstruction);
+      }
       
       // Create transfer instruction
       const transferInstruction = createTransferInstruction(
@@ -208,8 +233,9 @@ export class SolanaService {
         tokenAmount
       );
       
-      // Create transaction
-      const transaction = new Transaction().add(transferInstruction);
+      transaction.add(transferInstruction);
+      
+      // Get recent blockhash
       const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = fromPubkey;

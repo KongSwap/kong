@@ -51,6 +51,7 @@ function createSolanaBalanceStore() {
       const { CrossChainSwapService } = await import('$lib/services/swap/CrossChainSwapService');
       await CrossChainSwapService.refreshPrices();
 
+      console.log(`🔄 Loading Solana balances (forceRefresh: ${forceRefresh})`);
       update(state => ({ ...state, isLoading: true, error: null }));
 
       try {
@@ -58,6 +59,7 @@ function createSolanaBalanceStore() {
         const userAddress = await getUserSolanaAddress();
         
         if (!userAddress) {
+          console.log('⚠️ No Solana wallet connected');
           update(state => ({
             ...state,
             isLoading: false,
@@ -68,12 +70,15 @@ function createSolanaBalanceStore() {
           return;
         }
 
+        console.log(`📡 Fetching balances for Solana address: ${userAddress}`);
+        
         // Fetch balances
         const balances = await getSolanaBalances(userAddress);
         const balanceMap: Record<string, SolanaBalance> = {};
         
         balances.forEach(balance => {
           balanceMap[balance.mint_address] = balance;
+          console.log(`  - ${balance.symbol}: ${balance.uiAmount} (${balance.amount} atomic)`);
         });
 
         update(state => ({
@@ -85,7 +90,7 @@ function createSolanaBalanceStore() {
           error: null
         }));
 
-        console.log('✅ Solana balances loaded:', Object.keys(balanceMap).length, 'tokens');
+        console.log(`✅ Solana balances loaded: ${Object.keys(balanceMap).length} tokens at ${new Date(now).toLocaleTimeString()}`);
       } catch (error) {
         console.error('❌ Error loading Solana balances:', error);
         update(state => ({

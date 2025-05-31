@@ -16,6 +16,7 @@
       case 'SendingToSolana':
         return '⚙️';
       case 'Confirmed':
+      case 'Submitted':
         return '✅';
       case 'Failed':
         return '❌';
@@ -27,6 +28,7 @@
   function getStatusColor(status: string) {
     switch (status) {
       case 'Confirmed':
+      case 'Submitted':
         return 'text-green-600 dark:text-green-400';
       case 'Failed':
         return 'text-red-600 dark:text-red-400';
@@ -50,6 +52,7 @@
       case 'SendingToSolana':
         return 80;
       case 'Confirmed':
+      case 'Submitted':
         return 100;
       case 'Failed':
         return 0;
