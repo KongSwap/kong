@@ -91,8 +91,8 @@ export class CrossChainSwapService {
     const cache = this.priceCache;
     const now = Date.now();
     
-    // Return cached prices if still valid (1 minute for more accurate prices)
-    if (cache.timestamp && now - cache.timestamp < 1 * 60 * 1000) {
+    // Return cached prices if still valid (5 minutes to reduce API calls)
+    if (cache.timestamp && now - cache.timestamp < 5 * 60 * 1000) {
       return cache.prices;
     }
 
@@ -128,7 +128,10 @@ export class CrossChainSwapService {
         ICP: icpData['internet-computer']?.usd || 12
       };
 
-      console.log('Fetched real-time prices:', prices);
+      // Only log on the first fetch or after cache expired
+      if (!cache.timestamp || now - cache.timestamp >= 5 * 60 * 1000) {
+        console.log('Fetched real-time prices:', prices);
+      }
 
       // Update cache
       this.priceCache = {
@@ -313,13 +316,18 @@ export class CrossChainSwapService {
     });
 
     const response = await actor.swap(swapArgs);
+    console.log('[CrossChainSwapService] Swap response:', response);
 
     if ('Ok' in response) {
+      // job_id is directly a bigint, not an array
+      const jobId = response.Ok.job_id;
+      console.log('[CrossChainSwapService] Swap successful! Job ID:', jobId?.toString());
       return {
-        job_id: response.Ok.job_id?.[0],
+        job_id: jobId,
         status: 'success'
       };
     } else {
+      console.error('[CrossChainSwapService] Swap failed:', response.Err);
       return {
         error: response.Err,
         status: 'error'
@@ -401,6 +409,13 @@ export class CrossChainSwapService {
     solanaAddress?: string,
     onStatusUpdate?: (message: string) => void
   ): Promise<CrossChainSwapResult> {
+    console.log('[CrossChainSwapService] Starting SOL to ICP swap:', {
+      payToken: payToken.symbol,
+      payAmount,
+      receiveToken: receiveToken.symbol,
+      userPrincipal,
+      solanaAddress
+    });
     // Get Kong's Solana address
     const kongSolanaAddress = await SolanaService.getKongSolanaAddress();
     
@@ -497,6 +512,18 @@ export class CrossChainSwapService {
     }
 
     // Execute swap with the actual tokens passed as parameters
+    console.log('[CrossChainSwapService] Calling executeSwap with args:', {
+      payToken: payToken.symbol,
+      payAmount: payAmountAtomic.toString(),
+      payAddress: solanaAddress,
+      payTxId,
+      receiveToken: receiveToken.symbol,
+      receiveAmount: receiveAmountAtomic.toString(),
+      receiveAddress: userPrincipal,
+      maxSlippage: 99.0,
+      timestamp: timestamp,
+      signature: signature ? 'present' : 'not present'
+    });
 
     return this.executeSwap({
       payToken,

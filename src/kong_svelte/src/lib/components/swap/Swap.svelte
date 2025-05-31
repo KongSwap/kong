@@ -52,7 +52,6 @@
   import { page } from "$app/stores";
   import type { SolanaTokenInfo } from "$lib/config/solana.config";
   import { type AnyToken, isKongToken, isSolanaToken, filterKongTokens } from "$lib/utils/tokenUtils";
-  import CrossChainSwapProgress from "./CrossChainSwapProgress.svelte";
   import { crossChainSwapStore } from '$lib/services/swap/CrossChainSwapMonitor';
   
   // Function to safely serialize balances for comparison (handles BigInt)
@@ -316,7 +315,6 @@
     swapState.update((state) => ({
       ...state,
       showConfirmation: true,
-      isProcessing: false,
       error: null,
       showSuccessModal: false,
     }));
@@ -344,6 +342,7 @@
         ...state,
         isProcessing: true,
         error: null,
+        showConfirmation: false, // Close confirmation modal immediately
       }));
 
       // Check if this is a cross-chain swap
@@ -396,10 +395,7 @@
             const initialBalances = serializeBalancesForComparison(get(solanaBalanceStore).balances);
             
             // Show toast notification about balance refresh
-            toastStore.info(
-              `Refreshing SOL balances to reflect outgoing tokens...`,
-              { duration: 30000 }
-            );
+            // Removed balance refresh toast - reduces spam
             
             const refreshInterval = setInterval(async () => {
               refreshCount++;
@@ -482,10 +478,7 @@
             const initialBalances = serializeBalancesForComparison(get(solanaBalanceStore).balances);
             
             // Show toast notification about balance refresh
-            const refreshToastId = toastStore.info(
-              `Refreshing SOL balances to reflect incoming tokens...`,
-              { duration: 4000 }
-            );
+            // Removed balance refresh toast - reduces spam
             
             const refreshInterval = setInterval(async () => {
               refreshCount++;
@@ -551,6 +544,8 @@
         if (result.error) {
           throw new Error(result.error);
         }
+        
+        console.log('[Swap] Cross-chain swap result:', result);
 
         // Show second toast notification for successful swap initiation
         toastStore.success(
@@ -558,8 +553,16 @@
           { duration: 2000 }
         );
 
+        // Reset processing state after successful swap initiation
+        swapState.update((state) => ({
+          ...state,
+          isProcessing: false,
+          processingMessage: undefined
+        }));
+
         // Start monitoring the cross-chain swap with 200ms polling
         if (result.job_id) {
+          console.log('[Swap] Starting monitoring for job_id:', result.job_id.toString());
           const { CrossChainSwapMonitor } = await import('$lib/services/swap/CrossChainSwapMonitor');
           await CrossChainSwapMonitor.startMonitoring(
             result.job_id,
@@ -572,6 +575,7 @@
           );
         } else {
           // Fallback if no job ID
+          console.warn('[Swap] No job_id received from cross-chain swap!');
           toastStore.success(`Cross-chain swap initiated!`);
           // Only reset if we're not monitoring (no job ID)
           resetSwapState();
@@ -611,6 +615,12 @@
         return false;
       }
 
+      // Reset processing state after successful Kong swap
+      swapState.update((state) => ({
+        ...state,
+        isProcessing: false
+      }));
+      
       resetSwapState();
       return true;
     } catch (error) {
@@ -620,6 +630,7 @@
         isProcessing: false,
         processingMessage: undefined,
         error: error.message || "Swap failed",
+        showConfirmation: false, // Close the modal on error
       }));
       return false;
     } finally {
@@ -1060,9 +1071,6 @@
     />
   </Portal>
 {/if}
-
-<!-- Cross-chain Swap Progress Display -->
-<CrossChainSwapProgress />
 
 <!-- Swap Success Modal -->
 <SwapSuccessModal 

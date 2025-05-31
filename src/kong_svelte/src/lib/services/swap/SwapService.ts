@@ -494,7 +494,9 @@ export class SwapService {
               params.payToken.symbol,
               params.receiveToken.symbol,
               params.payAmount,
-              params.receiveAmount
+              params.receiveAmount,
+              params.payToken,
+              params.receiveToken
             );
             
             // Refresh balances immediately after starting the swap

@@ -48,7 +48,8 @@ body {
   min-height: 100vh;
   position: relative;
   z-index: 0;
-  overflow: hidden;
+  /* Removed overflow: hidden to allow fixed positioned children to show */
+  /* overflow: hidden; */
 }
 
 /* Update the gradient for light theme with more muted blue tones */

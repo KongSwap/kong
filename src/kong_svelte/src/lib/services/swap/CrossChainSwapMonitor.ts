@@ -27,6 +27,7 @@ export const crossChainSwapStore = writable<Record<string, CrossChainSwapStatus>
 
 export class CrossChainSwapMonitor {
   private static pollingIntervals: Map<string, number> = new Map();
+  private static pollCount: Map<string, number> = new Map();
   
   /**
    * Start monitoring a cross-chain swap job
@@ -41,6 +42,8 @@ export class CrossChainSwapMonitor {
     receiveTokenInfo?: AnyToken
   ): Promise<void> {
     const jobIdStr = jobId.toString();
+    // Log only essential information
+    console.log(`[CrossChainSwapMonitor] Starting monitoring for job ${jobIdStr}: ${payToken} → ${receiveToken}`);
     
     // Stop any existing monitoring for this job
     this.stopMonitoring(jobIdStr);
@@ -61,17 +64,21 @@ export class CrossChainSwapMonitor {
     
     // Create initial toast notification
     const toastId = toastStore.info(
-      `🔄 Processing ${payToken} → ${receiveToken} swap...`,
+      `Processing ${payToken} → ${receiveToken} swap...`,
       { duration: undefined } // Keep toast until we dismiss it
     );
     
     initialStatus.toastId = toastId;
     
     // Update store
-    crossChainSwapStore.update(swaps => ({
-      ...swaps,
-      [jobIdStr]: initialStatus
-    }));
+    crossChainSwapStore.update(swaps => {
+      const newSwaps = {
+        ...swaps,
+        [jobIdStr]: initialStatus
+      };
+      // Removed excessive logging
+      return newSwaps;
+    });
     
     // Start polling every 200ms
     const intervalId = window.setInterval(async () => {
@@ -89,6 +96,15 @@ export class CrossChainSwapMonitor {
    */
   private static async pollJobStatus(jobIdStr: string): Promise<void> {
     try {
+      // Only log every 10th poll to reduce spam
+      if (this.pollCount.get(jobIdStr) === undefined) {
+        this.pollCount.set(jobIdStr, 0);
+      }
+      const count = this.pollCount.get(jobIdStr)! + 1;
+      this.pollCount.set(jobIdStr, count);
+      if (count % 10 === 1) {
+        console.log(`[CrossChainSwapMonitor] Polling job ${jobIdStr} (poll #${count})`);
+      }
       const currentStatus = get(crossChainSwapStore)[jobIdStr];
       if (!currentStatus) {
         this.stopMonitoring(jobIdStr);
@@ -96,26 +112,32 @@ export class CrossChainSwapMonitor {
       }
       
       const job = await CrossChainSwapService.getSwapJob(currentStatus.jobId);
+      // Log only on status changes
       
       if (!job) {
         // Job not found yet, keep polling
+        console.log('[CrossChainSwapMonitor] Job not found yet, continuing to poll');
         return;
       }
       
       const statusKey = Object.keys(job.status)[0];
       const statusChanged = statusKey !== currentStatus.status;
+      if (statusChanged) {
+        console.log(`[CrossChainSwapMonitor] Job ${jobIdStr} status changed to: ${statusKey}`);
+      }
       
-      // Update status
-      crossChainSwapStore.update(swaps => ({
-        ...swaps,
-        [jobIdStr]: {
+      // Update status with immutable update to ensure reactivity
+      crossChainSwapStore.update(swaps => {
+        const newSwaps = { ...swaps };
+        newSwaps[jobIdStr] = {
           ...currentStatus,
           status: statusKey,
           lastUpdate: Date.now(),
           payTxSignature: job.pay_tx_signature?.[0],
           receiveTxSignature: job.solana_tx_signature_of_payout?.[0]
-        }
-      }));
+        };
+        return newSwaps;
+      });
       
       // Update toast if status changed
       if (statusChanged) {
@@ -138,9 +160,13 @@ export class CrossChainSwapMonitor {
           
           // Show success modal if we have token info
           const updatedStatus = get(crossChainSwapStore)[jobIdStr];
+          // Removed excessive logging for success modal
+          
           if (updatedStatus.payTokenInfo && updatedStatus.receiveTokenInfo) {
             // Get the Solana transaction signature for the payout
             const solanaTxHash = job.solana_tx_signature_of_payout?.[0] || null;
+            
+            // Show success modal
             
             swapSuccessStore.showSuccess(
               updatedStatus.payAmount,
@@ -149,6 +175,8 @@ export class CrossChainSwapMonitor {
               updatedStatus.receiveTokenInfo,
               solanaTxHash
             );
+          } else {
+            console.warn('[CrossChainSwapMonitor] Cannot show success modal - missing token info');
           }
           
           // Check if this was an ICP to SOL swap by looking at the swap status
@@ -175,6 +203,7 @@ export class CrossChainSwapMonitor {
         // Remove from store after 30 seconds
         setTimeout(() => {
           crossChainSwapStore.update(swaps => {
+            // Remove completed swap from store
             const { [jobIdStr]: removed, ...rest } = swaps;
             return rest;
           });
@@ -187,14 +216,17 @@ export class CrossChainSwapMonitor {
       // Update error state
       const currentStatus = get(crossChainSwapStore)[jobIdStr];
       if (currentStatus) {
-        crossChainSwapStore.update(swaps => ({
-          ...swaps,
-          [jobIdStr]: {
-            ...currentStatus,
-            error: error.message || 'Unknown error',
-            lastUpdate: Date.now()
-          }
-        }));
+        crossChainSwapStore.update(swaps => {
+          console.log('[CrossChainSwapMonitor] Updating swap error state:', jobIdStr);
+          return {
+            ...swaps,
+            [jobIdStr]: {
+              ...currentStatus,
+              error: error.message || 'Unknown error',
+              lastUpdate: Date.now()
+            }
+          };
+        });
       }
     }
   }
@@ -277,24 +309,24 @@ export class CrossChainSwapMonitor {
     
     switch (status) {
       case 'Pending':
-        message = `⏳ Waiting for confirmation: ${swapStatus.payToken} → ${swapStatus.receiveToken}`;
+        message = `Waiting for confirmation: ${swapStatus.payToken} → ${swapStatus.receiveToken}`;
         break;
         
       case 'Processing':
-        message = `⚙️ Processing swap: ${swapStatus.payToken} → ${swapStatus.receiveToken}`;
+        message = `Processing swap: ${swapStatus.payToken} → ${swapStatus.receiveToken}`;
         break;
         
       case 'WaitingForSignature':
-        message = `✍️ Waiting for signature: ${swapStatus.payToken} → ${swapStatus.receiveToken}`;
+        message = `Waiting for signature: ${swapStatus.payToken} → ${swapStatus.receiveToken}`;
         break;
         
       case 'SendingToSolana':
-        message = `📤 Sending to Solana: ${swapStatus.receiveAmount} ${swapStatus.receiveToken}`;
+        message = `Sending to Solana: ${swapStatus.receiveAmount} ${swapStatus.receiveToken}`;
         break;
         
       case 'Confirmed':
       case 'Submitted':
-        message = `✅ Swap completed! ${swapStatus.payAmount} ${swapStatus.payToken} → ${swapStatus.receiveAmount} ${swapStatus.receiveToken}`;
+        message = `Swap completed! ${swapStatus.payAmount} ${swapStatus.payToken} → ${swapStatus.receiveAmount} ${swapStatus.receiveToken}`;
         toastType = 'success';
         duration = 10000; // Show success for 10 seconds
         
@@ -305,7 +337,7 @@ export class CrossChainSwapMonitor {
         break;
         
       case 'Failed':
-        message = `❌ Swap failed: ${swapStatus.payToken} → ${swapStatus.receiveToken}`;
+        message = `Swap failed: ${swapStatus.payToken} → ${swapStatus.receiveToken}`;
         toastType = 'error';
         duration = 10000;
         
@@ -317,7 +349,7 @@ export class CrossChainSwapMonitor {
         break;
         
       default:
-        message = `🔄 ${status}: ${swapStatus.payToken} → ${swapStatus.receiveToken}`;
+        message = `${status}: ${swapStatus.payToken} → ${swapStatus.receiveToken}`;
     }
     
     // Create new toast
@@ -348,6 +380,7 @@ export class CrossChainSwapMonitor {
     if (intervalId) {
       clearInterval(intervalId);
       this.pollingIntervals.delete(jobIdStr);
+      this.pollCount.delete(jobIdStr);
     }
     
     // Dismiss any active toast

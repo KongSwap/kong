@@ -170,5 +170,6 @@
   <GlobalWalletProvider />
   <GlobalSignatureModal />
   <div id="modals"></div>
+  <div id="portal-target"></div>
 {/if}
 </div>

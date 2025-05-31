@@ -3,9 +3,14 @@
   import { CrossChainSwapMonitor } from '$lib/services/swap/CrossChainSwapMonitor';
   import LoadingIndicator from '$lib/components/common/LoadingIndicator.svelte';
   import { fade, slide } from 'svelte/transition';
+  import { onDestroy } from 'svelte';
   
-  // Get all active swaps as an array
-  let activeSwaps = $derived(Object.entries($crossChainSwapStore).map(([id, swap]) => ({ id, ...swap })));
+  // Removed excessive logging to reduce console spam
+  
+  // Get all active swaps as an array - simplified version
+  let activeSwaps = $derived(
+    Object.entries($crossChainSwapStore).map(([id, swap]) => ({ id, ...swap }))
+  );
   
   function getStatusIcon(status: string) {
     switch (status) {
@@ -62,9 +67,10 @@
   }
 </script>
 
+
 {#if activeSwaps.length > 0}
   <div class="fixed bottom-4 right-4 w-96 max-h-96 overflow-y-auto z-50 space-y-2" transition:fade={{ duration: 200 }}>
-    {#each activeSwaps as swap (swap.id)}
+    {#each activeSwaps as swap (swap.id + ':' + swap.lastUpdate)}
       <div 
         class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4"
         transition:slide={{ duration: 300 }}

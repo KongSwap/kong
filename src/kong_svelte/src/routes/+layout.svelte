@@ -66,5 +66,4 @@
 
 {@render children?.()}
 
-<!-- Cross-chain swap status monitor -->
-<CrossChainSwapStatus />
+<!-- Cross-chain swap status monitor removed to avoid duplicate with CrossChainSwapProgress in Swap.svelte -->

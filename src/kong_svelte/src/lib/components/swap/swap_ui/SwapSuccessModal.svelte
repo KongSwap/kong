@@ -5,7 +5,6 @@
   import { settingsStore } from "$lib/stores/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import Panel from '$lib/components/common/Panel.svelte';
-  import bananaDance from "$lib/assets/banana_dance.gif";
   import type { AnyToken } from '$lib/utils/tokenUtils';
   import { isSolanaToken } from '$lib/utils/tokenUtils';
 
@@ -22,6 +21,20 @@
                typeof payToken.decimals === 'number' && 
                typeof receiveToken.decimals === 'number' &&
                payAmount && receiveAmount;
+  
+  // Debug validation
+  $: if (show) {
+    console.log('[SwapSuccessModal] Validation check:', {
+      show,
+      payToken,
+      receiveToken,
+      payTokenDecimals: payToken?.decimals,
+      receiveTokenDecimals: receiveToken?.decimals,
+      payAmount,
+      receiveAmount,
+      isValid
+    });
+  }
 
   // Play sound effect when modal opens
   $: if (show && isValid && $settingsStore.sound_enabled) {
@@ -100,9 +113,9 @@
           <!-- Success Icon -->
           <div class="flex justify-center">
             <img 
-              src={bananaDance} 
-              class="w-24 opacity-90 hover:scale-110 transition-transform duration-300" 
-              alt="Success" 
+              src="/titles/kong_logo.png" 
+              class="w-24 h-24 opacity-90 hover:scale-110 transition-transform duration-300" 
+              alt="Kong Logo" 
               loading="eager"
             />
           </div>

@@ -99,9 +99,15 @@
     error = "";
 
     try {
-      onConfirm();
-      onClose?.();
-      return true;
+      // Call onConfirm and wait for the result
+      const success = await onConfirm();
+      
+      // Only close the modal if the swap was successfully initiated
+      if (success) {
+        onClose?.();
+      }
+      
+      return success;
     } catch (e) {
       console.error("Swap confirmation error:", e);
       error = e.message || "An error occurred";
