@@ -2,7 +2,7 @@
   import PageHeader from "$lib/components/common/PageHeader.svelte";
   import CreateLiquidityPanel from "$lib/components/liquidity/create_pool/CreateLiquidityPanel.svelte";
   import PoolChart from "$lib/components/liquidity/create_pool/PoolChart.svelte";
-  import { PlusCircleIcon } from "lucide-svelte";
+  import { PlusCircle } from "lucide-svelte";
 </script>
 
 <svelte:head>
@@ -13,7 +13,7 @@
   <PageHeader
     title="Add Liquidity"
     description="Create a new liquidity pool or add liquidity to an existing pool to earn trading fees"
-    icon={PlusCircleIcon}
+    icon={PlusCircle}
     maxWidth="1200px"
   />
   <div class="z-10 w-full mx-auto max-w-[1200px]">
