@@ -196,6 +196,13 @@ type FailureDetails = record {
   error_message : text;
   timestamp : nat;
 };
+type GetAllMarketsArgs = record {
+  status_filter : opt MarketStatus;
+  start : nat;
+  length : nat64;
+  sort_option : opt SortOption;
+};
+type GetAllMarketsResult = record { markets : vec Market; total_count : nat };
 type GetFeaturedMarketsArgs = record { start : nat; length : nat };
 type GetFeaturedMarketsResult = record { total : nat; markets : vec Market };
 type GetMarketsByCreatorArgs = record {
@@ -351,6 +358,10 @@ type SearchMarketsArgs = record {
 };
 type SortDirection = variant { Descending; Ascending };
 type SortField = variant { TotalPool; CreationTime; EndTime; TotalBets };
+type SortOption = variant {
+  TotalPool : SortDirection;
+  CreatedAt : SortDirection;
+};
 type TimeWeightPoint = record {
   weight : float64;
   absolute_time : nat;
@@ -423,6 +434,7 @@ service : () -> {
   force_resolve_market : (nat, vec nat) -> (ResolutionResult);
   generate_time_weight_curve : (nat64, nat64) -> (vec TimeWeightPoint) query;
   get_all_categories : () -> (vec text) query;
+  get_all_markets : (GetAllMarketsArgs) -> (GetAllMarketsResult) query;
   get_all_transactions : () -> (vec record { nat64; FailedTransaction }) query;
   get_claim_by_id : (nat64) -> (opt ClaimRecord) query;
   get_claimable_summary : () -> (ClaimableSummary) query;

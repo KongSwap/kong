@@ -53,6 +53,7 @@ use crate::types::MarketResolutionDetails;
 // Token balance reconciliation
 use crate::token::balance::{BalanceReconciliationSummary, TokenBalanceSummary, TokenBalanceBreakdown};
 use crate::token::balance::{calculate_token_balance_reconciliation, get_latest_token_balance_reconciliation};
+use crate::market::get_all_markets::*;
 use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
 use icrc_ledger_types::icrc21::responses::ConsentInfo; 
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
