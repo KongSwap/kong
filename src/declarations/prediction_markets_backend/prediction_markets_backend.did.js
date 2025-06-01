@@ -245,6 +245,7 @@ export const idlFactory = ({ IDL }) => {
     'amount' : IDL.Nat,
     'outcome_index' : IDL.Nat,
   });
+  const LatestBets = IDL.Record({ 'bet' : Bet, 'market' : Market });
   const BetPayoutRecord = IDL.Record({
     'transaction_id' : IDL.Opt(IDL.Nat),
     'bet_amount' : IDL.Nat,
@@ -521,6 +522,7 @@ export const idlFactory = ({ IDL }) => {
         [GetFeaturedMarketsResult],
         ['query'],
       ),
+    'get_latest_bets' : IDL.Func([], [IDL.Vec(LatestBets)], ['query']),
     'get_latest_token_balance_reconciliation' : IDL.Func(
         [],
         [IDL.Opt(BalanceReconciliationSummary)],

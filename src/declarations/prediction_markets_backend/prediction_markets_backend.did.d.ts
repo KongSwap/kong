@@ -229,6 +229,7 @@ export interface GetMarketsByStatusResult {
 export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
+export interface LatestBets { 'bet' : Bet, 'market' : Market }
 export interface LineDisplayPage { 'lines' : Array<string> }
 export interface Market {
   'id' : bigint,
@@ -479,6 +480,7 @@ export interface _SERVICE {
     [GetFeaturedMarketsArgs],
     GetFeaturedMarketsResult
   >,
+  'get_latest_bets' : ActorMethod<[], Array<LatestBets>>,
   'get_latest_token_balance_reconciliation' : ActorMethod<
     [],
     [] | [BalanceReconciliationSummary]

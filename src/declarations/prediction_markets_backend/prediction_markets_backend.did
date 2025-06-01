@@ -218,6 +218,7 @@ type GetMarketsByStatusResult = record {
   markets_by_status : MarketsByStatus;
 };
 type Icrc28TrustedOriginsResponse = record { trusted_origins : vec text };
+type LatestBets = record { bet : Bet; market : Market };
 type LineDisplayPage = record { lines : vec text };
 type Market = record {
   id : nat;
@@ -442,6 +443,7 @@ service : () -> {
   get_featured_markets : (GetFeaturedMarketsArgs) -> (
       GetFeaturedMarketsResult,
     ) query;
+  get_latest_bets : () -> (vec LatestBets) query;
   get_latest_token_balance_reconciliation : () -> (
       opt BalanceReconciliationSummary,
     ) query;
