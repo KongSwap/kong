@@ -199,6 +199,16 @@ export interface FailureDetails {
   'error_message' : string,
   'timestamp' : bigint,
 }
+export interface GetAllMarketsArgs {
+  'status_filter' : [] | [MarketStatus],
+  'start' : bigint,
+  'length' : bigint,
+  'sort_option' : [] | [SortOption],
+}
+export interface GetAllMarketsResult {
+  'markets' : Array<Market>,
+  'total_count' : bigint,
+}
 export interface GetFeaturedMarketsArgs { 'start' : bigint, 'length' : bigint }
 export interface GetFeaturedMarketsResult {
   'total' : bigint,
@@ -219,6 +229,7 @@ export interface GetMarketsByStatusResult {
 export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
+export interface LatestBets { 'bet' : Bet, 'market' : Market }
 export interface LineDisplayPage { 'lines' : Array<string> }
 export interface Market {
   'id' : bigint,
@@ -367,6 +378,8 @@ export type SortField = { 'TotalPool' : null } |
   { 'CreationTime' : null } |
   { 'EndTime' : null } |
   { 'TotalBets' : null };
+export type SortOption = { 'TotalPool' : SortDirection } |
+  { 'CreatedAt' : SortDirection };
 export interface TimeWeightPoint {
   'weight' : number,
   'absolute_time' : bigint,
@@ -458,6 +471,7 @@ export interface _SERVICE {
     Array<TimeWeightPoint>
   >,
   'get_all_categories' : ActorMethod<[], Array<string>>,
+  'get_all_markets' : ActorMethod<[GetAllMarketsArgs], GetAllMarketsResult>,
   'get_all_transactions' : ActorMethod<[], Array<[bigint, FailedTransaction]>>,
   'get_claim_by_id' : ActorMethod<[bigint], [] | [ClaimRecord]>,
   'get_claimable_summary' : ActorMethod<[], ClaimableSummary>,
@@ -466,6 +480,7 @@ export interface _SERVICE {
     [GetFeaturedMarketsArgs],
     GetFeaturedMarketsResult
   >,
+  'get_latest_bets' : ActorMethod<[], Array<LatestBets>>,
   'get_latest_token_balance_reconciliation' : ActorMethod<
     [],
     [] | [BalanceReconciliationSummary]
