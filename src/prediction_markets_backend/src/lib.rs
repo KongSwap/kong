@@ -96,6 +96,10 @@ const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai"; /// Canister ID for 
 /// ID found in stable storage (or starts from 0 if none).
 #[init]
 fn init() {
+    prepare_market_id();
+}
+
+fn prepare_market_id() {
     MARKET_ID.store(max_market_id(), std::sync::atomic::Ordering::SeqCst);
 }
 
@@ -150,6 +154,7 @@ fn post_upgrade() {
     
     // Other post-upgrade initializations as needed
     update_expired_markets();
+    prepare_market_id();
 }
 
 // Export Candid interface
