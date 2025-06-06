@@ -3,6 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::{MarketId, TokenAmount, OutcomeIndex, Timestamp, TokenIdentifier};
 
+use ic_stable_structures::{storable::Bound, Storable};
+use std::borrow::Cow;
+
 /// Data point for time weight curve visualization
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct TimeWeightPoint {
@@ -57,4 +60,17 @@ pub struct BetPayoutRecord {
     pub token_symbol: String,                   // Token symbol for display
     pub platform_fee_percentage: u64,           // Fee percentage charged (100 for 1%, 200 for 2%)
     pub transaction_id: Option<candid::Nat>,    // Ledger transaction ID for the payout
+}
+
+
+impl Storable for BetPayoutRecord {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(serde_json::to_vec(self).unwrap())
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    const BOUND: Bound = Bound::Unbounded;
 }
