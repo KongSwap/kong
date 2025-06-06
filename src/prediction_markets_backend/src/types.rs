@@ -7,6 +7,9 @@ use serde::Serialize;
 // Re-export StorableNat for convenience
 pub use crate::nat::StorableNat;
 
+use ic_stable_structures::{storable::Bound, Storable};
+use std::borrow::Cow;
+
 // Core type aliases
 pub type MarketId = StorableNat;
 pub type Timestamp = StorableNat;
@@ -105,6 +108,18 @@ pub struct MarketResolutionDetails {
     pub distribution_details: Vec<BetDistributionDetail>,
     /// Any failed transactions that occurred during payout
     pub failed_transactions: Vec<FailedTransactionInfo>,
+}
+
+impl Storable for MarketResolutionDetails {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(serde_json::to_vec(self).unwrap())
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 /// Details about how a specific bet was paid out

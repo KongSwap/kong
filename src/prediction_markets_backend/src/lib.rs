@@ -71,6 +71,7 @@ pub mod market;
 pub mod nat;
 pub mod resolution;
 pub mod stable_memory;
+pub mod storable_vec;
 pub mod storage;
 pub mod token;
 pub mod transaction_recovery;
@@ -112,18 +113,6 @@ fn prepare_market_id() {
 fn pre_upgrade() {
     // Save state before upgrade
     stable_memory::save();
-    
-    // Ensure claims data is saved to stable memory
-    let (claims, user_claims, market_claims, next_claim_id) = claims::claims_storage::export_claims();
-    
-    // Convert HashMaps to Vec<(K,V)> for stable storage
-    let claims_vec: Vec<(u64, claims::claims_types::ClaimRecord)> = claims.into_iter().collect();
-    let user_claims_vec: Vec<(Principal, Vec<u64>)> = user_claims.into_iter().collect();
-    let market_claims_vec: Vec<(MarketId, Vec<u64>)> = market_claims.into_iter().collect();
-    
-    stable_memory::STABLE_CLAIMS_DATA.with(|cell| {
-        *cell.borrow_mut() = Some((claims_vec, user_claims_vec, market_claims_vec, next_claim_id));
-    });
 }
 
 /// Called after canister upgrade to restore state
@@ -139,18 +128,6 @@ fn pre_upgrade() {
 fn post_upgrade() {
     // Restore state after upgrade
     stable_memory::restore();
-    
-    // Restore claims data if available
-    stable_memory::STABLE_CLAIMS_DATA.with(|cell| {
-        if let Some((claims_vec, user_claims_vec, market_claims_vec, next_claim_id)) = cell.borrow_mut().take() {
-            // Convert Vec<(K,V)> back to HashMaps
-            let claims: std::collections::HashMap<u64, claims::claims_types::ClaimRecord> = claims_vec.into_iter().collect();
-            let user_claims: std::collections::HashMap<Principal, Vec<u64>> = user_claims_vec.into_iter().collect();
-            let market_claims: std::collections::HashMap<MarketId, Vec<u64>> = market_claims_vec.into_iter().collect();
-            
-            claims::claims_storage::import_claims(claims, user_claims, market_claims, next_claim_id);
-        }
-    });
     
     // Other post-upgrade initializations as needed
     update_expired_markets();
