@@ -19,10 +19,9 @@ use ic_stable_structures::{
     DefaultMemoryImpl, StableBTreeMap, Storable,
 };
 
+use std::cell::RefCell;
 
-use std::{cell::RefCell};
-
-use crate::BetPayoutRecord;
+use crate::{BetPayoutRecord};
 use crate::{types::StorableNat, ClaimRecord};
 
 use super::delegation::*;
@@ -31,6 +30,7 @@ use crate::market::market::*;
 use crate::resolution::resolution::ResolutionProposal;
 use crate::storable_vec::StorableVec;
 use crate::storage::{MARKET_RESOLUTION_DETAILS, NEXT_MARKET_ID};
+use crate::token::registry::{TokenIdentifier, TokenInfo};
 use crate::types::{MarketId, MarketResolutionDetails};
 
 /// Type alias for the virtual memory used by stable collections
@@ -141,6 +141,10 @@ thread_local! {
     pub static STABLE_MARKET_PAYOUTS: RefCell<StableBTreeMap<MarketId, StorableVec<BetPayoutRecord>, Memory>> = RefCell::new(
         StableBTreeMap::init(MEMORY_MANAGER.with(|mm| mm.borrow().get(MemoryId::new(12))))
     );
+
+    pub static STABLE_TOKEN_REGISTRY: RefCell<StableBTreeMap<TokenIdentifier, TokenInfo, Memory>> = RefCell::new(
+        StableBTreeMap::init(MEMORY_MANAGER.with(|mm| mm.borrow().get(MemoryId::new(13))))
+    );
 }
 
 // A counter for the next market ID to be assigned
@@ -153,7 +157,7 @@ fn fill_stable_map<K, V, It>(m: &mut StableBTreeMap<K, V, Memory>, iter: &mut It
 where
     K: Storable + Ord + Clone,
     V: Storable,
-    It: Iterator<Item = (K,V)>,
+    It: Iterator<Item = (K, V)>,
 {
     m.clear_new();
 
@@ -164,7 +168,6 @@ where
         }
     }
 }
-
 
 /// Saves the current state to stable memory before an upgrade
 ///
@@ -197,7 +200,9 @@ pub fn save() {
         fill_stable_map(&mut stable_claims.0, &mut claims_it);
         fill_stable_map(&mut stable_claims.1, &mut user_claims_it);
         fill_stable_map(&mut stable_claims.2, &mut market_claims_it);
-        let _ = stable_claims.3.insert(StorableNat::from_u64(0), StorableNat::from_u64(claims_data.3));
+        let _ = stable_claims
+            .3
+            .insert(StorableNat::from_u64(0), StorableNat::from_u64(claims_data.3));
     });
 
     // Save market resolution details to stable storage
@@ -222,6 +227,14 @@ pub fn save() {
             fill_stable_map(&mut stable_payouts.borrow_mut(), &mut payouts_it);
         });
     });
+
+    // Save token registry
+    let mut tokens_it = crate::token::registry::get_all_supported_tokens()
+        .into_iter()
+        .map(|t| (t.id.clone(), t));
+    STABLE_TOKEN_REGISTRY.with(|token_registry| {
+        fill_stable_map(&mut token_registry.borrow_mut(), &mut tokens_it);
+    })
 }
 
 /// Restores the stable memory state after a canister upgrade
@@ -260,8 +273,7 @@ pub fn restore() {
     STABLE_CLAIMS_DATA.with(|stable_claims| {
         let all_claims = stable_claims.borrow();
 
-        let claims: std::collections::HashMap<u64, ClaimRecord> =
-            all_claims.0.iter().map(|v| (v.0.to_u64(), v.1)).collect();
+        let claims: std::collections::HashMap<u64, ClaimRecord> = all_claims.0.iter().map(|v| (v.0.to_u64(), v.1)).collect();
 
         let user_claims: std::collections::HashMap<Principal, Vec<u64>> = all_claims
             .1
@@ -306,4 +318,11 @@ pub fn restore() {
             *payouts.borrow_mut() = market_payouts;
         });
     });
+
+    // Restore token registry
+    STABLE_TOKEN_REGISTRY.with(|token_registry| {
+        for v in token_registry.borrow().values() {
+            crate::token::registry::add_supported_token(v);
+        }
+    })
 }
