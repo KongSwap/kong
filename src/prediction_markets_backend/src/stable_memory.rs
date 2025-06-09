@@ -147,11 +147,6 @@ thread_local! {
     );
 }
 
-// A counter for the next market ID to be assigned
-thread_local! {
-    /// Counter for the next market ID to be assigned
-    pub static STABLE_NEXT_MARKET_ID: RefCell<u64> = RefCell::new(1);
-}
 
 fn fill_stable_map<K, V, It>(m: &mut StableBTreeMap<K, V, Memory>, iter: &mut It)
 where

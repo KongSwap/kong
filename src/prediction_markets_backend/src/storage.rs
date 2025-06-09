@@ -57,19 +57,6 @@ pub fn get_bets_for_market(market_id: &MarketId) -> Vec<Bet> {
     })
 }
 
-/// When a new market is created, advance the next ID counter
-pub fn increment_next_market_id() {
-    NEXT_MARKET_ID.with(|counter| {
-        let mut value = counter.borrow_mut();
-        *value += 1;
-    });
-    // Also update the stable memory version
-    crate::stable_memory::STABLE_NEXT_MARKET_ID.with(|counter| {
-        let mut value = counter.borrow_mut();
-        *value = get_next_market_id();
-    });
-}
-
 /// Get current next market ID
 pub fn get_next_market_id() -> u64 {
     NEXT_MARKET_ID.with(|counter| *counter.borrow())
