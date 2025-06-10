@@ -16,7 +16,7 @@
   export let token1: any;
 
   let removeLiquidityAmount = "";
-  let estimatedAmounts = { amount0: "0", amount1: "0" };
+  let estimatedAmounts = { amount0: "0", amount1: "0", lpFee0: "0", lpFee1: "0" };
   let isRemoving = false;
   let error: string | null = null;
   let isCalculating = false;
@@ -30,7 +30,7 @@
 
   async function handleInputChange() {
     if (!removeLiquidityAmount || isNaN(parseFloat(removeLiquidityAmount))) {
-      estimatedAmounts = { amount0: "0", amount1: "0" };
+      estimatedAmounts = { amount0: "0", amount1: "0", lpFee0: "0", lpFee1: "0" };
       return;
     }
 
@@ -48,26 +48,31 @@
         throw new Error("Amount exceeds balance");
       }
 
-      const [amount0, amount1] =
-        await calculateRemoveLiquidityAmounts(
-          pool.address_0,
-          pool.address_1,
-          numericAmount,
-        );
+      const result = await calculateRemoveLiquidityAmounts(
+        pool.address_0,
+        pool.address_1,
+        numericAmount,
+      );
 
       // Get token decimals from fetched token data
       const token0Decimals = token0?.decimals || 8;
       const token1Decimals = token1?.decimals || 8;
 
       // First adjust for decimals, then store as string
+      // Include fees in the total amounts
+      const amount0WithFees = Number(result.amount0) + Number(result.lpFee0);
+      const amount1WithFees = Number(result.amount1) + Number(result.lpFee1);
+      
       estimatedAmounts = {
-        amount0: (Number(amount0) / Math.pow(10, token0Decimals)).toString(),
-        amount1: (Number(amount1) / Math.pow(10, token1Decimals)).toString(),
+        amount0: (amount0WithFees / Math.pow(10, token0Decimals)).toString(),
+        amount1: (amount1WithFees / Math.pow(10, token1Decimals)).toString(),
+        lpFee0: (Number(result.lpFee0) / Math.pow(10, token0Decimals)).toString(),
+        lpFee1: (Number(result.lpFee1) / Math.pow(10, token1Decimals)).toString(),
       };
     } catch (err) {
       console.error("Error calculating removal amounts:", err);
       error = err.message;
-      estimatedAmounts = { amount0: "0", amount1: "0" };
+      estimatedAmounts = { amount0: "0", amount1: "0", lpFee0: "0", lpFee1: "0" };
     } finally {
       isCalculating = false;
     }
@@ -141,7 +146,7 @@
            isRemoving = false;
            error = null;
            removeLiquidityAmount = "";
-           estimatedAmounts = { amount0: "0", amount1: "0" };
+           estimatedAmounts = { amount0: "0", amount1: "0", lpFee0: "0", lpFee1: "0" };
            dispatch("liquidityRemoved");
       }
     } catch (err) {

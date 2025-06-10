@@ -207,7 +207,7 @@ export async function calculateRemoveLiquidityAmounts(
   token0CanisterId: string,
   token1CanisterId: string,
   lpTokenAmount: number | bigint,
-): Promise<[bigint, bigint]> {
+): Promise<{ amount0: bigint; amount1: bigint; lpFee0: bigint; lpFee1: bigint }> {
   try {
     const lpTokenBigInt =
       typeof lpTokenAmount === "number"
@@ -233,7 +233,12 @@ export async function calculateRemoveLiquidityAmounts(
 
     // Handle the correct response format based on .did file
     const reply = result.Ok;
-    return [BigInt(reply.amount_0), BigInt(reply.amount_1)];
+    return {
+      amount0: BigInt(reply.amount_0),
+      amount1: BigInt(reply.amount_1),
+      lpFee0: BigInt(reply.lp_fee_0),
+      lpFee1: BigInt(reply.lp_fee_1)
+    };
   } catch (error) {
     console.error("Error calculating removal amounts:", error);
     throw error;
