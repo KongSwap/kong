@@ -497,7 +497,7 @@ export async function removeLiquidity(params: {
       remove_lp_token_amount: lpTokenBigInt,
     });
 
-    if (!result.Ok) {
+    if ('Err' in result) {
       throw new Error(result.Err || "Failed to remove liquidity");
     }
     return result.Ok.toString();
@@ -623,18 +623,18 @@ export async function sendLpTokens(params: {
       requiresSigning: false,
     });
 
-    const result = await (actor as any).send({
+    const result = await actor.send({
       token: params.token,
       to_address: params.toAddress,
       amount: amountBigInt,
     });
 
-    if (!result.OK) {
+    if ('Err' in result) {
       throw new Error(result.Err || "Failed to send LP tokens");
     }
 
     toastStore.success(`Successfully sent ${params.amount} LP tokens`);
-    return result.OK;
+    return result.Ok;
   } catch (error) {
     console.error("Error sending LP tokens:", error);
     toastStore.error(error.message || "Failed to send LP tokens");
