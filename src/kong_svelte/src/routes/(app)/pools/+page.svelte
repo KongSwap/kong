@@ -799,7 +799,7 @@
             {:else if $activePoolView === "user"}
               <!-- User Pools View -->
               {#if $auth.isConnected}
-                <div class="h-full custom-scrollbar">
+                <div class="h-full overflow-auto custom-scrollbar">
                   <UserPoolList
                     on:poolClick={handlePoolClick}
                     searchQuery={searchTerm}
