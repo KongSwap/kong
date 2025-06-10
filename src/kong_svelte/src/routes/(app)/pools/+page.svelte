@@ -419,7 +419,7 @@
       icon: PiggyBank,
     },
     {
-      label: "Highest APY",
+      label: "Highest APR",
       value: `${Math.max(...($livePools || []).map((pool) => Number(pool.rolling_24h_apy))).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
       icon: Flame,
       hideOnMobile: true,
@@ -507,7 +507,7 @@
                       >
                         <option value="rolling_24h_volume">Volume 24H</option>
                         <option value="tvl">TVL</option>
-                        <option value="rolling_24h_apy">APY</option>
+                        <option value="rolling_24h_apy">APR</option>
                         <option value="price">Price</option>
                       </select>
                       <div class="w-px bg-white/[0.04]"></div>
@@ -767,7 +767,7 @@
                         },
                         {
                           key: "rolling_24h_apy",
-                          title: "APY",
+                          title: "APR",
                           align: "right",
                           width: "17.5%",
                           sortable: true,

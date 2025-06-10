@@ -112,7 +112,7 @@
                 </div>
               {/if}
               {#if isTopAPY}
-                <div use:tooltip={{ text: "Top 5 by APY", direction: "top" }}>
+                <div use:tooltip={{ text: "Top 5 by APR", direction: "top" }}>
                   <TrendingUp class="w-5 h-5 text-green-400" />
                 </div>
               {/if}
@@ -148,7 +148,7 @@
                   </div>
                 {/if}
                 {#if isTopAPY}
-                  <div use:tooltip={{ text: "Top 5 by APY", direction: "top" }}>
+                  <div use:tooltip={{ text: "Top 5 by APR", direction: "top" }}>
                     <TrendingUp class="w-4 h-4 text-green-400" />
                   </div>
                 {/if}

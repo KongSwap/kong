@@ -255,7 +255,7 @@
                 </div>
               </div>
               <div>
-                <div class="text-kong-text-secondary mb-1">APY</div>
+                <div class="text-kong-text-secondary mb-1">APR</div>
                 <div class="text-kong-accent-green font-medium">
                   <div class="flex items-center gap-1">
                     <BarChart3 size={12} class="text-kong-accent-green/70" />
