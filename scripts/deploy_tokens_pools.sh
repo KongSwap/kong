@@ -193,10 +193,10 @@ KSKONG_CHAIN="IC"
 KSKONG_LEDGER=$(dfx canister id ${NETWORK} ${IDENTITY} $(echo ${KSKONG_SYMBOL} | tr '[:upper:]' '[:lower:]')_ledger)
 KSKONG_DECIMALS=$(dfx canister call ${NETWORK} ${IDENTITY} ${KSKONG_LEDGER} icrc1_decimals '()' | awk -F"[^0-9]*" '{print $2}')
 KSKONG_DECIMALS=$(echo "10^${KSKONG_DECIMALS}" | bc)
-KSKONG_KSICP_DECIMALS=$(echo "${KSKONG_DECIMALS} / ${KSICP_DECIMALS}" | bc -l) # convert KONG to ksICP precision
+KSKONG_ICP_DECIMALS=$(echo "${KSKONG_DECIMALS} / ${ICP_DECIMALS}" | bc -l) # convert KONG to ICP precision
 KSKONG_FEE=$(dfx canister call ${NETWORK} ${IDENTITY} ${KSKONG_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
 KSKONG_FEE=${KSKONG_FEE//_/}
-KSICP_AMOUNT=$(echo "scale=0; ${KSKONG_AMOUNT} * ${KSKONG_KSICP_PRICE} / ${KSKONG_KSICP_DECIMALS}" | bc -l)
+ICP_AMOUNT_FOR_KSKONG=$(echo "scale=0; ${KSKONG_AMOUNT} * ${KSKONG_KSICP_PRICE} / ${KSKONG_ICP_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # 60 seconds from now
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KSKONG_LEDGER} icrc2_approve "(record {
@@ -208,7 +208,7 @@ dfx canister call ${NETWORK} ${IDENTITY} ${KSKONG_LEDGER} icrc2_approve "(record
 })"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
-    amount = $(echo "${ICP_AMOUNT} + ${ICP_FEE}" | bc);
+    amount = $(echo "${ICP_AMOUNT_FOR_KSKONG} + ${ICP_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
@@ -218,7 +218,7 @@ dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
     token_0 = \"${KSKONG_CHAIN}.${KSKONG_LEDGER}\";
     amount_0 = ${KSKONG_AMOUNT};
-    token_1 = \"${KSICP_CHAIN}.${KSICP_LEDGER}\";
-    amount_1 = ${KSICP_AMOUNT};
+    token_1 = \"${ICP_CHAIN}.${ICP_LEDGER}\";
+    amount_1 = ${ICP_AMOUNT_FOR_KSKONG};
     on_kong = opt true;
 })" | jq

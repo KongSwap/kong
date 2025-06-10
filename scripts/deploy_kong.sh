@@ -2,7 +2,7 @@
 
 # Setup directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_ROOT="$( cd ".." && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 DFX_ROOT="${PROJECT_ROOT}/.dfx"
 echo "=============== DEPLOY SCRIPT INFO ==============="
 echo "Project root: $PROJECT_ROOT"
@@ -26,7 +26,7 @@ for cmd in rustc cargo npm dfx jq sha256sum; do
 done
 
 # Generate secrets
-bash "${PROJECT_ROOT}/scripts/generate_secrets.sh"
+bash "${SCRIPT_DIR}/generate_secrets.sh"
 
 # Source the generated secrets file if it exists
 if [ -f "${PROJECT_ROOT}/.secrets" ]; then
@@ -70,9 +70,9 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 fi
 
 # Copy correct environment file using absolute path
-if [ -f "copy_env.sh" ]; then
+if [ -f "${SCRIPT_DIR}/copy_env.sh" ]; then
     echo "Running copy_env.sh from $SCRIPT_DIR"
-    bash "./copy_env.sh" "${NETWORK}"
+    bash "${SCRIPT_DIR}/copy_env.sh" "${NETWORK}"
     
     # Verify .env file after copy_env.sh
     if [ -f "${PROJECT_ROOT}/.env" ]; then
@@ -103,9 +103,9 @@ CORE_CANISTERS_SCRIPTS=(
 )
 
 for script in "${CORE_CANISTERS_SCRIPTS[@]}"; do
-    [ -f "${script}" ] && {
+    [ -f "${SCRIPT_DIR}/${script}" ] && {
         echo "Running ${script}"
-        bash "${script}" "${NETWORK}"
+        bash "${SCRIPT_DIR}/${script}" "${NETWORK}"
     } || echo "Warning: ${script} not found"
 done
 
@@ -114,11 +114,11 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 
     # Deploy test token ledger canisters
     LEDGER_SCRIPTS=(
-        "${PROJECT_ROOT}/scripts/deploy_ksusdt_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_icp_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_ksbtc_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_kseth_ledger.sh"
-        "${PROJECT_ROOT}/scripts/deploy_kskong_ledger.sh"
+        "${SCRIPT_DIR}/deploy_ksusdt_ledger.sh"
+        "${SCRIPT_DIR}/deploy_icp_ledger.sh"
+        "${SCRIPT_DIR}/deploy_ksbtc_ledger.sh"
+        "${SCRIPT_DIR}/deploy_kseth_ledger.sh"
+        "${SCRIPT_DIR}/deploy_kskong_ledger.sh"
     )
 
     for script in "${LEDGER_SCRIPTS[@]}"; do
@@ -129,23 +129,24 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
     done
 
     # deploy test token faucet canister
-    [ -f "deploy_kong_faucet.sh" ] && {
-        bash "deploy_kong_faucet.sh" "${NETWORK}"
+    [ -f "${SCRIPT_DIR}/deploy_kong_faucet.sh" ] && {
+        bash "${SCRIPT_DIR}/deploy_kong_faucet.sh" "${NETWORK}"
     } || echo "Warning: deploy_kong_faucet.sh not found"
 
 	# mint test tokens to kong_faucet
-    [ -f "faucet_mint.sh" ] && {
-        bash "faucet_mint.sh" "${NETWORK}"
-    } || echo "Warning: user_mint.sh not found"
+    [ -f "${SCRIPT_DIR}/faucet_mint.sh" ] && {
+        bash "${SCRIPT_DIR}/faucet_mint.sh" "${NETWORK}"
+    } || echo "Warning: faucet_mint.sh not found"
 
 	# mint test tokens to kong_user1
-    [ -f "user_mint.sh" ] && {
-        bash "user_mint.sh" "${NETWORK}"
+    [ -f "${SCRIPT_DIR}/user_mint.sh" ] && {
+        bash "${SCRIPT_DIR}/user_mint.sh" "${NETWORK}"
     } || echo "Warning: user_mint.sh not found"
 
     # deploy tokens and pools
-    [ -f "deploy_tokens_pools.sh" ] && {
-        bash "deploy_tokens_pools.sh" "${NETWORK}"
+    [ -f "${SCRIPT_DIR}/deploy_tokens_pools.sh" ] && {
+        echo "Deploying tokens and creating liquidity pools..."
+        bash "${SCRIPT_DIR}/deploy_tokens_pools.sh" "${NETWORK}"
     } || echo "Warning: deploy_tokens_pools.sh not found"
 fi
 
