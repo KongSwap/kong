@@ -22,7 +22,7 @@
 
     <div>
       <span class="text-[10px] font-medium text-white/30">APR</span>
-      <span class="ml-1 text-white/90">{$liquidityStore.pool.rolling_24h_apy?.toFixed(2) ?? '0.00'}%</span>
+      <span class="ml-1 text-white/90">{$liquidityStore.pool.rolling_24h_apy ?? '0.00'}%</span>
     </div>
   {/if}
 </div>
