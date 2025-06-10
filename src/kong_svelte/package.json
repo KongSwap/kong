@@ -41,7 +41,7 @@
     "hyperid": "3.3.0",
     "localforage": "^1.10.0",
     "qrcode": "1.5.4",
-    "three": "0.176.0"
+    "three": "0.177.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "3.0.8",

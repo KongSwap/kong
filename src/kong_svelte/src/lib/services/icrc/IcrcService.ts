@@ -208,7 +208,7 @@ export class IcrcService {
       const tokenFee = cleanFee && /^\d+$/.test(cleanFee)
         ? BigInt(cleanFee)
         : 0n;
-      const totalAmount = payAmount + tokenFee * 2n;
+      const totalAmount = payAmount + (tokenFee * 4n);
 
       const allowanceActor = icrcActor({
         canisterId: token.address,
