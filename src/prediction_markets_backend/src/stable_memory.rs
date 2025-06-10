@@ -32,7 +32,7 @@ use crate::storable_vec::StorableVec;
 use crate::storage::{MARKET_RESOLUTION_DETAILS, NEXT_MARKET_ID};
 use crate::token::registry::{TokenIdentifier, TokenInfo};
 use crate::types::{MarketId, MarketResolutionDetails};
-
+use crate::failed_transaction::FailedTransaction;
 /// Type alias for the virtual memory used by stable collections
 ///
 /// This is a virtual memory region backed by the Internet Computer's DefaultMemoryImpl,
@@ -145,6 +145,10 @@ thread_local! {
     pub static STABLE_TOKEN_REGISTRY: RefCell<StableBTreeMap<TokenIdentifier, TokenInfo, Memory>> = RefCell::new(
         StableBTreeMap::init(MEMORY_MANAGER.with(|mm| mm.borrow().get(MemoryId::new(13))))
     );
+
+    pub static STABLE_FAILED_TRANSACTIONS: RefCell<StableBTreeMap<u64, FailedTransaction, Memory>> = RefCell::new(
+        StableBTreeMap::init(MEMORY_MANAGER.with(|mm| mm.borrow().get(MemoryId::new(14))))
+    )
 }
 
 

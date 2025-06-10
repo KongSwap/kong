@@ -45,7 +45,7 @@ use crate::market::estimate_return_types::{EstimatedReturn, TimeWeightPoint, Bet
 use crate::resolution::resolution::*;
 use crate::user::user::*;
 use crate::token::registry::TokenInfo;
-use crate::transaction_recovery::FailedTransaction;
+use crate::failed_transaction::FailedTransaction;
 // Claims system types
 use crate::claims::claims_api::*;
 // Market resolution details type for API export
@@ -67,6 +67,7 @@ pub mod claims;
 pub mod constants;
 pub mod controllers;
 pub mod delegation;
+pub mod failed_transaction;
 pub mod market;
 pub mod nat;
 pub mod resolution;
@@ -98,6 +99,7 @@ const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai"; /// Canister ID for 
 #[init]
 fn init() {
     prepare_market_id();
+    crate::token::registry::init();
 }
 
 fn prepare_market_id() {
