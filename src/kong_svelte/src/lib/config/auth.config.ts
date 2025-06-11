@@ -6,9 +6,9 @@ import { idlFactory as kongFaucetIDL, canisterId as kongFaucetCanisterId } from 
 import type { _SERVICE as _KONG_FAUCET_SERVICE } from '../../../../declarations/kong_faucet/kong_faucet.did.d.ts';
 import { idlFactory as kongDataIDL, canisterId as kongDataCanisterId } from "../../../../declarations/kong_data";
 import type { _SERVICE as _KONG_DATA_SERVICE } from '../../../../declarations/kong_data/kong_data.did.d.ts';
-import { canisterId as predictionMarketsBackendCanisterId } from "../../../../declarations/prediction_markets_backend";
-import { idlFactory as predictionMarketsBackendIDL } from '../../../../declarations/prediction_markets_backend';
-import type { _SERVICE as _PREDICTION_MARKETS_BACKEND_SERVICE } from '../../../../declarations/prediction_markets_backend/prediction_markets_backend.did.d.ts';
+import { canisterId as predictionMarketsBackendCanisterId } from "../../../../declarations/prediction_markets_backend_legacy";
+import { idlFactory as predictionMarketsBackendIDL } from '../../../../declarations/prediction_markets_backend_legacy';
+import type { _SERVICE as _PREDICTION_MARKETS_BACKEND_SERVICE } from '../../../../declarations/prediction_markets_backend_legacy/prediction_markets_backend.did.d.ts';
 import {canisterId as kongBackendCanisterId, idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
 import type { _SERVICE as _KONG_SERVICE } from '../../../../declarations/kong_backend/kong_backend.did.d.ts';
 import { canisterId as trollboxCanisterId, idlFactory as trollboxIDL } from "../../../../declarations/trollbox";

@@ -207,7 +207,7 @@ export async function calculateRemoveLiquidityAmounts(
   token0CanisterId: string,
   token1CanisterId: string,
   lpTokenAmount: number | bigint,
-): Promise<[bigint, bigint]> {
+): Promise<{ amount0: bigint; amount1: bigint; lpFee0: bigint; lpFee1: bigint }> {
   try {
     const lpTokenBigInt =
       typeof lpTokenAmount === "number"
@@ -233,7 +233,12 @@ export async function calculateRemoveLiquidityAmounts(
 
     // Handle the correct response format based on .did file
     const reply = result.Ok;
-    return [BigInt(reply.amount_0), BigInt(reply.amount_1)];
+    return {
+      amount0: BigInt(reply.amount_0),
+      amount1: BigInt(reply.amount_1),
+      lpFee0: BigInt(reply.lp_fee_0),
+      lpFee1: BigInt(reply.lp_fee_1)
+    };
   } catch (error) {
     console.error("Error calculating removal amounts:", error);
     throw error;
@@ -497,7 +502,7 @@ export async function removeLiquidity(params: {
       remove_lp_token_amount: lpTokenBigInt,
     });
 
-    if (!result.Ok) {
+    if ('Err' in result) {
       throw new Error(result.Err || "Failed to remove liquidity");
     }
     return result.Ok.toString();
@@ -623,18 +628,18 @@ export async function sendLpTokens(params: {
       requiresSigning: false,
     });
 
-    const result = await (actor as any).send({
+    const result = await actor.send({
       token: params.token,
       to_address: params.toAddress,
       amount: amountBigInt,
     });
 
-    if (!result.OK) {
+    if ('Err' in result) {
       throw new Error(result.Err || "Failed to send LP tokens");
     }
 
     toastStore.success(`Successfully sent ${params.amount} LP tokens`);
-    return result.OK;
+    return result.Ok;
   } catch (error) {
     console.error("Error sending LP tokens:", error);
     toastStore.error(error.message || "Failed to send LP tokens");

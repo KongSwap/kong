@@ -298,7 +298,7 @@ export interface SendReply {
   'amount' : bigint,
   'symbol' : string,
 }
-export type SendResult = { 'OK' : SendReply } |
+export type SendResult = { 'Ok' : SendReply } |
   { 'Err' : string };
 export interface SwapAmountsReply {
   'txs' : Array<SwapAmountsTxReply>,

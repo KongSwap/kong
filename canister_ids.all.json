@@ -43,15 +43,15 @@
   },
   "icp_ledger": {
     "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai",
-    "local": "",
+    "local": "ryjl3-tyaaa-aaaaa-aaaba-cai",
     "staging_fe": "ryjl3-tyaaa-aaaaa-aaaba-cai",
-    "staging": ""
+    "staging": "ryjl3-tyaaa-aaaaa-aaaba-cai"
   },
   "btc_ledger": {
     "ic": "mxzaz-hqaaa-aaaar-qaada-cai",
-    "local": "",
+    "local": "mxzaz-hqaaa-aaaar-qaada-cai",
     "staging_fe": "mxzaz-hqaaa-aaaar-qaada-cai",
-    "staging": ""
+    "staging": "mxzaz-hqaaa-aaaar-qaada-cai"
   },
   "ksbtc_ledger": {
     "ic": "",
@@ -61,9 +61,9 @@
   },
   "eth_ledger": {
     "ic": "ss2fx-dyaaa-aaaar-qacoq-cai",
-    "local": "",
+    "local": "ss2fx-dyaaa-aaaar-qacoq-cai",
     "staging_fe": "ss2fx-dyaaa-aaaar-qacoq-cai",
-    "staging": ""
+    "staging": "ss2fx-dyaaa-aaaar-qacoq-cai"
   },
   "kseth_ledger": {
     "ic": "",
@@ -79,9 +79,9 @@
   },
   "kskong_ledger": {
     "ic": "",
-    "local": "uxrrr-q7777-77774-qaaaq-cai",
+    "local": "ulvla-h7777-77774-qaacq-cai",
     "staging_fe": "",
-    "staging": "uxrrr-q7777-77774-qaaaq-cai"
+    "staging": "ulvla-h7777-77774-qaacq-cai"
   },
   "internet_identity": {
     "local": "rdmx6-jaaaa-aaaaa-aaadq-cai",

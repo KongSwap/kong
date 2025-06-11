@@ -1,0 +1,78 @@
+type ConsentInfo = record {
+  metadata : ConsentMessageMetadata;
+  consent_message : ConsentMessage;
+};
+type ConsentMessage = variant {
+  LineDisplayMessage : record { pages : vec LineDisplayPage };
+  GenericDisplayMessage : text;
+};
+type ConsentMessageMetadata = record {
+  utc_offset_minutes : opt int16;
+  language : text;
+};
+type ConsentMessageRequest = record {
+  arg : blob;
+  method : text;
+  user_preferences : ConsentMessageSpec;
+};
+type ConsentMessageSpec = record {
+  metadata : ConsentMessageMetadata;
+  device_spec : opt DisplayMessageType;
+};
+type Delegation = record {
+  created : nat64;
+  targets_list_hash : blob;
+  target : principal;
+  expiration : opt nat64;
+};
+type DelegationError = variant {
+  NotFound;
+  Unauthorized;
+  InvalidRequest : text;
+  StorageError : text;
+  Expired;
+};
+type DelegationRequest = record {
+  targets : vec principal;
+  expiration : opt nat64;
+};
+type DelegationResponse = record { delegations : vec Delegation };
+type DisplayMessageType = variant {
+  GenericDisplay;
+  LineDisplay : record { characters_per_line : nat16; lines_per_page : nat16 };
+};
+type ErrorInfo = record { description : text };
+type Icrc28TrustedOriginsResponse = record { trusted_origins : vec text };
+type LineDisplayPage = record { lines : vec text };
+type Message = record {
+  id : nat64;
+  "principal" : principal;
+  created_at : nat64;
+  message : text;
+};
+type MessagesPage = record { messages : vec Message; next_cursor : opt nat64 };
+type PaginationParams = record { cursor : opt nat64; limit : opt nat64 };
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : Message; Err : text };
+type Result_2 = variant { Ok : ConsentInfo; Err : ErrorInfo };
+type Result_3 = variant { Ok : DelegationResponse; Err : DelegationError };
+type Result_4 = variant { Ok; Err : DelegationError };
+type RevokeDelegationRequest = record { targets : vec principal };
+service : () -> {
+  add_admin : (text) -> (Result);
+  ban_user : (principal, nat64) -> (Result);
+  check_ban_status : (principal) -> (opt nat64) query;
+  create_message : (text) -> (Result_1);
+  delete_message : (nat64) -> (Result);
+  get_message : (nat64) -> (opt Message) query;
+  get_messages : (opt PaginationParams) -> (MessagesPage) query;
+  icrc21_canister_call_consent_message : (ConsentMessageRequest) -> (
+      Result_2,
+    ) query;
+  icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse) query;
+  icrc_34_delegate : (DelegationRequest) -> (Result_3);
+  icrc_34_get_delegation : (DelegationRequest) -> (Result_3) query;
+  icrc_34_revoke_delegation : (RevokeDelegationRequest) -> (Result_4);
+  is_admin : (text) -> (bool) query;
+  unban_user : (principal) -> (Result);
+}

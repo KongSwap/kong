@@ -206,7 +206,7 @@
           <tr>
             <th class="text-left pl-4 py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]">Pool</th>
             <th class="text-right py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]">Share</th>
-            <th class="text-right py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]">APY</th>
+            <th class="text-right py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]">APR</th>
             <th class="text-right pr-4 py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]">Value</th>
             <th class="w-10 py-3 px-4 text-sm font-medium text-kong-text-secondary border-b border-white/[0.05]"></th>
           </tr>
