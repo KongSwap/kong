@@ -327,7 +327,7 @@ export const baseTheme: ThemeDefinition = {
     backgroundBottom: '0',
     enableParallax: false,
     enableNebula: true,
-    enableStars: true,
+    enableStars: false,
     nebulaOpacity: 0.3,
     starsOpacity: 0.8
   }
