@@ -252,7 +252,9 @@
   function handleMouseLeave() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
     hoverTimeout = setTimeout(() => {
-      hoveredToken = null;
+      if (!isChartHovered) {
+        hoveredToken = null;
+      }
     }, 200);
   }
 
@@ -263,7 +265,8 @@
 
   function handleChartMouseLeave() {
     isChartHovered = false;
-    handleMouseLeave();
+    if (hoverTimeout) clearTimeout(hoverTimeout);
+    hoveredToken = null;
   }
 
   function getChangeClass(change: number): string {
