@@ -656,7 +656,7 @@
                             p => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
                           );
                           if (userPosition) {
-                            goto(`/pools/position/${pool.address_0}-${pool.address_1}`);
+                            goto(`/pools/${pool.address_0}_${pool.address_1}/position`);
                           } else {
                             goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`);
                           }
@@ -822,7 +822,7 @@
                           p => p.address_0 === row.address_0 && p.address_1 === row.address_1
                         );
                         if (userPosition) {
-                          goto(`/pools/position/${row.address_0}-${row.address_1}`);
+                          goto(`/pools/${row.address_0}_${row.address_1}/position`);
                         } else {
                           goto(`/pools/add?token0=${row.address_0}&token1=${row.address_1}`);
                         }

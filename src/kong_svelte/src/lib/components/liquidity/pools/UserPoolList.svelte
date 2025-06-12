@@ -111,7 +111,7 @@
 
   function handlePoolItemClick(pool: (typeof userPoolsWithDetails)[0]) {
     // Navigate to the position detail page
-    goto(`/pools/position/${pool.key}`);
+    goto(`/pools/${pool.key}/position`);
   }
 
 </script>
