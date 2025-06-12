@@ -407,7 +407,7 @@
 {:else if pool}
   <div class="flex flex-col max-w-[1300px] mx-auto px-4 pb-8">
     <!-- Header -->
-    <div class="mb-6">
+    <div class="pb-8">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-3">
           <TokenImages tokens={[token0, token1]} size={32} overlap={true} />
@@ -415,13 +415,6 @@
             {pool.symbol_0 || token0?.symbol || 'Token'}/{pool.symbol_1 || token1?.symbol || 'Token'} {pool.balance > 0n ? 'Position' : 'Pool'}
           </h1>
         </div>
-        <button
-          class="text-sm text-kong-text-secondary hover:text-kong-primary transition-colors flex items-center gap-1.5 group"
-          onclick={() => goto("/pools")}
-        >
-          <ArrowLeft size={14} class="group-hover:-translate-x-0.5 transition-transform" />
-          <span>Return to Pools</span>
-        </button>
       </div>
       
       <!-- Key Metrics -->
