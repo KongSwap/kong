@@ -462,7 +462,7 @@
               ` : ''}
             </div>
             <div class="flex items-center gap-1">
-              <span class="text-kong-text-secondary">APR:</span>
+              <span class="text-kong-text-secondary">APR (24h):</span>
               <span class="text-kong-accent-green font-semibold">${formatToNonZeroDecimal((livePool?.rolling_24h_apy || 0).toString())}%</span>
             </div>
           </div>`,
