@@ -1,6 +1,6 @@
 import { API_URL } from "./index";
-import { UserSerializer } from "../serializers/UserSerializer";
-import { TransactionSerializer } from "../serializers/TransactionSerializer";
+import { User } from "../models/User";
+import { Transaction } from "../models/Transaction";
 
 export interface UsersResponse {
   items: Array<{
@@ -19,7 +19,7 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
   const url = new URL(`${API_URL}/api/users`);
   if (principal_id) {
     // Clean principal ID before sending to the API
-    const cleanPrincipalId = UserSerializer.cleanPrincipalId(principal_id);
+    const cleanPrincipalId = User.cleanPrincipalId(principal_id);
     url.searchParams.set('principal_id', cleanPrincipalId);
     url.searchParams.set('limit', '40');
   }
@@ -33,7 +33,7 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
   const rawData = await response.json();
   
   // Use the serializer to process the response
-  return UserSerializer.serializeUsersResponse(rawData) as UsersResponse;
+  return User.serializeUsersResponse(rawData) as UsersResponse;
 }
 
 
@@ -315,8 +315,8 @@ export async function fetchUsers(principal_id?: string): Promise<UsersResponse> 
     }
 
     try {
-      // Use the TransactionSerializer to process the response
-      return TransactionSerializer.serializeTransactionsResponse(data);
+      // Use the Transaction model to process the response
+      return Transaction.serializeTransactionsResponse(data);
     } catch (serializerError) {
       console.error('Error during transaction serialization:', serializerError);
       // Return empty result instead of throwing

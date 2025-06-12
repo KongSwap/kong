@@ -2,7 +2,9 @@ import { writable, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { auth } from "$lib/stores/auth";
 import { canisters } from '$lib/config/auth.config';
-import type { KONG_BACKEND } from '$lib/config/auth.config';
+import type { CanisterType } from '$lib/config/auth.config';
+import { UserPool, type UserPoolData } from '$lib/models/UserPool';
+import { fetchPools } from '$lib/api/pools';
 
 interface PoolListState {
   processedPools: ProcessedPool[];
@@ -16,22 +18,8 @@ interface PoolListState {
   initialFilterApplied: boolean;
 }
 
-interface ProcessedPool {
-  id: string;
-  symbol_0: string;
-  symbol_1: string;
-  balance: string;
-  usd_balance: string;
-  amount_0: string;
-  amount_1: string;
-  name?: string;
-  address_0: string;
-  address_1: string;
+interface ProcessedPool extends UserPoolData {
   searchableText: string;
-  token0?: Kong.Token;
-  token1?: Kong.Token;
-  rolling_24h_apy?: number;
-  rolling_24h_volume?: string;
 }
 
 const initialState: PoolListState = {
@@ -50,6 +38,8 @@ function createCurrentUserPoolsStore() {
   const { subscribe, update, set } = writable<PoolListState>(initialState);
   let searchDebounceTimer: ReturnType<typeof setTimeout>;
   const SEARCH_DEBOUNCE = 150;
+  let initializationPromise: Promise<void> | null = null;
+  let lastInitializationPrincipal: string | null = null;
   
   return {
     subscribe,
@@ -59,38 +49,57 @@ function createCurrentUserPoolsStore() {
       set(initialState);
     },
 
-    initialize: async () => {      
-      // Set loading state, but don't reset the pools data yet
-      update(s => ({ ...s, loading: true, error: null }));
+    initialize: async () => {
+      const currentAuth = get(auth);
+      const currentPrincipal = currentAuth?.account?.owner || '';
       
-      try {
-        const currentAuth = get(auth);
-        const actor = auth.pnp.getActor<KONG_BACKEND>({
-          canisterId: canisters.kongBackend.canisterId,
-          idl: canisters.kongBackend.idl,
-          anon: true,
-        });
-        
-        const response = await actor.user_balances(
-          currentAuth?.account?.owner || ''
-        );
-                
-        if ('Ok' in response) {
-          // Process the new raw data
-          const rawPools = response.Ok.map(pool => pool.LP);
-          
-          // Fetch tokens for the new pools
-          await fetchTokensForPools(rawPools); 
-        } else {
-          // Handle potential errors from the backend response structure if needed
-          handleError("Failed to load user pools: Backend returned an error structure", response);
+      // If we're already initializing for this principal, return the existing promise
+      if (initializationPromise && lastInitializationPrincipal === currentPrincipal) {
+        const currentState = get({ subscribe });
+        // Only return existing promise if we're still loading
+        if (currentState.loading) {
+          return initializationPromise;
         }
-      } catch (error) {
-        handleError("Failed to load user pools", error);
-      } finally {
-        // Set loading to false regardless of success or error
-        update(s => ({ ...s, loading: false }));
       }
+      
+      // Create new initialization promise
+      lastInitializationPrincipal = currentPrincipal;
+      initializationPromise = (async () => {
+        // Set loading state, but don't reset the pools data yet
+        update(s => ({ ...s, loading: true, error: null }));
+        
+        try {
+          const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
+            canisterId: canisters.kongBackend.canisterId,
+            idl: canisters.kongBackend.idl,
+            anon: true,
+          });
+          
+          const response = await actor.user_balances(currentPrincipal);
+                  
+          if ('Ok' in response) {
+            // Process the new raw data
+            const rawPools = response.Ok.map(pool => pool.LP);
+            
+            // Fetch tokens for the new pools
+            await fetchTokensForPools(rawPools); 
+          } else {
+            // Handle potential errors from the backend response structure if needed
+            handleError("Failed to load user pools: Backend returned an error structure", response);
+          }
+        } catch (error) {
+          handleError("Failed to load user pools", error);
+        } finally {
+          // Set loading to false regardless of success or error
+          update(s => ({ ...s, loading: false }));
+          // Clear promise after completion
+          if (lastInitializationPrincipal === currentPrincipal) {
+            initializationPromise = null;
+          }
+        }
+      })();
+      
+      return initializationPromise;
     },
 
     setSearchQuery: (query: string) => {
@@ -159,7 +168,7 @@ function createCurrentUserPoolsStore() {
       }, {} as Record<string, Kong.Token>);
       
       // Process the new pools with the fetched tokens
-      const newProcessedPools = processPoolsWithTokens(pools, tokenMap);
+      const newProcessedPools = await processPoolsWithTokens(pools, tokenMap);
       
       // Update the state with the new processed pools and apply current filter/sort
       update(s => ({
@@ -173,14 +182,30 @@ function createCurrentUserPoolsStore() {
     }
   }
 
-  function processPoolsWithTokens(pools: any[], tokens: Record<string, Kong.Token>): ProcessedPool[] {
-    return pools.map(pool => ({
-      ...pool,
-      searchableText: getPoolSearchData(pool, tokens),
-      token0: tokens[pool.address_0],
-      token1: tokens[pool.address_1],
-      usd_balance: pool.usd_balance || "0" // Add fallback value
-    }));
+  async function processPoolsWithTokens(pools: any[], tokens: Record<string, Kong.Token>): Promise<ProcessedPool[]> {
+    // Fetch all pool data to get current balances and LP supply
+    try {
+      const poolsResponse = await fetchPools({ limit: 1000 }); // Get all pools
+      const allPools = poolsResponse.pools;
+      
+      return pools.map(pool => {
+        const parsed = UserPool.parse(pool, tokens, allPools);
+        return {
+          ...parsed,
+          searchableText: getPoolSearchData(parsed, tokens)
+        };
+      });
+    } catch (error) {
+      console.error("Failed to fetch pool data for calculations:", error);
+      // Fallback: process without pool data
+      return pools.map(pool => {
+        const parsed = UserPool.parse(pool, tokens);
+        return {
+          ...parsed,
+          searchableText: getPoolSearchData(parsed, tokens)
+        };
+      });
+    }
   }
 
   function handleError(message: string, error: unknown): void {

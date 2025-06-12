@@ -2,7 +2,7 @@ import { API_URL } from "$lib/api/index";
 import { auth, requireWalletConnection } from "$lib/stores/auth";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { toastStore } from "$lib/stores/toastStore";
-import { IcrcTokenSerializer } from "$lib/serializers/tokens/IcrcTokenSerializer";
+import { IcrcToken } from "$lib/models/tokens/IcrcToken";
 import { canisters, type CanisterType } from "$lib/config/auth.config";
 import type { AddLiquiditAmountsResult } from "../../../../declarations/kong_backend/kong_backend.did";
 
@@ -88,8 +88,8 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
       }
 
       // Serialize nested token objects
-      const serializedToken0 = item.token0 ? IcrcTokenSerializer.serializeTokenMetadata(item.token0) : null;
-      const serializedToken1 = item.token1 ? IcrcTokenSerializer.serializeTokenMetadata(item.token1) : null;
+      const serializedToken0 = item.token0 ? IcrcToken.serializeTokenMetadata(item.token0) : null;
+      const serializedToken1 = item.token1 ? IcrcToken.serializeTokenMetadata(item.token1) : null;
 
       // Return a flat structure combining pool data with token details.
       return {

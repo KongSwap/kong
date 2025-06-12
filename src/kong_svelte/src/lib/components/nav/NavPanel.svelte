@@ -21,6 +21,7 @@
     X,
   } from "lucide-svelte";
   import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
+  import { walletSidebarStore } from "$lib/stores/walletSidebarStore";
 
   // Props
   let { isMobile = false } = $props();
@@ -93,12 +94,13 @@
   }
 
   function toggleWalletSidebar(tab: "notifications" | "chat" | "wallet" = "notifications") {
-    walletSidebarActiveTab = tab;
-    showWalletSidebar = !showWalletSidebar;
+    walletSidebarStore.setActiveTab(tab);
+    walletSidebarStore.toggle();
   }
 
-  let showWalletSidebar = $state(false);
-  let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">("notifications");
+  // Subscribe to wallet sidebar store
+  const showWalletSidebar = $derived($walletSidebarStore.isOpen);
+  const walletSidebarActiveTab = $derived($walletSidebarStore.activeTab);
 
   const mobileHeaderButtons = $derived([
     {
@@ -248,7 +250,7 @@
 <WalletSidebar
   isOpen={showWalletSidebar}
   activeTab={walletSidebarActiveTab}
-  onClose={() => showWalletSidebar = false}
+  onClose={() => walletSidebarStore.close()}
 />
 
 <style scoped lang="postcss">

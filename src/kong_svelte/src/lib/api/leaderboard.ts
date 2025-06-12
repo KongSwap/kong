@@ -1,6 +1,6 @@
 import { API_URL } from "./index";
 import { browser } from "$app/environment";
-import { UserSerializer } from "../serializers/UserSerializer";
+import { User } from "../models/User";
 
 export interface LeaderboardEntry {
   user_id: number;
@@ -42,13 +42,13 @@ export async function fetchVolumeLeaderboard(
   
   const rawData = await response.json();
   
-  // Process the response with UserSerializer to clean principal IDs
+  // Process the response with User model to clean principal IDs
   if (Array.isArray(rawData)) {
-    return UserSerializer.serializeUsers(rawData) as LeaderboardEntry[];
+    return User.serializeUsers(rawData) as LeaderboardEntry[];
   } else if (rawData && typeof rawData === 'object' && Array.isArray(rawData.items)) {
     return {
       ...rawData,
-      items: UserSerializer.serializeUsers(rawData.items) as LeaderboardEntry[]
+      items: User.serializeUsers(rawData.items) as LeaderboardEntry[]
     };
   }
   

@@ -8,33 +8,45 @@
   import { onMount } from "svelte";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { startPolling, stopPolling } from "$lib/utils/pollingService";
+  import { settingsStore } from "$lib/stores/settingsStore";
 
-  let hoveredToken: Kong.Token | null = null;
+  // Check if ticker is enabled
+  let tickerEnabled = $state(true);
+  
+  $effect(() => {
+    // Subscribe to the tickerEnabled derived store
+    const unsubscribe = settingsStore.tickerEnabled.subscribe(value => {
+      tickerEnabled = value;
+    });
+    return unsubscribe;
+  });
+
+  let hoveredToken = $state<Kong.Token | null>(null);
   let hoverTimeout: NodeJS.Timeout;
-  let chartPosition = { x: 0, y: 0 };
-  let isChartHovered = false;
-  let isTickerHovered = false;
-  let priceFlashStates = new Map<
+  let chartPosition = $state({ x: 0, y: 0 });
+  let isChartHovered = $state(false);
+  let isTickerHovered = $state(false);
+  let priceFlashStates = $state(new Map<
     string,
     { class: string; timeout: NodeJS.Timeout }
-  >();
-  let isVisible = true;
-  let quoteToken: Kong.Token | null = null;
-  let tickerTokens: Kong.Token[] = [];
-  let icpToken: Kong.Token | null = null;
-  let ckUSDCToken: Kong.Token | null = null;
-  let actualQuoteToken: 'ckUSDT' | 'ICP' = 'ckUSDT';
+  >());
+  let isVisible = $state(true);
+  let quoteToken = $state<Kong.Token | null>(null);
+  let tickerTokens = $state<Kong.Token[]>([]);
+  let icpToken = $state<Kong.Token | null>(null);
+  let ckUSDCToken = $state<Kong.Token | null>(null);
+  let actualQuoteToken = $state<'ckUSDT' | 'ICP'>('ckUSDT');
   let previousPrices = new Map<string, number>();
   let pendingUpdates = new Set<Kong.Token>();
   let updateScheduled = false;
-  let tickerWidth = 0;
-  let contentWidth = 0;
+  let tickerWidth = $state(0);
+  let contentWidth = $state(0);
 
   async function fetchTickerData() {
     try {
       const { tokens } = await fetchTokens();
       const sortedTokens = tokens
-        .filter(token => Number(token.metrics?.volume_24h || 0) > 100)
+        .filter(token => token.metrics && Number(token.metrics?.volume_24h || 0) > 0)
         .sort((a, b) => {
           const volumeA = Number(a.metrics?.volume_24h || 0);
           const volumeB = Number(b.metrics?.volume_24h || 0);
@@ -134,22 +146,20 @@
 
   // Use Intersection Observer to pause animations when not visible
   let observer: IntersectionObserver;
-  let tickerElement: HTMLElement;
+  let tickerElement = $state<HTMLElement>();
+  let animationDuration = $state(30000); // Default duration
+  let resizeDebounce: ReturnType<typeof setTimeout>;
 
-  onMount(() => {
+  // Initialize ticker when enabled
+  $effect(() => {
+    if (!tickerEnabled || !tickerElement) return;
+    
     // More efficient observer options
     observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
         if (entry) {
           isVisible = entry.isIntersecting;
-          // Use requestAnimationFrame for smoother state updates
-          requestAnimationFrame(() => {
-            const scrollElement = tickerElement?.querySelector(".ticker-content");
-            if (scrollElement) {
-              scrollElement.classList.toggle("paused", !isVisible);
-            }
-          });
         }
       },
       { 
@@ -158,14 +168,13 @@
       }
     );
 
-    if (tickerElement) {
-      observer.observe(tickerElement);
-    }
+    observer.observe(tickerElement);
 
     const resizeObserver = new ResizeObserver(entries => {
-      let raf;
-      clearTimeout(raf);
-      raf = setTimeout(() => {
+      // Clear existing debounce
+      clearTimeout(resizeDebounce);
+      
+      resizeDebounce = setTimeout(() => {
         requestAnimationFrame(() => {
           for (const entry of entries) {
             if (entry.target.classList.contains('ticker-container')) {
@@ -176,15 +185,12 @@
           }
           
           if (tickerWidth && contentWidth) {
-            const scrollElement = tickerElement?.querySelector(".ticker-content") as HTMLElement;
-            if (scrollElement) {
-              // Slower scroll for smoother animation
-              const duration = (contentWidth / 25) * 1000;
-              scrollElement.style.setProperty('--ticker-duration', `${duration}ms`);
-            }
+            // Calculate duration based on content width
+            // Slower speed for smoother animation (30px/s)
+            animationDuration = Math.max(20000, (contentWidth / 30) * 1000);
           }
         });
-      }, 100); // 100ms debounce
+      }, 50); // Reduced debounce for faster response
     });
 
     // Observe both container and content
@@ -196,6 +202,7 @@
     // Initial fetch
     fetchTickerData();
 
+    // Start polling with visibility check
     startPolling(
       "tickerData",
       () => {
@@ -217,6 +224,9 @@
       });
       if (hoverTimeout) {
         clearTimeout(hoverTimeout);
+      }
+      if (resizeDebounce) {
+        clearTimeout(resizeDebounce);
       }
       resizeObserver.disconnect();
     };
@@ -265,6 +275,7 @@
   }
 </script>
 
+{#if tickerEnabled}
 <div
   bind:this={tickerElement}
   class="w-full overflow-hidden text-sm token-ticker-bg token-ticker-border shadow-lg h-8 flex items-center"
@@ -273,12 +284,12 @@
     <div
       class="ticker-content h-full flex items-center"
       role="list"
-      class:paused={isChartHovered || !isVisible || isTickerHovered}
+      style="--ticker-duration: {animationDuration}ms; --ticker-play-state: {isChartHovered || !isVisible || isTickerHovered ? 'paused' : 'running'}"
       on:mouseenter={() => (isTickerHovered = true)}
       on:mouseleave={() => (isTickerHovered = false)}
     >
       {#each tickerTokens as token, index (token.address)}
-        {#if token.metrics}
+        {#if token}
           <button
             class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(
               token.address,
@@ -309,7 +320,7 @@
         {/if}
       {/each}
       {#each tickerTokens as token, index (`${token.address}-duplicate`)}
-        {#if token.metrics}
+        {#if token}
           <button
             class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(
               token.address,
@@ -401,6 +412,7 @@
     {/key}
   </button>
 {/if}
+{/if}
 
 <style scoped lang="postcss">
   /* Add token ticker background class */
@@ -462,7 +474,6 @@
     display: inline-flex;
     align-items: center;
     white-space: nowrap;
-    animation: none; /* Remove default animation */
     transform: translate3d(0, 0, 0);
     will-change: transform;
     backface-visibility: hidden;
@@ -471,13 +482,11 @@
     -webkit-perspective: 1000;
     transform-style: preserve-3d;
     contain: layout style paint;
-    /* Use CSS custom property for transform */
+    /* Smooth animation with custom properties */
     animation: ticker var(--ticker-duration, 30000ms) linear infinite;
     animation-play-state: var(--ticker-play-state, running);
-  }
-
-  .ticker-content.paused {
-    --ticker-play-state: paused;
+    /* Add easing for smoother start/stop */
+    animation-timing-function: linear;
   }
 
   @keyframes ticker {

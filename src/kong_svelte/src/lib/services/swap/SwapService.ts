@@ -23,27 +23,6 @@ interface SwapExecuteParams {
   lpFees: any[];
 }
 
-interface SwapStatus {
-  status: string;
-  pay_amount: bigint;
-  pay_symbol: string;
-  receive_amount: bigint;
-  receive_symbol: string;
-}
-
-interface SwapResponse {
-  Swap: SwapStatus;
-}
-
-interface RequestStatus {
-  reply: SwapResponse;
-  statuses: string[];
-}
-
-interface RequestResponse {
-  Ok: RequestStatus[];
-}
-
 // Base BigNumber configuration for internal calculations
 // Set this high enough to handle intermediate calculations without loss of precision
 BigNumber.config({
@@ -236,12 +215,11 @@ export class SwapService {
     pay_tx_id: [] | [{ BlockIndex: bigint }];
   }): Promise<BE.SwapAsyncResponse> {
     try {
-      console.log("swap_async", auth.pnp)
       const actor = auth.pnp.getActor<CanisterType["KONG_BACKEND"]>({
           canisterId: KONG_BACKEND_CANISTER_ID,
           idl: canisters.kongBackend.idl,
           anon: false,
-          requiresSigning: auth.pnp.adapter.id === "plug",
+          requiresSigning: true,
         });
       const result = await actor.swap_async(params);
       return result;

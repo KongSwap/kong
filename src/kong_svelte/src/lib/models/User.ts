@@ -1,10 +1,10 @@
-// UserSerializer.ts
-// Serializer for user data with principal ID cleaning
+// User.ts
+// Model for user data with principal ID cleaning
 
-import { BaseSerializer } from './BaseSerializer';
+import { BaseModel } from './BaseModel';
 import { truncateAddress } from '$lib/utils/principalUtils';
 
-export class UserSerializer extends BaseSerializer {
+export class User extends BaseModel {
   /**
    * Cleans a principal ID by removing '-2' suffix if present
    * @param principalId - The principal ID to clean

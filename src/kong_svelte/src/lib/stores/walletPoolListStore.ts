@@ -2,6 +2,8 @@ import { writable, get } from 'svelte/store';
 import { fetchTokensByCanisterId } from "$lib/api/tokens";
 import { auth } from "$lib/stores/auth";
 import { canisters, type CanisterType } from "$lib/config/auth.config";
+import { UserPool, type UserPoolData } from '$lib/models/UserPool';
+import { fetchPools } from '$lib/api/pools';
 
 interface PoolListState {
   processedPools: ProcessedPool[];
@@ -11,22 +13,7 @@ interface PoolListState {
   lastUpdated: number | null;
 }
 
-interface ProcessedPool {
-  id: string;
-  symbol_0: string;
-  symbol_1: string;
-  balance: number;
-  usd_balance: number;
-  amount_0: number;
-  amount_1: number;
-  name?: string;
-  address_0: string;
-  address_1: string;
-  token0?: Kong.Token;
-  token1?: Kong.Token;
-  rolling_24h_apy?: number;
-  rolling_24h_volume?: string;
-}
+type ProcessedPool = UserPoolData;
 
 const initialState: PoolListState = {
   processedPools: [],
@@ -112,17 +99,14 @@ function createWalletPoolListStore() {
           const response = await actor.user_balances(walletId);          
           if ('Ok' in response) {
             const rawPools = response.Ok.map(pool => pool.LP);
-            const poolsWithIds = rawPools.map(pool => ({
-              ...pool,
-              id: `${pool.address_0}-${pool.address_1}`
-            }));
             
+            // First pass: store raw pools
             update(s => ({
               ...s,
-              processedPools: poolsWithIds
+              processedPools: []
             }));
             
-            await fetchTokensForPools(poolsWithIds, update);
+            await fetchTokensForPools(rawPools, update);
             
             // Final update with success state
             update(s => ({ 
@@ -187,18 +171,25 @@ async function fetchTokensForPools(pools: any[], update: Function): Promise<void
       return acc;
     }, {} as Record<string, Kong.Token>);
     
-    update(s => ({
+    // Fetch all pool data to get current balances and LP supply
+    let allPools: BE.Pool[] = [];
+    try {
+      const poolsResponse = await fetchPools({ limit: 1000 }); // Get all pools
+      allPools = poolsResponse.pools;
+    } catch (error) {
+      console.error("Failed to fetch pool data for calculations:", error);
+    }
+    
+    // Use the model to parse pools with calculations
+    const parsedPools = UserPool.parseMultiple(pools, tokenMap, allPools);
+    
+    update((s: PoolListState) => ({
       ...s,
-      processedPools: pools.map(pool => ({
-        ...pool,
-        token0: tokenMap[pool.address_0],
-        token1: tokenMap[pool.address_1],
-        usd_balance: pool.usd_balance || "0"
-      }))
+      processedPools: parsedPools
     }));
   } catch (error) {
     console.error("Failed to load token information:", error);
-    update(s => ({ ...s, error: "Failed to load token information" }));
+    update((s: PoolListState) => ({ ...s, error: "Failed to load token information" }));
   }
 }
 
