@@ -1,8 +1,8 @@
-// Custom serializer for Pool data without using Zod
-import { BaseSerializer } from './BaseSerializer';
+// Pool model for parsing and processing pool data
+import { BaseModel } from './BaseModel';
 
-export class PoolSerializer extends BaseSerializer {
-  static serializePoolsResponse(response: unknown): BE.PoolResponse {
+export class Pool extends BaseModel {
+  static parsePoolsResponse(response: unknown): BE.PoolResponse {
     try {
       if (!response || typeof response !== 'object') {
         throw new Error('Invalid response format');
@@ -15,19 +15,19 @@ export class PoolSerializer extends BaseSerializer {
       }
       
       return {
-        pools: data.pools.map(pool => this.serializePool(pool)),
+        pools: data.pools.map(pool => this.parsePool(pool)),
         total_tvl: this.toBigInt(data.total_tvl),
         total_24h_volume: this.toBigInt(data.total_24h_volume),
         total_24h_lp_fee: this.toBigInt(data.total_24h_lp_fee),
         total_24h_num_swaps: this.toNumber(data.total_24h_num_swaps)
       };
     } catch (error) {
-      console.error('Error serializing pools response:', error);
+      console.error('Error parsing pools response:', error);
       throw error;
     }
   }
 
-  static serializePool(rawPool: unknown): BE.Pool {
+  static parsePool(rawPool: unknown): BE.Pool {
     if (!rawPool || typeof rawPool !== 'object') {
       throw new Error('Invalid pool data');
     }

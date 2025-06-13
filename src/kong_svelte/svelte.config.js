@@ -27,8 +27,11 @@ const config = {
         if (
           path === "/swap" ||
           path === "/pools" ||
+          path.startsWith("/pools/") ||
           path === "/stats" ||
-          path === "/predict"
+          path === "/predict" ||
+          path.startsWith("/wallets/") ||
+          path.includes("[") // Ignore all dynamic routes
         ) {
           return;
         }

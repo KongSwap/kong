@@ -41,6 +41,7 @@
   import { fetchTokensByCanisterId } from "$lib/api/tokens/index";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { calculateLiquidityAmounts } from "$lib/api/pools";
+  import { fade } from "svelte/transition";
 
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
   const DEFAULT_TOKEN = "ICP";
@@ -50,25 +51,27 @@
   const MIN_BALANCE_LOAD_INTERVAL = 2000; // Minimum time (ms) between balance loads
 
   // State variables
-  let token0: Kong.Token = null;
-  let token1: Kong.Token = null;
-  let pool: BE.Pool = null;
-  let poolExists: boolean = null;
-  let token0Balance = "0";
-  let token1Balance = "0";
-  let initialLoadComplete = false;
-  let authInitialized = false;
-  let showConfirmModal = false; 
-  let isLoading = true; // Add loading state to prevent rendering before data is ready
-  let isLoadingBalances = false; // Track balance loading state
-  let lastBalanceLoadTime = 0; // Track when balances were last loaded
-  let balanceLoadAttempts = 0; // Track number of balance load attempts
-  let lastLoadedTokenPair = ""; // Track the last token pair that was loaded
-  let buttonText = ""; // Button text state
-  let buttonTheme: "accent-red" | "accent-green" = "accent-green"; // Typed button theme
+  let token0 = $state<Kong.Token | null>(null);
+  let token1 = $state<Kong.Token | null>(null);
+  let pool = $state<BE.Pool | null>(null);
+  let poolExists = $state<boolean | null>(null);
+  let token0Balance = $state("0");
+  let token1Balance = $state("0");
+  let initialLoadComplete = $state(false);
+  let authInitialized = $state(false);
+  let showConfirmModal = $state(false); 
+  let isLoading = $state(true); // Add loading state to prevent rendering before data is ready
+  let isLoadingBalances = $state(false); // Track balance loading state
+  let isLoadingTokens = $state(false); // Track token loading state
+  let isCheckingPool = $state(false); // Track pool checking state
+  let lastBalanceLoadTime = $state(0); // Track when balances were last loaded
+  let balanceLoadAttempts = $state(0); // Track number of balance load attempts
+  let lastLoadedTokenPair = $state(""); // Track the last token pair that was loaded
+  let buttonText = $state(""); // Button text state
+  let buttonTheme = $state<"accent-red" | "accent-green">("accent-green"); // Typed button theme
   
   // Get button text reactively
-  $: {
+  $effect(() => {
     // Only check for insufficient balance when we have valid amounts and tokens
     const hasAmounts = $liquidityStore.amount0 && $liquidityStore.amount1 && 
                       new BigNumber($liquidityStore.amount0 || '0').gt(0) && 
@@ -92,29 +95,19 @@
       isLoading,
       "Loading..."
     );
-  }
-  
-  // Determine button theme based on button text
-  $: buttonTheme = (buttonText === "Insufficient Balance") 
-    ? "accent-red" 
-    : "accent-green";
+    
+    // Determine button theme based on button text
+    buttonTheme = (buttonText === "Insufficient Balance") 
+      ? "accent-red" 
+      : "accent-green";
+  });
   
   // Debounce timers
   let amountDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   let priceDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   let balanceLoadingTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Reactive statement for button text
-  $: buttonText = getButtonText(
-    token0,
-    token1,
-    poolExists === false,
-    hasInsufficientBalance($liquidityStore.amount0, $liquidityStore.amount1, token0, token1),
-    $liquidityStore.amount0,
-    $liquidityStore.amount1,
-    isLoading,
-    "Loading..."
-  );
+  // Button text is now computed in the effect above
 
   // Helper to safely convert value to BigNumber
   const toBigNumber = (value: any): BigNumber => {
@@ -198,9 +191,11 @@
   // Improved function to load initial tokens from URL or defaults
   async function loadInitialTokens() {
     try {
-      isLoading = true;
+      isLoadingTokens = true;
       const urlToken0 = $page.url.searchParams.get("token0");
       const urlToken1 = $page.url.searchParams.get("token1");
+      
+      hasUrlTokens = !!(urlToken0 && urlToken1);
             
       // Only fetch tokens if we have valid IDs
       const tokensToFetch = [];
@@ -249,8 +244,7 @@
         console.error("Error setting fallback tokens:", fallbackError);
       }
     } finally {
-      console.log("Finished loadInitialTokens, setting isLoading to false");
-      isLoading = false;
+      isLoadingTokens = false;
     }
   }
 
@@ -300,14 +294,21 @@
     return unsubscribe;
   });
 
-  // Simplified and more robust reactive statements
-  $: if ($userTokens.tokens.length > 0 && !initialLoadComplete && !isLoading) {
-    loadInitialTokens();
-  }
+  // Effects for initialization
+  $effect(() => {
+    if ($userTokens.tokens.length > 0 && !initialLoadComplete && !isLoading) {
+      loadInitialTokens();
+    }
+  });
   
-  $: if ($auth?.isInitialized && $auth?.account?.owner && $userTokens.tokens.length > 0 && !isLoading) {
-    loadBalancesIfNecessary($userTokens.tokens, $auth.account.owner, true);
-  }
+  $effect(() => {
+    if ($auth?.isInitialized && $auth?.account?.owner && $userTokens.tokens.length > 0 && !isLoading) {
+      loadBalancesIfNecessary($userTokens.tokens, $auth.account.owner, true);
+    }
+  });
+  
+  // Track if tokens were pre-selected from URL
+  let hasUrlTokens = $state(false);
   
   // Use effect instead of reactive blocks for complex logic
   let lastReactiveState = {
@@ -319,7 +320,7 @@
     authOwner: null
   };
   
-  $: {
+  $effect(() => {
     const token0Id = $liquidityStore.token0?.address;
     const token1Id = $liquidityStore.token1?.address;
     const livePoolsLength = $livePools.length;
@@ -420,10 +421,10 @@
         }
       }
     }
-  }
+  });
 
-  // Reactive block to update local balance variables from the store
-  $: {
+  // Effect to update local balance variables from the store
+  $effect(() => {
     if (token0?.address) {
       token0Balance = $currentUserBalancesStore[token0.address]?.in_tokens?.toString() || "0";
     } else {
@@ -434,7 +435,7 @@
     } else {
       token1Balance = "0";
     }
-  }
+  });
 
   // Token selection handler
   function handleTokenSelect(index: 0 | 1, token: Kong.Token) {
@@ -500,6 +501,7 @@
       } else {
          pool = null; // Ensure pool is null if it doesn't exist
       }
+      isCheckingPool = false;
 
       // Trigger balance load for the new pair if needed
       if ($auth?.isInitialized && $auth?.account?.owner) {
@@ -698,12 +700,22 @@
           <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
             Select Tokens
           </h3>
-          <TokenSelectionPanel
-            {token0}
-            {token1}
-            onTokenSelect={handleTokenSelect}
-            secondaryTokenIds={SECONDARY_TOKEN_IDS}
-          />
+          <div class="relative">
+            <TokenSelectionPanel
+              {token0}
+              {token1}
+              onTokenSelect={handleTokenSelect}
+              secondaryTokenIds={SECONDARY_TOKEN_IDS}
+            />
+            {#if isLoadingTokens && hasUrlTokens}
+              <div class="absolute inset-0 bg-kong-bg-dark/60 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                <div class="flex items-center gap-2 text-sm text-kong-text-secondary">
+                  <div class="w-4 h-4 border-2 border-kong-primary/20 border-t-kong-primary rounded-full animate-spin"></div>
+                  <span>Loading selected tokens...</span>
+                </div>
+              </div>
+            {/if}
+          </div>
         </div>
 
         {#if token0 && token1}
@@ -715,7 +727,7 @@
         {/if}
 
         {#if token0 && token1 && (poolExists === false || hasZeroBalance(pool))}
-          <div class="flex flex-col gap-4">
+          <div class="flex flex-col gap-4" in:fade={{ duration: 200 }}>
             <PoolWarning {token0} {token1} />
             <div>
               <h3 class="text-kong-text-primary/90 text-sm font-medium uppercase mb-2">
@@ -759,9 +771,21 @@
               size="lg"
               fullWidth={true}
               on:click={poolExists === false ? handleCreatePool : handleAddLiquidity}
-              isDisabled={buttonText !== "Review Transaction"}
+              isDisabled={buttonText !== "Review Transaction" || isLoadingBalances || isCheckingPool}
             >
-              {buttonText}
+              {#if isLoadingBalances}
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                  <span>Loading balances...</span>
+                </div>
+              {:else if isCheckingPool}
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                  <span>Checking pool...</span>
+                </div>
+              {:else}
+                {buttonText}
+              {/if}
             </ButtonV2>
           </div>
         {:else}

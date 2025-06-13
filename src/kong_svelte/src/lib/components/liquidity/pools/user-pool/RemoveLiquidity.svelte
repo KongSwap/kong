@@ -142,7 +142,6 @@
 
       // Close modal and reset state only on success
       if (isComplete) {
-           dispatch("close");
            isRemoving = false;
            error = null;
            removeLiquidityAmount = "";
@@ -183,108 +182,92 @@
 <div in:fade={{ duration: 200 }}>
   <div class="remove-liquidity-container">
     <div class="input-container">
-      <div class="input-header">
-        <span class="input-label">Amount (LP Tokens)</span>
-        <div class="balance-display">
-          <span class="balance-label">Balance:</span>
-          <span class="balance-value">{Number(pool.balance).toFixed(8)}</span>
-        </div>
-      </div>
-
       <div class="input-wrapper">
         <input
           type="number"
           bind:value={removeLiquidityAmount}
           on:input={handleInputChange}
           class="amount-input"
-          placeholder="0.0"
+          placeholder="0"
           max={pool.balance}
         />
-        <div class="input-decoration">LP</div>
+        <div class="input-decoration">{pool.symbol}</div>
       </div>
 
-      <div class="percentage-row">
-        {#each [25, 50, 75, 100] as percent}
-          <ButtonV2
-            theme="muted"
-            variant="transparent"
-            size="xs"
-            className="percent-btn-v2"
-            on:click={() => setPercentage(percent)}
-          >
-            {percent}%
-          </ButtonV2>
-        {/each}
+      <div class="balance-info">
+        <div class="available-balance">
+          <span class="balance-label">Available:</span>
+          <span class="balance-amount">
+            {Number(pool.balance).toFixed(8)} {pool.symbol}
+          </span>
+        </div>
+        <div class="percentage-buttons">
+          {#each [25, 50, 75, 100] as percent}
+            <button
+              class="{removeLiquidityAmount && Math.abs(parseFloat(removeLiquidityAmount) - (parseFloat(pool.balance) * percent) / 100) < 0.00000001 ? 'active' : ''}"
+              on:click={() => setPercentage(percent)}
+              type="button"
+            >
+              {percent === 100 ? 'MAX' : `${percent}%`}
+            </button>
+          {/each}
+        </div>
       </div>
     </div>
 
-    <div class="output-preview">
-      <h3 class="section-title">You will receive</h3>
-      <div class="token-preview-list">
-        <div class="token-preview-item">
-          <TokenImages tokens={[token0]} size={28} />
-          <div class="token-preview-details">
-            <span class="token-name">{pool.symbol_0}</span>
-            <div class="token-amount-wrapper">
-              <span class="token-amount">
-                {#if isCalculating}
-                  <span class="loading-pulse">Loading...</span>
-                {:else}
-                  {Number(estimatedAmounts.amount0).toLocaleString(
-                    undefined,
-                    {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 6,
-                    },
-                  )}
-                {/if}
+    {#if removeLiquidityAmount && parseFloat(removeLiquidityAmount) > 0}
+      <div class="output-preview" in:fade={{ duration: 200 }}>
+        <div class="output-header">
+          <span class="output-title">You will receive</span>
+        </div>
+        
+        <div class="token-outputs">
+          <div class="token-output">
+            <div class="token-info">
+              <TokenImages tokens={[token0]} size={24} />
+              <span class="token-symbol">{pool.symbol_0}</span>
+            </div>
+            <div class="amount-info">
+              {#if isCalculating}
+                <span class="amount-skeleton"></span>
+              {:else}
+                <span class="token-amount">
+                  {Number(estimatedAmounts.amount0).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 6,
+                  })}
+                </span>
+              {/if}
+              <span class="usd-amount">
+                ${calculateTokenUsdValue(estimatedAmounts.amount0, token0)}
               </span>
-              <span class="usd-value"
-                >${calculateTokenUsdValue(
-                  estimatedAmounts.amount0,
-                  token0,
-                )}</span
-              >
             </div>
           </div>
-        </div>
-
-        <div class="token-preview-item">
-          <TokenImages tokens={[token1]} size={28} />
-          <div class="token-preview-details">
-            <span class="token-name">{pool.symbol_1}</span>
-            <div class="token-amount-wrapper">
-              <span class="token-amount">
-                {#if isCalculating}
-                  <span class="loading-pulse">Loading...</span>
-                {:else}
-                  {Number(estimatedAmounts.amount1).toLocaleString(
-                    undefined,
-                    {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 6,
-                    },
-                  )}
-                {/if}
+          
+          <div class="token-output">
+            <div class="token-info">
+              <TokenImages tokens={[token1]} size={24} />
+              <span class="token-symbol">{pool.symbol_1}</span>
+            </div>
+            <div class="amount-info">
+              {#if isCalculating}
+                <span class="amount-skeleton"></span>
+              {:else}
+                <span class="token-amount">
+                  {Number(estimatedAmounts.amount1).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 6,
+                  })}
+                </span>
+              {/if}
+              <span class="usd-amount">
+                ${calculateTokenUsdValue(estimatedAmounts.amount1, token1)}
               </span>
-              <span class="usd-value"
-                >${calculateTokenUsdValue(
-                  estimatedAmounts.amount1,
-                  token1,
-                )}</span
-              >
             </div>
           </div>
         </div>
       </div>
-
-      <div class="total-value">
-        <span>Total Value:</span>
-        <span class="total-value-amount"
-          >${calculateTotalUsdValue()}</span
-        >
-      </div>
-    </div>
+    {/if}
 
     {#if error}
       <div class="error-message" in:fly={{ y: 10, duration: 200 }}>
@@ -345,95 +328,102 @@
     @apply hover:border-white/[0.06] hover:bg-white/[0.03];
   }
 
-  .input-header {
-    @apply flex justify-between items-center mb-2;
+
+  .balance-info {
+    @apply flex justify-between items-center mt-2;
   }
 
-  .input-label {
-    @apply text-xs text-kong-text-primary/70 font-medium;
-  }
-
-  .balance-display {
-    @apply flex flex-col items-end text-xs;
+  .available-balance {
+    @apply flex flex-col text-kong-text-primary/50;
+    @apply text-[clamp(0.75rem,2vw,0.875rem)];
   }
 
   .balance-label {
-    @apply text-kong-text-primary/40;
+    @apply text-xs text-kong-text-primary/40;
   }
 
-  .balance-value {
-    @apply font-medium text-kong-text-primary/80;
+  .balance-amount {
+    @apply font-medium;
   }
 
   .input-wrapper {
-    @apply relative mb-2;
+    @apply relative flex items-center gap-3;
   }
 
   .amount-input {
-    @apply w-full bg-transparent border border-white/[0.04] rounded-lg p-3 pr-10
+    @apply w-full min-w-0 bg-transparent border-none
            text-[clamp(1.2rem,3vw,1.8rem)] font-medium tracking-tight
-           focus:outline-none focus:ring-1 focus:ring-kong-primary/20
-           transition-all duration-200 hover:border-white/[0.08];
+           relative z-10 p-0
+           opacity-100 focus:outline-none focus:text-kong-text-primary
+           placeholder:text-kong-text-primary/30;
   }
 
   .input-decoration {
-    @apply absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium
-           text-kong-text-primary/60;
+    @apply text-sm font-medium text-kong-text-primary/60 flex-shrink-0;
   }
 
-  .percentage-row {
-    @apply flex justify-between gap-2;
+  .percentage-buttons {
+    @apply flex flex-wrap gap-1;
   }
 
-  .percent-btn-v2 {
-    @apply flex-1 !py-1 text-xs active:scale-95;
+  .percentage-buttons button {
+    @apply px-1.5 py-0.5 text-xs rounded-md bg-white/[0.03] text-kong-text-primary/70
+           hover:bg-white/[0.06] hover:text-kong-text-primary transition-all duration-200
+           border border-white/[0.04];
+  }
+
+  .percentage-buttons button.active {
+    @apply bg-kong-accent-red/10 text-kong-accent-red border-kong-accent-red/20
+           hover:bg-kong-accent-red/15;
   }
 
   .output-preview {
-    @apply p-4 rounded-xl bg-white/[0.02] backdrop-blur-md 
-           border border-white/[0.04] space-y-3;
+    @apply rounded-lg bg-kong-bg-light/50 backdrop-blur-sm 
+           border border-kong-border/10 p-3 mt-3;
   }
 
-  .section-title {
-    @apply text-xs text-kong-text-primary/70 font-medium mb-2;
+  .output-header {
+    @apply flex justify-between items-center mb-3;
   }
 
-  .token-preview-list {
+  .output-title {
+    @apply text-xs text-kong-text-primary/50 font-medium;
+  }
+
+  .output-total {
+    @apply text-sm font-medium text-kong-text-primary;
+  }
+
+  .token-outputs {
     @apply space-y-2;
   }
 
-  .token-preview-item {
-    @apply flex items-center gap-3 p-2 rounded-md bg-white/[0.02]
-           transition-all duration-200 hover:bg-white/[0.04];
+  .token-output {
+    @apply flex items-center justify-between;
   }
 
-  .token-preview-details {
-    @apply flex items-center justify-between flex-1;
+  .token-info {
+    @apply flex items-center gap-2;
   }
 
-  .token-name {
-    @apply text-xs text-kong-text-primary/70 font-medium;
+  .token-symbol {
+    @apply text-sm font-medium text-kong-text-primary;
   }
 
-  .token-amount-wrapper {
+  .amount-info {
     @apply flex flex-col items-end;
   }
 
   .token-amount {
-    @apply text-sm font-medium text-kong-text-primary;
+    @apply text-sm font-medium text-kong-text-primary tabular-nums;
   }
 
-  .usd-value {
-    @apply text-xs text-kong-text-primary/60 tabular-nums;
+  .usd-amount {
+    @apply text-xs text-kong-text-primary/50 tabular-nums;
   }
 
-  .total-value {
-    @apply flex justify-between items-center text-xs pt-2 
-           border-t border-white/[0.04];
-  }
-
-  .total-value-amount {
-    @apply font-medium text-kong-text-primary;
+  .amount-skeleton {
+    @apply inline-block w-16 h-4 bg-white/[0.03] rounded animate-pulse;
   }
 
   .modal-footer {
@@ -449,9 +439,6 @@
     @apply flex items-center justify-center;
   }
 
-  .loading-pulse {
-    @apply animate-pulse bg-white/[0.03] rounded px-2;
-  }
 
   .loading-spinner {
     @apply w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2;

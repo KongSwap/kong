@@ -24,6 +24,7 @@
   let showThemeCreator = $state(false);
   let ThemeCreator = $state<ComponentType<any> | undefined>(undefined);
   let soundEnabled = $state(true);
+  let tickerEnabled = $state(true);
   let slippageValue = $state<number>(2.0);
   let slippageInputValue = $state('2.0');
   let isMobile = $state(false);
@@ -39,6 +40,7 @@
   // Loading states for async operations
   let loadingSlippage = $state(false);
   let loadingSound = $state(false);
+  let loadingTicker = $state(false);
   
   // Create namespaced stores
   const settingsStorage = createNamespacedStore(SETTINGS_KEY);
@@ -91,6 +93,7 @@
   $effect(() => {
     if ($settingsStore) {
       soundEnabled = $settingsStore.sound_enabled;
+      tickerEnabled = $settingsStore.ticker_enabled ?? true;
       // DO NOT update slippageValue here
     }
   });
@@ -154,6 +157,7 @@
       try {
         const storedSettings = await settingsStorage.getItem<{
           sound_enabled: boolean;
+          ticker_enabled?: boolean;
           max_slippage: number;
           timestamp: number;
         }>(settingsKey);
@@ -169,6 +173,7 @@
     // Default settings if nothing found
     return {
       sound_enabled: true,
+      ticker_enabled: true,
       max_slippage: 2.0,
       timestamp: Date.now()
     };
@@ -201,6 +206,7 @@
   async function loadUserSettings() {
     const settings = await getSettings();
     soundEnabled = settings.sound_enabled;
+    tickerEnabled = settings.ticker_enabled ?? true;
     // Restore slippage loading here
     slippageValue = settings.max_slippage || 2.0; 
     slippageInputValue = slippageValue.toString();
@@ -353,6 +359,46 @@
          settingsStore.updateSetting('sound_enabled', !intendedValue);
       }).finally(() => {
         loadingSound = false;
+      });
+    });
+  }
+
+  function handleToggleTicker(event: CustomEvent<boolean>) {
+    const intendedValue = event.detail;
+    // Immediately revert if not allowed to change
+    if (loadingTicker) {
+      tickerEnabled = !intendedValue; // Revert optimistic UI change from toggle
+      event.preventDefault(); 
+      return;
+    }
+
+    loadingTicker = true;
+    tickerEnabled = intendedValue; // Allow optimistic UI update
+
+    // Update the settings store
+    settingsStore.updateSetting('ticker_enabled', intendedValue);
+
+    // Save to storage
+    getSettings().then(currentSettings => {
+      saveSettings({
+        ...currentSettings,
+        ticker_enabled: intendedValue
+      }).then(success => {
+        if (success) {
+          toastStore.success('Ticker visibility updated');
+        } else {
+          toastStore.error('Failed to save ticker setting');
+          // Revert UI on failure
+          tickerEnabled = !intendedValue;
+          settingsStore.updateSetting('ticker_enabled', !intendedValue);
+        }
+      }).catch(error => {
+         console.error("Error saving ticker setting:", error);
+         toastStore.error('Error saving ticker setting');
+         tickerEnabled = !intendedValue; // Revert
+         settingsStore.updateSetting('ticker_enabled', !intendedValue);
+      }).finally(() => {
+        loadingTicker = false;
       });
     });
   }
@@ -563,6 +609,20 @@
               on:change={handleToggleSound}
               size="md"
               disabled={!$auth.isConnected || loadingSound}
+            />
+          </div>
+
+          <!-- Ticker Section -->
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="block text-kong-text-primary text-sm font-medium">Price Ticker</span>
+              <span class="block text-kong-text-secondary text-xs mt-0.5">{tickerEnabled ? 'Show top tokens' : 'Hidden'}</span>
+            </div>
+            <Toggle 
+              checked={tickerEnabled} 
+              on:change={handleToggleTicker}
+              size="md"
+              disabled={loadingTicker}
             />
           </div>
 

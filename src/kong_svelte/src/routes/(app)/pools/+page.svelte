@@ -14,6 +14,7 @@
     Flame,
     TrendingUp,
     PiggyBank,
+    CheckCircle,
   } from "lucide-svelte";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
   import { auth } from "$lib/stores/auth";
@@ -135,6 +136,22 @@
           : bValue - aValue;
       });
       return sorted;
+    },
+  );
+  
+  // Create derived pools with user position data
+  const livePoolsWithUserData = derived(
+    [livePools, currentUserPoolsStore],
+    ([$livePools, $currentUserPoolsStore]) => {
+      return $livePools.map(pool => {
+        const userPosition = $currentUserPoolsStore.filteredPools.find(
+          p => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
+        );
+        return {
+          ...pool,
+          userPosition
+        };
+      });
     },
   );
 
@@ -633,10 +650,17 @@
                   >
                     {#each $sortedMobilePools as pool, i (pool.address_0 + pool.address_1)}
                       <button
-                        on:click={() =>
-                          goto(
-                            `/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`,
-                          )}
+                        on:click={() => {
+                          // Check if user has a position in this pool
+                          const userPosition = $currentUserPoolsStore.filteredPools.find(
+                            p => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
+                          );
+                          if (userPosition) {
+                            goto(`/pools/${pool.address_0}_${pool.address_1}/position`);
+                          } else {
+                            goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`);
+                          }
+                        }}
                         class="w-full text-left bg-white/[0.02] rounded-xl border border-white/[0.04] hover:border-kong-primary/20 hover:bg-white/[0.04] active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-lg backdrop-blur-md {pool.address_0 ===
                           KONG_CANISTER_ID ||
                         pool.address_1 === KONG_CANISTER_ID
@@ -660,11 +684,19 @@
                                 {pool.symbol_0}/{pool.symbol_1}
                               </div>
                             </div>
-                            <div
-                              class="text-kong-primary text-base font-medium flex items-center gap-1.5 bg-kong-primary/5 px-2.5 py-1 rounded-lg"
-                            >
-                              <Flame class="w-4 h-4" />
-                              {Number(pool.rolling_24h_apy).toFixed(2)}%
+                            <div class="flex items-center gap-2">
+                              {#if $currentUserPoolsStore.filteredPools.find(p => p.address_0 === pool.address_0 && p.address_1 === pool.address_1)}
+                                <div class="bg-kong-accent-green/10 text-kong-accent-green text-xs font-medium px-2 py-1 rounded-md flex items-center gap-1">
+                                  <CheckCircle size={12} />
+                                  <span>Position</span>
+                                </div>
+                              {/if}
+                              <div
+                                class="text-kong-primary text-base font-medium flex items-center gap-1.5 bg-kong-primary/5 px-2.5 py-1 rounded-lg"
+                              >
+                                <Flame class="w-4 h-4" />
+                                {Number(pool.rolling_24h_apy).toFixed(2)}%
+                              </div>
                             </div>
                           </div>
 
@@ -723,7 +755,7 @@
                   <!-- Desktop Table View -->
                   <div class="hidden sm:flex sm:flex-col h-full">
                     <DataTable
-                      data={$livePools}
+                      data={$livePoolsWithUserData}
                       rowKey="pool_id"
                       columns={[
                         {
@@ -733,7 +765,7 @@
                           width: "30%",
                           sortable: true,
                           component: PoolRow,
-                          componentProps: {},
+                          componentProps: (row) => ({ userPosition: row.userPosition }),
                           sortValue: (row) => `${row.symbol_0}/${row.symbol_1}`,
                         },
                         {
@@ -784,10 +816,17 @@
                         direction: "desc",
                       }}
                       onPageChange={handlePageChange}
-                      onRowClick={(row) =>
-                        goto(
-                          `/pools/add?token0=${row.address_0}&token1=${row.address_1}`,
-                        )}
+                      onRowClick={(row) => {
+                        // Check if user has a position in this pool
+                        const userPosition = $currentUserPoolsStore.filteredPools.find(
+                          p => p.address_0 === row.address_0 && p.address_1 === row.address_1
+                        );
+                        if (userPosition) {
+                          goto(`/pools/${row.address_0}_${row.address_1}/position`);
+                        } else {
+                          goto(`/pools/add?token0=${row.address_0}&token1=${row.address_1}`);
+                        }
+                      }}
                       isKongRow={(row) =>
                         row.address_0 === KONG_CANISTER_ID ||
                         row.address_1 === KONG_CANISTER_ID}

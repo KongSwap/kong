@@ -1,9 +1,9 @@
 // IcrcTokenSerializer.ts
 // Serializer for token data
 
-import { BaseSerializer } from '../BaseSerializer';
+import { BaseModel } from '../BaseModel';
 
-export class IcrcTokenSerializer extends BaseSerializer {
+export class IcrcToken extends BaseModel {
   /**
    * Serializes a token metadata response
    * @param response - The raw token metadata response

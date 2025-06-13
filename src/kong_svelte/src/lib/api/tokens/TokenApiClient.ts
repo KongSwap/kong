@@ -1,5 +1,5 @@
 // Import the API_URL from '../index';
-import { IcrcTokenSerializer } from '$lib/serializers/tokens/IcrcTokenSerializer';
+import { IcrcToken } from '$lib/models/tokens/IcrcToken';
 import type { 
   TokensParams, 
   TokensResponse, 
@@ -67,7 +67,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<ProcessedToken
     }
     
     // Serialize the tokens
-    const serializedTokens = IcrcTokenSerializer.serializeTokens(tokens);
+    const serializedTokens = IcrcToken.serializeTokens(tokens);
 
     // Return the processed response
     return {
@@ -166,7 +166,7 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<Ko
     const tokens = Array.isArray(data) ? data : data.items || [];
     
     // Serialize the tokens
-    return IcrcTokenSerializer.serializeTokens(tokens);
+    return IcrcToken.serializeTokens(tokens);
   } catch (error) {
     console.error('Error fetching tokens by canister ID:', error);
     throw error;
@@ -241,8 +241,8 @@ export const fetchTokenMetadata = async (canisterId: string): Promise<Kong.Token
     // Create raw token data
     const rawTokenData = createRawTokenData(canisterId, tokenData, tokenId);
 
-    // Use the TokenSerializer to process the token data
-    return IcrcTokenSerializer.serializeTokenMetadata(rawTokenData);
+    // Use the Token model to process the token data
+    return IcrcToken.serializeTokenMetadata(rawTokenData);
   } catch (error) {
     console.error('Error fetching token metadata:', error);
     toastStore.error('Error fetching token metadata');
@@ -300,7 +300,7 @@ const createRawTokenData = (canisterId: string, tokenData: any, tokenId: number)
       price_change_24h: "0"
     },
     balance: "0",
-    logo_url: IcrcTokenSerializer.extractLogoFromMetadata(metadata as Array<[string, any]>),
+    logo_url: IcrcToken.extractLogoFromMetadata(metadata as Array<[string, any]>),
     token_type: "IC",
     token_id: tokenId,
     chain: "IC",

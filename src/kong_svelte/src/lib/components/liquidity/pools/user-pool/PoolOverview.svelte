@@ -3,47 +3,22 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal, formatLargeNumber, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { livePools } from "$lib/stores/poolStore";
-  import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
+  import type { UserPoolData } from "$lib/models/UserPool";
 
-  export let pool: any;
+  export let pool: UserPoolData;
   export let token0: any;
   export let token1: any;
 
-  // Get token objects for images
+  // Get actual pool for APR display
   $: actualPool = $livePools.find((p) => {
     return p.address_0 === pool.address_0 && p.address_1 === pool.address_1;
   });
 
-  // Calculate user's percentage of the pool
-  $: poolSharePercentage = calculateUserPoolPercentage(
-    actualPool?.balance_0,
-    actualPool?.balance_1,
-    pool?.amount_0,
-    pool?.amount_1
-  );
-
-  // Calculate user's share of the total fees earned
-  $: userFeeShare0 = (() => {
-    if (!actualPool?.lp_fee_0 || !poolSharePercentage) return "0";
-    const totalFee = Number(actualPool.lp_fee_0);
-    const userShare = (totalFee * Number(poolSharePercentage)) / 100;
-    return userShare;
-  })();
-
-  $: userFeeShare1 = (() => {
-    if (!actualPool?.lp_fee_1 || !poolSharePercentage) return "0";
-    const totalFee = Number(actualPool.lp_fee_1);
-    const userShare = (totalFee * Number(poolSharePercentage)) / 100;
-    return userShare;
-  })();
-
-  // Calculate total USD value of fees earned
-  $: totalFeesEarnedUSD = (() => {
-    const fee0USD = calculateTokenUsdValue(userFeeShare0.toString(), token0);
-    const fee1USD = calculateTokenUsdValue(userFeeShare1.toString(), token1);
-    const total = parseFloat(fee0USD) + parseFloat(fee1USD);
-    return formatToNonZeroDecimal(total);
-  })();
+  // Use pre-calculated values from the serializer
+  $: poolSharePercentage = formatToNonZeroDecimal(pool.poolSharePercentage);
+  $: userFeeShare0 = pool.userFeeShare0;
+  $: userFeeShare1 = pool.userFeeShare1;
+  $: totalFeesEarnedUSD = formatToNonZeroDecimal(pool.totalFeesEarnedUSD);
 </script>
 
 <div in:fade={{ duration: 100 }}>
@@ -55,12 +30,12 @@
         <div class="token-details">
           <div class="token-info">
             <span class="token-name">{pool.symbol_0}</span>
-            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_0)}>
-              {formatToNonZeroDecimal(pool.amount_0)}
+            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_0.toString())}>
+              {formatToNonZeroDecimal(pool.amount_0.toString())}
             </span>
           </div>
           <span class="usd-value"
-            >${calculateTokenUsdValue(pool.amount_0, token0)}</span
+            >${calculateTokenUsdValue(pool.amount_0.toString(), token0)}</span
           >
         </div>
       </div>
@@ -69,12 +44,12 @@
         <div class="token-details">
           <div class="token-info">
             <span class="token-name">{pool.symbol_1}</span>
-            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_1)}>
-              {formatToNonZeroDecimal(pool.amount_1)}
+            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_1.toString())}>
+              {formatToNonZeroDecimal(pool.amount_1.toString())}
             </span>
           </div>
           <span class="usd-value"
-            >${calculateTokenUsdValue(pool.amount_1, token1)}</span
+            >${calculateTokenUsdValue(pool.amount_1.toString(), token1)}</span
           >
         </div>
       </div>

@@ -241,7 +241,12 @@
                 class="py-2 px-4 {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'}"
               >
                 {#if column.component}
-                  <svelte:component this={column.component} row={row} isHovered={hoveredRowIndex === idx} {...(column.componentProps || {})} />
+                  <svelte:component 
+                    this={column.component} 
+                    row={row} 
+                    isHovered={hoveredRowIndex === idx} 
+                    {...(typeof column.componentProps === 'function' ? column.componentProps(row) : column.componentProps || {})} 
+                  />
                 {:else}
                   <div class="inline-block w-full {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
                     {formattedValue}

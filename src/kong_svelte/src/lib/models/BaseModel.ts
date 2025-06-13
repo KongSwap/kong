@@ -1,7 +1,7 @@
-// BaseSerializer.ts
-// Base serializer class with shared utility functions
+// BaseModel.ts
+// Base model class with shared utility functions
 
-export class BaseSerializer {
+export class BaseModel {
   /**
    * Safely converts a value to BigInt
    * @param value - The value to convert

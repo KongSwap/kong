@@ -126,7 +126,6 @@ function createMarketStore() {
           // Only apply API status filter if not showing all
           statusFilter: statusFilter === 'all' ? undefined : apiStatusFilter
         });
-        console.log("allMarketsResult", allMarketsResult);
         
         // Transform the markets from backend format to frontend format
         update(state => ({

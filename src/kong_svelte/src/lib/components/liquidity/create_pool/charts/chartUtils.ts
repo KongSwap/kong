@@ -137,9 +137,9 @@ export function createChartGradient(
   const gradient = ctx.createLinearGradient(0, canvasHeight, 0, 0);
   
   // Start with more opacity at the top
-  gradient.addColorStop(0, `${colorRgb.replace('1)', '0.02)')}`); // Nearly transparent at bottom
-  gradient.addColorStop(0.7, `${colorRgb.replace('1)', isDarkMode ? '0.1)' : '0.08)')}`); // Middle blend
-  gradient.addColorStop(1, `${colorRgb.replace('1)', isDarkMode ? '0.2)' : '0.15)')}`); // More visible at top
+  gradient.addColorStop(0, `${colorRgb.replace('1)', '0.05)')}`); // More visible at bottom
+  gradient.addColorStop(0.7, `${colorRgb.replace('1)', isDarkMode ? '0.25)' : '0.2)')}`); // Darker middle blend
+  gradient.addColorStop(1, `${colorRgb.replace('1)', isDarkMode ? '0.4)' : '0.35)')}`); // Much more visible at top
   
   return gradient;
 }

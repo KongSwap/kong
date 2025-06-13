@@ -2,7 +2,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
-  import { Flame, TrendingUp, PiggyBank } from "lucide-svelte";
+  import { Flame, TrendingUp, PiggyBank, CheckCircle } from "lucide-svelte";
   import { livePools } from "$lib/stores/poolStore";
   import { tooltip } from "$lib/actions/tooltip";
 
@@ -18,8 +18,9 @@
     rolling_24h_apy: number;
   };
 
-  let { row } = $props<{
+  let { row, userPosition = null } = $props<{
     row: Pool;
+    userPosition?: any;
   }>();
 
   // Normalize numeric values once
@@ -99,6 +100,12 @@
       <div class="pool-name">
         <div class="flex items-center gap-2">
           <span>{pool.token0?.symbol}/{pool.token1?.symbol}</span>
+          {#if userPosition}
+            <div class="bg-kong-accent-green/10 text-kong-accent-green text-xs font-medium px-2 py-0.5 rounded-md flex items-center gap-1">
+              <CheckCircle size={10} />
+              <span>Position</span>
+            </div>
+          {/if}
           {#if isTopVolume || isTopTVL || isTopAPY}
             <div class="flex gap-1 items-center">
               {#if isTopVolume}

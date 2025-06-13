@@ -424,7 +424,7 @@
         </div>
       {:else}
         <!-- Table Headers with sorting - Hidden on mobile -->
-        <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-dark">
+        <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,0.8fr,0.8fr,1fr] sm:gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-dark">
           <button 
             class="flex items-center gap-1 text-left hover:text-kong-text-primary transition-colors"
             on:click={() => updateSort("name")}
@@ -444,6 +444,7 @@
               <ArrowDownUp class="w-3 h-3 {sortDirection === 'asc' ? 'rotate-180' : ''}" />
             {/if}
           </button>
+          <div class="text-right">Share</div>
           <button 
             class="flex items-center gap-1 justify-end hover:text-kong-text-primary transition-colors"
             on:click={() => updateSort("apy")}
@@ -492,7 +493,7 @@
         <div class="divide-y divide-kong-bg-dark">
           {#each sortedPools as pool}
             <!-- Desktop view - grid layout -->
-            <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-dark/30 transition-colors">
+            <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,0.8fr,0.8fr,1fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-dark/30 transition-colors">
               <!-- Pool -->
               <div class="flex items-center gap-2">
                 <TokenImages
@@ -531,6 +532,13 @@
               <div class="text-right text-sm">
                 <div class="font-medium">
                   ${formatToNonZeroDecimal(pool.usd_balance)}
+                </div>
+              </div>
+
+              <!-- Pool Share -->
+              <div class="text-right text-sm">
+                <div class="font-medium text-kong-text-primary">
+                  {formatToNonZeroDecimal(pool.poolSharePercentage || 0)}%
                 </div>
               </div>
 
@@ -600,22 +608,33 @@
                 </div>
               </div>
               
-              <!-- APY -->
-              <div class="flex justify-between items-center">
-                <div class="text-xs text-kong-text-secondary">APR</div>
-                <div 
-                  class="flex items-center gap-1 text-sm"
-                  class:text-kong-text-accent-green={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
-                  class:text-kong-text-accent-red={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
-                  class:text-kong-text-secondary={pool.rolling_24h_apy === undefined || pool.rolling_24h_apy === null}
-                  on:click={(e) => showAPYDetails(pool, e)}
-                >
-                  {#if pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null}
-                    {formatPercentage(pool.rolling_24h_apy)}
-                  {:else}
-                    <span>--</span>
-                  {/if}
-                  <Info class="w-3 h-3" />
+              <!-- Pool Share and APY row -->
+              <div class="flex justify-between items-center gap-4">
+                <!-- Pool Share -->
+                <div class="flex justify-between items-center flex-1">
+                  <div class="text-xs text-kong-text-secondary">Share</div>
+                  <div class="text-sm font-medium text-kong-text-primary">
+                    {formatToNonZeroDecimal(pool.poolSharePercentage || 0)}%
+                  </div>
+                </div>
+                
+                <!-- APY -->
+                <div class="flex justify-between items-center flex-1">
+                  <div class="text-xs text-kong-text-secondary">APR</div>
+                  <div 
+                    class="flex items-center gap-1 text-sm"
+                    class:text-kong-text-accent-green={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
+                    class:text-kong-text-accent-red={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
+                    class:text-kong-text-secondary={pool.rolling_24h_apy === undefined || pool.rolling_24h_apy === null}
+                    on:click={(e) => showAPYDetails(pool, e)}
+                  >
+                    {#if pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null}
+                      {formatPercentage(pool.rolling_24h_apy)}
+                    {:else}
+                      <span>--</span>
+                    {/if}
+                    <Info class="w-3 h-3" />
+                  </div>
                 </div>
               </div>
             </div>

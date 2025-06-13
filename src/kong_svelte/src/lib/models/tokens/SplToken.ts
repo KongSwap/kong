@@ -1,7 +1,7 @@
-// SplTokenSerializer.ts
-// Serializer for SPL token data
+// SplToken.ts
+// Model for SPL token data
 
-import { BaseSerializer } from '../BaseSerializer';
+import { BaseModel } from '../BaseModel';
 // Import necessary types, potentially FE types or define local ones if needed
 
 // Define the input type for raw SPL token data
@@ -23,7 +23,7 @@ type RawSplTokenData = {
 // Define the output format using Kong.Token
 // We no longer need SerializedSplToken
 
-export class SplTokenSerializer extends BaseSerializer {
+export class SplToken extends BaseModel {
 
   /**
    * Serializes a single raw SPL token data object into Kong.Token.
