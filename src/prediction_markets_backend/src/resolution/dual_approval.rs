@@ -108,7 +108,7 @@ pub fn can_resolve_market(market: &Market, user: Principal) -> bool {
 /// # Deprecation
 /// This function is deprecated. Use `resolution_api::propose_resolution` instead.
 #[update]
-#[deprecated(since = "1.1.0", note = "Use resolution_api::propose_resolution instead")]
+// #[deprecated(since = "1.1.0", note = "Use resolution_api::propose_resolution instead")]
 pub async fn propose_resolution(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
@@ -136,7 +136,7 @@ pub async fn propose_resolution(
 /// # Deprecation
 /// This function is deprecated. Use `resolution_actions::force_resolve_market` instead.
 #[update]
-#[deprecated(since = "1.1.0", note = "Use resolution_actions::force_resolve_market instead")]
+// #[deprecated(since = "1.1.0", note = "Use resolution_actions::force_resolve_market instead")]
 pub async fn force_resolve_market(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
@@ -166,7 +166,7 @@ pub async fn force_resolve_market(
 /// # Deprecation
 /// This function is deprecated. Use `resolution_api::resolve_via_admin` instead.
 #[update]
-#[deprecated(since = "1.1.0", note = "Use resolution_api::resolve_via_admin instead")]
+// #[deprecated(since = "1.1.0", note = "Use resolution_api::resolve_via_admin instead")]
 pub async fn resolve_via_admin(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
@@ -194,7 +194,7 @@ pub async fn resolve_via_admin(
 /// # Deprecation
 /// This function is deprecated. Use `resolution_actions::void_market` instead.
 #[update]
-#[deprecated(since = "1.1.0", note = "Use resolution_actions::void_market instead")]
+// #[deprecated(since = "1.1.0", note = "Use resolution_actions::void_market instead")]
 pub async fn void_market(
     market_id: MarketId
 ) -> ResolutionResult {

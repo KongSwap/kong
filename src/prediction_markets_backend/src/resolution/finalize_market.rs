@@ -66,8 +66,8 @@ use crate::claims::claims_processing::create_winning_claim;
 use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::market::market::*;
 use crate::storage::BETS;
-use crate::token::registry::{get_token_info, TokenIdentifier};
-use crate::token::transfer::{handle_fee_transfer, transfer_token, TokenTransferError};
+use crate::token::registry::get_token_info;
+use crate::token::transfer::handle_fee_transfer;
 use crate::utils::time_weighting::{calculate_time_weight, calculate_weighted_contribution, get_market_alpha};
 
 // Import re-exported types from lib.rs
@@ -78,68 +78,6 @@ use crate::types::StorableNat;
 use crate::OutcomeIndex;
 use crate::Timestamp;
 use crate::TokenAmount;
-
-/// Helper function to transfer winnings with retry logic
-///
-/// This function implements a resilient token transfer mechanism with configurable
-/// retry capabilities. It's specifically designed to handle the distributed nature
-/// of the Internet Computer, where transient errors can occur during token transfers.
-///
-/// ## Retry Strategy
-///
-/// The function distinguishes between retryable errors (e.g., network congestion,
-/// rate limiting) and permanent errors (e.g., insufficient funds, invalid recipient).
-/// Only retryable errors trigger the retry mechanism, avoiding wasted attempts on
-/// permanently failed transactions.
-///
-/// ## Error Handling
-///
-/// If all retry attempts fail, the function returns a structured error that includes:
-/// - Detailed error message for troubleshooting
-/// - Error classification (retryable vs. permanent)
-/// - Original error type from the token canister
-///
-/// This comprehensive error information allows the transaction recovery system
-/// to make intelligent decisions about further recovery attempts.
-///
-/// # Parameters
-/// * `user` - Principal ID of the token recipient
-/// * `amount` - Amount of tokens to transfer
-/// * `token_id` - Identifier for the token type to transfer
-/// * `retry_count` - Maximum number of retry attempts (not including the initial attempt)
-///
-/// # Returns
-/// * `Result<candid::Nat, TokenTransferError>` - On success, returns the block index of the
-///   successful transaction. On failure, returns a detailed token transfer error.
-async fn transfer_winnings_with_retry(
-    user: Principal,
-    amount: TokenAmount,
-    token_id: &TokenIdentifier,
-    retry_count: u8, // Number of retries
-) -> Result<candid::Nat, TokenTransferError> {
-    let mut attempts = 0;
-    let max_attempts = retry_count + 1; // Initial attempt + retries
-
-    loop {
-        attempts += 1;
-        match transfer_token(user, amount.clone(), token_id, None).await {
-            Ok(tx_id) => return Ok(tx_id),
-            Err(e) if e.is_retryable() && attempts < max_attempts => {
-                ic_cdk::println!(
-                    "Transfer attempt {} failed with retryable error: {}. Retrying...",
-                    attempts,
-                    e.detailed_message()
-                );
-                // In a real implementation with a timer API, we would add exponential backoff here
-                // For now, just log and retry immediately
-            }
-            Err(e) => {
-                ic_cdk::println!("Transfer failed after {} attempts: {}", attempts, e.detailed_message());
-                return Err(e);
-            }
-        }
-    }
-}
 
 /// Structure to track failed transaction information within the finalization process
 ///

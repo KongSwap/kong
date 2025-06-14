@@ -25,40 +25,39 @@
 //! persistence across canister upgrades.
 
 use candid::Principal;
-use ic_cdk_macros::{init, pre_upgrade, post_upgrade};
+use ic_cdk_macros::{init, post_upgrade, pre_upgrade};
 
 use crate::bet::bet::*;
 use crate::canister::*;
 use crate::category::market_category::*;
 use crate::delegation::*;
 use crate::market::create_market::*;
-use crate::market::market::*;
 use crate::market::get_market_by_status::GetMarketsByStatusArgs;
 use crate::market::get_market_by_status::GetMarketsByStatusResult;
+use crate::market::market::*;
 use crate::market::update_expired_markets::*;
 // Import and re-export featured markets functionality
+pub use crate::market::featured::{get_featured_markets, set_market_featured};
 pub use crate::market::featured::{GetFeaturedMarketsArgs, GetFeaturedMarketsResult};
-pub use crate::market::featured::{set_market_featured, get_featured_markets};
 
-use crate::market::estimate_return_types::{EstimatedReturn, TimeWeightPoint, BetPayoutRecord};
+use crate::market::estimate_return_types::{BetPayoutRecord, EstimatedReturn, TimeWeightPoint};
 // Standard types
-use crate::resolution::resolution::*;
-use crate::user::user::*;
-use crate::token::registry::TokenInfo;
 use crate::failed_transaction::FailedTransaction;
+use crate::resolution::resolution::*;
+use crate::token::registry::TokenInfo;
+use crate::user::user::*;
 // Claims system types
 use crate::claims::claims_api::*;
 // Market resolution details type for API export
 use crate::types::MarketResolutionDetails;
 // Token balance reconciliation
-use crate::token::balance::{BalanceReconciliationSummary, TokenBalanceSummary, TokenBalanceBreakdown};
-use crate::token::balance::{calculate_token_balance_reconciliation, get_latest_token_balance_reconciliation};
-use crate::market::get_all_markets::*;
 use crate::bet::latest_bets::*;
+use crate::market::get_all_markets::*;
+use crate::token::balance::BalanceReconciliationSummary;
 
-use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
-use icrc_ledger_types::icrc21::responses::ConsentInfo; 
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
+use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
+use icrc_ledger_types::icrc21::responses::ConsentInfo;
 
 pub mod bet;
 pub mod canister;
@@ -81,18 +80,19 @@ pub mod user;
 pub mod utils;
 
 // Re-export common types for convenience
-pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount, TokenIdentifier};
-pub use claims::claims_types::{ClaimRecord, ClaimStatus, ClaimType, ClaimableSummary, BatchClaimResult, ClaimResult};
+pub use claims::claims_types::{BatchClaimResult, ClaimRecord, ClaimResult, ClaimStatus, ClaimType, ClaimableSummary};
+pub use types::{BetCount, MarketId, OutcomeIndex, PoolAmount, Timestamp, TokenAmount, TokenIdentifier};
 
 // Constants
 // const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
-const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai"; /// Canister ID for KONG token ledger (local testing environment)
+const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai";
+/// Canister ID for KONG token ledger (local testing environment)
 
 // We don't need import the registry functions here
 // since we're not using them directly in the post_upgrade function
 
 /// Canister initialization function
-/// 
+///
 /// Called when the canister is deployed for the first time.
 /// Sets up the initial market ID counter based on the maximum
 /// ID found in stable storage (or starts from 0 if none).
@@ -122,15 +122,15 @@ fn pre_upgrade() {
 /// This hook restores data from stable memory after a canister upgrade.
 /// It calls the custom restore function from the stable_memory module
 /// to properly initialize all data structures with the persisted data.
-/// 
+///
 /// No migrations are run for existing markets to maintain backward compatibility.
-/// New markets will automatically use the latest token system, while existing ones 
+/// New markets will automatically use the latest token system, while existing ones
 /// maintain their original configuration.
 #[post_upgrade]
 fn post_upgrade() {
     // Restore state after upgrade
     stable_memory::restore();
-    
+
     // Other post-upgrade initializations as needed
     update_expired_markets();
     prepare_market_id();

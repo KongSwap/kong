@@ -15,7 +15,6 @@ use crate::claims::claims_processing::create_refund_claim;
 use crate::claims::claims_types::RefundReason;
 use crate::canister::get_current_time;
 use crate::resolution::transfer_kong::burn_tokens;
-use crate::bet::bet::Bet;
 
 /// Creates claims for refunds when a market is voided
 ///
