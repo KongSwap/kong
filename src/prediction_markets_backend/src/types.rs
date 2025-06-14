@@ -6,6 +6,7 @@ use serde::Serialize;
 
 // Re-export StorableNat for convenience
 pub use crate::nat::StorableNat;
+use crate::token::registry::TokenInfo;
 
 use ic_stable_structures::{storable::Bound, Storable};
 use std::borrow::Cow;
@@ -26,28 +27,8 @@ pub const NANOS_PER_SECOND: u64 = 1_000_000_000;
 
 // Market activation threshold - different for each token type
 // Using a function rather than const due to limitations with non-const From trait
-pub fn min_activation_bet(token_id: &TokenIdentifier) -> TokenAmount {
-    // Default value for KONG remains 3000 KONG (with 8 decimals)
-    let default_amount = TokenAmount::from(300_000_000_000u64);
-    
-    // Get token info
-    let token_info = match crate::token::registry::get_token_info(token_id) {
-        Some(info) => info,
-        None => return default_amount, // If token not found, use default
-    };
-    
-    // Set token-specific activation fees
-    match token_info.symbol.as_str() {
-        "KONG" => TokenAmount::from(300_000_000_000u64), // 3000 KONG (8 decimals)
-        "ICP" | "ksICP" => TokenAmount::from(2_500_000_000u64), // 25 ICP (8 decimals)
-        "ckUSDT" => TokenAmount::from(100_000_000u64), // 100 ckUSDT (6 decimals)
-        "ksUSDT" => TokenAmount::from(100_000_000u64), // 100 ksUSDT (6 decimals)
-        "ckUSDC" => TokenAmount::from(100_000_000u64), // 100 ckUSDC (6 decimals)
-        "ckBTC" => TokenAmount::from(100_000u64), // 0.001 ckBTC (8 decimals)
-        "DKP" => TokenAmount::from(7_000_000_000_000u64), // 70000 DKP (8 decimals)
-        "GLDT" => TokenAmount::from(10_000_000_000u64), // 100 GLDT (8 decimals)
-        _ => default_amount // Default to 3000 KONG equivalent for unknown tokens
-    }
+pub fn min_activation_bet(token_info: &TokenInfo) -> TokenAmount {
+    token_info.activation_fee.clone()
 }
 
 // Utility function to calculate platform fee based on token and amount

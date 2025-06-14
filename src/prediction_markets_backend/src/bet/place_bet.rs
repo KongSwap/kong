@@ -136,7 +136,7 @@ async fn place_bet(
             }
             
             // Ensure the bet meets the minimum activation threshold for this token
-            let min_activation = min_activation_bet(&token_id);
+            let min_activation = min_activation_bet(&token_info);
             if amount < min_activation {
                 return Err(BetError::InsufficientActivationBet);
             }
