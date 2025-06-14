@@ -23,6 +23,7 @@
   import GlobalSignatureModal from "$lib/components/wallet/GlobalSignatureModal.svelte";
   import { themeStore } from "$lib/stores/themeStore";
     import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
+  import { initializeAuthFavoriteSync } from "$lib/stores/authFavoriteSync";
   let { children } = $props<{
     children: any;
   }>();
@@ -41,6 +42,8 @@
         await auth.initialize();
         if (browser) {
           allowanceStore.initialize();
+          // Initialize auth-favorite sync after auth is initialized
+          initializeAuthFavoriteSync();
 
           // Fetch default tokens
           const tokenCanisterIds = Object.values(DEFAULT_TOKENS);
