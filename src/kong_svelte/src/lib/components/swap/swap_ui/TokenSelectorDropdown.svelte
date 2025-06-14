@@ -18,7 +18,6 @@
   import TokenItem from "./TokenItem.svelte";
   import { virtualScroll } from "$lib/utils/virtualScroll";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import { app } from "$lib/state/app.state.svelte";
   import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
 
   const props = $props();
@@ -65,6 +64,7 @@
   let selectorState = $state({
     dropdownElement: null as HTMLDivElement | null,
     hideZeroBalances: false,
+    isMobile: false,
     sortDirection: "desc",
     sortColumn: "value",
     standardFilter: "all" as FilterType,
@@ -76,8 +76,6 @@
     loadedTokens: new Set<string>(),
     apiSearchResults: [] as Kong.Token[]
   });
-
-  let isMobile = $derived(app.isMobile);
 
   // Timers for debouncing
   let loadBalancesDebounceTimer: ReturnType<typeof setTimeout>;
@@ -487,6 +485,16 @@
   });
 
   $effect(() => {
+    // Mobile detection
+    if (browser) {
+      selectorState.isMobile = window.innerWidth <= 768;
+      const handleResize = () => selectorState.isMobile = window.innerWidth <= 768;
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+  });
+
+  $effect(() => {
     // Load data when dropdown is shown
     if (show && browser) {
       // Load balances if authenticated
@@ -543,7 +551,7 @@
 {#if show}
   <div class="fixed inset-0 bg-kong-bg-dark/30 backdrop-blur-md z-[9999] grid place-items-center p-6 overflow-y-auto md:p-6 sm:p-0" on:click|self={closeWithCleanup} role="dialog">
     <div
-      class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] bg-kong-token-selector-bg {expandDirection} {isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1 rounded-xl'}"
+      class="relative border bg-kong-bg-dark transition-all duration-200 overflow-hidden w-[420px] bg-kong-token-selector-bg {expandDirection} {selectorState.isMobile ? 'fixed inset-0 w-full h-screen rounded-none border-0' : 'border-kong-border border-1 rounded-xl'}"
       bind:this={selectorState.dropdownElement}
       on:click|stopPropagation
       transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}

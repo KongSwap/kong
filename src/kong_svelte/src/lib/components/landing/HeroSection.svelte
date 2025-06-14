@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, tick, getContext } from "svelte";
-  import { app } from "$lib/state/app.state.svelte";
   import type { Writable } from 'svelte/store';
   import * as THREE from "three";
   import { ChevronDown } from "lucide-svelte";
@@ -64,7 +63,7 @@
   
   // Performance detection - using $state
   let isLowEndDevice = $state(false);
-  let isMobile = $derived(app.isMobile);
+  let isMobile = $state(false);
   
   // Mouse tracking variables with throttling
   let mouse = $state({
@@ -133,7 +132,7 @@
   // Detect if device is low-end
   function detectPerformance() {
     // Check for mobile devices
-    // isMobile = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    isMobile = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     // Simple performance check - can be expanded with more sophisticated detection
     try {
@@ -349,8 +348,28 @@
     camera = newCamera;
     renderer = newRenderer;
     
+    // Handle window resize
+    const handleResizeScoped = () => {
+      // Check if mobile status changed
+      const wasMobile = isMobile;
+      isMobile = window.innerWidth < 768;
+      
+      // Update renderer size on all resizes to ensure proper fit
+      const scale = isMobile ? 1.2 : 1.0;
+      if (renderer) {
+          renderer.setSize(window.innerWidth / scale, window.innerHeight / scale, true);
+          
+          // Ensure canvas size is always correct
+          renderer.domElement.style.width = '100%';
+          renderer.domElement.style.height = '100%';
+      }
+      
+      if (materialUniforms) {
+          materialUniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+      }
+    };
     
-    // window.addEventListener('resize', handleResizeScoped);
+    window.addEventListener('resize', handleResizeScoped);
     
     // Animation loop with performance optimizations
     const animate = () => {
@@ -384,7 +403,7 @@
 
     // Return cleanup function for the effect that calls initThreeJs
     return () => {
-        // window.removeEventListener('resize', handleResizeScoped);
+        window.removeEventListener('resize', handleResizeScoped);
         const currentAnimationFrameId = animationFrameId; // Capture value
         if (currentAnimationFrameId) cancelAnimationFrame(currentAnimationFrameId);
         animationFrameId = undefined; // Clear state
@@ -403,22 +422,6 @@
         sceneInitialized = false; // Reset init flag
     };
   }
-
-  $effect(() => {
-      const scale = isMobile ? 1.2 : 1.0;
-      
-      if (renderer) {
-          renderer.setSize(window.innerWidth / scale, window.innerHeight / scale, true);
-          
-          // Ensure canvas size is always correct
-          renderer.domElement.style.width = '100%';
-          renderer.domElement.style.height = '100%';
-      }
-      
-      if (materialUniforms) {
-          materialUniforms.resolution.value.set(window.innerWidth, window.innerHeight);
-      }
-  })
   
   // Add isSmallScreen detection for conditional rendering
   let isSmallScreen = $state(false);

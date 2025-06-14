@@ -30,7 +30,6 @@
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { fetchPoolTotals } from "$lib/api/pools";
   import { themeStore } from "$lib/stores/themeStore";
-  import { app } from "$lib/state/app.state.svelte";
 
   // Constants
   const ITEMS_PER_PAGE = 100;
@@ -59,17 +58,8 @@
   const favoriteCount = writable<number>(0);
   const isInitialRefreshCycleDone = writable<boolean>(false);
   
-
-  // Temporary Mobile Detection until stores are removed. With stores, the Svelte 5 $derived rune is not available, the current implementation is a temporary workaround.
-  let isMobile = $state(app.isMobile);
-
-  $effect(() => {
-    isMobile = app.isMobile;
-    // console.log("isMobile", isMobile);
-  });
-  
-
   // Local state
+  let isMobile = false;
   let searchTimeout: ReturnType<typeof setTimeout>;
   let refreshInterval: ReturnType<typeof setInterval>;
   let lastPage = 1;
@@ -302,6 +292,12 @@
         searchTerm.set(searchParam);
         debouncedSearchTerm.set(searchParam);
       }
+      
+      // Handle mobile detection
+      isMobile = window.innerWidth < 768;
+      const handleResize = () => (isMobile = window.innerWidth < 768);
+      window.addEventListener("resize", handleResize, { passive: true });
+      return () => window.removeEventListener("resize", handleResize);
     }
   });
 
