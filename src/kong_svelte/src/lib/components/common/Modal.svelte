@@ -9,7 +9,6 @@
   import { X } from "lucide-svelte";
   import { modalStack } from "$lib/stores/modalStore";
   import { transparentPanel } from "$lib/stores/derivedThemeStore";
-  import { app } from "$lib/state/app.state.svelte";
 
   // Props
   let {
@@ -45,7 +44,7 @@
   }>();
 
   // State
-  let isMobile = $derived(app.isMobile);
+  let isMobile = $state(false);
   let modalWidth = $state(width);
   let modalHeight = $state(height);
   let startX = $state(0);
@@ -94,8 +93,21 @@
   // Setup mobile responsiveness
   $effect(() => {
     if (browser) {
+      const updateDimensions = () => {
+        isMobile = window.innerWidth <= 768;
         modalWidth = isMobile ? "100%" : width;
         modalHeight = height;
+      };
+      updateDimensions();
+      window.addEventListener("resize", updateDimensions);
+      return () => {
+        window.removeEventListener("resize", updateDimensions);
+        // Clean up any remaining transforms/transitions
+        if (modalElement) {
+          modalElement.style.transform = "";
+          modalElement.style.transition = "";
+        }
+      };
     }
   });
 

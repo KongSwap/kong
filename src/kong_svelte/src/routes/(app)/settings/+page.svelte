@@ -27,6 +27,7 @@
   let tickerEnabled = $state(true);
   let slippageValue = $state<number>(2.0);
   let slippageInputValue = $state('2.0');
+  let isMobile = $state(false);
   let isCustomSlippage = $state(false);
   let previousAuthState = $state({ isConnected: false, principalId: null });
   let isThemeDropdownOpen = $state(false);
@@ -70,11 +71,14 @@
     loadUserSettings();
     
     // Handle resize for mobile detection
+    handleResize();
     if (browser) {
+      window.addEventListener('resize', handleResize);
       window.addEventListener('click', handleClickOutside);
       initializeSlippageFromStorage();
       loadThemeFromStorage();
       return () => {
+        window.removeEventListener('resize', handleResize);
         window.removeEventListener('click', handleClickOutside);
         unsubscribe();
       }
@@ -467,6 +471,12 @@
       
       // Force reload as fallback
       setTimeout(() => window.location.reload(), 1000);
+    }
+  }
+  
+  function handleResize() {
+    if (browser) {
+      isMobile = window.innerWidth <= 768;
     }
   }
   
