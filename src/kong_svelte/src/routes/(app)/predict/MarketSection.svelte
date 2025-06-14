@@ -52,9 +52,11 @@
     return market && market.status && "Closed" in market.status;
   }
 
-  // Check if market is open
+  // Check if market needs admin action (open or expired)
   function showResolveVoid(market: any): boolean {
-    return market && (market.status && "Open" in market.status || market.status && "Pending" in market.status);
+    if (!market || !market.status) return false;
+    // Show admin controls for open markets or expired markets that haven't been resolved
+    return "Open" in market.status || isMarketExpiredUnresolved(market);
   }
 
   // Check if market is voided
