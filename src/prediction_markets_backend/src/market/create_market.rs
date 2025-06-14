@@ -205,11 +205,13 @@ pub fn create_market(
     // Use time weighting by default
     let uses_time_weighting = uses_time_weighting.unwrap_or(true);
 
-    if uses_time_weighting {
-        if let Some(time_weight_alpha) = time_weight_alpha {
-            if !(time_weight_alpha > 0.0 && time_weight_alpha <= 1.0) {
-                return Err("time_weight_alpha should be in interval: (0, 1]".to_string());
-            }
+    if !uses_time_weighting {
+        return Err("Only time-weighted markets are supported".to_string());
+    }
+
+    if let Some(time_weight_alpha) = time_weight_alpha {
+        if !(time_weight_alpha > 0.0 && time_weight_alpha <= 1.0) {
+            return Err("time_weight_alpha should be in interval: (0, 1]".to_string());
         }
     }
 
