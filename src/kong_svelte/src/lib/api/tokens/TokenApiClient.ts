@@ -15,7 +15,7 @@ import { auth } from '$lib/stores/auth';
 import { toastStore } from '$lib/stores/toastStore';
 import { userTokens } from '$lib/stores/userTokens';
 import { get } from 'svelte/store';
-import { canisters, type ICRC2_LEDGER, type KONG_FAUCET } from '$lib/config/auth.config';
+import { canisters, type CanisterType } from '$lib/config/auth.config';
 
 // Lazy initialization of API client to prevent SSR issues
 const getApiClient = () => {
@@ -198,7 +198,7 @@ export const addToken = async (canisterId: string): Promise<any> => {
  * Claims tokens from the faucet
  */
 export const faucetClaim = async (): Promise<void> => {
-  const actor = auth.pnp.getActor<KONG_FAUCET>({
+  const actor = auth.pnp.getActor<CanisterType['KONG_FAUCET']>({
     canisterId: canisters.kongFaucet.canisterId,
     idl: canisters.kongFaucet.idl,
     anon: false,
@@ -224,7 +224,7 @@ export const fetchTokenMetadata = async (canisterId: string): Promise<Kong.Token
       throw new Error("API calls can only be made in the browser");
     }
 
-    const actor = auth.pnp.getActor<ICRC2_LEDGER>({
+    const actor = auth.pnp.getActor<CanisterType['ICRC2_LEDGER']>({
       canisterId: canisterId,
       idl: canisters.icrc2.idl,
       anon: true,

@@ -1,5 +1,5 @@
 import { auth } from '$lib/stores/auth';
-import { canisters, type KONG_BACKEND } from '../config/auth.config';
+import { canisters, type CanisterType } from '../config/auth.config';
 import type { Claim } from '../types/claims';
 import { toastStore } from '../stores/toastStore';
 import { fetchTokensByCanisterId } from '../api/tokens/TokenApiClient';
@@ -26,7 +26,7 @@ export class ClaimsService {
         return { claims: [], error: "Please connect your wallet to view claims" };
       }
 
-      const actor = auth.pnp.getActor<KONG_BACKEND>({
+      const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
         canisterId: canisters.kongBackend.canisterId,
         idl: canisters.kongBackend.idl,
         anon: false,
@@ -62,7 +62,7 @@ export class ClaimsService {
   static async processClaim(claimId: bigint): Promise<{ success: boolean, error: string | null }> {
     try {
       console.log("Processing claim:", claimId);
-      const actor = auth.pnp.getActor<KONG_BACKEND>({
+      const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
         canisterId: canisters.kongBackend.canisterId,
         idl: canisters.kongBackend.idl,
         anon: false,
@@ -91,7 +91,7 @@ export class ClaimsService {
     let failureCount = 0;
     
     try {
-      const actor = auth.pnp.getActor<KONG_BACKEND>({
+      const actor = auth.pnp.getActor<CanisterType['KONG_BACKEND']>({
         canisterId: canisters.kongBackend.canisterId,
         idl: canisters.kongBackend.idl,
         anon: false,
