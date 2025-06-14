@@ -42,13 +42,13 @@
 
 <Modal {isOpen} on:close={close} variant="transparent" title="Resolve Market">
   <div class="p-4">
-    <p class="text-lg text-kong-pm-text-secondary mb-4">{market?.question}</p>
+    <p class="text-lg text-kong-text-secondary mb-4">{market?.question}</p>
     
     <div class="space-y-2">
       <h3 class="text-sm font-medium mb-2">Select Winning Outcome:</h3>
       {#each market?.outcomes || [] as outcome, index}
         <button
-          class="w-full p-2 text-left rounded border {selectedOutcome === BigInt(index) ? 'border-kong-accent-green bg-kong-accent-green/10' : 'border-kong-pm-border hover:border-kong-accent-green/50'} transition-colors"
+          class="w-full p-2 text-left rounded border {selectedOutcome === BigInt(index) ? 'border-kong-accent-green bg-kong-accent-green/10' : 'border-kong-border hover:border-kong-accent-green/50'} transition-colors"
           on:click={() => selectedOutcome = BigInt(index)}
         >
           {outcome}
@@ -58,7 +58,7 @@
 
     <div class="mt-6 flex justify-end space-x-3">
       <button
-        class="px-4 py-2 text-sm font-medium text-kong-pm-text-secondary hover:text-kong-text-primary transition-colors"
+        class="px-4 py-2 text-sm font-medium text-kong-text-secondary hover:text-kong-text-primary transition-colors"
         on:click={close}
         disabled={isSubmitting}
       >
