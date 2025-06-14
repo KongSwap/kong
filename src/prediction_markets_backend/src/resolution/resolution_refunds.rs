@@ -15,7 +15,6 @@ use crate::claims::claims_processing::create_refund_claim;
 use crate::claims::claims_types::RefundReason;
 use crate::canister::get_current_time;
 use crate::resolution::transfer_kong::burn_tokens;
-use crate::bet::bet::Bet;
 
 /// Creates claims for refunds when a market is voided
 ///
@@ -220,7 +219,8 @@ pub async fn create_dispute_refund_claims(
     // Burn the creator's activation deposit if found
     if let Some(amount) = activation_amount {
         // Get the minimum activation fee required for this token
-        let min_activation_fee = crate::types::min_activation_bet(token_id);
+
+        let min_activation_fee = crate::types::min_activation_bet(&token_info);
         
         // Calculate the amount to burn (only the min activation fee, not the entire deposit)
         // We need to ensure it's greater than the transfer fee
