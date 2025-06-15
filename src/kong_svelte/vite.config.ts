@@ -99,7 +99,11 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
           }
         },
       },
-      external: []
+      external: [
+        '@sveltejs/kit',
+        '@sveltejs/kit/vite',
+        'sveltekit/environment'
+      ]
     },
     modulePreload: {
       polyfill: true
