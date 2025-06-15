@@ -67,13 +67,6 @@
     "notifications",
   );
 
-  // Compute account ID reactively
-  let accountId = $derived(
-    $auth.isConnected && $auth.account?.owner
-      ? getAccountIds($auth.account.owner, $auth.account.subaccount).main
-      : ""
-  );
-
   const showFaucetOption = $derived(
     $auth.isConnected && (process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging")
   );
@@ -357,7 +350,7 @@
       {#if isMobile}
         <button
           class="h-[34px] w-[34px] flex items-center justify-center"
-          on:click={() => (navOpen = !navOpen)}
+          onclick={() => (navOpen = !navOpen)}
         >
           <Menu
             size={20}
@@ -367,14 +360,14 @@
       {:else}
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          on:click={() => goto("/swap")}
+          onclick={() => goto("/swap")}
         >
           <img
             src={logoPath}
             alt="Kong Logo"
             class="h-[40px] transition-all duration-200 navbar-logo"
             class:light-logo={isLightTheme}
-            on:error={(e) => {
+            onerror={(e) => {
               const img = e.target as HTMLImageElement;
               const textElement = img.nextElementSibling as HTMLElement;
               img.style.display = "none";
@@ -407,7 +400,7 @@
                 class="relative h-16 px-5 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200 hover:text-kong-text-primary"
                 class:nav-link={activeTab === navItem.tabId}
                 class:active={activeTab === navItem.tabId}
-                on:click={() => {
+                onclick={() => {
                   goto(navItem.defaultPath);
                   activeTab = navItem.tabId as NavTabId;
                 }}
@@ -426,14 +419,14 @@
       >
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          on:click={() => goto("/swap")}
+          onclick={() => goto("/swap")}
         >
           <img
-            src={mobileLogoPath}
+            src={logoPath}
             alt="Kong Logo"
-            class="h-8 transition-all duration-200 navbar-logo mobile-navbar-logo"
+            class="h-6 transition-all duration-200 navbar-logo mobile-navbar-logo"
             class:light-logo={isLightTheme}
-            on:error={(e) => {
+            onerror={(e) => {
               const img = e.target as HTMLImageElement;
               const textElement = img.nextElementSibling as HTMLElement;
               img.style.display = "none";
@@ -464,7 +457,7 @@
 
 {#if navOpen && isMobile}
   <div class="fixed inset-0 z-50" transition:fade={{ duration: 200 }}>
-    <div class="fixed inset-0 bg-kong-bg-dark/60 backdrop-blur-sm" on:click={() => (navOpen = false)} />
+    <div class="fixed inset-0 bg-kong-bg-dark/60 backdrop-blur-sm" onclick={() => (navOpen = false)} />
     <div
       class="fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col bg-kong-bg-dark border-r border-kong-border shadow-lg max-[375px]:w-[90%] max-[375px]:max-w-[300px]"
       transition:slide={{ duration: 200, axis: "x" }}
@@ -477,7 +470,7 @@
           class:light-logo={isLightTheme}
           style={isLightTheme ? '--logo-brightness: 0.2' : ''}
         />
-        <button class="w-9 h-9 flex items-center justify-center rounded-full text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/10 hover:bg-kong-text-primary/15 transition-colors duration-200" on:click={() => (navOpen = false)}>
+        <button class="w-9 h-9 flex items-center justify-center rounded-full text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/10 hover:bg-kong-text-primary/15 transition-colors duration-200" onclick={() => (navOpen = false)}>
           <X size={16} />
         </button>
       </div>
