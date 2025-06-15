@@ -36,6 +36,7 @@
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
   import { getAccountIds, getPrincipalString } from "$lib/utils/accountUtils";
   import { isAuthenticating } from "$lib/stores/auth";
+  import { app } from "$lib/state/app.state.svelte";
   import NavPanel from "./NavPanel.svelte";
 
   // Computed directly where needed using themeStore rune
@@ -57,7 +58,7 @@
   // Define a type for valid tab IDs
   type NavTabId = 'swap' | 'predict' | 'earn' | 'stats';
 
-  let isMobile = $state(false);
+  let isMobile = $derived(app.isMobile);
   let activeTab = $state<NavTabId>("swap");
   let navOpen = $state(false);
   let closeTimeout: ReturnType<typeof setTimeout>;
@@ -101,15 +102,6 @@
   // Replace onMount with $effect for listeners and theme updates
   $effect(() => {
     if (browser) {
-      // Initial mobile check
-      isMobile = window.innerWidth < 768;
-
-      // Add resize listener
-      const handleResize = () => {
-        isMobile = window.innerWidth < 768;
-      };
-      window.addEventListener("resize", handleResize);
-
       // Add event listener to handle swipe gestures for mobile menu
       let touchStartX = 0;
       const handleTouchStart = (e: TouchEvent) => {
@@ -136,7 +128,6 @@
 
       // Cleanup function
       return () => {
-        window.removeEventListener("resize", handleResize);
         document.removeEventListener('touchstart', handleTouchStart);
         document.removeEventListener('touchend', handleTouchEnd);
       };
@@ -456,7 +447,7 @@
         <NavPanel />
       {:else}
         <!-- Mobile Header Buttons -->
-        <NavPanel isMobile={true} />
+        <NavPanel {isMobile} />
       {/if}
     </div>
   </div>

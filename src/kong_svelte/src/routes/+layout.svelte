@@ -2,11 +2,21 @@
   import "../app.css";
   import MetaTags from "$lib/components/common/MetaTags.svelte";
   import type { LayoutData } from "./$types";
+  import { app } from "$lib/state/app.state.svelte";
+  import { onMount } from "svelte";
   
   let { children, data } = $props<{
     children: any;
     data: LayoutData;
   }>();
+
+  onMount(() => {
+    const handleResize = () => app.isMobile = window.innerWidth < 768;
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  })
+
+  // $inspect(app);
 </script>
 
 <svelte:head>

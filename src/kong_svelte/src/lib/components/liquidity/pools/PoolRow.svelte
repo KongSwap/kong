@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { app } from "$lib/state/app.state.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
@@ -56,8 +57,7 @@
 
   let { isTopVolume, isTopTVL, isTopAPY } = $derived(topPoolsInfo);
 
-  let isMobile = $state(false);
-  let showDetailsButton = $state(true);
+  let isMobile = $derived(app.isMobile);
 
   // Debounce the resize handler
   function debounce<T extends (...args: any[]) => void>(
@@ -70,22 +70,6 @@
       timeoutId = setTimeout(() => fn(...args), delay);
     };
   }
-
-  onMount(() => {
-    const checkMobile = () => {
-      isMobile = window.innerWidth < 768;
-      showDetailsButton = window.innerWidth >= 1150;
-    };
-
-    const debouncedCheckMobile = debounce(checkMobile, 250);
-
-    checkMobile(); // Initial check
-    window.addEventListener("resize", debouncedCheckMobile);
-
-    return () => {
-      window.removeEventListener("resize", debouncedCheckMobile);
-    };
-  });
 </script>
 
 {#if !isMobile}

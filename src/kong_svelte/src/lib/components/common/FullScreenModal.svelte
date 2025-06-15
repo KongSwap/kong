@@ -35,7 +35,6 @@
   }>();
 
   // State
-  let isMobile = $state(false);
   let zIndex = $state(99999);
   let modalElement: HTMLDivElement;
 
@@ -72,20 +71,6 @@
     });
 
     return unsubscribe;
-  });
-
-  // Setup mobile responsiveness
-  $effect(() => {
-    if (browser) {
-      const updateDimensions = () => {
-        isMobile = window.innerWidth <= 768;
-      };
-      updateDimensions();
-      window.addEventListener("resize", updateDimensions);
-      return () => {
-        window.removeEventListener("resize", updateDimensions);
-      };
-    }
   });
 
   // Handle HTML title when title is HTML string
