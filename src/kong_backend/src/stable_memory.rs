@@ -16,7 +16,7 @@ use crate::stable_user::suspended_user_map::SuspendedUser;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
-// stable memory
+// Stable memory
 pub const KONG_SETTINGS_MEMORY_ID: MemoryId = MemoryId::new(20);
 pub const USER_MEMORY_ID: MemoryId = MemoryId::new(21);
 pub const TOKEN_MEMORY_ID: MemoryId = MemoryId::new(22);
@@ -26,7 +26,7 @@ pub const REQUEST_MEMORY_ID: MemoryId = MemoryId::new(26);
 pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(27);
 pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(28);
 pub const LP_TOKEN_MEMORY_ID: MemoryId = MemoryId::new(29);
-// archives
+// Archives
 pub const TX_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(204);
 pub const REQUEST_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(205);
 pub const TRANSFER_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(206);

@@ -2690,7 +2690,7 @@ dependencies = [
 
 [[package]]
 name = "kong_backend"
-version = "0.0.20"
+version = "0.0.21"
 dependencies = [
  "anyhow",
  "candid",
@@ -2723,7 +2723,7 @@ dependencies = [
 
 [[package]]
 name = "kong_data"
-version = "0.0.20"
+version = "0.0.21"
 dependencies = [
  "candid",
  "ic-cdk",

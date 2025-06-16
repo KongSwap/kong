@@ -3,13 +3,14 @@ use ic_cdk::api::call::{accept_message, method_name};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_macros::inspect_message;
 use serde::Deserialize;
-
-use super::{APP_NAME, APP_VERSION};
+use std::sync::atomic::Ordering;
 
 use crate::ic::id::caller_principal_id;
 use crate::ic::logging::info_log;
 use crate::stable_db_update::db_update_map::{max_db_update_id, DB_UPDATE_ID};
 use crate::stable_user::principal_id_map::create_principal_id_map;
+
+use super::{APP_NAME, APP_VERSION};
 
 // list of query calls
 // a bit hard-coded but shouldn't change often
@@ -20,7 +21,8 @@ fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
 
     create_principal_id_map();
-    DB_UPDATE_ID.store(max_db_update_id(), std::sync::atomic::Ordering::SeqCst);
+
+    DB_UPDATE_ID.store(max_db_update_id(), Ordering::SeqCst);
 }
 
 #[pre_upgrade]
@@ -31,7 +33,8 @@ fn pre_upgrade() {
 #[post_upgrade]
 fn post_upgrade() {
     create_principal_id_map();
-    DB_UPDATE_ID.store(max_db_update_id(), std::sync::atomic::Ordering::SeqCst);
+
+    DB_UPDATE_ID.store(max_db_update_id(), Ordering::SeqCst);
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }
