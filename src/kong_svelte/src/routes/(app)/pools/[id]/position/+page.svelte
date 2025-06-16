@@ -511,7 +511,7 @@
             {pool} 
             {token0} 
             {token1} 
-            on:showConfirmModal={handleShowConfirmModal} 
+            onShowConfirmModal={handleShowConfirmModal} 
           />
         {:else if activeTab === "remove"}
           <RemoveLiquidity 
