@@ -124,13 +124,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         threshold: 5200,
         algorithm: 'gzip',
         ext: '.gz',
-      }),
-      viteCompression({
-        verbose: true,
-        disable: false,
-        threshold: 5200,
-        algorithm: 'brotliCompress',
-        ext: '.br',
       })
     );
 
