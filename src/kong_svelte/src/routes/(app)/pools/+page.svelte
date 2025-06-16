@@ -32,12 +32,21 @@
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { themeStore } from "$lib/stores/themeStore";
   import { getThemeById } from "$lib/themes/themeRegistry";
+  import { app } from "$lib/state/app.state.svelte";
   import type { ThemeColors } from "$lib/themes/baseTheme";
+
+
+  // Temporary Mobile Detection until stores are removed. With stores, the Svelte 5 $derived rune is not available, the current implementation is a temporary workaround.
+  let isMobile = $state(app.isMobile);
+
+  $effect(() => {
+    isMobile = app.isMobile;
+    // console.log("isMobile", isMobile);
+  });
 
   // Navigation state
   const activeSection = writable("pools");
   const activePoolView = writable("all");
-  let isMobile = writable(false);
   let searchQuery = browser ? $page.url.searchParams.get("search") || "" : "";
   let pageQuery = browser
     ? parseInt($page.url.searchParams.get("page") || "1")
@@ -164,7 +173,7 @@
   async function handleMobileScroll() {
     if (!browser) return;
     if (
-      !$isMobile ||
+      !isMobile ||
       $activePoolView !== "all" ||
       isMobileFetching ||
       mobilePage >= mobileTotalPages
@@ -246,17 +255,6 @@
       .finally(() => {
         isLoading.set(false);
       });
-
-    if (browser) {
-      window.addEventListener("resize", checkMobile);
-      checkMobile();
-    }
-    cleanup = () => {
-      if (browser) {
-        window.removeEventListener("resize", checkMobile);
-      }
-    };
-    return cleanup;
   });
 
   // Update the reactive statement with debounce
@@ -338,17 +336,6 @@
       }
     }, 300);
   }
-
-  const checkMobile = () => {
-    if (!browser) return;
-    $isMobile = window.innerWidth < 768;
-  };
-
-  $effect(() => {
-    if (browser) {
-      checkMobile();
-    }
-  });
 
   onDestroy(() => {
     cleanup?.();
@@ -448,7 +435,7 @@
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
     {#if $activeSection === "pools"}
       <Panel 
-        className="flex-1 {$isMobile ? '' : '!p-0'}" 
+        className="flex-1 {isMobile ? '' : '!p-0'}" 
         variant={isTableTransparent() ? "transparent" : "solid"}
       >
         <div class="overflow-hidden flex flex-col h-full rounded-lg">
@@ -603,7 +590,7 @@
                     <div class="flex-1 px-4 py-2">
                       <input
                         type="text"
-                        placeholder={$isMobile == true
+                        placeholder={isMobile == true
                           ? "Search pools..."
                           : "Search pools by name, symbol, or canister ID"}
                         class="w-full bg-transparent text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:border-b focus:border-kong-primary/20 transition-all duration-200 pb-1"
@@ -642,7 +629,7 @@
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
               <div class="h-full overflow-auto">
-                {#if $isMobile}
+                {#if isMobile}
                   <!-- Mobile/Tablet Card View -->
                   <div
                     class="lg:hidden space-y-3 pb-3 h-full overflow-auto py-2 mobile-pools-container"
