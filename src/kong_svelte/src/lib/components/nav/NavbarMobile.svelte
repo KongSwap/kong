@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import BaseNavItem from './BaseNavItem.svelte';
+  import BaseNavItem from './NavbarBaseItem.svelte';
 
   let {
     title,

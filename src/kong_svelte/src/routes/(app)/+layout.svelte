@@ -6,7 +6,7 @@
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
   import QRModal from "$lib/components/common/QRModal.svelte";
-  import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
+  import TokenTicker from "$lib/components/nav/NavbarTokenTicker.svelte";
   import GlobalSearch from "$lib/components/search/GlobalSearch.svelte";
   import { searchStore } from "$lib/stores/searchStore";
   import KeyboardShortcutsHelp from "$lib/components/common/KeyboardShortcutsHelp.svelte";

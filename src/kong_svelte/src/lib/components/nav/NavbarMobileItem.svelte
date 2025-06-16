@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BaseNavItem from './BaseNavItem.svelte';
+  import BaseNavItem from './NavbarBaseItem.svelte';
   
   let {
     label,

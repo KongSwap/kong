@@ -23,9 +23,9 @@
   import { page } from "$app/state";
   import { browser } from "$app/environment";
   import { themeStore } from "$lib/stores/themeStore";
-  import NavOption from "./NavOption.svelte";
-  import MobileNavGroup from "./MobileNavGroup.svelte";
-  import MobileMenuItem from "./MobileMenuItem.svelte";
+  import NavOption from "./NavbarOption.svelte";
+  import MobileNavGroup from "./NavbarMobile.svelte";
+  import MobileMenuItem from "./NavbarMobileItem.svelte";
   import { searchStore } from "$lib/stores/searchStore";
   import { userTokens } from "$lib/stores/userTokens";
   import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
@@ -36,7 +36,7 @@
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
   import { getAccountIds, getPrincipalString } from "$lib/utils/accountUtils";
   import { isAuthenticating } from "$lib/stores/auth";
-  import NavPanel from "./NavPanel.svelte";
+  import NavPanel from "./NavbarPanel.svelte";
 
   // Computed directly where needed using themeStore rune
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
