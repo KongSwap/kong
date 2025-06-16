@@ -55,17 +55,19 @@
   // and apply CSS inversion when needed via the light-logo class
 
   // Define a type for valid tab IDs
-  type NavTabId = 'swap' | 'predict' | 'earn' | 'stats';
+  type NavTabId = null | 'pro' | 'predict' | 'earn' | 'stats';
 
   let isMobile = $state(false);
-  let activeTab = $state<NavTabId>("swap");
+  let activeTab = $state<NavTabId>(null);
   let navOpen = $state(false);
   let closeTimeout: ReturnType<typeof setTimeout>;
-  let activeDropdown = $state<Extract<NavTabId, 'swap' | 'earn' | 'stats'> | null>(null);
+  let activeDropdown = $state<Extract<NavTabId, 'earn' | 'stats'> | null>(null);
   let showWalletSidebar = $state(false);
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
   );
+
+  $inspect(activeTab);
 
   const showFaucetOption = $derived(
     $auth.isConnected && (process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging")
@@ -80,7 +82,7 @@
   }
 
   // Filter tabs based on DFX_NETWORK
-  const allTabs = ["swap", "predict", "earn", "stats"] as const;
+  const allTabs = ["pro", "predict", "earn", "stats"] as const;
 
   function handleConnect() {
     if (!$auth.isConnected) {
@@ -195,8 +197,8 @@
   // --- Start Refactoring: Mobile Nav Groups ---
   const mobileNavGroups = $derived([
     { title: "SWAP", options: [
-      { label: "Basic Swap", description: "Simple and intuitive token swapping interface", path: "/swap", icon: Wallet, comingSoon: false },
-      { label: "Pro Swap", description: "Advanced trading features with detailed market data", path: "/swap/pro", icon: Coins, comingSoon: false },
+      { label: "Basic Swap", description: "Simple and intuitive token swapping interface", path: "/", icon: Wallet, comingSoon: false },
+      { label: "Pro Swap", description: "Advanced trading features with detailed market data", path: "/pro", icon: Coins, comingSoon: false },
     ] },
     {
       title: "PREDICT",
@@ -212,7 +214,7 @@
     },
     { title: "EARN", options: [
       { label: "Liquidity Pools", description: "Provide liquidity to earn trading fees and rewards", path: "/pools", icon: Coins, comingSoon: false },
-      { label: "Airdrop Claims", description: "Claim your airdrop tokens", path: "/airdrop-claims", icon: Award, comingSoon: false },
+      { label: "Airdrop", description: "Claim your airdrop tokens", path: "/airdrop-claims", icon: Award, comingSoon: false },
     ] },
     { title: "STATS", options: [
       { label: "Overview", description: "View general statistics and platform metrics", path: "/stats", icon: ChartCandlestick, comingSoon: false },
@@ -237,17 +239,24 @@
             ],
             defaultPath: "/pools",
           };
-        case "swap":
+        case "pro":
           return {
-            type: "dropdown" as const,
-            label: "SWAP",
-            tabId: "swap" as const,
-            options: [
-              { label: "Basic Swap", description: "Simple and intuitive token swapping interface", path: "/swap", icon: Wallet, comingSoon: false },
-              { label: "Pro Swap", description: "Advanced trading features with detailed market data", path: "/swap/pro", icon: Coins, comingSoon: false },
-            ],
-            defaultPath: "/swap",
+            type: "link" as const,
+            label: "PRO",
+            tabId: "pro" as const,
+            defaultPath: "/pro",
           };
+        // case "swap":
+        //   return {
+        //     type: "dropdown" as const,
+        //     label: "SWAP",
+        //     tabId: "swap" as const,
+        //     options: [
+        //       { label: "Basic Swap", description: "Simple and intuitive token swapping interface", path: "/swap", icon: Wallet, comingSoon: false },
+        //       { label: "Pro Swap", description: "Advanced trading features with detailed market data", path: "/swap/pro", icon: Coins, comingSoon: false },
+        //     ],
+        //     defaultPath: "/swap",
+        //   };
         case "stats":
           return {
             type: "dropdown" as const,
@@ -271,8 +280,8 @@
           return null; // Should not happen with current 'tabs' definition
       }
     }).filter(item => item !== null) as Array<
-      | { type: 'dropdown'; label: string; tabId: 'swap' | 'earn' | 'stats'; options: any[]; defaultPath: string; }
-      | { type: 'link'; label: string; tabId: 'predict'; defaultPath: string; }
+      | { type: 'dropdown'; label: string; tabId: 'earn' | 'stats'; options: any[]; defaultPath: string; }
+      | { type: 'link'; label: string; tabId: 'pro' | 'predict'; defaultPath: string; }
     >
   );
   // --- End Refactoring ---
@@ -289,8 +298,8 @@
     // Use a mapping for clarity and potential extension
     // Ensure all paths from desktopNavItems and mobileNavGroups are covered
     const pathMap: { [key: string]: NavTabId } = {
-      "/swap": "swap",
-      "/swap/pro": "swap",
+      // "/": null,
+      "/pro": "pro",
       "/predict": "predict",
       "/earn": "earn",       // Base path might not be used, but good to have
       "/pools": "earn",
@@ -344,8 +353,8 @@
   }
 </script>
 
-<div id="navbar" class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
-  <div class="mx-auto h-16 flex items-center justify-between md:px-6 px-4">
+<div id="navbar" class="mb-4 w-full top-0 left-0 z-50 relative py-2">
+  <div class="mx-auto h-12 flex items-center justify-between md:px-6 px-4">
     <div class="flex items-center gap-4">
       {#if isMobile}
         <button
@@ -360,12 +369,12 @@
       {:else}
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          onclick={() => goto("/swap")}
+          onclick={() => goto("/")}
         >
           <img
             src={logoPath}
             alt="Kong Logo"
-            class="h-[40px] transition-all duration-200 navbar-logo"
+            class="h-[32px] transition-all duration-200 navbar-logo"
             class:light-logo={isLightTheme}
             onerror={(e) => {
               const img = e.target as HTMLImageElement;
@@ -397,7 +406,7 @@
               />
             {:else if navItem.type === "link"}
               <button
-                class="relative h-16 px-5 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200 hover:text-kong-text-primary"
+                class="relative h-12 px-4 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200 hover:text-kong-text-primary"
                 class:nav-link={activeTab === navItem.tabId}
                 class:active={activeTab === navItem.tabId}
                 onclick={() => {
@@ -419,7 +428,7 @@
       >
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          onclick={() => goto("/swap")}
+          onclick={() => goto("/")}
         >
           <img
             src={logoPath}
@@ -539,7 +548,6 @@
   /* Keep only for text-shadow on active state */
   .nav-link.active {
     @apply text-kong-primary;
-    text-shadow: 0 0px 30px theme(colors.kong.primary);
   }
 
   /* Global style - Keep */

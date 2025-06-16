@@ -11,7 +11,7 @@
   
   // Link definitions for footer columns
   const productLinks = [
-    { href: "/swap", label: "Swap" },
+    { href: "/", label: "Swap" },
     { href: "/pools", label: "Liquidity Pools" },
     { href: "/predict", label: "Prediction Markets" }
   ];

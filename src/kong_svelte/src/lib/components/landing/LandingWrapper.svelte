@@ -92,7 +92,7 @@
 
   // Function to navigate to the swap page
   function navigateToSwap() {
-    goto("/swap"); // Use goto for client-side navigation
+    goto("/"); // Use goto for client-side navigation
   }
 
   // Toggle mobile menu

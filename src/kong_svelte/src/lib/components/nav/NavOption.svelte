@@ -39,16 +39,19 @@
       await goto(option.path);
     }
   };
+
+  $inspect(isActive);
 </script>
 
 <div 
   class="nav-dropdown"
-  on:mouseenter={() => onShowDropdown(label.toLowerCase())}
-  on:mouseleave={onHideDropdown}
+  role="group"
+  onmouseenter={() => onShowDropdown(label.toLowerCase())}
+  onmouseleave={onHideDropdown}
 >
   <button
     class="nav-link {isActive ? 'active' : ''}"
-    on:click={() => goto(defaultPath)}
+    onclick={() => goto(defaultPath)}
   >
     {label}
     <ChevronDown size={16} />
@@ -61,7 +64,7 @@
         <button
           class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
           class:active={$page.url.pathname === option.path}
-          on:click={() => handleOptionClick(option)}
+          onclick={() => handleOptionClick(option)}
           class:disabled={option.comingSoon}
         >
           <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
@@ -98,7 +101,7 @@
 }
 
 .nav-link {
-  @apply relative h-16 px-5 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200;
+  @apply relative h-16 px-4 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200;
 }
 
 .nav-link:hover {
@@ -107,6 +110,5 @@
 
 .nav-link.active {
   @apply text-kong-primary;
-  text-shadow: 0 0px 30px theme(colors.kong.primary);
 }
 </style> 

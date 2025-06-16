@@ -18,7 +18,7 @@
       Please check the URL and try again. If the URL is valid and the problem
       persists, please contact support.
     </p>
-    <a href="/swap">
+    <a href="/">
       <ButtonV2
         label="Back to Swap"
         theme="primary"
