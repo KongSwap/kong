@@ -18,7 +18,7 @@ pub fn caller_is_kingkong() -> Result<(), String> {
         return Ok(());
     }
     let user_id = user_map::get_by_caller()?.ok_or("Caller is not King Kong")?.user_id;
-    if !KONG_SETTINGS.with(|s| s.borrow().get().kingkong.iter().any(|k| *k == user_id)) {
+    if !KONG_SETTINGS.with(|s| s.borrow().get().kingkong.contains(&user_id)) {
         return Err("Caller is not King Kong".to_string());
     }
     Ok(())

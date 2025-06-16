@@ -5,6 +5,7 @@ use icrc_ledger_types::icrc::generic_value::ICRC3Value;
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc3::blocks::{GetBlocksRequest as ICRC3GetBlocksRequest, GetBlocksResult as ICRC3GetBlocksResult};
 use icrc_ledger_types::icrc3::transactions::{GetTransactionsRequest, GetTransactionsResponse};
+use num_traits::cast::ToPrimitive;
 use serde::Serialize;
 use std::collections::BTreeMap;
 
@@ -14,7 +15,6 @@ use crate::ic::id::{caller_account_id, caller_id};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
-use num_traits::cast::ToPrimitive;
 
 use super::wumbo::Transaction1;
 
