@@ -20,7 +20,7 @@
   class="base-nav-btn {className}"
   class:active={isActive}
   class:disabled={comingSoon}
-  on:click={onClick}
+  onclick={onClick}
 >
   <div class="base-nav-btn-icon {iconBackground} relative">
     {@render icon({ size: 18 })}

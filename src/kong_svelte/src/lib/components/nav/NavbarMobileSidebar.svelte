@@ -1,9 +1,18 @@
 <script lang="ts">
+  import { auth } from "$lib/stores/auth";
+  import { notificationsStore } from "$lib/stores/notificationsStore";
+  import { goto } from "$app/navigation";
   import { fade, slide } from "svelte/transition";
   import { X, Wallet } from "lucide-svelte";  
   import MobileNavGroup from "./NavbarMobile.svelte";
   import MobileMenuItem from "./NavbarMobileItem.svelte";
   import NavbarButton from "./NavbarButton.svelte";
+  import { Settings as SettingsIcon, Copy, Bell, Coins, TrendingUpDown, Award, ChartCandlestick, ChartScatter, Trophy } from "lucide-svelte";
+  import { copyToClipboard } from "$lib/utils/clipboard";
+  import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
+  import { getAccountIds } from "$lib/utils/accountUtils";
+  import { userTokens } from "$lib/stores/userTokens";
+  import { loadBalances } from "$lib/stores/tokenStore";
 
   const mobileLogoPath = "/titles/logo-white-wide.png";
   
@@ -12,33 +21,115 @@
     isOpen: boolean;
     onClose: () => void;
     isLightTheme: boolean;
-    mobileNavGroups: any[];
-    accountMenuItems: any[];
     activeTab: any;
     walletButtonThemeProps: any;
-    auth: any;
-    notificationsStore: any;
     isAuthenticating: boolean;
     showWalletSidebar: boolean;
     walletSidebarActiveTab: string;
     onConnect: () => void;
+    toggleWalletSidebar: (tab: string) => void;
   }
 
   let {
     isOpen,
     onClose,
     isLightTheme,
-    mobileNavGroups,
-    accountMenuItems,
     activeTab,
     walletButtonThemeProps,
-    auth,
-    notificationsStore,
     isAuthenticating,
     showWalletSidebar,
     walletSidebarActiveTab,
-    onConnect
+    onConnect,
+    toggleWalletSidebar
   }: Props = $props();
+
+  const mobileNavGroups = $derived([
+    { title: "SWAP", options: [
+      { label: "Basic Swap", description: "Simple and intuitive token swapping interface", path: "/", icon: Wallet, comingSoon: false },
+      { label: "Pro Swap", description: "Advanced trading features with detailed market data", path: "/pro", icon: Coins, comingSoon: false },
+    ] },
+    {
+      title: "PREDICT",
+      options: [
+        {
+          label: "Prediction Markets",
+          description: "Trade on future outcomes",
+          path: "/predict",
+          icon: TrendingUpDown,
+          comingSoon: false,
+        },
+      ],
+    },
+    { title: "EARN", options: [
+      { label: "Liquidity Pools", description: "Provide liquidity to earn trading fees and rewards", path: "/pools", icon: Coins, comingSoon: false },
+      { label: "Airdrop", description: "Claim your airdrop tokens", path: "/airdrop-claims", icon: Award, comingSoon: false },
+    ] },
+    { title: "STATS", options: [
+      { label: "Overview", description: "View general statistics and platform metrics", path: "/stats", icon: ChartCandlestick, comingSoon: false },
+      { label: "Bubbles", description: "Visualize token price changes with bubbles", path: "/stats/bubbles", icon: ChartScatter, comingSoon: false },
+      { label: "Leaderboards", description: "View trading leaderboards", path: "/stats/leaderboard", icon: Trophy, comingSoon: false },
+    ] },
+  ]);
+
+  const accountMenuItems = $derived([
+    {
+      label: "Settings",
+      icon: SettingsIcon,
+      onClick: () => goto("/settings"),
+      show: true
+    },
+    // {
+    //   label: "Claim Tokens",
+    //   icon: Droplet,
+    //   onClick: claimTokens,
+    //   show: showFaucetOption
+    // },
+    {
+      label: "Copy Principal ID",
+      icon: Copy,
+      onClick: copyPrincipalId,
+      show: $auth.isConnected
+    },
+    {
+      label: "Copy Account ID",
+      icon: Copy,
+      onClick: copyAccountId,
+      show: $auth.isConnected
+    },
+    {
+      label: "Notifications",
+      icon: Bell,
+      onClick: () => toggleWalletSidebar("notifications"),
+      badgeCount: $notificationsStore.unreadCount,
+      show: true
+    }
+  ]);
+
+  async function claimTokens() {
+    await faucetClaim();
+    // Use runes directly
+    await loadBalances($userTokens.tokens, $auth.account.owner, true);
+  }
+
+  function copyPrincipalId() {
+    const principalToCopy = $auth?.account?.owner;
+    if (principalToCopy) {
+      copyToClipboard(principalToCopy);
+    } else {
+      console.error("Could not get Principal ID to copy.");
+    }
+  }
+
+  function copyAccountId() {
+    const currentAccountId = $auth.isConnected && $auth.account?.owner
+      ? getAccountIds($auth.account.owner, $auth.account.subaccount).main
+      : "";
+    if (currentAccountId) {
+      copyToClipboard(currentAccountId);
+    } else {
+      console.error("Could not get Account ID to copy.");
+    }
+  }
 
   // Helper for mobile menu item clicks - move action + close logic here
   function mobileMenuAction(action: () => void) {
@@ -103,7 +194,7 @@
       <div class="p-2 border-t border-kong-border">
         <NavbarButton
           icon={Wallet}
-          label={auth.isConnected ? "Wallet" : "Connect Wallet"}
+          label={$auth.isConnected ? "Wallet" : "Connect Wallet"}
           onClick={mobileMenuAction(onConnect)}
           isSelected={showWalletSidebar && walletSidebarActiveTab === "wallet"}
           variant="primary"
@@ -111,7 +202,7 @@
           class="w-full !py-5 justify-center"
           {...walletButtonThemeProps}
           isWalletButton={true}
-          badgeCount={notificationsStore.unreadCount}
+          badgeCount={$notificationsStore.unreadCount}
           loading={isAuthenticating}
         />
       </div>

@@ -1,100 +1,50 @@
 <script lang="ts">
   import { auth } from "$lib/stores/auth";
-
   import { goto } from "$app/navigation";
   import { notificationsStore } from "$lib/stores/notificationsStore";
   import {
-    Droplet,
-    Settings as SettingsIcon,
-    Copy,
     ChartScatter,
     Menu,
     ChartCandlestick,
-    Wallet,
     Coins,
     Award,
-    TrendingUpDown,
-    Search,
     Trophy,
-    Bell,
   } from "lucide-svelte";
-  import { loadBalances } from "$lib/stores/tokenStore";
   import { page } from "$app/state";
   import { browser } from "$app/environment";
   import { themeStore } from "$lib/stores/themeStore";
   import NavOption from "./NavbarOption.svelte";
-  import { searchStore } from "$lib/stores/searchStore";
-  import { userTokens } from "$lib/stores/userTokens";
+
   import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
   import { getThemeById } from "$lib/themes/themeRegistry";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
-  import { copyToClipboard } from "$lib/utils/clipboard";
-  import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
-  import { getAccountIds, getPrincipalString } from "$lib/utils/accountUtils";
   import { isAuthenticating } from "$lib/stores/auth";
   import TopRightNavPanel from "./NavbarPanel.svelte";
   import NavbarMobileSidebar from "./NavbarMobileSidebar.svelte";
   import { NAV_PATH_MAP } from "$lib/constants/appConstants";
 
-  // Computed directly where needed using themeStore rune
+  // Set theme for logo and navbar
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
-  
-  // Define if current theme is light and should have inverted logo
   const isLightTheme = $derived(browser && 
     (getThemeById($themeStore)?.colors?.logoInvert === 1 || 
      $themeStore.includes('light') ||
      $themeStore === 'win98light'));
+  const walletButtonThemeProps = $derived({
+    useThemeBorder: isWin98Theme,
+    customBgColor: browser ? getThemeById($themeStore)?.colors?.primary : undefined,
+    customTextColor: 'var(--color-kong-text-light)',
+    customBorderStyle: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorder : undefined,
+    customBorderColor: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorderColor : undefined
+  });
   
   // Define logo paths - use only one logo path
   const logoPath = "/images/kongface-white.svg";
-
-  // Define a type for valid tab IDs
-  type NavTabId = null | 'pro' | 'predict' | 'earn' | 'stats';
-
   let isMobile = $state(false);
-  let activeTab = $derived.by(() => {
-    const path = page.url.pathname;
-    
-    // Check for exact matches in NAV_PATH_MAP first
-    for (const mappedPath in NAV_PATH_MAP) {
-      if (path.startsWith(mappedPath)) {
-        return NAV_PATH_MAP[mappedPath] as NavTabId;
-      }
-    }
-    
-    // Fall back to first path segment (excluding root)
-    const firstSegment = path.split("/")[1];
-    return firstSegment || null as NavTabId;
-  });
   let mobileNavSideBarOpen = $state(false); // Mobile sidemenu
   let showWalletSidebar = $state(false);
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
   );
-
-  const showFaucetOption = $derived(
-    $auth.isConnected && (process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging")
-  );
-
-  // Toggle wallet sidebar
-  function toggleWalletSidebar(
-    tab: "notifications" | "chat" | "wallet" = "notifications",
-  ) {
-    walletSidebarActiveTab = tab;
-    showWalletSidebar = !showWalletSidebar;
-  }
-
-  // Filter tabs based on DFX_NETWORK
-  const allTabs = ["pro", "predict", "earn", "stats"] as const;
-
-  function handleConnect() {
-    if (!$auth.isConnected) {
-      walletProviderStore.open();
-      return;
-    }
-    const activeTab = $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
-    toggleWalletSidebar(activeTab);
-  }
 
   // Replace onMount with $effect for listeners and theme updates
   $effect(() => {
@@ -141,87 +91,24 @@
     }
   });
 
-  const walletButtonThemeProps = $derived({
-    useThemeBorder: isWin98Theme,
-    customBgColor: browser ? getThemeById($themeStore)?.colors?.primary : undefined,
-    customTextColor: 'var(--color-kong-text-light)',
-    customBorderStyle: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorder : undefined,
-    customBorderColor: browser ? getThemeById($themeStore)?.colors?.primaryButtonBorderColor : undefined
+  // Define a type for valid tab IDs
+  type NavTabId = null | 'pro' | 'predict' | 'earn' | 'stats';
+  const allTabs = ["pro", "predict", "earn", "stats"] as const;
+  let activeTab = $derived.by(() => {
+    const path = page.url.pathname;
+    
+    // Check for exact matches in NAV_PATH_MAP first
+    for (const mappedPath in NAV_PATH_MAP) {
+      if (path.startsWith(mappedPath)) {
+        return NAV_PATH_MAP[mappedPath] as NavTabId;
+      }
+    }
+    
+    // Fall back to first path segment (excluding root)
+    const firstSegment = path.split("/")[1];
+    return firstSegment || null as NavTabId;
   });
 
-  // --- Start Refactoring: Mobile Account Menu Items ---
-  const accountMenuItems = $derived([
-    {
-      label: "Settings",
-      icon: SettingsIcon,
-      onClick: () => goto("/settings"),
-      show: true
-    },
-    {
-      label: "Search",
-      icon: Search,
-      onClick: handleOpenSearch,
-      show: process.env.DFX_NETWORK !== "ic"
-    },
-    {
-      label: "Claim Tokens",
-      icon: Droplet,
-      onClick: claimTokens,
-      show: showFaucetOption
-    },
-    {
-      label: "Copy Principal ID",
-      icon: Copy,
-      onClick: copyPrincipalId,
-      show: $auth.isConnected
-    },
-    {
-      label: "Copy Account ID",
-      icon: Copy,
-      onClick: copyAccountId,
-      show: $auth.isConnected
-    },
-    {
-      label: "Notifications",
-      icon: Bell,
-      onClick: () => toggleWalletSidebar("notifications"),
-      badgeCount: $notificationsStore.unreadCount,
-      show: true
-    }
-  ]);
-  // --- End Refactoring ---
-
-  // --- Start Refactoring: Mobile Nav Groups ---
-  const mobileNavGroups = $derived([
-    { title: "SWAP", options: [
-      { label: "Basic Swap", description: "Simple and intuitive token swapping interface", path: "/", icon: Wallet, comingSoon: false },
-      { label: "Pro Swap", description: "Advanced trading features with detailed market data", path: "/pro", icon: Coins, comingSoon: false },
-    ] },
-    {
-      title: "PREDICT",
-      options: [
-        {
-          label: "Prediction Markets",
-          description: "Trade on future outcomes",
-          path: "/predict",
-          icon: TrendingUpDown,
-          comingSoon: false,
-        },
-      ],
-    },
-    { title: "EARN", options: [
-      { label: "Liquidity Pools", description: "Provide liquidity to earn trading fees and rewards", path: "/pools", icon: Coins, comingSoon: false },
-      { label: "Airdrop", description: "Claim your airdrop tokens", path: "/airdrop-claims", icon: Award, comingSoon: false },
-    ] },
-    { title: "STATS", options: [
-      { label: "Overview", description: "View general statistics and platform metrics", path: "/stats", icon: ChartCandlestick, comingSoon: false },
-      { label: "Bubbles", description: "Visualize token price changes with bubbles", path: "/stats/bubbles", icon: ChartScatter, comingSoon: false },
-      { label: "Leaderboards", description: "View trading leaderboards", path: "/stats/leaderboard", icon: Trophy, comingSoon: false },
-    ] },
-  ]);
-  // --- End Refactoring ---
-
-  // --- Start Refactoring: Desktop Nav Items Configuration ---
   const desktopNavItems = $derived(
     allTabs.map(tab => {
       switch (tab as NavTabId) {
@@ -243,17 +130,6 @@
             tabId: "pro" as const,
             defaultPath: "/pro",
           };
-        // case "swap":
-        //   return {
-        //     type: "dropdown" as const,
-        //     label: "SWAP",
-        //     tabId: "swap" as const,
-        //     options: [
-        //       { label: "Basic Swap", description: "Simple and intuitive token swapping interface", path: "/swap", icon: Wallet, comingSoon: false },
-        //       { label: "Pro Swap", description: "Advanced trading features with detailed market data", path: "/swap/pro", icon: Coins, comingSoon: false },
-        //     ],
-        //     defaultPath: "/swap",
-        //   };
         case "stats":
           return {
             type: "dropdown" as const,
@@ -281,128 +157,72 @@
       | { type: 'link'; label: string; tabId: 'pro' | 'predict'; defaultPath: string; }
     >
   );
-  // --- End Refactoring ---
 
-  async function claimTokens() {
-    await faucetClaim();
-    // Use runes directly
-    await loadBalances($userTokens.tokens, $auth.account.owner, true);
+  function toggleWalletSidebar(
+    tab: "notifications" | "chat" | "wallet" = "notifications",
+  ) {
+    walletSidebarActiveTab = tab;
+    showWalletSidebar = !showWalletSidebar;
   }
 
-
-
-  function handleOpenSearch() {
-    searchStore.open();
-  }
-
-  // --- Start New Copy Functions ---
-  function copyPrincipalId() {
-    const principalToCopy = $auth?.account?.owner;
-    if (principalToCopy) {
-      copyToClipboard(principalToCopy);
-    } else {
-      console.error("Could not get Principal ID to copy.");
+  function handleConnect() {
+    if (!$auth.isConnected) {
+      walletProviderStore.open();
+      return;
     }
+    const activeTab = $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
+    toggleWalletSidebar(activeTab);
   }
-
-  function copyAccountId() {
-    const currentAccountId = $auth.isConnected && $auth.account?.owner
-      ? getAccountIds($auth.account.owner, $auth.account.subaccount).main
-      : "";
-    if (currentAccountId) {
-      copyToClipboard(currentAccountId);
-    } else {
-      console.error("Could not get Account ID to copy.");
-    }
-  }
-  // --- End New Copy Functions ---
 </script>
+
+{#snippet logoButton()}
+  <button
+    class="flex items-center hover:opacity-90 transition-opacity"
+    onclick={() => goto("/")}
+  >
+    <img
+      src={logoPath}
+      alt="Kong Logo"
+      class="transition-all duration-200 navbar-logo h-6"
+      class:light-logo={isLightTheme}
+    />
+  </button>
+{/snippet}
+
+{#snippet mobileMenuButton()}
+  <button class="h-[34px] w-[34px] flex items-center justify-center" onclick={() => (mobileNavSideBarOpen = !mobileNavSideBarOpen)}>
+    <Menu size={20} color={isLightTheme ? "black" : "white"} />
+  </button>
+{/snippet}
+
+{#snippet desktopNavigation()}
+  <nav class="flex items-center gap-0.5">
+    {#each desktopNavItems as navItem (navItem.tabId)}
+      <NavOption {navItem} isActive={activeTab === navItem.tabId} />
+    {/each}
+  </nav>
+{/snippet}
 
 <div id="navbar" class="mb-4 w-full top-0 left-0 z-50 relative py-2">
   <div class="mx-auto h-12 flex items-center justify-between md:px-6 px-4">
+    <!-- Single consolidated mobile/desktop logic -->
     <div class="flex items-center gap-4">
       {#if isMobile}
-        <button
-          class="h-[34px] w-[34px] flex items-center justify-center"
-          onclick={() => (mobileNavSideBarOpen = !mobileNavSideBarOpen)}
-        >
-          <Menu
-            size={20}
-            color={isLightTheme ? "black" : "white"}
-          />
-        </button>
+        {@render mobileMenuButton()}
       {:else}
-        <button
-          class="flex items-center hover:opacity-90 transition-opacity"
-          onclick={() => goto("/")}
-        >
-          <img
-            src={logoPath}
-            alt="Kong Logo"
-            class="h-[32px] transition-all duration-200 navbar-logo"
-            class:light-logo={isLightTheme}
-            onerror={(e) => {
-              const img = e.target as HTMLImageElement;
-              const textElement = img.nextElementSibling as HTMLElement;
-              img.style.display = "none";
-              if (textElement) { textElement.style.display = "block"; }
-            }}
-          />
-          <span
-            class="hidden text-xl font-bold text-kong-text-primary"
-            style="display: none;"
-          >
-            KONG
-          </span>
-        </button>
-
-        <nav class="flex items-center gap-0.5">
-          {#each desktopNavItems as navItem (navItem.tabId)}
-            <NavOption
-              {navItem}
-              isActive={activeTab === navItem.tabId}
-            />
-          {/each}
-        </nav>
+        {@render logoButton()}
+        {@render desktopNavigation()}
       {/if}
     </div>
 
     {#if isMobile}
-      <div
-        class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center"
-      >
-        <button
-          class="flex items-center hover:opacity-90 transition-opacity"
-          onclick={() => goto("/")}
-        >
-          <img
-            src={logoPath}
-            alt="Kong Logo"
-            class="h-6 transition-all duration-200 navbar-logo mobile-navbar-logo"
-            class:light-logo={isLightTheme}
-            onerror={(e) => {
-              const img = e.target as HTMLImageElement;
-              const textElement = img.nextElementSibling as HTMLElement;
-              img.style.display = "none";
-              if (textElement) { textElement.style.display = "block"; }
-            }}
-          />
-          <span
-            class="hidden text-lg font-bold text-kong-text-primary"
-            style="display: none;"
-          >
-            KONG
-          </span>
-        </button>
+      <div class="absolute left-1/2 -translate-x-1/2">
+        {@render logoButton()}
       </div>
     {/if}
 
     <div class="flex items-center gap-2">
-      {#if !isMobile}
-        <TopRightNavPanel />
-      {:else}
-        <TopRightNavPanel isMobile={true} />
-      {/if}
+      <TopRightNavPanel {isMobile} />
     </div>
   </div>
 </div>
@@ -411,15 +231,12 @@
   isOpen={mobileNavSideBarOpen}
   onClose={() => mobileNavSideBarOpen = false}
   {isLightTheme}
-  {mobileNavGroups}
-  {accountMenuItems}
   {activeTab}
   {walletButtonThemeProps}
-  auth={$auth}
-  notificationsStore={$notificationsStore}
   isAuthenticating={$isAuthenticating}
   {showWalletSidebar}
   {walletSidebarActiveTab}
+  toggleWalletSidebar={toggleWalletSidebar}
   onConnect={handleConnect}
 />
 
@@ -434,11 +251,6 @@
   .light-logo {
     @apply invert brightness-[var(--logo-brightness,0.8)] transition-all duration-200;
     filter: invert(1) brightness(var(--logo-brightness, 0.2));
-  }
-
-  /* Keep only for text-shadow on active state */
-  .nav-link.active {
-    @apply text-kong-primary;
   }
 
   /* Global style - Keep */
