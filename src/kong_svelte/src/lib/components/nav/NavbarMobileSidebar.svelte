@@ -6,15 +6,6 @@
   import NavbarButton from "./NavbarButton.svelte";
 
   const mobileLogoPath = "/titles/logo-white-wide.png";
-
-  function handleConnect() {
-    if (!$auth.isConnected) {
-      walletProviderStore.open();
-      return;
-    }
-    const activeTab = $notificationsStore.unreadCount > 0 ? "notifications" : "wallet";
-    toggleWalletSidebar(activeTab);
-  }
   
 
   interface Props {
@@ -24,7 +15,6 @@
     mobileNavGroups: any[];
     accountMenuItems: any[];
     activeTab: any;
-    onTabChange: (tab: any) => void;
     walletButtonThemeProps: any;
     auth: any;
     notificationsStore: any;
@@ -41,7 +31,6 @@
     mobileNavGroups,
     accountMenuItems,
     activeTab,
-    onTabChange,
     walletButtonThemeProps,
     auth,
     notificationsStore,
@@ -90,7 +79,6 @@
               title={group.title}
               options={group.options}
               {activeTab}
-              onTabChange={onTabChange}
               onClose={onClose}
             />
           {/each}

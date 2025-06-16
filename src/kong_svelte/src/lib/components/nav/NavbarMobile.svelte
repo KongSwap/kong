@@ -1,13 +1,12 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import BaseNavItem from './NavbarBaseItem.svelte';
 
   let {
     title,
     options,
     activeTab,
-    onTabChange,
     onClose
   } = $props<{
     title: string;
@@ -19,13 +18,11 @@
       comingSoon?: boolean;
     }>;
     activeTab: string;
-    onTabChange: (tab: string) => void;
     onClose: () => void;
   }>();
 
   const handleOptionClick = async (option: typeof options[number]) => {
     if (!option.comingSoon) {
-      onTabChange(title.toLowerCase());
       await goto(option.path);
       onClose();
     }
@@ -38,7 +35,7 @@
     <BaseNavItem
       label={option.label}
       icon={option.icon}
-      isActive={activeTab === title.toLowerCase() && $page.url.pathname === option.path}
+      isActive={activeTab === title.toLowerCase() && page.url.pathname === option.path}
       comingSoon={option.comingSoon}
       onClick={() => handleOptionClick(option)}
     />

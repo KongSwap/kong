@@ -27,7 +27,6 @@
   import { userTokens } from "$lib/stores/userTokens";
   import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
   import { getThemeById } from "$lib/themes/themeRegistry";
-  import NavbarButton from "./NavbarButton.svelte";
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
@@ -35,6 +34,7 @@
   import { isAuthenticating } from "$lib/stores/auth";
   import TopRightNavPanel from "./NavbarPanel.svelte";
   import NavbarMobileSidebar from "./NavbarMobileSidebar.svelte";
+  import { NAV_PATH_MAP } from "$lib/constants/appConstants";
 
   // Computed directly where needed using themeStore rune
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
@@ -48,17 +48,25 @@
   // Define logo paths - use only one logo path
   const logoPath = "/images/kongface-white.svg";
 
-  // No longer need logoSrc as we'll use the single path directly
-  // and apply CSS inversion when needed via the light-logo class
-
   // Define a type for valid tab IDs
   type NavTabId = null | 'pro' | 'predict' | 'earn' | 'stats';
 
   let isMobile = $state(false);
-  let activeTab = $state<NavTabId>(null);
+  let activeTab = $derived.by(() => {
+    const path = page.url.pathname;
+    
+    // Check for exact matches in NAV_PATH_MAP first
+    for (const mappedPath in NAV_PATH_MAP) {
+      if (path.startsWith(mappedPath)) {
+        return NAV_PATH_MAP[mappedPath] as NavTabId;
+      }
+    }
+    
+    // Fall back to first path segment (excluding root)
+    const firstSegment = path.split("/")[1];
+    return firstSegment || null as NavTabId;
+  });
   let mobileNavSideBarOpen = $state(false); // Mobile sidemenu
-  let closeTimeout: ReturnType<typeof setTimeout>;
-  let activeDropdown = $state<Extract<NavTabId, 'earn' | 'stats'> | null>(null);
   let showWalletSidebar = $state(false);
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
@@ -281,31 +289,7 @@
     await loadBalances($userTokens.tokens, $auth.account.owner, true);
   }
 
-  $effect(() => {
-    // Use page rune directly
-    const path = page.url.pathname;
-    // Use a mapping for clarity and potential extension
-    // Ensure all paths from desktopNavItems and mobileNavGroups are covered
-    const pathMap: { [key: string]: NavTabId } = {
-      // "/": null,
-      "/pro": "pro",
-      "/predict": "predict",
-      "/earn": "earn",       // Base path might not be used, but good to have
-      "/pools": "earn",
-      "/airdrop-claims": "earn",
-      "/stats": "stats",
-      "/stats/bubbles": "stats",
-      "/stats/leaderboard": "stats",
-    };
-    let found = false;
-    for (const prefix in pathMap) {
-      if (path.startsWith(prefix)) {
-        activeTab = pathMap[prefix];
-        found = true;
-        break; // Exit loop once found
-      }
-    }
-  });
+
 
   function handleOpenSearch() {
     searchStore.open();
@@ -374,30 +358,10 @@
 
         <nav class="flex items-center gap-0.5">
           {#each desktopNavItems as navItem (navItem.tabId)}
-            {#if navItem.type === "dropdown"}
-              <NavOption
-                label={navItem.label}
-                options={navItem.options}
-                isActive={activeTab === navItem.tabId}
-                activeDropdown={activeDropdown === navItem.tabId ? navItem.tabId : null}
-                onShowDropdown={() => { clearTimeout(closeTimeout); activeDropdown = navItem.tabId; }}
-                onHideDropdown={() => { closeTimeout = setTimeout(() => { activeDropdown = null; }, 150); }}
-                onTabChange={(tab) => activeTab = tab as NavTabId}
-                defaultPath={navItem.defaultPath}
-              />
-            {:else if navItem.type === "link"}
-              <button
-                class="relative h-12 px-4 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200 hover:text-kong-text-primary"
-                class:nav-link={activeTab === navItem.tabId}
-                class:active={activeTab === navItem.tabId}
-                onclick={() => {
-                  goto(navItem.defaultPath);
-                  activeTab = navItem.tabId as NavTabId;
-                }}
-              >
-                {navItem.label}
-              </button>
-            {/if}
+            <NavOption
+              {navItem}
+              isActive={activeTab === navItem.tabId}
+            />
           {/each}
         </nav>
       {/if}
@@ -450,7 +414,6 @@
   {mobileNavGroups}
   {accountMenuItems}
   {activeTab}
-  onTabChange={(tab) => activeTab = tab as NavTabId}
   {walletButtonThemeProps}
   auth={$auth}
   notificationsStore={$notificationsStore}
