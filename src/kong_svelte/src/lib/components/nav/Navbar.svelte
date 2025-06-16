@@ -49,15 +49,6 @@
   // Replace onMount with $effect for listeners and theme updates
   $effect(() => {
     if (browser) {
-      // Initial mobile check
-      isMobile = window.innerWidth < 768;
-
-      // Add resize listener
-      const handleResize = () => {
-        isMobile = window.innerWidth < 768;
-      };
-      window.addEventListener("resize", handleResize);
-
       // Add event listener to handle swipe gestures for mobile menu
       let touchStartX = 0;
       const handleTouchStart = (e: TouchEvent) => {
@@ -84,7 +75,6 @@
 
       // Cleanup function
       return () => {
-        window.removeEventListener("resize", handleResize);
         document.removeEventListener('touchstart', handleTouchStart);
         document.removeEventListener('touchend', handleTouchEnd);
       };
