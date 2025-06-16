@@ -1,6 +1,6 @@
 <script lang="ts">
   import { auth } from "$lib/stores/auth";
-  import { fade, slide } from "svelte/transition";
+
   import { goto } from "$app/navigation";
   import { notificationsStore } from "$lib/stores/notificationsStore";
   import {
@@ -10,7 +10,6 @@
     ChartScatter,
     Menu,
     ChartCandlestick,
-    X,
     Wallet,
     Coins,
     Award,
@@ -24,8 +23,6 @@
   import { browser } from "$app/environment";
   import { themeStore } from "$lib/stores/themeStore";
   import NavOption from "./NavbarOption.svelte";
-  import MobileNavGroup from "./NavbarMobile.svelte";
-  import MobileMenuItem from "./NavbarMobileItem.svelte";
   import { searchStore } from "$lib/stores/searchStore";
   import { userTokens } from "$lib/stores/userTokens";
   import WalletSidebar from "$lib/components/common/WalletSidebar.svelte";
@@ -36,7 +33,8 @@
   import { faucetClaim } from "$lib/api/tokens/TokenApiClient";
   import { getAccountIds, getPrincipalString } from "$lib/utils/accountUtils";
   import { isAuthenticating } from "$lib/stores/auth";
-  import NavPanel from "./NavbarPanel.svelte";
+  import TopRightNavPanel from "./NavbarPanel.svelte";
+  import NavbarMobileSidebar from "./NavbarMobileSidebar.svelte";
 
   // Computed directly where needed using themeStore rune
   let isWin98Theme = $derived(browser && $themeStore === "win98light");
@@ -49,7 +47,6 @@
   
   // Define logo paths - use only one logo path
   const logoPath = "/images/kongface-white.svg";
-  const mobileLogoPath = "/titles/logo-white-wide.png";
 
   // No longer need logoSrc as we'll use the single path directly
   // and apply CSS inversion when needed via the light-logo class
@@ -59,15 +56,13 @@
 
   let isMobile = $state(false);
   let activeTab = $state<NavTabId>(null);
-  let navOpen = $state(false);
+  let mobileNavSideBarOpen = $state(false); // Mobile sidemenu
   let closeTimeout: ReturnType<typeof setTimeout>;
   let activeDropdown = $state<Extract<NavTabId, 'earn' | 'stats'> | null>(null);
   let showWalletSidebar = $state(false);
   let walletSidebarActiveTab = $state<"notifications" | "chat" | "wallet">(
     "notifications",
   );
-
-  $inspect(activeTab);
 
   const showFaucetOption = $derived(
     $auth.isConnected && (process.env.DFX_NETWORK === "local" || process.env.DFX_NETWORK === "staging")
@@ -116,13 +111,13 @@
         const diffX = touchEndX - touchStartX;
 
         // Swipe right to open menu (when closed)
-        if (diffX > 75 && touchStartX < 50 && !navOpen) {
-          navOpen = true;
+        if (diffX > 75 && touchStartX < 50 && !mobileNavSideBarOpen) {
+          mobileNavSideBarOpen = true;
         }
 
         // Swipe left to close menu (when open)
-        if (diffX < -75 && navOpen) {
-          navOpen = false;
+        if (diffX < -75 && mobileNavSideBarOpen) {
+          mobileNavSideBarOpen = false;
         }
       };
 
@@ -138,12 +133,6 @@
     }
   });
 
-  const standardButtonThemeProps = $derived({
-    useThemeBorder: isWin98Theme,
-    customBgColor: browser ? getThemeById($themeStore)?.colors?.buttonBg : undefined,
-    customShadow: browser ? getThemeById($themeStore)?.colors?.buttonShadow : undefined
-  });
-
   const walletButtonThemeProps = $derived({
     useThemeBorder: isWin98Theme,
     customBgColor: browser ? getThemeById($themeStore)?.colors?.primary : undefined,
@@ -157,37 +146,37 @@
     {
       label: "Settings",
       icon: SettingsIcon,
-      onClick: mobileMenuAction(() => goto("/settings")),
+      onClick: () => goto("/settings"),
       show: true
     },
     {
       label: "Search",
       icon: Search,
-      onClick: mobileMenuAction(handleOpenSearch),
+      onClick: handleOpenSearch,
       show: process.env.DFX_NETWORK !== "ic"
     },
     {
       label: "Claim Tokens",
       icon: Droplet,
-      onClick: mobileMenuAction(claimTokens),
+      onClick: claimTokens,
       show: showFaucetOption
     },
     {
       label: "Copy Principal ID",
       icon: Copy,
-      onClick: mobileMenuAction(copyPrincipalId),
+      onClick: copyPrincipalId,
       show: $auth.isConnected
     },
     {
       label: "Copy Account ID",
       icon: Copy,
-      onClick: mobileMenuAction(copyAccountId),
+      onClick: copyAccountId,
       show: $auth.isConnected
     },
     {
       label: "Notifications",
       icon: Bell,
-      onClick: mobileMenuAction(() => toggleWalletSidebar("notifications")),
+      onClick: () => toggleWalletSidebar("notifications"),
       badgeCount: $notificationsStore.unreadCount,
       show: true
     }
@@ -343,14 +332,6 @@
     }
   }
   // --- End New Copy Functions ---
-
-  // Helper for mobile menu item clicks
-  function mobileMenuAction(action: () => void) {
-    return () => {
-      action();
-      navOpen = false;
-    };
-  }
 </script>
 
 <div id="navbar" class="mb-4 w-full top-0 left-0 z-50 relative py-2">
@@ -359,7 +340,7 @@
       {#if isMobile}
         <button
           class="h-[34px] w-[34px] flex items-center justify-center"
-          onclick={() => (navOpen = !navOpen)}
+          onclick={() => (mobileNavSideBarOpen = !mobileNavSideBarOpen)}
         >
           <Menu
             size={20}
@@ -454,83 +435,30 @@
 
     <div class="flex items-center gap-2">
       {#if !isMobile}
-        <!-- Refactored Icon Buttons -->
-        <NavPanel />
+        <TopRightNavPanel />
       {:else}
-        <!-- Mobile Header Buttons -->
-        <NavPanel isMobile={true} />
+        <TopRightNavPanel isMobile={true} />
       {/if}
     </div>
   </div>
 </div>
 
-{#if navOpen && isMobile}
-  <div class="fixed inset-0 z-50" transition:fade={{ duration: 200 }}>
-    <div class="fixed inset-0 bg-kong-bg-dark/60 backdrop-blur-sm" onclick={() => (navOpen = false)} />
-    <div
-      class="fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col bg-kong-bg-dark border-r border-kong-border shadow-lg max-[375px]:w-[90%] max-[375px]:max-w-[300px]"
-      transition:slide={{ duration: 200, axis: "x" }}
-    >
-      <div class="flex items-center justify-between p-5 border-b border-kong-border max-[375px]:p-4">
-        <img
-          src={mobileLogoPath}
-          alt="Kong Logo"
-          class="navbar-logo h-9 !transition-all !duration-200"
-          class:light-logo={isLightTheme}
-          style={isLightTheme ? '--logo-brightness: 0.2' : ''}
-        />
-        <button class="w-9 h-9 flex items-center justify-center rounded-full text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/10 hover:bg-kong-text-primary/15 transition-colors duration-200" onclick={() => (navOpen = false)}>
-          <X size={16} />
-        </button>
-      </div>
-
-      <nav class="flex-1 overflow-y-auto py-3 space-y-3">
-        <div class="px-4 py-2 max-[375px]:px-3">
-          {#each mobileNavGroups as group (group.title)}
-            <MobileNavGroup
-              title={group.title}
-              options={group.options}
-              {activeTab}
-              onTabChange={(tab) => activeTab = tab as NavTabId}
-              onClose={() => (navOpen = false)}
-            />
-          {/each}
-        </div>
-
-        <div class="px-4 py-2 max-[375px]:px-3">
-          <div class="text-xs font-semibold text-kong-text-secondary/70 px-2 mb-2 tracking-wider">ACCOUNT</div>
-          {#each accountMenuItems as item}
-            {#if item.show}
-              <MobileMenuItem
-                label={item.label}
-                icon={item.icon}
-                onClick={item.onClick}
-                iconBackground="bg-kong-text-primary/10"
-                badgeCount={item.badgeCount ?? null}
-              />
-            {/if}
-          {/each}
-        </div>
-      </nav>
-
-      <div class="p-2 border-t border-kong-border">
-        <NavbarButton
-          icon={Wallet}
-          label={$auth.isConnected ? "Wallet" : "Connect Wallet"}
-          onClick={mobileMenuAction(handleConnect)}
-          isSelected={showWalletSidebar && walletSidebarActiveTab === "wallet"}
-          variant="primary"
-          iconSize={20}
-          class="w-full !py-5 justify-center"
-          {...walletButtonThemeProps}
-          isWalletButton={true}
-          badgeCount={$notificationsStore.unreadCount}
-          loading={$isAuthenticating}
-        />
-      </div>
-    </div>
-  </div>
-{/if}
+<NavbarMobileSidebar
+  isOpen={mobileNavSideBarOpen}
+  onClose={() => mobileNavSideBarOpen = false}
+  {isLightTheme}
+  {mobileNavGroups}
+  {accountMenuItems}
+  {activeTab}
+  onTabChange={(tab) => activeTab = tab as NavTabId}
+  {walletButtonThemeProps}
+  auth={$auth}
+  notificationsStore={$notificationsStore}
+  isAuthenticating={$isAuthenticating}
+  {showWalletSidebar}
+  {walletSidebarActiveTab}
+  onConnect={handleConnect}
+/>
 
 <WalletSidebar
   isOpen={showWalletSidebar}
