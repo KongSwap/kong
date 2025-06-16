@@ -1,6 +1,6 @@
 use super::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 
-use crate::ic::logging::error_log;
+use crate::ic::network::ICNetwork;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::CLAIM_MAP;
 use crate::stable_token::stable_token::StableToken;
@@ -113,7 +113,7 @@ pub fn archive_to_kong_data(claim_id: u64) -> Result<(), String> {
             .0
         {
             Ok(_) => (),
-            Err(e) => error_log(&format!("Failed to archive claim_id #{}. {}", claim_id, e)),
+            Err(e) => ICNetwork::error_log(&format!("Failed to archive claim_id #{}. {}", claim_id, e)),
         }
     });
 

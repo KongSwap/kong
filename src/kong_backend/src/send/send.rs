@@ -6,7 +6,7 @@ use super::send_reply::SendReply;
 use super::send_reply_helpers::{to_send_reply, to_send_reply_failed};
 
 use crate::chains::chains::LP_CHAIN;
-use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode};
+use crate::ic::{guards::not_in_maintenance_mode, network::ICNetwork};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::transfer::transfer;
 use crate::stable_request::request_map;
@@ -43,7 +43,7 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
     // make sure user is registered, if not create a new user
     let user_id = user_map::insert(None)?;
 
-    let ts: u64 = get_time();
+    let ts: u64 = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Send(args.clone()), ts));
 
     let result = match process_send(

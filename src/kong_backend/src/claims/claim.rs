@@ -5,9 +5,8 @@ use super::claim_reply::ClaimReply;
 use super::process_claim::process_claim;
 
 use crate::ic::address::Address;
-use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
-use crate::ic::id::{caller_id, caller_principal_id};
+use crate::ic::network::ICNetwork;
 use crate::stable_claim::claim_map;
 use crate::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_request::request::Request;
@@ -24,8 +23,7 @@ async fn claim(claim_id: u64) -> Result<ClaimReply, String> {
     let claim = claim_map::get_by_claim_id(claim_id).ok_or("Claim not found")?;
     let token = token_map::get_by_token_id(claim.token_id).ok_or("Token not found")?;
     // make sure the caller is the owner of the claim
-    let principal_id = caller_principal_id();
-    let user_id = user_map::get_by_principal_id(&principal_id)
+    let user_id = user_map::get_by_principal_id(&ICNetwork::caller().to_text())
         .ok()
         .flatten()
         .ok_or("User not found")?
@@ -38,11 +36,11 @@ async fn claim(claim_id: u64) -> Result<ClaimReply, String> {
         return Err("Claim not found".to_string());
     };
 
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     // if to_address is not provided, use the caller's principal id
     let to_address = match &claim.to_address {
         Some(address) => address.clone(),
-        None => Address::PrincipalId(caller_id()),
+        None => Address::PrincipalId(ICNetwork::caller_id()),
     };
 
     // register new request for this claim

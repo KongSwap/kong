@@ -12,10 +12,9 @@ use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_multiply, nat_sqrt, 
 use crate::ic::{
     address::Address,
     ckusdt::is_ckusdt,
-    get_time::get_time,
     guards::not_in_maintenance_mode,
     icp::is_icp,
-    id::caller_id,
+    network::ICNetwork,
     transfer::{icrc1_transfer, icrc2_transfer_from},
     verify_transfer::verify_transfer,
 };
@@ -56,7 +55,7 @@ enum TokenIndex {
 pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
     let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount) =
         check_arguments(&args).await?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args), ts));
 
     let result = match process_add_pool(
@@ -223,7 +222,7 @@ async fn process_add_pool(
     add_lp_token_amount: &Nat,
     ts: u64,
 ) -> Result<AddPoolReply, String> {
-    let caller_id = caller_id();
+    let caller_id = ICNetwork::caller_id();
     let kong_backend = kong_settings_map::get().kong_backend;
     let mut transfer_ids = Vec::new();
 

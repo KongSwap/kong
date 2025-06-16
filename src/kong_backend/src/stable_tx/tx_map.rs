@@ -1,6 +1,11 @@
 use std::cmp::min;
 use std::ops::Bound;
 
+use crate::ic::network::ICNetwork;
+use crate::stable_kong_settings::kong_settings_map;
+use crate::stable_memory::TX_MAP;
+use crate::stable_pool::pool_map;
+
 use super::add_liquidity_tx::AddLiquidityTx;
 use super::add_pool_tx::AddPoolTx;
 use super::remove_liquidity_tx::RemoveLiquidityTx;
@@ -9,11 +14,6 @@ use super::stable_tx::StableTx::{AddLiquidity, AddPool, RemoveLiquidity, Send, S
 use super::stable_tx::{StableTx, StableTxId};
 use super::swap_tx::SwapTx;
 use super::tx::Tx;
-
-use crate::ic::logging::error_log;
-use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_memory::TX_MAP;
-use crate::stable_pool::pool_map;
 
 const MAX_TXS: usize = 20;
 
@@ -127,7 +127,7 @@ pub fn archive_to_kong_data(tx_id: u64) -> Result<(), String> {
             .0
         {
             Ok(_) => (),
-            Err(e) => error_log(&format!("Failed to archive tx_id #{}. {}", tx_id, e)),
+            Err(e) => ICNetwork::error_log(&format!("Failed to archive tx_id #{}. {}", tx_id, e)),
         }
     });
 

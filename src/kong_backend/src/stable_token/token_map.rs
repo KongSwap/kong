@@ -1,16 +1,16 @@
 use wildmatch::WildMatch;
 
+use crate::chains::chains::IC_CHAIN;
+use crate::ic::address_helpers::is_principal_id;
+use crate::ic::network::ICNetwork;
+use crate::stable_kong_settings::kong_settings_map;
+use crate::stable_memory::TOKEN_MAP;
+use crate::stable_token::stable_token::{StableToken, StableTokenId};
+
 use super::ic_token::ICToken;
 use super::lp_token::LPToken;
 use super::token::Token;
 use super::token_map;
-
-use crate::chains::chains::IC_CHAIN;
-use crate::ic::address_helpers::is_principal_id;
-use crate::ic::logging::error_log;
-use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_memory::TOKEN_MAP;
-use crate::stable_token::stable_token::{StableToken, StableTokenId};
 
 /// return Chain.Symbol naming convention for token
 pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
@@ -244,7 +244,7 @@ fn archive_to_kong_data(token: &StableToken) -> Result<(), String> {
             .0
         {
             Ok(_) => (),
-            Err(e) => error_log(&format!("Failed to archive token_id #{}. {}", token_id, e)),
+            Err(e) => ICNetwork::error_log(&format!("Failed to archive token_id #{}. {}", token_id, e)),
         };
     });
 

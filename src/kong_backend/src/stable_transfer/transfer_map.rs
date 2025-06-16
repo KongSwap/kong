@@ -1,11 +1,11 @@
 use candid::Nat;
 
-use super::tx_id::TxId;
-
-use crate::ic::logging::error_log;
+use crate::ic::network::ICNetwork;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TRANSFER_MAP;
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
+
+use super::tx_id::TxId;
 
 pub fn get_by_transfer_id(transfer_id: u64) -> Option<StableTransfer> {
     TRANSFER_MAP.with(|m| m.borrow().get(&StableTransferId(transfer_id)))
@@ -55,7 +55,7 @@ pub fn archive_to_kong_data(transfer_id: u64) -> Result<(), String> {
             .0
         {
             Ok(_) => (),
-            Err(e) => error_log(&format!("Failed to archive transfer_id #{}. {}", transfer.transfer_id, e)),
+            Err(e) => ICNetwork::error_log(&format!("Failed to archive transfer_id #{}. {}", transfer.transfer_id, e)),
         }
     });
 

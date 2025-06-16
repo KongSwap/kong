@@ -2,8 +2,8 @@ use ic_cdk::{query, update};
 use std::cmp::max;
 use std::collections::BTreeMap;
 
-use crate::ic::get_time::get_time;
 use crate::ic::guards::caller_is_kingkong;
+use crate::ic::network::ICNetwork;
 use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
@@ -88,7 +88,7 @@ fn archive_requests_num() -> Result<String, String> {
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn remove_requests() -> Result<String, String> {
     // only keep requests from the last hour
-    let one_hour_ago = get_time() - 3_600_000_000_000;
+    let one_hour_ago = ICNetwork::get_time() - 3_600_000_000_000;
     let mut remove_list = Vec::new();
     REQUEST_MAP.with(|request_map| {
         request_map.borrow().iter().for_each(|(request_id, request)| {

@@ -9,7 +9,7 @@ use super::add_liquidity_transfer_from::archive_to_kong_data;
 use super::add_liquidity_transfer_from::{transfer_from_token, update_liquidity_pool};
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
-use crate::ic::{address::Address, get_time::get_time, id::caller_id, transfer::icrc1_transfer, verify_transfer::verify_transfer};
+use crate::ic::{address::Address, network::ICNetwork, transfer::icrc1_transfer, verify_transfer::verify_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_pool::pool_map;
@@ -24,7 +24,7 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
     // user has transferred one of the tokens, we need to log the request immediately and verify the transfer
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(None)?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     let (token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1) =
@@ -63,7 +63,7 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
 
 pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64, String> {
     let user_id = user_map::insert(None)?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     let (token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1) =
@@ -205,7 +205,7 @@ async fn process_add_liquidity(
     let add_amount_0 = &args.amount_0;
     let add_amount_1 = &args.amount_1;
 
-    let caller_id = caller_id();
+    let caller_id = ICNetwork::caller_id();
     let kong_backend = kong_settings_map::get().kong_backend;
     let mut transfer_ids = Vec::new();
 

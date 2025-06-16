@@ -10,8 +10,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 
 use crate::helpers::nat_helpers::nat_to_u64;
-use crate::ic::get_time::get_time;
-use crate::ic::id::{caller_account_id, caller_id};
+use crate::ic::network::ICNetwork;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
@@ -52,9 +51,9 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
             let canister_id = *token.canister_id().ok_or("Invalid canister id")?;
             let token_address_with_chain = token.address_with_chain();
             let kong_settings = kong_settings_map::get();
-            let min_valid_timestamp = get_time() - kong_settings.transfer_expiry_nanosecs;
+            let min_valid_timestamp = ICNetwork::get_time() - kong_settings.transfer_expiry_nanosecs;
             let kong_backend_account = &kong_settings.kong_backend;
-            let caller_account = caller_id();
+            let caller_account = ICNetwork::caller_id();
 
             // try icrc3_get_blocks first
             if ic_token.icrc3 {
@@ -335,7 +334,7 @@ async fn verify_transfer_with_query_blocks(
                         } => {
                             // ICP ledger seems to combine transfer and transfer_from
                             // use account id for ICP
-                            if from != caller_account_id() {
+                            if from != ICNetwork::caller_account_id() {
                                 Err("Transfer from does not match caller")?
                             }
                             if to != backend_account_id {

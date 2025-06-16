@@ -7,7 +7,8 @@ use super::remove_liquidity_reply::RemoveLiquidityReply;
 use super::remove_liquidity_reply_helpers::{to_remove_liquidity_reply, to_remove_liquidity_reply_failed};
 
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_zero};
-use crate::ic::{address::Address, get_time::get_time, guards::not_in_maintenance_mode, id::caller_id, transfer::icrc1_transfer};
+use crate::ic::network::ICNetwork;
+use crate::ic::{address::Address, guards::not_in_maintenance_mode, transfer::icrc1_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
@@ -35,9 +36,9 @@ enum TokenIndex {
 pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidityReply, String> {
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
-    let caller_id = caller_id();
+    let caller_id = ICNetwork::caller_id();
 
     let result = match process_remove_liquidity(
         request_id,
@@ -75,7 +76,7 @@ pub async fn remove_liquidity_from_pool(
 ) -> Result<RemoveLiquidityReply, String> {
     let (pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments_with_user(&args, user_id).await?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     request_map::update_status(request_id, StatusCode::RemoveLiquidityFromPool, None);
 
@@ -111,9 +112,9 @@ pub async fn remove_liquidity_from_pool(
 pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, String> {
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
-    let caller_id = caller_id();
+    let caller_id = ICNetwork::caller_id();
 
     ic_cdk::spawn(async move {
         match process_remove_liquidity(

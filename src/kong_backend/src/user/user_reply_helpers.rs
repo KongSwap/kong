@@ -2,13 +2,13 @@ use candid::Principal;
 
 use super::user_reply::UserReply;
 
-use crate::ic::id::principal_to_account_id;
+use crate::ic::network::ICNetwork;
 use crate::stable_user::stable_user::StableUser;
 use crate::stable_user::user_map;
 
 pub fn to_user_reply(user: &StableUser) -> UserReply {
     let principal = Principal::from_text(&user.principal_id).unwrap();
-    let account_id = principal_to_account_id(principal);
+    let account_id = ICNetwork::principal_to_account_id(principal);
     // if referred by user exists, get the referred user's referral code
     let referred_by = user
         .referred_by

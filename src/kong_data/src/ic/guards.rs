@@ -10,7 +10,7 @@ use crate::stable_user::user_map;
 #[allow(dead_code)]
 pub fn not_in_maintenance_mode() -> Result<(), String> {
     if KONG_SETTINGS.with(|s| s.borrow().get().maintenance_mode) {
-        return Err("Kong Swap in maintenance mode".to_string());
+        return Err("KongSwap in maintenance mode".to_string());
     }
     Ok(())
 }

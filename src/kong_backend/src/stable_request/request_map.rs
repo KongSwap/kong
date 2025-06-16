@@ -1,10 +1,10 @@
+use crate::ic::network::ICNetwork;
+use crate::stable_kong_settings::kong_settings_map;
+use crate::stable_memory::REQUEST_MAP;
+
 use super::reply::Reply;
 use super::stable_request::{StableRequest, StableRequestId};
 use super::status::{Status, StatusCode};
-
-use crate::ic::logging::error_log;
-use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_memory::REQUEST_MAP;
 
 pub fn get_by_request_id(request_id: u64) -> Option<StableRequest> {
     REQUEST_MAP.with(|m| m.borrow().get(&StableRequestId(request_id)))
@@ -74,7 +74,7 @@ pub fn archive_to_kong_data(request: &StableRequest) -> Result<(), String> {
             .0
         {
             Ok(_) => (),
-            Err(e) => error_log(&format!("Failed to archive request_id #{}. {}", request_id, e)),
+            Err(e) => ICNetwork::error_log(&format!("Failed to archive request_id #{}. {}", request_id, e)),
         }
     });
 

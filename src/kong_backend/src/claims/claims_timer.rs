@@ -1,7 +1,7 @@
 use super::archive_to_kong_data::archive_to_kong_data;
 use super::process_claim::process_claim;
 
-use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode, logging::error_log};
+use crate::ic::{guards::not_in_maintenance_mode, network::ICNetwork};
 use crate::stable_claim::claim_map;
 use crate::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::CLAIM_MAP;
@@ -15,7 +15,7 @@ pub async fn process_claims_timer() {
         return;
     }
 
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
 
     // get snapshot of claim_ids where status is Unclaimed or UnclaimedOverride
     let claim_ids = CLAIM_MAP.with(|m| {
@@ -83,7 +83,7 @@ pub async fn process_claims_timer() {
         let _ = archive_to_kong_data(request_id);
 
         if consecutive_errors > 4 {
-            error_log("Too many consecutive errors, stopping claims process");
+            ICNetwork::error_log("Too many consecutive errors, stopping claims process");
             break;
         }
     }

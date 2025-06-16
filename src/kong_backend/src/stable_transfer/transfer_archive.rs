@@ -1,5 +1,5 @@
-use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
+use crate::ic::network::ICNetwork;
 use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
 
 use super::stable_transfer::StableTransferId;
@@ -25,7 +25,7 @@ pub fn archive_transfer_map() {
     });
 
     // only keep transfers from the last hour
-    let one_hour_ago = get_time() - 3_600_000_000_000;
+    let one_hour_ago = ICNetwork::get_time() - 3_600_000_000_000;
     let mut remove_list = Vec::new();
     TRANSFER_MAP.with(|transfer_map| {
         transfer_map.borrow().iter().for_each(|(transfer_id, transfer)| {

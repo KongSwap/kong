@@ -1,6 +1,6 @@
 use wildmatch::WildMatch;
 
-use crate::ic::logging::error_log;
+use crate::ic::network::ICNetwork;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::POOL_MAP;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
@@ -226,7 +226,7 @@ fn archive_to_kong_data(pool: &StablePool) -> Result<(), String> {
             .0
         {
             Ok(_) => (),
-            Err(e) => error_log(&format!("Failed to archive pool_id #{}. {}", pool_id, e)),
+            Err(e) => ICNetwork::error_log(&format!("Failed to archive pool_id #{}. {}", pool_id, e)),
         }
     });
 

@@ -2,8 +2,8 @@ use ic_cdk::{query, update};
 use std::cmp::max;
 use std::collections::BTreeMap;
 
-use crate::ic::get_time::get_time;
 use crate::ic::guards::caller_is_kingkong;
+use crate::ic::network::ICNetwork;
 use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
@@ -86,7 +86,7 @@ fn archive_transfers_num() -> Result<String, String> {
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn remove_transfers() -> Result<String, String> {
     // only keep transfers from the last hour
-    let one_hour_ago = get_time() - 3_600_000_000_000;
+    let one_hour_ago = ICNetwork::get_time() - 3_600_000_000_000;
     let mut remove_list = Vec::new();
     TRANSFER_MAP.with(|transfer_map| {
         transfer_map.borrow().iter().for_each(|(transfer_id, transfer)| {

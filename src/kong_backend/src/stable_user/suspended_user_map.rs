@@ -1,4 +1,4 @@
-use crate::ic::get_time::get_time;
+use crate::ic::network::ICNetwork;
 use crate::stable_memory::SUSPENDED_USERS;
 
 const MAX_CONSECUTIVE_ERRORS: u8 = 10;
@@ -14,7 +14,7 @@ pub fn is_suspended_user(user_id: u32) -> Option<u64> {
         let mut map = m.borrow_mut();
         if let Some(user) = map.get(&user_id) {
             if let Some(suspended_until) = user.suspended_until {
-                if suspended_until > get_time() {
+                if suspended_until > ICNetwork::get_time() {
                     return Some(suspended_until);
                 }
                 // lift suspension if the time has passed
@@ -31,7 +31,7 @@ pub fn increase_consecutive_error(user_id: u32) {
         if let Some(user) = map.get_mut(&user_id) {
             user.num_consecutive_errors += 1;
             if user.num_consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
-                user.suspended_until = Some(get_time() + SUSPEND_DURATION);
+                user.suspended_until = Some(ICNetwork::get_time() + SUSPEND_DURATION);
             }
         } else {
             map.insert(
