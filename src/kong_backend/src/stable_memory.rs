@@ -11,8 +11,8 @@ use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
-use crate::stable_user::banned_user_map::BannedUser;
 use crate::stable_user::stable_user::{StableUser, StableUserId};
+use crate::stable_user::suspended_user_map::SuspendedUser;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
@@ -35,8 +35,8 @@ thread_local! {
     // static variable to store the map of principal_id to user_id
     pub static PRINCIPAL_ID_MAP: RefCell<BTreeMap<String, u32>> = RefCell::default();
 
-    // static variable to list of temporary banned users
-    pub static BANNED_USERS: RefCell<BTreeMap<u32, BannedUser>> = RefCell::default();
+    // static variable to list of temporary suspended users
+    pub static SUSPENDED_USERS: RefCell<BTreeMap<u32, SuspendedUser>> = RefCell::default();
 
     // MEMORY_MANAGER is given management of the entire stable memory. Given a 'MemoryId', it can
     // return a memory that can be used by stable structures
