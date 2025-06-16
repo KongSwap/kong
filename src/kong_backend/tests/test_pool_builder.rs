@@ -537,14 +537,14 @@ impl TestSetup {
             // So we'll relax this check for those specific tests
             if !(config.token_a_amount_factor < 1.0 && config.use_token_a_approval) {
                 assert!(
-                    user_balance_a > Nat::from(0u64),
+                    user_balance_a > 0u64,
                     "User balance for Token A should not be zero after failed add_pool"
                 );
             }
             
             if !(config.token_b_amount_factor < 1.0 && config.use_token_b_approval) {
                 assert!(
-                    user_balance_b > Nat::from(0u64),
+                    user_balance_b > 0u64,
                     "User balance for Token B should not be zero after failed add_pool"
                 );
             }
