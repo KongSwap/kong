@@ -4,20 +4,21 @@
 // (based on markets, bets, and claims) with the actual token balances
 // in the canister's accounts.
 
-use candid::{CandidType, Deserialize};
+use candid::{CandidType, Deserialize, Nat};
 use serde::Serialize;
 use std::cell::RefCell;
 
-use crate::types::{TokenIdentifier, TokenAmount, Timestamp, MarketId};
-use crate::token::registry::{get_supported_token_identifiers, get_token_info};
-use crate::market::market::MarketStatus;
-use crate::storage::{MARKETS, BETS};
+use crate::canister::get_current_time;
 use crate::claims::claims_storage::CLAIMS;
 use crate::claims::claims_types::ClaimStatus;
-use crate::canister::get_current_time;
-use ic_cdk_macros::{update, query};
-use icrc_ledger_types::icrc1::account::Account;
+use crate::market::market::{Market, MarketStatus};
+use crate::nat::StorableNat;
+use crate::storage::{BETS, MARKETS};
+use crate::token::registry::{get_supported_token_identifiers, get_token_info, TokenInfo};
+use crate::types::{MarketId, Timestamp, TokenAmount, TokenIdentifier};
 use candid::Principal;
+use ic_cdk_macros::{query, update};
+use icrc_ledger_types::icrc1::account::Account;
 
 /// Summary of token balance reconciliation for a single token
 #[derive(CandidType, Debug, Deserialize, Serialize, Clone)]
@@ -47,6 +48,8 @@ pub struct TokenBalanceBreakdown {
     pub active_markets: TokenAmount,
     /// Total tokens in pending activation markets
     pub pending_markets: TokenAmount,
+    /// Total tokens in expired markets
+    pub expired_markets: TokenAmount,
     /// Total tokens in resolved markets awaiting claims
     pub resolved_markets_unclaimed: TokenAmount,
     /// Total tokens in voided markets awaiting refunds
@@ -55,6 +58,8 @@ pub struct TokenBalanceBreakdown {
     pub pending_claims: TokenAmount,
     /// Platform fees collected but not yet transferred out
     pub platform_fees: TokenAmount,
+    /// Platform fees collected from void penalties
+    pub void_penalty_fees: TokenAmount,
 }
 
 /// Summary of all token balances
@@ -81,26 +86,26 @@ pub async fn calculate_token_balance_reconciliation() -> BalanceReconciliationSu
     if !crate::controllers::admin::is_admin(caller) {
         ic_cdk::trap("Unauthorized: Admin access required");
     }
-    
+
     let token_ids = get_supported_token_identifiers();
     let mut token_summaries = Vec::new();
     let timestamp = get_current_time();
-    
+
     for token_id in token_ids {
         let summary = calculate_single_token_balance(&token_id).await;
         token_summaries.push(summary);
     }
-    
+
     let result = BalanceReconciliationSummary {
         token_summaries,
         timestamp,
     };
-    
+
     // Store the result for future reference
     LATEST_BALANCE_SUMMARY.with(|cell| {
         *cell.borrow_mut() = Some(result.clone());
     });
-    
+
     result
 }
 
@@ -113,27 +118,28 @@ pub fn get_latest_token_balance_reconciliation() -> Option<BalanceReconciliation
     if !crate::controllers::admin::is_admin(caller) {
         ic_cdk::trap("Unauthorized: Admin access required");
     }
-    
-    LATEST_BALANCE_SUMMARY.with(|cell| {
-        cell.borrow().clone()
-    })
+
+    LATEST_BALANCE_SUMMARY.with(|cell| cell.borrow().clone())
+}
+
+fn calculate_penalty_fee(token: &TokenInfo) -> StorableNat {
+    token.activation_fee.clone()
 }
 
 /// Calculate balance reconciliation for a single token
 async fn calculate_single_token_balance(token_id: &TokenIdentifier) -> TokenBalanceSummary {
-    let token_info = get_token_info(token_id)
-        .expect("Token info not found");
-    
+    let token_info = get_token_info(token_id).expect("Token info not found");
+
     // Get actual token balance from the ledger
     let actual_balance = get_token_balance_from_ledger(token_id).await;
-    
+
     // Initialize breakdown categories
     let mut active_markets = TokenAmount::from(0u64);
-    let mut pending_markets = TokenAmount::from(0u64);
-    let mut resolved_markets_unclaimed = TokenAmount::from(0u64);
-    let mut voided_markets_unclaimed = TokenAmount::from(0u64);
+    let mut expired_markets = TokenAmount::from_u64(0u64);
     let mut platform_fees = TokenAmount::from(0u64);
-    
+    let mut void_penalty_fees = TokenAmount::from(0u64);
+    let pending_claims = calculate_pending_claims_total(token_id);
+
     // Calculate totals from markets
     MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
@@ -141,56 +147,54 @@ async fn calculate_single_token_balance(token_id: &TokenIdentifier) -> TokenBala
             if market.token_id != *token_id {
                 continue; // Skip markets with different tokens
             }
-            
-            // Sum all bets for this market
-            let market_bets = calculate_market_bet_total(&market_id, token_id);
-            
-            match market.status {
+
+            match &market.status {
                 MarketStatus::Active => {
-                    active_markets += market_bets;
-                },
-                MarketStatus::PendingActivation => {
-                    pending_markets += market_bets;
-                },
-                MarketStatus::Closed(_) => {
-                    // For closed markets, count unclaimed winnings
-                    resolved_markets_unclaimed += market_bets;
-                },
-                MarketStatus::Voided | MarketStatus::Disputed => {
-                    // For voided markets, count unclaimed refunds
-                    voided_markets_unclaimed += market_bets;
-                },
+                    // Sum all bets for this market
+                    active_markets += calculate_market_bet_total(&market_id, token_id);
+                }
                 MarketStatus::ExpiredUnresolved => {
-                    // These could go either way (might be voided or resolved)
-                    voided_markets_unclaimed += market_bets;
+                    // Sum all bets for this market
+                    expired_markets += calculate_market_bet_total(&market_id, token_id);
+                }
+                MarketStatus::PendingActivation => {
+                    // Not yet activated => 0 assets
+                    continue;
+                }
+                MarketStatus::Closed(outcomes) => {
+                    // Add platform fees (approximate based on bet volume and fee percentage)
+                    platform_fees += calculate_platform_fees_for_market(&market, &outcomes, &token_info);
+                }
+                MarketStatus::Voided | MarketStatus::Disputed => {
+                    // Count penalty fee
+                    void_penalty_fees += calculate_penalty_fee(&token_info) - token_info.transfer_fee.clone();
                 }
             }
-            
-            // Add platform fees (approximate based on bet volume and fee percentage)
-            platform_fees += calculate_platform_fees_for_market(&market_id, token_id, token_info.fee_percentage);
         }
     });
-    
-    // Add amounts from pending claims
-    let pending_claims = calculate_pending_claims_total(token_id);
-    
+
     // Calculate expected total
     // Note: We don't include platform_fees here because they're already accounted for
     // in the active_markets, pending_markets, etc. values.
     // The platform_fees value is calculated separately just for reporting breakdown.
-    let expected_balance = active_markets.clone() + 
-                          pending_markets.clone() + 
-                          resolved_markets_unclaimed.clone() + 
-                          voided_markets_unclaimed.clone() +
-                          pending_claims.clone();
-    
+    let expected_balance = StorableNat::from_u64(0u64)
+        + active_markets.clone()
+        + expired_markets.clone()
+        // + platform_fees.clone()  // Don't include platform fees since they already withdrawn
+        // + void_penalty_fees.clone() // Don't include void penalty fees since they already withdrawn
+        + pending_claims.clone();
+
     // Calculate difference and determine if balance is sufficient
     let (difference, is_sufficient) = if actual_balance >= expected_balance {
         (actual_balance.clone() - expected_balance.clone(), true)
     } else {
         (expected_balance.clone() - actual_balance.clone(), false)
     };
-    
+
+    let pending_markets = TokenAmount::from_u64(0u64);
+    let resolved_markets_unclaimed = TokenAmount::from_u64(0u64);
+    let voided_markets_unclaimed = TokenAmount::from_u64(0u64);
+
     TokenBalanceSummary {
         token_id: token_id.clone(),
         token_symbol: token_info.symbol,
@@ -201,10 +205,12 @@ async fn calculate_single_token_balance(token_id: &TokenIdentifier) -> TokenBala
         breakdown: TokenBalanceBreakdown {
             active_markets,
             pending_markets,
+            expired_markets,
             resolved_markets_unclaimed,
             voided_markets_unclaimed,
             pending_claims,
             platform_fees,
+            void_penalty_fees
         },
         timestamp: get_current_time(),
     }
@@ -213,39 +219,39 @@ async fn calculate_single_token_balance(token_id: &TokenIdentifier) -> TokenBala
 /// Query the token balance from the ledger canister
 async fn get_token_balance_from_ledger(token_id: &TokenIdentifier) -> TokenAmount {
     let canister_id = ic_cdk::id();
-    
+
     // Create account parameter for balance query
     let account = Account {
         owner: canister_id,
         subaccount: None,
     };
-    
+
     // Make ICRC1 balance call to the token ledger
     let ledger = match Principal::from_text(token_id) {
         Ok(principal) => principal,
         Err(_) => return TokenAmount::from(0u64),
     };
-    
+
     match ic_cdk::call::<(Account,), (candid::Nat,)>(ledger, "icrc1_balance_of", (account,)).await {
         Ok((balance,)) => {
             // Convert the Nat directly to TokenAmount
             // TokenAmount is u64 internally, so we need to ensure we don't lose precision
             let balance_str = balance.to_string();
             ic_cdk::println!("Retrieved balance for {}: {}", token_id, balance_str);
-            
+
             // Remove any underscores from the balance string
             let clean_balance_str = balance_str.replace("_", "");
-            
+
             // Try to convert the clean string representation to u64
             match clean_balance_str.parse::<u64>() {
                 Ok(value) => {
                     ic_cdk::println!("Successfully parsed balance to u64: {}", value);
                     TokenAmount::from(value)
-                },
+                }
                 Err(e) => {
                     // Log the parsing error
                     ic_cdk::println!("Warning: Balance parsing error: {} for value: {}", e, balance_str);
-                    
+
                     // For large balances that exceed u64, try to at least return a meaningful value
                     // by taking the lower 64 bits (this is a simplification but better than returning 0)
                     if let Some(stripped) = balance_str.strip_prefix("0x") {
@@ -256,21 +262,21 @@ async fn get_token_balance_from_ledger(token_id: &TokenIdentifier) -> TokenAmoun
                     } else {
                         // For decimal values that are too large, try to get the lower digits
                         if balance_str.len() > 20 {
-                            let truncated = &balance_str[balance_str.len()-19..balance_str.len()];
+                            let truncated = &balance_str[balance_str.len() - 19..balance_str.len()];
                             if let Ok(val) = truncated.parse::<u64>() {
                                 ic_cdk::println!("Using truncated value: {}", val);
                                 return TokenAmount::from(val);
                             }
                         }
                     }
-                    
+
                     // If all else fails, return the maximum possible u64 value
                     // This is better than returning 0 for balance checking
                     ic_cdk::println!("Fallback to maximum u64 value");
                     TokenAmount::from(u64::MAX)
                 }
             }
-        },
+        }
         Err(_) => {
             ic_cdk::println!("Failed to query balance for token {}", token_id);
             TokenAmount::from(0u64)
@@ -282,22 +288,27 @@ async fn get_token_balance_from_ledger(token_id: &TokenIdentifier) -> TokenAmoun
 fn calculate_market_bet_total(market_id: &MarketId, token_id: &TokenIdentifier) -> TokenAmount {
     // First check if the market exists and use its total_pool value if it matches the token
     let mut market_total = TokenAmount::from(0u64);
-    
+
     MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
         if let Some(market) = markets_ref.get(market_id) {
             if &market.token_id == token_id {
-                ic_cdk::println!("Found market {} with token {} and total_pool {}", market_id, token_id, market.total_pool);
+                ic_cdk::println!(
+                    "Found market {} with token {} and total_pool {}",
+                    market_id,
+                    token_id,
+                    market.total_pool
+                );
                 market_total = market.total_pool.clone();
             }
         }
     });
-    
+
     // If we found a matching market with funds, return its total_pool
     if market_total.to_u64() > 0 {
         return market_total;
     }
-    
+
     // Fallback to summing individual bets if market not found or token doesn't match
     BETS.with(|bets| {
         let bets_ref = bets.borrow();
@@ -307,29 +318,36 @@ fn calculate_market_bet_total(market_id: &MarketId, token_id: &TokenIdentifier) 
             }
         }
     });
-    
+
     ic_cdk::println!("Calculated market {} total from bets: {}", market_id, market_total);
     market_total
 }
 
 /// Calculate platform fees for a market
-fn calculate_platform_fees_for_market(
-    market_id: &MarketId,
-    token_id: &TokenIdentifier,
-    fee_percentage: u64
+pub fn calculate_platform_fees_for_market(
+    market: &Market,
+    winning_outcomes: &Vec<Nat>,
+    token_info: &TokenInfo,
 ) -> TokenAmount {
-    let market_total = calculate_market_bet_total(market_id, token_id);
-    
-    // Fee percentage is in basis points (100 = 1%)
-    let fee_amount = (market_total.to_u64() * fee_percentage) / 10000;
-    
+    let to_u64 = |v: &Nat| -> u64 {v.0.to_u64_digits().first().cloned().unwrap_or(0)};
+    let outcome_pools = market.outcome_pools.clone();
+
+    let market_total: StorableNat = calculate_market_bet_total(&market.id, &market.token_id);
+    let winning_pool_total: StorableNat = winning_outcomes
+    .iter()
+    .map(|i| outcome_pools[to_u64(i) as usize].clone())
+    .sum();
+    let lost_total: StorableNat = market_total - winning_pool_total;
+
+    let fee_amount = (lost_total * token_info.fee_percentage) / 10000;
+
     TokenAmount::from(fee_amount)
 }
 
 /// Calculate total pending claims for a token
 fn calculate_pending_claims_total(token_id: &TokenIdentifier) -> TokenAmount {
     let mut total = TokenAmount::from(0u64);
-    
+
     CLAIMS.with(|claims| {
         let claims_ref = claims.borrow();
         for (_, claim) in claims_ref.iter() {
@@ -339,6 +357,6 @@ fn calculate_pending_claims_total(token_id: &TokenIdentifier) -> TokenAmount {
             }
         }
     });
-    
+
     total
 }
