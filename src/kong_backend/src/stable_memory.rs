@@ -32,10 +32,8 @@ pub const REQUEST_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(205);
 pub const TRANSFER_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(206);
 
 thread_local! {
-    // static variable to store the map of principal_id to user_id
+    // Static variables
     pub static PRINCIPAL_ID_MAP: RefCell<BTreeMap<String, u32>> = RefCell::default();
-
-    // static variable to list of temporary suspended users
     pub static SUSPENDED_USERS: RefCell<BTreeMap<u32, SuspendedUser>> = RefCell::default();
 
     // MEMORY_MANAGER is given management of the entire stable memory. Given a 'MemoryId', it can
@@ -109,6 +107,6 @@ thread_local! {
 }
 
 /// A helper function to access the memory manager.
-pub fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
+fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
     MEMORY_MANAGER.with(|cell| f(&cell.borrow()))
 }
