@@ -3,71 +3,25 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal, formatLargeNumber, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { livePools } from "$lib/stores/poolStore";
-  import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
+  import type { UserPoolData } from "$lib/models/UserPool";
 
-  export let pool: any;
+  export let pool: UserPoolData;
   export let token0: any;
   export let token1: any;
 
-  // Get token objects for images
+  // Get actual pool for APR display
   $: actualPool = $livePools.find((p) => {
     return p.address_0 === pool.address_0 && p.address_1 === pool.address_1;
   });
 
-  // Calculate user's percentage of the pool
-  $: poolSharePercentage = calculateUserPoolPercentage(
-    actualPool?.balance_0,
-    actualPool?.balance_1,
-    pool?.amount_0,
-    pool?.amount_1
-  );
-
-  // Calculate earnings based on APY
-  function calculateEarnings(timeframe: number): string {
-    // Use APY from the actual pool
-    if (!actualPool?.rolling_24h_apy || !pool.usd_balance) {
-      return "0";
-    }
-
-    // Convert APY to daily rate and calculate linear projection
-    const apyDecimal = Number(actualPool.rolling_24h_apy) / 100; // Ensure it's a number
-    const dailyRate = apyDecimal / 365;
-    const earnings = parseFloat(pool.usd_balance) * dailyRate * timeframe;
-
-    return formatToNonZeroDecimal(earnings);
-  }
+  // Use pre-calculated values from the serializer
+  $: poolSharePercentage = formatToNonZeroDecimal(pool.poolSharePercentage);
+  $: userFeeShare0 = pool.userFeeShare0;
+  $: userFeeShare1 = pool.userFeeShare1;
+  $: totalFeesEarnedUSD = formatToNonZeroDecimal(pool.totalFeesEarnedUSD);
 </script>
 
 <div in:fade={{ duration: 100 }}>
-  <div class="stats-card">
-    <div class="stats-row">
-      <div class="stat-item">
-        <span class="stat-label">Total Value</span>
-        <span class="stat-value highlight"
-          >${formatToNonZeroDecimal(pool.usd_balance)}</span
-        >
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">APY</span>
-        <span class="stat-value accent"
-          >{formatToNonZeroDecimal(actualPool?.rolling_24h_apy)}%</span
-        >
-      </div>
-    </div>
-    <div class="stats-row">
-      <div class="stat-item">
-        <span class="stat-label">Pool Share</span>
-        <span class="stat-value highlight">{poolSharePercentage}%</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">LP Tokens</span>
-        <span class="stat-value highlight truncate" title={formatToNonZeroDecimal(pool.balance)}>
-          {formatLargeNumber(pool.balance)}
-        </span>
-      </div>
-    </div>
-  </div>
-
   <div class="token-holdings">
     <h3 class="section-title">Your Holdings</h3>
     <div class="token-card">
@@ -76,12 +30,12 @@
         <div class="token-details">
           <div class="token-info">
             <span class="token-name">{pool.symbol_0}</span>
-            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_0)}>
-              {formatToNonZeroDecimal(pool.amount_0)}
+            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_0.toString())}>
+              {formatToNonZeroDecimal(pool.amount_0.toString())}
             </span>
           </div>
           <span class="usd-value"
-            >${calculateTokenUsdValue(pool.amount_0, token0)}</span
+            >${calculateTokenUsdValue(pool.amount_0.toString(), token0)}</span
           >
         </div>
       </div>
@@ -90,70 +44,50 @@
         <div class="token-details">
           <div class="token-info">
             <span class="token-name">{pool.symbol_1}</span>
-            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_1)}>
-              {formatToNonZeroDecimal(pool.amount_1)}
+            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_1.toString())}>
+              {formatToNonZeroDecimal(pool.amount_1.toString())}
             </span>
           </div>
           <span class="usd-value"
-            >${calculateTokenUsdValue(pool.amount_1, token1)}</span
+            >${calculateTokenUsdValue(pool.amount_1.toString(), token1)}</span
           >
         </div>
+      </div>
+      <div class="holdings-total-row">
+        <span class="holdings-total-label">Value</span>
+        <span class="holdings-total-value">${formatToNonZeroDecimal(pool.usd_balance)} <span class="holdings-info">({poolSharePercentage}% share)</span></span>
       </div>
     </div>
   </div>
 
   <div class="earnings-container">
-    <h3 class="section-title">Estimated Earnings</h3>
-    <div class="earnings-grid">
-      {#each [{ label: "Daily", days: 1 }, { label: "Weekly", days: 7 }, { label: "Monthly", days: 30 }, { label: "Yearly", days: 365 }] as period}
-        <div class="earnings-card">
-          <span class="earnings-value truncate" title={calculateEarnings(period.days)}>
-            ${formatLargeNumber(calculateEarnings(period.days))}
+    <h3 class="section-title">Lifetime Fees Earned</h3>
+    <div class="fee-details">
+      <div class="fee-breakdown">
+        <div class="fee-token">
+          <TokenImages tokens={[token0]} size={16} />
+          <span class="fee-token-name">{pool.symbol_0}</span>
+          <span class="fee-token-amount" title={formatToNonZeroDecimal(userFeeShare0)}>
+            {formatLargeNumber(userFeeShare0)}
           </span>
-          <span class="earnings-label">{period.label}</span>
         </div>
-      {/each}
+        <div class="fee-token">
+          <TokenImages tokens={[token1]} size={16} />
+          <span class="fee-token-name">{pool.symbol_1}</span>
+          <span class="fee-token-amount" title={formatToNonZeroDecimal(userFeeShare1)}>
+            {formatLargeNumber(userFeeShare1)}
+          </span>
+        </div>
+        <div class="fee-total-row">
+          <span class="fee-total-label">Value</span>
+          <span class="fee-total-value">${totalFeesEarnedUSD} <span class="apy-text">({formatToNonZeroDecimal(actualPool?.rolling_24h_apy)}% APR)</span></span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <style lang="postcss">
-  .stats-card {
-    @apply mb-3 rounded-lg bg-kong-bg-light/50
-           border border-kong-border/10 overflow-hidden;
-  }
-
-  .stats-row {
-    @apply grid grid-cols-2 divide-x divide-kong-border/10;
-  }
-
-  .stats-row:not(:last-child) {
-    @apply border-b border-kong-border/10;
-  }
-
-  .stat-item {
-    @apply flex flex-col gap-0.5 p-3 items-center justify-center 
-           hover:bg-white/5;
-    transition-property: background-color;
-    transition-duration: 200ms;
-  }
-
-  .stat-label {
-    @apply text-xs text-kong-text-primary/60 font-medium uppercase tracking-wide;
-  }
-
-  .stat-value {
-    @apply text-lg font-medium tabular-nums max-w-full;
-  }
-
-  .stat-value.highlight {
-    @apply text-kong-text-primary;
-  }
-
-  .stat-value.accent {
-    @apply text-kong-text-accent-green;
-  }
-
   .section-title {
     @apply text-xs text-kong-text-primary/70 font-medium mb-2;
   }
@@ -198,27 +132,63 @@
     @apply text-xs text-kong-text-primary/60 tabular-nums;
   }
 
+  .holdings-total-row {
+    @apply flex items-center justify-between p-3;
+  }
+
+  .holdings-total-label {
+    @apply text-xs text-kong-text-primary/60 font-medium;
+  }
+
+  .holdings-total-value {
+    @apply text-sm font-medium text-kong-text-primary tabular-nums;
+  }
+
+  .holdings-info {
+    @apply text-kong-text-primary/60 text-xs;
+  }
+
   .earnings-container {
     @apply mb-3;
   }
 
-  .earnings-grid {
-    @apply grid grid-cols-2 gap-2;
+  .fee-details {
+    @apply rounded-lg bg-kong-bg-light/50
+           border border-kong-border/10 overflow-hidden;
   }
 
-  .earnings-card {
-    @apply p-3 rounded-lg bg-kong-bg-light/50
-           border border-kong-border/10 flex flex-col items-center gap-0.5 
-           hover:bg-white/5;
+
+  .fee-breakdown {
+    @apply divide-y divide-kong-border/10;
+  }
+
+  .fee-token {
+    @apply flex items-center gap-2 p-3 hover:bg-white/5;
     transition-property: background-color;
     transition-duration: 200ms;
   }
 
-  .earnings-label {
+  .fee-token-name {
+    @apply text-xs text-kong-text-primary/70 font-medium flex-1;
+  }
+
+  .fee-token-amount {
+    @apply text-sm font-medium text-kong-text-primary tabular-nums;
+  }
+
+  .fee-total-row {
+    @apply flex items-center justify-between p-3;
+  }
+
+  .fee-total-label {
     @apply text-xs text-kong-text-primary/60 font-medium;
   }
 
-  .earnings-value {
-    @apply text-sm font-medium text-kong-text-accent-green max-w-full;
+  .fee-total-value {
+    @apply text-sm font-medium text-kong-text-accent-green tabular-nums;
+  }
+
+  .apy-text {
+    @apply text-kong-text-primary/60 text-xs;
   }
 </style> 

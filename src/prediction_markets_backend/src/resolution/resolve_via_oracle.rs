@@ -4,8 +4,8 @@ use num_traits::ToPrimitive;
 
 use super::resolution::*;
 use super::finalize_market::finalize_market;
-use crate::stable_memory::*;
 use crate::types::{MarketId, OutcomeIndex};
+use crate::storage::{MARKETS, ORACLES};
 
 /// Resolves a market through oracle confirmation
 #[update]

@@ -9,12 +9,14 @@ mod common;
 
 // Import all the component-specific test modules
 mod admin;
+mod claims;  // New claims module for testing user-assisted claims system
 mod market;
 mod resolution;
 mod token;
 
 // Re-export test modules to make them discoverable
 pub use admin::*;
+pub use claims::*;  // Export claims tests
 pub use market::*;
 pub use token::*;
 

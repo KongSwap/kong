@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { app } from "$lib/state/app.state.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
-  import { Flame, TrendingUp, PiggyBank } from "lucide-svelte";
+  import { Flame, TrendingUp, PiggyBank, CheckCircle } from "lucide-svelte";
   import { livePools } from "$lib/stores/poolStore";
   import { tooltip } from "$lib/actions/tooltip";
 
@@ -18,8 +19,9 @@
     rolling_24h_apy: number;
   };
 
-  let { row } = $props<{
+  let { row, userPosition = null } = $props<{
     row: Pool;
+    userPosition?: any;
   }>();
 
   // Normalize numeric values once
@@ -55,8 +57,7 @@
 
   let { isTopVolume, isTopTVL, isTopAPY } = $derived(topPoolsInfo);
 
-  let isMobile = $state(false);
-  let showDetailsButton = $state(true);
+  let isMobile = $derived(app.isMobile);
 
   // Debounce the resize handler
   function debounce<T extends (...args: any[]) => void>(
@@ -69,22 +70,6 @@
       timeoutId = setTimeout(() => fn(...args), delay);
     };
   }
-
-  onMount(() => {
-    const checkMobile = () => {
-      isMobile = window.innerWidth < 768;
-      showDetailsButton = window.innerWidth >= 1150;
-    };
-
-    const debouncedCheckMobile = debounce(checkMobile, 250);
-
-    checkMobile(); // Initial check
-    window.addEventListener("resize", debouncedCheckMobile);
-
-    return () => {
-      window.removeEventListener("resize", debouncedCheckMobile);
-    };
-  });
 </script>
 
 {#if !isMobile}
@@ -99,6 +84,12 @@
       <div class="pool-name">
         <div class="flex items-center gap-2">
           <span>{pool.token0?.symbol}/{pool.token1?.symbol}</span>
+          {#if userPosition}
+            <div class="bg-kong-accent-green/10 text-kong-accent-green text-xs font-medium px-2 py-0.5 rounded-md flex items-center gap-1">
+              <CheckCircle size={10} />
+              <span>Position</span>
+            </div>
+          {/if}
           {#if isTopVolume || isTopTVL || isTopAPY}
             <div class="flex gap-1 items-center">
               {#if isTopVolume}
@@ -112,7 +103,7 @@
                 </div>
               {/if}
               {#if isTopAPY}
-                <div use:tooltip={{ text: "Top 5 by APY", direction: "top" }}>
+                <div use:tooltip={{ text: "Top 5 by APR", direction: "top" }}>
                   <TrendingUp class="w-5 h-5 text-green-400" />
                 </div>
               {/if}
@@ -148,7 +139,7 @@
                   </div>
                 {/if}
                 {#if isTopAPY}
-                  <div use:tooltip={{ text: "Top 5 by APY", direction: "top" }}>
+                  <div use:tooltip={{ text: "Top 5 by APR", direction: "top" }}>
                     <TrendingUp class="w-4 h-4 text-green-400" />
                   </div>
                 {/if}

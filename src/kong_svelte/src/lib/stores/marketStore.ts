@@ -112,7 +112,7 @@ function createMarketStore() {
         // Determine status filter for API
         let apiStatusFilter = undefined;
         if (statusFilter === 'open') {
-          apiStatusFilter = "Open";
+          apiStatusFilter = "Active";
         } else if (statusFilter === 'resolved') {
           apiStatusFilter = "Closed";
         } else if (statusFilter === 'voided') {
@@ -127,15 +127,35 @@ function createMarketStore() {
           statusFilter: statusFilter === 'all' ? undefined : apiStatusFilter
         });
         
-        // Just store the markets as they were returned from the backend
-        // without categorizing them
+        // Transform the markets from backend format to frontend format
         update(state => ({
           ...state,
-          markets: (allMarketsResult.markets || []).map(market => ({
-            ...market,
-            resolution_data: market.resolution_data?.[0] ?? "",
-            resolved_by: market.resolved_by?.[0] ?? null
-          })),
+          markets: (allMarketsResult.markets || []).map(market => {
+            // Transform MarketStatus from backend to frontend format
+            let frontendStatus;
+            if ('Active' in market.status || 'PendingActivation' in market.status) {
+              frontendStatus = { Active: null };
+            } else if ('Closed' in market.status) {
+              frontendStatus = { Closed: market.status.Closed };
+            } else if ('Disputed' in market.status) {
+              frontendStatus = { Disputed: null };
+            } else if ('Voided' in market.status) {
+              frontendStatus = { Voided: null };
+            } else if ('ExpiredUnresolved' in market.status) {
+              // Treat expired unresolved as still Open for frontend purposes
+              frontendStatus = { Active: null };
+            } else {
+              // Fallback to Open for unknown statuses
+              frontendStatus = { Active: null };
+            }
+
+            return {
+              ...market,
+              status: frontendStatus,
+              resolution_data: market.resolution_data?.[0] ?? "",
+              resolved_by: market.resolved_by?.[0] ?? null
+            };
+          }),
           loading: false,
           error: null
         }));
@@ -183,11 +203,11 @@ export const filteredMarkets = derived(
     let statusFilteredMarkets = filteredMarkets;
     if (statusFilter === 'open') {
       statusFilteredMarkets = filteredMarkets.filter(
-        market => 'Open' in market.status && BigInt(market.end_time) > nowNs
+        market => 'Active' in market.status && BigInt(market.end_time) > nowNs
       );
     } else if (statusFilter === 'expired') {
       statusFilteredMarkets = filteredMarkets.filter(
-        market => 'Open' in market.status && BigInt(market.end_time) <= nowNs
+        market => 'Active' in market.status && BigInt(market.end_time) <= nowNs
       );
     } else if (statusFilter === 'resolved') {
       statusFilteredMarkets = filteredMarkets.filter(

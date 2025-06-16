@@ -36,13 +36,26 @@ use crate::market::market::*;
 use crate::market::get_market_by_status::GetMarketsByStatusArgs;
 use crate::market::get_market_by_status::GetMarketsByStatusResult;
 use crate::market::update_expired_markets::*;
+// Import and re-export featured markets functionality
+pub use crate::market::featured::{GetFeaturedMarketsArgs, GetFeaturedMarketsResult};
+pub use crate::market::featured::{set_market_featured, get_featured_markets};
 
 use crate::market::estimate_return_types::{EstimatedReturn, TimeWeightPoint, BetPayoutRecord};
 // Standard types
 use crate::resolution::resolution::*;
 use crate::user::user::*;
 use crate::token::registry::TokenInfo;
-use crate::transaction_recovery::FailedTransaction;
+use crate::failed_transaction::FailedTransaction;
+// Claims system types
+use crate::claims::claims_api::*;
+// Market resolution details type for API export
+use crate::types::MarketResolutionDetails;
+// Token balance reconciliation
+use crate::token::balance::{BalanceReconciliationSummary, TokenBalanceSummary, TokenBalanceBreakdown};
+use crate::token::balance::{calculate_token_balance_reconciliation, get_latest_token_balance_reconciliation};
+use crate::market::get_all_markets::*;
+use crate::bet::latest_bets::*;
+
 use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
 use icrc_ledger_types::icrc21::responses::ConsentInfo; 
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
@@ -50,13 +63,17 @@ use icrc_ledger_types::icrc21::errors::ErrorInfo;
 pub mod bet;
 pub mod canister;
 pub mod category;
+pub mod claims;
 pub mod constants;
 pub mod controllers;
 pub mod delegation;
+pub mod failed_transaction;
 pub mod market;
 pub mod nat;
 pub mod resolution;
 pub mod stable_memory;
+pub mod storable_vec;
+pub mod storage;
 pub mod token;
 pub mod transaction_recovery;
 pub mod types;
@@ -65,6 +82,7 @@ pub mod utils;
 
 // Re-export common types for convenience
 pub use types::{MarketId, Timestamp, TokenAmount, OutcomeIndex, PoolAmount, BetCount, TokenIdentifier};
+pub use claims::claims_types::{ClaimRecord, ClaimStatus, ClaimType, ClaimableSummary, BatchClaimResult, ClaimResult};
 
 // Constants
 // const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; ///Production KONG canister
@@ -80,6 +98,11 @@ const KONG_LEDGER_ID: &str = "umunu-kh777-77774-qaaca-cai"; /// Canister ID for 
 /// ID found in stable storage (or starts from 0 if none).
 #[init]
 fn init() {
+    prepare_market_id();
+    crate::token::registry::init();
+}
+
+fn prepare_market_id() {
     MARKET_ID.store(max_market_id(), std::sync::atomic::Ordering::SeqCst);
 }
 
@@ -90,7 +113,8 @@ fn init() {
 /// Rust runtime and stable structures implementation.
 #[pre_upgrade]
 fn pre_upgrade() {
-    // No custom pre-upgrade logic needed as we're using stable structures
+    // Save state before upgrade
+    stable_memory::save();
 }
 
 /// Called after canister upgrade to restore state
@@ -104,11 +128,12 @@ fn pre_upgrade() {
 /// maintain their original configuration.
 #[post_upgrade]
 fn post_upgrade() {
+    // Restore state after upgrade
     stable_memory::restore();
-    ic_cdk::println!("Successfully restored stable memory in post_upgrade");
     
-    // No need to run migrations for existing markets as requested by the user
-    // New markets will automatically use the new token system, while existing ones remain unchanged
+    // Other post-upgrade initializations as needed
+    update_expired_markets();
+    prepare_market_id();
 }
 
 // Export Candid interface

@@ -1,5 +1,5 @@
 // Import the API_URL from '../index';
-import { IcrcTokenSerializer } from '$lib/serializers/tokens/IcrcTokenSerializer';
+import { IcrcToken } from '$lib/models/tokens/IcrcToken';
 import type { 
   TokensParams, 
   TokensResponse, 
@@ -15,7 +15,7 @@ import { auth } from '$lib/stores/auth';
 import { toastStore } from '$lib/stores/toastStore';
 import { userTokens } from '$lib/stores/userTokens';
 import { get } from 'svelte/store';
-import { canisters, type ICRC2_LEDGER, type KONG_FAUCET } from '$lib/config/auth.config';
+import { canisters, type CanisterType } from '$lib/config/auth.config';
 
 // Lazy initialization of API client to prevent SSR issues
 const getApiClient = () => {
@@ -67,7 +67,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<ProcessedToken
     }
     
     // Serialize the tokens
-    const serializedTokens = IcrcTokenSerializer.serializeTokens(tokens);
+    const serializedTokens = IcrcToken.serializeTokens(tokens);
 
     // Return the processed response
     return {
@@ -166,7 +166,7 @@ export const fetchTokensByCanisterId = async (canisterIds: string[]): Promise<Ko
     const tokens = Array.isArray(data) ? data : data.items || [];
     
     // Serialize the tokens
-    return IcrcTokenSerializer.serializeTokens(tokens);
+    return IcrcToken.serializeTokens(tokens);
   } catch (error) {
     console.error('Error fetching tokens by canister ID:', error);
     throw error;
@@ -198,7 +198,7 @@ export const addToken = async (canisterId: string): Promise<any> => {
  * Claims tokens from the faucet
  */
 export const faucetClaim = async (): Promise<void> => {
-  const actor = auth.pnp.getActor<KONG_FAUCET>({
+  const actor = auth.pnp.getActor<CanisterType['KONG_FAUCET']>({
     canisterId: canisters.kongFaucet.canisterId,
     idl: canisters.kongFaucet.idl,
     anon: false,
@@ -224,7 +224,7 @@ export const fetchTokenMetadata = async (canisterId: string): Promise<Kong.Token
       throw new Error("API calls can only be made in the browser");
     }
 
-    const actor = auth.pnp.getActor<ICRC2_LEDGER>({
+    const actor = auth.pnp.getActor<CanisterType['ICRC2_LEDGER']>({
       canisterId: canisterId,
       idl: canisters.icrc2.idl,
       anon: true,
@@ -241,8 +241,8 @@ export const fetchTokenMetadata = async (canisterId: string): Promise<Kong.Token
     // Create raw token data
     const rawTokenData = createRawTokenData(canisterId, tokenData, tokenId);
 
-    // Use the TokenSerializer to process the token data
-    return IcrcTokenSerializer.serializeTokenMetadata(rawTokenData);
+    // Use the Token model to process the token data
+    return IcrcToken.serializeTokenMetadata(rawTokenData);
   } catch (error) {
     console.error('Error fetching token metadata:', error);
     toastStore.error('Error fetching token metadata');
@@ -300,7 +300,7 @@ const createRawTokenData = (canisterId: string, tokenData: any, tokenId: number)
       price_change_24h: "0"
     },
     balance: "0",
-    logo_url: IcrcTokenSerializer.extractLogoFromMetadata(metadata as Array<[string, any]>),
+    logo_url: IcrcToken.extractLogoFromMetadata(metadata as Array<[string, any]>),
     token_type: "IC",
     token_id: tokenId,
     chain: "IC",

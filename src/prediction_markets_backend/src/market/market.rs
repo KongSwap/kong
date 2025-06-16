@@ -144,7 +144,11 @@ pub struct Market {
     
     /// Identifier for the token used in this market (KONG, ICP, etc.)
     /// All bets and payouts use this token type
-    pub token_id: TokenIdentifier
+    pub token_id: TokenIdentifier,
+    
+    /// Whether this market is featured (highlighted in UI)
+    /// Featured markets are prioritized in listings
+    pub featured: bool
 }
 
 impl Storable for Market {

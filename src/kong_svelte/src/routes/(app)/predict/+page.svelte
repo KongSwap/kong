@@ -200,8 +200,8 @@
 
       await placeBet(
         kongToken,
-        Number(selectedMarket.id),
-        selectedOutcome,
+        BigInt(selectedMarket.id),
+        BigInt(selectedOutcome),
         scaledAmount,
       );
 

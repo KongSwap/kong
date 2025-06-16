@@ -1,100 +1,77 @@
 //! # Resolution Proposal Management
-//!
+//! 
 //! This module manages the creation, validation, and processing of 
 //! market resolution proposals for the dual approval system.
 
-use candid::Principal;
-use ic_cdk::update;
-
-use crate::resolution::resolution_auth::*;
-use crate::resolution::resolution_actions::*;
-use crate::resolution::resolution_refunds::*;
-use crate::resolution::finalize_market::finalize_market;
-use crate::resolution::resolution::*;
-use crate::controllers::admin::*;
+use super::resolution::*;
+use super::finalize_market::finalize_market;
+use crate::controllers::admin::is_admin;
+use crate::resolution::resolution_refunds::{create_refund_claims, create_dispute_refund_claims};
+use crate::types::*;
 use crate::market::market::*;
-use crate::stable_memory::*;
-use crate::types::{MarketId, OutcomeIndex, TokenIdentifier}; 
-use crate::canister::get_current_time;
-use crate::token::registry::get_token_info;
-use crate::token::transfer::burn_tokens;
+use crate::storage::*;
+use crate::get_current_time;
 
-/// Proposes or executes a resolution for a market
-///
-/// This function implements the dual resolution system with two distinct resolution flows:
-///
-/// 1. **Admin-Created Markets**: When an admin calls this function for a market created by any admin,
-///    the resolution is immediate. The market is finalized directly without requiring a second approval.
-///
-/// 2. **User-Created Markets**: Requires dual approval between the creator and an admin.
-///    - When a creator proposes first, it's recorded as a proposal waiting for admin confirmation
-///    - When an admin proposes first, it's recorded as a proposal waiting for creator confirmation
-///    - When the second party proposes matching outcomes, the market is finalized
-///    - When the second party proposes different outcomes, the market is voided and creator's deposit burned
-///
-/// # Parameters
-/// * `market_id` - ID of the market to resolve
-/// * `winning_outcomes` - Vector of outcome indices that won (multiple allowed for multi-select markets)
-///
-/// # Returns
-/// * `Result<(), ResolutionError>` - Success or failure with error reason
-///
-/// # Security
-/// Only market creators and admins can call this function. For admin-created markets,
-/// only admins can resolve. For user-created markets, both the creator and an admin
-/// must agree on the outcome.
-// Note: #[update] attribute removed to avoid conflict with the original function in dual_approval.rs
 pub async fn propose_resolution(
     market_id: MarketId, 
     winning_outcomes: Vec<OutcomeIndex>
-) -> Result<(), ResolutionError> {
-    // Validate outcome indices are not empty
-    if winning_outcomes.is_empty() {
-        return Err(ResolutionError::InvalidOutcome);
-    }
-    
+) -> ResolutionResult {
     let caller = ic_cdk::caller();
+    
+    // Validate authorization: Only market creator or admin can propose resolution
     let is_caller_admin = is_admin(caller);
     
-    // Get market
-    let mut market = MARKETS.with(|markets| {
+    // Get the market
+    let mut market = match MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
-        markets_ref.get(&market_id).ok_or(ResolutionError::MarketNotFound)
-    })?;
+        markets_ref.get(&market_id)
+    }) {
+        Some(market) => market,
+        None => return ResolutionResult::Error(ResolutionError::MarketNotFound)
+    };
     
-    // Check if market is active
-    if !matches!(market.status, MarketStatus::Active) {
-        return Err(ResolutionError::InvalidMarketStatus);
+    // Check if caller is the market creator
+    let is_caller_creator = market.creator == caller;
+    
+    // Verify authorization (must be either market creator or admin)
+    if !is_caller_admin && !is_caller_creator {
+        return ResolutionResult::Error(ResolutionError::Unauthorized);
     }
     
-    // Verify the market has ended
-    let current_time = get_current_time();
-    if !has_market_ended(&market, current_time.into()) {
-        return Err(ResolutionError::MarketStillOpen);
-    }
+    // Fast path for admin-created markets: Admin can directly resolve without dual approval
+    let is_admin_market = is_admin(market.creator);
     
-    // Determine the caller's role in relation to this market
-    let is_caller_creator = market.creator == caller;  // Is caller the creator of this market?
-    let is_market_creator_admin = is_admin(market.creator);  // Was this market created by an admin?
-    
-    // Check authorization - only creator or admin can propose resolutions
-    if !can_resolve_market(&market, caller) {
-        return Err(ResolutionError::Unauthorized);
-    }
-    
-    // Special case: For admin-created markets, any admin can resolve directly without dual approval
-    if is_market_creator_admin && is_caller_admin {
-        ic_cdk::println!("Admin resolving admin-created market: bypassing dual approval");
+    if is_admin_market && is_caller_admin {
+        // Skip the dual approval process for admin-created markets
+        ic_cdk::println!("Admin resolving admin-created market directly");
         
-        // Use the direct resolution function from resolution_actions
-        return resolve_market_directly(market_id, &mut market, winning_outcomes, caller).await;
+        // Finalize the market in one step when admin resolves an admin-created market
+        match finalize_market(&mut market, winning_outcomes.clone()).await {
+            Ok(_) => {
+                // Update market status to Closed with winning outcomes
+                market.status = MarketStatus::Closed(
+                    winning_outcomes.iter().map(|idx| idx.inner().clone()).collect()
+                );
+                market.resolved_by = Some(caller);
+                
+                // CRITICAL FIX: Persist market with updated status
+                MARKETS.with(|markets| {
+                    let mut markets_ref = markets.borrow_mut();
+                    markets_ref.insert(market_id.clone(), market);
+                });
+                
+                ic_cdk::println!("Admin-created market {} successfully resolved", market_id.to_u64());
+                return ResolutionResult::Success;
+            },
+            Err(e) => return ResolutionResult::Error(e)
+        }
     }
     
-    // Validate outcome indices are valid for this market
+    // Ensure each outcome index is valid for this market
     for outcome_index in &winning_outcomes {
         let idx = outcome_index.to_u64() as usize;
         if idx >= market.outcomes.len() {
-            return Err(ResolutionError::InvalidOutcome);
+            return ResolutionResult::Error(ResolutionError::InvalidOutcome);
         }
     }
     
@@ -130,10 +107,10 @@ pub async fn propose_resolution(
             // Provide appropriate feedback based on who initiated the proposal
             if is_caller_creator {
                 ic_cdk::println!("Market creator proposed resolution, waiting for admin confirmation");
-                Ok(())
+                ResolutionResult::AwaitingAdminApproval
             } else {
                 ic_cdk::println!("Admin proposed resolution, waiting for creator confirmation");
-                Ok(())
+                ResolutionResult::AwaitingCreatorApproval
             }
         },
         // Second resolution step: Proposal exists, now checking for agreement/disagreement
@@ -158,14 +135,35 @@ pub async fn propose_resolution(
                     });
                     
                     // Finalize the market with the agreed outcomes
-                    return finalize_market(&mut market, winning_outcomes).await;
+                    match finalize_market(&mut market, winning_outcomes.clone()).await {
+                        Ok(_) => {
+                            // CRITICAL FIX: Update market status to Closed with winning outcomes
+                            market.status = MarketStatus::Closed(
+                                winning_outcomes.iter().map(|idx| idx.inner().clone()).collect()
+                            );
+                            market.resolved_by = Some(caller);
+                            
+                            // CRITICAL FIX: Persist updated market in storage
+                            MARKETS.with(|markets| {
+                                let mut markets_ref = markets.borrow_mut();
+                                markets_ref.insert(market_id.clone(), market);
+                            });
+                            
+                            ic_cdk::println!("Market {} successfully finalized and persisted", market_id.to_u64());
+                            return ResolutionResult::Success;
+                        },
+                        Err(e) => return ResolutionResult::Error(e)
+                    }
                 } else {
                     // DISAGREEMENT: Admin disagrees with creator's proposed outcomes
                     ic_cdk::println!("Admin disagrees with creator's resolution. Voiding market.");
                     
                     // In case of disagreement, void the market and burn creator's deposit
                     // as a penalty for incorrect resolution
-                    return handle_resolution_disagreement(market_id, market, proposal).await;
+                    match handle_resolution_disagreement(market_id, market, proposal).await {
+                        Ok(_) => return ResolutionResult::Success,
+                        Err(e) => return ResolutionResult::Error(e)
+                    }
                 }
             }
             
@@ -185,107 +183,102 @@ pub async fn propose_resolution(
                     });
                     
                     // Finalize the market with the agreed outcomes
-                    return finalize_market(&mut market, winning_outcomes).await;
+                    match finalize_market(&mut market, winning_outcomes.clone()).await {
+                        Ok(_) => {
+                            // CRITICAL FIX: Update market status to Closed with winning outcomes
+                            market.status = MarketStatus::Closed(
+                                winning_outcomes.iter().map(|idx| idx.inner().clone()).collect()
+                            );
+                            market.resolved_by = Some(proposal.admin_approver.unwrap_or(caller));
+                            
+                            // CRITICAL FIX: Persist updated market in storage
+                            MARKETS.with(|markets| {
+                                let mut markets_ref = markets.borrow_mut();
+                                markets_ref.insert(market_id.clone(), market);
+                            });
+                            
+                            ic_cdk::println!("Market {} successfully finalized and persisted", market_id.to_u64());
+                            return ResolutionResult::Success;
+                        },
+                        Err(e) => return ResolutionResult::Error(e)
+                    }
                 } else {
                     // DISAGREEMENT: Creator disagrees with admin's proposed outcomes
                     ic_cdk::println!("Creator disagrees with admin's resolution. Voiding market.");
                     
-                    // In case of disagreement, void the market and burn creator's deposit
-                    // as a penalty for incorrect resolution
-                    return handle_resolution_disagreement(market_id, market, proposal).await;
+                    // If the creator disagrees with the admin's proposed resolution,
+                    // the market is voided - just like when an admin disagrees with a creator
+                    match handle_resolution_disagreement(market_id, market, proposal).await {
+                        Ok(_) => return ResolutionResult::Success,
+                        Err(e) => return ResolutionResult::Error(e)
+                    }
                 }
-            } else {
-                // Edge case: this covers scenarios like both parties already approved,
-                // or other unexpected states. Included for security and completeness.
-                ic_cdk::println!("Unexpected approval state: creator_approved={}, admin_approved={}, caller_is_creator={}, caller_is_admin={}", 
-                              creator_already_approved, admin_already_approved, is_caller_creator, is_caller_admin);
-                Err(ResolutionError::Unauthorized)
             }
-        },
+            
+            // EDGE CASE: Caller is attempting to re-submit an already submitted proposal
+            else if (is_caller_creator && creator_already_approved) || 
+                     (is_caller_admin && admin_already_approved) {
+                // Caller is attempting to submit a proposal they already made
+                if is_caller_creator {
+                    ic_cdk::println!("Creator has already proposed a resolution, waiting for admin approval");
+                    ResolutionResult::AwaitingAdminApproval
+                } else {
+                    ic_cdk::println!("Admin has already proposed a resolution, waiting for creator approval");
+                    ResolutionResult::AwaitingCreatorApproval
+                }
+            }
+            
+            else {
+                // This should not happen given the logic above, but handle it gracefully
+                return ResolutionResult::Error(ResolutionError::Unauthorized);
+            }
+        }
     };
-
-    // Given dual approval paths should have returned earlier, so if we reach here,
-    // we assume we're waiting for admin approval in the dual approval flow.
-    Err(ResolutionError::AwaitingAdminApproval)
+    
+    // Return the appropriate waiting state (should be unreachable due to early returns above)
+    if is_caller_creator {
+        ResolutionResult::AwaitingAdminApproval
+    } else {
+        ResolutionResult::AwaitingCreatorApproval
+    }
 }
 
-/// Handles resolution disagreement by voiding the market
-///
-/// When there's a disagreement between the market creator and admin about the
-/// correct market resolution outcomes, this function:
-/// 1. Burns the creator's minimum bet deposit (activation amount) as a penalty
-/// 2. Refunds all other bets to their respective users
-/// 3. Marks the market as voided due to resolution disagreement
-///
-/// This ensures accountability while protecting users who placed bets on the market.
-///
-/// # Parameters
-/// * `market_id` - ID of the market with resolution disagreement
-/// * `market` - The market data structure to be updated
-/// * `proposal` - The resolution proposal containing disagreement details
-///
-/// # Returns
-/// * `Result<(), ResolutionError>` - Success or error reason if the process fails
-pub async fn handle_resolution_disagreement(
+// This function handles the case where there's a disagreement between
+// market creator and admin on resolution outcomes 
+async fn handle_resolution_disagreement(
     market_id: MarketId,
     mut market: Market,
     proposal: ResolutionProposal
 ) -> Result<(), ResolutionError> {
-    // Log the disagreement
+    // Log the disagreement details
     ic_cdk::println!(
-        "Resolution disagreement detected for market {}. Creator: {}, Admin: {}",
-        market_id, 
-        proposal.creator,
-        proposal.admin_approver.unwrap_or_else(|| Principal::anonymous())
+        "Resolution disagreement for market {}. Voiding market and burning creator's deposit.",
+        market_id.to_u64()
     );
     
-    // Get token information
-    let token_id = &market.token_id;
-    let token_info = get_token_info(token_id)
-        .ok_or(ResolutionError::MarketNotFound)?;
-        
-    // Calculate the creator's deposit amount using the min_activation_bet function
-    let activation_amount = crate::types::min_activation_bet(token_id);
-    
-    // Log burn amount
-    ic_cdk::println!(
-        "Burning creator's deposit of {} {} tokens as penalty for incorrect resolution",
-        activation_amount.to_u64() / 10u64.pow(token_info.decimals as u32),
-        token_info.symbol
-    );
-    
-    // Burn the creator's deposit as penalty for incorrect resolution
-    // This is to discourage creators from proposing incorrect resolutions
-    let burn_result = burn_tokens(
-        token_id,
-        activation_amount
-    ).await;
-    
-    if let Err(err) = burn_result {
-        ic_cdk::println!("Error burning creator deposit: {:?}", err);
-        // Continue despite burn error to ensure users get refunds
+    // Process refunds for all bets AND burn the creator's deposit
+    // This creates claims for all bettors to withdraw their funds,
+    // except for the creator's activation deposit which gets burned
+    if let Err(e) = create_dispute_refund_claims(&market_id, &market).await {
+        return Err(e);
     }
     
-    // Process refunds for all betters EXCEPT the activation deposit
-    refund_all_bets(&market_id, &market).await?;
-    
-    // Update market status to voided due to resolution disagreement
+    // Update market status to Voided
     market.status = MarketStatus::Voided;
-    // Note: Market doesn't have a closed_at field in this implementation
     
-    // Log market status change
-    ic_cdk::println!("Market {} has been voided due to resolution disagreement", market_id);
+    // Record disagreement details
+    market.resolution_data = Some(format!(
+        "Voided due to resolution disagreement. Creator proposed {:?}, Admin proposed different outcomes.",
+        proposal.proposed_outcomes.iter().map(|n| n.to_u64()).collect::<Vec<_>>()
+    ));
     
-    // Clone market_id for insertion to avoid ownership issues
-    let market_id_clone = market_id.clone();
-    
-    // Update market in storage
+    // Store the updated market in stable storage
     MARKETS.with(|markets| {
         let mut markets_ref = markets.borrow_mut();
-        markets_ref.insert(market_id_clone, market);
+        markets_ref.insert(market_id.clone(), market);
     });
     
-    // Remove the resolution proposal
+    // Remove the resolution proposal since it's been processed
     RESOLUTION_PROPOSALS.with(|proposals| {
         let mut proposals = proposals.borrow_mut();
         proposals.remove(&market_id);
@@ -294,10 +287,8 @@ pub async fn handle_resolution_disagreement(
     Ok(())
 }
 
-/// Helper function to check if a market has ended
+// Helper function to check if a market has ended
 fn has_market_ended(market: &Market, current_time: u64) -> bool {
-    // Compare the current_time with the market's end_time
-    // Convert StorableNat to u64 for comparison
-    let end_time_u64: u64 = market.end_time.clone().into(); // Use the Into trait to convert StorableNat to u64
-    current_time >= end_time_u64
+    let end_time = market.end_time.to_u64();
+    current_time >= end_time
 }

@@ -5,8 +5,8 @@ use serde::Deserialize;
 use super::market::Market;
 use super::query_utils::{MarketFilter, MarketSorter, MarketTransformer, SortDirection, MarketSortField};
 
-use crate::stable_memory::*;
-use crate::nat::StorableNat;
+use crate::nat::*;
+use crate::storage::MARKETS;
 use crate::types::TokenIdentifier;
 
 #[derive(CandidType, Deserialize)]
@@ -81,10 +81,10 @@ pub fn search_markets(args: SearchMarketsArgs) -> SearchMarketsResult {
         // Get the sort direction or use the default (Descending)
         let direction = args.sort_direction.unwrap_or(SortDirection::Descending);
         
-        Some(MarketSorter::new(field, direction))
+        Some(MarketSorter::with_options(field, direction))
     } else {
         // Default to sorting by creation time (most recent first)
-        Some(MarketSorter::new(
+        Some(MarketSorter::with_options(
             MarketSortField::CreationTime,
             SortDirection::Descending,
         ))

@@ -14,6 +14,7 @@
     Flame,
     TrendingUp,
     PiggyBank,
+    CheckCircle,
   } from "lucide-svelte";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
   import { auth } from "$lib/stores/auth";
@@ -31,12 +32,21 @@
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { themeStore } from "$lib/stores/themeStore";
   import { getThemeById } from "$lib/themes/themeRegistry";
+  import { app } from "$lib/state/app.state.svelte";
   import type { ThemeColors } from "$lib/themes/baseTheme";
+
+
+  // Temporary Mobile Detection until stores are removed. With stores, the Svelte 5 $derived rune is not available, the current implementation is a temporary workaround.
+  let isMobile = $state(app.isMobile);
+
+  $effect(() => {
+    isMobile = app.isMobile;
+    // console.log("isMobile", isMobile);
+  });
 
   // Navigation state
   const activeSection = writable("pools");
   const activePoolView = writable("all");
-  let isMobile = writable(false);
   let searchQuery = browser ? $page.url.searchParams.get("search") || "" : "";
   let pageQuery = browser
     ? parseInt($page.url.searchParams.get("page") || "1")
@@ -137,6 +147,22 @@
       return sorted;
     },
   );
+  
+  // Create derived pools with user position data
+  const livePoolsWithUserData = derived(
+    [livePools, currentUserPoolsStore],
+    ([$livePools, $currentUserPoolsStore]) => {
+      return $livePools.map(pool => {
+        const userPosition = $currentUserPoolsStore.filteredPools.find(
+          p => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
+        );
+        return {
+          ...pool,
+          userPosition
+        };
+      });
+    },
+  );
 
   // Add new state variables for mobile pagination
   let mobilePage = 1;
@@ -147,7 +173,7 @@
   async function handleMobileScroll() {
     if (!browser) return;
     if (
-      !$isMobile ||
+      !isMobile ||
       $activePoolView !== "all" ||
       isMobileFetching ||
       mobilePage >= mobileTotalPages
@@ -229,17 +255,6 @@
       .finally(() => {
         isLoading.set(false);
       });
-
-    if (browser) {
-      window.addEventListener("resize", checkMobile);
-      checkMobile();
-    }
-    cleanup = () => {
-      if (browser) {
-        window.removeEventListener("resize", checkMobile);
-      }
-    };
-    return cleanup;
   });
 
   // Update the reactive statement with debounce
@@ -321,17 +336,6 @@
       }
     }, 300);
   }
-
-  const checkMobile = () => {
-    if (!browser) return;
-    $isMobile = window.innerWidth < 768;
-  };
-
-  $effect(() => {
-    if (browser) {
-      checkMobile();
-    }
-  });
 
   onDestroy(() => {
     cleanup?.();
@@ -419,7 +423,7 @@
       icon: PiggyBank,
     },
     {
-      label: "Highest APY",
+      label: "Highest APR",
       value: `${Math.max(...($livePools || []).map((pool) => Number(pool.rolling_24h_apy))).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
       icon: Flame,
       hideOnMobile: true,
@@ -431,7 +435,7 @@
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
     {#if $activeSection === "pools"}
       <Panel 
-        className="flex-1 {$isMobile ? '' : '!p-0'}" 
+        className="flex-1 {isMobile ? '' : '!p-0'}" 
         variant={isTableTransparent() ? "transparent" : "solid"}
       >
         <div class="overflow-hidden flex flex-col h-full rounded-lg">
@@ -507,7 +511,7 @@
                       >
                         <option value="rolling_24h_volume">Volume 24H</option>
                         <option value="tvl">TVL</option>
-                        <option value="rolling_24h_apy">APY</option>
+                        <option value="rolling_24h_apy">APR</option>
                         <option value="price">Price</option>
                       </select>
                       <div class="w-px bg-white/[0.04]"></div>
@@ -586,7 +590,7 @@
                     <div class="flex-1 px-4 py-2">
                       <input
                         type="text"
-                        placeholder={$isMobile == true
+                        placeholder={isMobile == true
                           ? "Search pools..."
                           : "Search pools by name, symbol, or canister ID"}
                         class="w-full bg-transparent text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:border-b focus:border-kong-primary/20 transition-all duration-200 pb-1"
@@ -625,7 +629,7 @@
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
               <div class="h-full overflow-auto">
-                {#if $isMobile}
+                {#if isMobile}
                   <!-- Mobile/Tablet Card View -->
                   <div
                     class="lg:hidden space-y-3 pb-3 h-full overflow-auto py-2 mobile-pools-container"
@@ -633,10 +637,17 @@
                   >
                     {#each $sortedMobilePools as pool, i (pool.address_0 + pool.address_1)}
                       <button
-                        on:click={() =>
-                          goto(
-                            `/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`,
-                          )}
+                        on:click={() => {
+                          // Check if user has a position in this pool
+                          const userPosition = $currentUserPoolsStore.filteredPools.find(
+                            p => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
+                          );
+                          if (userPosition) {
+                            goto(`/pools/${pool.address_0}_${pool.address_1}/position`);
+                          } else {
+                            goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`);
+                          }
+                        }}
                         class="w-full text-left bg-white/[0.02] rounded-xl border border-white/[0.04] hover:border-kong-primary/20 hover:bg-white/[0.04] active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-lg backdrop-blur-md {pool.address_0 ===
                           KONG_CANISTER_ID ||
                         pool.address_1 === KONG_CANISTER_ID
@@ -660,11 +671,19 @@
                                 {pool.symbol_0}/{pool.symbol_1}
                               </div>
                             </div>
-                            <div
-                              class="text-kong-primary text-base font-medium flex items-center gap-1.5 bg-kong-primary/5 px-2.5 py-1 rounded-lg"
-                            >
-                              <Flame class="w-4 h-4" />
-                              {Number(pool.rolling_24h_apy).toFixed(2)}%
+                            <div class="flex items-center gap-2">
+                              {#if $currentUserPoolsStore.filteredPools.find(p => p.address_0 === pool.address_0 && p.address_1 === pool.address_1)}
+                                <div class="bg-kong-accent-green/10 text-kong-accent-green text-xs font-medium px-2 py-1 rounded-md flex items-center gap-1">
+                                  <CheckCircle size={12} />
+                                  <span>Position</span>
+                                </div>
+                              {/if}
+                              <div
+                                class="text-kong-primary text-base font-medium flex items-center gap-1.5 bg-kong-primary/5 px-2.5 py-1 rounded-lg"
+                              >
+                                <Flame class="w-4 h-4" />
+                                {Number(pool.rolling_24h_apy).toFixed(2)}%
+                              </div>
                             </div>
                           </div>
 
@@ -723,7 +742,7 @@
                   <!-- Desktop Table View -->
                   <div class="hidden sm:flex sm:flex-col h-full">
                     <DataTable
-                      data={$livePools}
+                      data={$livePoolsWithUserData}
                       rowKey="pool_id"
                       columns={[
                         {
@@ -733,7 +752,7 @@
                           width: "30%",
                           sortable: true,
                           component: PoolRow,
-                          componentProps: {},
+                          componentProps: (row) => ({ userPosition: row.userPosition }),
                           sortValue: (row) => `${row.symbol_0}/${row.symbol_1}`,
                         },
                         {
@@ -767,7 +786,7 @@
                         },
                         {
                           key: "rolling_24h_apy",
-                          title: "APY",
+                          title: "APR",
                           align: "right",
                           width: "17.5%",
                           sortable: true,
@@ -784,10 +803,17 @@
                         direction: "desc",
                       }}
                       onPageChange={handlePageChange}
-                      onRowClick={(row) =>
-                        goto(
-                          `/pools/add?token0=${row.address_0}&token1=${row.address_1}`,
-                        )}
+                      onRowClick={(row) => {
+                        // Check if user has a position in this pool
+                        const userPosition = $currentUserPoolsStore.filteredPools.find(
+                          p => p.address_0 === row.address_0 && p.address_1 === row.address_1
+                        );
+                        if (userPosition) {
+                          goto(`/pools/${row.address_0}_${row.address_1}/position`);
+                        } else {
+                          goto(`/pools/add?token0=${row.address_0}&token1=${row.address_1}`);
+                        }
+                      }}
                       isKongRow={(row) =>
                         row.address_0 === KONG_CANISTER_ID ||
                         row.address_1 === KONG_CANISTER_ID}
@@ -799,7 +825,7 @@
             {:else if $activePoolView === "user"}
               <!-- User Pools View -->
               {#if $auth.isConnected}
-                <div class="h-full custom-scrollbar">
+                <div class="h-full overflow-auto custom-scrollbar">
                   <UserPoolList
                     on:poolClick={handlePoolClick}
                     searchQuery={searchTerm}

@@ -2,7 +2,7 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { InfoIcon } from "lucide-svelte";
+  import { Info } from "lucide-svelte";
   import { tooltip } from "$lib/actions/tooltip";
   import { tokenData } from "$lib/stores/tokenData";
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
@@ -77,7 +77,7 @@
             <span use:tooltip={{
               text: "Statistics for the currently selected trading pair",
               direction: "bottom",
-            }}><InfoIcon size={16} /></span>
+            }}><Info size={16} /></span>
           </span>
         </div>
         {#if selectedPool?.pool_id}
@@ -131,9 +131,9 @@
           </div>
         </div>
 
-        <!-- APY -->
+        <!-- APR -->
         <div class="flex flex-col">
-          <div class="text-xs text-kong-text-primary/50 uppercase tracking-wider whitespace-nowrap mb-1">24h APY</div>
+          <div class="text-xs text-kong-text-primary/50 uppercase tracking-wider whitespace-nowrap mb-1">24h APR</div>
           <div class="text-sm font-medium text-kong-text-primary flex items-center gap-1">
             {apy}% 
             {#if Number(apy) > 0}

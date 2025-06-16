@@ -90,7 +90,8 @@
         isLoading: isLoadingBalances || $currentUserPoolsStore?.loading,
         onRefresh: refreshPoolsData,
         showUsdValues,
-        isRefreshing
+        isRefreshing,
+        onNavigate: navigateAndClose
       })
     },
     history: {

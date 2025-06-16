@@ -576,7 +576,7 @@ type SendReply = record {
     to_address : text;
     ts : nat64;
 };
-type SendResult = variant { OK : SendReply; Err : text };
+type SendResult = variant { Ok : SendReply; Err : text };
 
 service : {
     // icrc1 standards

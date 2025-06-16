@@ -352,11 +352,11 @@
         <div class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1">
           <TrendingUp class="w-3 h-3 sm:w-4 sm:h-4" />
           <span class="flex items-center gap-1">
-            Weighted APY
+            Weighted APR
             <span 
               class="text-kong-text-secondary hover:text-kong-text-primary transition-colors cursor-help"
               use:tooltip={{ 
-                text: "This APY is weighted by the USD value of each position, giving more influence to larger positions.", 
+                text: "This APR is weighted by the USD value of each position, giving more influence to larger positions.", 
                 direction: "top",
                 background: "bg-kong-bg-dark",
                 paddingClass: "p-3",
@@ -424,7 +424,7 @@
         </div>
       {:else}
         <!-- Table Headers with sorting - Hidden on mobile -->
-        <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-dark">
+        <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,0.8fr,0.8fr,1fr] sm:gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-dark">
           <button 
             class="flex items-center gap-1 text-left hover:text-kong-text-primary transition-colors"
             on:click={() => updateSort("name")}
@@ -444,6 +444,7 @@
               <ArrowDownUp class="w-3 h-3 {sortDirection === 'asc' ? 'rotate-180' : ''}" />
             {/if}
           </button>
+          <div class="text-right">Share</div>
           <button 
             class="flex items-center gap-1 justify-end hover:text-kong-text-primary transition-colors"
             on:click={() => updateSort("apy")}
@@ -454,7 +455,7 @@
               paddingClass: "p-2"
             }}
           >
-            <span>APY</span>
+            <span>APR</span>
             {#if sortBy === "apy"}
               <ArrowDownUp class="w-3 h-3 {sortDirection === 'asc' ? 'rotate-180' : ''}" />
             {/if}
@@ -482,7 +483,7 @@
                 class="px-2 py-1 text-xs rounded {sortBy === 'apy' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-dark/50 text-kong-text-secondary'}"
                 on:click={() => updateSort("apy")}
               >
-                APY {#if sortBy === "apy"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
+              APR {#if sortBy === "apy"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
               </button>
             </div>
           </div>
@@ -492,7 +493,7 @@
         <div class="divide-y divide-kong-bg-dark">
           {#each sortedPools as pool}
             <!-- Desktop view - grid layout -->
-            <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-dark/30 transition-colors">
+            <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,0.8fr,0.8fr,1fr] sm:gap-4 sm:items-center px-4 py-3 hover:bg-kong-bg-dark/30 transition-colors">
               <!-- Pool -->
               <div class="flex items-center gap-2">
                 <TokenImages
@@ -534,6 +535,13 @@
                 </div>
               </div>
 
+              <!-- Pool Share -->
+              <div class="text-right text-sm">
+                <div class="font-medium text-kong-text-primary">
+                  {formatToNonZeroDecimal(pool.poolSharePercentage || 0)}%
+                </div>
+              </div>
+
               <!-- APY -->
               <div class="text-right text-sm relative">
                 <span 
@@ -544,7 +552,7 @@
                   use:tooltip={{
                     text: pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null 
                       ? `Based on recent trading activity. Estimated daily earnings: $${calculateEarnings(pool, 1)}`
-                      : "APY data is currently unavailable for this pool",
+                      : "APR data is currently unavailable for this pool",
                     direction: "top",
                     background: "bg-kong-bg-dark",
                     paddingClass: "p-2"
@@ -600,22 +608,33 @@
                 </div>
               </div>
               
-              <!-- APY -->
-              <div class="flex justify-between items-center">
-                <div class="text-xs text-kong-text-secondary">APY</div>
-                <div 
-                  class="flex items-center gap-1 text-sm"
-                  class:text-kong-text-accent-green={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
-                  class:text-kong-text-accent-red={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
-                  class:text-kong-text-secondary={pool.rolling_24h_apy === undefined || pool.rolling_24h_apy === null}
-                  on:click={(e) => showAPYDetails(pool, e)}
-                >
-                  {#if pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null}
-                    {formatPercentage(pool.rolling_24h_apy)}
-                  {:else}
-                    <span>--</span>
-                  {/if}
-                  <Info class="w-3 h-3" />
+              <!-- Pool Share and APY row -->
+              <div class="flex justify-between items-center gap-4">
+                <!-- Pool Share -->
+                <div class="flex justify-between items-center flex-1">
+                  <div class="text-xs text-kong-text-secondary">Share</div>
+                  <div class="text-sm font-medium text-kong-text-primary">
+                    {formatToNonZeroDecimal(pool.poolSharePercentage || 0)}%
+                  </div>
+                </div>
+                
+                <!-- APY -->
+                <div class="flex justify-between items-center flex-1">
+                  <div class="text-xs text-kong-text-secondary">APR</div>
+                  <div 
+                    class="flex items-center gap-1 text-sm"
+                    class:text-kong-text-accent-green={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
+                    class:text-kong-text-accent-red={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
+                    class:text-kong-text-secondary={pool.rolling_24h_apy === undefined || pool.rolling_24h_apy === null}
+                    on:click={(e) => showAPYDetails(pool, e)}
+                  >
+                    {#if pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null}
+                      {formatPercentage(pool.rolling_24h_apy)}
+                    {:else}
+                      <span>--</span>
+                    {/if}
+                    <Info class="w-3 h-3" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -649,15 +668,15 @@
         </div>
         
         <div class="mt-3 pt-2 border-t border-kong-border/20 text-xs text-kong-text-secondary">
-          Based on current APY: {formatPercentage(selectedPool.rolling_24h_apy)}
+          Based on current APR: {formatPercentage(selectedPool.rolling_24h_apy)}
           <div class="mt-1 text-xs text-kong-text-secondary/70">
             Estimates are based on current rates and may vary over time.
           </div>
         </div>
       {:else}
         <div class="py-3 text-center">
-          <p class="text-kong-text-secondary text-sm">APY data is currently unavailable for this pool.</p>
-          <p class="text-xs mt-2 text-kong-text-secondary/70">Earnings estimates cannot be calculated without APY information.</p>
+          <p class="text-kong-text-secondary text-sm">APR data is currently unavailable for this pool.</p>
+          <p class="text-xs mt-2 text-kong-text-secondary/70">Earnings estimates cannot be calculated without APR information.</p>
         </div>
       {/if}
     </div>

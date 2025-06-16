@@ -4,11 +4,12 @@ use num_traits::{CheckedAdd, CheckedMul, ToPrimitive, Zero};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt;
+// Hash is automatically derived with #[derive(Hash)]
 use std::ops::{Add, Div, Mul, Sub};
 use std::str::FromStr;
 
 // Wrapper around candid::Nat that implements Storable
-#[derive(candid::CandidType, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(candid::CandidType, Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Hash)]
 pub struct StorableNat(pub Nat);
 
 impl StorableNat {
@@ -196,6 +197,8 @@ impl Storable for StorableNat {
 
     const BOUND: Bound = Bound::Unbounded;
 }
+
+// Hash implementation is provided by the #[derive(Hash)] attribute
 
 // Legacy type definition - use types.rs module for new code
 pub type MarketId = StorableNat;

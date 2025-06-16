@@ -13,7 +13,7 @@ touch "${root_dir}/canister_ids.all.json"
 # Ensure the file has valid JSON if empty
 [ ! -s "${root_dir}/canister_ids.all.json" ] && echo '{}' > "${root_dir}/canister_ids.all.json"
 
-TOKEN_SYMBOL="KONG"
+TOKEN_SYMBOL="KSKONG"
 TOKEN_LEDGER=$(echo ${TOKEN_SYMBOL}_ledger | tr '[:upper:]' '[:lower:]')
 TOKEN_NAME="KongSwap (KongSwap Test Token)"
 TOKEN_DECIMALS=8
@@ -50,11 +50,7 @@ DEPLOY_ARGS="(variant {Init =
         minting_account = record { owner = principal \"${PRINCIPAL}\" };
         transfer_fee = ${TRANSFER_FEE};
         metadata = vec {
-            record { \"icrc1:symbol\"; variant { Text=\"${TOKEN_SYMBOL}\" } };
-            record { \"icrc1:name\"; variant { Text=\"${TOKEN_NAME}\" } };
-            record { \"icrc1:decimals\"; variant { Nat=${TOKEN_DECIMALS} } };
-            record { \"icrc1:fee\"; variant { Nat=${TRANSFER_FEE} } };
-            record { \"icrc1:logo\"; variant { Text=\"${TOKEN_LOGO}\" } };
+            record { \"icrc1:logo\"; variant { Text=\"${TOKEN_LOGO}\" } }
         };
         initial_balances = vec { record { record { owner = principal \"${PRINCIPAL}\" }; 1000000000000 } };
         archive_options = record {

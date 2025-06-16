@@ -27,6 +27,7 @@ pub enum MetadataValue {
 #[derive(CandidType, Clone)]
 pub struct FeatureFlags {
     pub icrc2: bool,
+    pub icrc3: bool,
 }
 
 #[derive(CandidType, Clone, Debug)]
@@ -139,7 +140,7 @@ pub fn create_icrc1_ledger_simple(ic: &PocketIc, config: SimpleLedgerConfig) -> 
         token_name: config.token_name,
         metadata: vec![],
         initial_balances: config.initial_balances,
-        feature_flags: Some(FeatureFlags { icrc2: true }),
+        feature_flags: Some(FeatureFlags { icrc2: true, icrc3: true }),
         archive_options: ArchiveOptions {
             num_blocks_to_archive: 10000,
             max_transactions_per_response: Some(100),

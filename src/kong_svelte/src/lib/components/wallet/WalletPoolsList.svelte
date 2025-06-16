@@ -1,13 +1,12 @@
 <script lang="ts">
-  import { LayoutGrid, ChartPie, BarChart3, RefreshCw } from 'lucide-svelte';
+  import { LayoutGrid, ChartPie, TrendingUp, RefreshCw } from 'lucide-svelte';
   import Badge from "$lib/components/common/Badge.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/stores/auth";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { livePools } from "$lib/stores/poolStore";
-  import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
-  import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
+  import { goto } from "$app/navigation";
   import WalletListHeader from "./WalletListHeader.svelte";
 
   // Props
@@ -19,6 +18,7 @@
     onRefresh = undefined,
     showUsdValues = true,
     isRefreshing = false,
+    onNavigate = undefined,
   } = $props<{
     liquidityPools?: Array<{
       id: string;
@@ -33,15 +33,13 @@
     onRefresh?: (() => void) | undefined;
     showUsdValues?: boolean;
     isRefreshing?: boolean;
+    onNavigate?: ((path: string) => void) | undefined;
   }>();
   
   // State for user pools from store
   let hasCompletedInitialLoad = $state(false);
   let errorMessage = $state<string | null>(null);
-  
-  // State for the UserPool modal
-  let selectedPool = $state<any>(null);
-  let showUserPoolModal = $state(false);
+  let isInitializing = $state(false);
   
   // Initialize store and handle auth changes
   $effect(() => {
@@ -57,65 +55,61 @@
   
   // Function to load user pools
   async function loadUserPools() {
+    if (isInitializing) return; // Prevent multiple simultaneous loads
+    
+    isInitializing = true;
     try {
       await currentUserPoolsStore.initialize();
       hasCompletedInitialLoad = true;
     } catch (error) {
       console.error("Error loading user pools:", error);
       errorMessage = "Failed to load your liquidity positions. Please try again.";
+    } finally {
+      isInitializing = false;
     }
   }
   
-  // Common function to refresh pools data
-  async function refreshPoolsData(errorMsg = "Failed to refresh your liquidity positions. Please try again.") {
-    try {
-      // Don't reset the store until we have new data
-      await currentUserPoolsStore.initialize();
-      if (onRefresh) onRefresh();
-      return true;
-    } catch (error) {
-      console.error("Error refreshing pools:", error);
-      errorMessage = errorMsg;
-      return false;
-    }
-  }
   
   // Function to refresh user pools with callback
   async function handleRefresh() {
-    if (hasCompletedInitialLoad && onRefresh) {
+    if (!$currentUserPoolsStore.loading && !isInitializing) {
       errorMessage = null;
-      onRefresh();
+      
+      // Refresh the store data
+      await loadUserPools();
+      
+      // Call the parent's refresh callback if provided
+      if (onRefresh) {
+        onRefresh();
+      }
     }
   }
   
   // Function to handle clicking on a pool item
   function handlePoolItemClick(pool: any) {
-    selectedPool = pool;
-    showUserPoolModal = true;
+    // Build the pool ID
+    const poolId = `${pool.address_0}_${pool.address_1}`;
+    const path = `/pools/${poolId}/position`;
+    
+    // If we have an onNavigate callback (which closes the sidebar), use it
+    if (onNavigate) {
+      onNavigate(path);
+    } else {
+      // Otherwise just navigate normally
+      goto(path);
+    }
   }
   
-  // Function to handle when liquidity is removed
-  async function handleLiquidityRemoved() {
-    showUserPoolModal = false;
-    selectedPool = null;
-    
-    // Force a complete refresh of the pools store
-    errorMessage = null;
-    await refreshPoolsData("Failed to update your liquidity positions. Please try refreshing manually.");
-  }
   
-  // Get pool share percentage
-  function getPoolSharePercentage(pool: any): string {
-    const livePool = $livePools.find(
-      (p) => p.address_0 === pool.address_0 && p.address_1 === pool.address_1
-    );
+  // Get pool share percentage - use pre-calculated value from serializer
+  function getPoolSharePercentage(pool: any): number {
+    // If the pool has a pre-calculated poolSharePercentage, use it
+    if (pool.poolSharePercentage !== undefined) {
+      return pool.poolSharePercentage;
+    }
     
-    return calculateUserPoolPercentage(
-      livePool?.balance_0,
-      livePool?.balance_1,
-      pool.amount_0,
-      pool.amount_1
-    );
+    // Fallback for legacy data - just return 0
+    return 0;
   }
 
   // Get APY for a pool
@@ -147,7 +141,7 @@
   }
   
   // Determine the loading state
-  const isLoadingPools = $derived($currentUserPoolsStore.loading && !hasCompletedInitialLoad);
+  const isLoadingPools = $derived(($currentUserPoolsStore.loading || isInitializing) && !hasCompletedInitialLoad);
   
   // Determine if we should use store data or legacy data
   const usingStoreData = $derived($auth.isConnected && $currentUserPoolsStore.filteredPools.length > 0);
@@ -185,7 +179,7 @@
           class="px-4 py-2 bg-kong-bg-dark/40 text-kong-text-primary text-xs font-medium rounded-lg
                  border border-kong-border/40 hover:border-kong-primary/30 hover:bg-kong-bg-dark/60 
                  transition-all duration-200 active:scale-[0.98]"
-          on:click={handleRefresh}
+          onclick={handleRefresh}
         >
           Try Again
         </button>
@@ -206,8 +200,8 @@
         {#each $currentUserPoolsStore.filteredPools as pool}
           <div 
             class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border/30 hover:bg-kong-bg-light/10 transition-colors cursor-pointer"
-            on:click={() => handlePoolItemClick(pool)}
-            on:keydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
+            onclick={() => handlePoolItemClick(pool)}
+            onkeydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
             role="button"
             tabindex="0"
           >
@@ -255,10 +249,10 @@
                 </div>
               </div>
               <div>
-                <div class="text-kong-text-secondary mb-1">APY</div>
+                <div class="text-kong-text-secondary mb-1">APR</div>
                 <div class="text-kong-accent-green font-medium">
                   <div class="flex items-center gap-1">
-                    <BarChart3 size={12} class="text-kong-accent-green/70" />
+                    <TrendingUp size={12} class="text-kong-accent-green/70" />
                     <span>{getPoolApy(pool)}%</span>
                   </div>
                 </div>
@@ -273,8 +267,8 @@
         {#each liquidityPools as pool}
           <div 
             class="px-4 py-3.5 bg-kong-bg-light/5 border-b border-kong-border/30 hover:bg-kong-bg-light/10 transition-colors cursor-pointer"
-            on:click={() => handlePoolItemClick(pool)}
-            on:keydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}  
+            onclick={() => handlePoolItemClick(pool)}
+            onkeydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}  
             role="button"
             tabindex="0"
           >
@@ -339,14 +333,6 @@
     {/if}
   </div>
 </div>
-
-{#if selectedPool}
-  <UserPool
-    pool={selectedPool}
-    bind:showModal={showUserPoolModal}
-    on:liquidityRemoved={handleLiquidityRemoved}
-  />
-{/if}
 
 <style>
   /* Scrollbar styling */

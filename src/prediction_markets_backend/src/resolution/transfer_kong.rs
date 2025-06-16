@@ -11,7 +11,7 @@ use crate::types::TokenAmount;
 pub const KONG_MINTER_PRINCIPAL_PROD: &str = "oypg6-faaaa-aaaaq-aadza-cai";
 pub const KONG_MINTER_PRINCIPAL_LOCAL: &str = "faaxe-sf6cf-hmx3r-ujxc6-7ppwl-3lkf3-zpj6i-2m75x-bqmba-dod7q-4qe";
 
-pub async fn transfer_kong(to: Principal, amount: TokenAmount) -> Result<(), String> {
+pub async fn transfer_kong(to: Principal, amount: TokenAmount) -> Result<String, String> {
     ic_cdk::println!("Transferring {} KONG to {}", amount.to_u64(), to.to_string());
 
     let args = TransferArg {
@@ -29,7 +29,7 @@ pub async fn transfer_kong(to: Principal, amount: TokenAmount) -> Result<(), Str
     let ledger = Principal::from_text(KONG_LEDGER_ID).map_err(|e| format!("Invalid ledger ID: {}", e))?;
 
     match ic_cdk::call::<(TransferArg,), (Result<Nat, TransferError>,)>(ledger, "icrc1_transfer", (args,)).await {
-        Ok((Ok(_block_index),)) => Ok(()),
+        Ok((Ok(block_index),)) => Ok(block_index.to_string()),
         Ok((Err(e),)) => Err(format!("Transfer failed: {:?}", e)),
         Err((code, msg)) => Err(format!("Transfer failed: {} (code: {:?})", msg, code)),
     }
@@ -37,7 +37,8 @@ pub async fn transfer_kong(to: Principal, amount: TokenAmount) -> Result<(), Str
 
 /// Burns tokens by sending them to the minter principal
 /// This is used as a penalty when a market creator's resolution conflicts with admin's
-pub async fn burn_tokens(amount: TokenAmount) -> Result<(), String> {
+/// Returns the transaction ID of the burn if successful
+pub async fn burn_tokens(amount: TokenAmount) -> Result<String, String> {
     ic_cdk::println!("BURNING {} KONG tokens by sending to minter", amount.to_u64());
     
     // Select the appropriate minter principal based on which ledger we're using

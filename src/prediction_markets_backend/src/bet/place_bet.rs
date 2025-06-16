@@ -29,6 +29,8 @@ use crate::stable_memory::*;
 use crate::types::{MarketId, TokenAmount, OutcomeIndex, min_activation_bet, TokenIdentifier, calculate_platform_fee};
 use crate::controllers::admin::is_admin;
 use crate::token::registry::{get_token_info, is_supported_token};
+use crate::storage::MARKETS;
+use crate::storage::BETS;
 
 // House fee constant and configuration
 lazy_static::lazy_static! {
@@ -182,10 +184,37 @@ async fn place_bet(
     }?;
 
     // Re-read the market after the transfer to get latest state
-    let mut market = MARKETS.with(|markets| {
+    let mut market = match MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
-        markets_ref.get(&market_id_clone).ok_or(BetError::MarketNotFound)
-    })?;
+        // Clone the market if it exists
+        if let Some(market) = markets_ref.get(&market_id_clone) {
+            Some(market.clone())
+        } else {
+            None
+        }
+    }) {
+        Some(market) => market,
+        None => {
+            // Market not found after token transfer - we need to refund the user
+            ic_cdk::println!("Market {} not found after token transfer, refunding user {}", market_id.to_u64(), user);
+            
+            // Create a refund transfer to return tokens to the user
+            let refund_result = crate::token::transfer::transfer_token(
+                user,
+                amount.clone(),
+                &token_id,
+                None
+            ).await;
+            
+            // Log the refund attempt, but still return the error either way
+            match refund_result {
+                Ok(_) => ic_cdk::println!("Successfully refunded {} tokens to user {}", amount.to_u64(), user),
+                Err(e) => ic_cdk::println!("Failed to refund tokens to user: {:?}", e),
+            }
+            
+            return Err(BetError::MarketNotFound);
+        }
+    };
 
     // Calculate token-specific platform fee
     let fee_amount = if FEES_ENABLED {
@@ -199,10 +228,10 @@ async fn place_bet(
     // Update fee balance
     FEE_BALANCE.with(|fees| {
         let mut fees = fees.borrow_mut();
-        let current_fees = fees.get(&backend_canister_id).unwrap_or(0);
+        let current_fees = fees.get(&backend_canister_id).unwrap_or_default();
         fees.insert(
             backend_canister_id,
-            (StorableNat::from(current_fees) + fee_amount).0 .0.to_u64().unwrap_or(0),
+            current_fees + fee_amount.clone(),
         );
     });
 
@@ -265,8 +294,8 @@ async fn place_bet(
     // 3. Generating user bet history and statistics
     BETS.with(|bets| {
         let mut bets = bets.borrow_mut();
-        let mut bet_store = bets.get(&market_id_clone).unwrap_or_default();
-
+        
+        // Create a new bet
         let new_bet = Bet {
             user,                               // User who placed the bet
             market_id: market_id_clone.clone(), // Market being bet on
@@ -275,10 +304,24 @@ async fn place_bet(
             timestamp: StorableNat::from(ic_cdk::api::time()), // Current time for time-weighting
             token_id: token_id.clone(),        // Token type used for the bet
         };
-
-        // Add the bet to the market's bet store
-        bet_store.0.push(new_bet);
-        bets.insert(market_id_clone, bet_store);
+        
+        // Get the next bet index for this market
+        // This counts how many bets are already in the market
+        let mut index: u64 = 0;
+        for (bet_key, _) in bets.iter() {
+            if bet_key.market_id == market_id_clone {
+                index += 1;
+            }
+        }
+        
+        // Create the composite key using our new BetKey type
+        let bet_key = crate::bet::bet::BetKey {
+            market_id: market_id_clone,
+            bet_index: index,
+        };
+        
+        // Insert the new bet with the composite key
+        bets.insert(bet_key, new_bet);
         
         // For time-weighted markets, the timestamp is particularly important
         // as it determines the weight factor during payout calculations

@@ -27,50 +27,17 @@
 //! By maintaining a persistent record of failed transactions, this module ensures that no user
 //! loses their rightful winnings due to temporary network issues or token contract failures.
 
-use candid::{CandidType, Deserialize, Principal};
-use serde::Serialize;
+use candid::Principal;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
 use crate::types::{MarketId, TokenAmount};
 use crate::token::registry::TokenIdentifier;
+use crate::failed_transaction::FailedTransaction;
+use crate::stable_memory::STABLE_FAILED_TRANSACTIONS;
 use crate::token::transfer::transfer_token;
 use crate::controllers::admin::is_admin;
 use ic_cdk::{query, update};
-
-/// Record of a failed transaction for potential recovery
-/// 
-/// This structure stores all relevant information about a failed transaction
-/// to facilitate later recovery attempts. It includes the recipient, amount,
-/// token details, error information, and tracking metadata for resolution status.
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
-pub struct FailedTransaction {
-    /// Optional market ID associated with this transaction (None for non-market transactions)
-    pub market_id: Option<MarketId>,
-    /// Principal ID of the user who should receive the tokens
-    pub recipient: Principal,
-    /// Amount of tokens to be transferred (in raw token units including decimals)
-    pub amount: TokenAmount,
-    /// Identifier for the token type being transferred
-    pub token_id: TokenIdentifier,
-    /// Detailed error message explaining why the transaction failed
-    pub error: String,
-    /// Transaction creation timestamp (nanoseconds since 1970-01-01) - also used as unique ID
-    pub timestamp: u64,
-    /// Number of times the system has attempted to retry this transaction
-    pub retry_count: u8,
-    /// Whether this transaction has been successfully resolved
-    pub resolved: bool,
-}
-
-// Stable storage for failed transactions
-// Uses a thread-local HashMap with transaction timestamp as the key
-thread_local! {
-    /// In-memory store of all failed transactions, keyed by timestamp
-    /// This data structure is preserved across canister upgrades
-    static FAILED_TRANSACTIONS: RefCell<HashMap<u64, FailedTransaction>> = 
-        RefCell::new(HashMap::new());
-}
 
 /// Records a failed token transfer transaction for later recovery attempts
 /// 
@@ -122,7 +89,7 @@ pub fn record_failed_transaction(
         resolved: false,
     };
     
-    FAILED_TRANSACTIONS.with(|txs| {
+    STABLE_FAILED_TRANSACTIONS.with(|txs| {
         let mut txs = txs.borrow_mut();
         txs.insert(tx_id, failed_tx);
     });
@@ -141,11 +108,11 @@ pub fn record_failed_transaction(
 /// * `Vec<(u64, FailedTransaction)>` - List of transaction IDs and their details
 #[query]
 pub fn get_unresolved_transactions() -> Vec<(u64, FailedTransaction)> {
-    FAILED_TRANSACTIONS.with(|txs| {
+    STABLE_FAILED_TRANSACTIONS.with(|txs| {
         let txs = txs.borrow();
         txs.iter()
             .filter(|(_, tx)| !tx.resolved)
-            .map(|(id, tx)| (*id, tx.clone()))
+            .map(|(id, tx)| (id, tx.clone()))
             .collect()
     })
 }
@@ -160,10 +127,10 @@ pub fn get_unresolved_transactions() -> Vec<(u64, FailedTransaction)> {
 /// * `Vec<(u64, FailedTransaction)>` - Complete list of transaction records
 #[query]
 pub fn get_all_transactions() -> Vec<(u64, FailedTransaction)> {
-    FAILED_TRANSACTIONS.with(|txs| {
+    STABLE_FAILED_TRANSACTIONS.with(|txs| {
         let txs = txs.borrow();
         txs.iter()
-            .map(|(id, tx)| (*id, tx.clone()))
+            .map(|(id, tx)| (id, tx.clone()))
             .collect()
     })
 }
@@ -181,11 +148,11 @@ pub fn get_all_transactions() -> Vec<(u64, FailedTransaction)> {
 /// * `Vec<(u64, FailedTransaction)>` - List of transaction records for the specified market
 #[query]
 pub fn get_transactions_by_market(market_id: MarketId) -> Vec<(u64, FailedTransaction)> {
-    FAILED_TRANSACTIONS.with(|txs| {
+    STABLE_FAILED_TRANSACTIONS.with(|txs| {
         let txs = txs.borrow();
         txs.iter()
             .filter(|(_, tx)| tx.market_id.as_ref().map_or(false, |id| *id == market_id))
-            .map(|(id, tx)| (*id, tx.clone()))
+            .map(|(id, tx)| (id, tx.clone()))
             .collect()
     })
 }
@@ -203,11 +170,11 @@ pub fn get_transactions_by_market(market_id: MarketId) -> Vec<(u64, FailedTransa
 /// * `Vec<(u64, FailedTransaction)>` - List of transaction records for the recipient
 #[query]
 pub fn get_transactions_by_recipient(recipient: Principal) -> Vec<(u64, FailedTransaction)> {
-    FAILED_TRANSACTIONS.with(|txs| {
+    STABLE_FAILED_TRANSACTIONS.with(|txs| {
         let txs = txs.borrow();
         txs.iter()
             .filter(|(_, tx)| tx.recipient == recipient)
-            .map(|(id, tx)| (*id, tx.clone()))
+            .map(|(id, tx)| (id, tx.clone()))
             .collect()
     })
 }
@@ -255,9 +222,9 @@ pub async fn retry_transaction(tx_id: u64) -> Result<Option<candid::Nat>, String
         return Err("Unauthorized: Only admins can retry transactions".to_string());
     }
     
-    let tx_opt = FAILED_TRANSACTIONS.with(|txs| {
+    let tx_opt = STABLE_FAILED_TRANSACTIONS.with(|txs| {
         let txs = txs.borrow();
-        txs.get(&tx_id).cloned()
+        txs.get(&tx_id)
     });
     
     match tx_opt {
@@ -271,11 +238,12 @@ pub async fn retry_transaction(tx_id: u64) -> Result<Option<candid::Nat>, String
             ).await {
                 Ok(block_index) => {
                     // Update the transaction as resolved
-                    FAILED_TRANSACTIONS.with(|txs| {
+                    STABLE_FAILED_TRANSACTIONS.with(|txs| {
                         let mut txs = txs.borrow_mut();
-                        if let Some(tx) = txs.get_mut(&tx_id) {
+                        if let Some(mut tx) = txs.get(&tx_id) {
                             tx.resolved = true;
                             tx.retry_count += 1;
+                            txs.insert(tx_id, tx);
                         }
                     });
                     
@@ -285,11 +253,12 @@ pub async fn retry_transaction(tx_id: u64) -> Result<Option<candid::Nat>, String
                 },
                 Err(e) => {
                     // Update retry count but keep as unresolved
-                    FAILED_TRANSACTIONS.with(|txs| {
+                    STABLE_FAILED_TRANSACTIONS.with(|txs| {
                         let mut txs = txs.borrow_mut();
-                        if let Some(tx) = txs.get_mut(&tx_id) {
+                        if let Some(mut tx) = txs.get(&tx_id) {
                             tx.retry_count += 1;
                             tx.error = e.detailed_message();
+                            txs.insert(tx_id, tx);
                         }
                     });
                     
@@ -343,11 +312,11 @@ pub async fn retry_market_transactions(market_id: MarketId) -> Vec<Result<u64, S
         return vec![Err("Unauthorized: Only admins can retry transactions".to_string())];
     }
     
-    let tx_ids = FAILED_TRANSACTIONS.with(|txs| {
+    let tx_ids = STABLE_FAILED_TRANSACTIONS.with(|txs| {
         let txs = txs.borrow();
         txs.iter()
             .filter(|(_, tx)| !tx.resolved && tx.market_id.as_ref().map_or(false, |id| *id == market_id))
-            .map(|(id, _)| *id)
+            .map(|(id, _)| id)
             .collect::<Vec<u64>>()
     });
     
@@ -405,14 +374,17 @@ pub fn mark_transaction_resolved(tx_id: u64) -> Result<(), String> {
         return Err("Unauthorized: Only admins can mark transactions as resolved".to_string());
     }
     
-    FAILED_TRANSACTIONS.with(|txs| {
+    STABLE_FAILED_TRANSACTIONS.with(|txs| {
         let mut txs = txs.borrow_mut();
-        if let Some(tx) = txs.get_mut(&tx_id) {
+        
+        if let Some(tx) = txs.get(&tx_id) {
             if tx.resolved {
                 Err("Transaction already resolved".to_string())
             } else {
+                let mut tx = tx.clone();
                 tx.resolved = true;
                 tx.error = format!("{} (Manually marked as resolved)", tx.error);
+                txs.insert(tx_id, tx);
                 Ok(())
             }
         } else {

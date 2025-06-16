@@ -8,7 +8,7 @@
   import { writable } from "svelte/store";
   import { browser } from "$app/environment";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
-  import { WalletIcon } from "lucide-svelte";
+  import { Wallet } from "lucide-svelte";
   import { goto } from "$app/navigation";
 
   // Create a store for tokens
@@ -514,7 +514,7 @@
                                 `/wallets/${formatPrincipalId(tx.user.principal_id)}`,
                               )}
                           >
-                            <WalletIcon
+                            <Wallet
                               class="w-4 h-4 text-kong-text-secondary"
                             />
                           </button>

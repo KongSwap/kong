@@ -21,14 +21,16 @@ const config = {
       "$lib/*": "src/lib/*",
     },
     prerender: {
-      origin: 'https://kongswap.io',
       handleHttpError: ({ path, referrer, message }) => {
         // Ignore specific paths that require client-side rendering
         if (
           path === "/swap" ||
           path === "/pools" ||
+          path.startsWith("/pools/") ||
           path === "/stats" ||
-          path === "/predict"
+          path === "/predict" ||
+          path.startsWith("/wallets/") ||
+          path.includes("[") // Ignore all dynamic routes
         ) {
           return;
         }
