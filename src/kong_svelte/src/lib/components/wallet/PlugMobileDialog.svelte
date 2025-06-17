@@ -28,7 +28,7 @@
         theme="primary"
         variant="solid"
         size="lg"
-        on:click={() => window.open(APP_STORE_URL, '_blank')}
+        onclick={() => window.open(APP_STORE_URL, '_blank')}
       >
         <div class="store-link-content">
           <img 
@@ -44,7 +44,7 @@
         theme="primary"
         variant="solid"
         size="lg"
-        on:click={() => window.open(PLAY_STORE_URL, '_blank')}
+        onclick={() => window.open(PLAY_STORE_URL, '_blank')}
       >
         <div class="store-link-content">
           <img 
@@ -61,7 +61,7 @@
       theme="muted"
       variant="transparent"
       size="lg"
-      on:click={() => open = false}
+      onclick={() => open = false}
     />
   </div>
 </Dialog>

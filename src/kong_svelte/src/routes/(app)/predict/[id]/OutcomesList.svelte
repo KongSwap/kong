@@ -64,7 +64,7 @@
                   theme="accent-green"
                   variant="solid"
                   size="md"
-                  on:click={() => onSelectOutcome(i)}
+                  onclick={() => onSelectOutcome(i)}
                 >
                   Select
                 </ButtonV2>

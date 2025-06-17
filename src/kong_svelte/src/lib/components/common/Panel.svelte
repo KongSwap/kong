@@ -25,7 +25,8 @@
     transition = null,
     transitionParams = {},
     
-    children
+    children,
+    onclick
   } = $props<{
     variant?: "transparent" | "solid";
     type?: "main" | "secondary";
@@ -44,6 +45,7 @@
     transition?: 'fade' | 'slide' | null;
     transitionParams?: TransitionConfig;
     children?: () => any;
+    onclick?: () => void;
   }>();
 
   // Make roundness reactive to theme changes
@@ -77,8 +79,7 @@
     class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} !{effectiveRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:slide={params}
-    on:click
-    on:keydown
+    onclick={onclick}
   >
     {#if children}
       {@render children()}
@@ -91,8 +92,7 @@
     class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} !{effectiveRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
     transition:fade={params}
-    on:click
-    on:keydown
+    onclick={onclick}
   >
     {#if children}
       {@render children()}
@@ -104,8 +104,7 @@
   <div 
     class="panel {unpadded ? '' : 'p-4'} {variant} {shadow} {type} !{effectiveRoundness} {className} {animated ? 'animated' : ''} {isSwapPanel ? 'swap-panel' : ''} {isSidebar ? 'sidebar-panel' : ''} {interactiveClass}"
     style="width: {width}; height: {height}; z-index: {zIndex};"
-    on:click
-    on:keydown
+    onclick={onclick}
   >
     {#if children}
       {@render children()}

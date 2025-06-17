@@ -300,7 +300,7 @@
             type="text"
             placeholder={isMobile ? "Search tokens..." : "Search tokens by name, symbol, or canister ID"}
             class="w-full pl-10 pr-4 py-2 rounded-full bg-kong-bg-secondary/60 border border-kong-border/40 text-kong-text-primary placeholder-[#8890a4] focus:outline-none focus:ring-2 focus:ring-kong-primary/40 focus:border-kong-primary transition-all duration-200 shadow-sm"
-            on:input={handleSearch}
+            oninput={handleSearch}
             value={$searchTerm}
           />
         </div>
@@ -348,7 +348,7 @@
                       class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 {$state.sortBy === sort.key
                         ? 'bg-kong-primary text-kong-text-on-primary shadow-md'
                         : 'bg-kong-bg-primary/40 text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-primary/60'}"
-                      on:click={() => toggleSort(sort.key)}
+                      onclick={() => toggleSort(sort.key)}
                     >
                       {sort.label}
                       <ChevronDown size={14} class="transition-transform {$state.sortDirection === 'asc' && $state.sortBy === sort.key ? 'rotate-180' : ''}" />
@@ -361,7 +361,7 @@
               <div class="flex-1 overflow-auto">
                 <div class="flex flex-col gap-1 py-2">
                   {#each $sortedTokens as token (token.address)}
-                    <button class="w-full" on:click={() => goto(`/stats/${token.address}`)}>
+                    <button class="w-full" onclick={() => goto(`/stats/${token.address}`)}>
                       <TokenCardMobile {token} trendClass={getTrendClass(token)} showIcons={true} section="stats-list" paddingClass="px-3 py-1.5" topTokens={$state.topTokens} />
                     </button>
                   {/each}
@@ -372,7 +372,7 @@
               <div class="sticky bottom-0 flex items-center justify-between px-4 py-2 border-t border-kong-border backdrop-blur-md !rounded-b-lg">
                 <button
                   class="px-3 py-1 rounded text-sm {$currentPage === 1 ? 'text-kong-text-secondary bg-kong-bg-secondary opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
-                  on:click={() => changePage($currentPage - 1)}
+                  onclick={() => changePage($currentPage - 1)}
                   disabled={$currentPage === 1}
                 >
                   Previous
@@ -382,7 +382,7 @@
                 </span>
                 <button
                   class="px-3 py-1 rounded text-sm {$currentPage >= Math.ceil($totalCount / $itemsPerPage) ? 'text-kong-text-secondary bg-kong-bg-secondary opacity-50 cursor-not-allowed' : 'text-kong-text-primary bg-kong-primary/20 hover:bg-kong-primary/30'}"
-                  on:click={() => changePage($currentPage + 1)}
+                  onclick={() => changePage($currentPage + 1)}
                   disabled={$currentPage >= Math.ceil($totalCount / $itemsPerPage)}
                 >
                   Next

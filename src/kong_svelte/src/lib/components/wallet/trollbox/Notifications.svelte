@@ -29,7 +29,7 @@
       <p class="text-sm text-blue-200">Don't see your message? Refresh to update.</p>
     </div>
     <button 
-      on:click={onRefresh}
+      onclick={onRefresh}
       class="text-xs bg-blue-800/50 hover:bg-blue-700/50 px-2.5 py-1 rounded-md text-blue-100 transition-colors"
     >
       Refresh Now

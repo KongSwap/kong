@@ -120,13 +120,13 @@
         <div class="mt-5 flex justify-end gap-3 sm:mt-4">
           <button 
             class="rounded-xl bg-gradient-45 from-kong-primary to-kong-primary/80 px-5 py-2.5 text-[0.9375rem] font-medium text-white transition-all hover:-translate-y-0.5 hover:brightness-110 hover:shadow-lg hover:shadow-kong-primary/40 sm:px-4 sm:py-2 sm:text-sm"
-            on:click={installPWA}
+            onclick={installPWA}
           >
             Install App
           </button>
           <button 
             class="rounded-xl px-5 py-2.5 text-[0.9375rem] font-medium text-white/90 transition-colors hover:bg-white/5 sm:px-4 sm:py-2 sm:text-sm"
-            on:click={dismissPrompt}
+            onclick={dismissPrompt}
           >
             Maybe Later
           </button>

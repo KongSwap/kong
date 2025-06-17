@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { scale } from 'svelte/transition';
-  import { LayoutGrid, ChartPie, BarChart3, RefreshCw } from "lucide-svelte";
+  import { LayoutGrid, RefreshCw } from "lucide-svelte";
   import Badge from "$lib/components/common/Badge.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
@@ -120,15 +119,6 @@
     }
   }
 
-  // Function to handle when liquidity is removed (currently not used)
-  // async function handleLiquidityRemoved() {
-  //   // Force a complete refresh of the pools store
-  //   errorMessage = null;
-  //   await refreshPoolsData(
-  //     "Failed to update your liquidity positions. Please try refreshing manually.",
-  //   );
-  // }
-
   // Get pool share percentage
   function getPoolSharePercentage(pool: any): string {
     const livePool = $livePools.find(
@@ -164,14 +154,6 @@
       maximumFractionDigits: 2,
     }).format(numValue);
   }
-
-  // Format number with specified decimal places (currently not used)
-  // function formatNumber(value: number, decimals: number = 4): string {
-  //   return new Intl.NumberFormat("en-US", {
-  //     minimumFractionDigits: 0,
-  //     maximumFractionDigits: decimals,
-  //   }).format(value);
-  // }
 
   // Determine the loading state
   const isLoadingPools = $derived(

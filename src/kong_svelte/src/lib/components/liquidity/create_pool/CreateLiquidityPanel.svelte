@@ -354,7 +354,7 @@
           theme={buttonTheme}
           size="lg"
           fullWidth={true}
-          on:click={isCreatingNewPool ? handleCreatePool : handleAddLiquidity}
+          onclick={isCreatingNewPool ? handleCreatePool : handleAddLiquidity}
           isDisabled={buttonText !== "Review Transaction"}
           className="h-12"
         >

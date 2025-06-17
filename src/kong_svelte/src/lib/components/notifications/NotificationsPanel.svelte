@@ -189,7 +189,7 @@
           >
           <button
             class="text-xs text-kong-text-secondary/70 hover:text-kong-text-primary px-1.5 py-0.5 rounded hover:bg-kong-bg-secondary/20 transition-colors"
-            on:click={clearAllNotifications}
+            onclick={clearAllNotifications}
           >
             Clear All
           </button>
@@ -323,7 +323,7 @@
 
               <button
                 class="absolute top-4 right-4 flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-kong-text-secondary/40 hover:text-kong-text-primary transition-all duration-200 opacity-0 hover:bg-kong-bg-secondary/30 group-hover:opacity-100"
-                on:click={() => removeNotification(notification.id)}
+                onclick={() => removeNotification(notification.id)}
                 aria-label="Dismiss notification"
               >
                 <IconClose size={14} />

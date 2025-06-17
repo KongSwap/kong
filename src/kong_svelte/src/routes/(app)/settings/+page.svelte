@@ -480,7 +480,7 @@
   <div class="mb-4 px-4 max-w-[1300px] mx-auto">
     <button
       class="flex items-center gap-2 text-kong-text-secondary hover:text-kong-primary transition-colors"
-      on:click={goBack}
+      onclick={goBack}
     >
       <ArrowLeft class="w-4 h-4" />
       <span>Back</span>
@@ -541,7 +541,7 @@
                 class:text-white={slippageValue === val && !isCustomSlippage}
                 class:hover:bg-kong-primary-hover={slippageValue === val && !isCustomSlippage}
                 class:hover:border-kong-primary-hover={slippageValue === val && !isCustomSlippage}
-                on:click={() => setSlippage(val)}
+                onclick={() => setSlippage(val)}
                 disabled={!$auth.isConnected || loadingSlippage}
               >
                 {val}%
@@ -610,7 +610,7 @@
             <div class="flex items-center gap-2">
               <button 
                 class="bg-kong-bg-secondary hover:bg-kong-accent-yellow/60 text-kong-text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                on:click={clearFavorites}
+                onclick={clearFavorites}
                 disabled={!$auth.isConnected}
               >
                 Clear
@@ -627,7 +627,7 @@
             <div class="flex items-center gap-2">
               <button 
                 class="bg-kong-error/30 hover:bg-kong-error/60 text-red-100 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                on:click={resetDatabase}
+                onclick={resetDatabase}
                 disabled={loadingSlippage || loadingSound}
               >
                 Reset
@@ -652,8 +652,8 @@
             ${currentThemeId === theme.id ? 'active text-kong-text-primary border-kong-primary border-2 bg-kong-primary/30' : ''}
             hover:!bg-kong-primary/20
           `}
-          on:click={() => applyTheme(theme.id)}
-          on:keydown={(e) => e.key === 'Enter' && applyTheme(theme.id)}
+          onclick={() => applyTheme(theme.id)}
+          onkeydown={(e) => e.key === 'Enter' && applyTheme(theme.id)}
         >
           <!-- Theme preview -->
           <div class="theme-preview h-28 mb-3 rounded overflow-hidden border border-kong-border flex">
@@ -683,7 +683,9 @@
                     class="hover:underline {currentThemeId === theme.id ? 'text-kong-text-primary' : 'text-kong-primary'}"
                     target="_blank" 
                     rel="noopener noreferrer"
-                    on:click|stopPropagation
+                    onclick={(e) => {
+                      e.stopPropagation(); // Prevent theme card click
+                    }}
                   >
                     {theme.author}
                   </a>

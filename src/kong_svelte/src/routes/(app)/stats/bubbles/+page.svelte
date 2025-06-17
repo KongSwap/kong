@@ -626,11 +626,11 @@
       {@const isHovered = hoveredToken === token.address}
       <div
         class="bubble-hitbox {isHovered ? 'bubble-hovered' : ''}"
-        on:click={() => {
+        onclick={() => {
           goto(`/stats/${token.address}`);
         }}
-        on:mouseenter={() => hoveredToken = token.address}
-        on:mouseleave={() => hoveredToken = null}
+        onmouseenter={() => hoveredToken = token.address}
+        onmouseleave={() => hoveredToken = null}
         style="
           width: {bubbleSize}px;
           height: {bubbleSize}px;

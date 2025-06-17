@@ -92,7 +92,7 @@
             theme="accent-green"
             variant={isProcessingAll ? "solid" : "outline"}
             size="sm"
-            on:click={processAllClaims}
+            onclick={processAllClaims}
             isDisabled={isProcessingAll || isProcessing || !hasAccess}
             className="w-auto"
           >
@@ -125,7 +125,7 @@
             theme="secondary"
             variant="outline"
             size="sm"
-            on:click={fetchClaims}
+            onclick={fetchClaims}
             isDisabled={isLoading || isProcessingAll}
             className="w-auto"
           >
@@ -156,20 +156,20 @@
     <Panel variant="solid" type="main" className="max-w-lg mx-auto mt-4">
       <div class="p-6 text-center">
         <p class="mb-4">Please connect your wallet to view your claims</p>
-        <ButtonV2 theme="accent-blue" on:click={() => auth.initialize()}>
+        <ButtonV2 theme="accent-blue" onclick={() => auth.initialize()}>
           Connect Wallet
         </ButtonV2>
       </div>
     </Panel>
   {:else if isLoading}
     <div class="flex justify-center items-center py-12">
-      <LoadingIndicator text="Loading claims..." />
+      <LoadingIndicator message="Loading claims..." />
     </div>
   {:else if error}
     <Panel variant="solid" type="main" className="max-w-lg mx-auto mt-4">
       <div class="p-6 text-center">
         <p class="text-red-500 mb-4">{error}</p>
-        <ButtonV2 theme="primary" on:click={fetchClaims}>Try Again</ButtonV2>
+        <ButtonV2 theme="primary" onclick={fetchClaims}>Try Again</ButtonV2>
       </div>
     </Panel>
   {:else if claims.length === 0}

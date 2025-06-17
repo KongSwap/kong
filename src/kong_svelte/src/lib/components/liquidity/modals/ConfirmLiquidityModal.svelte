@@ -239,7 +239,7 @@
         theme="accent-green"
         size="lg"
         fullWidth={true}
-        on:click={handleCancel}
+        onclick={handleCancel}
         isDisabled={isLoading}
       >
         Cancel
@@ -249,7 +249,7 @@
         theme="accent-green"
         size="lg"
         fullWidth={true}
-        on:click={handleConfirm}
+        onclick={handleConfirm}
         isDisabled={isLoading}
       >
         <div class="flex items-center justify-center gap-2">

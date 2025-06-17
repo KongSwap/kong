@@ -64,7 +64,7 @@
         Please check your wallet for the signature request.
       </h3>
       <p class="text-sm text-kong-text-secondary">
-        <ButtonV2 variant="outline" theme="error" size="md" on:click={handleClose}>Disconnect</ButtonV2>
+        <ButtonV2 variant="outline" theme="error" size="md" onclick={handleClose}>Disconnect</ButtonV2>
       </p>
     </div>
   </div>

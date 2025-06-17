@@ -74,7 +74,7 @@
 			<div class="mt-6 text-center">
 				<button
 					class="px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
-					on:click={onClose}
+					onclick={onClose}
 				>
 					Close
 				</button>

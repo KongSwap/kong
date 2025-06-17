@@ -28,7 +28,7 @@
 
 <div
   class="px-4 py-3.5 bg-kong-bg-secondary/5 border-b border-kong-border/30 hover:bg-kong-bg-secondary/10 transition-colors cursor-pointer"
-  on:click={onClick}
+  onclick={onClick}
 >
   <div class="flex items-center justify-between mb-2">
     <div class="flex items-center justify-between w-full gap-2">

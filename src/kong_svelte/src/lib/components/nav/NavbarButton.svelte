@@ -82,7 +82,7 @@
   class:is-primary={variant === "primary"}
   class:wallet-button={isWalletButton}
   style={buttonStyle}
-  on:click={onClick}
+  onclick={onClick}
   disabled={disabled}
   data-testid={testId || "navbar-button"}
   use:tooltip={tooltipText ? tooltipProps : null}

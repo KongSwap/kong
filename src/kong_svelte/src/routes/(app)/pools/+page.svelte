@@ -484,7 +484,7 @@
           >
             <button
               class="group relative px-8 py-3 bg-gradient-to-r from-kong-primary to-kong-accent-blue text-white font-semibold {$panelRoundness} transition-all duration-300 hover:scale-105"
-              on:click={() => goto("/pools/add")}
+              onclick={() => goto("/pools/add")}
             >
               <span class="relative z-10 flex items-center gap-2">
                 <Plus size={20} />
@@ -534,7 +534,7 @@
                   view
                     ? 'text-kong-text-primary bg-kong-primary/10 font-medium'
                     : 'text-kong-text-secondary'}"
-                  on:click={() => {
+                  onclick={() => {
                     $activePoolView = view;
                     if (view === "user") fetchUserPools();
                   }}
@@ -556,7 +556,7 @@
                   placeholder="Search pools..."
                   class="w-full bg-white rounded-lg pl-8 pr-2 py-2 text-sm text-kong-text-primary placeholder-kong-text-secondary focus:outline-none focus:ring-1 focus:ring-kong-primary/20 transition-all duration-200"
                   bind:value={searchInput}
-                  on:input={handleSearch}
+                  oninput={handleSearch}
                 />
                 <svg
                   class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-kong-text-secondary"
@@ -590,7 +590,7 @@
                   </select>
                   <div class="w-px bg-white/[0.04]"></div>
                   <button
-                    on:click={() =>
+                    onclick={() =>
                     sortDirection.update((d) => (d === "asc" ? "desc" : "asc"))}
                     class="px-3 text-kong-primary"
                   >
@@ -604,7 +604,7 @@
               <!-- Add Button -->
                 <button
                   class="bg-kong-primary text-white rounded-lg px-4 py-2 hover:bg-kong-primary-hover flex items-center gap-2 transition-all duration-200 shadow-md"
-                  on:click={() => goto("/pools/add")}
+                  onclick={() => goto("/pools/add")}
                 >
                 <Plus size={16} />
                   <span class="text-sm font-medium">Add</span>
@@ -624,7 +624,7 @@
                     'all'
                       ? 'text-kong-text-primary font-medium'
                       : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                    on:click={() => ($activePoolView = "all")}
+                    onclick={() => ($activePoolView = "all")}
                   >
                     All Pools
                   </button>
@@ -634,7 +634,7 @@
                       'user'
                         ? 'text-kong-text-primary font-medium'
                         : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                      on:click={() => {
+                      onclick={() => {
                         $activePoolView = "user";
                         fetchUserPools();
                       }}
@@ -655,7 +655,7 @@
                       : "Search pools by name, symbol, or canister ID"}
                     class="w-full bg-kong-bg-secondary p-2 text-kong-text-primary placeholder-kong-text-secondary/70 focus:outline-none focus:border-b focus:border-kong-primary/20 transition-all duration-200"
                     bind:value={searchInput}
-                    on:input={handleSearch}
+                    oninput={handleSearch}
                   />
                 </div>
 
@@ -686,7 +686,7 @@
                       </svg>
                     </div>
                     <button
-                      on:click={() =>
+                      onclick={() =>
                     sortDirection.update((d) => (d === "asc" ? "desc" : "asc"))}
                       class="p-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-kong-primary hover:bg-white/[0.08] transition-all duration-200"
                     >
@@ -710,7 +710,7 @@
           class="h-full overflow-auto {$isMobile
             ? 'mobile-pools-container py-2'
             : 'p-4'}"
-                on:scroll={handleMobileScroll}
+                onscroll={handleMobileScroll}
               >
           <div
             class={$isMobile
@@ -836,7 +836,7 @@
                       1
                         ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                         : 'bg-white/[0.05] text-kong-text-primary hover:bg-white/[0.08]'}"
-                      on:click={() => handlePageChange($currentPage - 1)}
+                      onclick={() => handlePageChange($currentPage - 1)}
                       disabled={$currentPage === 1}
                     >
                       Previous
@@ -857,7 +857,7 @@
                             $currentPage
                               ? 'bg-kong-primary text-white'
                               : 'bg-white/[0.05] text-kong-text-primary hover:bg-white/[0.08]'}"
-                            on:click={() => handlePageChange(pageNum)}
+                            onclick={() => handlePageChange(pageNum)}
                           >
                             {pageNum}
                           </button>
@@ -870,7 +870,7 @@
                       $totalPages
                         ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                         : 'bg-white/[0.05] text-kong-text-primary hover:bg-white/[0.08]'}"
-                      on:click={() => handlePageChange($currentPage + 1)}
+                      onclick={() => handlePageChange($currentPage + 1)}
                       disabled={$currentPage === $totalPages}
                     >
                       Next
@@ -909,7 +909,7 @@
                   </p>
                   <button
                     class="px-4 py-2 bg-kong-bg-primary/40 text-kong-text-secondary text-xs font-medium rounded-lg transition-all duration-200 hover:bg-kong-bg-primary/60 hover:text-kong-text-primary border border-kong-border/40 hover:border-kong-accent-blue/30 active:scale-[0.98]"
-                  on:click={refreshUserPools}
+                  onclick={refreshUserPools}
                   >
                     Retry
                   </button>
@@ -933,7 +933,7 @@
                   </p>
                   {#if emptyConfig.showAddButton}
                     <button
-                      on:click={() => goto("/pools/add")}
+                      onclick={() => goto("/pools/add")}
                       class="mt-4 flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-kong-primary text-white font-medium hover:bg-kong-primary-hover transition-all duration-200"
                     >
                       <Plus size={16} />
@@ -1027,7 +1027,7 @@
               </p>
               <button
                 class="px-6 py-2.5 bg-kong-primary text-white rounded-lg hover:bg-kong-primary-hover transition-all duration-200 flex items-center gap-2 shadow-md"
-              on:click={() => sidebarStore.open()}
+              onclick={() => sidebarStore.open()}
               >
                 <svg
                   width="20"

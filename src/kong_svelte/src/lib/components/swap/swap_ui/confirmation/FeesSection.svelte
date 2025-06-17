@@ -59,7 +59,7 @@
   <button 
     class="info-card expandable"
     class:expanded={isExpanded}
-    on:click={() => isExpanded = !isExpanded}
+    onclick={() => isExpanded = !isExpanded}
     type="button"
   >
     <div class="info-row">

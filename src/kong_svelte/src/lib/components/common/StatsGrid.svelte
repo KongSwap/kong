@@ -199,7 +199,7 @@
       {#each columns as column (column.key)}
         <div 
           class="header-cell {column.align === 'left' ? 'text-left' : column.align === 'center' ? 'text-center' : 'text-right'} {column.sortable ? 'sortable' : ''}"
-          on:click={() => column.sortable && toggleSort(column.key)}
+          onclick={() => column.sortable && toggleSort(column.key)}
         >
           <span>{column.title}</span>
           {#if column.sortable}
@@ -220,9 +220,9 @@
         <div
           class="grid-row {$panelRoundness} {onRowClick ? 'clickable' : ''} {hoveredRowIndex === idx ? 'hovered' : ''} {isLowTVL(row) ? 'low-tvl' : ''}"
           style="grid-template-columns: {gridTemplateColumns}"
-          on:click={() => onRowClick?.(row)}
-          on:mouseenter={() => onRowMouseEnter(idx)}
-          on:mouseleave={onRowMouseLeave}
+          onclick={() => onRowClick?.(row)}
+          onmouseenter={() => onRowMouseEnter(idx)}
+          onmouseleave={onRowMouseLeave}
         >
           {#each columns as column (column.key)}
             {@const value = getValue(row, column.key)}
@@ -269,7 +269,7 @@
               id="page-size"
               class="page-size-select"
               value={itemsPerPage}
-              on:change={handlePageSizeChange}
+              onchange={handlePageSizeChange}
             >
               {#each pageSizeOptions as size}
                 <option value={size}>{size}</option>
@@ -288,7 +288,7 @@
       <div class="pagination-controls">
         <button
           class="pagination-pill {currentPage === 1 ? 'disabled' : 'active'}"
-          on:click={previousPage}
+          onclick={previousPage}
           disabled={currentPage === 1 || totalItems === 0}
         >
           Previous
@@ -303,7 +303,7 @@
             {#if showPage}
               <button
                 class="pagination-pill {currentPage === pageNum ? 'current' : 'active'}"
-                on:click={() => goToPage(pageNum)}
+                onclick={() => goToPage(pageNum)}
               >
                 {pageNum}
               </button>
@@ -314,7 +314,7 @@
         {/if}
         <button
           class="pagination-pill {currentPage === totalPages || totalItems === 0 ? 'disabled' : 'active'}"
-          on:click={nextPage}
+          onclick={nextPage}
           disabled={currentPage === totalPages || totalItems === 0}
         >
           Next

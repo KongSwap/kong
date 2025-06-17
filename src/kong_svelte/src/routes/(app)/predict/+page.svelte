@@ -386,7 +386,7 @@
             theme="primary"
             variant="solid"
             size="md"
-            on:click={() => goto("/predict/create")}
+            onclick={() => goto("/predict/create")}
           >
             Create Market
           </ButtonV2>
@@ -394,7 +394,7 @@
             theme="secondary"
             variant="solid"
             size="md"
-            on:click={() => goto("/predict/history")}
+            onclick={() => goto("/predict/history")}
           >
             Prediction History
           </ButtonV2>
@@ -409,7 +409,7 @@
         {#each $marketStore.categories as category}
           <span
             class="cursor-pointer"
-            on:click={() =>
+            onclick={() =>
               marketStore.setCategory(category === "All" ? null : category)}
           >
             {#if $marketStore.selectedCategory === category || (category === "All" && $marketStore.selectedCategory === null)}
@@ -442,7 +442,7 @@
         >
           <button
             class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
-            on:click={(e) => {
+            onclick={(e) => {
               e.stopPropagation();
               layoutDropdownOpen = !layoutDropdownOpen;
               statusDropdownOpen = false;
@@ -464,7 +464,7 @@
                   class="w-full text-left px-3 py-2 text-xs hover:bg-kong-bg-secondary/30 {selectedLayout === index
                     ? 'bg-kong-success/20 text-kong-success font-medium'
                     : 'text-kong-text-primary'}"
-                  on:click={() => {
+                  onclick={() => {
                     selectedLayout = index;
                     layoutDropdownOpen = false;
                   }}
@@ -483,7 +483,7 @@
         >
           <button
             class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
-            on:click={(e) => {
+            onclick={(e) => {
               e.stopPropagation();
               statusDropdownOpen = !statusDropdownOpen;
               sortDropdownOpen = false;
@@ -514,7 +514,7 @@
                     option.value
                       ? 'bg-kong-success/20 text-kong-success font-medium'
                       : 'text-kong-text-primary'}"
-                    on:click={() => {
+                    onclick={() => {
                       if (option.value === "myMarkets" && !$auth.isConnected) {
                         // This shouldn't happen due to the conditional above, but just in case
                         return;
@@ -538,7 +538,7 @@
         >
           <button
             class="flex items-center justify-between w-full px-3 py-1.5 rounded text-xs font-medium bg-kong-bg-tertiary text-kong-text-primary hover:bg-kong-bg-secondary/30 transition-colors border border-kong-border/50"
-            on:click={(e) => {
+            onclick={(e) => {
               e.stopPropagation();
               sortDropdownOpen = !sortDropdownOpen;
               statusDropdownOpen = false;
@@ -560,7 +560,7 @@
                   option.value
                     ? 'bg-kong-success/20 text-kong-success font-medium'
                     : 'text-kong-text-primary'}"
-                  on:click={() => {
+                  onclick={() => {
                     marketStore.setSortOption(option.value as SortOption);
                     sortDropdownOpen = false;
                   }}
@@ -655,7 +655,7 @@
                 >
                   <div
                     class="mb-1 font-medium text-kong-text-primary group-hover:text-kong-primary transition-colors"
-                    on:click={() => goto(`/predict/${bet.market.id}`)}
+                    onclick={() => goto(`/predict/${bet.market.id}`)}
 
                     >
                     {bet.market.question}
@@ -687,7 +687,7 @@
                     </span>
 
                     by
-                    <span class="hover:text-kong-primary transition-colors" on:click={() => goto(
+                    <span class="hover:text-kong-primary transition-colors" onclick={() => goto(
                       `/wallets/${bet.bet.user.toString()}`
                     )}>
                       {truncateAddress(bet.bet.user.toString())}

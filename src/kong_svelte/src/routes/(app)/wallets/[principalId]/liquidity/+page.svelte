@@ -404,7 +404,7 @@
         <div class="hidden sm:grid sm:grid-cols-[2fr,1.5fr,1fr,1fr] sm:gap-4 px-4 py-2 text-sm text-kong-text-secondary font-medium border-b border-kong-bg-primary">
           <button 
             class="flex items-center gap-1 text-left hover:text-kong-text-primary transition-colors"
-            on:click={() => updateSort("name")}
+            onclick={() => updateSort("name")}
           >
             <span>Pool</span>
             {#if sortBy === "name"}
@@ -414,7 +414,7 @@
           <div>Token Amounts</div>
           <button 
             class="flex items-center gap-1 justify-end hover:text-kong-text-primary transition-colors"
-            on:click={() => updateSort("value")}
+            onclick={() => updateSort("value")}
           >
             <span>Value</span>
             {#if sortBy === "value"}
@@ -424,7 +424,7 @@
           <div class="text-right">Share</div>
           <button 
             class="flex items-center gap-1 justify-end hover:text-kong-text-primary transition-colors"
-            on:click={() => updateSort("apy")}
+            onclick={() => updateSort("apy")}
             use:tooltip={{ 
               text: "Annual Percentage Yield - Estimated return based on recent trading activity", 
               direction: "top",
@@ -446,19 +446,19 @@
             <div class="flex gap-2">
               <button 
                 class="px-2 py-1 text-xs rounded {sortBy === 'name' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-primary/50 text-kong-text-secondary'}"
-                on:click={() => updateSort("name")}
+                onclick={() => updateSort("name")}
               >
                 Name {#if sortBy === "name"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
               </button>
               <button 
                 class="px-2 py-1 text-xs rounded {sortBy === 'value' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-primary/50 text-kong-text-secondary'}"
-                on:click={() => updateSort("value")}
+                onclick={() => updateSort("value")}
               >
                 Value {#if sortBy === "value"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
               </button>
               <button 
                 class="px-2 py-1 text-xs rounded {sortBy === 'apy' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-primary/50 text-kong-text-secondary'}"
-                on:click={() => updateSort("apy")}
+                onclick={() => updateSort("apy")}
               >
               APR {#if sortBy === "apy"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
               </button>
@@ -534,7 +534,7 @@
                     background: "bg-kong-bg-primary",
                     paddingClass: "p-2"
                   }}
-                  on:click={(e) => showAPYDetails(pool, e)}
+                  onclick={(e) => showAPYDetails(pool, e)}
                 >
                   {#if pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null}
                     {formatPercentage(pool.rolling_24h_apy)}
@@ -593,7 +593,7 @@
                   class:text-kong-success={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}
                   class:text-kong-error={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy < 0}
                   class:text-kong-text-secondary={pool.rolling_24h_apy === undefined || pool.rolling_24h_apy === null}
-                  on:click={(e) => showAPYDetails(pool, e)}
+                  onclick={(e) => showAPYDetails(pool, e)}
                 >
                   {#if pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null}
                     {formatPercentage(pool.rolling_24h_apy)}
@@ -620,7 +620,7 @@
     >
       <div class="flex justify-between items-center mb-3">
         <h4 class="text-sm font-medium">Estimated Earnings</h4>
-        <button class="text-kong-text-secondary hover:text-kong-text-primary" on:click={hideAPYDetails}>×</button>
+        <button class="text-kong-text-secondary hover:text-kong-text-primary" onclick={hideAPYDetails}>×</button>
       </div>
       
       {#if selectedPool.rolling_24h_apy !== undefined && selectedPool.rolling_24h_apy !== null}

@@ -20,7 +20,7 @@
       <div class="flex items-center justify-between mb-2">
         <h4 class="text-sm font-medium text-kong-text-primary">TrollBox Tips</h4>
         <button 
-          on:click={onHide}
+          onclick={onHide}
           class="text-kong-text-secondary hover:text-kong-text-primary transition-colors p-1 rounded-full"
           title="Close tips"
         >

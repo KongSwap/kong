@@ -14,7 +14,8 @@
     disabled = false,
     className = "",
     element = $bindable(null),
-    animationIterations = 1
+    animationIterations = 1,
+    onclick = () => {}
   } = $props<{
     label?: string;
     type?: "button" | "submit" | "reset";
@@ -28,6 +29,7 @@
     className?: string;
     element?: HTMLButtonElement | null;
     animationIterations?: number;
+    onclick?: () => void;
   }>();
   
   // Convert state to runes
@@ -142,7 +144,7 @@
     {baseThemeClass} {variantClass} {sizeClass} 
     {fullWidth ? 'w-full' : 'w-auto'} {uppercase ? 'uppercase' : ''} {className}"
   disabled={isDisabled}
-  on:click
+  onclick={onclick}
 >
   <div class="relative z-10">
     {#if label}
@@ -154,7 +156,7 @@
 
   {#if variant === "shine" && !isDisabled && (!hasAnimated || animationIterations <= 0)}
     <div class="absolute inset-0 overflow-hidden">
-      <div class="shine-effect" style="animation-iteration-count: {animationCount};" on:animationend={handleAnimationEnd}></div>
+      <div class="shine-effect" style="animation-iteration-count: {animationCount};" onanimationend={handleAnimationEnd}></div>
     </div>
     <div class="ready-glow" style="animation-iteration-count: {animationCount};"></div>
   {/if}

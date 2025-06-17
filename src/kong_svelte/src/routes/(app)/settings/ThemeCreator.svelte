@@ -121,7 +121,7 @@
     <p class="text-kong-error">{errorMessage}</p>
     <button 
       class="mt-2 px-3 py-1 bg-kong-bg-secondary text-kong-text-primary rounded hover:bg-kong-bg-secondary"
-      on:click={() => {
+      onclick={() => {
         errorMessage = '';
         resetThemeEditor();
       }}
@@ -159,7 +159,7 @@
           <select 
             id="base-theme" 
             bind:value={baseThemeId} 
-            on:change={resetThemeEditor}
+            onchange={resetThemeEditor}
             class="w-full px-3 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded focus:outline-none focus:border-kong-primary"
           >
             {#each availableThemes as theme}
@@ -222,7 +222,7 @@
               type="text"
               placeholder="#090c17"
               value={editingTheme.colors.bgPrimary}
-              on:input={(e) => handleColorInput('colors.bgPrimary', e)}
+              oninput={(e) => handleColorInput('colors.bgPrimary', e)}
               class="w-32 px-3 py-2 bg-kong-bg-secondary/50 border border-kong-border rounded-lg text-kong-text-primary placeholder-kong-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-kong-primary focus:border-transparent"
             />
           </ColorInput>
@@ -236,7 +236,7 @@
               type="text"
               placeholder="#1a2032"
               value={editingTheme.colors.bgSecondary}
-              on:input={(e) => handleColorInput('colors.bgSecondary', e)}
+              oninput={(e) => handleColorInput('colors.bgSecondary', e)}
               class="w-32 px-3 py-2 bg-kong-bg-secondary/50 border border-kong-border rounded-lg text-kong-text-primary placeholder-kong-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-kong-primary focus:border-transparent"
             />
           </ColorInput>
@@ -248,13 +248,13 @@
                 id="primary" 
                 type="color" 
                 value={editingTheme.colors.primary} 
-                on:input={(e) => handleColorInput('colors.primary', e)}
+                oninput={(e) => handleColorInput('colors.primary', e)}
                 class="w-10 h-10 rounded mr-2 p-0 border-0"
               />
               <input 
                 type="text" 
                 value={editingTheme.colors.primary}
-                on:input={(e) => handleColorInput('colors.primary', e)}
+                oninput={(e) => handleColorInput('colors.primary', e)}
                 class="flex-1 px-3 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded focus:outline-none focus:border-kong-primary"
               />
             </div>
@@ -267,13 +267,13 @@
                 id="text-primary" 
                 type="color" 
                 value={editingTheme.colors.textPrimary} 
-                on:input={(e) => handleColorInput('colors.textPrimary', e)}
+                oninput={(e) => handleColorInput('colors.textPrimary', e)}
                 class="w-10 h-10 rounded mr-2 p-0 border-0"
               />
               <input 
                 type="text" 
                 value={editingTheme.colors.textPrimary}
-                on:input={(e) => handleColorInput('colors.textPrimary', e)}
+                oninput={(e) => handleColorInput('colors.textPrimary', e)}
                 class="flex-1 px-3 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded focus:outline-none focus:border-kong-primary"
               />
             </div>
@@ -291,7 +291,7 @@
           <label for="token-selector-roundness" class="block text-sm text-kong-text-secondary mb-1">Roundness</label>
           <select 
             id="token-selector-roundness" 
-            bind:value={editingTheme.colors.tokenSelectorRoundness} 
+            bind:value={editingTheme.colors.panelRoundness} 
             class="w-full px-3 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded focus:outline-none focus:border-kong-primary"
           >
             <option value="rounded-none">None</option>
@@ -320,13 +320,13 @@
               id="token-ticker-bg" 
               type="color" 
               value={editingTheme.colors.tokenTickerBg || '#111523'} 
-              on:input={(e) => handleColorInput('colors.tokenTickerBg', e)}
+              oninput={(e) => handleColorInput('colors.tokenTickerBg', e)}
               class="w-10 h-10 rounded mr-2 p-0 border-0"
             />
             <input 
               type="text" 
               value={editingTheme.colors.tokenTickerBg || '#111523'}
-              on:input={(e) => handleColorInput('colors.tokenTickerBg', e)}
+              oninput={(e) => handleColorInput('colors.tokenTickerBg', e)}
               class="flex-1 px-3 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded focus:outline-none focus:border-kong-primary"
             />
           </div>
@@ -339,13 +339,13 @@
               id="token-ticker-text" 
               type="color" 
               value={editingTheme.colors.tokenTickerText || '#FFFFFF'} 
-              on:input={(e) => handleColorInput('colors.tokenTickerText', e)}
+              oninput={(e) => handleColorInput('colors.tokenTickerText', e)}
               class="w-10 h-10 rounded mr-2 p-0 border-0"
             />
             <input 
               type="text" 
               value={editingTheme.colors.tokenTickerText || '#FFFFFF'}
-              on:input={(e) => handleColorInput('colors.tokenTickerText', e)}
+              oninput={(e) => handleColorInput('colors.tokenTickerText', e)}
               class="flex-1 px-3 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded focus:outline-none focus:border-kong-primary"
             />
           </div>
@@ -358,13 +358,13 @@
               id="token-ticker-up-color" 
               type="color" 
               value={editingTheme.colors.tokenTickerUpColor || '#05EC86'} 
-              on:input={(e) => handleColorInput('colors.tokenTickerUpColor', e)}
+              oninput={(e) => handleColorInput('colors.tokenTickerUpColor', e)}
               class="w-10 h-10 rounded mr-2 p-0 border-0"
             />
             <input 
               type="text" 
               value={editingTheme.colors.tokenTickerUpColor || '#05EC86'}
-              on:input={(e) => handleColorInput('colors.tokenTickerUpColor', e)}
+              oninput={(e) => handleColorInput('colors.tokenTickerUpColor', e)}
               class="flex-1 px-3 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded focus:outline-none focus:border-kong-primary"
             />
           </div>
@@ -377,13 +377,13 @@
               id="token-ticker-down-color" 
               type="color" 
               value={editingTheme.colors.tokenTickerDownColor || '#FF4545'} 
-              on:input={(e) => handleColorInput('colors.tokenTickerDownColor', e)}
+              oninput={(e) => handleColorInput('colors.tokenTickerDownColor', e)}
               class="w-10 h-10 rounded mr-2 p-0 border-0"
             />
             <input 
               type="text" 
               value={editingTheme.colors.tokenTickerDownColor || '#FF4545'}
-              on:input={(e) => handleColorInput('colors.tokenTickerDownColor', e)}
+              oninput={(e) => handleColorInput('colors.tokenTickerDownColor', e)}
               class="flex-1 px-3 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded focus:outline-none focus:border-kong-primary"
             />
           </div>
@@ -395,7 +395,7 @@
             id="token-ticker-border" 
             type="text" 
             value={editingTheme.colors.tokenTickerBorder || '1px solid rgba(255, 255, 255, 0.1)'} 
-            on:input={(e) => handleColorInput('colors.tokenTickerBorder', e)}
+            oninput={(e) => handleColorInput('colors.tokenTickerBorder', e)}
             class="w-full px-3 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded focus:outline-none focus:border-kong-primary"
           />
         </div>
@@ -421,13 +421,13 @@
               id="token-ticker-hover-bg" 
               type="color" 
               value={editingTheme.colors.tokenTickerHoverBg || '#232735'} 
-              on:input={(e) => handleColorInput('colors.tokenTickerHoverBg', e)}
+              oninput={(e) => handleColorInput('colors.tokenTickerHoverBg', e)}
               class="w-10 h-10 rounded mr-2 p-0 border-0"
             />
             <input 
               type="text" 
               value={editingTheme.colors.tokenTickerHoverBg || '#232735'}
-              on:input={(e) => handleColorInput('colors.tokenTickerHoverBg', e)}
+              oninput={(e) => handleColorInput('colors.tokenTickerHoverBg', e)}
               class="flex-1 px-3 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded focus:outline-none focus:border-kong-primary"
             />
           </div>
@@ -471,14 +471,14 @@
 
     <div class="flex justify-between mt-6">
       <button 
-        on:click={resetThemeEditor} 
+        onclick={resetThemeEditor} 
         class="px-4 py-2 bg-kong-bg-secondary text-kong-text-primary border border-kong-border rounded hover:bg-kong-bg-secondary transition-colors"
       >
         Reset
       </button>
       
       <button 
-        on:click={createTheme} 
+        onclick={createTheme} 
         class="px-4 py-2 bg-kong-primary text-white rounded hover:bg-kong-primary-hover transition-colors"
       >
         Create & Apply Theme

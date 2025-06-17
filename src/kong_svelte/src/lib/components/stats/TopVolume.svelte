@@ -39,7 +39,7 @@
             {#each topVolumeTokens as token, i (token.address)}
               <button
                 class="w-full"
-                on:click={() => goto(`/stats/${token.address}`)}
+                onclick={() => goto(`/stats/${token.address}`)}
               >
                 <TopListTokenCard
                   {token}

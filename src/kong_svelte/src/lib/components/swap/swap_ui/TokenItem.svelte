@@ -26,7 +26,7 @@
   class:disabled={props.otherPanelToken?.address === props.token.address}
   class:blocked={props.blockedTokenIds.includes(props.token.address)}
   class:not-enabled={props.isApiToken}
-  on:click={props.onTokenClick}
+  onclick={props.onTokenClick}
 >
   <!-- Token info section (left side) -->
   <div class="token-info">
@@ -43,7 +43,7 @@
         <button
           class="favorite-button"
           class:active={props.isFavorite}
-          on:click={props.onFavoriteClick}
+          onclick={props.onFavoriteClick}
           title={props.isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
           <Star
@@ -63,7 +63,7 @@
       <!-- Enable button for API tokens -->
       <button
         class="enable-token-button"
-        on:click={props.onEnableClick}
+        onclick={props.onEnableClick}
         disabled={props.enablingTokenId === props.token.address}
       >
         {#if props.enablingTokenId === props.token.address}

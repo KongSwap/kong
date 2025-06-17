@@ -219,12 +219,12 @@
     <div
       class="ticker-content h-full flex items-center"
       role="list"
-      on:mouseenter={() => {
+      onmouseenter={() => {
         isTickerHovered = true;
         isPaused = true;
         stopScrollAnimation();
       }}
-      on:mouseleave={() => {
+      onmouseleave={() => {
         isTickerHovered = false;
         isPaused = isChartHovered || !isVisible;
         if (!isPaused) {
@@ -238,9 +238,9 @@
             class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(
               token.address,
             )?.class || ''}"
-            on:click={() => goto(`/stats/${token.address}`)}
-            on:mouseenter={(e) => handleMouseEnter(e, token)}
-            on:mouseleave={handleMouseLeave}
+            onclick={() => goto(`/stats/${token.address}`)}
+            onmouseenter={(e) => handleMouseEnter(e, token)}
+            onmouseleave={handleMouseLeave}
           >
             <span class="text-kong-text-secondary">{index % tickerTokens.length + 1}.</span>
             <span class="font-medium text-kong-text-primary">{token.symbol}</span>
@@ -271,9 +271,9 @@
   <button
     class="fixed z-[999] w-[300px] h-[150px] bg-kong-bg-primary border border-kong-border rounded-xl shadow-lg overflow-hidden {$page.url.pathname === `/stats/${hoveredToken.address}` ? 'ring-2 ring-kong-success' : ''}"
     style="left: {chartPosition.x}px; top: {chartPosition.y}px;"
-    on:mouseenter={handleChartMouseEnter}
-    on:mouseleave={handleChartMouseLeave}
-    on:click={() => goto(`/stats/${hoveredToken.address}`)}
+    onmouseenter={handleChartMouseEnter}
+    onmouseleave={handleChartMouseLeave}
+    onclick={() => goto(`/stats/${hoveredToken.address}`)}
     transition:fade={{ duration: 150 }}
   >
     <div class="flex justify-between items-center px-2">

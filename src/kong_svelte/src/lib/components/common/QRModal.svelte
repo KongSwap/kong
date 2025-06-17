@@ -47,7 +47,7 @@
         <button 
           class="p-1 rounded-full bg-transparent border-none cursor-pointer text-kong-text-secondary transition-colors duration-200 flex items-center justify-center flex-shrink-0 hover:text-kong-primary hover:bg-kong-bg-secondary/20"
           title={copied ? "Copied!" : "Copy Address"}
-          on:click={() => copyAddress($qrModalStore.address)}
+          onclick={() => copyAddress($qrModalStore.address)}
         >
           {#if copied}
             <Check size={16} class="text-kong-success" />

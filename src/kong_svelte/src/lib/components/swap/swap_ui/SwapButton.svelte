@@ -234,13 +234,13 @@
       --mouse-y: {interaction.mouseY}%;
       --glow-intensity: {$glowIntensity};
     "
-    on:click={handleClick}
-    on:keydown={handleKeyDown}
-    on:mouseenter={handleMouseEnter}
-    on:mouseleave={handleMouseLeave}
-    on:mousemove={handleMouseMove}
-    on:mousedown={handleMouseDown}
-    on:mouseup={handleMouseUp}
+    onclick={handleClick}
+    onkeydown={handleKeyDown}
+    onmouseenter={handleMouseEnter}
+    onmouseleave={handleMouseLeave}
+    onmousemove={handleMouseMove}
+    onmousedown={handleMouseDown}
+    onmouseup={handleMouseUp}
     disabled={disabled || isProcessing}
     aria-label={getAriaLabel()}
     aria-busy={isLoadingState}

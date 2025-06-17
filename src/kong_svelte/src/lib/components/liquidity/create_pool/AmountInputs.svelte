@@ -136,7 +136,7 @@
             placeholder="0.00"
             class="amount-input"
             value={displayValue0}
-            on:input={(e) => handleFormattedInput(0, e)}
+            oninput={(e) => handleFormattedInput(0, e)}
             disabled={!token0}
           />
           {#if token0}
@@ -149,10 +149,10 @@
           <span class="text-xs text-kong-text-primary/60">Quick amounts:</span>
           <div class="percentage-buttons">
             {#if token0 && parseFloat(token0Balance) > 0}
-              <button on:click={() => onPercentageClick(25)} class="percentage-btn">25%</button>
-              <button on:click={() => onPercentageClick(50)} class="percentage-btn">50%</button>
-              <button on:click={() => onPercentageClick(75)} class="percentage-btn">75%</button>
-              <button on:click={() => onPercentageClick(100)} class="percentage-btn max-btn">MAX</button>
+              <button onclick={() => onPercentageClick(25)} class="percentage-btn">25%</button>
+              <button onclick={() => onPercentageClick(50)} class="percentage-btn">50%</button>
+              <button onclick={() => onPercentageClick(75)} class="percentage-btn">75%</button>
+              <button onclick={() => onPercentageClick(100)} class="percentage-btn max-btn">MAX</button>
             {:else}
               <button disabled class="percentage-btn">25%</button>
               <button disabled class="percentage-btn">50%</button>
@@ -204,7 +204,7 @@
             placeholder="0.00"
             class="amount-input"
             value={displayValue1}
-            on:input={(e) => handleFormattedInput(1, e)}
+            oninput={(e) => handleFormattedInput(1, e)}
             disabled={!token1}
           />
           {#if token1}
@@ -217,10 +217,10 @@
           <span class="text-xs text-kong-text-primary/60">Quick amounts:</span>
           <div class="percentage-buttons">
             {#if token1 && parseFloat(token1Balance) > 0}
-              <button on:click={() => onToken1PercentageClick(25)} class="percentage-btn">25%</button>
-              <button on:click={() => onToken1PercentageClick(50)} class="percentage-btn">50%</button>
-              <button on:click={() => onToken1PercentageClick(75)} class="percentage-btn">75%</button>
-              <button on:click={() => onToken1PercentageClick(100)} class="percentage-btn max-btn">MAX</button>
+              <button onclick={() => onToken1PercentageClick(25)} class="percentage-btn">25%</button>
+              <button onclick={() => onToken1PercentageClick(50)} class="percentage-btn">50%</button>
+              <button onclick={() => onToken1PercentageClick(75)} class="percentage-btn">75%</button>
+              <button onclick={() => onToken1PercentageClick(100)} class="percentage-btn max-btn">MAX</button>
             {:else}
               <button disabled class="percentage-btn">25%</button>
               <button disabled class="percentage-btn">50%</button>

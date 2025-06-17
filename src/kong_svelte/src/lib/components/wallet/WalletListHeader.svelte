@@ -41,7 +41,7 @@
     {#if onRefresh}
       <button 
         class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        on:click={handleRefresh}
+        onclick={handleRefresh}
         disabled={isLoading || isRefreshing}
         aria-busy={isLoading || isRefreshing}
       >

@@ -27,7 +27,7 @@
       <button
         aria-label={`Set prediction amount to ${quickAmount} KONG`}
         class="px-2 py-1.5 bg-kong-bg-secondary hover:bg-kong-bg-primary text-xs rounded transition-all border border-kong-border hover:border-kong-success/50 font-medium group"
-        on:click={() => handleQuickAmount(quickAmount)}
+        onclick={() => handleQuickAmount(quickAmount)}
       >
         <span class="text-kong-text-secondary group-hover:text-kong-success transition-colors">{quickAmount}</span>
       </button>

@@ -22,7 +22,7 @@
     <div>
       <h4 class="text-sm font-medium text-kong-text-primary">Trader Profile</h4>
       <p class="text-xs text-kong-text-secondary mt-1 break-all">
-        <button on:click={() => goto(`/wallets/${user.principal_id}`)} class="inline-flex items-center text-kong-primary hover:text-kong-primary-hover hover:underline">
+        <button onclick={() => goto(`/wallets/${user.principal_id}`)} class="inline-flex items-center text-kong-primary hover:text-kong-primary-hover hover:underline">
           <span class="mr-1">{user.principal_id}</span>
           <ExternalLink class="w-3 h-3" />
         </button>
@@ -39,7 +39,7 @@
     <div class="text-xs font-medium text-kong-text-secondary mt-2 md:mt-0">
       <span class="inline-flex items-center bg-kong-bg-primary bg-opacity-50 px-3 py-1 rounded-full">
         <span class="mr-1">{compactLayout ? 'Volume:' : 'Trading Volume:'}</span>
-        <span class="text-kong-success">{formatVolume(user.total_volume_usd)}</span>
+        <span class="text-kong-success">{formatVolume(user.total_volume_usd.toString())}</span>
       </span>
       <span class="inline-flex items-center ml-2 bg-kong-bg-primary bg-opacity-50 px-3 py-1 rounded-full">
         <span class="mr-1">Swaps:</span>

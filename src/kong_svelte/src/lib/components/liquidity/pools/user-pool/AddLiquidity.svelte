@@ -244,7 +244,7 @@
           size="md"
           isDisabled={!state.amounts[0] || !state.amounts[1] || state.isCalculating}
           fullWidth={true}
-          on:click={handleAddLiquidity}
+          onclick={handleAddLiquidity}
         >
           {#if state.isCalculating}
             <div class="button-content">

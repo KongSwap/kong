@@ -56,7 +56,7 @@
           {/if}
           <span
             class="px-2 py-0.5 cursor-pointer flex items-center gap-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded-full"
-            on:click={(e) => {
+            onclick={(e) => {
               goto(`/wallets/${market.creator.toText()}`);
             }}
           >

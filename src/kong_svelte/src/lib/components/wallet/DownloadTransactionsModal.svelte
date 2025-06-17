@@ -503,7 +503,7 @@
 
     <!-- Download Button -->
     <button
-      on:click={downloadTransactions}
+      onclick={downloadTransactions}
       disabled={isLoading}
       class="w-full flex items-center justify-center gap-2 py-3 mt-4 rounded-lg bg-kong-primary hover:bg-kong-primary-hover text-white font-medium transition-colors {isLoading ? 'opacity-80 cursor-not-allowed' : ''}"
     >

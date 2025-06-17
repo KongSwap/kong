@@ -58,10 +58,10 @@
       {#each users as user, index}
         <button
           class="result-item user-result {selectedIndex === startIndex + index ? 'selected' : ''}"
-          on:click={() => handleSelect(user)}
-          on:touchstart={handleTouchStart}
-          on:touchmove={handleTouchMove}
-          on:touchend={(e) => handleTouchEnd(user, e)}
+          onclick={() => handleSelect(user)}
+          ontouchstart={handleTouchStart}
+          ontouchmove={handleTouchMove}
+          ontouchend={(e) => handleTouchEnd(user, e)}
         >
           <div class="result-content">
             <div class="user-icon">
@@ -74,40 +74,40 @@
               <div class="wallet-badges">
                 <div 
                   class="wallet-badge overview"
-                  on:click={(e) => handleBadgeClick(user.principal_id, '', e)}
-                  on:touchstart={handleTouchStart}
-                  on:touchmove={handleTouchMove}
-                  on:touchend={(e) => handleBadgeTouchEnd(user.principal_id, '', e)}
+                  onclick={(e) => handleBadgeClick(user.principal_id, '', e)}
+                  ontouchstart={handleTouchStart}
+                  ontouchmove={handleTouchMove}
+                  ontouchend={(e) => handleBadgeTouchEnd(user.principal_id, '', e)}
                 >
                   <BarChart2 size={12} />
                   <span>Overview</span>
                 </div>
                 <div 
                   class="wallet-badge tokens"
-                  on:click={(e) => handleBadgeClick(user.principal_id, 'tokens', e)}
-                  on:touchstart={handleTouchStart}
-                  on:touchmove={handleTouchMove}
-                  on:touchend={(e) => handleBadgeTouchEnd(user.principal_id, 'tokens', e)}
+                  onclick={(e) => handleBadgeClick(user.principal_id, 'tokens', e)}
+                  ontouchstart={handleTouchStart}
+                  ontouchmove={handleTouchMove}
+                  ontouchend={(e) => handleBadgeTouchEnd(user.principal_id, 'tokens', e)}
                 >
                   <Coins size={12} />
                   <span>Tokens</span>
                 </div>
                 <div 
                   class="wallet-badge liquidity"
-                  on:click={(e) => handleBadgeClick(user.principal_id, 'liquidity', e)}
-                  on:touchstart={handleTouchStart}
-                  on:touchmove={handleTouchMove}
-                  on:touchend={(e) => handleBadgeTouchEnd(user.principal_id, 'liquidity', e)}
+                  onclick={(e) => handleBadgeClick(user.principal_id, 'liquidity', e)}
+                  ontouchstart={handleTouchStart}
+                  ontouchmove={handleTouchMove}
+                  ontouchend={(e) => handleBadgeTouchEnd(user.principal_id, 'liquidity', e)}
                 >
                   <Droplets size={12} />
                   <span>LP</span>
                 </div>
                 <div 
                   class="wallet-badge swaps"
-                  on:click={(e) => handleBadgeClick(user.principal_id, 'swaps', e)}
-                  on:touchstart={handleTouchStart}
-                  on:touchmove={handleTouchMove}
-                  on:touchend={(e) => handleBadgeTouchEnd(user.principal_id, 'swaps', e)}
+                  onclick={(e) => handleBadgeClick(user.principal_id, 'swaps', e)}
+                  ontouchstart={handleTouchStart}
+                  ontouchmove={handleTouchMove}
+                  ontouchend={(e) => handleBadgeTouchEnd(user.principal_id, 'swaps', e)}
                 >
                   <ArrowRightLeft size={12} />
                   <span>Swaps</span>

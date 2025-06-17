@@ -54,10 +54,10 @@
   class:disabled
   class:pressed={isPressed}
   class:selected={state === 'selected'}
-  on:click={handleClick}
-  on:mousedown={handleMouseDown}
-  on:mouseenter={handleMouseEnter}
-  on:mouseleave={handleMouseLeave}
+  onclick={handleClick}
+  onmousedown={handleMouseDown}
+  onmouseenter={handleMouseEnter}
+  onmouseleave={handleMouseLeave}
   {disabled}
   style="--progress: {$progress}; width: {width === 'auto' ? 'auto' : typeof width === 'number' ? width + 'px' : width};"
   use:tooltip={{

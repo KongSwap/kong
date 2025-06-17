@@ -194,13 +194,13 @@
 
   <div>
     {#if initialDataLoading}
-      <LoadingIndicator text="Initializing wallet data..." size={24} />
+      <LoadingIndicator message="Initializing wallet data..." />
     {:else if initError}
       <div class="text-center py-8 text-kong-error">
         {initError}
       </div>
     {:else if $isLoading}
-      <LoadingIndicator text="Loading swap transactions..." size={24} />
+      <LoadingIndicator message="Loading swap transactions..." />
     {:else if $swapTransactions.length === 0}
       <div class="text-center py-8 text-kong-text-secondary">
         No recent swap transactions found for {$currentPrincipal}
@@ -326,7 +326,7 @@
           <button 
             class="px-1 sm:px-2 py-1 rounded-l-md border border-kong-bg-primary hover:bg-kong-bg-primary/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={$currentPage === 1 || $isLoading || initialDataLoading}
-            on:click={() => goToPage($currentPage - 1)}
+            onclick={() => goToPage($currentPage - 1)}
             aria-label="Previous page"
           >
             <ChevronLeft class="w-3 h-3 sm:w-4 sm:h-4" />
@@ -335,7 +335,7 @@
           <button 
             class="px-1 sm:px-2 py-1 rounded-r-md border-t border-r border-b border-kong-bg-primary hover:bg-kong-bg-primary/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
             disabled={$currentPage === $totalPages || $isLoading || initialDataLoading}
-            on:click={() => goToPage($currentPage + 1)}
+            onclick={() => goToPage($currentPage + 1)}
             aria-label="Next page"
           >
             <ChevronRight class="w-3 h-3 sm:w-4 sm:h-4" />

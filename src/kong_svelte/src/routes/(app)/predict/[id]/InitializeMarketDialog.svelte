@@ -44,7 +44,7 @@
             {selectedOutcome === index
               ? 'border-kong-primary bg-kong-primary/10 font-semibold text-kong-primary'
               : 'border-kong-border hover:border-kong-primary hover:bg-kong-primary/5'}"
-          on:click={() => selectedOutcome = index}
+          onclick={() => selectedOutcome = index}
         >
         <div class="flex flex-col gap-2">
           <span class="text-xs text-kong-text-secondary">Outcome {index + 1}</span>
@@ -66,14 +66,14 @@
     <div class="flex gap-3 justify-end pt-2">
       <ButtonV2
         theme="secondary"
-        on:click={handleClose}
+        onclick={handleClose}
         disabled={initializing}
       >
         Cancel
       </ButtonV2>
       <ButtonV2
         theme="accent-green"
-        on:click={handleInitialize}
+        onclick={handleInitialize}
         disabled={selectedOutcome === null || initializing}
       >
         {initializing ? 'Initializing...' : 'Initialize Market'}

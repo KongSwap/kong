@@ -414,7 +414,7 @@
                 theme="secondary"
                 variant="solid"
                 size="xs"
-                on:click={() => setPercentage(25)}
+                onclick={() => setPercentage(25)}
                 isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
                 className="sm:text-sm"
               />
@@ -423,7 +423,7 @@
                 theme="secondary"
                 variant="solid"
                 size="xs"
-                on:click={() => setPercentage(50)}
+                onclick={() => setPercentage(50)}
                 isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
                 className="sm:text-sm"
               />
@@ -432,7 +432,7 @@
                 theme="secondary"
                 variant="solid"
                 size="xs"
-                on:click={() => setPercentage(75)}
+                onclick={() => setPercentage(75)}
                 isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
                 className="sm:text-sm"
               />
@@ -441,7 +441,7 @@
                 theme="secondary"
                 variant="solid"
                 size="xs"
-                on:click={() => setPercentage(100)}
+                onclick={() => setPercentage(100)}
                 isDisabled={!$auth.isConnected || state.tokenBalance <= 0}
                 className="sm:text-sm"
               />
@@ -451,7 +451,7 @@
                         <div class="flex justify-end mt-2">
                           <button 
                             class="flex items-center text-xs text-kong-text-secondary hover:text-kong-text-primary transition-colors"
-                            on:click={toggleInputMode}
+                            onclick={toggleInputMode}
                           >
                             <RefreshCw class="w-3 h-3 mr-1" />
                             Switch to {state.inputMode === "token" ? "USD" : "token"} input
@@ -481,7 +481,7 @@
             theme="secondary"
             variant="solid"
             size="lg"
-            on:click={handleClose}
+            onclick={handleClose}
             className="flex-1 font-bold sm:text-base"
           />
           <ButtonV2
@@ -489,7 +489,7 @@
             theme="accent-green"
             variant="solid"
             size="lg"
-            on:click={goToNextStep}
+            onclick={goToNextStep}
             isDisabled={selectedOutcome === null || !betAmount}
             className="flex-1 font-bold sm:text-base"
           />
@@ -578,7 +578,7 @@
             theme="secondary"
             variant="solid"
             size="lg"
-            on:click={goBack}
+            onclick={goBack}
             isDisabled={isBetting}
             className="flex-1 font-bold sm:text-base flex items-center justify-center"
           >
@@ -591,7 +591,7 @@
             theme="accent-green"
             variant="solid"
             size="lg"
-            on:click={() => onBet(betAmount)}
+            onclick={() => onBet(betAmount)}
             isDisabled={isBetting}
             className="flex-1 font-bold sm:text-base flex items-center justify-center gap-2"
           >

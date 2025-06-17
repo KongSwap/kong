@@ -95,7 +95,7 @@
       fullWidth={true}
       isDisabled={isProcessing || isProcessingAll}
       animationIterations={1}
-      on:click={() => onProcess(claim.claim_id)}
+      onclick={() => onProcess(claim.claim_id)}
       className="min-h-[40px]"
     >
       {#if isProcessing && processingClaimId === claim.claim_id}

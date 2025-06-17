@@ -309,7 +309,7 @@
     <div class="flex items-center gap-2">
       <button 
         class="px-3 py-1.5 text-xs font-medium text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md bg-kong-text-primary/5 hover:bg-kong-text-primary/10" 
-        on:click={() => loadMessages(true)}
+        onclick={() => loadMessages(true)}
       >
         Refresh
       </button>

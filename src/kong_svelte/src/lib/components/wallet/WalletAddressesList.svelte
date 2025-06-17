@@ -198,11 +198,11 @@
         <div class="overflow-hidden border border-kong-border/50">
           <div 
             class="px-4 py-2.5 flex items-center justify-between cursor-pointer bg-kong-bg-secondary hover:bg-kong-bg-secondary/50 transition-colors border-b border-kong-border/20"
-            on:click={() => toggleChainExpansion(chain)}
+            onclick={() => toggleChainExpansion(chain)}
             role="button"
             tabindex="0"
             aria-expanded={expandedChains[chain]}
-            on:keypress={(e) => e.key === 'Enter' && toggleChainExpansion(chain)}
+            onkeypress={(e) => e.key === 'Enter' && toggleChainExpansion(chain)}
           >
             <div class="font-medium text-kong-text-primary flex items-center gap-2">
                 {chain}

@@ -43,10 +43,10 @@
     <div class="text-xs text-kong-text-secondary mb-2">You are an admin. Use these tools with caution.</div>
     <!-- Admin actions -->
     {#if !isMarketResolved && !isMarketVoided}
-      <button class="bg-kong-accent-yellow text-kong-text-on-primary px-3 py-2 rounded mb-2 hover:bg-yellow-700 transition-colors w-full" on:click={openResolutionModal}>
+      <button class="bg-kong-accent-yellow text-kong-text-on-primary px-3 py-2 rounded mb-2 hover:bg-yellow-700 transition-colors w-full" onclick={openResolutionModal}>
         Resolve Market
       </button>
-      <button class="bg-kong-error text-kong-text-on-primary px-3 py-2 rounded hover:bg-red-400 transition-colors w-full" on:click={onOpenVoidDialog}>
+      <button class="bg-kong-error text-kong-text-on-primary px-3 py-2 rounded hover:bg-red-400 transition-colors w-full" onclick={onOpenVoidDialog}>
         Void Market
       </button>
     {/if}

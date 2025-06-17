@@ -44,7 +44,7 @@
     <div class="grid grid-cols-3 gap-3">
       <!-- X Button -->
       <button
-        on:click={handleShareToTwitter}
+        onclick={handleShareToTwitter}
         class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg bg-black hover:bg-gray-900 text-white font-medium transition-colors"
         aria-label="Share to X"
       >
@@ -54,7 +54,7 @@
 
       <!-- Telegram Button -->
       <button
-        on:click={handleShareToTelegram}
+        onclick={handleShareToTelegram}
         class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg bg-[#0088cc] hover:bg-[#0077b3] text-white font-medium transition-colors"
         aria-label="Share to Telegram"
       >
@@ -91,7 +91,7 @@
 
       <!-- TikTok Button -->
       <button
-        on:click={handleShareToTikTok}
+        onclick={handleShareToTikTok}
         class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg bg-[#000000] hover:bg-gray-900 text-white font-medium transition-colors"
         aria-label="Share to TikTok"
       >
@@ -110,7 +110,7 @@
 
       <!-- Facebook Button -->
       <button
-        on:click={handleShareToFacebook}
+        onclick={handleShareToFacebook}
         class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg bg-[#1877F2] hover:bg-[#0E65D9] text-white font-medium transition-colors"
         aria-label="Share to Facebook"
       >
@@ -120,7 +120,7 @@
 
       <!-- Reddit Button -->
       <button
-        on:click={handleShareToReddit}
+        onclick={handleShareToReddit}
         class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg bg-[#FF4500] hover:bg-[#E03D00] text-white font-medium transition-colors"
         aria-label="Share to Reddit"
       >
@@ -179,7 +179,7 @@
 
       <!-- Copy Link Button -->
       <button
-        on:click={handleCopyLinkToClipboard}
+        onclick={handleCopyLinkToClipboard}
         class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg bg-kong-bg-secondary hover:bg-kong-bg-secondary text-kong-text-primary font-medium transition-colors"
         aria-label="Copy Link"
       >

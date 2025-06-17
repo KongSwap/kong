@@ -47,7 +47,7 @@
     class="flex gap-2 sm:gap-4 border-b border-kong-border overflow-x-auto scrollbar-none"
   >
     <button
-      on:click={() => selectTab("percentageChance")}
+      onclick={() => selectTab("percentageChance")}
       class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
       'percentageChance'
         ? 'text-kong-primary font-medium'
@@ -61,7 +61,7 @@
       {/if}
     </button>
     <button
-      on:click={() => selectTab("betHistory")}
+      onclick={() => selectTab("betHistory")}
       class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
       'betHistory'
         ? 'text-kong-primary font-medium'
@@ -75,7 +75,7 @@
       {/if}
     </button>
     <button
-      on:click={() => selectTab("rules")}
+      onclick={() => selectTab("rules")}
       class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
       'rules'
         ? 'text-kong-primary font-medium'

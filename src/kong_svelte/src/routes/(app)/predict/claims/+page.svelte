@@ -87,7 +87,7 @@
 <div class="min-h-screen text-kong-text-primary px-4">
   <div class="max-w-4xl mx-auto">
     <button
-      on:click={() => goto("/predict")}
+      onclick={() => goto("/predict")}
       class="mb-4 flex items-center gap-2 px-3 py-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md hover:bg-kong-bg-primary/40"
     >
       <ArrowLeft class="w-4 h-4" />
@@ -122,7 +122,7 @@
               You don't have any pending rewards at the moment. Make predictions and win to earn rewards!
             </p>
             <ButtonV2
-              on:click={() => goto("/predict")}
+              onclick={() => goto("/predict")}
               theme="accent-green"
               size="lg"
             >
@@ -194,7 +194,7 @@
             {/if}
 
             <button
-              on:click={handleClaimRewards}
+              onclick={handleClaimRewards}
               disabled={claimingRewards}
               class="w-full py-4 px-6 bg-kong-success hover:bg-kong-success/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg"
             >
@@ -217,13 +217,13 @@
       <!-- Additional Actions -->
       <div class="flex flex-col sm:flex-row gap-4">
         <button
-          on:click={() => goto("/predict/history")}
+          onclick={() => goto("/predict/history")}
           class="flex-1 py-3 px-4 bg-kong-secondary hover:bg-kong-secondary-hover text-kong-text-primary font-medium rounded-lg transition-colors"
         >
           View Prediction History
         </button>
         <button
-          on:click={() => goto("/predict")}
+          onclick={() => goto("/predict")}
           class="flex-1 py-3 px-4 bg-kong-accent-blue hover:bg-kong-accent-blue-hover text-white font-medium rounded-lg transition-colors"
         >
           Make New Predictions

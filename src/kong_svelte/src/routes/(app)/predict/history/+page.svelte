@@ -103,7 +103,7 @@
 <div class="min-h-screen text-kong-text-primary px-4">
   <div class="max-w-6xl mx-auto">
     <button
-      on:click={() => goto("/predict")}
+      onclick={() => goto("/predict")}
       class="mb-4 flex items-center gap-2 px-3 py-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors rounded-md hover:bg-kong-bg-primary/40"
     >
       <ArrowLeft class="w-4 h-4" />
@@ -117,7 +117,7 @@
           <p class="text-kong-text-secondary">View your past predictions and outcomes</p>
         </div>
         <ButtonV2
-          on:click={() => goto("/predict/claims")}
+          onclick={() => goto("/predict/claims")}
           theme="primary"
           size="lg"
           className="text-white font-medium rounded-lg transition-colors flex items-center gap-2 sm:self-start"
@@ -228,7 +228,7 @@
                         <button
                           class="text-sm sm:text-base line-clamp-2 font-medium text-kong-text-primary text-left hover:text-kong-success transition-colors flex items-center gap-1 max-w-md"
                           title={bet.market.question}
-                          on:click={() => goto(`/predict/${bet.market.id}`)}
+                          onclick={() => goto(`/predict/${bet.market.id}`)}
                         >
                           <span class="block">{bet.market.question}</span>
                           <ArrowUpRight class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -278,7 +278,7 @@
             {#if totalPages > 1}
             <div class="flex justify-between items-center p-4 border-t border-kong-bg-primary">
               <button
-                on:click={prevPage}
+                onclick={prevPage}
                 disabled={currentPage === 1}
                 class="px-4 py-2 text-sm font-medium rounded-md transition-colors {currentPage === 1 ? 'bg-kong-bg-secondary text-kong-text-disabled cursor-not-allowed' : 'bg-kong-secondary hover:bg-kong-secondary-hover text-kong-text-primary'}"
               >
@@ -288,7 +288,7 @@
                 Page {currentPage} of {totalPages}
               </span>
               <button
-                on:click={nextPage}
+                onclick={nextPage}
                 disabled={currentPage === totalPages}
                 class="px-4 py-2 text-sm font-medium rounded-md transition-colors {currentPage === totalPages ? 'bg-kong-bg-secondary text-kong-text-disabled cursor-not-allowed' : 'bg-kong-secondary hover:bg-kong-secondary-hover text-kong-text-primary'}"
               >

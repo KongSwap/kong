@@ -181,7 +181,7 @@
         size={isMobile ? "md" : "lg"}
         fullWidth={true}
         isDisabled={isValidating}
-        on:click={onClose}
+        onclick={onClose}
       >
         Cancel
       </ButtonV2>
@@ -192,7 +192,7 @@
         size={isMobile ? "md" : "lg"}
         fullWidth={true}
         isDisabled={isValidating}
-        on:click={handleConfirm}
+        onclick={handleConfirm}
       >
         <div class="flex items-center justify-center gap-2">
           {#if isValidating}

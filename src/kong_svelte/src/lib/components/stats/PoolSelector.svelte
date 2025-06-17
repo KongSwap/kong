@@ -168,7 +168,7 @@
           <button
             type="button"
             class="{getItemClass()} !p-3 {pool.pool_id === selectedPool?.pool_id ? 'bg-kong-bg-secondary' : ''} w-full"
-            on:click={() => {
+            onclick={() => {
               onPoolSelect(pool);
               isPoolSelectorOpen = false;
             }}

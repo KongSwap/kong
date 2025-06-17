@@ -42,7 +42,7 @@
             'gainers'
               ? 'bg-kong-success text-kong-text-on-primary'
               : 'bg-kong-bg-primary/60 text-kong-text-secondary hover:text-kong-text-primary'}"
-            on:click={() => handleTabChange("gainers")}
+            onclick={() => handleTabChange("gainers")}
           >
             <TrendingUp size={16} />
           </button>
@@ -51,7 +51,7 @@
             'losers'
               ? 'bg-kong-error text-kong-text-on-primary'
               : 'bg-kong-bg-primary/60 text-kong-text-secondary hover:text-kong-text-primary'}"
-            on:click={() => handleTabChange("losers")}
+            onclick={() => handleTabChange("losers")}
           >
             <TrendingDown size={16} />
           </button>
@@ -74,7 +74,7 @@
             {#each $activeTab === "gainers" ? topGainers : topLosers as token, i (token.address)}
               <button
                 class="w-full"
-                on:click={() => goto(`/stats/${token.address}`)}
+                onclick={() => goto(`/stats/${token.address}`)}
               >
                 <TopListTokenCard
                   {token}

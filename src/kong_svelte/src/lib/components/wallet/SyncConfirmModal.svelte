@@ -97,13 +97,13 @@
 		<div class="flex justify-end gap-3">
 			<button
 				class="px-4 py-2 bg-kong-bg-secondary/20 text-kong-text-primary rounded-md hover:bg-kong-bg-secondary/30 transition-colors"
-				on:click={handleCancel}
+				onclick={handleCancel}
 			>
 				Cancel
 			</button>
 			<button
 				class="px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
-				on:click={handleConfirm}
+				onclick={handleConfirm}
 			>
 				Apply Changes
 			</button>

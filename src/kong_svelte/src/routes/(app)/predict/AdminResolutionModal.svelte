@@ -67,7 +67,7 @@
             {selectedOutcome === BigInt(index)
               ? 'border-kong-success bg-kong-success/10 font-semibold text-kong-success'
               : 'border-kong-border hover:border-kong-success hover:bg-kong-success/5'}"
-          on:click={() => selectedOutcome = BigInt(index)}
+          onclick={() => selectedOutcome = BigInt(index)}
         >
           {outcome}
         </button>
@@ -76,14 +76,14 @@
     <div class="flex gap-3 justify-end pt-2">
       <button
         class="px-4 py-2 rounded bg-kong-bg-secondary text-kong-text-primary hover:bg-kong-bg-primary/40 transition-colors"
-        on:click={close}
+        onclick={close}
         disabled={isSubmitting}
       >
         Cancel
       </button>
       <button
         class="px-4 py-2 rounded bg-kong-success text-kong-text-on-primary font-bold hover:bg-kong-success/90 disabled:opacity-50 transition-colors"
-        on:click={handleResolve}
+        onclick={handleResolve}
         disabled={isSubmitting}
       >
         {isSubmitting ? 'Resolving...' : 'Resolve Market'}
