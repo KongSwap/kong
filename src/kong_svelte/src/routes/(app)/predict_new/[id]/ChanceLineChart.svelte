@@ -78,7 +78,6 @@
       const sortedBets = [...normalizedBets].sort((a, b) => a.normalizedTime - b.normalizedTime);
       
       if (sortedBets.length === 0) {
-        console.log('No valid bets found for chance chart');
         return;
       }
       
