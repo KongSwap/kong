@@ -4,7 +4,7 @@ use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{pow, ToPrimitive, Zero};
 use std::cmp::Ordering;
 
-use crate::helpers::math_helpers::round_f64;
+use super::math_helpers::round_f64;
 
 pub fn nat_zero() -> Nat {
     Nat::from(0_u128)
