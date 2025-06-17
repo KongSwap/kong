@@ -112,9 +112,9 @@
     const verticalPadding = size * 0.1; // 10% padding top and bottom
     
     // Distribute vertical space: logo (40%), symbol (30%), price (30%)
-    const logoSize = Math.min(size * 0.25, availableHeight * 0.4);
-    const symbolSize = Math.max(8, Math.min(size * 0.08, availableHeight * 0.15));
-    const priceSize = Math.max(7, Math.min(size * 0.07, availableHeight * 0.12));
+    const logoSize = size * 0.3;
+    const symbolSize = size * 0.12;
+    const priceSize = size * 0.12;
     
     // Simplified color calculation
     const absChange = Math.abs(changePercent);
@@ -543,7 +543,7 @@
           <div class="spinner-ring" style="animation-delay: {-0.45 + i * 0.15}s;"></div>
         {/each}
       </div>
-      <div class="loading-text">Adjusting layout...</div>
+      <div class="loading-text">Updating bubble...</div>
     </div>
   {:else}
     {#each tokens as token, i (token.address)}
