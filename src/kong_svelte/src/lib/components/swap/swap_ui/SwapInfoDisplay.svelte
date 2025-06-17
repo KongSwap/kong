@@ -262,7 +262,7 @@
 
 <style lang="postcss">
   .swap-info-display {
-    @apply w-full px-3 md:px-0;
+    @apply w-full sm:px-3 md:px-0;
   }
 
   .info-grid {
