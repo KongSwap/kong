@@ -383,7 +383,7 @@
 <!-- Custom Advertisement-Style Header -->
 <div class="px-4">
   <div
-    class="w-3/4 mx-auto overflow-hidden relative"
+    class="sm:w-3/4 mx-auto overflow-hidden relative"
   >
 
     <div class="relative z-10 md:pb-4">
