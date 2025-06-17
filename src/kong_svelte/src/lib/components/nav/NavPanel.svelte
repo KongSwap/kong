@@ -220,9 +220,9 @@
 </script>
 
 <div
-  class="flex items-center overflow-hidden {isMobile
+  class="flex items-center {isMobile
     ? ''
-    : 'bg-kong-bg-primary/50 border border-kong-border/50'} {$panelRoundness} overflow-hidden"
+    : 'bg-kong-bg-primary/50 border border-kong-border/50'} {$panelRoundness}"
 >
   {#each visibleButtons as button, i}
     <button
@@ -230,7 +230,7 @@
         ? 'selected'
         : ''} {button.isWalletButton ? 'wallet-button' : ''} {isMobile
         ? 'mobile'
-        : ''} {i === 0 ? leftRoundnessClass : ''} {i === visibleButtons.length - 1 ? rightRoundnessClass : ''}"
+        : ''} {i === 0 ? 'first-button ' + leftRoundnessClass : ''} {i === visibleButtons.length - 1 ? 'last-button ' + rightRoundnessClass : ''}"
       onclick={button.onClick}
       use:tooltip={button.tooltipText
         ? { text: button.tooltipText, direction: "bottom" }
@@ -258,9 +258,9 @@
             <Icon size={button.iconSize || 18} />
             {#if button.badgeCount > 0}
               <span
-                class="absolute {isMobile
-                  ? '-top-2 -left-2'
-                  : '-top-3 -left-3'} w-4 h- z-20 rounded-full bg-kong-error text-white text-[10px] font-medium flex items-center justify-center z-10"
+                class="notification-badge absolute {isMobile
+                  ? '-top-2 -right-2'
+                  : '-top-2 -right-2'} min-w-[16px] h-4 px-1 rounded-full bg-kong-error text-white text-[10px] font-medium flex items-center justify-center"
               >
                 {button.badgeCount}
               </span>
@@ -283,7 +283,7 @@
 
 <style scoped lang="postcss">
   .nav-panel-button {
-    @apply h-[34px] px-3 flex items-center gap-1.5 text-xs font-medium text-kong-text-secondary bg-kong-bg-primary border-none transition-all duration-150;
+    @apply h-[34px] px-3 flex items-center gap-1.5 text-xs font-medium text-kong-text-secondary bg-kong-bg-primary border-none transition-all duration-150 relative overflow-visible;
   }
 
   .nav-panel-button:not(:last-child) {
@@ -291,19 +291,33 @@
   }
 
   .nav-panel-button:hover {
-    @apply bg-kong-primary text-kong-text-primary;
+    @apply bg-kong-primary text-kong-text-on-primary;
   }
 
   .nav-panel-button.selected {
-    @apply bg-kong-primary/40 text-kong-text-primary;
+    @apply bg-kong-primary/40 text-kong-text-on-primary;
   }
 
   .nav-panel-button.wallet-button {
-    @apply text-kong-primary hover:bg-kong-primary hover:text-kong-text-primary;
+    @apply text-kong-primary hover:bg-kong-primary hover:text-kong-text-on-primary;
   }
 
   .nav-panel-button.mobile {
     @apply h-[34px] w-[34px] flex items-center justify-center;
+  }
+  
+  /* Ensure first and last buttons clip content but allow badge overflow */
+  .nav-panel-button.first-button {
+    @apply overflow-hidden;
+  }
+  
+  .nav-panel-button.last-button {
+    @apply overflow-hidden;
+  }
+  
+  /* Allow notification badge to overflow */
+  .notification-badge {
+    @apply z-50;
   }
 
   .spinner {

@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { fade, fly } from "svelte/transition";
-  import { cubicOut, cubicInOut } from "svelte/easing";
-  import { page } from "$app/state";
+  import { page } from "$app/stores";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
@@ -19,6 +17,9 @@
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import GlobalSignatureModal from "$lib/components/wallet/GlobalSignatureModal.svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
+  import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
+  import { goto } from "$app/navigation";
+  import { themeStore } from "$lib/stores/themeStore";
 
   let { children } = $props<{
     children: any;
@@ -28,12 +29,25 @@
   let defaultTokens = $state<Kong.Token[]>([]);
   let themeReady = $state(false);
   let loadingTimeout: number | null = $state(null);
+  
+  // Track background transition state
+  let backgroundTransitioning = $state(false);
+  let previousPath = $state('');
+  let pageKey = $state(0);
+  
+  // Determine if current page should have themed background
+  const hasThemedBackground = $derived(
+    $page.url.pathname.startsWith('/swap') || 
+    $page.url.pathname.includes('/competition')
+  );
 
   async function init() {
     const promise = (async () => {
       try {
         if (browser) {
           configureStorage();
+          // Initialize theme store for all pages
+          themeStore.initTheme();
         }
         await auth.initialize();
         if (browser) {
@@ -115,29 +129,49 @@
       userTokens.enableTokens(defaultTokens);
     }
   });
+  
+  // Handle page transitions
+  $effect(() => {
+    const currentPath = $page.url.pathname;
+    if (previousPath && previousPath !== currentPath) {
+      // Increment key to trigger transition
+      pageKey++;
+      
+      // Check if we're transitioning between themed and non-themed pages
+      const wasThemed = previousPath.startsWith('/swap') || previousPath.includes('/competition');
+      const isThemed = hasThemedBackground;
+      
+      if (wasThemed !== isThemed) {
+        backgroundTransitioning = true;
+        setTimeout(() => {
+          backgroundTransitioning = false;
+        }, 800); // Match the CSS transition duration
+      }
+    }
+    previousPath = currentPath;
+  });
 </script>
 
 
-<div class="flex flex-col min-h-screen !bg-kong-bg-primary w-full origin-center overflow-hidden">
+<div class="flex flex-col min-h-screen w-full origin-center overflow-hidden app-container" 
+     class:bg-transition={backgroundTransitioning}
+     style="background-color: {hasThemedBackground ? 'transparent' : 'rgb(var(--bg-primary))'}"
+>
   {#if !themeReady}
   <LoadingIndicator message="Loading..." fullHeight />
 {:else}
     <div class="bg-transparent navbar-section">
       <Navbar />
     </div>
-    <main class="flex flex-grow relative">
-      <div class="w-full !max-w-[90rem] mx-auto h-full relative">
-        {#key page.url.pathname}
-          <div 
-            class="page-content w-full h-full" 
-            in:fade={{ duration: 200, easing: cubicInOut, delay: 50 }}
-            out:fade={{ duration: 150, easing: cubicOut }}
-          >
+    <PageWrapper page={$page.url.pathname} enableBackground={hasThemedBackground}>
+      <main class="flex flex-grow relative">
+        <div class="w-full mx-auto h-full relative">
+          <div class="page-content w-full h-full">
             {@render children?.()}
           </div>
-        {/key}
-      </div>
-    </main>
+        </div>
+      </main>
+    </PageWrapper>
   <Toast />
   <AddToHomeScreen />
   <QRModal />
@@ -151,11 +185,37 @@
 {/if}
 </div>
 
-<style>
-  /* Ensure smooth transitions without layout shifts */
-  .main-container {
-    position: relative;
-    overflow: hidden;
+<style scoped lang="postcss">
+  /* Ensure content is visible */
+  main {
+    min-height: 0; /* Fix flexbox issue */
+  }
+  
+  /* Page content transitions */
+  .page-content {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .page-content.transitioning {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  /* Smooth color transitions for theme changes */
+  :global(body) {
+    transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .app-container {
+    transition: background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: rgb(var(--bg-primary));
+  }
+  
+  .app-container.bg-transition {
+    transition-duration: 0.8s;
   }
 
 </style>

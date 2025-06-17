@@ -8,44 +8,44 @@ export const lightTheme: ThemeDefinition = {
   author: 'Kong Team',
   authorLink: 'https://kongswap.io',
   colors: {
-    // Background colors
-    bgPrimary: '#f5f5f5',      // Light gray/blue (lightest for light theme)
-    bgSecondary: '#F5F7FA',     // White
-    bgTertiary: '#EEF1F5',      // Slightly darker for tertiary
-    hoverBgSecondary: '#EEF1F5', // Slightly darker for hover
+    // Background colors - warmer, less bright
+    bgPrimary: '#F5F3F0',      // Warmer beige background
+    bgSecondary: '#FAF8F5',     // Softer cream for panels (was too white)
+    bgTertiary: '#F0EEEB',      // Warm gray for depth
+    hoverBgSecondary: '#EBE9E6', // Warm hover state
     
-    // Primary and secondary colors
-    primary: '#2563EB',     // Modern blue
-    primaryHover: '#1D4ED8', // Darker blue
-    secondary: '#0EA5E9',   // Sky blue
-    secondaryHover: '#0284C7', // Darker sky blue
+    // Primary and secondary colors - warm, earthy tones
+    primary: '#7B6D5D',     // Warm brown - matches the warm theme
+    primaryHover: '#6B5D4D', // Darker warm brown
+    secondary: '#8B7F71',   // Muted taupe - complementary
+    secondaryHover: '#7B6F61', // Darker taupe
     
-    // Semantic colors
-    accent: '#3B82F6',  // Modern blue
-    error: '#EF4444',   // Modern red
-    success: '#10B981', // Modern green
-    warning: '#F59E0B', // Modern amber
-    info: '#3B82F6',    // Modern blue (same as accent)
-    muted: '#94A3B8',   // Slate 400
+    // Semantic colors - warm, muted for easier viewing
+    accent: '#9B8B7E',  // Warm stone accent
+    error: '#D09090',   // Soft terracotta for errors
+    success: '#7FA37E', // Muted sage green
+    warning: '#D4A056', // Muted amber (kept as is - works well)
+    info: '#8B9BAE',    // Muted blue-gray
+    muted: '#9B9AA2',   // Warm gray
     
     // Hover variants
-    successHover: '#059669', // Darker green
-    accentHover: '#2563EB',  // Darker blue
-    errorHover: '#DC2626',   // Darker red
-    warningHover: '#D97706', // Darker amber
-    infoHover: '#2563EB',    // Darker blue
-    mutedHover: '#64748B',   // Slate 500
+    successHover: '#6F936E', // Darker sage green
+    accentHover: '#8B7B6E',  // Darker warm stone
+    errorHover: '#C08080',   // Darker terracotta
+    warningHover: '#B88A4A', // Darker muted amber
+    infoHover: '#7B8B9E',    // Darker blue-gray
+    mutedHover: '#8B8A92',   // Darker warm gray
     
-    // Text colors
-    textPrimary: '#1E293B',  // Slate 800
-    textSecondary: '#475569', // Slate 600
-    textDisabled: '#94A3B8', // Slate 400
-    textSuccess: '#059669', // Green 600
-    textError: '#DC2626',   // Red 600
-    textAccent: '#2563EB',  // Blue 600
-    textOnPrimary: '#fff',
-    textLight: '#FFFFFF',      // White for light text needs
-    textDark: '#1E293B',       // Slate 800 for dark text needs
+    // Text colors - warmer, easier on eyes
+    textPrimary: '#3D3B37',  // Warm dark gray - easier than cool gray
+    textSecondary: '#6B6966', // Warm medium gray
+    textDisabled: '#A5A3A0', // Warm light gray
+    textSuccess: '#6F936E', // Sage green
+    textError: '#C08080',   // Soft terracotta
+    textAccent: '#7B6D5D',  // Warm brown (matching primary)
+    textOnPrimary: '#FFFFFF', // Pure white for better contrast on primary colors
+    textLight: '#FAF8F5',      // Softer cream for light text
+    textDark: '#3D3B37',       // Warm dark gray
     transparentSwapPanel: false,
     transparentPanel: false,
     
@@ -55,41 +55,41 @@ export const lightTheme: ThemeDefinition = {
     // UI settings
     panelRoundness: 'rounded-lg', // Modern rounded corners
     swapPanelRoundness: 'rounded-xl', // Slightly more rounded for swap panels
-    swapPanelBorder: '1px solid rgba(203, 213, 225, 0.5)', // Light border
-    swapPanelShadow: 'shadow-sm', // Modern shadow
+    swapPanelBorder: '1px solid rgba(232, 230, 227, 0.8)', // Warm border matching new theme
+    swapPanelShadow: 'shadow-sm', // Subtle shadow
     swapPanelInputsRounded: true, // Rounded inputs
     
-    // Borders
-    border: '#E2E8F0',      // Slate 200
-    borderLight: '#F1F5F9',  // Slate 100
+    // Borders - warmer, more subtle
+    border: '#E8E6E3',      // Warm gray border
+    borderLight: '#F0EFED',  // Very light warm gray
     
     // Logo properties - adjust for light theme
     logoBrightness: 0.9,
     logoInvert: 1,           // Invert for dark logos on light background
     logoHoverBrightness: 0.8,
     
-    // Swap Button styling - Modern Light theme
-    swapButtonPrimaryGradientStart: '#2563EB', // Modern blue
-    swapButtonPrimaryGradientEnd: '#1D4ED8',   // Darker blue
-    swapButtonErrorGradientStart: '#EF4444',   // Modern red
-    swapButtonErrorGradientEnd: '#DC2626',     // Darker red
-    swapButtonProcessingGradientStart: '#8B5CF6', // Modern purple
-    swapButtonProcessingGradientEnd: '#7C3AED',   // Darker purple
-    swapButtonBorderColor: 'rgba(59, 130, 246, 0.3)', // Blue border with transparency
-    swapButtonGlowColor: 'rgba(37, 99, 235, 0.4)',  // Primary blue glow
-    swapButtonShineColor: 'rgba(255, 255, 255, 0.6)', // White shine
-    swapButtonReadyGlowStart: '#10B981', // Modern green
-    swapButtonReadyGlowEnd: '#059669',   // Darker green
-    swapButtonTextColor: '#FFFFFF', // White text for contrast
-    swapButtonRoundness: 'rounded-full', // Match swap panel roundness
-    swapButtonShadow: '0 4px 8px rgba(37, 99, 235, 0.2)', // Subtle blue shadow
+    // Swap Button styling - Professional light theme with depth
+    swapButtonPrimaryGradientStart: '#5A9FD4', // Soft blue - more professional for light theme
+    swapButtonPrimaryGradientEnd: '#4A8FC4',   // Deeper blue gradient
+    swapButtonErrorGradientStart: '#E57373',   // Soft red for errors
+    swapButtonErrorGradientEnd: '#D56363',     // Deeper red gradient
+    swapButtonProcessingGradientStart: '#7986CB', // Soft indigo for processing
+    swapButtonProcessingGradientEnd: '#6976BB',   // Deeper indigo
+    swapButtonBorderColor: 'rgba(90, 159, 212, 0.3)', // Soft blue border
+    swapButtonGlowColor: 'rgba(90, 159, 212, 0.35)',  // Blue glow for hover
+    swapButtonShineColor: 'rgba(255, 255, 255, 0.6)', // Bright white shine
+    swapButtonReadyGlowStart: '#66BB6A', // Vibrant green for ready state
+    swapButtonReadyGlowEnd: '#56AB5A',   // Deeper green gradient
+    swapButtonTextColor: '#FFFFFF', // Pure white text for better contrast
+    swapButtonRoundness: 'rounded-full', // Full rounded
+    swapButtonShadow: 'none', // No shadow for cleaner look
     
     // Chart text color
-    chartTextColor: '#1E293B',
+    chartTextColor: '#3D3B37',
     
-    // Background configuration
+    // Background configuration - warm, neutral gradient
     backgroundType: 'gradient',
-    backgroundGradient: 'linear-gradient(135deg, rgba(235, 241, 250, 1) 0%, rgba(229, 237, 248, 1) 50%, rgba(242, 247, 255, 1) 100%)',
+    backgroundGradient: 'linear-gradient(135deg, rgba(245, 243, 240, 1) 0%, rgba(243, 241, 238, 1) 50%, rgba(241, 239, 236, 1) 100%)',
     backgroundOpacity: 1,
     enableNebula: false,
     enableStars: false,

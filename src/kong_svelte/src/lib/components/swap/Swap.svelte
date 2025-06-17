@@ -4,7 +4,6 @@
   import SwapConfirmation from "./swap_ui/SwapConfirmation.svelte";
   import Portal from "svelte-portal";
   import { Principal } from "@dfinity/principal";
-  import { fade } from "svelte/transition";
   import { onMount, onDestroy } from "svelte";
   import { swapState } from "$lib/stores/swapStateStore";
   import { SwapService } from "$lib/services/swap/SwapService";
@@ -367,7 +366,7 @@
   });
 </script>
 
-<div class="relative flex flex-col w-full !max-w-[500px] mx-auto" in:fade={{ duration: 420 }}>
+<div class="relative flex flex-col w-full !max-w-[500px] mx-auto">
   <div class="relative flex flex-col gap-2 mb-2">
     <div class="relative flex flex-col min-h-[220px] sm:px-3 md:px-0">
       <!-- Doge image peeking only for Win98 theme -->

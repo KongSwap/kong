@@ -2,7 +2,7 @@
   import { fade, scale } from "svelte/transition";
   import { toastStore } from "$lib/stores/toastStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { Check, Loader2, ChevronsRight } from 'lucide-svelte';
+  import { Check, Loader2, ChevronsRight, X } from 'lucide-svelte';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { onMount } from 'svelte';
@@ -131,6 +131,17 @@
   transition:fade={{ duration: 200 }}
   onclick={handleBackdropClick}
 >
+  <!-- Close Button -->
+  <button
+    class="close-button"
+    onclick={onClose}
+    disabled={isLoading}
+    aria-label="Close confirmation"
+    transition:fade={{ duration: 200 }}
+  >
+    <X size={24} />
+  </button>
+  
   <!-- Floating Particles -->
   {#if mounted}
     <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -295,17 +306,18 @@
   }
 
   .token-pulse-ring {
-    @apply absolute inset-0 rounded-full border-2 border-kong-success/30 animate-pulse-ring;
+    @apply absolute inset-0 rounded-full border-2 animate-pulse-ring;
+    border-color: rgb(var(--brand-primary) / 0.3);
     transform: scale(1.3);
   }
 
   .token-pulse-ring.receive {
-    @apply border-kong-success/30;
+    border-color: rgb(var(--semantic-success) / 0.3);
   }
 
   .token-glow {
     @apply absolute inset-0 rounded-full opacity-0 transition-opacity duration-300;
-    background: radial-gradient(circle, rgba(var(--brand-success) / 0.3), transparent 70%);
+    background: radial-gradient(circle, rgba(var(--brand-primary) / 0.3), transparent 70%);
     filter: blur(20px);
     transform: scale(1.2);
   }
@@ -354,23 +366,6 @@
     transform: rotate(90deg);
   }
 
-  .arrow-trail {
-    @apply absolute left-0 top-1/2 w-full h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent
-           -translate-y-1/2 -translate-x-full;
-    animation: arrow-trail 2s linear infinite;
-  }
-
-  .arrow-glow {
-    @apply absolute inset-0 rounded-full opacity-0 transition-opacity duration-300;
-    background: radial-gradient(circle, rgba(var(--brand-primary) / 0.4), transparent 60%);
-    filter: blur(15px);
-  }
-
-  .arrow-container:hover .arrow-glow {
-    @apply opacity-100;
-  }
-
-
   /* Moving particles */
   .moving-particle {
     @apply absolute w-2 h-2 rounded-full bg-white/40;
@@ -399,27 +394,35 @@
     @apply relative px-10 py-4 min-w-[220px]
            rounded-full overflow-hidden
            transition-all duration-200
-           hover:shadow-2xl hover:shadow-kong-success/30
            active:scale-98
            disabled:opacity-70 disabled:cursor-not-allowed;
+    box-shadow: var(--swap-button-shadow, none);
+  }
+  
+  .confirm-button:hover:not(:disabled) {
+    filter: brightness(1.1);
+    box-shadow: var(--swap-button-shadow, none);
   }
 
   .button-background {
-    @apply absolute inset-0 bg-gradient-to-r from-kong-success to-kong-success/50 text-kong-text-success border border-kong-success rounded-full
-           transition-all duration-300;
+    @apply absolute inset-0 rounded-full transition-all duration-300;
+    background: linear-gradient(135deg, 
+      var(--swap-button-primary-gradient-start, rgb(var(--brand-primary))) 0%, 
+      var(--swap-button-primary-gradient-end, rgb(var(--brand-secondary))) 100%);
+    border: 1px solid var(--swap-button-border-color, rgb(var(--ui-border) / 0.3));
   }
 
   .button-shimmer {
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
     background: linear-gradient(105deg, 
       transparent 40%, 
-      rgba(255, 255, 255, 0.3) 50%, 
+      rgba(255, 255, 255, 0.1) 50%, 
       transparent 60%);
     animation: shimmer 2s infinite;
   }
 
   .confirm-button:hover .button-shimmer {
-    @apply opacity-100;
+    @apply opacity-50;
   }
 
   .confirm-button:hover .button-background {
@@ -428,7 +431,8 @@
 
   .button-content {
     @apply relative z-10 flex items-center justify-center gap-2
-           text-kong-text-success font-semibold text-lg tracking-wide;
+           font-semibold text-lg tracking-wide;
+    color: var(--swap-button-text-color, rgb(var(--text-light)));
   }
 
   /* Success State */
@@ -441,12 +445,14 @@
   }
 
   .success-ring {
-    @apply absolute inset-0 w-24 h-24 rounded-full border-4 border-kong-success/30;
+    @apply absolute inset-0 w-24 h-24 rounded-full border-4;
+    border-color: rgb(var(--semantic-success) / 0.3);
     animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
   }
 
   .success-ring-2 {
-    @apply absolute inset-0 w-24 h-24 rounded-full border-2 border-kong-success/20;
+    @apply absolute inset-0 w-24 h-24 rounded-full border-2;
+    border-color: rgb(var(--semantic-success) / 0.2);
     animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
     animation-delay: 0.5s;
   }
@@ -456,15 +462,18 @@
   }
 
   .success-particle {
-    @apply absolute w-2 h-2 bg-kong-success rounded-full top-1/2 left-1/2;
+    @apply absolute w-2 h-2 rounded-full top-1/2 left-1/2;
+    background-color: rgb(var(--semantic-success));
     transform-origin: center;
     animation: particle-burst 0.6s ease-out forwards;
   }
 
   .success-icon {
-    @apply relative w-24 h-24 rounded-full bg-kong-success/20 
-           flex items-center justify-center text-kong-success
+    @apply relative w-24 h-24 rounded-full
+           flex items-center justify-center
            backdrop-blur-sm;
+    background-color: rgb(var(--semantic-success) / 0.2);
+    color: rgb(var(--semantic-success));
   }
 
   .success-text {
@@ -698,15 +707,17 @@
       transform: scale(1) rotate(0deg);
     }
   }
-
-  /* Animation Classes */
-  .animate-float-up {
+    .animate-float-up {
     animation: float-up 10s linear infinite;
   }
+
 
   .animate-pulse-ring {
     animation: pulse-ring 2s ease-out infinite;
   }
+
+
+
 
   .animate-pulse-glow {
     animation: pulse-glow 2s ease-in-out infinite;
@@ -715,14 +726,6 @@
   .animate-pulse-glow-delayed {
     animation: pulse-glow-delayed 2s ease-in-out infinite;
     animation-delay: 1s;
-  }
-
-  .animate-arrow-trail {
-    animation: arrow-trail 2s ease-in-out infinite;
-  }
-
-  .animate-fade-in-down {
-    animation: fade-in-down 0.6s ease-out;
   }
 
   .animate-fade-in-up {
@@ -766,8 +769,24 @@
     animation: success-appear 0.6s ease-out;
   }
 
-  .animate-pulse-slow {
-    animation: pulse 3s ease-in-out infinite;
+
+  /* Close Button */
+  .close-button {
+    @apply fixed top-4 right-4 sm:top-6 sm:right-6
+           w-10 h-10 sm:w-12 sm:h-12 rounded-full
+           flex items-center justify-center
+           transition-all duration-200
+           hover:bg-white/10
+           active:scale-95
+           disabled:opacity-50 disabled:cursor-not-allowed
+           z-10;
+    color: rgba(255, 255, 255, 0.6);
+  }
+  
+  .close-button:hover:not(:disabled) {
+    color: rgba(255, 255, 255, 0.9);
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: rotate(90deg);
   }
 
   /* Mobile Optimization */

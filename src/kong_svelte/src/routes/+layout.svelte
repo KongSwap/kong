@@ -1,11 +1,7 @@
 <script lang="ts">
   import "../app.css";
   import { themeStore } from "$lib/stores/themeStore";
-  import { onMount } from "svelte";
-
-  onMount(async () => {
-    themeStore.initTheme();
-  })
+  // Theme initialization happens automatically in the store
 </script>
 
 <slot />

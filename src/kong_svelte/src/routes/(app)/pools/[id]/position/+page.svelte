@@ -549,10 +549,6 @@
       handleLiquidityActionComplete();
     }}
     modalKey={`confirm-liquidity-${pool.address_0}-${pool.address_1}`}
-    target="#modals"
+    target="#portal-target"
   />
 {/if}
-
-<style lang="postcss">
-  /* Add any custom styles here */
-</style>

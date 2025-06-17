@@ -398,7 +398,7 @@
           {#if panelType === "pay"}
             <!-- OnRamp Button -->
             <button
-              class="{$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-2.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-xs py-0.5 sm:px-2"
+              class="{$panelRoundness} font-semibold text-xs text-kong-text-secondary hover:text-kong-text-primary bg-kong-bg-tertiary hover:bg-kong-hover/10 px-2.5 border border-kong-border cursor-pointer transition-all duration-200 ease-in-out sm:text-xs py-0.5 sm:px-2"
               onclick={(e) => {
                 e.preventDefault();
                 window.open(
@@ -464,7 +464,7 @@
         <div class="relative">
           <!-- Token Selector Button -->
           <button
-            class="flex items-center {$panelRoundness} justify-between bg-white/5 p-2 border border-white/10 transition-colors duration-150 gap-2 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 w-full"
+            class="flex items-center {$panelRoundness} justify-between bg-kong-bg-tertiary p-2 border border-kong-border transition-colors duration-150 gap-2 hover:bg-kong-hover/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 w-full"
             onclick={(e) => e.stopPropagation && handleTokenSelect(e)}
           >
             {#if token}
@@ -528,12 +528,12 @@
               disabled={disabled || title !== "You Pay"}
             >
               {#if token && token.address && $currentUserBalancesStore && $currentUserBalancesStore[token.address] !== undefined}
-                {formatTokenBalance(
+                {formatWithCommas(formatTokenBalance(
                   (
                     $currentUserBalancesStore[token.address]?.in_tokens ?? 0n
                   ).toString(), // Use nullish coalescing for safety
                   token.decimals || DEFAULT_DECIMALS,
-                )}
+                ))}
                 {token.symbol || ""}
               {:else if token}
                 0 {token.symbol || ""} <!-- Show 0 if balance not loaded -->
@@ -548,7 +548,7 @@
           <div class="flex flex-col items-center gap-1">
             {#snippet percentageButton(percentage: number, isFirst: boolean, isLast: boolean)}
               <button
-                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary transition-all duration-150 {isFirst
+                class="bg-kong-bg-tertiary px-2 py-1.5 border border-kong-border hover:border-kong-primary/50 hover:bg-kong-hover/10 transition-all duration-150 {isFirst
                   ? 'rounded-l-md'
                   : ''} {isLast ? 'rounded-r-md' : ''}"
                 onclick={() => handlePercentageClick(percentage)}

@@ -5,6 +5,7 @@
   import { fade } from "svelte/transition";
   import { userTokens } from "$lib/stores/userTokens";
   import { onMount } from "svelte";
+  import { transparentSwapPanel } from "$lib/stores/derivedThemeStore";
 
   let {
     payToken = null,
@@ -184,11 +185,8 @@
     return total;
   });
 
-  // Determine if we should show the info display
-  const showDisplay = $derived(
-    payToken && receiveToken && payAmount && receiveAmount && 
-    payAmount !== "0" && receiveAmount !== "0"
-  );
+  // Always show the info display
+  const showDisplay = $derived(true);
 
   // Get warning level for price impact
   const priceImpactLevel = $derived(() => {
@@ -199,7 +197,7 @@
 </script>
 
 {#if showDisplay}
-  <div class="swap-info-display" transition:fade={{ duration: 200 }}>
+  <div class="swap-info-display {$transparentSwapPanel ? 'transparent-swap-panel' : ''}" transition:fade={{ duration: 200 }}>
     <div class="info-grid">
       <!-- Exchange Rate -->
       <div class="info-item">
@@ -214,10 +212,10 @@
               <span></span>
               <span></span>
             </span>
-          {:else if exchangeRate()}
-            <span class="rate-text">1 {payToken?.symbol} = {exchangeRate()} {receiveToken?.symbol}</span>
+          {:else if exchangeRate() && payToken && receiveToken}
+            <span class="rate-text">1 {payToken.symbol} = {exchangeRate()} {receiveToken.symbol}</span>
           {:else}
-            <span>-</span>
+            <span class="text-kong-text-secondary/50">-</span>
           {/if}
         </div>
       </div>
@@ -235,8 +233,10 @@
               <span></span>
               <span></span>
             </span>
-          {:else}
+          {:else if payToken && receiveToken && payAmount && receiveAmount && payAmount !== "0" && receiveAmount !== "0"}
             <span>{priceImpact.toFixed(2)}%</span>
+          {:else}
+            <span class="text-kong-text-secondary/50">-</span>
           {/if}
         </div>
       </div>
@@ -257,7 +257,7 @@
           {:else if totalFeesUsd() > 0}
             <span>${formatToNonZeroDecimal(totalFeesUsd())}</span>
           {:else}
-            <span>-</span>
+            <span class="text-kong-text-secondary/50">-</span>
           {/if}
         </div>
       </div>
@@ -272,8 +272,17 @@
 
   .info-grid {
     @apply grid grid-cols-3 gap-4 p-4 
-           bg-kong-bg-tertiary border border-kong-border
-           rounded-xl backdrop-blur-md shadow-lg;
+           border border-kong-border
+           rounded-xl;
+  }
+  
+  /* Match swap panel background */
+  :global(.transparent-swap-panel) .info-grid {
+    @apply bg-transparent backdrop-blur-md;
+  }
+  
+  :global(:not(.transparent-swap-panel)) .info-grid {
+    @apply bg-kong-bg-secondary;
   }
 
   .info-item {

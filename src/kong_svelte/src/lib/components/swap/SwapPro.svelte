@@ -6,11 +6,10 @@
   import { livePools } from "$lib/stores/poolStore";
   import { swapState } from "$lib/stores/swapStateStore";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
-  import TokenInfo from "./TokenInfo.svelte";
+  import TokenInfoEnhanced from "./TokenInfoEnhanced.svelte";
 
   export let initialFromToken: Kong.Token | null = null;
   export let initialToToken: Kong.Token | null = null;
-  export let currentMode: "normal" | "pro" = "pro";
 
   let fromToken = initialFromToken;
   let toToken = initialToToken;
@@ -130,7 +129,7 @@
             />
           </div>
           <div class="token-info-section">
-            <TokenInfo token={toToken} />
+            <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} />
           </div>
         </div>
       {/if}
@@ -175,7 +174,7 @@
           
           <!-- Token Info section -->
           <div class="token-info-section">
-            <TokenInfo token={toToken} />
+            <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} />
           </div>
         </div>
       </div>
@@ -189,7 +188,7 @@
     height: 100%;
     background: var(--color-background);
     position: relative;
-    @apply px-4;
+    @apply px-3;
     padding-top: 0;
     overflow: hidden;
   }
@@ -201,7 +200,7 @@
 
   .main-content {
     display: flex;
-    gap: 1.5rem;
+    gap: 1rem;
     height: 100%;
     width: 100%;
   }
@@ -210,7 +209,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
     height: 100%;
     min-width: 0; /* Allow shrinking */
   }
@@ -232,12 +231,12 @@
   }
 
   .right-section {
-    width: 500px;
-    min-width: 500px;
+    width: 450px;
+    min-width: 450px;
     height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
     overflow-y: auto;
   }
 

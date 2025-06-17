@@ -89,7 +89,7 @@ body {
   content: '';
   position: fixed;
   inset: 0;
-  background: var(--background-value, linear-gradient(180deg, #F8FAFC 0%, #EFF6FF 100%));
+  background: var(--background-gradient, linear-gradient(180deg, #F8FAFC 0%, #EFF6FF 100%));
   pointer-events: none;
   z-index: -1;
   width: 100%;
@@ -101,7 +101,7 @@ body {
   content: '';
   position: fixed;
   inset: 0;
-  background: var(--background-value, linear-gradient(135deg, #050813 0%, #080b18 25%, #0a0e1b 50%, #080b18 75%, #050813 100%));
+  background: var(--background-gradient, linear-gradient(135deg, #050813 0%, #080b18 25%, #0a0e1b 50%, #080b18 75%, #050813 100%));
   pointer-events: none;
   z-index: -1;
   width: 100%;
