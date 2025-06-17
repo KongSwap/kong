@@ -369,7 +369,7 @@
 
 <div class="relative flex flex-col w-full !max-w-xl mx-auto" in:fade={{ duration: 420 }}>
   <div class="relative flex flex-col gap-2 mb-2">
-    <div class="relative flex flex-col min-h-[220px] px-3 md:px-0">
+    <div class="relative flex flex-col min-h-[220px] sm:px-3 md:px-0">
       <!-- Doge image peeking only for Win98 theme -->
       {#if $themeId === "microswap"}
         <div class="absolute -top-[4.8rem] right-5 z-1 transform translate-x-1/4 select-none pointer-events-none">
@@ -428,7 +428,7 @@
       isLoading={isQuoteLoading()}
     />
 
-    <div class="mt-1 px-3 md:px-0">
+    <div class="mt-1 sm:px-3 md:px-0">
       <SwapButton
         text={buttonText}
         isError={!!$swapState.error ||

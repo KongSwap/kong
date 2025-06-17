@@ -561,37 +561,23 @@
           <!-- Balance Display -->
           <div class="flex flex-col items-center gap-1">
          
+{#snippet percentageButton(percentage, isFirst, isLast)}
+              <button
+                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary transition-all duration-150 {isFirst ? 'rounded-l-md' : ''} {isLast ? 'rounded-r-md' : ''}"
+                on:click={() => handlePercentageClick(percentage)}
+                disabled={disabled}
+              >
+                {percentage}%
+              </button>
+            {/snippet}
+
             <!-- Percentage Buttons -->
             {#if title === "You Pay" && token}
-            <div class="flex items-center justify-end w-full text-xs sm:text-sm">
-              <button
-                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary rounded-l-md transition-all duration-150"
-                on:click={() => handlePercentageClick(25)}
-                disabled={disabled}
-              >
-                25%
-              </button>
-              <button
-                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary transition-all duration-150"
-                on:click={() => handlePercentageClick(50)}
-                disabled={disabled}
-              >
-                50%
-              </button>
-              <button
-                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary transition-all duration-150"
-                on:click={() => handlePercentageClick(75)}
-                disabled={disabled}
-              >
-                75%
-              </button>
-              <button
-                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary rounded-r-md transition-all duration-150"
-                on:click={() => handlePercentageClick(100)}
-                disabled={disabled}
-              >
-                100%
-                </button>
+              {@const percentages = isMobile ? [50, 100] : [25, 50, 75, 100]}
+              <div class="flex items-center justify-end w-full text-xs sm:text-sm">
+                {#each percentages as percentage, index (percentage)}
+                  {@render percentageButton(percentage, index === 0, index === percentages.length - 1)}
+                {/each}
               </div>
             {/if}
           </div>
