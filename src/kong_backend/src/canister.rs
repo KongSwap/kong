@@ -51,7 +51,7 @@ static QUERY_METHODS: [&str; 12] = [
 
 #[init]
 async fn init() {
-    ICNetwork::info_log(&format!("[INFO] {} canister has been initialized", APP_NAME));
+    ICNetwork::info_log(&format!("{} canister is being initialized", APP_NAME));
 
     create_principal_id_map();
 
@@ -60,12 +60,12 @@ async fn init() {
 
 #[pre_upgrade]
 fn pre_upgrade() {
-    ICNetwork::info_log(&format!("[INFO] {} canister is begin upgraded", APP_NAME));
+    ICNetwork::info_log(&format!("{} canister is being upgraded", APP_NAME));
 }
 
 #[post_upgrade]
 async fn post_upgrade() {
-    ICNetwork::info_log(&format!("[INFO] {} canister has been upgraded", APP_NAME));
+    ICNetwork::info_log(&format!("{} canister has been upgraded", APP_NAME));
 
     create_principal_id_map();
 
@@ -74,10 +74,10 @@ async fn post_upgrade() {
     // The verification must be done by calling cache_solana_address() after upgrade
     let cached_solana_address = get_cached_solana_address();
     if !cached_solana_address.is_empty() {
-        ICNetwork::info_log(&format!("[INFO] Solana address: {}", cached_solana_address));
+        ICNetwork::info_log(&format!("Solana address: {}", cached_solana_address));
     } else {
-        ICNetwork::error_log("[ERROR] No cached Solana address found");
-        ICNetwork::error_log("[ERROR] REQUIRED: Call cache_solana_address() to initialize it");
+        ICNetwork::error_log("No cached Solana address found");
+        ICNetwork::error_log("REQUIRED: Call cache_solana_address() to initialize it");
     }
 
     set_timer_processes().await;

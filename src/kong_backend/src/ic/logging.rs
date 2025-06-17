@@ -10,6 +10,6 @@ impl ICNetwork {
     }
 
     fn log(level: &str, msg: &str) {
-        ic_cdk::print(format!("{}: {}", level, msg));
+        ic_cdk::print(format!("[{}] {}", level, msg));
     }
 }

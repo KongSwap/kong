@@ -31,14 +31,10 @@ pub const CKUSDT_ADDRESS_WITH_CHAIN: &str = if cfg!(any(feature = "local", featu
 
 pub fn is_ckusdt(token: &str) -> bool {
     let kong_settings = kong_settings_map::get();
-    if token == kong_settings.ckusdt_symbol
+    token == kong_settings.ckusdt_symbol
         || token == kong_settings.ckusdt_symbol_with_chain
         || token == kong_settings.ckusdt_address
         || token == kong_settings.ckusdt_address_with_chain
-    {
-        return true;
-    }
-    false
 }
 
 /// Calculate the ckusdt amount for a given token and amount
