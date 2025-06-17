@@ -19,7 +19,6 @@ use crate::add_token::update_token_args::UpdateTokenArgs;
 use crate::add_token::update_token_reply::UpdateTokenReply;
 use crate::claims::claims_timer::process_claims_timer;
 use crate::helpers::nat_helpers::{nat_to_decimals_f64, nat_to_f64};
-use crate::ic::kong_backend::KongBackend;
 use crate::ic::network::ICNetwork;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::request_archive::archive_request_map;
@@ -30,11 +29,12 @@ use crate::stable_tx::tx_archive::archive_tx_map;
 use crate::stable_user::principal_id_map::create_principal_id_map;
 use crate::swap::swap_args::SwapArgs;
 
+use super::kong_backend::KongBackend;
 use super::{APP_NAME, APP_VERSION};
 
 // list of query calls
 // a bit hard-coded but shouldn't change often
-static QUERY_METHODS: [&str; 11] = [
+static QUERY_METHODS: [&str; 12] = [
     "icrc1_name",
     "icrc10_supported_standards",
     "tokens",
@@ -46,6 +46,7 @@ static QUERY_METHODS: [&str; 11] = [
     "remove_liquidity_amounts",
     "swap_amounts",
     "claims",
+    "get_solana_address",
 ];
 
 #[init]

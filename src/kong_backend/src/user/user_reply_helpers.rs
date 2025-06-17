@@ -1,10 +1,10 @@
 use candid::Principal;
 
-use super::user_reply::UserReply;
-
 use crate::ic::network::ICNetwork;
 use crate::stable_user::stable_user::StableUser;
 use crate::stable_user::user_map;
+
+use super::user_reply::UserReply;
 
 pub fn to_user_reply(user: &StableUser) -> UserReply {
     let principal = Principal::from_text(&user.principal_id).unwrap();

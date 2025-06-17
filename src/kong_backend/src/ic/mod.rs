@@ -6,8 +6,6 @@ pub mod get_time;
 pub mod guards;
 pub mod icp;
 pub mod id_helpers;
-pub mod kong_backend;
-pub mod kong_data;
 pub mod ledger;
 pub mod logging;
 pub mod management_canister;

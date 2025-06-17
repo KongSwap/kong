@@ -659,6 +659,9 @@ service : {
     // send LP tokens to another user
     send : (SendArgs) -> (SendResult);
 
+    // Solana functions
+    get_solana_address : () -> (variant { Ok : text; Err : text }) query;
+
     // admin functions
     check_pools : () -> (CheckPoolsResult);
 }

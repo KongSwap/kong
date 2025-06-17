@@ -11,8 +11,8 @@ use super::error::ICError;
 use super::network::ICNetwork;
 
 const SIGN_WITH_SCHNORR_CYCLES: u64 = 26_153_846_153; // Adjust cycles as needed
-const DERIVATION_PATH: OnceLock<Vec<Vec<u8>>> = OnceLock::new();
-const ED25519_KEY_NAME: OnceLock<String> = OnceLock::new();
+static DERIVATION_PATH: OnceLock<Vec<Vec<u8>>> = OnceLock::new();
+static ED25519_KEY_NAME: OnceLock<String> = OnceLock::new();
 
 pub struct ManagementCanister {}
 
@@ -50,11 +50,6 @@ impl ManagementCanister {
         Ok(status)
     }
 
-    pub fn get_canister_derivation_path(canister: &Principal) -> Vec<Vec<u8>> {
-        // Cache the derivation path since it never changes during runtime
-        DERIVATION_PATH.get_or_init(|| vec![canister.as_slice().to_vec()]).clone()
-    }
-
     /// Get the key name for the Ed25519 key
     pub fn get_ed25519_key_name() -> String {
         // Cache the key name since it's determined at compile time
@@ -73,6 +68,16 @@ impl ManagementCanister {
                     // default to the test key for local development
                     "dfx_test_key".to_string()
                 }
+            })
+            .clone()
+    }
+
+    pub fn get_canister_derivation_path(canister: &Principal) -> Vec<Vec<u8>> {
+        // Cache the derivation path since it never changes during runtime
+        DERIVATION_PATH
+            .get_or_init(|| {
+                // use the canister's principal as the derivation path
+                vec![canister.as_slice().to_vec()]
             })
             .clone()
     }

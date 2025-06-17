@@ -1,8 +1,5 @@
 use ic_cdk::query;
 
-use super::lp_reply::LPReply;
-use super::user_balances_reply::UserBalancesReply;
-
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_multiply, nat_to_decimals_f64, nat_zero};
 use crate::ic::ckusdt::{ckusdt_amount, to_ckusdt_decimals_f64};
 use crate::ic::guards::not_in_maintenance_mode;
@@ -13,6 +10,9 @@ use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
+
+use super::lp_reply::LPReply;
+use super::user_balances_reply::UserBalancesReply;
 
 #[query(guard = "not_in_maintenance_mode")]
 pub async fn user_balances(principal_id: String) -> Result<Vec<UserBalancesReply>, String> {
