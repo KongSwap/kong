@@ -11,6 +11,7 @@ members = [
     "src/ic_siws_provider",
     "src/ic_siws"
 ]
+exclude = ["kong_rpc"]
 resolver = "2"
 
 [profile.release]

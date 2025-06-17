@@ -7,7 +7,6 @@ use anyhow::Result;
 use crate::ic::network::ICNetwork;
 use crate::solana::error::SolanaError;
 use crate::solana::network::{MEMO_PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID};
-use crate::solana::rpc::client::SolanaRpcClient;
 use crate::solana::sdk::account_meta::AccountMeta;
 use crate::solana::sdk::instruction::Instruction;
 use crate::stable_memory::with_solana_latest_blockhash;
@@ -22,12 +21,19 @@ pub struct TransactionInstructions {
     pub blockhash: String,
 }
 
+/// Transaction builder for creating Solana transactions
+pub struct TransactionBuilder;
+
 // Define a constant for the blockhash freshness threshold (45 seconds in nanoseconds)
 const BLOCKHASH_FRESHNESS_THRESHOLD_NANOS: u64 = 45 * 1_000_000_000;
 
-impl SolanaRpcClient {
-    /// Get the latest blockhash, using the one in stable memory if recent,
-    /// otherwise fetching it via HTTPS outcall.
+impl TransactionBuilder {
+    /// Create a new transaction builder
+    pub fn new() -> Self {
+        TransactionBuilder
+    }
+
+    /// Get the latest blockhash, using the one in stable memory if recent
     async fn get_recent_blockhash(&self) -> Result<String> {
         let latest_blockhash = with_solana_latest_blockhash(|cell| cell.get().clone());
         if latest_blockhash.blockhash.is_empty() {
@@ -48,7 +54,6 @@ impl SolanaRpcClient {
     ///
     /// * `from_address` - The sender's address
     /// * `to_address` - The recipient's address
-    /// * `fee_payer` - The fee payer's wallet address
     /// * `lamports` - The amount of lamports to transfer
     /// * `memo` - Optional memo to include in the transaction
     ///
@@ -59,18 +64,18 @@ impl SolanaRpcClient {
         &self,
         from_address: &str,
         to_address: &str,
-        fee_payer: &str,
         lamports: u64,
         memo: Option<String>,
     ) -> Result<TransactionInstructions> {
         // Validate addresses
-        if from_address.is_empty() || to_address.is_empty() || fee_payer.is_empty() {
+        if from_address.is_empty() || to_address.is_empty() {
             Err(SolanaError::InvalidPublicKeyFormat("Invalid address for SOL transfer".to_string()))?
         }
 
         // Create the transfer instructions
         let transfer_instruction = self.create_transfer_sol_instruction(from_address, to_address, lamports)?;
         let mut instructions = vec![transfer_instruction];
+        
         // Add memo instruction if provided
         if let Some(memo_text) = memo {
             let memo_instruction = self.create_memo_instruction(from_address, &memo_text)?;
@@ -85,16 +90,6 @@ impl SolanaRpcClient {
     }
 
     /// Create a transfer instruction
-    ///
-    /// # Arguments
-    ///
-    /// * `from_address` - The sender's address
-    /// * `to_address` - The recipient's address
-    /// * `lamports` - The amount of lamports to transfer
-    ///
-    /// # Returns
-    ///
-    /// The transfer instruction
     fn create_transfer_sol_instruction(&self, from_address: &str, to_address: &str, lamports: u64) -> Result<Instruction> {
         // Create account metadata
         let accounts = vec![
@@ -127,12 +122,10 @@ impl SolanaRpcClient {
     ///
     /// # Arguments
     ///
-    /// * `from_address` - The sender's wallet address
+    /// * `owner_address` - The token owner's wallet address
     /// * `from_token_account` - The sender's token account address
     /// * `to_token_account` - The recipient's token account address
-    /// * `fee_payer` - The fee payer's wallet address
     /// * `amount` - The amount of tokens to transfer
-    /// * `decimals` - The number of decimals the token uses
     /// * `memo` - Optional memo to include in the transaction
     ///
     /// # Returns
@@ -140,25 +133,25 @@ impl SolanaRpcClient {
     /// Transaction instructions ready for signing
     pub async fn build_transfer_spl_transaction(
         &self,
-        from_address: &str,
+        owner_address: &str,
         from_token_account: &str,
         to_token_account: &str,
-        fee_payer: &str,
         amount: u64,
         memo: Option<String>,
     ) -> Result<TransactionInstructions> {
         // Validate addresses
-        if from_address.is_empty() || from_token_account.is_empty() || to_token_account.is_empty() || fee_payer.is_empty() {
+        if owner_address.is_empty() || from_token_account.is_empty() || to_token_account.is_empty() {
             Err(SolanaError::InvalidPublicKeyFormat("Invalid address for SPL transfer".to_string()))?
         }
 
         // Create the transfer instructions
         let token_transfer_instruction =
-            self.create_transfer_spl_instruction(from_address, from_token_account, to_token_account, amount)?;
+            self.create_transfer_spl_instruction(owner_address, from_token_account, to_token_account, amount)?;
         let mut instructions = vec![token_transfer_instruction];
+        
         // Add memo instruction if provided
         if let Some(memo_text) = memo {
-            let memo_instrument = self.create_memo_instruction(from_address, &memo_text)?;
+            let memo_instrument = self.create_memo_instruction(owner_address, &memo_text)?;
             instructions.push(memo_instrument);
         }
 
@@ -170,17 +163,6 @@ impl SolanaRpcClient {
     }
 
     /// Create a token transfer instruction
-    ///
-    /// # Arguments
-    ///
-    /// * `owner_address` - The token owner's wallet address
-    /// * `from_token_account` - The sender's token account address
-    /// * `to_token_account` - The recipient's token account address
-    /// * `amount` - The amount of tokens to transfer
-    ///
-    /// # Returns
-    ///
-    /// The token transfer instruction
     fn create_transfer_spl_instruction(
         &self,
         owner_address: &str,
@@ -189,12 +171,6 @@ impl SolanaRpcClient {
         amount: u64,
     ) -> Result<Instruction> {
         // Create account metadata
-        // For SPL token transfers, we need the following accounts in this exact order:
-        // 1. Source token account (writable)
-        // 2. Destination token account (writable)
-        // 3. Owner of the source token account (signer)
-        // Note: The Token Program ID should NOT be included in the accounts list
-        // as it's already specified as the program_id for the instruction
         let accounts = vec![
             // Source token account
             AccountMeta {
@@ -217,16 +193,8 @@ impl SolanaRpcClient {
         ];
 
         // Create instruction data for token transfer
-        // For SPL Token Program, the instruction data format is:
-        // - First byte: Instruction type (3 = Transfer)
-        // - Next 8 bytes: Amount as u64 in little-endian format
-        //
-        // Reference: https://github.com/solana-labs/solana-program-library/blob/master/token/program/src/instruction.rs
-        // Create a vector with capacity for instruction type (1 byte) + amount (8 bytes)
         let mut data = Vec::with_capacity(9);
-        // Add instruction type (3 = Transfer)
-        data.push(3);
-        // Add amount as 8 bytes in little-endian format
+        data.push(3); // Transfer instruction = 3
         data.extend_from_slice(&amount.to_le_bytes());
 
         // Return the instruction with the Token Program ID
@@ -238,15 +206,6 @@ impl SolanaRpcClient {
     }
 
     /// Create a memo instruction
-    ///
-    /// # Arguments
-    ///
-    /// * `signer_address` - The address of the signer
-    /// * `memo` - The memo text
-    ///
-    /// # Returns
-    ///
-    /// The memo instruction
     fn create_memo_instruction(&self, signer_address: &str, memo: &str) -> Result<Instruction> {
         // Create account metadata
         let accounts = vec![AccountMeta {
@@ -261,5 +220,11 @@ impl SolanaRpcClient {
             accounts,
             data: memo.as_bytes().to_vec(),
         })
+    }
+}
+
+impl Default for TransactionBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }

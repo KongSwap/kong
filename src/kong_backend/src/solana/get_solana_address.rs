@@ -9,7 +9,7 @@ use crate::stable_memory::get_cached_solana_address;
 pub fn get_solana_address() -> Result<String, String> {
     let address = get_cached_solana_address();
     if address.is_empty() {
-        Err("Solana address not cached. Admin must call 'cache_solana_address' first.".to_string())
+        Err("Solana address not available".to_string())
     } else {
         Ok(address)
     }
