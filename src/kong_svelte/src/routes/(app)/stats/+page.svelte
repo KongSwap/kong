@@ -337,12 +337,12 @@
             <div class="flex flex-col h-full overflow-hidden">
               <!-- Mobile Filters -->
               <div class="sticky top-0 z-30 backdrop-blur-md border-b border-kong-border/50">
-                <div class="flex gap-1.5 px-3 py-3 justify-between">
+                <div class="flex gap-1.5 sm:px-3 py-3 justify-between">
                   {#each [
                     { key: "market_cap", label: "MCap" },
-                    { key: "price", label: "Price" },
+                    // { key: "price", label: "Price" },
                     { key: "volume", label: "Volume" },
-                    { key: "price_change", label: "24h %" }
+                    { key: "price_change", label: "% (24h)" }
                   ] as sort}
                     <button
                       class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 {$state.sortBy === sort.key

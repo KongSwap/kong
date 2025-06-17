@@ -1,7 +1,6 @@
 <script lang="ts">
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { Activity, TrendingUp, DollarSign } from "lucide-svelte";
-  import BigNumber from "bignumber.js";
   import { fade } from "svelte/transition";
   import { userTokens } from "$lib/stores/userTokens";
   import { onMount } from "svelte";
@@ -26,6 +25,8 @@
     lpFees: Array<{ amount: string; token: string }>;
     isLoading?: boolean;
   }>();
+
+  let isMobile = $derived(app.isMobile);
 
   // Calculate exchange rate
   const exchangeRate = $derived(() => {
@@ -200,6 +201,7 @@
   <div class="swap-info-display {$transparentSwapPanel ? 'transparent-swap-panel' : ''}" transition:fade={{ duration: 200 }}>
     <div class="info-grid">
       <!-- Exchange Rate -->
+       {#if !isMobile}
       <div class="info-item">
         <div class="info-label">
           <TrendingUp size={14} class="info-icon" />
@@ -219,7 +221,7 @@
           {/if}
         </div>
       </div>
-
+      {/if}
       <!-- Price Impact -->
       <div class="info-item">
         <div class="info-label">
@@ -271,22 +273,9 @@
   }
 
   .info-grid {
-    @apply grid grid-cols-3 gap-4 p-4 
-           border border-kong-border
-           rounded-xl;
-  }
-  
-  /* Match swap panel background */
-  :global(.transparent-swap-panel) .info-grid {
-    @apply bg-transparent backdrop-blur-md;
-  }
-  
-  :global(:not(.transparent-swap-panel)) .info-grid {
-    @apply bg-kong-bg-secondary;
-  }
-
-  .info-item {
-    @apply flex flex-col gap-1.5 items-center justify-center text-center;
+    @apply grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 
+           bg-kong-bg-tertiary border border-kong-border
+           rounded-xl backdrop-blur-md shadow-lg;
   }
 
   .info-label {

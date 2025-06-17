@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
+  import { app } from "$lib/state/app.state.svelte";
 
   // Types
   interface Token {
@@ -8,591 +9,510 @@
     symbol?: string;
     logo_url?: string;
     metrics?: {
-        volume_24h?: number | string | null;
-        tvl?: number | string | null;
-        price_change_24h?: number | string | null;
-        price?: number | string | null;
+      volume_24h?: number | string | null;
+      tvl?: number | string | null;
+      price_change_24h?: number | string | null;
+      price?: number | string | null;
     }
   }
 
   interface BubblePosition {
     x: number;
     y: number;
-    vx: number;
-    vy: number;
-    targetX?: number;
-    targetY?: number;
-    element?: HTMLElement; // Cache DOM element reference
   }
+
+  interface BubbleStyle {
+    size: number;
+    logoSize: number;
+    symbolSize: number;
+    priceSize: number;
+    color: string;
+    colorKey: string;
+  }
+  let isMobile = $derived(app.isMobile);
 
   // State
   let tokens = $state<Token[]>([]);
-  let bubblePositions = $state<Array<BubblePosition>>([]);
+  let positions = $state<BubblePosition[]>([]);
   let containerWidth = $state(0);
   let containerHeight = $state(0);
-  let containerElement = $state<HTMLElement | undefined>(undefined);
-  let animationFrameId = $state<number | undefined>(undefined);
-  let isInitialized = $state(false);
-  let isMobile = $state(false);
-  let maxTokens = $state(100);
+  let containerElement = $state<HTMLElement>();
   let loading = $state(true);
   let error = $state<string | null>(null);
   let hoveredToken = $state<string | null>(null);
-  let lastUpdateTime = $state(0);
-  let isAnimationPaused = $state(false);
+  let isPaused = $state(false);
+  let isResizing = $state(false);
+  let resizeTimeout = $state<number | null>(null);
 
-  // Optimized constants for best performance
-  const TARGET_FPS = 60;
-  const FRAME_TIME = 1000 / TARGET_FPS;
-  const MAX_TOKENS_MOBILE = 15;
-  const MAX_TOKENS_DESKTOP = 50;
-
-  // Helper Functions
-  function formatCurrency(value: number | string | null | undefined): string {
-    if (value == null) return '$0';
-    const numValue = typeof value === 'string' ? parseFloat(value) : value;
-    if (isNaN(numValue)) return '$0';
+  // Utilities
+  const formatCurrency = (value: number | string | null | undefined): string => {
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (!num || isNaN(num)) return '$0';
     
-    // Format based on magnitude
-    if (numValue >= 1e9) return `$${(numValue / 1e9).toFixed(2)}B`;
-    if (numValue >= 1e6) return `$${(numValue / 1e6).toFixed(2)}M`;
-    if (numValue >= 1e3) return `$${(numValue / 1e3).toFixed(2)}K`;
-    
-    // Use more precision for smaller values - always use decimal notation
-    if (numValue < 0.0001) {
-      // For extremely small values, use 8 decimal places
-      return `$${numValue.toFixed(8)}`;
-    }
-    if (numValue < 0.01) {
-      // Use 6 decimal places for very small values
-      return `$${numValue.toFixed(6)}`;
-    }
-    if (numValue < 1) {
-      // Use 4 decimal places for values between 0.01 and 1
-      return `$${numValue.toFixed(4)}`;
-    }
-    
-    // Standard 2 decimal places for values >= 1
-    return `$${numValue.toFixed(2)}`;
-  }
+    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
+    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+    if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
+    if (num < 0.0001) return `$${num.toFixed(8)}`;
+    if (num < 0.01) return `$${num.toFixed(6)}`;
+    if (num < 1) return `$${num.toFixed(4)}`;
+    return `$${num.toFixed(2)}`;
+  };
 
-  // Optimized bubble size calculation with smaller cache
-  const bubbleSizeCache = new Map<string, { size: number, timestamp: number }>();
-  const CACHE_TTL = 3000; // 3 seconds cache for better performance
+  const getChangePercent = (change: number | string | null | undefined): number => {
+    const num = typeof change === 'string' ? parseFloat(change) : change;
+    return num || 0;
+  };
 
-  function calcBubbleSize(token: Token): number {
-    const cacheKey = `${token.address}_${token.metrics?.price_change_24h}_${containerWidth}_${containerHeight}_${tokens.length}`;
-    const cached = bubbleSizeCache.get(cacheKey);
+  // Calculate bubble sizes with dramatic scaling for visual impact
+  const calculateBubbleSizes = (tokens: Token[]): Map<string, number> => {
+    if (!containerWidth || !containerHeight || !tokens.length) return new Map();
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      return cached.size;
-    }
-
-    // Get price change data
-    const changePercent = token?.metrics?.price_change_24h;
-    const numericValue = typeof changePercent === "string"
-      ? parseFloat(changePercent)
-      : changePercent;
+    const largestChange = tokens.reduce((max, token) => Math.max(max, Math.abs(getChangePercent(token.metrics?.price_change_24h))), 0);
+    const changes = tokens.map(token => Math.abs(getChangePercent(token.metrics?.price_change_24h)));
+    const usableArea = containerWidth * containerHeight * (isMobile ? 0.55 : 0.65);
+    const avgArea = usableArea / tokens.length;
+    const baseDiameter = Math.sqrt(avgArea / Math.PI) * 2;
     
-    // Calculate size based on price change percentage (absolute value)
-    const absVal = Math.abs(numericValue || 0);
+    // 5:1 diameter ratio with larger max size for dramatic effect
+    const maxDiameter = Math.min(baseDiameter * 3, Math.sqrt(usableArea * 0.3 / Math.PI) * 2);
+    const minDiameter = Math.max(12, maxDiameter / 5);
     
-    // Dynamic base size based on container dimensions and token count
-    if (containerWidth && containerHeight && tokens.length) {
-      // Calculate available area and desired coverage
-      const screenArea = containerWidth * containerHeight;
-      const tokenCount = tokens.length;
-      
-      // Target a specific density optimized for performance
-      const desiredCoverage = 0.35;
-      
-      // Calculate ideal average bubble size for desired coverage
-      const idealArea = (screenArea * desiredCoverage) / (tokenCount * (Math.PI / 4));
-      const idealDiameter = Math.sqrt(idealArea);
-      
-      // Calculate minimum size based on screen dimensions
-      const screenSize = Math.sqrt(screenArea);
-      const minBaseSizeByScreen = screenSize * (isMobile ? 0.12 : 0.1);
-      
-      // Set bounds for minimum size - optimized for performance
-      const absoluteMinSize = isMobile ? 100 : 80;
-      const minBaseSize = Math.max(absoluteMinSize, minBaseSizeByScreen);
-      
-      // Limit how large bubbles can get - performance optimized
-      const maxBaseDiameter = Math.min(180, screenSize * 0.12);
-      const baseSize = Math.min(maxBaseDiameter, Math.max(minBaseSize, idealDiameter * 0.65));
-      
-      // Use the calculated base size plus variation for price change
-      const size = baseSize + absVal * (isMobile ? 2 : 3);
-      
-      // Cache the result
-      bubbleSizeCache.set(cacheKey, { size, timestamp: Date.now() });
-      return size;
-    }
-    
-    // Fallback to fixed size if container dimensions not available yet
-    const baseSize = isMobile ? 60 : 80;
-    const size = baseSize + absVal * (isMobile ? 1.5 : 2);
-    
-    bubbleSizeCache.set(cacheKey, { size, timestamp: Date.now() });
-    return size;
-  }
-
-  function getBubbleColor(changePercent: number | string | null | undefined): string {
-    const numericValue =
-      typeof changePercent === "string"
-        ? parseFloat(changePercent)
-        : changePercent;
-    
-    // Handle missing values
-    if (numericValue == null || isNaN(numericValue)) return 'rgb(var(--text-secondary) / 0.8)';
-    
-    // Special case for zero or very small changes (absolute value less than 0.05%)
-    if (Math.abs(numericValue) < 0.05) return 'rgb(var(--bg-dark) / 0.8)';
-    
-    // Otherwise use green for positive, red for negative
-    return numericValue > 0 ? 'rgb(var(--accent-green) / 0.8)' : 'rgb(var(--accent-red) / 0.8)';
-  }
-
-  function getColorKey(changePercent: number | string | null | undefined): string {
-    const numericValue =
-      typeof changePercent === "string"
-        ? parseFloat(changePercent)
-        : changePercent;
-        
-    // Handle missing values
-    if (numericValue == null || isNaN(numericValue)) return 'neutral';
-    
-    // Special case for zero or very small changes
-    if (Math.abs(numericValue) < 0.05) return 'zero';
-    
-    // Otherwise use positive/negative keys
-    return numericValue > 0 ? 'positive' : 'negative';
-  }
-
-  function calcLogoSize(bubbleSize: number) {
-    // Scale logo size based on bubble size
-    const screenSize = containerWidth && containerHeight ? Math.sqrt(containerWidth * containerHeight) : 0;
-    // Adjust scale factor based on screen size - larger screens get smaller relative logos
-    const scaleFactor = isMobile ? 0.4 : Math.max(0.25, Math.min(0.35, 0.35 - (screenSize - 1000) / 20000));
-    return Math.max(20, bubbleSize * scaleFactor);
-  }
-
-  function calcFontSize(bubbleSize: number) {
-    // Adjust font scaling based on screen size
-    const screenSize = containerWidth && containerHeight ? Math.sqrt(containerWidth * containerHeight) : 0;
-    const screenFactor = screenSize > 0 ? Math.min(1.2, Math.max(1, 1 + (screenSize - 1000) / 10000)) : 1;
-    const mobileScale = isMobile ? 0.85 : 1;
-    const sizeScale = Math.pow(bubbleSize / 100, 0.8) * screenFactor;
-    
-    // Slightly smaller relative font sizes on very large screens
-    const symbolSize = Math.max(
-      0.45,
-      Math.min(1.3, bubbleSize * 0.06 * mobileScale * sizeScale),
-    );
-    const priceSize = Math.max(
-      0.35,
-      Math.min(1.1, bubbleSize * 0.045 * mobileScale * sizeScale),
-    );
-    return { symbolSize, priceSize };
-  }
-
-  function getSymbolStyle(symbol: string | undefined, fontSize: number) {
-    if (symbol && symbol.length > 4) {
-      // Adjust reduction more gradually for larger screens
-      const reductionBase = containerWidth > 1200 ? 0.8 : 0.9;
-      const reductionFactor = Math.min(0.7, reductionBase - (symbol.length - 4) * 0.05);
-      return `font-size: ${fontSize * reductionFactor}rem; letter-spacing: -0.5px;`;
-    }
-    return `font-size: ${fontSize}rem;`;
-  }
-
-  // Highly optimized repulsion calculation
-  function calculateRepulsionForces(bubblePositions: BubblePosition[], tokens: Token[], i: number, bubbleSize: number, minDistance: number, repulsionStrength: number): [number, number] {
-    let forceX = 0;
-    let forceY = 0;
-    
-    const pos = bubblePositions[i];
-    const checkDistance = Math.min(150, bubbleSize * 2.5); // Reduced interaction range
-    const checkDistanceSq = checkDistance * checkDistance;
-    
-    // Only check every 2nd bubble for mobile performance
-    const step = isMobile ? 2 : 1;
-    
-    for (let j = 0; j < bubblePositions.length; j += step) {
-      if (i === j || !tokens[j]?.metrics || !bubblePositions[j]) continue;
-
-      const pos2 = bubblePositions[j];
-      
-      // Fast early distance check using squared distance
-      const dx = pos2.x - pos.x;
-      const dy = pos2.y - pos.y;
-      const distanceSq = dx * dx + dy * dy;
-      
-      if (distanceSq > checkDistanceSq) continue;
-
-      const size2 = calcBubbleSize(tokens[j]);
-      const distance = Math.sqrt(distanceSq);
-      const minDist = (bubbleSize + size2) / 2 + minDistance;
-
-      if (distance < minDist && distance > 0.1) {
-        const overlap = Math.min(1, (minDist - distance) / minDist);
-        const force = repulsionStrength * overlap;
-        const invDistance = 1 / distance;
-        forceX -= dx * invDistance * force;
-        forceY -= dy * invDistance * force;
-      }
-    }
-    
-    return [forceX, forceY];
-  }
-
-  // Core Logic Functions (adapted for runes)
-  function initializePositions() {
-    // Guard against running before container/tokens/dimensions are ready
-    if (!containerElement || tokens.length === 0 || containerWidth === 0 || containerHeight === 0) {
-        console.warn("Skipping initializePositions: prerequisites not met.", { hasContainer: !!containerElement, tokenCount: tokens.length, width: containerWidth, height: containerHeight });
-        return;
-    }
-
-    const width = containerWidth;
-    const height = containerHeight;
-    const numTokens = tokens.length;
-    
-    // Adjust grid layout based on container aspect ratio
-    const aspectRatio = width / height;
-    const colToRowRatio = Math.sqrt(numTokens * aspectRatio);
-    const cols = Math.ceil(Math.sqrt(numTokens * colToRowRatio));
-    const rows = Math.ceil(numTokens / cols);
-
-    const maxBubbleSize = Math.max(
-      0,
-      ...tokens.map((token) => calcBubbleSize(token))
-    );
-
-    const cellWidth = Math.max(maxBubbleSize * 1.2, width / cols);
-    const cellHeight = Math.max(maxBubbleSize * 1.2, height / rows);
-    const margin = maxBubbleSize / 2;
-    const usableWidth = width - margin * 2;
-    const usableHeight = height - margin * 2;
-
-    // Assign directly to $state variable
-    bubblePositions = tokens.map((_, index) => {
-      const row = Math.floor(index / cols);
-      const col = index % cols;
-      const randomAngle = Math.random() * Math.PI * 2;
-      const randomRadius = Math.random() * cellWidth * 0.3;
-      const offsetX = Math.cos(randomAngle) * randomRadius;
-      const offsetY = Math.sin(randomAngle) * randomRadius;
-      const baseX = margin + (usableWidth * (col + 0.5)) / cols;
-      const baseY = margin + (usableHeight * (row + 0.5)) / rows;
-
-      return {
-        x: baseX + offsetX,
-        y: baseY + offsetY,
-        targetX: baseX + offsetX, // Initialize target to current position
-        targetY: baseY + offsetY, // Initialize target to current position
-        vx: (Math.random() - 0.5) * 2,
-        vy: (Math.random() - 0.5) * 2,
-      };
+    // Power scaling for more dramatic visual differences (square root of square root = 4th root)
+    // This makes -16% significantly more visible than -6%
+    const sizeMap = new Map<string, number>();
+    tokens.forEach((token, i) => {
+      const change = Math.max(0.1, Math.min(largestChange, changes[i]));
+      const normalizedChange = change / largestChange; // 0 to 1
+      const scaleFactor = Math.pow(normalizedChange, 1.2); // Power scaling for dramatic effect
+      const diameter = minDiameter + (maxDiameter - minDiameter) * scaleFactor;
+      sizeMap.set(token.address, diameter);
     });
-
-    isInitialized = true;
-  }
-
-  function updatePositions() {
-    if (!bubblePositions.length || !tokens.length || bubblePositions.length !== tokens.length || isAnimationPaused) return;
-
-    const currentTime = performance.now();
     
-    // Skip frame if we're running too fast
-    if (currentTime - lastUpdateTime < FRAME_TIME) {
-      animationFrameId = requestAnimationFrame(updatePositions);
-      return;
-    }
-
-    lastUpdateTime = currentTime;
-
-    // Optimized constants for best performance
-    const damping = 0.92;
-    const repulsionStrength = 1.8;
-    const maxSpeed = 4;
-    const velocitySmoothing = 0.65;
-    const baseFloatStrength = 0.03;
+    // Global scaling to fit viewport
+    const totalArea = Array.from(sizeMap.values()).reduce((sum, d) => sum + Math.PI * (d/2)**2, 0);
+    const scale = totalArea > usableArea ? Math.sqrt(usableArea / totalArea) * 0.85 : 0.9;
     
-    // Scale minimum distance between bubbles based on screen size
-    const screenSize = containerWidth && containerHeight ? Math.sqrt(containerWidth * containerHeight) : 0;
-    const minDistance = screenSize > 0 
-      ? Math.max(15, Math.min(35, 25 * (screenSize / 1200)))
-      : 20;
+    sizeMap.forEach((diameter, address) => {
+      sizeMap.set(address, Math.max(10, diameter * scale));
+    });
     
-    const floatStrength = screenSize > 0 
-      ? baseFloatStrength * Math.max(0.8, Math.min(1.1, screenSize / 1200))
-      : baseFloatStrength;
+    return sizeMap;
+  };
+
+  // Memoized bubble sizes - only recalculate when dependencies change
+  const bubbleSizes = $derived(calculateBubbleSizes(tokens));
+
+  // Single calculation function for all bubble properties
+  const calculateBubbleStyle = (token: Token, bubbleSizes: Map<string, number>): BubbleStyle => {
+    const changePercent = getChangePercent(token.metrics?.price_change_24h);
+    const size = bubbleSizes.get(token.address) || 80;
     
-    const time = Date.now() / 1000;
+    // Calculate sizes to ensure content fits with proper padding (20% padding total)
+    const availableHeight = size * 0.8; // 80% of bubble height available for content
+    const verticalPadding = size * 0.1; // 10% padding top and bottom
+    
+    // Distribute vertical space: logo (40%), symbol (30%), price (30%)
+    const logoSize = size * 0.3;
+    const symbolSize = size * 0.12;
+    const priceSize = size * 0.12;
+    
+    // Simplified color calculation
+    const absChange = Math.abs(changePercent);
+    const intensity = Math.min(3, Math.floor(absChange / 5)); // 0-3 scale
+    const colorKey = absChange < 0.05 ? 'neutral' : changePercent > 0 ? 'positive' : 'negative';
+    const color = absChange < 0.05 ? 'neutral' : `${colorKey}-${intensity}`;
+    
+    return { size, logoSize, symbolSize, priceSize, color, colorKey };
+  };
 
-    // Pre-calculate common values
-    const boundaryForce = 0.6;
+  // Adaptive circle packing algorithm that scales with bubble count
+  const initializePositions = () => {
+    if (!containerElement || !tokens.length || !containerWidth || !containerHeight || !bubbleSizes.size) return;
+    
+    const newPositions: BubblePosition[] = new Array(tokens.length);
+    const margin = 30;
+    const availableWidth = containerWidth - 2 * margin;
+    const availableHeight = containerHeight - 2 * margin;
+    const totalArea = availableWidth * availableHeight;
+    
+    // Create sorted bubble list (largest first for better packing)
+    const sortedBubbles = tokens.map((token, index) => ({
+      token,
+      index,
+      size: bubbleSizes.get(token.address) || 80,
+      radius: (bubbleSizes.get(token.address) || 80) / 2,
+      x: 0,
+      y: 0,
+      placed: false
+    })).sort((a, b) => b.size - a.size);
 
-    for (let i = 0; i < bubblePositions.length; i++) {
-      const pos = bubblePositions[i];
-      if (!tokens[i]?.metrics) continue;
+    // Calculate total bubble area and adaptive parameters
+    const totalBubbleArea = sortedBubbles.reduce((sum, b) => sum + Math.PI * b.radius * b.radius, 0);
+    const densityRatio = totalBubbleArea / totalArea;
+    
+    // Adaptive parameters based on bubble count and density - optimized for smaller bubbles
+    const avgBubbleRadius = Math.sqrt(totalBubbleArea / (Math.PI * tokens.length));
+    const spiralStep = Math.max(avgBubbleRadius * 0.6, 8); // Smaller steps for better packing with small bubbles
+    const maxSpiralAttempts = Math.min(12000, tokens.length * 150 + 3000); // More attempts since bubbles are smaller
+    const searchRadius = Math.min(availableWidth, availableHeight) * 0.9; // Larger search area for smaller bubbles
+    
+    // console.log(`Packing parameters:
+    //   - Density ratio: ${(densityRatio * 100).toFixed(1)}%
+    //   - Avg bubble radius: ${avgBubbleRadius.toFixed(1)}px
+    //   - Spiral step: ${spiralStep.toFixed(1)}px
+    //   - Max attempts: ${maxSpiralAttempts}`)
+
+    // Placed bubbles for collision detection
+    const placedBubbles: Array<{x: number, y: number, radius: number}> = [];
+
+    // Collision and bounds checking utilities - adjusted for smaller bubbles
+    const minSpacing = 4; // Reduced spacing for smaller bubbles
+    const isColliding = (x: number, y: number, radius: number): boolean => 
+      placedBubbles.some(placed => {
+        const dx = x - placed.x, dy = y - placed.y;
+        return Math.sqrt(dx * dx + dy * dy) < radius + placed.radius + minSpacing;
+      });
+
+    const isWithinBounds = (x: number, y: number, radius: number): boolean => 
+      x - radius >= margin && x + radius <= containerWidth - margin &&
+      y - radius >= margin && y + radius <= containerHeight - margin;
+
+    // Multi-stage position finding
+    const findValidPosition = (targetRadius: number, bubbleIndex: number): {x: number, y: number} | null => {
+      const centerX = containerWidth / 2;
+      const centerY = containerHeight / 2;
       
-      const bubbleSize = calcBubbleSize(tokens[i]);
-      const radius = bubbleSize / 2;
-      const boundaryMargin = radius + 8;
-
-      let forceX = 0;
-      let forceY = 0;
-
-      // Optimized floating motion
-      const phase = i * 0.15;
-      forceX += Math.sin(time * 0.4 + phase) * floatStrength;
-      forceY += Math.cos(time * 0.25 + phase * 1.3) * floatStrength;
-
-      // Target position transition
-      if (pos.targetX !== undefined && pos.targetY !== undefined) {
-        const dx = pos.targetX - pos.x;
-        const dy = pos.targetY - pos.y;
-        const distSq = dx * dx + dy * dy;
+      // Stage 1: Spiral search from center
+      for (let attempt = 0; attempt < maxSpiralAttempts; attempt++) {
+        const angle = attempt * 0.618034; // Golden angle for optimal distribution
+        const radius = Math.sqrt(attempt) * spiralStep;
         
-        if (distSq > 1.0) {
-          const dist = Math.sqrt(distSq);
-          const transitionSpeed = Math.min(0.06, 0.4 / dist);
-          forceX += dx * transitionSpeed;
-          forceY += dy * transitionSpeed;
-        } else {
-          pos.x = pos.targetX;
-          pos.y = pos.targetY;
-          pos.targetX = undefined;
-          pos.targetY = undefined;
+        // Stop spiral if we've exceeded reasonable search area
+        if (radius > searchRadius) break;
+        
+        // Multiple candidate positions per spiral step
+        for (let variant = 0; variant < 3; variant++) {
+          const randomOffset = spiralStep * 0.3 * variant;
+          const offsetAngle = (Math.random() - 0.5) * 0.5;
+          
+          const x = centerX + Math.cos(angle + offsetAngle) * (radius + randomOffset);
+          const y = centerY + Math.sin(angle + offsetAngle) * (radius + randomOffset);
+          
+          if (isWithinBounds(x, y, targetRadius) && !isColliding(x, y, targetRadius)) {
+            return { x, y };
+          }
         }
       }
-
-      // Use optimized repulsion calculation
-      const [repulsionX, repulsionY] = calculateRepulsionForces(bubblePositions, tokens, i, bubbleSize, minDistance, repulsionStrength);
-      forceX += repulsionX;
-      forceY += repulsionY;
-
-      // Boundary forces - optimized
-      if (pos.x < boundaryMargin) {
-        forceX += boundaryForce * (boundaryMargin - pos.x);
-      } else if (pos.x > containerWidth - boundaryMargin) {
-        forceX -= boundaryForce * (pos.x - (containerWidth - boundaryMargin));
+      
+      // Stage 2: Grid search with adaptive step size
+      const adaptiveGridStep = Math.max(targetRadius * 1.2, spiralStep);
+      const gridCols = Math.floor(availableWidth / adaptiveGridStep);
+      const gridRows = Math.floor(availableHeight / adaptiveGridStep);
+      
+      // Random grid traversal to avoid clustering
+      const gridPositions: {x: number, y: number}[] = [];
+      for (let row = 0; row < gridRows; row++) {
+        for (let col = 0; col < gridCols; col++) {
+          gridPositions.push({
+            x: margin + col * adaptiveGridStep + adaptiveGridStep / 2,
+            y: margin + row * adaptiveGridStep + adaptiveGridStep / 2
+          });
+        }
       }
       
-      if (pos.y < boundaryMargin) {
-        forceY += boundaryForce * (boundaryMargin - pos.y);
-      } else if (pos.y > containerHeight - boundaryMargin) {
-        forceY -= boundaryForce * (pos.y - (containerHeight - boundaryMargin));
+      // Shuffle grid positions for better distribution
+      for (let i = gridPositions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [gridPositions[i], gridPositions[j]] = [gridPositions[j], gridPositions[i]];
       }
-
-      // Apply forces to velocity with smoothing
-      pos.vx = pos.vx * velocitySmoothing + forceX * (1 - velocitySmoothing);
-      pos.vy = pos.vy * velocitySmoothing + forceY * (1 - velocitySmoothing);
-
-      // Apply damping
-      pos.vx *= damping;
-      pos.vy *= damping;
-
-      // Limit speed
-      const speedSq = pos.vx * pos.vx + pos.vy * pos.vy;
-      if (speedSq > maxSpeed * maxSpeed) {
-        const speed = Math.sqrt(speedSq);
-        const factor = maxSpeed / speed;
-        pos.vx *= factor;
-        pos.vy *= factor;
+      
+      for (const gridPos of gridPositions) {
+        // Small random offset within grid cell
+        const offsetX = (Math.random() - 0.5) * adaptiveGridStep * 0.4;
+        const offsetY = (Math.random() - 0.5) * adaptiveGridStep * 0.4;
+        
+        const x = gridPos.x + offsetX;
+        const y = gridPos.y + offsetY;
+        
+        if (isWithinBounds(x, y, targetRadius) && !isColliding(x, y, targetRadius)) {
+          return { x, y };
+        }
       }
+      
+      return null;
+    };
 
-      // Update position
-      pos.x += pos.vx;
-      pos.y += pos.vy;
-
-      // Direct DOM update for better performance
-      if (pos.element) {
-        pos.element.style.transform = `translate(${pos.x - radius}px, ${pos.y - radius}px)`;
+    // Place bubbles with progressive fallback strategies
+    let unplacedCount = 0;
+    const unplacedBubbles: typeof sortedBubbles = [];
+    
+    // First pass: try to place all bubbles optimally
+    for (let i = 0; i < sortedBubbles.length; i++) {
+      const bubble = sortedBubbles[i];
+      const position = findValidPosition(bubble.radius, i);
+      
+      if (position) {
+        placedBubbles.push({
+          x: position.x,
+          y: position.y,
+          radius: bubble.radius
+        });
+        newPositions[bubble.index] = { x: position.x, y: position.y };
+      } else {
+        unplacedBubbles.push(bubble);
+        unplacedCount++;
+      }
+    }
+    
+    // Fallback strategy: distribute unplaced bubbles using multiple techniques
+    if (unplacedBubbles.length > 0) {
+      // console.log(`Applying fallback for ${unplacedBubbles.length} unplaced bubbles`);
+      
+      for (let i = 0; i < unplacedBubbles.length; i++) {
+        const bubble = unplacedBubbles[i];
+        let placed = false;
+        
+        // Strategy 1: Try smaller radius first (reduce bubble size)
+        const reducedRadius = bubble.radius * 0.8;
+        const reducedPosition = findValidPosition(reducedRadius, bubble.index);
+        if (reducedPosition) {
+          newPositions[bubble.index] = reducedPosition;
+          placedBubbles.push({ ...reducedPosition, radius: reducedRadius });
+          placed = true;
+        }
+        
+        // Strategy 2: Grid-based placement in less crowded areas
+        if (!placed) {
+          const gridSize = avgBubbleRadius * 3;
+          const cols = Math.floor(availableWidth / gridSize);
+          const rows = Math.floor(availableHeight / gridSize);
+          
+          // Find the least crowded grid cell
+          let bestCell = null;
+          let minNearbyBubbles = Infinity;
+          
+          for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+              const cellX = margin + (col + 0.5) * gridSize;
+              const cellY = margin + (row + 0.5) * gridSize;
+              
+              // Count nearby bubbles
+              const nearbyCount = placedBubbles.filter(placed => {
+                const dx = cellX - placed.x;
+                const dy = cellY - placed.y;
+                return Math.sqrt(dx * dx + dy * dy) < gridSize * 2;
+              }).length;
+              
+              if (nearbyCount < minNearbyBubbles && 
+                  isWithinBounds(cellX, cellY, bubble.radius) &&
+                  !isColliding(cellX, cellY, bubble.radius)) {
+                minNearbyBubbles = nearbyCount;
+                bestCell = { x: cellX, y: cellY };
+              }
+            }
+          }
+          
+          if (bestCell) {
+            newPositions[bubble.index] = bestCell;
+            placedBubbles.push({ ...bestCell, radius: bubble.radius });
+            placed = true;
+          }
+        }
+        
+        // Strategy 3: Force placement at viewport edges as last resort
+        if (!placed) {
+          const edgePositions = [
+            // Top edge
+            { x: margin + (i % 5) * (availableWidth / 5), y: margin + bubble.radius },
+            // Bottom edge  
+            { x: margin + (i % 5) * (availableWidth / 5), y: containerHeight - margin - bubble.radius },
+            // Left edge
+            { x: margin + bubble.radius, y: margin + (i % 5) * (availableHeight / 5) },
+            // Right edge
+            { x: containerWidth - margin - bubble.radius, y: margin + (i % 5) * (availableHeight / 5) }
+          ];
+          
+          const edgePos = edgePositions[i % edgePositions.length];
+          newPositions[bubble.index] = edgePos;
+        }
       }
     }
 
-    // Continue animation
-    animationFrameId = requestAnimationFrame(updatePositions);
-  }
+    // if (unplacedCount > 0) {
+    //   console.log(`Placed ${tokens.length - unplacedCount}/${tokens.length} bubbles optimally, ${unplacedCount} using fallback`);
+    // }
 
-  // Debounced loading for better performance
-  let loadTokensTimeout: number | undefined;
-  
-  async function loadTokens() {
+    // Light relaxation pass only if density is reasonable
+    if (densityRatio < 0.7 && placedBubbles.length > 1) {
+      relaxBubblePositions(newPositions, sortedBubbles, 2);
+    }
+    
+    positions = newPositions;
+  };
+
+  // Relaxation algorithm to improve bubble spacing
+  const relaxBubblePositions = (
+    positions: BubblePosition[], 
+    bubbles: Array<{token: Token, index: number, size: number, radius: number}>,
+    iterations: number
+  ) => {
+    const margin = 30;
+    const minSpacing = 4; // Consistent with collision detection
+    
+    for (let iter = 0; iter < iterations; iter++) {
+      for (let i = 0; i < bubbles.length; i++) {
+        if (!positions[bubbles[i].index]) continue;
+        
+        const currentPos = positions[bubbles[i].index];
+        const currentRadius = bubbles[i].radius;
+        let forceX = 0;
+        let forceY = 0;
+        
+        // Calculate repulsion forces from other bubbles
+        for (let j = 0; j < bubbles.length; j++) {
+          if (i === j || !positions[bubbles[j].index]) continue;
+          
+          const otherPos = positions[bubbles[j].index];
+          const otherRadius = bubbles[j].radius;
+          
+          const dx = currentPos.x - otherPos.x;
+          const dy = currentPos.y - otherPos.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const minDistance = currentRadius + otherRadius + minSpacing; // Use same spacing as collision detection
+          
+          if (distance < minDistance && distance > 0) {
+            const overlap = minDistance - distance;
+            const force = overlap * 0.08; // Gentler force for smaller bubbles
+            
+            forceX += (dx / distance) * force;
+            forceY += (dy / distance) * force;
+          }
+        }
+        
+        // Apply forces with bounds checking
+        const newX = Math.max(
+          margin + currentRadius,
+          Math.min(
+            containerWidth - margin - currentRadius,
+            currentPos.x + forceX
+          )
+        );
+        
+        const newY = Math.max(
+          margin + currentRadius,
+          Math.min(
+            containerHeight - margin - currentRadius,
+            currentPos.y + forceY
+          )
+        );
+        
+        positions[bubbles[i].index] = { x: newX, y: newY };
+      }
+    }
+  };
+
+  // Data loading
+  const loadTokens = async () => {
     loading = true;
-
     try {
       const response = await fetchTokens();
-      const fetchedTokens = response.tokens
-        .filter(
-          (token) =>
-            Number(token.metrics?.volume_24h) > 0 &&
-            Number(token.metrics?.tvl) > 100,
+      tokens = response.tokens
+        .filter(token => 
+          Number(token.metrics?.volume_24h) > 0 && 
+          Number(token.metrics?.tvl) > 100
         )
-        .slice(0, maxTokens);
-
-      // Check if the actual set of token addresses has changed
-      const oldAddresses = new Set(tokens.map(t => t.address));
-      const newAddresses = new Set(fetchedTokens.map((t: Token) => t.address));
-      const setsAreEqual = oldAddresses.size === newAddresses.size && [...oldAddresses].every(addr => newAddresses.has(addr));
-
-      if (!setsAreEqual || tokens.length === 0) {
-        // If token set changed or it's the initial load, replace tokens and reset initialization
-        tokens = fetchedTokens;
-        isInitialized = false;
-        // Clear potentially mismatched positions and cache
-        bubblePositions = [];
-        bubbleSizeCache.clear();
-        error = null;
-      } else {
-        // Simply update token data, but preserve current positions
-        tokens = tokens.map(oldToken => {
-          const updatedTokenData = fetchedTokens.find(t => t.address === oldToken.address);
-          return updatedTokenData ? { ...oldToken, metrics: updatedTokenData.metrics } : oldToken;
-        });
-        // Clear cache on data update to recalculate sizes
-        bubbleSizeCache.clear();
-        error = null;
-      }
-
+        // .slice(0, MAX_TOKENS);
+      error = null;
     } catch (e) {
       console.error("Error loading tokens:", e);
       error = "Failed to load token data";
     } finally {
       loading = false;
     }
-  }
+  };
 
-  // Pause/resume animation based on visibility
-  function handleVisibilityChange() {
-    if (typeof document !== 'undefined') {
-      isAnimationPaused = document.hidden;
-    }
-  }
-
-  // Keyboard shortcuts for accessibility
-  function handleKeydown(event: KeyboardEvent) {
-    switch (event.key) {
-      case ' ':
-        // Space to pause/resume animation
-        event.preventDefault();
-        isAnimationPaused = !isAnimationPaused;
-        break;
-      case 'r':
-        // R to refresh data
-        if (event.ctrlKey || event.metaKey) {
-          event.preventDefault();
-          loadTokens();
-        }
-        break;
-    }
-  }
-
-
-  // Effect for setup, teardown, and managing resize/intervals
+  // Setup effect - runs once on mount
   $effect(() => {
-    const handleResize = () => {
-      if (typeof window !== "undefined") {
-        const mobile = window.innerWidth < 768;
-        if (isMobile !== mobile) isMobile = mobile;
-        const newMaxTokens = mobile ? MAX_TOKENS_MOBILE : MAX_TOKENS_DESKTOP;
-        if (maxTokens !== newMaxTokens) maxTokens = newMaxTokens;
-      }
-      if (containerElement) {
-        const rect = containerElement.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-            if (containerWidth !== rect.width) containerWidth = rect.width;
-            if (containerHeight !== rect.height) containerHeight = rect.height;
-        } else if (containerWidth !== 0 || containerHeight !== 0) {
-            containerWidth = 0;
-            containerHeight = 0;
-        }
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key === ' ') {
+        event.preventDefault();
+        isPaused = !isPaused;
+      } else if (event.key === 'r' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        loadTokens();
       }
     };
 
-    handleResize(); // Initial call
-    loadTokens(); // Initial load
+    const handleVisibility = () => isPaused = document.hidden;
 
-    // Add event listeners
-    window.addEventListener("resize", handleResize);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    loadTokens(); // Initial load
+    
+    document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("keydown", handleKeydown);
     
-    // Optimized refresh interval
     const interval = setInterval(loadTokens, 30000);
 
-    let resizeObserver: ResizeObserver | undefined;
-    if (containerElement) {
-      resizeObserver = new ResizeObserver(handleResize);
-      resizeObserver.observe(containerElement);
-    }
-
-    // Cleanup function
     return () => {
-      window.removeEventListener("resize", handleResize);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("keydown", handleKeydown);
-      resizeObserver?.disconnect();
       clearInterval(interval);
-      if (loadTokensTimeout) clearTimeout(loadTokensTimeout);
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = undefined;
-      }
     };
   });
 
-  // Effect for initializing positions and starting animation when conditions are met
+  // 2. Container size effect with debounced resize
   $effect(() => {
-    // Check if we are ready to initialize *and* haven't initialized yet
-    if (containerElement && tokens.length > 0 && containerWidth > 0 && containerHeight > 0 && !isInitialized) {
-      initializePositions(); // This sets isInitialized = true
-
-      // Start the animation loop *after* initialization
-      if (animationFrameId) cancelAnimationFrame(animationFrameId); // Clear previous frame just in case
-      animationFrameId = requestAnimationFrame(updatePositions);
-    } else if (isInitialized && tokens.length > 0 && !animationFrameId && containerWidth > 0 && containerHeight > 0) {
-        // If initialized, have tokens, but animation isn't running (e.g., after stopping), restart it.
-        animationFrameId = requestAnimationFrame(updatePositions);
-    } else if ((tokens.length === 0 || containerWidth === 0 || containerHeight === 0) && animationFrameId) {
-        // If conditions to run animation are no longer met, stop it.
-          cancelAnimationFrame(animationFrameId);
-        animationFrameId = undefined;
-    }
-  });
-
-  // Clean up cache periodically
-  $effect(() => {
-    const cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      for (const [key, value] of bubbleSizeCache.entries()) {
-        if (now - value.timestamp > CACHE_TTL * 2) {
-          bubbleSizeCache.delete(key);
-        }
-      }
-    }, CACHE_TTL);
-
-    return () => clearInterval(cleanupInterval);
-  });
-
-  // Action to cache bubble element references
-  function cacheBubbleElement(element: HTMLElement, params: { position: BubblePosition, index: number }) {
-    if (params.position) {
-      params.position.element = element;
-    }
+    if (!containerElement) return;
     
-    return {
-      destroy() {
-        if (params.position) {
-          params.position.element = undefined;
-        }
-      }
+    const handleResize = () => {
+      // Clear existing timeout
+      if (resizeTimeout) window.clearTimeout(resizeTimeout);
+      
+      // Show loading during resize
+      isResizing = true;
+      
+      // Debounce resize calculation
+      resizeTimeout = window.setTimeout(() => {
+        const rect = containerElement!.getBoundingClientRect();
+        containerWidth = rect.width;
+        containerHeight = rect.height;
+        isResizing = false;
+        resizeTimeout = null;
+      }, 2000);
     };
-  }
+
+    // Initial size without debounce
+    const rect = containerElement.getBoundingClientRect();
+    containerWidth = rect.width;
+    containerHeight = rect.height;
+    
+    window.addEventListener("resize", handleResize);
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(containerElement);
+
+    return () => {
+      if (resizeTimeout) window.clearTimeout(resizeTimeout);
+      window.removeEventListener("resize", handleResize);
+      resizeObserver.disconnect();
+    };
+  });
+
+  // 3. Position initialization effect - only runs when bubbleSizes change
+  $effect(() => {
+    if (containerElement && tokens.length && containerWidth && containerHeight && bubbleSizes.size) {
+      initializePositions();
+    }
+  });
+
+  // 4. Animation control via CSS
+  $effect(() => {
+    if (containerElement) {
+      if (isPaused) {
+        containerElement.style.setProperty('--animation-play-state', 'paused');
+      } else {
+        containerElement.style.setProperty('--animation-play-state', 'running');
+      }
+    }
+  });
 </script>
 
 <svelte:head>
@@ -600,344 +520,457 @@
 </svelte:head>
 
 <div class="bubbles-container" bind:this={containerElement}>
-  <div class="controls-help">
+  <!-- <div class="controls">
     <div class="control-hint">Space: ⏸️ Pause/Resume</div>
     <div class="control-hint">Ctrl+R: 🔄 Refresh</div>
-  </div>
+  </div> -->
   
   {#if loading && !tokens.length}
-    <div class="loading">Loading tokens...</div>
+    <div class="loading">
+      <div class="loading-spinner">
+        {#each Array(4) as _, i}
+          <div class="spinner-ring" style="animation-delay: {-0.45 + i * 0.15}s;"></div>
+        {/each}
+      </div>
+      <div class="loading-text">Loading tokens...</div>
+    </div>
   {:else if error}
     <div class="error">{error}</div>
+  {:else if isResizing}
+    <div class="loading">
+      <div class="loading-spinner">
+        {#each Array(4) as _, i}
+          <div class="spinner-ring" style="animation-delay: {-0.45 + i * 0.15}s;"></div>
+        {/each}
+      </div>
+      <div class="loading-text">Updating bubbles...</div>
+    </div>
   {:else}
-    {#each tokens as token, i}
-      {@const bubbleSize = calcBubbleSize(token)}
-      {@const logoSize = calcLogoSize(bubbleSize)}
-      {@const fontSize = calcFontSize(bubbleSize)}
-      {@const bubbleColor = getBubbleColor(token?.metrics?.price_change_24h)}
-      {@const colorKey = getColorKey(token?.metrics?.price_change_24h)}
-      {@const hoverColor = colorKey === "positive"
-        ? "rgb(var(--accent-green-hover) / 0.8)"
-        : colorKey === "negative"
-          ? "rgb(var(--accent-red-hover) / 0.8)"
-          : colorKey === "zero"
-            ? "rgb(var(--bg-light) / 0.8)"
-            : "rgb(var(--text-primary) / 0.8)"}
+    {#each tokens as token, i (token.address)}
+      {@const style = calculateBubbleStyle(token, bubbleSizes)}
+      {@const pos = positions[i]}
+      {@const changePercent = getChangePercent(token.metrics?.price_change_24h)}
       {@const isHovered = hoveredToken === token.address}
-      <div
-        class="bubble-hitbox {isHovered ? 'bubble-hovered' : ''}"
-        onclick={() => {
-          goto(`/stats/${token.address}`);
-        }}
-        onmouseenter={() => hoveredToken = token.address}
-        onmouseleave={() => hoveredToken = null}
-        style="
-          width: {bubbleSize}px;
-          height: {bubbleSize}px;
-          transform: translate(
-            {(bubblePositions[i]?.x || 0) - bubbleSize / 2}px,
-            {(bubblePositions[i]?.y || 0) - bubbleSize / 2}px
-          );
-        "
-        use:cacheBubbleElement={{ position: bubblePositions[i], index: i }}
-      >
+      
+      {#if pos}
         <div
-          class="bubble"
+          class="bubble {style.colorKey} {isHovered ? 'hovered' : ''}"
           style="
-            width: 100%;
-            height: 100%;
-            background-color: {bubbleColor};
-            --hover-color: {hoverColor};
+            width: {style.size}px;
+            height: {style.size}px;
+            left: {pos.x - style.size/2}px;
+            top: {pos.y - style.size/2}px;
+            --sway-delay: {i * 0.3}s;
           "
+          onclick={() => goto(`/stats/${token.address}`)}
+          onmouseenter={() => hoveredToken = token.address}
+          onmouseleave={() => hoveredToken = null}
         >
-          <div class="token-label">
-            {#if token?.logo_url}
+          <div class="bubble-content">
+            {#if token.logo_url}
               <img
                 src={token.logo_url}
                 alt={token.symbol}
                 class="token-logo"
+                style="width: {style.logoSize}px; height: {style.logoSize}px; margin-bottom: {style.logoSize * 0.1}px;"
                 loading="lazy"
-                style="width: {logoSize}px; height: {logoSize}px;"
               />
             {/if}
-            <span
-              class="token-symbol"
-              style={getSymbolStyle(token?.symbol, fontSize.symbolSize)}
-              >{token?.symbol}</span
-            >
-            {#if token?.metrics?.price_change_24h != null}
-              <span
-                class="price-change"
-                style="font-size: {fontSize.priceSize}rem;"
-              >
-                {typeof token.metrics.price_change_24h === "number"
-                  ? token.metrics.price_change_24h.toFixed(2)
-                  : parseFloat(token.metrics.price_change_24h).toFixed(2)}%
-              </span>
-            {/if}
+            <div class="token-symbol" style="font-size: {style.symbolSize}px; line-height: 1; margin-bottom: {style.symbolSize * 0.2}px;">
+              {token.symbol}
+            </div>
+            <div class="price-change" style="font-size: {style.priceSize}px; line-height: 1;">
+              {changePercent.toFixed(2)}%
+            </div>
           </div>
+          
+          {#if isHovered}
+            <div class="tooltip">
+              <div class="tooltip-header">
+                <div class="tooltip-symbol">{token.symbol}</div>
+                {#if token.metrics?.price}
+                  <div class="tooltip-price">{formatCurrency(token.metrics?.price)}</div>
+                {/if}
+              </div>
+              
+              {#if token.metrics?.price_change_24h}
+                <div class="tooltip-change {changePercent >= 0 ? 'positive' : 'negative'}">
+                  {changePercent >= 0 ? '↗' : '↘'} {Math.abs(changePercent).toFixed(2)}% (24h)
+                </div>
+              {/if}
+
+              <div class="tooltip-divider"></div>
+              
+              <div class="tooltip-metrics">
+                {#each [
+                  { key: 'volume_24h', label: 'Volume (24h)', value: token.metrics?.volume_24h },
+                  { key: 'tvl', label: 'TVL', value: token.metrics?.tvl }
+                ] as metric}
+                  {#if metric.value}
+                    <div class="tooltip-row">
+                      <span class="metric-label">{metric.label}:</span>
+                      <span class="metric-value">{formatCurrency(metric.value)}</span>
+                    </div>
+                  {/if}
+                {/each}
+              </div>
+            </div>
+          {/if}
         </div>
-        
-        {#if isHovered}
-        <div class="bubble-tooltip">
-          <div class="tooltip-content">
-            <div class="tooltip-row">
-              <span class="tooltip-label">Volume:</span>
-              <span class="tooltip-value">{formatCurrency(token?.metrics?.volume_24h)}</span>
-            </div>
-            <div class="tooltip-row">
-              <span class="tooltip-label">TVL:</span>
-              <span class="tooltip-value">{formatCurrency(token?.metrics?.tvl)}</span>
-            </div>
-            {#if token?.metrics?.price}
-            <div class="tooltip-row">
-              <span class="tooltip-label">Price:</span>
-              <span class="tooltip-value">{formatCurrency(token?.metrics?.price)}</span>
-            </div>
-            {/if}
-          </div>
-        </div>
-        {/if}
-      </div>
+      {/if}
     {/each}
   {/if}
 </div>
 
-<style scoped>
+<style>
   .bubbles-container {
     position: relative;
     width: 100%;
     height: 85vh;
     overflow: hidden;
-    /* Optimized for maximum performance */
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    contain: layout style paint;
-    /* Additional performance optimizations */
-    -webkit-perspective: 1000px;
-    perspective: 1000px;
-    -webkit-transform-style: preserve-3d;
-    transform-style: preserve-3d;
   }
 
   .bubble {
     position: absolute;
     border-radius: 50%;
-    color: #fff;
-    font-size: 0.9rem;
-    text-align: center;
     cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    z-index: 1;
+    
+    /* 3D Bubble Effects */
+    background: radial-gradient(ellipse at 30% 30%, 
+      rgba(255, 255, 255, 0.3) 0%, 
+      transparent 50%
+    );
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    /* Gentle sway animation */
+    animation: gentleSway 4s ease-in-out infinite;
+    animation-delay: var(--sway-delay, 0s);
+    animation-play-state: var(--animation-play-state, running);
     transform-origin: center center;
-    /* Optimized for performance */
-    will-change: transform;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    transform: translateZ(0);
-    pointer-events: none; /* Hitbox handles pointer events */
-    transition: transform 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
-    /* Better font rendering */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    /* Improve paint performance */
-    contain: layout style paint;
   }
 
-  .bubble-hitbox {
+  @keyframes gentleSway {
+    0%, 100% { 
+      transform: translate(0px, 0px) rotate(0deg) scale(1);
+    }
+    25% { 
+      transform: translate(2px, -3px) rotate(0.5deg) scale(1.01);
+    }
+    50% { 
+      transform: translate(-1px, 2px) rotate(-0.3deg) scale(0.99);
+    }
+    75% { 
+      transform: translate(3px, 1px) rotate(0.8deg) scale(1.02);
+    }
+  }
+
+  .bubble::before {
+    content: '';
     position: absolute;
-    cursor: pointer;
-    transform-origin: center center;
-    will-change: transform;
-    transition: transform 0.12s cubic-bezier(0.2, 0, 0.38, 0.9);
-    z-index: 1; /* Base z-index for all bubbles */
-    /* Performance optimizations */
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    transform: translateZ(0);
-    contain: layout style;
+    top: 15%;
+    left: 25%;
+    width: 25%;
+    height: 25%;
+    background: radial-gradient(ellipse, rgba(255, 255, 255, 0.6), transparent 70%);
+    border-radius: 50%;
+    filter: blur(1px);
   }
 
-  /* Add new style for hovered bubbles */
-  .bubble-hovered {
-    z-index: 100 !important; /* Higher z-index when hovered */
+  .bubble.positive, .bubble[class*="positive-"] {
+    --bubble-color: 16, 185, 129;
+    background-color: rgba(var(--bubble-color), var(--bubble-alpha, 0.3));
+    box-shadow: 
+      0 8px 32px rgba(var(--bubble-color), calc(var(--bubble-alpha, 0.3) + 0.1)),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(var(--bubble-color), calc(var(--bubble-alpha, 0.3) + 0.2));
   }
 
-  .bubble-hitbox:hover .bubble {
-    transform: scale(1.1);
-    background-color: var(--hover-color) !important;
+  .bubble.positive-1 { --bubble-alpha: 0.5; }
+  .bubble.positive-2 { --bubble-alpha: 0.7; }
+  .bubble.positive-3 { --bubble-alpha: 0.9; }
+
+  .bubble.negative, .bubble[class*="negative-"] {
+    --bubble-color: 220, 38, 38;
+    background-color: rgba(var(--bubble-color), var(--bubble-alpha, 0.3));
+    box-shadow: 
+      0 8px 32px rgba(var(--bubble-color), calc(var(--bubble-alpha, 0.3) + 0.1)),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(var(--bubble-color), calc(var(--bubble-alpha, 0.3) + 0.2));
   }
 
-  .token-label {
-    max-width: 90%;
-    /* Adjust padding for mobile */
-    padding: clamp(0.15rem, 2vw, 0.25rem);
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+  .bubble.negative-1 { --bubble-alpha: 0.5; }
+  .bubble.negative-2 { --bubble-alpha: 0.7; }
+  .bubble.negative-3 { --bubble-alpha: 0.9; }
+
+  .bubble.neutral {
+    background-color: rgba(107, 114, 128, 0.3);
+    box-shadow: 
+      0 8px 32px rgba(107, 114, 128, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(107, 114, 128, 0.5);
+  }
+
+  .bubble.hovered {
+    z-index: 100;
+    transform: scale(1.15) !important;
+    animation-play-state: paused !important;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .bubble:not(.hovered) {
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .bubble-content {
+    position: relative;
     width: 100%;
     height: 100%;
-    will-change: transform;
-    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: rgb(var(--text-primary));
+    text-align: center;
+    padding: 10%;
+    box-sizing: border-box;
+    z-index: 2;
+    overflow: hidden;
   }
 
   .token-logo {
     border-radius: 50%;
-    margin-bottom: clamp(0.15em, 1.5vw, 0.25em);
-    object-fit: contain;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
   }
 
   .token-symbol {
-    font-weight: bold;
-    margin-bottom: clamp(0.1em, 1vw, 0.15em);
-    line-height: 1;
-    /* Prevent text wrapping */
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+    letter-spacing: -0.02em;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    flex-shrink: 0;
   }
 
   .price-change {
+    font-weight: 600;
     opacity: 0.9;
-    line-height: 1;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
-  .bubble-tooltip {
+  .tooltip {
     position: absolute;
-    top: 105%;
+    top: 110%;
     left: 50%;
     transform: translateX(-50%);
-    background-color: rgb(var(--bg-dark) / 0.95); /* More opaque background */
-    border: 1px solid rgb(var(--border) / 0.8);
-    border-radius: 8px;
-    padding: calc(0.5rem + 0.2vw) calc(0.75rem + 0.3vw); /* Responsive padding */
+    background: rgba(255, 255, 255, 0.98);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    padding: 16px;
+    backdrop-filter: blur(20px);
+    box-shadow: 
+      0 20px 50px rgba(0, 0, 0, 0.15),
+      0 0 0 1px rgba(255, 255, 255, 0.8);
     z-index: 1000;
-    width: max-content;
-    min-width: clamp(160px, 12vw, 220px); /* Responsive min-width */
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); /* Stronger shadow */
+    min-width: 220px;
     color: rgb(var(--text-primary));
-    font-size: clamp(0.85rem, 0.75rem + 0.3vw, 1rem); /* Responsive font size */
-    pointer-events: none;
-    opacity: 0;
-    animation: fadeIn 0.2s forwards;
+    animation: tooltipIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translate(-50%, -10px); }
-    to { opacity: 1; transform: translate(-50%, 0); }
+  @keyframes tooltipIn {
+    from { 
+      opacity: 0; 
+      transform: translate(-50%, -20px) scale(0.8); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translate(-50%, 0) scale(1); 
+    }
   }
 
-  .tooltip-content {
+  .tooltip-header {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .tooltip-symbol {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1f2937;
+  }
+
+  .tooltip-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #374151;
+  }
+
+  .tooltip-change {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .tooltip-change.positive {
+    background: rgba(16, 185, 129, 0.1);
+    color: #047857;
+  }
+
+  .tooltip-change.negative {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+  }
+
+  .tooltip-divider {
+    height: 1px;
+    background: rgba(0, 0, 0, 0.1);
+    margin: 12px 0;
+  }
+
+  .tooltip-metrics {
+    margin-bottom: 8px;
   }
 
   .tooltip-row {
     display: flex;
     justify-content: space-between;
-    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
   }
 
-  .tooltip-label {
-    color: rgb(var(--text-secondary));
+  .tooltip-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .metric-label {
+    font-size: 13px;
+    color: #6b7280;
     font-weight: 500;
   }
 
-  .tooltip-value {
+  .metric-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  .tooltip-footer {
+    font-size: 11px;
+    color: #9ca3af;
+    text-align: center;
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  .controls {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  .controls:hover {
+    opacity: 1;
+  }
+
+  .control-hint {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-bottom: 4px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
     color: rgb(var(--text-primary));
-    font-weight: 600;
   }
 
-  /* Add mobile-specific styles */
-  @media (max-width: 768px) {
-    .bubbles-container {
-      height: 80vh; /* Slightly shorter on mobile */
-    }
+  .loading-spinner {
+    position: relative;
+    width: 60px;
+    height: 60px;
+  }
 
-    .bubble-hitbox:hover .bubble {
-      transform: none; /* Disable hover effect on mobile */
-    }
+  .spinner-ring {
+    position: absolute;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    border: 3px solid transparent;
+    border-radius: 50%;
+    animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    border-top-color: rgb(var(--brand-primary));
+  }
 
-    .bubble:active {
-      transform: scale(1.05); /* Use active state instead of hover */
-      background-color: var(--hover-color) !important;
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+      opacity: 1;
     }
-    
-    .bubble-tooltip {
-      display: none; /* Hide tooltips on mobile */
+    50% {
+      opacity: 0.3;
     }
-    
-    .controls-help {
-      display: none; /* Hide keyboard controls on mobile */
+    100% {
+      transform: rotate(360deg);
+      opacity: 1;
     }
   }
 
-  .loading,
+  .loading-text {
+    font-size: 1.1rem;
+    font-weight: 500;
+    opacity: 0.8;
+    text-align: center;
+  }
+
   .error {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     font-size: 1.2rem;
-    color: var(--text-color);
+    color: rgb(var(--semantic-error));
   }
 
-  .error {
-    color: var(--error-color);
+  @media (max-width: 768px) {
+    .bubble:hover { transform: none; }
+    .bubble:active { transform: scale(1.05); }
+    .tooltip, .controls { display: none; }
   }
 
-
-  .controls-help {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    z-index: 1000;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
-  }
-
-  .controls-help:hover {
-    opacity: 1;
-  }
-
-  .control-hint {
-    background: rgba(0, 0, 0, 0.6);
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    margin-bottom: 2px;
-    backdrop-filter: blur(2px);
-  }
-
-  /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
-    .bubble,
-    .bubble-hitbox {
-      transition: none;
-    }
-    
-    .performance-indicator {
-      animation: none;
-    }
-  }
-
-  /* High contrast mode support */
-  @media (prefers-contrast: high) {
-    .bubble {
-      border: 2px solid;
-    }
-    
-    .bubble-tooltip {
-      border-width: 2px;
-    }
+    .bubble { transition: none; }
+    .tooltip { animation: none; }
   }
 </style>

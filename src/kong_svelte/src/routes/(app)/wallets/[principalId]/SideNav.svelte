@@ -22,7 +22,7 @@
     { id: "overview", label: "Wallet Overview", icon: BarChart2, path: "" },
     { id: "tokens", label: "Tokens", icon: Coins, path: "/tokens" },
     { id: "pools", label: "LP Positions", icon: Droplets, path: "/liquidity" },
-    { id: "swaps", label: "Recent Swaps", icon: ArrowRightLeft, path: "/swaps" },
+    { id: "swaps", label: "Recent Swaps", icon: ArrowRightLeft, path: "/" },
   ];
 
   const currentPath = page.url.pathname.split("/").pop() || "";

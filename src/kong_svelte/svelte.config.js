@@ -25,7 +25,7 @@ const config = {
         // Ignore specific paths that require client-side rendering
         if (
           path === "/" ||
-          path === "/swap" ||
+          // path === "/swap" ||
           path === "/pools" ||
           path.startsWith("/pools/") ||
           path === "/stats" ||
