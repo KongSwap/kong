@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "${SCRIPT_DIR}"
+
 bash create_canister_id.sh $1
 NETWORK="--network $1"
-KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
+KONG_CANISTER=$(dfx canister id kong_backend 2>/dev/null || echo "")
+
+if [ -z "${KONG_CANISTER}" ]; then
+    echo "Error: kong_backend canister not found. Please deploy it first."
+    exit 1
+fi
+
+echo "Using kong_backend canister: ${KONG_CANISTER}"
 
 # 1. Add ckUSDT token
 # only controller (kong) can add token
@@ -208,7 +218,7 @@ dfx canister call ${NETWORK} ${IDENTITY} ${KONG_LEDGER} icrc2_approve "(record {
 })"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
-    amount = $(echo "${ICP_AMOUNT_FOR_KSKONG} + ${ICP_FEE}" | bc);
+    amount = $(echo "${ICP_AMOUNT} + ${ICP_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
