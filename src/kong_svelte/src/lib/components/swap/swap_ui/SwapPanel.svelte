@@ -16,7 +16,8 @@
     panelRoundness,
   } from "$lib/stores/derivedThemeStore";
   import { calculatePercentageAmount } from "$lib/utils/numberFormatUtils";
-    import { Wallet } from "lucide-svelte";
+  import { Wallet } from "lucide-svelte";
+  import { app } from "$lib/state/app.state.svelte";
 
   let {
     title,
@@ -56,29 +57,16 @@
     formatWithCommas(formatDisplayValue(amount || "0")),
   ); // Initialize with formatted prop
   let previousAmountProp = $state(amount); // Track prop changes
-  let isMobile = $state(false);
+  let isMobile = $derived(app.isMobile);
 
   // Derived state using runes
   let decimals = $derived(token?.decimals || DEFAULT_DECIMALS);
+  let maxDecimals = $derived(isMobile ? MAX_DISPLAY_DECIMALS_MOBILE : MAX_DISPLAY_DECIMALS_DESKTOP);
 
   // Initialize window-dependent values
   let windowWidth = $state(0);
   let windowHeight = $state(0);
   let expandDirection = $state("down"); // default value
-
-  // Browser-only initialization
-  onMount(() => {
-    const checkMobile = () => {
-      isMobile = window.innerWidth <= 420;
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-
-    return () => {
-      window.removeEventListener("resize", checkMobile);
-    };
-  });
 
   // Animated values using runes
   let animatedUsdValue = tweened(0, {
@@ -105,20 +93,12 @@
     return parts.join(".");
   }
 
-  // Function to get max decimals based on screen width
-  function getMaxDisplayDecimals(): number {
-    return isMobile
-      ? MAX_DISPLAY_DECIMALS_MOBILE
-      : MAX_DISPLAY_DECIMALS_DESKTOP;
-  }
-
   // Format display value with proper decimals - keep raw precision for calculations
   function formatDisplayValue(value: string): string {
     if (!value || value === "0") return "0";
     if (value === "0.") return "0."; // Preserve trailing decimal for input
 
     const parts = value.split(".");
-    const maxDecimals = getMaxDisplayDecimals();
 
     if (parts.length === 2) {
       // Truncate for display only, not for the actual state value sent upwards

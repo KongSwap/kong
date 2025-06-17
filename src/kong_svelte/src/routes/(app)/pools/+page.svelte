@@ -333,7 +333,7 @@
           value: formatUsdValue(Number(livePool?.tvl || 0)) 
         },
         { 
-          label: "Volume 24h", 
+          label: "Vol 24h", 
           value: formatUsdValue(Number(livePool?.rolling_24h_volume || 0)) 
         },
         ...(($auth.isConnected || isUserPoolView) ? [{
@@ -881,7 +881,7 @@
         {:else if $activePoolView === "user"}
         <!-- User Pools -->
           {#if $auth.isConnected}
-            <div class="h-full overflow-auto p-4">
+            <div class="h-full overflow-auto py-4 sm:p-4">
               {#if $currentUserPoolsStore.loading && !hasCompletedInitialLoad}
                 <div
                   class="flex flex-col items-center justify-center h-64 gap-4"
@@ -966,9 +966,9 @@
                               >
                                 {pool.symbol_0}/{pool.symbol_1}
                               </div>
-                              <div class="text-xs text-kong-text-secondary">
+                              <!-- <div class="text-xs text-kong-text-secondary">
                                 {cardData.livePool?.name || `${pool.symbol_0}/${pool.symbol_1} Pool`}
-                              </div>
+                              </div> -->
                               <div class="text-xs text-kong-accent-blue">
                                 {pool.sharePercentage}% of pool
                               </div>

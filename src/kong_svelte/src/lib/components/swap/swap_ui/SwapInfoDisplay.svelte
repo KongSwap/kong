@@ -1,10 +1,10 @@
 <script lang="ts">
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { Activity, TrendingUp, DollarSign } from "lucide-svelte";
-  import BigNumber from "bignumber.js";
   import { fade } from "svelte/transition";
   import { userTokens } from "$lib/stores/userTokens";
   import { onMount } from "svelte";
+  import { app } from "$lib/state/app.state.svelte";
 
   let {
     payToken = null,
@@ -25,6 +25,10 @@
     lpFees: Array<{ amount: string; token: string }>;
     isLoading?: boolean;
   }>();
+
+  let isMobile = $derived(app.isMobile);
+
+  $inspect(isMobile);
 
   // Calculate exchange rate
   const exchangeRate = $derived(() => {
@@ -197,6 +201,7 @@
   <div class="swap-info-display" transition:fade={{ duration: 200 }}>
     <div class="info-grid">
       <!-- Exchange Rate -->
+       {#if !isMobile}
       <div class="info-item">
         <div class="info-label">
           <TrendingUp size={14} class="info-icon" />
@@ -216,7 +221,7 @@
           {/if}
         </div>
       </div>
-
+      {/if}
       <!-- Price Impact -->
       <div class="info-item">
         <div class="info-label">
@@ -266,7 +271,7 @@
   }
 
   .info-grid {
-    @apply grid grid-cols-3 gap-2 p-3 
+    @apply grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 
            bg-kong-bg-secondary border border-kong-border/20 
            rounded-lg backdrop-blur-sm;
   }

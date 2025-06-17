@@ -400,9 +400,9 @@
           class="flex items-center hover:opacity-90 transition-opacity"
           onclick={() => goto("/swap")}
         >
-          {#key MOBILE_LOGO_PATH}
+          {#key $logoPath}
             <img
-              src={MOBILE_LOGO_PATH}
+              src={$logoPath}
               alt="Kong Logo"
               class="h-8 w-auto inline-block"
               class:light-logo={isLightTheme}
