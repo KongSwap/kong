@@ -269,7 +269,7 @@
         </div>
         <button 
           class="text-kong-text-primary/60 hover:text-kong-text-primary transition-colors duration-200"
-          on:click={() => props.fetchBalanceHistoryData()} 
+          onclick={() => props.fetchBalanceHistoryData()} 
           disabled={props.isLoading}
           title="Refresh data">
           <span class:animate-spin={props.isLoading}>

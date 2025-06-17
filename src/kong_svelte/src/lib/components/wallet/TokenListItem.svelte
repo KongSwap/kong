@@ -48,7 +48,7 @@
 		{isSyncing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
 		{isActive ? 
 			'border-l-4 border-l-kong-primary border border-kong-primary/20 shadow-[0_0_15px_rgba(0,0,0,0.1)] bg-kong-primary/10' : 'border-l-2 border-l-transparent'}"
-	on:click={(e) => !isSyncing && onClick(e)}
+	onclick={(e) => !isSyncing && onClick(e)}
 >
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-3">

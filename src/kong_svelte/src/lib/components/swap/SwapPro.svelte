@@ -83,14 +83,14 @@
         <button 
           class="tab-button" 
           class:active={activeTab === 'swap'}
-          on:click={() => activeTab = 'swap'}
+          onclick={() => activeTab = 'swap'}
         >
           Swap
         </button>
         <button 
           class="tab-button" 
           class:active={activeTab === 'chart'}
-          on:click={() => activeTab = 'chart'}
+          onclick={() => activeTab = 'chart'}
         >
           Chart
         </button>

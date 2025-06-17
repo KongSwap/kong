@@ -28,7 +28,7 @@
 
 <button 
   class="group {baseButtonClass} {buttonClass}" 
-  on:click={onClick}
+  onclick={onClick}
   aria-label={ariaLabel}
 >
   <span class="{baseTextClass} {textClass}">{text}</span>

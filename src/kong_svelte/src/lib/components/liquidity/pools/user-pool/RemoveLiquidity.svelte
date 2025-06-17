@@ -189,7 +189,7 @@
         <input
           type="number"
           bind:value={removeLiquidityAmount}
-          on:input={handleInputChange}
+          oninput={handleInputChange}
           class="amount-input"
           placeholder="0"
           max={pool.balance}
@@ -208,7 +208,7 @@
           {#each [25, 50, 75, 100] as percent}
             <button
               class="{removeLiquidityAmount && Math.abs(parseFloat(removeLiquidityAmount) - (parseFloat(pool.balance) * percent) / 100) < 0.00000001 ? 'active' : ''}"
-              on:click={() => setPercentage(percent)}
+              onclick={() => setPercentage(percent)}
               type="button"
             >
               {percent === 100 ? 'MAX' : `${percent}%`}
@@ -299,7 +299,7 @@
         size="md"
         isDisabled={!removeLiquidityAmount || isRemoving || isCalculating}
         fullWidth={true}
-        on:click={handleRemoveLiquidity}
+        onclick={handleRemoveLiquidity}
       >
         {#if isRemoving}
           <div class="button-content">

@@ -398,7 +398,7 @@
     <ButtonV2
       theme="primary"
       size="md"
-      on:click={() => goto("/pools")}
+      onclick={() => goto("/pools")}
     >
       <ArrowLeft size={16} />
       Back to Pools

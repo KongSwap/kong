@@ -95,11 +95,11 @@ fi
 
 # Deploy core canisters
 CORE_CANISTERS_SCRIPTS=(
-    "${PROJECT_ROOT}/scripts/deploy_kong_backend.sh"
-    "${PROJECT_ROOT}/scripts/deploy_kong_data.sh"
-    "${PROJECT_ROOT}/scripts/deploy_kong_svelte.sh"
-    "${PROJECT_ROOT}/scripts/deploy_prediction_markets.sh"
-    "${PROJECT_ROOT}/scripts/deploy_trollbox.sh"
+    "deploy_kong_backend.sh"
+    "deploy_kong_data.sh"
+    "deploy_kong_svelte.sh"
+    "deploy_prediction_markets.sh"
+    "deploy_trollbox.sh"
 )
 
 for script in "${CORE_CANISTERS_SCRIPTS[@]}"; do

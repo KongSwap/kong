@@ -140,7 +140,7 @@
       class="{isChampion
         ? 'pt-8'
         : 'pt-7'} gap-4 cursor-pointer transition-all hover:bg-opacity-80 h-full flex items-center justify-center"
-      on:click={onClick}
+      onclick={onClick}
     >
       <!-- User info -->
       <div class="w-1/4 flex flex-col items-center text-center">
@@ -199,7 +199,7 @@
     <!-- Expand indicator -->
     <div
       class="pt-4 text-kong-text-secondary flex items-center w-full justify-end cursor-pointer"
-      on:click={onClick}
+      onclick={onClick}
     >
       <span class="text-xs mr-2"
         >{expanded ? "Hide Details" : "Show Details"}</span
@@ -235,7 +235,7 @@
   <!-- For traders below top 3, show in table row format -->
   <tr
     class="hover:bg-kong-bg-secondary cursor-pointer transition-colors group"
-    on:click={onClick}
+    onclick={onClick}
   >
     <td class="px-4 py-4 whitespace-nowrap">
       <div class="flex items-center">
@@ -274,7 +274,7 @@
         <span class="mr-2">{user.swap_count}</span>
         <div
           class="transition-transform transform group-hover:translate-y-[-2px] flex items-center cursor-pointer"
-          on:click={onClick}
+          onclick={onClick}
         >
           <span class="text-xs mr-2">{expanded ? "Hide Details" : "Show Details"}</span>
           {#if expanded}

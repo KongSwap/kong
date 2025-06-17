@@ -660,7 +660,7 @@
 		<svelte:fragment slot="actions">
 			<button 
 				class="text-xs text-kong-text-secondary/70 hover:text-kong-primary px-2 py-1 rounded flex items-center gap-1.5 hover:bg-kong-bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-				on:click={handleSyncButtonClick}
+				onclick={handleSyncButtonClick}
 				disabled={isSyncing || isLoading || isLoadingBalances}
 			>
 				<Shuffle size={12} class={isSyncing ? 'text-kong-primary animate-glow' : ''} />
@@ -782,7 +782,7 @@
 					<div class="p-2 flex justify-center gap-3">
 						<button
 							class="flex items-center gap-2 py-2 px-4 bg-kong-bg-primary/10 hover:bg-kong-bg-primary/20 text-kong-text-primary rounded-md transition-colors"
-							on:click={openManageTokensModal}
+							onclick={openManageTokensModal}
 						>
 							<Settings size={16} />
 							<span>Manage Tokens</span>

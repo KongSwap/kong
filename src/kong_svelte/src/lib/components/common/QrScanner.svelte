@@ -265,14 +265,14 @@
                 <div class="confirmation-buttons">
                     <button 
                         class="confirm-btn"
-                        on:click={handleConfirmScan}
+                        onclick={handleConfirmScan}
                         disabled={getAddressType(scannedData || '') === 'unknown'}
                     >
                         Confirm
                     </button>
                     <button 
                         class="reject-btn"
-                        on:click={handleRejectScan}
+                        onclick={handleRejectScan}
                     >
                         Scan Again
                     </button>
@@ -284,7 +284,7 @@
                 <div class="primary-controls">
                     <button 
                         class="cancel-scan-btn"
-                        on:click={closeScanner}
+                        onclick={closeScanner}
                     >
                         Cancel Scan
                     </button>
@@ -298,7 +298,7 @@
                         id="qr-input"
                         type="file"
                         accept="image/*"
-                        on:change={handleFileUpload}
+                        onchange={handleFileUpload}
                         class="hidden"
                     />
                 </div>
@@ -364,11 +364,6 @@
     .file-upload-btn {
         @apply px-4 py-2 bg-indigo-600/80 hover:bg-indigo-600 
                text-white rounded-lg cursor-pointer transition-colors;
-    }
-
-    .switch-camera-btn {
-        @apply px-4 py-2 bg-white/10 hover:bg-white/15 text-white/90 
-               rounded-lg flex items-center justify-center;
     }
 
     .cancel-scan-btn {

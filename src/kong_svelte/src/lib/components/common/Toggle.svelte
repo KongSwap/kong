@@ -47,7 +47,7 @@
   class:active={checked}
   class:disabled
   {disabled}
-  on:click={handleClick}
+  onclick={handleClick}
   aria-checked={checked}
   role="switch"
   aria-label={label}

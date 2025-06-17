@@ -115,7 +115,7 @@
   <!-- Trigger element -->
   <div
     bind:this={triggerRef}
-    on:click={toggleDropdown}
+    onclick={toggleDropdown}
     class={`cursor-pointer ${triggerClass}`}
     role="button"
     aria-haspopup="true"

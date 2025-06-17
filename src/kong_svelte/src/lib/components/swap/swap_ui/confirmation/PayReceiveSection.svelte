@@ -189,7 +189,7 @@
   {#if tokens.length > 2}
     <button 
       class="route-toggle-btn" 
-      on:click={() => (showRoutes = !showRoutes)}
+      onclick={() => (showRoutes = !showRoutes)}
       type="button"
     >
       <div class="route-toggle-content">
@@ -206,8 +206,8 @@
             <div
               class="route-token"
               class:active={hoveredIndex === i}
-              on:mouseenter={() => (hoveredIndex = i)}
-              on:mouseleave={() => (hoveredIndex = null)}
+              onmouseenter={() => (hoveredIndex = i)}
+              onmouseleave={() => (hoveredIndex = null)}
               role="button"
               tabindex="0"
             >

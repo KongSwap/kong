@@ -91,7 +91,7 @@
     <div class="inline-flex p-0.5 bg-kong-bg-primary rounded-lg shadow-sm border border-kong-border overflow-hidden">
       <button 
         class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'day' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-secondary'}"
-        on:click={() => handlePeriodChange('day')}
+        onclick={() => handlePeriodChange('day')}
         aria-label="Show daily leaderboard"
       >
         <Activity class="w-3.5 h-3.5" />
@@ -99,7 +99,7 @@
       </button>
       <button 
         class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'week' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-secondary'}"
-        on:click={() => handlePeriodChange('week')}
+        onclick={() => handlePeriodChange('week')}
         aria-label="Show weekly leaderboard"
       >
         <Activity class="w-3.5 h-3.5" />
@@ -107,7 +107,7 @@
       </button>
       <button 
         class="px-4 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 {selectedPeriod === 'month' ? 'bg-kong-primary text-white shadow-sm' : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-secondary'}"
-        on:click={() => handlePeriodChange('month')}
+        onclick={() => handlePeriodChange('month')}
         aria-label="Show monthly leaderboard"
       >
         <Activity class="w-3.5 h-3.5" />

@@ -104,31 +104,31 @@
   <div class="flex border-b border-kong-border/20 mt-4">
     <button
       class="px-3 pb-2.5 text-sm font-medium relative transition-all duration-200 hover:text-kong-text-primary {activeTab === 'overview' ? 'text-kong-text-primary border-b-2 border-kong-primary' : 'text-kong-text-primary/60'}"
-      on:click={() => (activeTab = "overview")}
+      onclick={() => (activeTab = "overview")}
     >
       Overview
     </button>
     <button
       class="px-3 pb-2.5 text-sm font-medium relative transition-all duration-200 hover:text-kong-text-primary {activeTab === 'add' ? 'text-kong-text-primary border-b-2 border-kong-primary' : 'text-kong-text-primary/60'}"
-      on:click={() => (activeTab = "add")}
+      onclick={() => (activeTab = "add")}
     >
       Add
     </button>
     <button
       class="px-3 pb-2.5 text-sm font-medium relative transition-all duration-200 hover:text-kong-text-primary {activeTab === 'remove' ? 'text-kong-text-primary border-b-2 border-kong-primary' : 'text-kong-text-primary/60'}"
-      on:click={() => (activeTab = "remove")}
+      onclick={() => (activeTab = "remove")}
     >
       Remove
     </button>
     <button
       class="px-3 pb-2.5 text-sm font-medium relative transition-all duration-200 hover:text-kong-text-primary {activeTab === 'earnings' ? 'text-kong-text-primary border-b-2 border-kong-primary' : 'text-kong-text-primary/60'}"
-      on:click={() => (activeTab = "earnings")}
+      onclick={() => (activeTab = "earnings")}
     >
       Earnings
     </button>
     <button
       class="px-3 pb-2.5 text-sm font-medium relative transition-all duration-200 hover:text-kong-text-primary {activeTab === 'send' ? 'text-kong-text-primary border-b-2 border-kong-primary' : 'text-kong-text-primary/60'}"
-      on:click={() => (activeTab = "send")}
+      onclick={() => (activeTab = "send")}
     >
       Send
     </button>
@@ -145,7 +145,7 @@
           {pool} 
           {token0} 
           {token1} 
-          on:showConfirmModal={handleShowConfirmModal} 
+          onShowConfirmModal={handleShowConfirmModal} 
         />
       {:else if activeTab === "send"}
         <SendTokens

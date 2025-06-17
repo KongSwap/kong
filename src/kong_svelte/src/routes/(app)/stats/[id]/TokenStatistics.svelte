@@ -278,7 +278,7 @@
             theme="accent-blue"
             size="sm"
             className="!w-1/2 text-nowrap flex justify-center items-center"
-            on:click={() =>
+            onclick={() =>
               goto(
                 `/pools/add?token0=${selectedPool.address_0}&token1=${selectedPool.address_1}`,
               )}
@@ -292,7 +292,7 @@
             theme="accent-green"
             size="sm"
             className="!w-1/2 text-nowrap flex justify-center items-center"
-            on:click={() =>
+            onclick={() =>
               goto(
                 `/swap?from=${selectedPool.address_1}&to=${selectedPool.address_0}`,
               )}
@@ -337,7 +337,7 @@
           <svelte:fragment let:getItemClass>
             <button
               class={getItemClass()}
-              on:click={() => {
+              onclick={() => {
                 copyToClipboard(token?.address);
                 isAddressDropdownOpen = false;
               }}
@@ -349,7 +349,7 @@
             <div class="h-px w-full bg-white/5"></div>
             <button
               class={getItemClass()}
-              on:click={() => {
+              onclick={() => {
                 window.open(
                   `https://nns.ic0.app/tokens/?import-ledger-id=${token?.address}`,
                   "_blank",

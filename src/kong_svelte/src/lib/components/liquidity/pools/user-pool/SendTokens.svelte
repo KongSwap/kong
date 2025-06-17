@@ -163,7 +163,7 @@
         <input
           type="number"
           bind:value={amount}
-          on:input={calculateEstimatedAmounts}
+          oninput={calculateEstimatedAmounts}
           class="amount-input"
           placeholder="0"
           max={lpTokenBalance}
@@ -182,7 +182,7 @@
           {#each [25, 50, 75, 100] as percent}
             <button
               class="{amount && Math.abs(parseFloat(amount) - (lpTokenBalance * percent) / 100) < 0.00000001 ? 'active' : ''}"
-              on:click={() => setPercentage(percent)}
+              onclick={() => setPercentage(percent)}
               type="button"
             >
               {percent === 100 ? 'MAX' : `${percent}%`}
@@ -278,7 +278,7 @@
         size="md"
         isDisabled={!amount || !recipientAddress || isLoading || isCalculating}
         fullWidth={true}
-        on:click={handleSendTokens}
+        onclick={handleSendTokens}
       >
         {#if isLoading}
           <div class="button-content">

@@ -39,7 +39,7 @@
 
 <div
   class="p-4 border-b border-kong-bg-primary hover:bg-kong-bg-primary/10 transition-colors cursor-pointer"
-  on:click={onClick}
+  onclick={onClick}
 >
   <div class="flex flex-col gap-1">
     <div class="flex items-start justify-between">

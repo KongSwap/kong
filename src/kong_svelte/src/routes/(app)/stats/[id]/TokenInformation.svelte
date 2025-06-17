@@ -27,7 +27,7 @@
           class="px-4 py-2.5 rounded-lg font-medium transition-colors duration-200 {activeTab === 'overview'
             ? 'bg-kong-bg-secondary text-kong-text-primary'
             : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-secondary/30'}"
-          on:click={() => onTabChange("overview")}
+          onclick={() => onTabChange("overview")}
         >
           Overview
         </button>
@@ -40,7 +40,7 @@
             class="px-4 py-2.5 rounded-lg font-medium transition-colors duration-200 {activeTab === 'governance'
               ? 'bg-kong-bg-secondary text-kong-text-primary'
               : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-kong-bg-secondary/30'}"
-            on:click={() => onTabChange("governance")}
+            onclick={() => onTabChange("governance")}
           >
             Governance
           </button>

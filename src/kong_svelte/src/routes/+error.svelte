@@ -24,7 +24,7 @@
       theme="primary"
       variant="solid"
       size="md"
-      on:click={() => {
+      onclick={() => {
         goto("/swap");
       }}
     />

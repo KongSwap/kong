@@ -195,13 +195,13 @@
       <div class="flex border-b border-kong-border">
         <button
           class="py-2 px-4 text-sm font-medium border-b-2 {activeTab === 'enabled' ? 'border-kong-primary text-kong-primary' : 'border-transparent text-kong-text-secondary hover:text-kong-text-primary'} transition-colors"
-          on:click={() => activeTab = "enabled"}
+          onclick={() => activeTab = "enabled"}
         >
           Enabled Tokens
         </button>
         <button
           class="py-2 px-4 text-sm font-medium border-b-2 {activeTab === 'all' ? 'border-kong-primary text-kong-primary' : 'border-transparent text-kong-text-secondary hover:text-kong-text-primary'} transition-colors"
-          on:click={() => activeTab = "all"}
+          onclick={() => activeTab = "all"}
         >
           All Tokens
         </button>
@@ -228,7 +228,7 @@
           </p>
           <button
             class="inline-flex items-center gap-2 px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
-            on:click={() => {
+            onclick={() => {
               showAddNewTokenModal = true;
               props.onClose();
             }}
@@ -276,7 +276,7 @@
                 
                 <button
                   class="flex items-center justify-center rounded-full p-1.5 {enabled ? 'bg-kong-primary/10 text-kong-primary hover:bg-kong-primary/20' : 'bg-kong-bg-secondary/10 text-kong-text-secondary hover:bg-kong-bg-secondary/20'} transition-colors"
-                  on:click={(e) => {
+                  onclick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     toggleToken(token);
@@ -300,7 +300,7 @@
     <div class="mt-6 flex justify-end">
       <button
         class="px-4 py-2 bg-kong-primary text-white rounded-md hover:bg-kong-primary/90 transition-colors"
-        on:click={props.onClose}
+        onclick={props.onClose}
       >
         Done
       </button>

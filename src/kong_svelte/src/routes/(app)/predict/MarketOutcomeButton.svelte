@@ -100,7 +100,7 @@
       {isMarketExpiredUnresolved(market) || isMarketResolved(market)
       ? 'opacity-80 cursor-default'
       : 'hover:opacity-100 hover:shadow-sm transform hover:translate-y-[0.5px]'}"
-    on:click={handleOutcomeClick}
+    onclick={handleOutcomeClick}
   >
     <div
       class="relative z-10 flex items-center justify-center gap-1 truncate-text"
@@ -131,7 +131,7 @@
       {isMarketExpiredUnresolved(market) || isMarketResolved(market)
       ? 'opacity-80 cursor-default'
       : 'hover:opacity-100 hover:shadow-sm'}"
-    on:click={handleOutcomeClick}
+    onclick={handleOutcomeClick}
   >
     <!-- Background progress bar -->
     <div
@@ -170,9 +170,5 @@
     white-space: nowrap;
     display: inline-block;
     max-width: 100%;
-  }
-
-  .truncate-text > svg {
-    flex-shrink: 0;
   }
 </style>

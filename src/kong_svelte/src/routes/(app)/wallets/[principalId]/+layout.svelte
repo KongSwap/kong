@@ -117,7 +117,7 @@
             
             <button 
               class="p-1.5 rounded-md hover:bg-kong-bg-primary/80 transition-colors text-kong-text-secondary hover:text-kong-primary flex items-center"
-              on:click={copyPrincipalToClipboard}
+              onclick={copyPrincipalToClipboard}
               title="Copy principal ID to clipboard"
               disabled={!principal}
             >

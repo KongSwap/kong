@@ -33,7 +33,7 @@
       
       <button
         class="token-selector-button"
-        on:click={() => openTokenSelector(0)}
+        onclick={() => openTokenSelector(0)}
         class:selected={token0}
       >
         {#if token0}
@@ -59,7 +59,7 @@
       
       <button
         class="token-selector-button"
-        on:click={() => openTokenSelector(1)}
+        onclick={() => openTokenSelector(1)}
         class:selected={token1}
       >
         {#if token1}

@@ -100,14 +100,14 @@
       class="toast-outer"
       in:fly|local={{ x: 150, duration: 300, easing: (t) => t * t }}
       out:fade|local={{ duration: 200 }}
-      on:mouseenter={handleMouseEnter(toast)}
-      on:mouseleave={handleMouseLeave(toast)}
+      onmouseenter={handleMouseEnter(toast)}
+      onmouseleave={handleMouseLeave(toast)}
     >
       <div
         class="toast-container flex flex-row items-start gap-3 p-4 rounded-lg relative w-full
           transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg cursor-pointer
           {TYPE_CLASSES[toast.type] || ''}"
-        on:click={() => dismissToast(toast.id)}
+        onclick={() => dismissToast(toast.id)}
       >
         <!-- Toast Type Icon -->
         {#if ICONS[toast.type]}
@@ -135,7 +135,7 @@
                 <!-- Close Button -->
                 <button
                   class="close-button"
-                  on:click|stopPropagation={() => dismissToast(toast.id)}
+                  onclick={(e) => e.stopPropagation && dismissToast(toast.id)}
                 >
                   <IconClose class="w-3 h-3 sm:w-2.5 sm:h-2.5" />
                 </button>

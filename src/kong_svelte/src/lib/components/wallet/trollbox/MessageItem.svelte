@@ -306,7 +306,7 @@
   >
     {#if !isCurrentUser}
       <img
-        on:click={() => goto(`/wallets/${message.principal.toText()}`)}
+        onclick={() => goto(`/wallets/${message.principal.toText()}`)}
         src={`https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${message.principal.toText()}&size=20`}
         alt="avatar"
         class="w-8 h-8 mt-1 rounded-full bg-kong-dark cursor-pointer"
@@ -321,11 +321,11 @@
       {#if !isCurrentUser}
         <div
           class="flex items-center gap-1.5 mb-0.5 cursor-pointer"
-          on:click={() => goto(`/wallets/${message.principal.toText()}`)}
+          onclick={() => goto(`/wallets/${message.principal.toText()}`)}
         >
           <span
             class="text-xs font-medium text-kong-primary cursor-pointer hover:text-kong-primary"
-            on:click={() => goto(`/wallets/${message.principal.toText()}`)}
+            onclick={() => goto(`/wallets/${message.principal.toText()}`)}
             >{message.principal.toText().slice(0, 10)}</span
           >
         </div>
@@ -335,7 +335,7 @@
       <p
         class="text-sm break-words leading-relaxed message-content"
         data-debug-content={processedMessage}
-        on:click={handleTokenClick}
+        onclick={handleTokenClick}
       >
         {@html processedMessage}
       </p>
@@ -350,7 +350,7 @@
 
       {#if isUserAdmin && !isDeleting && !isConfirming}
         <button
-          on:click={() => onRequestDelete(message.id)}
+          onclick={() => onRequestDelete(message.id)}
           class="absolute {isCurrentUser
             ? 'left-0'
             : 'right-0'} top-0 -translate-y-1/2 {isCurrentUser
@@ -363,7 +363,7 @@
 
         {#if !isCurrentUser}
           <button
-            on:click={toggleBanOptions}
+            onclick={toggleBanOptions}
             class="absolute {isCurrentUser
               ? 'left-0 -translate-x-[calc(100%+4px)]'
               : 'right-0 translate-x-[calc(100%+4px)]'} top-0 -translate-y-1/2 p-1 {isBanned
@@ -395,7 +395,7 @@
                     User banned for {banTimeString}
                   </p>
                   <button
-                    on:click={() => onUnbanUser(message.principal)}
+                    onclick={() => onUnbanUser(message.principal)}
                     class="text-xs bg-green-700/30 hover:bg-green-700/50 text-white rounded px-2 py-1 transition-colors"
                   >
                     Unban User
@@ -423,7 +423,7 @@
                     {/each}
                   </div>
                   <button
-                    on:click={handleBanUser}
+                    onclick={handleBanUser}
                     class="text-xs bg-red-700/30 hover:bg-red-700/50 text-white rounded px-2 py-1 transition-colors"
                   >
                     Ban User
@@ -444,14 +444,14 @@
       {:else if isConfirming}
         <div class="flex items-center gap-1">
           <button
-            on:click={() => onConfirmDelete(message.id)}
+            onclick={() => onConfirmDelete(message.id)}
             class="p-1 text-green-400 hover:text-green-300 transition-colors rounded-full hover:bg-green-900/30 bg-kong-bg-tertiary"
             title="Confirm delete"
           >
             <Check class="w-3 h-3" />
           </button>
           <button
-            on:click={() => onCancelDelete(message.id)}
+            onclick={() => onCancelDelete(message.id)}
             class="p-1 text-red-400 hover:text-red-300 transition-colors rounded-full hover:bg-red-900/30 bg-kong-bg-tertiary"
             title="Cancel delete"
           >

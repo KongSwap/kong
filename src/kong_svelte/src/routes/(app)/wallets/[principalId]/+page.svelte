@@ -203,7 +203,7 @@
         <div class="text-kong-error mb-2">{loadingError}</div>
         <button
           class="text-sm text-kong-primary hover:text-opacity-80 transition-colors"
-          on:click={() =>
+          onclick={() =>
             WalletDataService.initializeWallet(page.params.principalId)}
         >
           Try Again
@@ -231,7 +231,7 @@
           <!-- Active Tokens Card -->
           <div
             class=" rounded-lg p-4 hover:bg-kong-bg-primary/40 transition-colors cursor-pointer"
-            on:click={() => goto(`/wallets/${page.params.principalId}/tokens`)}
+            onclick={() => goto(`/wallets/${page.params.principalId}/tokens`)}
           >
             <div
               class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1"
@@ -326,7 +326,7 @@
     </div>
 
     {#if isLoading}
-      <LoadingIndicator text="Loading portfolio data..." size={24} />
+      <LoadingIndicator message="Loading portfolio data..." size={24} />
     {:else if loadingError}
       <div class="text-kong-error mb-4">{loadingError}</div>
     {:else if Object.keys($walletDataStore.balances).length === 0 || $walletDataStore.currentWallet !== page.params.principalId}
@@ -540,7 +540,7 @@
       </h3>
       <div class="flex items-center gap-2">
         <button
-          on:click={() => goto(`/wallets/${page.params.principalId}/tokens`)}
+          onclick={() => goto(`/wallets/${page.params.principalId}/tokens`)}
           class="flex items-center gap-1 text-sm text-kong-primary hover:text-opacity-80 transition-colors"
         >
           View All
@@ -550,7 +550,7 @@
     </div>
 
     {#if isLoading}
-      <LoadingIndicator text="Loading assets..." size={24} />
+      <LoadingIndicator message="Loading assets..." size={24} />
     {:else if loadingError}
       <div class="text-kong-error mb-4">{loadingError}</div>
     {:else}

@@ -49,14 +49,14 @@
       class="fixed inset-0 flex items-center justify-center bg-kong-bg-primary/80 backdrop-blur-md z-[1000]"
       in:fade={{ duration: 200 }}
       out:fade={{ duration: 200 }}
-      on:click={handleBackdropClick}
+     onclick={handleBackdropClick}
     >
       <div
         class="{$panelRoundness} bg-gradient-to-b from-kong-bg-secondary to-kong-bg-primary flex flex-col justify-between gap-4 p-6 max-w-[90%] w-[480px] border border-kong-border shadow-2xl"
         role="document"
         in:fly={{ y: 20, duration: 300, delay: 100 }}
         out:fly={{ y: 20, duration: 200 }}
-        on:click|stopPropagation
+        onclick={(e) => e.stopPropagation()}
       >
       
         <div class="flex items-center justify-between">
@@ -75,7 +75,7 @@
             theme="primary"
             variant="solid"
             size="lg"
-            on:click={handleCloseClick}
+            onclick={handleCloseClick}
           />
         {/if}
       </div>

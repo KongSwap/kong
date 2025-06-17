@@ -37,7 +37,7 @@
   {#if retryHandler}
     <button 
       class="mt-4 px-6 py-2 bg-kong-primary hover:bg-kong-primary-hover rounded-md text-white text-sm font-medium transition-colors shadow-md hover:shadow-lg flex items-center mx-auto"
-      on:click={retryHandler}
+      onclick={retryHandler}
     >
       <span class="mr-2">Try Again</span>
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -334,7 +334,7 @@
       icon={DiamondPercent}
     />
     <div class="max-w-7xl mx-auto px-4 mt-4">
-      <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+      <form onsubmit={(e) => e.preventDefault && handleSubmit} class="space-y-4">
         <div class="grid lg:grid-cols-2 gap-8 mb-8">
           <!-- Left Column: Details & Timeline in one Panel -->
           <Panel variant="solid">
@@ -378,7 +378,7 @@
                       id="image"
                       accept="image/*"
                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      on:change={handleImageUpload}
+                      onchange={handleImageUpload}
                       disabled={uploadingImage}
                     />
 
@@ -395,7 +395,7 @@
                           <button
                             type="button"
                             class="p-2 bg-kong-bg-primary rounded-lg text-kong-text-primary hover:bg-kong-error hover:text-white transition-colors"
-                            on:click|stopPropagation={resetImage}
+                            onclick={(e) => e.preventDefault && resetImage}
                             disabled={uploadingImage}
                           >
                             <Trash2 size={20} />
@@ -534,7 +534,7 @@
                         {#each supportedTokens as token}
                           <div
                             class="px-4 py-3 text-left hover:bg-kong-bg-secondary/20 hover:text-kong-primary group flex items-center gap-2 transition-colors cursor-pointer"
-                            on:click={() => {
+                            onclick={() => {
                               formState.token_id = token.address;
                               tokenDropdownOpen = false;
                             }}
@@ -642,7 +642,7 @@
                       {#if i >= 2}
                         <button
                           type="button"
-                          on:click={() => removeOutcome(i)}
+                          onclick={() => removeOutcome(i)}
                           class="p-3 text-kong-error hover:bg-kong-error/10 rounded-lg transition-colors"
                         >
                           <Trash2 size={20} />
@@ -652,7 +652,7 @@
                   {/each}
                   <button
                     type="button"
-                    on:click={addOutcome}
+                    onclick={addOutcome}
                     class="w-full p-4 bg-kong-bg-primary rounded-lg border border-kong-border hover:border-kong-accent-blue hover:text-kong-accent-blue flex items-center justify-center gap-2 transition-all duration-200 text-kong-text-secondary group"
                   >
                     <Plus
@@ -778,7 +778,7 @@
           <div>
             <button
               type="button"
-              on:click={() => goto("/predict")}
+              onclick={() => goto("/predict")}
               class="px-6 py-3 bg-kong-bg-primary text-kong-text-primary rounded-lg font-medium hover:bg-kong-bg-secondary transition-all duration-200"
             >
               Cancel
@@ -938,7 +938,7 @@
         <div class="mt-6 flex justify-end gap-4">
           <button
             type="button"
-            on:click={() => (showConfirmationModal = false)}
+            onclick={() => (showConfirmationModal = false)}
             class="px-6 py-3 bg-kong-bg-primary text-kong-text-primary rounded-lg font-medium hover:bg-kong-bg-secondary transition-all duration-200"
             disabled={loading}
           >
@@ -946,7 +946,7 @@
           </button>
           <button
             type="button"
-            on:click={confirmAndSubmit}
+            onclick={confirmAndSubmit}
             disabled={loading}
             class="px-8 py-3 bg-kong-accent-blue text-white rounded-lg font-medium hover:bg-kong-accent-blue-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 min-w-[180px]"
           >

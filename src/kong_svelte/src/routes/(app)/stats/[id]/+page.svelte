@@ -277,7 +277,7 @@
       <div class="text-kong-text-primary/70">Token not found</div>
       <button
         class="mt-4 px-4 py-2 bg-kong-bg-primary rounded-lg hover:bg-kong-bg-primary/80 transition-colors"
-        on:click={() => goto("/stats")}
+        onclick={() => goto("/stats")}
       >
         Return to Stats
       </button>

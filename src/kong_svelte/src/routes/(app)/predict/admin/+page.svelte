@@ -118,8 +118,8 @@
           {
             label: "Markets Created",
             data,
-            borderColor: baseTheme.colors.accentBlue,
-            backgroundColor: baseTheme.colors.accentBlue + "33", // 20% opacity
+            borderColor: baseTheme.colors.border,
+            backgroundColor: baseTheme.colors.bgPrimary + "33", // 20% opacity
             fill: true,
             tension: 0.3,
             pointRadius: 3,
@@ -267,7 +267,7 @@
         theme={option.value === $marketStore.statusFilter
           ? "accent-green"
           : "secondary"}
-        on:click={() =>
+        onclick={() =>
           marketStore.setStatusFilter(option.value as StatusFilter)}
       >
         {option.label} ({statusCounts[option.value]})
@@ -277,7 +277,7 @@
       <select
         class="border rounded px-2 py-1 text-sm"
         bind:value={$marketStore.sortOption}
-        on:change={(e) =>
+        onchange={(e) =>
           marketStore.setSortOption(
             (e.target as HTMLSelectElement).value as SortOption,
           )}
@@ -374,12 +374,12 @@
                   <div class="flex gap-2">
                     <button
                       class="px-2 py-1 rounded bg-kong-success/10 text-kong-success border border-kong-success/30 hover:bg-kong-success/20 text-xs font-medium"
-                      on:click={() => handleResolveMarket(market)}
+                      onclick={() => handleResolveMarket(market)}
                       >Resolve</button
                     >
                     <button
                       class="px-2 py-1 rounded bg-kong-error/10 text-kong-error border border-kong-error/30 hover:bg-kong-error/20 text-xs font-medium"
-                      on:click={() => handleVoidMarket(market)}>Void</button
+                      onclick={() => handleVoidMarket(market)}>Void</button
                     >
                   </div>
                 {:else}

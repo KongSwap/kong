@@ -15,7 +15,7 @@
     variant="transparent"
     size="xs"
     className="!text-kong-text-secondary"
-    on:click={() => {
+    onclick={() => {
       goto("/predict/tos");
     }}
   >

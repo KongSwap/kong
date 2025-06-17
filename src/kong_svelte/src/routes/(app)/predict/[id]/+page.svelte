@@ -418,7 +418,7 @@ let initializing = $state(false);
 <div class="min-h-screen text-kong-text-primary px-2 sm:px-4">
   <div class="max-w-6xl mx-auto">
     <ButtonV2
-    on:click={() => goto("/predict")}
+    onclick={() => goto("/predict")}
     variant="transparent"
     theme="secondary"
     size="sm"
@@ -444,7 +444,7 @@ let initializing = $state(false);
           </span>
         <ButtonV2
           theme="warning"
-          on:click={() => showInitializeDialog = true}
+          onclick={() => showInitializeDialog = true}
         >
           Initialize Market
         </ButtonV2>
@@ -458,7 +458,7 @@ let initializing = $state(false);
           {error}
         </p>
         <ButtonV2
-          on:click={() => location.reload()}
+          onclick={() => location.reload()}
           theme="accent-blue"
           className="mt-3 sm:mt-4"
         >
@@ -580,14 +580,14 @@ showClose={false}
   <div class="flex gap-3 justify-end">
     <ButtonV2
       theme="secondary"
-      on:click={() => showVoidDialog = false}
+      onclick={() => showVoidDialog = false}
       disabled={voiding}
     >
       Cancel
     </ButtonV2>
     <ButtonV2
       theme="warning"
-      on:click={confirmVoidMarket}
+      onclick={confirmVoidMarket}
       disabled={voiding}
     >
       {voiding ? 'Voiding...' : 'Void Market'}

@@ -246,17 +246,17 @@
       
       <!-- Content -->
       {#if isDataLoading}
-        <LoadingIndicator text={initialDataLoading ? "Initializing wallet data..." : "Loading balances..."} size={24} />
+        <LoadingIndicator message={initialDataLoading ? "Initializing wallet data..." : "Loading balances..."} />
       {:else if loadingError}
         <div class="text-kong-error mb-4">{loadingError}</div>
         <button
           class="text-sm text-kong-primary hover:text-opacity-80 transition-colors"
-          on:click={() => page.params.principalId && loadTokensOnly(page.params.principalId)}
+          onclick={() => page.params.principalId && loadTokensOnly(page.params.principalId)}
         >
           Try Again
         </button>
       {:else if walletData.tokens.length === 0}
-        <LoadingIndicator text="Loading token data..." size={24} />
+        <LoadingIndicator message="Loading token data..." />
       {:else}
         <WalletTokenList 
           tokens={walletData.tokens} 
