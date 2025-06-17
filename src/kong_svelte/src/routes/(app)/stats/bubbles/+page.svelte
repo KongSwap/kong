@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
+  import { app } from "$lib/state/app.state.svelte";
 
   // Types
   interface Token {
@@ -28,6 +29,7 @@
     color: string;
     colorKey: string;
   }
+  let isMobile = $derived(app.isMobile);
 
   // State
   let tokens = $state<Token[]>([]);
@@ -67,7 +69,7 @@
     
     const largestChange = tokens.reduce((max, token) => Math.max(max, Math.abs(getChangePercent(token.metrics?.price_change_24h))), 0);
     const changes = tokens.map(token => Math.abs(getChangePercent(token.metrics?.price_change_24h)));
-    const usableArea = containerWidth * containerHeight * 0.5;
+    const usableArea = containerWidth * containerHeight * (isMobile ? 0.55 : 0.65);
     const avgArea = usableArea / tokens.length;
     const baseDiameter = Math.sqrt(avgArea / Math.PI) * 2;
     
