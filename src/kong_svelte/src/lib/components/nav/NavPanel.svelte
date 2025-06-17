@@ -214,27 +214,29 @@
 
   // Use the appropriate buttons based on mobile state
   const buttons = $derived(isMobile ? mobileHeaderButtons : desktopButtons);
+  
+  // Filter visible buttons for proper indexing
+  const visibleButtons = $derived(buttons.filter(button => button.show !== false));
 </script>
 
 <div
-  class="flex items-center overflow-visible {isMobile
+  class="flex items-center overflow-hidden {isMobile
     ? ''
     : 'bg-kong-bg-primary/50 border border-kong-border/50'} {$panelRoundness} overflow-hidden"
 >
-  {#each buttons as button, i}
-    {#if button.show !== false}
-      <button
-        class="nav-panel-button {button.class || ''} {button.isSelected
-          ? 'selected'
-          : ''} {button.isWalletButton ? 'wallet-button' : ''} {isMobile
-          ? 'mobile'
-          : ''} {i === 0 ? leftRoundnessClass : ''} {i === buttons.length - 1 ? rightRoundnessClass : ''}"
-        onclick={button.onClick}
-        use:tooltip={button.tooltipText
-          ? { text: button.tooltipText, direction: "bottom" }
-          : null}
-        aria-label={button.tooltipText || button.label || "Button"}
-      >
+  {#each visibleButtons as button, i}
+    <button
+      class="nav-panel-button {button.class || ''} {button.isSelected
+        ? 'selected'
+        : ''} {button.isWalletButton ? 'wallet-button' : ''} {isMobile
+        ? 'mobile'
+        : ''} {i === 0 ? leftRoundnessClass : ''} {i === visibleButtons.length - 1 ? rightRoundnessClass : ''}"
+      onclick={button.onClick}
+      use:tooltip={button.tooltipText
+        ? { text: button.tooltipText, direction: "bottom" }
+        : null}
+      aria-label={button.tooltipText || button.label || "Button"}
+    >
         <div class="relative">
           {#if button.loading}
             <div class="spinner">
@@ -270,7 +272,6 @@
           <span>{button.loading ? undefined : button.label}</span>
         {/if}
       </button>
-    {/if}
   {/each}
 </div>
 
