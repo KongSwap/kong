@@ -5,6 +5,7 @@ mod kong_settings;
 mod lp_tokens;
 mod pools;
 mod requests;
+mod solana;
 mod status;
 mod tokens;
 mod transfers;

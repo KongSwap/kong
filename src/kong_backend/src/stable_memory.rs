@@ -3,6 +3,7 @@ use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableCell};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
+use crate::solana::latest_blockhash::LatestBlockhash;
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
@@ -11,12 +12,13 @@ use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
-use crate::stable_user::banned_user_map::BannedUser;
 use crate::stable_user::stable_user::{StableUser, StableUserId};
+use crate::stable_user::suspended_user_map::SuspendedUser;
+use crate::swap::swap_job::SwapJob;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
-// stable memory
+// Stable memory
 pub const KONG_SETTINGS_MEMORY_ID: MemoryId = MemoryId::new(20);
 pub const USER_MEMORY_ID: MemoryId = MemoryId::new(21);
 pub const TOKEN_MEMORY_ID: MemoryId = MemoryId::new(22);
@@ -26,17 +28,20 @@ pub const REQUEST_MEMORY_ID: MemoryId = MemoryId::new(26);
 pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(27);
 pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(28);
 pub const LP_TOKEN_MEMORY_ID: MemoryId = MemoryId::new(29);
-// archives
+// Stable memory for Solana
+pub const CACHED_SOLANA_ADDRESS_ID: MemoryId = MemoryId::new(60);
+pub const SOLANA_LATEST_BLOCKHASH_ID: MemoryId = MemoryId::new(61);
+pub const NEXT_SOLANA_SWAP_JOB_ID_ID: MemoryId = MemoryId::new(62);
+pub const SOLANA_SWAP_JOB_QUEUE_ID: MemoryId = MemoryId::new(63);
+// Archives
 pub const TX_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(204);
 pub const REQUEST_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(205);
 pub const TRANSFER_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(206);
 
 thread_local! {
-    // static variable to store the map of principal_id to user_id
+    // Static variables
     pub static PRINCIPAL_ID_MAP: RefCell<BTreeMap<String, u32>> = RefCell::default();
-
-    // static variable to list of temporary banned users
-    pub static BANNED_USERS: RefCell<BTreeMap<u32, BannedUser>> = RefCell::default();
+    pub static SUSPENDED_USERS: RefCell<BTreeMap<u32, SuspendedUser>> = RefCell::default();
 
     // MEMORY_MANAGER is given management of the entire stable memory. Given a 'MemoryId', it can
     // return a memory that can be used by stable structures
@@ -88,6 +93,27 @@ thread_local! {
         RefCell::new(StableBTreeMap::init(memory_manager.get(LP_TOKEN_MEMORY_ID)))
     });
 
+    // Cached Solana address (persisted)
+    pub static CACHED_SOLANA_ADDRESS: RefCell<StableCell<String, Memory>> = with_memory_manager(|memory_manager| {
+        RefCell::new(StableCell::init(memory_manager.get(CACHED_SOLANA_ADDRESS_ID), String::new()).expect("Failed to initialize CACHED_SOLANA_ADDRESS cell")
+        )
+    });
+
+    // stableCell for the latest blockhash and timestamp (persisted)
+    pub static SOLANA_LATEST_BLOCKHASH: RefCell<StableCell<LatestBlockhash, Memory>> =  with_memory_manager(|memory_manager| {
+        RefCell::new(StableCell::init(memory_manager.get(SOLANA_LATEST_BLOCKHASH_ID), LatestBlockhash::default()).expect("Failed to initialize SOLANA_LATEST_BLOCKHASH cell"))
+    });
+
+    // Counter for Solana swap job IDs (persisted)
+    pub static NEXT_SOLANA_SWAP_JOB_ID: RefCell<StableCell<u64, Memory>> = with_memory_manager(|memory_manager| {
+        RefCell::new(StableCell::init(memory_manager.get(NEXT_SOLANA_SWAP_JOB_ID_ID), 0u64).expect("Failed to initialize NEXT_SOLANA_SWAP_JOB_ID cell"))
+    });
+
+    // Stable map for Solana swap jobs
+    pub static SOLANA_SWAP_JOB_QUEUE: RefCell<StableBTreeMap<u64, SwapJob, Memory>> = with_memory_manager(|memory_manager| {
+        RefCell::new(StableBTreeMap::init(memory_manager.get(SOLANA_SWAP_JOB_QUEUE_ID)))
+    });
+
     //
     // Archive Stable Memory
     //
@@ -109,6 +135,60 @@ thread_local! {
 }
 
 /// A helper function to access the memory manager.
-pub fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
+fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
     MEMORY_MANAGER.with(|cell| f(&cell.borrow()))
+}
+
+/// Helper function to access the cached Solana address
+pub fn with_cached_solana_address<R>(f: impl FnOnce(&StableCell<String, Memory>) -> R) -> R {
+    CACHED_SOLANA_ADDRESS.with(|cell| f(&cell.borrow()))
+}
+
+/// Helper function to mutate the cached Solana address
+pub fn with_cached_solana_address_mut<R>(f: impl FnOnce(&mut StableCell<String, Memory>) -> R) -> R {
+    CACHED_SOLANA_ADDRESS.with(|cell| f(&mut cell.borrow_mut()))
+}
+
+/// Get the cached Solana address from stable memory
+pub fn get_cached_solana_address() -> String {
+    with_cached_solana_address(|cell| cell.get().clone())
+}
+
+/// Set the cached Solana address in stable memory
+pub fn set_cached_solana_address(address: String) {
+    with_cached_solana_address_mut(|cell| {
+        cell.set(address).expect("Failed to set cached Solana address");
+    });
+}
+
+/// Helper function to access the latest blockhash cell
+pub fn with_solana_latest_blockhash<R>(f: impl FnOnce(&StableCell<LatestBlockhash, Memory>) -> R) -> R {
+    SOLANA_LATEST_BLOCKHASH.with(|cell| f(&cell.borrow()))
+}
+
+/// Helper function to mutate the latest blockhash cell
+pub fn with_solana_latest_blockhash_mut<R>(f: impl FnOnce(&mut StableCell<LatestBlockhash, Memory>) -> R) -> R {
+    SOLANA_LATEST_BLOCKHASH.with(|cell| f(&mut cell.borrow_mut()))
+}
+
+/// Get the next unique ID for a Solana swap job and increment the counter.
+pub fn get_next_solana_swap_job_id() -> u64 {
+    NEXT_SOLANA_SWAP_JOB_ID.with(|cell| {
+        let current_id = *cell.borrow().get();
+        let next_id = current_id + 1;
+        // Before updating, ensure the cell isn't borrowed mutably elsewhere if using set directly.
+        // For StableCell, it's simpler:
+        cell.borrow_mut().set(next_id).expect("Failed to set next_solana_swap_job_id");
+        current_id
+    })
+}
+
+/// Helper function to access the swap job queue
+pub fn with_swap_job_queue<R>(f: impl FnOnce(&StableBTreeMap<u64, SwapJob, Memory>) -> R) -> R {
+    SOLANA_SWAP_JOB_QUEUE.with(|cell| f(&cell.borrow()))
+}
+
+/// Helper function to mutate the swap job queue
+pub fn with_swap_job_queue_mut<R>(f: impl FnOnce(&mut StableBTreeMap<u64, SwapJob, Memory>) -> R) -> R {
+    SOLANA_SWAP_JOB_QUEUE.with(|cell| f(&mut cell.borrow_mut()))
 }

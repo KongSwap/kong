@@ -11,8 +11,7 @@ use super::update_liquidity_pool::update_liquidity_pool;
 use crate::helpers::nat_helpers::nat_is_zero;
 use crate::ic::address::Address;
 use crate::ic::address_helpers::get_address;
-use crate::ic::get_time::get_time;
-use crate::ic::id::caller_id;
+use crate::ic::network::ICNetwork;
 use crate::ic::verify_transfer::verify_transfer;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
@@ -24,7 +23,7 @@ pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
     // as user has transferred the pay token, we need to log the request immediately and verify the transfer
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(args.referred_by.as_deref())?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
     let mut transfer_ids = Vec::new();
 
@@ -74,7 +73,7 @@ pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
 
 pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
     let user_id = user_map::insert(args.referred_by.as_deref())?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 
     let (pay_token, pay_amount, pay_transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|_| {
@@ -169,7 +168,7 @@ async fn process_swap(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(StableToken, Nat, Address, f64, f64, f64, Vec<SwapCalc>), String> {
-    let caller_id = caller_id();
+    let caller_id = ICNetwork::caller_id();
 
     transfer_ids.push(pay_transfer_id);
 

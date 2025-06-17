@@ -1,11 +1,11 @@
 use candid::Nat;
 
+use crate::helpers::nat_helpers::{nat_add, nat_subtract};
+use crate::ic::network::ICNetwork;
+
 use super::lp_token_map;
 use super::lp_token_map::{get_by_token_id_by_user_id, insert, update};
 use super::stable_lp_token::StableLPToken;
-
-use crate::helpers::nat_helpers::{nat_add, nat_subtract};
-use crate::ic::get_time::get_time;
 
 /// transfer LP token from caller to another user
 ///
@@ -18,7 +18,7 @@ use crate::ic::get_time::get_time;
 /// StableLPToken - updated LP token of the caller
 /// Err - if LP token not found or not enough LP token
 pub fn transfer(token_id: u32, to_user_id: u32, amount: &Nat) -> Result<StableLPToken, String> {
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
 
     let from_user = match lp_token_map::get_by_token_id(token_id) {
         Some(from_user_lp_token) => {

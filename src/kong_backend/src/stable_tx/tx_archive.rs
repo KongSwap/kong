@@ -1,5 +1,5 @@
-use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
+use crate::ic::network::ICNetwork;
 use crate::stable_memory::{TX_ARCHIVE_MAP, TX_MAP};
 
 use super::stable_tx::StableTxId;
@@ -26,7 +26,7 @@ pub fn archive_tx_map() {
     });
 
     // only keep txs from the last hour
-    let one_hour_ago = get_time() - 3_600_000_000_000;
+    let one_hour_ago = ICNetwork::get_time() - 3_600_000_000_000;
     let mut remove_list = Vec::new();
     TX_MAP.with(|tx_map| {
         tx_map.borrow().iter().for_each(|(tx_id, tx)| {

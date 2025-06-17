@@ -32,7 +32,7 @@ fn get_pool_info(pool_id: u32) -> (String, String, String, String, String, Strin
 }
 
 pub fn to_remove_liquidity_reply(remove_liquidity_tx: &RemoveLiquidityTx) -> RemoveLiquidityReply {
-    let (symbol, chain_0, symbol_0, address_0, chain_1, address_1, symbol_1) = get_pool_info(remove_liquidity_tx.pool_id);
+    let (symbol, chain_0, address_0, symbol_0, chain_1, address_1, symbol_1) = get_pool_info(remove_liquidity_tx.pool_id);
     RemoveLiquidityReply {
         tx_id: remove_liquidity_tx.tx_id,
         request_id: remove_liquidity_tx.request_id,

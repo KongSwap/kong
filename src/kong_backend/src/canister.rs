@@ -1,5 +1,4 @@
 use candid::{decode_one, CandidType, Nat};
-use ic_cdk::api::call::{accept_message, method_name};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_macros::inspect_message;
 use ic_cdk_timers::set_timer_interval;
@@ -8,8 +7,6 @@ use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessage
 use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 use serde::Deserialize;
 use std::time::Duration;
-
-use super::{APP_NAME, APP_VERSION};
 
 use crate::add_liquidity::add_liquidity_args::AddLiquidityArgs;
 use crate::add_liquidity::add_liquidity_reply::AddLiquidityReply;
@@ -22,9 +19,7 @@ use crate::add_token::update_token_args::UpdateTokenArgs;
 use crate::add_token::update_token_reply::UpdateTokenReply;
 use crate::claims::claims_timer::process_claims_timer;
 use crate::helpers::nat_helpers::{nat_to_decimals_f64, nat_to_f64};
-use crate::ic::canister_address::KONG_BACKEND;
-use crate::ic::id::caller_principal_id;
-use crate::ic::logging::info_log;
+use crate::ic::network::ICNetwork;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_token::token::Token;
@@ -34,9 +29,12 @@ use crate::stable_tx::tx_archive::archive_tx_map;
 use crate::stable_user::principal_id_map::create_principal_id_map;
 use crate::swap::swap_args::SwapArgs;
 
+use super::kong_backend::KongBackend;
+use super::{APP_NAME, APP_VERSION};
+
 // list of query calls
 // a bit hard-coded but shouldn't change often
-static QUERY_METHODS: [&str; 11] = [
+static QUERY_METHODS: [&str; 12] = [
     "icrc1_name",
     "icrc10_supported_standards",
     "tokens",
@@ -48,11 +46,12 @@ static QUERY_METHODS: [&str; 11] = [
     "remove_liquidity_amounts",
     "swap_amounts",
     "claims",
+    "get_solana_address",
 ];
 
 #[init]
 async fn init() {
-    info_log(&format!("{} canister has been initialized", APP_NAME));
+    ICNetwork::info_log(&format!("{} canister has been initialized", APP_NAME));
 
     create_principal_id_map();
 
@@ -61,7 +60,7 @@ async fn init() {
 
 #[pre_upgrade]
 fn pre_upgrade() {
-    info_log(&format!("{} canister is upgrading", APP_NAME));
+    ICNetwork::info_log(&format!("{} canister is upgrading", APP_NAME));
 }
 
 #[post_upgrade]
@@ -70,7 +69,7 @@ async fn post_upgrade() {
 
     set_timer_processes().await;
 
-    info_log(&format!("{} canister is upgraded", APP_NAME));
+    ICNetwork::info_log(&format!("{} canister is upgraded", APP_NAME));
 }
 
 async fn set_timer_processes() {
@@ -110,13 +109,13 @@ async fn set_timer_processes() {
 /// calling accept_message() will allow the message to be processed
 #[inspect_message]
 fn inspect_message() {
-    let method_name = method_name();
+    let method_name = ic_cdk::api::call::method_name();
     if QUERY_METHODS.contains(&method_name.as_str()) {
-        info_log(&format!("{} called as update from {}", method_name, caller_principal_id()));
+        ICNetwork::info_log(&format!("{} called as update from {}", method_name, ICNetwork::caller().to_text()));
         ic_cdk::trap(&format!("{} must be called as query", method_name));
     }
 
-    accept_message();
+    ic_cdk::api::call::accept_message();
 }
 
 #[query]
@@ -168,7 +167,7 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
             })?;
             let to_address = match swap_args.receive_address {
                 Some(address) => address,
-                None => caller_principal_id(),
+                None => ICNetwork::caller().to_text(),
             };
             let receive_token = match swap_args.receive_amount {
                 Some(amount) => {
@@ -286,10 +285,11 @@ pub struct Icrc28TrustedOriginsResponse {
 // list every base URL that users will authenticate to your app from
 #[update]
 fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
+    let canister = KongBackend::canister().to_text();
     let trusted_origins = vec![
-        format!("https://{}.icp0.io", KONG_BACKEND),
+        format!("https://{}.icp0.io", canister),
         #[cfg(not(feature = "prod"))]
-        format!("http://{}.localhost:4943", KONG_BACKEND),
+        format!("http://{}.localhost:4943", canister),
         #[cfg(not(feature = "prod"))]
         format!("https://edoy4-liaaa-aaaar-qakha-cai.localhost:5173"), // svelte FE
         #[cfg(not(feature = "prod"))]

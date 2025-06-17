@@ -11,8 +11,7 @@ use crate::helpers::nat_helpers::{
 };
 use crate::ic::{
     address::Address,
-    get_time::get_time,
-    id::caller_id,
+    network::ICNetwork,
     transfer::{icrc1_transfer, icrc2_transfer_from},
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
@@ -28,7 +27,7 @@ use crate::stable_user::user_map;
 
 pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args), ts));
 
     let result = match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
@@ -48,7 +47,7 @@ pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLi
 
 pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result<u64, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     ic_cdk::spawn(async move {
@@ -198,7 +197,7 @@ async fn process_add_liquidity(
     // Token1
     let token_1 = pool.token_1();
 
-    let caller_id = caller_id();
+    let caller_id = ICNetwork::caller_id();
     let kong_backend = kong_settings_map::get().kong_backend;
     let mut transfer_ids = Vec::new();
 

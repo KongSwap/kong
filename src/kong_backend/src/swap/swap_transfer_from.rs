@@ -14,19 +14,18 @@ use super::update_liquidity_pool::update_liquidity_pool;
 use crate::helpers::nat_helpers::nat_is_zero;
 use crate::ic::address::Address;
 use crate::ic::address_helpers::get_address;
-use crate::ic::get_time::get_time;
-use crate::ic::id::caller_id;
+use crate::ic::network::ICNetwork;
 use crate::ic::transfer::icrc2_transfer_from;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
-use crate::stable_user::banned_user_map::{increase_consecutive_error, is_banned_user, reset_consecutive_error};
+use crate::stable_user::suspended_user_map::{increase_consecutive_error, is_suspended_user, reset_consecutive_error};
 use crate::stable_user::user_map;
 
 pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let receive_amount = args.receive_amount.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
     let mut transfer_ids = Vec::new();
@@ -75,7 +74,7 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
 
 pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
     let receive_amount = args.receive_amount.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
@@ -145,7 +144,7 @@ async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, Stab
     // use specified address or default to caller's principal id
     let to_address = match args.receive_address {
         Some(ref address) => get_address(&receive_token, address)?,
-        None => Address::PrincipalId(caller_id()),
+        None => Address::PrincipalId(ICNetwork::caller_id()),
     };
     if nat_is_zero(&pay_amount) {
         Err("Pay amount is zero".to_string())?;
@@ -163,12 +162,15 @@ async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, Stab
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(args.referred_by.as_deref())?;
     // check if user is banned
-    if let Some(banned_until) = is_banned_user(user_id) {
-        let now = get_time();
-        if banned_until > now {
-            let duration_ns = Duration::from_nanos(banned_until - now);
+    if let Some(suspended_until) = is_suspended_user(user_id) {
+        let now = ICNetwork::get_time();
+        if suspended_until > now {
+            let duration_ns = Duration::from_nanos(suspended_until - now);
             let duration_min = duration_ns.as_secs() / 60;
-            Err(format!("Too many consecutive errors. User is banned for {} minutes", duration_min))?;
+            Err(format!(
+                "Too many consecutive errors. User is suspended for {} minutes",
+                duration_min
+            ))?;
         }
     }
 
@@ -193,7 +195,7 @@ async fn process_swap(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(Nat, f64, f64, f64, Vec<SwapCalc>), String> {
-    let caller_id = caller_id();
+    let caller_id = ICNetwork::caller_id();
     let kong_backend = kong_settings_map::get().kong_backend;
 
     request_map::update_status(request_id, StatusCode::Start, None);

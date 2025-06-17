@@ -3,7 +3,7 @@ use ic_cdk::update;
 use serde_json::json;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::ic::id::caller_id;
+use crate::ic::network::ICNetwork;
 use crate::ic::transfer::icrc1_transfer;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -18,7 +18,7 @@ pub struct CanisterWithdrawArgs {
 #[update(hidden = true, guard = "caller_is_kingkong")]
 async fn canister_withdraw(args: CanisterWithdrawArgs) -> Result<String, String> {
     let token = token_map::get_by_token(&args.token)?;
-    let tx_id = icrc1_transfer(&args.amount, &caller_id(), &token, None).await?;
+    let tx_id = icrc1_transfer(&args.amount, &ICNetwork::caller_id(), &token, None).await?;
 
     let response = json! {
         {

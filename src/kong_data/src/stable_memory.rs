@@ -16,6 +16,7 @@ use crate::stable_user::stable_user::{StableUser, StableUserId};
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
+// Stable memory
 pub const KONG_SETTINGS_MEMORY_ID: MemoryId = MemoryId::new(0);
 pub const USER_MEMORY_ID: MemoryId = MemoryId::new(1);
 pub const TOKEN_MEMORY_ID: MemoryId = MemoryId::new(2);
@@ -25,11 +26,10 @@ pub const REQUEST_MEMORY_ID: MemoryId = MemoryId::new(5);
 pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(6);
 pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(7);
 pub const LP_TOKEN_MEMORY_ID: MemoryId = MemoryId::new(8);
-
 pub const DB_UPDATE_MEMORY_ID: MemoryId = MemoryId::new(50);
 
 thread_local! {
-    // static variable to store the map of principal_id to user_id
+    // Static variables
     pub static PRINCIPAL_ID_MAP: RefCell<BTreeMap<String, u32>> = RefCell::default();
 
     // MEMORY_MANAGER is given management of the entire stable memory. Given a 'MemoryId', it can
@@ -89,6 +89,6 @@ thread_local! {
 }
 
 /// A helper function to access the memory manager.
-pub fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
+fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
     MEMORY_MANAGER.with(|cell| f(&cell.borrow()))
 }

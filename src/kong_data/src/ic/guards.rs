@@ -6,11 +6,11 @@ use super::id::{caller, is_caller_controller};
 use crate::stable_memory::KONG_SETTINGS;
 use crate::stable_user::user_map;
 
-/// guard to make sure Kong Swap is not in maintenance mode
+/// guard to make sure KongSwap is not in maintenance mode
 #[allow(dead_code)]
 pub fn not_in_maintenance_mode() -> Result<(), String> {
     if KONG_SETTINGS.with(|s| s.borrow().get().maintenance_mode) {
-        return Err("Kong Swap in maintenance mode".to_string());
+        return Err("KongSwap in maintenance mode".to_string());
     }
     Ok(())
 }

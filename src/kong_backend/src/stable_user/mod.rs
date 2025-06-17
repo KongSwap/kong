@@ -1,4 +1,4 @@
-pub mod banned_user_map;
+pub mod suspended_user_map;
 pub mod principal_id_map;
 mod referral_code;
 #[allow(clippy::module_inception)]

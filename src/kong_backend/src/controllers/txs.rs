@@ -2,8 +2,8 @@ use ic_cdk::{query, update};
 use std::cmp::max;
 use std::collections::BTreeMap;
 
-use crate::ic::get_time::get_time;
 use crate::ic::guards::caller_is_kingkong;
+use crate::ic::network::ICNetwork;
 use crate::stable_memory::{TX_ARCHIVE_MAP, TX_MAP};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
@@ -86,7 +86,7 @@ fn archive_txs_num() -> Result<String, String> {
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn remove_txs() -> Result<String, String> {
-    let one_hour_ago = get_time() - 3_600_000_000_000;
+    let one_hour_ago = ICNetwork::get_time() - 3_600_000_000_000;
     let mut remove_list = Vec::new();
     TX_MAP.with(|tx_map| {
         tx_map.borrow().iter().for_each(|(tx_id, tx)| {

@@ -1,7 +1,8 @@
-use crate::ic::id::caller_principal_id;
 use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
+
+use crate::ic::network::ICNetwork;
 
 // reserved user ids
 // 0: all users - users for stable_messages to broadcast to all users
@@ -49,7 +50,7 @@ impl Default for StableUser {
     fn default() -> Self {
         StableUser {
             user_id: ANONYMOUS_USER_ID,
-            principal_id: caller_principal_id(),
+            principal_id: ICNetwork::caller().to_text(),
             my_referral_code: "".to_string(),
             referred_by: None,
             referred_by_expires_at: None,

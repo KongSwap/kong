@@ -1,12 +1,11 @@
+use crate::ic::management_canister::ManagementCanister;
+use crate::ic::network::ICNetwork;
+use crate::stable_kong_settings::kong_settings_map;
+use crate::stable_memory::USER_MAP;
+
 use super::principal_id_map;
 use super::referral_code::{generate_referral_code, REFERRAL_INTERVAL};
 use super::stable_user::{StableUser, StableUserId};
-
-use crate::ic::id::{caller_principal_id, principal_id_is_not_anonymous};
-use crate::ic::logging::error_log;
-use crate::ic::{get_time::get_time, management::get_pseudo_seed};
-use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_memory::USER_MAP;
 
 /// return StableUser by user_id
 ///
@@ -33,7 +32,7 @@ pub fn get_by_user_id(user_id: u32) -> Option<StableUser> {
 /// * `Ok(Some(StableUser))` if user is not anonymous, if principal_id is a known user or None if user is not registered
 /// * `Err(String)` if user is anonymous
 pub fn get_by_principal_id(principal_id: &str) -> Result<Option<StableUser>, String> {
-    principal_id_is_not_anonymous(principal_id)?;
+    ICNetwork::principal_id_is_not_anonymous(principal_id)?;
     Ok(match principal_id_map::get_user_id(principal_id) {
         Some(user_id) => get_by_user_id(user_id),
         None => None,
@@ -47,7 +46,7 @@ pub fn get_by_principal_id(principal_id: &str) -> Result<Option<StableUser>, Str
 /// * `Ok(Some(StableUser))` if user is not anonymous, if principal_id is a known user or None if user is not registered
 /// * `Err(String)` if user is anonymous
 pub fn get_by_caller() -> Result<Option<StableUser>, String> {
-    get_by_principal_id(&caller_principal_id())
+    get_by_principal_id(&ICNetwork::caller().to_text())
 }
 
 /// return StableUser by referral code
@@ -75,7 +74,7 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
         // once a user is created, the referrer code cannot be updated
         Ok(Some(mut user)) => {
             // update last login timestamp to now
-            let now = get_time();
+            let now = ICNetwork::get_time();
             // check if referred_by is expired
             if let Some(referred_by_expires_at) = user.referred_by_expires_at {
                 if now > referred_by_expires_at {
@@ -96,11 +95,11 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
         }
         Ok(None) => {
             // new user, create random user name and referral code
-            let mut rng = get_pseudo_seed()?;
+            let mut rng = ManagementCanister::get_pseudo_seed()?;
             // if referred_by is provided, check if it is a valid referral code
             let (referred_by, referred_by_expires_at) = match referred_by {
                 Some(referred) => match get_user_by_referral_code(referred) {
-                    Some(referred_user) => (Some(referred_user.user_id), Some(get_time() + REFERRAL_INTERVAL)),
+                    Some(referred_user) => (Some(referred_user.user_id), Some(ICNetwork::get_time() + REFERRAL_INTERVAL)),
                     None => (None, None),
                 },
                 None => (None, None),
@@ -150,7 +149,7 @@ pub fn archive_to_kong_data(user: &StableUser) -> Result<(), String> {
             .0
         {
             Ok(_) => (),
-            Err(e) => error_log(&format!("Failed to archive user_id #{}. {}", user_id, e)),
+            Err(e) => ICNetwork::error_log(&format!("Failed to archive user_id #{}. {}", user_id, e)),
         };
     });
 

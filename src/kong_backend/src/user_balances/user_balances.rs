@@ -1,18 +1,18 @@
 use ic_cdk::query;
 
-use super::lp_reply::LPReply;
-use super::user_balances_reply::UserBalancesReply;
-
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_multiply, nat_to_decimals_f64, nat_zero};
 use crate::ic::ckusdt::{ckusdt_amount, to_ckusdt_decimals_f64};
-use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
+use crate::ic::network::ICNetwork;
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_lp_token::stable_lp_token::StableLPToken;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
+
+use super::lp_reply::LPReply;
+use super::user_balances_reply::UserBalancesReply;
 
 #[query(guard = "not_in_maintenance_mode")]
 pub async fn user_balances(principal_id: String) -> Result<Vec<UserBalancesReply>, String> {
@@ -23,7 +23,7 @@ pub async fn user_balances(principal_id: String) -> Result<Vec<UserBalancesReply
         .user_id;
 
     let mut user_balances = Vec::new();
-    let ts = get_time();
+    let ts = ICNetwork::get_time();
 
     lp_token_map::get_by_user_id(user_id).iter().for_each(|lp_token| {
         if let Some(reply) = to_user_balance_lp_token_reply(lp_token, ts) {
