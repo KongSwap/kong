@@ -5,6 +5,7 @@
   import { userTokens } from "$lib/stores/userTokens";
   import { onMount } from "svelte";
   import { transparentSwapPanel } from "$lib/stores/derivedThemeStore";
+  import { app } from "$lib/state/app.state.svelte";
 
   let {
     payToken = null,
@@ -275,7 +276,7 @@
   .info-grid {
     @apply grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 
            bg-kong-bg-tertiary border border-kong-border
-           rounded-xl backdrop-blur-md shadow-lg;
+           rounded-xl backdrop-blur-md;
   }
 
   .info-label {
