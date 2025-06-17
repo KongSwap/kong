@@ -10,11 +10,11 @@ pub struct StableTokenId(pub u32);
 
 impl Storable for StableTokenId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).unwrap().into()
+        serde_cbor::to_vec(self).expect("Failed to serialize StableTokenId").into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).unwrap()
+        serde_cbor::from_slice(&bytes).expect("Failed to deserialize StableTokenId")
     }
 
     const BOUND: Bound = Bound::Unbounded;
@@ -28,11 +28,11 @@ pub enum StableToken {
 
 impl Storable for StableToken {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).unwrap().into()
+        serde_cbor::to_vec(self).expect("Failed to serialize StableToken").into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).unwrap()
+        serde_cbor::from_slice(&bytes).expect("Failed to deserialize StableToken")
     }
 
     const BOUND: Bound = Bound::Unbounded;

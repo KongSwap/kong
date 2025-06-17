@@ -13,11 +13,11 @@ pub struct StableTxId(pub u64);
 
 impl Storable for StableTxId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).unwrap().into()
+        serde_cbor::to_vec(self).expect("Failed to serialize StableTxId").into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).unwrap()
+        serde_cbor::from_slice(&bytes).expect("Failed to deserialize StableTxId")
     }
 
     const BOUND: Bound = Bound::Unbounded;
@@ -34,11 +34,11 @@ pub enum StableTx {
 
 impl Storable for StableTx {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).unwrap().into()
+        serde_cbor::to_vec(self).expect("Failed to serialize StableTx").into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).unwrap()
+        serde_cbor::from_slice(&bytes).expect("Failed to deserialize StableTx")
     }
 
     const BOUND: Bound = Bound::Unbounded;
