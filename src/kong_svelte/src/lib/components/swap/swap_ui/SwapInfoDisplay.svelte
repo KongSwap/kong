@@ -38,7 +38,12 @@
     const receiveValue = parseFloat(receiveAmount);
     
     if (payValue && receiveValue) {
-      return formatToNonZeroDecimal(receiveValue / payValue);
+      const rate = receiveValue / payValue;
+      // Use more compact format for very small numbers
+      if (rate < 0.0001) {
+        return rate.toExponential(3);
+      }
+      return formatToNonZeroDecimal(rate);
     }
     return null;
   });
@@ -207,7 +212,7 @@
           <TrendingUp size={14} class="info-icon" />
           <span>Rate</span>
         </div>
-        <div class="info-value">
+        <div class="info-value rate-value">
           {#if isLoading}
             <span class="loading-dots">
               <span></span>
@@ -215,7 +220,7 @@
               <span></span>
             </span>
           {:else if exchangeRate()}
-            <span>1 {payToken?.symbol} = {exchangeRate()} {receiveToken?.symbol}</span>
+            <span class="rate-text">1 {payToken?.symbol} = {exchangeRate()} {receiveToken?.symbol}</span>
           {:else}
             <span>-</span>
           {/if}
@@ -265,31 +270,41 @@
   </div>
 {/if}
 
-<style lang="postcss">
+<style lang="postcss" scoped>
   .swap-info-display {
     @apply w-full sm:px-3 md:px-0;
   }
 
   .info-grid {
-    @apply grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 
-           bg-kong-bg-secondary border border-kong-border/20 
-           rounded-lg backdrop-blur-sm;
+    @apply grid grid-cols-3 gap-4 p-4 
+           bg-kong-bg-tertiary border border-kong-border
+           rounded-xl backdrop-blur-md shadow-lg;
   }
 
   .info-item {
-    @apply flex flex-col gap-1.5;
+    @apply flex flex-col gap-1.5 items-center justify-center text-center;
   }
 
   .info-label {
-    @apply flex items-center gap-1.5 text-xs text-kong-text-secondary;
+    @apply flex items-center gap-1.5 text-xs text-kong-text-secondary font-medium justify-center;
   }
 
   .info-icon {
-    @apply opacity-70;
+    @apply opacity-80;
   }
 
   .info-value {
-    @apply text-sm font-medium text-kong-text-primary;
+    @apply text-sm font-semibold text-kong-text-primary text-center;
+  }
+
+  /* Rate value specific styling */
+  .rate-value {
+    @apply w-full;
+  }
+
+  .rate-text {
+    @apply block text-xs whitespace-nowrap overflow-hidden text-ellipsis;
+    max-width: 100%;
   }
 
   /* Price impact color coding */
@@ -329,7 +344,7 @@
   /* Mobile optimization */
   @media (max-width: 640px) {
     .info-grid {
-      @apply gap-1.5 p-2.5;
+      @apply gap-3 p-3;
     }
 
     .info-label {
@@ -342,6 +357,10 @@
 
     .info-icon {
       @apply w-3 h-3;
+    }
+
+    .rate-text {
+      @apply text-[10px];
     }
   }
 </style> 

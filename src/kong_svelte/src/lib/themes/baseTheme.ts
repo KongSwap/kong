@@ -162,126 +162,126 @@ export const baseTheme: ThemeDefinition = {
   author: 'Kong Team',
   authorLink: 'https://kongswap.io',
   colors: {
-    // Background colors
-    bgPrimary: '#050813',       // Very deep navy, almost black for maximum contrast
-    bgSecondary: '#0f1523',      // Noticeably lighter for clear panel separation
-    bgTertiary: '#1a2335',      // Even lighter for nested elements
-    hoverBgSecondary: '#1f2940', // Distinct hover state
+    // Background colors - Professional slate-based palette
+    bgPrimary: '#0C0F17',       // Deep charcoal with subtle blue undertone
+    bgSecondary: '#141925',      // Slightly lighter for clear visual hierarchy
+    bgTertiary: '#1D2433',      // Elevated surface color
+    hoverBgSecondary: '#242B3D', // Clear interactive state
     
-    // Primary and secondary colors
-    primary: '#1A8FE3',      // Refined Kong blue with better contrast
-    primaryHover: '#0D7DCB', // Deeper hover variant
-    secondary: '#38BEC9',    // Refined teal with better visibility
-    secondaryHover: '#2EA8B3', // Deeper teal for hover state
+    // Primary and secondary colors - Sophisticated blue palette
+    primary: '#4A7CFF',      // Professional bright blue
+    primaryHover: '#3B6CE6', // Deeper blue on interaction
+    secondary: '#00D4AA',    // Vibrant teal accent
+    secondaryHover: '#00B896', // Deeper teal for hover
     
-    // Accent colors
-    accent: '#3B82F6',   // Vibrant accessible blue
-    error: '#F43F5E',    // Refined red with better contrast
-    success: '#00C77F',  // Slightly darker green for better contrast
-    warning: '#F59E0B', // Warmer, more accessible yellow
-    info: '#3B82F6',    // Same as accent (blue)
-    muted: '#6B7280',   // Gray color for muted elements
+    // Accent colors - Balanced and accessible
+    accent: '#6366F1',   // Elegant indigo
+    error: '#EF4444',    // Clear red for errors
+    success: '#10B981',  // Professional green
+    warning: '#F59E0B',  // Warm amber warning
+    info: '#3B82F6',     // Informational blue
+    muted: '#6B7280',    // Neutral gray
     
     // Hover variants
-    successHover: '#00A86B',
-    accentHover: '#2563EB',
-    errorHover: '#E11D48',
-    warningHover: '#D97706', // Darker amber
-    infoHover: '#2563EB',    // Same as accentHover
-    mutedHover: '#4B5563',   // Darker gray
+    successHover: '#059669',
+    accentHover: '#4F46E5',
+    errorHover: '#DC2626',
+    warningHover: '#D97706',
+    infoHover: '#2563EB',
+    mutedHover: '#4B5563',
     
-    // Text colors
-    textPrimary: '#FFFFFF',
-    textSecondary: '#B0B6C5', // Brighter secondary text
-    textDisabled: '#6B7280',
-    textLight: '#ffffff',
-    textDark: '#0D111F',
-    textOnPrimary: '#0D111F',
-    textSuccess: '#E6FFFA', // Very light mint/cyan for contrast on success bg
-    textError: '#FFFFFF',   // White for maximum contrast on error bg
-    textAccent: '#FFFFFF',  // White for maximum contrast on accent bg
-    textWarning: '#FEF3C7', // Very light yellow/cream for contrast on warning bg
-    textInfo: '#FFFFFF',    // White for maximum contrast on info bg
-    textMuted: '#FFFFFF',   // White for maximum contrast on muted bg
+    // Text colors - High contrast and readable
+    textPrimary: '#F9FAFB',      // Almost white for primary text
+    textSecondary: '#9CA3AF',    // Softer gray for secondary
+    textDisabled: '#6B7280',     // Muted for disabled states
+    textLight: '#F9FAFB',
+    textDark: '#111827',
+    textOnPrimary: '#FFFFFF',
+    textSuccess: '#ECFDF5',
+    textError: '#FEF2F2',
+    textAccent: '#FFFFFF',
+    textWarning: '#FFFBEB',
+    textInfo: '#EFF6FF',
+    textMuted: '#F3F4F6',
 
     // Font settings
-    fontFamily: "'Exo 2', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     
-    // UI settings
-    panelRoundness: 'rounded-lg', // Default panel roundness
-    swapPanelRoundness: 'rounded-xl', // Swap panels are slightly more rounded
-    swapPanelBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    swapPanelShadow: 'shadow-sm',
+    // UI settings - Modern and clean
+    panelRoundness: 'rounded-xl',
+    swapPanelRoundness: 'rounded-2xl',
+    swapPanelBorder: '1px solid rgba(255, 255, 255, 0.08)',
+    swapPanelShadow: 'shadow-xl',
     swapPanelInputsRounded: true,
-    transparentSwapPanel: true, // Default to transparent swap panels
-    transparentPanel: true,
+    transparentSwapPanel: false,
+    transparentPanel: false,
     swapPanelBorderStyle: 'default',
-    statsTableTransparent: true, // Default to transparent stats table for modern look
+    statsTableTransparent: false,
     
-    // Borders
-    border: '#1f2940',
-    borderLight: '#2a3650',
+    // Borders - Subtle definition
+    border: '#1F2937',
+    borderLight: '#374151',
     
     // Logo properties
     logoBrightness: 1,
     logoInvert: 0,
-    logoHoverBrightness: 0.9,
+    logoHoverBrightness: 1.1,
     
     // Switch button styling
-    switchButtonBg: '#0f1523',
-    switchButtonHoverBg: '#1a2335',
-    switchButtonBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    switchButtonShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
+    switchButtonBg: '#1D2433',
+    switchButtonHoverBg: '#242B3D',
+    switchButtonBorder: '1px solid rgba(255, 255, 255, 0.06)',
+    switchButtonShadow: '0 4px 24px rgba(0, 0, 0, 0.4)',
     
     // Chart text color
-    chartTextColor: '#FFFFFF',
+    chartTextColor: '#F9FAFB',
     
     // Token ticker styling
-    tokenTickerBg: '#0f1523',
-    tokenTickerText: '#FFFFFF',
-    tokenTickerBorder: '1px solid rgba(255, 255, 255, 0.1)',
+    tokenTickerBg: '#141925',
+    tokenTickerText: '#F9FAFB',
+    tokenTickerBorder: '1px solid rgba(255, 255, 255, 0.06)',
     tokenTickerBorderStyle: 'default',
-    tokenTickerRoundness: 'rounded-lg',
-    tokenTickerHoverBg: '#1a2335',
-    tokenTickerUpColor: '#00D68F',
-    tokenTickerDownColor: '#F43F5E',
+    tokenTickerRoundness: 'rounded-xl',
+    tokenTickerHoverBg: '#1D2433',
+    tokenTickerUpColor: '#10B981',
+    tokenTickerDownColor: '#EF4444',
     tokenTickerBgOpacity: 100,
     
-    // Button styling
-    buttonBg: '#0f1523',
-    buttonHoverBg: '#1a2335',
-    buttonText: '#FFFFFF',
-    buttonBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    buttonBorderColor: '#FFFFFF',
-    buttonShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
-    buttonRoundness: 'rounded-lg',
+    // Button styling - Clean and modern
+    buttonBg: '#1D2433',
+    buttonHoverBg: '#242B3D',
+    buttonText: '#F9FAFB',
+    buttonBorder: '1px solid rgba(255, 255, 255, 0.06)',
+    buttonBorderColor: 'rgba(255, 255, 255, 0.06)',
+    buttonShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+    buttonRoundness: 'rounded-xl',
     
     // Primary button styling
-    primaryButtonBg: '#1A8FE3',
-    primaryButtonHoverBg: '#0D7DCB',
+    primaryButtonBg: '#4A7CFF',
+    primaryButtonHoverBg: '#3B6CE6',
     primaryButtonText: '#FFFFFF',
-    primaryButtonBorder: '1px solid rgba(255, 255, 255, 0.1)',
-    primaryButtonBorderColor: '#FFFFFF',
+    primaryButtonBorder: 'none',
+    primaryButtonBorderColor: 'transparent',
     
-    // Swap Button styling
-    swapButtonPrimaryGradientStart: '#1A8FE3',
-    swapButtonPrimaryGradientEnd: '#0D6EAF',
-    swapButtonErrorGradientStart: '#F43F5E',
-    swapButtonErrorGradientEnd: '#BE123C',
+    // Swap Button styling - Premium feel
+    swapButtonPrimaryGradientStart: '#4A7CFF',
+    swapButtonPrimaryGradientEnd: '#3B6CE6',
+    swapButtonErrorGradientStart: '#EF4444',
+    swapButtonErrorGradientEnd: '#DC2626',
     swapButtonProcessingGradientStart: '#8B5CF6',
-    swapButtonProcessingGradientEnd: '#6D28D9',
-    swapButtonBorderColor: 'rgba(255, 255, 255, 0.15)',
-    swapButtonGlowColor: '#1A8FE3',
-    swapButtonShineColor: '#38BDC9',
-    swapButtonReadyGlowStart: '#1A8FE3',
-    swapButtonReadyGlowEnd: '#0D6EAF',
+    swapButtonProcessingGradientEnd: '#7C3AED',
+    swapButtonBorderColor: 'rgba(255, 255, 255, 0.1)',
+    swapButtonGlowColor: '#4A7CFF',
+    swapButtonShineColor: '#60A5FA',
+    swapButtonReadyGlowStart: '#4A7CFF',
+    swapButtonReadyGlowEnd: '#3B6CE6',
     swapButtonTextColor: '#FFFFFF',
-    swapButtonRoundness: 'rounded-full',
-    swapButtonShadow: '0 8px 32px rgba(0, 0, 0, 0.32)',
+    swapButtonRoundness: 'rounded-2xl',
+    swapButtonShadow: '0 8px 32px rgba(74, 124, 255, 0.25)',
     
-    // Background configuration
+    // Background configuration - Subtle gradient
     backgroundType: 'gradient',
-    backgroundGradient: 'linear-gradient(135deg, #050813 0%, #080b18 25%, #0a0e1b 50%, #080b18 75%, #050813 100%)',
+    backgroundGradient: 'linear-gradient(180deg, #0C0F17 0%, #0F1219 50%, #0C0F17 100%)',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
@@ -293,7 +293,7 @@ export const baseTheme: ThemeDefinition = {
     backgroundBottom: '0',
     enableNebula: true,
     enableStars: false,
-    nebulaOpacity: 0.3,
-    starsOpacity: 0.2
+    nebulaOpacity: 0.15,
+    starsOpacity: 0.1
   }
 }; 

@@ -11,6 +11,8 @@
   import Badge from "$lib/components/common/Badge.svelte";
   import { browser } from "$app/environment";
   import { auth } from "$lib/stores/auth";
+  import { fade, fly } from "svelte/transition";
+  import { cubicOut } from "svelte/easing";
 
   // Component imports
   import TrollboxPanel from "$lib/components/wallet/trollbox/TrollboxPanel.svelte";
@@ -105,10 +107,18 @@
     <div
       class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9000]"
       onclick={onClose}
+      transition:fade={{ duration: 200, easing: cubicOut }}
     ></div>
     
     <!-- Sidebar -->
-    <div class="sidebar-panel bg-kong-bg-primary rounded-l-lg">
+    <div 
+      class="sidebar-panel bg-kong-bg-primary rounded-l-lg"
+      transition:fly={{ 
+        x: 480, 
+        duration: 300, 
+        easing: cubicOut 
+      }}
+    >
       <!-- Tabs at the top -->
       <div class="flex border-b border-kong-border bg-kong-bg-primary">
         {#each [

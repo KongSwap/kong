@@ -47,7 +47,7 @@
     class="flex gap-2 sm:gap-4 border-b border-kong-border overflow-x-auto scrollbar-none"
   >
     <button
-      on:click={() => selectTab("percentageChance")}
+      onclick={() => selectTab("percentageChance")}
       class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
       'percentageChance'
         ? 'text-kong-primary font-medium'
@@ -61,7 +61,7 @@
       {/if}
     </button>
     <button
-      on:click={() => selectTab("betHistory")}
+      onclick={() => selectTab("betHistory")}
       class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
       'betHistory'
         ? 'text-kong-primary font-medium'
@@ -75,7 +75,7 @@
       {/if}
     </button>
     <button
-      on:click={() => selectTab("rules")}
+      onclick={() => selectTab("rules")}
       class="px-3 sm:px-4 py-2 sm:py-3 focus:outline-none transition-colors relative whitespace-nowrap {props.selectedChartTab ===
       'rules'
         ? 'text-kong-primary font-medium'
@@ -95,7 +95,7 @@
       {#if props.market && marketBetsSnapshot.length > 0}
         {#if betChartError}
           <div
-            class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
+            class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
           >
             <p class="text-kong-text-secondary">
               Unable to display prediction history chart
@@ -112,7 +112,7 @@
         {/if}
       {:else}
         <div
-          class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
+          class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
         >
           <p class="text-kong-text-secondary">No prediction history data available</p>
         </div>
@@ -121,7 +121,7 @@
       {#if props.market && marketBetsSnapshot.length > 0}
         {#if chanceChartError}
           <div
-            class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
+            class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
           >
             <p class="text-kong-text-secondary">
               Unable to display percentage chance chart
@@ -138,13 +138,13 @@
         {/if}
       {:else}
         <div
-          class="h-[300px] flex items-center justify-center bg-kong-bg-dark/20 rounded"
+          class="h-[300px] flex items-center justify-center bg-kong-bg-primary/20 rounded"
         >
           <p class="text-kong-text-secondary">No percentage chance data available</p>
         </div>
       {/if}
     {:else if props.selectedChartTab === "rules"}
-      <div class="px-4 h-[300px] overflow-y-auto bg-kong-bg-dark/10 rounded !text-kong-text-primary">
+      <div class="px-4 h-[300px] overflow-y-auto bg-kong-bg-primary/10 rounded !text-kong-text-primary">
         {#if props.market && props.market.rules}
           <div class="prose prose-invert max-w-none">
             {#if typeof props.market.rules === 'string'}

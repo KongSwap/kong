@@ -3,7 +3,7 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { predictionActor } from "$lib/stores/auth";
 import { Principal } from "@dfinity/principal";
 import { notificationsStore } from "$lib/stores/notificationsStore";
-import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend/prediction_markets_backend.did";
+import type { MarketStatus, SortOption } from "../../../../declarations/prediction_markets_backend_legacy/prediction_markets_backend.did";
 
 export async function getMarket(marketId: bigint) {
   const actor = predictionActor({anon: true});
@@ -15,7 +15,7 @@ export async function getAllMarkets(
   options: {
     start?: number;
     length?: number;
-    statusFilter?: "Active" | "Closed" | "Disputed" | "Voided" | "PendingActivation" | "ExpiredUnresolved";
+    statusFilter?: "Open" | "Closed" | "Disputed" | "Voided";
     sortOption?: {
       type: "CreatedAt" | "TotalPool";
       direction: "Ascending" | "Descending";
@@ -26,21 +26,19 @@ export async function getAllMarkets(
 
   const statusFilterValue: [] | [MarketStatus] = options.statusFilter
     ? [
-        options.statusFilter === "Active" ? { Active: null } as MarketStatus :
+        options.statusFilter === "Open" ? { Open: null } as MarketStatus :
         options.statusFilter === "Closed" ? { Closed: [] } as MarketStatus :
         options.statusFilter === "Disputed" ? { Disputed: null } as MarketStatus :
         options.statusFilter === "Voided" ? { Voided: null } as MarketStatus :
-        options.statusFilter === "PendingActivation" ? { PendingActivation: null } as MarketStatus :
-        options.statusFilter === "ExpiredUnresolved" ? { ExpiredUnresolved: null } as MarketStatus :
         undefined
       ].filter(Boolean) as [MarketStatus]
     : [];
 
   const sortOptionValue: [] | [SortOption] = options.sortOption
     ? [
-        {
-          [options.sortOption.type]: { [options.sortOption.direction]: null },
-        } as SortOption
+        options.sortOption.type === "TotalPool"
+          ? { TotalPool: options.sortOption.direction === "Ascending" ? { Ascending: null } : { Descending: null } }
+          : { CreatedAt: options.sortOption.direction === "Ascending" ? { Ascending: null } : { Descending: null } }
       ]
     : [];
 

@@ -5,8 +5,8 @@
   import { Check, Loader2, ChevronsRight } from 'lucide-svelte';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { onMount } from 'svelte';
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
   const { 
     payToken,
@@ -127,7 +127,7 @@
 
 <!-- Backdrop -->
 <div 
-  class="fixed inset-0 bg-black/85 backdrop-blur-xl z-50 flex items-center justify-center p-4 overflow-hidden"
+  class="fixed inset-0 bg-black/85 backdrop-blur-xl z-50 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden"
   transition:fade={{ duration: 200 }}
   onclick={handleBackdropClick}
 >
@@ -151,7 +151,7 @@
 
   <!-- Content Container -->
   <div 
-    class="relative flex flex-col items-center gap-12"
+    class="relative flex flex-col items-center gap-8 sm:gap-10 md:gap-12"
     transition:scale={{ duration: 200, start: 0.9 }}
   >
     {#if !showSuccess}
@@ -162,24 +162,35 @@
           class="token-container animate-slide-in-left"
           transition:scale={{ delay: 100, duration: 300 }}
         >
+          <span class="token-label">You Send</span>
           <div class="token-image-wrapper" style="transform: translateY({-$tokenFloat * 5}px)">
             <div class="token-pulse-ring"></div>
-            <TokenImages tokens={[payToken]} size={120} />
+            <div class="sm:hidden">
+              <TokenImages tokens={[payToken]} size={80} />
+            </div>
+            <div class="hidden sm:block">
+              <TokenImages tokens={[payToken]} size={120} />
+            </div>
             <div class="token-glow animate-pulse-glow"></div>
           </div>
           <div class="token-details">
-            <span class="token-amount animate-number-appear">{initialPayAmount}</span>
+            <span class="token-amount animate-number-appear">{formatToNonZeroDecimal(parseFloat(initialPayAmount))}</span>
             <span class="token-symbol">{payToken.symbol}</span>
           </div>
         </div>
 
         <!-- Arrow Container -->
-        <div class="arrow-wrapper animate-fade-in" transition:scale={{ delay: 150, duration: 300 }}>
+        <div class="arrow-wrapper animate-fade-in sm:block" transition:scale={{ delay: 150, duration: 300 }}>
           <div class="arrow-container">
-            <!-- Moving particles -->
-            <div class="moving-particle particle-1"></div>
-            <div class="moving-particle particle-2"></div>
-            <div class="moving-particle particle-3"></div>
+            <!-- Arrow Icon for mobile -->
+            <svg class="arrow-icon-mobile sm:hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+            <!-- Moving particles for desktop -->
+            <div class="moving-particle particle-1 hidden sm:block"></div>
+            <div class="moving-particle particle-2 hidden sm:block"></div>
+            <div class="moving-particle particle-3 hidden sm:block"></div>
           </div>
         </div>
 
@@ -188,13 +199,19 @@
           class="token-container animate-slide-in-right"
           transition:scale={{ delay: 200, duration: 300 }}
         >
+          <span class="token-label">You Receive</span>
           <div class="token-image-wrapper" style="transform: translateY({$tokenFloat * 5}px)">
             <div class="token-pulse-ring receive"></div>
-            <TokenImages tokens={[receiveToken]} size={120} />
+            <div class="sm:hidden">
+              <TokenImages tokens={[receiveToken]} size={80} />
+            </div>
+            <div class="hidden sm:block">
+              <TokenImages tokens={[receiveToken]} size={120} />
+            </div>
             <div class="token-glow receive animate-pulse-glow-delayed"></div>
           </div>
           <div class="token-details">
-            <span class="token-amount animate-number-appear-delayed">{initialReceiveAmount}</span>
+            <span class="token-amount animate-number-appear-delayed">{formatToNonZeroDecimal(parseFloat(initialReceiveAmount))}</span>
             <span class="token-symbol">{receiveToken.symbol}</span>
           </div>
         </div>
@@ -258,14 +275,19 @@
 
   /* Swap Preview Container */
   .swap-preview-container {
-    @apply grid grid-cols-[1fr_auto_1fr] items-center gap-8 md:gap-12;
+    @apply flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr] items-center gap-6 sm:gap-8 md:gap-12;
   }
 
   /* Token Container */
   .token-container {
-    @apply flex flex-col items-center gap-4;
+    @apply flex flex-col items-center gap-3;
     animation-duration: 0.6s;
     animation-fill-mode: both;
+  }
+
+  .token-label {
+    @apply text-sm sm:text-base font-medium text-white/60 uppercase tracking-wider;
+    animation: fade-in-down 0.6s ease-out;
   }
 
   .token-image-wrapper {
@@ -315,10 +337,21 @@
   }
 
   .arrow-container {
-    @apply relative flex items-center justify-center w-8 h-12 
+    @apply relative flex items-center justify-center w-12 h-12 sm:w-8 sm:h-12 
            rounded-full text-kong-text-primary/40
             transition-all duration-300;
     animation: arrow-move-horizontal 3s ease-in-out infinite;
+  }
+
+  @media (max-width: 640px) {
+    .arrow-container {
+      animation: arrow-move-vertical 3s ease-in-out infinite;
+    }
+  }
+
+  .arrow-icon-mobile {
+    @apply text-kong-text-primary/60;
+    transform: rotate(90deg);
   }
 
   .arrow-trail {
@@ -505,6 +538,15 @@
     }
     50% {
       transform: translateX(15px);
+    }
+  }
+
+  @keyframes arrow-move-vertical {
+    0%, 100% {
+      transform: translateY(-10px);
+    }
+    50% {
+      transform: translateY(10px);
     }
   }
 
@@ -735,11 +777,11 @@
     }
 
     .token-amount {
-      @apply text-2xl;
+      @apply text-xl sm:text-2xl;
     }
 
     .token-symbol {
-      @apply text-base;
+      @apply text-sm sm:text-base;
     }
 
     .arrow-container {
@@ -751,7 +793,43 @@
     }
 
     .confirm-button {
-      @apply px-8 py-3 text-base;
+      @apply px-6 py-3 text-base min-w-[180px];
+    }
+
+    .button-content {
+      @apply text-base;
+    }
+
+    .token-pulse-ring {
+      transform: scale(1.2);
+    }
+
+    .token-glow {
+      transform: scale(1.1);
+    }
+
+    .success-icon {
+      @apply w-20 h-20;
+    }
+
+    .success-ring,
+    .success-ring-2 {
+      @apply w-20 h-20;
+    }
+
+    .success-text {
+      @apply text-xl;
+    }
+  }
+
+  /* Extra small devices */
+  @media (max-width: 380px) {
+    .token-amount {
+      @apply text-lg;
+    }
+
+    .confirm-button {
+      @apply px-4 min-w-[160px];
     }
   }
 </style>

@@ -571,7 +571,7 @@
       <div class="settings-grid">
         <!-- Combined Application Settings Panel -->
         <Panel className="space-y-4">
-          <h3 class="text-kong-text-primary font-medium text-base">Application Settings</h3>
+          <h3 class="text-kong-text-primary font-medium text-base">General Settings</h3>
           
           <!-- Sound Section -->
           <div class="setting-item">
@@ -609,7 +609,7 @@
             </div>
             <div class="flex items-center gap-2">
               <button 
-                class="bg-kong-bg-secondary hover:bg-kong-accent-yellow/60 text-kong-text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                class="bg-kong-bg-secondary hover:bg-kong-bg-tertiary text-kong-text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 onclick={clearFavorites}
                 disabled={!$auth.isConnected}
               >
@@ -643,27 +643,23 @@
   <section class="mb-12">
     <h2 class="text-2xl font-bold text-kong-text-primary mb-6">Theme Management</h2>
     
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       {#each themes as theme}
         <!-- Theme Card using Panel -->
         <Panel 
           interactive={true}
           className={`
+            !p-3
             ${currentThemeId === theme.id ? 'active text-kong-text-primary border-kong-primary border-2 bg-kong-primary/30' : ''}
             hover:!bg-kong-primary/20
           `}
           onclick={() => applyTheme(theme.id)}
-          onkeydown={(e) => e.key === 'Enter' && applyTheme(theme.id)}
         >
           <!-- Theme preview -->
-          <div class="theme-preview h-28 mb-3 rounded overflow-hidden border border-kong-border flex">
+          <div class="theme-preview h-16 mb-2 rounded overflow-hidden border border-kong-border/50 flex">
             <div class="w-1/2 flex flex-col">
-              <div class="h-1/2 flex items-center justify-center" style="background-color: {theme.colors.bgPrimary}">
-                <span class="text-white text-xs font-mono">Primary</span>
-              </div>
-              <div class="h-1/2 flex items-center justify-center" style="background-color: {theme.colors.bgSecondary}">
-                <span class="text-white text-xs font-mono">Secondary</span>
-              </div>
+              <div class="h-1/2" style="background-color: {theme.colors.bgPrimary}"></div>
+              <div class="h-1/2" style="background-color: {theme.colors.bgSecondary}"></div>
             </div>
             <div class="w-1/2 flex flex-col">
               <div class="h-1/3" style="background-color: {theme.colors.primary}"></div>
@@ -673,10 +669,10 @@
           </div>
           
           <!-- Theme info -->
-          <h3 class="font-bold {currentThemeId === theme.id ? 'text-kong-text-primary' : 'text-kong-text-primary'}">{theme.name}</h3>
-          <div class="flex justify-between items-center mt-2">
+          <h3 class="font-semibold text-sm {currentThemeId === theme.id ? 'text-kong-text-primary' : 'text-kong-text-primary'} mb-1">{theme.name}</h3>
+          <div class="flex justify-between items-center">
             {#if theme.author}
-              <span class="text-sm {currentThemeId === theme.id ? 'text-kong-text-primary/80' : 'text-kong-text-secondary'}">
+              <span class="text-xs {currentThemeId === theme.id ? 'text-kong-text-primary/80' : 'text-kong-text-secondary'} truncate max-w-[80px]">
                 {#if theme.authorLink}
                   <a 
                     href={theme.authorLink} 
@@ -694,12 +690,10 @@
                 {/if}
               </span>
             {:else}
-              <span class="text-sm {currentThemeId === theme.id ? 'text-kong-text-primary/80' : 'text-kong-text-secondary'}">—</span>
+              <span class="text-xs {currentThemeId === theme.id ? 'text-kong-text-primary/80' : 'text-kong-text-secondary'}">—</span>
             {/if}
             {#if currentThemeId === theme.id}
-              <span class="text-xs px-2 py-1 bg-kong-primary text-white rounded-full">Active</span>
-            {:else}
-              <!-- Removed Apply Button -->
+              <span class="text-[10px] px-1.5 py-0.5 bg-kong-primary text-white rounded-full">Active</span>
             {/if}
           </div>
         </Panel>
@@ -778,19 +772,18 @@ themeStore.registerAndApplyTheme(myCustomTheme);
 
   /* Removed alert-banner base and variant styling - handled inline */
   
-  /* Removed settings-grid styling - commented out previously */
-
-  /* Kept setting-item for border logic */
+  /* Setting item styles */
   .setting-item {
     @apply flex items-center justify-between py-3;
-    &:not(:last-child) {
-      @apply border-b border-kong-border/20;
-    }
   }
-
-  /* Removed setting-label styling - handled inline on spans */
-
-  /* Removed slider-section styling - handled inline */
+  
+  .setting-item:not(:last-child) {
+    @apply border-b border-kong-border/20;
+  }
+  
+  .setting-label {
+    @apply flex-1;
+  }
 
   /* Kept global slider input styling */
   :global(.slider-input) {

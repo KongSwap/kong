@@ -10,8 +10,6 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import {
-    swapPanelRoundness,
-    swapPanelShadow,
     transparentSwapPanel,
     panelRoundness,
   } from "$lib/stores/derivedThemeStore";
@@ -48,7 +46,6 @@
   const ANIMATION_BASE_DURATION = 200;
   const ANIMATION_MAX_DURATION = 300;
   const ANIMATION_VALUE_MULTIPLIER = 50;
-  const HIGH_IMPACT_THRESHOLD = 10;
 
   // State management using runes
   let inputElement = $state<HTMLInputElement | null>(null);
@@ -129,14 +126,14 @@
     if (amount !== previousAmountProp) {
       // Detect external changes from prop
       if (!inputFocused || amount === "" || amount === "0") {
-        // Update local value if not focused or if it's a reset
-        const newlyFormatted = formatWithCommas(
-          formatDisplayValue(amount || "0"),
-        );
-        localInputValue = newlyFormatted;
-        if (inputElement && !inputFocused) {
-          // Update element value directly if not focused
-          inputElement.value = newlyFormatted;
+        // Update local value based on focus state
+        const displayValue = inputFocused
+          ? formatDisplayValue(amount || "0")
+          : formatWithCommas(formatDisplayValue(amount || "0"));
+        localInputValue = displayValue;
+        if (inputElement) {
+          // Update element value directly
+          inputElement.value = displayValue;
         }
       }
       previousAmountProp = amount; // Update tracker regardless
@@ -179,7 +176,7 @@
   // Event handlers
   function handleInput(event: Event) {
     const input = event.target as HTMLInputElement;
-    let rawValue = input.value.replace(/,/g, ""); // Work with raw value
+    let rawValue = input.value;
 
     // Basic validation for numeric characters and single decimal point
     if (!isValidNumber(rawValue)) {
@@ -210,9 +207,9 @@
       rawValue = "0.";
     }
 
-    // Update local state for display (apply comma formatting)
-    localInputValue = formatWithCommas(rawValue);
-    input.value = localInputValue; // Update the input element display value
+    // Update local state for display (no commas while focused)
+    localInputValue = rawValue;
+    input.value = rawValue; // Update the input element display value without commas
 
     // Determine the value to send upwards (should be clean number string, "0" if appropriate)
     let valueToSend = rawValue;
@@ -232,12 +229,17 @@
 
   function handleFocus() {
     inputFocused = true;
+    // Remove commas when focused
+    if (inputElement) {
+      const rawValue = localInputValue.replace(/,/g, "");
+      localInputValue = rawValue;
+      inputElement.value = rawValue;
+    }
   }
 
   function handleBlur() {
     inputFocused = false;
-    // On blur, ensure the input's display value strictly matches the formatted version
-    // of the *current* amount prop, reflecting any calculations that happened.
+    // On blur, add commas to the display value
     const finalFormattedValue = formatWithCommas(
       formatDisplayValue(amount || "0"),
     );
@@ -321,7 +323,7 @@
     }
   });
 
-  function handlePercentageClick(percentage) {
+  function handlePercentageClick(percentage: number) {
     if (!token) {
       toastStore.error("Invalid token configuration");
       return;
@@ -336,15 +338,17 @@
     const percentageAmountString = calculatePercentageAmount(
       balance,
       percentage,
-      token
+      token,
     );
 
-    const formattedPercentage = formatWithCommas(
-      formatDisplayValue(percentageAmountString),
-    );
-    localInputValue = formattedPercentage;
+    // Show raw value if focused, formatted if not
+    const displayValue = inputFocused 
+      ? formatDisplayValue(percentageAmountString)
+      : formatWithCommas(formatDisplayValue(percentageAmountString));
+    
+    localInputValue = displayValue;
     if (inputElement) {
-      inputElement.value = formattedPercentage;
+      inputElement.value = displayValue;
     }
 
     onAmountChange(
@@ -366,7 +370,7 @@
     <header>
       <div class="flex items-center justify-between">
         <h2
-          class="text-lg sm:text-2xl lg:text-xl font-semibold text-kong-text-secondary m-0 tracking-tight leading-none"
+          class="text-lg sm:text-2xl lg:text-base font-semibold text-kong-text-secondary/70 m-0 tracking-tight leading-none"
         >
           {title}
         </h2>
@@ -374,8 +378,8 @@
           {#if panelType === "pay"}
             <!-- OnRamp Button -->
             <button
-              class="{$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-2.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-sm py-0.5 sm:px-2"
-              on:click={(e) => {
+              class="{$panelRoundness} font-semibold text-xs text-kong-text-primary/70 hover:text-kong-text-primary/90 bg-kong-primary/40 hover:bg-kong-primary/60 px-2.5 border border-kong-primary/80 cursor-pointer transition-all duration-200 ease-in-out sm:text-xs py-0.5 sm:px-2"
+              onclick={(e) => {
                 e.preventDefault();
                 window.open(
                   "https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp",
@@ -386,26 +390,6 @@
             >
               Buy ICP with Fiat
             </button>
-          {/if}
-          {#if showPrice && $animatedSlippage > 0}
-            <!-- Price Impact Display -->
-            <div
-              class="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 {$panelRoundness}"
-              title="Price Impact"
-            >
-              <span
-                class="text-xs sm:text-[0.875rem] font-medium text-kong-text-primary uppercase tracking-wide"
-              >
-                Impact
-              </span>
-              <span
-                class="text-sm sm:text-[1rem] font-semibold text-kong-text-primary"
-                class:text-kong-error={$animatedSlippage >=
-                  HIGH_IMPACT_THRESHOLD}
-              >
-                {$animatedSlippage.toFixed(2)}%
-              </span>
-            </div>
           {/if}
         </div>
       </div>
@@ -438,33 +422,36 @@
             inputmode="decimal"
             pattern="[0-9]*\\.?[0-9]*"
             placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent items-center border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary/50 placeholder:text-kong-text-primary/60 text-3xl lg:text-4xl {isLoading && panelType === 'receive' ? 'opacity-0' : 'opacity-85'}"
+            class="flex-1 min-w-0 bg-transparent items-center border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary/50 placeholder:text-kong-text-primary/60 text-3xl lg:text-3xl {isLoading &&
+            panelType === 'receive'
+              ? 'opacity-0'
+              : 'opacity-85'}"
             value={localInputValue}
-            on:input={handleInput}
-            on:focus={handleFocus}
-            on:blur={handleBlur}
+            oninput={handleInput}
+            onfocus={handleFocus}
+            onblur={handleBlur}
             {disabled}
           />
-                 <!-- USD Value Display -->
-        <span
-        class="absolute -bottom-5 left-0 text-kong-text-primary/50 font-medium text-xs"
-      >
-        {#if $animatedUsdValue > 0}
-          ≈${formatToNonZeroDecimal($animatedUsdValue)}
-        {/if}
-      </span>
+          <!-- USD Value Display -->
+          <span
+            class="absolute -bottom-5 left-0 text-kong-text-primary/50 font-medium text-xs"
+          >
+            {#if $animatedUsdValue > 0}
+              ≈${formatToNonZeroDecimal($animatedUsdValue)}
+            {/if}
+          </span>
         </div>
         <div class="relative">
           <!-- Token Selector Button -->
           <button
             class="flex items-center {$panelRoundness} justify-between bg-white/5 p-2 border border-white/10 transition-colors duration-150 gap-2 hover:bg-white/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 w-full"
-            on:click|stopPropagation={handleTokenSelect}
+            onclick={(e) => e.stopPropagation && handleTokenSelect(e)}
           >
             {#if token}
               <div class="flex items-center gap-2">
-                <TokenImages tokens={[token]} size={32} />
+                <TokenImages tokens={[token]} size={28} />
                 <span
-                  class="hidden text-lg font-semibold text-kong-text-primary sm:inline"
+                  class="hidden text-lg pt-0.5 font-semibold text-kong-text-primary sm:inline flex items-center"
                   >{token.symbol}</span
                 >
               </div>
@@ -502,7 +489,6 @@
           </button>
         </div>
       </div>
-
     </div>
 
     <div class="text-kong-text-primary text-sm mt-2">
@@ -518,7 +504,7 @@
               class="text-kong-text-secondary font-semibold tracking-tight text-xs sm:text-sm"
               class:clickable={title === "You Pay" && !disabled}
               class:hover:text-yellow-500={title === "You Pay" && !disabled}
-              on:click={() => handlePercentageClick(100)}
+              onclick={() => handlePercentageClick(100)}
               disabled={disabled || title !== "You Pay"}
             >
               {#if token && token.address && $currentUserBalancesStore && $currentUserBalancesStore[token.address] !== undefined}
@@ -535,17 +521,18 @@
                 Loading... <!-- Show loading if token itself is not loaded -->
               {/if}
             </button>
-            </div>
+          </div>
         </div>
         {#if token}
           <!-- Balance Display -->
           <div class="flex flex-col items-center gap-1">
-         
-{#snippet percentageButton(percentage, isFirst, isLast)}
+            {#snippet percentageButton(percentage: number, isFirst: boolean, isLast: boolean)}
               <button
-                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary transition-all duration-150 {isFirst ? 'rounded-l-md' : ''} {isLast ? 'rounded-r-md' : ''}"
-                on:click={() => handlePercentageClick(percentage)}
-                disabled={disabled}
+                class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary transition-all duration-150 {isFirst
+                  ? 'rounded-l-md'
+                  : ''} {isLast ? 'rounded-r-md' : ''}"
+                onclick={() => handlePercentageClick(percentage)}
+                {disabled}
               >
                 {percentage}%
               </button>
@@ -554,9 +541,15 @@
             <!-- Percentage Buttons -->
             {#if title === "You Pay" && token}
               {@const percentages = isMobile ? [50, 100] : [25, 50, 75, 100]}
-              <div class="flex items-center justify-end w-full text-xs sm:text-sm">
+              <div
+                class="flex items-center justify-end w-full text-xs sm:text-sm"
+              >
                 {#each percentages as percentage, index (percentage)}
-                  {@render percentageButton(percentage, index === 0, index === percentages.length - 1)}
+                  {@render percentageButton(
+                    percentage,
+                    index === 0,
+                    index === percentages.length - 1,
+                  )}
                 {/each}
               </div>
             {/if}

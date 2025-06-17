@@ -1,19 +1,14 @@
 <script lang="ts">
   import type { ComponentType } from 'svelte';
 
-  export let icon: ComponentType | null = null;
-  export let logoUrl: string | null = null;
+  export let icon: ComponentType;
   export let label: string;
   export let value: string;
 </script>
 
-<div class="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-kong-bg-secondary/50 rounded transition-colors hover:bg-kong-bg-secondary/20">
-  <div class="p-2 rounded">
-    {#if logoUrl}
-      <img src={logoUrl} alt="Token Logo" class="w-8 h-8 object-contain" />
-    {:else if icon}
-      <svelte:component this={icon} class="w-8 h-8 text-kong-success" />
-    {/if}
+<div class="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-kong-bg-light/50 rounded transition-colors hover:bg-kong-bg-light/20">
+  <div class="p-2 sm:p-3 bg-kong-accent-green/10 rounded">
+    <svelte:component this={icon} class="w-5 h-5 sm:w-6 sm:h-6 text-kong-text-accent-green" />
   </div>
   <div>
     <div class="text-xs sm:text-sm text-kong-text-secondary font-medium">{label}</div>
