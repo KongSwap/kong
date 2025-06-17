@@ -107,7 +107,7 @@ impl Default for StableKongSettings {
 
 impl Storable for StableKongSettings {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).expect("Failed to serialize StableKongSettings").into()
+        serde_cbor::to_vec(self).expect("Failed to encode StableKongSettings").into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {

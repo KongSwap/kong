@@ -9,11 +9,11 @@ pub struct StableClaimId(pub u64);
 
 impl Storable for StableClaimId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).expect("Failed to serialize StableClaimId").into()
+        serde_cbor::to_vec(self).expect("Failed to encodeStableClaimId").into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).expect("Failed to deserialize StableClaimId")
+        serde_cbor::from_slice(&bytes).expect("Failed to decodeStableClaimId")
     }
 
     const BOUND: Bound = Bound::Unbounded;
@@ -77,11 +77,11 @@ impl StableClaim {
 
 impl Storable for StableClaim {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).expect("Failed to serialize StableClaim").into()
+        serde_cbor::to_vec(self).expect("Failed to encode StableClaim").into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).expect("Failed to deserialize StableClaim")
+        serde_cbor::from_slice(&bytes).expect("Failed to decode StableClaim")
     }
 
     const BOUND: Bound = Bound::Unbounded;

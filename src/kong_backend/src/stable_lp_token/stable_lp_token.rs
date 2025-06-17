@@ -7,11 +7,11 @@ pub struct StableLPTokenId(pub u64);
 
 impl Storable for StableLPTokenId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).expect("Failed to serialize StableLPTokenId").into()
+        serde_cbor::to_vec(self).expect("Failed to encode StableLPTokenId").into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).expect("Failed to deserialize StableLPTokenId")
+        serde_cbor::from_slice(&bytes).expect("Failed to decode StableLPTokenId")
     }
 
     const BOUND: Bound = Bound::Unbounded;
@@ -40,11 +40,11 @@ impl StableLPToken {
 
 impl Storable for StableLPToken {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).expect("Failed to serialize StableLPToken").into()
+        serde_cbor::to_vec(self).expect("Failed to encode StableLPToken").into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).expect("Failed to deserialize StableLPToken")
+        serde_cbor::from_slice(&bytes).expect("Failed to decode StableLPToken")
     }
 
     const BOUND: Bound = Bound::Unbounded;

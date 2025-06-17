@@ -32,13 +32,13 @@ impl Message {
     pub fn new(instructions: Vec<Instruction>, payer: &str) -> Result<Self> {
         // Collect all unique account keys
         let mut account_keys = vec![payer.to_string()]; // Payer is always first
-        
+
         for instruction in &instructions {
             // Add program ID if not already present
             if !account_keys.contains(&instruction.program_id) {
                 account_keys.push(instruction.program_id.clone());
             }
-            
+
             // Add accounts
             for account in &instruction.accounts {
                 if !account_keys.contains(&account.pubkey) {
@@ -51,20 +51,12 @@ impl Message {
         let compiled_instructions: Vec<CompiledInstruction> = instructions
             .into_iter()
             .map(|inst| {
-                let program_id_index = account_keys
-                    .iter()
-                    .position(|key| key == &inst.program_id)
-                    .unwrap() as u8;
+                let program_id_index = account_keys.iter().position(|key| key == &inst.program_id).unwrap() as u8;
 
                 let accounts: Vec<u8> = inst
                     .accounts
                     .iter()
-                    .map(|acc| {
-                        account_keys
-                            .iter()
-                            .position(|key| key == &acc.pubkey)
-                            .unwrap() as u8
-                    })
+                    .map(|acc| account_keys.iter().position(|key| key == &acc.pubkey).unwrap() as u8)
                     .collect();
 
                 CompiledInstruction {
@@ -95,12 +87,11 @@ impl Message {
 
     /// Serialize the message for signing
     pub fn serialize(&self) -> Result<Vec<u8>> {
-        let mut data = Vec::new();
-
-        // Header (3 bytes)
-        data.push(self.header.num_required_signatures);
-        data.push(self.header.num_readonly_signed_accounts);
-        data.push(self.header.num_readonly_unsigned_accounts);
+        let mut data = vec![
+            self.header.num_required_signatures,
+            self.header.num_readonly_signed_accounts,
+            self.header.num_readonly_unsigned_accounts,
+        ];
 
         // Account keys
         data.push(self.account_keys.len() as u8);
@@ -131,7 +122,6 @@ impl Message {
 
 /// Serialize a message from instructions and blockhash
 pub fn serialize_message(instructions: Vec<Instruction>, payer: &str, blockhash: &str) -> Result<Vec<u8>> {
-    let message = Message::new(instructions, payer)?
-        .with_blockhash(blockhash.to_string());
+    let message = Message::new(instructions, payer)?.with_blockhash(blockhash.to_string());
     message.serialize()
 }
