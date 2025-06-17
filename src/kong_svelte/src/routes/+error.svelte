@@ -25,7 +25,7 @@
       variant="solid"
       size="md"
       onclick={() => {
-        goto("/swap");
+        goto("/");
       }}
     />
   </div>

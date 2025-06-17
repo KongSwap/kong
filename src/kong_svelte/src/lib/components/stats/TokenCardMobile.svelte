@@ -35,7 +35,7 @@
 		<div class="flex items-center gap-2.5 min-w-0 flex-1">
 			<div class="relative flex items-center gap-2 flex-shrink-0">
 				{#if displayRank !== null}
-					<span class="w-5 text-kong-text-secondary">{displayRank}.</span>
+					<span class="w-6 text-kong-text-secondary">{displayRank}.</span>
 				{/if}
 				<TokenImages tokens={[token]} size={20} showNetworkIcon />
 			</div>

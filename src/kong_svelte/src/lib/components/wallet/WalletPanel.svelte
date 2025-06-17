@@ -121,7 +121,7 @@
       selectedTokenForAction = token;
       showSendTokenModal = true;
     } else if (action === "swap") {
-      navigateAndClose(`/swap?from=${token.token?.address}&to=ryjl3-tyaaa-aaaaa-aaaba-cai`);
+      navigateAndClose(`/pro?from=${token.token?.address}&to=ryjl3-tyaaa-aaaaa-aaaba-cai`);
     } else if (action === "info") {
       navigateAndClose(`/stats/${token.token?.address}`);
     } else {

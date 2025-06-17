@@ -28,8 +28,6 @@
 
   let isMobile = $derived(app.isMobile);
 
-  $inspect(isMobile);
-
   // Calculate exchange rate
   const exchangeRate = $derived(() => {
     if (!payAmount || !receiveAmount || !payToken || !receiveToken) return null;
@@ -276,7 +274,7 @@
   }
 
   .info-grid {
-    @apply grid grid-cols-3 gap-4 p-4 
+    @apply grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 
            bg-kong-bg-tertiary border border-kong-border
            rounded-xl backdrop-blur-md shadow-lg;
   }

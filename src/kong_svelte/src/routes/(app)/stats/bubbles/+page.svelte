@@ -156,11 +156,11 @@
     const maxSpiralAttempts = Math.min(12000, tokens.length * 150 + 3000); // More attempts since bubbles are smaller
     const searchRadius = Math.min(availableWidth, availableHeight) * 0.9; // Larger search area for smaller bubbles
     
-    console.log(`Packing parameters:
-      - Density ratio: ${(densityRatio * 100).toFixed(1)}%
-      - Avg bubble radius: ${avgBubbleRadius.toFixed(1)}px
-      - Spiral step: ${spiralStep.toFixed(1)}px
-      - Max attempts: ${maxSpiralAttempts}`)
+    // console.log(`Packing parameters:
+    //   - Density ratio: ${(densityRatio * 100).toFixed(1)}%
+    //   - Avg bubble radius: ${avgBubbleRadius.toFixed(1)}px
+    //   - Spiral step: ${spiralStep.toFixed(1)}px
+    //   - Max attempts: ${maxSpiralAttempts}`)
 
     // Placed bubbles for collision detection
     const placedBubbles: Array<{x: number, y: number, radius: number}> = [];
@@ -266,7 +266,7 @@
     
     // Fallback strategy: distribute unplaced bubbles using multiple techniques
     if (unplacedBubbles.length > 0) {
-      console.log(`Applying fallback for ${unplacedBubbles.length} unplaced bubbles`);
+      // console.log(`Applying fallback for ${unplacedBubbles.length} unplaced bubbles`);
       
       for (let i = 0; i < unplacedBubbles.length; i++) {
         const bubble = unplacedBubbles[i];
@@ -338,9 +338,9 @@
       }
     }
 
-    if (unplacedCount > 0) {
-      console.log(`Placed ${tokens.length - unplacedCount}/${tokens.length} bubbles optimally, ${unplacedCount} using fallback`);
-    }
+    // if (unplacedCount > 0) {
+    //   console.log(`Placed ${tokens.length - unplacedCount}/${tokens.length} bubbles optimally, ${unplacedCount} using fallback`);
+    // }
 
     // Light relaxation pass only if density is reasonable
     if (densityRatio < 0.7 && placedBubbles.length > 1) {
@@ -543,7 +543,7 @@
           <div class="spinner-ring" style="animation-delay: {-0.45 + i * 0.15}s;"></div>
         {/each}
       </div>
-      <div class="loading-text">Updating bubble...</div>
+      <div class="loading-text">Updating bubbles...</div>
     </div>
   {:else}
     {#each tokens as token, i (token.address)}

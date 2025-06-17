@@ -4,7 +4,7 @@
 </script>
 
 <svelte:head>
-  <title>Swap - KongSwap</title>
+  <title>KongSwap</title>
 </svelte:head>
 
 <section class="w-full flex flex-col p-2 md:p-0 justify-center {$themeStore === 'microswap' ? 'mt-12' : ''}">

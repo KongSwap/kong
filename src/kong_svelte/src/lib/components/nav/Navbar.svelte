@@ -31,6 +31,7 @@
     Trophy,
     Bell,
   } from "lucide-svelte";
+  import { app } from "$lib/state/app.state.svelte";
   
   // Components
   import NavOption from "./NavOption.svelte";
@@ -42,19 +43,15 @@
   import TokenTicker from "./TokenTicker.svelte";
 
   // Types
-  type NavTabId = 'swap' | 'predict' | 'earn' | 'stats';
+  type NavTabId = 'pro' | 'predict' | 'earn' | 'stats';
   type WalletTab = "notifications" | "chat" | "wallet";
 
   // Navigation configuration
   const NAV_CONFIG = {
-    swap: {
-      label: "SWAP",
-      type: "dropdown" as const,
-      options: [
-        { label: "Basic Swap", description: "Simple and intuitive token swapping interface", path: "/swap", icon: Wallet },
-        { label: "Pro Swap", description: "Advanced trading features with detailed market data", path: "/swap/pro", icon: Coins },
-      ],
-      defaultPath: "/swap",
+    pro: {
+      label: "PRO",
+      type: "link" as const,
+      defaultPath: "/pro",
     },
     predict: {
       label: "PREDICT",
@@ -84,8 +81,7 @@
 
   // Path to tab mapping
   const PATH_TO_TAB: Record<string, NavTabId> = {
-    "/swap": "swap",
-    "/swap/pro": "swap",
+    "/pro": "pro",
     "/predict": "predict",
     "/pools": "earn",
     "/airdrop-claims": "earn",
@@ -95,14 +91,23 @@
   };
 
   // State
-  let isMobile = $state(false);
-  let activeTab = $state<NavTabId>("swap");
+  let isMobile = $derived(app.isMobile);
   let navOpen = $state(false);
-  let activeDropdown = $state<Extract<NavTabId, 'swap' | 'earn' | 'stats'> | null>(null);
+  let activeDropdown = $state<Extract<NavTabId, 'pro' | 'earn' | 'stats'> | null>(null);
   let showWalletSidebar = $state(false);
   let walletSidebarActiveTab = $state<WalletTab>("notifications");
   let isClaiming = $state(false);
   let closeTimeout: ReturnType<typeof setTimeout>;
+  let activeTab = $derived.by(() => {
+    const path = page.url.pathname;
+
+    for (const [prefix, tab] of Object.entries(PATH_TO_TAB)) {
+      if (path.startsWith(prefix)) {
+        return tab;
+      }
+    }
+    return "null";
+  });
 
   // Constants
   const MOBILE_LOGO_PATH = "/titles/logo-white-wide.png";
@@ -190,12 +195,6 @@
   $effect(() => {
     if (!browser) return;
 
-    isMobile = window.innerWidth < 768;
-
-    const handleResize = () => {
-      isMobile = window.innerWidth < 768;
-    };
-
     let touchStartX = 0;
     const handleTouchStart = (e: TouchEvent) => {
       touchStartX = e.touches[0].clientX;
@@ -215,27 +214,16 @@
       }
     };
 
-    window.addEventListener("resize", handleResize);
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
     document.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
-      window.removeEventListener("resize", handleResize);
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchend', handleTouchEnd);
     };
   });
 
-  // Update active tab based on current route
-  $effect(() => {
-    const path = page.url.pathname;
-    for (const [prefix, tab] of Object.entries(PATH_TO_TAB)) {
-      if (path.startsWith(prefix)) {
-        activeTab = tab;
-        break;
-      }
-    }
-  });
+
 
   // Derived configuration
   const accountMenuItems = $derived([
@@ -284,7 +272,10 @@
   const mobileNavGroups = $derived([
     {
       title: "SWAP",
-      options: NAV_CONFIG.swap.options.map(opt => ({ ...opt, comingSoon: false }))
+      options: [
+        { label: "Basic Swap", description: "Simple and intuitive token swapping interface", path: "/", icon: Wallet },
+        { label: "Pro Swap", description: "Advanced trading features with detailed market data", path: "/pro", icon: Coins },
+      ],
     },
     {
       title: "PREDICT",
@@ -347,7 +338,7 @@
       {:else}
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          onclick={() => goto("/swap")}
+          onclick={() => goto("/")}
         >
           {#key $logoPath}
             <img
@@ -398,7 +389,7 @@
       <div class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
         <button
           class="flex items-center hover:opacity-90 transition-opacity"
-          onclick={() => goto("/swap")}
+          onclick={() => goto("/")}
         >
           {#key $logoPath}
             <img

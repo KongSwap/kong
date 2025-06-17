@@ -4,6 +4,10 @@
   import { onMount } from "svelte";
   import { app } from "$lib/state/app.state.svelte";
 
+  let { children } = $props<{
+    children: any;
+  }>();
+
   onMount(() => {
     themeStore.initTheme();
 
@@ -11,15 +15,11 @@
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   })
-
-  // $inspect(app);
 </script>
 
-<slot />
+{@render children()}
 
 <style>
-
-
   /* Faster fade-out for loading spinner */
   @media (prefers-reduced-motion: no-preference) {
 
