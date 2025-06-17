@@ -10,8 +10,6 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import {
-    swapPanelRoundness,
-    swapPanelShadow,
     transparentSwapPanel,
     panelRoundness,
   } from "$lib/stores/derivedThemeStore";
@@ -47,7 +45,6 @@
   const ANIMATION_BASE_DURATION = 200;
   const ANIMATION_MAX_DURATION = 300;
   const ANIMATION_VALUE_MULTIPLIER = 50;
-  const HIGH_IMPACT_THRESHOLD = 10;
 
   // State management using runes
   let inputElement = $state<HTMLInputElement | null>(null);
@@ -149,14 +146,14 @@
     if (amount !== previousAmountProp) {
       // Detect external changes from prop
       if (!inputFocused || amount === "" || amount === "0") {
-        // Update local value if not focused or if it's a reset
-        const newlyFormatted = formatWithCommas(
-          formatDisplayValue(amount || "0"),
-        );
-        localInputValue = newlyFormatted;
-        if (inputElement && !inputFocused) {
-          // Update element value directly if not focused
-          inputElement.value = newlyFormatted;
+        // Update local value based on focus state
+        const displayValue = inputFocused
+          ? formatDisplayValue(amount || "0")
+          : formatWithCommas(formatDisplayValue(amount || "0"));
+        localInputValue = displayValue;
+        if (inputElement) {
+          // Update element value directly
+          inputElement.value = displayValue;
         }
       }
       previousAmountProp = amount; // Update tracker regardless
@@ -199,7 +196,7 @@
   // Event handlers
   function handleInput(event: Event) {
     const input = event.target as HTMLInputElement;
-    let rawValue = input.value.replace(/,/g, ""); // Work with raw value
+    let rawValue = input.value;
 
     // Basic validation for numeric characters and single decimal point
     if (!isValidNumber(rawValue)) {
@@ -230,9 +227,9 @@
       rawValue = "0.";
     }
 
-    // Update local state for display (apply comma formatting)
-    localInputValue = formatWithCommas(rawValue);
-    input.value = localInputValue; // Update the input element display value
+    // Update local state for display (no commas while focused)
+    localInputValue = rawValue;
+    input.value = rawValue; // Update the input element display value without commas
 
     // Determine the value to send upwards (should be clean number string, "0" if appropriate)
     let valueToSend = rawValue;
@@ -252,12 +249,17 @@
 
   function handleFocus() {
     inputFocused = true;
+    // Remove commas when focused
+    if (inputElement) {
+      const rawValue = localInputValue.replace(/,/g, "");
+      localInputValue = rawValue;
+      inputElement.value = rawValue;
+    }
   }
 
   function handleBlur() {
     inputFocused = false;
-    // On blur, ensure the input's display value strictly matches the formatted version
-    // of the *current* amount prop, reflecting any calculations that happened.
+    // On blur, add commas to the display value
     const finalFormattedValue = formatWithCommas(
       formatDisplayValue(amount || "0"),
     );
@@ -341,7 +343,7 @@
     }
   });
 
-  function handlePercentageClick(percentage) {
+  function handlePercentageClick(percentage: number) {
     if (!token) {
       toastStore.error("Invalid token configuration");
       return;
@@ -359,12 +361,14 @@
       token,
     );
 
-    const formattedPercentage = formatWithCommas(
-      formatDisplayValue(percentageAmountString),
-    );
-    localInputValue = formattedPercentage;
+    // Show raw value if focused, formatted if not
+    const displayValue = inputFocused 
+      ? formatDisplayValue(percentageAmountString)
+      : formatWithCommas(formatDisplayValue(percentageAmountString));
+    
+    localInputValue = displayValue;
     if (inputElement) {
-      inputElement.value = formattedPercentage;
+      inputElement.value = displayValue;
     }
 
     onAmountChange(
@@ -406,26 +410,6 @@
             >
               Buy ICP with Fiat
             </button>
-          {/if}
-          {#if showPrice && $animatedSlippage > 0}
-            <!-- Price Impact Display -->
-            <div
-              class="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 {$panelRoundness}"
-              title="Price Impact"
-            >
-              <span
-                class="text-xs sm:text-xs font-medium text-kong-text-primary uppercase tracking-wide"
-              >
-                Impact
-              </span>
-              <span
-                class="text-sm sm:text-xs font-semibold text-kong-text-primary"
-                class:text-kong-error={$animatedSlippage >=
-                  HIGH_IMPACT_THRESHOLD}
-              >
-                {$animatedSlippage.toFixed(2)}%
-              </span>
-            </div>
           {/if}
         </div>
       </div>
@@ -562,7 +546,7 @@
         {#if token}
           <!-- Balance Display -->
           <div class="flex flex-col items-center gap-1">
-            {#snippet percentageButton(percentage, isFirst, isLast)}
+            {#snippet percentageButton(percentage: number, isFirst: boolean, isLast: boolean)}
               <button
                 class="bg-kong-bg-secondary px-2 py-1.5 border border-transparent hover:border-kong-primary transition-all duration-150 {isFirst
                   ? 'rounded-l-md'
