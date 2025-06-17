@@ -13,7 +13,7 @@ use crate::market::market::*;
 use crate::resolution::resolution::ResolutionError;
 use crate::token::registry::get_token_info;
 use crate::token::transfer::handle_fee_transfer;
-use crate::token::transfer::transfer_token;
+use crate::token::transfer::transfer_token_fees_included;
 use crate::types::{MarketId, TokenAmount};
 
 /// Creates claims for refunds when a market is voided
@@ -52,16 +52,14 @@ pub fn create_refund_claims(market_id: &MarketId, market: &Market, reason: &str)
     // Process refund claims for each bet
     for bet in bets {
         // Ensure we don't try to claim less than the transfer fee
-        let claim_amount = if bet.amount.clone() > transfer_fee.clone() {
-            bet.amount.clone() - transfer_fee.clone()
-        } else {
+        if bet.amount.clone() <= transfer_fee.clone() {
             ic_cdk::println!(
                 "Cannot create refund claim for {} to {}: amount is less than transfer fee",
                 bet.amount,
                 bet.user.to_string()
             );
             continue; // Skip if bet amount is less than transfer fee
-        };
+        }
 
         // Create a refund claim for this bet
         let refund_reason = RefundReason::Other(reason.to_string());
@@ -72,14 +70,14 @@ pub fn create_refund_claims(market_id: &MarketId, market: &Market, reason: &str)
             market_id.clone(),
             bet.amount.clone(),
             refund_reason,
-            claim_amount.clone(),
+            bet.amount.clone(),
             token_id.clone(),
         );
 
         ic_cdk::println!(
             "Created refund claim {} for {} tokens to user {}",
             claim_id,
-            claim_amount.clone(),
+            bet.amount.clone(),
             bet.user.to_string()
         );
     }
@@ -120,9 +118,7 @@ pub async fn refund_all_bets(market_id: &MarketId, market: &Market) -> Result<()
     // Process refunds for each bet
     for bet in bets {
         // Ensure we don't try to transfer less than the transfer fee
-        let transfer_amount = if bet.amount > transfer_fee.clone() {
-            bet.amount - transfer_fee.clone()
-        } else {
+        if bet.amount <= transfer_fee.clone() {
             ic_cdk::println!(
                 "Cannot refund bet of {} {} to {}: amount is less than transfer fee of {}",
                 bet.amount.to_u64() / 10u64.pow(token_info.decimals as u32),
@@ -131,17 +127,17 @@ pub async fn refund_all_bets(market_id: &MarketId, market: &Market) -> Result<()
                 transfer_fee.to_u64() / 10u64.pow(token_info.decimals as u32)
             );
             continue; // Skip if bet amount is less than transfer fee
-        };
+        }
 
         ic_cdk::println!(
             "Returning {} {} to {}",
-            transfer_amount.to_u64() / 10u64.pow(token_info.decimals as u32),
+            bet.amount.to_u64() / 10u64.pow(token_info.decimals as u32),
             token_symbol,
             bet.user.to_string()
         );
 
         // Execute token transfer using the correct function signature
-        if let Err(e) = transfer_token(bet.user, transfer_amount, token_id, None).await {
+        if let Err(e) = transfer_token_fees_included(bet.user, bet.amount, token_id).await {
             // If transfer fails, log it but continue with others
             ic_cdk::println!("Error refunding bet to {}: {:?}", bet.user.to_string(), e);
         }
@@ -208,15 +204,16 @@ pub async fn create_dispute_refund_claims(market_id: &MarketId, market: &Market)
 
         // Calculate the amount to burn (only the min activation fee, not the entire deposit)
         // We need to ensure it's greater than the transfer fee
-        if amount.clone() > transfer_fee.clone() {
+        if amount.clone() <= transfer_fee.clone() {
+            ic_cdk::println!(
+                "Creator's deposit is too small to burn: {}. It's less than the transfer fee: {}",
+                amount,
+                transfer_fee
+            );
+        } else {
             // If the activation deposit is more than required min activation fee + transfer fee,
             // the excess will be refunded
-            let net_deposit = amount.clone() - transfer_fee.clone(); // Deposit minus transfer fee
-            let burn_amount = if net_deposit.clone() > min_activation_fee.clone() {
-                min_activation_fee.clone() // Only burn the minimum required amount
-            } else {
-                net_deposit.clone() // If less than min, burn whatever is available
-            };
+            let net_deposit = amount.clone();
 
             // Calculate excess amount to refund (if any)
             let excess_amount = if net_deposit.clone() > min_activation_fee.clone() {
@@ -226,15 +223,15 @@ pub async fn create_dispute_refund_claims(market_id: &MarketId, market: &Market)
             };
 
             // Burn the tokens by sending to minter
-            ic_cdk::println!("Burning {} tokens of creator's deposit due to resolution disagreement", burn_amount);
-            match handle_fee_transfer(burn_amount.clone(), token_id).await {
+            ic_cdk::println!("Burning {} tokens of creator's deposit due to resolution disagreement", net_deposit);
+            match handle_fee_transfer(net_deposit.clone(), token_id).await {
                 Err(e) => {
                     ic_cdk::println!("Error burning creator's deposit: {:?}", e);
                 }
                 Ok(block_id) => {
                     ic_cdk::println!(
                         "Successfully burned {} tokens from creator's deposit (Block ID: {})",
-                        burn_amount,
+                        net_deposit,
                         block_id.unwrap_or(candid::Nat::default())
                     );
 
@@ -266,12 +263,6 @@ pub async fn create_dispute_refund_claims(market_id: &MarketId, market: &Market)
                     }
                 }
             }
-        } else {
-            ic_cdk::println!(
-                "Creator's deposit is too small to burn: {}. It's less than the transfer fee: {}",
-                amount,
-                transfer_fee
-            );
         }
     } else {
         ic_cdk::println!("No activation bet found for creator. Nothing to burn.");

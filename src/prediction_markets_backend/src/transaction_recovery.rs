@@ -33,7 +33,7 @@ use crate::controllers::admin::is_admin;
 use crate::failed_transaction::FailedTransaction;
 use crate::stable_memory::STABLE_FAILED_TRANSACTIONS;
 use crate::token::registry::TokenIdentifier;
-use crate::token::transfer::transfer_token;
+use crate::token::transfer::transfer_token_fees_included;
 use crate::types::{MarketId, TokenAmount};
 use ic_cdk::{query, update};
 
@@ -223,7 +223,7 @@ pub async fn retry_transaction(tx_id: u64) -> Result<Option<candid::Nat>, String
     match tx_opt {
         Some(tx) if !tx.resolved => {
             // Attempt the transfer again
-            match transfer_token(tx.recipient, tx.amount.clone(), &tx.token_id, None).await {
+            match transfer_token_fees_included(tx.recipient, tx.amount.clone(), &tx.token_id).await {
                 Ok(block_index) => {
                     // Update the transaction as resolved
                     STABLE_FAILED_TRANSACTIONS.with(|txs| {

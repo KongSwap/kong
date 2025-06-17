@@ -69,7 +69,10 @@ pub enum TokenTransferError {
     NetworkError(String),
     
     /// Errors specific to a particular token's implementation
-    TokenSpecificError(String)
+    TokenSpecificError(String),
+
+    /// Error specific to fee exraction
+    FeeError(String),
 }
 
 /// Helper methods for TokenTransferError
@@ -116,8 +119,38 @@ impl TokenTransferError {
             TokenTransferError::LedgerRejection(msg) => format!("Ledger rejected transaction: {}", msg),
             TokenTransferError::NetworkError(msg) => format!("Network error: {}", msg),
             TokenTransferError::TokenSpecificError(msg) => format!("Token-specific error: {}", msg),
+            TokenTransferError::FeeError(msg) => format!("Fee error: {}", msg),
         }
     }
+}
+
+
+async fn get_fees(token_id: &TokenIdentifier) -> Result<TokenAmount, TokenTransferError> {
+    let token_canister = Principal::from_text(token_id)
+        .map_err(|e| TokenTransferError::InternalError(
+            format!("Invalid token principal: {}", e)
+        ))?;
+
+    match ic_cdk::call::<(), (candid::Nat,)>(token_canister, "icrc1_fee", ()).await {
+        Ok(fee) => Ok(fee.0.into()),
+        Err(e) => return Err(TokenTransferError::FeeError(e.1))
+    }
+}
+
+pub async fn transfer_token_fees_included(
+    recipient: Principal,
+    amount: TokenAmount,
+    token_id: &TokenIdentifier,
+) -> Result<candid::Nat, TokenTransferError> {
+    let fee = get_fees(&token_id).await?;
+
+    if amount < fee {
+        return Err(TokenTransferError::TransferFailure(format!("Transfer amount={} is less than fee={}", amount, fee)));
+    }
+
+    let amount = amount - fee.clone();
+
+    transfer_token(recipient, amount, token_id, fee).await
 }
 
 /// Transfers tokens from the canister to a recipient
@@ -140,11 +173,11 @@ impl TokenTransferError {
 /// # Error Handling
 /// This function categorizes errors as either retryable or permanent, facilitating
 /// automatic recovery through the transaction recovery system.
-pub async fn transfer_token(
+async fn transfer_token(
     recipient: Principal,
     amount: TokenAmount,
     token_id: &TokenIdentifier,
-    custom_fee: Option<TokenAmount>
+    fee: TokenAmount
 ) -> Result<candid::Nat, TokenTransferError> {
     // Verify the token is supported with improved error message
     if !is_supported_token(token_id) {
@@ -162,15 +195,9 @@ pub async fn transfer_token(
             format!("Token {} info not found in registry", token_id)
         ))
     };
-
-    // Prepare transfer arguments
-    let fee = match custom_fee {
-        Some(fee) => fee.clone().into(), // Use custom fee if provided
-        None => token_info.transfer_fee.clone().into() // Use default token fee otherwise
-    };
     
     // Validate amount is greater than fee
-    if amount <= token_info.transfer_fee {
+    if amount <= fee {
         return Err(TokenTransferError::InsufficientFunds);
     }
     
@@ -181,7 +208,7 @@ pub async fn transfer_token(
             subaccount: None,
         },
         amount: amount.clone().into(), // Convert StorableNat to Nat
-        fee: Some(fee), // Use the selected fee
+        fee: Some(fee.0), // Use the selected fee
         memo: None,
         created_at_time: None,
     };
@@ -305,7 +332,7 @@ pub async fn handle_fee_transfer(
     } else {
         // For other tokens, transfer to the minter account
         let minter_account = get_minter_account_from_storage();
-        let block_index = transfer_token(minter_account, fee_amount, token_id, None).await?;
+        let block_index = transfer_token_fees_included(minter_account, fee_amount, token_id).await?;
         Ok(Some(block_index))
     }
 }
@@ -343,20 +370,9 @@ pub async fn burn_tokens(
         // For non-KONG tokens, transfer to the minter account instead of burning
         let minter_account = get_minter_account_from_storage();
         
-        // Deduct the transfer fee from the amount to avoid the canister paying it twice
-        let transfer_fee = token_info.transfer_fee.clone();
-        let amount_clone = amount.clone(); // Clone amount before using it in operations
-        let adjusted_amount = if amount_clone > transfer_fee {
-            amount_clone - transfer_fee
-        } else {
-            ic_cdk::println!("Amount to burn {} is less than transfer fee {}, skipping", 
-                          amount.to_u64(), transfer_fee.to_u64());
-            return Err(TokenTransferError::InsufficientFunds);
-        };
-        
-        ic_cdk::println!("Burning tokens by transferring {} to minter (original amount: {})", 
-                       adjusted_amount.to_u64(), amount.to_u64());
-        return transfer_token(minter_account, adjusted_amount, token_id, None).await;
+        ic_cdk::println!("Burning tokens by transferring {} to minter", 
+                       amount.to_u64());
+        return transfer_token_fees_included(minter_account, amount, token_id).await;
     }
 
     // Get the burn address for KONG (use the minter addresses defined in transfer_kong.rs)
@@ -378,7 +394,7 @@ pub async fn burn_tokens(
         ))?;
 
     // Transfer to the burn address (minter) with zero fee
-    let zero_fee = Some(TokenAmount::from(0u64));
+    let zero_fee = TokenAmount::from(0u64);
     let block_index = transfer_token(burn_address, amount, token_id, zero_fee).await?;
     ic_cdk::println!("Burned tokens with transaction ID: {}", block_index);
     Ok(block_index)

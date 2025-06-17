@@ -255,7 +255,6 @@ type MarketCategory = variant {
 };
 type MarketEndTime = variant { SpecificDate : nat; Duration : nat };
 type MarketResolutionDetails = record {
-  total_transfer_fees : nat;
   total_winning_pool : nat;
   total_market_pool : nat;
   platform_fee_amount : nat;
@@ -370,9 +369,11 @@ type TimeWeightPoint = record {
 };
 type TokenBalanceBreakdown = record {
   platform_fees : nat;
+  void_penalty_fees : nat;
   pending_claims : nat;
   voided_markets_unclaimed : nat;
   pending_markets : nat;
+  expired_markets : nat;
   resolved_markets_unclaimed : nat;
   active_markets : nat;
 };

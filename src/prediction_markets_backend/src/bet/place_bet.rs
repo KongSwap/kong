@@ -203,7 +203,7 @@ async fn place_bet(
             );
 
             // Create a refund transfer to return tokens to the user
-            let refund_result = crate::token::transfer::transfer_token(user, amount.clone(), &token_id, None).await;
+            let refund_result = crate::token::transfer::transfer_token_fees_included(user, amount.clone(), &token_id).await;
 
             // Log the refund attempt, but still return the error either way
             match refund_result {

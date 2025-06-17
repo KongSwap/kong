@@ -80,7 +80,8 @@ pub struct MarketResolutionDetails {
     /// Alpha value used for time-weighting (if applicable)
     pub time_weight_alpha: Option<f64>,
     /// Total amount allocated for transfer fees
-    pub total_transfer_fees: TokenAmount,
+    // #[deprecated(since = "1.1.0", note = "Unknown value in the moment of market finalization")]
+    // pub total_transfer_fees: TokenAmount,
     /// Distributable profit after fees
     pub distributable_profit: TokenAmount,
     /// Total weighted contribution (for time-weighted markets)

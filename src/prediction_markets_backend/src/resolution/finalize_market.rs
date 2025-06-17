@@ -130,7 +130,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
         winning_bet_count: 0,        // Will update later
         used_time_weighting: market.uses_time_weighting,
         time_weight_alpha: market.time_weight_alpha,
-        total_transfer_fees: TokenAmount::from(0),  // Will update if applicable
+        // total_transfer_fees: TokenAmount::default(),  // Will update if applicable
         distributable_profit: TokenAmount::from(0), // Will update if applicable
         total_weighted_contribution: None,          // Will update if time-weighted
         distribution_details: Vec::new(),
@@ -201,9 +201,8 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
         token_info.symbol
     );
 
-    let has_platform_fee = platform_fee.to_u64() > token_info.transfer_fee.to_u64();
     // Process the platform fee (burn for KONG, transfer to fee collector for other tokens)
-    if has_platform_fee {
+    if platform_fee.to_u64() > token_info.transfer_fee.to_u64() {
         match handle_fee_transfer(platform_fee.clone(), token_id).await {
             Ok(Some(tx_id)) => {
                 // Store transaction ID in resolution details
@@ -247,9 +246,6 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
         ic_cdk::println!("Platform fee too small to process (less than transfer fee). Skipping fee transfer.");
     }
 
-    // Track the number of winning bets for final reporting
-    let mut winning_bet_count = 0;
-
     if total_winning_pool > 0u64 {
         // Get all winning bets
         let winning_bets = BETS.with(|_bets| {
@@ -261,7 +257,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
         });
 
         // Store the count for reporting at the end of the function
-        winning_bet_count = winning_bets.len();
+        resolution_details.winning_bet_count = winning_bets.len() as u64;
         ic_cdk::println!("Found {} winning bets", winning_bets.len());
 
         // Time-Weighted Distribution Model
@@ -354,23 +350,8 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             let total_profit_f64 = total_profit as f64;
             let platform_fee_on_profit = platform_fee.to_u64() as f64;
 
-            // Calculate total transfer fees needed for all winning bets
-            let transfer_fee_per_payout = token_info.transfer_fee.to_u64() as f64;
-            // +1 to count platform_fee.
-            let total_transfer_fees = ((weighted_contributions.len() + 1) as f64) * transfer_fee_per_payout;
-
-            // Update resolution details with transfer fees
-            resolution_details.total_transfer_fees = TokenAmount::from(total_transfer_fees as u64);
-
-            ic_cdk::println!(
-                "Reserving {} {} for transfer fees ({} payouts)",
-                total_transfer_fees / 10u64.pow(token_info.decimals as u32) as f64,
-                token_info.symbol,
-                weighted_contributions.len()
-            );
-
             // Calculate the distributable profit after fees
-            let distributable_profit = total_profit_f64 - platform_fee_on_profit - total_transfer_fees;
+            let distributable_profit = total_profit_f64 - platform_fee_on_profit;
 
             // Update resolution details with distributable profit
             resolution_details.distributable_profit = TokenAmount::from(distributable_profit as u64);
@@ -388,7 +369,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             // 2. Total distributions never exceed the available market pool (maximum cap)
             //
             // The system dynamically adjusts the bonus pool if necessary to maintain these guarantees.
-            let max_distribution = market.total_pool.to_u64() as f64 - platform_fee_on_profit - total_transfer_fees;
+            let max_distribution = market.total_pool.to_u64() as f64 - platform_fee_on_profit;
             let mut bonus_pool = distributable_profit; // Initialize with original calculation
 
             // Safety check: Verify that total distribution won't exceed total market pool
@@ -413,12 +394,11 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             }
 
             ic_cdk::println!(
-                "Pool accounting: Total market pool: {}, Total winning pool: {}, Total profit: {}, Platform fee: {}, Transfer fees: {}, Distributable profit: {}, Bonus pool: {}, Max possible distribution: {}",
+                "Pool accounting: Total market pool: {}, Total winning pool: {}, Total profit: {}, Platform fee: {}, Distributable profit: {}, Bonus pool: {}, Max possible distribution: {}",
                 market.total_pool.to_u64(),
                 total_winning_pool.to_u64(),
                 total_profit_f64,
                 platform_fee_on_profit,
-                total_transfer_fees,
                 distributable_profit,
                 bonus_pool,
                 max_distribution
@@ -579,14 +559,8 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             // Calculate total bet amount from winners only
             let total_bet_amount = winning_bets.iter().map(|bet| bet.amount.to_u64()).sum::<u64>();
 
-            // Calculate total transfer fees needed for all winning bets
-            // Transfer fees must be reserved from the winning pool to ensure all transfers complete
-            // successfully. This is a critical part of reliable payout processing.
-            let total_fees = if has_platform_fee {
-                (platform_fee.clone() + token_info.transfer_fee.clone()).to_u64()
-            } else {
-                0
-            };
+            // Calculate total transfer fees taken
+            let total_fees = platform_fee_amount;
 
             // Adjust the remaining pool to account for transfer fees
             // This preemptively reserves all needed transfer fees from the winning pool,
@@ -604,6 +578,8 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             } else {
                 total_profit.clone()
             };
+
+            resolution_details.distributable_profit = StorableNat::from_u64(total_profit_after_fees);
 
             if total_bet_amount > 0 {
                 for bet in winning_bets {
@@ -626,29 +602,26 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                     // subtract it from the individual payout amount for the actual transfer.
                     // This separation of concerns (pool adjustment + individual transfer fee) ensures
                     // transparency in the accounting and accurate payouts.
-                    let transfer_amount = if gross_winnings > token_info.transfer_fee.clone() {
-                        gross_winnings.clone() - token_info.transfer_fee.clone()
-                    } else {
+                    if gross_winnings <= token_info.transfer_fee.clone() {
                         ic_cdk::println!(
                             "Skipping transfer - winnings {} less than fee {}",
                             gross_winnings.to_u64(),
                             token_info.transfer_fee.to_u64()
                         );
                         continue; // Skip if winnings are less than transfer fee
-                    };
+                    }
 
                     ic_cdk::println!(
-                        "Processing bet - User: {}, Bet: {}, Share: {:.4}, Gross payout: {}, Net transfer: {}",
+                        "Processing bet - User: {}, Bet: {}, Share: {:.4}, Gross transfer: {}",
                         bet.user.to_string(),
                         bet.amount.to_u64(),
                         bet_proportion,
                         gross_winnings.to_u64(),
-                        transfer_amount.to_u64()
                     );
 
                     ic_cdk::println!(
                         "Creating claim for {} {} tokens to {}",
-                        transfer_amount.to_u64() / 10u64.pow(token_info.decimals as u32),
+                        gross_winnings.to_u64() / 10u64.pow(token_info.decimals as u32),
                         token_info.symbol,
                         bet.user.to_string()
                     );
@@ -659,7 +632,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                         market.id.clone(),
                         bet.amount.clone(),
                         vec![bet.outcome_index.clone()],
-                        transfer_amount.clone(),
+                        gross_winnings.clone(),
                         Some(TokenAmount::from((platform_fee.to_u64() as f64 * bet_proportion) as u64)),
                         market.token_id.clone(),
                         Timestamp::from(get_current_time()),
@@ -669,7 +642,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                         "Created claim {} for user {} with amount {}",
                         claim_id,
                         bet.user.to_string(),
-                        transfer_amount.to_u64()
+                        gross_winnings.to_u64()
                     );
 
                     // Record the payout in the bet history
@@ -677,7 +650,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
                         market_id: market.id.clone(),
                         user: bet.user,
                         bet_amount: bet.amount.clone(),
-                        payout_amount: transfer_amount.clone(),
+                        payout_amount: gross_winnings.clone(),
                         timestamp: Timestamp::from(get_current_time()),
                         outcome_index: bet.outcome_index.clone(),
                         was_time_weighted: false,
@@ -710,7 +683,7 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
     ic_cdk::println!(
         "Market {} successfully finalized with {} winning bets paid out",
         market.id.to_u64(),
-        winning_bet_count
+        resolution_details.winning_bet_count
     );
 
     ic_cdk::println!("Market {} successfully finalized and persisted", market.id.to_u64());
