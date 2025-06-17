@@ -32,7 +32,7 @@ pub async fn process_claim(claim_id: u64) -> ClaimResult {
         }
     };
     
-    // Check if claim is already processed
+    // Check if claim is already processed or being processed
     if !matches!(claim.status, ClaimStatus::Pending) {
         return ClaimResult {
             claim_id,
@@ -51,6 +51,10 @@ pub async fn process_claim(claim_id: u64) -> ClaimResult {
             error: Some("Only the claim owner can process this claim".to_string()),
         };
     }
+    
+    // Set claim status to Claiming to prevent double processing
+    // This must happen BEFORE the async inter-canister call
+    update_claim_status(claim_id, ClaimStatus::Claiming);
     
     // Process the token transfer
     let transfer_result = transfer_token(
@@ -98,6 +102,8 @@ pub async fn process_claim(claim_id: u64) -> ClaimResult {
                 retry_count: 1, // First attempt
             };
             
+            // If the transfer failed, update status to Failed (not back to Pending)  
+            // This helps identify and track previously failed attempts
             update_claim_status(claim_id, ClaimStatus::Failed(failure_details));
             
             ClaimResult {
@@ -176,6 +182,9 @@ pub async fn retry_failed_claim(claim_id: u64) -> ClaimResult {
                 error: Some(format!("Maximum retry attempts ({}) reached", MAX_TRANSFER_RETRIES)),
             };
         }
+        
+        // Set claim status to Claiming to prevent double processing during retries
+        update_claim_status(claim_id, ClaimStatus::Claiming);
         
         // Retry the token transfer
         let transfer_result = transfer_token(

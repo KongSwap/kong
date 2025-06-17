@@ -73,7 +73,7 @@ pub async fn verify_transfer(token: &StableToken, block_id: &Nat, amount: &Nat) 
 
             // if ICP ledger, use query_blocks
             if token_address_with_chain == ICP_CANISTER_ID {
-                return verify_trnasfer_with_query_blocks(token, block_id, amount, canister_id, min_valid_timestamp, kong_backend_account)
+                return verify_transfer_with_query_blocks(token, block_id, amount, canister_id, min_valid_timestamp, kong_backend_account)
                     .await;
             }
 
@@ -303,7 +303,7 @@ async fn verify_transfer_with_icrc3_get_blocks(
     }
 }
 
-async fn verify_trnasfer_with_query_blocks(
+async fn verify_transfer_with_query_blocks(
     token: &StableToken,
     block_id: &Nat,
     amount: &Nat,

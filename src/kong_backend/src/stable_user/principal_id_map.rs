@@ -1,6 +1,6 @@
-use super::stable_user::StableUser;
-
 use crate::stable_memory::{PRINCIPAL_ID_MAP, USER_MAP};
+
+use super::stable_user::StableUser;
 
 pub fn create_principal_id_map() {
     USER_MAP.with(|m| {

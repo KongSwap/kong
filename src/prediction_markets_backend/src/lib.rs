@@ -48,7 +48,7 @@ use crate::market::get_stats::StatsResult;
 use crate::resolution::resolution::*;
 use crate::user::user::*;
 use crate::token::registry::TokenInfo;
-use crate::transaction_recovery::FailedTransaction;
+use crate::failed_transaction::FailedTransaction;
 // Claims system types
 use crate::claims::claims_api::*;
 // Market resolution details type for API export
@@ -56,6 +56,9 @@ use crate::types::MarketResolutionDetails;
 // Token balance reconciliation
 use crate::token::balance::{BalanceReconciliationSummary, TokenBalanceSummary, TokenBalanceBreakdown};
 use crate::token::balance::{calculate_token_balance_reconciliation, get_latest_token_balance_reconciliation};
+use crate::market::get_all_markets::*;
+use crate::bet::latest_bets::*;
+
 use icrc_ledger_types::icrc21::requests::ConsentMessageRequest;
 use icrc_ledger_types::icrc21::responses::ConsentInfo; 
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
@@ -67,10 +70,12 @@ pub mod claims;
 pub mod constants;
 pub mod controllers;
 pub mod delegation;
+pub mod failed_transaction;
 pub mod market;
 pub mod nat;
 pub mod resolution;
 pub mod stable_memory;
+pub mod storable_vec;
 pub mod storage;
 pub mod token;
 pub mod transaction_recovery;
@@ -96,6 +101,11 @@ const KONG_LEDGER_ID: &str = "o7oak-iyaaa-aaaaq-aadzq-cai"; /// Canister ID for 
 /// ID found in stable storage (or starts from 0 if none).
 #[init]
 fn init() {
+    prepare_market_id();
+    crate::token::registry::init();
+}
+
+fn prepare_market_id() {
     MARKET_ID.store(max_market_id(), std::sync::atomic::Ordering::SeqCst);
 }
 
@@ -108,18 +118,6 @@ fn init() {
 fn pre_upgrade() {
     // Save state before upgrade
     stable_memory::save();
-    
-    // Ensure claims data is saved to stable memory
-    let (claims, user_claims, market_claims, next_claim_id) = claims::claims_storage::export_claims();
-    
-    // Convert HashMaps to Vec<(K,V)> for stable storage
-    let claims_vec: Vec<(u64, claims::claims_types::ClaimRecord)> = claims.into_iter().collect();
-    let user_claims_vec: Vec<(Principal, Vec<u64>)> = user_claims.into_iter().collect();
-    let market_claims_vec: Vec<(MarketId, Vec<u64>)> = market_claims.into_iter().collect();
-    
-    stable_memory::STABLE_CLAIMS_DATA.with(|cell| {
-        *cell.borrow_mut() = Some((claims_vec, user_claims_vec, market_claims_vec, next_claim_id));
-    });
 }
 
 /// Called after canister upgrade to restore state
@@ -136,20 +134,9 @@ fn post_upgrade() {
     // Restore state after upgrade
     stable_memory::restore();
     
-    // Restore claims data if available
-    stable_memory::STABLE_CLAIMS_DATA.with(|cell| {
-        if let Some((claims_vec, user_claims_vec, market_claims_vec, next_claim_id)) = cell.borrow_mut().take() {
-            // Convert Vec<(K,V)> back to HashMaps
-            let claims: std::collections::HashMap<u64, claims::claims_types::ClaimRecord> = claims_vec.into_iter().collect();
-            let user_claims: std::collections::HashMap<Principal, Vec<u64>> = user_claims_vec.into_iter().collect();
-            let market_claims: std::collections::HashMap<MarketId, Vec<u64>> = market_claims_vec.into_iter().collect();
-            
-            claims::claims_storage::import_claims(claims, user_claims, market_claims, next_claim_id);
-        }
-    });
-    
     // Other post-upgrade initializations as needed
     update_expired_markets();
+    prepare_market_id();
 }
 
 // Export Candid interface

@@ -2,7 +2,7 @@ import { API_URL } from "$lib/api/index";
 import { auth, swapActor, requireWalletConnection } from "$lib/stores/auth";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { toastStore } from "$lib/stores/toastStore";
-import { IcrcTokenSerializer } from "$lib/serializers/tokens/IcrcTokenSerializer";
+import { IcrcToken } from "$lib/models/tokens/IcrcToken";
 import { canisters, type CanisterType } from "$lib/config/auth.config";
 import type { AddLiquiditAmountsResult, RemoveLiquidityAmountsReply } from "../../../../declarations/kong_backend/kong_backend.did";
 
@@ -88,8 +88,8 @@ export const fetchPools = async (params?: any): Promise<{pools: BE.Pool[], total
       }
 
       // Serialize nested token objects
-      const serializedToken0 = item.token0 ? IcrcTokenSerializer.serializeTokenMetadata(item.token0) : null;
-      const serializedToken1 = item.token1 ? IcrcTokenSerializer.serializeTokenMetadata(item.token1) : null;
+      const serializedToken0 = item.token0 ? IcrcToken.serializeTokenMetadata(item.token0) : null;
+      const serializedToken1 = item.token1 ? IcrcToken.serializeTokenMetadata(item.token1) : null;
 
       // Return a flat structure combining pool data with token details.
       return {
@@ -203,7 +203,7 @@ export async function calculateRemoveLiquidityAmounts(
   token0CanisterId: string,
   token1CanisterId: string,
   lpTokenAmount: number | bigint,
-): Promise<RemoveLiquidityAmountsReply> {
+): Promise<{ amount0: bigint; amount1: bigint; lpFee0: bigint; lpFee1: bigint }> {
   try {
     const lpTokenBigInt =
       typeof lpTokenAmount === "number"
@@ -225,7 +225,12 @@ export async function calculateRemoveLiquidityAmounts(
 
     // Handle the correct response format based on .did file
     const reply = result.Ok;
-    return reply;
+    return {
+      amount0: BigInt(reply.amount_0),
+      amount1: BigInt(reply.amount_1),
+      lpFee0: BigInt(reply.lp_fee_0),
+      lpFee1: BigInt(reply.lp_fee_1)
+    };
   } catch (error) {
     console.error("Error calculating removal amounts:", error);
     throw error;
@@ -471,7 +476,7 @@ export async function removeLiquidity(params: {
       remove_lp_token_amount: lpTokenBigInt,
     });
 
-    if (!result.Ok) {
+    if ('Err' in result) {
       throw new Error(result.Err || "Failed to remove liquidity");
     }
     return result.Ok.toString();
@@ -582,7 +587,7 @@ export async function sendLpTokens(params: {
 
     const actor = swapActor({anon: false, requiresSigning: false});
 
-    const result = await (actor as any).send({
+    const result = await actor.send({
       token: params.token,
       to_address: params.toAddress,
       amount: amountBigInt,
@@ -593,7 +598,7 @@ export async function sendLpTokens(params: {
     }
 
     toastStore.success(`Successfully sent ${params.amount} LP tokens`);
-    return result.OK;
+    return result.Ok;
   } catch (error) {
     console.error("Error sending LP tokens:", error);
     toastStore.error(error.message || "Failed to send LP tokens");

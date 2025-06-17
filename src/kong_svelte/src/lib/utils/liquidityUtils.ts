@@ -572,6 +572,8 @@ export function calculateUserPoolPercentage(
   poolBalance1: bigint | undefined,
   userAmount0: string | number | undefined,
   userAmount1: string | number | undefined,
+  poolFee0?: bigint | undefined,
+  poolFee1?: bigint | undefined,
 ): string {
   if (!poolBalance0 || !poolBalance1 || !userAmount0 || !userAmount1) {
     return "0";
@@ -582,14 +584,22 @@ export function calculateUserPoolPercentage(
     const userAmount0BN = new BigNumber(userAmount0);
     const userAmount1BN = new BigNumber(userAmount1);
     
+    // Pool balances should include fees for accurate percentage
     const poolBalance0BN = new BigNumber(poolBalance0.toString());
     const poolBalance1BN = new BigNumber(poolBalance1.toString());
     
-    if (poolBalance0BN.isZero() || poolBalance1BN.isZero()) return "0";
+    // Add fees to pool balances if provided
+    const poolFee0BN = poolFee0 ? new BigNumber(poolFee0.toString()) : new BigNumber(0);
+    const poolFee1BN = poolFee1 ? new BigNumber(poolFee1.toString()) : new BigNumber(0);
+    
+    const totalPoolBalance0 = poolBalance0BN.plus(poolFee0BN);
+    const totalPoolBalance1 = poolBalance1BN.plus(poolFee1BN);
+    
+    if (totalPoolBalance0.isZero() || totalPoolBalance1.isZero()) return "0";
     
     // Calculate percentages based on both tokens
-    const percentage0 = userAmount0BN.div(poolBalance0BN).times(100);
-    const percentage1 = userAmount1BN.div(poolBalance1BN).times(100);
+    const percentage0 = userAmount0BN.div(totalPoolBalance0).times(100);
+    const percentage1 = userAmount1BN.div(totalPoolBalance1).times(100);
     
     // Use the average of both percentages (they should be very close)
     const averagePercentage = percentage0.plus(percentage1).div(2);
@@ -598,6 +608,39 @@ export function calculateUserPoolPercentage(
     return formatToNonZeroDecimal(averagePercentage.toNumber());
   } catch (error) {
     console.error("Error calculating pool percentage:", error);
+    return "0";
+  }
+}
+
+// Calculate user's pool share percentage using LP tokens for accurate representation including fees
+export function calculateUserPoolShareWithLPTokens(
+  userLPBalance: string | number | undefined,
+  totalLPSupply: bigint | undefined,
+  lpTokenDecimals: number = 8, // Default to 8 decimals for LP tokens
+): string {
+  if (!userLPBalance || !totalLPSupply || totalLPSupply === 0n) {
+    return "0";
+  }
+  
+  try {
+    // User LP balance is likely already in decimal format (e.g., 100.5 LP tokens)
+    // Total LP supply is in raw format (bigint)
+    const userLPBalanceBN = new BigNumber(userLPBalance.toString());
+    
+    // Convert total LP supply from raw to decimal format
+    const totalLPSupplyBN = new BigNumber(totalLPSupply.toString()).dividedBy(
+      new BigNumber(10).pow(lpTokenDecimals)
+    );
+    
+    if (totalLPSupplyBN.isZero()) return "0";
+    
+    // Calculate percentage: (userLPBalance / totalLPSupply) * 100
+    const percentage = userLPBalanceBN.div(totalLPSupplyBN).times(100);
+    
+    // Format to appropriate decimal places
+    return formatToNonZeroDecimal(percentage.toNumber());
+  } catch (error) {
+    console.error("Error calculating pool share percentage:", error);
     return "0";
   }
 }

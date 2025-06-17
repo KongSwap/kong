@@ -127,15 +127,15 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
 
   // Add compression plugins and terser for non-local environments
   if (process.env.DFX_NETWORK !== "local") {
-    // basePlugins.push(
-    //   viteCompression({
-    //     verbose: true,
-    //     disable: false,
-    //     threshold: 5200,
-    //     algorithm: 'gzip',
-    //     ext: '.gz',
-    //   })
-    // );
+    basePlugins.push(
+      viteCompression({
+        verbose: true,
+        disable: false,
+        threshold: 5200,
+        algorithm: 'gzip',
+        ext: '.gz',
+      })
+    );
 
   }
 

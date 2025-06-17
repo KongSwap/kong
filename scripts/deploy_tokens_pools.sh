@@ -208,7 +208,7 @@ dfx canister call ${NETWORK} ${IDENTITY} ${KONG_LEDGER} icrc2_approve "(record {
 })"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
-    amount = $(echo "${ICP_AMOUNT} + ${ICP_FEE}" | bc);
+    amount = $(echo "${ICP_AMOUNT_FOR_KSKONG} + ${ICP_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";

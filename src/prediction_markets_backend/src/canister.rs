@@ -456,7 +456,7 @@ pub fn simulate_future_weight(
 
 // Thread-local storage for market payout records
 thread_local! {
-    static MARKET_PAYOUTS: RefCell<BTreeMap<MarketId, Vec<BetPayoutRecord>>> = 
+    pub static MARKET_PAYOUTS: RefCell<BTreeMap<MarketId, Vec<BetPayoutRecord>>> = 
         RefCell::new(BTreeMap::new());
 }
 

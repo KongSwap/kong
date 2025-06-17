@@ -407,7 +407,8 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             
             // Calculate total transfer fees needed for all winning bets
             let transfer_fee_per_payout = token_info.transfer_fee.to_u64() as f64;
-            let total_transfer_fees = (weighted_contributions.len() as f64) * transfer_fee_per_payout;
+            // +1 to count platform_fee.
+            let total_transfer_fees = ((weighted_contributions.len() + 1) as f64) * transfer_fee_per_payout;
             
             // Update resolution details with transfer fees
             resolution_details.total_transfer_fees = TokenAmount::from(total_transfer_fees as u64);
@@ -622,9 +623,10 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             // successfully. This is a critical part of reliable payout processing.
             let transfer_fee_per_payout = token_info.transfer_fee.to_u64() as f64;
             let total_winning_bets = winning_bets.len();
-            let total_transfer_fees = (total_winning_bets as f64) * transfer_fee_per_payout;
+            // +1 to count platform_fee.
+            let total_transfer_fees = ((total_winning_bets + 1) as f64) * transfer_fee_per_payout;
             
-            ic_cdk::println!("Reserving {} {} for transfer fees ({} payouts)", 
+            ic_cdk::println!("Reserving {} {} for transfer fees ({}+1 payouts)",
                           total_transfer_fees / 10u64.pow(token_info.decimals as u32) as f64,
                           token_info.symbol,
                           total_winning_bets);

@@ -172,24 +172,25 @@
     
     chartOptions.scales.x = {
       ...chartOptions.scales.x,
+      display: false, // Hide entire x-axis
       grid: {
         display: false,
       },
       ticks: {
-        display: false, // Hide x-axis ticks
-        padding: 0, // Remove tick padding
+        display: false,
+        padding: 0,
       }
     };
     
     chartOptions.scales.y = {
       ...chartOptions.scales.y,
-      display: true,
+      display: false, // Hide entire y-axis
       grid: {
-        display: true,
+        display: false, // Hide grid lines
       },
       ticks: {
-        display: false, // Hide y-axis ticks
-        padding: 0, // Remove tick padding
+        display: false,
+        padding: 0,
       }
     };
     
@@ -197,7 +198,12 @@
     if (!chartOptions.layout) {
       chartOptions.layout = {};
     }
-    chartOptions.layout.padding = 0; // No padding at all
+    chartOptions.layout.padding = {
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0
+    }; // No padding at all
     
     tvlChartInstance = new Chart(ctx, {
       type: 'line',
@@ -210,23 +216,13 @@
             borderColor: colors.tvlColor,
             backgroundColor: tvlGradient,
             borderWidth: 2,
-            fill: true, // Ensure fill is enabled
-            pointRadius: (ctx) => {
-              // Show a point for each day, with larger points for first, last, and significant changes
-              const index = ctx.dataIndex;
-              if (index === 0 || index === tvlData.length - 1) return 4; // First and last points
-              
-              // Check if this is a significant change point
-              const isSignificant = significantChangePoints.some(point => 
-                point.x === props.balanceHistory[index]?.date
-              );
-              
-              return isSignificant ? 4 : 2; // Show all points, with emphasis on significant ones
-            },
+            fill: true, // Enable fill for area background
+            pointRadius: 0, // Hide all points for cleaner look
             pointBackgroundColor: colors.tvlColor,
             pointBorderColor: colors.pointBorderColor,
             pointBorderWidth: 1.5,
             tension: 0.3,
+            clip: false, // Allow drawing outside the chart area
           }
         ]
       },
@@ -282,22 +278,22 @@
         </button>
       </div>
     </h3>
-    <div class="chart-container w-full h-full">
+    <div class="chart-container w-full -mx-[1px]" style="min-height: 300px; height: 100%;">
       {#if props.balanceHistory && props.balanceHistory.length > 0 && isChartAvailable}
-        <canvas bind:this={tvlChartCanvas} class="w-full h-full !p-0 !m-0 rounded-b-lg"></canvas>
+        <canvas bind:this={tvlChartCanvas} class="w-full h-full !p-0 !m-0"></canvas>
       {:else}
-        <div class="w-full h-full flex flex-col items-center justify-center text-kong-text-primary/60 text-lg font-medium">
+        <div class="w-full flex flex-col items-center justify-center text-kong-text-primary/60 text-lg font-medium" style="min-height: 300px;">
           <BarChart3 class="mb-3 w-8 h-8" />
           {#if props.isLoading}
-            Loading chart data...
+            <span class="animate-pulse">Loading chart data...</span>
           {:else if props.errorMessage}
-            {props.errorMessage}
+            <span class="text-sm">{props.errorMessage}</span>
           {:else if !isChartAvailable}
-            Charts unavailable - Could not load Chart.js
+            <span class="text-sm">Charts unavailable - Could not load Chart.js</span>
           {:else if props.currentPool}
-            No chart data available
+            <span class="text-sm">No chart data available</span>
           {:else}
-            Charts Coming Soon
+            <span class="text-sm">Charts Coming Soon</span>
           {/if}
         </div>
       {/if}
@@ -308,5 +304,12 @@
 <style lang="postcss">
   .chart-container {
     @apply relative !p-0 !m-0 overflow-visible transition-all duration-300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .chart-container canvas {
+    display: block !important;
   }
 </style> 

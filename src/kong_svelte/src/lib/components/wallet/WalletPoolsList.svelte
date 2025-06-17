@@ -6,9 +6,9 @@
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { auth } from "$lib/stores/auth";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { livePools } from "$lib/stores/poolStore";
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
-  import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
+  import { livePools } from "$lib/stores/poolStore";
+  import { goto } from "$app/navigation";
   import WalletListHeader from "./WalletListHeader.svelte";
 
   // Props
@@ -20,6 +20,7 @@
     onRefresh = undefined,
     showUsdValues = true,
     isRefreshing = false,
+    onNavigate = undefined,
   } = $props<{
     liquidityPools?: Array<{
       id: string;
@@ -34,15 +35,15 @@
     onRefresh?: (() => void) | undefined;
     showUsdValues?: boolean;
     isRefreshing?: boolean;
+    onNavigate?: ((path: string) => void) | undefined;
   }>();
 
   // State for user pools from store
   let hasCompletedInitialLoad = $state(false);
   let errorMessage = $state<string | null>(null);
+  let isInitializing = $state(false);
 
-  // State for the UserPool modal
-  let selectedPool = $state<any>(null);
-  let showUserPoolModal = $state(false);
+  // State for the UserPool modal (removed - not used currently)
 
   // Initialize store and handle auth changes
   $effect(() => {
@@ -58,6 +59,9 @@
 
   // Function to load user pools
   async function loadUserPools() {
+    if (isInitializing) return; // Prevent multiple simultaneous loads
+    
+    isInitializing = true;
     try {
       await currentUserPoolsStore.initialize();
       hasCompletedInitialLoad = true;
@@ -65,6 +69,8 @@
       console.error("Error loading user pools:", error);
       errorMessage =
         "Failed to load your liquidity positions. Please try again.";
+    } finally {
+      isInitializing = false;
     }
   }
 
@@ -86,29 +92,42 @@
 
   // Function to refresh user pools with callback
   async function handleRefresh() {
-    if (hasCompletedInitialLoad && onRefresh) {
+    if (!$currentUserPoolsStore.loading && !isInitializing) {
       errorMessage = null;
-      onRefresh();
+      
+      // Refresh the store data
+      await loadUserPools();
+      
+      // Call the parent's refresh callback if provided
+      if (onRefresh) {
+        onRefresh();
+      }
     }
   }
 
   // Function to handle clicking on a pool item
   function handlePoolItemClick(pool: any) {
-    selectedPool = pool;
-    showUserPoolModal = true;
+    // Build the pool ID
+    const poolId = `${pool.address_0}_${pool.address_1}`;
+    const path = `/pools/${poolId}/position`;
+    
+    // If we have an onNavigate callback (which closes the sidebar), use it
+    if (onNavigate) {
+      onNavigate(path);
+    } else {
+      // Otherwise just navigate normally
+      goto(path);
+    }
   }
 
-  // Function to handle when liquidity is removed
-  async function handleLiquidityRemoved() {
-    showUserPoolModal = false;
-    selectedPool = null;
-
-    // Force a complete refresh of the pools store
-    errorMessage = null;
-    await refreshPoolsData(
-      "Failed to update your liquidity positions. Please try refreshing manually.",
-    );
-  }
+  // Function to handle when liquidity is removed (currently not used)
+  // async function handleLiquidityRemoved() {
+  //   // Force a complete refresh of the pools store
+  //   errorMessage = null;
+  //   await refreshPoolsData(
+  //     "Failed to update your liquidity positions. Please try refreshing manually.",
+  //   );
+  // }
 
   // Get pool share percentage
   function getPoolSharePercentage(pool: any): string {
@@ -146,13 +165,13 @@
     }).format(numValue);
   }
 
-  // Format number with specified decimal places
-  function formatNumber(value: number, decimals: number = 4): string {
-    return new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: decimals,
-    }).format(value);
-  }
+  // Format number with specified decimal places (currently not used)
+  // function formatNumber(value: number, decimals: number = 4): string {
+  //   return new Intl.NumberFormat("en-US", {
+  //     minimumFractionDigits: 0,
+  //     maximumFractionDigits: decimals,
+  //   }).format(value);
+  // }
 
   // Determine the loading state
   const isLoadingPools = $derived(
@@ -206,7 +225,7 @@
           class="px-4 py-2 bg-kong-bg-primary/40 text-kong-text-primary text-xs font-medium rounded-lg
                  border border-kong-border/40 hover:border-kong-primary/30 hover:bg-kong-bg-primary/60
                  transition-all duration-200 active:scale-[0.98]"
-          on:click={handleRefresh}
+          onclick={handleRefresh}
         >
           Try Again
         </button>
@@ -235,8 +254,8 @@
         {#each $currentUserPoolsStore.filteredPools as pool}
           <div
             class="px-4 md:px-4 py-3.5 bg-kong-bg-secondary/5 border-t border-kong-border/80 hover:bg-kong-primary/10 transition-all duration-200 cursor-pointer"
-            on:click={() => handlePoolItemClick(pool)}
-            on:keydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
+            onclick={() => handlePoolItemClick(pool)}
+            onkeydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
             role="button"
             tabindex="0"
           >
@@ -278,8 +297,8 @@
         {#each liquidityPools as pool}
           <div
             class="px-4 py-3.5 bg-kong-bg-secondary/5 border-b border-kong-border hover:bg-kong-bg-secondary/10 transition-colors cursor-pointer"
-            on:click={() => handlePoolItemClick(pool)}
-            on:keydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
+            onclick={() => handlePoolItemClick(pool)}
+            onkeydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
             role="button"
             tabindex="0"
           >
@@ -359,14 +378,6 @@
     {/if}
   </div>
 </div>
-
-{#if selectedPool}
-  <UserPool
-    pool={selectedPool}
-    bind:showModal={showUserPoolModal}
-    on:liquidityRemoved={handleLiquidityRemoved}
-  />
-{/if}
 
 <style>
   /* Scrollbar styling */

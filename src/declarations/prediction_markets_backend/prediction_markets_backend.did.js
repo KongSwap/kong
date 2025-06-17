@@ -192,6 +192,7 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : IDL.Nat,
   });
   const ClaimStatus = IDL.Variant({
+    'Claiming' : IDL.Null,
     'Failed' : FailureDetails,
     'Processed' : ProcessDetails,
     'Pending' : IDL.Null,

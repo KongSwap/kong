@@ -392,7 +392,7 @@ export const idlFactory = ({ IDL }) => {
     'amount' : IDL.Nat,
     'symbol' : IDL.Text,
   });
-  const SendResult = IDL.Variant({ 'OK' : SendReply, 'Err' : IDL.Text });
+  const SendResult = IDL.Variant({ 'Ok' : SendReply, 'Err' : IDL.Text });
   const SwapResult = IDL.Variant({ 'Ok' : SwapReply, 'Err' : IDL.Text });
   const SwapAmountsTxReply = IDL.Record({
     'receive_chain' : IDL.Text,

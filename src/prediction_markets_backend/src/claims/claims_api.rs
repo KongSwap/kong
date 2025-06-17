@@ -158,6 +158,7 @@ pub fn get_claims_stats() -> ClaimsStats {
         for (_, claim) in claims.borrow().iter() {
             match claim.status {
                 ClaimStatus::Pending => stats.pending_count += 1,
+                ClaimStatus::Claiming => stats.pending_count += 1, // Count claims in Claiming state as pending
                 ClaimStatus::Processed(_) => stats.processed_count += 1,
                 ClaimStatus::Failed(_) => stats.failed_count += 1,
             }

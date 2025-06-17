@@ -7,6 +7,8 @@ use serde::Serialize;
 
 use crate::types::{MarketId, TokenAmount, OutcomeIndex, TokenIdentifier};
 use crate::canister::Timestamp;
+use ic_stable_structures::{storable::Bound, Storable};
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 /// Status of a claim record
@@ -14,6 +16,8 @@ use std::collections::HashMap;
 pub enum ClaimStatus {
     /// Claim is pending, ready to be processed
     Pending,
+    /// Claim is currently being processed (prevents double processing)
+    Claiming,
     /// Claim has been processed successfully
     Processed(ProcessDetails),
     /// Claim processing failed
@@ -100,6 +104,18 @@ pub struct ClaimRecord {
     pub created_at: Timestamp,
     /// When the claim was last updated
     pub updated_at: Timestamp,
+}
+
+impl Storable for ClaimRecord {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(serde_json::to_vec(self).unwrap())
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 /// Summary of claimable amounts by token

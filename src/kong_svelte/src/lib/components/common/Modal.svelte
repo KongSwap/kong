@@ -9,6 +9,7 @@
   import { X } from "lucide-svelte";
   import { modalStack } from "$lib/stores/modalStore";
   import { transparentPanel, panelRoundness } from "$lib/stores/derivedThemeStore";
+  import { app } from "$lib/state/app.state.svelte";
 
   // Props
   let {
@@ -44,7 +45,7 @@
   }>();
 
   // State
-  let isMobile = $state(false);
+  let isMobile = $derived(app.isMobile);
   let modalWidth = $state(width);
   let modalHeight = $state(height);
   let startX = $state(0);
@@ -93,21 +94,8 @@
   // Setup mobile responsiveness
   $effect(() => {
     if (browser) {
-      const updateDimensions = () => {
-        isMobile = window.innerWidth <= 768;
         modalWidth = isMobile ? "100%" : width;
         modalHeight = height;
-      };
-      updateDimensions();
-      window.addEventListener("resize", updateDimensions);
-      return () => {
-        window.removeEventListener("resize", updateDimensions);
-        // Clean up any remaining transforms/transitions
-        if (modalElement) {
-          modalElement.style.transform = "";
-          modalElement.style.transition = "";
-        }
-      };
     }
   });
 
@@ -228,23 +216,23 @@
     >
       <div
         class="fixed inset-0 bg-black/60 backdrop-blur-md"
-        on:click={handleBackdropClick}
+        onclick={handleBackdropClick}
         style="z-index: {zIndex};"
         transition:fade={{ duration: 120, easing: cubicOut }}
-      />
+      ></div>
 
       <div
         bind:this={modalElement}
         class="relative px-4 will-change-transform max-w-full max-h-screen md:max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
         style="width: {modalWidth}; z-index: {zIndex + 1};"
-        on:mousedown={handleDragStart}
-        on:mousemove={handleDragMove}
-        on:mouseup={handleDragEnd}
-        on:mouseleave={handleDragEnd}
-        on:touchstart={handleDragStart}
-        on:touchmove={handleDragMove}
-        on:touchend={handleDragEnd}
-        on:click|stopPropagation
+        onmousedown={handleDragStart}
+        onmousemove={handleDragMove}
+        onmouseup={handleDragEnd}
+        onmouseleave={handleDragEnd}
+        ontouchstart={handleDragStart}
+        ontouchmove={handleDragMove}
+        ontouchend={handleDragEnd}
+        onclick={(e) => e.stopPropagation()}
         transition:fade={{ duration: 150, delay: 100, easing: cubicOut }}
       >
         <Panel
@@ -280,7 +268,7 @@
               </div>
               <button
                 class="!flex !items-center hover:text-kong-error !border-0 !shadow-none group relative"
-                on:click={(e) => handleClose(e)}
+                onclick={(e) => handleClose(e)}
                 aria-label="Close modal"
               >
                 <X size={18} />

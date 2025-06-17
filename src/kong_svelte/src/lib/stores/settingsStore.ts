@@ -6,6 +6,7 @@ import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.con
 
 const DEFAULT_SETTINGS: Settings = {
   sound_enabled: false,
+  ticker_enabled: true,
   max_slippage: 2.0,
   timestamp: Date.now(),
 };
@@ -19,11 +20,8 @@ function createSettingsStore() {
   async function initializeStore() {
     if (browser) {
       const pnp = get(auth);
-      const walletId = pnp?.account?.owner;
-      if (!walletId) {
-        console.error('Wallet ID is not available.');
-        return;
-      }
+      const walletId = pnp?.account?.owner || 'default';
+      // Always proceed, even for unauthenticated users
 
       try {
         const storedSettings = await settingsStorage.getItem<Settings>(`${SETTINGS_KEY}_${walletId}`);
@@ -54,11 +52,7 @@ function createSettingsStore() {
     
     try {
       const pnp = get(auth);
-      const walletId = pnp?.account?.owner;
-      if (!walletId) {
-        console.error('Wallet ID is not available to save settings');
-        return;
-      }
+      const walletId = pnp?.account?.owner || 'default';
       
       update(settings => {
         const newSettings = { 
@@ -84,8 +78,7 @@ function createSettingsStore() {
     if (!browser) return;
     
     const pnp = get(auth);
-    const walletId = pnp?.account?.owner;
-    if (!walletId) return;
+    const walletId = pnp?.account?.owner || 'default';
     
     try {
       // Reset to default settings
@@ -114,6 +107,10 @@ function createSettingsStore() {
     soundEnabled: derived(
       { subscribe },
       ($settings) => $settings.sound_enabled
+    ),
+    tickerEnabled: derived(
+      { subscribe },
+      ($settings) => $settings.ticker_enabled ?? true
     ),
   };
 }

@@ -9,11 +9,11 @@
   import { onMount } from 'svelte';
     import BigNumber from 'bignumber.js';
 
-  export let pool: any;
+  export let pool: UserPoolData;
   export let token0: any;
   export let token1: any;
 
-  // Get token objects for images
+  // Get actual pool for APR display
   $: actualPool = $livePools.find((p) => {
     return p.address_0 === pool.address_0 && p.address_1 === pool.address_1;
   });
@@ -103,7 +103,6 @@
       </div>
     </div>
   </div>
-
   <div class="token-holdings">
     <h3 class="section-title">Your Holdings</h3>
     <div class="token-card">
@@ -112,12 +111,12 @@
         <div class="token-details">
           <div class="token-info">
             <span class="token-name">{pool.symbol_0}</span>
-            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_0)}>
-              {formatToNonZeroDecimal(pool.amount_0)}
+            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_0.toString())}>
+              {formatToNonZeroDecimal(pool.amount_0.toString())}
             </span>
           </div>
           <span class="usd-value"
-            >${calculateTokenUsdValue(pool.amount_0, token0)}</span
+            >${calculateTokenUsdValue(pool.amount_0.toString(), token0)}</span
           >
         </div>
       </div>
@@ -126,14 +125,18 @@
         <div class="token-details">
           <div class="token-info">
             <span class="token-name">{pool.symbol_1}</span>
-            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_1)}>
-              {formatToNonZeroDecimal(pool.amount_1)}
+            <span class="token-amount truncate" title={formatToNonZeroDecimal(pool.amount_1.toString())}>
+              {formatToNonZeroDecimal(pool.amount_1.toString())}
             </span>
           </div>
           <span class="usd-value"
-            >${calculateTokenUsdValue(pool.amount_1, token1)}</span
+            >${calculateTokenUsdValue(pool.amount_1.toString(), token1)}</span
           >
         </div>
+      </div>
+      <div class="holdings-total-row">
+        <span class="holdings-total-label">Value</span>
+        <span class="holdings-total-value">${formatToNonZeroDecimal(pool.usd_balance)} <span class="holdings-info">({poolSharePercentage}% share)</span></span>
       </div>
     </div>
   </div>
@@ -257,12 +260,29 @@
     @apply text-xs text-kong-text-primary/60 tabular-nums;
   }
 
+  .holdings-total-row {
+    @apply flex items-center justify-between p-3;
+  }
+
+  .holdings-total-label {
+    @apply text-xs text-kong-text-primary/60 font-medium;
+  }
+
+  .holdings-total-value {
+    @apply text-sm font-medium text-kong-text-primary tabular-nums;
+  }
+
+  .holdings-info {
+    @apply text-kong-text-primary/60 text-xs;
+  }
+
   .earnings-container {
     @apply mb-3;
   }
 
-  .earnings-grid {
-    @apply grid grid-cols-2 gap-2;
+  .fee-details {
+    @apply rounded-lg bg-kong-bg-light/50
+           border border-kong-border/10 overflow-hidden;
   }
 
   .earnings-card {

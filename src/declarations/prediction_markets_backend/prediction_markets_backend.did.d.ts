@@ -77,7 +77,8 @@ export interface ClaimResult {
   'error' : [] | [string],
   'success' : boolean,
 }
-export type ClaimStatus = { 'Failed' : FailureDetails } |
+export type ClaimStatus = { 'Claiming' : null } |
+  { 'Failed' : FailureDetails } |
   { 'Processed' : ProcessDetails } |
   { 'Pending' : null };
 export type ClaimType = {

@@ -415,8 +415,11 @@ pub fn calculate_amount_after_fee(
     };
 
     let fee_percentage = token_info.fee_percentage;
-    let amount_u64 = amount.to_u64();
-    let fee_amount = amount_u64 * fee_percentage / 10000; // fee_percentage is in basis points (100 = 1%)
     
-    TokenAmount::from(amount_u64 - fee_amount)
+    // Use arbitrary precision arithmetic instead of u64 to handle high-precision tokens like ckETH (18 decimals)
+    // First multiply by fee_percentage, then divide by 10000
+    let multiplied = amount.clone() * TokenAmount::from(fee_percentage);
+    let fee_amount = multiplied / 10000u64; // Division by u64 is supported
+    
+    amount.clone() - fee_amount
 }

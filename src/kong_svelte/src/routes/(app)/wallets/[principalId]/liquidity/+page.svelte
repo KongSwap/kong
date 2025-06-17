@@ -329,11 +329,11 @@
         <div class="flex items-center gap-2 text-kong-text-secondary text-sm mb-1">
           <TrendingUp class="w-3 h-3 sm:w-4 sm:h-4" />
           <span class="flex items-center gap-1">
-            Weighted APY
+            Weighted APR
             <span 
               class="text-kong-text-secondary hover:text-kong-text-primary transition-colors cursor-help"
               use:tooltip={{ 
-                text: "This APY is weighted by the USD value of each position, giving more influence to larger positions.", 
+                text: "This APR is weighted by the USD value of each position, giving more influence to larger positions.", 
                 direction: "top",
                 background: "bg-kong-bg-primary",
                 paddingClass: "p-3",
@@ -421,6 +421,7 @@
               <ArrowDownUp class="w-3 h-3 {sortDirection === 'asc' ? 'rotate-180' : ''}" />
             {/if}
           </button>
+          <div class="text-right">Share</div>
           <button 
             class="flex items-center gap-1 justify-end hover:text-kong-text-primary transition-colors"
             on:click={() => updateSort("apy")}
@@ -431,7 +432,7 @@
               paddingClass: "p-2"
             }}
           >
-            <span>APY</span>
+            <span>APR</span>
             {#if sortBy === "apy"}
               <ArrowDownUp class="w-3 h-3 {sortDirection === 'asc' ? 'rotate-180' : ''}" />
             {/if}
@@ -459,7 +460,7 @@
                 class="px-2 py-1 text-xs rounded {sortBy === 'apy' ? 'bg-kong-primary/20 text-kong-primary' : 'bg-kong-bg-primary/50 text-kong-text-secondary'}"
                 on:click={() => updateSort("apy")}
               >
-                APY {#if sortBy === "apy"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
+              APR {#if sortBy === "apy"}<span class="text-[0.6rem]">{sortDirection === 'asc' ? '↑' : '↓'}</span>{/if}
               </button>
             </div>
           </div>
@@ -511,6 +512,13 @@
                 </div>
               </div>
 
+              <!-- Pool Share -->
+              <div class="text-right text-sm">
+                <div class="font-medium text-kong-text-primary">
+                  {formatToNonZeroDecimal(pool.poolSharePercentage || 0)}%
+                </div>
+              </div>
+
               <!-- APY -->
               <div class="text-right text-sm relative">
                 <span 
@@ -521,7 +529,7 @@
                   use:tooltip={{
                     text: pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null 
                       ? `Based on recent trading activity. Estimated daily earnings: $${calculateEarnings(pool, 1)}`
-                      : "APY data is currently unavailable for this pool",
+                      : "APR data is currently unavailable for this pool",
                     direction: "top",
                     background: "bg-kong-bg-primary",
                     paddingClass: "p-2"
@@ -626,15 +634,15 @@
         </div>
         
         <div class="mt-3 pt-2 border-t border-kong-border/20 text-xs text-kong-text-secondary">
-          Based on current APY: {formatPercentage(selectedPool.rolling_24h_apy)}
+          Based on current APR: {formatPercentage(selectedPool.rolling_24h_apy)}
           <div class="mt-1 text-xs text-kong-text-secondary/70">
             Estimates are based on current rates and may vary over time.
           </div>
         </div>
       {:else}
         <div class="py-3 text-center">
-          <p class="text-kong-text-secondary text-sm">APY data is currently unavailable for this pool.</p>
-          <p class="text-xs mt-2 text-kong-text-secondary/70">Earnings estimates cannot be calculated without APY information.</p>
+          <p class="text-kong-text-secondary text-sm">APR data is currently unavailable for this pool.</p>
+          <p class="text-xs mt-2 text-kong-text-secondary/70">Earnings estimates cannot be calculated without APR information.</p>
         </div>
       {/if}
     </div>

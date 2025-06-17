@@ -2,7 +2,7 @@ use ic_cdk::query;
 
 use super::market::*;
 
-use crate::storage::{MARKETS, BETS};
+use crate::stable_memory::{STABLE_MARKETS, STABLE_BETS};
 use crate::types::{MarketId, StorableNat};
 
 use candid::CandidType;
@@ -38,7 +38,7 @@ pub struct GetAllMarketsResult {
 /// Gets all markets with detailed betting statistics, with pagination support
 #[query]
 pub fn get_all_markets(args: GetAllMarketsArgs) -> GetAllMarketsResult {
-    MARKETS.with(|markets| {
+    STABLE_MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
         
         // Get IDs and filter by status early to reduce dataset size
@@ -132,8 +132,9 @@ fn calculate_market_stats(market_id: MarketId, mut market: Market) -> Market {
     let mut bet_counts = vec![StorableNat::from(0u64); market.outcomes.len()];
     let mut total_bets = StorableNat::from(0u64);
 
-    BETS.with(|bets| {
+    STABLE_BETS.with(|bets| {
         let bets_ref = bets.borrow();
+        // Iterate through all bets and filter by market_id
         for (bet_key, bet) in bets_ref.iter() {
             if bet_key.market_id == market_id {
                 let outcome_idx = bet.outcome_index.to_u64() as usize;

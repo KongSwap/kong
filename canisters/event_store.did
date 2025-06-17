@@ -1,0 +1,50 @@
+type Anonymizable = variant { Anonymize : text; Public : text };
+type EventsArgs = record { start : nat64; length : nat64 };
+type EventsResponse = record {
+  events : vec IndexedEvent;
+  latest_event_index : opt nat64;
+};
+type HttpRequest = record {
+  url : text;
+  method : text;
+  body : blob;
+  headers : vec record { text; text };
+};
+type HttpResponse = record {
+  body : blob;
+  headers : vec record { text; text };
+  upgrade : opt bool;
+  status_code : nat16;
+};
+type IdempotentEvent = record {
+  source : opt Anonymizable;
+  name : text;
+  user : opt Anonymizable;
+  timestamp : nat64;
+  payload : blob;
+  idempotency_key : nat;
+};
+type IndexedEvent = record {
+  source : opt text;
+  name : text;
+  user : opt text;
+  timestamp : nat64;
+  index : nat64;
+  payload : blob;
+};
+type InitArgs = record {
+  push_events_whitelist : vec principal;
+  read_events_whitelist : vec principal;
+  time_granularity : opt nat64;
+};
+type PushEventsArgs = record { events : vec IdempotentEvent };
+type WhitelistedPrincipals = record {
+  push : vec principal;
+  read : vec principal;
+};
+service : (InitArgs) -> {
+  events : (EventsArgs) -> (EventsResponse) query;
+  http_request : (HttpRequest) -> (HttpResponse) query;
+  push_events : (PushEventsArgs) -> ();
+  whitelisted_principals : () -> (WhitelistedPrincipals) query;
+}

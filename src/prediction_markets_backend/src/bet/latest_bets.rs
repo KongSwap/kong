@@ -3,7 +3,7 @@ use candid::{CandidType, Deserialize};
 use ic_cdk::query;
 use super::bet::*;
 use crate::market::market::Market;
-use crate::storage::{MARKETS, BETS};
+use crate::stable_memory::{STABLE_MARKETS, STABLE_BETS};
 
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
@@ -15,7 +15,7 @@ pub struct LatestBets {
 /// Gets the latest 50 bets 
 #[query]
 pub fn get_latest_bets() -> Vec<LatestBets> {
-    let mut bets = BETS.with(|bets| {
+    let mut bets = STABLE_BETS.with(|bets| {
         bets.borrow()
             .iter()
             .map(|(_, bet)| bet.clone())
@@ -26,7 +26,7 @@ pub fn get_latest_bets() -> Vec<LatestBets> {
     bets.truncate(50);
 
     let latest_bets = bets.iter().map(|bet| {
-        let market = MARKETS.with(|markets| markets.borrow().get(&bet.market_id).unwrap());
+        let market = STABLE_MARKETS.with(|markets| markets.borrow().get(&bet.market_id).unwrap());
         LatestBets {
             bet: bet.clone().to_owned(),
             market: market.clone(),

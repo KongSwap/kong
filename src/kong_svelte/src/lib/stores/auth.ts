@@ -5,11 +5,13 @@ import {
   pnp,
   canisters as pnpCanisters,
 } from "$lib/config/auth.config";
+
+// Re-export CanisterType for other modules
+export type { CanisterType };
 import { browser } from "$app/environment";
 import { fetchBalances } from "$lib/api/balances";
 import { currentUserBalancesStore } from "$lib/stores/balancesStore";
 import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
-import { createNamespacedStore } from "$lib/config/localForage.config";
 import { trackEvent, AnalyticsEvent } from "$lib/utils/analytics";
 import { userTokens } from "$lib/stores/userTokens";
 
@@ -22,8 +24,8 @@ const STORAGE_KEYS = {
   CONNECTION_RETRY_COUNT: "connectionRetryCount",
 } as const;
 
-// Create namespaced store and exports
-const authStorage = createNamespacedStore(AUTH_NAMESPACE);
+// Helper to create namespaced localStorage keys
+const getStorageKey = (key: string) => `${AUTH_NAMESPACE}:${key}`;
 export const selectedWalletId = writable<string | null>(null);
 export const isConnected = writable<boolean>(false);
 export const connectionError = writable<string | null>(null);
@@ -37,30 +39,30 @@ function createAuthStore(pnp: PnpInterface) {
 
   // Storage operations
   const storage = {
-    async get(key: keyof typeof STORAGE_KEYS) {
+    get(key: keyof typeof STORAGE_KEYS): string | null {
       if (!browser) return null;
       try {
-        return await authStorage.getItem<string>(STORAGE_KEYS[key]);
+        return localStorage.getItem(getStorageKey(STORAGE_KEYS[key]));
       } catch (error) {
         console.error(`Error getting ${key} from storage:`, error);
         return null;
       }
     },
     
-    async set(key: keyof typeof STORAGE_KEYS, value: string) {
+    set(key: keyof typeof STORAGE_KEYS, value: string): void {
       if (!browser) return;
       try {
-        await authStorage.setItem(STORAGE_KEYS[key], value);
+        localStorage.setItem(getStorageKey(STORAGE_KEYS[key]), value);
       } catch (error) {
         console.error(`Error setting ${key} in storage:`, error);
       }
     },
     
-    async clear() {
+    clear(): void {
       if (!browser) return;
       try {
         for (const key of Object.values(STORAGE_KEYS)) {
-          await authStorage.removeItem(key);
+          localStorage.removeItem(getStorageKey(key));
         }
       } catch (error) {
         console.error('Error clearing storage:', error);
@@ -85,16 +87,18 @@ function createAuthStore(pnp: PnpInterface) {
       isStoreInitialized = true;
 
       try {
-        const lastWallet = await storage.get("LAST_WALLET");
+        const lastWallet = storage.get("LAST_WALLET");
+        if (!lastWallet || lastWallet === "plug") return;
+
         const hasAttempted = sessionStorage.getItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED);
-        const wasConnected = await storage.get("WAS_CONNECTED");
+        const wasConnected = storage.get("WAS_CONNECTED");
 
         if (!(hasAttempted && !wasConnected)) {
-          await this.connect(lastWallet, true);
+          await this.connect(lastWallet, false, true);
         }
       } catch (error) {
         console.warn("Auto-connect failed:", error);
-        await storage.clear();
+        storage.clear();
         connectionError.set(error.message);
         isStoreInitialized = false;
       } finally {
@@ -102,18 +106,19 @@ function createAuthStore(pnp: PnpInterface) {
       }
     },
 
-    async connect(walletId: string, isRetry = false) {
+    async connect(walletId: string, isRetry = false, isAutoConnect = false) {
       try {
         connectionError.set(null);
         isAuthenticating.set(true);
         const result = await pnp.connect(walletId);
 
         if (!result?.owner) {
-          if (!isRetry) {
+          // Don't retry if user cancelled or this is an auto-connect attempt
+          if (!isRetry && !isAutoConnect) {
             console.warn(`Connection attempt failed for ${walletId}, retrying once...`);
             await pnp.disconnect();
             await new Promise(resolve => setTimeout(resolve, 500));
-            return await this.connect(walletId, true);
+            return await this.connect(walletId, true, isAutoConnect);
           }
           
           console.error("Connection failed after retry.");
@@ -132,10 +137,8 @@ function createAuthStore(pnp: PnpInterface) {
         // Update state and storage
         selectedWalletId.set(walletId);
         isConnected.set(true);
-        await Promise.all([
-          storage.set("LAST_WALLET", walletId),
-          storage.set("WAS_CONNECTED", "true")
-        ]);
+        storage.set("LAST_WALLET", walletId);
+        storage.set("WAS_CONNECTED", "true");
 
         // Load balances in background
         setTimeout(async () => {
@@ -169,7 +172,7 @@ function createAuthStore(pnp: PnpInterface) {
       // Set principal to null but don't reset tokens
       userTokens.setPrincipal(null);
       
-      await storage.clear();
+      storage.clear();
     },
   };
 

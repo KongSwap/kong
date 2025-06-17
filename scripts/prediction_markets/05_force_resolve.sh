@@ -227,21 +227,18 @@ echo ""
 # Check if market has expired
 run_dfx "dfx canister call prediction_markets_backend get_market \"(\$MARKET_ID)\"" "Checking market status after waiting period"
 
-# Step 8: Alice (creator) proposes resolution with "Yes" as winner
-section "Step 8: Alice (creator) proposing resolution with 'Yes' as winner"
+# Step 8: Alice never responds to resolution proposal
+section "Step 8: Alice never responds to resolution proposal"
+echo -e "${CMD_COLOR}Alice never responds to resolution proposal...${RESET}"
 
-run_dfx "dfx identity use alice" "Switching back to Alice identity (market creator)"
-echo -e "${CMD_COLOR}Alice proposing resolution...${RESET}"
-run_dfx "dfx canister call prediction_markets_backend propose_resolution \"(\$MARKET_ID, vec { 0 : nat })\"" "Proposing market resolution with Yes as winner"
-
-# Step 9: Admin approving resolution
-section "Step 9: Admin approving resolution"
+# Step 9: Admin uses force_resolve_market to resolve market
+section "Step 9: Admin using force_resolve_market to resolve market"
 
 run_dfx "dfx identity use default" "Switching to default (admin) identity"
 run_dfx "DEFAULT_PRINCIPAL=\$(dfx identity get-principal)" "Getting Admin's principal"
 DEFAULT_PRINCIPAL=$(dfx identity get-principal)
-echo -e "${CMD_COLOR}Admin approving resolution...${RESET}"
-run_dfx "dfx canister call prediction_markets_backend resolve_via_admin \"(\$MARKET_ID, vec { 0 : nat })\"" "Admin confirming resolution"
+echo -e "${CMD_COLOR}Admin  using force_resolve_market to resolve market...${RESET}"
+run_dfx "dfx canister call prediction_markets_backend force_resolve_market \"(\$MARKET_ID, vec { 0 : nat })\"" "Admin using force_resolve_market to resolve market"
 
 # Step 10: Checking market status after resolution
 section "Step 10: Checking market status after resolution"

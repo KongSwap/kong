@@ -6,6 +6,9 @@ use serde::Serialize;
 // Re-export StorableNat for convenience
 pub use crate::nat::StorableNat;
 
+use ic_stable_structures::{storable::Bound, Storable};
+use std::borrow::Cow;
+
 // Core type aliases
 pub type MarketId = StorableNat;
 pub type Timestamp = StorableNat;
@@ -72,10 +75,13 @@ pub fn calculate_platform_fee(amount: &TokenAmount, token_id: &TokenIdentifier) 
     };
 
     let fee_percentage = token_info.fee_percentage;
-    let amount_u64 = amount.to_u64();
-    let fee_amount = (amount_u64 * fee_percentage) / 10000; // fee_percentage is in basis points (100 = 1%)
     
-    TokenAmount::from(fee_amount)
+    // Use arbitrary precision arithmetic instead of u64 to handle high-precision tokens like ckETH (18 decimals)
+    // First multiply by fee_percentage, then divide by 10000
+    let multiplied = amount.clone() * TokenAmount::from(fee_percentage);
+    let fee_amount = multiplied / 10000u64; // Division by u64 is supported
+    
+    fee_amount
 }
 
 /// Comprehensive details about a market's resolution and payout distribution
@@ -119,6 +125,18 @@ pub struct MarketResolutionDetails {
     pub distribution_details: Vec<BetDistributionDetail>,
     /// Any failed transactions that occurred during payout
     pub failed_transactions: Vec<FailedTransactionInfo>,
+}
+
+impl Storable for MarketResolutionDetails {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(serde_json::to_vec(self).unwrap())
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 /// Details about how a specific bet was paid out

@@ -39,6 +39,11 @@ export interface Market {
   token_id: string;
   category: MarketCategory;
   rules: string;
+  uses_time_weighting: boolean;
+  time_weight_alpha: number;
+  token_id: string;
+  image_url: string;
+  featured: boolean;
   resolved_by?: Principal;
   bet_counts: bigint[];
   featured: boolean;

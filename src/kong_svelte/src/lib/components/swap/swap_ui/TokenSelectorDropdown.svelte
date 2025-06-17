@@ -18,6 +18,7 @@
   import TokenItem from "./TokenItem.svelte";
   import { virtualScroll } from "$lib/utils/virtualScroll";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import { app } from "$lib/state/app.state.svelte";
   import AddNewTokenModal from "$lib/components/wallet/AddNewTokenModal.svelte";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
   import { loadUserBalances } from "$lib/services/balanceService";
@@ -66,7 +67,6 @@
   let selectorState = $state({
     dropdownElement: null as HTMLDivElement | null,
     hideZeroBalances: false,
-    isMobile: false,
     sortDirection: "desc",
     sortColumn: "value",
     standardFilter: "all" as FilterType,
@@ -77,6 +77,8 @@
     favoriteTokens: new Map<string, boolean>(),
     apiSearchResults: [] as Kong.Token[]
   });
+
+  let isMobile = $derived(app.isMobile);
 
   // Timers for debouncing
   let scrollDebounceTimer: ReturnType<typeof setTimeout>;
@@ -466,16 +468,6 @@
       void debouncedApiSearch(searchQuery);
     } else {
       selectorState.apiSearchResults = [];
-    }
-  });
-
-  $effect(() => {
-    // Mobile detection
-    if (browser) {
-      selectorState.isMobile = window.innerWidth <= 768;
-      const handleResize = () => selectorState.isMobile = window.innerWidth <= 768;
-      window.addEventListener("resize", handleResize);
-      return () => window.removeEventListener("resize", handleResize);
     }
   });
 

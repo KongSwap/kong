@@ -200,8 +200,7 @@ function createMarketStore() {
           statusFilter: statusFilter === 'all' ? undefined : apiStatusFilter
         });
         
-        // Just store the markets as they were returned from the backend
-        // without categorizing them
+        // Transform the markets from backend format to frontend format
         update(state => ({
           ...state,
           markets: (allMarketsResult.markets || []).map(market => ({

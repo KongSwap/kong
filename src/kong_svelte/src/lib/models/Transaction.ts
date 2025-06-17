@@ -1,9 +1,9 @@
 // TransactionSerializer.ts
 // Serializer for transaction data
 
-import { BaseSerializer } from './BaseSerializer';
+import { BaseModel } from './BaseModel';
 
-export class TransactionSerializer extends BaseSerializer {
+export class Transaction extends BaseModel {
   /**
    * Serializes the response from user transactions API
    * @param data - The raw API response
