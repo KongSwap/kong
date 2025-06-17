@@ -367,7 +367,7 @@
   });
 </script>
 
-<div class="relative flex flex-col w-full !max-w-[535px] mx-auto" in:fade={{ duration: 420 }}>
+<div class="relative flex flex-col w-full !max-w-[500px] mx-auto" in:fade={{ duration: 420 }}>
   <div class="relative flex flex-col gap-2 mb-2">
     <div class="relative flex flex-col min-h-[220px] sm:px-3 md:px-0">
       <!-- Doge image peeking only for Win98 theme -->
