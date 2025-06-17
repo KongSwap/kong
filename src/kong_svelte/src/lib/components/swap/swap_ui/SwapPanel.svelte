@@ -458,8 +458,7 @@
             inputmode="decimal"
             pattern="[0-9]*\\.?[0-9]*"
             placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent items-center border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary/50 placeholder:text-kong-text-primary/60 text-4xl md:text-4xl"
-            class:opacity-0={isLoading && panelType === "receive"}
+            class="flex-1 min-w-0 bg-transparent items-center border-none text-kong-text-primary font-medium tracking-tight w-full relative z-10 p-0 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary/50 placeholder:text-kong-text-primary/60 text-3xl lg:text-4xl {isLoading && panelType === 'receive' ? 'opacity-0' : 'opacity-85'}"
             value={localInputValue}
             on:input={handleInput}
             on:focus={handleFocus}
