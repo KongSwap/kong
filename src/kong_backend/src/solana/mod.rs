@@ -7,3 +7,4 @@ pub mod sdk;
 pub mod signature_verification;
 pub mod transaction;
 pub mod transaction_types;
+pub mod utils;

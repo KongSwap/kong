@@ -9,6 +9,7 @@ use crate::solana::error::SolanaError;
 use crate::solana::network::{MEMO_PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID};
 use crate::solana::sdk::account_meta::AccountMeta;
 use crate::solana::sdk::instruction::Instruction;
+use crate::solana::utils::validation;
 use crate::stable_memory::with_solana_latest_blockhash;
 
 /// Transaction instructions ready for signing
@@ -68,9 +69,7 @@ impl TransactionBuilder {
         memo: Option<String>,
     ) -> Result<TransactionInstructions> {
         // Validate addresses
-        if from_address.is_empty() || to_address.is_empty() {
-            Err(SolanaError::InvalidPublicKeyFormat("Invalid address for SOL transfer".to_string()))?
-        }
+        validation::validate_addresses(&[from_address, to_address])?;
 
         // Create the transfer instructions
         let transfer_instruction = self.create_transfer_sol_instruction(from_address, to_address, lamports)?;
@@ -140,9 +139,7 @@ impl TransactionBuilder {
         memo: Option<String>,
     ) -> Result<TransactionInstructions> {
         // Validate addresses
-        if owner_address.is_empty() || from_token_account.is_empty() || to_token_account.is_empty() {
-            Err(SolanaError::InvalidPublicKeyFormat("Invalid address for SPL transfer".to_string()))?
-        }
+        validation::validate_addresses(&[owner_address, from_token_account, to_token_account])?;
 
         // Create the transfer instructions
         let token_transfer_instruction =

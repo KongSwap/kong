@@ -6,6 +6,7 @@ use std::fmt;
 use crate::ic::management_canister::ManagementCanister;
 
 use super::error::SolanaError;
+use super::utils::base58;
 
 // Known program IDs on Solana network
 pub const SYSTEM_PROGRAM_ID: &str = "11111111111111111111111111111111";
@@ -31,19 +32,12 @@ impl fmt::Display for SolanaNetwork {
 
 impl SolanaNetwork {
     pub fn bs58_encode_public_key(public_key: &[u8]) -> String {
-        bs58::encode(public_key).into_string()
+        base58::encode(public_key)
     }
 
     pub fn bs58_decode_public_key(public_key: &str) -> Result<[u8; 32]> {
-        let public_key = bs58::decode(public_key)
-            .into_vec()
-            .map_err(|_| SolanaError::InvalidPublicKeyFormat("Invalid public key format.".to_string()))?;
-
-        let validated_public_key = SolanaNetwork::validate_public_key(&public_key)?;
-
-        let mut arr = [0u8; 32];
-        arr.copy_from_slice(&validated_public_key);
-        Ok(arr)
+        base58::decode_public_key(public_key)
+            .map_err(|e| e.into())
     }
 
     pub async fn get_public_key(canister: &Principal) -> Result<String> {

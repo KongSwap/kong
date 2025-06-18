@@ -22,8 +22,10 @@ pub fn verify_ed25519_signature(
         return Err(SolanaError::InvalidSignature("Signature must be 64 bytes".to_string()).into());
     }
     
-    // Create signature from bytes
-    let signature = Signature::from_bytes(signature.try_into().unwrap());
+    // Create signature from bytes - handle conversion error properly
+    let signature_array: [u8; 64] = signature.try_into()
+        .map_err(|_| SolanaError::InvalidSignature("Failed to convert signature to 64-byte array".to_string()))?;
+    let signature = Signature::from_bytes(&signature_array);
     
     // Verify the signature
     Ok(verifying_key.verify(message, &signature).is_ok())
