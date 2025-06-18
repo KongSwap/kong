@@ -6,8 +6,8 @@ use std::borrow::Cow;
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Copy)]
 pub enum SwapJobStatus {
     PendingVerification, // Payment verification in progress
-    Pending,    // Job created, awaiting processing by ws_proxy
-    Confirmed,  // Confirmed by ws_proxy as successful on Solana
+    Pending,    // Job created, awaiting processing by kong_rpc
+    Confirmed,  // Confirmed by kong_rpc as successful on Solana
     Failed,     // Failed (either Solana tx failed, or an internal error)
 }
 
@@ -61,17 +61,17 @@ pub struct SwapJob {
     pub encoded_signed_solana_tx: String, 
     pub solana_tx_signature_of_payout: Option<String>,
     pub error_message: Option<String>,
-    pub attempts: u32, // For ws_proxy retry logic
+    pub attempts: u32, // For kong_rpc retry logic
     pub tx_sig: String, // Transaction signature computed at signing time
 }
 
 impl Storable for SwapJob {
     fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(serde_json::to_vec(self).expect("Failed to serialize SwapJob"))
+        serde_cbor::to_vec(self).expect("Failed to encode SwapJob").into()
     }
 
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        serde_json::from_slice(bytes.as_ref()).expect("Failed to deserialize SwapJob")
+        serde_cbor::from_slice(&bytes).expect("Failed to decode SwapJob")
     }
     const BOUND: Bound = Bound::Unbounded; 
 }

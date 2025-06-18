@@ -13,12 +13,11 @@ pub struct TransactionNotification {
 
 impl Storable for TransactionNotification {
     fn to_bytes(&self) -> Cow<[u8]> {
-        let bytes = candid::encode_one(self).expect("Failed to encode TransactionNotification");
-        Cow::Owned(bytes)
+        serde_cbor::to_vec(self).expect("Failed to encode TransactionNotification").into()
     }
 
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        candid::decode_one(&bytes).expect("Failed to decode TransactionNotification")
+        serde_cbor::from_slice(&bytes).expect("Failed to decode TransactionNotification")
     }
 
     const BOUND: Bound = Bound::Unbounded;

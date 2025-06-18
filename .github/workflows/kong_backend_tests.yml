@@ -12,6 +12,7 @@ jobs:
 
     env:
       CARGO_TERM_COLOR: always
+      GREP_OPTIONS: ""
 
     steps:
       - name: Checkout repository

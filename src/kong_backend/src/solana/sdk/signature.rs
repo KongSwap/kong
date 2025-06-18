@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::str::FromStr;
 
 use crate::solana::error::SolanaError;
+use crate::solana::utils::base58;
 
 /// Number of bytes in a signature
 pub const SIGNATURE_BYTES: usize = 64;
@@ -32,16 +33,7 @@ impl FromStr for Signature {
                 "Signature is wrong size".to_string(),
             ));
         }
-        let mut bytes = [0; SIGNATURE_BYTES];
-        let decoded_size = bs58::decode(s).onto(&mut bytes).map_err(|_| {
-            SolanaError::InvalidSignature("Signature is wrong base58 format".to_string())
-        })?;
-        if decoded_size != SIGNATURE_BYTES {
-            return Err(SolanaError::InvalidSignature(
-                "Signature is wrong size".to_string(),
-            ));
-        }
-
+        let bytes = base58::decode_signature(s)?;
         Ok(Signature(bytes))
     }
 }
