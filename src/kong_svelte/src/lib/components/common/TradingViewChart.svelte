@@ -37,14 +37,15 @@
     selectedPoolId: props.poolId,
     currentTheme: $themeStore,
     currentPrice: 0,
-    selectedPool: undefined as BE.Pool | undefined,
-    routingPath: [] as string[],
     previousTokenIds: {
       quote: undefined as string | undefined,
       base: undefined as string | undefined
     },
-    pools: [] as BE.Pool[]
   });
+
+  const pools = $derived($livePools || []) as BE.Pool[];
+  const selectedPool = $derived(pools.find(p => Number(p.pool_id) === state.selectedPoolId));
+  const routingPath = $derived(selectedPool ? [selectedPool.symbol_0, selectedPool.symbol_1] : []);
   
   // Error handler for TradingView errors
   const handleTradingViewError = (e: ErrorEvent) => {
@@ -57,11 +58,6 @@
 
   // Function to update TradingView CSS variables when theme changes
   const updateTradingViewTheme = () => applyTradingViewTheme(chart);
-
-  // Effects
-  $effect(() => {
-    state.pools = ($livePools || []) as BE.Pool[];
-  });
   
   $effect(() => {
     state.currentTheme = $themeStore;
@@ -78,12 +74,6 @@
         updateTradingViewTheme();
       }
     }
-  });
-  
-  // Update selected pool and routing path
-  $effect(() => {
-    state.selectedPool = state.pools.find(p => Number(p.pool_id) === state.selectedPoolId);
-    state.routingPath = state.selectedPool ? [state.selectedPool.symbol_0, state.selectedPool.symbol_1] : [];
   });
   
   // Update price from selected pool
@@ -260,17 +250,12 @@
       state.hasNoData = false;
 
       // Make sure we have pools data before trying to find the best pool
-      if (state.pools.length === 0) {
+      if (pools.length === 0) {
         // Wait briefly for pools to load if they're empty
         if ($livePools.length === 0) {
           await new Promise(resolve => setTimeout(resolve, 300));
-          // Update pools from store after waiting
-          state.pools = ($livePools || []) as BE.Pool[];
-        } else {
-          state.pools = ($livePools || []) as BE.Pool[];
         }
       }
-
       // Get best pool
       let bestPool: { pool_id: number } | null = null;
       
@@ -278,7 +263,7 @@
         bestPool = findBestPoolForTokens(
           props.quoteToken, 
           props.baseToken, 
-          state.pools, 
+          pools, 
           state.selectedPoolId
         );
         
@@ -293,7 +278,7 @@
         console.warn("[Chart] No valid pool found for tokens", {
           quoteToken: props.quoteToken?.id,
           baseToken: props.baseToken?.id,
-          availablePools: state.pools.length
+          availablePools: pools.length
         });
         state.hasNoData = true;
         state.isLoading = false;
@@ -381,34 +366,9 @@
       });
     }
     
-    // Function to ensure pools are loaded
-    const ensurePoolsLoaded = async () => {
-      // Ensure we have initial data and wait for pools to load if needed
-      if (state.pools.length === 0 && $livePools.length === 0) {
-        // Wait for pools data to be available 
-        await new Promise<boolean>(resolve => {
-          const unsubscribe = livePools.subscribe(pools => {
-            if (pools && pools.length > 0) {
-              state.pools = pools as BE.Pool[];
-              unsubscribe();
-              resolve(true);
-            }
-          });
-          
-          // Also set a timeout in case pools never load
-          setTimeout(() => {
-            unsubscribe();
-            resolve(false);
-          }, 5000);
-        });
-      } else {
-        state.pools = ($livePools || []) as BE.Pool[];
-      }
-    };
-    
     // Initialize the chart with data
     const initializeChart = async () => {
-      await ensurePoolsLoaded();
+      // await ensurePoolsLoaded();
       
       if ((props.quoteToken && props.baseToken) || props.poolId) {
         state.selectedPoolId = props.poolId;
@@ -466,7 +426,7 @@
   });
 </script>
 
-<div class="chart-wrapper h-full" bind:this={chartWrapper}>
+<div class="chart-wrapper-inside h-full" bind:this={chartWrapper}>
   <div class="chart-container h-full w-full relative" bind:this={chartContainer}>
     {#if state.hasNoData}
       <div class="absolute inset-0 bg-transparent flex flex-col items-center justify-center p-4 text-center">
@@ -514,17 +474,18 @@
           ></path>
         </svg>
       </div>
-    {:else if state.routingPath.length > 1}
+    {:else if routingPath.length > 1}
       <div class="absolute top-0 left-0 p-2 bg-kong-bg-primary bg-opacity-50 text-kong-text-primary text-sm rounded m-2">
-        Note: Showing chart for {state.routingPath[0]} → {state.routingPath[1]} pool
+        Note: Showing chart for {routingPath[0]} → {routingPath[1]} pool
       </div>
     {/if}
   </div>
 </div>
 
 <style scoped lang="postcss">
-  .chart-wrapper {
+  .chart-wrapper-inside {
     position: relative;
+    display: flex;
     width: 100%;
     height: 100%;
     min-height: 250px;
@@ -543,11 +504,11 @@
   }
 
   /* Update loading and no-data states to use theme colors */
-  .chart-wrapper :global(.loading-indicator) {
+  .chart-wrapper-inside :global(.loading-indicator) {
     @apply text-kong-text-primary;
   }
 
-  .chart-wrapper :global(.no-data-message) {
+  .chart-wrapper-inside :global(.no-data-message) {
     @apply text-kong-text-secondary;
   }
 </style>
