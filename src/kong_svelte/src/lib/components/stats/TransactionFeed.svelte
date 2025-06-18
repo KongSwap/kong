@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { browser } from "$app/environment";
   import Panel from "$lib/components/common/Panel.svelte";
   import { fetchTransactions } from "$lib/api/transactions";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
@@ -29,7 +28,6 @@
   const pageSize = 20;
   const loadingManager = new LoadingStateManager();
   let isLoading = $derived(loadingManager.isAnyLoading());
-  let mobile = $derived(browser ? window.innerWidth < 768 : false);
 
   // Load tokens on mount
   async function loadTokens() {
@@ -157,16 +155,7 @@
 </script>
 
 <Panel type="main" {className}>
-  <div class="flex flex-col gap-4">
-    <!-- Header -->
-    <h2 class="text-sm font-semibold uppercase px-4 pt-4">
-      <div class="grid grid-cols-2 gap-x-8">
-        <div class="text-kong-text-primary tracking-wider">Transaction</div>
-        <div class="text-kong-text-primary tracking-wider text-right">
-          Value
-        </div>
-      </div>
-    </h2>
+  <div class="flex flex-col gap-4 h-full">
     {#if isLoading && !transactions.length}
       <div class="flex justify-center items-center p-6 flex-1">
         <span class="loading loading-spinner loading-md" />
@@ -180,58 +169,99 @@
         No transactions found
       </div>
     {:else}
-      <div class="flex-1 overflow-hidden">
-        <div class="h-full overflow-y-auto overflow-x-hidden">
-          <div class="h-[400px]">
-            {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto?.randomUUID())}
-              <TransactionFeedItem
-                {tx}
-                {token}
-                tokens={$tokensStore}
-                isHighlighted={newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : "")}
-                {mobile}
-              />
-            {/each}
-          </div>
-
-          <!-- Load More Trigger -->
-          {#if hasMore}
-            <div
-              bind:this={loadMoreTrigger}
-              use:setupIntersectionObserver
-              class="flex justify-center p-4 border-t border-kong-border/10"
-            >
-              {#if loadingManager.isLoading('pagination')}
-                <span class="loading loading-spinner loading-sm" />
-              {:else}
-                <span class="text-kong-text-primary/50 text-xs uppercase tracking-wider font-medium">
-                  Load more
-                </span>
-              {/if}
-            </div>
-          {/if}
+      <div class="flex-1 overflow-auto">
+        <div class="min-w-max h-[400px] overflow-auto">
+          <table class="w-full">
+            <thead class="sticky top-0 bg-kong-bg-primary/95 backdrop-blur-sm border-b border-kong-border/20">
+              <tr>
+                <th class="px-2 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
+                  Age
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
+                  Type
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
+                  Price
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
+                  Value
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
+                  {token.symbol}
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider w-[80px]">
+                  Trader
+                </th>
+                <th class="px-4 py-3 w-20"></th> <!-- Actions column without header -->
+              </tr>
+            </thead>
+            <tbody>
+              {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto?.randomUUID())}
+                <TransactionFeedItem
+                  {tx}
+                  {token}
+                  tokens={$tokensStore}
+                  isHighlighted={newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : "")}
+                />
+              {/each}
+            </tbody>
+          </table>
         </div>
+
+        <!-- Load More Trigger -->
+        {#if hasMore}
+          <div
+            bind:this={loadMoreTrigger}
+            use:setupIntersectionObserver
+            class="flex justify-center p-4 border-t border-kong-border/10"
+          >
+            {#if loadingManager.isLoading('pagination')}
+              <span class="loading loading-spinner loading-sm" />
+            {:else}
+              <span class="text-kong-text-primary/50 text-xs uppercase tracking-wider font-medium">
+                Load more
+              </span>
+            {/if}
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
 </Panel>
 
 <style>
-  /* Custom scrollbar styling to match other components */
-  :global(.overflow-y-auto::-webkit-scrollbar) {
-    width: 4px;
+  /* Custom scrollbar styling */
+  :global(.overflow-auto::-webkit-scrollbar) {
+    width: 6px;
+    height: 6px;
   }
 
-  :global(.overflow-y-auto::-webkit-scrollbar-track) {
+  :global(.overflow-auto::-webkit-scrollbar-track) {
     background: transparent;
   }
 
-  :global(.overflow-y-auto::-webkit-scrollbar-thumb) {
+  :global(.overflow-auto::-webkit-scrollbar-thumb) {
     background-color: rgba(156, 163, 175, 0.3);
-    border-radius: 4px;
+    border-radius: 3px;
   }
 
-  :global(.overflow-y-auto::-webkit-scrollbar-thumb:hover) {
+  :global(.overflow-auto::-webkit-scrollbar-thumb:hover) {
     background-color: rgba(156, 163, 175, 0.5);
+  }
+
+  :global(.overflow-auto::-webkit-scrollbar-corner) {
+    background: transparent;
+  }
+
+  /* Table styling */
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 </style>
