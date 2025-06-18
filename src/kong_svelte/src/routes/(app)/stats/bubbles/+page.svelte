@@ -583,42 +583,47 @@
               {changePercent.toFixed(2)}%
             </div>
           </div>
-          
-          {#if isHovered}
-            <div class="tooltip">
-              <div class="tooltip-header">
-                <div class="tooltip-symbol">{token.symbol}</div>
-                {#if token.metrics?.price}
-                  <div class="tooltip-price">{formatCurrency(token.metrics?.price)}</div>
-                {/if}
-              </div>
-              
-              {#if token.metrics?.price_change_24h}
-                <div class="tooltip-change {changePercent >= 0 ? 'positive' : 'negative'}">
-                  {changePercent >= 0 ? '↗' : '↘'} {Math.abs(changePercent).toFixed(2)}% (24h)
-                </div>
-              {/if}
-
-              <div class="tooltip-divider"></div>
-              
-              <div class="tooltip-metrics">
-                {#each [
-                  { key: 'volume_24h', label: 'Volume (24h)', value: token.metrics?.volume_24h },
-                  { key: 'tvl', label: 'TVL', value: token.metrics?.tvl }
-                ] as metric}
-                  {#if metric.value}
-                    <div class="tooltip-row">
-                      <span class="metric-label">{metric.label}:</span>
-                      <span class="metric-value">{formatCurrency(metric.value)}</span>
-                    </div>
-                  {/if}
-                {/each}
-              </div>
-            </div>
-          {/if}
         </div>
       {/if}
     {/each}
+  {/if}
+  
+  <!-- Fixed tooltip outside of bubble loop -->
+  {#if hoveredToken}
+    {@const hoveredTokenData = tokens.find(t => t.address === hoveredToken)}
+    {#if hoveredTokenData}
+      {@const changePercent = getChangePercent(hoveredTokenData.metrics?.price_change_24h)}
+      <div class="tooltip">
+        <div class="flex justify-between items-center mb-2">
+          <div class="text-lg font-extrabold text-kong-text-primary">{hoveredTokenData.symbol}</div>
+          {#if hoveredTokenData.metrics?.price}
+            <div class="text-base font-bold text-kong-text-primary">{formatCurrency(hoveredTokenData.metrics?.price)}</div>
+          {/if}
+        </div>
+        
+        {#if hoveredTokenData.metrics?.price_change_24h}
+          <div class="text-sm font-semibold px-2 py-1 rounded-lg text-center mb-2 {changePercent >= 0 ? 'bg-kong-success/10 text-kong-success' : 'bg-kong-error/10 text-kong-error'}">
+            {changePercent >= 0 ? '↗' : '↘'} {Math.abs(changePercent).toFixed(2)}% (24h)
+          </div>
+        {/if}
+
+        <div class="h-px bg-kong-border my-3"></div>
+        
+        <div class="mb-2">
+          {#each [
+            { key: 'volume_24h', label: 'Volume (24h)', value: hoveredTokenData.metrics?.volume_24h },
+            { key: 'tvl', label: 'TVL', value: hoveredTokenData.metrics?.tvl }
+          ] as metric}
+            {#if metric.value}
+              <div class="flex justify-between items-center mb-2 last:mb-0">
+                <span class="text-xs text-kong-text-muted font-medium">{metric.label}:</span>
+                <span class="text-sm font-bold text-kong-text-primary">{formatCurrency(metric.value)}</span>
+              </div>
+            {/if}
+          {/each}
+        </div>
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -754,7 +759,6 @@
 
   .token-symbol {
     font-weight: 700;
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
     letter-spacing: -0.02em;
     white-space: nowrap;
     overflow: hidden;
@@ -766,119 +770,41 @@
   .price-change {
     font-weight: 600;
     opacity: 0.9;
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
     white-space: nowrap;
     flex-shrink: 0;
   }
 
   .tooltip {
-    position: absolute;
-    top: 110%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(255, 255, 255, 0.98);
-    border: 2px solid rgba(0, 0, 0, 0.1);
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgb(var(--bg-secondary) / 0.98);
+    border: 2px solid rgb(var(--ui-border) / 0.8);
     border-radius: 16px;
     padding: 16px;
     backdrop-filter: blur(20px);
     box-shadow: 
-      0 20px 50px rgba(0, 0, 0, 0.15),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+      0 20px 50px rgb(var(--bg-primary) / 0.3),
+      0 0 0 1px rgb(var(--ui-border-light) / 0.5);
     z-index: 1000;
     min-width: 220px;
-    color: rgb(var(--text-primary));
+    max-width: 280px;
     animation: tooltipIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
   }
 
   @keyframes tooltipIn {
     from { 
       opacity: 0; 
-      transform: translate(-50%, -20px) scale(0.8); 
+      transform: translateX(20px) scale(0.8); 
     }
     to { 
       opacity: 1; 
-      transform: translate(-50%, 0) scale(1); 
+      transform: translateX(0) scale(1); 
     }
   }
 
-  .tooltip-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
 
-  .tooltip-symbol {
-    font-size: 18px;
-    font-weight: 800;
-    color: #1f2937;
-  }
-
-  .tooltip-price {
-    font-size: 16px;
-    font-weight: 700;
-    color: #374151;
-  }
-
-  .tooltip-change {
-    font-size: 14px;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 8px;
-    text-align: center;
-    margin-bottom: 8px;
-  }
-
-  .tooltip-change.positive {
-    background: rgba(16, 185, 129, 0.1);
-    color: #047857;
-  }
-
-  .tooltip-change.negative {
-    background: rgba(220, 38, 38, 0.1);
-    color: #dc2626;
-  }
-
-  .tooltip-divider {
-    height: 1px;
-    background: rgba(0, 0, 0, 0.1);
-    margin: 12px 0;
-  }
-
-  .tooltip-metrics {
-    margin-bottom: 8px;
-  }
-
-  .tooltip-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-
-  .tooltip-row:last-child {
-    margin-bottom: 0;
-  }
-
-  .metric-label {
-    font-size: 13px;
-    color: #6b7280;
-    font-weight: 500;
-  }
-
-  .metric-value {
-    font-size: 14px;
-    font-weight: 700;
-    color: #1f2937;
-  }
-
-  .tooltip-footer {
-    font-size: 11px;
-    color: #9ca3af;
-    text-align: center;
-    margin-top: 8px;
-    font-style: italic;
-  }
 
   .controls {
     position: absolute;
@@ -966,7 +892,15 @@
   @media (max-width: 768px) {
     .bubble:hover { transform: none; }
     .bubble:active { transform: scale(1.05); }
-    .tooltip, .controls { display: none; }
+    .controls { display: none; }
+    
+    .tooltip {
+      bottom: 10px;
+      right: 10px;
+      left: 10px;
+      min-width: auto;
+      max-width: none;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
