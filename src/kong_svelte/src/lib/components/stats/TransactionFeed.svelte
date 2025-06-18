@@ -169,7 +169,6 @@
         No transactions found
       </div>
     {:else}
-      <div class="flex-1 overflow-auto">
         <div class="min-w-max h-[400px] overflow-auto">
           <table class="w-full">
             <thead class="sticky top-0 bg-kong-bg-primary/95 backdrop-blur-sm border-b border-kong-border/20">
@@ -224,7 +223,6 @@
             {/if}
           </div>
         {/if}
-      </div>
     {/if}
   </div>
 </Panel>

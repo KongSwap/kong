@@ -16,9 +16,6 @@
   let isChartMinimized = false;
   let isMobile = $derived(app.isMobile);
 
-  // Add new state for mobile tabs
-  let activeTab: 'swap' | 'chart' = $state('swap');
-
   // Get the pool based on selected tokens
   let selectedPool = $derived($livePools?.find(p => {
     if (!fromToken?.address || !toToken?.address) return null;
@@ -40,68 +37,7 @@
 
 <div class="swap-pro-container">
   <div class="layout-container">
-    {#if isMobile}
-      <!-- Mobile Tab Navigation -->
-      <div class="mobile-tabs">
-        <button 
-          class="tab-button" 
-          class:active={activeTab === 'swap'}
-          onclick={() => activeTab = 'swap'}
-        >
-          Swap
-        </button>
-        <button 
-          class="tab-button" 
-          class:active={activeTab === 'chart'}
-          onclick={() => activeTab = 'chart'}
-        >
-          Chart
-        </button>
-      </div>
-
-      <!-- Mobile Tab Content -->
-      {#if activeTab === 'chart'}
-        <div class="mobile-chart-section">
-          <Panel
-            variant="transparent"
-            type="main"
-            className="chart-area !p-0"
-            width="100%"
-          >
-            <div class="chart-wrapper !p-0" class:minimized={isChartMinimized}>
-              {#if baseToken && quoteToken}
-                <TradingViewChart 
-                  poolId={selectedPool ? Number(selectedPool.pool_id) : undefined}
-                  quoteToken={quoteToken}
-                  baseToken={baseToken}
-                />
-              {:else}
-                <div class="flex items-center justify-center h-full text-white">
-                  Select tokens to view chart
-                </div>
-              {/if}
-            </div>
-          </Panel>
-          <TransactionFeed token={toToken} className="transaction-feed !p-0" />
-        </div>
-      {:else}
-        <div class="mobile-swap-section">
-          <div class="swap-section">
-            <Swap
-              on:modeChange
-              on:tokenChange={handleTokenChange}
-            />
-          </div>
-          <div class="token-info-section">
-            <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} />
-          </div>
-        </div>
-      {/if}
-    {:else}
-      <!-- Existing desktop layout -->
       <div class="main-content">
-        <div class="left-section">
-          <!-- Chart Area -->
           <Panel
             variant="transparent"
             type="main"
@@ -122,27 +58,13 @@
               {/if}
             </div>
           </Panel>
-
-          <!-- Transaction Feed -->
           <TransactionFeed token={toToken} className="transaction-feed !p-0" />
-        </div>
-
-        <div class="right-section">
-          <!-- Swap interface -->
-          <div class="swap-section">
-            <Swap
-              on:modeChange
-              on:tokenChange={handleTokenChange}
-            />
-          </div>
-          
-          <!-- Token Info section -->
-          <div class="token-info-section">
-            <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} />
-          </div>
-        </div>
+          <Swap
+            on:modeChange
+            on:tokenChange={handleTokenChange}
+          />
+          <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} />
       </div>
-    {/if}
   </div>
 </div>
 
