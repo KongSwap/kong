@@ -5,27 +5,16 @@ use candid::{CandidType, Nat};
 use icrc_ledger_types::icrc1::account::Account;
 use serde::Deserialize;
 
-pub type Balance = Nat;
-
-pub type TxIndex = Nat;
-pub type Timestamp = u64;
+pub type Balance1 = Nat;
+pub type TxIndex1 = Nat;
+pub type Timestamp1 = u64;
 
 #[derive(CandidType, Deserialize)]
-pub struct Burn {
+pub struct Burn1 {
     pub from: Account,
     pub memo: Option<serde_bytes::ByteBuf>,
     pub created_at_time: Option<u64>,
-    pub amount: Balance,
-}
-
-#[derive(CandidType, Deserialize)]
-pub struct Transaction1 {
-    pub burn: Option<Burn>,
-    pub kind: String,
-    pub mint: Option<Mint1>,
-    pub timestamp: Timestamp,
-    pub index: TxIndex,
-    pub transfer: Option<Transfer>,
+    pub amount: Balance1,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -33,14 +22,24 @@ pub struct Mint1 {
     pub to: Account,
     pub memo: Option<serde_bytes::ByteBuf>,
     pub created_at_time: Option<u64>,
-    pub amount: Balance,
+    pub amount: Balance1,
 }
 #[derive(CandidType, Deserialize)]
-pub struct Transfer {
+pub struct Transfer1 {
     pub to: Account,
-    pub fee: Option<Balance>,
+    pub fee: Option<Balance1>,
     pub from: Account,
     pub memo: Option<serde_bytes::ByteBuf>,
     pub created_at_time: Option<u64>,
-    pub amount: Balance,
+    pub amount: Balance1,
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct Transaction1 {
+    pub burn: Option<Burn1>,
+    pub kind: String,
+    pub mint: Option<Mint1>,
+    pub timestamp: Timestamp1,
+    pub index: TxIndex1,
+    pub transfer: Option<Transfer1>,
 }

@@ -661,6 +661,12 @@ service : {
 
     // Solana functions
     get_solana_address : () -> (variant { Ok : text; Err : text }) query;
+    
+    // Solana proxy endpoints (called by kong_rpc)
+    notify_solana_transfer : (text, opt text) -> (variant { Ok; Err : text });
+    update_solana_latest_blockhash : (text) -> (variant { Ok; Err : text });
+    update_solana_swap : (nat64, text, bool, opt text) -> (variant { Ok; Err : text });
+    cleanup_expired_solana_jobs : () -> (variant { Ok : nat32; Err : text });
 
     // admin functions
     check_pools : () -> (CheckPoolsResult);

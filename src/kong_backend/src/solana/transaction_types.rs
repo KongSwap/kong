@@ -46,28 +46,28 @@ pub struct SolanaTransaction {
 
     // Timestamp when the transaction was last updated
     pub updated_at: u64,
-    
+
     // Transaction amount (from RPC)
     pub amount: Option<u64>,
-    
+
     // Transaction fee (from RPC)
     pub fee: Option<u64>,
-    
+
     // Sender address (from RPC)
     pub sender: Option<String>,
-    
+
     // Receiver address (from RPC)
     pub receiver: Option<String>,
-    
+
     // Transaction direction (Incoming, Outgoing, Self)
     pub direction: Option<String>,
-    
+
     // Transaction timestamp from Solana (from blockTime)
     pub transaction_time: Option<String>,
-    
+
     // Transaction instruction type
     pub instruction_type: Option<String>,
-    
+
     // Balance change amount if available
     pub balance_change: Option<u64>,
 
@@ -76,15 +76,13 @@ pub struct SolanaTransaction {
 }
 
 impl Storable for SolanaTransaction {
-    const BOUND: Bound = Bound::Unbounded;
-
     fn to_bytes(&self) -> Cow<[u8]> {
-        serde_cbor::to_vec(self)
-            .expect("Failed to encode SolanaTransaction")
-            .into()
+        serde_cbor::to_vec(self).expect("Failed to encode SolanaTransaction").into()
     }
 
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
         serde_cbor::from_slice(&bytes).expect("Failed to decode SolanaTransaction")
     }
+
+    const BOUND: Bound = Bound::Unbounded;
 }

@@ -30,10 +30,10 @@ use crate::stable_user::principal_id_map::create_principal_id_map;
 use crate::swap::swap_args::SwapArgs;
 
 use super::kong_backend::KongBackend;
+use super::stable_memory::get_cached_solana_address;
 use super::{APP_NAME, APP_VERSION};
 
 // list of query calls
-// a bit hard-coded but shouldn't change often
 static QUERY_METHODS: [&str; 12] = [
     "icrc1_name",
     "icrc10_supported_standards",
@@ -51,7 +51,7 @@ static QUERY_METHODS: [&str; 12] = [
 
 #[init]
 async fn init() {
-    ICNetwork::info_log(&format!("{} canister has been initialized", APP_NAME));
+    ICNetwork::info_log(&format!("{} canister is being initialized", APP_NAME));
 
     create_principal_id_map();
 
@@ -60,16 +60,27 @@ async fn init() {
 
 #[pre_upgrade]
 fn pre_upgrade() {
-    ICNetwork::info_log(&format!("{} canister is upgrading", APP_NAME));
+    ICNetwork::info_log(&format!("{} canister is being upgraded", APP_NAME));
 }
 
 #[post_upgrade]
 async fn post_upgrade() {
+    ICNetwork::info_log(&format!("{} canister has been upgraded", APP_NAME));
+
     create_principal_id_map();
 
-    set_timer_processes().await;
+    // Check if Solana address is cached
+    // NOTE: We cannot make inter-canister calls in post_upgrade, even with spawn
+    // The verification must be done by calling cache_solana_address() after upgrade
+    let cached_solana_address = get_cached_solana_address();
+    if !cached_solana_address.is_empty() {
+        ICNetwork::info_log(&format!("Solana address: {}", cached_solana_address));
+    } else {
+        ICNetwork::error_log("No cached Solana address found");
+        ICNetwork::error_log("REQUIRED: Call cache_solana_address() to initialize it");
+    }
 
-    ICNetwork::info_log(&format!("{} canister is upgraded", APP_NAME));
+    set_timer_processes().await;
 }
 
 async fn set_timer_processes() {

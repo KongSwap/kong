@@ -28,12 +28,8 @@ pub fn is_icp_token_id(token_id: u32) -> bool {
 
 pub fn is_icp(token: &str) -> bool {
     let kong_settings = kong_settings_map::get();
-    if token == kong_settings.icp_symbol
+    token == kong_settings.icp_symbol
         || token == kong_settings.icp_symbol_with_chain
         || token == kong_settings.icp_address
         || token == kong_settings.icp_address_with_chain
-    {
-        return true;
-    }
-    false
 }

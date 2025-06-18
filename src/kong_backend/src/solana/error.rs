@@ -42,6 +42,12 @@ pub enum SolanaError {
 
     #[error("Blockhash error: {0}")]
     BlockhashError(String),
+    
+    #[error("Invalid blockhash: {0}")]
+    InvalidBlockhash(String),
+    
+    #[error("Signing error: {0}")]
+    SigningError(String),
 
     #[error("Invalid message signing: {0}")]
     InvalidMessageSigning(String),

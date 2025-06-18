@@ -14,7 +14,7 @@ const SIGN_WITH_SCHNORR_CYCLES: u64 = 26_153_846_153; // Adjust cycles as needed
 static DERIVATION_PATH: OnceLock<Vec<Vec<u8>>> = OnceLock::new();
 static ED25519_KEY_NAME: OnceLock<String> = OnceLock::new();
 
-pub struct ManagementCanister {}
+pub struct ManagementCanister;
 
 impl ManagementCanister {
     /// Retrieves a random seed from the IC's management canister.

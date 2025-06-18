@@ -1,0 +1,3 @@
+[submodule "kong_rpc"]
+	path = kong_rpc
+	url = git@github.com:KongSwap/kong_rpc.git

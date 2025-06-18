@@ -33,6 +33,7 @@ pub const CACHED_SOLANA_ADDRESS_ID: MemoryId = MemoryId::new(60);
 pub const SOLANA_LATEST_BLOCKHASH_ID: MemoryId = MemoryId::new(61);
 pub const NEXT_SOLANA_SWAP_JOB_ID_ID: MemoryId = MemoryId::new(62);
 pub const SOLANA_SWAP_JOB_QUEUE_ID: MemoryId = MemoryId::new(63);
+pub const SOLANA_TX_NOTIFICATIONS_ID: MemoryId = MemoryId::new(64);
 // Archives
 pub const TX_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(204);
 pub const REQUEST_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(205);
@@ -135,7 +136,7 @@ thread_local! {
 }
 
 /// A helper function to access the memory manager.
-fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
+pub fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
     MEMORY_MANAGER.with(|cell| f(&cell.borrow()))
 }
 
