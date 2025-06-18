@@ -7,71 +7,35 @@
   import { swapState } from "$lib/stores/swapStateStore";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import TokenInfoEnhanced from "./TokenInfoEnhanced.svelte";
+  import { app } from "$lib/state/app.state.svelte";
 
-  export let initialFromToken: Kong.Token | null = null;
-  export let initialToToken: Kong.Token | null = null;
+  let { initialFromToken, initialToToken } = $props<{ initialFromToken: Kong.Token | null, initialToToken: Kong.Token | null }>();
 
-  let fromToken = initialFromToken;
-  let toToken = initialToToken;
+  let fromToken = $derived($swapState.payToken || initialFromToken);
+  let toToken = $derived($swapState.receiveToken || initialToToken);
   let isChartMinimized = false;
-  let isMobile: boolean;
+  let isMobile = $derived(app.isMobile);
 
   // Add new state for mobile tabs
-  let activeTab: 'swap' | 'chart' = 'swap';
-
-  // Initialize tokens from swapState immediately when component loads
-  $: {
-    fromToken = $swapState.payToken || initialFromToken;
-    toToken = $swapState.receiveToken || initialToToken;
-  }
-
-  // Watch for swapState changes
-  $: {
-    if ($swapState.payToken) fromToken = $swapState.payToken;
-    if ($swapState.receiveToken) toToken = $swapState.receiveToken;
-  }
+  let activeTab: 'swap' | 'chart' = $state('swap');
 
   // Get the pool based on selected tokens
-  $: selectedPool = $livePools?.find(p => {
+  let selectedPool = $derived($livePools?.find(p => {
     if (!fromToken?.address || !toToken?.address) return null;
     
     return (p.address_0 === fromToken.address && p.address_1 === toToken.address) ||
            (p.address_1 === fromToken.address && p.address_0 === toToken.address);
-  });
+  }));
 
-  let baseToken: Kong.Token | null = null;
-  let quoteToken: Kong.Token | null = null;
-  $: {
-    baseToken = selectedPool?.address_0 === fromToken?.address ? fromToken : toToken;
-    quoteToken = selectedPool?.address_0 === toToken?.address ? fromToken : toToken;
-  }
+  let baseToken = $derived(selectedPool?.address_0 === fromToken?.address ? fromToken : toToken);
+  let quoteToken = $derived(selectedPool?.address_0 === toToken?.address ? fromToken : toToken);
 
   // Handle token selection changes
   function handleTokenChange(event: CustomEvent) {
     const { fromToken: newFromToken, toToken: newToToken } = event.detail;
-    fromToken = newFromToken;
-    toToken = newToToken;
+    $swapState.payToken = newFromToken;
+    $swapState.receiveToken = newToToken;
   }
-
-  // Initialize on mount
-  onMount(() => {
-    // Initialize tokens from swapState if available
-    if ($swapState.payToken) fromToken = $swapState.payToken;
-    if ($swapState.receiveToken) toToken = $swapState.receiveToken;
-
-    const mediaQuery = window.matchMedia("(max-width: 768px)");
-    isMobile = mediaQuery.matches;
-
-    const handleResize = (e: MediaQueryListEvent) => {
-      isMobile = e.matches;
-    };
-
-    mediaQuery.addEventListener("change", handleResize);
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleResize);
-    };
-  });
 </script>
 
 <div class="swap-pro-container">
