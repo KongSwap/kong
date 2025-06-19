@@ -49,7 +49,7 @@
   }>();
 
   // Make roundness reactive to theme changes
-  let effectiveRoundness = $derived(roundness ?? $panelRoundness);
+  let effectiveRoundness = $derived(roundness ?? "rounded-kong-roundness");
 
   // Default transition parameters
   const defaultSlideParams = { duration: 300, delay: 200, axis: 'x' };
