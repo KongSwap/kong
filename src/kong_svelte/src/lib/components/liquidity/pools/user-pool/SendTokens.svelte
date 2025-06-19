@@ -275,7 +275,7 @@
       <ButtonV2
         theme="primary"
         variant="solid"
-        size="md"
+        size="lg"
         isDisabled={!amount || !recipientAddress || isLoading || isCalculating}
         fullWidth={true}
         onclick={handleSendTokens}
@@ -427,8 +427,7 @@
   }
 
   .modal-footer {
-    @apply border-t border-kong-border/10 mt-4 bg-kong-bg-dark/90 
-           backdrop-blur-md w-full;
+    @apply border-t border-kong-border/10 mt-4 w-full;
   }
 
   .action-buttons {

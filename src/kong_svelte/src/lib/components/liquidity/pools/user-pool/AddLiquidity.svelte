@@ -234,14 +234,14 @@
   <div class="modal-footer">
     <div class="action-buttons">
       {#if validation.anyExceeding}
-        <ButtonV2 theme="warning" variant="outline" size="md" isDisabled={true} fullWidth={true}>
+        <ButtonV2 theme="warning" variant="outline" size="lg" isDisabled={true} fullWidth={true}>
           <span>Insufficient Balance</span>
         </ButtonV2>
       {:else}
         <ButtonV2
           theme="accent-green"
           variant="solid"
-          size="md"
+          size="lg"
           isDisabled={!state.amounts[0] || !state.amounts[1] || state.isCalculating}
           fullWidth={true}
           onclick={handleAddLiquidity}
@@ -294,8 +294,7 @@
   }
 
   .modal-footer {
-    @apply border-t border-kong-border/10 mt-4 bg-kong-bg-primary/90 
-           backdrop-blur-md w-full;
+    @apply border-t border-kong-border/10 mt-4 w-full;
   }
 
   .action-buttons {
