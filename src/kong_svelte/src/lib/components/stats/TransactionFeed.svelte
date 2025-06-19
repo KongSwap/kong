@@ -9,6 +9,8 @@
   // Props
   let { token } = $props<{ token: Kong.Token }>();
 
+  let previousTokenId = $state<string | null>(null);
+
   // State
   const tokensStore = writable<Kong.Token[]>([]);
   let transactions = $state<FE.Transaction[]>([]);
@@ -82,7 +84,9 @@
 
   // React to token changes and set up refresh
   $effect(() => {
-    if (!token?.id) return;
+    if (!token?.id || previousTokenId === token.id) return;
+
+    previousTokenId = token.id;
 
     // Reset state for new token
     transactions = [];
@@ -144,8 +148,8 @@
         <table class="w-full">
           <thead class="sticky top-0 bg-kong-bg-primary/95 backdrop-blur-sm border-b border-kong-border/20 z-10">
             <tr>
-              {#each ['Age', 'Type', 'Price', 'Value', token.symbol, 'Trader', ''] as header, i}
-                <th class="py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider whitespace-nowrap {i === 0 ? 'px-2 min-w-[70px]' : 'px-4'} {i === 1 ? 'min-w-[80px]' : ''} {i === 2 ? 'min-w-[90px]' : ''} {i === 3 ? 'min-w-[100px]' : ''} {i === 4 ? 'min-w-[90px]' : ''} {i === 5 ? 'min-w-[120px]' : ''} {i === 6 ? 'min-w-[60px]' : ''}">
+              {#each ['Age', 'Type', 'Value', token.symbol, 'Trader', ''] as header, i}
+                <th class="py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider whitespace-nowrap px-4">
                   {header}
                 </th>
               {/each}

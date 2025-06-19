@@ -39,13 +39,13 @@
   });
 
   // Calculate price per token (USD)
-  const pricePerToken = $derived.by(() => {
-    if (!receiveToken) return "0.00";
+  // const pricePerToken = $derived.by(() => {
+  //   if (!receiveToken) return "0.00";
     
-    const tokenPrice = Number(receiveToken.metrics.price) || 0;
+  //   const tokenPrice = Number(receiveToken.metrics.price) || 0;
 
-    return formatUsdValue(tokenPrice);
-  });
+  //   return formatUsdValue(tokenPrice);
+  // });
   
   // Calculate total USD value of transaction
   const totalValue = $derived.by(() => {
@@ -88,7 +88,7 @@
   }`}
 >
   <!-- Age -->
-  <td class={`px-2 py-1 text-sm font-medium whitespace-nowrap ${
+  <td class={`px-4 py-1 text-sm font-medium whitespace-nowrap ${
     isBuy ? "text-kong-success" : "text-kong-error"
   }`}>
     {timeAgo}
@@ -108,11 +108,11 @@
   </td>
 
   <!-- Price (USD per token) -->
-  <td class={`px-4 py-1 text-sm font-medium whitespace-nowrap ${
+  <!-- <td class={`px-4 py-1 text-sm font-medium whitespace-nowrap ${
     isBuy ? "text-kong-success" : "text-kong-error"
   }`}>
     {pricePerToken}
-  </td>
+  </td> -->
 
   <!-- Value (Total USD) -->
   <td class={`px-4 py-1 text-sm font-semibold whitespace-nowrap ${
@@ -143,7 +143,7 @@
       style="background-color: {getPrincipalColor(walletAddress)};"
       onclick={(e) => goto(`/wallets/${walletAddress}`)}
     >
-      {walletAddress.slice(0, 5)}
+      {walletAddress.slice(0, 8)}
     </span>
   </td>
 

@@ -9,8 +9,11 @@
 
   let { initialFromToken, initialToToken } = $props<{ initialFromToken: Kong.Token | null, initialToToken: Kong.Token | null }>();
 
+  let activeToken = $state($swapState.receiveToken || initialToToken); //initialize to toToken
+
   let fromToken = $derived($swapState.payToken || initialFromToken);
   let toToken = $derived($swapState.receiveToken || initialToToken);
+  
   let isMobile = $derived(app.isMobile);
 
   // Get the pool based on selected tokens
@@ -25,13 +28,6 @@
   let baseToken = $derived(selectedPool?.address_0 === fromToken?.address ? fromToken : toToken);
   let quoteToken = $derived(selectedPool?.address_0 === toToken?.address ? fromToken : toToken);
 
-  // Handle token selection changes
-  function handleTokenChange(event: CustomEvent) {
-    const { fromToken: newFromToken, toToken: newToToken } = event.detail;
-    $swapState.payToken = newFromToken;
-    $swapState.receiveToken = newToToken;
-  }
-
   // Mobile view state for swap toggle
   let showSwap = $state(false);
 </script>
@@ -41,7 +37,7 @@
     <!-- Mobile Layout -->
     <div class="mobile-layout">
       <div class="mobile-trade-section">
-        <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} />
+        <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} bind:activeToken />
         
         <button class="swap-toggle-button" onclick={() => showSwap = !showSwap}>
           {showSwap ? 'Hide' : 'Show'} Swap
@@ -69,7 +65,7 @@
         </div>
       {/if}
 
-      <TransactionFeed token={toToken} />
+      <TransactionFeed token={activeToken} />
     </div>
   {:else}
     <!-- Desktop Grid Layout -->
@@ -83,14 +79,13 @@
       />
 
 
-      <TransactionFeed token={toToken} />
+      <TransactionFeed token={activeToken} />
 
       <!-- Right Column: Token Info + Swap -->
       <div class="trading-section">
-        <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} />
+        <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} bind:activeToken />
         <Swap
           widthFull={true}
-
         />
       </div>
     </div>

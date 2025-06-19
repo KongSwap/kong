@@ -13,9 +13,10 @@
   import Dropdown from "$lib/components/common/Dropdown.svelte";
   import { panelRoundness } from "$lib/stores/derivedThemeStore";
 
-  const { fromToken = null, toToken = null } = $props<{ 
+  let { fromToken = null, toToken = null, activeToken = $bindable() } = $props<{ 
     fromToken: Kong.Token | null;
     toToken: Kong.Token | null;
+    activeToken?: Kong.Token | null;
   }>();
 
   // State for both tokens
@@ -44,7 +45,11 @@
   // Derived values
   const activeFromToken = $derived(liveFromToken || fromToken);
   const activeToToken = $derived(liveToToken || toToken);
-  const activeToken = $derived(activeTab === "from" ? activeFromToken : activeToToken);
+  
+  // Update bindable activeToken
+  $effect(() => {
+    activeToken = activeTab === "from" ? activeFromToken : activeToToken;
+  });
   
   // Motion values for current tab
   const marketCap = $derived(activeTab === "from" ? $fromMarketCapMotion : $toMarketCapMotion);
