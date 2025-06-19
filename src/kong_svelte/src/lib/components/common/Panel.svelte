@@ -1,11 +1,5 @@
 <!-- Panel.svelte -->
 <script lang="ts">
-<<<<<<< HEAD
-    import { fade, slide, type TransitionConfig } from 'svelte/transition';
-    import { themeStore } from '../../stores/themeStore';
-    import { getThemeById } from '../../themes/themeRegistry';
-    import {panelRoundness, transparentPanel } from '../../stores/derivedThemeStore';
-=======
   import { fade, slide, type TransitionConfig } from 'svelte/transition';
   import { themeStore } from '../../stores/themeStore';
   import { getThemeById } from '../../themes/themeRegistry';
@@ -69,7 +63,6 @@
     
   // Compute the interactive class based on interactive prop
   let interactiveClass = $derived(interactive ? 'interactive' : '');
->>>>>>> a6c9b9e1b3fa3f4a29d3fbbf3233df87e9ce6d33
   
   // Subscribe to theme changes
   $effect(() => {
