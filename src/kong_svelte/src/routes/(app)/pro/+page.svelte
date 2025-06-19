@@ -34,4 +34,4 @@
 </svelte:head>
 
 
-<SwapPro initialFromToken={fromToken} initialToToken={toToken} currentMode="pro" /> 
+<SwapPro initialFromToken={fromToken} initialToToken={toToken} /> 

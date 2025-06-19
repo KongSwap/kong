@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
   import { fetchTransactions } from "$lib/api/transactions";
   import { fetchTokens } from "$lib/api/tokens/TokenApiClient";
   import { writable } from "svelte/store";
@@ -8,44 +7,37 @@
   import { LoadingStateManager } from "$lib/utils/transactionUtils";
 
   // Props
-  let { token, className = "!border-none !rounded-t-none" } = $props<{
-    token: Kong.Token;
-    className?: string;
-  }>();
+  let { token } = $props<{ token: Kong.Token }>();
 
-  // Stores and state
+  // State
   const tokensStore = writable<Kong.Token[]>([]);
   let transactions = $state<FE.Transaction[]>([]);
   let error = $state<string | null>(null);
   let hasMore = $state(true);
   let currentPage = $state(1);
-  let newTransactionIds = $state<Set<string>>(new Set());
-  let previousTokenId = $state<string | null>(null);
+  let newTransactionIds = $state(new Set<string>());
   let refreshInterval: number;
   let observer: IntersectionObserver;
-  let loadMoreTrigger: HTMLElement;
 
   const pageSize = 20;
   const loadingManager = new LoadingStateManager();
-  let isLoading = $derived(loadingManager.isAnyLoading());
+  const isLoading = $derived(loadingManager.isAnyLoading());
 
-  // Load tokens on mount
-  async function loadTokens() {
+  // Load tokens once on mount
+  onMount(async () => {
     try {
       const response = await fetchTokens({ limit: 200, page: 1 });
       tokensStore.set(response.tokens);
     } catch (error) {
       console.error("Error loading tokens:", error);
     }
-  }
+  });
 
-  // Simplified transaction loading
-  async function loadTransactionData(page = 1, append = false, isRefresh = false) {
-    if (!token?.id) return;
-    if (append && !hasMore) return;
+  // Main transaction loading function
+  async function loadTransactions(page = 1, append = false, isRefresh = false) {
+    if (!token?.id || (append && !hasMore)) return;
 
     const loadingKey = isRefresh ? 'refresh' : append ? 'pagination' : 'initial';
-    
     if (loadingManager.isLoading(loadingKey)) return;
     
     loadingManager.setLoading(loadingKey, true);
@@ -57,7 +49,6 @@
       );
 
       if (isRefresh) {
-        // Find unique new transactions for refresh
         const existingIds = new Set(transactions.map(t => `${t.tx_id}-${t.timestamp}`));
         const uniqueNew = sortedTransactions.filter(tx => 
           !existingIds.has(`${tx.tx_id}-${tx.timestamp}`)
@@ -65,24 +56,17 @@
         
         if (uniqueNew.length > 0) {
           transactions = [...uniqueNew, ...transactions];
-          // Highlight new transactions
+          // Highlight new transactions temporarily
           uniqueNew.forEach((tx, index) => {
             if (tx.tx_id) {
               const key = `${tx.tx_id}-${tx.timestamp}-${index}`;
               newTransactionIds.add(key);
-              newTransactionIds = new Set(newTransactionIds);
-              // Clear highlight after 2 seconds
-              setTimeout(() => {
-                newTransactionIds.delete(key);
-                newTransactionIds = new Set(newTransactionIds);
-              }, 2000);
+              setTimeout(() => newTransactionIds.delete(key), 2000);
             }
           });
         }
-      } else if (append) {
-        transactions = [...transactions, ...sortedTransactions];
       } else {
-        transactions = sortedTransactions;
+        transactions = append ? [...transactions, ...sortedTransactions] : sortedTransactions;
       }
 
       hasMore = newTransactions.length === pageSize;
@@ -96,139 +80,109 @@
     }
   }
 
-  // Token change and refresh effect
+  // React to token changes and set up refresh
   $effect(() => {
-    const currentTokenId = token?.id;
+    if (!token?.id) return;
+
+    // Reset state for new token
+    transactions = [];
+    currentPage = 1;
+    hasMore = true;
+    error = null;
     
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
-    }
+    // Load initial data
+    loadTransactions(1);
 
-    if (currentTokenId) {
-      // Handle token change
-      if (currentTokenId !== previousTokenId) {
-        previousTokenId = currentTokenId;
-        transactions = [];
-        currentPage = 1;
-        hasMore = true;
-        error = null;
-        loadTransactionData(1, false, false);
-      }
+    // Clear existing interval
+    if (refreshInterval) clearInterval(refreshInterval);
+    
+    // Set up refresh interval
+    refreshInterval = setInterval(() => {
+      if (!loadingManager.isLoading('refresh')) loadTransactions(1, false, true);
+    }, 10000) as unknown as number;
 
-      // Set up refresh interval
-      refreshInterval = setInterval(() => {
-        if (!loadingManager.isLoading('refresh')) {
-          loadTransactionData(1, false, true);
-        }
-      }, 10000) as unknown as number;
-    }
-
-    return () => {
-      if (refreshInterval) clearInterval(refreshInterval);
-    };
+    return () => clearInterval(refreshInterval);
   });
 
   // Intersection observer for pagination
   function setupIntersectionObserver(element: HTMLElement) {
-    if (observer) observer.disconnect();
-
+    observer?.disconnect();
     observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loadingManager.isLoading('pagination') && hasMore) {
-          loadTransactionData(currentPage + 1, true);
+      ([entry]) => {
+        if (entry.isIntersecting && !loadingManager.isLoading('pagination') && hasMore) {
+          loadTransactions(currentPage + 1, true);
         }
       },
-      { root: null, rootMargin: "100px", threshold: 0.1 }
+      { rootMargin: "100px", threshold: 0.1 }
     );
-
     observer.observe(element);
   }
 
-  onMount(() => {
-    loadTokens();
-  });
-
   onDestroy(() => {
-    if (observer) observer.disconnect();
+    observer?.disconnect();
     if (refreshInterval) clearInterval(refreshInterval);
   });
 </script>
 
-<Panel type="main" {className}>
-  <div class="flex flex-col gap-4 h-full">
-    {#if isLoading && !transactions.length}
-      <div class="flex justify-center items-center p-6 flex-1">
-        <span class="loading loading-spinner loading-md" />
-      </div>
-    {:else if error}
-      <div class="text-kong-error p-6 text-sm font-medium flex-1">
-        {error}
-      </div>
-    {:else if transactions.length === 0}
-      <div class="text-kong-text-primary/70 text-center p-6 flex-1 flex items-center justify-center text-sm">
-        No transactions found
-      </div>
-    {:else}
-        <div class="min-w-max h-[400px] overflow-auto">
-          <table class="w-full">
-            <thead class="sticky top-0 bg-kong-bg-primary/95 backdrop-blur-sm border-b border-kong-border/20">
-              <tr>
-                <th class="px-2 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
-                  Age
+<div class="flex flex-col h-[50vh] overflow-hidden bg-kong-bg-secondary border border-kong-border/50 rounded-lg">
+  {#if isLoading && !transactions.length}
+    <div class="flex justify-center items-center p-6 flex-1">
+      <span class="loading loading-spinner loading-md" />
+    </div>
+  {:else if error}
+    <div class="text-kong-error p-6 text-sm font-medium flex-1">
+      {error}
+    </div>
+  {:else if !transactions.length}
+    <div class="text-kong-text-primary/70 text-center p-6 flex-1 flex items-center justify-center text-sm">
+      No transactions found
+    </div>
+  {:else}
+    <div class="flex flex-col h-full overflow-hidden">
+      <!-- Scrollable Container with both X and Y overflow -->
+      <div class="flex h-full overflow-auto">
+        <table class="w-full">
+          <thead class="sticky top-0 bg-kong-bg-primary/95 backdrop-blur-sm border-b border-kong-border/20 z-10">
+            <tr>
+              {#each ['Age', 'Type', 'Price', 'Value', token.symbol, 'Trader', ''] as header, i}
+                <th class="py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider whitespace-nowrap {i === 0 ? 'px-2 min-w-[70px]' : 'px-4'} {i === 1 ? 'min-w-[80px]' : ''} {i === 2 ? 'min-w-[90px]' : ''} {i === 3 ? 'min-w-[100px]' : ''} {i === 4 ? 'min-w-[90px]' : ''} {i === 5 ? 'min-w-[120px]' : ''} {i === 6 ? 'min-w-[60px]' : ''}">
+                  {header}
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
-                  Type
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
-                  Price
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
-                  Value
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
-                  {token.symbol}
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider w-[80px]">
-                  Trader
-                </th>
-                <th class="px-4 py-3 w-20"></th> <!-- Actions column without header -->
-              </tr>
-            </thead>
-            <tbody>
-              {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto?.randomUUID())}
-                <TransactionFeedItem
-                  {tx}
-                  {token}
-                  tokens={$tokensStore}
-                  isHighlighted={newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : "")}
-                />
               {/each}
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+          <tbody>
+            {#each transactions as tx, index (tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : crypto?.randomUUID())}
+              <TransactionFeedItem
+                {tx}
+                {token}
+                tokens={$tokensStore}
+                isHighlighted={newTransactionIds.has(tx.tx_id ? `${tx.tx_id}-${tx.timestamp}-${index}` : "")}
+              />
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-        <!-- Load More Trigger -->
-        {#if hasMore}
-          <div
-            bind:this={loadMoreTrigger}
-            use:setupIntersectionObserver
-            class="flex justify-center p-4 border-t border-kong-border/10"
-          >
-            {#if loadingManager.isLoading('pagination')}
-              <span class="loading loading-spinner loading-sm" />
-            {:else}
-              <span class="text-kong-text-primary/50 text-xs uppercase tracking-wider font-medium">
-                Load more
-              </span>
-            {/if}
-          </div>
-        {/if}
+    {#if hasMore}
+             <div
+         use:setupIntersectionObserver
+         class="flex justify-center p-4 border-t border-kong-border/10"
+       >
+         {#if loadingManager.isLoading('pagination')}
+           <span class="loading loading-spinner loading-sm" />
+         {:else}
+           <span class="text-kong-text-primary/50 text-xs uppercase tracking-wider font-medium">
+             Load more
+           </span>
+         {/if}
+       </div>
     {/if}
-  </div>
-</Panel>
+  {/if}
+</div>
 
 <style>
-  /* Custom scrollbar styling */
   :global(.overflow-auto::-webkit-scrollbar) {
     width: 6px;
     height: 6px;
@@ -247,19 +201,15 @@
     background-color: rgba(156, 163, 175, 0.5);
   }
 
-  :global(.overflow-auto::-webkit-scrollbar-corner) {
-    background: transparent;
-  }
-
-  /* Table styling */
   table {
     border-collapse: separate;
     border-spacing: 0;
+    table-layout: auto;
   }
-
-  thead th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
+  
+  /* Ensure smooth horizontal scrolling */
+  .overflow-auto {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
   }
 </style>
