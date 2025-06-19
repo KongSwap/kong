@@ -12,7 +12,6 @@
   import { auth } from "$lib/stores/auth";
   import { userTokens } from "$lib/stores/userTokens";
   import { keyboardShortcuts } from "$lib/services/keyboardShortcuts";
-  import { configureStorage } from "$lib/config/localForage.config";
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import GlobalSignatureModal from "$lib/components/wallet/GlobalSignatureModal.svelte";
@@ -46,7 +45,6 @@
     const promise = (async () => {
       try {
         if (browser) {
-          configureStorage();
           // Initialize theme store for all pages
           themeStore.initTheme();
         }

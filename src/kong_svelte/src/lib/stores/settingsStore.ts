@@ -2,7 +2,6 @@ import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
 import type { Settings } from '$lib/types/settings.ts';
 import { auth } from '$lib/stores/auth';
-import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
 
 const DEFAULT_SETTINGS: Settings = {
   sound_enabled: false,
@@ -11,8 +10,7 @@ const DEFAULT_SETTINGS: Settings = {
   timestamp: Date.now(),
 };
 
-const SETTINGS_KEY = STORAGE_KEYS.SETTINGS;
-const settingsStorage = createNamespacedStore(SETTINGS_KEY);
+const SETTINGS_KEY = 'settings';
 
 function createSettingsStore() {
   const { subscribe, set, update } = writable<Settings>(DEFAULT_SETTINGS);
@@ -24,8 +22,9 @@ function createSettingsStore() {
       // Always proceed, even for unauthenticated users
 
       try {
-        const storedSettings = await settingsStorage.getItem<Settings>(`${SETTINGS_KEY}_${walletId}`);
-        if (storedSettings) {
+        const stored = localStorage.getItem(`${SETTINGS_KEY}_${walletId}`);
+        if (stored) {
+          const storedSettings = JSON.parse(stored) as Settings;
           // Ensure max_slippage is set when loading from storage
           set({
             ...DEFAULT_SETTINGS, // Start with defaults
@@ -39,7 +38,7 @@ function createSettingsStore() {
             principal_id: walletId,
             timestamp: Date.now()
           };
-          await settingsStorage.setItem(`${SETTINGS_KEY}_${walletId}`, defaultSettings);
+          localStorage.setItem(`${SETTINGS_KEY}_${walletId}`, JSON.stringify(defaultSettings));
         }
       } catch (error) {
         console.error('Error initializing settings:', error);
@@ -68,7 +67,7 @@ function createSettingsStore() {
       subscribe(value => (currentSettings = value))();
       
       // Save to storage
-      await settingsStorage.setItem(`${SETTINGS_KEY}_${walletId}`, currentSettings);
+      localStorage.setItem(`${SETTINGS_KEY}_${walletId}`, JSON.stringify(currentSettings));
     } catch (error) {
       console.error('Error updating setting:', error);
     }
@@ -91,7 +90,7 @@ function createSettingsStore() {
       set(defaultSettings);
       
       // Save to storage
-      await settingsStorage.setItem(`${SETTINGS_KEY}_${walletId}`, defaultSettings);
+      localStorage.setItem(`${SETTINGS_KEY}_${walletId}`, JSON.stringify(defaultSettings));
     } catch (error) {
       console.error('Error resetting settings:', error);
     }

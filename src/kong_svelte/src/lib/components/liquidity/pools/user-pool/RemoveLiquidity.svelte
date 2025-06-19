@@ -8,19 +8,22 @@
   import { calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { calculateRemoveLiquidityAmounts, removeLiquidity, pollRequestStatus } from "$lib/api/pools";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { BigNumber } from "bignumber.js";
   
   const dispatch = createEventDispatcher();
 
-  export let pool: any;
-  export let token0: any;
-  export let token1: any;
+  interface Props {
+    pool: any;
+    token0: any;
+    token1: any;
+  }
 
-  let removeLiquidityAmount = "";
-  let estimatedAmounts = { amount0: "0", amount1: "0", lpFee0: "0", lpFee1: "0" };
-  let isRemoving = false;
-  let error: string | null = null;
-  let isCalculating = false;
+  let { pool, token0, token1 }: Props = $props();
+
+  let removeLiquidityAmount = $state("");
+  let estimatedAmounts = $state({ amount0: "0", amount1: "0", lpFee0: "0", lpFee1: "0" });
+  let isRemoving = $state(false);
+  let error = $state<string | null>(null);
+  let isCalculating = $state(false);
 
   function setPercentage(percent: number) {
     const maxAmount = parseFloat(pool.balance);
@@ -55,7 +58,6 @@
         numericAmount,
       );
 
-      const [amount0, amount1] = [result.amount_0 + result.lp_fee_0, result.amount_1 + result.lp_fee_1];
 
       // Get token decimals from fetched token data
       const token0Decimals = token0?.decimals || 8;
@@ -115,7 +117,7 @@
 
         // Check for the complete success sequence or a final failed state
         const isSuccess = requestStatus.statuses.includes("Success");
-        const isFailed = requestStatus.statuses.some(s => s.includes("Failed"));
+        const isFailed = requestStatus.statuses.some((s: string) => s.includes("Failed"));
 
         if (isSuccess) {
           isComplete = true;
@@ -129,7 +131,7 @@
           ]);
         } else if (isFailed) {
           // Toast is handled within pollRequestStatus
-          const failureMessage = requestStatus.statuses.find(s => s.includes("Failed"));
+          const failureMessage = requestStatus.statuses.find((s: string) => s.includes("Failed"));
           throw new Error(failureMessage || "Transaction failed");
         } else {
           // No need for explicit delay here as pollRequestStatus handles polling interval
@@ -167,19 +169,6 @@
     }
   }
 
-  // Calculate total USD value of tokens to receive
-  function calculateTotalUsdValue(): string {
-    const amount0Usd = Number(
-      calculateTokenUsdValue(estimatedAmounts.amount0, token0),
-    );
-    const amount1Usd = Number(
-      calculateTokenUsdValue(estimatedAmounts.amount1, token1),
-    );
-    if (isNaN(amount0Usd) || isNaN(amount1Usd)) {
-      return "0";
-    }
-    return (amount0Usd + amount1Usd).toFixed(2);
-  }
 </script>
 
 <div in:fade={{ duration: 200 }}>
@@ -391,10 +380,6 @@
 
   .output-title {
     @apply text-xs text-kong-text-primary/50 font-medium;
-  }
-
-  .output-total {
-    @apply text-sm font-medium text-kong-text-primary;
   }
 
   .token-outputs {

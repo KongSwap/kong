@@ -2,7 +2,6 @@ import { writable, type Writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { getThemeById, generateThemeVariables, getAllThemes, registerTheme } from '../themes/themeRegistry';
 import type { ThemeDefinition } from '../themes/baseTheme';
-import { STORAGE_KEYS } from '../config/localForage.config';
 import { get } from 'svelte/store';
 
 // Define theme ID type based on available themes
@@ -14,7 +13,7 @@ export const colorScheme: Writable<ColorScheme> = writable('dark');
 function createThemeStore() {
   const { subscribe, set } = writable<ThemeId>('dark');
   const { subscribe: colorSchemeSubscribe } = colorScheme;
-  const THEME_KEY = STORAGE_KEYS.THEME;
+  const THEME_KEY = 'theme';
   
   /**
    * Apply a theme's CSS variables to the document root

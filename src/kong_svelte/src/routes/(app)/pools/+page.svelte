@@ -16,7 +16,6 @@
   } from "lucide-svelte";
   import Card from "$lib/components/common/Card.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { auth } from "$lib/stores/auth";
   import { browser } from "$app/environment";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
@@ -1060,13 +1059,4 @@
       Loading pools...
     </p>
   </div>
-{/if}
-
-{#if selectedPool}
-  <UserPool
-    pool={selectedPool}
-    bind:showModal={showUserPoolModal}
-    on:liquidityRemoved={handleLiquidityComplete}
-    on:liquidityAdded={handleLiquidityComplete}
-  />
 {/if}

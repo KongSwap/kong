@@ -1,34 +1,37 @@
 <script lang="ts">
-	import { formatUsdValue } from '$lib/utils/tokenFormatters';
   import { fade } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { livePools } from "$lib/stores/poolStore";
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
   import { calculateRemoveLiquidityAmounts } from '$lib/api/pools';
-  import { onMount } from 'svelte';
-    import BigNumber from 'bignumber.js';
+  import BigNumber from 'bignumber.js';
+  import type { UserPoolData } from '$lib/models/UserPool';
 
-  export let pool: UserPoolData;
-  export let token0: any;
-  export let token1: any;
+  interface Props {
+    pool: UserPoolData;
+    token0: any;
+    token1: any;
+  }
+
+  let { pool, token0, token1 }: Props = $props();
 
   // Get actual pool for APR display
-  $: actualPool = $livePools.find((p) => {
+  let actualPool = $derived($livePools.find((p) => {
     return p.address_0 === pool.address_0 && p.address_1 === pool.address_1;
-  });
+  }));
 
   // Calculate user's percentage of the pool
-  $: poolSharePercentage = calculateUserPoolPercentage(
+  let poolSharePercentage = $derived(calculateUserPoolPercentage(
     actualPool?.balance_0 + actualPool?.lp_fee_0,
     actualPool?.balance_1 + actualPool?.lp_fee_1,
     pool?.amount_0,
     pool?.amount_1
-  );
+  ));
 
-  let estimatedAmounts: [string, string] = ["0", "0"];
-  let loadingEarnings = false;
-  let earningsError = '';
+  let estimatedAmounts = $state<[string, string]>(["0", "0"]);
+  let loadingEarnings = $state(false);
+  let earningsError = $state('');
 
   async function fetchEstimatedEarnings() {
     loadingEarnings = true;
@@ -45,8 +48,8 @@
         pool.balance
       );
       console.log(result)
-      const fee0 = new BigNumber(result.lp_fee_0.toString()).div(new BigNumber(10).pow(token0.decimals))
-      const fee1 = new BigNumber(result.lp_fee_1.toString()).div(new BigNumber(10).pow(token1.decimals))
+      const fee0 = new BigNumber(result.lpFee0.toString()).div(new BigNumber(10).pow(token0.decimals))
+      const fee1 = new BigNumber(result.lpFee1.toString()).div(new BigNumber(10).pow(token1.decimals))
       estimatedAmounts = [fee0.toString(), fee1.toString()];
     } catch (e) {
       earningsError = e.message || 'Failed to fetch estimated earnings';
@@ -54,24 +57,12 @@
     loadingEarnings = false;
   }
 
-  // Optionally, call on mount or when pool/token changes
-  $: if (pool && token0 && token1) {
-    fetchEstimatedEarnings();
-  }
-
-  // Calculate earnings based on APY
-  function calculateEarnings(timeframe: number): string {
-    // Use APY from the actual pool
-    if (!actualPool?.rolling_24h_apy || !pool.usd_balance) {
-      return "$0.00";
+  // Effect to call fetchEstimatedEarnings when dependencies change
+  $effect(() => {
+    if (pool && token0 && token1) {
+      fetchEstimatedEarnings();
     }
-
-    // Convert APY to daily rate and calculate linear projection
-    const apyDecimal = Number(actualPool.rolling_24h_apy) / 100; // Ensure it's a number
-    const dailyRate = apyDecimal / 365;
-    const earnings = parseFloat(pool.usd_balance) * dailyRate * timeframe;
-    return formatToNonZeroDecimal(earnings);
-  }
+  });
 </script>
 
 <div in:fade={{ duration: 100 }}>
@@ -278,11 +269,6 @@
 
   .earnings-container {
     @apply mb-3;
-  }
-
-  .fee-details {
-    @apply rounded-lg bg-kong-bg-light/50
-           border border-kong-border/10 overflow-hidden;
   }
 
   .earnings-card {
