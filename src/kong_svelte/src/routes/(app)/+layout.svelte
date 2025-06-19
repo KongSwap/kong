@@ -18,6 +18,7 @@
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import { themeStore } from "$lib/stores/themeStore";
+  import { settingsStore } from "$lib/stores/settingsStore";
 
   let { children } = $props<{
     children: any;
@@ -46,6 +47,8 @@
         if (browser) {
           // Initialize theme store for all pages
           themeStore.initTheme();
+          // Initialize settings store
+          await settingsStore.initializeStore();
         }
         await auth.initialize();
         if (browser) {
