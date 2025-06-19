@@ -110,7 +110,7 @@
   /* Desktop Grid Layout */
   .desktop-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 3fr 2fr;
     grid-template-rows: 1fr 1fr;
     grid-template-areas: 
       "chart trading"
@@ -127,6 +127,7 @@
     flex-direction: column;
     gap: 1rem;
     overflow-y: auto;
+    padding: 0 0.25rem 0.25rem 0.25rem;
   }
 
   /* Chart Panel Styling */

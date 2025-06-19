@@ -37,12 +37,7 @@
   
   // Determine if current page should have themed background
   const hasThemedBackground = $derived(
-<<<<<<< HEAD
     $page.url.pathname.startsWith('/') || 
-=======
-    $page.url.pathname === '/' || 
-    $page.url.pathname.startsWith('/swap') || 
->>>>>>> 2f8745005c5ab65c67297cf0a389d291b44d5e26
     $page.url.pathname.includes('/competition')
   );
 

@@ -1,75 +1,9 @@
 <!-- Panel.svelte -->
 <script lang="ts">
-<<<<<<< HEAD
     import { fade, slide, type TransitionConfig } from 'svelte/transition';
     import { themeStore } from '../../stores/themeStore';
     import { getThemeById } from '../../themes/themeRegistry';
     import {panelRoundness, transparentPanel } from '../../stores/derivedThemeStore';
-=======
-  import { fade, slide, type TransitionConfig } from 'svelte/transition';
-  import { themeStore } from '../../stores/themeStore';
-  import { getThemeById } from '../../themes/themeRegistry';
-  import {panelRoundness, transparentPanel } from '../../stores/derivedThemeStore';
-
-  let {
-    variant = transparentPanel ? "transparent" : "solid",
-    type = "main",
-    width = "auto",
-    height = "auto",
-    content = '',
-    className = '',
-    zIndex = 10,
-    // New roundness prop using Tailwind classes, can be overridden by prop
-    unpadded = false,
-    animated = false,
-    isSwapPanel = false,
-    isSidebar = false,
-    interactive = false,
-    shadow = "shadow-none",
-    roundness,
-    // Transition props
-    transition = null,
-    transitionParams = {},
-    
-    children,
-    onclick
-  } = $props<{
-    variant?: "transparent" | "solid";
-    type?: "main" | "secondary";
-    width?: string;
-    height?: string;
-    content?: string;
-    className?: string;
-    zIndex?: number;
-    unpadded?: boolean;
-    roundness?: string;
-    animated?: boolean;
-    isSwapPanel?: boolean;
-    shadow?: string;
-    isSidebar?: boolean;
-    interactive?: boolean;
-    transition?: 'fade' | 'slide' | null;
-    transitionParams?: TransitionConfig;
-    children?: () => any;
-    onclick?: () => void;
-  }>();
-
-  // Make roundness reactive to theme changes
-  let effectiveRoundness = $derived(roundness ?? "rounded-kong-roundness");
-
-  // Default transition parameters
-  const defaultSlideParams = { duration: 300, delay: 200, axis: 'x' };
-  const defaultFadeParams = { duration: 200 };
-
-  // Computed values
-  let params = $derived({
-    ...(transition === 'slide' ? defaultSlideParams : defaultFadeParams),
-    ...transitionParams
-  });
-    
-  // Compute the interactive class based on interactive prop
-  let interactiveClass = $derived(interactive ? 'interactive' : '');
->>>>>>> 2f8745005c5ab65c67297cf0a389d291b44d5e26
   
     let {
       variant = transparentPanel ? "transparent" : "solid",
