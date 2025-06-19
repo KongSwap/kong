@@ -5,6 +5,7 @@ use regex::Regex;
 use std::sync::OnceLock;
 
 use crate::stable_token::{stable_token::StableToken, token::Token};
+use crate::solana::utils::validation;
 
 use super::address::Address;
 use super::icp::is_icp_token_id;
@@ -20,6 +21,15 @@ pub fn is_principal_id(address: &str) -> bool {
 }
 
 pub fn get_address(token: &StableToken, address: &str) -> Result<Address, String> {
+    // Handle Solana tokens first
+    if let StableToken::Solana(_) = token {
+        // For Solana tokens, validate as Solana address
+        validation::validate_address(address)
+            .map_err(|e| format!("Invalid Solana address: {}", e))?;
+        return Ok(Address::SolanaAddress(address.to_string()));
+    }
+
+    // Handle IC tokens (existing logic)
     let regrex_princiapl_id = PRINCIPAL_ID_LOCK.get_or_init(|| Regex::new(PRINCIPAL_ID_REGEX).unwrap());
     let regrex_account_id = ACCOUNT_ID_LOCK.get_or_init(|| Regex::new(ACCOUNT_ID_REGEX).unwrap());
 

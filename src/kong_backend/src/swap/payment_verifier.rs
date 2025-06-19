@@ -83,7 +83,7 @@ impl PaymentVerifier {
 
         let block_index = match pay_tx_id {
             TxId::BlockIndex(index) => index.clone(),
-            TxId::TransactionHash(_) => return Err("IC tokens require BlockIndex, not TransactionHash".to_string()),
+            TxId::TransactionId(_) => return Err("IC tokens require BlockIndex, not TransactionId".to_string()),
         };
 
         // Verify the transfer on the token's ledger
@@ -111,7 +111,7 @@ async fn verify_solana_payment(args: &SwapArgs, pay_amount: u64) -> Result<Payme
         })?;
 
     let tx_signature_str = match tx_id {
-        TxId::TransactionHash(hash) => hash.clone(),
+        TxId::TransactionId(hash) => hash.clone(),
         TxId::BlockIndex(_) => return Err("BlockIndex not supported for Solana transactions".to_string()),
     };
 
@@ -240,7 +240,7 @@ async fn verify_cross_chain_ic_payment(
 
     let block_index = match tx_id {
         TxId::BlockIndex(index) => index.clone(),
-        TxId::TransactionHash(_) => return Err("IC tokens require BlockIndex, not TransactionHash".to_string()),
+        TxId::TransactionId(_) => return Err("IC tokens require BlockIndex, not TransactionId".to_string()),
     };
     
     // First verify the transfer on-chain

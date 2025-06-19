@@ -57,7 +57,7 @@ pub async fn send_receive_token(
                     is_send: false,
                     token_id: receive_token_id,
                     amount: receive_amount.clone(),
-                    tx_id: TxId::TransactionHash(format!("job_{}", job_id)),
+                    tx_id: TxId::TransactionId(format!("job_{}", job_id)),
                     ts,
                 });
                 transfer_ids.push(transfer_id);
@@ -86,6 +86,10 @@ pub async fn send_receive_token(
         match match to_address {
             Address::AccountId(to_account_id) => icp_transfer(receive_amount, to_account_id, receive_token, None).await,
             Address::PrincipalId(to_principal_id) => icrc1_transfer(receive_amount, to_principal_id, receive_token, None).await,
+            Address::SolanaAddress(_) => {
+                // This should not happen as Solana tokens are handled above
+                Err("Solana addresses should be handled by Solana swap job creation".to_string())
+            }
         } {
             Ok(tx_id) => {
                 // insert_transfer() will use the latest state of DEPOSIT_MAP so no reentrancy issues after icp_transfer() or icrc1_transfer()

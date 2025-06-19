@@ -4,11 +4,12 @@ use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
 
-/// Represents an address which can be either an Account ID or a Principal ID.
+/// Represents an address which can be either an Account ID, a Principal ID, or a Solana Address.
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub enum Address {
     AccountId(AccountIdentifier),
     PrincipalId(Account),
+    SolanaAddress(String),
 }
 
 impl Display for Address {
@@ -16,6 +17,7 @@ impl Display for Address {
         match self {
             Address::AccountId(account_id) => write!(f, "{}", account_id),
             Address::PrincipalId(principal_id) => write!(f, "{}", principal_id),
+            Address::SolanaAddress(address) => write!(f, "{}", address),
         }
     }
 }

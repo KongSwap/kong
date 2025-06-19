@@ -70,7 +70,7 @@ Compile and deploy your canisters locally. This process may take some time.
 
 ```bash
 # Deploy canisters
-./deploy_kong.sh
+don
 ```
 
 If successful, you will see URLs for accessing the frontend and backend canisters.

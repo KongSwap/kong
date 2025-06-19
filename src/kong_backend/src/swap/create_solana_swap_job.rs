@@ -36,6 +36,10 @@ pub async fn create_solana_swap_job(
             Address::PrincipalId(_) => {
                 return Err("Cannot send Solana tokens to IC Principal. Please provide a Solana address.".to_string());
             }
+            Address::SolanaAddress(address) => {
+                // Direct Solana address - this is what we want
+                address.clone()
+            }
         };
 
         // Get Kong's Solana address

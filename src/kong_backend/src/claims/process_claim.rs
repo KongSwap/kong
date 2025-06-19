@@ -4,7 +4,7 @@ use super::claim_reply::ClaimReply;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
 use crate::ic::{
-    address::Address::{self, AccountId, PrincipalId},
+    address::Address::{self, AccountId, PrincipalId, SolanaAddress},
     transfer::{icp_transfer, icrc1_transfer},
 };
 use crate::stable_claim::claim_map;
@@ -86,6 +86,11 @@ async fn send_claim(
     match match to_address {
         AccountId(to_account_id) => icp_transfer(&amount_with_gas, to_account_id, token, None).await,
         PrincipalId(to_principal_id) => icrc1_transfer(&amount_with_gas, to_principal_id, token, None).await,
+        SolanaAddress(_) => {
+            // Solana tokens require special handling via swap jobs
+            // For now, return an error as Solana claims need to be processed differently
+            Err("Solana token claims not yet implemented".to_string())
+        }
     } {
         Ok(tx_id) => {
             let transfer_id = transfer_map::insert(&StableTransfer {

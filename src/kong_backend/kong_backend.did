@@ -351,6 +351,9 @@ type AddPoolArgs = record {
     amount_1 : nat;
     tx_id_1 : opt TxId;
     lp_fee_bps : opt nat8;
+    signature_0 : opt text;
+    signature_1 : opt text;
+    timestamp : opt nat64;
 };
 type AddPoolReply = record {
     tx_id : nat64;
