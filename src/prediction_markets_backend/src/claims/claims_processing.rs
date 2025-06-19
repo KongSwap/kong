@@ -13,11 +13,7 @@ use crate::canister::Timestamp;
 use crate::claims::claims_storage::*;
 use crate::claims::claims_types::*;
 use crate::token::transfer::transfer_token_fees_included;
-use crate::transaction_recovery::record_failed_transaction;
 use crate::types::{MarketId, OutcomeIndex, TokenAmount, TokenIdentifier};
-
-/// Maximum number of automatic retries for a transfer
-const MAX_TRANSFER_RETRIES: u8 = 5;
 
 /// Processes a single claim, transferring tokens to the user
 pub async fn process_claim(claim_id: u64) -> ClaimResult {
@@ -88,15 +84,6 @@ pub async fn process_claim(claim_id: u64) -> ClaimResult {
             let now = Timestamp::from(get_current_time());
             let error_message = format!("Transfer failed: {:?}", err);
 
-            // Record in transaction recovery system for admin visibility
-            record_failed_transaction(
-                Some(claim.market_id),
-                claim.user,
-                claim.claimable_amount.clone(),
-                claim.token_id.clone(),
-                error_message.clone(),
-            );
-
             // Update claim status to failed
             let failure_details = FailureDetails {
                 timestamp: now,
@@ -161,7 +148,7 @@ pub async fn process_claims(claim_ids: Vec<u64>) -> BatchClaimResult {
 }
 
 /// Retries a previously failed claim
-pub async fn retry_failed_claim(claim_id: u64) -> ClaimResult {
+pub async fn retry_failed_claim(claim_id: u64, max_claim_attempts: u8) -> ClaimResult {
     // Get the claim record
     let claim = match get_claim(claim_id) {
         Some(claim) => claim,
@@ -178,12 +165,12 @@ pub async fn retry_failed_claim(claim_id: u64) -> ClaimResult {
     // Check if claim is in failed state
     if let ClaimStatus::Failed(failure_details) = &claim.status {
         // Check retry count to avoid excessive retries
-        if failure_details.retry_count >= MAX_TRANSFER_RETRIES {
+        if failure_details.retry_count >= max_claim_attempts {
             return ClaimResult {
                 claim_id,
                 success: false,
                 block_index: None,
-                error: Some(format!("Maximum retry attempts ({}) reached", MAX_TRANSFER_RETRIES)),
+                error: Some(format!("Maximum retry attempts ({}) reached", max_claim_attempts)),
             };
         }
 

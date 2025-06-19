@@ -67,7 +67,7 @@ use crate::market::estimate_return_types::BetPayoutRecord;
 use crate::market::market::*;
 use crate::storage::BETS;
 use crate::token::registry::get_token_info;
-use crate::token::transfer::handle_fee_transfer;
+use crate::token::transfer::{handle_fee_transfer, handle_fee_transfer_failure, get_fee_account};
 use crate::utils::time_weighting::{calculate_time_weight, calculate_weighted_contribution, get_market_alpha};
 
 // Import re-exported types from lib.rs
@@ -226,17 +226,18 @@ pub async fn finalize_market(market: &mut Market, winning_outcomes: Vec<OutcomeI
             Err(e) => {
                 // Record fee transfer error in resolution details
                 let error_msg = format!("{:?}", e);
-                let system_principal = Principal::from_text("aaaaa-aa").unwrap_or(ic_cdk::caller());
                 // Create failure record for platform fee transfer
                 // Add failed transaction to resolution details with the updated structure
                 resolution_details.failed_transactions.push(FailedTransactionInfo {
                     market_id: Some(market.id.clone()),
-                    user: system_principal,
+                    user: get_fee_account(token_info.is_kong),
                     amount: platform_fee.clone(),
                     token_id: Some(token_id.clone()),
                     error: error_msg.clone(),
                     timestamp: Some(get_current_time()),
                 });
+
+                handle_fee_transfer_failure(market.id.clone(), platform_fee.clone(), &token_info, e);
 
                 ic_cdk::println!("Error processing platform fee: {}. Continuing with distribution.", error_msg);
                 // Continue with distribution even if fee processing fails

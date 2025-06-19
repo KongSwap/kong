@@ -31,33 +31,7 @@ use ic_cdk::update;
 
 use crate::types::{MarketId, OutcomeIndex};
 use crate::market::market::Market;
-use crate::resolution::resolution::{ResolutionError, ResolutionResult};
-
-/// Refunds all bets when a market is voided
-///
-/// This function processes refunds for all bets placed on a voided market.
-/// For each bet, it transfers the original bet amount (minus transfer fee)
-/// back to the user who placed the bet. Failed transfers are logged but don't
-/// stop the process - this ensures all users have an opportunity to receive
-/// their refunds.
-///
-/// # Parameters
-/// * `market_id` - ID of the market being voided
-/// * `market` - Reference to the Market that is being voided
-///
-/// # Returns
-/// * `Result<(), ResolutionError>` - Success indicator or error reason if the process fails
-///
-/// # Deprecation
-/// This function is deprecated. Use `resolution_refunds::refund_all_bets` instead.
-#[deprecated(since = "1.1.0", note = "Use resolution_refunds::refund_all_bets instead")]
-pub async fn refund_all_bets(
-    market_id: MarketId,
-    market: &Market
-) -> Result<(), ResolutionError> {
-    // Re-export from the new modular structure
-    crate::resolution::resolution_refunds::refund_all_bets(&market_id, market).await
-}
+use crate::resolution::resolution::ResolutionResult;
 
 /// Determines if a user has authorization to resolve or propose resolution for a market
 /// 
