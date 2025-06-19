@@ -116,7 +116,7 @@
 
 <style lang="postcss" scoped>
 .panel {
-  @apply relative text-kong-text-primary flex flex-col min-h-0;
+  @apply relative text-kong-text-primary flex flex-col min-h-0 overflow-hidden;
 }
 
 .panel.animated {

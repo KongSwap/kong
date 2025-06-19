@@ -23,13 +23,13 @@ export const dragginzTheme: ThemeDefinition = {
     // Semantic colors
     accent: '#22C9D3',   // Cyan blue
     error: '#FF1744',    // Brighter, cooler red for contrast
-    success: '#4BEA80',  // Brighter mystical green (like the baby dragon)
+    success: '#1FA754',  // Darker green for better contrast with white text
     warning: '#FFB74D', // Warm yellow
     info: '#26C6DA',    // Cyan
     muted: '#5D6673',   // Dark gray   
     
     // Hover variants
-    successHover: '#3AD970',
+    successHover: '#198F46',
     accentHover: '#1BA8B1',
     errorHover: '#D50000',   // Darker version of the brighter red
     warningHover: '#FFA726',

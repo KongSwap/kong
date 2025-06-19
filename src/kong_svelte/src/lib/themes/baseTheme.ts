@@ -175,19 +175,19 @@ export const baseTheme: ThemeDefinition = {
     secondaryHover: '#00B896', // Deeper teal for hover
     
     // Accent colors - Balanced and accessible
-    accent: '#6366F1',   // Elegant indigo
-    error: '#EF4444',    // Clear red for errors
-    success: '#10B981',  // Professional green
-    warning: '#F59E0B',  // Warm amber warning
-    info: '#3B82F6',     // Informational blue
+    accent: '#4F46E5',   // Darker indigo for better contrast with white text
+    error: '#DC2626',    // Darker red for better contrast with white text
+    success: '#059669',  // Darker green for better contrast with white text
+    warning: '#D97706',  // Darker amber for better contrast with white text
+    info: '#2563EB',     // Darker blue for better contrast with white text
     muted: '#6B7280',    // Neutral gray
     
     // Hover variants
-    successHover: '#059669',
-    accentHover: '#4F46E5',
-    errorHover: '#DC2626',
-    warningHover: '#D97706',
-    infoHover: '#2563EB',
+    successHover: '#047857',
+    accentHover: '#4338CA',
+    errorHover: '#B91C1C',
+    warningHover: '#B45309',
+    infoHover: '#1D4ED8',
     mutedHover: '#4B5563',
     
     // Text colors - High contrast and readable

@@ -8,7 +8,7 @@
   import { LoadingStateManager } from "$lib/utils/transactionUtils";
 
   // Props
-  let { token, className = "!border-none !rounded-t-none" } = $props<{
+  let { token, className = "" } = $props<{
     token: Kong.Token;
     className?: string;
   }>();
@@ -154,8 +154,8 @@
   });
 </script>
 
-<Panel type="main" {className}>
-  <div class="flex flex-col gap-4 h-full">
+<Panel type="main" className="{className} overflow-hidden" unpadded>
+  <div class="flex flex-col h-full">
     {#if isLoading && !transactions.length}
       <div class="flex justify-center items-center p-6 flex-1">
         <span class="loading loading-spinner loading-md" />
@@ -169,9 +169,9 @@
         No transactions found
       </div>
     {:else}
-        <div class="min-w-max h-[400px] overflow-auto">
-          <table class="w-full">
-            <thead class="sticky top-0 bg-kong-bg-primary/95 backdrop-blur-sm border-b border-kong-border/20">
+        <div class="h-[400px] overflow-auto">
+          <table class="w-full min-w-max">
+            <thead class="sticky top-0 bg-kong-bg-secondary z-10 border-b border-kong-border/20">
               <tr>
                 <th class="px-2 py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider">
                   Age
