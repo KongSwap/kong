@@ -142,6 +142,23 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
         echo "Deploying tokens and creating liquidity pools..."
         bash "${SCRIPT_DIR}/deploy_tokens_pools.sh" "${NETWORK}"
     } || echo "Warning: deploy_tokens_pools.sh not found"
+
+    # Add Solana tokens
+    [ -f "${SCRIPT_DIR}/add_solana_token.sh" ] && {
+        echo "Adding SOL token..."
+        bash "${SCRIPT_DIR}/add_solana_token.sh" "${NETWORK}"
+    } || echo "Warning: add_solana_token.sh not found"
+
+    [ -f "${SCRIPT_DIR}/add_solana_usdc.sh" ] && {
+        echo "Adding USDC (Solana) token..."
+        bash "${SCRIPT_DIR}/add_solana_usdc.sh" "${NETWORK}"
+    } || echo "Warning: add_solana_usdc.sh not found"
+
+    # Create Solana pools
+    [ -f "${SCRIPT_DIR}/add_sol_pool.sh" ] && {
+        echo "Creating SOL/ksUSDT pool..."
+        bash "${SCRIPT_DIR}/add_sol_pool.sh" "${NETWORK}"
+    } || echo "Warning: add_sol_pool.sh not found"
 fi
 
 if [[ "${NETWORK}" == "ic" ]]; then
@@ -149,3 +166,4 @@ if [[ "${NETWORK}" == "ic" ]]; then
     echo "SHA256 for kong_backend.wasm.gz:"
     sha256sum "${DFX_ROOT}"/ic/canisters/kong_backend/kong_backend.wasm.gz
 fi
+

@@ -194,6 +194,9 @@ fn test_add_pool_icrc2_transfer_from() {
         amount_1: token_b_liquidity_amount.clone(),
         tx_id_1: None,
         lp_fee_bps: None,
+        signature_0: None,
+        signature_1: None,
+        timestamp: None,
     };
 
     let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");
@@ -417,6 +420,9 @@ fn test_add_pool_with_icrc1_icrc2_mix() {
         amount_1: token_b_liquidity_amount.clone(),
         tx_id_1: None, // No tx_id for Token B, will use approve
         lp_fee_bps: None,
+        signature_0: None,
+        signature_1: None,
+        timestamp: None,
     };
 
     let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");
@@ -650,6 +656,9 @@ fn test_add_pool_with_icrc1_transfer() {
         amount_1: token_b_liquidity_amount.clone(),
         tx_id_1: Some(TxId::BlockIndex(transfer_result_b_to_kong.unwrap())),
         lp_fee_bps: None,
+        signature_0: None,
+        signature_1: None,
+        timestamp: None,
     };
 
     let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");
@@ -862,6 +871,9 @@ fn test_add_pool_insufficient_token0_balance() {
         amount_1: token_b_liquidity_amount.clone(),
         tx_id_1: None, // Use approve for Token B
         lp_fee_bps: None,
+        signature_0: None,
+        signature_1: None,
+        timestamp: None,
     };
 
     let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");
@@ -1089,6 +1101,9 @@ fn test_add_pool_insufficient_token1_balance() {
         amount_1: token_b_liquidity_amount.clone(), // This exceeds user's available balance
         tx_id_1: None,                              // Use approve for Token B
         lp_fee_bps: None,
+        signature_0: None,
+        signature_1: None,
+        timestamp: None,
     };
 
     let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");
@@ -1330,6 +1345,9 @@ fn test_add_pool_insufficient_allowance() {
         amount_1: token_b_liquidity_amount.clone(),
         tx_id_1: None, // Use approve for Token B
         lp_fee_bps: None,
+        signature_0: None,
+        signature_1: None,
+        timestamp: None,
     };
 
     let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");
@@ -1546,6 +1564,9 @@ fn test_add_pool_setup() {
         amount_1: token_b_liquidity_amount.clone(),
         tx_id_1: Some(TxId::BlockIndex(tx_id_b)), // Use the transaction ID from the transfer
         lp_fee_bps: None,
+        signature_0: None,
+        signature_1: None,
+        timestamp: None,
     };
 
     let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");

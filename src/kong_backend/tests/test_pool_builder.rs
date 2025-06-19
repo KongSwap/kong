@@ -467,6 +467,9 @@ impl TestSetup {
             amount_1: token_b_amount,
             tx_id_1: tx_id_b.map(TxId::BlockIndex),
             lp_fee_bps: config.lp_fee_bps,
+            signature_0: None,
+            signature_1: None,
+            timestamp: None,
         };
         
         let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");
@@ -629,6 +632,12 @@ pub fn run_pool_test(config: PoolTestConfig) -> Result<()> {
         // First, add these unique tokens to make them valid
         let add_token_a_args = AddTokenArgs {
             token: unique_token_a.clone(),
+            name: None,
+            symbol: None,
+            decimals: None,
+            fee: None,
+            program_id: None,
+            total_supply: None,
         };
         let args_a = encode_one(&add_token_a_args).expect("Failed to encode add_token arguments");
         let response_a = setup.ic
@@ -638,6 +647,12 @@ pub fn run_pool_test(config: PoolTestConfig) -> Result<()> {
         
         let add_token_b_args = AddTokenArgs {
             token: unique_token_b.clone(),
+            name: None,
+            symbol: None,
+            decimals: None,
+            fee: None,
+            program_id: None,
+            total_supply: None,
         };
         let args_b = encode_one(&add_token_b_args).expect("Failed to encode add_token arguments");
         let response_b = setup.ic
@@ -654,6 +669,9 @@ pub fn run_pool_test(config: PoolTestConfig) -> Result<()> {
             amount_1: setup.token_b_liquidity_amount.clone(),
             tx_id_1: other_user_tx_id_b.map(TxId::BlockIndex), // Use other user's tx ID
             lp_fee_bps: None,
+            signature_0: None,
+            signature_1: None,
+            timestamp: None,
         };
         
         let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");
@@ -889,6 +907,9 @@ fn test_add_pool_with_other_user_tx_id() {
         amount_1: token_b_amount,
         tx_id_1: Some(TxId::BlockIndex(tx_id_b)),  // Using OTHER user's tx ID
         lp_fee_bps: None,
+        signature_0: None,
+        signature_1: None,
+        timestamp: None,
     };
     
     let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool_args");

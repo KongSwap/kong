@@ -88,7 +88,7 @@ pub fn initialize_default_tokens(
     // --- Add tokens to Kong backend ---
     for ledger_id in [ckusdt_ledger_id, icp_ledger_id] {
         let token = format!("IC.{}", ledger_id.to_text());
-        let args = encode_one(&AddTokenArgs { token }).expect("encode add_token");
+        let args = encode_one(&AddTokenArgs { token, ..Default::default() }).expect("encode add_token");
         let response = ic
             .update_call(kong_backend, controller_principal, "add_token", args)
             .map_err(|e| anyhow::anyhow!("call add_token failed: {:?}", e))?;

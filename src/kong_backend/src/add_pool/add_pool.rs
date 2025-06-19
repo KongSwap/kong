@@ -826,7 +826,7 @@ async fn verify_cross_chain_transfer(
     amount: &Nat,
     signature: &str,
     tx_id: &Option<TxId>,
-    timestamp: Option<u64>,
+    _timestamp: Option<u64>,
     transfer_ids: &mut Vec<u64>,
     ts: u64,
     args: &AddPoolArgs,

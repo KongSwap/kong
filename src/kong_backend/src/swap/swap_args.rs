@@ -20,7 +20,26 @@ pub struct SwapArgs {
     pub max_slippage: Option<f64>,
     pub referred_by: Option<String>,
     // Cross-chain fields (if signature exists, it's cross-chain)
+    #[serde(default)]
     pub signature: Option<String>,       // Ed25519 signature of canonical message
+    #[serde(default)]
     pub timestamp: Option<u64>,          // Required when signature is present (milliseconds)
     // NOTE: pay_address removed - we derive sender from pay_tx_id for cross-chain
+}
+
+impl Default for SwapArgs {
+    fn default() -> Self {
+        Self {
+            pay_token: String::new(),
+            pay_amount: Nat::from(0u64),
+            pay_tx_id: None,
+            receive_token: String::new(),
+            receive_amount: None,
+            receive_address: None,
+            max_slippage: None,
+            referred_by: None,
+            signature: None,
+            timestamp: None,
+        }
+    }
 }

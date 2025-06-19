@@ -76,6 +76,7 @@ fn test_add_token_as_controller() {
     // Call add_token as controller
     let add_token_args = AddTokenArgs {
         token: token_address.clone(),
+        ..Default::default()
     };
     
     let args = encode_one(&add_token_args).expect("Failed to encode add_token arguments");
@@ -161,6 +162,7 @@ fn test_add_token_idempotency() {
     // First add_token call should succeed
     let add_token_args = AddTokenArgs {
         token: token_address.clone(),
+        ..Default::default()
     };
     
     let args = encode_one(&add_token_args).expect("Failed to encode add_token arguments");

@@ -189,6 +189,7 @@ pub fn setup_swap_test_environment() -> Result<SwapTestSetup> {
         amount_1: Nat::from(base_liquidity_b),
         tx_id_1: Some(TxId::BlockIndex(token_b_tx_id)),
         lp_fee_bps: Some(30),
+        ..Default::default()
     };
     let add_pool_payload = encode_one(&add_pool_args).expect("Failed to encode add_pool args");
     let add_pool_response = ic

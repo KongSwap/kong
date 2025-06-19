@@ -12,10 +12,11 @@ if [ "${NETWORK}" != "local" ]; then
     NETWORK_FLAG="--network ${NETWORK}"
 fi
 IDENTITY="--identity kong_user1"
-KONG_BACKEND=$(dfx canister id ${NETWORK_FLAG} kong_backend)
+KONG_BACKEND=$(dfx canister id ${NETWOR
+K_FLAG} kong_backend)
 
 # Token configurations
-SOL_AMOUNT=100_000_000  # 0.1 SOL (9 decimals)
+SOL_AMOUNT=10_000_000  # 0.01 SOL (9 decimals)
 SOL_AMOUNT=${SOL_AMOUNT//_/}  # remove underscore
 SOL_CHAIN="SOL"
 SOL_ADDRESS="11111111111111111111111111111111"  # Native SOL

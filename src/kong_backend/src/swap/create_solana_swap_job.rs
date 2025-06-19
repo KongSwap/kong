@@ -87,17 +87,16 @@ pub async fn create_solana_swap_job(
             .await
             .map_err(|e| format!("Failed to sign transaction: {}", e))?;
 
-        // Extract signature for tracking first (before moving signed_tx)
+        // Extract signature for tracking first (before encoding)
         let tx_sig = if !signed_tx.signatures.is_empty() {
             bs58::encode(&signed_tx.signatures[0]).into_string()
         } else {
             return Err("No signature in signed transaction".to_string());
         };
 
-        // Encode the signed transaction using serde_cbor (available in Cargo.toml)
-        let encoded_tx = serde_cbor::to_vec(&(signed_tx.message, signed_tx.signatures))
+        // Encode the signed transaction using proper Solana transaction format
+        let encoded_tx = signed_tx.encode()
             .map_err(|e| format!("Failed to encode transaction: {}", e))?;
-        let encoded_tx_base64 = bs58::encode(&encoded_tx).into_string();
 
         // Create the swap job
         let current_time = ICNetwork::get_time();
@@ -120,7 +119,7 @@ pub async fn create_solana_swap_job(
             status: SwapJobStatus::Pending,
             created_at: current_time,
             updated_at: current_time,
-            encoded_signed_solana_tx: encoded_tx_base64,
+            encoded_signed_solana_tx: encoded_tx,
             solana_tx_signature_of_payout: None,
             error_message: None,
             attempts: 0,
