@@ -1,7 +1,6 @@
 <script lang="ts">
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import Panel from "$lib/components/common/Panel.svelte";
   import { copyToClipboard } from "$lib/utils/clipboard";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
@@ -153,7 +152,7 @@
   const priceFlash = $derived(activeTab === "from" ? fromPriceFlash : toPriceFlash);
 </script>
 
-<Panel variant="solid" className="!bg-kong-bg-secondary">
+<div class="relative text-kong-text-primary flex flex-col min-h-0 p-4 border border-kong-border/50 rounded-lg bg-kong-bg-secondary">
   {#if activeFromToken || activeToToken}
     <!-- Token Tabs -->
     <div class="flex gap-1 mb-3 bg-kong-bg-primary/50 p-1 rounded-lg">
@@ -200,7 +199,7 @@
                 ({activeToken.symbol || "..."})
               </span>
             </h1>
-            <div class="flex flex-wrap gap-1 items-center">
+            <!-- <div class="flex flex-wrap gap-1 items-center">
               {#each activeToken.standards as standard}
                 <Badge
                   variant={standard.includes("ICRC") ? "icrc" : "solana"}
@@ -209,7 +208,7 @@
                   {standard}
                 </Badge>
               {/each}
-            </div>
+            </div> -->
           </div>
         </div>
       </div>
@@ -362,7 +361,7 @@
       <p class="text-sm font-medium">Select tokens to view detailed information</p>
     </div>
   {/if}
-</Panel>
+  </div>
 
 <style scoped>
   .flash-green-text {

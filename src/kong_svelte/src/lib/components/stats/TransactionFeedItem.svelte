@@ -88,7 +88,7 @@
   }`}
 >
   <!-- Age -->
-  <td class={`px-4 py-1 text-sm font-medium whitespace-nowrap ${
+  <td class={`px-2 py-1 text-sm font-medium whitespace-nowrap ${
     isBuy ? "text-kong-success" : "text-kong-error"
   }`}>
     {timeAgo}
@@ -137,7 +137,7 @@
   </td>
 
   <!-- Trader -->
-  <td class="px-4 py-2 w-[80px]">
+  <td class="px-4 py-2">
     <span
       class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary cursor-pointer hover:opacity-80"
       style="background-color: {getPrincipalColor(walletAddress)};"

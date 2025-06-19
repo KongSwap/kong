@@ -283,7 +283,7 @@
 
 <style scoped lang="postcss">
   .nav-panel-button {
-    @apply h-[34px] px-3 flex items-center gap-1.5 text-xs font-medium text-kong-text-secondary bg-transparent border-none transition-all duration-150 relative overflow-hidden;
+    @apply h-[34px] px-3 flex items-center gap-1 text-xs font-medium text-kong-text-secondary bg-kong-bg-primary border-none transition-all duration-150 relative overflow-visible rounded-xl;
   }
 
   .nav-panel-button:not(:last-child):not(.last-button) {
@@ -306,11 +306,7 @@
   }
 
   .nav-panel-button:hover {
-    @apply text-kong-text-on-primary;
-  }
-
-  .nav-panel-button.selected::before {
-    @apply bg-kong-primary/40;
+    @apply bg-kong-primary text-kong-text-on-primary rounded-xl;
   }
 
   .nav-panel-button.selected {
