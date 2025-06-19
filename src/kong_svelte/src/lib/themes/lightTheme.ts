@@ -8,44 +8,44 @@ export const lightTheme: ThemeDefinition = {
   author: 'Kong Team',
   authorLink: 'https://kongswap.io',
   colors: {
-    // Background colors - warmer, less bright
-    bgPrimary: '#F5F3F0',      // Warmer beige background
-    bgSecondary: '#FAF8F5',     // Softer cream for panels (was too white)
-    bgTertiary: '#F0EEEB',      // Warm gray for depth
-    hoverBgSecondary: '#EBE9E6', // Warm hover state
+    // Background colors - fresh greens and warm yellows
+    bgPrimary: '#FAFEF5',      // Soft mint cream background
+    bgSecondary: '#FFFFF9',     // Clean ivory for panels
+    bgTertiary: '#F0F8E8',      // Pale green tint for depth
+    hoverBgSecondary: '#E8F5E0', // Fresh green hover state
     
-    // Primary and secondary colors - warm, earthy tones
-    primary: '#7B6D5D',     // Warm brown - matches the warm theme
-    primaryHover: '#6B5D4D', // Darker warm brown
-    secondary: '#8B7F71',   // Muted taupe - complementary
-    secondaryHover: '#7B6F61', // Darker taupe
+    // Primary and secondary colors - vibrant Kong theme
+    primary: '#4A8F2D',     // Rich jungle green - KongSwap primary
+    primaryHover: '#3A7F1D', // Deeper jungle green
+    secondary: '#FFD700',   // Pure gold yellow - Kong's banana
+    secondaryHover: '#F0C800', // Richer gold on hover
     
-    // Semantic colors - warm, muted for easier viewing
-    accent: '#9B8B7E',  // Warm stone accent
-    error: '#D09090',   // Soft terracotta for errors
-    success: '#7FA37E', // Muted sage green
-    warning: '#D4A056', // Muted amber (kept as is - works well)
-    info: '#8B9BAE',    // Muted blue-gray
-    muted: '#9B9AA2',   // Warm gray
+    // Semantic colors - tropical palette
+    accent: '#A4D65E',  // Fresh lime green accent
+    error: '#E57373',   // Coral red for errors (more vibrant)
+    success: '#66BB6A', // Vibrant success green
+    warning: '#FFB300', // Bright banana yellow
+    info: '#7CB342',    // Fresh leaf green for info
+    muted: '#B8D4A8',   // Soft mint green
     
     // Hover variants
-    successHover: '#6F936E', // Darker sage green
-    accentHover: '#8B7B6E',  // Darker warm stone
-    errorHover: '#C08080',   // Darker terracotta
-    warningHover: '#B88A4A', // Darker muted amber
-    infoHover: '#7B8B9E',    // Darker blue-gray
-    mutedHover: '#8B8A92',   // Darker warm gray
+    successHover: '#5CAF5A', // Richer success green
+    accentHover: '#94C64E',  // Deeper lime green
+    errorHover: '#D56363',   // Deeper coral
+    warningHover: '#FFA000', // Deeper banana yellow
+    infoHover: '#6CA332',    // Richer leaf green
+    mutedHover: '#A8C498',   // Deeper mint green
     
-    // Text colors - warmer, easier on eyes
-    textPrimary: '#3D3B37',  // Warm dark gray - easier than cool gray
-    textSecondary: '#6B6966', // Warm medium gray
-    textDisabled: '#A5A3A0', // Warm light gray
-    textSuccess: '#6F936E', // Sage green
-    textError: '#C08080',   // Soft terracotta
-    textAccent: '#7B6D5D',  // Warm brown (matching primary)
-    textOnPrimary: '#FFFFFF', // Pure white for better contrast on primary colors
-    textLight: '#FAF8F5',      // Softer cream for light text
-    textDark: '#3D3B37',       // Warm dark gray
+    // Text colors - crisp and readable
+    textPrimary: '#1A3409',  // Deep jungle green
+    textSecondary: '#4A6B3A', // Soft forest green
+    textDisabled: '#9CB894', // Pale green-gray
+    textSuccess: '#4A8F2D', // Primary green for success
+    textError: '#D56363',   // Coral red
+    textAccent: '#3A7F1D',  // Rich green accent
+    textOnPrimary: '#FFFFFF', // Pure white for contrast
+    textLight: '#FFFFF9',      // Clean ivory for light text
+    textDark: '#1A3409',       // Deep jungle green
     transparentSwapPanel: false,
     transparentPanel: false,
     
@@ -55,41 +55,41 @@ export const lightTheme: ThemeDefinition = {
     // UI settings
     panelRoundness: 'rounded-lg', // Modern rounded corners
     swapPanelRoundness: 'rounded-xl', // Slightly more rounded for swap panels
-    swapPanelBorder: '1px solid rgba(232, 230, 227, 0.8)', // Warm border matching new theme
-    swapPanelShadow: 'shadow-sm', // Subtle shadow
+    swapPanelBorder: '1px solid rgba(164, 214, 94, 0.25)', // Soft lime border
+    swapPanelShadow: 'shadow-md', // Medium shadow for depth
     swapPanelInputsRounded: true, // Rounded inputs
     
-    // Borders - warmer, more subtle
-    border: '#E8E6E3',      // Warm gray border
-    borderLight: '#F0EFED',  // Very light warm gray
+    // Borders - vibrant green accents
+    border: '#D4E8C4',      // Soft green border
+    borderLight: '#E8F5E0',  // Very light mint border
     
     // Logo properties - adjust for light theme
     logoBrightness: 0.9,
     logoInvert: 1,           // Invert for dark logos on light background
     logoHoverBrightness: 0.8,
     
-    // Swap Button styling - Professional light theme with depth
-    swapButtonPrimaryGradientStart: '#5A9FD4', // Soft blue - more professional for light theme
-    swapButtonPrimaryGradientEnd: '#4A8FC4',   // Deeper blue gradient
-    swapButtonErrorGradientStart: '#E57373',   // Soft red for errors
-    swapButtonErrorGradientEnd: '#D56363',     // Deeper red gradient
-    swapButtonProcessingGradientStart: '#7986CB', // Soft indigo for processing
-    swapButtonProcessingGradientEnd: '#6976BB',   // Deeper indigo
-    swapButtonBorderColor: 'rgba(90, 159, 212, 0.3)', // Soft blue border
-    swapButtonGlowColor: 'rgba(90, 159, 212, 0.35)',  // Blue glow for hover
-    swapButtonShineColor: 'rgba(255, 255, 255, 0.6)', // Bright white shine
-    swapButtonReadyGlowStart: '#66BB6A', // Vibrant green for ready state
-    swapButtonReadyGlowEnd: '#56AB5A',   // Deeper green gradient
+    // Swap Button styling - Vibrant Kong theme
+    swapButtonPrimaryGradientStart: '#66BB6A', // Fresh green
+    swapButtonPrimaryGradientEnd: '#4A8F2D',   // Rich jungle green gradient
+    swapButtonErrorGradientStart: '#FF6B6B',   // Bright coral for errors
+    swapButtonErrorGradientEnd: '#E57373',     // Deeper coral gradient
+    swapButtonProcessingGradientStart: '#FFD700', // Pure gold for processing
+    swapButtonProcessingGradientEnd: '#FFB300',   // Rich banana yellow
+    swapButtonBorderColor: 'rgba(164, 214, 94, 0.4)', // Lime border
+    swapButtonGlowColor: 'rgba(164, 214, 94, 0.5)',  // Bright lime glow for hover
+    swapButtonShineColor: 'rgba(255, 255, 255, 0.7)', // Bright white shine
+    swapButtonReadyGlowStart: '#A4D65E', // Fresh lime for ready state
+    swapButtonReadyGlowEnd: '#7CB342',   // Leaf green gradient
     swapButtonTextColor: '#FFFFFF', // Pure white text for better contrast
     swapButtonRoundness: 'rounded-full', // Full rounded
-    swapButtonShadow: 'none', // No shadow for cleaner look
+    swapButtonShadow: '0 4px 15px rgba(164, 214, 94, 0.3)', // Soft lime shadow
     
     // Chart text color
-    chartTextColor: '#3D3B37',
+    chartTextColor: '#1A3409',
     
-    // Background configuration - warm, neutral gradient
+    // Background configuration - tropical gradient
     backgroundType: 'gradient',
-    backgroundGradient: 'linear-gradient(135deg, rgba(245, 243, 240, 1) 0%, rgba(243, 241, 238, 1) 50%, rgba(241, 239, 236, 1) 100%)',
+    backgroundGradient: 'linear-gradient(135deg, rgba(250, 254, 245, 1) 0%, rgba(240, 248, 232, 1) 25%, rgba(255, 253, 235, 1) 75%, rgba(255, 255, 249, 1) 100%)',
     backgroundOpacity: 1,
     enableNebula: false,
     enableStars: false,
