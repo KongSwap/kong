@@ -346,7 +346,7 @@
       </div>
     {/if}
 
-    {#if $currentUserPoolsStore.loading && hasCompletedInitialLoad}
+    {#if isRefreshing && hasCompletedInitialLoad}
       <div class="px-4 py-2 mt-2 flex justify-center">
         <div
           class="text-xs text-kong-text-secondary animate-pulse flex items-center gap-1.5"
