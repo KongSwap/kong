@@ -1,6 +1,6 @@
 // Export the API URL
-// export const API_URL = getIndexerUrl();
-export const API_URL = "http://localhost:8081";
+export const API_URL = getIndexerUrl();
+// export const API_URL = "http://localhost:8081";
 
 // Export base API components
 export * from './base';

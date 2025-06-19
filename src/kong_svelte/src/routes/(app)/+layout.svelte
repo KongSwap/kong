@@ -37,6 +37,7 @@
   
   // Determine if current page should have themed background
   const hasThemedBackground = $derived(
+    $page.url.pathname === '/' || 
     $page.url.pathname.startsWith('/swap') || 
     $page.url.pathname.includes('/competition')
   );
@@ -138,7 +139,7 @@
       pageKey++;
       
       // Check if we're transitioning between themed and non-themed pages
-      const wasThemed = previousPath.startsWith('/swap') || previousPath.includes('/competition');
+      const wasThemed = previousPath === '/' || previousPath.startsWith('/swap') || previousPath.includes('/competition');
       const isThemed = hasThemedBackground;
       
       if (wasThemed !== isThemed) {
