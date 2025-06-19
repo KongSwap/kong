@@ -105,6 +105,11 @@
     
     const colors = currentTheme.colors;
     
+    // For pattern backgrounds, use fallback gradient on non-swap pages
+    if (colors.backgroundType === 'pattern' && !showThemedBackground && colors.backgroundFallbackGradient) {
+      return colors.backgroundFallbackGradient;
+    }
+    
     switch (colors.backgroundType) {
       case 'gradient':
         return colors.backgroundGradient || '';
@@ -261,12 +266,24 @@
   });
 </script>
 
-<div class="page-wrapper" class:has-background={showThemedBackground}>
-  <!-- Background effects -->
+<div class="page-wrapper" class:has-background={showThemedBackground || getBackgroundStyle()}>
+  <!-- Background effects for non-swap pages with fallback gradient -->
+  {#if !showThemedBackground && getBackgroundStyle()}
+    <div class="background-fade-wrapper visible">
+      <div class="background-container">
+        <div 
+          class="theme-background" 
+          style={`background: ${getBackgroundStyle()}`}
+        ></div>
+      </div>
+    </div>
+  {/if}
+  
+  <!-- Background effects for swap pages -->
   <div class="background-fade-wrapper" class:visible={showThemedBackground}>
     {#if isCompetition}
       <div class="background-container custom"></div>
-    {:else}
+    {:else if showThemedBackground}
       <div class="background-container">
         <!-- Solid/gradient background -->
         <div 
@@ -336,11 +353,7 @@
     min-height: 100vh;
     position: relative;
     z-index: 0;
-  }
-  
-  /* When no background, ensure proper layout */
-  .page-wrapper:not(.has-background) {
-    background: transparent;
+    background-color: transparent;
   }
   
   /* Background fade wrapper for smooth transitions */

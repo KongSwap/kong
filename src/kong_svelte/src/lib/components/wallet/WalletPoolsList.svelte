@@ -42,8 +42,6 @@
   let errorMessage = $state<string | null>(null);
   let isInitializing = $state(false);
 
-  // State for the UserPool modal (removed - not used currently)
-
   // Initialize store and handle auth changes
   $effect(() => {
     if ($auth.isConnected) {
@@ -348,7 +346,7 @@
       </div>
     {/if}
 
-    {#if $currentUserPoolsStore.loading && hasCompletedInitialLoad}
+    {#if isRefreshing && hasCompletedInitialLoad}
       <div class="px-4 py-2 mt-2 flex justify-center">
         <div
           class="text-xs text-kong-text-secondary animate-pulse flex items-center gap-1.5"

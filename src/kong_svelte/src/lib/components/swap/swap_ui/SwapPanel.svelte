@@ -378,7 +378,7 @@
           {#if panelType === "pay"}
             <!-- OnRamp Button -->
             <button
-              class="{$panelRoundness} font-semibold text-xs text-kong-text-secondary hover:text-kong-text-primary bg-kong-bg-tertiary hover:bg-kong-hover/10 px-2.5 border border-kong-border cursor-pointer transition-all duration-200 ease-in-out sm:text-xs py-0.5 sm:px-2"
+              class="{$panelRoundness} text-xs text-kong-text-secondary hover:text-kong-text-primary bg-kong-bg-tertiary hover:bg-kong-bg-secondary px-2.5 border border-kong-border cursor-pointer transition-all duration-200 ease-in-out sm:text-xs py-0.5 sm:px-2"
               onclick={(e) => {
                 e.preventDefault();
                 window.open(
@@ -445,7 +445,10 @@
           <!-- Token Selector Button -->
           <button
             class="flex items-center {$panelRoundness} justify-between bg-kong-bg-tertiary p-2 border border-kong-border transition-colors duration-150 gap-2 hover:bg-kong-hover/10 sm:min-w-0 sm:gap-2 sm:p-2 sm:pr-3 w-full"
-            onclick={(e) => e.stopPropagation && handleTokenSelect(e)}
+            onclick={(e) => {
+              e.stopPropagation();
+              handleTokenSelect(e);
+            }}
           >
             {#if token}
               <div class="flex items-center gap-2">
@@ -539,10 +542,10 @@
             {/snippet}
 
             <!-- Percentage Buttons -->
-            {#if title === "You Pay" && token}
+            {#if (title === "You Pay" || title === "Send") && token}
               {@const percentages = isMobile ? [50, 100] : [25, 50, 75, 100]}
               <div
-                class="flex items-center justify-end w-full text-xs sm:text-sm"
+                class="flex items-center justify-end w-full text-xs sm:text-xs"
               >
                 {#each percentages as percentage, index (percentage)}
                   {@render percentageButton(

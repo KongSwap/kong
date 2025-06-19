@@ -69,8 +69,8 @@
           const style = document.createElement("style");
           style.textContent = `
             body { 
-              background-color: ${initialTheme === "dark" ? "#0E111B" : "#f5f7fa"}; 
-              color: ${initialTheme === "dark" ? "#ffffff" : "#111827"}; 
+              background-color: rgb(var(--bg-primary, ${initialTheme === "dark" ? "9 12 23" : "245 247 250"})); 
+              color: rgb(var(--text-primary, ${initialTheme === "dark" ? "255 255 255" : "17 24 39"})); 
               transition: background-color 0.2s ease-in-out;
             }
           `;

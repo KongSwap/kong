@@ -387,7 +387,7 @@
 
       <div class="relative z-10">
         <SwapPanel
-          title="You Pay"
+          title="Send"
           token={$swapState.payToken}
           amount={$swapState.payAmount}
           onAmountChange={handleAmountChange}
@@ -407,7 +407,7 @@
 
       <div class="relative z-10">
         <SwapPanel
-          title="You Receive"
+          title="Receive"
           token={$swapState.receiveToken}
           amount={$swapState.receiveAmount}
           onAmountChange={handleAmountChange}

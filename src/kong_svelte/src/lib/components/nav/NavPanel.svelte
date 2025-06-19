@@ -220,7 +220,7 @@
 </script>
 
 <div
-  class="flex items-center {isMobile
+  class="flex items-center overflow-hidden {isMobile
     ? ''
     : 'bg-kong-bg-primary/50 border border-kong-border/50'} {$panelRoundness}"
 >
@@ -230,14 +230,14 @@
         ? 'selected'
         : ''} {button.isWalletButton ? 'wallet-button' : ''} {isMobile
         ? 'mobile'
-        : ''} {i === 0 ? 'first-button ' + leftRoundnessClass : ''} {i === visibleButtons.length - 1 ? 'last-button ' + rightRoundnessClass : ''}"
+        : ''} {i === 0 ? 'first-button' : ''} {i === visibleButtons.length - 1 ? 'last-button' : ''} {i === 0 ? leftRoundnessClass : ''} {i === visibleButtons.length - 1 ? rightRoundnessClass : ''}"
       onclick={button.onClick}
       use:tooltip={button.tooltipText
         ? { text: button.tooltipText, direction: "bottom" }
         : null}
       aria-label={button.tooltipText || button.label || "Button"}
     >
-        <div class="relative">
+        <div class="relative z-10">
           {#if button.loading}
             <div class="spinner">
               {#if button.isWalletButton}
@@ -286,8 +286,23 @@
     @apply h-[34px] px-3 flex items-center gap-1 text-xs font-medium text-kong-text-secondary bg-kong-bg-primary border-none transition-all duration-150 relative overflow-visible rounded-xl;
   }
 
-  .nav-panel-button:not(:last-child) {
+  .nav-panel-button:not(:last-child):not(.last-button) {
     @apply border-r border-kong-border/50;
+  }
+
+  /* Use pseudo-element for background to ensure proper clipping */
+  .nav-panel-button::before {
+    @apply absolute bg-kong-bg-primary transition-all duration-150 -z-10;
+    content: '';
+    border-radius: inherit;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .nav-panel-button:hover::before {
+    @apply bg-kong-primary;
   }
 
   .nav-panel-button:hover {
@@ -295,24 +310,23 @@
   }
 
   .nav-panel-button.selected {
-    @apply bg-kong-primary/40 text-kong-text-on-primary;
+    @apply text-kong-text-on-primary;
   }
 
   .nav-panel-button.wallet-button {
-    @apply text-kong-primary hover:bg-kong-primary hover:text-kong-text-on-primary;
+    @apply text-kong-primary;
+  }
+
+  .nav-panel-button.wallet-button:hover::before {
+    @apply bg-kong-primary;
+  }
+
+  .nav-panel-button.wallet-button:hover {
+    @apply text-kong-text-on-primary;
   }
 
   .nav-panel-button.mobile {
     @apply h-[34px] w-[34px] flex items-center justify-center;
-  }
-  
-  /* Ensure first and last buttons clip content but allow badge overflow */
-  .nav-panel-button.first-button {
-    @apply overflow-hidden;
-  }
-  
-  .nav-panel-button.last-button {
-    @apply overflow-hidden;
   }
   
   /* Allow notification badge to overflow */

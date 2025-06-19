@@ -13,7 +13,6 @@
   import PageHeader from '$lib/components/common/PageHeader.svelte';
   import Panel from '$lib/components/common/Panel.svelte';
   import type { ComponentType } from 'svelte';
-  import { STORAGE_KEYS, createNamespacedStore } from '$lib/config/localForage.config';
   import { userTokens } from '$lib/stores/userTokens';
   import { currentUserBalancesStore } from '$lib/stores/balancesStore';
   import { notificationsStore } from '$lib/stores/notificationsStore';
@@ -33,18 +32,16 @@
   
   // Constants
   const quickSlippageValues = [1, 2, 3, 5];
-  const SETTINGS_KEY = STORAGE_KEYS.SETTINGS;
-  const FAVORITES_KEY = STORAGE_KEYS.FAVORITE_TOKENS;
+  const SETTINGS_KEY = 'settings';
+  const FAVORITES_KEY = 'favoriteTokens';
   
   // Loading states for async operations
   let loadingSlippage = $state(false);
   let loadingSound = $state(false);
   let loadingTicker = $state(false);
   
-  // Create namespaced stores
-  const settingsStorage = createNamespacedStore(SETTINGS_KEY);
-  const slippageStorage = createNamespacedStore('slippage');
-  const favoritesStorage = createNamespacedStore(FAVORITES_KEY);
+  // Storage keys
+  const SLIPPAGE_KEY = 'slippage';
   
   // Initialize when component mounts
   onMount(() => {
@@ -129,19 +126,20 @@
     }
   }
   
-  // Function to get settings from localForage
+  // Function to get settings from localStorage
   async function getSettings() {
     if (browser) {
       const walletId = $auth?.account?.owner || 'default';
       const settingsKey = `${SETTINGS_KEY}_${walletId}`;
       
       try {
-        const storedSettings = await settingsStorage.getItem<{
+        const stored = localStorage.getItem(settingsKey);
+        const storedSettings = stored ? JSON.parse(stored) as {
           sound_enabled: boolean;
           ticker_enabled?: boolean;
           max_slippage: number;
           timestamp: number;
-        }>(settingsKey);
+        } : null;
         
         if (storedSettings) {
           return storedSettings;
@@ -160,7 +158,7 @@
     };
   }
   
-  // Function to save settings to localForage
+  // Function to save settings to localStorage
   async function saveSettings(settings: any) {
     if (browser) {
       try {
@@ -173,7 +171,7 @@
           timestamp: Date.now()
         };
         
-        await settingsStorage.setItem(settingsKey, settingsToSave);
+        localStorage.setItem(settingsKey, JSON.stringify(settingsToSave));
         return true;
       } catch (error) {
         console.error('Error saving settings to storage:', error);
@@ -204,7 +202,8 @@
         const walletId = $auth?.account?.owner || 'default';
         const slippageKey = `slippage_${walletId}`;
         
-        const storedSlippage = await slippageStorage.getItem(slippageKey);
+        const stored = localStorage.getItem(`${SLIPPAGE_KEY}:${slippageKey}`);
+        const storedSlippage = stored ? JSON.parse(stored) : null;
         if (storedSlippage) {
           const value = typeof storedSlippage === 'string' 
             ? parseFloat(storedSlippage) 
@@ -227,7 +226,7 @@
         const walletId = $auth?.account?.owner || 'default';
         const slippageKey = `slippage_${walletId}`;
         
-        await slippageStorage.setItem(slippageKey, value);
+        localStorage.setItem(`${SLIPPAGE_KEY}:${slippageKey}`, JSON.stringify(value));
         
         // Update the settings store as well for consistency
         settingsStore.updateSetting('max_slippage', value);
@@ -393,7 +392,7 @@
           const favoritesKey = `${FAVORITES_KEY}_${walletId}`;
           
           // Clear favorites from storage
-          await favoritesStorage.removeItem(favoritesKey);
+          localStorage.removeItem(`${FAVORITES_KEY}:${favoritesKey}`);
           toastStore.success('Favorites cleared successfully. Refresh may be needed.'); 
         } catch (error) {
           console.error('Error clearing favorites:', error);
@@ -426,8 +425,13 @@
             currentUserBalancesStore.set({});
 
             // Clear any remaining settings storage specific to this component/page
-            await settingsStorage.clear(); 
-            await slippageStorage.clear();
+            // Clear all settings and slippage items
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+              if (key.startsWith(SETTINGS_KEY) || key.startsWith(SLIPPAGE_KEY)) {
+                localStorage.removeItem(key);
+              }
+            });
             notificationsStore.clearAll();
 
             // Reset theme to default (dark) immediately

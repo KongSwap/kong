@@ -46,7 +46,7 @@
   async function initializeTrollbox() {
     if (!chatContainer) return; // Wait until chat container is available
     
-    // Load pending messages from localForage
+    // Load pending messages from localStorage
     trollboxStore.loadPendingMessagesFromStorage();
     
     // Load messages

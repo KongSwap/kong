@@ -23,7 +23,7 @@ type ProcessedPool = UserPoolData;
 const initialState: PoolListState = {
   processedPools: [],
   filteredPools: [],
-  loading: true,
+  loading: false,
   error: null,
   isSearching: false,
   searchResultsReady: false,

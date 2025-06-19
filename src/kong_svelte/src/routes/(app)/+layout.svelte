@@ -12,14 +12,13 @@
   import { auth } from "$lib/stores/auth";
   import { userTokens } from "$lib/stores/userTokens";
   import { keyboardShortcuts } from "$lib/services/keyboardShortcuts";
-  import { configureStorage } from "$lib/config/localForage.config";
   import { DEFAULT_TOKENS } from "$lib/constants/canisterConstants";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import GlobalSignatureModal from "$lib/components/wallet/GlobalSignatureModal.svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
-  import { goto } from "$app/navigation";
   import { themeStore } from "$lib/stores/themeStore";
+  import { settingsStore } from "$lib/stores/settingsStore";
 
   let { children } = $props<{
     children: any;
@@ -37,7 +36,12 @@
   
   // Determine if current page should have themed background
   const hasThemedBackground = $derived(
+<<<<<<< HEAD
     $page.url.pathname.startsWith('/') || 
+=======
+    $page.url.pathname === '/' || 
+    $page.url.pathname.startsWith('/swap') || 
+>>>>>>> a6c9b9e1b3fa3f4a29d3fbbf3233df87e9ce6d33
     $page.url.pathname.includes('/competition')
   );
 
@@ -45,9 +49,10 @@
     const promise = (async () => {
       try {
         if (browser) {
-          configureStorage();
           // Initialize theme store for all pages
           themeStore.initTheme();
+          // Initialize settings store
+          await settingsStore.initializeStore();
         }
         await auth.initialize();
         if (browser) {
@@ -153,9 +158,8 @@
 </script>
 
 
-<div class="flex flex-col min-h-screen w-full origin-center overflow-hidden app-container" 
+<div class="flex flex-col min-h-screen w-full origin-center overflow-hidden app-container bg-kong-bg-primary" 
      class:bg-transition={backgroundTransitioning}
-     style="background-color: {hasThemedBackground ? 'transparent' : 'rgb(var(--bg-primary))'}"
 >
   {#if !themeReady}
   <LoadingIndicator message="Loading..." fullHeight />
@@ -199,21 +203,18 @@
                 transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
-  .page-content.transitioning {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
   /* Smooth color transitions for theme changes */
-  :global(body) {
-    transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  .app-container {
-    transition: background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  :global(html) {
     background-color: rgb(var(--bg-primary));
   }
   
+  :global(body) {
+    transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: rgb(var(--bg-primary));
+    min-height: 100vh;
+  }
+  
+
   .app-container.bg-transition {
     transition-duration: 0.8s;
   }

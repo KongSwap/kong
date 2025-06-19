@@ -278,7 +278,7 @@
   <title>Market Stats - KongSwap</title>
 </svelte:head>
 
-<section class="flex flex-col md:flex-row w-full gap-4 px-4">
+<section class="flex flex-col md:flex-row w-full gap-4 px-4 min-h-screen">
   <!-- Sidebar -->
   <div class="w-full md:w-[330px] flex flex-col gap-2 order-1">
     <PlatformStats poolTotals={$poolTotals} isLoading={$isLoading} />
@@ -287,7 +287,7 @@
   </div>
 
   <!-- Main Content -->
-  <Panel type="main" className="flex flex-col !p-0 !w-full !bg-transparent !shadow-none !border-none order-2" height="100%">
+  <Panel type="main" className="flex flex-col !p-0 !w-full !shadow-none !border-none order-2" height="100%">
     <div class="flex flex-col h-full !rounded-lg">
       <!-- Search Header (Desktop) -->
       <div class="hidden sm:flex items-center mb-2 gap-2">

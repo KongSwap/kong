@@ -16,7 +16,6 @@
   } from "lucide-svelte";
   import Card from "$lib/components/common/Card.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { auth } from "$lib/stores/auth";
   import { browser } from "$app/environment";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
@@ -404,7 +403,7 @@
           >
             Provide liquidity and keep every penny. No protocol fees. Auto-compounding.
             <span class="text-kong-text-primary font-semibold"
-              >Pure profit for you.</span
+              >Pure yield for your wallet.</span
             >
           </p>
         </div>
@@ -514,7 +513,7 @@
     </div>
   </div>
 </div>
-<section class="flex flex-col w-full px-2 pb-4 mt-4 max-w-xl">
+<section class="flex flex-col w-full px-2 sm:px-4 pb-4 mt-4 max-w-[1600px] mx-auto">
     <div class="overflow-hidden flex flex-col h-full {$panelRoundness}">
     <!-- Header -->
       <div
@@ -1060,13 +1059,4 @@
       Loading pools...
     </p>
   </div>
-{/if}
-
-{#if selectedPool}
-  <UserPool
-    pool={selectedPool}
-    bind:showModal={showUserPoolModal}
-    on:liquidityRemoved={handleLiquidityComplete}
-    on:liquidityAdded={handleLiquidityComplete}
-  />
 {/if}

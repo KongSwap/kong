@@ -42,10 +42,10 @@
   const baseThemeClasses = {
     primary: "text-kong-text-on-primary",
     secondary: "text-kong-text-primary",
-    success: "text-kong-success",
+    success: "text-white",
     error: "text-white",
     warning: "text-kong-text-on-primary",
-    "accent-green": "text-kong-bg-primary",
+    "accent-green": "text-kong-text-primary",
     "accent-blue": "text-kong-white",
     "accent-red": "text-kong-white",
     muted: "text-kong-text-inverse/60",

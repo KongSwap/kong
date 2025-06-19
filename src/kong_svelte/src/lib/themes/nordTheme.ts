@@ -50,16 +50,16 @@ export const nordTheme: ThemeDefinition = {
     
     // Semantic colors - using the aurora palette for accents
     accent: '#81A1C1',  // nord9 - Frost medium blue
-    error: '#BF616A',   // nord11 - Aurora red
-    success: '#A3BE8C', // nord14 - Aurora green
+    error: '#D08770',   // nord12 - Aurora orange (more visible than red)
+    success: '#8FBCBB', // nord7 - Frost light (more visible than green)
     warning: '#EBCB8B', // nord13 - Aurora yellow
     info: '#88C0D0',    // nord8 - Frost
     muted: '#4C566A',   // nord3 - Polar Night
     
     // Hover variants - slightly darker shades of the accent colors
-    successHover: '#97B67E', // Darker green
+    successHover: '#7FA9A8', // Darker frost
     accentHover: '#7393B3',  // Darker blue
-    errorHover: '#B3555E',   // Darker red
+    errorHover: '#C17762',   // Darker orange
     warningHover: '#E1C079', // Darker yellow
     infoHover: '#7BAFC0',    // Darker Frost
     mutedHover: '#434C5E',   // nord2 - Darker Polar Night
@@ -71,8 +71,8 @@ export const nordTheme: ThemeDefinition = {
     textSecondary: '#D8DEE9', // nord4 - Snow Storm medium
     textDisabled: '#ADB5BD', // Desaturated text
     textOnPrimary: '#2E3440', // nord0 - Dark text on primary color backgrounds
-    textSuccess: '#A3BE8C', // nord14 - Same as success
-    textError: '#BF616A',   // nord11 - Same as error
+    textSuccess: '#8FBCBB', // nord7 - Same as success
+    textError: '#D08770',   // nord12 - Same as error
     textAccent: '#81A1C1',  // nord9 - Same as accent
     
     // Font settings - Using a clean font that complements the Nord theme
@@ -102,24 +102,24 @@ export const nordTheme: ThemeDefinition = {
     // Swap Button styling - using Nord colors
     swapButtonPrimaryGradientStart: '#88C0D0', // nord8 - Frost light blue
     swapButtonPrimaryGradientEnd: '#81A1C1',   // nord9 - Frost medium blue
-    swapButtonErrorGradientStart: '#BF616A',   // nord11 - Aurora red
-    swapButtonErrorGradientEnd: '#B3555E',     // Darker red
+    swapButtonErrorGradientStart: '#D08770',   // nord12 - Aurora orange
+    swapButtonErrorGradientEnd: '#C17762',     // Darker orange
     swapButtonProcessingGradientStart: '#B48EAD', // nord15 - Aurora purple
     swapButtonProcessingGradientEnd: '#A57A9C',   // Darker purple
     swapButtonBorderColor: 'rgba(216, 222, 233, 0.2)', // nord4 with transparency
     swapButtonGlowColor: 'rgba(136, 192, 208, 0.5)', // nord8 with transparency
     swapButtonShineColor: 'rgba(236, 239, 244, 0.3)', // nord6 with transparency
-    swapButtonReadyGlowStart: '#A3BE8C', // nord14 - Aurora green
-    swapButtonReadyGlowEnd: '#97B67E',   // Darker green
+    swapButtonReadyGlowStart: '#8FBCBB', // nord7 - Frost light
+    swapButtonReadyGlowEnd: '#7FA9A8',   // Darker frost
     swapButtonTextColor: '#ECEFF4', // nord0 - Dark text for contrast
     swapButtonRoundness: 'rounded-full', // Matching panel roundness
     swapButtonShadow: '0 4px 12px rgba(46, 52, 64, 0.2)', // nord0 with transparency
     
     // Background configuration
-    backgroundType: 'pattern',
-    backgroundOpacity: 0.2, // Reduced opacity so it doesn't overpower the UI
+    backgroundType: 'solid',
+    backgroundSolid: 'rgb(var(--bg-primary))',
+    backgroundOpacity: 1.0,
     enableNebula: false,
     enableStars: false,
-    nebulaOpacity: 0.2,
   }
 }; 

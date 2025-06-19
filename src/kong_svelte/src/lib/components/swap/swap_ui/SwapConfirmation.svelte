@@ -5,7 +5,7 @@
   import { Check, Loader2, ChevronsRight, X } from 'lucide-svelte';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
   const { 
@@ -33,30 +33,26 @@
   const buttonScale = tweened(1, { duration: 150, easing: cubicOut });
   const successScale = tweened(0, { duration: 300, easing: cubicOut });
   const arrowPosition = tweened(0, { duration: 300, easing: cubicOut });
-  const tokenFloat = tweened(0, { duration: 2000, easing: cubicOut });
   let isHovered = $state(false);
   let isPressed = $state(false);
 
-  // Particle system
+  // Particle system - reduced count for performance
   let particles = $state<Array<{ id: number; x: number; y: number; size: number; delay: number }>>([]);
   
   onMount(() => {
     mounted = true;
-    // Create floating particles
-    particles = Array.from({ length: 12 }, (_, i) => ({
+    // Create fewer floating particles for better performance
+    particles = Array.from({ length: 6 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
       size: Math.random() * 4 + 2,
-      delay: Math.random() * 3
+      delay: Math.random() * 10
     }));
-    
-    // Start floating animation
-    const floatInterval = setInterval(() => {
-      tokenFloat.update(v => v === 0 ? 1 : 0);
-    }, 2000);
-    
-    return () => clearInterval(floatInterval);
+  });
+  
+  onDestroy(() => {
+    // Cleanup any animations
   });
 
   async function handleConfirm() {
@@ -127,7 +123,7 @@
 
 <!-- Backdrop -->
 <div 
-  class="fixed inset-0 bg-black/85 backdrop-blur-xl z-50 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden"
+  class="fixed inset-0 bg-kong-bg-primary/75 backdrop-blur-xl z-50 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden"
   transition:fade={{ duration: 200 }}
   onclick={handleBackdropClick}
 >
@@ -174,15 +170,16 @@
           transition:scale={{ delay: 100, duration: 300 }}
         >
           <span class="token-label">You Send</span>
-          <div class="token-image-wrapper" style="transform: translateY({-$tokenFloat * 5}px)">
+          <div class="token-image-wrapper token-float-up">
             <div class="token-pulse-ring"></div>
+            <div class="token-pulse-ring ring-2"></div>
             <div class="sm:hidden">
               <TokenImages tokens={[payToken]} size={80} />
             </div>
             <div class="hidden sm:block">
               <TokenImages tokens={[payToken]} size={120} />
             </div>
-            <div class="token-glow animate-pulse-glow"></div>
+            <div class="token-glow"></div>
           </div>
           <div class="token-details">
             <span class="token-amount animate-number-appear">{formatToNonZeroDecimal(parseFloat(initialPayAmount))}</span>
@@ -211,15 +208,16 @@
           transition:scale={{ delay: 200, duration: 300 }}
         >
           <span class="token-label">You Receive</span>
-          <div class="token-image-wrapper" style="transform: translateY({$tokenFloat * 5}px)">
+          <div class="token-image-wrapper token-float-down">
             <div class="token-pulse-ring receive"></div>
+            <div class="token-pulse-ring receive ring-2"></div>
             <div class="sm:hidden">
               <TokenImages tokens={[receiveToken]} size={80} />
             </div>
             <div class="hidden sm:block">
               <TokenImages tokens={[receiveToken]} size={120} />
             </div>
-            <div class="token-glow receive animate-pulse-glow-delayed"></div>
+            <div class="token-glow receive"></div>
           </div>
           <div class="token-details">
             <span class="token-amount animate-number-appear-delayed">{formatToNonZeroDecimal(parseFloat(initialReceiveAmount))}</span>
@@ -279,9 +277,12 @@
 </div>
 
 <style lang="postcss">
-  /* Particle System */
+  /* Particle System - Optimized with will-change */
   .particle {
-    @apply absolute rounded-full bg-white/10 animate-float-up;
+    @apply absolute rounded-full;
+    background-color: rgba(255, 255, 255, 0.15);
+    will-change: transform, opacity;
+    animation: float-up 15s linear infinite !important;
   }
 
   /* Swap Preview Container */
@@ -297,50 +298,76 @@
   }
 
   .token-label {
-    @apply text-sm sm:text-base font-medium text-white/60 uppercase tracking-wider;
+    @apply text-sm sm:text-base font-medium text-kong-text-secondary uppercase tracking-wider pb-4;
     animation: fade-in-down 0.6s ease-out;
   }
 
   .token-image-wrapper {
     @apply relative;
+    will-change: transform;
+    transform-style: preserve-3d;
+  }
+
+  /* Token float animations with GPU acceleration */
+  .token-image-wrapper.token-float-up {
+    animation: token-float-up 4s ease-in-out infinite !important;
+    animation-fill-mode: both;
+  }
+
+  .token-image-wrapper.token-float-down {
+    animation: token-float-down 4s ease-in-out infinite !important;
+    animation-fill-mode: both;
   }
 
   .token-pulse-ring {
-    @apply absolute inset-0 rounded-full border-2 animate-pulse-ring;
-    border-color: rgb(var(--brand-primary) / 0.3);
-    transform: scale(1.3);
+    @apply absolute inset-0 rounded-full pointer-events-none;
+    border: 2px solid rgb(var(--brand-primary) / 0.5);
+    will-change: transform, opacity;
+    animation: pulse-ring-optimized 2.5s cubic-bezier(0, 0, 0.2, 1) infinite !important;
+    transform-origin: center;
   }
 
   .token-pulse-ring.receive {
+    border-color: rgb(var(--semantic-success) / 0.5);
+  }
+
+  .token-pulse-ring.ring-2 {
+    animation-delay: 1.25s;
+    border-width: 1px;
+    border-color: rgb(var(--brand-primary) / 0.3);
+  }
+  
+  .token-pulse-ring.receive.ring-2 {
     border-color: rgb(var(--semantic-success) / 0.3);
   }
 
   .token-glow {
-    @apply absolute inset-0 rounded-full opacity-0 transition-opacity duration-300;
-    background: radial-gradient(circle, rgba(var(--brand-primary) / 0.3), transparent 70%);
-    filter: blur(20px);
-    transform: scale(1.2);
+    @apply absolute inset-0 rounded-full opacity-30 pointer-events-none;
+    background: radial-gradient(circle, rgba(var(--brand-primary) / 0.2), transparent 70%);
+    filter: blur(15px);
+    transform: scale(1.1);
+    will-change: opacity;
   }
 
   .token-glow.receive {
-    background: radial-gradient(circle, rgba(var(--semantic-success) / 0.3), transparent 70%);
+    background: radial-gradient(circle, rgba(var(--semantic-success) / 0.2), transparent 70%);
   }
 
   .token-container:hover .token-glow {
-    @apply opacity-100;
+    @apply opacity-50;
+    transition: opacity 0.3s ease;
   }
 
   .token-details {
-    @apply flex flex-col items-center gap-1;
+    @apply flex flex-col items-center gap-1 mt-6;
   }
 
   .token-amount {
-    @apply text-3xl font-bold text-white tracking-tight;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    @apply text-3xl font-bold text-kong-text-primary tracking-tight;
   }
 
   .token-symbol {
-    @apply text-lg text-white/70 font-medium;
+    @apply text-lg text-kong-text-secondary font-medium;
   }
 
   /* Arrow Styling */
@@ -366,13 +393,14 @@
     transform: rotate(90deg);
   }
 
-  /* Moving particles */
+  /* Moving particles - GPU accelerated */
   .moving-particle {
     @apply absolute w-2 h-2 rounded-full bg-white/40;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    animation: particle-move 3s ease-in-out infinite;
+    will-change: transform, opacity;
+    animation: particle-move-optimized 3s ease-in-out infinite !important;
   }
 
   .particle-1 {
@@ -381,7 +409,7 @@
 
   .particle-2 {
     animation-delay: 1s;
-    @apply w-1.5 h-1.5 bg-white/20;
+    @apply w-1.5 h-1.5 bg-white/30;
   }
 
   .particle-3 {
@@ -413,12 +441,12 @@
   }
 
   .button-shimmer {
-    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    @apply absolute inset-0 opacity-100 transition-opacity duration-300;
     background: linear-gradient(105deg, 
       transparent 40%, 
-      rgba(255, 255, 255, 0.1) 50%, 
+      rgba(255, 255, 255, 0.3) 50%, 
       transparent 60%);
-    animation: shimmer 2s infinite;
+    animation: shimmer 2s infinite !important;
   }
 
   .confirm-button:hover .button-shimmer {
@@ -481,10 +509,10 @@
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   }
 
-  /* Animations */
+  /* Optimized Animations - GPU accelerated */
   @keyframes float-up {
     0% {
-      transform: translateY(100vh) rotate(0deg);
+      transform: translate3d(0, 100vh, 0);
       opacity: 0;
     }
     10% {
@@ -494,41 +522,40 @@
       opacity: 1;
     }
     100% {
-      transform: translateY(-100vh) rotate(360deg);
+      transform: translate3d(0, -100vh, 0);
       opacity: 0;
     }
   }
 
-  @keyframes pulse-ring {
+  @keyframes token-float-up {
     0%, 100% {
-      transform: scale(1.3);
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(0, -15px, 0);
+    }
+  }
+
+  @keyframes token-float-down {
+    0%, 100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(0, 15px, 0);
+    }
+  }
+
+  @keyframes pulse-ring-optimized {
+    0% {
+      transform: scale(0.8);
       opacity: 0;
     }
     50% {
-      transform: scale(1.5);
-      opacity: 0.3;
+      opacity: 1;
     }
-  }
-
-  @keyframes pulse-glow {
-    0%, 100% {
-      opacity: 0.3;
-      transform: scale(1.2);
-    }
-    50% {
-      opacity: 0.6;
-      transform: scale(1.3);
-    }
-  }
-
-  @keyframes pulse-glow-delayed {
-    0%, 100% {
-      opacity: 0.3;
-      transform: scale(1.2);
-    }
-    50% {
-      opacity: 0.6;
-      transform: scale(1.3);
+    100% {
+      transform: scale(1.6);
+      opacity: 0;
     }
   }
 
@@ -570,19 +597,19 @@
     }
   }
 
-  @keyframes particle-move {
+  @keyframes particle-move-optimized {
     0% {
-      transform: translate(-50%, -50%) translateX(-40px);
+      transform: translate3d(-50%, -50%, 0) translateX(-50px);
       opacity: 0;
     }
-    20% {
-      opacity: 1;
+    10% {
+      opacity: 0.8;
     }
-    80% {
-      opacity: 1;
+    90% {
+      opacity: 0.8;
     }
     100% {
-      transform: translate(-50%, -50%) translateX(40px);
+      transform: translate3d(-50%, -50%, 0) translateX(50px);
       opacity: 0;
     }
   }
@@ -707,26 +734,6 @@
       transform: scale(1) rotate(0deg);
     }
   }
-    .animate-float-up {
-    animation: float-up 10s linear infinite;
-  }
-
-
-  .animate-pulse-ring {
-    animation: pulse-ring 2s ease-out infinite;
-  }
-
-
-
-
-  .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-
-  .animate-pulse-glow-delayed {
-    animation: pulse-glow-delayed 2s ease-in-out infinite;
-    animation-delay: 1s;
-  }
 
   .animate-fade-in-up {
     animation: fade-in-up 0.6s ease-out;
@@ -849,6 +856,23 @@
 
     .confirm-button {
       @apply px-4 min-w-[160px];
+    }
+  }
+
+  /* Reduce motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    
+    .particle,
+    .moving-particle,
+    .token-float-up,
+    .token-float-down,
+    .token-pulse-ring {
+      animation: none !important;
     }
   }
 </style>

@@ -2,7 +2,6 @@
   import { onMount } from "svelte";
   import { fade } from "svelte/transition";
   import { goto } from "$app/navigation";
-  import localforage from "localforage";
   import {
     Coins,
     Droplet,
@@ -265,13 +264,14 @@
 
   // Effect to save USD visibility state
   $effect(() => {
-    localforage.setItem(USD_VISIBILITY_KEY, showUsdValues);
+    localStorage.setItem(USD_VISIBILITY_KEY, JSON.stringify(showUsdValues));
   });
 
   // Load token data on mount and load persisted state
   onMount(async () => {
     // Load persisted USD visibility state
-    const persistedVisibility = await localforage.getItem<boolean>(USD_VISIBILITY_KEY);
+    const stored = localStorage.getItem(USD_VISIBILITY_KEY);
+    const persistedVisibility = stored ? JSON.parse(stored) as boolean : null;
     if (persistedVisibility !== null) {
       showUsdValues = persistedVisibility;
     }
