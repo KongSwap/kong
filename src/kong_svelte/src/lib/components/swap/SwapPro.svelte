@@ -50,8 +50,7 @@
         {#if showSwap}
           <div class="mobile-swap-wrapper">
             <Swap
-              on:modeChange
-              on:tokenChange={handleTokenChange}
+              widthFull={true}
             />
           </div>
         {/if}
@@ -90,8 +89,8 @@
       <div class="trading-section">
         <TokenInfoEnhanced fromToken={fromToken} toToken={toToken} />
         <Swap
-          on:modeChange
-          on:tokenChange={handleTokenChange}
+          widthFull={true}
+
         />
       </div>
     </div>
@@ -104,7 +103,6 @@
     height: 100%;
     background: var(--color-background);
     overflow: hidden;
-    max-width: 1600px;
   }
 
   /* Desktop Grid Layout */
