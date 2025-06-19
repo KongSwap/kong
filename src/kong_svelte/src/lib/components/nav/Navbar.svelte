@@ -321,7 +321,7 @@
 
 </script>
 
-<div id="navbar" class="w-full top-0 left-0 z-50 relative">
+<div id="navbar" class="w-full top-0 left-0 z-50 relative mb-4">
   <TokenTicker />
   <div class="mx-auto h-16 flex items-center justify-between md:px-6 px-4 py-2">
     <div class="flex items-center gap-4">

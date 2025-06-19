@@ -13,7 +13,7 @@
   import { loadBalances } from "$lib/stores/tokenStore";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { livePools, loadPools } from "$lib/stores/poolStore";
-  import { formatToNonZeroDecimal, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
+  import { formatToNonZeroDecimal, calculateTokenUsdValue, formatBalance } from "$lib/utils/numberFormatUtils";
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";
   import { fetchPoolBalanceHistory } from "$lib/api/pools";
   import TVLHistoryChart from "$lib/components/liquidity/create_pool/charts/TVLHistoryChart.svelte";
@@ -112,14 +112,18 @@
   function calculateTotalEarnings() {
     let total = 0;
     if (pool.userFeeShare0 && pool.userFeeShare0 > 0 && token0) {
-      const fee0UsdValue = calculateTokenUsdValue(pool.userFeeShare0.toString(), token0);
-      total += parseFloat(fee0UsdValue);
+      // userFeeShare0 is already in decimal format
+      const fee0Amount = Number(pool.userFeeShare0);
+      const fee0UsdValue = fee0Amount * parseFloat(token0.metrics?.price || 0);
+      total += fee0UsdValue;
     }
     if (pool.userFeeShare1 && pool.userFeeShare1 > 0 && token1) {
-      const fee1UsdValue = calculateTokenUsdValue(pool.userFeeShare1.toString(), token1);
-      total += parseFloat(fee1UsdValue);
+      // userFeeShare1 is already in decimal format
+      const fee1Amount = Number(pool.userFeeShare1);
+      const fee1UsdValue = fee1Amount * parseFloat(token1.metrics?.price || 0);
+      total += fee1UsdValue;
     }
-    return total;
+    return formatToNonZeroDecimal(total.toString());
   }
   
   // Load pool data when component mounts or pool ID changes
@@ -451,7 +455,7 @@
         
         {@render metricPanel(
           "Lifetime Earnings",
-          `$${formatToNonZeroDecimal(calculateTotalEarnings())}`,
+          `$${calculateTotalEarnings()}`,
           `<div class="flex justify-between items-center text-xs w-full">
             <div class="flex items-center gap-2">
               ${pool.userFeeShare0 && pool.userFeeShare0 > 0 ? `

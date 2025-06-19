@@ -296,7 +296,7 @@
       <ButtonV2
         theme="accent-red"
         variant="solid"
-        size="md"
+        size="lg"
         isDisabled={!removeLiquidityAmount || isRemoving || isCalculating}
         fullWidth={true}
         onclick={handleRemoveLiquidity}
@@ -430,8 +430,7 @@
   }
 
   .modal-footer {
-    @apply border-t border-kong-border/10 mt-4 bg-kong-bg-primary/90 
-           backdrop-blur-md w-full;
+    @apply border-t border-kong-border/10 mt-4 w-full;
   }
 
   .action-buttons {
