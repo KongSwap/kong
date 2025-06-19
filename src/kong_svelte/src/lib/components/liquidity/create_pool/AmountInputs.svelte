@@ -1,7 +1,7 @@
 <script lang="ts">
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { handleFormattedNumberInput } from "$lib/utils/formUtils";
-  import Card from "$lib/components/common/Card.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
   import { BigNumber } from "bignumber.js";
   import { Wallet, Plus } from "lucide-svelte";
 
@@ -104,7 +104,7 @@
   <!-- Token Inputs -->
   <div class="">
     <!-- Token 0 Input -->
-    <Card className="p-4">
+    <Panel variant="solid" type="secondary">
       <div class="space-y-3">
         <!-- Token Header -->
         <div class="flex items-center justify-between">
@@ -162,7 +162,7 @@
           </div>
         </div>
       </div>
-    </Card>
+    </Panel>
 
     <!-- Connection Arrow -->
     <div class="flex justify-center -my-3">
@@ -172,7 +172,7 @@
     </div>
 
     <!-- Token 1 Input -->
-    <Card className="p-4">
+    <Panel variant="solid" type="secondary">
       <div class="space-y-3">
         <!-- Token Header -->
         <div class="flex items-center justify-between">
@@ -230,7 +230,7 @@
           </div>
         </div>
       </div>
-    </Card>
+    </Panel>
   </div>
 
   <!-- Status and Summary -->
@@ -245,7 +245,7 @@
       </div>
       
       <!-- Summary Information -->
-      <Card className="!p-3 bg-kong-bg-tertiary/30">
+      <Panel variant="solid" type="secondary" className="!p-3 bg-kong-bg-tertiary/30">
         <div class="text-xs text-kong-text-primary/70 space-y-1">
           <div class="flex justify-between">
             <span>Total {token0.symbol}:</span>
@@ -256,7 +256,7 @@
             <span class="font-medium text-kong-text-primary">{displayValue1}</span>
           </div>
         </div>
-      </Card>
+      </Panel>
     </div>
   {/if}
 </div>

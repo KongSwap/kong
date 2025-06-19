@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Card from "$lib/components/common/Card.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { auth } from "$lib/stores/auth";
   import { livePools } from "$lib/stores/poolStore";
@@ -57,7 +57,7 @@
   });
 </script>
 
-<Card className="h-full p-4">
+<Panel variant="solid" type="secondary" className="h-full">
   <div class="flex flex-col h-full">
     <h3 class="text-sm uppercase font-medium text-kong-text-primary/90 mb-4">Your Pool Position</h3>
     
@@ -167,4 +167,4 @@
       </div>
     {/if}
   </div>
-</Card> 
+</Panel> 

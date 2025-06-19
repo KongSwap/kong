@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Card from "$lib/components/common/Card.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
   import { BarChart3 } from "lucide-svelte";
   import {
     initializeChart,
@@ -548,7 +548,7 @@
   }
 </script>
 
-<Card className="!overflow-visible">
+<Panel variant="solid" type="secondary" className="!overflow-visible">
   <div class="flex flex-col w-full h-full">
     <h3 class="chart-title flex items-start justify-between py-3 px-5">
       Pool Balance
@@ -611,7 +611,7 @@
       {/if}
     </div>
   </div>
-</Card>
+</Panel>
 
 <style lang="postcss">
   .chart-title {

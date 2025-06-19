@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Card from "$lib/components/common/Card.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
   import { Info, TrendingUp } from "lucide-svelte";
   
   export let token0: Kong.Token | null;
@@ -46,7 +46,7 @@
   </div>
 
   <!-- Price Input Card -->
-  <Card className="!p-4">
+  <Panel variant="solid" type="secondary">
     <div class="space-y-4">
       <!-- Price Label and Input -->
       <div class="space-y-3">
@@ -119,7 +119,7 @@
         </div>
       {/if}
     </div>
-  </Card>
+  </Panel>
 </div>
 
 <style scoped lang="postcss">
