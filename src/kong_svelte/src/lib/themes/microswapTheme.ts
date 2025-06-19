@@ -127,6 +127,7 @@ export const microswapTheme: ThemeDefinition = {
     backgroundType: 'pattern',
     backgroundImage: '/backgrounds/cloudbg.jpg', // Windoge splash image in backgrounds directory
     backgroundOpacity: 1.0, // Full opacity
+    backgroundFallbackGradient: 'rgb(var(--bg-primary))',
     
     // Enhanced background configuration for Windows 98 sky
     backgroundSize: 'cover',

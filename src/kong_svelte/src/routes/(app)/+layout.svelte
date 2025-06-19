@@ -17,7 +17,6 @@
   import GlobalSignatureModal from "$lib/components/wallet/GlobalSignatureModal.svelte";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
-  import { goto } from "$app/navigation";
   import { themeStore } from "$lib/stores/themeStore";
 
   let { children } = $props<{
@@ -152,9 +151,8 @@
 </script>
 
 
-<div class="flex flex-col min-h-screen w-full origin-center overflow-hidden app-container" 
+<div class="flex flex-col min-h-screen w-full origin-center overflow-hidden app-container bg-kong-bg-primary" 
      class:bg-transition={backgroundTransitioning}
-     style="background-color: {hasThemedBackground ? 'transparent' : 'rgb(var(--bg-primary))'}"
 >
   {#if !themeReady}
   <LoadingIndicator message="Loading..." fullHeight />
@@ -198,21 +196,18 @@
                 transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
-  .page-content.transitioning {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
   /* Smooth color transitions for theme changes */
-  :global(body) {
-    transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  .app-container {
-    transition: background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  :global(html) {
     background-color: rgb(var(--bg-primary));
   }
   
+  :global(body) {
+    transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: rgb(var(--bg-primary));
+    min-height: 100vh;
+  }
+  
+
   .app-container.bg-transition {
     transition-duration: 0.8s;
   }

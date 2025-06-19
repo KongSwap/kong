@@ -70,6 +70,7 @@ function createThemeStore() {
        ${theme.colors.backgroundGradient ? `--background-gradient: ${theme.colors.backgroundGradient};` : ''}
        ${theme.colors.backgroundSolid ? `--background-solid: ${theme.colors.backgroundSolid};` : ''}
        ${theme.colors.backgroundImage ? `--background-image: ${theme.colors.backgroundImage};` : ''}
+       ${theme.colors.backgroundFallbackGradient ? `--background-fallback-gradient: ${theme.colors.backgroundFallbackGradient};` : ''}
        ${theme.colors.logoPath ? `--logo-path: ${theme.colors.logoPath};` : ''}
        ${theme.colors.logoInvert !== undefined ? `--logo-invert: ${theme.colors.logoInvert};` : ''}
        ${theme.colors.logoBrightness !== undefined ? `--logo-brightness: ${theme.colors.logoBrightness};` : ''}

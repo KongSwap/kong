@@ -125,6 +125,7 @@ export interface ThemeColors {
   backgroundSolid?: string;
   backgroundImage?: string;
   backgroundOpacity?: number;
+  backgroundFallbackGradient?: string; // Gradient to use on non-swap pages when using pattern background
   
   // Expanded background configuration for more flexibility
   backgroundSize?: string;        // CSS background-size (e.g., 'cover', 'contain', '100% 100%')
