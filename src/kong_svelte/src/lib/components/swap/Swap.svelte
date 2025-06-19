@@ -33,6 +33,10 @@
   // Types
   type PanelType = "pay" | "receive";
 
+  let { widthFull = false } = $props<{ widthFull?: boolean }>();
+  
+  $inspect(widthFull);
+
   // Constants
   const PANELS = { PAY: "pay" as PanelType, RECEIVE: "receive" as PanelType };
   const DROPDOWN_WIDTH = 360;
@@ -366,8 +370,8 @@
   });
 </script>
 
-<div class="relative flex flex-col w-full !max-w-[500px] mx-auto">
-  <div class="relative flex flex-col gap-2 mb-2">
+<div class="relative flex flex-col w-full {widthFull ? '!max-w-none' : '!max-w-96'} mx-auto">
+  <div class="relative flex flex-col gap-2 rounded-lg">
     <div class="relative flex flex-col min-h-[220px] sm:px-3 md:px-0">
       <!-- Doge image peeking only for Win98 theme -->
       {#if $themeId === "microswap"}
@@ -427,7 +431,7 @@
       isLoading={isQuoteLoading()}
     />
 
-    <div class="mt-1 sm:px-3 md:px-0">
+    <div class="mt-1 sm:px-3 md:px-0 rounded-lg">
       <SwapButton
         text={buttonText}
         isError={!!$swapState.error ||
@@ -435,7 +439,6 @@
           insufficientFunds()}
         isProcessing={$swapState.isProcessing}
         isLoading={isQuoteLoading()}
-        showShineAnimation={buttonText === "SWAP"}
         disabled={buttonDisabled}
         onClick={handleButtonAction}
       />
