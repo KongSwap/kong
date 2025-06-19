@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
   import { formatToNonZeroDecimal, calculateTokenUsdValue } from "$lib/utils/numberFormatUtils";
   import { livePools } from "$lib/stores/poolStore";
   import { calculateUserPoolPercentage } from "$lib/utils/liquidityUtils";
@@ -66,7 +67,7 @@
 </script>
 
 <div in:fade={{ duration: 100 }}>
-  <div class="stats-card">
+  <Panel variant="solid" type="secondary" unpadded={true} className="mb-3 overflow-hidden">
     <div class="stats-row">
       <div class="stat-item">
         <span class="stat-label">Value</span>
@@ -93,10 +94,10 @@
         </span>
       </div>
     </div>
-  </div>
+  </Panel>
   <div class="token-holdings">
     <h3 class="section-title">Your Holdings</h3>
-    <div class="token-card">
+    <Panel variant="solid" type="secondary" unpadded={true} className="overflow-hidden">
       <div class="token-row">
         <TokenImages tokens={[token0]} size={20} />
         <div class="token-details">
@@ -129,52 +130,48 @@
         <span class="holdings-total-label">Value</span>
         <span class="holdings-total-value">${formatToNonZeroDecimal(pool.usd_balance)} <span class="holdings-info">({poolSharePercentage}% share)</span></span>
       </div>
-    </div>
+    </Panel>
   </div>
 
   <div class="earnings-container">
     <h3 class="section-title">Lifetime Fees Accrued</h3>
     {#if loadingEarnings}
-      <div class="earnings-grid">
-        <div class="earnings-card loading">
+      <div class="grid grid-cols-2 gap-3">
+        <Panel variant="solid" type="secondary" className="!p-3 flex flex-col items-center gap-0.5 loading">
           <div class="skeleton-value"></div>
           <div class="skeleton-label"></div>
           <div class="skeleton-label short"></div>
-        </div>
-        <div class="earnings-card loading">
+        </Panel>
+        <Panel variant="solid" type="secondary" className="!p-3 flex flex-col items-center gap-0.5 loading">
           <div class="skeleton-value"></div>
           <div class="skeleton-label"></div>
           <div class="skeleton-label short"></div>
-        </div>
+        </Panel>
       </div>
     {:else if earningsError}
       <div class="error-message">{earningsError}</div>
     {:else if token0 && token1 && pool}
-      <div class="earnings-grid">
-        <div class="earnings-card">
+      <div class="grid grid-cols-2 gap-3">
+        <Panel variant="solid" type="secondary" className="!p-3 flex flex-col items-center gap-0.5 hover:bg-white/5 transition-all duration-200">
           <span class="earnings-value truncate" title={formatToNonZeroDecimal(Number(estimatedAmounts[0]))}>
             {formatToNonZeroDecimal(Number(estimatedAmounts[0]))} {pool.symbol_0}
           </span>
           <span class="earnings-label">${(token0.metrics.price * Number(estimatedAmounts[0])).toFixed(2)}</span>
           <span class="earnings-label">{token0.symbol}</span>
-        </div>
-        <div class="earnings-card">
+        </Panel>
+        <Panel variant="solid" type="secondary" className="!p-3 flex flex-col items-center gap-0.5 hover:bg-white/5 transition-all duration-200">
           <span class="earnings-value truncate" title={formatToNonZeroDecimal(Number(estimatedAmounts[1]))}>
             {formatToNonZeroDecimal(Number(estimatedAmounts[1]))} {pool.symbol_1}
           </span>
           <span class="earnings-label">${(token1.metrics.price * Number(estimatedAmounts[1])).toFixed(2)}</span>
           <span class="earnings-label">{token1.symbol}</span>
-        </div>
+        </Panel>
       </div>
     {/if}
   </div>
 </div>
 
 <style lang="postcss">
-  .stats-card {
-    @apply mb-3 rounded-lg bg-kong-bg-secondary/50
-           border border-kong-border/10 overflow-hidden;
-  }
 
   .stats-row {
     @apply grid grid-cols-2 divide-x divide-kong-border/10;
@@ -215,10 +212,6 @@
     @apply mb-3;
   }
 
-  .token-card {
-    @apply rounded-lg bg-kong-bg-secondary/50
-           border border-kong-border/10 overflow-hidden;
-  }
 
   .token-row {
     @apply flex items-center gap-3 p-3
@@ -271,15 +264,7 @@
     @apply mb-3;
   }
 
-  .earnings-card {
-    @apply p-3 rounded-lg bg-kong-bg-secondary/50
-           border border-kong-border/10 flex flex-col items-center gap-0.5 
-           hover:bg-white/5;
-    transition-property: background-color;
-    transition-duration: 200ms;
-  }
-
-  .earnings-card.loading {
+  .loading {
     @apply hover:bg-kong-bg-secondary/50;
   }
 

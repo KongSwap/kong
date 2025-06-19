@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Card from "$lib/components/common/Card.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import TokenSelectionPanel from "./TokenSelectionPanel.svelte";
   import AmountInputs from "./AmountInputs.svelte";
@@ -277,7 +277,7 @@
     <LoadingIndicator message="Loading liquidity panel..." />
   {:else}
     <!-- Step 1: Token Selection -->
-    <Card className="p-4">
+    <Panel variant="solid" type="secondary">
       <div class="space-y-3">
         <div class="flex items-center gap-2">
           <div class="w-6 h-6 bg-kong-primary rounded-full flex items-center justify-center text-xs font-bold text-white">1</div>
@@ -293,11 +293,11 @@
           />
         </div>
       </div>
-    </Card>
+    </Panel>
 
     <!-- Step 2: Initial Price (for new pools only) -->
     {#if hasTokenPair && isCreatingNewPool}
-      <Card className="p-4">
+      <Panel variant="solid" type="secondary">
         <div class="space-y-3">
           <div class="flex items-center gap-2">
             <div class="w-6 h-6 bg-kong-primary rounded-full flex items-center justify-center text-xs font-bold text-white">2</div>
@@ -313,12 +313,12 @@
             />
           </div>
         </div>
-      </Card>
+      </Panel>
     {/if}
 
     <!-- Step 3: Amount Input -->
     {#if hasTokenPair}
-      <Card className="p-4">
+      <Panel variant="solid" type="secondary">
         <div class="space-y-3">
           <div class="flex items-center gap-2">
             <div class="w-6 h-6 bg-kong-primary rounded-full flex items-center justify-center text-xs font-bold text-white">
@@ -343,7 +343,7 @@
             />
           </div>
         </div>
-      </Card>
+      </Panel>
     {/if}
 
     <!-- Action Button -->
