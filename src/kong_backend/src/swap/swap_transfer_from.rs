@@ -200,6 +200,7 @@ async fn process_swap(
 
     request_map::update_status(request_id, StatusCode::Start, None);
 
+    // For IC-only swaps, use the existing transfer_from approach
     transfer_from_token(request_id, &caller_id, pay_token, pay_amount, &kong_backend, transfer_ids, ts)
         .await
         .map_err(|e| format!("Pay token transfer_from failed. {}", e))?;

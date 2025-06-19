@@ -22,6 +22,7 @@ pub mod stable_lp_token;
 pub mod stable_memory;
 pub mod stable_pool;
 pub mod stable_request;
+pub mod stable_solana_tx;
 pub mod stable_token;
 pub mod stable_transfer;
 pub mod stable_tx;

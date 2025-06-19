@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::ic_token::ICToken;
 use super::lp_token::LPToken;
+use super::solana_token::SolanaToken;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableTokenId(pub u32);
@@ -22,8 +23,9 @@ impl Storable for StableTokenId {
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub enum StableToken {
-    LP(LPToken), // LP tokens
-    IC(ICToken), // IC tokens
+    LP(LPToken),       // LP tokens
+    IC(ICToken),       // IC tokens
+    Solana(SolanaToken), // Solana tokens
 }
 
 impl Storable for StableToken {

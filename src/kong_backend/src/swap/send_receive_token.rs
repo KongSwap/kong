@@ -1,5 +1,6 @@
 use candid::Nat;
 
+use super::create_solana_swap_job::create_solana_swap_job;
 use super::swap_calc::SwapCalc;
 use super::swap_reply::SwapReply;
 use super::swap_reply_helpers::{to_swap_reply, to_swap_reply_failed};
@@ -11,6 +12,7 @@ use crate::ic::{
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_request::{reply::Reply, request_map, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token};
+use crate::chains::chains::SOL_CHAIN;
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_tx::{stable_tx::StableTx, swap_tx::SwapTx, tx_map};
 
@@ -37,41 +39,85 @@ pub async fn send_receive_token(
 
     request_map::update_status(request_id, StatusCode::SendReceiveToken, None);
 
-    // send ICP using icp_transfer or ICRC1 using icrc1_transfer
-    match match to_address {
-        Address::AccountId(to_account_id) => icp_transfer(receive_amount, to_account_id, receive_token, None).await,
-        Address::PrincipalId(to_principal_id) => icrc1_transfer(receive_amount, to_principal_id, receive_token, None).await,
-    } {
-        Ok(tx_id) => {
-            // insert_transfer() will use the latest state of DEPOSIT_MAP so no reentrancy issues after icp_transfer() or icrc1_transfer()
-            let transfer_id = transfer_map::insert(&StableTransfer {
-                transfer_id: 0,
-                request_id,
-                is_send: false,
-                token_id: receive_token_id,
-                amount: receive_amount.clone(),
-                tx_id: TxId::BlockIndex(tx_id),
-                ts,
-            });
-            transfer_ids.push(transfer_id);
-            request_map::update_status(request_id, StatusCode::SendReceiveTokenSuccess, None);
+    // Check if receive token is Solana - if so, create a swap job instead of direct transfer
+    if receive_token.chain() == SOL_CHAIN {
+        // For Solana tokens, we need to create a swap job that will be processed by kong_rpc
+        match create_solana_swap_job(request_id, user_id, receive_token, receive_amount, to_address).await {
+            Ok(job_id) => {
+                request_map::update_status(
+                    request_id, 
+                    StatusCode::SendReceiveTokenSuccess, 
+                    Some(&format!("Solana swap job #{} created", job_id))
+                );
+                
+                // Create a transfer record for the job
+                let transfer_id = transfer_map::insert(&StableTransfer {
+                    transfer_id: 0,
+                    request_id,
+                    is_send: false,
+                    token_id: receive_token_id,
+                    amount: receive_amount.clone(),
+                    tx_id: TxId::TransactionHash(format!("job_{}", job_id)),
+                    ts,
+                });
+                transfer_ids.push(transfer_id);
+            }
+            Err(e) => {
+                // If job creation fails, save as claim for manual processing
+                let claim = StableClaim::new(
+                    user_id,
+                    receive_token_id,
+                    receive_amount,
+                    Some(request_id),
+                    Some(to_address.clone()),
+                    ts,
+                );
+                let claim_id = claim_map::insert(&claim);
+                claim_ids.push(claim_id);
+                request_map::update_status(
+                    request_id,
+                    StatusCode::SendReceiveTokenFailed,
+                    Some(&format!("Saved as claim #{}. Error creating swap job: {}", claim_id, e)),
+                );
+            }
         }
-        Err(e) => {
-            let claim = StableClaim::new(
-                user_id,
-                receive_token_id,
-                receive_amount,
-                Some(request_id),
-                Some(to_address.clone()),
-                ts,
-            );
-            let claim_id = claim_map::insert(&claim);
-            claim_ids.push(claim_id);
-            request_map::update_status(
-                request_id,
-                StatusCode::SendReceiveTokenFailed,
-                Some(&format!("Saved as claim #{}. {}", claim_id, e)),
-            );
+    } else {
+        // send ICP using icp_transfer or ICRC1 using icrc1_transfer
+        match match to_address {
+            Address::AccountId(to_account_id) => icp_transfer(receive_amount, to_account_id, receive_token, None).await,
+            Address::PrincipalId(to_principal_id) => icrc1_transfer(receive_amount, to_principal_id, receive_token, None).await,
+        } {
+            Ok(tx_id) => {
+                // insert_transfer() will use the latest state of DEPOSIT_MAP so no reentrancy issues after icp_transfer() or icrc1_transfer()
+                let transfer_id = transfer_map::insert(&StableTransfer {
+                    transfer_id: 0,
+                    request_id,
+                    is_send: false,
+                    token_id: receive_token_id,
+                    amount: receive_amount.clone(),
+                    tx_id: TxId::BlockIndex(tx_id),
+                    ts,
+                });
+                transfer_ids.push(transfer_id);
+                request_map::update_status(request_id, StatusCode::SendReceiveTokenSuccess, None);
+            }
+            Err(e) => {
+                let claim = StableClaim::new(
+                    user_id,
+                    receive_token_id,
+                    receive_amount,
+                    Some(request_id),
+                    Some(to_address.clone()),
+                    ts,
+                );
+                let claim_id = claim_map::insert(&claim);
+                claim_ids.push(claim_id);
+                request_map::update_status(
+                    request_id,
+                    StatusCode::SendReceiveTokenFailed,
+                    Some(&format!("Saved as claim #{}. {}", claim_id, e)),
+                );
+            }
         }
     }
 

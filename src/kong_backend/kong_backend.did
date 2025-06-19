@@ -212,6 +212,7 @@ type MessagesResult = variant { Ok : vec MessagesReply; Err : text };
 type TokenReply = variant {
     LP : LPTokenReply;
     IC : ICTokenReply;
+    Solana : SolanaTokenReply;
 };
 type LPTokenReply = record {
     token_id : nat32;
@@ -237,6 +238,17 @@ type ICTokenReply = record {
     icrc2 : bool;
     icrc3 : bool;
     is_removed : bool;
+};
+type SolanaTokenReply = record {
+    token_id : nat32;
+    chain : text;
+    mint_address : text;
+    program_id : text;
+    name : text;
+    symbol : text;
+    decimals : nat8;
+    fee : nat;
+    total_supply : opt nat;
 };
 type TokensResult = variant { Ok : vec TokenReply; Err : text };
 
@@ -319,6 +331,7 @@ type AddTokenArgs = record {
 };
 type AddTokenReply = variant {
     IC : ICTokenReply;
+    Solana : SolanaTokenReply;
 };
 type AddTokenResult = variant { Ok : AddTokenReply; Err : text };
 

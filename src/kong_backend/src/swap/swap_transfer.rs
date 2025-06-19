@@ -1,6 +1,7 @@
 use candid::Nat;
 
 use super::archive_to_kong_data::archive_to_kong_data;
+use super::payment_verifier::{PaymentVerification, PaymentVerifier};
 use super::return_pay_token::return_pay_token;
 use super::send_receive_token::send_receive_token;
 use super::swap_args::SwapArgs;
@@ -13,9 +14,11 @@ use crate::ic::address::Address;
 use crate::ic::address_helpers::get_address;
 use crate::ic::network::ICNetwork;
 use crate::ic::verify_transfer::verify_transfer;
+use num_traits::ToPrimitive;
+use crate::stable_token::token::Token;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
-use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
+use crate::stable_token::{stable_token::StableToken, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_user::user_map;
 
@@ -139,22 +142,64 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
 
     let pay_amount = args.pay_amount.clone();
 
-    // check pay_tx_id is valid block index
-    let transfer_id = match &args.pay_tx_id {
-        Some(pay_tx_id) => match pay_tx_id {
-            TxId::BlockIndex(pay_tx_id) => verify_transfer_token(request_id, &pay_token, pay_tx_id, &pay_amount, ts).await?,
-            _ => {
-                request_map::update_status(request_id, StatusCode::PayTxIdNotSupported, None);
-                Err("Pay tx_id not supported".to_string())?
+    // Check if this is a cross-chain swap based on signature presence
+    if args.signature.is_some() {
+        // Cross-chain payment path - use payment verifier
+        let verifier = PaymentVerifier::new(ICNetwork::caller());
+        let verification = verifier.verify_payment(args, &pay_token, pay_amount.0.to_u64().ok_or("Invalid pay amount")?)
+            .await
+            .inspect_err(|e| {
+                request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(e));
+            })?;
+        
+        match verification {
+            PaymentVerification::SolanaPayment { tx_signature, .. } => {
+                // For Solana payments, we create a transfer record with the transaction hash
+                let transfer_id = transfer_map::insert(&StableTransfer {
+                    transfer_id: 0,
+                    request_id,
+                    is_send: true,
+                    amount: pay_amount.clone(),
+                    token_id: pay_token.token_id(),
+                    tx_id: TxId::TransactionHash(tx_signature),
+                    ts,
+                });
+                request_map::update_status(request_id, StatusCode::VerifyPayTokenSuccess, None);
+                Ok((pay_token, pay_amount, transfer_id))
             }
-        },
-        None => {
-            request_map::update_status(request_id, StatusCode::PayTxIdNotFound, None);
-            Err("Pay tx_id required".to_string())?
+            PaymentVerification::IcpPayment { block_index, .. } => {
+                // IC payment verified through signature (rare case)
+                let transfer_id = transfer_map::insert(&StableTransfer {
+                    transfer_id: 0,
+                    request_id,
+                    is_send: true,
+                    amount: pay_amount.clone(),
+                    token_id: pay_token.token_id(),
+                    tx_id: TxId::BlockIndex(block_index.into()),
+                    ts,
+                });
+                request_map::update_status(request_id, StatusCode::VerifyPayTokenSuccess, None);
+                Ok((pay_token, pay_amount, transfer_id))
+            }
         }
-    };
-
-    Ok((pay_token, pay_amount, transfer_id))
+    } else {
+        // IC-only path (backward compatible) - original flow
+        // check pay_tx_id is valid block index
+        let transfer_id = match &args.pay_tx_id {
+            Some(pay_tx_id) => match pay_tx_id {
+                TxId::BlockIndex(pay_tx_id) => verify_transfer_token(request_id, &pay_token, pay_tx_id, &pay_amount, ts).await?,
+                _ => {
+                    request_map::update_status(request_id, StatusCode::PayTxIdNotSupported, None);
+                    Err("Pay tx_id not supported".to_string())?
+                }
+            },
+            None => {
+                request_map::update_status(request_id, StatusCode::PayTxIdNotFound, None);
+                Err("Pay tx_id required".to_string())?
+            }
+        };
+        Ok((pay_token, pay_amount, transfer_id))
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

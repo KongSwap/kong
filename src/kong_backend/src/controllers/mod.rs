@@ -6,6 +6,7 @@ mod lp_tokens;
 mod pools;
 mod requests;
 mod solana;
+mod solana_tx;
 mod status;
 mod tokens;
 mod transfers;

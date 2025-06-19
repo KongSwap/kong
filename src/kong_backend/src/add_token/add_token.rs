@@ -1,14 +1,15 @@
-use candid::Principal;
+use candid::{Nat, Principal};
 use ic_cdk::update;
 
 use super::add_token_args::AddTokenArgs;
 use super::add_token_reply::AddTokenReply;
 use super::add_token_reply_helpers::to_add_token_reply;
 
-use crate::chains::chains::IC_CHAIN;
+use crate::chains::chains::{IC_CHAIN, SOL_CHAIN};
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_token::ic_token::ICToken;
 use crate::stable_token::lp_token::LPToken;
+use crate::stable_token::solana_token::SolanaToken;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token_map;
 
@@ -34,10 +35,11 @@ async fn add_token(args: AddTokenArgs) -> Result<AddTokenReply, String> {
         Err(format!("Token {} already exists", args.token))?
     }
 
-    // Only IC tokens of format IC.CanisterId supported
+    // Support IC tokens (IC.CanisterId) and Solana tokens (SOL.MintAddress)
     match token_map::get_chain(&args.token) {
         Some(chain) if chain == IC_CHAIN => to_add_token_reply(&add_ic_token(&args.token).await?),
-        Some(_) | None => Err("Chain not supported)")?,
+        Some(chain) if chain == SOL_CHAIN => to_add_token_reply(&add_solana_token(&args).await?),
+        Some(_) | None => Err("Chain not supported")?,
     }
 }
 
@@ -72,6 +74,59 @@ pub async fn add_ic_token(token: &str) -> Result<StableToken, String> {
 
     // Retrieves the inserted token by its token_id
     token_map::get_by_token_id(token_id).ok_or_else(|| format!("Failed to add token {}", token))
+}
+
+/// Adds a Solana token to the system.
+///
+/// # Arguments
+///
+/// * `args` - The arguments containing Solana token information.
+///
+/// # Returns
+///
+/// * `Ok(StableToken)` - The newly added token.
+/// * `Err(String)` - An error message if the operation fails.
+pub async fn add_solana_token(args: &AddTokenArgs) -> Result<StableToken, String> {
+    // Extract mint address from token string (format: SOL.MintAddress)
+    let mint_address = token_map::get_address(&args.token)
+        .ok_or_else(|| format!("Invalid address {}", args.token))?;
+    
+    // Only allow hardcoded SOL and USDC tokens
+    let (name, symbol, decimals, fee, program_id) = match mint_address.as_str() {
+        // Native SOL
+        "11111111111111111111111111111111" => (
+            "Solana".to_string(),
+            "SOL".to_string(),
+            9u8,
+            Nat::from(5000u64), // 0.005 SOL
+            "11111111111111111111111111111111".to_string(), // System program
+        ),
+        // USDC on Solana
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" => (
+            "USD Coin".to_string(),
+            "USDC".to_string(),
+            6u8,
+            Nat::from(5000u64), // 0.005 SOL for transfer fee
+            "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".to_string(), // SPL Token program
+        ),
+        _ => return Err("Only SOL and USDC Solana tokens are supported".to_string()),
+    };
+    
+    let solana_token = StableToken::Solana(SolanaToken {
+        token_id: 0, // Will be set by insert
+        name,
+        symbol,
+        decimals,
+        fee,
+        mint_address: mint_address.to_string(),
+        program_id,
+        total_supply: None, // We don't track total supply for now
+    });
+    
+    let token_id = token_map::insert(&solana_token)?;
+    
+    // Retrieves the inserted token by its token_id
+    token_map::get_by_token_id(token_id).ok_or_else(|| format!("Failed to add Solana token {}", args.token))
 }
 
 pub fn add_lp_token(token_0: &StableToken, token_1: &StableToken) -> Result<StableToken, String> {

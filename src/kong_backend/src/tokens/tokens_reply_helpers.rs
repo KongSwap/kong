@@ -2,10 +2,11 @@ use super::tokens_reply::TokensReply;
 
 use super::ic_reply::ICReply;
 use super::lp_reply::LPReply;
+use super::solana_reply::SolanaReply;
 
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_token::stable_token::StableToken;
-use crate::stable_token::stable_token::StableToken::{IC, LP};
+use crate::stable_token::stable_token::StableToken::{IC, LP, Solana};
 use crate::stable_token::token::Token;
 
 pub fn to_token_reply(token: &StableToken) -> TokensReply {
@@ -38,6 +39,17 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             icrc2: ic_token.icrc2,
             icrc3: ic_token.icrc3,
             is_removed: token.is_removed(),
+        }),
+        Solana(solana_token) => TokensReply::Solana(SolanaReply {
+            token_id,
+            chain: token.chain(),
+            name: token.name(),
+            symbol: token.symbol(),
+            mint_address: solana_token.mint_address.clone(),
+            program_id: solana_token.program_id.clone(),
+            decimals: token.decimals(),
+            fee: token.fee(),
+            total_supply: solana_token.total_supply.clone(),
         }),
     }
 }
