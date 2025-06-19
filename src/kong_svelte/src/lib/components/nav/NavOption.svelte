@@ -108,6 +108,5 @@
 
 .nav-link.active {
   @apply text-kong-primary;
-  text-shadow: 0 0px 30px theme(colors.kong.primary);
 }
 </style> 

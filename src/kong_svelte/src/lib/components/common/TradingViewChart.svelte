@@ -320,10 +320,10 @@
 </script>
 
 <div class="panel !{$panelRoundness} {className}">
-  <div class="flex h-full rounded-lg" bind:this={chartWrapper}>
-    <div class="flex h-full rounded-lg w-full relative" bind:this={chartContainer}>
+  <div class="flex h-full" bind:this={chartWrapper}>
+    <div class="flex h-full w-full relative" bind:this={chartContainer}>
       {#if state.hasNoData}
-        <div class="absolute inset-0 bg-transparent flex flex-col items-center justify-center p-4 text-center rounded-lg">
+        <div class="absolute inset-0 bg-transparent flex flex-col items-center justify-center p-4 text-center">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="h-12 w-12 mb-3 text-kong-text-secondary"
