@@ -124,6 +124,10 @@
     height: 100%;
     padding: 1rem;
     padding-top: 0;
+
+    @media (max-width: 1120px) {
+      grid-template-columns: 3fr 2fr;
+    }
   }
 
   .trading-section {
