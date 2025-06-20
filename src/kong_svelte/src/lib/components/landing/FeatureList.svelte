@@ -31,7 +31,7 @@
       <div 
         class="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-gradient-to-r {bgGradient} flex items-center justify-center mr-3 mt-1"
       >
-        <svelte:component this={IconComponent} size={10} class="{iconColor}" />
+        <IconComponent size={10} class={iconColor} />
       </div>
       <div>
         <h3 class="text-base md:text-lg font-semibold text-white mb-1">{feature.title}</h3>

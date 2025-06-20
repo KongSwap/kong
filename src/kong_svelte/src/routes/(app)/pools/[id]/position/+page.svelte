@@ -1,19 +1,18 @@
 <script lang="ts">
-  import { page } from "$app/stores";
   import { goto } from "$app/navigation";
-  import { onMount, onDestroy } from "svelte";
+  import { onDestroy } from "svelte";
   import { fade } from "svelte/transition";
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { Droplets, ArrowLeft, Plus, Minus, Wallet, Send, TrendingUp } from "lucide-svelte";
+  import { Droplets, ArrowLeft, Plus, Minus, Wallet, Send } from "lucide-svelte";
   import { auth } from "$lib/stores/auth";
   import { currentUserPoolsStore } from "$lib/stores/currentUserPoolsStore";
   import { liquidityStore } from "$lib/stores/liquidityStore";
   import { loadBalances } from "$lib/stores/tokenStore";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { livePools, loadPools } from "$lib/stores/poolStore";
-  import { formatToNonZeroDecimal, calculateTokenUsdValue, formatBalance } from "$lib/utils/numberFormatUtils";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";
   import { fetchPoolBalanceHistory } from "$lib/api/pools";
   import TVLHistoryChart from "$lib/components/liquidity/create_pool/charts/TVLHistoryChart.svelte";
@@ -479,7 +478,7 @@
                   class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 {activeTab === tab.id ? tab.activeClass : 'text-kong-text-secondary hover:text-kong-text-primary hover:bg-white/[0.02]'}"
                   onclick={() => (activeTab = tab.id)}
                 >
-                  <svelte:component this={tab.icon} size={12} />
+                  <tab.icon size={12} />
                   <span>{tab.label}</span>
                 </button>
               {/each}
