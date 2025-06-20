@@ -29,7 +29,7 @@
   <div class="mt-6 flex justify-center items-center gap-2">
     <button
       class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 {currentPage === 1
-        ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+        ? 'ext-gray-500 cursor-not-allowed'
         : 'bg-white/[0.05] text-kong-text-primary hover:bg-white/[0.08]'}"
       onclick={() => onPageChange(currentPage - 1)}
       disabled={currentPage === 1}

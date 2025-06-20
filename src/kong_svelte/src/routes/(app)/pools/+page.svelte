@@ -386,6 +386,7 @@
                   userPoolData={userPoolData}
                   isHighlighted={isKongPool(pool)}
                   isMobile={$isMobile}
+                  isConnected={$auth.isConnected}
                   onClick={() => {
                     if (userPoolData) {
                       // If user has a position, go to position page
@@ -499,6 +500,7 @@
                       userPoolData={pool}
                       isHighlighted={false}
                       isMobile={false}
+                      isConnected={$auth.isConnected}
                       onClick={() => {
                         // Always go to position page for user pools since they have a position
                         goto(`/pools/${pool.address_0}_${pool.address_1}/position`);

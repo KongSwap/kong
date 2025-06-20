@@ -88,6 +88,14 @@
               />
             </svg>
           </div>
+          
+          <!-- Add Liquidity Button (Mobile) -->
+          <button
+            onclick={() => goto('/pools/add')}
+            class="p-2 rounded-lg bg-kong-primary/10 border border-kong-primary/20 text-kong-primary hover:bg-kong-primary/20 hover:border-kong-primary/30 transition-all duration-200"
+          >
+            <Plus class="w-5 h-5" />
+          </button>
         </div>
 
         {#if activePoolView === "all"}
@@ -197,6 +205,15 @@
               </button>
             </div>
           {/if}
+          
+          <!-- Add Liquidity Button -->
+          <button
+            onclick={() => goto('/pools/add')}
+            class="px-4 mr-4 py-1.5 rounded-lg bg-kong-primary/10 border border-kong-primary/20 text-kong-primary hover:bg-kong-primary/20 hover:border-kong-primary/30 transition-all duration-200 flex items-center gap-1.5 font-medium"
+          >
+            <Plus class="w-4 h-4" />
+            <span class="hidden sm:inline">Add Liquidity</span>
+          </button>
         </div>
       </div>
     {/if}

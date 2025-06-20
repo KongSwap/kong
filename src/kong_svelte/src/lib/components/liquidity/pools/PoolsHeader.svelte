@@ -93,12 +93,21 @@
             <div class="flex items-center gap-1">
               <Droplets class="w-4 h-4 text-kong-primary" />
               <span>200+ Active Pools</span>
-            </div>
+            </div>  
             <div class="hidden sm:block w-px h-4 bg-kong-border"></div>
             <div class="flex items-center gap-1">
               <span class="text-kong-success">●</span>
               <span>0.3% Swap Fee</span>
             </div>
+                        <div class="hidden sm:block w-px h-4 bg-kong-border"></div>
+
+                              <button
+              onclick={() => goto('/pools/add')}
+              class="flex items-center gap-1.5 px-3 py-1.5 text-base bg-kong-primary/10 hover:bg-kong-primary/20 text-kong-primary rounded-lg transition-all duration-200"
+            >
+              <Plus class="w-4 h-4" />
+              <span class="font-bold">Add Liquidity</span>
+            </button>
           </div>
         </div>
       </div>

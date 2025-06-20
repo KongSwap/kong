@@ -11,6 +11,7 @@
     userPoolData?: any;
     isHighlighted?: boolean;
     isMobile?: boolean;
+    isConnected?: boolean;
     onClick: () => void;
   }
 
@@ -20,6 +21,7 @@
     userPoolData = null, 
     isHighlighted = false, 
     isMobile = false,
+    isConnected = false,
     onClick 
   }: PoolCardProps = $props();
 
@@ -41,10 +43,10 @@
       label: "Vol 24h", 
       value: formatUsdValue(Number(pool.rolling_24h_volume || 0)) 
     },
-    ...(userPoolData ? [{
+    ...(isConnected ? [{
       label: "Your Position",
-      value: typeof userPoolData.usdValue === 'string' ? userPoolData.usdValue : `$${userPoolData.usdValue || 0}`,
-      color: 'text-kong-success'
+      value: userPoolData ? `$${userPoolData.usdValue || 0}` : "$0",
+      color: userPoolData ? 'text-kong-success' : 'text-kong-text-secondary'
     }] : [])
   ]);
 
@@ -87,9 +89,6 @@
           <div class="flex items-center gap-2">
             <div class="text-xs text-kong-accent-blue">
               {userPoolData.sharePercentage}% of pool
-            </div>
-            <div class="text-xs text-kong-accent-green font-medium">
-              → View Position
             </div>
           </div>
         {/if}
