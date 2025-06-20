@@ -137,19 +137,15 @@
   </td>
 
   <!-- Trader -->
-  <td class="px-4 py-2">
-    <span
+  <td class="px-4 py-2 w-[80px]">
+    <div class="flex items-center gap-2 justify-between ">
+      <span
       class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary cursor-pointer hover:opacity-80"
       style="background-color: {getPrincipalColor(walletAddress)};"
       onclick={(e) => goto(`/wallets/${walletAddress}`)}
     >
       {walletAddress.slice(0, 8)}
     </span>
-  </td>
-
-  <!-- Actions (no header) -->
-  <td class="px-4 py-1 whitespace-nowrap">
-    <div class="flex items-center gap-2">
       <button
         title="View on explorer"
         class="text-kong-text-primary/60 hover:text-kong-primary transition-colors duration-200 p-1.5 rounded-md hover:bg-kong-bg-secondary/30"
@@ -161,6 +157,11 @@
       </button>
     </div>
   </td>
+
+  <!-- Actions (no header) -->
+  <!-- <td class="px-4 py-1 whitespace-nowrap">
+    
+  </td> -->
 </tr>
 
 <style>

@@ -148,8 +148,8 @@
         <table class="w-full">
           <thead class="sticky top-0 bg-kong-bg-primary/95 backdrop-blur-sm border-b border-kong-border/20 z-10">
             <tr>
-              {#each ['Age', 'Type', 'Value', token.symbol, 'Trader', ''] as header, i}
-                <th class="py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider whitespace-nowrap px-4">
+              {#each ['Age', 'Type', 'Value', token.symbol, 'Trader'] as header, i}
+                <th class="py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider whitespace-nowrap px-4 {i === 4 ? 'w-[80px]' : ''}">
                   {header}
                 </th>
               {/each}
