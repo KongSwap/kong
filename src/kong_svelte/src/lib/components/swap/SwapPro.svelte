@@ -115,7 +115,7 @@
   /* Desktop Grid Layout */
   .desktop-grid {
     display: grid;
-    grid-template-columns: 3fr 2fr;
+    grid-template-columns: 3fr 500px;
     grid-template-rows: 1fr 1fr;
     grid-template-areas: 
       "chart trading"

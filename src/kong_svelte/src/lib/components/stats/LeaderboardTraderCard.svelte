@@ -102,7 +102,7 @@
     type={style.panelType as "main" | "secondary"}
     {width}
     height="auto"
-    className={wrapperClass + "max-w-[500px]"}
+    className={wrapperClass}
     animated={true}
   >
     <!-- Fixed header with better alignment -->

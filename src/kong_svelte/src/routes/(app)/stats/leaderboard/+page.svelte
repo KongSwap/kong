@@ -157,7 +157,7 @@
 
             <!-- Runners-up (Ranks #2-3) - Share a row -->
             {#if leaderboardDataValue.length > 1}
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 justify-items-center">
+              <div class="grid grid-cols-2 max-[1020px]:grid-cols-1 gap-4 sm:gap-6 md:gap-8 justify-items-center">
                 {#each leaderboardDataValue.slice(1, 3) as user, sliceIndex}
                   {@const index = sliceIndex + 1}
                   <div class="w-full sm:w-[500px]">
