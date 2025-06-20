@@ -65,6 +65,8 @@ pub struct TokenInfo {
     /// Minimum transfer fee required by this token's ledger
     /// This is deducted from transfers and ensures the minimum viable transaction amount
     /// Example: 10_000 (0.0001 KONG) for KONG tokens, 1_000 (0.001 USDT) for ckUSDT
+    /// TODO: make deprecated
+    // #[deprecated(since = "1.1.0", note = "Should not be used")]
     pub transfer_fee: TokenAmount,
 
     /// Minimum amount required to activate a market with this token

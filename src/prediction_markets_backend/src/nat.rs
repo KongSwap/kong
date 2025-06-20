@@ -113,6 +113,12 @@ impl From<StorableNat> for candid::Nat {
     }
 }
 
+impl From<candid::Nat> for StorableNat {
+    fn from(value: candid::Nat) -> Self {
+        Self(value)
+    }
+}
+
 impl Add for StorableNat {
     type Output = Self;
     fn add(self, other: Self) -> Self {
