@@ -631,7 +631,7 @@
   .bubbles-container {
     position: relative;
     width: 100%;
-    height: 85vh;
+    height: calc(100vh - var(--navbar-height));
     overflow: hidden;
     touch-action: none;
     -webkit-user-select: none;

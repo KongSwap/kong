@@ -160,7 +160,7 @@
   {#if !themeReady}
   <LoadingIndicator message="Loading..." fullHeight />
 {:else}
-    <div class="bg-transparent navbar-section">
+    <div id="navbar-section" class="bg-transparent">
       <Navbar />
     </div>
     <PageWrapper page={$page.url.pathname} enableBackground={hasThemedBackground}>

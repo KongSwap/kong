@@ -4,6 +4,7 @@
   import { themeStore } from '$lib/stores/themeStore';
   import { getThemeById } from '$lib/themes/themeRegistry';
   import type { ThemeDefinition } from '$lib/themes/baseTheme';
+  import { app } from '$lib/state/app.state.svelte';
   
   interface Props {
     page: string;
@@ -266,7 +267,7 @@
   });
 </script>
 
-<div class="page-wrapper" class:has-background={showThemedBackground || getBackgroundStyle()}>
+<div class="page-wrapper" style="--navbar-height: {app.navbarHeight}px;" class:has-background={showThemedBackground || getBackgroundStyle()}>
   <!-- Background effects for non-swap pages with fallback gradient -->
   {#if !showThemedBackground && getBackgroundStyle()}
     <div class="background-fade-wrapper visible">
@@ -350,7 +351,7 @@
 <style lang="postcss">
   .page-wrapper {
     @apply flex flex-col w-full;
-    min-height: 100vh;
+    min-height: calc(100vh - var(--navbar-height));
     position: relative;
     z-index: 0;
     background-color: transparent;
