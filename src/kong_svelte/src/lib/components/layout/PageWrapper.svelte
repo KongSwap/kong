@@ -23,8 +23,8 @@
   // Determine if we should show themed background
   let showThemedBackground = $derived(enableBackground);
   
-  // Generate random positions for nebula gradients once
-  const nebulaPositions = $state.raw({
+  // Generate random positions for nebula gradients - initialize immediately
+  let nebulaPositions = $state({
     blue: {
       x: 20 + Math.random() * 40, // 20-60%
       y: 10 + Math.random() * 30  // 10-40%
@@ -69,36 +69,21 @@
     }
   });
 
-  // Memoize loaded images
-  const imageCache = new Map<string, boolean>();
-  
   // Function to preload background image
   function preloadBackgroundImage(imageUrl: string) {
-    // Check cache first
-    if (imageCache.has(imageUrl)) {
-      backgroundLoaded = imageCache.get(imageUrl)!;
-      return;
-    }
-    
     backgroundLoaded = false;
     const img = new Image();
     img.onload = () => {
-      imageCache.set(imageUrl, true);
-      // Use requestAnimationFrame for smooth transition
       requestAnimationFrame(() => {
         backgroundLoaded = true;
       });
     };
     img.onerror = () => {
-      imageCache.set(imageUrl, false);
+      backgroundLoaded = false;
     };
     img.src = imageUrl;
   }
   
-  // Helper function to determine if a theme feature is enabled
-  function isEnabled(feature: 'enableNebula' | 'enableStars'): boolean {
-    return currentTheme?.colors[feature] === true;
-  }
   
   // Helper to get the background based on theme type
   function getBackgroundStyle(): string {
@@ -111,23 +96,11 @@
       return colors.backgroundFallbackGradient;
     }
     
-    switch (colors.backgroundType) {
-      case 'gradient':
-        return colors.backgroundGradient || '';
-      case 'solid':
-        return colors.backgroundSolid || '';
-      case 'pattern':
-        // Pattern type is now handled with pattern-background div
-        return ''; 
-      default:
-        return '';
-    }
+    if (colors.backgroundType === 'gradient') return colors.backgroundGradient || '';
+    if (colors.backgroundType === 'solid') return colors.backgroundSolid || '';
+    return '';
   }
 
-  // Cache for star generation to avoid recalculation
-  let cachedStarCount = 0;
-  let cachedScreenSize = { width: 0, height: 0 };
-  
   // Generate stars dynamically with optimizations
   function generateStars() {
     if (!browser || !starsContainer || !currentTheme || isGeneratingStars) return;
@@ -135,17 +108,7 @@
     const currentWidth = window.innerWidth;
     const currentHeight = window.innerHeight;
     
-    // Skip regeneration if screen size hasn't changed significantly (10% threshold)
-    if (
-      cachedScreenSize.width > 0 &&
-      Math.abs(currentWidth - cachedScreenSize.width) / cachedScreenSize.width < 0.1 &&
-      Math.abs(currentHeight - cachedScreenSize.height) / cachedScreenSize.height < 0.1
-    ) {
-      return;
-    }
-    
     isGeneratingStars = true;
-    cachedScreenSize = { width: currentWidth, height: currentHeight };
     
     // Clear existing stars
     starsContainer.innerHTML = '';
@@ -160,7 +123,6 @@
       150 // Maximum stars
     );
     
-    cachedStarCount = starCount;
     
     // Pre-calculate CSS text to reduce string operations
     const stars = [];
@@ -215,7 +177,7 @@
       starsGenerationTimer = null;
     }
     
-    if (browser && currentTheme && showThemedBackground && isEnabled('enableStars') && starsContainer) {
+    if (browser && currentTheme && showThemedBackground && currentTheme?.colors.enableStars && starsContainer) {
       // Debounce star generation to avoid rapid regeneration
       starsGenerationTimer = window.setTimeout(() => {
         generateStars();
@@ -231,40 +193,6 @@
     };
   });
   
-  // Use ResizeObserver for more efficient resize handling
-  $effect(() => {
-    if (!browser || !currentTheme || !showThemedBackground || !isEnabled('enableStars')) return;
-    
-    let resizeTimer: number | null = null;
-    let mounted = true;
-    
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (!mounted) return;
-      
-      if (resizeTimer) {
-        clearTimeout(resizeTimer);
-      }
-      
-      resizeTimer = window.setTimeout(() => {
-        if (mounted && !isGeneratingStars) {
-          generateStars();
-        }
-        resizeTimer = null;
-      }, 250); // Slightly longer debounce for resize observer
-    });
-    
-    // Observe the document body for size changes
-    resizeObserver.observe(document.body);
-    
-    return () => {
-      mounted = false;
-      resizeObserver.disconnect();
-      if (resizeTimer) {
-        clearTimeout(resizeTimer);
-        resizeTimer = null;
-      }
-    };
-  });
 </script>
 
 <div class="page-wrapper" style="--navbar-height: {app.navbarHeight}px;" class:has-background={showThemedBackground || getBackgroundStyle()}>
@@ -314,7 +242,7 @@
         {/if}
         
         <!-- Nebula effect -->
-        {#if currentTheme && isEnabled('enableNebula')}
+        {#if currentTheme?.colors.enableNebula}
           <div 
             class="nebula" 
             style="
@@ -332,7 +260,7 @@
         {/if}
         
         <!-- Stars - using dynamic generation -->
-        {#if currentTheme && isEnabled('enableStars')}
+        {#if currentTheme?.colors.enableStars}
           <div 
             bind:this={starsContainer}
             class="stars"

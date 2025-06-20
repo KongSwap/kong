@@ -403,9 +403,9 @@
       });
 </script>
 
-<div class="panel !{$panelRoundness} {className}" style="min-height: 400px;">
-  <div class="flex h-full" bind:this={chartWrapper} style="min-height: 400px;">
-    <div class="flex h-full w-full relative" bind:this={chartContainer} style="min-height: 400px;">
+<div class="panel !{$panelRoundness} {className}">
+  <div class="flex h-full" bind:this={chartWrapper}>
+    <div class="flex h-full w-full relative" bind:this={chartContainer}>
       {#if state.hasNoData}
         <div class="absolute inset-0 bg-transparent flex flex-col items-center justify-center p-4 text-center">
           <svg
@@ -466,7 +466,6 @@
     @apply relative text-kong-text-primary flex flex-col;
     @apply bg-kong-bg-secondary backdrop-blur-md;
     @apply border border-kong-border/50;
-    @apply min-h-[35vh];
     height: 100%;
   }
 

@@ -128,7 +128,7 @@
   });
 </script>
 
-<div class="flex flex-col h-[50vh] overflow-hidden bg-kong-bg-secondary border border-kong-border/50 rounded-lg">
+<div class="flex flex-col max-h-[36vh] overflow-hidden bg-kong-bg-secondary border border-kong-border/50 rounded-lg">
   {#if isLoading && !transactions.length}
     <div class="flex justify-center items-center p-6 flex-1">
       <span class="loading loading-spinner loading-md" />
@@ -146,7 +146,7 @@
       <!-- Scrollable Container with both X and Y overflow -->
       <div class="flex h-full overflow-auto">
         <table class="w-full">
-          <thead class="sticky top-0 bg-kong-bg-primary/95 backdrop-blur-sm border-b border-kong-border/20 z-10">
+          <thead class="sticky top-0 bg-kong-bg-secondary border-b border-kong-border shadow-sm z-10">
             <tr>
               {#each ['Age', 'Type', 'Value', token.symbol, 'Trader'] as header, i}
                 <th class="py-3 text-left text-xs font-semibold text-kong-text-primary/70 uppercase tracking-wider whitespace-nowrap px-4 {i === 4 ? 'w-[80px]' : ''}">

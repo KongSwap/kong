@@ -226,6 +226,7 @@
         </div>
       </div>
 
+
       <!-- Confirm Button -->
       <div class='flex justify-center w-full animate-slide-in-up' transition:scale={{ delay: 250, duration: 300 }}>
         <button
@@ -435,8 +436,8 @@
   .button-background {
     @apply absolute inset-0 rounded-full transition-all duration-300;
     background: linear-gradient(135deg, 
-      var(--swap-button-primary-gradient-start, rgb(var(--brand-primary))) 0%, 
-      var(--swap-button-primary-gradient-end, rgb(var(--brand-secondary))) 100%);
+      var(--swap-button-primary-gradient-start, rgb(var(--brand-primary) / 0.95)) 0%, 
+      var(--swap-button-primary-gradient-end, rgb(var(--brand-secondary) / 0.95)) 100%);
     border: 1px solid var(--swap-button-border-color, rgb(var(--ui-border) / 0.3));
   }
 
@@ -461,6 +462,7 @@
     @apply relative z-10 flex items-center justify-center gap-2
            font-semibold text-lg tracking-wide;
     color: var(--swap-button-text-color, rgb(var(--text-light)));
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 
   /* Success State */
@@ -776,7 +778,6 @@
     animation: success-appear 0.6s ease-out;
   }
 
-
   /* Close Button */
   .close-button {
     @apply fixed top-4 right-4 sm:top-6 sm:right-6
@@ -814,10 +815,6 @@
       @apply w-12 h-12;
     }
 
-    .arrow-icon {
-      @apply w-6 h-6;
-    }
-
     .confirm-button {
       @apply px-6 py-3 text-base min-w-[180px];
     }
@@ -846,6 +843,8 @@
     .success-text {
       @apply text-xl;
     }
+
+
   }
 
   /* Extra small devices */

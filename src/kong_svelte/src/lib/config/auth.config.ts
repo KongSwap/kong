@@ -117,7 +117,7 @@ export function initializePNP(): PNP {
       timeout: BigInt(30 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 30 days
       delegationTimeout: BigInt(30 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 30 days
       delegationTargets,
-      derivationOrigin: "https://kongswap.io",
+      derivationOrigin: "https://3ldz4-aiaaa-aaaar-qaina-cai.icp0.io",
       siwsProviderCanisterId,
       adapters: {
         ii: {

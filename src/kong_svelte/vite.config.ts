@@ -139,13 +139,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
           target: "http://localhost:4943",
           changeOrigin: true,
         },
-      },
-      fs: {
-        // Allow serving files from one level up to the project root
-        allow: ['..']
-      },
-      watch: {
-        usePolling: true
       }
     },
     plugins: basePlugins as any[],

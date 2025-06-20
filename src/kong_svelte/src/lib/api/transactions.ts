@@ -102,11 +102,8 @@ export const fetchChartData = async (
     'W': '1w'
   };
   const interval = intervalMap[resolution] || '1d';
-
   const url = `${API_URL}/api/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
-  
-  console.log("[API] Fetching chart data from:", url);
-  
+    
   try {
     const response = await fetch(url);
     const data = await response.json();

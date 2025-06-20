@@ -23,18 +23,19 @@
   import { walletProviderStore } from "$lib/stores/walletProviderStore";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  
+
   // Import custom hooks
   import { useSwapQuote } from "$lib/hooks/useSwapQuote.svelte";
   import { useBalanceCheck } from "$lib/hooks/useBalanceCheck.svelte";
   import { useUrlTokens } from "$lib/hooks/useUrlTokens.svelte";
   import SwapInfoDisplay from "./swap_ui/SwapInfoDisplay.svelte";
+  import SwapRoutingPath from "./swap_ui/SwapRoutingPath.svelte";
 
   // Types
   type PanelType = "pay" | "receive";
 
   let { widthFull = false } = $props<{ widthFull?: boolean }>();
-  
+
   $inspect(widthFull);
 
   // Constants
@@ -44,8 +45,14 @@
   const SEARCH_HEADER_HEIGHT = 56;
 
   // Initialize hooks
-  const { isQuoteLoading, updateSwapQuote, updateReverseQuote, cleanup: cleanupQuotes } = useSwapQuote();
-  const { insufficientFunds, checkBalance, getTokenDecimals } = useBalanceCheck();
+  const {
+    isQuoteLoading,
+    updateSwapQuote,
+    updateReverseQuote,
+    cleanup: cleanupQuotes,
+  } = useSwapQuote();
+  const { insufficientFunds, checkBalance, getTokenDecimals } =
+    useBalanceCheck();
   const { handleUrlTokenParams, lastProcessedSearchParams } = useUrlTokens();
 
   // State
@@ -75,17 +82,19 @@
     buttonText === "Connect Wallet"
       ? false
       : !$swapState.payAmount ||
-        $swapState.payAmount === "0" ||
-        isSwapButtonDisabled(
-          $swapState,
-          insufficientFunds(),
-          isQuoteLoading(),
-          $auth,
-        ),
+          $swapState.payAmount === "0" ||
+          isSwapButtonDisabled(
+            $swapState,
+            insufficientFunds(),
+            isQuoteLoading(),
+            $auth,
+          ),
   );
 
   // Helper functions
-  function getDropdownPosition(pos: { x: number; y: number; windowWidth: number } | null) {
+  function getDropdownPosition(
+    pos: { x: number; y: number; windowWidth: number } | null,
+  ) {
     if (!pos) return { top: 0, left: 0 };
     let left = pos.x;
     if (left + DROPDOWN_WIDTH > pos.windowWidth - MARGIN) {
@@ -95,7 +104,10 @@
     return { top, left };
   }
 
-  function poolExists(payToken: Kong.Token | null, receiveToken: Kong.Token | null): boolean {
+  function poolExists(
+    payToken: Kong.Token | null,
+    receiveToken: Kong.Token | null,
+  ): boolean {
     if (!payToken || !receiveToken) return false;
     // Always return true to allow the backend to handle routing (including multi-hop swaps)
     return true;
@@ -137,7 +149,7 @@
     const currentReceiveToken = $swapState.receiveToken;
     const tempPayAmount = $swapState.payAmount;
     const tempReceiveAmount = $swapState.receiveAmount;
-    
+
     if (!currentPayToken || !currentReceiveToken) return;
 
     swapState.update((s) => ({
@@ -205,7 +217,9 @@
         lastPayAmount: $swapState.payAmount,
         payToken: $swapState.payToken,
         receiveToken: $swapState.receiveToken,
-        payDecimals: Number((await getTokenDecimals($swapState.payToken.address)).toString()),
+        payDecimals: Number(
+          (await getTokenDecimals($swapState.payToken.address)).toString(),
+        ),
       });
 
       const result = await SwapService.executeSwap({
@@ -288,7 +302,10 @@
 
   // Effects
   $effect(() => {
-    if ($auth.account?.owner && ($swapState.payToken || $swapState.receiveToken)) {
+    if (
+      $auth.account?.owner &&
+      ($swapState.payToken || $swapState.receiveToken)
+    ) {
       refreshBalances(
         [$swapState.payToken, $swapState.receiveToken],
         $auth.account?.owner?.toString(),
@@ -308,7 +325,11 @@
   });
 
   $effect(() => {
-    checkBalance($auth.account?.owner, $swapState.payToken, $swapState.payAmount);
+    checkBalance(
+      $auth.account?.owner,
+      $swapState.payToken,
+      $swapState.payAmount,
+    );
   });
 
   $effect(() => {
@@ -370,12 +391,18 @@
   });
 </script>
 
-<div class="relative flex flex-col w-full {widthFull ? '!max-w-none' : '!max-w-[max(32rem,500px)]'} mx-auto">
+<div
+  class="relative flex flex-col w-full {widthFull
+    ? '!max-w-none'
+    : '!max-w-[max(32rem,500px)]'} mx-auto"
+>
   <div class="relative flex flex-col gap-2 rounded-lg">
     <div class="relative flex flex-col min-h-[220px] sm:px-3 md:px-0">
       <!-- Doge image peeking only for Win98 theme -->
       {#if $themeId === "microswap"}
-        <div class="absolute -top-[4.8rem] right-5 z-1 transform translate-x-1/4 select-none pointer-events-none">
+        <div
+          class="absolute -top-[4.8rem] right-5 z-1 transform translate-x-1/4 select-none pointer-events-none"
+        >
           <img
             src="/images/layingdoge.webp"
             alt="Doge peeking"
@@ -419,6 +446,11 @@
         />
       </div>
     </div>
+
+    <SwapRoutingPath
+      routingPath={$swapState.routingPath}
+      isLoading={isQuoteLoading()}
+    />
 
     <SwapInfoDisplay
       payToken={$swapState.payToken}
@@ -483,6 +515,7 @@
       payAmount={$swapState.payAmount}
       receiveToken={$swapState.receiveToken}
       receiveAmount={$swapState.receiveAmount}
+      routingPath={$swapState.routingPath}
       onConfirm={handleSwap}
       onClose={() => swapState.setShowConfirmation(false)}
     />

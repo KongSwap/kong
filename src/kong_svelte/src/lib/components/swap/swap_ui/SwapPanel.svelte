@@ -531,7 +531,7 @@
           <div class="flex flex-col items-center gap-1">
             {#snippet percentageButton(percentage: number, isFirst: boolean, isLast: boolean)}
               <button
-                class="bg-kong-bg-tertiary px-2 py-1.5 border border-kong-border hover:border-kong-primary/50 hover:bg-kong-hover/10 transition-all duration-150 {isFirst
+                class="bg-kong-bg-tertiary px-2 py-1 text-xs border border-kong-border hover:border-kong-primary/50 hover:bg-kong-hover/10 transition-all duration-150 {isFirst
                   ? 'rounded-l-md'
                   : ''} {isLast ? 'rounded-r-md' : ''}"
                 onclick={() => handlePercentageClick(percentage)}
@@ -545,7 +545,7 @@
             {#if (title === "You Pay" || title === "Send") && token}
               {@const percentages = isMobile ? [50, 100] : [25, 50, 75, 100]}
               <div
-                class="flex items-center justify-end w-full text-xs sm:text-xs"
+                class="flex items-center justify-end w-full"
               >
                 {#each percentages as percentage, index (percentage)}
                   {@render percentageButton(

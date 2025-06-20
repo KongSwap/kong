@@ -318,13 +318,6 @@
       connecting = true;
       selectedWalletId.set(walletId);
 
-      // Add timeout to prevent hanging connections
-      connectingTimeout = window.setTimeout(() => {
-        abortController.abort(); // Ensure abort is called before reset
-        errorMessage = "Connection timeout. Please try again.";
-        resetConnectionState(); // Use helper function
-      }, 30000) as unknown as number;
-
       await auth.connect(denormalizedWalletId);
 
       // Update recent wallets list using the normalized ID

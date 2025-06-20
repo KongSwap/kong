@@ -15,8 +15,8 @@ export const lightTheme: ThemeDefinition = {
     hoverBgSecondary: '#EDDEC8', // Darker honey hover state
     
     // Primary and secondary colors - softer warmer greens and yellows
-    primary: '#568B38',     // Softer sage green - KongSwap primary
-    primaryHover: '#467B28', // Deeper soft green
+    primary: '#8BC269',     // Lighter soft green - KongSwap primary
+    primaryHover: '#7AB559', // Slightly deeper soft green
     secondary: '#E6BC35',   // Muted golden yellow - Kong's banana
     secondaryHover: '#D6AC25', // Deeper muted gold on hover
     

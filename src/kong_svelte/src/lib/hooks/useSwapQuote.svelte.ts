@@ -65,13 +65,13 @@ export function useSwapQuote() {
           currentState.payAmount,
         );
 
-        swapState.update((s) => ({
-          ...s,
+        swapState.updateQuote({
           receiveAmount: quote.receiveAmount,
-          swapSlippage: quote.slippage,
+          slippage: quote.slippage,
           gasFees: quote.gasFees || [],
           lpFees: quote.lpFees || [],
-        }));
+          routingPath: quote.routingPath || [],
+        });
       } catch (error) {
         console.error("Error getting quote:", error);
         swapState.update((s) => ({

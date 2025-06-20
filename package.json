@@ -16,10 +16,10 @@
     "cli:build": "npm run build --workspace=@kong/cli"
   },
   "dependencies": {
-    "@dfinity/agent": "2.4.1",
-    "@dfinity/candid": "2.4.1",
-    "@dfinity/identity": "2.4.1",
-    "@dfinity/principal": "2.4.1"
+    "@dfinity/agent": "^2.4.1",
+    "@dfinity/candid": "^2.4.1",
+    "@dfinity/identity": "^2.4.1",
+    "@dfinity/principal": "^2.4.1"
   },
   "workspaces": [
     "src/kong_svelte"

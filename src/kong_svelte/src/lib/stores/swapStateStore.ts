@@ -21,7 +21,14 @@ export interface SwapState {
   gasFees: Array<{ amount: string; token: string }>;
   lpFees: Array<{ amount: string; token: string }>;
   swapSlippage: number;
-  routingPath: string[];
+  routingPath: Array<{
+    paySymbol: string;
+    receiveSymbol: string;
+    poolSymbol: string;
+    payAmount: string;
+    receiveAmount: string;
+    price: number;
+  }>;
   manuallySelectedTokens: {
     pay: boolean;
     receive: boolean;
@@ -202,6 +209,14 @@ function createSwapStateStore() {
       slippage: number;
       gasFees?: Array<{ amount: string; token: string }>;
       lpFees?: Array<{ amount: string; token: string }>;
+      routingPath?: Array<{
+        paySymbol: string;
+        receiveSymbol: string;
+        poolSymbol: string;
+        payAmount: string;
+        receiveAmount: string;
+        price: number;
+      }>;
     }) {
       update(state => ({
         ...state,
@@ -209,6 +224,7 @@ function createSwapStateStore() {
         swapSlippage: quote.slippage,
         gasFees: quote.gasFees || [],
         lpFees: quote.lpFees || [],
+        routingPath: quote.routingPath || [],
         isCalculating: false,
         error: null
       }));

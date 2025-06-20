@@ -6,6 +6,7 @@
   import { onMount } from "svelte";
   import { transparentSwapPanel } from "$lib/stores/derivedThemeStore";
   import { app } from "$lib/state/app.state.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
 
   let {
     payToken = null,
@@ -219,61 +220,67 @@
 {/snippet}
 
 {#if showDisplay}
-  <div class="swap-info-display {$transparentSwapPanel ? 'transparent-swap-panel' : ''}" transition:fade={{ duration: 200 }}>
-    <div class="info-grid">
-      <!-- Exchange Rate -->
-      {#if !isMobile}
-        <div class="info-item">
-          <div class="info-label">
-            <TrendingUp size={14} class="info-icon" />
-            <span>Rate</span>
+    <Panel
+      variant={$transparentSwapPanel ? "transparent" : "solid"}
+      type="secondary"
+      className="info-panel"
+      transition="fade"
+      transitionParams={{ duration: 200 }}
+    >
+      {#snippet children()}
+        <div class="info-grid">
+          <!-- Exchange Rate -->
+          {#if !isMobile}
+            <div class="info-item">
+              <div class="info-label">
+                <TrendingUp size={14} class="info-icon" />
+                <span>Rate</span>
+              </div>
+              {@render infoValue(
+                exchangeRate() && payToken && receiveToken 
+                  ? `<span class="rate-text">1 ${payToken.symbol} = ${exchangeRate()} ${receiveToken.symbol}</span>`
+                  : null,
+                "rate-value"
+              )}
+            </div>
+          {/if}
+          
+          <!-- Price Impact -->
+          <div class="info-item">
+            <div class="info-label">
+              <Activity size={14} class="info-icon" />
+              <span>Price Impact</span>
+            </div>
+            {@render infoValue(
+              payToken && receiveToken && payAmount && receiveAmount && payAmount !== "0" && receiveAmount !== "0"
+                ? `<span>${priceImpact.toFixed(2)}%</span>`
+                : null,
+              `impact-${priceImpactLevel()}`
+            )}
           </div>
-          {@render infoValue(
-            exchangeRate() && payToken && receiveToken 
-              ? `<span class="rate-text">1 ${payToken.symbol} = ${exchangeRate()} ${receiveToken.symbol}</span>`
-              : null,
-            "rate-value"
-          )}
-        </div>
-      {/if}
-      
-      <!-- Price Impact -->
-      <div class="info-item">
-        <div class="info-label">
-          <Activity size={14} class="info-icon" />
-          <span>Price Impact</span>
-        </div>
-        {@render infoValue(
-          payToken && receiveToken && payAmount && receiveAmount && payAmount !== "0" && receiveAmount !== "0"
-            ? `<span>${priceImpact.toFixed(2)}%</span>`
-            : null,
-          `impact-${priceImpactLevel()}`
-        )}
-      </div>
 
-      <!-- Total Fees -->
-      <div class="info-item">
-        <div class="info-label">
-          <DollarSign size={14} class="info-icon" />
-          <span>Total Fees</span>
+          <!-- Total Fees -->
+          <div class="info-item">
+            <div class="info-label">
+              <DollarSign size={14} class="info-icon" />
+              <span>Total Fees</span>
+            </div>
+            {@render infoValue(
+              totalFeesUsd() > 0 ? `<span>$${formatToNonZeroDecimal(totalFeesUsd())}</span>` : null
+            )}
+          </div>
         </div>
-        {@render infoValue(
-          totalFeesUsd() > 0 ? `<span>$${formatToNonZeroDecimal(totalFeesUsd())}</span>` : null
-        )}
-      </div>
-    </div>
-  </div>
+      {/snippet}
+    </Panel>
 {/if}
 
 <style lang="postcss" scoped>
   .swap-info-display {
-    @apply w-full sm:px-3 md:px-0;
+    @apply w-full sm:px-2 md:px-0;
   }
 
   .info-grid {
-    @apply grid grid-cols-2 md:grid-cols-3 gap-4 p-4 
-           bg-kong-bg-tertiary border border-kong-border
-           rounded-xl backdrop-blur-md;
+    @apply grid grid-cols-2 md:grid-cols-3 gap-4;
   }
 
   .info-label {
@@ -314,11 +321,12 @@
 
   /* Loading animation */
   .loading-dots {
-    @apply flex gap-1 items-center justify-center h-5;
+    @apply inline-flex gap-0.5 items-center justify-center;
   }
 
   .loading-dots span {
-    @apply w-1.5 h-1.5 rounded-full bg-kong-text-primary/40 animate-bounce;
+    @apply w-1 h-1 rounded-full bg-kong-text-primary/40;
+    animation: loading-bounce 1.4s ease-in-out infinite both;
   }
 
   .loading-dots span:nth-child(1) {
@@ -331,6 +339,17 @@
 
   .loading-dots span:nth-child(3) {
     animation-delay: 0s;
+  }
+
+  @keyframes loading-bounce {
+    0%, 80%, 100% {
+      transform: scale(0.8);
+      opacity: 0.5;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   /* Mobile optimization */
@@ -353,14 +372,6 @@
 
     .rate-text {
       @apply text-[10px];
-    }
-
-    .loading-dots {
-      @apply h-4;
-    }
-
-    .loading-dots span {
-      @apply w-1 h-1;
     }
   }
 </style> 

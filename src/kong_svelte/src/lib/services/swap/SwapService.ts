@@ -264,6 +264,14 @@ export class SwapService {
     slippage: number;
     gasFees: Array<{ amount: string; token: string }>;
     lpFees: Array<{ amount: string; token: string }>;
+    routingPath: Array<{
+      paySymbol: string;
+      receiveSymbol: string;
+      poolSymbol: string;
+      payAmount: string;
+      receiveAmount: string;
+      price: number;
+    }>;
   }> {
     try {
       // Add check for blocked tokens at the start
@@ -280,6 +288,7 @@ export class SwapService {
           slippage: 0,
           gasFees: [],
           lpFees: [],
+          routingPath: [],
         };
       }
 
@@ -304,6 +313,14 @@ export class SwapService {
         // Extract fees from the quote
         const gasFees: Array<{ amount: string; token: string }> = [];
         const lpFees: Array<{ amount: string; token: string }> = [];
+        const routingPath: Array<{
+          paySymbol: string;
+          receiveSymbol: string;
+          poolSymbol: string;
+          payAmount: string;
+          receiveAmount: string;
+          price: number;
+        }> = [];
 
         if (quote.Ok.txs && quote.Ok.txs.length > 0) {
           for (const tx of quote.Ok.txs) {
@@ -315,6 +332,7 @@ export class SwapService {
             // Determine token decimals for the fee
             // For multi-hop swaps, we need to look up each intermediate token's decimals
             let feeTokenDecimals = 8; // Default to 8 decimals
+            let payTokenDecimals = 8; // Default to 8 decimals for pay token in this hop
             
             // Special case for ICP
             if (tx.receive_symbol === "ICP") {
@@ -331,6 +349,28 @@ export class SwapService {
               // This could be improved by fetching token details from the store
               feeTokenDecimals = 8;
             }
+            
+            // Similar logic for pay token decimals
+            const payTokenId = tx.pay_address.startsWith("IC.") 
+              ? tx.pay_address.substring(3) 
+              : tx.pay_address;
+            if (tx.pay_symbol === "ICP") {
+              payTokenDecimals = 8;
+            } else if (payTokenId === payToken.address) {
+              payTokenDecimals = payToken.decimals;
+            } else if (payTokenId === receiveToken.address) {
+              payTokenDecimals = receiveToken.decimals;
+            }
+            
+            // Add to routing path
+            routingPath.push({
+              paySymbol: tx.pay_symbol,
+              receiveSymbol: tx.receive_symbol,
+              poolSymbol: tx.pool_symbol,
+              payAmount: this.fromBigInt(tx.pay_amount, payTokenDecimals),
+              receiveAmount: this.fromBigInt(tx.receive_amount, feeTokenDecimals),
+              price: tx.price,
+            });
             
             // Add gas fee
             if (tx.gas_fee) {
@@ -355,6 +395,7 @@ export class SwapService {
           slippage: quote.Ok.slippage,
           gasFees,
           lpFees,
+          routingPath,
         };
       } else if ("Err" in quote) {
         throw new Error(quote.Err);
