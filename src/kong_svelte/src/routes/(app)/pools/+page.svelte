@@ -20,7 +20,8 @@
   import PoolsToolbar from "$lib/components/liquidity/pools/PoolsToolbar.svelte";
   import PoolsEmptyState from "$lib/components/liquidity/pools/PoolsEmptyState.svelte";
   import PoolsPagination from "$lib/components/liquidity/pools/PoolsPagination.svelte";
-    import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { getPoolPriceUsd } from "$lib/utils/statsUtils";
 
   // State management
   const activePoolView = writable("all");

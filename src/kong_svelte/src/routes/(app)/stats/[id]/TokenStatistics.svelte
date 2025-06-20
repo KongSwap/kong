@@ -8,6 +8,8 @@
     Copy,
     PlusCircle,
     ChevronDown,
+    BadgeCheck,
+    BadgeX,
   } from "lucide-svelte";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { cubicOut } from "svelte/easing";
@@ -97,6 +99,7 @@
 
   // Update motion values with effect
   $effect(() => {
+    console.log("token", activeToken);
     if (activeToken?.metrics) {
       marketCapValue = Number(activeToken.metrics.market_cap || 0);
       volume24hValue = Number(activeToken.metrics.volume_24h || 0);
@@ -209,6 +212,11 @@
                 {standard}
               </Badge>
             {/each}
+            {#if token?.metrics?.is_verified}
+              <Badge variant="green" size="xs"><BadgeCheck size="14" /> Verified</Badge>
+            {:else}
+              <Badge variant="yellow" size="xs"><BadgeX size="14" /> Unverified</Badge>
+            {/if}
           </div>
 
           {#if marketCapRank !== null}

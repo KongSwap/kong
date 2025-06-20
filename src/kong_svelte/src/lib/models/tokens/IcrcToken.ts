@@ -76,6 +76,7 @@ export class IcrcToken extends BaseModel {
       tvl: this.toString(data.tvl || '0'),
       updated_at: this.toString(data.updated_at || new Date().toISOString()),
       price_change_24h: this.toString(data.price_change_24h || '0'),
+      is_verified: this.toBoolean(data.is_verified),
       previous_price: this.toString(data.previous_price || data.price || '0')
     };
   }

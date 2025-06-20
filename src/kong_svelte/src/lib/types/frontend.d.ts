@@ -37,6 +37,7 @@ declare global {
       price_change_24h?: string;
       previous_price?: number;
       market_cap_rank?: string;
+      is_verified?: boolean;
       updated_at: string;
     }
 
