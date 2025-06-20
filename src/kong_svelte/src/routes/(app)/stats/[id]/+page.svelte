@@ -269,7 +269,7 @@
   <title>{state.token?.name || 'Token'} {state.token?.symbol ? `(${state.token.symbol})` : ''} Chart and Stats - KongSwap</title>
 </svelte:head>
 
-<div class="p-4 pt-0">
+<div class="px-4 pt-0">
   {#if state.isTokenLoading}
     <LoadingIndicator message="Loading token data..." />
   {:else if !state.token}
@@ -332,7 +332,7 @@
       <!-- Desktop Layout -->
       <div class="hidden lg:flex lg:flex-row gap-4 w-full">
         <!-- Left Column - Stats -->
-        <div class="lg:w-[420px] flex flex-col gap-6">
+        <div class="lg:w-[420px] flex flex-col gap-4">
           <TokenStatistics
             token={state.token}
             marketCapRank={state.token?.metrics?.market_cap_rank ?? (state.marketCapRank?.toString() || "-")}
@@ -351,9 +351,8 @@
         </div>
         
         <!-- Right Column - Chart and Content -->
-        <div class="lg:w-full flex flex-col">
-          <Panel type="main" className="!p-0 !bg-transparent !shadow-none !border-none">
-            <div class="w-full chart-wrapper">
+        <div class="lg:w-full flex flex-col gap-4">
+          <Panel type="main" className="!p-0 !bg-transparent !shadow-none !rounded-kong-roundness">
               <TokenChart 
                 token={state.token}
                 selectedPool={state.selectedPool}
@@ -361,12 +360,11 @@
                 chartInstance={state.chartInstance}
                 height={state.desktopChartHeight}
               />
-            </div>
           </Panel>
           
           <!-- Governance and Transactions -->
-          <div class="mt-4 hidden lg:block">
-            <div class="flex flex-row gap-6">
+          <div class="hidden lg:block">
+            <div class="flex flex-row gap-4">
               {#if state.token?.address && GOVERNANCE_CANISTER_IDS[state.token.address]}
                 <div class="w-1/2">
                   <SNSProposals
