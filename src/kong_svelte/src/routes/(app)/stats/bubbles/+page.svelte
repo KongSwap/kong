@@ -69,13 +69,16 @@
     
     const largestChange = tokens.reduce((max, token) => Math.max(max, Math.abs(getChangePercent(token.metrics?.price_change_24h))), 0);
     const changes = tokens.map(token => Math.abs(getChangePercent(token.metrics?.price_change_24h)));
-    const usableArea = containerWidth * containerHeight * (isMobile ? 0.55 : 0.65);
+    const usableArea = containerWidth * containerHeight * (isMobile ? 0.55 : 0.75);
     const avgArea = usableArea / tokens.length;
     const baseDiameter = Math.sqrt(avgArea / Math.PI) * 2;
     
-    // 5:1 diameter ratio with larger max size for dramatic effect
-    const maxDiameter = Math.min(baseDiameter * 3, Math.sqrt(usableArea * 0.3 / Math.PI) * 2);
-    const minDiameter = Math.max(12, maxDiameter / 5);
+    // 7:1 diameter ratio with larger max size for dramatic effect
+    let maxDiameter = Math.min(baseDiameter * 3, Math.sqrt(usableArea * 0.3 / Math.PI) * 2);
+    const minDiameter = Math.max(12, maxDiameter / 5.5);
+
+    //adjust maxDiameter based on the largest change, starts at 70% and scales to 100%
+    maxDiameter = maxDiameter * (0.7 + 0.3 * Math.min(1, largestChange / 200))
     
     // Power scaling for more dramatic visual differences (square root of square root = 4th root)
     // This makes -16% significantly more visible than -6%
@@ -630,6 +633,7 @@
 <style>
   .bubbles-container {
     position: relative;
+    display: flex;
     width: 100%;
     height: calc(100vh - var(--navbar-height));
     overflow: hidden;
@@ -836,6 +840,9 @@
     left: 50%;
     transform: translate(-50%, -50%);
     display: flex;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
     flex-direction: column;
     align-items: center;
     gap: 1rem;
@@ -874,6 +881,10 @@
   }
 
   .loading-text {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
     font-size: 1.1rem;
     font-weight: 500;
     opacity: 0.8;
