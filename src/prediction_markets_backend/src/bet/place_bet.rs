@@ -29,7 +29,8 @@ use crate::stable_memory::*;
 use crate::storage::BETS;
 use crate::storage::MARKETS;
 use crate::token::registry::{get_token_info, is_supported_token};
-use crate::types::{calculate_platform_fee, min_activation_bet, MarketId, OutcomeIndex, TokenAmount, TokenIdentifier};
+use crate::transaction_recovery::record_failed_transaction;
+use crate::types::{MarketId, OutcomeIndex, TokenAmount, TokenIdentifier, calculate_platform_fee, min_activation_bet};
 
 // House fee constant and configuration
 lazy_static::lazy_static! {
@@ -183,6 +184,26 @@ async fn place_bet(
         Err((code, msg)) => Err(BetError::TransferError(format!("Transfer failed: {} (code: {:?})", msg, code))),
     }?;
 
+    let do_refund = || async {
+        // Create a refund transfer to return tokens to the user
+        let refund_result = crate::token::transfer::transfer_token_fees_included(user, amount.clone(), &token_id).await;
+
+        // Log the refund attempt, but still return the error either way
+        match refund_result {
+            Ok(_) => ic_cdk::println!("Successfully refunded {} tokens to user {}", amount.to_u64(), user),
+            Err(e) => {
+                ic_cdk::println!("Failed to refund tokens to user: {:?}", e);
+                record_failed_transaction(
+                    Some(market_id.clone()),
+                    user,
+                    amount.clone(),
+                    token_id.clone(),
+                    e.detailed_message(),
+                );
+            }
+        }
+    };
+
     // Re-read the market after the transfer to get latest state
     let mut market = match MARKETS.with(|markets| {
         let markets_ref = markets.borrow();
@@ -193,7 +214,20 @@ async fn place_bet(
             None
         }
     }) {
-        Some(market) => market,
+        Some(market) => {
+            if matches!(market.status, MarketStatus::Active | MarketStatus::PendingActivation) {
+                ic_cdk::println!(
+                    "Market {} in state {:?} after token transfer, refunding user {}",
+                    market_id.to_u64(),
+                    market.status,
+                    user
+                );
+
+                do_refund().await;
+                return Err(BetError::MarketNotActive);
+            }
+            market
+        }
         None => {
             // Market not found after token transfer - we need to refund the user
             ic_cdk::println!(
@@ -202,14 +236,7 @@ async fn place_bet(
                 user
             );
 
-            // Create a refund transfer to return tokens to the user
-            let refund_result = crate::token::transfer::transfer_token_fees_included(user, amount.clone(), &token_id).await;
-
-            // Log the refund attempt, but still return the error either way
-            match refund_result {
-                Ok(_) => ic_cdk::println!("Successfully refunded {} tokens to user {}", amount.to_u64(), user),
-                Err(e) => ic_cdk::println!("Failed to refund tokens to user: {:?}", e),
-            }
+            do_refund().await;
 
             return Err(BetError::MarketNotFound);
         }
