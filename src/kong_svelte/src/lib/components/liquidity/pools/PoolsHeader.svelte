@@ -76,7 +76,7 @@
           >
             <div class="flex items-center justify-between mb-2">
               <Flame class="w-7 h-7 text-kong-success group-hover:animate-pulse" />
-              <span class="text-xs text-kong-success uppercase tracking-wider font-semibold">Top APY</span>
+              <span class="text-xs text-kong-success uppercase tracking-wider font-semibold">Top APR</span>
             </div>
             <div class="text-2xl font-bold text-kong-success mb-1">
               {highestAPY.toFixed(2)}%
@@ -106,7 +106,7 @@
               class="flex items-center gap-1.5 px-3 py-1.5 text-base bg-kong-primary/10 hover:bg-kong-primary/20 text-kong-primary rounded-lg transition-all duration-200"
             >
               <Plus class="w-4 h-4" />
-              <span class="font-bold">Add Liquidity</span>
+              <span class="font-medium">Add Liquidity</span>
             </button>
           </div>
         </div>

@@ -589,7 +589,7 @@
               
               <!-- APY -->
               <div class="flex justify-between items-center">
-                <div class="text-xs text-kong-text-secondary">APY</div>
+                <div class="text-xs text-kong-text-secondary">APR</div>
                 <div 
                   class="flex items-center gap-1 text-sm"
                   class:text-kong-success={pool.rolling_24h_apy !== undefined && pool.rolling_24h_apy !== null && pool.rolling_24h_apy > 0}

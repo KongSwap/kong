@@ -76,7 +76,7 @@
         >
       </div>
       <div class="stat-item">
-        <span class="stat-label">24h APY</span>
+        <span class="stat-label">24h APR</span>
         <span class="stat-value accent"
           >{formatToNonZeroDecimal(actualPool?.rolling_24h_apy)}%</span
         >

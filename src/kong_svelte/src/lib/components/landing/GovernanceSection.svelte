@@ -530,7 +530,7 @@
             <StatCard
               icon={Clock}
               value="14.5%"
-              label="Staking APY"
+              label="Staking APR"
               iconBgClass="bg-indigo-500/20"
               iconColorClass="text-indigo-300"
               gradientClass="bg-[linear-gradient(90deg,#9E7CF4,#FF00FF)]"
