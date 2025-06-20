@@ -69,7 +69,7 @@
     
     const largestChange = tokens.reduce((max, token) => Math.max(max, Math.abs(getChangePercent(token.metrics?.price_change_24h))), 0);
     const changes = tokens.map(token => Math.abs(getChangePercent(token.metrics?.price_change_24h)));
-    const usableArea = containerWidth * containerHeight * (isMobile ? 0.55 : 0.75);
+    const usableArea = containerWidth * containerHeight * (isMobile ? 0.6 : 0.75);
     const avgArea = usableArea / tokens.length;
     const baseDiameter = Math.sqrt(avgArea / Math.PI) * 2;
     
@@ -557,7 +557,7 @@
       
       {#if pos}
         <div
-          class="bubble {style.colorKey} {isHovered ? 'hovered' : ''}"
+          class="bubble {style.colorKey} {(isHovered) ? 'hovered' : ''}"
           style="
             width: {style.size}px;
             height: {style.size}px;
@@ -592,11 +592,11 @@
   {/if}
   
   <!-- Fixed tooltip outside of bubble loop -->
-  {#if hoveredToken}
+  {#if hoveredToken && !isMobile}
     {@const hoveredTokenData = tokens.find(t => t.address === hoveredToken)}
     {#if hoveredTokenData}
       {@const changePercent = getChangePercent(hoveredTokenData.metrics?.price_change_24h)}
-      <div class="tooltip">
+      <div class="tooltip" >
         <div class="flex justify-between items-center mb-2">
           <div class="text-lg font-extrabold text-kong-text-primary">{hoveredTokenData.symbol}</div>
           {#if hoveredTokenData.metrics?.price}

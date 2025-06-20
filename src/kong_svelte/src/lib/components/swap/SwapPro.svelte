@@ -21,8 +21,6 @@
   let selectedPool = $derived.by(() => {
     if (!fromToken?.address || !toToken?.address) return null;
 
-    console.log($livePools);
-
     let pool = $livePools?.find(p => {
       return (p.address_0 === fromToken.address && p.address_1 === toToken.address) ||
              (p.address_1 === fromToken.address && p.address_0 === toToken.address);
@@ -34,8 +32,6 @@
                (p.address_1 === DEFAULT_TOKENS.icp && p.address_0 === toToken.address);
       });
     }
-
-    console.log('pool', pool);
     
     return pool;
   }); 

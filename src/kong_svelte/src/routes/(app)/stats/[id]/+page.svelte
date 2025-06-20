@@ -302,7 +302,7 @@
           />
         {/if}
 
-        <Panel type="main" className="!border-b-none !shadow-none">
+        <Panel type="main" className="!border-b-none !shadow-none" unpadded={true}>
           <div class="w-full chart-wrapper">
             <TokenChart 
               token={state.token}
@@ -433,7 +433,6 @@
   .chart-wrapper {
     position: relative;
     width: 100%;
-    margin-bottom: 1rem;
   }
   
   /* Clearfix for chart wrapper */
