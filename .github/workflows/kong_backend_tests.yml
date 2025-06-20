@@ -41,7 +41,7 @@ jobs:
       - name: Install dfx
         uses: dfinity/setup-dfx@main
         with:
-          dfx-version: "0.26.0"
+          dfx-version: "0.27.0"
 
       - name: Build kong_backend WASM for testing
         run: bash ./scripts/build_kong_backend.sh local
