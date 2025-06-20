@@ -574,7 +574,7 @@
 				// 	break;
 				// }
 
-				const url = `/pools/add?token0=${token0Id}&token1=${token1Id}`;	
+				const url = `/pools/${token0Id}_${token1Id}/position`;	
 				goto(url);
 				// Optionally call the prop if the parent needs to react *before* navigation
 				// onAction(action, selectedToken);

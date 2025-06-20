@@ -3,136 +3,131 @@
   import CreateLiquidityPanel from "$lib/components/liquidity/create_pool/CreateLiquidityPanel.svelte";
   import PoolChart from "$lib/components/liquidity/create_pool/PoolChart.svelte";
   import UserPoolBalance from "$lib/components/liquidity/create_pool/UserPoolBalance.svelte";
-  import Card from "$lib/components/common/Card.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { 
     Info, 
     TrendingUp, 
     DollarSign, 
-    Wallet
+    Wallet,
+    Droplets
   } from "lucide-svelte";
   import { liquidityStore } from "$lib/stores/liquidityStore";
   import { auth } from "$lib/stores/auth";
   import { fade, fly } from "svelte/transition";
+  import { livePools } from "$lib/stores/poolStore";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
   // Get the selected tokens for pool info
-  $: token0 = $liquidityStore.token0;
-  $: token1 = $liquidityStore.token1;
-  $: isAuthenticated = !!$auth?.account;
-  $: hasSelectedTokens = token0 && token1;
+  let token0 = $derived($liquidityStore.token0);
+  let token1 = $derived($liquidityStore.token1);
+  let isAuthenticated = $derived(!!$auth?.account);
+  let hasSelectedTokens = $derived(token0 && token1);
+  
+  // Get live pool data for selected tokens
+  let livePool = $derived(
+    token0 && token1 
+      ? $livePools.find(p => 
+          (p.address_0 === token0.address && p.address_1 === token1.address) ||
+          (p.address_0 === token1.address && p.address_1 === token0.address)
+        )
+      : null
+  );
 </script>
 
+{#snippet metricPanel(title: string, value: string, details: any, valueClass = "text-kong-primary")}
+  <Panel variant="solid" className="p-5">
+    <p class="text-xs text-kong-text-secondary mb-3 uppercase tracking-wider font-medium">{title}</p>
+    <p class="text-3xl font-bold {valueClass} mb-3">
+      {value}
+    </p>
+    <div class="flex justify-between items-center text-xs">
+      {@html details}
+    </div>
+  </Panel>
+{/snippet}
+
 <svelte:head>
-  <title>Add Liquidity | Kong</title>
+  <title>{hasSelectedTokens && token0 && token1 ? `Add ${token0.symbol}/${token1.symbol} Liquidity` : 'Add Liquidity'} - KongSwap</title>
 </svelte:head>
 
-<div class="flex flex-col w-full h-full min-h-screen bg-kong-bg-primary !max-w-5xl mx-auto">
-  <!-- Main Content and Sections -->
-  <div class="w-full mx-auto max-w-[1600px] pb-6">
-        <!-- How it works Section -->
-        <div class="mb-4">
-          <Card className="!p-6">
-            <div class="max-w-4xl">
-              <h3 class="text-lg font-medium text-kong-text-primary mb-4 flex items-center gap-2">
-                <Info class="w-5 h-5 text-kong-primary" />
-                How Liquidity Provision Works
-              </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
-                <div>
-                  <div class="flex items-center gap-2 mb-2">
-                    <div class="w-6 h-6 bg-kong-primary rounded-full flex items-center justify-center text-xs font-bold text-white">1</div>
-                    <span class="font-medium text-kong-text-primary">Select Tokens</span>
-                  </div>
-                  <p class="text-kong-text-primary/70 ml-8">Choose the token pair you want to provide liquidity for</p>
-                </div>
-                <div>
-                  <div class="flex items-center gap-2 mb-2">
-                    <div class="w-6 h-6 bg-kong-primary rounded-full flex items-center justify-center text-xs font-bold text-white">2</div>
-                    <span class="font-medium text-kong-text-primary">Set Amounts</span>
-                  </div>
-                  <p class="text-kong-text-primary/70 ml-8">Enter the amount of each token you want to deposit</p>
-                </div>
-                <div>
-                  <div class="flex items-center gap-2 mb-2">
-                    <div class="w-6 h-6 bg-kong-primary rounded-full flex items-center justify-center text-xs font-bold text-white">3</div>
-                    <span class="font-medium text-kong-text-primary">Earn Fees</span>
-                  </div>
-                  <p class="text-kong-text-primary/70 ml-8">Start earning trading fees from every swap in the pool</p>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-    <!-- Main Content Grid - 2 Columns -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-4">
-      <!-- First Column: Charts -->
-      <div class="order-2 lg:order-1">
-        <div class="sticky top-24">
-          <!-- Pool Chart -->
-          <div in:fly={{ y: 20, duration: 400, delay: 200 }}>
-            {#if hasSelectedTokens}
-              <PoolChart />
-            {:else}
-              <Card className="h-full min-h-[400px] !p-8">
-                <div class="flex flex-col items-center justify-center h-full text-center">
-                  <div class="p-4 bg-kong-primary/10 rounded-full mb-4">
-                    <TrendingUp class="w-8 h-8 text-kong-primary" />
-                  </div>
-                  <h3 class="text-lg font-medium text-kong-text-primary mb-2">Pool Analytics</h3>
-                  <p class="text-sm text-kong-text-primary/60 max-w-xs">
-                    Select both tokens to view pool information, charts, and analytics
-                  </p>
-                </div>
-              </Card>
-            {/if}
+<div class="flex flex-col max-w-[1300px] mx-auto px-4 pb-8">
+  <!-- Header -->
+  <div class="pb-8">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        {#if hasSelectedTokens}
+          <TokenImages tokens={[token0, token1]} size={32} overlap={true} />
+        {:else}
+          <div class="p-2 rounded-full bg-kong-primary/10">
+            <Droplets size={32} class="text-kong-primary" />
           </div>
-        </div>
-      </div>
-      
-      <!-- Second Column: Pool Position + Create Liquidity Panel -->
-      <div class="order-1 lg:order-2">
-        <div class="space-y-4">
-          <!-- User Pool Balance - Moved to top -->
-          <div in:fly={{ y: 20, duration: 400, delay: 100 }}>
-            {#if isAuthenticated && hasSelectedTokens}
-              <UserPoolBalance {token0} {token1} />
-            {:else if !isAuthenticated}
-              <Card className="!p-6">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div class="p-2 bg-kong-warning/10 rounded-lg">
-                      <Wallet class="w-5 h-5 text-kong-warning" />
-                    </div>
-                    <div>
-                      <h3 class="text-sm font-medium text-kong-text-primary">Your Pool Position</h3>
-                      <p class="text-xs text-kong-text-primary/60">Connect wallet to view positions</p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            {:else if hasSelectedTokens}
-              <Card className="!p-6">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div class="p-2 bg-kong-primary/10 rounded-lg">
-                      <DollarSign class="w-5 h-5 text-kong-primary" />
-                    </div>
-                    <div>
-                      <h3 class="text-sm font-medium text-kong-text-primary">Your Pool Position</h3>
-                      <p class="text-xs text-kong-text-primary/60">No position in this pool</p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            {/if}
-          </div>
-          
-          <!-- Create Liquidity Panel -->
-          <div in:fly={{ y: 20, duration: 400, delay: 150 }}>
-            <CreateLiquidityPanel />
-          </div>
-        </div>
+        {/if}
+        <h1 class="text-2xl font-bold text-kong-text-primary">
+          {#if hasSelectedTokens && token0 && token1}
+            Add {token0.symbol}/{token1.symbol} Liquidity
+          {:else}
+            Add Liquidity
+          {/if}
+        </h1>
       </div>
     </div>
-
+    
+    <!-- Key Metrics (only show if pool exists) -->
+    {#if livePool && hasSelectedTokens}
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {@render metricPanel(
+          "Pool TVL",
+          `$${formatToNonZeroDecimal((livePool.tvl || 0).toString())}`,
+          `<div class="flex justify-between text-xs w-full">
+            <span class="text-kong-text-secondary">24h Volume: <span class="text-kong-text-primary font-medium">$${formatToNonZeroDecimal((livePool.rolling_24h_volume || 0).toString())}</span></span>
+          </div>`
+        )}
+        
+        {@render metricPanel(
+          "APR (24h)",
+          `${formatToNonZeroDecimal((livePool.rolling_24h_apy || 0).toString())}%`,
+          `<div class="flex justify-between items-center text-xs w-full">
+            <span class="text-kong-text-secondary">LP Rewards</span>
+            <span class="text-kong-accent-green font-semibold">Active</span>
+          </div>`,
+          "text-kong-accent-green"
+        )}
+        
+        {@render metricPanel(
+          "Pool Fee",
+          `${livePool.lp_fee_bps ? (livePool.lp_fee_bps / 100).toFixed(2) : '0.25'}%`,
+          `<div class="flex justify-between items-center text-xs w-full">
+            <span class="text-kong-text-secondary">Trade fees earned by LPs</span>
+          </div>`
+        )}
+      </div>
+    {/if}
+  </div>
+  
+  <!-- Main Content Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+    <!-- Charts Section -->
+    {#if hasSelectedTokens}
+      <PoolChart />
+    {:else}
+      <Panel variant="solid" className="min-h-[400px] p-8">
+        <div class="flex flex-col items-center justify-center h-full text-center">
+          <div class="p-4 bg-kong-primary/10 rounded-full mb-4">
+            <TrendingUp class="w-8 h-8 text-kong-primary" />
+          </div>
+          <h3 class="text-lg font-medium text-kong-text-primary mb-2">Pool Analytics</h3>
+          <p class="text-sm text-kong-text-primary/60 max-w-xs">
+            Select both tokens to view pool information, charts, and analytics
+          </p>
+        </div>
+      </Panel>
+    {/if}
+    
+    <!-- Actions Panel -->
+    <div class="space-y-4">
+      <!-- Create Liquidity Panel -->
+      <CreateLiquidityPanel />
+    </div>
   </div>
 </div>

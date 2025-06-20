@@ -84,8 +84,13 @@
           </div>
         {/if}
         {#if userPoolData}
-          <div class="text-xs text-kong-accent-blue">
-            {userPoolData.sharePercentage}% of pool
+          <div class="flex items-center gap-2">
+            <div class="text-xs text-kong-accent-blue">
+              {userPoolData.sharePercentage}% of pool
+            </div>
+            <div class="text-xs text-kong-accent-green font-medium">
+              → View Position
+            </div>
           </div>
         {/if}
       </div>
