@@ -79,7 +79,7 @@
   description="Discover the top traders on KongSwap by trading volume. Leading traders are ranked based on their total trading activity."
   icon={Trophy}
   stats={[
-    { label: "Total Volume", value: isLoadingValue ? "Loading..." : formatVolume(totalVolumeValue), icon: TrendingUp },
+    { label: "Total Volume", value: isLoadingValue ? "Loading..." : formatVolume(totalVolumeValue.toString()), icon: TrendingUp },
     { label: "Active Traders", value: isLoadingValue ? "Loading..." : formatNumberWithCommas(totalTradersValue), icon: Users },
     { label: "Time Period", value: selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1), icon: Activity }
   ]}
@@ -138,42 +138,41 @@
           </div>
         </div>
         
-        <!-- Champion (Rank #1) -->
+        <!-- Top 3 Traders - Champion and Runners-up -->
         {#if leaderboardDataValue.length > 0}
-          <div class="mb-12 flex justify-center">
-            <LeaderboardTraderCard
-              user={leaderboardDataValue[0]}
-              rank={1}
-              expanded={expandedRowIndex === 0}
-              tradedTokens={tradedTokens[0]}
-              loadingTokens={loadingTokens[0] || false}
-              tokenError={tokenErrors[0] || null}
-              userDetails={userDetails[0]}
-              loadingUserDetails={loadingUserDetails[0] || false}
-              width="500px"
-              onClick={() => toggleRowExpansion(0)}
-            />
-          </div>
-        {/if}
+          <div class="mb-12">
+            <!-- Champion (Rank #1) - Always gets its own row -->
+            <div class="mb-8 flex justify-center">
+              <div class="w-full sm:w-[500px]">
+                <LeaderboardTraderCard
+                  user={leaderboardDataValue[0]}
+                  rank={1}
+                  tradedTokens={tradedTokens[0]}
+                  loadingTokens={loadingTokens[0] || false}
+                  tokenError={tokenErrors[0] || null}
+                  width="100%"
+                />
+              </div>
+            </div>
 
-        <!-- Runners-up (Ranks #2-3) -->
-        {#if leaderboardDataValue.length > 2}
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12 justify-items-center">
-            {#each leaderboardDataValue.slice(1, 3) as user, sliceIndex}
-              {@const index = sliceIndex + 1}
-              <LeaderboardTraderCard
-                user={user}
-                rank={index + 1}
-                expanded={expandedRowIndex === index}
-                tradedTokens={tradedTokens[index]}
-                loadingTokens={loadingTokens[index] || false}
-                tokenError={tokenErrors[index] || null}
-                userDetails={userDetails[index]}
-                loadingUserDetails={loadingUserDetails[index] || false}
-                width="500px"
-                onClick={() => toggleRowExpansion(index)}
-              />
-            {/each}
+            <!-- Runners-up (Ranks #2-3) - Share a row -->
+            {#if leaderboardDataValue.length > 1}
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 justify-items-center">
+                {#each leaderboardDataValue.slice(1, 3) as user, sliceIndex}
+                  {@const index = sliceIndex + 1}
+                  <div class="w-full sm:w-[500px]">
+                    <LeaderboardTraderCard
+                      user={user}
+                      rank={index + 1}
+                      tradedTokens={tradedTokens[index]}
+                      loadingTokens={loadingTokens[index] || false}
+                      tokenError={tokenErrors[index] || null}
+                      width="100%"
+                    />
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </div>
         {/if}
 

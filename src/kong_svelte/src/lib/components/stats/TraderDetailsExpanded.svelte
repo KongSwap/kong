@@ -19,6 +19,17 @@
 <div class="space-y-4 {className}">
   <!-- Header with principal ID and fee level -->
   <div class="flex justify-between items-start flex-wrap">
+        
+    <div class="text-xs font-medium text-kong-text-secondary mt-2 md:mt-0">
+      <span class="inline-flex items-center bg-kong-bg-primary bg-opacity-50 px-3 py-1 rounded-full">
+        <span class="mr-1">{compactLayout ? 'Volume:' : 'Trading Volume:'}</span>
+        <span class="text-kong-success">{formatVolume(user.total_volume_usd.toString())}</span>
+      </span>
+      <span class="inline-flex items-center ml-2 bg-kong-bg-primary bg-opacity-50 px-3 py-1 rounded-full">
+        <span class="mr-1">Swaps:</span>
+        <span>{user.swap_count}</span>
+      </span>
+    </div>
     <div>
       <h4 class="text-sm font-medium text-kong-text-primary">Trader Profile</h4>
       <p class="text-xs text-kong-text-secondary mt-1 break-all">
@@ -34,17 +45,6 @@
           </span>
         {/if}
       </p>
-    </div>
-    
-    <div class="text-xs font-medium text-kong-text-secondary mt-2 md:mt-0">
-      <span class="inline-flex items-center bg-kong-bg-primary bg-opacity-50 px-3 py-1 rounded-full">
-        <span class="mr-1">{compactLayout ? 'Volume:' : 'Trading Volume:'}</span>
-        <span class="text-kong-success">{formatVolume(user.total_volume_usd.toString())}</span>
-      </span>
-      <span class="inline-flex items-center ml-2 bg-kong-bg-primary bg-opacity-50 px-3 py-1 rounded-full">
-        <span class="mr-1">Swaps:</span>
-        <span>{user.swap_count}</span>
-      </span>
     </div>
   </div>
   
