@@ -1,7 +1,7 @@
 <script lang="ts">
   import SwapPro from "$lib/components/swap/SwapPro.svelte";
   import { browser } from "$app/environment";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import { fetchTokensByCanisterId } from "$lib/api/tokens";
   import { ICP_CANISTER_ID, KONG_LEDGER_CANISTER_ID } from "$lib/constants/canisterConstants";
 
@@ -12,8 +12,8 @@
     if(!browser) return;
 
     try {
-      const fromCanisterId = $page.url.searchParams.get("from") || ICP_CANISTER_ID;
-      const toCanisterId = $page.url.searchParams.get("to") || KONG_LEDGER_CANISTER_ID;
+      const fromCanisterId = page.url.searchParams.get("from") || ICP_CANISTER_ID;
+      const toCanisterId = page.url.searchParams.get("to") || KONG_LEDGER_CANISTER_ID;
       
       const tokens = await fetchTokensByCanisterId([fromCanisterId, toCanisterId]);
       
